@@ -137,100 +137,179 @@ export default function Header() {
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-lg bg-[var(--bg-secondary)] shadow-lg ring-1 ring-[var(--border-light)] py-1">
-                  {/* Navigation - visible on mobile */}
-                  <div className="sm:hidden border-b border-[var(--border-light)] pb-1 mb-1">
-                    <Link
-                      to="/"
-                      onClick={() => setMenuOpen(false)}
-                      className="block px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                    >
-                      Play
-                    </Link>
-                    <Link
-                      to="/techniques"
-                      onClick={() => setMenuOpen(false)}
-                      className="block px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                    >
-                      Learn Techniques
-                    </Link>
-                    <Link
-                      to="/leaderboard"
-                      onClick={() => setMenuOpen(false)}
-                      className="block px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                    >
-                      Leaderboard
-                    </Link>
+                <>
+                  {/* Mobile fullscreen overlay */}
+                  <div 
+                    className="sm:hidden fixed inset-0 top-14 bg-[var(--bg)] z-50"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <div className="flex flex-col h-full" onClick={(e) => e.stopPropagation()}>
+                      {/* Navigation links */}
+                      <div className="flex-1 p-4 space-y-2">
+                        <Link
+                          to="/"
+                          onClick={() => setMenuOpen(false)}
+                          className="block px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
+                        >
+                          Play
+                        </Link>
+                        <Link
+                          to="/techniques"
+                          onClick={() => setMenuOpen(false)}
+                          className="block px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
+                        >
+                          Learn Techniques
+                        </Link>
+                        <Link
+                          to="/leaderboard"
+                          onClick={() => setMenuOpen(false)}
+                          className="block px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
+                        >
+                          Leaderboard
+                        </Link>
+                        <Link
+                          to="/custom"
+                          onClick={() => setMenuOpen(false)}
+                          className="block px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
+                        >
+                          Custom Puzzle
+                        </Link>
+                        <Link
+                          to="/techniques/how-to-play"
+                          onClick={() => setMenuOpen(false)}
+                          className="block px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
+                        >
+                          How to Play
+                        </Link>
+                      </div>
+
+                      {/* Settings at bottom */}
+                      <div className="p-4 border-t border-[var(--border-light)] space-y-4">
+                        {/* Theme colors */}
+                        <div>
+                          <div className="text-sm text-[var(--text-muted)] mb-3">Theme</div>
+                          <div className="flex gap-3">
+                            {colorThemes.map((theme) => (
+                              <button
+                                key={theme.key}
+                                onClick={() => setColorTheme(theme.key)}
+                                className={`w-10 h-10 rounded-full ${theme.color} transition-transform ${
+                                  colorTheme === theme.key ? 'ring-2 ring-offset-2 ring-[var(--text)] scale-110' : 'hover:scale-110'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Homepage preference */}
+                        <div>
+                          <div className="text-sm text-[var(--text-muted)] mb-3">Homepage</div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setHomepageMode('daily')
+                                setHomepageModeState('daily')
+                                if (location.pathname === '/') navigate('/')
+                              }}
+                              className={`flex-1 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
+                                homepageMode === 'daily'
+                                  ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
+                                  : 'bg-[var(--bg-secondary)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                              }`}
+                            >
+                              Daily
+                            </button>
+                            <button
+                              onClick={() => {
+                                setHomepageMode('difficulty')
+                                setHomepageModeState('difficulty')
+                                if (location.pathname === '/') navigate('/')
+                              }}
+                              className={`flex-1 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
+                                homepageMode === 'difficulty'
+                                  ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
+                                  : 'bg-[var(--bg-secondary)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                              }`}
+                            >
+                              Play
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <Link
-                    to="/custom"
-                    onClick={() => setMenuOpen(false)}
-                    className="block px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                  >
-                    Custom Puzzle
-                  </Link>
-                  <Link
-                    to="/techniques/how-to-play"
-                    onClick={() => setMenuOpen(false)}
-                    className="block px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                  >
-                    How to Play
-                  </Link>
+                  {/* Desktop dropdown */}
+                  <div className="hidden sm:block absolute right-0 mt-2 w-48 rounded-lg bg-[var(--bg-secondary)] shadow-lg ring-1 ring-[var(--border-light)] py-1">
+                    <Link
+                      to="/custom"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
+                    >
+                      Custom Puzzle
+                    </Link>
+                    <Link
+                      to="/techniques/how-to-play"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
+                    >
+                      How to Play
+                    </Link>
 
-                  <div className="my-1 border-t border-[var(--border-light)]" />
+                    <div className="my-1 border-t border-[var(--border-light)]" />
 
-                  {/* Theme colors */}
-                  <div className="px-4 py-2">
-                    <div className="text-xs text-[var(--text-muted)] mb-2">Theme</div>
-                    <div className="flex gap-1.5">
-                      {colorThemes.map((theme) => (
+                    {/* Theme colors */}
+                    <div className="px-4 py-2">
+                      <div className="text-xs text-[var(--text-muted)] mb-2">Theme</div>
+                      <div className="flex gap-1.5">
+                        {colorThemes.map((theme) => (
+                          <button
+                            key={theme.key}
+                            onClick={() => setColorTheme(theme.key)}
+                            className={`w-6 h-6 rounded-full ${theme.color} transition-transform ${
+                              colorTheme === theme.key ? 'ring-2 ring-offset-1 ring-[var(--text)] scale-110' : 'hover:scale-110'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Homepage preference */}
+                    <div className="px-4 py-2">
+                      <div className="text-xs text-[var(--text-muted)] mb-2">Homepage</div>
+                      <div className="flex gap-1">
                         <button
-                          key={theme.key}
-                          onClick={() => setColorTheme(theme.key)}
-                          className={`w-6 h-6 rounded-full ${theme.color} transition-transform ${
-                            colorTheme === theme.key ? 'ring-2 ring-offset-1 ring-[var(--text)] scale-110' : 'hover:scale-110'
+                          onClick={() => {
+                            setHomepageMode('daily')
+                            setHomepageModeState('daily')
+                            if (location.pathname === '/') navigate('/')
+                          }}
+                          className={`flex-1 px-2 py-1.5 text-xs rounded transition-colors ${
+                            homepageMode === 'daily'
+                              ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
+                              : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
                           }`}
-                        />
-                      ))}
+                        >
+                          Daily
+                        </button>
+                        <button
+                          onClick={() => {
+                            setHomepageMode('difficulty')
+                            setHomepageModeState('difficulty')
+                            if (location.pathname === '/') navigate('/')
+                          }}
+                          className={`flex-1 px-2 py-1.5 text-xs rounded transition-colors ${
+                            homepageMode === 'difficulty'
+                              ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
+                              : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                          }`}
+                        >
+                          Play
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Homepage preference */}
-                  <div className="px-4 py-2">
-                    <div className="text-xs text-[var(--text-muted)] mb-2">Homepage</div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => {
-                          setHomepageMode('daily')
-                          setHomepageModeState('daily')
-                          if (location.pathname === '/') navigate('/')
-                        }}
-                        className={`flex-1 px-2 py-1.5 text-xs rounded transition-colors ${
-                          homepageMode === 'daily'
-                            ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                            : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
-                        }`}
-                      >
-                        Daily
-                      </button>
-                      <button
-                        onClick={() => {
-                          setHomepageMode('difficulty')
-                          setHomepageModeState('difficulty')
-                          if (location.pathname === '/') navigate('/')
-                        }}
-                        className={`flex-1 px-2 py-1.5 text-xs rounded transition-colors ${
-                          homepageMode === 'difficulty'
-                            ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                            : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
-                        }`}
-                      >
-                        Play
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                </>
               )}
             </div>
           </div>
