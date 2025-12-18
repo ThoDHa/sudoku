@@ -9,6 +9,7 @@ import {
   loadWasm,
   isWasmReady,
   getWasmApi,
+  unloadWasm,
   type SudokuWasmAPI,
 } from './wasm'
 
@@ -101,6 +102,30 @@ async function getApi(): Promise<SudokuWasmAPI> {
   return wasmApi
 }
 
+/**
+ * Initialize the solver (loads WASM if not already loaded)
+ */
+export async function initializeSolver(): Promise<void> {
+  await getApi()
+}
+
+/**
+ * Cleanup solver and free memory
+ * Call this when solver is no longer needed to save ~4MB RAM
+ * Safe to call multiple times
+ */
+export function cleanupSolver(): void {
+  try {
+    wasmApi = null
+    unloadWasm()
+    console.log('[SolverService] Solver cleaned up successfully')
+  } catch (error) {
+    console.warn('[SolverService] Error during solver cleanup:', error)
+  }
+}
+
+// ==================== WASM Solver Functions ====================
+
 export async function solveAll(
   board: number[],
   candidates: number[][],
@@ -169,19 +194,6 @@ export function getDailySeed(): { date_utc: string; seed: string } {
 }
 
 // ==================== WASM Initialization ====================
-
-/**
- * Initialize WASM solver.
- * Call this early in app startup.
- */
-export async function initializeSolver(): Promise<void> {
-  try {
-    await loadWasm()
-  } catch (err) {
-    console.error('WASM failed to load:', err)
-    throw err
-  }
-}
 
 export { isWasmReady }
 

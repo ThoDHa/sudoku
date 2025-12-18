@@ -140,18 +140,23 @@ export interface SudokuWasmAPI {
 let wasmInstance: SudokuWasmAPI | null = null;
 let wasmLoadPromise: Promise<SudokuWasmAPI> | null = null;
 let wasmLoadError: Error | null = null;
+let goInstance: GoInstance | null = null;
+let wasmScriptElement: HTMLScriptElement | null = null;
 
 // Extend globalThis for TypeScript
 declare global {
   interface Window {
     Go: new () => GoInstance;
     SudokuWasm: SudokuWasmAPI;
+    gc?: () => void; // For manual garbage collection in development
   }
 }
 
 interface GoInstance {
   importObject: WebAssembly.Imports;
   run(instance: WebAssembly.Instance): Promise<void>;
+  exit?: (code: number) => void;
+  _inst?: WebAssembly.Instance;
 }
 
 // ==================== Loader Functions ====================
@@ -185,6 +190,58 @@ export function getWasmApi(): SudokuWasmAPI | null {
 }
 
 /**
+ * Unload WASM and free memory
+ * This removes the WASM instance, Go runtime, and script from memory
+ * Call this when WASM is no longer needed to save ~4MB RAM
+ */
+export function unloadWasm(): void {
+  console.log('[WASM] Unloading WASM module...')
+  
+  // Clear WASM instance and API
+  wasmInstance = null;
+  wasmLoadPromise = null;
+  wasmLoadError = null;
+  
+  // Clear Go instance
+  if (goInstance) {
+    // Try to exit the Go runtime cleanly if supported
+    if (goInstance.exit) {
+      try {
+        goInstance.exit(0);
+      } catch (e) {
+        console.warn('[WASM] Error during Go exit:', e);
+      }
+    }
+    goInstance = null;
+  }
+  
+  // Remove wasm_exec.js script from DOM
+  if (wasmScriptElement && wasmScriptElement.parentNode) {
+    wasmScriptElement.parentNode.removeChild(wasmScriptElement);
+    wasmScriptElement = null;
+  }
+  
+  // Clear global references
+  if (typeof window !== 'undefined') {
+    if (window.SudokuWasm) {
+      // @ts-ignore - We know this exists and want to delete it
+      delete window.SudokuWasm;
+    }
+    if (window.Go) {
+      // @ts-ignore - We know this exists and want to delete it  
+      delete window.Go;
+    }
+  }
+  
+  // Force garbage collection if available (mainly for development)
+  if (typeof window !== 'undefined' && 'gc' in window && typeof window.gc === 'function') {
+    window.gc();
+  }
+  
+  console.log('[WASM] WASM module unloaded, memory freed')
+}
+
+/**
  * Get base URL for assets (handles GitHub Pages subpath)
  */
 function getBaseUrl(): string {
@@ -207,6 +264,9 @@ async function loadWasmExec(): Promise<void> {
     script.onload = () => resolve();
     script.onerror = () => reject(new Error('Failed to load wasm_exec.js'));
     document.head.appendChild(script);
+    
+    // Store reference for cleanup
+    wasmScriptElement = script;
   });
 }
 
@@ -243,6 +303,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       }
 
       const go = new window.Go();
+      goInstance = go; // Store reference for cleanup
 
       // Fetch and instantiate the WASM module
       console.log('[WASM] Fetching WASM from:', `${getBaseUrl()}sudoku.wasm`)

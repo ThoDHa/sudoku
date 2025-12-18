@@ -1,8 +1,8 @@
-import { useEffect, lazy, Suspense } from 'react'
+import { lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
 import { GameProvider } from './lib/GameContext'
-import { initializeSolver } from './lib/solver-service'
+import { useWasmLifecycle } from './hooks/useWasmLifecycle'
 import Header from './components/Header'
 
 // Lazy load all pages for code splitting
@@ -22,6 +22,13 @@ const PageLoading = () => (
 
 function AppContent() {
   const location = useLocation()
+  
+  // Automatically manage WASM loading/unloading based on routes
+  useWasmLifecycle({
+    wasmRoutes: ['/p/', '/game/', '/c/', '/custom'],
+    unloadDelay: 2000, // Wait 2 seconds before unloading to handle rapid navigation
+    enableLogging: import.meta.env.DEV // Enable logging in development
+  })
   
   // Game pages need less padding (slim header)
   const isGamePage = location.pathname.startsWith('/p/') || 
@@ -52,12 +59,6 @@ function AppContent() {
 }
 
 function App() {
-  // Initialize solver (WASM) on app startup
-  useEffect(() => {
-    initializeSolver().catch((err) => {
-      console.error('Failed to initialize WASM solver:', err)
-    })
-  }, [])
 
   return (
     <ThemeProvider>

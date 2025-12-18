@@ -1064,6 +1064,7 @@ ${bugReportJson}
   }, [initialBoard, puzzle, loadSavedGameState])
 
   // Auto-save game state when board or candidates change (but not when hidden)
+  // Enhanced with requestIdleCallback for better battery performance
   useEffect(() => {
     if (!puzzle || !hasRestoredSavedState.current || game.isComplete || !getAutoSaveEnabled()) return
 
@@ -1073,12 +1074,28 @@ ${bugReportJson}
       return
     }
 
-    // Debounce saves to avoid excessive localStorage writes
-    const timeoutId = setTimeout(() => {
-      saveGameState()
-      hasUnsavedChanges.current = false
-    }, 500)
+    // Use requestIdleCallback when available for better battery performance
+    const scheduleAutoSave = () => {
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+          if (!backgroundManager.shouldPauseOperations) {
+            saveGameState()
+            hasUnsavedChanges.current = false
+          }
+        }, { timeout: 1000 })
+      } else {
+        // Fallback to setTimeout for older browsers
+        setTimeout(() => {
+          if (!backgroundManager.shouldPauseOperations) {
+            saveGameState()
+            hasUnsavedChanges.current = false
+          }
+        }, 500)
+      }
+    }
 
+    // Debounce saves to avoid excessive localStorage writes
+    const timeoutId = setTimeout(scheduleAutoSave, 500)
     return () => clearTimeout(timeoutId)
   }, [game.board, game.candidates, game.history, puzzle, game.isComplete, saveGameState, backgroundManager.shouldPauseOperations])
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useBackgroundManager } from '../hooks/useBackgroundManager'
 import type { AnimatedTechniqueDiagram, DiagramCell } from '../lib/techniques'
 
 interface AnimatedDiagramViewProps {
@@ -9,28 +10,31 @@ interface AnimatedDiagramViewProps {
 export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [isPlaying, setIsPlaying] = useState(true)
-  
+
   const stepCount = diagram.steps.length
   const currentStepData = diagram.steps[currentStep]
-  
+
+  // Use background manager to pause animation when hidden
+  const backgroundManager = useBackgroundManager()
+
   // Early return if no step data (shouldn't happen in practice but satisfies type checker)
   if (!currentStepData) {
     return null
   }
-  
+
   const cellSize = 20
   const boardSize = cellSize * 9
-  
-  // Auto-advance when playing
+
+  // Auto-advance when playing and not hidden
   useEffect(() => {
-    if (!isPlaying) return
-    
+    if (!isPlaying || backgroundManager.shouldPauseOperations) return
+
     const timer = setInterval(() => {
       setCurrentStep(prev => (prev + 1) % stepCount)
     }, 2500) // 2.5 seconds per step
-    
+
     return () => clearInterval(timer)
-  }, [isPlaying, stepCount])
+  }, [isPlaying, stepCount, backgroundManager.shouldPauseOperations])
   
   const handlePrevious = useCallback(() => {
     setIsPlaying(false)

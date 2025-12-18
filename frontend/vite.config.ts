@@ -24,17 +24,23 @@ export default defineConfig({
             if (id.includes('date-fns')) {
               return 'date-vendor'
             }
+            // Separate utility libraries for better caching
+            if (id.includes('lodash') || id.includes('clsx') || id.includes('class-variance-authority')) {
+              return 'utils-vendor'
+            }
           }
 
+          // Separate WASM-related modules for lazy loading
+          if (id.includes('src/lib/wasm.ts') || id.includes('src/lib/solver-service.ts')) {
+            return 'wasm-solver'
+          }
+          
           // Separate large components into their own chunks
           if (id.includes('src/hooks/useAutoSolve.ts')) {
             return 'auto-solve'
           }
-          if (id.includes('src/hooks/useSudokuGame.ts') || id.includes('src/hooks/useGameTimer.ts')) {
+          if (id.includes('src/hooks/useSudokuGame.ts') || id.includes('src/hooks/useGameTimer.ts') || id.includes('src/hooks/useBackgroundManager.ts')) {
             return 'game-logic'
-          }
-          if (id.includes('src/lib/solver-service.ts')) {
-            return 'solver'
           }
           if (id.includes('src/components/Board.tsx') || id.includes('src/components/History.tsx')) {
             return 'game-components'
@@ -101,7 +107,7 @@ export default defineConfig({
         // Cache strategies - NetworkFirst for app, CacheFirst for static assets
         runtimeCaching: [
           {
-            // App JS/CSS/HTML - NetworkFirst with shorter timeout for fresh content
+            // App JS/CSS/HTML - NetworkFirst with battery-friendly settings
             urlPattern: /\.(?:js|css|html)$/,
             handler: 'NetworkFirst',
             options: {
@@ -110,10 +116,22 @@ export default defineConfig({
                 maxEntries: 50,
                 maxAgeSeconds: 60 * 60 * 24 * 1 // 1 day instead of 7
               },
-              networkTimeoutSeconds: 1, // Reduced from 3 to 1 second
+              networkTimeoutSeconds: 1, // Reduced from 3 to 1 second for battery savings
               cacheableResponse: {
                 statuses: [0, 200]
-              }
+              },
+              // Add plugins for better background behavior
+              plugins: [{
+                cacheKeyWillBeUsed: async ({ request, mode }) => {
+                  // Add version parameter for cache busting
+                  const url = new URL(request.url)
+                  if (mode === 'read' && document.hidden) {
+                    // When reading from cache while page is hidden, prefer cache
+                    url.searchParams.set('cache-mode', 'prefer-cache')
+                  }
+                  return url
+                }
+              }]
             }
           },
           {
