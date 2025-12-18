@@ -793,11 +793,28 @@ func TestDetectNakedPair(t *testing.T) {
 			},
 			expectFound: false, // no eliminations means no move returned
 		},
+		{
+			name:                 "realistic puzzle - naked pair in row",
+			cells:                nakedPairPuzzle,
+			candidates:           nil, // Auto-generated
+			expectFound:          true,
+			expectPairCells:      []core.CellRef{{Row: 0, Col: 0}, {Row: 0, Col: 1}},
+			expectEliminatedFrom: []core.CellRef{{Row: 0, Col: 2}}, // Example elimination target
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			board := makeTestBoard(tt.cells, tt.candidates)
+			var board *Board
+			if tt.candidates == nil {
+				// Realistic puzzle
+				board = NewBoard(tt.cells[:])
+				if tt.name == "realistic puzzle - naked pair in row" {
+					applyTechniqueIsolation(board, "naked_pair")
+				}
+			} else {
+				board = makeTestBoard(tt.cells, tt.candidates)
+			}
 			move := detectNakedPair(board)
 
 			if tt.expectFound {
