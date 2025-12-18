@@ -5,6 +5,8 @@
  * compiled to WebAssembly. It enables offline solving capabilities.
  */
 
+/// <reference types="vite/client" />
+
 // ==================== Type Definitions ====================
 
 export interface CellRef {
@@ -183,6 +185,13 @@ export function getWasmApi(): SudokuWasmAPI | null {
 }
 
 /**
+ * Get base URL for assets (handles GitHub Pages subpath)
+ */
+function getBaseUrl(): string {
+  return import.meta.env.BASE_URL || '/';
+}
+
+/**
  * Load the Go WASM support script (wasm_exec.js)
  */
 async function loadWasmExec(): Promise<void> {
@@ -193,7 +202,7 @@ async function loadWasmExec(): Promise<void> {
 
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = '/wasm_exec.js';
+    script.src = `${getBaseUrl()}wasm_exec.js`;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error('Failed to load wasm_exec.js'));
@@ -234,7 +243,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       const go = new window.Go();
 
       // Fetch and instantiate the WASM module
-      const wasmResponse = await fetch('/sudoku.wasm');
+      const wasmResponse = await fetch(`${getBaseUrl()}sudoku.wasm`);
       if (!wasmResponse.ok) {
         throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`);
       }
