@@ -23,6 +23,7 @@ import {
   STORAGE_KEYS,
 } from '../lib/constants'
 import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
+import { validateBoard, solveNext, getPuzzle } from '../lib/solver-service'
 
 import { saveScore, type Score } from '../lib/scores'
 import { decodePuzzle, encodePuzzle } from '../lib/puzzleEncoding'
@@ -69,7 +70,6 @@ export default function Game() {
   // Puzzle loading state
   const [puzzle, setPuzzle] = useState<PuzzleData | null>(null)
   const [initialBoard, setInitialBoard] = useState<number[]>([])
-  const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -117,7 +117,6 @@ export default function Game() {
 
   // Auto-solve hook - fetches all moves at once and plays them back
   const autoSolve = useAutoSolve({
-    token,
     stepDelay: AUTO_SOLVE_SPEEDS[autoSolveSpeedState],
     gamePaused: timer.isPausedDueToVisibility,
     getBoard: () => game.board,
@@ -187,16 +186,6 @@ export default function Game() {
   // ============================================================
   // HELPER FUNCTIONS
   // ============================================================
-
-  // Generate device ID
-  const getDeviceId = useCallback(() => {
-    let deviceId = localStorage.getItem(STORAGE_KEYS.DEVICE_ID)
-    if (!deviceId) {
-      deviceId = crypto.randomUUID()
-      localStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId)
-    }
-    return deviceId
-  }, [])
 
   // Get storage key for the current puzzle
   const getStorageKey = useCallback((puzzleSeed: string) => {
@@ -336,67 +325,33 @@ export default function Game() {
 
   // Validate current board state
   const handleValidate = useCallback(async () => {
-    if (!token) return
-
     try {
-      const res = await fetch('/api/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, board: game.board }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        if (data.valid) {
-          setValidationMessage({ type: 'success', message: data.message })
-        } else {
-          setValidationMessage({ type: 'error', message: data.message })
-        }
-        setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      const data = await validateBoard(game.board)
+      if (data.valid) {
+        setValidationMessage({ type: 'success', message: data.message || 'All entries are correct!' })
+      } else {
+        setValidationMessage({ type: 'error', message: data.message || 'There are errors in the puzzle' })
       }
+      setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
     } catch {
       setValidationMessage({ type: 'error', message: 'Failed to validate puzzle' })
       setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
     }
-  }, [token, game.board])
+  }, [game.board])
 
   // Core hint step logic - returns true if more steps available, false otherwise
   const executeHintStep = useCallback(async (showNotification: boolean = true): Promise<boolean> => {
-    if (!token) return false
-
     // Deselect any highlighted digit when using hint
     setSelectedCell(null)
     setHighlightedDigit(null)
     setCurrentHighlight(null)
 
-    // Send current board and candidates to backend
+    // Send current board and candidates to solver
     const candidatesArray = game.candidates.map(set => Array.from(set))
 
     try {
-      const res = await fetch('/api/solve/next', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, board: game.board, candidates: candidatesArray, givens: initialBoard }),
-      })
-
-      if (res.status === 429) {
-        if (showNotification) {
-          setValidationMessage({ type: 'error', message: 'Too many requests. Please wait a moment.' })
-          setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
-        }
-        return false
-      }
-
-      if (!res.ok) {
-        if (showNotification) {
-          const errorData = await res.json().catch(() => ({}))
-          setValidationMessage({ type: 'error', message: errorData.error || 'Failed to get hint' })
-          setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
-        }
-        return false
-      }
-
-      const data = await res.json()
+      const data = await solveNext(game.board, candidatesArray, initialBoard)
+      
       if (data.move) {
         const move = data.move
         
@@ -404,7 +359,7 @@ export default function Game() {
         if (move.action === 'unpinpointable-error') {
           setUnpinpointableErrorInfo({ 
             message: move.explanation || `Couldn't pinpoint the error.`, 
-            count: move.userEntryCount || 0 
+            count: (move as unknown as { userEntryCount?: number }).userEntryCount || 0 
           })
           setShowSolutionConfirm(true)
           return false
@@ -502,8 +457,8 @@ export default function Game() {
           }
         }
 
-        game.applyExternalMove(newBoard, newCandidates, data.move)
-        setCurrentHighlight(data.move)
+        game.applyExternalMove(newBoard, newCandidates, move)
+        setCurrentHighlight(move)
         setSelectedMoveIndex(game.history.length)
         
         if (showNotification) {
@@ -511,7 +466,7 @@ export default function Game() {
           const firstTarget = move.targets[0]
           const techniqueName = move.technique === 'fill-candidate' && firstTarget
             ? `Added ${move.digit} to R${firstTarget.row + 1}C${firstTarget.col + 1}`
-            : (data.move.technique || 'Hint')
+            : (move.technique || 'Hint')
           setValidationMessage({ 
             type: 'success', 
             message: techniqueName
@@ -536,12 +491,12 @@ export default function Game() {
     } catch (err) {
       console.error('Hint error:', err)
       if (showNotification) {
-        setValidationMessage({ type: 'error', message: 'Failed to get hint' })
+        setValidationMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to get hint' })
         setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
       }
       return false
     }
-  }, [token, game, initialBoard])
+  }, [game, initialBoard])
 
   // Handle hint button - calls executeHintStep with notifications and increments counter
   const handleNext = useCallback(async () => {
@@ -866,11 +821,11 @@ export default function Game() {
     }
   }, [autoSolve.isAutoSolving])
 
-  // Fetch puzzle and start session
+  // Fetch puzzle
   useEffect(() => {
     if (!seed && !isEncodedCustom) return
 
-    const fetchPuzzle = async () => {
+    const loadPuzzle = async () => {
       try {
         setLoading(true)
         setError(null)
@@ -917,30 +872,20 @@ export default function Game() {
             givens: givens,
           }
         } else {
-          const res = await fetch(`/api/puzzle/${seed}?d=${difficulty}`)
-          if (!res.ok) throw new Error('Failed to load puzzle')
-          puzzleData = await res.json()
+          // Fetch puzzle using solver service (WASM-first)
+          const fetchedPuzzle = await getPuzzle(seed!, difficulty)
+          puzzleData = {
+            puzzle_id: fetchedPuzzle.puzzle_id,
+            seed: fetchedPuzzle.seed,
+            difficulty: fetchedPuzzle.difficulty,
+            givens: fetchedPuzzle.givens,
+          }
           givens = puzzleData.givens
           setEncodedPuzzle(null)
         }
 
         setPuzzle(puzzleData)
         setInitialBoard([...givens])
-
-        // Start session
-        const sessionRes = await fetch('/api/session/start', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            seed: puzzleData.seed,
-            difficulty: difficulty === 'custom' ? 'medium' : difficulty,
-            device_id: getDeviceId(),
-          }),
-        })
-        if (sessionRes.ok) {
-          const sessionData = await sessionRes.json()
-          setToken(sessionData.token)
-        }
 
         timer.resetTimer()
         timer.startTimer()
@@ -951,8 +896,8 @@ export default function Game() {
       }
     }
 
-    fetchPuzzle()
-  }, [seed, encoded, isEncodedCustom, difficulty, getDeviceId])
+    loadPuzzle()
+  }, [seed, encoded, isEncodedCustom, difficulty])
 
   // Reset game state when initialBoard changes (new puzzle loaded) and restore saved state if available
   useEffect(() => {

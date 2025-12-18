@@ -1,0 +1,248 @@
+/**
+ * Solver Service - WASM-only sudoku solving
+ * 
+ * All solving, validation, and puzzle generation is done locally via WASM.
+ * No API calls required.
+ */
+
+import {
+  loadWasm,
+  isWasmReady,
+  getWasmApi,
+  type SudokuWasmAPI,
+} from './wasm'
+
+import { getPracticePuzzle as getStaticPracticePuzzle } from './puzzles-data'
+
+// ==================== Types ====================
+
+export interface CellRef {
+  row: number
+  col: number
+}
+
+export interface Candidate {
+  row: number
+  col: number
+  digit: number
+}
+
+export interface TechniqueRef {
+  title: string
+  slug: string
+  url: string
+}
+
+export interface Highlights {
+  primary: CellRef[]
+  secondary?: CellRef[]
+}
+
+export interface Move {
+  step_index: number
+  technique: string
+  action: string
+  digit: number
+  targets: CellRef[]
+  eliminations?: Candidate[]
+  explanation: string
+  refs: TechniqueRef
+  highlights: Highlights
+  userEntryCount?: number
+}
+
+export interface SolveNextResult {
+  board: number[]
+  candidates: (number[] | null)[]
+  move: Move | null
+}
+
+export interface SolveAllResult {
+  moves: Array<{
+    board: number[]
+    candidates: (number[] | null)[]
+    move: Move
+  }>
+  solved: boolean
+  finalBoard: number[]
+}
+
+export interface ValidateBoardResult {
+  valid: boolean
+  reason?: string
+  message?: string
+  conflicts?: Array<{ cell1: number; cell2: number; value: number; type: string }>
+  conflictCells?: number[]
+}
+
+export interface ValidateCustomResult {
+  valid: boolean
+  unique?: boolean
+  reason?: string
+  puzzle_id?: string
+}
+
+export interface PuzzleResult {
+  puzzle_id: string
+  seed: string
+  difficulty: string
+  givens: number[]
+  puzzle_index?: number
+}
+
+// ==================== WASM Solver ====================
+
+let wasmApi: SudokuWasmAPI | null = null
+
+function getApi(): SudokuWasmAPI {
+  if (!wasmApi) {
+    wasmApi = getWasmApi()
+  }
+  if (!wasmApi) {
+    throw new Error('WASM not loaded')
+  }
+  return wasmApi
+}
+
+export function isAvailable(): boolean {
+  return isWasmReady()
+}
+
+export async function solveNext(
+  board: number[],
+  candidates: number[][],
+  _givens: number[]
+): Promise<SolveNextResult> {
+  const api = getApi()
+  const result = api.findNextMove(board, candidates)
+  return {
+    board: result.board.cells,
+    candidates: result.board.candidates,
+    move: result.move,
+  }
+}
+
+export async function solveAll(
+  board: number[],
+  candidates: number[][],
+  givens: number[]
+): Promise<SolveAllResult> {
+  const api = getApi()
+  const result = api.solveAll(board, candidates, givens)
+  return {
+    moves: result.moves.map((m) => ({
+      board: m.board,
+      candidates: m.candidates,
+      move: m.move as Move,
+    })),
+    solved: result.solved,
+    finalBoard: result.finalBoard,
+  }
+}
+
+export async function validateBoard(board: number[]): Promise<ValidateBoardResult> {
+  const api = getApi()
+  return api.validateBoard(board)
+}
+
+export async function validateCustomPuzzle(
+  givens: number[],
+  _deviceId: string
+): Promise<ValidateCustomResult> {
+  const api = getApi()
+  const result = api.validateCustomPuzzle(givens)
+  if (result.valid && result.unique) {
+    const puzzleId = 'custom-' + hashGivens(givens).slice(0, 16)
+    return { ...result, puzzle_id: puzzleId }
+  }
+  return result
+}
+
+export async function getPuzzle(seed: string, difficulty: string): Promise<PuzzleResult> {
+  const api = getApi()
+  const result = api.getPuzzleForSeed(seed, difficulty)
+  if (result.error) {
+    throw new Error(result.error)
+  }
+  return {
+    puzzle_id: result.puzzleId,
+    seed: result.seed,
+    difficulty: result.difficulty,
+    givens: result.givens,
+    puzzle_index: -1,
+  }
+}
+
+// ==================== Daily Seed Generation ====================
+
+/**
+ * Generate a daily seed based on the current date (UTC).
+ * This ensures all users get the same puzzle for a given day.
+ */
+export function getDailySeed(): { date_utc: string; seed: string } {
+  const now = new Date()
+  const year = now.getUTCFullYear()
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(now.getUTCDate()).padStart(2, '0')
+  const date_utc = `${year}-${month}-${day}`
+  const seed = `daily-${date_utc}`
+  return { date_utc, seed }
+}
+
+// ==================== Practice Puzzles ====================
+
+/**
+ * Get a practice puzzle for a technique.
+ * Uses static embedded data - no API call needed.
+ */
+export function fetchPracticePuzzle(technique: string): PuzzleResult | null {
+  const result = getStaticPracticePuzzle(technique)
+  if (!result) {
+    return null
+  }
+  return {
+    puzzle_id: `practice-${technique}-${result.puzzleIndex}`,
+    seed: `practice-${technique}-${result.puzzleIndex}`,
+    difficulty: result.difficulty,
+    givens: result.givens,
+    puzzle_index: result.puzzleIndex,
+  }
+}
+
+// ==================== WASM Initialization ====================
+
+/**
+ * Initialize WASM solver.
+ * Call this early in app startup.
+ */
+export async function initializeSolver(): Promise<void> {
+  try {
+    await loadWasm()
+  } catch (err) {
+    console.error('WASM failed to load:', err)
+    throw err
+  }
+}
+
+export { isWasmReady }
+
+// ==================== Helpers ====================
+
+function hashGivens(givens: number[]): string {
+  let hash = 0
+  for (let i = 0; i < givens.length; i++) {
+    const val = givens[i] ?? 0
+    hash = ((hash << 5) - hash + val) | 0
+  }
+  return Math.abs(hash).toString(16).padStart(8, '0')
+}
+
+// Default export for backward compatibility
+export default {
+  solveNext,
+  solveAll,
+  validateBoard,
+  validateCustomPuzzle,
+  getPuzzle,
+  isAvailable,
+}

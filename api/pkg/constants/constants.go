@@ -72,6 +72,10 @@ const (
 // API version
 const APIVersion = "0.1.0"
 
+// Solver version - increment this when solver logic changes
+// This is used to check if the WASM module needs to be updated
+const SolverVersion = "0.1.0"
+
 // Default ports
 const DefaultPort = "8080"
 

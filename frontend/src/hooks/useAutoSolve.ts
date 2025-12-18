@@ -1,10 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { PLAY_DELAY } from '../lib/constants'
+import { solveAll } from '../lib/solver-service'
 import type { Move } from './useSudokuGame'
 
 interface UseAutoSolveOptions {
-  /** API token for backend calls */
-  token: string | null
   /** Delay between steps in milliseconds (default: PLAY_DELAY) */
   stepDelay?: number
   /** Whether the game is paused (e.g., tab hidden) - auto-solve should pause too */
@@ -79,7 +78,6 @@ interface StateSnapshot {
  */
 export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const { 
-    token, 
     stepDelay = PLAY_DELAY,
     gamePaused = false,
     getBoard, 
@@ -238,7 +236,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   }, [isAutoSolving, applyMove, applyState, getCandidates])
 
   const startAutoSolve = useCallback(async () => {
-    if (!token || isAutoSolving || isComplete()) return
+    if (isAutoSolving || isComplete()) return
 
     const currentBoard = getBoard()
     const currentCandidates = getCandidates()
@@ -258,20 +256,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     setCurrentIndex(0)
 
     try {
-      const res = await fetch('/api/solve/all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, board: currentBoard, candidates: candidatesArray, givens }),
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        onError?.(errorData.error || 'Failed to get solution')
-        stopAutoSolve()
-        return
-      }
-
-      const data = await res.json()
+      const data = await solveAll(currentBoard, candidatesArray, givens)
       
       if (!data.moves || data.moves.length === 0) {
         if (!data.solved) {
@@ -465,14 +450,14 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
     } catch (err) {
       console.error('Auto-solve error:', err)
-      onError?.('Failed to get solution from server.')
+      onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
     }
-  }, [token, isAutoSolving, getBoard, getCandidates, getGivens, applyMove, isComplete, onError, onUnpinpointableError, onStatus, onErrorFixed, stopAutoSolve])
+  }, [isAutoSolving, getBoard, getCandidates, getGivens, applyMove, isComplete, onError, onUnpinpointableError, onStatus, onErrorFixed, stopAutoSolve])
 
   // Solve from givens only - used when user clicks "Show Solution"
   const solveFromGivens = useCallback(async () => {
-    if (!token || isAutoSolving) return
+    if (isAutoSolving) return
 
     const givens = getGivens()
 
@@ -489,20 +474,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     setCurrentIndex(0)
 
     try {
-      const res = await fetch('/api/solve/all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, board: givens, candidates: [], givens }),
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        onError?.(errorData.error || 'Failed to get solution')
-        stopAutoSolve()
-        return
-      }
-
-      const data = await res.json()
+      const data = await solveAll(givens, [], givens)
       
       if (!data.moves || data.moves.length === 0) {
         if (!data.solved) {
@@ -576,10 +548,10 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
     } catch (err) {
       console.error('Solve from givens error:', err)
-      onError?.('Failed to get solution from server.')
+      onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
     }
-  }, [token, isAutoSolving, getGivens, getCandidates, applyMove, onError, stopAutoSolve])
+  }, [isAutoSolving, getGivens, getCandidates, applyMove, onError, stopAutoSolve])
 
   return {
     isAutoSolving,

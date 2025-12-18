@@ -1,26 +1,21 @@
-import { useState, useEffect } from 'react'
-import { fetchDaily, DailyResponse } from './api'
+import { useState } from 'react'
+import { getDailySeed } from './solver-service'
+
+export interface DailyResponse {
+  date_utc: string
+  seed: string
+}
 
 export function useDailySeed() {
-  const [data, setData] = useState<DailyResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // Generate daily seed locally - no API call needed
+  const [data] = useState<DailyResponse>(() => getDailySeed())
 
-  useEffect(() => {
-    fetchDaily()
-      .then(setData)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [])
-
-  return { data, loading, error, refetch: () => {
-    setLoading(true)
-    setError(null)
-    fetchDaily()
-      .then(setData)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false))
-  }}
+  return { 
+    data, 
+    loading: false, 
+    error: null as string | null, 
+    refetch: () => {} // No-op since it's computed locally
+  }
 }
 
 const STORAGE_KEY = 'lastDailyDifficulty'

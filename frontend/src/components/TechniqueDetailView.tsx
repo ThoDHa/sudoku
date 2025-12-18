@@ -99,7 +99,6 @@ export default function TechniqueDetailView({
   showTips = false 
 }: TechniqueDetailViewProps) {
   const navigate = useNavigate()
-  const [practiceLoading, setPracticeLoading] = useState(false)
   const [practiceError, setPracticeError] = useState<string | null>(null)
   
   const isPage = variant === 'page'
@@ -109,21 +108,16 @@ export default function TechniqueDetailView({
   // Only show practice for implemented techniques (not 'NotImplemented' tier)
   const canPractice = technique.tier !== 'NotImplemented' && technique.tier !== 'Auto'
   
-  const handlePractice = async () => {
-    setPracticeLoading(true)
+  const handlePractice = () => {
     setPracticeError(null)
-    try {
-      const response = await fetchPracticePuzzle(technique.slug)
-      // Navigate to the puzzle using encoded format for custom-like puzzles
-      // or use the seed directly if provided
-      if (response.givens && response.difficulty) {
-        // Use the practice seed format
-        navigate(`/play/${response.seed}?d=${response.difficulty}`)
-      }
-    } catch (err) {
-      setPracticeError(err instanceof Error ? err.message : 'Failed to find practice puzzle')
-    } finally {
-      setPracticeLoading(false)
+    const response = fetchPracticePuzzle(technique.slug)
+    if (!response) {
+      setPracticeError('No practice puzzle available for this technique')
+      return
+    }
+    // Navigate to the puzzle
+    if (response.givens && response.difficulty) {
+      navigate(`/play/${response.seed}?d=${response.difficulty}`)
     }
   }
 
@@ -230,26 +224,15 @@ export default function TechniqueDetailView({
         <div className={isPage ? 'mb-8' : 'mt-4'}>
           <button
             onClick={handlePractice}
-            disabled={practiceLoading}
-            className="w-full rounded-lg bg-[var(--accent)] py-3 font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-lg bg-[var(--accent)] py-3 font-medium text-white transition-colors hover:opacity-90"
           >
-            {practiceLoading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Finding puzzle...
-              </span>
-            ) : (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Practice This Technique
-              </span>
-            )}
+            <span className="flex items-center justify-center gap-2">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Practice This Technique
+            </span>
           </button>
           {practiceError && (
             <p className="mt-2 text-center text-sm text-red-500">{practiceError}</p>

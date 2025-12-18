@@ -28,6 +28,7 @@ func RegisterRoutes(r *gin.Engine, c *config.Config) {
 
 	api := r.Group("/api")
 	{
+		api.GET("/version", versionHandler)
 		api.GET("/daily", dailyHandler)
 		api.GET("/puzzle/:seed", puzzleHandler)
 		api.GET("/puzzle/:seed/analyze", puzzleAnalyzeHandler)
@@ -69,6 +70,13 @@ func healthHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "ok",
 		"version": constants.APIVersion,
+	})
+}
+
+func versionHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"api_version":    constants.APIVersion,
+		"solver_version": constants.SolverVersion,
 	})
 }
 

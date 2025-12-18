@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
 import { GameProvider } from './lib/GameContext'
+import { initializeSolver } from './lib/solver-service'
 import Header from './components/Header'
 import Homepage from './pages/Homepage'
 import Daily from './pages/Daily'
@@ -43,6 +45,11 @@ function AppContent() {
 }
 
 function App() {
+  // Initialize solver (WASM) on app startup and auto-update if needed
+  useEffect(() => {
+    initializeSolver()
+  }, [])
+
   return (
     <ThemeProvider>
       <GameProvider>

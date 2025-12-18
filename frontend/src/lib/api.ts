@@ -1,34 +1,42 @@
-const API_BASE = '/api'
+/**
+ * API module - Re-exports from solver-service for backward compatibility.
+ * 
+ * New code should import directly from './solver-service'.
+ * This file exists for backward compatibility with existing imports.
+ */
 
-export interface DailyResponse {
+// Re-export everything from solver-service
+export {
+  // Types
+  type CellRef,
+  type Candidate,
+  type TechniqueRef,
+  type Highlights,
+  type Move,
+  type SolveNextResult,
+  type SolveAllResult,
+  type ValidateBoardResult,
+  type ValidateCustomResult,
+  type PuzzleResult,
+  
+  // Solver functions
+  solveNext,
+  solveAll,
+  validateBoard,
+  validateCustomPuzzle,
+  getPuzzle,
+  
+  // Daily/practice
+  getDailySeed,
+  fetchPracticePuzzle,
+  
+  // WASM initialization
+  initializeSolver,
+  isWasmReady,
+} from './solver-service'
+
+// Re-export DailyResponse type for hooks.ts
+export type DailyResponse = {
   date_utc: string
   seed: string
-}
-
-export async function fetchDaily(): Promise<DailyResponse> {
-  const res = await fetch(`${API_BASE}/daily`)
-  if (!res.ok) {
-    throw new Error('Failed to fetch daily puzzle')
-  }
-  return res.json()
-}
-
-export interface PracticePuzzleResponse {
-  seed: string
-  difficulty: string
-  givens: number[]
-  technique: string
-  puzzle_index: number
-  cached: boolean
-  error?: string
-  message?: string
-}
-
-export async function fetchPracticePuzzle(technique: string): Promise<PracticePuzzleResponse> {
-  const res = await fetch(`${API_BASE}/practice/${encodeURIComponent(technique)}`)
-  const data = await res.json()
-  if (!res.ok) {
-    throw new Error(data.message || data.error || 'Failed to fetch practice puzzle')
-  }
-  return data
 }

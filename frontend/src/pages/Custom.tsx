@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import Board from '../components/Board'
 import { encodePuzzle } from '../lib/puzzleEncoding'
+import { validateCustomPuzzle } from '../lib/solver-service'
 import { MIN_GIVENS, STORAGE_KEYS } from '../lib/constants'
 
 export default function Custom() {
@@ -11,7 +12,7 @@ export default function Custom() {
   const [validating, setValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Generate device ID
+  // Generate device ID for validation
   const getDeviceId = useCallback(() => {
     let deviceId = localStorage.getItem(STORAGE_KEYS.DEVICE_ID)
     if (!deviceId) {
@@ -63,24 +64,8 @@ export default function Custom() {
         return
       }
 
-      // Validate with backend
-      const res = await fetch('/api/custom/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          givens: board,
-          device_id: getDeviceId(),
-        }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json()
-        setError(data.error || 'Validation failed')
-        setValidating(false)
-        return
-      }
-
-      const data = await res.json()
+      // Validate using solver service (WASM-first)
+      const data = await validateCustomPuzzle(board, getDeviceId())
 
       if (!data.valid) {
         setError(data.reason || 'Puzzle is invalid')
@@ -100,7 +85,7 @@ export default function Custom() {
       // Navigate to play the custom puzzle using the encoded URL
       navigate(`/c/${encoded}`)
     } catch (err) {
-      setError('Failed to validate puzzle. Please try again.')
+      setError(err instanceof Error ? err.message : 'Failed to validate puzzle. Please try again.')
     } finally {
       setValidating(false)
     }
