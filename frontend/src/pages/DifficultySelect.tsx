@@ -22,7 +22,7 @@ export default function DifficultySelect() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
       <h1 className="mb-2 text-3xl font-bold">Play Sudoku</h1>
       <p className="mb-8 text-[var(--text-muted)]">Choose your difficulty</p>
 

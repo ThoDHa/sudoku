@@ -31,7 +31,7 @@ export default function Leaderboard() {
   const difficulties = ['easy', 'medium', 'hard', 'extreme']
 
   return (
-    <div className="mx-auto max-w-4xl p-6 bg-[var(--bg)] min-h-screen">
+    <div className="mx-auto max-w-4xl p-6 bg-[var(--bg)] min-h-[100dvh]">
       <div className="mb-8">
         <Link to="/" className="text-sm text-[var(--accent)] hover:underline">
           &larr; Back to puzzles

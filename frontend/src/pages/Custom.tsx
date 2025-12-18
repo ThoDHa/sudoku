@@ -111,7 +111,7 @@ export default function Custom() {
   const candidates = board.map(() => new Set<number>())
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-[var(--bg)]">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center p-4 bg-[var(--bg)]">
       <div className="mb-4">
         <Link to="/" className="text-sm text-[var(--accent)] hover:underline">
           &larr; Back to puzzles

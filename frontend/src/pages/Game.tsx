@@ -955,7 +955,7 @@ export default function Game() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-[var(--bg)]">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--border-light)] border-t-[var(--accent)]" />
       </div>
     )
@@ -963,14 +963,14 @@ export default function Game() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--bg)]">
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[var(--bg)]">
         <p className="text-red-600">{error}</p>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--text)]">
+    <div className="flex min-h-[100dvh] flex-col bg-[var(--bg)] text-[var(--text)]">
       {/* Game Header */}
       <GameHeader
         difficulty={difficulty}

@@ -87,6 +87,14 @@ body {
   background-color: var(--bg);
   color: var(--text);
   @apply antialiased;
+  /* Prevent horizontal scroll and fix mobile viewport issues */
+  overflow-x: hidden;
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
+}
+
+html {
+  overflow-x: hidden;
 }
 
 /* Transition for theme changes */

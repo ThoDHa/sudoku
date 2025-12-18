@@ -7,7 +7,7 @@ export default function Daily() {
   const { difficulty, setDifficulty } = useLastDailyDifficulty()
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
       <h1 className="mb-2 text-3xl font-bold">Daily Sudoku</h1>
       <p className="mb-8 text-[var(--text-muted)]">{data.date_utc}</p>
       <DifficultyGrid

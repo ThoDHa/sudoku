@@ -30,7 +30,7 @@ export default function Technique() {
     const hardTechniques = getTechniquesByTier('Hard')
 
     return (
-      <div className="mx-auto max-w-4xl p-6 bg-[var(--bg)] min-h-screen">
+      <div className="mx-auto max-w-4xl p-6 bg-[var(--bg)] min-h-[100dvh]">
         <div className="mb-8">
           <Link to="/" className="text-sm text-[var(--accent)] hover:underline">
             &larr; Back to puzzles
@@ -101,7 +101,7 @@ export default function Technique() {
   // Special case: How to Play page
   if (slug === 'how-to-play') {
     return (
-      <div className="mx-auto max-w-3xl p-6 bg-[var(--bg)] min-h-screen">
+      <div className="mx-auto max-w-3xl p-6 bg-[var(--bg)] min-h-[100dvh]">
         <div className="mb-8">
           <Link to="/techniques" className="text-sm text-[var(--accent)] hover:underline">
             &larr; All techniques
@@ -140,7 +140,7 @@ export default function Technique() {
 
   if (!technique) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg)]">
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[var(--bg)]">
         <h1 className="mb-4 text-2xl font-bold text-[var(--text)]">Technique not found</h1>
         <Link to="/techniques" className="text-[var(--accent)] hover:underline">
           View all techniques
@@ -150,7 +150,7 @@ export default function Technique() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-6 bg-[var(--bg)] min-h-screen">
+    <div className="mx-auto max-w-3xl p-6 bg-[var(--bg)] min-h-[100dvh]">
       <div className="mb-8">
         <Link to="/techniques" className="text-sm text-[var(--accent)] hover:underline">
           &larr; All techniques
