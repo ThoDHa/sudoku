@@ -5,7 +5,6 @@ import { GameProvider } from './lib/GameContext'
 import { initializeSolver } from './lib/solver-service'
 import Header from './components/Header'
 import Daily from './pages/Daily'
-import DifficultySelect from './pages/DifficultySelect'
 import Result from './pages/Result'
 import Game from './pages/Game'
 import Technique from './pages/Technique'
@@ -27,7 +26,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Navigate to="/daily" replace />} />
           <Route path="/daily" element={<Daily />} />
-          <Route path="/play" element={<DifficultySelect />} />
+          <Route path="/play" element={<Navigate to="/daily" replace />} />
           <Route path="/p/:seed" element={<Game />} />
           <Route path="/game/:seed" element={<Game />} />
           <Route path="/c/:encoded" element={<Game />} />

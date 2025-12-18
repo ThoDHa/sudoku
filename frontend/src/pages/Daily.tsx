@@ -1,17 +1,43 @@
-import { Link } from 'react-router-dom'
-import { useDailySeed, useLastDailyDifficulty } from '../lib/hooks'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useDailySeed, useLastDailyDifficulty, Difficulty } from '../lib/hooks'
 import { isTodayCompleted, getDailyStreak } from '../lib/scores'
+import { getHomepageMode, setHomepageMode, HomepageMode } from '../lib/preferences'
 import DifficultyGrid from '../components/DifficultyGrid'
+import DifficultyBadge from '../components/DifficultyBadge'
+
+const difficulties: { key: Difficulty; description: string; givensHint: string }[] = [
+  { key: 'easy', description: 'Great for beginners', givensHint: '~38-40 givens' },
+  { key: 'medium', description: 'Some logic required', givensHint: '~32-36 givens' },
+  { key: 'hard', description: 'Advanced techniques needed', givensHint: '~26-30 givens' },
+  { key: 'extreme', description: 'For experienced solvers', givensHint: '~22-25 givens' },
+  { key: 'impossible', description: 'Extreme challenge', givensHint: '~17-21 givens' },
+]
 
 export default function Daily() {
   const { data } = useDailySeed()
   const { difficulty, setDifficulty } = useLastDailyDifficulty()
+  const navigate = useNavigate()
+  
+  const [mode, setMode] = useState<HomepageMode>(getHomepageMode())
+  const [hoveredDifficulty, setHoveredDifficulty] = useState<Difficulty | null>(null)
   
   const completed = isTodayCompleted()
   const streak = getDailyStreak()
 
-  // If today's daily is completed, redirect to play page
-  if (completed) {
+  const handleModeChange = (newMode: HomepageMode) => {
+    setMode(newMode)
+    setHomepageMode(newMode)
+  }
+
+  const generateSeed = () => `P${Date.now()}`
+
+  const handlePracticePlay = (diff: Difficulty) => {
+    navigate(`/game/${generateSeed()}?d=${diff}`)
+  }
+
+  // If today's daily is completed, show completion screen
+  if (mode === 'daily' && completed) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
         <div className="mb-6 text-6xl">✅</div>
@@ -36,12 +62,12 @@ export default function Daily() {
           In the meantime, try a practice game.
         </p>
         
-        <Link
-          to="/play"
+        <button
+          onClick={() => handleModeChange('practice')}
           className="rounded-xl bg-[var(--accent)] px-8 py-4 text-lg font-semibold text-white transition-colors hover:opacity-90"
         >
           Play Practice Game
-        </Link>
+        </button>
         
         <div className="mt-8 flex flex-wrap justify-center gap-4">
           <Link
@@ -69,30 +95,82 @@ export default function Daily() {
 
   return (
     <div className="flex h-full flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
-      <h1 className="mb-2 text-3xl font-bold">Daily Sudoku</h1>
-      <p className="mb-2 text-[var(--text-muted)]">{data.date_utc}</p>
-      
-      {/* Streak display */}
-      {streak.currentStreak > 0 && (
-        <div className="mb-6 flex items-center gap-2 text-[var(--accent)]">
-          <span className="text-xl">🔥</span>
-          <span className="font-semibold">{streak.currentStreak} day streak</span>
-        </div>
+      {/* Mode Toggle */}
+      <div className="mb-6 flex rounded-xl bg-[var(--bg-secondary)] p-1">
+        <button
+          onClick={() => handleModeChange('daily')}
+          className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+            mode === 'daily'
+              ? 'bg-[var(--accent)] text-white'
+              : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+          }`}
+        >
+          Daily
+        </button>
+        <button
+          onClick={() => handleModeChange('practice')}
+          className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+            mode === 'practice'
+              ? 'bg-[var(--accent)] text-white'
+              : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+          }`}
+        >
+          Practice
+        </button>
+      </div>
+
+      {mode === 'daily' ? (
+        <>
+          <h1 className="mb-2 text-3xl font-bold">Daily Sudoku</h1>
+          <p className="mb-2 text-[var(--text-muted)]">{data.date_utc}</p>
+          
+          {/* Streak display */}
+          {streak.currentStreak > 0 && (
+            <div className="mb-6 flex items-center gap-2 text-[var(--accent)]">
+              <span className="text-xl">🔥</span>
+              <span className="font-semibold">{streak.currentStreak} day streak</span>
+            </div>
+          )}
+          
+          <DifficultyGrid
+            seed={data.seed}
+            lastSelected={difficulty}
+            onSelect={setDifficulty}
+          />
+        </>
+      ) : (
+        <>
+          <h1 className="mb-2 text-3xl font-bold">Practice Mode</h1>
+          <p className="mb-8 text-[var(--text-muted)]">Choose your difficulty</p>
+
+          <div className="w-full max-w-md space-y-3">
+            {difficulties.map(({ key, description, givensHint }) => (
+              <button
+                key={key}
+                onClick={() => handlePracticePlay(key)}
+                onMouseEnter={() => setHoveredDifficulty(key)}
+                onMouseLeave={() => setHoveredDifficulty(null)}
+                className="w-full rounded-xl border border-[var(--border-light)] bg-[var(--bg-secondary)] p-4 text-left transition-all hover:border-[var(--accent)] hover:bg-[var(--btn-hover)]"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <DifficultyBadge difficulty={key} size="md" />
+                    <p className="mt-1 text-sm text-[var(--text-muted)]">{description}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-[var(--text-muted)]">{givensHint}</span>
+                    {hoveredDifficulty === key && (
+                      <p className="mt-1 text-sm font-medium text-[var(--accent)]">Play &rarr;</p>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
       )}
       
-      <DifficultyGrid
-        seed={data.seed}
-        lastSelected={difficulty}
-        onSelect={setDifficulty}
-      />
-      
       <div className="mt-12 flex flex-wrap justify-center gap-4">
-        <Link
-          to="/play"
-          className="rounded-lg border border-[var(--border-light)] px-6 py-3 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
-        >
-          Practice Mode
-        </Link>
         <Link
           to="/custom"
           className="rounded-lg border border-[var(--border-light)] px-6 py-3 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"

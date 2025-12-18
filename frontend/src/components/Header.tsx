@@ -375,20 +375,20 @@ ${debugJson}
                   </button>
                   <button
                     onClick={() => {
-                      setHomepageMode('difficulty')
-                      setHomepageModeState('difficulty')
+                      setHomepageMode('practice')
+                      setHomepageModeState('practice')
                       if (location.pathname === '/') {
                         setMenuOpen(false)
                         navigate('/')
                       }
                     }}
                     className={`flex-1 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
-                      homepageMode === 'difficulty'
+                      homepageMode === 'practice'
                         ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
                         : 'bg-[var(--bg-secondary)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
                     }`}
                   >
-                    Difficulty Select
+                    Practice Mode
                   </button>
                 </div>
               </div>

@@ -63,7 +63,7 @@ describe('preferences', () => {
 
     it('should return stored preferences', () => {
       const stored: UserPreferences = {
-        homepageMode: 'difficulty',
+        homepageMode: 'practice',
         autoSolveSpeed: 'slow',
         hideTimer: true
       }
@@ -71,18 +71,18 @@ describe('preferences', () => {
       
       const prefs = getPreferences()
       
-      expect(prefs.homepageMode).toBe('difficulty')
+      expect(prefs.homepageMode).toBe('practice')
       expect(prefs.autoSolveSpeed).toBe('slow')
       expect(prefs.hideTimer).toBe(true)
     })
 
     it('should merge with defaults for partial stored data', () => {
-      const partial = { homepageMode: 'difficulty' }
+      const partial = { homepageMode: 'practice' }
       localStorageMock.setItem('sudoku_preferences', JSON.stringify(partial))
       
       const prefs = getPreferences()
       
-      expect(prefs.homepageMode).toBe('difficulty')
+      expect(prefs.homepageMode).toBe('practice')
       expect(prefs.autoSolveSpeed).toBe('fast') // default
       expect(prefs.hideTimer).toBe(false) // default
     })
@@ -98,18 +98,18 @@ describe('preferences', () => {
 
   describe('setPreferences', () => {
     it('should update preferences', () => {
-      setPreferences({ homepageMode: 'difficulty' })
+      setPreferences({ homepageMode: 'practice' })
       
       const prefs = getPreferences()
-      expect(prefs.homepageMode).toBe('difficulty')
+      expect(prefs.homepageMode).toBe('practice')
     })
 
     it('should merge with existing preferences', () => {
-      setPreferences({ homepageMode: 'difficulty' })
+      setPreferences({ homepageMode: 'practice' })
       setPreferences({ hideTimer: true })
       
       const prefs = getPreferences()
-      expect(prefs.homepageMode).toBe('difficulty')
+      expect(prefs.homepageMode).toBe('practice')
       expect(prefs.hideTimer).toBe(true)
     })
   })
@@ -120,15 +120,15 @@ describe('preferences', () => {
     })
 
     it('should return stored homepage mode', () => {
-      setHomepageMode('difficulty')
-      expect(getHomepageMode()).toBe('difficulty')
+      setHomepageMode('practice')
+      expect(getHomepageMode()).toBe('practice')
     })
   })
 
   describe('setHomepageMode', () => {
     it('should set homepage mode', () => {
-      setHomepageMode('difficulty')
-      expect(getHomepageMode()).toBe('difficulty')
+      setHomepageMode('practice')
+      expect(getHomepageMode()).toBe('practice')
       
       setHomepageMode('daily')
       expect(getHomepageMode()).toBe('daily')

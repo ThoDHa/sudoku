@@ -2,7 +2,7 @@
 
 const PREFERENCES_KEY = 'sudoku_preferences'
 
-export type HomepageMode = 'daily' | 'difficulty'
+export type HomepageMode = 'daily' | 'practice'
 export type AutoSolveSpeed = 'slow' | 'normal' | 'fast' | 'instant'
 
 // Auto-solve speed delays in milliseconds
