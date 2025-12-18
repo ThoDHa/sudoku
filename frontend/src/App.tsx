@@ -25,7 +25,7 @@ function AppContent() {
       <Header />
       <main className={isGamePage ? '' : 'pt-14'}>
         <Routes>
-          <Route path="/" element={<Navigate to="/play" replace />} />
+          <Route path="/" element={<Navigate to="/daily" replace />} />
           <Route path="/daily" element={<Daily />} />
           <Route path="/play" element={<DifficultySelect />} />
           <Route path="/p/:seed" element={<Game />} />
