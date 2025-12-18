@@ -12,8 +12,6 @@ import {
   type SudokuWasmAPI,
 } from './wasm'
 
-import { getPracticePuzzle as getStaticPracticePuzzle } from './puzzles-data'
-
 // ==================== Types ====================
 
 export interface CellRef {
@@ -168,26 +166,6 @@ export function getDailySeed(): { date_utc: string; seed: string } {
   const date_utc = `${year}-${month}-${day}`
   const seed = `daily-${date_utc}`
   return { date_utc, seed }
-}
-
-// ==================== Practice Puzzles ====================
-
-/**
- * Get a practice puzzle for a technique.
- * Uses static embedded data - no API call needed.
- */
-export function fetchPracticePuzzle(technique: string): PuzzleResult | null {
-  const result = getStaticPracticePuzzle(technique)
-  if (!result) {
-    return null
-  }
-  return {
-    puzzle_id: `practice-${technique}-${result.puzzleIndex}`,
-    seed: `practice-${technique}-${result.puzzleIndex}`,
-    difficulty: result.difficulty,
-    givens: result.givens,
-    puzzle_index: result.puzzleIndex,
-  }
 }
 
 // ==================== WASM Initialization ====================

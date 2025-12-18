@@ -24,9 +24,8 @@ export {
   validateCustomPuzzle,
   getPuzzle,
   
-  // Daily/practice
+  // Daily seed
   getDailySeed,
-  fetchPracticePuzzle,
   
   // WASM initialization
   initializeSolver,

@@ -1,10 +1,8 @@
-import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getTechniqueBySlug, type TechniqueInfo, type TechniqueSubsection } from '../lib/techniques'
 import { ChevronRightIcon } from './ui'
 import TechniqueDiagramView, { TechniqueDiagramLegend } from './TechniqueDiagram'
 import AnimatedDiagramView from './AnimatedDiagramView'
-import { fetchPracticePuzzle } from '../lib/api'
 
 interface TechniqueDetailViewProps {
   technique: TechniqueInfo
@@ -99,7 +97,6 @@ export default function TechniqueDetailView({
   showTips = false 
 }: TechniqueDetailViewProps) {
   const navigate = useNavigate()
-  const [practiceError, setPracticeError] = useState<string | null>(null)
   
   const isPage = variant === 'page'
   const headingClass = isPage ? 'text-xl font-semibold' : 'text-sm font-semibold'
@@ -108,17 +105,22 @@ export default function TechniqueDetailView({
   // Only show practice for implemented techniques (not 'NotImplemented' tier)
   const canPractice = technique.tier !== 'NotImplemented' && technique.tier !== 'Auto'
   
+  // Map technique tier to appropriate difficulty for practice
+  const getPracticeDifficulty = () => {
+    switch (technique.tier) {
+      case 'Simple': return 'easy'
+      case 'Medium': return 'medium'
+      case 'Hard': return 'hard'
+      case 'Extreme': return 'extreme'
+      default: return 'medium'
+    }
+  }
+  
   const handlePractice = () => {
-    setPracticeError(null)
-    const response = fetchPracticePuzzle(technique.slug)
-    if (!response) {
-      setPracticeError('No practice puzzle available for this technique')
-      return
-    }
-    // Navigate to the puzzle
-    if (response.givens && response.difficulty) {
-      navigate(`/play/${response.seed}?d=${response.difficulty}`)
-    }
+    // Generate a random seed and navigate to a puzzle of appropriate difficulty
+    const seed = `practice-${Date.now()}`
+    const difficulty = getPracticeDifficulty()
+    navigate(`/game/${seed}?d=${difficulty}`)
   }
 
   return (
@@ -234,9 +236,6 @@ export default function TechniqueDetailView({
               Practice This Technique
             </span>
           </button>
-          {practiceError && (
-            <p className="mt-2 text-center text-sm text-red-500">{practiceError}</p>
-          )}
         </div>
       )}
     </div>
