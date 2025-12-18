@@ -916,6 +916,21 @@ ${bugReportJson}
             difficulty: 'custom',
             givens: givens,
           }
+        } else if (seed?.startsWith('practice-')) {
+          // Practice puzzles are stored in localStorage by TechniqueDetailView
+          const storedGivens = localStorage.getItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${seed}`)
+          if (!storedGivens) {
+            throw new Error('Practice puzzle not found. Please try again from the technique page.')
+          }
+          givens = JSON.parse(storedGivens)
+          setEncodedPuzzle(null)
+          
+          puzzleData = {
+            puzzle_id: seed,
+            seed: seed,
+            difficulty: difficulty,
+            givens: givens,
+          }
         } else {
           // Fetch puzzle using solver service (WASM-first)
           const fetchedPuzzle = await getPuzzle(seed!, difficulty)

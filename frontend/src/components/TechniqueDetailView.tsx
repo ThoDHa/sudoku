@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getTechniqueBySlug, type TechniqueInfo, type TechniqueSubsection } from '../lib/techniques'
 import { ChevronRightIcon } from './ui'
 import TechniqueDiagramView, { TechniqueDiagramLegend } from './TechniqueDiagram'
 import AnimatedDiagramView from './AnimatedDiagramView'
+import { getPracticePuzzle } from '../lib/puzzles-data'
+import { STORAGE_KEYS } from '../lib/constants'
 
 interface TechniqueDetailViewProps {
   technique: TechniqueInfo
@@ -97,6 +100,7 @@ export default function TechniqueDetailView({
   showTips = false 
 }: TechniqueDetailViewProps) {
   const navigate = useNavigate()
+  const [practiceError, setPracticeError] = useState<string | null>(null)
   
   const isPage = variant === 'page'
   const headingClass = isPage ? 'text-xl font-semibold' : 'text-sm font-semibold'
@@ -105,22 +109,25 @@ export default function TechniqueDetailView({
   // Only show practice for implemented techniques (not 'NotImplemented' tier)
   const canPractice = technique.tier !== 'NotImplemented' && technique.tier !== 'Auto'
   
-  // Map technique tier to appropriate difficulty for practice
-  const getPracticeDifficulty = () => {
-    switch (technique.tier) {
-      case 'Simple': return 'easy'
-      case 'Medium': return 'medium'
-      case 'Hard': return 'hard'
-      case 'Extreme': return 'extreme'
-      default: return 'medium'
-    }
-  }
-  
   const handlePractice = () => {
-    // Generate a random seed and navigate to a puzzle of appropriate difficulty
-    const seed = `practice-${Date.now()}`
-    const difficulty = getPracticeDifficulty()
-    navigate(`/game/${seed}?d=${difficulty}`)
+    setPracticeError(null)
+    
+    // Get a practice puzzle that uses this technique
+    const puzzle = getPracticePuzzle(technique.slug)
+    if (!puzzle) {
+      setPracticeError('No practice puzzle available for this technique')
+      return
+    }
+    
+    // Create a unique seed for this practice puzzle
+    const seed = `practice-${technique.slug}-${puzzle.puzzleIndex}`
+    
+    // Store givens in localStorage so Game.tsx can load them
+    const storageKey = `${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${seed}`
+    localStorage.setItem(storageKey, JSON.stringify(puzzle.givens))
+    
+    // Navigate to the puzzle
+    navigate(`/game/${seed}?d=${puzzle.difficulty}`)
   }
 
   return (
@@ -236,6 +243,9 @@ export default function TechniqueDetailView({
               Practice This Technique
             </span>
           </button>
+          {practiceError && (
+            <p className="mt-2 text-center text-sm text-red-500">{practiceError}</p>
+          )}
         </div>
       )}
     </div>
