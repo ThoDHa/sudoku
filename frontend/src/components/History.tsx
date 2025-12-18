@@ -29,6 +29,7 @@ interface HistoryProps {
   onTechniqueClick: (technique: { title: string; slug: string }) => void
   selectedMoveIndex: number | null
   autoSolveStepsUsed?: number
+  autoFillUsed?: boolean
 }
 
 export default function History({
@@ -39,6 +40,7 @@ export default function History({
   onTechniqueClick,
   selectedMoveIndex,
   autoSolveStepsUsed,
+  autoFillUsed,
 }: HistoryProps) {
   const listRef = useRef<HTMLUListElement>(null)
   const itemRefs = useRef<(HTMLLIElement | null)[]>([])
@@ -108,13 +110,33 @@ export default function History({
             </p>
           ) : (
             <ul className="space-y-3" ref={listRef}>
-              {/* Auto-solve summary (shown first since newest is first) */}
+              {/* Auto-fill and Auto-solve summaries (shown first since newest is first) */}
+              {autoFillUsed && (
+                <li className="rounded-lg border border-[var(--border-light)] bg-[var(--bg-secondary)] p-3 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📝</span>
+                    <span className="text-sm text-[var(--text)]">
+                      {(() => {
+                        // Find the auto-fill move to get the cell count
+                        const autoFillMove = moves.find(move => move.technique === 'Fill Candidates')
+                        if (autoFillMove) {
+                          // Extract cell count from explanation: "Filled all candidates for X cells"
+                          const match = autoFillMove.explanation?.match(/(\d+) cells/)
+                          const cellCount = match && match[1] ? parseInt(match[1], 10) : 0
+                          return `Auto-filled candidates for ${cellCount} cell${cellCount !== 1 ? 's' : ''}`
+                        }
+                        return 'Auto-filled candidates'
+                      })()}
+                    </span>
+                  </div>
+                </li>
+              )}
               {autoSolveStepsUsed && autoSolveStepsUsed > 0 && (
                 <li className="rounded-lg border border-[var(--border-light)] bg-[var(--bg-secondary)] p-3 shadow-sm">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">🤖</span>
                     <span className="text-sm text-[var(--text)]">
-                      Solver was used for {autoSolveStepsUsed} step{autoSolveStepsUsed !== 1 ? 's' : ''}
+                      Automatically applied {autoSolveStepsUsed} move{autoSolveStepsUsed !== 1 ? 's' : ''}
                     </span>
                   </div>
                 </li>

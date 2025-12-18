@@ -1181,6 +1181,7 @@ ${bugReportJson}
         onTechniqueClick={(technique) => setTechniqueModal(technique)}
         selectedMoveIndex={selectedMoveIndex}
         autoSolveStepsUsed={autoSolveStepsUsed}
+        autoFillUsed={autoFillUsed}
       />
 
       <ResultModal
