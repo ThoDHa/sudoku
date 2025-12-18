@@ -274,11 +274,23 @@ export default function Board({
     const col = idx % 9
     const isGiven = initialBoard[idx] !== 0
     const isSelected = selectedCell === idx
-    const isPrimary = isHighlightedPrimary(row, col)
-    const isSecondary = isHighlightedSecondary(row, col)
+    let isPrimary = isHighlightedPrimary(row, col)
+    let isSecondary = isHighlightedSecondary(row, col)
     const isDuplicate = duplicates.has(idx)
     const hasDigitMatch = cellHasHighlightedDigit(idx)
     const isPeer = isPeerOfSelected(idx)
+
+    // If the current highlight is a user note toggle (add/remove note) and
+    // this cell no longer has any candidates, suppress the temporary highlight
+    // so removing the last candidate clears the background.
+    const cellCandidatesForClass = candidates[idx]
+    if ((isPrimary || isSecondary) && highlight && highlight.isUserMove &&
+        (highlight.action === 'note' || highlight.action === 'eliminate' || highlight.action === 'clear-candidates')) {
+      if (!cellCandidatesForClass || cellCandidatesForClass.size === 0) {
+        isPrimary = false
+        isSecondary = false
+      }
+    }
 
     // Start with base CSS class
     const classes = ['sudoku-cell']

@@ -557,10 +557,12 @@ export default function Game() {
     // If cell already has this digit, erase it
     if (game.board[selectedCell] === digit) {
       game.eraseCell(selectedCell)
+      setCurrentHighlight(null)
       return
     }
 
     game.setCell(selectedCell, digit, notesMode)
+    setCurrentHighlight(null)
     
     // Keep cell selected so user can erase or change immediately
     // Keep digit highlighted so user can fill multiple cells with same digit
@@ -571,8 +573,10 @@ export default function Game() {
     if (game.isGivenCell(idx)) return
     if (value === 0) {
       game.eraseCell(idx)
+      setCurrentHighlight(null)
     } else {
       game.setCell(idx, value, notesMode)
+      setCurrentHighlight(null)
     }
   }, [game, notesMode])
 
