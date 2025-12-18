@@ -653,7 +653,7 @@ export default function Game() {
     await autoSolve.startAutoSolve()
   }, [autoSolve])
 
-  // Bug report handler
+  // Bug report handler - opens GitHub issue with state
   const handleReportBug = useCallback(async () => {
     const bugReport = {
       timestamp: new Date().toISOString(),
@@ -687,20 +687,65 @@ export default function Game() {
       userAgent: navigator.userAgent,
     }
 
+    const bugReportJson = JSON.stringify(bugReport, null, 2)
+    
+    // Create a compact board representation for the issue body
+    const boardString = game.board.map((v, i) => 
+      (i > 0 && i % 9 === 0 ? '\n' : '') + (v === 0 ? '.' : v)
+    ).join('')
+    
+    const issueBody = `## Bug Description
+<!-- Please describe the bug you encountered -->
+
+## Puzzle State
+- **Seed:** ${puzzle?.seed || 'Unknown'}
+- **Difficulty:** ${puzzle?.difficulty || 'Unknown'}
+- **Time:** ${Math.floor(timer.elapsedMs / 1000)}s
+
+### Current Board
+\`\`\`
+${boardString}
+\`\`\`
+
+<details>
+<summary>Full Debug State (click to expand)</summary>
+
+\`\`\`json
+${bugReportJson}
+\`\`\`
+
+</details>
+
+## Expected Behavior
+<!-- What did you expect to happen? -->
+
+## Actual Behavior
+<!-- What actually happened? -->
+`
+
+    // Also copy to clipboard as backup
     try {
-      await navigator.clipboard.writeText(JSON.stringify(bugReport, null, 2))
-      setBugReportCopied(true)
-      setTimeout(() => setBugReportCopied(false), TOAST_DURATION_SUCCESS)
+      await navigator.clipboard.writeText(bugReportJson)
     } catch {
+      // Fallback for older browsers
       const textarea = document.createElement('textarea')
-      textarea.value = JSON.stringify(bugReport, null, 2)
+      textarea.value = bugReportJson
       document.body.appendChild(textarea)
       textarea.select()
       document.execCommand('copy')
       document.body.removeChild(textarea)
-      setBugReportCopied(true)
-      setTimeout(() => setBugReportCopied(false), TOAST_DURATION_SUCCESS)
     }
+    
+    setBugReportCopied(true)
+    setTimeout(() => setBugReportCopied(false), TOAST_DURATION_SUCCESS)
+    
+    // Open GitHub issue with pre-filled content
+    const issueUrl = new URL('https://github.com/ThoDHa/sudoku/issues/new')
+    issueUrl.searchParams.set('title', `Bug: [Please describe briefly]`)
+    issueUrl.searchParams.set('body', issueBody)
+    issueUrl.searchParams.set('labels', 'bug')
+    
+    window.open(issueUrl.toString(), '_blank')
   }, [puzzle, initialBoard, game, timer.elapsedMs, colorTheme, mode])
 
   // ============================================================
@@ -961,7 +1006,7 @@ export default function Game() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-[var(--bg)]">
+      <div className="flex h-full items-center justify-center bg-[var(--bg)]">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--border-light)] border-t-[var(--accent)]" />
       </div>
     )
@@ -969,14 +1014,14 @@ export default function Game() {
 
   if (error) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[var(--bg)]">
+      <div className="flex h-full flex-col items-center justify-center gap-4 bg-[var(--bg)]">
         <p className="text-red-600">{error}</p>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-[var(--bg)] text-[var(--text)]">
+    <div className="flex h-full flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
       {/* Game Header */}
       <GameHeader
         difficulty={difficulty}
@@ -1028,7 +1073,7 @@ export default function Game() {
         </div>
       )}
 
-      <div className="game-background flex flex-1 flex-col items-center justify-center p-4 lg:p-8">
+      <div className="game-background flex flex-1 flex-col items-center justify-center p-4 lg:p-8 overflow-hidden">
 
         {/* Game container - centers board and controls together */}
         <div className="game-container flex flex-col items-center">
