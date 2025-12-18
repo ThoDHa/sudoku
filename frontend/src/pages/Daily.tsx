@@ -35,8 +35,8 @@ export default function Daily() {
   if (mode === 'daily' && completed) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-4 bg-[var(--bg)] text-[var(--text)]">
-        {/* Constrain to puzzle width - uses .game-container class from index.css */}
-        <div className="game-container flex flex-col items-center">
+        {/* Constrain to puzzle size - uses .game-container class from index.css */}
+        <div className="game-container aspect-square flex flex-col items-center justify-center">
           <div className="mb-4 text-5xl">✅</div>
           <h1 className="mb-1 text-2xl font-bold">Daily Complete!</h1>
           <p className="mb-3 text-sm text-[var(--text-muted)]">{data.date_utc}</p>
@@ -92,8 +92,8 @@ export default function Daily() {
 
   return (
     <div className="flex h-full flex-col items-center justify-center p-4 bg-[var(--bg)] text-[var(--text)]">
-      {/* Constrain to puzzle width - uses .game-container class from index.css */}
-      <div className="game-container flex flex-col items-center">
+      {/* Constrain to puzzle size - uses .game-container class from index.css */}
+      <div className="game-container aspect-square flex flex-col items-center justify-center">
         {mode === 'daily' ? (
           <>
             <h1 className="mb-1 text-2xl font-bold">Daily Sudoku</h1>
