@@ -116,37 +116,62 @@ export default function Board({
     }
   }, [selectedCell])
 
+  // Find next non-given cell in a direction, returns null if none found
+  const findNextNonGivenCell = (startIdx: number, direction: 'up' | 'down' | 'left' | 'right'): number | null => {
+    let row = Math.floor(startIdx / 9)
+    let col = startIdx % 9
+    
+    const move = () => {
+      switch (direction) {
+        case 'up': row--; break
+        case 'down': row++; break
+        case 'left': col--; break
+        case 'right': col++; break
+      }
+    }
+    
+    const isValid = () => row >= 0 && row < 9 && col >= 0 && col < 9
+    
+    move()
+    while (isValid()) {
+      const idx = row * 9 + col
+      if (initialBoard[idx] === 0) {
+        return idx
+      }
+      move()
+    }
+    return null
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
-    const row = Math.floor(idx / 9)
-    const col = idx % 9
     const isGiven = initialBoard[idx] !== 0
 
-    // Arrow key navigation
+    // Arrow key navigation - skip over givens
     switch (e.key) {
-      case 'ArrowUp':
+      case 'ArrowUp': {
         e.preventDefault()
-        if (row > 0) {
-          onCellClick((row - 1) * 9 + col)
-        }
+        const nextCell = findNextNonGivenCell(idx, 'up')
+        if (nextCell !== null) onCellClick(nextCell)
         break
-      case 'ArrowDown':
+      }
+      case 'ArrowDown': {
         e.preventDefault()
-        if (row < 8) {
-          onCellClick((row + 1) * 9 + col)
-        }
+        const nextCell = findNextNonGivenCell(idx, 'down')
+        if (nextCell !== null) onCellClick(nextCell)
         break
-      case 'ArrowLeft':
+      }
+      case 'ArrowLeft': {
         e.preventDefault()
-        if (col > 0) {
-          onCellClick(row * 9 + (col - 1))
-        }
+        const nextCell = findNextNonGivenCell(idx, 'left')
+        if (nextCell !== null) onCellClick(nextCell)
         break
-      case 'ArrowRight':
+      }
+      case 'ArrowRight': {
         e.preventDefault()
-        if (col < 8) {
-          onCellClick(row * 9 + (col + 1))
-        }
+        const nextCell = findNextNonGivenCell(idx, 'right')
+        if (nextCell !== null) onCellClick(nextCell)
         break
+      }
       case '1':
       case '2':
       case '3':
@@ -398,6 +423,7 @@ export default function Board({
         <div key={rowIdx} role="row" className="contents">
           {Array.from({ length: 9 }, (_, colIdx) => {
             const idx = rowIdx * 9 + colIdx
+            const isGiven = initialBoard[idx] !== 0
             return (
               <div
                 key={idx}
@@ -406,8 +432,9 @@ export default function Board({
                 tabIndex={selectedCell === idx ? 0 : -1}
                 aria-label={getCellAriaLabel(idx)}
                 className={getCellClass(idx)}
-                onClick={() => onCellClick(idx)}
+                onClick={() => !isGiven && onCellClick(idx)}
                 onKeyDown={(e) => handleKeyDown(e, idx)}
+                style={isGiven ? { cursor: 'default' } : undefined}
               >
                 {renderCell(idx)}
               </div>
