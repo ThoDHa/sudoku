@@ -522,6 +522,7 @@ export default function Game() {
     // Toggle selection: clicking the same cell again deselects it (highest priority for user-fillable cells)
     if (selectedCell === idx) {
       setSelectedCell(null)
+      setHighlightedDigit(null)
       setCurrentHighlight(null)
       return
     }
