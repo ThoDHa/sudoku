@@ -43,6 +43,47 @@ export function getBestScores(): Record<string, Score> {
   return best
 }
 
+// Helper to check if a score used any assists (hints or auto-solve)
+function isAssistedScore(score: Score): boolean {
+  return score.hintsUsed > 0 || score.autoSolveUsed === true
+}
+
+// Get best scores for each difficulty without any assists (pure solves)
+export function getBestScoresPure(): Record<string, Score> {
+  const scores = getScores()
+  const best: Record<string, Score> = {}
+  
+  for (const score of scores) {
+    // Skip assisted scores
+    if (isAssistedScore(score)) continue
+    
+    const existing = best[score.difficulty]
+    if (!existing || score.timeMs < existing.timeMs) {
+      best[score.difficulty] = score
+    }
+  }
+  
+  return best
+}
+
+// Get best scores for each difficulty with assists (hints or auto-solve used)
+export function getBestScoresAssisted(): Record<string, Score> {
+  const scores = getScores()
+  const best: Record<string, Score> = {}
+  
+  for (const score of scores) {
+    // Only include assisted scores
+    if (!isAssistedScore(score)) continue
+    
+    const existing = best[score.difficulty]
+    if (!existing || score.timeMs < existing.timeMs) {
+      best[score.difficulty] = score
+    }
+  }
+  
+  return best
+}
+
 export function getRecentScores(limit = 10): Score[] {
   return getScores().slice(0, limit)
 }

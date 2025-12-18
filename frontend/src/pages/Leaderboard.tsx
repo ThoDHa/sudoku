@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getBestScores, getRecentScores, Score } from '../lib/scores'
+import { getBestScoresPure, getBestScoresAssisted, getRecentScores, Score } from '../lib/scores'
 
 function formatTime(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000)
@@ -20,11 +20,13 @@ function formatDate(isoString: string): string {
 }
 
 export default function Leaderboard() {
-  const [bestScores, setBestScores] = useState<Record<string, Score>>({})
+  const [bestScoresPure, setBestScoresPure] = useState<Record<string, Score>>({})
+  const [bestScoresAssisted, setBestScoresAssisted] = useState<Record<string, Score>>({})
   const [recentScores, setRecentScores] = useState<Score[]>([])
 
   useEffect(() => {
-    setBestScores(getBestScores())
+    setBestScoresPure(getBestScoresPure())
+    setBestScoresAssisted(getBestScoresAssisted())
     setRecentScores(getRecentScores(10))
   }, [])
 
@@ -43,8 +45,40 @@ export default function Leaderboard() {
       <div className="space-y-8">
         <section>
           <h2 className="mb-4 text-xl font-semibold text-[var(--text)]">Best Times</h2>
-          {Object.keys(bestScores).length === 0 ? (
-            <p className="text-[var(--text-muted)]">No scores yet. Complete a puzzle to see your best times!</p>
+          {Object.keys(bestScoresPure).length === 0 ? (
+            <p className="text-[var(--text-muted)]">No unassisted completions yet. Complete a puzzle without hints or auto-solve!</p>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-[var(--border-light)]">
+              <table className="min-w-full">
+                <thead className="bg-[var(--bg-secondary)]">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Difficulty</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Time</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-light)]">
+                  {difficulties.map((diff) => {
+                    const score = bestScoresPure[diff]
+                    if (!score) return null
+                    return (
+                      <tr key={diff} className="bg-[var(--bg)]">
+                        <td className="px-4 py-3 capitalize text-[var(--text)]">{diff}</td>
+                        <td className="px-4 py-3 font-mono text-[var(--text)]">{formatTime(score.timeMs)}</td>
+                        <td className="px-4 py-3 text-[var(--text-muted)]">{formatDate(score.completedAt)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-xl font-semibold text-[var(--text)]">Best Times (Assisted)</h2>
+          {Object.keys(bestScoresAssisted).length === 0 ? (
+            <p className="text-[var(--text-muted)]">No assisted completions yet.</p>
           ) : (
             <div className="overflow-hidden rounded-lg border border-[var(--border-light)]">
               <table className="min-w-full">
@@ -58,7 +92,7 @@ export default function Leaderboard() {
                 </thead>
                 <tbody className="divide-y divide-[var(--border-light)]">
                   {difficulties.map((diff) => {
-                    const score = bestScores[diff]
+                    const score = bestScoresAssisted[diff]
                     if (!score) return null
                     return (
                       <tr key={diff} className="bg-[var(--bg)]">
