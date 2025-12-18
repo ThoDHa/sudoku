@@ -1,15 +1,24 @@
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
 import { GameProvider } from './lib/GameContext'
 import { initializeSolver } from './lib/solver-service'
 import Header from './components/Header'
-import Homepage from './pages/Homepage'
-import Result from './pages/Result'
-import Game from './pages/Game'
-import Technique from './pages/Technique'
-import Custom from './pages/Custom'
-import Leaderboard from './pages/Leaderboard'
+
+// Lazy load all pages for code splitting
+const Homepage = lazy(() => import('./pages/Homepage'))
+const Result = lazy(() => import('./pages/Result'))
+const Game = lazy(() => import('./pages/Game'))
+const Technique = lazy(() => import('./pages/Technique'))
+const Custom = lazy(() => import('./pages/Custom'))
+const Leaderboard = lazy(() => import('./pages/Leaderboard'))
+
+// Loading fallback component
+const PageLoading = () => (
+  <div className="flex items-center justify-center h-full">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]"></div>
+  </div>
+)
 
 function AppContent() {
   const location = useLocation()
@@ -23,18 +32,20 @@ function AppContent() {
     <div className="h-[100dvh] flex flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
       <Header />
       <main className={`flex-1 overflow-y-auto scrollbar-hide ${isGamePage ? '' : 'pt-16'}`}>
-        <Routes>
-          <Route path="/" element={<Homepage />} />
-          <Route path="/p/:seed" element={<Game />} />
-          <Route path="/game/:seed" element={<Game />} />
-          <Route path="/c/:encoded" element={<Game />} />
-          <Route path="/r" element={<Result />} />
-          <Route path="/techniques" element={<Technique />} />
-          <Route path="/techniques/:slug" element={<Technique />} />
-          <Route path="/technique/:slug" element={<Technique />} />
-          <Route path="/custom" element={<Custom />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-        </Routes>
+        <Suspense fallback={<PageLoading />}>
+          <Routes>
+            <Route path="/" element={<Homepage />} />
+            <Route path="/p/:seed" element={<Game />} />
+            <Route path="/game/:seed" element={<Game />} />
+            <Route path="/c/:encoded" element={<Game />} />
+            <Route path="/r" element={<Result />} />
+            <Route path="/techniques" element={<Technique />} />
+            <Route path="/techniques/:slug" element={<Technique />} />
+            <Route path="/technique/:slug" element={<Technique />} />
+            <Route path="/custom" element={<Custom />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+          </Routes>
+        </Suspense>
       </main>
     </div>
   )

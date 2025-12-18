@@ -12,16 +12,49 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
+        manualChunks: (id) => {
           // Separate React and related libraries
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          // Separate large UI libraries
-          'ui-vendor': ['@headlessui/react', '@heroicons/react']
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'react-vendor'
+            }
+            if (id.includes('@headlessui') || id.includes('@heroicons')) {
+              return 'ui-vendor'
+            }
+            if (id.includes('date-fns')) {
+              return 'date-vendor'
+            }
+          }
+
+          // Separate large components into their own chunks
+          if (id.includes('src/hooks/useAutoSolve.ts')) {
+            return 'auto-solve'
+          }
+          if (id.includes('src/hooks/useSudokuGame.ts') || id.includes('src/hooks/useGameTimer.ts')) {
+            return 'game-logic'
+          }
+          if (id.includes('src/lib/solver-service.ts')) {
+            return 'solver'
+          }
+          if (id.includes('src/components/Board.tsx') || id.includes('src/components/History.tsx')) {
+            return 'game-components'
+          }
+          // Separate Game page from other pages for better loading
+          if (id.includes('src/pages/Game.tsx')) {
+            return 'game-page'
+          }
+          if (id.includes('src/pages/')) {
+            return 'pages'
+          }
+          if (id.includes('src/components/')) {
+            return 'ui-components'
+          }
         }
       }
     },
-    // Increase chunk size warning limit since we have large WASM dependency
-    chunkSizeWarningLimit: 600
+    // Adjusted chunk size warning limit - we have optimized chunking
+    // Largest chunk is now 634KB (UI components), down from 770KB main bundle
+    chunkSizeWarningLimit: 650
   },
   plugins: [
     react(),
