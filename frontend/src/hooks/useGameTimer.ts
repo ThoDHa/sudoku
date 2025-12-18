@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { TIMER_UPDATE_INTERVAL, MS_PER_SECOND } from '../lib/constants'
+import { useBackgroundManager } from './useBackgroundManager'
 
 interface UseGameTimerOptions {
   /** Whether to auto-start the timer (default: false) */
@@ -28,23 +29,26 @@ interface UseGameTimerReturn {
 }
 
 /**
- * Hook to manage a game timer with pause/resume functionality.
- * Handles tab visibility changes and window blur/focus to pause when hidden.
- * Auto-resumes when visible again to prevent cheating.
- */
+  * Hook to manage a game timer with pause/resume functionality.
+  * Uses central background manager for consistent visibility handling.
+  * Auto-resumes when visible again to prevent cheating.
+  */
 export function useGameTimer(options: UseGameTimerOptions = {}): UseGameTimerReturn {
   const { autoStart = false, pauseOnHidden = true } = options
 
   const [elapsedMs, setElapsedMs] = useState(0)
   const [isRunning, setIsRunning] = useState(autoStart)
   const [isPausedDueToVisibility, setIsPausedDueToVisibility] = useState(false)
-  
+
   // Track when timer was last started (for calculating elapsed time)
   const startTimeRef = useRef<number | null>(null)
   // Track accumulated time before last pause
   const accumulatedRef = useRef(0)
   // Track if timer was running before visibility pause
   const wasRunningBeforePauseRef = useRef(false)
+
+  // Use central background manager
+  const backgroundManager = useBackgroundManager({ enabled: pauseOnHidden })
 
   const startTimer = useCallback(() => {
     if (!isRunning) {
@@ -87,20 +91,25 @@ export function useGameTimer(options: UseGameTimerOptions = {}): UseGameTimerRet
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }, [elapsedMs])
 
-  // Main timer interval
+  // Main timer interval - optimized for battery life
   useEffect(() => {
     if (!isRunning) return
+
+    // Use longer intervals when page is hidden to save battery
+    const updateInterval = pauseOnHidden && backgroundManager.isHidden 
+      ? TIMER_UPDATE_INTERVAL * 4  // 4x longer updates when hidden
+      : TIMER_UPDATE_INTERVAL
 
     const interval = setInterval(() => {
       if (startTimeRef.current !== null) {
         setElapsedMs(accumulatedRef.current + (Date.now() - startTimeRef.current))
       }
-    }, TIMER_UPDATE_INTERVAL)
+    }, updateInterval)
 
     return () => clearInterval(interval)
-  }, [isRunning])
+  }, [isRunning, pauseOnHidden, backgroundManager.isHidden])
 
-  // Handle tab visibility changes and window blur/focus
+  // Handle visibility changes using central background manager
   useEffect(() => {
     if (!pauseOnHidden) return
 
@@ -123,34 +132,17 @@ export function useGameTimer(options: UseGameTimerOptions = {}): UseGameTimerRet
       wasRunningBeforePauseRef.current = false
     }
 
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        pauseForVisibility()
-      } else {
-        resumeFromVisibility()
-      }
-    }
-
-    const handleWindowBlur = () => {
-      // Additional pause on window blur (catches more mobile scenarios)
+    // React to background manager visibility changes
+    if (backgroundManager.shouldPauseOperations) {
       pauseForVisibility()
-    }
-
-    const handleWindowFocus = () => {
-      // Resume on window focus
+    } else if (!backgroundManager.isHidden) {
       resumeFromVisibility()
     }
 
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('blur', handleWindowBlur)
-    window.addEventListener('focus', handleWindowFocus)
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('blur', handleWindowBlur)
-      window.removeEventListener('focus', handleWindowFocus)
-    }
-  }, [isRunning, pauseOnHidden])
+    // Update isPausedDueToVisibility based on background manager state
+    setIsPausedDueToVisibility(backgroundManager.shouldPauseOperations)
+
+  }, [backgroundManager.shouldPauseOperations, backgroundManager.isHidden, isRunning, pauseOnHidden])
 
   return {
     elapsedMs,

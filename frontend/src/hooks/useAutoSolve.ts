@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { PLAY_DELAY } from '../lib/constants'
 import { solveAll } from '../lib/solver-service'
+import { useBackgroundManager } from './useBackgroundManager'
 import type { Move } from './useSudokuGame'
 
 interface UseAutoSolveOptions {
@@ -28,6 +29,8 @@ interface UseAutoSolveOptions {
   onStatus?: (message: string) => void
   /** Called when a user error is found and fixed - pauses to show user */
   onErrorFixed?: (message: string, resumeCallback: () => void) => void
+  /** Optional background manager instance (will create one if not provided) */
+  backgroundManager?: ReturnType<typeof useBackgroundManager>
 }
 
 interface UseAutoSolveReturn {
@@ -77,27 +80,32 @@ interface StateSnapshot {
  * Supports rewind/fast-forward with stepBack/stepForward.
  */
 export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
-  const { 
+  const {
     stepDelay = PLAY_DELAY,
     gamePaused = false,
-    getBoard, 
-    getCandidates, 
-    getGivens, 
+    getBoard,
+    getCandidates,
+    getGivens,
     applyMove,
     applyState,
-    isComplete, 
+    isComplete,
     onError,
     onUnpinpointableError,
     onStatus,
     onErrorFixed,
+    backgroundManager: providedBackgroundManager,
   } = options
+
+  // Use provided background manager or create our own
+  const defaultBackgroundManager = useBackgroundManager()
+  const backgroundManager = providedBackgroundManager || defaultBackgroundManager
 
   const [isAutoSolving, setIsAutoSolving] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [manualPaused, setManualPaused] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [totalMoves, setTotalMoves] = useState(0)
-  
+
   const autoSolveRef = useRef(false)
   const pausedRef = useRef(false)
   const manualPausedRef = useRef(false)
@@ -113,9 +121,9 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     stepDelayRef.current = stepDelay
   }, [stepDelay])
 
-  // Sync gamePaused prop with our internal pause state
+  // Sync gamePaused prop and background manager with our internal pause state
   useEffect(() => {
-    const shouldPause = gamePaused || manualPaused
+    const shouldPause = gamePaused || manualPaused || backgroundManager.shouldPauseOperations
     if (shouldPause) {
       pausedRef.current = true
       setIsPaused(true)
@@ -128,7 +136,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         playNextMoveRef.current()
       }
     }
-  }, [gamePaused, manualPaused])
+  }, [gamePaused, manualPaused, backgroundManager.shouldPauseOperations])
 
   const stopAutoSolve = useCallback(() => {
     autoSolveRef.current = false
@@ -323,8 +331,21 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           onStatus?.(moveResult.move.explanation || 'Taking another look...')
           // Continue with next moves
           if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            await new Promise(resolve => setTimeout(resolve, stepDelayRef.current))
-            playNextMove()
+            const scheduleNext = () => {
+              if ('requestIdleCallback' in window && backgroundManager.shouldPauseOperations) {
+                // When paused, use longer delays to save battery
+                setTimeout(() => playNextMove(), stepDelayRef.current * 2)
+              } else if ('requestIdleCallback' in window) {
+                // Use requestIdleCallback for better performance when available
+                requestIdleCallback(() => {
+                  setTimeout(() => playNextMove(), stepDelayRef.current)
+                }, { timeout: stepDelayRef.current + 100 })
+              } else {
+                // Fallback to setTimeout
+                setTimeout(() => playNextMove(), stepDelayRef.current)
+              }
+            }
+            scheduleNext()
           } else {
             stopAutoSolve()
           }
@@ -362,8 +383,21 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           })
           
           if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            await new Promise(resolve => setTimeout(resolve, stepDelayRef.current))
-            playNextMove()
+            const scheduleNext = () => {
+              if ('requestIdleCallback' in window && backgroundManager.shouldPauseOperations) {
+                // When paused, use longer delays to save battery
+                setTimeout(() => playNextMove(), stepDelayRef.current * 2)
+              } else if ('requestIdleCallback' in window) {
+                // Use requestIdleCallback for better performance when available
+                requestIdleCallback(() => {
+                  setTimeout(() => playNextMove(), stepDelayRef.current)
+                }, { timeout: stepDelayRef.current + 100 })
+              } else {
+                // Fallback to setTimeout
+                setTimeout(() => playNextMove(), stepDelayRef.current)
+              }
+            }
+            scheduleNext()
           } else {
             stopAutoSolve()
           }
@@ -406,8 +440,21 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           } else {
             // No callback - just continue after delay
             if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-              await new Promise(resolve => setTimeout(resolve, stepDelayRef.current))
-              playNextMove()
+              const scheduleNext = () => {
+                if ('requestIdleCallback' in window && backgroundManager.shouldPauseOperations) {
+                  // When paused, use longer delays to save battery
+                  setTimeout(() => playNextMove(), stepDelayRef.current * 2)
+                } else if ('requestIdleCallback' in window) {
+                  // Use requestIdleCallback for better performance when available
+                  requestIdleCallback(() => {
+                    setTimeout(() => playNextMove(), stepDelayRef.current)
+                  }, { timeout: stepDelayRef.current + 100 })
+                } else {
+                  // Fallback to setTimeout
+                  setTimeout(() => playNextMove(), stepDelayRef.current)
+                }
+              }
+              scheduleNext()
             } else {
               stopAutoSolve()
             }
@@ -433,10 +480,23 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           move: moveResult.move,
         })
 
-        // Wait then play next
+        // Wait then play next - use requestIdleCallback for battery optimization
         if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-          await new Promise(resolve => setTimeout(resolve, stepDelayRef.current))
-          playNextMove()
+          const scheduleNext = () => {
+            if ('requestIdleCallback' in window && backgroundManager.shouldPauseOperations) {
+              // When paused, use longer delays to save battery
+              setTimeout(() => playNextMove(), stepDelayRef.current * 2)
+            } else if ('requestIdleCallback' in window) {
+              // Use requestIdleCallback for better performance when available
+              requestIdleCallback(() => {
+                setTimeout(() => playNextMove(), stepDelayRef.current)
+              }, { timeout: stepDelayRef.current + 100 })
+            } else {
+              // Fallback to setTimeout
+              setTimeout(() => playNextMove(), stepDelayRef.current)
+            }
+          }
+          scheduleNext()
         } else {
           stopAutoSolve()
         }
