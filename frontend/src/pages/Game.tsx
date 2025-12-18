@@ -13,9 +13,11 @@ import { Difficulty } from '../lib/hooks'
 import { useTheme } from '../lib/ThemeContext'
 import { useGameContext } from '../lib/GameContext'
 import { useGameTimer } from '../hooks/useGameTimer'
-import { useSudokuGame, Move } from '../hooks/useSudokuGame'
+import { useSudokuGame } from '../hooks/useSudokuGame'
 import { useAutoSolve } from '../hooks/useAutoSolve'
 import { useBackgroundManager } from '../hooks/useBackgroundManager'
+import { useHighlightManager } from '../hooks/useHighlightManager'
+import type { Move } from '../hooks/useSudokuGame'
 import {
   TOAST_DURATION_SUCCESS,
   TOAST_DURATION_INFO,
@@ -120,8 +122,15 @@ export default function Game() {
   // CUSTOM HOOKS
   // ============================================================
 
-    // Background manager for coordinating all background operations
-    const backgroundManager = useBackgroundManager()
+  // Background manager for coordinating all background operations
+  const backgroundManager = useBackgroundManager()
+
+  // Centralized highlight management for consistent behavior
+  const highlightManager = useHighlightManager({
+    setHighlightedDigit,
+    setCurrentHighlight,
+    setSelectedCell,
+  })
 
     // Extended background pause - completely suspend operations after 30 seconds hidden
     const [isExtendedPaused, setIsExtendedPaused] = useState(false)
@@ -312,13 +321,11 @@ export default function Game() {
     game.clearAll()
     clearSavedGameState()
     invalidateCachedSolution()
-    setCurrentHighlight(null)
+    highlightManager.clearAllAndDeselect()
     setSelectedMoveIndex(null)
-    setSelectedCell(null)
-    setHighlightedDigit(null)
     setNotesMode(false)
     setAutoSolveStepsUsed(0)
-  }, [game, clearSavedGameState, invalidateCachedSolution])
+  }, [game, clearSavedGameState, invalidateCachedSolution, highlightManager])
 
   // Restart puzzle (clears all AND resets timer)
   const handleRestart = useCallback(() => {
@@ -327,17 +334,15 @@ export default function Game() {
     invalidateCachedSolution()
     timer.resetTimer()
     timer.startTimer()
-    setCurrentHighlight(null)
+    highlightManager.clearAllAndDeselect()
     setSelectedMoveIndex(null)
-    setSelectedCell(null)
-    setHighlightedDigit(null)
     setNotesMode(false)
     setHintsUsed(0)
     setAutoFillUsed(false)
     setAutoSolveUsed(false)
     setAutoSolveStepsUsed(0)
     setShowResultModal(false)
-  }, [game, timer, clearSavedGameState, invalidateCachedSolution])
+  }, [game, timer, clearSavedGameState, invalidateCachedSolution, highlightManager])
 
   // Auto-fill notes based on current board state
   const autoFillNotes = useCallback(() => {
@@ -411,9 +416,7 @@ export default function Game() {
   // Returns true if more steps available, false otherwise
   const executeHintStep = useCallback(async (showNotification: boolean = true): Promise<boolean> => {
     // Deselect any highlighted digit when using hint
-    setSelectedCell(null)
-    setHighlightedDigit(null)
-    setCurrentHighlight(null)
+    highlightManager.clearAllAndDeselect()
 
     // Check if we need to fetch a new solution
     // Invalidate cache if user made changes (history length changed unexpectedly)
@@ -560,25 +563,22 @@ export default function Game() {
      // Given cells: just highlight the digit, don't select
      if (game.isGivenCell(idx)) {
        const cellDigit = game.board[idx] ?? null
-       setHighlightedDigit(cellDigit)
+       highlightManager.setDigitHighlight(cellDigit)
        setEraseMode(false)
        setSelectedCell(null)
-       setCurrentHighlight(null)
        return
      }
 
      // Toggle selection: clicking the same cell again deselects it (highest priority for user-fillable cells)
      if (selectedCell === idx) {
-       setSelectedCell(null)
-       setHighlightedDigit(null)
-       setCurrentHighlight(null)
+       highlightManager.clearAllAndDeselect()
        return
      }
 
      // If erase mode is active and cell has a value, erase it
      if (eraseMode && game.board[idx] !== 0) {
        game.eraseCell(idx)
-       setCurrentHighlight(null)
+       highlightManager.clearAfterEraseOperation()
        // Keep erase mode active so user can erase multiple cells
        return
      }
@@ -586,18 +586,22 @@ export default function Game() {
       // If a digit is highlighted and this cell is empty, fill it
       if (highlightedDigit !== null && game.board[idx] === 0) {
         game.setCell(idx, highlightedDigit, notesMode)
-        setCurrentHighlight(null)
-        // Always clear digit highlight after candidate operations to prevent persistent highlighting
-        setHighlightedDigit(null)
+        
+        if (notesMode) {
+          // Always clear highlights after candidate operations
+          highlightManager.clearAfterCandidateOperation()
+        } else {
+          // For digit placement, clear move highlights but preserve digit highlight for multi-fill
+          highlightManager.clearAfterDigitPlacement()
+        }
         return
       }
 
      // Select the cell (works for both empty and user-filled cells)
      setSelectedCell(idx)
-     setHighlightedDigit(null)
+     highlightManager.clearAfterCellSelection()
      setEraseMode(false)
-     setCurrentHighlight(null)
-   }, [game, highlightedDigit, eraseMode, notesMode, selectedCell])
+   }, [game, highlightedDigit, eraseMode, notesMode, selectedCell, highlightManager])
 
     // Digit input handler
     const handleDigitInput = useCallback((digit: number) => {
@@ -607,7 +611,7 @@ export default function Game() {
 
      // If no cell selected, toggle digit highlight for multi-fill mode
      if (selectedCell === null) {
-       setHighlightedDigit(highlightedDigit === digit ? null : digit)
+       highlightManager.setDigitHighlight(highlightedDigit === digit ? null : digit, 'multi-fill')
        return
      }
 
@@ -616,21 +620,24 @@ export default function Game() {
      // If cell already has this digit, erase it
      if (game.board[selectedCell] === digit) {
        game.eraseCell(selectedCell)
-       setCurrentHighlight(null)
+       highlightManager.clearAfterDigitToggle()
        return
      }
 
       game.setCell(selectedCell, digit, notesMode)
-      setCurrentHighlight(null)
 
       if (notesMode) {
-        // Always clear digit highlight after candidate operations to prevent persistent highlighting
-        setHighlightedDigit(null)
+        // Always clear highlights after ANY candidate operation (add/remove)
+        // This fixes the persistent highlighting bug
+        highlightManager.clearAfterCandidateOperation()
+      } else {
+        // For digit placement, clear move highlights but preserve digit highlight for multi-fill
+        highlightManager.clearAfterDigitPlacement()
       }
 
      // Keep cell selected so user can erase or change immediately
      // Keep digit highlighted for adding candidates (multi-fill)
-   }, [game, selectedCell, highlightedDigit, notesMode])
+   }, [game, selectedCell, highlightedDigit, notesMode, highlightManager])
 
     // Keyboard cell change handler (from Board component)
     const handleCellChange = useCallback((idx: number, value: number) => {
@@ -638,23 +645,24 @@ export default function Game() {
       if (game.isGivenCell(idx)) return
      if (value === 0) {
        game.eraseCell(idx)
-       setCurrentHighlight(null)
+       highlightManager.clearAfterEraseOperation()
       } else {
         game.setCell(idx, value, notesMode)
-        setCurrentHighlight(null)
+        
         if (notesMode) {
-          // Always clear digit highlight after candidate operations to prevent persistent highlighting
-          setHighlightedDigit(null)
+          // Always clear highlights after candidate operations
+          highlightManager.clearAfterCandidateOperation()
+        } else {
+          highlightManager.clearAfterDigitPlacement()
         }
       }
-   }, [game, notesMode])
+   }, [game, notesMode, highlightManager])
 
   // Toggle erase mode handler
   const handleEraseMode = useCallback(() => {
     setEraseMode(prev => !prev)
-    setHighlightedDigit(null)
-    setSelectedCell(null)
-  }, [])
+    highlightManager.clearOnModeChange()
+  }, [highlightManager])
 
   // Undo handler - during auto-solve, this steps backward
   const handleUndo = useCallback(() => {
@@ -664,12 +672,10 @@ export default function Game() {
       game.undo()
       invalidateCachedSolution()
       // Clear selection and highlights after undo
-      setSelectedCell(null)
-      setHighlightedDigit(null)
-      setCurrentHighlight(null)
+      highlightManager.clearAllAndDeselect()
       setSelectedMoveIndex(null)
     }
-  }, [game, autoSolve, invalidateCachedSolution])
+  }, [game, autoSolve, invalidateCachedSolution, highlightManager])
 
   // Redo handler - during auto-solve, this steps forward
   const handleRedo = useCallback(() => {
@@ -679,12 +685,10 @@ export default function Game() {
       game.redo()
       invalidateCachedSolution()
       // Clear selection and highlights after redo
-      setSelectedCell(null)
-      setHighlightedDigit(null)
-      setCurrentHighlight(null)
+      highlightManager.clearAllAndDeselect()
       setSelectedMoveIndex(null)
     }
-  }, [game, autoSolve, invalidateCachedSolution])
+  }, [game, autoSolve, invalidateCachedSolution, highlightManager])
 
   // Submit handler
   const handleSubmit = useCallback(async () => {
@@ -714,11 +718,10 @@ export default function Game() {
 
   // Auto-solve handler
   const handleSolve = useCallback(async () => {
-    setSelectedCell(null)
-    setHighlightedDigit(null)
+    highlightManager.clearAllAndDeselect()
     setAutoSolveUsed(true) // Mark that auto-solve was used
     await autoSolve.startAutoSolve()
-  }, [autoSolve])
+  }, [autoSolve, highlightManager])
 
   // Bug report handler - opens GitHub issue with state
   const handleReportBug = useCallback(async () => {
@@ -889,9 +892,7 @@ ${bugReportJson}
       // Escape = Deselect cell and clear highlights
       if (e.key === 'Escape') {
         e.preventDefault()
-        setSelectedCell(null)
-        setHighlightedDigit(null)
-        setCurrentHighlight(null)
+        highlightManager.clearAllAndDeselect()
         return
       }
 
@@ -954,9 +955,7 @@ ${bugReportJson}
       try {
         setLoading(true)
         setError(null)
-        setSelectedCell(null)
-        setHighlightedDigit(null)
-        setCurrentHighlight(null)
+        highlightManager.clearAllAndDeselect()
         setSelectedMoveIndex(null)
         setShowResultModal(false)
 
