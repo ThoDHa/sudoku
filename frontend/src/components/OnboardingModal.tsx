@@ -28,10 +28,10 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     tip: 'Hints show you techniques like Naked Singles, Hidden Pairs, X-Wing and more!',
   },
   {
-    title: 'Auto-Solve',
-    description: 'Want to see how the puzzle is solved? Use Auto-solve from the menu to watch the solver work through it step-by-step.',
+    title: 'Solve',
+    description: 'Want to see how the puzzle is solved? Use Solve from the menu to watch the solver work through it step-by-step.',
     icon: '🤖',
-    tip: 'Auto-solve is tracked separately from hints, so you can learn techniques without affecting your hint count.',
+    tip: 'Solve is tracked separately from hints, so you can learn techniques without affecting your hint count.',
   },
   {
     title: 'Check Your Progress',

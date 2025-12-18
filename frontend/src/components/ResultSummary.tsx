@@ -36,7 +36,7 @@ export default function ResultSummary({
       <div className="mt-4 flex justify-center gap-6 text-sm text-[var(--text-muted)]">
         {autoSolveUsed ? (
           <span>
-            <strong className="text-[var(--text)]">🤖</strong> auto-solved
+            <strong className="text-[var(--text)]">🤖</strong> solved
           </span>
         ) : (
           <span>

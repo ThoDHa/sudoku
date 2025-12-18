@@ -252,6 +252,7 @@ type SolveNextRequest struct {
 	Token      string  `json:"token" binding:"required"`
 	Board      []int   `json:"board" binding:"required"`
 	Candidates [][]int `json:"candidates"` // Optional: preserve eliminations
+	Givens     []int   `json:"givens"`     // Original puzzle givens (to identify user-entered cells)
 }
 
 func solveNextHandler(c *gin.Context) {
@@ -261,7 +262,7 @@ func solveNextHandler(c *gin.Context) {
 		return
 	}
 
-	_, err := verifyToken(cfg.JWTSecret, req.Token)
+	session, err := verifyToken(cfg.JWTSecret, req.Token)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token: " + err.Error()})
 		return
@@ -270,6 +271,23 @@ func solveNextHandler(c *gin.Context) {
 	if len(req.Board) != constants.TotalCells {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "board must have 81 cells"})
 		return
+	}
+
+	// Get original givens - either from request or regenerate from session
+	givens := req.Givens
+	if len(givens) != constants.TotalCells {
+		// Regenerate givens from session info
+		loader := puzzles.Global()
+		if loader != nil {
+			givens, _, _, _ = loader.GetPuzzleBySeed(session.Seed, session.Difficulty)
+		}
+		if len(givens) != constants.TotalCells {
+			// Fallback: generate on-demand
+			seedHash := hashSeed(session.Seed)
+			fullGrid := dp.GenerateFullGrid(seedHash)
+			allPuzzles := dp.CarveGivensWithSubset(fullGrid, seedHash)
+			givens = allPuzzles[session.Difficulty]
+		}
 	}
 
 	// Use provided candidates (may be empty/incomplete - solver will fill one at a time)
@@ -282,7 +300,119 @@ func solveNextHandler(c *gin.Context) {
 		return
 	}
 
-	// Apply the move
+	// Handle contradiction - try to find and fix user error (like solveAllHandler)
+	if move.Action == "contradiction" {
+		// Find the contradiction cell (first target in the move)
+		if len(move.Targets) > 0 {
+			contradictionCell := move.Targets[0].Row*9 + move.Targets[0].Col
+
+			// Analyze which user-entered cell is causing this
+			badCell, badDigit := findBlockingUserCell(board, contradictionCell, req.Board, givens)
+
+			if badCell >= 0 {
+				badRow, badCol := badCell/9, badCell%9
+
+				// Create a new board without the bad cell
+				fixedBoard := make([]int, len(req.Board))
+				copy(fixedBoard, req.Board)
+				fixedBoard[badCell] = 0
+				
+				// Preserve user's candidates but clear the fixed cell's candidates
+				// Always allocate 81 slots even if req.Candidates is shorter/empty
+				fixedCandidates := make([][]int, constants.TotalCells)
+				for i := 0; i < constants.TotalCells; i++ {
+					if i == badCell {
+						fixedCandidates[i] = nil // Clear candidates for the fixed cell
+					} else if i < len(req.Candidates) && req.Candidates[i] != nil {
+						fixedCandidates[i] = make([]int, len(req.Candidates[i]))
+						copy(fixedCandidates[i], req.Candidates[i])
+					}
+				}
+
+				// Reset the board to the fixed state, preserving user's candidates
+				newBoard := human.NewBoardWithCandidates(fixedBoard, fixedCandidates)
+
+				c.JSON(http.StatusOK, gin.H{
+					"board":      newBoard.GetCells(),
+					"candidates": newBoard.GetCandidates(),
+					"move": map[string]interface{}{
+						"technique":   "fix-error",
+						"action":      "fix-error",
+						"digit":       badDigit,
+						"explanation": fmt.Sprintf("Contradiction detected! R%dC%d had no valid candidates. Removing incorrect %d from R%dC%d.", move.Targets[0].Row+1, move.Targets[0].Col+1, badDigit, badRow+1, badCol+1),
+						"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+						"highlights": map[string]interface{}{
+							"primary":   []map[string]int{{"row": badRow, "col": badCol}},
+							"secondary": []map[string]int{{"row": move.Targets[0].Row, "col": move.Targets[0].Col}},
+						},
+					},
+				})
+				return
+			}
+		}
+
+		// Direct analysis failed - try candidate refill diagnostic
+		badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(req.Board, givens)
+
+		if badCell >= 0 {
+			badRow, badCol := badCell/9, badCell%9
+			zeroCandRow, zeroCandCol := zeroCandCell/9, zeroCandCell%9
+
+			// Create a new board without the bad cell
+			fixedBoard := make([]int, len(req.Board))
+			copy(fixedBoard, req.Board)
+			fixedBoard[badCell] = 0
+			
+			// Preserve user's candidates but clear the fixed cell's candidates
+			// Always allocate 81 slots even if req.Candidates is shorter/empty
+			fixedCandidates := make([][]int, constants.TotalCells)
+			for i := 0; i < constants.TotalCells; i++ {
+				if i == badCell {
+					fixedCandidates[i] = nil // Clear candidates for the fixed cell
+				} else if i < len(req.Candidates) && req.Candidates[i] != nil {
+					fixedCandidates[i] = make([]int, len(req.Candidates[i]))
+					copy(fixedCandidates[i], req.Candidates[i])
+				}
+			}
+
+			// Reset the board to the fixed state, preserving user's candidates
+			newBoard := human.NewBoardWithCandidates(fixedBoard, fixedCandidates)
+
+			c.JSON(http.StatusOK, gin.H{
+				"board":      newBoard.GetCells(),
+				"candidates": newBoard.GetCandidates(),
+				"move": map[string]interface{}{
+					"technique":   "fix-error",
+					"action":      "fix-error",
+					"digit":       badDigit,
+					"explanation": fmt.Sprintf("Found it! R%dC%d has no valid candidates. The %d at R%dC%d was causing the problem.", zeroCandRow+1, zeroCandCol+1, badDigit, badRow+1, badCol+1),
+					"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+					"highlights": map[string]interface{}{
+						"primary":   []map[string]int{{"row": badRow, "col": badCol}},
+						"secondary": []map[string]int{{"row": zeroCandRow, "col": zeroCandCol}},
+					},
+				},
+			})
+			return
+		}
+
+		// Both methods failed - return unpinpointable error
+		userEntryCount := countUserEntries(req.Board, givens)
+
+		c.JSON(http.StatusOK, gin.H{
+			"board":      board.GetCells(),
+			"candidates": board.GetCandidates(),
+			"move": map[string]interface{}{
+				"technique":      "unpinpointable-error",
+				"action":         "unpinpointable-error",
+				"explanation":    fmt.Sprintf("Hmm, I couldn't pinpoint the error. One of your %d entries might need checking.", userEntryCount),
+				"userEntryCount": userEntryCount,
+			},
+		})
+		return
+	}
+
+	// Apply the move for normal cases
 	solver.ApplyMove(board, move)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -383,6 +513,82 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 	return -1, 0
 }
 
+// findErrorByCandidateRefill clears all candidates, refills them, and looks for cells with zero candidates.
+// This is the "human-like" approach: when stuck, clear your pencil marks and start fresh.
+// If a cell has zero candidates, trace back to find which user-entered cell is blocking it.
+// Returns the cell index and digit, or -1 if no error found this way.
+func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int, int) {
+	// Create a fresh board and fill all candidates
+	freshBoard := human.NewBoardWithCandidates(originalUserBoard, nil)
+	
+	// Find any cell with zero candidates
+	for idx := 0; idx < constants.TotalCells; idx++ {
+		if originalUserBoard[idx] != 0 {
+			continue // Skip filled cells
+		}
+		
+		candidates := freshBoard.Candidates[idx]
+		if len(candidates) == 0 {
+			// Found a cell with no candidates - this points to an error
+			// Find which user-entered cell is blocking all candidates
+			row, col := idx/9, idx%9
+			boxRow, boxCol := (row/3)*3, (col/3)*3
+			
+			// For each digit 1-9, find what's blocking it
+			type blocker struct {
+				cellIdx int
+				digit   int
+			}
+			var userBlockers []blocker
+			
+			for digit := 1; digit <= 9; digit++ {
+				// Check row
+				for c := 0; c < 9; c++ {
+					cellIdx := row*9 + c
+					if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
+						userBlockers = append(userBlockers, blocker{cellIdx, digit})
+					}
+				}
+				// Check column
+				for r := 0; r < 9; r++ {
+					cellIdx := r*9 + col
+					if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
+						userBlockers = append(userBlockers, blocker{cellIdx, digit})
+					}
+				}
+				// Check box
+				for r := boxRow; r < boxRow+3; r++ {
+					for c := boxCol; c < boxCol+3; c++ {
+						cellIdx := r*9 + c
+						if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
+							userBlockers = append(userBlockers, blocker{cellIdx, digit})
+						}
+					}
+				}
+			}
+			
+			if len(userBlockers) > 0 {
+				// Return the first blocker found (any of them could be wrong)
+				// Also return the zero-candidate cell index for the message
+				return userBlockers[0].cellIdx, userBlockers[0].digit, idx
+			}
+		}
+	}
+	
+	return -1, 0, -1
+}
+
+// countUserEntries counts how many cells have user entries (not givens)
+func countUserEntries(board []int, givens []int) int {
+	count := 0
+	for i := 0; i < constants.TotalCells; i++ {
+		if board[i] != 0 && givens[i] == 0 {
+			count++
+		}
+	}
+	return count
+}
+
 func solveAllHandler(c *gin.Context) {
 	var req SolveAllRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -424,6 +630,16 @@ func solveAllHandler(c *gin.Context) {
 	// Keep a copy of the original user board to distinguish user entries from solver placements
 	originalUserBoard := make([]int, len(req.Board))
 	copy(originalUserBoard, req.Board)
+	
+	// Keep a copy of the original user candidates to preserve them when fixing errors
+	// Always allocate 81 slots even if req.Candidates is shorter/empty
+	originalUserCandidates := make([][]int, constants.TotalCells)
+	for i := 0; i < len(req.Candidates) && i < constants.TotalCells; i++ {
+		if req.Candidates[i] != nil {
+			originalUserCandidates[i] = make([]int, len(req.Candidates[i]))
+			copy(originalUserCandidates[i], req.Candidates[i])
+		}
+	}
 
 	solver := human.NewSolver()
 
@@ -448,20 +664,38 @@ func solveAllHandler(c *gin.Context) {
 
 		move := solver.FindNextMove(board)
 		if move == nil {
-			break // No more moves found (stalled)
+			// No more moves found (stalled)
+			// If we've already fixed some errors, there might be more issues
+			// Offer the user a choice
+			userEntryCount := countUserEntries(originalUserBoard, givens)
+			if userEntryCount > 0 {
+				moves = append(moves, MoveResult{
+					Board:      board.GetCells(),
+					Candidates: board.GetCandidates(),
+					Move: map[string]interface{}{
+						"technique":      "stalled",
+						"action":         "stalled",
+						"explanation":    "I'm stuck. There might be another error in your entries.",
+						"userEntryCount": userEntryCount,
+					},
+				})
+			}
+			break
 		}
 
 		// If we hit a contradiction, try to find and fix the user error
 		if move.Action == "contradiction" {
 			if fixCount >= maxFixes {
-				// Too many fixes needed - give up
+				// Too many fixes needed - give up and offer user a choice
+				userEntryCount := countUserEntries(originalUserBoard, givens)
 				moves = append(moves, MoveResult{
 					Board:      board.GetCells(),
 					Candidates: board.GetCandidates(),
 					Move: map[string]interface{}{
-						"technique":   "error",
-						"action":      "error",
-						"explanation": "Too many incorrect entries to fix automatically",
+						"technique":      "error",
+						"action":         "error",
+						"explanation":    "Too many incorrect entries to fix automatically.",
+						"userEntryCount": userEntryCount,
 					},
 				})
 				break
@@ -481,9 +715,12 @@ func solveAllHandler(c *gin.Context) {
 					// Update originalUserBoard to remove the bad cell
 					originalUserBoard[badCell] = 0
 					
-					// IMPORTANT: Reset the board to the original user state (minus the fixed cell)
+					// Reset the board to the original user state (minus the fixed cell)
 					// This removes any solver-placed cells that may have been wrong due to the user error
+					// Use nil for candidates so the solver will rebuild them from scratch
 					board = human.NewBoardWithCandidates(originalUserBoard, nil)
+					// Initialize candidates properly based on the corrected board
+					board.InitCandidates()
 
 					// Record the fix move
 					moves = append(moves, MoveResult{
@@ -493,7 +730,7 @@ func solveAllHandler(c *gin.Context) {
 							"technique":   "fix-error",
 							"action":      "fix-error",
 							"digit":       badDigit,
-							"explanation": fmt.Sprintf("Contradiction detected! R%dC%d had no valid candidates. Removing incorrect %d from R%dC%d.", move.Targets[0].Row+1, move.Targets[0].Col+1, badDigit, badRow+1, badCol+1),
+					"explanation": fmt.Sprintf("Removing incorrect %d from R%dC%d.", badDigit, badRow+1, badCol+1),
 							"targets":     []map[string]int{{"row": badRow, "col": badCol}},
 							"highlights": map[string]interface{}{
 								"primary":   []map[string]int{{"row": badRow, "col": badCol}},
@@ -505,13 +742,66 @@ func solveAllHandler(c *gin.Context) {
 				}
 			}
 
-			// Couldn't identify the error - just record the contradiction
+			// Direct analysis failed - try candidate refill diagnostic
+			// This is the "human-like" approach: clear notes, refill, look for zero-candidate cells
 			moves = append(moves, MoveResult{
 				Board:      board.GetCells(),
 				Candidates: board.GetCandidates(),
-				Move:       move,
+				Move: map[string]interface{}{
+					"technique":   "diagnostic",
+					"action":      "diagnostic",
+					"explanation": "Taking another look at the candidates...",
+				},
 			})
-			continue
+
+			badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(originalUserBoard, givens)
+			
+			if badCell >= 0 {
+				badRow, badCol := badCell/9, badCell%9
+				zeroCandRow, zeroCandCol := zeroCandCell/9, zeroCandCell%9
+				fixCount++
+
+				// Update originalUserBoard to remove the bad cell (for future reference)
+				originalUserBoard[badCell] = 0
+				
+				// Instead of resetting the entire board, just clear the bad cell
+				// and let the solver continue from the current state
+				board.ClearCell(badCell)
+
+				// Record the fix move with friendly message
+				moves = append(moves, MoveResult{
+					Board:      board.GetCells(),
+					Candidates: board.GetCandidates(),
+					Move: map[string]interface{}{
+						"technique":   "fix-error",
+						"action":      "fix-error",
+						"digit":       badDigit,
+					"explanation": fmt.Sprintf("Removing incorrect %d from R%dC%d.", badDigit, badRow+1, badCol+1),
+						"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+						"highlights": map[string]interface{}{
+							"primary":   []map[string]int{{"row": badRow, "col": badCol}},
+							"secondary": []map[string]int{{"row": zeroCandRow, "col": zeroCandCol}},
+						},
+					},
+				})
+				continue
+			}
+
+			// Both methods failed - return unpinpointable error
+			// Count user entries so frontend can display helpful message
+			userEntryCount := countUserEntries(originalUserBoard, givens)
+			
+			moves = append(moves, MoveResult{
+				Board:      board.GetCells(),
+				Candidates: board.GetCandidates(),
+				Move: map[string]interface{}{
+					"technique":       "unpinpointable-error",
+					"action":          "unpinpointable-error",
+					"explanation":     fmt.Sprintf("Hmm, I couldn't pinpoint the error. One of your %d entries might need checking.", userEntryCount),
+					"userEntryCount":  userEntryCount,
+				},
+			})
+			break // Stop auto-solving - let user decide what to do
 		}
 
 		// Apply the move

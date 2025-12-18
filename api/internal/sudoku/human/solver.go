@@ -195,6 +195,26 @@ func (b *Board) GetCells() []int {
 	return result
 }
 
+// ClearCell removes a digit from a cell and recalculates candidates for that cell
+// This is used when fixing user errors - we want to keep solver progress but undo the bad placement
+func (b *Board) ClearCell(idx int) {
+	if idx < 0 || idx >= 81 {
+		return
+	}
+	
+	// Clear the cell value
+	b.Cells[idx] = 0
+	
+	// Recalculate candidates for this cell based on current board state
+	b.Candidates[idx] = make(map[int]bool)
+	b.Eliminated[idx] = make(map[int]bool)
+	for d := 1; d <= 9; d++ {
+		if b.canPlace(idx, d) {
+			b.Candidates[idx][d] = true
+		}
+	}
+}
+
 // GetCandidates returns candidates as a 2D slice
 func (b *Board) GetCandidates() [][]int {
 	result := make([][]int, 81)

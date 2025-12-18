@@ -13,6 +13,7 @@ export const TIMER_UPDATE_INTERVAL = 100
 export const TOAST_DURATION_SUCCESS = 2000
 export const TOAST_DURATION_INFO = 3000
 export const TOAST_DURATION_ERROR = 4000
+export const TOAST_DURATION_FIX_ERROR = 2000
 export const HISTORY_SCROLL_DELAY = 50
 
 // =============================================================================

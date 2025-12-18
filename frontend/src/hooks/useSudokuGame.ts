@@ -48,6 +48,7 @@ interface UseSudokuGameReturn {
   redo: () => void
   resetGame: () => void
   clearAll: () => void
+  clearCandidates: () => void
   
   // For external updates (e.g., from hints/auto-solve)
   applyExternalMove: (
@@ -62,6 +63,12 @@ interface UseSudokuGameReturn {
     savedBoard: number[],
     savedCandidates: Set<number>[],
     savedHistory: Move[]
+  ) => void
+  
+  // For setting board state without modifying history (e.g., auto-solve rewind)
+  setBoardState: (
+    newBoard: number[],
+    newCandidates: Set<number>[]
   ) => void
   
   // Helpers
@@ -563,6 +570,31 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     setHistoryIndex(-1)
   }, [givenCells])
 
+  const clearCandidates = useCallback(() => {
+    // Truncate history if we're in the middle
+    const truncatedHistory = history.slice(0, historyIndex + 1)
+    
+    // Add clear candidates move to history
+    const clearMove: Move = {
+      step_index: truncatedHistory.length,
+      technique: 'Clear Notes',
+      action: 'clear-candidates',
+      digit: 0,
+      targets: [],
+      explanation: 'Cleared all notes',
+      refs: { title: '', slug: '', url: '' },
+      highlights: { primary: [] },
+      isUserMove: true,
+      boardBefore: [...board],
+      candidatesBefore: candidates.map(c => Array.from(c)),
+    }
+    const newHistory = [...truncatedHistory, clearMove]
+    setHistory(newHistory)
+    setHistoryIndex(newHistory.length - 1)
+    
+    setCandidates(Array.from({ length: 81 }, () => new Set<number>()))
+  }, [board, candidates, history, historyIndex])
+
   // For external updates (hints, auto-solve)
   const applyExternalMove = useCallback((
     newBoard: number[],
@@ -598,6 +630,15 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     setHistory(savedHistory)
     setHistoryIndex(savedHistory.length - 1)
     setIsComplete(false)
+  }, [])
+
+  // Set board state without modifying history (for auto-solve rewind)
+  const setBoardState = useCallback((
+    newBoard: number[],
+    newCandidates: Set<number>[]
+  ) => {
+    setBoard(newBoard)
+    setCandidates(newCandidates)
   }, [])
 
   // Check notes for errors
@@ -671,11 +712,13 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     redo,
     resetGame,
     clearAll,
+    clearCandidates,
     
     // External updates
     applyExternalMove,
     setIsComplete,
     restoreState,
+    setBoardState,
     
     // Helpers
     isGivenCell,

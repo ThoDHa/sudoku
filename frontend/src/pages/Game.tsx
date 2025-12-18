@@ -15,13 +15,14 @@ import { useGameTimer } from '../hooks/useGameTimer'
 import { useSudokuGame, Move } from '../hooks/useSudokuGame'
 import { useAutoSolve } from '../hooks/useAutoSolve'
 import {
-  PLAY_DELAY,
   TOAST_DURATION_SUCCESS,
   TOAST_DURATION_INFO,
   TOAST_DURATION_ERROR,
+  TOAST_DURATION_FIX_ERROR,
   STORAGE_KEYS,
   MAX_HISTORY_BADGE_COUNT,
 } from '../lib/constants'
+import { getAutoSolveSpeed, setAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS } from '../lib/preferences'
 
 // Type for saved game state in localStorage
 interface SavedGameState {
@@ -93,6 +94,8 @@ export default function Game() {
   const [techniquesListOpen, setTechniquesListOpen] = useState(false)
   const [solveConfirmOpen, setSolveConfirmOpen] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [showSolutionConfirm, setShowSolutionConfirm] = useState(false)
+  const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] = useState<{ message: string; count: number } | null>(null)
   const [newPuzzleMenuOpen, setNewPuzzleMenuOpen] = useState(false)
   const [bugReportCopied, setBugReportCopied] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -100,6 +103,7 @@ export default function Game() {
   const [autoSolveUsed, setAutoSolveUsed] = useState(false)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [validationMessage, setValidationMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [autoSolveSpeedState, setAutoSolveSpeedState] = useState<AutoSolveSpeed>(getAutoSolveSpeed())
   const menuRef = useRef<HTMLDivElement>(null)
   
   // Track whether we've restored saved state (to prevent overwriting on initial load)
@@ -124,19 +128,69 @@ export default function Game() {
   // Auto-solve hook - fetches all moves at once and plays them back
   const autoSolve = useAutoSolve({
     token,
-    stepDelay: PLAY_DELAY,
+    stepDelay: AUTO_SOLVE_SPEEDS[autoSolveSpeedState],
+    gamePaused: timer.isPausedDueToVisibility,
     getBoard: () => game.board,
     getCandidates: () => game.candidates,
     getGivens: () => initialBoard,
-    applyMove: (newBoard, newCandidates, move) => {
+    applyMove: (newBoard, newCandidates, move, index) => {
       game.applyExternalMove(newBoard, newCandidates, move)
       setCurrentHighlight(move)
-      setSelectedMoveIndex(game.history.length)
+      setSelectedMoveIndex(index)
+      
+      // Highlight the digit being placed/modified
+      if (move.digit && move.digit > 0) {
+        setHighlightedDigit(move.digit)
+      }
+      
+      // Show notes mode if it's a candidate operation
+      if (move.action === 'eliminate' || move.action === 'candidate') {
+        setNotesMode(true)
+      } else if (move.action === 'assign' || move.action === 'place') {
+        setNotesMode(false)
+      }
+    },
+    applyState: (board, candidates, move, index) => {
+      game.setBoardState(board, candidates)
+      setCurrentHighlight(move)
+      setSelectedMoveIndex(index)
+      
+      // Update digit highlight based on move
+      if (move && move.digit && move.digit > 0) {
+        setHighlightedDigit(move.digit)
+      } else {
+        setHighlightedDigit(null)
+      }
+      
+      // Update notes mode based on move action
+      if (move) {
+        if (move.action === 'eliminate' || move.action === 'candidate') {
+          setNotesMode(true)
+        } else if (move.action === 'assign' || move.action === 'place') {
+          setNotesMode(false)
+        }
+      }
     },
     isComplete: () => game.isComplete,
     onError: (message) => {
       setValidationMessage({ type: 'error', message })
       setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+    },
+    onUnpinpointableError: (message, count) => {
+      setUnpinpointableErrorInfo({ message, count })
+      setShowSolutionConfirm(true)
+    },
+    onStatus: (message) => {
+      setValidationMessage({ type: 'success', message })
+      setTimeout(() => setValidationMessage(null), 2000)
+    },
+    onErrorFixed: (message, resumeCallback) => {
+      // Show toast for fix-error (longer duration than normal hints)
+      setValidationMessage({ type: 'error', message: `Fixed: ${message}` })
+      setTimeout(() => {
+        setValidationMessage(null)
+        resumeCallback()
+      }, TOAST_DURATION_FIX_ERROR)
     },
   })
 
@@ -219,7 +273,25 @@ export default function Game() {
     setCurrentHighlight(null)
     setSelectedMoveIndex(null)
     setSelectedCell(null)
+    setHighlightedDigit(null)
+    setNotesMode(false)
   }, [game])
+
+  // Restart puzzle (clears all AND resets timer)
+  const handleRestart = useCallback(() => {
+    game.resetGame()
+    timer.resetTimer()
+    timer.startTimer()
+    setCurrentHighlight(null)
+    setSelectedMoveIndex(null)
+    setSelectedCell(null)
+    setHighlightedDigit(null)
+    setNotesMode(false)
+    setHintsUsed(0)
+    setAutoFillUsed(false)
+    setAutoSolveUsed(false)
+    setShowResultModal(false)
+  }, [game, timer])
 
   // Auto-fill notes based on current board state
   const autoFillNotes = useCallback(() => {
@@ -314,7 +386,7 @@ export default function Game() {
       const res = await fetch('/api/solve/next', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, board: game.board, candidates: candidatesArray }),
+        body: JSON.stringify({ token, board: game.board, candidates: candidatesArray, givens: initialBoard }),
       })
 
       if (res.status === 429) {
@@ -337,6 +409,39 @@ export default function Game() {
       const data = await res.json()
       if (data.move) {
         const move = data.move
+        
+        // Handle unpinpointable error - show dialog offering solutions
+        if (move.action === 'unpinpointable-error') {
+          setUnpinpointableErrorInfo({ 
+            message: move.explanation || `Couldn't pinpoint the error.`, 
+            count: move.userEntryCount || 0 
+          })
+          setShowSolutionConfirm(true)
+          return false
+        }
+        
+        // Handle fix-error - apply the fix from backend
+        if (move.action === 'fix-error') {
+          // Backend has already prepared the fixed board/candidates
+          const newBoard = data.board
+          const newCandidates = data.candidates
+            ? data.candidates.map((cellCands: number[] | null) => new Set<number>(cellCands || []))
+            : game.candidates.map(() => new Set<number>())
+          
+          game.applyExternalMove(newBoard, newCandidates, move)
+          setCurrentHighlight(move)
+          setSelectedMoveIndex(game.history.length)
+          
+          if (showNotification) {
+            setValidationMessage({ 
+              type: 'success', 
+              message: move.explanation || 'Fixed an error!'
+            })
+            setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+          }
+          
+          return true // More steps may be available after fix
+        }
         
         // Handle contradiction - undo the last move
         if (move.action === 'contradiction') {
@@ -445,7 +550,7 @@ export default function Game() {
       }
       return false
     }
-  }, [token, game])
+  }, [token, game, initialBoard])
 
   // Handle hint button - calls executeHintStep with notifications and increments counter
   const handleNext = useCallback(async () => {
@@ -540,25 +645,33 @@ export default function Game() {
     setSelectedCell(null)
   }, [])
 
-  // Undo handler
+  // Undo handler - during auto-solve, this steps backward
   const handleUndo = useCallback(() => {
-    game.undo()
-    // Clear selection and highlights after undo
-    setSelectedCell(null)
-    setHighlightedDigit(null)
-    setCurrentHighlight(null)
-    setSelectedMoveIndex(null)
-  }, [game])
+    if (autoSolve.isAutoSolving) {
+      autoSolve.stepBack()
+    } else {
+      game.undo()
+      // Clear selection and highlights after undo
+      setSelectedCell(null)
+      setHighlightedDigit(null)
+      setCurrentHighlight(null)
+      setSelectedMoveIndex(null)
+    }
+  }, [game, autoSolve])
 
-  // Redo handler
+  // Redo handler - during auto-solve, this steps forward
   const handleRedo = useCallback(() => {
-    game.redo()
-    // Clear selection and highlights after redo
-    setSelectedCell(null)
-    setHighlightedDigit(null)
-    setCurrentHighlight(null)
-    setSelectedMoveIndex(null)
-  }, [game])
+    if (autoSolve.isAutoSolving) {
+      autoSolve.stepForward()
+    } else {
+      game.redo()
+      // Clear selection and highlights after redo
+      setSelectedCell(null)
+      setHighlightedDigit(null)
+      setCurrentHighlight(null)
+      setSelectedMoveIndex(null)
+    }
+  }, [game, autoSolve])
 
   // Submit handler
   const handleSubmit = useCallback(async () => {
@@ -767,6 +880,13 @@ export default function Game() {
     return () => setGameState(null)
   }, [loading, puzzle, difficulty, timer.elapsedMs, game.history.length, game.isComplete, autoFillNotes, setGameState])
 
+  // Clear highlighted digit when auto-solve stops
+  useEffect(() => {
+    if (!autoSolve.isAutoSolving) {
+      setHighlightedDigit(null)
+    }
+  }, [autoSolve.isAutoSolving])
+
   // Fetch puzzle and start session
   useEffect(() => {
     if (!seed && !isEncodedCustom) return
@@ -958,18 +1078,89 @@ export default function Game() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-1">
-            {/* Stop button - shown when auto-solving */}
+            {/* Speed controls + Stop button - shown when auto-solving */}
             {autoSolve.isAutoSolving && (
-              <button
-                onClick={autoSolve.stopAutoSolve}
-                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm bg-red-500 text-white hover:bg-red-600 transition-colors"
-                title="Stop auto-solve"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                <span className="hidden sm:inline">Stop</span>
-              </button>
+              <div className="flex items-center gap-1">
+                {/* Speed controls */}
+                <div className="flex items-center rounded-lg overflow-hidden border border-[var(--border-light)]">
+                  {([
+                    { speed: 'slow' as const, icon: (
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    ), label: '1x' },
+                    { speed: 'normal' as const, icon: (
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M4 5v14l8-7z"/>
+                        <path d="M12 5v14l8-7z"/>
+                      </svg>
+                    ), label: '2x' },
+                    { speed: 'fast' as const, icon: (
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2 5v14l6-7z"/>
+                        <path d="M9 5v14l6-7z"/>
+                        <path d="M16 5v14l6-7z"/>
+                      </svg>
+                    ), label: '3x' },
+                    { speed: 'instant' as const, icon: (
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2 5v14l5-7z"/>
+                        <path d="M8 5v14l5-7z"/>
+                        <path d="M14 5v14l5-7z"/>
+                        <rect x="20" y="5" width="2" height="14"/>
+                      </svg>
+                    ), label: 'Skip' },
+                  ]).map(({ speed, icon, label }) => (
+                    <button
+                      key={speed}
+                      onClick={() => {
+                        setAutoSolveSpeed(speed)
+                        setAutoSolveSpeedState(speed)
+                      }}
+                      title={label}
+                      className={`px-2 py-1.5 transition-colors ${
+                        autoSolveSpeedState === speed
+                          ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
+                          : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                      }`}
+                    >
+                      {icon}
+                    </button>
+                  ))}
+                </div>
+                {/* Pause/Resume button */}
+                <button
+                  onClick={autoSolve.togglePause}
+                  className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+                    autoSolve.isPaused
+                      ? 'bg-green-500 text-white hover:bg-green-600'
+                      : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] border border-[var(--border-light)]'
+                  }`}
+                  title={autoSolve.isPaused ? 'Resume' : 'Pause'}
+                >
+                  {autoSolve.isPaused ? (
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="4" width="4" height="16"/>
+                      <rect x="14" y="4" width="4" height="16"/>
+                    </svg>
+                  )}
+                </button>
+                {/* Stop button */}
+                <button
+                  onClick={autoSolve.stopAutoSolve}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm bg-red-500 text-white hover:bg-red-600 transition-colors"
+                  title="Stop solving"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <span className="hidden sm:inline">Stop</span>
+                </button>
+              </div>
             )}
 
             {/* Hint button */}
@@ -1051,6 +1242,15 @@ export default function Game() {
                     Check Notes
                   </button>
                   <button
+                    onClick={() => { game.clearCandidates(); setMenuOpen(false) }}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Clear Notes
+                  </button>
+                  <button
                     onClick={() => { handleValidate(); setMenuOpen(false) }}
                     className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
                   >
@@ -1059,24 +1259,86 @@ export default function Game() {
                     </svg>
                     Check Progress
                   </button>
-                  <button
-                    onClick={() => { setSolveConfirmOpen(true); setMenuOpen(false) }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    Auto-solve
-                  </button>
+                  {/* Solve with inline speed icons */}
+                  <div className="flex w-full items-center px-4 py-2 text-sm">
+                    <button
+                      onClick={() => { setSolveConfirmOpen(true); setMenuOpen(false) }}
+                      className="flex items-center gap-2 text-[var(--text)] hover:text-[var(--accent)]"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Solve
+                    </button>
+                    <div className="ml-auto flex gap-0.5">
+                      {([
+                        { speed: 'slow' as const, icon: (
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z"/>
+                          </svg>
+                        ), label: '1x' },
+                        { speed: 'normal' as const, icon: (
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M4 5v14l8-7z"/>
+                            <path d="M12 5v14l8-7z"/>
+                          </svg>
+                        ), label: '2x' },
+                        { speed: 'fast' as const, icon: (
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M2 5v14l6-7z"/>
+                            <path d="M9 5v14l6-7z"/>
+                            <path d="M16 5v14l6-7z"/>
+                          </svg>
+                        ), label: '3x' },
+                        { speed: 'instant' as const, icon: (
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M2 5v14l5-7z"/>
+                            <path d="M8 5v14l5-7z"/>
+                            <path d="M14 5v14l5-7z"/>
+                            <rect x="20" y="5" width="2" height="14"/>
+                          </svg>
+                        ), label: 'Skip' },
+                      ]).map(({ speed, icon, label }) => (
+                        <button
+                          key={speed}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setAutoSolveSpeed(speed)
+                            setAutoSolveSpeedState(speed)
+                            setMenuOpen(false)
+                            setSolveConfirmOpen(true)
+                          }}
+                          title={`${label} - Click to start`}
+                          className={`p-1 rounded ${
+                            autoSolveSpeedState === speed
+                              ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
+                              : 'text-[var(--text-muted)] hover:bg-[var(--btn-hover)] hover:text-[var(--text)]'
+                          }`}
+                        >
+                          {icon}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <button
                     onClick={() => { setShowClearConfirm(true); setMenuOpen(false) }}
-                    disabled={game.isComplete}
-                    className={`flex w-full items-center gap-2 px-4 py-2 text-sm ${game.isComplete ? 'cursor-not-allowed opacity-40' : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'}`}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
                   >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Clear All
+                    {game.isComplete ? (
+                      <>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Restart
+                      </>
+                    ) : (
+                      <>
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Clear All
+                      </>
+                    )}
                   </button>
 
                   <div className="my-1 border-t border-[var(--border-light)]" />
@@ -1274,12 +1536,13 @@ export default function Game() {
             onEraseMode={handleEraseMode}
             onUndo={handleUndo}
             onRedo={handleRedo}
-            canUndo={game.canUndo}
-            canRedo={game.canRedo}
+            canUndo={autoSolve.isAutoSolving ? (autoSolve.isPaused && autoSolve.canStepBack) : game.canUndo}
+            canRedo={autoSolve.isAutoSolving ? (autoSolve.isPaused && autoSolve.canStepForward) : game.canRedo}
             eraseMode={eraseMode}
             digitCounts={game.digitCounts}
             highlightedDigit={highlightedDigit}
             isComplete={game.isComplete}
+            isSolving={autoSolve.isAutoSolving}
           />
         </div>
       </div>
@@ -1352,7 +1615,7 @@ export default function Game() {
         </div>
       )}
 
-      {/* Clear All Confirmation Dialog */}
+      {/* Clear All / Restart Confirmation Dialog */}
       {showClearConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
@@ -1360,9 +1623,14 @@ export default function Game() {
             onClick={() => setShowClearConfirm(false)}
           />
           <div className="relative z-10 w-full max-w-sm rounded-2xl bg-[var(--bg)] p-6 shadow-2xl">
-            <h2 className="mb-2 text-lg font-bold text-[var(--text)]">Clear All Entries?</h2>
+            <h2 className="mb-2 text-lg font-bold text-[var(--text)]">
+              {game.isComplete ? 'Restart Puzzle?' : 'Clear All Entries?'}
+            </h2>
             <p className="mb-6 text-sm text-[var(--text-muted)]">
-              This will remove all your entered numbers and notes, but keep your timer running.
+              {game.isComplete 
+                ? 'This will reset the puzzle to its initial state and restart the timer from zero.'
+                : 'This will remove all your entered numbers and notes, but keep your timer running.'
+              }
             </p>
             <div className="flex gap-3">
               <button
@@ -1374,11 +1642,44 @@ export default function Game() {
               <button
                 onClick={() => {
                   setShowClearConfirm(false)
-                  handleClearAll()
+                  if (game.isComplete) {
+                    handleRestart()
+                  } else {
+                    handleClearAll()
+                  }
                 }}
                 className="flex-1 rounded-lg bg-[var(--accent)] py-2 font-medium text-[var(--btn-active-text)] transition-colors hover:opacity-90"
               >
-                Confirm
+                {game.isComplete ? 'Restart' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Show Solution Confirmation Dialog */}
+      {showSolutionConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-[var(--bg)] p-6 shadow-2xl">
+            <h2 className="mb-2 text-lg font-bold text-[var(--text)]">Show Solution?</h2>
+            <p className="mb-6 text-sm text-[var(--text-muted)]">
+              {unpinpointableErrorInfo?.message || "Hmm, I couldn't pinpoint the error. One of your entries might need checking."}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSolutionConfirm(false)}
+                className="flex-1 rounded-lg border border-[var(--border-light)] py-2 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+              >
+                Let Me Fix It
+              </button>
+              <button
+                onClick={() => {
+                  setShowSolutionConfirm(false)
+                  autoSolve.solveFromGivens()
+                }}
+                className="flex-1 rounded-lg bg-[var(--accent)] py-2 font-medium text-[var(--btn-active-text)] transition-colors hover:opacity-90"
+              >
+                Show Solution
               </button>
             </div>
           </div>

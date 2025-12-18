@@ -133,7 +133,7 @@ export default function ResultModal({
             {autoSolveUsed ? (
               <>
                 <p className="text-2xl font-bold text-[var(--accent)]">🤖</p>
-                <p className="text-xs text-[var(--text-muted)]">Auto-solved</p>
+                <p className="text-xs text-[var(--text-muted)]">Solved</p>
               </>
             ) : (
               <>

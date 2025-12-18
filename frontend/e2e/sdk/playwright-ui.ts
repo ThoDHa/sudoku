@@ -477,14 +477,14 @@ export class PlaywrightUISDK extends SudokuSDK {
     await menuButton.click();
     await this.page.waitForTimeout(300);
     
-    // Look for auto-solve option
+    // Look for solve option
     const autoSolve = this.page.locator('button:has-text("Auto"), button:has-text("Solve")').first();
     if (await autoSolve.isVisible()) {
       await autoSolve.click();
     } else {
       // Close menu and fallback to repeated hints
       await this.page.keyboard.press('Escape');
-      throw new Error('Auto-solve not found in menu');
+      throw new Error('Solve not found in menu');
     }
   }
 

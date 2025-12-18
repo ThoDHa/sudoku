@@ -215,10 +215,10 @@ export function HowToPlayContent() {
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">💡 Hints vs Auto-Solve</h3>
+        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">💡 Hints vs Solve</h3>
         <ul className="space-y-1 text-sm text-[var(--text-muted)]">
           <li>💡 <strong>Hints:</strong> Get one logical step at a time. Each hint counts toward your score.</li>
-          <li>🤖 <strong>Auto-Solve:</strong> Watch the solver complete the puzzle step-by-step. Tracked separately from hints.</li>
+          <li>🤖 <strong>Solve:</strong> Watch the solver complete the puzzle step-by-step. Tracked separately from hints.</li>
           <li>⚡ <strong>Smart Detection:</strong> The solver immediately fills cells when they have only one possible digit.</li>
         </ul>
       </div>

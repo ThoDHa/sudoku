@@ -87,7 +87,7 @@ export function generateShareText(score: Score, puzzleUrl: string): string {
   // Show hints and auto-fill usage if any assists were used
   const assists: string[] = []
   if (score.autoSolveUsed) {
-    assists.push(`🤖 auto-solve`)
+    assists.push(`🤖 solved`)
   } else if (score.hintsUsed > 0) {
     assists.push(`💡 ${score.hintsUsed} hint${score.hintsUsed > 1 ? 's' : ''}`)
   }

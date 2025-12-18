@@ -251,7 +251,7 @@ test.describe('Human-like Solving Behavior', () => {
     expect(candidatesAfter).toBeGreaterThan(0);
   });
 
-  test('Auto-solve shows step-by-step animation', async ({ page }) => {
+  test('Solve shows step-by-step animation', async ({ page }) => {
     await page.goto('/game/step-animation-test?d=easy');
     await waitForGameLoad(page);
     
@@ -275,7 +275,7 @@ test.describe('Human-like Solving Behavior', () => {
     expect(finalFilled).toBe(81);
   });
 
-  test('Stop button halts auto-solve', async ({ page }) => {
+  test('Stop button halts solve', async ({ page }) => {
     await page.goto('/game/stop-solve-test?d=medium');
     await waitForGameLoad(page);
     
@@ -463,7 +463,7 @@ test.describe('Edge Cases', () => {
     expect(boardVisible).toBe(true);
   });
 
-  test('Auto-solve after partial manual solve', async ({ page }) => {
+  test('Solve after partial manual solve', async ({ page }) => {
     await page.goto('/game/partial-manual-test?d=easy');
     await waitForGameLoad(page);
     

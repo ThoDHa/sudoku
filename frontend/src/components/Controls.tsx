@@ -11,6 +11,7 @@ interface ControlsProps {
   digitCounts: number[] // Array of 9 elements: how many of each digit (1-9) are placed
   highlightedDigit: number | null // Currently selected digit for multi-fill mode
   isComplete: boolean // Whether the puzzle is solved
+  isSolving?: boolean // Whether auto-solve is running
 }
 
 export default function Controls({
@@ -26,20 +27,22 @@ export default function Controls({
   digitCounts,
   highlightedDigit,
   isComplete,
+  isSolving = false,
 }: ControlsProps) {
   const renderDigitButton = (digit: number) => {
     const remaining = 9 - (digitCounts[digit - 1] || 0)
     const digitComplete = remaining === 0
     const isSelected = highlightedDigit === digit
+    const isDisabled = digitComplete || isComplete || isSolving
 
     return (
       <button
         key={digit}
         onClick={() => onDigit(digit)}
-        disabled={digitComplete || isComplete}
+        disabled={isDisabled}
         aria-label={`Enter ${digit}, ${remaining} remaining`}
         className={`control-digit-btn ${
-          digitComplete || isComplete
+          isDisabled
             ? 'bg-[var(--btn-bg)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
             : isSelected
             ? 'bg-[var(--accent)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]'
@@ -60,6 +63,8 @@ export default function Controls({
     )
   }
 
+  const controlsDisabled = isComplete || isSolving
+
   return (
     <div className="controls-container mt-3 sm:mt-4 flex flex-col items-center gap-1.5 sm:gap-2">
       {/* Row 1: Digits 1-5 */}
@@ -74,11 +79,11 @@ export default function Controls({
         {/* Erase button - toggleable like digits */}
         <button
           onClick={onEraseMode}
-          disabled={isComplete}
+          disabled={controlsDisabled}
           aria-label="Erase mode"
           aria-pressed={eraseMode}
           className={`control-digit-btn ${
-            isComplete
+            controlsDisabled
               ? 'bg-[var(--btn-bg)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
               : eraseMode
               ? 'bg-[var(--accent)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]'
@@ -96,11 +101,11 @@ export default function Controls({
       <div className="flex gap-1.5 sm:gap-2 justify-center w-full">
         <button
           onClick={onNotesToggle}
-          disabled={isComplete}
+          disabled={controlsDisabled}
           aria-label={notesMode ? 'Notes mode on' : 'Notes mode off'}
           aria-pressed={notesMode}
           className={`control-digit-btn ${
-            isComplete
+            controlsDisabled
               ? 'bg-[var(--btn-bg)] opacity-40 cursor-not-allowed'
               : notesMode
               ? 'bg-[var(--btn-active)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]'
