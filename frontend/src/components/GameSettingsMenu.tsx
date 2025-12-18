@@ -102,7 +102,7 @@ export default function GameSettingsMenu({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-[var(--bg)] z-50">
+    <div className="fixed inset-0 bg-[var(--bg)] z-[100]">
       <div className="flex flex-col h-full">
         {/* Header with close button */}
         <div className="flex items-center justify-between px-4 h-16 border-b border-[var(--border-light)]">
