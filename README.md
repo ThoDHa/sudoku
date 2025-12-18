@@ -8,13 +8,15 @@ An educational Sudoku web application that teaches solving techniques through hu
 
 - **5 Difficulty Levels**: Easy, Medium, Hard, Extreme, Impossible
 - **Educational Hints**: Learn 30+ solving techniques from Naked Singles to Forcing Chains
-- **Human-like Auto-solve**: Watch the solver work through puzzles step-by-step
+- **Human-like Auto-solve**: Watch the solver work through puzzles step-by-step with battery optimization
+- **Auto-fill Candidates**: Automatically fill valid candidates for empty cells
 - **Practice Mode**: Practice specific techniques with curated puzzles
 - **Daily Puzzles**: New puzzle every day, same for all players
 - **Custom Puzzles**: Enter and validate your own puzzles
 - **Offline Support**: Works completely offline after first load (PWA + WASM)
-- **Themes**: Light/dark mode
-- **Responsive**: Works on desktop and mobile
+- **Themes**: Light/dark mode with multiple color schemes
+- **Responsive**: Optimized for desktop and mobile with battery-efficient background handling
+- **Performance**: Code-split architecture for fast loading (initial ~170KB)
 
 ## How It Works
 
@@ -25,18 +27,36 @@ The entire solver runs locally in your browser via WebAssembly. No server requir
 - **Practice Puzzles**: Pre-analyzed puzzles for each technique
 - **Daily Seed**: Deterministic daily puzzle based on UTC date
 
-## Hints vs Auto-Solve
+## Performance & Mobile Optimization
 
-The app tracks hints and auto-solve separately:
+- **Fast Loading**: Code-split architecture with initial bundle ~170KB (down from 770KB)
+- **Battery Efficient**: Automatic pause of all operations when app goes to background
+- **Extended Background Pause**: Complete suspension after 30 seconds to prevent battery drain
+- **Offline-First**: PWA with aggressive caching and background sync
+- **Responsive Design**: Optimized touch interactions and mobile performance
+
+## Recent Improvements
+
+### v2025 Session
+- **Bundle Size Optimization**: Reduced initial load from 770KB to ~170KB via route-based code splitting
+- **Mobile Battery Optimization**: Extended background pause (30s) prevents battery drain in forgotten tabs
+- **UI Polish**: Improved autofill text ("Auto-filled candidates for X cells") and clearer auto-solve messaging
+- **Reliability**: Fixed highlighting persistence bugs and CI pipeline linting issues
+- **Enhanced Auto-fill**: Smart candidate filling with proper state management
+
+## Hints vs Auto-Solve vs Auto-fill
+
+The app tracks assistance features separately:
 
 - **Hints (💡)**: Get one logical step at a time. Each hint teaches you a real solving technique.
-- **Auto-Solve (🤖)**: Watch the solver complete the entire puzzle step-by-step.
+- **Auto-Solve (🤖)**: Watch the solver complete the entire puzzle step-by-step with battery optimization.
+- **Auto-fill (📝)**: Automatically fill valid candidates for empty cells.
 
 ## Quick Start
 
 ### GitHub Pages (Live)
 
-Visit **https://thodha.github.io/sudoku/**
+Visit **https://thodha.github.io/sudoku/** - Fast loading (~170KB initial), offline-capable PWA
 
 ### Docker
 
@@ -68,18 +88,28 @@ sudoku/
 │       └── sudoku/human/   # Human-like solver with 30+ techniques
 ├── frontend/               # React + Vite + TypeScript + Tailwind
 │   ├── public/
-│   │   └── sudoku.wasm     # Compiled WASM solver
+│   │   └── sudoku.wasm     # Compiled WASM solver (~3.5MB cached)
 │   └── src/
-│       ├── components/     # UI components
-│       ├── hooks/          # React hooks
+│       ├── components/     # UI components (code-split)
+│       ├── hooks/          # React hooks (game-logic chunk)
 │       ├── lib/
 │       │   ├── wasm.ts     # WASM loader
-│       │   ├── solver-service.ts  # Solver interface
+│       │   ├── solver-service.ts  # Solver interface (solver chunk)
 │       │   └── puzzles-data.ts    # Static puzzle data
-│       └── pages/          # Route pages
+│       └── pages/          # Route pages (lazy-loaded)
 ├── puzzles.json            # Pre-generated puzzle database
 └── practice_puzzles.json   # Technique -> puzzle mappings
 ```
+
+**Build Output** (optimized chunks):
+- `react-vendor` (165KB): React, React DOM, React Router
+- `game-page` (32KB): Game page component
+- `pages` (72KB): Other pages (lazy-loaded)
+- `ui-components` (634KB): UI components and Game dependencies
+- `auto-solve` (10KB): Auto-solve functionality
+- `game-logic` (8KB): Game state management hooks
+- `game-components` (9.5KB): Board, History components
+- `solver` (2.7KB): Solver service interface
 
 ## Solving Techniques
 
