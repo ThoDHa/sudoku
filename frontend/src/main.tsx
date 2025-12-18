@@ -5,8 +5,9 @@ import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import './index.css'
 
-// Use Vite's base path for React Router (handles GitHub Pages subpath)
-const basename = import.meta.env.BASE_URL || '/'
+// Get base path from Vite's BASE_URL (set during build)
+// This handles GitHub Pages subpath (/sudoku/) vs root deployment (/)
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || ''
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
