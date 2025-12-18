@@ -9,6 +9,20 @@ const base = process.env.VITE_BASE_PATH || '/'
 
 export default defineConfig({
   base,
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate React and related libraries
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // Separate large UI libraries
+          'ui-vendor': ['@headlessui/react', '@heroicons/react']
+        }
+      }
+    },
+    // Increase chunk size warning limit since we have large WASM dependency
+    chunkSizeWarningLimit: 600
+  },
   plugins: [
     react(),
     VitePWA({
