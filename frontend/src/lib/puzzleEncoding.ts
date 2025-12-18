@@ -53,8 +53,9 @@ function encodeSparse(cells: number[]): string {
   // Collect givens as (position, digit) pairs
   const givens: Array<{pos: number, digit: number}> = []
   for (let i = 0; i < 81; i++) {
-    if (cells[i] !== 0) {
-      givens.push({ pos: i, digit: cells[i] })
+    const cell = cells[i]
+    if (cell !== undefined && cell !== 0) {
+      givens.push({ pos: i, digit: cell })
     }
   }
   
@@ -97,7 +98,8 @@ function encodeSparse(cells: number[]): string {
   // Bitmask approach
   let mask = BigInt(0)
   for (let i = 0; i < 81; i++) {
-    if (cells[i] !== 0) {
+    const cell = cells[i]
+    if (cell !== undefined && cell !== 0) {
       mask |= BigInt(1) << BigInt(80 - i)
     }
   }
@@ -106,14 +108,17 @@ function encodeSparse(cells: number[]): string {
   let maskStr = ''
   for (let i = 0; i < 14; i++) {
     const idx = Number((mask >> BigInt((13 - i) * 6)) & BigInt(0x3F))
-    maskStr += ALPHABET[idx]
+    const char = ALPHABET[idx]
+    if (char) maskStr += char
   }
   
   // Encode digits (each digit 1-9 as single char, using first 9 chars of alphabet)
   let digitsStr = ''
   for (let i = 0; i < 81; i++) {
-    if (cells[i] !== 0) {
-      digitsStr += ALPHABET[cells[i] - 1] // 1-9 -> A-I
+    const cell = cells[i]
+    if (cell !== undefined && cell !== 0) {
+      const char = ALPHABET[cell - 1]
+      if (char) digitsStr += char // 1-9 -> A-I
     }
   }
   
@@ -128,7 +133,7 @@ function encodeDense(cells: number[]): string {
   // Pack 2 cells per byte (4 bits each)
   const bytes: number[] = []
   for (let i = 0; i < 81; i += 2) {
-    const high = cells[i] & 0x0F
+    const high = (cells[i] ?? 0) & 0x0F
     const low = (cells[i + 1] ?? 0) & 0x0F
     bytes.push((high << 4) | low)
   }
@@ -173,21 +178,26 @@ function decodeSparse(encoded: string): number[] {
   // Decode bitmask
   let mask = BigInt(0)
   for (let i = 0; i < 14; i++) {
-    const idx = ALPHABET.indexOf(maskStr[i])
-    if (idx === -1) return Array(81).fill(0)
+    const char = maskStr[i]
+    if (!char) return Array(81).fill(0) as number[]
+    const idx = ALPHABET.indexOf(char)
+    if (idx === -1) return Array(81).fill(0) as number[]
     mask = (mask << BigInt(6)) | BigInt(idx)
   }
   
   // Decode digits
-  const cells = Array(81).fill(0)
+  const cells = Array(81).fill(0) as number[]
   let digitIdx = 0
   for (let i = 0; i < 81; i++) {
     const bit = (mask >> BigInt(80 - i)) & BigInt(1)
     if (bit === BigInt(1)) {
       if (digitIdx < digitsStr.length) {
-        const d = ALPHABET.indexOf(digitsStr[digitIdx])
-        if (d >= 0 && d < 9) {
-          cells[i] = d + 1
+        const char = digitsStr[digitIdx]
+        if (char) {
+          const d = ALPHABET.indexOf(char)
+          if (d >= 0 && d < 9) {
+            cells[i] = d + 1
+          }
         }
         digitIdx++
       }
@@ -225,8 +235,10 @@ function decodeDenseLegacy(encoded: string): number[] {
   // Unpack 2 cells per byte
   const cells: number[] = []
   for (let i = 0; i < bytes.length && cells.length < 81; i++) {
-    const high = (bytes[i] >> 4) & 0x0F
-    const low = bytes[i] & 0x0F
+    const byte = bytes[i]
+    if (byte === undefined) continue
+    const high = (byte >> 4) & 0x0F
+    const low = byte & 0x0F
     cells.push(high)
     if (cells.length < 81) {
       cells.push(low)

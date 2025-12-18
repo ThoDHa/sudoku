@@ -6,28 +6,7 @@ import (
 	"sudoku-api/internal/core"
 )
 
-// sees returns true if two cells are in the same row, column, or box
-func sees(idx1, idx2 int) bool {
-	if idx1 == idx2 {
-		return false
-	}
-	r1, c1 := idx1/9, idx1%9
-	r2, c2 := idx2/9, idx2%9
-
-	// Same row
-	if r1 == r2 {
-		return true
-	}
-	// Same column
-	if c1 == c2 {
-		return true
-	}
-	// Same box
-	if (r1/3 == r2/3) && (c1/3 == c2/3) {
-		return true
-	}
-	return false
-}
+// sees() function has been moved to helpers.go
 
 // detectSwordfish finds Swordfish pattern: 3 rows where a digit appears in 2-3 positions,
 // and those positions share exactly 3 columns (or vice versa for columns)

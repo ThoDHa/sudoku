@@ -77,7 +77,7 @@ export default function Result() {
       <ResultSummary
         timeMs={timeMs}
         difficulty={difficulty}
-        dateUtc={new Date().toISOString().split('T')[0]}
+        dateUtc={new Date().toISOString().split('T')[0] ?? ''}
         hintsUsed={hintsUsed}
         mistakes={0}
         autoSolveUsed={autoSolveUsed}

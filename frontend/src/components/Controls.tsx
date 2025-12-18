@@ -35,6 +35,9 @@ export default function Controls({
     const isSelected = highlightedDigit === digit
     const isDisabled = digitComplete || isComplete || isSolving
 
+    // During auto-solve, show selected state with muted opacity
+    const showSelectedMuted = isSelected && isSolving && !digitComplete
+
     return (
       <button
         key={digit}
@@ -42,7 +45,9 @@ export default function Controls({
         disabled={isDisabled}
         aria-label={`Enter ${digit}, ${remaining} remaining`}
         className={`control-digit-btn ${
-          isDisabled
+          showSelectedMuted
+            ? 'bg-[var(--accent)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)] opacity-60 cursor-not-allowed'
+            : isDisabled
             ? 'bg-[var(--btn-bg)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
             : isSelected
             ? 'bg-[var(--accent)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]'
@@ -64,6 +69,9 @@ export default function Controls({
   }
 
   const controlsDisabled = isComplete || isSolving
+
+  // During auto-solve, show selected states with muted opacity
+  const notesShowSelectedMuted = notesMode && isSolving
 
   return (
     <div className="controls-container mt-3 sm:mt-4 flex flex-col items-center gap-1.5 sm:gap-2">
@@ -105,7 +113,9 @@ export default function Controls({
           aria-label={notesMode ? 'Notes mode on' : 'Notes mode off'}
           aria-pressed={notesMode}
           className={`control-digit-btn ${
-            controlsDisabled
+            notesShowSelectedMuted
+              ? 'bg-[var(--btn-active)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)] opacity-60 cursor-not-allowed'
+              : controlsDisabled
               ? 'bg-[var(--btn-bg)] opacity-40 cursor-not-allowed'
               : notesMode
               ? 'bg-[var(--btn-active)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]'

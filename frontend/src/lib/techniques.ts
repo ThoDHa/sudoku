@@ -1063,3 +1063,379 @@ export function getTechniqueDisplayName(backendKey: string): string {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
 }
+
+// ============================================================
+// GLOSSARY - Common Sudoku terminology and jargon
+// ============================================================
+
+export interface GlossaryTerm {
+  term: string
+  definition: string
+  relatedTerms?: string[]
+  example?: string
+}
+
+export const GLOSSARY: GlossaryTerm[] = [
+  // Basic concepts
+  {
+    term: 'Candidate',
+    definition: 'A digit (1-9) that could potentially go in a cell based on current eliminations. Also called a "pencil mark" or "note".',
+    relatedTerms: ['Elimination', 'Naked Single'],
+    example: 'If a cell shows candidates 3, 5, 7, it means only those three digits are still possible for that cell.'
+  },
+  {
+    term: 'Given',
+    definition: 'A digit that is pre-filled in the puzzle at the start. Givens cannot be changed and form the basis for solving.',
+    relatedTerms: ['Clue'],
+    example: 'Most puzzles have 17-35 givens. The minimum for a unique solution is 17.'
+  },
+  {
+    term: 'Clue',
+    definition: 'Another term for a given digit. The starting numbers provided in the puzzle.',
+    relatedTerms: ['Given']
+  },
+  {
+    term: 'Cell',
+    definition: 'One of the 81 squares in the Sudoku grid where a single digit (1-9) must be placed.',
+    relatedTerms: ['Row', 'Column', 'Box']
+  },
+  {
+    term: 'Unit',
+    definition: 'A row, column, or 3x3 box - any group of 9 cells that must contain digits 1-9 exactly once.',
+    relatedTerms: ['Row', 'Column', 'Box', 'House']
+  },
+  {
+    term: 'House',
+    definition: 'Another term for unit. Any row, column, or box containing 9 cells.',
+    relatedTerms: ['Unit', 'Row', 'Column', 'Box']
+  },
+  {
+    term: 'Row',
+    definition: 'A horizontal line of 9 cells. Each row must contain digits 1-9 exactly once.',
+    relatedTerms: ['Column', 'Box', 'Unit']
+  },
+  {
+    term: 'Column',
+    definition: 'A vertical line of 9 cells. Each column must contain digits 1-9 exactly once.',
+    relatedTerms: ['Row', 'Box', 'Unit']
+  },
+  {
+    term: 'Box',
+    definition: 'One of the nine 3x3 regions in the grid. Also called a "block", "region", or "nonet". Each box must contain digits 1-9 exactly once.',
+    relatedTerms: ['Row', 'Column', 'Unit', 'Block']
+  },
+  {
+    term: 'Block',
+    definition: 'Another term for a 3x3 box.',
+    relatedTerms: ['Box']
+  },
+  {
+    term: 'Peer',
+    definition: 'Any cell that shares a unit (row, column, or box) with a given cell. Each cell has exactly 20 peers.',
+    relatedTerms: ['Sees', 'Unit'],
+    example: 'Cell R5C5 (center of the grid) has 20 peers: 8 in its row, 8 in its column, and 4 more in its box.'
+  },
+  {
+    term: 'Sees',
+    definition: 'Two cells "see" each other if they share a row, column, or box. Cells that see each other cannot contain the same digit.',
+    relatedTerms: ['Peer', 'Buddy'],
+    example: 'R1C1 sees R1C5 (same row), R5C1 (same column), and R2C2 (same box).'
+  },
+  {
+    term: 'Buddy',
+    definition: 'Another term for a peer - a cell that sees the given cell.',
+    relatedTerms: ['Peer', 'Sees']
+  },
+  
+  // Candidate notation
+  {
+    term: 'RxCy',
+    definition: 'Standard notation for cell position. R = Row, C = Column. R1C1 is top-left, R9C9 is bottom-right.',
+    example: 'R3C7 means the cell in row 3, column 7.'
+  },
+  {
+    term: 'Pencil Marks',
+    definition: 'Small numbers written in cells showing possible candidates. Can be entered manually or auto-filled.',
+    relatedTerms: ['Candidate', 'Notes']
+  },
+  {
+    term: 'Notes',
+    definition: 'Another term for pencil marks or candidates.',
+    relatedTerms: ['Pencil Marks', 'Candidate']
+  },
+  
+  // Solving concepts
+  {
+    term: 'Elimination',
+    definition: 'Removing a candidate from a cell because logic proves it cannot be the solution for that cell.',
+    relatedTerms: ['Candidate'],
+    example: 'If R1C1 contains 5, we can eliminate 5 from all other cells in row 1, column 1, and box 1.'
+  },
+  {
+    term: 'Placement',
+    definition: 'Determining the final digit for a cell. Also called "solving" or "filling" the cell.',
+    relatedTerms: ['Naked Single', 'Hidden Single']
+  },
+  {
+    term: 'Bivalue Cell',
+    definition: 'A cell with exactly two candidates remaining. These are key for many advanced techniques.',
+    relatedTerms: ['XY-Wing', 'XY-Chain', 'Remote Pairs'],
+    example: 'A cell with only candidates {3, 7} is a bivalue cell.'
+  },
+  {
+    term: 'Bilocation',
+    definition: 'When a digit appears as a candidate in exactly two cells within a unit. Forms the basis for many chain techniques.',
+    relatedTerms: ['Conjugate Pair', 'Strong Link'],
+    example: 'If 5 only appears in R1C2 and R1C8 in row 1, those cells are a bilocation for 5.'
+  },
+  
+  // Links and chains
+  {
+    term: 'Strong Link',
+    definition: 'A relationship between two cells where if one is false, the other must be true. Occurs in bilocation situations.',
+    relatedTerms: ['Weak Link', 'Conjugate Pair', 'Chain'],
+    example: 'If digit 4 only appears in two cells of a row, there\'s a strong link: one MUST be 4.'
+  },
+  {
+    term: 'Weak Link',
+    definition: 'A relationship between two cells where if one is true, the other must be false (but not vice versa). Cells that see each other have weak links on shared candidates.',
+    relatedTerms: ['Strong Link', 'Chain'],
+    example: 'Two cells in the same row both having candidate 7 have a weak link: both cannot be 7, but both could be false.'
+  },
+  {
+    term: 'Conjugate Pair',
+    definition: 'Two cells that form a bilocation for a digit - the only two places that digit can go in a unit. They have a strong link.',
+    relatedTerms: ['Strong Link', 'Bilocation', 'X-Wing']
+  },
+  {
+    term: 'Chain',
+    definition: 'A sequence of cells connected by links (strong and/or weak). Used in advanced solving techniques to make eliminations.',
+    relatedTerms: ['Strong Link', 'Weak Link', 'X-Chain', 'XY-Chain', 'AIC']
+  },
+  {
+    term: 'AIC',
+    definition: 'Alternating Inference Chain. A chain that alternates between strong and weak links, possibly across multiple digits.',
+    relatedTerms: ['Chain', 'X-Chain', 'XY-Chain']
+  },
+  {
+    term: 'Loop',
+    definition: 'A chain that connects back to its starting point. Continuous loops allow eliminations at every weak link.',
+    relatedTerms: ['Chain', 'Nice Loop']
+  },
+  {
+    term: 'Nice Loop',
+    definition: 'A type of chain/loop with specific properties that enable eliminations. Can be continuous or discontinuous.',
+    relatedTerms: ['Loop', 'Chain', 'AIC']
+  },
+  
+  // Pattern terminology
+  {
+    term: 'Naked',
+    definition: 'A pattern where cells contain ONLY the candidates of interest. In a naked pair, two cells contain only the same two candidates.',
+    relatedTerms: ['Hidden', 'Naked Pair', 'Naked Triple'],
+    example: 'Two cells with only {2, 5} form a naked pair.'
+  },
+  {
+    term: 'Hidden',
+    definition: 'A pattern where the candidates of interest appear ONLY in specific cells (but those cells may have other candidates too).',
+    relatedTerms: ['Naked', 'Hidden Pair', 'Hidden Single'],
+    example: 'If candidates 3 and 7 only appear in two cells of a row (even if those cells have other candidates), it\'s a hidden pair.'
+  },
+  {
+    term: 'Locked Candidates',
+    definition: 'When candidates for a digit are restricted to a single row/column within a box (or vice versa), allowing eliminations elsewhere.',
+    relatedTerms: ['Pointing Pair', 'Box-Line Reduction']
+  },
+  {
+    term: 'Pointing',
+    definition: 'When a candidate in a box is restricted to one row or column, "pointing" to eliminations outside the box.',
+    relatedTerms: ['Locked Candidates', 'Pointing Pair', 'Box-Line Reduction']
+  },
+  {
+    term: 'Claiming',
+    definition: 'When a candidate in a row/column is restricted to one box, "claiming" that candidate and allowing eliminations in the rest of the box.',
+    relatedTerms: ['Locked Candidates', 'Box-Line Reduction']
+  },
+  
+  // Fish terminology
+  {
+    term: 'Fish',
+    definition: 'A family of techniques (X-Wing, Swordfish, Jellyfish) based on candidate positions forming a grid pattern across rows and columns.',
+    relatedTerms: ['X-Wing', 'Swordfish', 'Jellyfish', 'Finned Fish']
+  },
+  {
+    term: 'Base Set',
+    definition: 'In fish patterns, the rows (or columns) that define the pattern. The base set contains the candidate positions.',
+    relatedTerms: ['Cover Set', 'Fish']
+  },
+  {
+    term: 'Cover Set',
+    definition: 'In fish patterns, the columns (or rows) that cover all the base positions. Eliminations occur in the cover set outside the base.',
+    relatedTerms: ['Base Set', 'Fish']
+  },
+  {
+    term: 'Fin',
+    definition: 'Extra candidates in a fish pattern that prevent it from being a pure fish. Finned fish still allow limited eliminations.',
+    relatedTerms: ['Finned X-Wing', 'Finned Swordfish', 'Sashimi']
+  },
+  {
+    term: 'Sashimi',
+    definition: 'A finned fish where the fin is the only candidate in one of the defining positions. An extreme form of finned fish.',
+    relatedTerms: ['Fin', 'Finned X-Wing']
+  },
+  
+  // ALS terminology
+  {
+    term: 'ALS',
+    definition: 'Almost Locked Set. A group of N cells containing N+1 candidates. If any candidate is eliminated, the remaining N candidates are locked.',
+    relatedTerms: ['ALS-XZ', 'ALS-XY-Wing', 'Locked Set'],
+    example: '3 cells with candidates {1,2,3,4} form an ALS. Remove any one candidate and you get a locked triple.'
+  },
+  {
+    term: 'Locked Set',
+    definition: 'A group of N cells containing exactly N candidates. Those candidates can be eliminated from all peers.',
+    relatedTerms: ['ALS', 'Naked Pair', 'Naked Triple']
+  },
+  {
+    term: 'Restricted Common',
+    definition: 'In ALS techniques, a candidate shared between two ALSs where all instances of that candidate in both ALSs see each other.',
+    relatedTerms: ['ALS', 'ALS-XZ']
+  },
+  
+  // Uniqueness terminology
+  {
+    term: 'Deadly Pattern',
+    definition: 'A configuration that would allow multiple solutions. Valid puzzles cannot have deadly patterns, enabling uniqueness-based eliminations.',
+    relatedTerms: ['Unique Rectangle', 'BUG']
+  },
+  {
+    term: 'UR',
+    definition: 'Abbreviation for Unique Rectangle - a deadly pattern of four cells in two rows and two boxes with the same two candidates.',
+    relatedTerms: ['Unique Rectangle', 'Deadly Pattern']
+  },
+  {
+    term: 'BUG',
+    definition: 'Bivalue Universal Grave. A state where all cells have exactly 2 candidates - this would create multiple solutions, so it must be avoided.',
+    relatedTerms: ['Deadly Pattern', 'BUG+1']
+  },
+  {
+    term: 'BUG+1',
+    definition: 'A near-BUG state with one cell having 3 candidates. The extra candidate must be true to avoid the BUG.',
+    relatedTerms: ['BUG', 'Deadly Pattern']
+  },
+  
+  // Wing terminology
+  {
+    term: 'Wing',
+    definition: 'A family of techniques using a pivot cell connected to wing cells, creating elimination opportunities.',
+    relatedTerms: ['XY-Wing', 'XYZ-Wing', 'W-Wing']
+  },
+  {
+    term: 'Pivot',
+    definition: 'In wing techniques, the central cell that connects to the wing cells. The pivot shares one candidate with each wing.',
+    relatedTerms: ['Wing', 'XY-Wing']
+  },
+  {
+    term: 'Pincer',
+    definition: 'Another term for the wing cells in wing patterns. The pincers "attack" cells that see both of them.',
+    relatedTerms: ['Wing', 'XY-Wing']
+  },
+  
+  // Coloring terminology
+  {
+    term: 'Coloring',
+    definition: 'A technique that assigns two colors to candidates in conjugate chains. If two cells of the same color see each other, that color is false.',
+    relatedTerms: ['Simple Coloring', '3D Medusa', 'Conjugate Pair']
+  },
+  {
+    term: 'Cluster',
+    definition: 'A group of cells connected by strong links in coloring. All cells of one color are either all true or all false.',
+    relatedTerms: ['Coloring', 'Simple Coloring']
+  },
+  {
+    term: 'Color Trap',
+    definition: 'An elimination in coloring where a cell sees both colors of a cluster, so that candidate can be eliminated.',
+    relatedTerms: ['Coloring', 'Color Wrap']
+  },
+  {
+    term: 'Color Wrap',
+    definition: 'In coloring, when two cells of the same color see each other, proving that entire color false.',
+    relatedTerms: ['Coloring', 'Color Trap']
+  },
+  
+  // Forcing terminology
+  {
+    term: 'Forcing Chain',
+    definition: 'A technique where you assume a candidate is true (or false) and follow all implications. If all paths lead to the same result, it must be true.',
+    relatedTerms: ['Digit Forcing Chain', 'Cell Forcing Chain']
+  },
+  {
+    term: 'Implication',
+    definition: 'A logical consequence of assuming a candidate is true or false. "If A=5, then B≠5" is an implication.',
+    relatedTerms: ['Forcing Chain', 'Chain']
+  },
+  {
+    term: 'Contradiction',
+    definition: 'When following implications leads to an impossible state (like a cell with no candidates). This proves the initial assumption was wrong.',
+    relatedTerms: ['Forcing Chain', 'Proof by Contradiction']
+  },
+  
+  // Difficulty and solving
+  {
+    term: 'Backdoor',
+    definition: 'A cell or small set of cells that, if solved correctly, allows the rest of the puzzle to be solved with simple techniques only.',
+    example: 'Some hard puzzles have a single-cell backdoor: guess that cell correctly and the rest solves with singles.'
+  },
+  {
+    term: 'Bifurcation',
+    definition: 'Trial and error solving - guessing a candidate and seeing if it leads to a solution or contradiction. Generally avoided in "pure" solving.',
+    relatedTerms: ['Forcing Chain', 'Backtracking']
+  },
+  {
+    term: 'Backtracking',
+    definition: 'A brute-force solving method that tries candidates and backtracks when contradictions are found. Not a human technique.',
+    relatedTerms: ['Bifurcation']
+  },
+  {
+    term: 'Singles',
+    definition: 'The simplest solving techniques: Naked Single and Hidden Single. Most puzzles require at least some singles to solve.',
+    relatedTerms: ['Naked Single', 'Hidden Single']
+  },
+  {
+    term: 'Diabolical',
+    definition: 'A difficulty rating for puzzles requiring advanced techniques beyond basic fish and subsets.',
+    relatedTerms: ['Fiendish', 'Extreme']
+  },
+  {
+    term: 'Minimal Puzzle',
+    definition: 'A puzzle where removing any given would result in multiple solutions. Most published puzzles are minimal.',
+    relatedTerms: ['Given']
+  }
+]
+
+// Helper to get glossary term by name (case-insensitive)
+export function getGlossaryTerm(term: string): GlossaryTerm | undefined {
+  const lowerTerm = term.toLowerCase()
+  return GLOSSARY.find(g => g.term.toLowerCase() === lowerTerm)
+}
+
+// Get all glossary terms sorted alphabetically
+export function getGlossarySorted(): GlossaryTerm[] {
+  return [...GLOSSARY].sort((a, b) => a.term.localeCompare(b.term))
+}
+
+// Search glossary by term or definition
+export function searchGlossary(query: string): GlossaryTerm[] {
+  const lowerQuery = query.toLowerCase()
+  return GLOSSARY.filter(g => 
+    g.term.toLowerCase().includes(lowerQuery) ||
+    g.definition.toLowerCase().includes(lowerQuery)
+  ).sort((a, b) => {
+    // Prioritize term matches over definition matches
+    const aTermMatch = a.term.toLowerCase().includes(lowerQuery)
+    const bTermMatch = b.term.toLowerCase().includes(lowerQuery)
+    if (aTermMatch && !bTermMatch) return -1
+    if (!aTermMatch && bTermMatch) return 1
+    return a.term.localeCompare(b.term)
+  })
+}

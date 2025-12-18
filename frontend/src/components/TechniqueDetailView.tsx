@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { getTechniqueBySlug, type TechniqueInfo, type TechniqueSubsection } from '../lib/techniques'
 import { ChevronRightIcon } from './ui'
 import TechniqueDiagramView, { TechniqueDiagramLegend } from './TechniqueDiagram'
+import AnimatedDiagramView from './AnimatedDiagramView'
 import { fetchPracticePuzzle } from '../lib/api'
 
 interface TechniqueDetailViewProps {
@@ -128,14 +129,20 @@ export default function TechniqueDetailView({
 
   return (
     <div className={sectionClass}>
-      {/* Diagram */}
-      {technique.diagram && (
+      {/* Diagram - prefer animated if available */}
+      {(technique.animatedDiagram || technique.diagram) && (
         <div className={isPage ? 'mb-8' : ''}>
           {isPage && <h2 className={`mb-4 ${headingClass} text-[var(--text)]`}>📊 Diagram</h2>}
           <div className="rounded-lg bg-[var(--bg-secondary)] p-4">
             {!isPage && <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Diagram</h3>}
-            <TechniqueDiagramView diagram={technique.diagram} />
-            <TechniqueDiagramLegend />
+            {technique.animatedDiagram ? (
+              <AnimatedDiagramView diagram={technique.animatedDiagram} />
+            ) : technique.diagram ? (
+              <>
+                <TechniqueDiagramView diagram={technique.diagram} />
+                <TechniqueDiagramLegend />
+              </>
+            ) : null}
           </div>
         </div>
       )}
@@ -200,8 +207,8 @@ export default function TechniqueDetailView({
           </h2>
           <RelatedTechniques 
             slugs={technique.relatedTechniques} 
-            onRelatedClick={onRelatedClick}
             variant={variant}
+            {...(onRelatedClick ? { onRelatedClick } : {})}
           />
         </div>
       )}

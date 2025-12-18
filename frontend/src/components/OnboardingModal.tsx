@@ -82,6 +82,8 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
   if (!isOpen) return null
 
   const step = ONBOARDING_STEPS[currentStep]
+  if (!step) return null
+  
   const isLastStep = currentStep === ONBOARDING_STEPS.length - 1
 
   return (
@@ -178,6 +180,7 @@ export function useOnboarding() {
       }, 500)
       return () => clearTimeout(timer)
     }
+    return undefined
   }, [])
 
   const closeOnboarding = () => {

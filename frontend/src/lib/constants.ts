@@ -94,7 +94,7 @@ export const TECHNIQUE_COLORS: Record<string, string> = {
 }
 
 export function getTierColor(tier: string): string {
-  return TIER_COLORS[tier.toLowerCase()] || TIER_COLORS.auto
+  return TIER_COLORS[tier.toLowerCase()] ?? TIER_COLORS['auto'] ?? ''
 }
 
 export function getTechniqueColor(technique: string): string {

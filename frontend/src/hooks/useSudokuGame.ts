@@ -214,16 +214,16 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
     // Eliminate from row
     for (let c = 0; c < 9; c++) {
-      newCandidates[row * 9 + c].delete(digit)
+      newCandidates[row * 9 + c]?.delete(digit)
     }
     // Eliminate from column
     for (let r = 0; r < 9; r++) {
-      newCandidates[r * 9 + col].delete(digit)
+      newCandidates[r * 9 + col]?.delete(digit)
     }
     // Eliminate from box
     for (let r = boxRow; r < boxRow + 3; r++) {
       for (let c = boxCol; c < boxCol + 3; c++) {
-        newCandidates[r * 9 + c].delete(digit)
+        newCandidates[r * 9 + c]?.delete(digit)
       }
     }
   }, [])
@@ -234,7 +234,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     for (let row = 0; row < 9; row++) {
       const seen = new Set<number>()
       for (let col = 0; col < 9; col++) {
-        const val = b[row * 9 + col]
+        const val = b[row * 9 + col] ?? 0
         if (val === 0 || seen.has(val)) return false
         seen.add(val)
       }
@@ -243,7 +243,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     for (let col = 0; col < 9; col++) {
       const seen = new Set<number>()
       for (let row = 0; row < 9; row++) {
-        const val = b[row * 9 + col]
+        const val = b[row * 9 + col] ?? 0
         if (val === 0 || seen.has(val)) return false
         seen.add(val)
       }
@@ -255,7 +255,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       const boxCol = (box % 3) * 3
       for (let r = boxRow; r < boxRow + 3; r++) {
         for (let c = boxCol; c < boxCol + 3; c++) {
-          const val = b[r * 9 + c]
+          const val = b[r * 9 + c] ?? 0
           if (val === 0 || seen.has(val)) return false
           seen.add(val)
         }
@@ -299,17 +299,18 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       
       const row = Math.floor(idx / 9)
       const col = idx % 9
-      const hadCandidate = candidates[idx].has(digit)
+      const existingCellCandidates = candidates[idx]
+      const hadCandidate = existingCellCandidates?.has(digit) ?? false
       
       // Toggle candidate
       const newCandidates = [...candidates]
-      const cellCandidates = new Set(newCandidates[idx])
+      const newCellCandidates = new Set(newCandidates[idx])
       if (hadCandidate) {
-        cellCandidates.delete(digit)
+        newCellCandidates.delete(digit)
       } else {
-        cellCandidates.add(digit)
+        newCellCandidates.add(digit)
       }
-      newCandidates[idx] = cellCandidates
+      newCandidates[idx] = newCellCandidates
       
       // Add note toggle move to history with board state before
       const noteMove: Move = {
@@ -377,19 +378,20 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
     const row = Math.floor(idx / 9)
     const col = idx % 9
-    const hadCandidate = candidates[idx].has(digit)
+    const cellCandidates = candidates[idx]
+    const hadCandidate = cellCandidates?.has(digit) ?? false
     
     // Truncate history if we're in the middle
     const truncatedHistory = history.slice(0, historyIndex + 1)
     
     const newCandidates = [...candidates]
-    const cellCandidates = new Set(newCandidates[idx])
+    const newCellCandidates = new Set(newCandidates[idx])
     if (hadCandidate) {
-      cellCandidates.delete(digit)
+      newCellCandidates.delete(digit)
     } else {
-      cellCandidates.add(digit)
+      newCellCandidates.add(digit)
     }
-    newCandidates[idx] = cellCandidates
+    newCandidates[idx] = newCellCandidates
     
     // Add toggle move to history with board state before
     const toggleMove: Move = {
@@ -416,11 +418,13 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   const eraseCell = useCallback((idx: number) => {
     if (isGivenCell(idx)) return
     // Nothing to erase if cell is empty and has no candidates
-    if (board[idx] === 0 && candidates[idx].size === 0) return
+    const cellCandidates = candidates[idx]
+    const cellValue = board[idx] ?? 0
+    if (cellValue === 0 && (!cellCandidates || cellCandidates.size === 0)) return
 
     const row = Math.floor(idx / 9)
     const col = idx % 9
-    const erasedDigit = board[idx]
+    const erasedDigit = cellValue
     
     // Truncate history if we're in the middle
     const truncatedHistory = history.slice(0, historyIndex + 1)
@@ -460,6 +464,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     if (historyIndex < 0) return
     
     const currentMove = history[historyIndex]
+    if (!currentMove) return
     
     // Restore board state from before this move
     if (currentMove.boardBefore && currentMove.candidatesBefore) {
@@ -481,6 +486,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     if (historyIndex >= history.length - 1) return
     
     const nextMove = history[historyIndex + 1]
+    if (!nextMove) return
     
     // We need to replay this move to get the "after" state
     // The move stores "before" state, so the "after" state is what we had when historyIndex was at this position
@@ -499,7 +505,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     if (historyIndex + 2 < history.length) {
       // There's a move after the one we're redoing - use its boardBefore
       const moveAfterNext = history[historyIndex + 2]
-      if (moveAfterNext.boardBefore && moveAfterNext.candidatesBefore) {
+      if (moveAfterNext?.boardBefore && moveAfterNext.candidatesBefore) {
         setBoard(moveAfterNext.boardBefore)
         setCandidates(moveAfterNext.candidatesBefore.map(arr => new Set(arr)))
       }
@@ -521,7 +527,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const newCandidates = move.candidatesBefore.map(arr => new Set(arr))
     
     if (move.action === 'place' && move.targets.length > 0) {
-      const { row, col } = move.targets[0]
+      const target = move.targets[0]
+      if (!target) return
+      const { row, col } = target
       const idx = row * 9 + col
       newBoard[idx] = move.digit
       // Eliminate from peers
@@ -529,14 +537,18 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     } else if (move.action === 'eliminate' && move.eliminations) {
       for (const elim of move.eliminations) {
         const idx = elim.row * 9 + elim.col
-        newCandidates[idx].delete(elim.digit)
+        newCandidates[idx]?.delete(elim.digit)
       }
     } else if (move.action === 'note' && move.targets.length > 0) {
-      const { row, col } = move.targets[0]
+      const target = move.targets[0]
+      if (!target) return
+      const { row, col } = target
       const idx = row * 9 + col
-      newCandidates[idx].add(move.digit)
+      newCandidates[idx]?.add(move.digit)
     } else if (move.action === 'erase' && move.targets.length > 0) {
-      const { row, col } = move.targets[0]
+      const target = move.targets[0]
+      if (!target) return
+      const { row, col } = target
       const idx = row * 9 + col
       newBoard[idx] = 0
       newCandidates[idx] = calculateCandidatesForCell(idx, newBoard)
@@ -546,7 +558,10 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       // or we need to recalculate
       const filled = fillAllCandidates(newBoard)
       for (let i = 0; i < 81; i++) {
-        newCandidates[i] = filled[i]
+        const filledCell = filled[i]
+        if (filledCell) {
+          newCandidates[i] = filledCell
+        }
       }
     }
     

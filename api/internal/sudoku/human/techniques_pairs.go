@@ -2,7 +2,6 @@ package human
 
 import (
 	"fmt"
-	"sort"
 
 	"sudoku-api/internal/core"
 )
@@ -187,51 +186,9 @@ func findHiddenPairInUnit(b *Board, indices []int, unitType string, unitNum int)
 	return nil
 }
 
-// Helper functions
-func getRowIndices(row int) []int {
-	indices := make([]int, 9)
-	for c := 0; c < 9; c++ {
-		indices[c] = row*9 + c
-	}
-	return indices
-}
-
-func getColIndices(col int) []int {
-	indices := make([]int, 9)
-	for r := 0; r < 9; r++ {
-		indices[r] = r*9 + col
-	}
-	return indices
-}
-
-func getBoxIndices(box int) []int {
-	indices := make([]int, 0, 9)
-	boxRow, boxCol := (box/3)*3, (box%3)*3
-	for r := boxRow; r < boxRow+3; r++ {
-		for c := boxCol; c < boxCol+3; c++ {
-			indices = append(indices, r*9+c)
-		}
-	}
-	return indices
-}
-
-func candidatesEqual(a, b map[int]bool) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for k := range a {
-		if !b[k] {
-			return false
-		}
-	}
-	return true
-}
-
-func getCandidateSlice(cands map[int]bool) []int {
-	result := make([]int, 0, len(cands))
-	for d := range cands {
-		result = append(result, d)
-	}
-	sort.Ints(result)
-	return result
-}
+// Helper functions have been moved to helpers.go:
+// - getRowIndices
+// - getColIndices
+// - getBoxIndices
+// - candidatesEqual
+// - getCandidateSlice

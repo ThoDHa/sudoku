@@ -200,6 +200,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       setCurrentIndex(newIndex)
       
       const snapshot = stateHistoryRef.current[newIndex]
+      if (!snapshot) return
       const candidates = snapshot.candidates.map(arr => new Set(arr))
       applyState(snapshot.board, candidates, snapshot.move, newIndex)
       

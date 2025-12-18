@@ -35,7 +35,7 @@ function findDuplicates(board: number[]): Set<number> {
     const seen = new Map<number, number[]>()
     for (let col = 0; col < 9; col++) {
       const idx = row * 9 + col
-      const val = board[idx]
+      const val = board[idx] ?? 0
       if (val !== 0) {
         if (!seen.has(val)) {
           seen.set(val, [])
@@ -55,7 +55,7 @@ function findDuplicates(board: number[]): Set<number> {
     const seen = new Map<number, number[]>()
     for (let row = 0; row < 9; row++) {
       const idx = row * 9 + col
-      const val = board[idx]
+      const val = board[idx] ?? 0
       if (val !== 0) {
         if (!seen.has(val)) {
           seen.set(val, [])
@@ -78,7 +78,7 @@ function findDuplicates(board: number[]): Set<number> {
     for (let r = boxRow; r < boxRow + 3; r++) {
       for (let c = boxCol; c < boxCol + 3; c++) {
         const idx = r * 9 + c
-        const val = board[idx]
+        const val = board[idx] ?? 0
         if (val !== 0) {
           if (!seen.has(val)) {
             seen.set(val, [])

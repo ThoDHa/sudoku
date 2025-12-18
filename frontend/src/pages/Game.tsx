@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams, useSearchParams, useLocation, Link } from 'react-router-dom'
+import { useParams, useSearchParams, useLocation } from 'react-router-dom'
 import Board from '../components/Board'
 import Controls from '../components/Controls'
 import History from '../components/History'
 import ResultModal from '../components/ResultModal'
 import TechniqueModal from '../components/TechniqueModal'
 import TechniquesListModal from '../components/TechniquesListModal'
-import DifficultyBadge from '../components/DifficultyBadge'
+import GameHeader from '../components/GameHeader'
+import GameModals from '../components/GameModals'
 import OnboardingModal, { useOnboarding } from '../components/OnboardingModal'
 import { Difficulty } from '../lib/hooks'
-import { useTheme, ColorTheme, FontSize } from '../lib/ThemeContext'
+import { useTheme } from '../lib/ThemeContext'
 import { useGameContext } from '../lib/GameContext'
 import { useGameTimer } from '../hooks/useGameTimer'
 import { useSudokuGame, Move } from '../hooks/useSudokuGame'
@@ -20,9 +21,11 @@ import {
   TOAST_DURATION_ERROR,
   TOAST_DURATION_FIX_ERROR,
   STORAGE_KEYS,
-  MAX_HISTORY_BADGE_COUNT,
 } from '../lib/constants'
-import { getAutoSolveSpeed, setAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
+import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
+
+import { saveScore, type Score } from '../lib/scores'
+import { decodePuzzle, encodePuzzle } from '../lib/puzzleEncoding'
 
 // Type for saved game state in localStorage
 interface SavedGameState {
@@ -33,17 +36,6 @@ interface SavedGameState {
   autoFillUsed: boolean
   savedAt: number // timestamp
 }
-
-const fontSizes: { key: FontSize; label: string }[] = [
-  { key: 'xs', label: 'A' },
-  { key: 'small', label: 'A' },
-  { key: 'medium', label: 'A' },
-  { key: 'large', label: 'A' },
-  { key: 'xl', label: 'A' },
-]
-
-import { saveScore } from '../lib/scores'
-import { decodePuzzle, encodePuzzle } from '../lib/puzzleEncoding'
 
 interface PuzzleData {
   puzzle_id: string
@@ -96,16 +88,13 @@ export default function Game() {
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showSolutionConfirm, setShowSolutionConfirm] = useState(false)
   const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] = useState<{ message: string; count: number } | null>(null)
-  const [newPuzzleMenuOpen, setNewPuzzleMenuOpen] = useState(false)
   const [bugReportCopied, setBugReportCopied] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [autoFillUsed, setAutoFillUsed] = useState(false)
   const [autoSolveUsed, setAutoSolveUsed] = useState(false)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [validationMessage, setValidationMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [autoSolveSpeedState, setAutoSolveSpeedState] = useState<AutoSolveSpeed>(getAutoSolveSpeed())
   const [hideTimerState, setHideTimerState] = useState(getHideTimer())
-  const menuRef = useRef<HTMLDivElement>(null)
   
   // Track whether we've restored saved state (to prevent overwriting on initial load)
   const hasRestoredSavedState = useRef(false)
@@ -490,26 +479,26 @@ export default function Game() {
             
             for (let i = 0; i < 9; i++) {
               // Same row
-              newCandidates[row * 9 + i].delete(move.digit)
+              newCandidates[row * 9 + i]?.delete(move.digit)
               // Same column
-              newCandidates[i * 9 + col].delete(move.digit)
+              newCandidates[i * 9 + col]?.delete(move.digit)
               // Same box
               const br = boxRow + Math.floor(i / 3)
               const bc = boxCol + (i % 3)
-              newCandidates[br * 9 + bc].delete(move.digit)
+              newCandidates[br * 9 + bc]?.delete(move.digit)
             }
           }
         } else if (move.action === 'eliminate' && move.eliminations) {
           // For elimination moves, remove specific candidates
           for (const elim of move.eliminations) {
             const idx = elim.row * 9 + elim.col
-            newCandidates[idx].delete(elim.digit)
+            newCandidates[idx]?.delete(elim.digit)
           }
         } else if (move.action === 'candidate' && move.targets && move.targets.length > 0) {
           // For candidate fill moves, add the candidate
           for (const target of move.targets) {
             const idx = target.row * 9 + target.col
-            newCandidates[idx].add(move.digit)
+            newCandidates[idx]?.add(move.digit)
           }
         }
 
@@ -519,8 +508,9 @@ export default function Game() {
         
         if (showNotification) {
           // Show subtle hint notification
-          const techniqueName = move.technique === 'fill-candidate' 
-            ? `Added ${move.digit} to R${move.targets[0].row + 1}C${move.targets[0].col + 1}`
+          const firstTarget = move.targets[0]
+          const techniqueName = move.technique === 'fill-candidate' && firstTarget
+            ? `Added ${move.digit} to R${firstTarget.row + 1}C${firstTarget.col + 1}`
             : (data.move.technique || 'Hint')
           setValidationMessage({ 
             type: 'success', 
@@ -566,7 +556,7 @@ export default function Game() {
   const handleCellClick = useCallback((idx: number) => {
     // Given cells: just highlight the digit, don't select
     if (game.isGivenCell(idx)) {
-      const cellDigit = game.board[idx]
+      const cellDigit = game.board[idx] ?? null
       setHighlightedDigit(cellDigit)
       setEraseMode(false)
       setSelectedCell(null)
@@ -678,16 +668,16 @@ export default function Game() {
   const handleSubmit = useCallback(async () => {
     if (!puzzle) return
 
-    const score = {
+    const score: Score = {
       seed: puzzle.seed,
       difficulty: puzzle.difficulty,
       timeMs: timer.elapsedMs,
       hintsUsed: hintsUsed,
       mistakes: 0,
       completedAt: new Date().toISOString(),
-      encodedPuzzle: encodedPuzzle || undefined,
       autoFillUsed: autoFillUsed,
       autoSolveUsed: autoSolveUsed,
+      ...(encodedPuzzle ? { encodedPuzzle } : {}),
     }
 
     saveScore(score)
@@ -756,18 +746,6 @@ export default function Game() {
   // EFFECTS
   // ============================================================
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false)
-        setNewPuzzleMenuOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   // Clear selection when clicking on background (only deselect cell, keep digit highlight)
   useEffect(() => {
     const handleBackgroundClick = (e: MouseEvent) => {
@@ -792,7 +770,7 @@ export default function Game() {
 
       // Don't trigger shortcuts when modals are open
       if (showResultModal || historyOpen || techniqueModal || techniquesListOpen || 
-          solveConfirmOpen || showClearConfirm || menuOpen) {
+          solveConfirmOpen || showClearConfirm) {
         return
       }
 
@@ -861,7 +839,7 @@ export default function Game() {
   }, [
     handleUndo, handleRedo, handleNext, handleValidate,
     showResultModal, historyOpen, techniqueModal, techniquesListOpen,
-    solveConfirmOpen, showClearConfirm, menuOpen
+    solveConfirmOpen, showClearConfirm
   ])
 
   // Sync game state to global context for header
@@ -1049,459 +1027,44 @@ export default function Game() {
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--text)]">
       {/* Game Header */}
-      <header className="sticky top-0 z-40 bg-[var(--bg)]/95 backdrop-blur border-b border-[var(--border-light)]">
-        <div className="mx-auto max-w-4xl px-4 h-14 flex items-center justify-between">
-          {/* Left: Logo + Difficulty */}
-          <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2 font-semibold text-[var(--text)]">
-              <span className="text-xl">🧩</span>
-              <span className="hidden sm:inline">Sudoku</span>
-            </Link>
-            <DifficultyBadge difficulty={difficulty} size="sm" />
-          </div>
-
-          {/* Center: Timer (hidden when hideTimerState is true) */}
-          {!hideTimerState && (
-            <div className={`flex items-center gap-2 ${timer.isPausedDueToVisibility ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>
-              {timer.isPausedDueToVisibility ? (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              ) : (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              )}
-              <span className="font-mono text-sm">{timer.formatTime()}</span>
-              {timer.isPausedDueToVisibility && (
-                <span className="text-xs font-medium">PAUSED</span>
-              )}
-            </div>
-          )}
-
-          {/* Right: Actions */}
-          <div className="flex items-center gap-1">
-            {/* Speed controls + Stop button - shown when auto-solving */}
-            {autoSolve.isAutoSolving && (
-              <div className="flex items-center gap-1">
-                {/* Speed controls */}
-                <div className="flex items-center rounded-lg overflow-hidden border border-[var(--border-light)]">
-                  {([
-                    { speed: 'slow' as const, icon: (
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    ), label: '1x' },
-                    { speed: 'normal' as const, icon: (
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M4 5v14l8-7z"/>
-                        <path d="M12 5v14l8-7z"/>
-                      </svg>
-                    ), label: '2x' },
-                    { speed: 'fast' as const, icon: (
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M2 5v14l6-7z"/>
-                        <path d="M9 5v14l6-7z"/>
-                        <path d="M16 5v14l6-7z"/>
-                      </svg>
-                    ), label: '3x' },
-                    { speed: 'instant' as const, icon: (
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M2 5v14l5-7z"/>
-                        <path d="M8 5v14l5-7z"/>
-                        <path d="M14 5v14l5-7z"/>
-                        <rect x="20" y="5" width="2" height="14"/>
-                      </svg>
-                    ), label: 'Skip' },
-                  ]).map(({ speed, icon, label }) => (
-                    <button
-                      key={speed}
-                      onClick={() => {
-                        setAutoSolveSpeed(speed)
-                        setAutoSolveSpeedState(speed)
-                      }}
-                      title={label}
-                      className={`px-2 py-1.5 transition-colors ${
-                        autoSolveSpeedState === speed
-                          ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                          : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
-                      }`}
-                    >
-                      {icon}
-                    </button>
-                  ))}
-                </div>
-                {/* Pause/Resume button */}
-                <button
-                  onClick={autoSolve.togglePause}
-                  className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-                    autoSolve.isPaused
-                      ? 'bg-green-500 text-white hover:bg-green-600'
-                      : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] border border-[var(--border-light)]'
-                  }`}
-                  title={autoSolve.isPaused ? 'Resume' : 'Pause'}
-                >
-                  {autoSolve.isPaused ? (
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M8 5v14l11-7z"/>
-                    </svg>
-                  ) : (
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                      <rect x="6" y="4" width="4" height="16"/>
-                      <rect x="14" y="4" width="4" height="16"/>
-                    </svg>
-                  )}
-                </button>
-                {/* Stop button */}
-                <button
-                  onClick={autoSolve.stopAutoSolve}
-                  className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm bg-red-500 text-white hover:bg-red-600 transition-colors"
-                  title="Stop solving"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  <span className="hidden sm:inline">Stop</span>
-                </button>
-              </div>
-            )}
-
-            {/* Hint button */}
-            {!game.isComplete && !autoSolve.isAutoSolving && (
-              <button
-                onClick={handleNext}
-                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--btn-hover)] transition-colors"
-                title="Get a hint"
-              >
-                <span className="text-base">💡</span>
-                <span className="hidden sm:inline">Hint</span>
-              </button>
-            )}
-
-            {/* History button */}
-            <button
-              onClick={() => setHistoryOpen(true)}
-              className="relative flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
-              title="View move history"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="hidden sm:inline">History</span>
-              {game.history.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-[var(--btn-active-text)]">
-                  {game.history.length > MAX_HISTORY_BADGE_COUNT ? `${MAX_HISTORY_BADGE_COUNT}+` : game.history.length}
-                </span>
-              )}
-            </button>
-
-            {/* Share button - shown when puzzle is complete */}
-            {game.isComplete && (
-              <button
-                onClick={() => setShowResultModal(true)}
-                className="flex items-center gap-1 rounded-full bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-[var(--btn-active-text)] transition-opacity hover:opacity-90"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-                Share
-              </button>
-            )}
-
-            {/* Menu */}
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
-                title="Menu"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-
-              {menuOpen && (
-                <div className="absolute right-0 mt-2 w-52 rounded-lg bg-[var(--bg-secondary)] shadow-lg ring-1 ring-[var(--border-light)] py-1 z-50 max-h-[70vh] overflow-y-auto">
-                  {/* Primary Actions */}
-                  <div className="px-3 py-1.5">
-                    <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Actions</span>
-                  </div>
-                  <button
-                    onClick={() => { autoFillNotes(); setMenuOpen(false) }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Auto-fill Notes
-                  </button>
-                  <button
-                    onClick={() => { handleCheckNotes(); setMenuOpen(false) }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                    </svg>
-                    Check Notes
-                  </button>
-                  <button
-                    onClick={() => { game.clearCandidates(); setMenuOpen(false) }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    Clear Notes
-                  </button>
-                  <button
-                    onClick={() => { handleValidate(); setMenuOpen(false) }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Check Progress
-                  </button>
-                  {/* Solve with inline speed icons */}
-                  <div className="flex w-full items-center px-4 py-2 text-sm">
-                    <button
-                      onClick={() => { setSolveConfirmOpen(true); setMenuOpen(false) }}
-                      className="flex items-center gap-2 text-[var(--text)] hover:text-[var(--accent)]"
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      Solve
-                    </button>
-                    <div className="ml-auto flex gap-0.5">
-                      {([
-                        { speed: 'slow' as const, icon: (
-                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M8 5v14l11-7z"/>
-                          </svg>
-                        ), label: '1x' },
-                        { speed: 'normal' as const, icon: (
-                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M4 5v14l8-7z"/>
-                            <path d="M12 5v14l8-7z"/>
-                          </svg>
-                        ), label: '2x' },
-                        { speed: 'fast' as const, icon: (
-                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M2 5v14l6-7z"/>
-                            <path d="M9 5v14l6-7z"/>
-                            <path d="M16 5v14l6-7z"/>
-                          </svg>
-                        ), label: '3x' },
-                        { speed: 'instant' as const, icon: (
-                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M2 5v14l5-7z"/>
-                            <path d="M8 5v14l5-7z"/>
-                            <path d="M14 5v14l5-7z"/>
-                            <rect x="20" y="5" width="2" height="14"/>
-                          </svg>
-                        ), label: 'Skip' },
-                      ]).map(({ speed, icon, label }) => (
-                        <button
-                          key={speed}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setAutoSolveSpeed(speed)
-                            setAutoSolveSpeedState(speed)
-                            setMenuOpen(false)
-                            setSolveConfirmOpen(true)
-                          }}
-                          title={`${label} - Click to start`}
-                          className={`p-1 rounded ${
-                            autoSolveSpeedState === speed
-                              ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                              : 'text-[var(--text-muted)] hover:bg-[var(--btn-hover)] hover:text-[var(--text)]'
-                          }`}
-                        >
-                          {icon}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => { setShowClearConfirm(true); setMenuOpen(false) }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                  >
-                    {game.isComplete ? (
-                      <>
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Restart
-                      </>
-                    ) : (
-                      <>
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Clear All
-                      </>
-                    )}
-                  </button>
-
-                  <div className="my-1 border-t border-[var(--border-light)]" />
-
-                  {/* New Puzzle submenu */}
-                  <div className="relative group">
-                    <button
-                      onClick={() => setNewPuzzleMenuOpen(!newPuzzleMenuOpen)}
-                      className="flex w-full items-center justify-between px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                    >
-                      <span className="flex items-center gap-2">
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        New Puzzle
-                      </span>
-                      <svg className={`h-4 w-4 transition-transform ${newPuzzleMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                    {newPuzzleMenuOpen && (
-                      <div className="ml-4 mr-2 py-1">
-                        {['easy', 'medium', 'hard', 'extreme', 'impossible'].map((d) => (
-                          <button
-                            key={d}
-                            onClick={() => { window.location.href = `/game/P${Date.now()}?d=${d}` }}
-                            className="block w-full px-3 py-1.5 text-left text-sm capitalize text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                          >
-                            {d}
-                          </button>
-                        ))}
-                        <div className="my-1 border-t border-[var(--border-light)]" />
-                        <button
-                          onClick={() => { window.location.href = '/custom' }}
-                          className="block w-full px-3 py-1.5 text-left text-sm text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                        >
-                          Custom
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="my-1 border-t border-[var(--border-light)]" />
-
-                  {/* Settings Section */}
-                  <div className="px-3 py-1.5">
-                    <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Settings</span>
-                  </div>
-                  
-                  {/* Theme color selector with light/dark toggle */}
-                  <div className="flex items-center justify-between px-4 py-2">
-                    <button
-                      onClick={() => setMode(mode === 'light' ? 'dark' : 'light')}
-                      className="p-1.5 rounded-md text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
-                      title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                    >
-                      {mode === 'dark' ? (
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                      ) : (
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                        </svg>
-                      )}
-                    </button>
-                    <div className="flex gap-1.5">
-                      {(['blue', 'green', 'purple', 'orange', 'pink'] as ColorTheme[]).map((color) => (
-                        <button
-                          key={color}
-                          onClick={() => setColorTheme(color)}
-                          className={`w-5 h-5 rounded-full transition-transform ${
-                            color === 'blue' ? 'bg-blue-500' :
-                            color === 'green' ? 'bg-green-500' :
-                            color === 'purple' ? 'bg-purple-500' :
-                            color === 'orange' ? 'bg-orange-500' :
-                            'bg-pink-500'
-                          } ${
-                            colorTheme === color 
-                              ? 'ring-2 ring-offset-1 ring-[var(--text)] scale-110' 
-                              : 'hover:scale-110'
-                          }`}
-                          title={`${color} theme`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Font size selector - just A's in different sizes */}
-                  <div className="flex items-center justify-center gap-1 px-4 py-2">
-                    {fontSizes.map((size) => (
-                      <button
-                        key={size.key}
-                        onClick={() => setFontSize(size.key)}
-                        aria-label={`${size.key} text size`}
-                        className={`font-size-btn font-size-btn-${size.key} ${
-                          fontSize === size.key 
-                            ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
-                            : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
-                        }`}
-                      >
-                        {size.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Hide timer toggle */}
-                  <button
-                    onClick={() => {
-                      const newValue = !hideTimerState
-                      setHideTimerState(newValue)
-                      setHideTimer(newValue)
-                    }}
-                    className="flex w-full items-center justify-between px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                  >
-                    <div className="flex items-center gap-2">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        {hideTimerState ? (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        ) : (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        )}
-                      </svg>
-                      <span>{hideTimerState ? 'Show Timer' : 'Hide Timer'}</span>
-                    </div>
-                    <div className={`w-8 h-4 rounded-full transition-colors ${hideTimerState ? 'bg-[var(--accent)]' : 'bg-[var(--border-light)]'}`}>
-                      <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${hideTimerState ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </div>
-                  </button>
-
-                  <div className="my-1 border-t border-[var(--border-light)]" />
-
-                  {/* More Options */}
-                  <div className="px-3 py-1.5">
-                    <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">More</span>
-                  </div>
-                  <button
-                    onClick={() => { setTechniquesListOpen(true); setMenuOpen(false) }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                    Learn Techniques
-                  </button>
-                  <button
-                    onClick={() => { handleReportBug(); setMenuOpen(false) }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-muted)] hover:bg-[var(--btn-hover)]"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    {bugReportCopied ? 'Copied!' : 'Report Bug'}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <GameHeader
+        difficulty={difficulty}
+        formatTime={timer.formatTime}
+        isPausedDueToVisibility={timer.isPausedDueToVisibility}
+        hideTimer={hideTimerState}
+        isComplete={game.isComplete}
+        historyCount={game.history.length}
+        isAutoSolving={autoSolve.isAutoSolving}
+        isPaused={autoSolve.isPaused}
+        autoSolveSpeed={autoSolveSpeedState}
+        onTogglePause={autoSolve.togglePause}
+        onStopAutoSolve={autoSolve.stopAutoSolve}
+        onSetAutoSolveSpeed={setAutoSolveSpeedState}
+        onHint={handleNext}
+        onHistoryOpen={() => setHistoryOpen(true)}
+        onShowResult={() => setShowResultModal(true)}
+        onAutoFillNotes={autoFillNotes}
+        onCheckNotes={handleCheckNotes}
+        onClearNotes={game.clearCandidates}
+        onValidate={handleValidate}
+        onSolve={() => setSolveConfirmOpen(true)}
+        onClearAll={() => setShowClearConfirm(true)}
+        onTechniquesList={() => setTechniquesListOpen(true)}
+        onReportBug={handleReportBug}
+        bugReportCopied={bugReportCopied}
+        mode={mode}
+        colorTheme={colorTheme}
+        fontSize={fontSize}
+        hideTimerState={hideTimerState}
+        onSetMode={setMode}
+        onSetColorTheme={setColorTheme}
+        onSetFontSize={setFontSize}
+        onToggleHideTimer={() => {
+          const newValue = !hideTimerState
+          setHideTimerState(newValue)
+          setHideTimer(newValue)
+        }}
+      />
 
       {/* Validation message toast */}
       {validationMessage && (
@@ -1609,109 +1172,21 @@ export default function Game() {
         onClose={() => setTechniquesListOpen(false)}
       />
 
-      {/* Solve Confirmation Dialog */}
-      {solveConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setSolveConfirmOpen(false)}
-          />
-          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-[var(--bg)] p-6 shadow-2xl">
-            <h2 className="mb-2 text-lg font-bold text-[var(--text)]">Solve Puzzle?</h2>
-            <p className="mb-6 text-sm text-[var(--text-muted)]">
-              This will automatically solve the entire puzzle using logical techniques. Are you sure?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setSolveConfirmOpen(false)}
-                className="flex-1 rounded-lg border border-[var(--border-light)] py-2 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setSolveConfirmOpen(false)
-                  handleSolve()
-                }}
-                className="flex-1 rounded-lg bg-[var(--accent)] py-2 font-medium text-[var(--btn-active-text)] transition-colors hover:opacity-90"
-              >
-                Solve
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Clear All / Restart Confirmation Dialog */}
-      {showClearConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowClearConfirm(false)}
-          />
-          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-[var(--bg)] p-6 shadow-2xl">
-            <h2 className="mb-2 text-lg font-bold text-[var(--text)]">
-              {game.isComplete ? 'Restart Puzzle?' : 'Clear All Entries?'}
-            </h2>
-            <p className="mb-6 text-sm text-[var(--text-muted)]">
-              {game.isComplete 
-                ? 'This will reset the puzzle to its initial state and restart the timer from zero.'
-                : 'This will remove all your entered numbers and notes, but keep your timer running.'
-              }
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowClearConfirm(false)}
-                className="flex-1 rounded-lg border border-[var(--border-light)] py-2 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowClearConfirm(false)
-                  if (game.isComplete) {
-                    handleRestart()
-                  } else {
-                    handleClearAll()
-                  }
-                }}
-                className="flex-1 rounded-lg bg-[var(--accent)] py-2 font-medium text-[var(--btn-active-text)] transition-colors hover:opacity-90"
-              >
-                {game.isComplete ? 'Restart' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Show Solution Confirmation Dialog */}
-      {showSolutionConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-[var(--bg)] p-6 shadow-2xl">
-            <h2 className="mb-2 text-lg font-bold text-[var(--text)]">Show Solution?</h2>
-            <p className="mb-6 text-sm text-[var(--text-muted)]">
-              {unpinpointableErrorInfo?.message || "Hmm, I couldn't pinpoint the error. One of your entries might need checking."}
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowSolutionConfirm(false)}
-                className="flex-1 rounded-lg border border-[var(--border-light)] py-2 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
-              >
-                Let Me Fix It
-              </button>
-              <button
-                onClick={() => {
-                  setShowSolutionConfirm(false)
-                  autoSolve.solveFromGivens()
-                }}
-                className="flex-1 rounded-lg bg-[var(--accent)] py-2 font-medium text-[var(--btn-active-text)] transition-colors hover:opacity-90"
-              >
-                Show Solution
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirmation Dialogs */}
+      <GameModals
+        solveConfirmOpen={solveConfirmOpen}
+        setSolveConfirmOpen={setSolveConfirmOpen}
+        onSolve={handleSolve}
+        showClearConfirm={showClearConfirm}
+        setShowClearConfirm={setShowClearConfirm}
+        isComplete={game.isComplete}
+        onRestart={handleRestart}
+        onClearAll={handleClearAll}
+        showSolutionConfirm={showSolutionConfirm}
+        setShowSolutionConfirm={setShowSolutionConfirm}
+        unpinpointableErrorMessage={unpinpointableErrorInfo?.message || null}
+        onShowSolution={autoSolve.solveFromGivens}
+      />
 
       {/* Onboarding Modal - shown for first-time users */}
       <OnboardingModal isOpen={showOnboarding} onClose={closeOnboarding} />

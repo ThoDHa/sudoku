@@ -5,7 +5,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash/fnv"
+	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +39,30 @@ func RegisterRoutes(r *gin.Engine, c *config.Config) {
 		api.POST("/validate", validateBoardHandler)
 		api.POST("/custom/validate", customValidateHandler)
 	}
+}
+
+// validatePuzzleString checks if a puzzle string is valid
+// Returns nil if valid, error with details if invalid
+func validatePuzzleString(puzzle string) error {
+	if len(puzzle) != 81 {
+		return fmt.Errorf("puzzle must be exactly 81 characters, got %d", len(puzzle))
+	}
+	
+	clueCount := 0
+	for i, c := range puzzle {
+		if c < '0' || c > '9' {
+			return fmt.Errorf("invalid character '%c' at position %d", c, i)
+		}
+		if c != '0' {
+			clueCount++
+		}
+	}
+	
+	if clueCount < 17 {
+		return fmt.Errorf("puzzle must have at least 17 clues for a unique solution, got %d", clueCount)
+	}
+	
+	return nil
 }
 
 func healthHandler(c *gin.Context) {
@@ -187,6 +213,7 @@ func puzzleAnalyzeHandler(c *gin.Context) {
 // Cache for technique -> puzzle mappings to avoid re-analyzing
 // This is populated on-demand as puzzles are analyzed
 var practiceCache = struct {
+	sync.RWMutex
 	// technique slug -> list of (puzzle index, difficulty) pairs
 	puzzles map[string][]practicePuzzle
 }{
@@ -268,8 +295,12 @@ func practiceHandler(c *gin.Context) {
 		difficulties = []string{"medium", "hard", "extreme", "impossible"}
 	}
 	
-	// Check cache first
-	if cached, ok := practiceCache.puzzles[technique]; ok && len(cached) > 0 {
+	// Check cache first (thread-safe read)
+	practiceCache.RLock()
+	cached := practiceCache.puzzles[technique]
+	practiceCache.RUnlock()
+	
+	if len(cached) > 0 {
 		// Pick a random one from cache using current time
 		idx := int(time.Now().UnixNano()) % len(cached)
 		p := cached[idx]
@@ -316,11 +347,13 @@ func practiceHandler(c *gin.Context) {
 			
 			// Check if this technique is used
 			if count, ok := techniqueCounts[technique]; ok && count > 0 {
-				// Found one! Cache it and return
+				// Found one! Cache it (thread-safe write) and return
+				practiceCache.Lock()
 				practiceCache.puzzles[technique] = append(practiceCache.puzzles[technique], practicePuzzle{
 					index:      idx,
 					difficulty: diff,
 				})
+				practiceCache.Unlock()
 				
 				seed := fmt.Sprintf("practice-%s-%d", technique, idx)
 				c.JSON(http.StatusOK, gin.H{
@@ -398,6 +431,7 @@ func sessionStartHandler(c *gin.Context) {
 
 	token, err := createToken(cfg.JWTSecret, session)
 	if err != nil {
+		log.Printf("ERROR [sessionStart]: failed to create token: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create token"})
 		return
 	}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { formatTime, generateShareText, generatePuzzleUrl } from '../lib/scores'
+import { formatTime, generateShareText, generatePuzzleUrl, type Score } from '../lib/scores'
 import { DIFFICULTIES } from '../lib/constants'
 import { CloseIcon } from './ui'
 import DifficultyBadge from './DifficultyBadge'
@@ -60,16 +60,16 @@ export default function ResultModal({
 
   if (!isOpen) return null
 
-  const score = {
+  const score: Score = {
     seed,
     difficulty,
     timeMs,
     hintsUsed,
     mistakes: 0,
     completedAt: new Date().toISOString(),
-    encodedPuzzle: encodedPuzzle || undefined,
     autoFillUsed: autoFillUsed || false,
     autoSolveUsed: autoSolveUsed || false,
+    ...(encodedPuzzle ? { encodedPuzzle } : {}),
   }
 
   const baseUrl = window.location.origin
@@ -167,6 +167,7 @@ export default function ResultModal({
             <div className="grid grid-cols-3 gap-2">
               {DIFFICULTIES.slice(0, 3).map((d) => {
                 const colors = difficultyColors[d]
+                if (!colors) return null
                 const isSelected = selectedDifficulty === d
                 return (
                   <button
@@ -186,6 +187,7 @@ export default function ResultModal({
             <div className="flex justify-center gap-2">
               {DIFFICULTIES.slice(3).map((d) => {
                 const colors = difficultyColors[d]
+                if (!colors) return null
                 const isSelected = selectedDifficulty === d
                 return (
                   <button
