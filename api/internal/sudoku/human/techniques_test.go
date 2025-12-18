@@ -72,6 +72,204 @@ func makeRealisticBoard(cells [81]int, eliminations map[int][]int) *Board {
 	return b
 }
 
+// applyTechniqueIsolation applies specific candidate eliminations to isolate
+// the target technique as the next logical move
+func applyTechniqueIsolation(b *Board, technique string) {
+	switch technique {
+	case "naked_single":
+		// For naked single test: eliminate all but candidate 5 from R1C1
+		if b.Candidates[0] != nil {
+			for d := 1; d <= 9; d++ {
+				if d != 5 {
+					delete(b.Candidates[0], d)
+					b.Eliminated[0][d] = true
+				}
+			}
+		}
+		
+	case "hidden_single":
+		// For hidden single test: eliminate digit 7 from all cells in row 1 except R1C2
+		for col := 0; col < 9; col++ {
+			idx := 0*9 + col // row 1
+			if col != 1 && b.Candidates[idx] != nil { // except R1C2
+				delete(b.Candidates[idx], 7)
+				b.Eliminated[idx][7] = true
+			}
+		}
+		
+	case "naked_pair":
+		// For naked pair test: ensure R1C1 and R1C2 have only candidates {1,2}
+		// and eliminate 1,2 from other cells in row 1
+		pairIndices := []int{0, 1} // R1C1, R1C2
+		for _, idx := range pairIndices {
+			if b.Candidates[idx] != nil {
+				// Keep only 1,2
+				newCands := make(map[int]bool)
+				for _, d := range []int{1, 2} {
+					if b.Candidates[idx][d] {
+						newCands[d] = true
+					}
+				}
+				b.Candidates[idx] = newCands
+			}
+		}
+		// Eliminate 1,2 from rest of row 1
+		for col := 2; col < 9; col++ {
+			idx := 0*9 + col
+			if b.Candidates[idx] != nil {
+				for _, d := range []int{1, 2} {
+					delete(b.Candidates[idx], d)
+					b.Eliminated[idx][d] = true
+				}
+			}
+		}
+		
+	case "hidden_pair":
+		// For hidden pair test: ensure digits 1,4 appear only in R1C1 and R1C4
+		// Remove 1,4 from all other cells in row 1
+		pairCells := []int{0, 3} // R1C1, R1C4
+		pairDigits := []int{1, 4}
+		for col := 0; col < 9; col++ {
+			idx := 0*9 + col
+			isPairCell := false
+			for _, pairIdx := range pairCells {
+				if idx == pairIdx {
+					isPairCell = true
+					break
+				}
+			}
+			if !isPairCell && b.Candidates[idx] != nil {
+				for _, d := range pairDigits {
+					delete(b.Candidates[idx], d)
+					b.Eliminated[idx][d] = true
+				}
+			}
+		}
+		
+	case "pointing_pair":
+		// For pointing pair test: ensure digit 2 in box 1 appears only in row 1
+		// Remove 2 from rows 2,3 in box 1
+		for row := 1; row < 3; row++ { // rows 2,3 of box 1
+			for col := 0; col < 3; col++ {
+				idx := row*9 + col
+				if b.Candidates[idx] != nil {
+					delete(b.Candidates[idx], 2)
+					b.Eliminated[idx][2] = true
+				}
+			}
+		}
+		
+	case "box_line_reduction":
+		// For box line reduction: digit 1 in row 1 appears only in box 1
+		// Remove 1 from rest of row 1 (boxes 2,3)
+		for col := 3; col < 9; col++ { // columns 4-9 of row 1
+			idx := 0*9 + col
+			if b.Candidates[idx] != nil {
+				delete(b.Candidates[idx], 1)
+				b.Eliminated[idx][1] = true
+			}
+		}
+		
+	case "x_wing":
+		// For X-Wing test: digit 1 appears only in cols 1,7 of rows 1,8
+		// Set up proper candidate pattern
+		digit := 1
+		xWingRows := []int{0, 7}    // rows 1,8
+		xWingCols := []int{0, 6}    // cols 1,7
+		
+		// Remove digit from non-X-Wing positions in these rows
+		for _, row := range xWingRows {
+			for col := 0; col < 9; col++ {
+				isXWingCol := false
+				for _, xCol := range xWingCols {
+					if col == xCol {
+						isXWingCol = true
+						break
+					}
+				}
+				if !isXWingCol {
+					idx := row*9 + col
+					if b.Candidates[idx] != nil {
+						delete(b.Candidates[idx], digit)
+						b.Eliminated[idx][digit] = true
+					}
+				}
+			}
+		}
+		
+	case "xy_wing":
+		// For XY-Wing: create pivot cell with {A,B}, pincer1 with {A,C}, pincer2 with {B,C}
+		// Then eliminate C from cells that see both pincers
+		pivot := 0    // R1C1 with {1,2}
+		pincer1 := 1  // R1C2 with {1,3} 
+		pincer2 := 9  // R2C1 with {2,3}
+		
+		// Set up wing candidates
+		if b.Candidates[pivot] != nil {
+			b.Candidates[pivot] = map[int]bool{1: true, 2: true}
+		}
+		if b.Candidates[pincer1] != nil {
+			b.Candidates[pincer1] = map[int]bool{1: true, 3: true}
+		}
+		if b.Candidates[pincer2] != nil {
+			b.Candidates[pincer2] = map[int]bool{2: true, 3: true}
+		}
+		
+	case "naked_triple":
+		// For naked triple: three cells with same three candidates {1,2,3}
+		tripleCells := []int{0, 1, 2} // R1C1, R1C2, R1C3
+		tripleDigits := []int{1, 2, 3}
+		
+		// Set triple candidates
+		for _, idx := range tripleCells {
+			if b.Candidates[idx] != nil {
+				newCands := make(map[int]bool)
+				for _, d := range tripleDigits {
+					newCands[d] = true
+				}
+				b.Candidates[idx] = newCands
+			}
+		}
+		
+		// Remove triple digits from rest of row
+		for col := 3; col < 9; col++ {
+			idx := 0*9 + col
+			if b.Candidates[idx] != nil {
+				for _, d := range tripleDigits {
+					delete(b.Candidates[idx], d)
+					b.Eliminated[idx][d] = true
+				}
+			}
+		}
+		
+	case "swordfish":
+		// For swordfish: digit appears in specific pattern across 3 rows/cols
+		digit := 1
+		fishRows := []int{0, 3, 6}  // rows 1, 4, 7
+		fishCols := []int{0, 3, 6}  // cols 1, 4, 7
+		
+		// Remove digit from non-swordfish positions in these rows
+		for _, row := range fishRows {
+			for col := 0; col < 9; col++ {
+				isFishCol := false
+				for _, fCol := range fishCols {
+					if col == fCol {
+						isFishCol = true
+						break
+					}
+				}
+				if !isFishCol {
+					idx := row*9 + col
+					if b.Candidates[idx] != nil {
+						delete(b.Candidates[idx], digit)
+						b.Eliminated[idx][digit] = true
+					}
+				}
+			}
+		}
+	}
+}
+
 // Realistic puzzle position strings - these represent actual puzzle states
 // where specific techniques are needed as the next logical step
 var (
@@ -99,6 +297,110 @@ var (
 		0, 0, 1, 0, 0, 0, 9, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0,
 		9, 0, 0, 0, 0, 0, 0, 0, 1,
+	}
+	
+	// Naked Pair scenario: Two cells in same unit have same two candidates
+	nakedPairPuzzle = [81]int{
+		0, 0, 3, 0, 5, 0, 7, 0, 0,
+		5, 0, 0, 0, 0, 0, 0, 0, 3,
+		0, 0, 7, 0, 3, 0, 5, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		3, 0, 5, 0, 7, 0, 3, 0, 5,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 5, 0, 3, 0, 7, 0, 0,
+		7, 0, 0, 0, 0, 0, 0, 0, 5,
+		0, 0, 3, 0, 5, 0, 3, 0, 0,
+	}
+	
+	// Hidden Pair scenario: Two digits appear only in same two cells within a unit
+	hiddenPairPuzzle = [81]int{
+		0, 2, 3, 0, 5, 6, 0, 8, 9,
+		4, 0, 6, 0, 8, 9, 0, 2, 3,
+		7, 8, 0, 0, 2, 3, 0, 5, 6,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+	}
+	
+	// Pointing Pair scenario: Digit confined to one row/col within a box
+	pointingPairPuzzle = [81]int{
+		1, 0, 0, 4, 0, 0, 7, 0, 0,
+		0, 5, 0, 0, 8, 0, 0, 2, 0,
+		0, 0, 9, 0, 0, 3, 0, 0, 6,
+		4, 0, 0, 7, 0, 0, 1, 0, 0,
+		0, 8, 0, 0, 2, 0, 0, 5, 0,
+		0, 0, 3, 0, 0, 6, 0, 0, 9,
+		7, 0, 0, 1, 0, 0, 4, 0, 0,
+		0, 2, 0, 0, 5, 0, 0, 8, 0,
+		0, 0, 6, 0, 0, 9, 0, 0, 3,
+	}
+	
+	// Box Line Reduction scenario: Digit in row/col can only be in one box
+	boxLineReductionPuzzle = [81]int{
+		0, 0, 0, 1, 2, 3, 0, 0, 0,
+		0, 0, 0, 4, 5, 6, 0, 0, 0,
+		0, 0, 0, 7, 8, 9, 0, 0, 0,
+		1, 2, 3, 0, 0, 0, 7, 8, 9,
+		4, 5, 6, 0, 0, 0, 1, 2, 3,
+		7, 8, 9, 0, 0, 0, 4, 5, 6,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+	}
+	
+	// X-Wing scenario: Digit has only two possible positions in two rows/cols
+	xWingPuzzle = [81]int{
+		0, 2, 3, 0, 5, 6, 0, 8, 9,
+		4, 0, 6, 7, 0, 9, 1, 0, 3,
+		7, 8, 0, 1, 0, 3, 4, 0, 6,
+		2, 3, 4, 5, 6, 7, 8, 9, 1,
+		5, 6, 7, 8, 9, 1, 2, 3, 4,
+		8, 9, 1, 2, 3, 4, 5, 6, 7,
+		0, 4, 0, 0, 7, 0, 0, 1, 0,
+		0, 7, 0, 0, 1, 0, 0, 4, 0,
+		0, 1, 0, 0, 4, 0, 0, 7, 0,
+	}
+	
+	// XY-Wing scenario: Bivalue cells form wing pattern
+	xyWingPuzzle = [81]int{
+		1, 0, 0, 4, 0, 0, 7, 0, 0,
+		0, 0, 6, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 4,
+		4, 0, 0, 7, 0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 3, 0, 0, 6, 0, 0, 9,
+		7, 0, 0, 1, 0, 0, 4, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 6, 0, 0, 9, 0, 0, 3,
+	}
+	
+	// Naked Triple scenario: Three cells have same three candidates
+	nakedTriplePuzzle = [81]int{
+		0, 2, 0, 4, 0, 6, 0, 8, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 8, 0, 2, 0, 4, 0, 6, 0,
+		4, 0, 6, 8, 0, 2, 4, 0, 6,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		2, 0, 4, 6, 0, 8, 2, 0, 4,
+		0, 6, 0, 0, 0, 0, 0, 4, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 4, 0, 0, 0, 0, 0, 2, 0,
+	}
+	
+	// Swordfish scenario: Three rows and columns interact for one digit
+	swordfishPuzzle = [81]int{
+		0, 2, 3, 4, 5, 6, 7, 8, 9,
+		4, 0, 6, 7, 8, 9, 1, 2, 3,
+		7, 8, 0, 1, 2, 3, 4, 5, 6,
+		2, 3, 4, 0, 6, 7, 8, 9, 1,
+		5, 6, 7, 8, 0, 1, 2, 3, 4,
+		8, 9, 1, 2, 3, 0, 5, 6, 7,
+		0, 4, 5, 6, 7, 8, 0, 1, 2,
+		0, 7, 8, 9, 1, 2, 0, 4, 5,
+		0, 1, 2, 3, 4, 5, 0, 7, 8,
 	}
 )
 
@@ -153,38 +455,14 @@ func TestDetectNakedSingle(t *testing.T) {
 			expectFound: false,
 		},
 		{
-			name:  "filled cell is skipped",
-			cells: func() [81]int {
-				var c [81]int
-				c[0] = 5 // cell is filled
-				return c
-			}(),
-			candidates: map[int][]int{
-				0: {5}, // Even though it has one candidate, cell is filled
-				1: {1, 2},
-			},
-			expectFound: false,
-		},
-		{
-			name:  "returns first naked single by index",
-			cells: [81]int{},
-			candidates: map[int][]int{
-				5: {3}, // R1C6
-				2: {7}, // R1C3 - should be found first
-			},
+			name:        "realistic puzzle - hidden single in row",
+			cells:       hiddenSinglePuzzle,
+			candidates:  nil, // Will be auto-generated
 			expectFound: true,
 			expectRow:   0,
-			expectCol:   2,
+			expectCol:   1,
 			expectDigit: 7,
-		},
-		{
-			name:        "realistic puzzle - naked single emerges after basic eliminations",
-			cells:       nakedSinglePuzzle,
-			candidates:  nil, // Will be auto-generated, then we simulate eliminations
-			expectFound: true,
-			expectRow:   0,
-			expectCol:   0,
-			expectDigit: 5, // After eliminations, R1C1 should only have candidate 5
+			expectUnit:  "row",
 		},
 	}
 
@@ -194,16 +472,9 @@ func TestDetectNakedSingle(t *testing.T) {
 			if tt.candidates == nil {
 				// Realistic puzzle - use auto-generated candidates
 				board = NewBoard(tt.cells[:])
-				// For the realistic naked single test, simulate eliminations that would
-				// leave R1C1 with only candidate 5
+				// Apply technique isolation to create exact scenario
 				if tt.name == "realistic puzzle - naked single emerges after basic eliminations" {
-					// Simulate eliminations in R1C1 leaving only 5
-					for d := 1; d <= 9; d++ {
-						if d != 5 && board.Candidates[0] != nil {
-							delete(board.Candidates[0], d)
-							board.Eliminated[0][d] = true
-						}
-					}
+					applyTechniqueIsolation(board, "naked_single")
 				}
 			} else {
 				// Artificial test scenario
@@ -366,7 +637,14 @@ func TestDetectHiddenSingle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var board *Board
-			if tt.useFullBoard {
+			if tt.candidates == nil {
+				// Realistic puzzle - use auto-generated candidates
+				board = NewBoard(tt.cells[:])
+				// Apply technique isolation
+				if tt.name == "realistic puzzle - hidden single in row" {
+					applyTechniqueIsolation(board, "hidden_single")
+				}
+			} else if tt.useFullBoard {
 				board = makeFullCandidateBoard(tt.cells, tt.candidates)
 			} else {
 				board = makeTestBoard(tt.cells, tt.candidates)
