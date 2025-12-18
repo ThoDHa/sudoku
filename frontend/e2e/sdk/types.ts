@@ -85,6 +85,17 @@ export interface AnalyzeResponse {
   techniques: Record<string, number>;
 }
 
+export interface PracticeResponse {
+  seed: string;
+  difficulty: string;
+  givens: Board;
+  technique: string;
+  puzzle_index: number;
+  cached: boolean;
+  error?: string;
+  message?: string;
+}
+
 export interface SessionStartResponse {
   token: string;
   puzzle_id: string;

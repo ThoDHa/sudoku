@@ -22,7 +22,7 @@ import {
   STORAGE_KEYS,
   MAX_HISTORY_BADGE_COUNT,
 } from '../lib/constants'
-import { getAutoSolveSpeed, setAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS } from '../lib/preferences'
+import { getAutoSolveSpeed, setAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
 
 // Type for saved game state in localStorage
 interface SavedGameState {
@@ -104,6 +104,7 @@ export default function Game() {
   const [hintsUsed, setHintsUsed] = useState(0)
   const [validationMessage, setValidationMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [autoSolveSpeedState, setAutoSolveSpeedState] = useState<AutoSolveSpeed>(getAutoSolveSpeed())
+  const [hideTimerState, setHideTimerState] = useState(getHideTimer())
   const menuRef = useRef<HTMLDivElement>(null)
   
   // Track whether we've restored saved state (to prevent overwriting on initial load)
@@ -1059,22 +1060,24 @@ export default function Game() {
             <DifficultyBadge difficulty={difficulty} size="sm" />
           </div>
 
-          {/* Center: Timer */}
-          <div className={`flex items-center gap-2 ${timer.isPausedDueToVisibility ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>
-            {timer.isPausedDueToVisibility ? (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            ) : (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
-            <span className="font-mono text-sm">{timer.formatTime()}</span>
-            {timer.isPausedDueToVisibility && (
-              <span className="text-xs font-medium">PAUSED</span>
-            )}
-          </div>
+          {/* Center: Timer (hidden when hideTimerState is true) */}
+          {!hideTimerState && (
+            <div className={`flex items-center gap-2 ${timer.isPausedDueToVisibility ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>
+              {timer.isPausedDueToVisibility ? (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              <span className="font-mono text-sm">{timer.formatTime()}</span>
+              {timer.isPausedDueToVisibility && (
+                <span className="text-xs font-medium">PAUSED</span>
+              )}
+            </div>
+          )}
 
           {/* Right: Actions */}
           <div className="flex items-center gap-1">
@@ -1444,6 +1447,30 @@ export default function Game() {
                       </button>
                     ))}
                   </div>
+
+                  {/* Hide timer toggle */}
+                  <button
+                    onClick={() => {
+                      const newValue = !hideTimerState
+                      setHideTimerState(newValue)
+                      setHideTimer(newValue)
+                    }}
+                    className="flex w-full items-center justify-between px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        {hideTimerState ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        )}
+                      </svg>
+                      <span>{hideTimerState ? 'Show Timer' : 'Hide Timer'}</span>
+                    </div>
+                    <div className={`w-8 h-4 rounded-full transition-colors ${hideTimerState ? 'bg-[var(--accent)]' : 'bg-[var(--border-light)]'}`}>
+                      <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${hideTimerState ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </div>
+                  </button>
 
                   <div className="my-1 border-t border-[var(--border-light)]" />
 

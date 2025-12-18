@@ -25,11 +25,14 @@ export interface UserPreferences {
   homepageMode: HomepageMode
   // Auto-solve playback speed
   autoSolveSpeed: AutoSolveSpeed
+  // Whether to hide the timer during gameplay
+  hideTimer: boolean
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   homepageMode: 'daily',
   autoSolveSpeed: 'fast',
+  hideTimer: false,
 }
 
 export function getPreferences(): UserPreferences {
@@ -68,4 +71,12 @@ export function setAutoSolveSpeed(speed: AutoSolveSpeed): void {
 
 export function getAutoSolveDelay(): number {
   return AUTO_SOLVE_SPEEDS[getAutoSolveSpeed()]
+}
+
+export function getHideTimer(): boolean {
+  return getPreferences().hideTimer
+}
+
+export function setHideTimer(hide: boolean): void {
+  setPreferences({ hideTimer: hide })
 }

@@ -16,6 +16,19 @@ export interface TechniqueDiagram {
   highlightCols?: number[]
 }
 
+// Animation step for animated diagrams
+export interface DiagramAnimationStep {
+  cells: DiagramCell[]
+  description: string  // Brief text explaining this step
+}
+
+// Animated diagram with multiple steps
+export interface AnimatedTechniqueDiagram {
+  steps: DiagramAnimationStep[]
+  highlightRows?: number[]
+  highlightCols?: number[]
+}
+
 // Subsection for techniques with multiple variations (e.g., Unique Rectangle types)
 export interface TechniqueSubsection {
   title: string
@@ -32,6 +45,7 @@ export interface TechniqueInfo {
   description: string
   example: string
   diagram?: TechniqueDiagram
+  animatedDiagram?: AnimatedTechniqueDiagram  // Optional animated version
   relatedTechniques?: string[]
   subsections?: TechniqueSubsection[]  // For techniques with multiple variations
   // Computed/alias properties for backward compatibility with Technique.tsx
@@ -59,6 +73,52 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 0, col: 7, value: 8 },
         { row: 0, col: 8, value: 9 },
       ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Start with all candidates in the cell',
+          cells: [
+            { row: 0, col: 0, value: 1 },
+            { row: 0, col: 1, value: 2 },
+            { row: 0, col: 2, value: 3 },
+            { row: 0, col: 3, value: 4 },
+            { row: 0, col: 4, candidates: [1, 2, 3, 4, 5, 6, 7, 8, 9], highlight: 'primary' },
+            { row: 0, col: 5, value: 5 },
+            { row: 0, col: 6, value: 6 },
+            { row: 0, col: 7, value: 8 },
+            { row: 0, col: 8, value: 9 },
+          ]
+        },
+        {
+          description: 'Eliminate digits already in the row (1-6, 8-9)',
+          cells: [
+            { row: 0, col: 0, value: 1, highlight: 'secondary' },
+            { row: 0, col: 1, value: 2, highlight: 'secondary' },
+            { row: 0, col: 2, value: 3, highlight: 'secondary' },
+            { row: 0, col: 3, value: 4, highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [1, 2, 3, 4, 5, 6, 7, 8, 9], eliminatedCandidates: [1, 2, 3, 4, 5, 6, 8, 9], highlight: 'primary' },
+            { row: 0, col: 5, value: 5, highlight: 'secondary' },
+            { row: 0, col: 6, value: 6, highlight: 'secondary' },
+            { row: 0, col: 7, value: 8, highlight: 'secondary' },
+            { row: 0, col: 8, value: 9, highlight: 'secondary' },
+          ]
+        },
+        {
+          description: 'Only 7 remains - place it!',
+          cells: [
+            { row: 0, col: 0, value: 1 },
+            { row: 0, col: 1, value: 2 },
+            { row: 0, col: 2, value: 3 },
+            { row: 0, col: 3, value: 4 },
+            { row: 0, col: 4, value: 7, highlight: 'primary' },
+            { row: 0, col: 5, value: 5 },
+            { row: 0, col: 6, value: 6 },
+            { row: 0, col: 7, value: 8 },
+            { row: 0, col: 8, value: 9 },
+          ]
+        }
+      ]
     }
   },
   {
@@ -78,6 +138,52 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 2, col: 0, value: 9 },
         { row: 2, col: 1, candidates: [1, 4, 7], highlight: 'secondary' },
         { row: 2, col: 2, candidates: [3, 7], highlight: 'secondary' },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Look at Box 1 - where can 5 go?',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2], highlight: 'secondary' },
+            { row: 0, col: 1, candidates: [2, 3], highlight: 'secondary' },
+            { row: 0, col: 2, candidates: [3, 5, 7], highlight: 'secondary' },
+            { row: 1, col: 0, value: 6 },
+            { row: 1, col: 1, candidates: [1, 4], highlight: 'secondary' },
+            { row: 1, col: 2, value: 8 },
+            { row: 2, col: 0, value: 9 },
+            { row: 2, col: 1, candidates: [1, 4, 7], highlight: 'secondary' },
+            { row: 2, col: 2, candidates: [3, 7], highlight: 'secondary' },
+          ]
+        },
+        {
+          description: 'Scan all cells in the box for candidate 5',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2] },
+            { row: 0, col: 1, candidates: [2, 3] },
+            { row: 0, col: 2, candidates: [3, 5, 7], highlight: 'primary' },
+            { row: 1, col: 0, value: 6 },
+            { row: 1, col: 1, candidates: [1, 4] },
+            { row: 1, col: 2, value: 8 },
+            { row: 2, col: 0, value: 9 },
+            { row: 2, col: 1, candidates: [1, 4, 7] },
+            { row: 2, col: 2, candidates: [3, 7] },
+          ]
+        },
+        {
+          description: '5 can only go in R1C3 - place it!',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2] },
+            { row: 0, col: 1, candidates: [2, 3] },
+            { row: 0, col: 2, value: 5, highlight: 'primary' },
+            { row: 1, col: 0, value: 6 },
+            { row: 1, col: 1, candidates: [1, 4] },
+            { row: 1, col: 2, value: 8 },
+            { row: 2, col: 0, value: 9 },
+            { row: 2, col: 1, candidates: [1, 4, 7] },
+            { row: 2, col: 2, candidates: [3, 7] },
+          ]
+        }
       ]
     }
   },

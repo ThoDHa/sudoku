@@ -29,6 +29,7 @@ func RegisterRoutes(r *gin.Engine, c *config.Config) {
 		api.GET("/daily", dailyHandler)
 		api.GET("/puzzle/:seed", puzzleHandler)
 		api.GET("/puzzle/:seed/analyze", puzzleAnalyzeHandler)
+		api.GET("/practice/:technique", practiceHandler)
 		api.POST("/session/start", sessionStartHandler)
 		api.POST("/solve/next", solveNextHandler)
 		api.POST("/solve/all", solveAllHandler)
@@ -180,6 +181,166 @@ func puzzleAnalyzeHandler(c *gin.Context) {
 		"required_difficulty": requiredDiff,
 		"status":              status,
 		"techniques":          techniqueCounts,
+	})
+}
+
+// Cache for technique -> puzzle mappings to avoid re-analyzing
+// This is populated on-demand as puzzles are analyzed
+var practiceCache = struct {
+	// technique slug -> list of (puzzle index, difficulty) pairs
+	puzzles map[string][]practicePuzzle
+}{
+	puzzles: make(map[string][]practicePuzzle),
+}
+
+type practicePuzzle struct {
+	index      int
+	difficulty string
+}
+
+// practiceHandler finds a puzzle that requires a specific technique
+func practiceHandler(c *gin.Context) {
+	technique := c.Param("technique")
+	
+	if technique == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "technique required"})
+		return
+	}
+	
+	loader := puzzles.Global()
+	if loader == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "puzzles not loaded"})
+		return
+	}
+	
+	// Map technique to appropriate difficulty levels to search
+	// Simple techniques are in all puzzles, medium in medium+, etc.
+	techniqueToDifficulties := map[string][]string{
+		// Simple techniques - found in all difficulties, but easier puzzles have more obvious examples
+		"naked-single":       {"easy", "medium"},
+		"hidden-single":      {"easy", "medium"},
+		"pointing-pair":      {"easy", "medium", "hard"},
+		"box-line-reduction": {"easy", "medium", "hard"},
+		"naked-pair":         {"easy", "medium", "hard"},
+		"hidden-pair":        {"easy", "medium", "hard"},
+		
+		// Medium techniques
+		"naked-triple":     {"medium", "hard", "extreme"},
+		"hidden-triple":    {"medium", "hard", "extreme"},
+		"naked-quad":       {"hard", "extreme"},
+		"hidden-quad":      {"hard", "extreme"},
+		"x-wing":           {"medium", "hard", "extreme"},
+		"xy-wing":          {"medium", "hard", "extreme"},
+		"simple-coloring":  {"medium", "hard", "extreme"},
+		
+		// Hard techniques
+		"swordfish":         {"hard", "extreme", "impossible"},
+		"skyscraper":        {"hard", "extreme", "impossible"},
+		"finned-x-wing":     {"hard", "extreme", "impossible"},
+		"finned-swordfish":  {"hard", "extreme", "impossible"},
+		"unique-rectangle":  {"hard", "extreme", "impossible"},
+		"bug":               {"hard", "extreme", "impossible"},
+		"jellyfish":         {"extreme", "impossible"},
+		"x-chain":           {"hard", "extreme", "impossible"},
+		"xy-chain":          {"hard", "extreme", "impossible"},
+		"w-wing":            {"hard", "extreme", "impossible"},
+		"empty-rectangle":   {"hard", "extreme", "impossible"},
+		"xyz-wing":          {"hard", "extreme", "impossible"},
+		"wxyz-wing":         {"hard", "extreme", "impossible"},
+		"als-xz":            {"hard", "extreme", "impossible"},
+		"remote-pairs":      {"hard", "extreme", "impossible"},
+		
+		// Extreme techniques
+		"sue-de-coq":         {"impossible"},
+		"medusa-3d":          {"impossible"},
+		"grouped-x-cycles":   {"impossible"},
+		"aic":                {"impossible"},
+		"als-xy-wing":        {"impossible"},
+		"als-xy-chain":       {"impossible"},
+		"forcing-chain":      {"impossible"},
+		"digit-forcing-chain": {"impossible"},
+		"death-blossom":      {"impossible"},
+	}
+	
+	difficulties, known := techniqueToDifficulties[technique]
+	if !known {
+		// Unknown technique - try medium/hard/extreme
+		difficulties = []string{"medium", "hard", "extreme", "impossible"}
+	}
+	
+	// Check cache first
+	if cached, ok := practiceCache.puzzles[technique]; ok && len(cached) > 0 {
+		// Pick a random one from cache using current time
+		idx := int(time.Now().UnixNano()) % len(cached)
+		p := cached[idx]
+		
+		givens, _, err := loader.GetPuzzle(p.index, p.difficulty)
+		if err == nil {
+			seed := fmt.Sprintf("practice-%s-%d", technique, p.index)
+			c.JSON(http.StatusOK, gin.H{
+				"seed":         seed,
+				"difficulty":   p.difficulty,
+				"givens":       givens,
+				"technique":    technique,
+				"puzzle_index": p.index,
+				"cached":       true,
+			})
+			return
+		}
+	}
+	
+	// Not in cache - search for a puzzle
+	// We'll sample puzzles to find one that uses the technique
+	solver := human.NewSolver()
+	puzzleCount := loader.Count()
+	
+	// Sample up to 50 puzzles to find one with this technique
+	maxSamples := 50
+	startIdx := int(time.Now().UnixNano()) % puzzleCount
+	
+	for i := 0; i < maxSamples; i++ {
+		idx := (startIdx + i) % puzzleCount
+		
+		// Try each difficulty level for this technique
+		for _, diff := range difficulties {
+			givens, _, err := loader.GetPuzzle(idx, diff)
+			if err != nil {
+				continue
+			}
+			
+			// Analyze the puzzle
+			_, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(givens)
+			if status != "completed" {
+				continue
+			}
+			
+			// Check if this technique is used
+			if count, ok := techniqueCounts[technique]; ok && count > 0 {
+				// Found one! Cache it and return
+				practiceCache.puzzles[technique] = append(practiceCache.puzzles[technique], practicePuzzle{
+					index:      idx,
+					difficulty: diff,
+				})
+				
+				seed := fmt.Sprintf("practice-%s-%d", technique, idx)
+				c.JSON(http.StatusOK, gin.H{
+					"seed":         seed,
+					"difficulty":   diff,
+					"givens":       givens,
+					"technique":    technique,
+					"puzzle_index": idx,
+					"cached":       false,
+				})
+				return
+			}
+		}
+	}
+	
+	// Didn't find a puzzle with this technique
+	c.JSON(http.StatusNotFound, gin.H{
+		"error":     "no puzzle found",
+		"technique": technique,
+		"message":   "Could not find a puzzle requiring this technique. Try a different technique or check back later.",
 	})
 }
 

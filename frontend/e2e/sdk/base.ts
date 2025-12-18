@@ -15,6 +15,7 @@ import type {
   DailyResponse,
   PuzzleResponse,
   AnalyzeResponse,
+  PracticeResponse,
   SessionStartRequest,
   SessionStartResponse,
   SolveRequest,
@@ -81,6 +82,11 @@ export abstract class SudokuSDK {
   async analyzePuzzle(seed: string, difficulty: Difficulty = 'medium'): Promise<SDKResponse<AnalyzeResponse>> {
     await this.delay();
     return this.get<AnalyzeResponse>(`/api/puzzle/${seed}/analyze?d=${difficulty}`);
+  }
+
+  async getPracticePuzzle(technique: string): Promise<SDKResponse<PracticeResponse>> {
+    await this.delay();
+    return this.get<PracticeResponse>(`/api/practice/${encodeURIComponent(technique)}`);
   }
 
   // ============================================
