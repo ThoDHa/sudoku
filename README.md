@@ -7,10 +7,23 @@ An educational Sudoku web application that teaches solving techniques through hu
 - **5 Difficulty Levels**: Easy, Medium, Hard, Extreme, Impossible
 - **Educational Hints**: Learn 20+ solving techniques from Naked Singles to X-Chains
 - **Human-like Auto-solve**: Watch the solver work through puzzles step-by-step
+- **Smart Single Detection**: Cells are filled immediately when they have only one valid digit
 - **Daily Puzzles**: New puzzle every day, same for all players
 - **Custom Puzzles**: Enter and validate your own puzzles
 - **Themes**: Light/dark mode with multiple color schemes
 - **Responsive**: Works on desktop and mobile
+
+## Hints vs Auto-Solve
+
+The app tracks hints and auto-solve separately:
+
+- **Hints (💡)**: Get one logical step at a time. Each hint counts toward your score, teaching you real solving techniques.
+- **Auto-Solve (🤖)**: Watch the solver complete the entire puzzle step-by-step. Tracked separately so you can learn without affecting your hint count.
+
+The leaderboard shows:
+- `💡N` - Number of hints used
+- `🤖` - Auto-solve was used
+- `-` - No assists used
 
 ## Quick Start
 
@@ -68,21 +81,34 @@ The solver implements techniques across 4 tiers:
 
 **Simple (Easy puzzles)**
 - Naked Single, Hidden Single
+- Pointing Pair, Box-Line Reduction
+- Naked/Hidden Pairs
 
 **Medium (Medium puzzles)**
-- Pointing Pair, Box-Line Reduction
-- Naked/Hidden Pairs, Triples, Quads
+- Naked/Hidden Triples, Quads
+- X-Wing, XY-Wing
+- Simple Coloring
 
 **Hard (Hard/Extreme puzzles)**
-- X-Wing, Swordfish, Jellyfish
-- XY-Wing, W-Wing, Skyscraper
-- Simple Coloring, X-Chains
-- Unique Rectangles
+- Swordfish, Jellyfish
+- W-Wing, Skyscraper
+- X-Chains, XY-Chains
+- Unique Rectangles (Types 1-4)
+- ALS-XZ, Remote Pairs
 
 **Extreme (Impossible puzzles)**
 - 3D Medusa, Grouped X-Cycles
-- ALS chains, Forcing Chains
+- ALS chains (XY-Wing, XY-Chain)
+- Forcing Chains, Digit Forcing Chains
 - Sue de Coq, Death Blossom
+
+### Smart Single Detection
+
+The solver automatically fills cells immediately when:
+- **Naked Single**: A cell has only one valid digit based on row/column/box constraints
+- **Hidden Single**: A digit can only go in one place within a row, column, or box
+
+This makes solving feel more natural - cells are filled as soon as they're logically determinable, rather than requiring multiple candidate-filling steps first.
 
 ## Development
 

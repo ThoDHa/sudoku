@@ -214,6 +214,15 @@ export function HowToPlayContent() {
         </ol>
       </div>
 
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">💡 Hints vs Auto-Solve</h3>
+        <ul className="space-y-1 text-sm text-[var(--text-muted)]">
+          <li>💡 <strong>Hints:</strong> Get one logical step at a time. Each hint counts toward your score.</li>
+          <li>🤖 <strong>Auto-Solve:</strong> Watch the solver complete the puzzle step-by-step. Tracked separately from hints.</li>
+          <li>⚡ <strong>Smart Detection:</strong> The solver immediately fills cells when they have only one possible digit.</li>
+        </ul>
+      </div>
+
       <div className="rounded-lg bg-[var(--bg-secondary)] p-4">
         <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">📊 Difficulty Levels</h3>
         <ul className="space-y-2 text-sm text-[var(--text-muted)]">
@@ -225,12 +234,13 @@ export function HowToPlayContent() {
       </div>
 
       <div className="rounded-lg border border-[var(--border-light)] p-4">
-        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">💡 Tips for Success</h3>
+        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">🎮 Tips for Success</h3>
         <ul className="space-y-1 text-sm text-[var(--text-muted)]">
           <li>✏️ Always use pencil marks (notes) — they're essential for harder puzzles</li>
           <li>👀 Scan rows, columns, and boxes systematically</li>
           <li>🔍 When stuck, look for pairs and triples of candidates</li>
           <li>📚 Use the techniques list to learn new solving methods</li>
+          <li>🎯 Use hints to learn — they teach you real solving techniques</li>
           <li>🏆 Practice makes perfect — start with easier puzzles and work your way up</li>
         </ul>
       </div>
