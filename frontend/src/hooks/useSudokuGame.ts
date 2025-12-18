@@ -312,22 +312,22 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       }
       newCandidates[idx] = newCellCandidates
       
-      // Add note toggle move to history with board state before
-      const noteMove: Move = {
-        step_index: truncatedHistory.length,
-        technique: 'User Input',
-        action: hadCandidate ? 'eliminate' : 'note',
-        digit,
-        targets: [{ row, col }],
-        explanation: hadCandidate 
-          ? `Removed note ${digit} from R${row + 1}C${col + 1}`
-          : `Added note ${digit} to R${row + 1}C${col + 1}`,
-        refs: { title: '', slug: '', url: '' },
-        highlights: { primary: [{ row, col }] },
-        isUserMove: true,
-        boardBefore: [...board],
-        candidatesBefore: candidates.map(c => Array.from(c)),
-      }
+       // Add note toggle move to history with board state before
+       const noteMove: Move = {
+         step_index: truncatedHistory.length,
+         technique: 'User Input',
+         action: hadCandidate ? 'eliminate' : 'note',
+         digit,
+         targets: [{ row, col }],
+         explanation: hadCandidate
+           ? `Removed note ${digit} from R${row + 1}C${col + 1}`
+           : `Added note ${digit} to R${row + 1}C${col + 1}`,
+         refs: { title: '', slug: '', url: '' },
+         highlights: { primary: [] }, // No highlights for user moves
+         isUserMove: true,
+         boardBefore: [...board],
+         candidatesBefore: candidates.map(c => Array.from(c)),
+       }
       const newHistory = [...truncatedHistory, noteMove]
       setHistory(newHistory)
       setHistoryIndex(newHistory.length - 1)
@@ -339,20 +339,20 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       // Truncate history if we're in the middle
       const truncatedHistory = history.slice(0, historyIndex + 1)
 
-      // Add user move to history with board state before
-      const userMove: Move = {
-        step_index: truncatedHistory.length,
-        technique: 'User Input',
-        action: 'place',
-        digit,
-        targets: [{ row, col }],
-        explanation: `Placed ${digit} at R${row + 1}C${col + 1}`,
-        refs: { title: '', slug: '', url: '' },
-        highlights: { primary: [{ row, col }] },
-        isUserMove: true,
-        boardBefore: [...board],
-        candidatesBefore: candidates.map(c => Array.from(c)),
-      }
+       // Add user move to history with board state before
+       const userMove: Move = {
+         step_index: truncatedHistory.length,
+         technique: 'User Input',
+         action: 'place',
+         digit,
+         targets: [{ row, col }],
+         explanation: `Placed ${digit} at R${row + 1}C${col + 1}`,
+         refs: { title: '', slug: '', url: '' },
+         highlights: { primary: [] }, // No highlights for user moves
+         isUserMove: true,
+         boardBefore: [...board],
+         candidatesBefore: candidates.map(c => Array.from(c)),
+       }
       const newHistory = [...truncatedHistory, userMove]
       setHistory(newHistory)
       setHistoryIndex(newHistory.length - 1)
@@ -429,22 +429,22 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     // Truncate history if we're in the middle
     const truncatedHistory = history.slice(0, historyIndex + 1)
     
-    // Add erase move to history with board state before
-    const eraseMove: Move = {
-      step_index: truncatedHistory.length,
-      technique: 'User Input',
-      action: 'erase',
-      digit: erasedDigit,
-      targets: [{ row, col }],
-      explanation: erasedDigit > 0 
-        ? `Erased ${erasedDigit} from R${row + 1}C${col + 1}`
-        : `Cleared notes from R${row + 1}C${col + 1}`,
-      refs: { title: '', slug: '', url: '' },
-      highlights: { primary: [{ row, col }] },
-      isUserMove: true,
-      boardBefore: [...board],
-      candidatesBefore: candidates.map(c => Array.from(c)),
-    }
+     // Add erase move to history with board state before
+     const eraseMove: Move = {
+       step_index: truncatedHistory.length,
+       technique: 'User Input',
+       action: 'erase',
+       digit: erasedDigit,
+       targets: [{ row, col }],
+       explanation: erasedDigit > 0
+         ? `Erased ${erasedDigit} from R${row + 1}C${col + 1}`
+         : `Cleared notes from R${row + 1}C${col + 1}`,
+       refs: { title: '', slug: '', url: '' },
+       highlights: { primary: [] }, // No highlights for user moves
+       isUserMove: true,
+       boardBefore: [...board],
+       candidatesBefore: candidates.map(c => Array.from(c)),
+     }
     const newHistory = [...truncatedHistory, eraseMove]
     setHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
@@ -589,20 +589,20 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     // Truncate history if we're in the middle
     const truncatedHistory = history.slice(0, historyIndex + 1)
     
-    // Add clear candidates move to history
-    const clearMove: Move = {
-      step_index: truncatedHistory.length,
-      technique: 'Clear Notes',
-      action: 'clear-candidates',
-      digit: 0,
-      targets: [],
-      explanation: 'Cleared all notes',
-      refs: { title: '', slug: '', url: '' },
-      highlights: { primary: [] },
-      isUserMove: true,
-      boardBefore: [...board],
-      candidatesBefore: candidates.map(c => Array.from(c)),
-    }
+     // Add clear candidates move to history
+     const clearMove: Move = {
+       step_index: truncatedHistory.length,
+       technique: 'Clear Notes',
+       action: 'clear-candidates',
+       digit: 0,
+       targets: [],
+       explanation: 'Cleared all notes',
+       refs: { title: '', slug: '', url: '' },
+       highlights: { primary: [] }, // Already no highlights
+       isUserMove: true,
+       boardBefore: [...board],
+       candidatesBefore: candidates.map(c => Array.from(c)),
+     }
     const newHistory = [...truncatedHistory, clearMove]
     setHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
