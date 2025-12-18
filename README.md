@@ -1,56 +1,159 @@
 # Sudoku
 
-An educational Sudoku web application that teaches solving techniques through human-like hints.
+An advanced educational Sudoku web application that teaches solving techniques through human-like hints and intelligent assistance features.
 
-**[Play Now](https://thodha.github.io/sudoku/)** - Fully offline-capable PWA
+**[Play Now](https://thodha.github.io/sudoku/)** - Lightning-fast PWA (~170KB), fully offline-capable
 
-## Features
+## 🎯 What Makes This Different
 
-- **5 Difficulty Levels**: Easy, Medium, Hard, Extreme, Impossible
-- **Educational Hints**: Learn 30+ solving techniques from Naked Singles to Forcing Chains
-- **Human-like Auto-solve**: Watch the solver work through puzzles step-by-step with battery optimization
-- **Auto-fill Candidates**: Automatically fill valid candidates for empty cells
-- **Practice Mode**: Practice specific techniques with curated puzzles
-- **Daily Puzzles**: New puzzle every day, same for all players
-- **Custom Puzzles**: Enter and validate your own puzzles
-- **Offline Support**: Works completely offline after first load (PWA + WASM)
-- **Themes**: Light/dark mode with multiple color schemes
-- **Responsive**: Optimized for desktop and mobile with battery-efficient background handling
-- **Performance**: Code-split architecture for fast loading (initial ~170KB)
+This isn't just another Sudoku app - it's a comprehensive learning platform that:
 
-## How It Works
+- **Teaches Real Techniques**: Learn 30+ solving methods from basic Singles to advanced Forcing Chains
+- **Thinks Like You Do**: Human-like solver explains each step with detailed reasoning
+- **Works Everywhere**: PWA with aggressive offline caching - play anywhere, anytime
+- **Optimized Performance**: Code-split architecture with battery-efficient background handling
+- **Educational Focus**: Practice specific techniques with curated puzzle sets
 
-The entire solver runs locally in your browser via WebAssembly. No server required!
+## ✨ Key Features
 
-- **WASM Solver**: Go-based solver compiled to WebAssembly (~3.5MB)
-- **Static Puzzles**: 1000 pre-generated puzzles embedded in the app
-- **Practice Puzzles**: Pre-analyzed puzzles for each technique
-- **Daily Seed**: Deterministic daily puzzle based on UTC date
+### 🧩 **Game Modes**
+- **5 Difficulty Levels**: Easy → Medium → Hard → Extreme → Impossible
+- **Daily Puzzles**: Fresh puzzle every day, synchronized globally
+- **Practice Mode**: Target specific techniques with hand-selected puzzles
+- **Custom Puzzles**: Enter, validate, and solve your own creations
 
-## Performance & Mobile Optimization
+### 🧠 **Intelligent Assistance**
+- **Educational Hints (💡)**: Step-by-step guidance with technique explanations
+- **Auto-Solve (🤖)**: Watch the solver work through puzzles with battery optimization
+- **Auto-fill Candidates (📝)**: Smart candidate placement with visual feedback
+- **Validation**: Real-time error detection and board state checking
 
-- **Fast Loading**: Code-split architecture with initial bundle ~170KB (down from 770KB)
-- **Battery Efficient**: Automatic pause of all operations when app goes to background
-- **Extended Background Pause**: Complete suspension after 30 seconds to prevent battery drain
-- **Offline-First**: PWA with aggressive caching and background sync
-- **Responsive Design**: Optimized touch interactions and mobile performance
+### 🎨 **User Experience**
+- **Responsive Design**: Seamless experience across desktop, tablet, and mobile
+- **Dark/Light Themes**: Multiple color schemes with system preference detection
+- **Intuitive Controls**: Click, keyboard, and touch-optimized interactions
+- **Visual Highlighting**: Smart digit and cell highlighting with consistent behavior
+- **Gesture Support**: Tap to place, long-press for notes, swipe navigation
+
+### ⚡ **Performance & Reliability**
+- **Fast Loading**: Initial bundle ~170KB (reduced from 770KB)
+- **Battery Efficient**: Automatic pause when backgrounded, extended suspension after 30s
+- **Offline-First**: Complete functionality without internet after first load
+- **WASM Solver**: Go-based solver running locally at native speeds (~3.5MB cached)
+- **Progressive Enhancement**: Works with JavaScript disabled (basic functionality)
+
+## 🎮 How to Play
+
+### Basic Controls
+- **Place Numbers**: Click cell + click digit, or select cell + press 1-9
+- **Notes Mode**: Toggle with 'N' key or notes button - add/remove candidate digits
+- **Erase**: Select erase mode or press Delete/Backspace on selected cell
+- **Navigation**: Arrow keys, Tab, or click to move between cells
+- **Undo/Redo**: Ctrl+Z/Ctrl+Y or use toolbar buttons
+
+### Getting Assistance
+- **Hints (💡)**: Click hint button for step-by-step guidance with technique explanations
+- **Auto-fill (📝)**: Fill all valid candidates automatically - great starting point
+- **Auto-solve (🤖)**: Watch the AI solve with educational explanations
+- **Validation**: Check your progress - highlights errors and incomplete regions
+
+### Learning Features
+- **Technique Practice**: Focus on specific solving methods with curated puzzles
+- **Progressive Difficulty**: Start easy and work up to expert-level techniques
+- **Detailed Explanations**: Every hint includes why the move works and what technique applies
+- **Visual Aids**: Highlighting shows you exactly where techniques apply
+
+## ⚙️ How It Works
+
+The entire application runs locally in your browser - no server required after initial load!
+
+### 🧱 **Architecture Overview**
+- **WASM Solver**: Go-based constraint solver compiled to WebAssembly (~3.5MB, cached)
+- **Static Puzzles**: 1000+ pre-generated puzzles embedded for instant access
+- **Practice Database**: Pre-analyzed puzzles categorized by required techniques
+- **Daily Determinism**: UTC date-based seeding ensures same daily puzzle globally
+- **Offline-First**: Service Worker + PWA manifest for complete offline functionality
+
+### 🔧 **Technical Stack**
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, PWA
+- **Solver**: Go 1.23, WebAssembly, constraint propagation + backtracking
+- **State Management**: React hooks, Context API, localStorage persistence
+- **Performance**: Route-based code splitting, lazy loading, WASM worker threads
+- **Testing**: Playwright E2E, Jest unit tests, Go test suite
+
+## 📊 Performance & Mobile Optimization
+
+### ⚡ **Loading Performance**
+- **Lightning Fast**: Initial bundle ~170KB (down from 770KB)
+- **Smart Chunking**: Route-based code splitting for optimal loading
+- **Aggressive Caching**: Service Worker caches everything for instant offline access
+- **Progressive Loading**: Core game loads first, features load as needed
+
+### 🔋 **Battery & Mobile Efficiency**
+- **Background Pause**: All operations pause when app loses focus
+- **Extended Suspension**: Complete shutdown after 30s to prevent battery drain
+- **Touch Optimization**: Gesture-friendly controls optimized for mobile devices
+- **Memory Management**: Smart WASM lifecycle prevents memory leaks
+- **Network Aware**: Minimal data usage, works completely offline after first visit
+
+### 📱 **Responsive Design**
+- **Mobile-First**: Optimized touch interactions and gesture support
+- **Adaptive Layout**: Scales seamlessly from phone to desktop
+- **Accessibility**: Full keyboard navigation and screen reader support
+- **PWA Features**: Install to home screen, splash screens, background sync
 
 ## Recent Improvements
 
-### v2025 Session
-- **Bundle Size Optimization**: Reduced initial load from 770KB to ~170KB via route-based code splitting
-- **Mobile Battery Optimization**: Extended background pause (30s) prevents battery drain in forgotten tabs
-- **UI Polish**: Improved autofill text ("Auto-filled candidates for X cells") and clearer auto-solve messaging
-- **Reliability**: Fixed highlighting persistence bugs and CI pipeline linting issues
-- **Enhanced Auto-fill**: Smart candidate filling with proper state management
+### ✅ **Latest Updates (December 2024)**
+- **🐛 Highlighting Bug Fix**: Fixed persistent digit highlights after candidate removal operations
+- **🏗️ Architecture Enhancement**: Introduced centralized `useHighlightManager` for consistent UI behavior
+- **🎯 UX Improvement**: Highlights now clear appropriately across all interaction methods (click, keyboard, touch)
+- **📱 Mobile Polish**: Enhanced touch interactions and gesture consistency
+- **🔧 Code Quality**: Semantic highlight management methods for improved maintainability
 
-## Hints vs Auto-Solve vs Auto-fill
+### 🚀 **Performance Optimizations (2024)**
+- **Bundle Size Reduction**: Cut initial load from 770KB → 170KB via intelligent code splitting
+- **Battery Life**: Extended background pause (30s) prevents drain in forgotten tabs
+- **Memory Management**: Smart WASM lifecycle management with proper cleanup
+- **Caching Strategy**: Aggressive service worker caching for instant offline access
 
-The app tracks assistance features separately:
+### 🎨 **User Experience Enhancements**
+- **Auto-fill Feedback**: Clear messaging for candidate operations ("Auto-filled X cells")
+- **Auto-solve Intelligence**: Battery-aware step timing with visual progress indicators
+- **Accessibility**: Improved keyboard navigation and screen reader support
+- **Visual Polish**: Consistent highlighting behavior across all game interactions
 
-- **Hints (💡)**: Get one logical step at a time. Each hint teaches you a real solving technique.
-- **Auto-Solve (🤖)**: Watch the solver complete the entire puzzle step-by-step with battery optimization.
-- **Auto-fill (📝)**: Automatically fill valid candidates for empty cells.
+## 🤖 Assistance Features Explained
+
+The app provides three distinct types of help, each serving different learning goals:
+
+### 💡 **Hints - Learn Step by Step**
+- **Purpose**: Educational guidance that teaches real solving techniques
+- **How it Works**: Analyzes current board state and suggests the next logical move
+- **What You Get**: Detailed explanation of why the move works and what technique applies
+- **Learning Value**: High - builds your solving skills progressively
+- **Usage**: Perfect for learning new techniques or when stuck on a specific step
+
+### 🤖 **Auto-Solve - Watch and Learn** 
+- **Purpose**: Demonstration of complete solving process with educational value
+- **How it Works**: AI solver completes puzzle step-by-step with real-time explanations
+- **What You Get**: Full solution path with technique annotations and timing control
+- **Learning Value**: Medium - great for seeing advanced techniques in action
+- **Usage**: Study complex puzzles, verify your approach, or just enjoy the show
+
+### 📝 **Auto-fill - Smart Starting Point**
+- **Purpose**: Automatically populate valid candidates to reduce manual work  
+- **How it Works**: Analyzes empty cells and fills all mathematically valid candidate digits
+- **What You Get**: Complete candidate notation without the tedious manual entry
+- **Learning Value**: Low - convenience feature that saves time
+- **Usage**: Start puzzles faster, recover from mistakes, or focus on logic over notation
+
+### 📈 **Progress Tracking**
+The app separately tracks usage of each assistance type, so you can:
+- Challenge yourself to solve without hints
+- Compare solving approaches across difficulty levels  
+- Build confidence by gradually reducing assistance dependency
+- Track your learning progress over time
 
 ## Quick Start
 
