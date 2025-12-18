@@ -154,13 +154,38 @@ export default function History({
                     </div>
 
                     <p className="mb-2 text-sm text-[var(--text)]">
-                      {move.action === 'place' ? (
+                      {move.action === 'place' || move.action === 'assign' ? (
                         <>
                           {move.isUserMove ? 'Placed' : 'Place'}{' '}
                           <span className="font-bold text-[var(--accent)]">
                             {move.digit}
                           </span>{' '}
                           at{' '}
+                          {move.targets
+                            .map((t) => formatCell(t.row, t.col))
+                            .join(', ')}
+                        </>
+                      ) : move.action === 'note' || move.action === 'candidate' ? (
+                        <>
+                          {move.isUserMove ? 'Added' : 'Add'} candidate{' '}
+                          <span className="font-bold text-[var(--accent)]">
+                            {move.digit}
+                          </span>{' '}
+                          {move.isUserMove ? 'to' : 'at'}{' '}
+                          {move.targets
+                            .map((t) => formatCell(t.row, t.col))
+                            .join(', ')}
+                        </>
+                      ) : move.action === 'erase' ? (
+                        <>
+                          Cleared{' '}
+                          {move.targets
+                            .map((t) => formatCell(t.row, t.col))
+                            .join(', ')}
+                        </>
+                      ) : move.action === 'clear-candidates' ? (
+                        <>
+                          Cleared all candidates from{' '}
                           {move.targets
                             .map((t) => formatCell(t.row, t.col))
                             .join(', ')}
