@@ -94,8 +94,13 @@ export interface PuzzleResult {
 
 let wasmApi: SudokuWasmAPI | null = null
 
-function getApi(): SudokuWasmAPI {
+/**
+ * Get the WASM API, waiting for it to load if necessary
+ */
+async function getApi(): Promise<SudokuWasmAPI> {
   if (!wasmApi) {
+    // Wait for WASM to load
+    await loadWasm()
     wasmApi = getWasmApi()
   }
   if (!wasmApi) {
@@ -113,7 +118,7 @@ export async function solveNext(
   candidates: number[][],
   _givens: number[]
 ): Promise<SolveNextResult> {
-  const api = getApi()
+  const api = await getApi()
   const result = api.findNextMove(board, candidates)
   return {
     board: result.board.cells,
@@ -127,7 +132,7 @@ export async function solveAll(
   candidates: number[][],
   givens: number[]
 ): Promise<SolveAllResult> {
-  const api = getApi()
+  const api = await getApi()
   const result = api.solveAll(board, candidates, givens)
   return {
     moves: result.moves.map((m) => ({
@@ -141,7 +146,7 @@ export async function solveAll(
 }
 
 export async function validateBoard(board: number[]): Promise<ValidateBoardResult> {
-  const api = getApi()
+  const api = await getApi()
   return api.validateBoard(board)
 }
 
@@ -149,7 +154,7 @@ export async function validateCustomPuzzle(
   givens: number[],
   _deviceId: string
 ): Promise<ValidateCustomResult> {
-  const api = getApi()
+  const api = await getApi()
   const result = api.validateCustomPuzzle(givens)
   if (result.valid && result.unique) {
     const puzzleId = 'custom-' + hashGivens(givens).slice(0, 16)
@@ -159,7 +164,7 @@ export async function validateCustomPuzzle(
 }
 
 export async function getPuzzle(seed: string, difficulty: string): Promise<PuzzleResult> {
-  const api = getApi()
+  const api = await getApi()
   const result = api.getPuzzleForSeed(seed, difficulty)
   if (result.error) {
     throw new Error(result.error)
