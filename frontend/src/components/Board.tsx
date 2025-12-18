@@ -13,6 +13,7 @@ interface Move {
     primary: { row: number; col: number }[]
     secondary?: { row: number; col: number }[]
   }
+  isUserMove?: boolean
 }
 
 interface BoardProps {
