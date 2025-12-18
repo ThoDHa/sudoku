@@ -15,6 +15,7 @@ import { useGameContext } from '../lib/GameContext'
 import { useGameTimer } from '../hooks/useGameTimer'
 import { useSudokuGame, Move } from '../hooks/useSudokuGame'
 import { useAutoSolve } from '../hooks/useAutoSolve'
+import { useBackgroundManager } from '../hooks/useBackgroundManager'
 import {
   TOAST_DURATION_SUCCESS,
   TOAST_DURATION_INFO,
@@ -110,27 +111,44 @@ export default function Game() {
   }>>([])
   // Track the history length when solution was cached, to detect user changes
   const cachedAtHistoryLength = useRef<number>(-1)
+  // Track if there are unsaved changes when backgrounded
+  const hasUnsavedChanges = useRef(false)
+  // Track the last time we were hidden
+  const wasHiddenRef = useRef(false)
 
   // ============================================================
   // CUSTOM HOOKS
   // ============================================================
 
-  // Timer hook
-  const timer = useGameTimer({ pauseOnHidden: true })
+   // Background manager for coordinating all background operations
+   const backgroundManager = useBackgroundManager()
 
-  // Game state hook - only initialize after we have the initial board
-  const game = useSudokuGame({
-    initialBoard: initialBoard.length === 81 ? initialBoard : Array(81).fill(0),
-    onComplete: () => {
-      timer.pauseTimer()
-      handleSubmit()
-    },
-  })
+   // Throttle validation messages when hidden to reduce re-renders
+   const throttledSetValidationMessage = useCallback((message: { type: 'success' | 'error'; message: string } | null) => {
+     if (backgroundManager.shouldPauseOperations && message?.type === 'success') {
+       // Skip non-critical success messages when hidden to reduce battery usage
+       return
+     }
+     setValidationMessage(message)
+   }, [backgroundManager.shouldPauseOperations])
+
+   // Timer hook
+   const timer = useGameTimer({ pauseOnHidden: true })
+
+   // Game state hook - only initialize after we have the initial board
+   const game = useSudokuGame({
+     initialBoard: initialBoard.length === 81 ? initialBoard : Array(81).fill(0),
+     onComplete: () => {
+       timer.pauseTimer()
+       handleSubmit()
+     },
+   })
 
   // Auto-solve hook - fetches all moves at once and plays them back
   const autoSolve = useAutoSolve({
     stepDelay: AUTO_SOLVE_SPEEDS[autoSolveSpeedState],
     gamePaused: timer.isPausedDueToVisibility,
+    backgroundManager,
     getBoard: () => game.board,
     getCandidates: () => game.candidates,
     getGivens: () => initialBoard,
@@ -182,7 +200,7 @@ export default function Game() {
       setShowSolutionConfirm(true)
     },
     onStatus: (message) => {
-      setValidationMessage({ type: 'success', message })
+      throttledSetValidationMessage({ type: 'success', message })
       setTimeout(() => setValidationMessage(null), 2000)
     },
     onErrorFixed: (message, resumeCallback) => {
@@ -310,7 +328,7 @@ export default function Game() {
       targets: [],
       explanation: `Filled all candidates for ${cellsWithCandidates} cells`,
       refs: { title: 'Fill Candidates', slug: 'fill-candidates', url: '' },
-      highlights: { primary: [] },
+      highlights: { primary: [] }, // No highlights for user moves
       isUserMove: true, // Mark as user action so it doesn't count as hint
     }
     
@@ -504,87 +522,97 @@ export default function Game() {
     }
   }, [executeHintStep])
 
-  // Cell click handler
-  const handleCellClick = useCallback((idx: number) => {
-    // Given cells: just highlight the digit, don't select
-    if (game.isGivenCell(idx)) {
-      const cellDigit = game.board[idx] ?? null
-      setHighlightedDigit(cellDigit)
-      setEraseMode(false)
-      setSelectedCell(null)
+   // Cell click handler
+   const handleCellClick = useCallback((idx: number) => {
+     // Given cells: just highlight the digit, don't select
+     if (game.isGivenCell(idx)) {
+       const cellDigit = game.board[idx] ?? null
+       setHighlightedDigit(cellDigit)
+       setEraseMode(false)
+       setSelectedCell(null)
+       setCurrentHighlight(null)
+       return
+     }
+
+     // Toggle selection: clicking the same cell again deselects it (highest priority for user-fillable cells)
+     if (selectedCell === idx) {
+       setSelectedCell(null)
+       setHighlightedDigit(null)
+       setCurrentHighlight(null)
+       return
+     }
+
+     // If erase mode is active and cell has a value, erase it
+     if (eraseMode && game.board[idx] !== 0) {
+       game.eraseCell(idx)
+       setCurrentHighlight(null)
+       // Keep erase mode active so user can erase multiple cells
+       return
+     }
+
+      // If a digit is highlighted and this cell is empty, fill it
+      if (highlightedDigit !== null && game.board[idx] === 0) {
+        game.setCell(idx, highlightedDigit, notesMode)
+        setCurrentHighlight(null)
+        // Always clear digit highlight after candidate operations to prevent persistent highlighting
+        setHighlightedDigit(null)
+        return
+      }
+
+     // Select the cell (works for both empty and user-filled cells)
+     setSelectedCell(idx)
+     setHighlightedDigit(null)
+     setEraseMode(false)
+     setCurrentHighlight(null)
+   }, [game, highlightedDigit, eraseMode, notesMode, selectedCell])
+
+   // Digit input handler
+   const handleDigitInput = useCallback((digit: number) => {
+     // Clear erase mode when selecting a digit
+     setEraseMode(false)
+
+     // If no cell selected, toggle digit highlight for multi-fill mode
+     if (selectedCell === null) {
+       setHighlightedDigit(highlightedDigit === digit ? null : digit)
+       return
+     }
+
+     if (game.isGivenCell(selectedCell)) return
+
+     // If cell already has this digit, erase it
+     if (game.board[selectedCell] === digit) {
+       game.eraseCell(selectedCell)
+       setCurrentHighlight(null)
+       return
+     }
+
+      game.setCell(selectedCell, digit, notesMode)
       setCurrentHighlight(null)
-      return
-    }
 
-    // Toggle selection: clicking the same cell again deselects it (highest priority for user-fillable cells)
-    if (selectedCell === idx) {
-      setSelectedCell(null)
-      setHighlightedDigit(null)
-      setCurrentHighlight(null)
-      return
-    }
+      if (notesMode) {
+        // Always clear digit highlight after candidate operations to prevent persistent highlighting
+        setHighlightedDigit(null)
+      }
 
-    // If erase mode is active and cell has a value, erase it
-    if (eraseMode && game.board[idx] !== 0) {
-      game.eraseCell(idx)
-      setCurrentHighlight(null)
-      // Keep erase mode active so user can erase multiple cells
-      return
-    }
+     // Keep cell selected so user can erase or change immediately
+     // Keep digit highlighted for adding candidates (multi-fill)
+   }, [game, selectedCell, highlightedDigit, notesMode])
 
-    // If a digit is highlighted and this cell is empty, fill it
-    if (highlightedDigit !== null && game.board[idx] === 0) {
-      game.setCell(idx, highlightedDigit, notesMode)
-      setCurrentHighlight(null)
-      // Keep digit highlighted so user can fill multiple cells with same digit
-      return
-    }
-
-    // Select the cell (works for both empty and user-filled cells)
-    setSelectedCell(idx)
-    setHighlightedDigit(null)
-    setEraseMode(false)
-    setCurrentHighlight(null)
-  }, [game, highlightedDigit, eraseMode, notesMode, selectedCell])
-
-  // Digit input handler
-  const handleDigitInput = useCallback((digit: number) => {
-    // Clear erase mode when selecting a digit
-    setEraseMode(false)
-    
-    // If no cell selected, toggle digit highlight for multi-fill mode
-    if (selectedCell === null) {
-      setHighlightedDigit(highlightedDigit === digit ? null : digit)
-      return
-    }
-    
-    if (game.isGivenCell(selectedCell)) return
-
-    // If cell already has this digit, erase it
-    if (game.board[selectedCell] === digit) {
-      game.eraseCell(selectedCell)
-      setCurrentHighlight(null)
-      return
-    }
-
-    game.setCell(selectedCell, digit, notesMode)
-    setCurrentHighlight(null)
-    
-    // Keep cell selected so user can erase or change immediately
-    // Keep digit highlighted so user can fill multiple cells with same digit
-  }, [game, selectedCell, highlightedDigit, notesMode])
-
-  // Keyboard cell change handler (from Board component)
-  const handleCellChange = useCallback((idx: number, value: number) => {
-    if (game.isGivenCell(idx)) return
-    if (value === 0) {
-      game.eraseCell(idx)
-      setCurrentHighlight(null)
-    } else {
-      game.setCell(idx, value, notesMode)
-      setCurrentHighlight(null)
-    }
-  }, [game, notesMode])
+   // Keyboard cell change handler (from Board component)
+   const handleCellChange = useCallback((idx: number, value: number) => {
+     if (game.isGivenCell(idx)) return
+     if (value === 0) {
+       game.eraseCell(idx)
+       setCurrentHighlight(null)
+      } else {
+        game.setCell(idx, value, notesMode)
+        setCurrentHighlight(null)
+        if (notesMode) {
+          // Always clear digit highlight after candidate operations to prevent persistent highlighting
+          setHighlightedDigit(null)
+        }
+      }
+   }, [game, notesMode])
 
   // Toggle erase mode handler
   const handleEraseMode = useCallback(() => {
@@ -1000,17 +1028,38 @@ ${bugReportJson}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialBoard, puzzle, loadSavedGameState])
 
-  // Auto-save game state when board or candidates change
+  // Auto-save game state when board or candidates change (but not when hidden)
   useEffect(() => {
     if (!puzzle || !hasRestoredSavedState.current || game.isComplete || !getAutoSaveEnabled()) return
-    
+
+    // Don't save when app is hidden to reduce battery usage
+    if (backgroundManager.shouldPauseOperations) {
+      hasUnsavedChanges.current = true
+      return
+    }
+
     // Debounce saves to avoid excessive localStorage writes
     const timeoutId = setTimeout(() => {
       saveGameState()
+      hasUnsavedChanges.current = false
     }, 500)
-    
+
     return () => clearTimeout(timeoutId)
-  }, [game.board, game.candidates, game.history, puzzle, game.isComplete, saveGameState])
+  }, [game.board, game.candidates, game.history, puzzle, game.isComplete, saveGameState, backgroundManager.shouldPauseOperations])
+
+  // Save when returning from background if there are unsaved changes
+  useEffect(() => {
+    const wasHidden = wasHiddenRef.current
+    const isNowVisible = !backgroundManager.isHidden
+
+    wasHiddenRef.current = backgroundManager.isHidden
+
+    // If we just became visible and had unsaved changes, save immediately
+    if (wasHidden && isNowVisible && hasUnsavedChanges.current && getAutoSaveEnabled()) {
+      saveGameState()
+      hasUnsavedChanges.current = false
+    }
+  }, [backgroundManager.isHidden, saveGameState])
 
   // Clear saved state when puzzle is completed
   useEffect(() => {
