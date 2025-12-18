@@ -13,7 +13,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'sudoku.wasm', 'wasm_exec.js'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         name: 'Sudoku',
         short_name: 'Sudoku',
@@ -44,14 +44,45 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // Include WASM files in precache
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,wasm}'],
+        // Only precache WASM files (large, rarely change, needed for offline)
+        globPatterns: ['**/*.wasm', 'wasm_exec.js'],
         // Allow larger files to be precached (for WASM - ~4MB)
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
-        // Cache strategies
+        // Cache strategies - NetworkFirst for app, CacheFirst for static assets
         runtimeCaching: [
           {
-            // Cache WASM files with CacheFirst strategy
+            // App JS/CSS/HTML - NetworkFirst so we always get fresh content when online
+            urlPattern: /\.(?:js|css|html)$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'app-assets',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              },
+              networkTimeoutSeconds: 3, // Fall back to cache after 3 seconds
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            // Images and icons - CacheFirst (they rarely change)
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|ico)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images-cache',
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            // WASM files - CacheFirst (large files that rarely change)
             urlPattern: /\.wasm$/,
             handler: 'CacheFirst',
             options: {
@@ -91,7 +122,7 @@ export default defineConfig({
             }
           }
         ],
-        // Don't cache API calls - we want fresh data (WASM provides offline fallback)
+        // Don't cache API calls
         navigateFallbackDenylist: [/^\/api\//]
       }
     })
