@@ -23,7 +23,7 @@ function AppContent() {
   return (
     <div className="h-[100dvh] flex flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
       <Header />
-      <main className={`flex-1 overflow-y-auto scrollbar-hide ${isGamePage ? '' : 'pt-14'}`}>
+      <main className={`flex-1 overflow-y-auto scrollbar-hide ${isGamePage ? '' : 'pt-16'}`}>
         <Routes>
           <Route path="/" element={<Navigate to="/daily" replace />} />
           <Route path="/daily" element={<Daily />} />

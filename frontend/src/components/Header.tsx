@@ -177,7 +177,7 @@ ${debugJson}
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 bg-[var(--bg)]/95 backdrop-blur border-b border-[var(--border-light)] h-14">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-[var(--bg)]/95 backdrop-blur border-b border-[var(--border-light)] h-16">
         <div className="mx-auto max-w-4xl px-4 h-full">
           <div className="flex h-full items-center justify-between">
             {/* Left: Logo */}
@@ -249,7 +249,7 @@ ${debugJson}
         <div className="fixed inset-0 bg-[var(--bg)] z-50">
           <div className="flex flex-col h-full">
             {/* Header with close button */}
-            <div className="flex items-center justify-between px-4 h-14 border-b border-[var(--border-light)]">
+            <div className="flex items-center justify-between px-4 h-16 border-b border-[var(--border-light)]">
               <span className="text-lg font-semibold text-[var(--text)]">Menu</span>
               <button
                 onClick={() => setMenuOpen(false)}
