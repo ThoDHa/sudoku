@@ -52,7 +52,7 @@ export default function Leaderboard() {
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Difficulty</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Time</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Hints</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Assists</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Date</th>
                   </tr>
                 </thead>
@@ -64,7 +64,9 @@ export default function Leaderboard() {
                       <tr key={diff} className="bg-[var(--bg)]">
                         <td className="px-4 py-3 capitalize text-[var(--text)]">{diff}</td>
                         <td className="px-4 py-3 font-mono text-[var(--text)]">{formatTime(score.timeMs)}</td>
-                        <td className="px-4 py-3 text-[var(--text-muted)]">{score.hintsUsed}</td>
+                        <td className="px-4 py-3 text-[var(--text-muted)]">
+                          {score.autoSolveUsed ? '🤖' : score.hintsUsed > 0 ? `💡${score.hintsUsed}` : '-'}
+                        </td>
                         <td className="px-4 py-3 text-[var(--text-muted)]">{formatDate(score.completedAt)}</td>
                       </tr>
                     )
@@ -86,7 +88,7 @@ export default function Leaderboard() {
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Difficulty</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Time</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Hints</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Assists</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-[var(--text-muted)]">Date</th>
                   </tr>
                 </thead>
@@ -95,7 +97,9 @@ export default function Leaderboard() {
                     <tr key={i} className="bg-[var(--bg)]">
                       <td className="px-4 py-3 capitalize text-[var(--text)]">{score.difficulty}</td>
                       <td className="px-4 py-3 font-mono text-[var(--text)]">{formatTime(score.timeMs)}</td>
-                      <td className="px-4 py-3 text-[var(--text-muted)]">{score.hintsUsed}</td>
+                      <td className="px-4 py-3 text-[var(--text-muted)]">
+                        {score.autoSolveUsed ? '🤖' : score.hintsUsed > 0 ? `💡${score.hintsUsed}` : '-'}
+                      </td>
                       <td className="px-4 py-3 text-[var(--text-muted)]">{formatDate(score.completedAt)}</td>
                     </tr>
                   ))}

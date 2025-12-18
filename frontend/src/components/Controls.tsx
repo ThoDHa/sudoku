@@ -84,7 +84,7 @@ export default function Controls({
               ? 'bg-[var(--accent)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]'
               : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] active:bg-[var(--accent)] active:text-[var(--btn-active-text)]'
           }`}
-          title="Erase mode - click cells to erase"
+          title="Erase"
         >
           <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414-6.414a2 2 0 011.414-.586H19a2 2 0 012 2v10a2 2 0 01-2 2h-8.172a2 2 0 01-1.414-.586L3 12z" />
@@ -106,7 +106,7 @@ export default function Controls({
               ? 'bg-[var(--btn-active)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]'
               : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
           }`}
-          title="Toggle notes mode (N)"
+          title="Notes mode"
         >
           <span aria-hidden="true" className="text-lg">✏️</span>
         </button>
@@ -116,7 +116,7 @@ export default function Controls({
           disabled={!canUndo}
           aria-label="Undo"
           className="control-digit-btn bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Undo (Ctrl+Z)"
+          title="Undo"
         >
           <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4" />
@@ -128,7 +128,7 @@ export default function Controls({
           disabled={!canRedo}
           aria-label="Redo"
           className="control-digit-btn bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Redo (Ctrl+Y)"
+          title="Redo"
         >
           <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 10h-10a5 5 0 00-5 5v2M21 10l-4-4m4 4l-4 4" />

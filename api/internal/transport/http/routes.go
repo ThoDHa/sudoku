@@ -352,14 +352,14 @@ func solveAllHandler(c *gin.Context) {
 				// Clear all candidates and eliminations, start fresh
 				board = human.NewBoardWithCandidates(req.Board, nil)
 				
-				// Record a "restart" move for the UI
+				// Record a "clear-candidates" move for the UI (not a full restart - timer continues)
 				moves = append(moves, MoveResult{
 					Board:      board.GetCells(),
 					Candidates: board.GetCandidates(),
 					Move: map[string]interface{}{
-						"technique":   "restart",
-						"action":      "restart",
-						"explanation": "Too many contradictions - starting fresh",
+						"technique":   "clear-candidates",
+						"action":      "clear-candidates",
+						"explanation": "Too many contradictions - clearing candidates to try a different approach",
 					},
 				})
 				contradictionCount = 0

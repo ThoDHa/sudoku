@@ -351,7 +351,44 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 			
 			// Only add if: can place AND not already a candidate AND not eliminated
 			if b.canPlace(i, d) && !b.Candidates[i][d] && !b.Eliminated[i][d] {
-				// This digit is valid but not in candidates - add it
+				// Before returning a fill-candidate move, check if this cell should be assigned immediately
+				
+				// Check for naked single: count total valid candidates for this cell
+				// (including ones we haven't added yet but excluding eliminated ones)
+				validCount := 0
+				var onlyValidDigit int
+				for digit := 1; digit <= 9; digit++ {
+					if b.canPlace(i, digit) && !b.Eliminated[i][digit] {
+						validCount++
+						onlyValidDigit = digit
+					}
+				}
+				
+				if validCount == 1 {
+					// This cell can only have one digit - naked single!
+					return &core.Move{
+						Technique:   "naked-single",
+						Action:      "assign",
+						Digit:       onlyValidDigit,
+						Targets:     []core.CellRef{{Row: row, Col: col}},
+						Explanation: fmt.Sprintf("R%dC%d can only be %d (naked single)", row+1, col+1, onlyValidDigit),
+						Highlights: core.Highlights{
+							Primary: []core.CellRef{{Row: row, Col: col}},
+						},
+						Refs: core.TechniqueRef{
+							Title: "Naked Single",
+							Slug:  "naked-single",
+							URL:   "/technique/naked-single",
+						},
+					}
+				}
+				
+				// Check for hidden single: this digit can only go in one place in row/col/box
+				if move := s.checkHiddenSingleForDigitImmediate(b, i, d); move != nil {
+					return move
+				}
+				
+				// No immediate assignment - return the fill-candidate move
 				return &core.Move{
 					Technique:   "fill-candidate",
 					Action:      "candidate",
@@ -454,6 +491,262 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 	}
 
 	return nil
+}
+
+// checkHiddenSingleForDigitImmediate checks if digit d at cell idx is a hidden single
+// by looking at all POTENTIAL placements (not just current candidates)
+// This is used during candidate-filling to detect immediate assignments
+func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.Move {
+	row, col := idx/9, idx%9
+	
+	// Helper to check if digit d can potentially go in a cell
+	canPlaceDigit := func(cellIdx, digit int) bool {
+		if b.Cells[cellIdx] != 0 {
+			return false // Cell already filled
+		}
+		if b.Eliminated[cellIdx][digit] {
+			return false // Previously eliminated
+		}
+		return b.canPlace(cellIdx, digit)
+	}
+	
+	// Check row: is this the only place for digit d in this row?
+	rowCount := 0
+	for c := 0; c < 9; c++ {
+		cellIdx := row*9 + c
+		if b.Cells[cellIdx] == d {
+			rowCount = 99 // Already placed
+			break
+		}
+		if canPlaceDigit(cellIdx, d) {
+			rowCount++
+		}
+	}
+	if rowCount == 1 {
+		return &core.Move{
+			Technique:   "hidden-single",
+			Action:      "assign",
+			Digit:       d,
+			Targets:     []core.CellRef{{Row: row, Col: col}},
+			Explanation: fmt.Sprintf("In row %d, %d can only go in R%dC%d (hidden single)", row+1, d, row+1, col+1),
+			Highlights: core.Highlights{
+				Primary:   []core.CellRef{{Row: row, Col: col}},
+				Secondary: getRowCellsInternal(row),
+			},
+			Refs: core.TechniqueRef{
+				Title: "Hidden Single",
+				Slug:  "hidden-single",
+				URL:   "/technique/hidden-single",
+			},
+		}
+	}
+	
+	// Check column: is this the only place for digit d in this column?
+	colCount := 0
+	for r := 0; r < 9; r++ {
+		cellIdx := r*9 + col
+		if b.Cells[cellIdx] == d {
+			colCount = 99
+			break
+		}
+		if canPlaceDigit(cellIdx, d) {
+			colCount++
+		}
+	}
+	if colCount == 1 {
+		return &core.Move{
+			Technique:   "hidden-single",
+			Action:      "assign",
+			Digit:       d,
+			Targets:     []core.CellRef{{Row: row, Col: col}},
+			Explanation: fmt.Sprintf("In column %d, %d can only go in R%dC%d (hidden single)", col+1, d, row+1, col+1),
+			Highlights: core.Highlights{
+				Primary:   []core.CellRef{{Row: row, Col: col}},
+				Secondary: getColCellsInternal(col),
+			},
+			Refs: core.TechniqueRef{
+				Title: "Hidden Single",
+				Slug:  "hidden-single",
+				URL:   "/technique/hidden-single",
+			},
+		}
+	}
+	
+	// Check box: is this the only place for digit d in this box?
+	boxRow, boxCol := (row/3)*3, (col/3)*3
+	boxNum := (row/3)*3 + col/3
+	boxCount := 0
+	for r := boxRow; r < boxRow+3; r++ {
+		for c := boxCol; c < boxCol+3; c++ {
+			cellIdx := r*9 + c
+			if b.Cells[cellIdx] == d {
+				boxCount = 99
+				break
+			}
+			if canPlaceDigit(cellIdx, d) {
+				boxCount++
+			}
+		}
+		if boxCount == 99 {
+			break
+		}
+	}
+	if boxCount == 1 {
+		return &core.Move{
+			Technique:   "hidden-single",
+			Action:      "assign",
+			Digit:       d,
+			Targets:     []core.CellRef{{Row: row, Col: col}},
+			Explanation: fmt.Sprintf("In box %d, %d can only go in R%dC%d (hidden single)", boxNum+1, d, row+1, col+1),
+			Highlights: core.Highlights{
+				Primary:   []core.CellRef{{Row: row, Col: col}},
+				Secondary: getBoxCellsInternal(boxNum),
+			},
+			Refs: core.TechniqueRef{
+				Title: "Hidden Single",
+				Slug:  "hidden-single",
+				URL:   "/technique/hidden-single",
+			},
+		}
+	}
+	
+	return nil
+}
+
+// checkHiddenSingleForDigit checks if digit d at cell idx is a hidden single
+// (the only place for d in its row, column, or box)
+func (s *Solver) checkHiddenSingleForDigit(b *Board, idx, d int) *core.Move {
+	row, col := idx/9, idx%9
+	
+	// Check row: is this the only place for digit d in this row?
+	rowCount := 0
+	for c := 0; c < 9; c++ {
+		cellIdx := row*9 + c
+		if b.Cells[cellIdx] == d {
+			rowCount = 99 // Already placed
+			break
+		}
+		if b.Candidates[cellIdx][d] {
+			rowCount++
+		}
+	}
+	if rowCount == 1 {
+		return &core.Move{
+			Technique:   "hidden-single",
+			Action:      "assign",
+			Digit:       d,
+			Targets:     []core.CellRef{{Row: row, Col: col}},
+			Explanation: fmt.Sprintf("In row %d, %d can only go in R%dC%d (hidden single)", row+1, d, row+1, col+1),
+			Highlights: core.Highlights{
+				Primary:   []core.CellRef{{Row: row, Col: col}},
+				Secondary: getRowCellsInternal(row),
+			},
+			Refs: core.TechniqueRef{
+				Title: "Hidden Single",
+				Slug:  "hidden-single",
+				URL:   "/technique/hidden-single",
+			},
+		}
+	}
+	
+	// Check column: is this the only place for digit d in this column?
+	colCount := 0
+	for r := 0; r < 9; r++ {
+		cellIdx := r*9 + col
+		if b.Cells[cellIdx] == d {
+			colCount = 99
+			break
+		}
+		if b.Candidates[cellIdx][d] {
+			colCount++
+		}
+	}
+	if colCount == 1 {
+		return &core.Move{
+			Technique:   "hidden-single",
+			Action:      "assign",
+			Digit:       d,
+			Targets:     []core.CellRef{{Row: row, Col: col}},
+			Explanation: fmt.Sprintf("In column %d, %d can only go in R%dC%d (hidden single)", col+1, d, row+1, col+1),
+			Highlights: core.Highlights{
+				Primary:   []core.CellRef{{Row: row, Col: col}},
+				Secondary: getColCellsInternal(col),
+			},
+			Refs: core.TechniqueRef{
+				Title: "Hidden Single",
+				Slug:  "hidden-single",
+				URL:   "/technique/hidden-single",
+			},
+		}
+	}
+	
+	// Check box: is this the only place for digit d in this box?
+	boxRow, boxCol := (row/3)*3, (col/3)*3
+	boxNum := (row/3)*3 + col/3
+	boxCount := 0
+	for r := boxRow; r < boxRow+3; r++ {
+		for c := boxCol; c < boxCol+3; c++ {
+			cellIdx := r*9 + c
+			if b.Cells[cellIdx] == d {
+				boxCount = 99
+				break
+			}
+			if b.Candidates[cellIdx][d] {
+				boxCount++
+			}
+		}
+		if boxCount == 99 {
+			break
+		}
+	}
+	if boxCount == 1 {
+		return &core.Move{
+			Technique:   "hidden-single",
+			Action:      "assign",
+			Digit:       d,
+			Targets:     []core.CellRef{{Row: row, Col: col}},
+			Explanation: fmt.Sprintf("In box %d, %d can only go in R%dC%d (hidden single)", boxNum+1, d, row+1, col+1),
+			Highlights: core.Highlights{
+				Primary:   []core.CellRef{{Row: row, Col: col}},
+				Secondary: getBoxCellsInternal(boxNum),
+			},
+			Refs: core.TechniqueRef{
+				Title: "Hidden Single",
+				Slug:  "hidden-single",
+				URL:   "/technique/hidden-single",
+			},
+		}
+	}
+	
+	return nil
+}
+
+// Helper functions for internal use (to avoid import cycle with techniques_simple.go)
+func getRowCellsInternal(row int) []core.CellRef {
+	cells := make([]core.CellRef, 9)
+	for c := 0; c < 9; c++ {
+		cells[c] = core.CellRef{Row: row, Col: c}
+	}
+	return cells
+}
+
+func getColCellsInternal(col int) []core.CellRef {
+	cells := make([]core.CellRef, 9)
+	for r := 0; r < 9; r++ {
+		cells[r] = core.CellRef{Row: r, Col: col}
+	}
+	return cells
+}
+
+func getBoxCellsInternal(box int) []core.CellRef {
+	cells := make([]core.CellRef, 0, 9)
+	boxRow, boxCol := (box/3)*3, (box%3)*3
+	for r := boxRow; r < boxRow+3; r++ {
+		for c := boxCol; c < boxCol+3; c++ {
+			cells = append(cells, core.CellRef{Row: r, Col: c})
+		}
+	}
+	return cells
 }
 
 // ApplyMove applies a move to the board

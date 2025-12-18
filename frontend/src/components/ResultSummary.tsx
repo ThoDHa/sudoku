@@ -4,6 +4,7 @@ interface ResultSummaryProps {
   dateUtc: string
   hintsUsed: number
   mistakes: number
+  autoSolveUsed?: boolean
 }
 
 function formatTime(ms: number): string {
@@ -19,6 +20,7 @@ export default function ResultSummary({
   dateUtc,
   hintsUsed,
   mistakes,
+  autoSolveUsed,
 }: ResultSummaryProps) {
   return (
     <div className="text-center">
@@ -32,9 +34,15 @@ export default function ResultSummary({
         </span>
       </div>
       <div className="mt-4 flex justify-center gap-6 text-sm text-[var(--text-muted)]">
-        <span>
-          <strong className="text-[var(--text)]">{hintsUsed}</strong> hints
-        </span>
+        {autoSolveUsed ? (
+          <span>
+            <strong className="text-[var(--text)]">🤖</strong> auto-solved
+          </span>
+        ) : (
+          <span>
+            <strong className="text-[var(--text)]">{hintsUsed}</strong> hints
+          </span>
+        )}
         <span>
           <strong className="text-[var(--text)]">{mistakes}</strong> mistakes
         </span>

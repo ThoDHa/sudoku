@@ -12,6 +12,7 @@ export default function Result() {
   const difficulty = searchParams.get('d')
   const timeMs = parseInt(searchParams.get('t') || '0', 10)
   const hintsUsed = parseInt(searchParams.get('h') || '0', 10)
+  const autoSolveUsed = searchParams.get('a') === '1'
 
   if (!seed || !difficulty) {
     return (
@@ -35,6 +36,7 @@ export default function Result() {
     hintsUsed,
     mistakes: 0,
     completedAt: new Date().toISOString(),
+    autoSolveUsed,
   }
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
@@ -78,6 +80,7 @@ export default function Result() {
         dateUtc={new Date().toISOString().split('T')[0]}
         hintsUsed={hintsUsed}
         mistakes={0}
+        autoSolveUsed={autoSolveUsed}
       />
       
       {/* Share preview */}

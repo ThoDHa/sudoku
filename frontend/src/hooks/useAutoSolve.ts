@@ -112,8 +112,8 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           return
         }
         
-        if (moveResult.move.action === 'restart') {
-          // Backend cleared everything and started fresh - apply the clean state
+        if (moveResult.move.action === 'clear-candidates') {
+          // Backend cleared candidates to try a different approach - apply the clean state
           const newCandidates = moveResult.candidates
             ? moveResult.candidates.map((cellCands: number[] | null) => 
                 new Set<number>(cellCands || [])

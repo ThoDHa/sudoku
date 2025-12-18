@@ -98,6 +98,8 @@ export default function Game() {
   const [bugReportCopied, setBugReportCopied] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [autoFillUsed, setAutoFillUsed] = useState(false)
+  const [autoSolveUsed, setAutoSolveUsed] = useState(false)
+  const [hintsUsed, setHintsUsed] = useState(0)
   const [validationMessage, setValidationMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   
@@ -457,9 +459,13 @@ export default function Game() {
     }
   }, [token, game])
 
-  // Handle hint button - calls executeHintStep with notifications
+  // Handle hint button - calls executeHintStep with notifications and increments counter
   const handleNext = useCallback(async () => {
-    await executeHintStep(true)
+    const result = await executeHintStep(true)
+    if (result !== false) {
+      // Only count as hint if it was successful (not an error)
+      setHintsUsed(prev => prev + 1)
+    }
   }, [executeHintStep])
 
   // Cell click handler
@@ -570,26 +576,27 @@ export default function Game() {
   const handleSubmit = useCallback(async () => {
     if (!puzzle) return
 
-    const hintCount = game.history.filter(m => !m.isUserMove).length
-
     const score = {
       seed: puzzle.seed,
       difficulty: puzzle.difficulty,
       timeMs: timer.elapsedMs,
-      hintsUsed: hintCount,
+      hintsUsed: hintsUsed,
       mistakes: 0,
       completedAt: new Date().toISOString(),
       encodedPuzzle: encodedPuzzle || undefined,
+      autoFillUsed: autoFillUsed,
+      autoSolveUsed: autoSolveUsed,
     }
 
     saveScore(score)
     setShowResultModal(true)
-  }, [puzzle, game.history, timer.elapsedMs, encodedPuzzle])
+  }, [puzzle, hintsUsed, timer.elapsedMs, encodedPuzzle, autoFillUsed, autoSolveUsed])
 
   // Auto-solve handler
   const handleSolve = useCallback(async () => {
     setSelectedCell(null)
     setHighlightedDigit(null)
+    setAutoSolveUsed(true) // Mark that auto-solve was used
     await autoSolve.startAutoSolve()
   }, [autoSolve])
 
@@ -1317,8 +1324,9 @@ export default function Game() {
         seed={puzzle?.seed || ''}
         difficulty={difficulty}
         timeMs={timer.elapsedMs}
-        hintsUsed={game.history.filter((m) => !m.isUserMove).length}
+        hintsUsed={hintsUsed}
         autoFillUsed={autoFillUsed}
+        autoSolveUsed={autoSolveUsed}
         encodedPuzzle={encodedPuzzle}
       />
 

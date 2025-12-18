@@ -13,6 +13,7 @@ interface ResultModalProps {
   timeMs: number
   hintsUsed: number
   autoFillUsed?: boolean
+  autoSolveUsed?: boolean
   encodedPuzzle?: string | null // For custom puzzles - the encoded givens for sharing
 }
 
@@ -47,6 +48,7 @@ export default function ResultModal({
   timeMs,
   hintsUsed,
   autoFillUsed,
+  autoSolveUsed,
   encodedPuzzle,
 }: ResultModalProps) {
   const [copied, setCopied] = useState(false)
@@ -67,6 +69,7 @@ export default function ResultModal({
     completedAt: new Date().toISOString(),
     encodedPuzzle: encodedPuzzle || undefined,
     autoFillUsed: autoFillUsed || false,
+    autoSolveUsed: autoSolveUsed || false,
   }
 
   const baseUrl = window.location.origin
@@ -127,8 +130,17 @@ export default function ResultModal({
             <p className="text-xs text-[var(--text-muted)] mt-1">🎯 Difficulty</p>
           </div>
           <div className="rounded-lg bg-[var(--bg-secondary)] p-4 text-center">
-            <p className="text-2xl font-bold text-[var(--accent)]">{hintsUsed}</p>
-            <p className="text-xs text-[var(--text-muted)]">💡 Hints</p>
+            {autoSolveUsed ? (
+              <>
+                <p className="text-2xl font-bold text-[var(--accent)]">🤖</p>
+                <p className="text-xs text-[var(--text-muted)]">Auto-solved</p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-[var(--accent)]">{hintsUsed}</p>
+                <p className="text-xs text-[var(--text-muted)]">💡 Hints</p>
+              </>
+            )}
           </div>
         </div>
 

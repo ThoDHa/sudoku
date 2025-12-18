@@ -19,17 +19,23 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'Use Notes Mode',
     description: 'Toggle notes mode to pencil in possible candidates for a cell. This helps you track which numbers could go where.',
     icon: '✏️',
-    tip: 'Press N or tap the pencil button to toggle notes.',
+    tip: 'Press N or tap the pencil button to toggle notes. Use Auto-fill in the menu to fill all candidates at once!',
   },
   {
     title: 'Get Hints',
-    description: 'Stuck? Tap the hint button (💡) to get a logical hint that teaches you solving techniques.',
+    description: 'Stuck? Tap the hint button (💡) to get a logical hint that teaches you solving techniques. Each hint counts toward your score.',
     icon: '💡',
-    tip: 'Hints show you techniques like Naked Singles, Hidden Pairs, and more!',
+    tip: 'Hints show you techniques like Naked Singles, Hidden Pairs, X-Wing and more!',
+  },
+  {
+    title: 'Auto-Solve',
+    description: 'Want to see how the puzzle is solved? Use Auto-solve from the menu to watch the solver work through it step-by-step.',
+    icon: '🤖',
+    tip: 'Auto-solve is tracked separately from hints, so you can learn techniques without affecting your hint count.',
   },
   {
     title: 'Check Your Progress',
-    description: 'Use the menu (☰) to check your progress, restart the puzzle, or change settings like dark mode and text size.',
+    description: 'Use the menu (☰) to validate your board, restart the puzzle, or change settings like dark mode.',
     icon: '⚙️',
     tip: 'The timer pauses automatically when you switch tabs.',
   },
@@ -37,7 +43,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'Keyboard Shortcuts',
     description: 'On desktop, use arrow keys to navigate, 1-9 to enter digits, and keyboard shortcuts for quick actions.',
     icon: '⌨️',
-    tip: 'Ctrl+Z = Undo, H = Hint, N = Notes mode, V = Validate',
+    tip: 'Ctrl+Z = Undo, H = Hint, N = Notes mode, V = Validate, Delete = Erase',
   },
 ]
 
