@@ -1,10 +1,9 @@
 import { useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
 import { GameProvider } from './lib/GameContext'
 import { initializeSolver } from './lib/solver-service'
 import Header from './components/Header'
-import Homepage from './pages/Homepage'
 import Daily from './pages/Daily'
 import DifficultySelect from './pages/DifficultySelect'
 import Result from './pages/Result'
@@ -26,7 +25,7 @@ function AppContent() {
       <Header />
       <main className={isGamePage ? '' : 'pt-14'}>
         <Routes>
-          <Route path="/" element={<Homepage />} />
+          <Route path="/" element={<Navigate to="/play" replace />} />
           <Route path="/daily" element={<Daily />} />
           <Route path="/play" element={<DifficultySelect />} />
           <Route path="/p/:seed" element={<Game />} />
