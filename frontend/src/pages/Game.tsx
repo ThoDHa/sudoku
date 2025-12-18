@@ -23,7 +23,7 @@ import {
   STORAGE_KEYS,
 } from '../lib/constants'
 import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
-import { validateBoard, solveNext, getPuzzle } from '../lib/solver-service'
+import { validateBoard, solveAll, getPuzzle } from '../lib/solver-service'
 
 import { saveScore, markDailyCompleted, type Score } from '../lib/scores'
 import { decodePuzzle, encodePuzzle } from '../lib/puzzleEncoding'
@@ -98,6 +98,16 @@ export default function Game() {
   
   // Track whether we've restored saved state (to prevent overwriting on initial load)
   const hasRestoredSavedState = useRef(false)
+  // Guard to prevent concurrent hint requests (ref is more reliable than state for this)
+  const hintInProgress = useRef(false)
+  // Cached solution moves - invalidated when user makes manual changes
+  const cachedSolutionMoves = useRef<Array<{
+    board: number[]
+    candidates: (number[] | null)[]
+    move: Move
+  }>>([])
+  // Track the history length when solution was cached, to detect user changes
+  const cachedAtHistoryLength = useRef<number>(-1)
 
   // ============================================================
   // CUSTOM HOOKS
@@ -246,19 +256,27 @@ export default function Game() {
   // GAME ACTIONS (using hooks)
   // ============================================================
 
+  // Invalidate cached solution when user makes manual changes
+  const invalidateCachedSolution = useCallback(() => {
+    cachedSolutionMoves.current = []
+    cachedAtHistoryLength.current = -1
+  }, [])
+
   // Clear all user entries (keeps timer running)
   const handleClearAll = useCallback(() => {
     game.clearAll()
+    invalidateCachedSolution()
     setCurrentHighlight(null)
     setSelectedMoveIndex(null)
     setSelectedCell(null)
     setHighlightedDigit(null)
     setNotesMode(false)
-  }, [game])
+  }, [game, invalidateCachedSolution])
 
   // Restart puzzle (clears all AND resets timer)
   const handleRestart = useCallback(() => {
     game.resetGame()
+    invalidateCachedSolution()
     timer.resetTimer()
     timer.startTimer()
     setCurrentHighlight(null)
@@ -270,7 +288,7 @@ export default function Game() {
     setAutoFillUsed(false)
     setAutoSolveUsed(false)
     setShowResultModal(false)
-  }, [game, timer])
+  }, [game, timer, invalidateCachedSolution])
 
   // Auto-fill notes based on current board state
   const autoFillNotes = useCallback(() => {
@@ -291,8 +309,9 @@ export default function Game() {
     }
     
     game.applyExternalMove(game.board, newCandidates, fillMove)
+    invalidateCachedSolution()
     setAutoFillUsed(true)
-  }, [game])
+  }, [game, invalidateCachedSolution])
 
   // Check notes for errors
   const handleCheckNotes = useCallback(() => {
@@ -339,171 +358,143 @@ export default function Game() {
     }
   }, [game.board])
 
-  // Core hint step logic - returns true if more steps available, false otherwise
+  // Core hint step logic - uses cached solution or fetches new one
+  // Returns true if more steps available, false otherwise
   const executeHintStep = useCallback(async (showNotification: boolean = true): Promise<boolean> => {
     // Deselect any highlighted digit when using hint
     setSelectedCell(null)
     setHighlightedDigit(null)
     setCurrentHighlight(null)
 
-    // Send current board and candidates to solver
-    const candidatesArray = game.candidates.map(set => Array.from(set))
+    // Check if we need to fetch a new solution
+    // Invalidate cache if user made changes (history length changed unexpectedly)
+    const userMadeChanges = cachedAtHistoryLength.current >= 0 && 
+                            game.history.length !== cachedAtHistoryLength.current
 
-    try {
-      const data = await solveNext(game.board, candidatesArray, initialBoard)
-      
-      if (data.move) {
-        const move = data.move
+    if (userMadeChanges || cachedSolutionMoves.current.length === 0) {
+      // Fetch fresh solution from current state
+      const boardSnapshot = [...game.board]
+      const candidatesArray = game.candidates.map(set => Array.from(set))
+
+      try {
+        const data = await solveAll(boardSnapshot, candidatesArray, initialBoard)
         
-        // Handle unpinpointable error - show dialog offering solutions
-        if (move.action === 'unpinpointable-error') {
-          setUnpinpointableErrorInfo({ 
-            message: move.explanation || `Couldn't pinpoint the error.`, 
-            count: (move as unknown as { userEntryCount?: number }).userEntryCount || 0 
-          })
-          setShowSolutionConfirm(true)
-          return false
-        }
-        
-        // Handle fix-error - apply the fix from backend
-        if (move.action === 'fix-error') {
-          // Backend has already prepared the fixed board/candidates
-          const newBoard = data.board
-          const newCandidates = data.candidates
-            ? data.candidates.map((cellCands: number[] | null) => new Set<number>(cellCands || []))
-            : game.candidates.map(() => new Set<number>())
-          
-          game.applyExternalMove(newBoard, newCandidates, move)
-          setCurrentHighlight(move)
-          setSelectedMoveIndex(game.history.length)
-          
+        if (!data.moves || data.moves.length === 0) {
           if (showNotification) {
             setValidationMessage({ 
-              type: 'success', 
-              message: move.explanation || 'Fixed an error!'
+              type: 'error', 
+              message: data.solved 
+                ? 'Puzzle is already complete!' 
+                : 'This puzzle requires advanced techniques beyond our hint system.' 
             })
-            setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+            setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
           }
-          
-          return true // More steps may be available after fix
-        }
-        
-        // Handle contradiction - undo the last move
-        if (move.action === 'contradiction') {
-          if (game.canUndo) {
-            game.undo()
-            setCurrentHighlight(null)
-            
-            if (showNotification) {
-              setValidationMessage({ 
-                type: 'error', 
-                message: move.explanation || 'Contradiction found - undoing last move'
-              })
-              setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
-            }
-            return true // More steps available after backtrack
-          } else {
-            // Can't undo - puzzle started in invalid state
-            if (showNotification) {
-              setValidationMessage({ 
-                type: 'error', 
-                message: 'The puzzle cannot be solved - initial state has errors.'
-              })
-              setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
-            }
-            return false
-          }
-        }
-        
-        // Apply changes incrementally to user's current state
-        let newBoard = [...game.board]
-        let newCandidates = game.candidates.map(set => new Set(set))
-        
-        if (move.action === 'assign' && move.targets && move.targets.length > 0) {
-          // For assignment moves, set the cell value and clear its candidates
-          for (const target of move.targets) {
-            const idx = target.row * 9 + target.col
-            newBoard[idx] = move.digit
-            newCandidates[idx] = new Set()
-            
-            // Also remove this digit from peers' candidates
-            const row = target.row
-            const col = target.col
-            const boxRow = Math.floor(row / 3) * 3
-            const boxCol = Math.floor(col / 3) * 3
-            
-            for (let i = 0; i < 9; i++) {
-              // Same row
-              newCandidates[row * 9 + i]?.delete(move.digit)
-              // Same column
-              newCandidates[i * 9 + col]?.delete(move.digit)
-              // Same box
-              const br = boxRow + Math.floor(i / 3)
-              const bc = boxCol + (i % 3)
-              newCandidates[br * 9 + bc]?.delete(move.digit)
-            }
-          }
-        } else if (move.action === 'eliminate' && move.eliminations) {
-          // For elimination moves, remove specific candidates
-          for (const elim of move.eliminations) {
-            const idx = elim.row * 9 + elim.col
-            newCandidates[idx]?.delete(elim.digit)
-          }
-        } else if (move.action === 'candidate' && move.targets && move.targets.length > 0) {
-          // For candidate fill moves, add the candidate
-          for (const target of move.targets) {
-            const idx = target.row * 9 + target.col
-            newCandidates[idx]?.add(move.digit)
-          }
+          return false
         }
 
-        game.applyExternalMove(newBoard, newCandidates, move)
-        setCurrentHighlight(move)
-        setSelectedMoveIndex(game.history.length)
-        
+        // Cache the solution
+        cachedSolutionMoves.current = [...data.moves]
+        cachedAtHistoryLength.current = game.history.length
+      } catch (err) {
+        console.error('Hint error:', err)
         if (showNotification) {
-          // Show subtle hint notification
-          const firstTarget = move.targets[0]
-          const techniqueName = move.technique === 'fill-candidate' && firstTarget
-            ? `Added ${move.digit} to R${firstTarget.row + 1}C${firstTarget.col + 1}`
-            : (move.technique || 'Hint')
-          setValidationMessage({ 
-            type: 'success', 
-            message: techniqueName
-          })
-          setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+          setValidationMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to get hint' })
+          setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
         }
-        
-        // Check if puzzle is now complete
-        const stillHasEmpty = newBoard.some(v => v === 0)
-        return stillHasEmpty // More steps available if not complete
-      } else {
-        // No move found - puzzle may be unsolvable or require advanced techniques
+        return false
+      }
+    }
+
+    // Get the next move from cache
+    const nextMoveResult = cachedSolutionMoves.current.shift()
+    if (!nextMoveResult) {
+      if (showNotification) {
+        setValidationMessage({ type: 'success', message: 'Puzzle complete!' })
+        setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      }
+      return false
+    }
+
+    const move = nextMoveResult.move
+
+    // Handle special moves
+    if (move.action === 'unpinpointable-error') {
+      invalidateCachedSolution()
+      setUnpinpointableErrorInfo({ 
+        message: move.explanation || `Couldn't pinpoint the error.`, 
+        count: (move as unknown as { userEntryCount?: number }).userEntryCount || 0 
+      })
+      setShowSolutionConfirm(true)
+      return false
+    }
+
+    if (move.action === 'contradiction' || move.action === 'error') {
+      invalidateCachedSolution()
+      if (game.canUndo) {
+        game.undo()
+        setCurrentHighlight(null)
         if (showNotification) {
           setValidationMessage({ 
             type: 'error', 
-            message: 'This puzzle requires advanced techniques beyond our hint system.' 
+            message: move.explanation || 'Contradiction found - undoing last move'
+          })
+          setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+        }
+        return true // More steps available after backtrack
+      } else {
+        if (showNotification) {
+          setValidationMessage({ 
+            type: 'error', 
+            message: 'The puzzle cannot be solved - initial state has errors.'
           })
           setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
         }
         return false
       }
-    } catch (err) {
-      console.error('Hint error:', err)
-      if (showNotification) {
-        setValidationMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to get hint' })
-        setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
-      }
-      return false
     }
-  }, [game, initialBoard])
+
+    // Apply the move
+    const newBoard = nextMoveResult.board
+    const newCandidates = nextMoveResult.candidates
+      ? nextMoveResult.candidates.map((cellCands: number[] | null) => new Set<number>(cellCands || []))
+      : game.candidates.map(() => new Set<number>())
+
+    game.applyExternalMove(newBoard, newCandidates, move)
+    // Update the cached history length to account for this hint
+    cachedAtHistoryLength.current = game.history.length + 1
+    
+    setCurrentHighlight(move)
+    setSelectedMoveIndex(game.history.length)
+
+    if (showNotification) {
+      const firstTarget = move.targets?.[0]
+      const techniqueName = move.technique === 'fill-candidate' && firstTarget
+        ? `Added ${move.digit} to R${firstTarget.row + 1}C${firstTarget.col + 1}`
+        : (move.technique || 'Hint')
+      setValidationMessage({ 
+        type: 'success', 
+        message: techniqueName
+      })
+      setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+    }
+
+    // Check if more moves available
+    return cachedSolutionMoves.current.length > 0 || newBoard.some(v => v === 0)
+  }, [game, initialBoard, invalidateCachedSolution])
 
   // Handle hint button - calls executeHintStep with notifications and increments counter
   const handleNext = useCallback(async () => {
-    const result = await executeHintStep(true)
-    if (result !== false) {
-      // Only count as hint if it was successful (not an error)
-      setHintsUsed(prev => prev + 1)
+    // Prevent concurrent hint requests (spam protection)
+    if (hintInProgress.current) return
+    hintInProgress.current = true
+    try {
+      const result = await executeHintStep(true)
+      if (result !== false) {
+        // Only count as hint if it was successful (not an error)
+        setHintsUsed(prev => prev + 1)
+      }
+    } finally {
+      hintInProgress.current = false
     }
   }, [executeHintStep])
 
@@ -598,13 +589,14 @@ export default function Game() {
       autoSolve.stepBack()
     } else {
       game.undo()
+      invalidateCachedSolution()
       // Clear selection and highlights after undo
       setSelectedCell(null)
       setHighlightedDigit(null)
       setCurrentHighlight(null)
       setSelectedMoveIndex(null)
     }
-  }, [game, autoSolve])
+  }, [game, autoSolve, invalidateCachedSolution])
 
   // Redo handler - during auto-solve, this steps forward
   const handleRedo = useCallback(() => {
@@ -612,13 +604,14 @@ export default function Game() {
       autoSolve.stepForward()
     } else {
       game.redo()
+      invalidateCachedSolution()
       // Clear selection and highlights after redo
       setSelectedCell(null)
       setHighlightedDigit(null)
       setCurrentHighlight(null)
       setSelectedMoveIndex(null)
     }
-  }, [game, autoSolve])
+  }, [game, autoSolve, invalidateCachedSolution])
 
   // Submit handler
   const handleSubmit = useCallback(async () => {

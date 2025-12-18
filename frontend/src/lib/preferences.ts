@@ -1,6 +1,7 @@
 // User preferences stored in localStorage
 
 const PREFERENCES_KEY = 'sudoku_preferences'
+const HOMEPAGE_MODE_CHANGE_EVENT = 'homepageModeChange'
 
 export type HomepageMode = 'daily' | 'practice'
 export type AutoSolveSpeed = 'slow' | 'normal' | 'fast' | 'instant'
@@ -21,7 +22,7 @@ export const AUTO_SOLVE_SPEED_LABELS: Record<AutoSolveSpeed, string> = {
 }
 
 export interface UserPreferences {
-  // Which homepage to show: 'daily' (daily puzzle) or 'difficulty' (difficulty selector)
+  // Which homepage to show: 'daily' or 'practice'
   homepageMode: HomepageMode
   // Auto-solve playback speed
   autoSolveSpeed: AutoSolveSpeed
@@ -59,6 +60,15 @@ export function getHomepageMode(): HomepageMode {
 
 export function setHomepageMode(mode: HomepageMode): void {
   setPreferences({ homepageMode: mode })
+  // Dispatch custom event so components can react to the change
+  window.dispatchEvent(new CustomEvent(HOMEPAGE_MODE_CHANGE_EVENT, { detail: mode }))
+}
+
+// Subscribe to homepage mode changes
+export function onHomepageModeChange(callback: (mode: HomepageMode) => void): () => void {
+  const handler = (e: Event) => callback((e as CustomEvent<HomepageMode>).detail)
+  window.addEventListener(HOMEPAGE_MODE_CHANGE_EVENT, handler)
+  return () => window.removeEventListener(HOMEPAGE_MODE_CHANGE_EVENT, handler)
 }
 
 export function getAutoSolveSpeed(): AutoSolveSpeed {

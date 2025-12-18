@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useTheme, ColorTheme } from '../lib/ThemeContext'
+import { useTheme } from '../lib/ThemeContext'
 import { getHomepageMode, setHomepageMode, HomepageMode } from '../lib/preferences'
 import { getScores, getDailyStreak, getDailyCompletions } from '../lib/scores'
+import Menu from './Menu'
 
 function MenuIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
@@ -28,19 +29,11 @@ function MoonIcon({ className = 'h-4 w-4' }: { className?: string }) {
   )
 }
 
-const colorThemes: { key: ColorTheme; color: string }[] = [
-  { key: 'blue', color: 'bg-blue-500' },
-  { key: 'green', color: 'bg-green-500' },
-  { key: 'purple', color: 'bg-purple-500' },
-  { key: 'orange', color: 'bg-orange-500' },
-  { key: 'pink', color: 'bg-pink-500' },
-]
-
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [homepageMode, setHomepageModeState] = useState<HomepageMode>('daily')
+  const [homepageModeState, setHomepageModeState] = useState<HomepageMode>('daily')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
-  const { colorTheme, setColorTheme, mode, toggleMode } = useTheme()
+  const { colorTheme, setColorTheme, mode, toggleMode, fontSize, setFontSize } = useTheme()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -71,7 +64,7 @@ export default function Header() {
       settings: {
         colorTheme: colorTheme,
         mode: mode,
-        homepageMode: homepageMode,
+        homepageMode: homepageModeState,
       },
       stats: {
         totalGamesPlayed: scores.length,
@@ -149,8 +142,7 @@ ${debugJson}
     issueUrl.searchParams.set('labels', 'bug')
     
     window.open(issueUrl.toString(), '_blank')
-    setMenuOpen(false)
-  }, [location.pathname, colorTheme, mode, homepageMode])
+  }, [location.pathname, colorTheme, mode, homepageModeState])
 
   // Feature request handler
   const handleFeatureRequest = useCallback(() => {
@@ -170,8 +162,17 @@ ${debugJson}
     issueUrl.searchParams.set('labels', 'enhancement')
     
     window.open(issueUrl.toString(), '_blank')
-    setMenuOpen(false)
   }, [])
+
+  // Handle homepage mode change
+  const handleSetHomepageMode = useCallback((newMode: HomepageMode) => {
+    setHomepageMode(newMode)
+    setHomepageModeState(newMode)
+    if (location.pathname === '/') {
+      setMenuOpen(false)
+      navigate('/')
+    }
+  }, [location.pathname, navigate])
 
   if (isGamePage) return null
 
@@ -191,7 +192,7 @@ ${debugJson}
               <Link
                 to="/"
                 className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  location.pathname === '/' || location.pathname === '/daily'
+                  location.pathname === '/'
                     ? 'text-[var(--accent)]'
                     : 'text-[var(--text-muted)] hover:text-[var(--text)]'
                 }`}
@@ -244,158 +245,24 @@ ${debugJson}
         </div>
       </header>
 
-      {/* Fullscreen menu modal */}
-      {menuOpen && (
-        <div className="fixed inset-0 bg-[var(--bg)] z-50">
-          <div className="flex flex-col h-full">
-            {/* Header with close button */}
-            <div className="flex items-center justify-between px-4 h-16 border-b border-[var(--border-light)]">
-              <span className="text-lg font-semibold text-[var(--text)]">Menu</span>
-              <button
-                onClick={() => setMenuOpen(false)}
-                className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)]"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            {/* Navigation links */}
-            <div className="flex-1 p-4 space-y-2 overflow-y-auto">
-              <Link
-                to="/"
-                onClick={() => setMenuOpen(false)}
-                className="block px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
-              >
-                Play
-              </Link>
-              <Link
-                to="/techniques"
-                onClick={() => setMenuOpen(false)}
-                className="block px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
-              >
-                Learn Techniques
-              </Link>
-              <Link
-                to="/leaderboard"
-                onClick={() => setMenuOpen(false)}
-                className="block px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
-              >
-                Leaderboard
-              </Link>
-              <Link
-                to="/custom"
-                onClick={() => setMenuOpen(false)}
-                className="block px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
-              >
-                Custom Puzzle
-              </Link>
-              <Link
-                to="/techniques/how-to-play"
-                onClick={() => setMenuOpen(false)}
-                className="block px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
-              >
-                How to Play
-              </Link>
-              
-              {/* Divider */}
-              <div className="my-4 border-t border-[var(--border-light)]" />
-              
-              {/* Feedback section */}
-              <button
-                onClick={handleFeatureRequest}
-                className="w-full text-left px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
-              >
-                Request Feature
-              </button>
-              <button
-                onClick={handleReportBug}
-                className="w-full text-left px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
-              >
-                Report Bug
-              </button>
-            </div>
-
-            {/* Settings at bottom */}
-            <div className="p-4 border-t border-[var(--border-light)] space-y-4">
-              {/* Dark mode toggle */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-[var(--text-muted)]">Dark Mode</span>
-                <button
-                  onClick={toggleMode}
-                  className={`relative w-12 h-7 rounded-full transition-colors ${
-                    mode === 'dark' ? 'bg-[var(--accent)]' : 'bg-[var(--border-light)]'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                      mode === 'dark' ? 'translate-x-5' : ''
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Theme colors */}
-              <div>
-                <div className="text-sm text-[var(--text-muted)] mb-3">Theme Color</div>
-                <div className="flex gap-3">
-                  {colorThemes.map((theme) => (
-                    <button
-                      key={theme.key}
-                      onClick={() => setColorTheme(theme.key)}
-                      className={`w-10 h-10 rounded-full ${theme.color} transition-transform ${
-                        colorTheme === theme.key ? 'ring-2 ring-offset-2 ring-[var(--text)] scale-110' : 'hover:scale-110'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Homepage preference */}
-              <div>
-                <div className="text-sm text-[var(--text-muted)] mb-3">Homepage</div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setHomepageMode('daily')
-                      setHomepageModeState('daily')
-                      if (location.pathname === '/') {
-                        setMenuOpen(false)
-                        navigate('/')
-                      }
-                    }}
-                    className={`flex-1 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
-                      homepageMode === 'daily'
-                        ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                        : 'bg-[var(--bg-secondary)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
-                    }`}
-                  >
-                    Daily Puzzle
-                  </button>
-                  <button
-                    onClick={() => {
-                      setHomepageMode('practice')
-                      setHomepageModeState('practice')
-                      if (location.pathname === '/') {
-                        setMenuOpen(false)
-                        navigate('/')
-                      }
-                    }}
-                    className={`flex-1 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
-                      homepageMode === 'practice'
-                        ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                        : 'bg-[var(--bg-secondary)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
-                    }`}
-                  >
-                    Practice Mode
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Menu modal */}
+      <Menu
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        mode={mode}
+        colorTheme={colorTheme}
+        fontSize={fontSize}
+        onSetMode={() => toggleMode()}
+        onSetColorTheme={setColorTheme}
+        onSetFontSize={setFontSize}
+        onReportBug={handleReportBug}
+        onFeatureRequest={handleFeatureRequest}
+        showNavigation={true}
+        homepageActions={{
+          homepageMode: homepageModeState,
+          onSetHomepageMode: handleSetHomepageMode,
+        }}
+      />
 
       {/* Toast notification */}
       {toastMessage && (

@@ -1,7 +1,7 @@
-import { useRef, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import DifficultyBadge from './DifficultyBadge'
-import GameSettingsMenu from './GameSettingsMenu'
+import Menu from './Menu'
 import { Difficulty } from '../lib/hooks'
 import { ColorTheme, FontSize } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed } from '../lib/preferences'
@@ -81,20 +81,8 @@ export default function GameHeader({
   onToggleHideTimer,
 }: GameHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
 
   const MAX_HISTORY_BADGE_COUNT = 99
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const handleSpeedChange = (speed: AutoSolveSpeed) => {
     setAutoSolveSpeed(speed)
@@ -131,6 +119,7 @@ export default function GameHeader({
   ]
 
   return (
+    <>
     <header className="sticky top-0 z-40 bg-[var(--bg)]/95 backdrop-blur border-b border-[var(--border-light)]">
       {/* Main header row */}
       <div className="mx-auto max-w-4xl px-2 sm:px-4 h-16 flex items-center justify-between gap-2">
@@ -261,43 +250,16 @@ export default function GameHeader({
             </button>
           )}
 
-          {/* Menu */}
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
-              title="Menu"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-
-            <GameSettingsMenu
-              isOpen={menuOpen}
-              onClose={() => setMenuOpen(false)}
-              isComplete={isComplete}
-              autoSolveSpeed={autoSolveSpeed}
-              onSetAutoSolveSpeed={onSetAutoSolveSpeed}
-              onAutoFillNotes={onAutoFillNotes}
-              onCheckNotes={onCheckNotes}
-              onClearNotes={onClearNotes}
-              onValidate={onValidate}
-              onSolve={onSolve}
-              onClearAll={onClearAll}
-              onTechniquesList={onTechniquesList}
-              onReportBug={onReportBug}
-              bugReportCopied={bugReportCopied}
-              mode={mode}
-              colorTheme={colorTheme}
-              fontSize={fontSize}
-              hideTimerState={hideTimerState}
-              onSetMode={onSetMode}
-              onSetColorTheme={onSetColorTheme}
-              onSetFontSize={onSetFontSize}
-              onToggleHideTimer={onToggleHideTimer}
-            />
-          </div>
+          {/* Menu button */}
+          <button
+            onClick={() => setMenuOpen(true)}
+            className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
+            title="Menu"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -364,5 +326,34 @@ export default function GameHeader({
         </div>
       )}
     </header>
+
+    {/* Menu modal - outside header to overlay full page */}
+    <Menu
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        mode={mode}
+        colorTheme={colorTheme}
+        fontSize={fontSize}
+        onSetMode={onSetMode}
+        onSetColorTheme={onSetColorTheme}
+        onSetFontSize={onSetFontSize}
+        onReportBug={onReportBug}
+        bugReportCopied={bugReportCopied}
+        gameActions={{
+          onAutoFillNotes,
+          onCheckNotes,
+          onClearNotes,
+          onValidate,
+          onSolve,
+          onClearAll,
+          onTechniquesList,
+          isComplete,
+          autoSolveSpeed,
+          onSetAutoSolveSpeed,
+          hideTimerState,
+          onToggleHideTimer,
+        }}
+      />
+    </>
   )
 }

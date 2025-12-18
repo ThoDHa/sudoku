@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
 import { GameProvider } from './lib/GameContext'
 import { initializeSolver } from './lib/solver-service'
 import Header from './components/Header'
-import Daily from './pages/Daily'
+import Homepage from './pages/Homepage'
 import Result from './pages/Result'
 import Game from './pages/Game'
 import Technique from './pages/Technique'
@@ -24,9 +24,7 @@ function AppContent() {
       <Header />
       <main className={`flex-1 overflow-y-auto scrollbar-hide ${isGamePage ? '' : 'pt-16'}`}>
         <Routes>
-          <Route path="/" element={<Navigate to="/daily" replace />} />
-          <Route path="/daily" element={<Daily />} />
-          <Route path="/play" element={<Navigate to="/daily" replace />} />
+          <Route path="/" element={<Homepage />} />
           <Route path="/p/:seed" element={<Game />} />
           <Route path="/game/:seed" element={<Game />} />
           <Route path="/c/:encoded" element={<Game />} />

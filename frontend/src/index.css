@@ -47,14 +47,20 @@
   --board-max-width-mobile: min(95vw, 26rem);
   --board-max-width-sm: 28rem;
   --board-max-width-md: 32rem;
+  --board-max-width-lg: 36rem;
+  --board-max-width-xl: 40rem;
 
   /* Font sizes - defaults, overridden by ThemeContext based on fontSize setting */
   --cell-font-size: 1.125rem;
   --cell-font-size-sm: 1.375rem;
   --cell-font-size-md: 1.625rem;
+  --cell-font-size-lg: 1.875rem;
+  --cell-font-size-xl: 2.125rem;
   --candidate-font-size: 8px;
   --candidate-font-size-sm: 9px;
   --candidate-font-size-md: 11px;
+  --candidate-font-size-lg: 12px;
+  --candidate-font-size-xl: 14px;
   --control-btn-size: 3rem;
   --control-font-size: 1.125rem;
 
@@ -130,6 +136,18 @@ html, body {
   }
 }
 
+@media (min-width: 1024px) {
+  .game-container {
+    max-width: var(--board-max-width-lg);
+  }
+}
+
+@media (min-width: 1280px) {
+  .game-container {
+    max-width: var(--board-max-width-xl);
+  }
+}
+
 :root.font-large .game-container {
   max-width: min(98vw, 28rem);
 }
@@ -143,6 +161,18 @@ html, body {
 @media (min-width: 768px) {
   :root.font-large .game-container {
     max-width: 36rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root.font-large .game-container {
+    max-width: 40rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root.font-large .game-container {
+    max-width: 44rem;
   }
 }
 
@@ -171,6 +201,18 @@ html, body {
   }
 }
 
+@media (min-width: 1024px) {
+  .sudoku-board {
+    max-width: var(--board-max-width-lg);
+  }
+}
+
+@media (min-width: 1280px) {
+  .sudoku-board {
+    max-width: var(--board-max-width-xl);
+  }
+}
+
 /* Large font size makes board larger on mobile */
 :root.font-large .sudoku-board {
   max-width: min(98vw, 28rem);
@@ -185,6 +227,18 @@ html, body {
 @media (min-width: 768px) {
   :root.font-large .sudoku-board {
     max-width: 36rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root.font-large .sudoku-board {
+    max-width: 40rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root.font-large .sudoku-board {
+    max-width: 44rem;
   }
 }
 
@@ -227,6 +281,22 @@ html, body {
   }
 }
 
+@media (min-width: 1024px) {
+  .sudoku-cell {
+    font-size: var(--cell-font-size-lg);
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .sudoku-cell {
+    font-size: var(--cell-font-size-xl);
+    min-height: 52px;
+    min-width: 52px;
+  }
+}
+
 /* Candidate grid */
 .candidate-grid {
   display: grid;
@@ -261,6 +331,18 @@ html, body {
 @media (min-width: 768px) {
   .candidate-digit {
     font-size: var(--candidate-font-size-md);
+  }
+}
+
+@media (min-width: 1024px) {
+  .candidate-digit {
+    font-size: var(--candidate-font-size-lg);
+  }
+}
+
+@media (min-width: 1280px) {
+  .candidate-digit {
+    font-size: var(--candidate-font-size-xl);
   }
 }
 
