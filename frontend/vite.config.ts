@@ -44,6 +44,9 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // Force immediate activation of new service worker
+        skipWaiting: true,
+        clientsClaim: true,
         // Only precache WASM files (large, rarely change, needed for offline)
         globPatterns: ['**/*.wasm', 'wasm_exec.js'],
         // Allow larger files to be precached (for WASM - ~4MB)
