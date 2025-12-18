@@ -23,6 +23,7 @@ import {
   STORAGE_KEYS,
 } from '../lib/constants'
 import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
+import { getAutoSaveEnabled } from '../lib/gameSettings'
 import { validateBoard, solveAll, getPuzzle } from '../lib/solver-service'
 
 import { saveScore, markDailyCompleted, type Score } from '../lib/scores'
@@ -91,6 +92,7 @@ export default function Game() {
   const [bugReportCopied, setBugReportCopied] = useState(false)
   const [autoFillUsed, setAutoFillUsed] = useState(false)
   const [autoSolveUsed, setAutoSolveUsed] = useState(false)
+  const [autoSolveStepsUsed, setAutoSolveStepsUsed] = useState(0)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [validationMessage, setValidationMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [autoSolveSpeedState, setAutoSolveSpeedState] = useState<AutoSolveSpeed>(getAutoSolveSpeed())
@@ -265,17 +267,20 @@ export default function Game() {
   // Clear all user entries (keeps timer running)
   const handleClearAll = useCallback(() => {
     game.clearAll()
+    clearSavedGameState()
     invalidateCachedSolution()
     setCurrentHighlight(null)
     setSelectedMoveIndex(null)
     setSelectedCell(null)
     setHighlightedDigit(null)
     setNotesMode(false)
-  }, [game, invalidateCachedSolution])
+    setAutoSolveStepsUsed(0)
+  }, [game, clearSavedGameState, invalidateCachedSolution])
 
   // Restart puzzle (clears all AND resets timer)
   const handleRestart = useCallback(() => {
     game.resetGame()
+    clearSavedGameState()
     invalidateCachedSolution()
     timer.resetTimer()
     timer.startTimer()
@@ -287,8 +292,9 @@ export default function Game() {
     setHintsUsed(0)
     setAutoFillUsed(false)
     setAutoSolveUsed(false)
+    setAutoSolveStepsUsed(0)
     setShowResultModal(false)
-  }, [game, timer, invalidateCachedSolution])
+  }, [game, timer, clearSavedGameState, invalidateCachedSolution])
 
   // Auto-fill notes based on current board state
   const autoFillNotes = useCallback(() => {
@@ -900,6 +906,13 @@ ${bugReportJson}
     }
   }, [autoSolve.isAutoSolving])
 
+  // Track auto-solve steps when auto-solve stops
+  useEffect(() => {
+    if (!autoSolve.isAutoSolving && autoSolve.currentIndex > 0) {
+      setAutoSolveStepsUsed(prev => prev + autoSolve.currentIndex)
+    }
+  }, [autoSolve.isAutoSolving, autoSolve.currentIndex])
+
   // Fetch puzzle
   useEffect(() => {
     if (!seed && !isEncodedCustom) return
@@ -1019,7 +1032,7 @@ ${bugReportJson}
 
   // Auto-save game state when board or candidates change
   useEffect(() => {
-    if (!puzzle || !hasRestoredSavedState.current || game.isComplete) return
+    if (!puzzle || !hasRestoredSavedState.current || game.isComplete || !getAutoSaveEnabled()) return
     
     // Debounce saves to avoid excessive localStorage writes
     const timeoutId = setTimeout(() => {
@@ -1197,6 +1210,7 @@ ${bugReportJson}
         }}
         onTechniqueClick={(technique) => setTechniqueModal(technique)}
         selectedMoveIndex={selectedMoveIndex}
+        autoSolveStepsUsed={autoSolveStepsUsed}
       />
 
       <ResultModal
