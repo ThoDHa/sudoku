@@ -120,8 +120,11 @@ export default function Game() {
   // CUSTOM HOOKS
   // ============================================================
 
-   // Background manager for coordinating all background operations
-   const backgroundManager = useBackgroundManager()
+    // Background manager for coordinating all background operations
+    const backgroundManager = useBackgroundManager()
+
+    // Extended background pause - completely suspend operations after 30 seconds hidden
+    const [isExtendedPaused, setIsExtendedPaused] = useState(false)
 
    // Throttle validation messages when hidden to reduce re-renders
    const throttledSetValidationMessage = useCallback((message: { type: 'success' | 'error'; message: string } | null) => {
@@ -142,12 +145,12 @@ export default function Game() {
        timer.pauseTimer()
        handleSubmit()
      },
-   })
+    })
 
-  // Auto-solve hook - fetches all moves at once and plays them back
+   // Auto-solve hook - fetches all moves at once and plays them back
   const autoSolve = useAutoSolve({
     stepDelay: AUTO_SOLVE_SPEEDS[autoSolveSpeedState],
-    gamePaused: timer.isPausedDueToVisibility,
+    gamePaused: timer.isPausedDueToVisibility || isExtendedPaused,
     backgroundManager,
     getBoard: () => game.board,
     getCandidates: () => game.candidates,
@@ -212,6 +215,28 @@ export default function Game() {
       }, TOAST_DURATION_FIX_ERROR)
     },
   })
+
+  // Extended background pause logic - suspend all operations after 30 seconds hidden
+  useEffect(() => {
+    if (!backgroundManager.isHidden) {
+      // Reset extended pause when visible
+      setIsExtendedPaused(false)
+      return
+    }
+
+    // Set extended pause after 30 seconds hidden
+    const timeout = setTimeout(() => {
+      setIsExtendedPaused(true)
+      // Pause auto-solve if running
+      if (autoSolve.isAutoSolving) {
+        autoSolve.stopAutoSolve()
+      }
+      // Pause timer
+      timer.pauseTimer()
+    }, 30000) // 30 seconds
+
+    return () => clearTimeout(timeout)
+  }, [backgroundManager.isHidden, autoSolve, timer])
 
   // ============================================================
   // HELPER FUNCTIONS
@@ -522,8 +547,16 @@ export default function Game() {
     }
   }, [executeHintStep])
 
-   // Cell click handler
-   const handleCellClick = useCallback((idx: number) => {
+    // Resume from extended pause on user interaction
+    const resumeFromExtendedPause = useCallback(() => {
+      if (isExtendedPaused) {
+        setIsExtendedPaused(false)
+      }
+    }, [isExtendedPaused])
+
+    // Cell click handler
+    const handleCellClick = useCallback((idx: number) => {
+      resumeFromExtendedPause()
      // Given cells: just highlight the digit, don't select
      if (game.isGivenCell(idx)) {
        const cellDigit = game.board[idx] ?? null
@@ -566,9 +599,10 @@ export default function Game() {
      setCurrentHighlight(null)
    }, [game, highlightedDigit, eraseMode, notesMode, selectedCell])
 
-   // Digit input handler
-   const handleDigitInput = useCallback((digit: number) => {
-     // Clear erase mode when selecting a digit
+    // Digit input handler
+    const handleDigitInput = useCallback((digit: number) => {
+      resumeFromExtendedPause()
+      // Clear erase mode when selecting a digit
      setEraseMode(false)
 
      // If no cell selected, toggle digit highlight for multi-fill mode
@@ -598,9 +632,10 @@ export default function Game() {
      // Keep digit highlighted for adding candidates (multi-fill)
    }, [game, selectedCell, highlightedDigit, notesMode])
 
-   // Keyboard cell change handler (from Board component)
-   const handleCellChange = useCallback((idx: number, value: number) => {
-     if (game.isGivenCell(idx)) return
+    // Keyboard cell change handler (from Board component)
+    const handleCellChange = useCallback((idx: number, value: number) => {
+      resumeFromExtendedPause()
+      if (game.isGivenCell(idx)) return
      if (value === 0) {
        game.eraseCell(idx)
        setCurrentHighlight(null)
