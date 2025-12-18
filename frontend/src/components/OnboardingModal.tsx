@@ -35,7 +35,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
   },
   {
     title: 'Check Your Progress',
-    description: 'Use the menu (☰) to validate your board, restart the puzzle, or change settings like dark mode.',
+    description: 'Use the menu (☰) to validate your board, clear entries, or change settings like dark mode.',
     icon: '⚙️',
     tip: 'The timer pauses automatically when you switch tabs.',
   },

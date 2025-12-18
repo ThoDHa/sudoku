@@ -3,6 +3,7 @@ package http
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"hash/fnv"
 	"net/http"
 	"time"
@@ -295,6 +296,91 @@ type SolveAllRequest struct {
 	Token      string  `json:"token" binding:"required"`
 	Board      []int   `json:"board" binding:"required"`
 	Candidates [][]int `json:"candidates"`
+	Givens     []int   `json:"givens"` // Original puzzle givens (to identify user-entered cells)
+}
+
+// findBlockingUserCell analyzes a contradiction and finds which user-entered cell is causing it.
+// originalUserBoard is the board state when solve was called (to distinguish user entries from solver placements)
+// givens is the original puzzle (to distinguish user entries from given clues)
+// Returns the cell index and the blocking digit, or -1 if no user error found.
+func findBlockingUserCell(board *human.Board, contradictionCell int, originalUserBoard []int, givens []int) (int, int) {
+	row, col := contradictionCell/9, contradictionCell%9
+	boxRow, boxCol := (row/3)*3, (col/3)*3
+
+	// For each digit 1-9, find what's blocking it from this cell
+	// Only consider cells that were user-entered BEFORE solve was called (not solver placements)
+	type blockingCell struct {
+		idx   int
+		digit int
+	}
+	var userBlockers []blockingCell
+
+	for digit := 1; digit <= 9; digit++ {
+		// Check row for this digit
+		for c := 0; c < 9; c++ {
+			idx := row*9 + c
+			if board.Cells[idx] == digit {
+				// This cell blocks 'digit' from contradiction cell
+				// Only consider if: was in original user board AND not a given
+				if originalUserBoard[idx] != 0 && givens[idx] == 0 {
+					userBlockers = append(userBlockers, blockingCell{idx, digit})
+				}
+				break
+			}
+		}
+
+		// Check column for this digit
+		for r := 0; r < 9; r++ {
+			idx := r*9 + col
+			if board.Cells[idx] == digit {
+				if originalUserBoard[idx] != 0 && givens[idx] == 0 {
+					userBlockers = append(userBlockers, blockingCell{idx, digit})
+				}
+				break
+			}
+		}
+
+		// Check box for this digit
+		for r := boxRow; r < boxRow+3; r++ {
+			for c := boxCol; c < boxCol+3; c++ {
+				idx := r*9 + c
+				if board.Cells[idx] == digit {
+					if originalUserBoard[idx] != 0 && givens[idx] == 0 {
+						userBlockers = append(userBlockers, blockingCell{idx, digit})
+					}
+					break
+				}
+			}
+		}
+	}
+
+	if len(userBlockers) == 0 {
+		return -1, 0
+	}
+
+	// Count how many times each user cell appears as a blocker
+	// The cell blocking the most candidates is most likely wrong
+	cellCount := make(map[int]int)
+	cellDigit := make(map[int]int)
+	for _, b := range userBlockers {
+		cellCount[b.idx]++
+		cellDigit[b.idx] = b.digit
+	}
+
+	// Find cell with highest count
+	maxCount := 0
+	maxCell := -1
+	for idx, count := range cellCount {
+		if count > maxCount {
+			maxCount = count
+			maxCell = idx
+		}
+	}
+
+	if maxCell >= 0 {
+		return maxCell, cellDigit[maxCell]
+	}
+	return -1, 0
 }
 
 func solveAllHandler(c *gin.Context) {
@@ -304,7 +390,7 @@ func solveAllHandler(c *gin.Context) {
 		return
 	}
 
-	_, err := verifyToken(cfg.JWTSecret, req.Token)
+	session, err := verifyToken(cfg.JWTSecret, req.Token)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token: " + err.Error()})
 		return
@@ -315,8 +401,29 @@ func solveAllHandler(c *gin.Context) {
 		return
 	}
 
+	// Get original givens - either from request or regenerate from session
+	givens := req.Givens
+	if len(givens) != constants.TotalCells {
+		// Regenerate givens from session info
+		loader := puzzles.Global()
+		if loader != nil {
+			givens, _, _, _ = loader.GetPuzzleBySeed(session.Seed, session.Difficulty)
+		}
+		if len(givens) != constants.TotalCells {
+			// Fallback: generate on-demand
+			seedHash := hashSeed(session.Seed)
+			fullGrid := dp.GenerateFullGrid(seedHash)
+			allPuzzles := dp.CarveGivensWithSubset(fullGrid, seedHash)
+			givens = allPuzzles[session.Difficulty]
+		}
+	}
+
 	// Use provided candidates (may be empty/incomplete - solver will fill one at a time)
 	board := human.NewBoardWithCandidates(req.Board, req.Candidates)
+	
+	// Keep a copy of the original user board to distinguish user entries from solver placements
+	originalUserBoard := make([]int, len(req.Board))
+	copy(originalUserBoard, req.Board)
 
 	solver := human.NewSolver()
 
@@ -328,9 +435,10 @@ func solveAllHandler(c *gin.Context) {
 	}
 
 	var moves []MoveResult
-	maxMoves := 2000              // Safety limit
-	maxContradictions := 3        // After this many contradictions, start fresh
-	contradictionCount := 0
+	maxMoves := 2000
+	maxFixes := 5 // Limit how many user errors we'll fix
+
+	fixCount := 0
 
 	for i := 0; i < maxMoves; i++ {
 		// Check if solved
@@ -343,39 +451,66 @@ func solveAllHandler(c *gin.Context) {
 			break // No more moves found (stalled)
 		}
 
-		// If we hit a contradiction, handle it
+		// If we hit a contradiction, try to find and fix the user error
 		if move.Action == "contradiction" {
-			contradictionCount++
-
-			if contradictionCount >= maxContradictions {
-				// Too many contradictions - human would say "let me start over"
-				// Clear all candidates and eliminations, start fresh
-				board = human.NewBoardWithCandidates(req.Board, nil)
-				
-				// Record a "clear-candidates" move for the UI (not a full restart - timer continues)
+			if fixCount >= maxFixes {
+				// Too many fixes needed - give up
 				moves = append(moves, MoveResult{
 					Board:      board.GetCells(),
 					Candidates: board.GetCandidates(),
 					Move: map[string]interface{}{
-						"technique":   "clear-candidates",
-						"action":      "clear-candidates",
-						"explanation": "Too many contradictions - clearing candidates to try a different approach",
+						"technique":   "error",
+						"action":      "error",
+						"explanation": "Too many incorrect entries to fix automatically",
 					},
 				})
-				contradictionCount = 0
-				continue
+				break
 			}
 
-			// For now, just record the contradiction and let the solver continue
-			// The solver should eventually find a different path
-			// (In a more sophisticated implementation, we'd analyze and fix the specific error)
+			// Find the contradiction cell (first target in the move)
+			if len(move.Targets) > 0 {
+				contradictionCell := move.Targets[0].Row*9 + move.Targets[0].Col
+
+				// Analyze which user-entered cell is causing this
+				badCell, badDigit := findBlockingUserCell(board, contradictionCell, originalUserBoard, givens)
+
+				if badCell >= 0 {
+					badRow, badCol := badCell/9, badCell%9
+					fixCount++
+
+					// Update originalUserBoard to remove the bad cell
+					originalUserBoard[badCell] = 0
+					
+					// IMPORTANT: Reset the board to the original user state (minus the fixed cell)
+					// This removes any solver-placed cells that may have been wrong due to the user error
+					board = human.NewBoardWithCandidates(originalUserBoard, nil)
+
+					// Record the fix move
+					moves = append(moves, MoveResult{
+						Board:      board.GetCells(),
+						Candidates: board.GetCandidates(),
+						Move: map[string]interface{}{
+							"technique":   "fix-error",
+							"action":      "fix-error",
+							"digit":       badDigit,
+							"explanation": fmt.Sprintf("Contradiction detected! R%dC%d had no valid candidates. Removing incorrect %d from R%dC%d.", move.Targets[0].Row+1, move.Targets[0].Col+1, badDigit, badRow+1, badCol+1),
+							"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+							"highlights": map[string]interface{}{
+								"primary":   []map[string]int{{"row": badRow, "col": badCol}},
+								"secondary": []map[string]int{{"row": move.Targets[0].Row, "col": move.Targets[0].Col}},
+							},
+						},
+					})
+					continue
+				}
+			}
+
+			// Couldn't identify the error - just record the contradiction
 			moves = append(moves, MoveResult{
 				Board:      board.GetCells(),
 				Candidates: board.GetCandidates(),
 				Move:       move,
 			})
-			
-			// Skip this contradiction and continue - solver will try other moves
 			continue
 		}
 
@@ -473,11 +608,25 @@ func validateBoardHandler(c *gin.Context) {
 	}
 
 	// Check for conflicts (duplicates in rows/cols/boxes)
-	if !dp.IsValid(req.Board) {
+	conflicts := dp.FindConflicts(req.Board)
+	if len(conflicts) > 0 {
+		// Find all unique cells involved in conflicts
+		conflictCells := make(map[int]bool)
+		for _, conflict := range conflicts {
+			conflictCells[conflict.Cell1] = true
+			conflictCells[conflict.Cell2] = true
+		}
+		cellList := make([]int, 0, len(conflictCells))
+		for cell := range conflictCells {
+			cellList = append(cellList, cell)
+		}
+		
 		c.JSON(http.StatusOK, gin.H{
-			"valid":   false,
-			"reason":  "conflicts",
-			"message": "There are conflicting numbers in the puzzle",
+			"valid":         false,
+			"reason":        "conflicts",
+			"message":       "There are conflicting numbers in the puzzle",
+			"conflicts":     conflicts,
+			"conflictCells": cellList,
 		})
 		return
 	}
@@ -488,7 +637,7 @@ func validateBoardHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"valid":   false,
 			"reason":  "unsolvable",
-			"message": "The puzzle cannot be solved from this state",
+			"message": "The puzzle cannot be solved from this state - a digit you entered is incorrect",
 		})
 		return
 	}

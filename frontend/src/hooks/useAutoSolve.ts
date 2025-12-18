@@ -11,6 +11,8 @@ interface UseAutoSolveOptions {
   getBoard: () => number[]
   /** Get current candidates */
   getCandidates: () => Set<number>[]
+  /** Get original puzzle givens (to identify user-entered cells) */
+  getGivens: () => number[]
   /** Apply a move to the game state */
   applyMove: (newBoard: number[], newCandidates: Set<number>[], move: Move) => void
   /** Check if puzzle is complete */
@@ -39,7 +41,7 @@ interface MoveResult {
  * Fetches all moves in one request via /api/solve/all, then plays them back with animation.
  */
 export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
-  const { token, stepDelay = PLAY_DELAY, getBoard, getCandidates, applyMove, isComplete, onError } = options
+  const { token, stepDelay = PLAY_DELAY, getBoard, getCandidates, getGivens, applyMove, isComplete, onError } = options
 
   const [isAutoSolving, setIsAutoSolving] = useState(false)
   const autoSolveRef = useRef(false)
@@ -57,6 +59,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     const currentBoard = getBoard()
     const currentCandidates = getCandidates()
     const candidatesArray = currentCandidates.map(set => Array.from(set))
+    const givens = getGivens()
 
     setIsAutoSolving(true)
     autoSolveRef.current = true
@@ -65,7 +68,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       const res = await fetch('/api/solve/all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, board: currentBoard, candidates: candidatesArray }),
+        body: JSON.stringify({ token, board: currentBoard, candidates: candidatesArray, givens }),
       })
 
       if (!res.ok) {
@@ -112,6 +115,13 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           return
         }
         
+        if (moveResult.move.action === 'error') {
+          // Backend gave up - too many errors
+          onError?.(moveResult.move.explanation || 'Too many incorrect entries to fix automatically.')
+          stopAutoSolve()
+          return
+        }
+        
         if (moveResult.move.action === 'clear-candidates') {
           // Backend cleared candidates to try a different approach - apply the clean state
           const newCandidates = moveResult.candidates
@@ -131,6 +141,9 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           }
           return
         }
+        
+        // Handle fix-error moves - these remove incorrect user entries
+        // They work like normal moves, just apply the new board state
         
         // Convert candidates from arrays to Sets
         const newCandidates = moveResult.candidates
@@ -158,7 +171,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       onError?.('Failed to get solution from server.')
       stopAutoSolve()
     }
-  }, [token, isAutoSolving, stepDelay, getBoard, getCandidates, applyMove, isComplete, onError, stopAutoSolve])
+  }, [token, isAutoSolving, stepDelay, getBoard, getCandidates, getGivens, applyMove, isComplete, onError, stopAutoSolve])
 
   return {
     isAutoSolving,

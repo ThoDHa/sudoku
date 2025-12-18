@@ -8,7 +8,6 @@ interface GameState {
   isComplete: boolean
   onHint: (() => void) | null
   onHistory: (() => void) | null
-  onRestart: (() => void) | null
   onAutoFillNotes: (() => void) | null
 }
 

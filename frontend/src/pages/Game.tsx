@@ -92,7 +92,6 @@ export default function Game() {
   const [techniqueModal, setTechniqueModal] = useState<{ title: string; slug: string } | null>(null)
   const [techniquesListOpen, setTechniquesListOpen] = useState(false)
   const [solveConfirmOpen, setSolveConfirmOpen] = useState(false)
-  const [showRestartConfirm, setShowRestartConfirm] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [newPuzzleMenuOpen, setNewPuzzleMenuOpen] = useState(false)
   const [bugReportCopied, setBugReportCopied] = useState(false)
@@ -128,6 +127,7 @@ export default function Game() {
     stepDelay: PLAY_DELAY,
     getBoard: () => game.board,
     getCandidates: () => game.candidates,
+    getGivens: () => initialBoard,
     applyMove: (newBoard, newCandidates, move) => {
       game.applyExternalMove(newBoard, newCandidates, move)
       setCurrentHighlight(move)
@@ -212,18 +212,6 @@ export default function Game() {
   // ============================================================
   // GAME ACTIONS (using hooks)
   // ============================================================
-
-  // Restart puzzle
-  const handleRestart = useCallback(() => {
-    game.resetGame()
-    setCurrentHighlight(null)
-    setSelectedMoveIndex(null)
-    setSelectedCell(null)
-    setAutoFillUsed(false)
-    timer.resetTimer()
-    timer.startTimer()
-    clearSavedGameState()
-  }, [game, timer, clearSavedGameState])
 
   // Clear all user entries (keeps timer running)
   const handleClearAll = useCallback(() => {
@@ -690,7 +678,7 @@ export default function Game() {
 
       // Don't trigger shortcuts when modals are open
       if (showResultModal || historyOpen || techniqueModal || techniquesListOpen || 
-          solveConfirmOpen || showRestartConfirm || showClearConfirm || menuOpen) {
+          solveConfirmOpen || showClearConfirm || menuOpen) {
         return
       }
 
@@ -759,7 +747,7 @@ export default function Game() {
   }, [
     handleUndo, handleRedo, handleNext, handleValidate,
     showResultModal, historyOpen, techniqueModal, techniquesListOpen,
-    solveConfirmOpen, showRestartConfirm, showClearConfirm, menuOpen
+    solveConfirmOpen, showClearConfirm, menuOpen
   ])
 
   // Sync game state to global context for header
@@ -773,12 +761,11 @@ export default function Game() {
         isComplete: game.isComplete,
         onHint: null,
         onHistory: () => setHistoryOpen(true),
-        onRestart: handleRestart,
         onAutoFillNotes: autoFillNotes,
       })
     }
     return () => setGameState(null)
-  }, [loading, puzzle, difficulty, timer.elapsedMs, game.history.length, game.isComplete, handleRestart, autoFillNotes, setGameState])
+  }, [loading, puzzle, difficulty, timer.elapsedMs, game.history.length, game.isComplete, autoFillNotes, setGameState])
 
   // Fetch puzzle and start session
   useEffect(() => {
@@ -1073,15 +1060,6 @@ export default function Game() {
                     Check Progress
                   </button>
                   <button
-                    onClick={() => { setShowRestartConfirm(true); setMenuOpen(false) }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Restart
-                  </button>
-                  <button
                     onClick={() => { setSolveConfirmOpen(true); setMenuOpen(false) }}
                     className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)]"
                   >
@@ -1368,39 +1346,6 @@ export default function Game() {
                 className="flex-1 rounded-lg bg-[var(--accent)] py-2 font-medium text-[var(--btn-active-text)] transition-colors hover:opacity-90"
               >
                 Solve
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Restart Confirmation Dialog */}
-      {showRestartConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowRestartConfirm(false)}
-          />
-          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-[var(--bg)] p-6 shadow-2xl">
-            <h2 className="mb-2 text-lg font-bold text-[var(--text)]">Restart Puzzle?</h2>
-            <p className="mb-6 text-sm text-[var(--text-muted)]">
-              This will reset all your progress and start the puzzle from the beginning. Your timer will also be reset.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowRestartConfirm(false)}
-                className="flex-1 rounded-lg border border-[var(--border-light)] py-2 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowRestartConfirm(false)
-                  handleRestart()
-                }}
-                className="flex-1 rounded-lg bg-[var(--accent)] py-2 font-medium text-[var(--btn-active-text)] transition-colors hover:opacity-90"
-              >
-                Confirm
               </button>
             </div>
           </div>

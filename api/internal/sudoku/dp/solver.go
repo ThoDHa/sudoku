@@ -24,41 +24,81 @@ func HasUniqueSolution(grid []int) bool {
 	return count == 1
 }
 
+// Conflict represents a pair of cells that have the same value where they shouldn't
+type Conflict struct {
+	Cell1 int `json:"cell1"` // First cell index (0-80)
+	Cell2 int `json:"cell2"` // Second cell index (0-80)
+	Value int `json:"value"` // The conflicting value
+	Type  string `json:"type"` // "row", "column", or "box"
+}
+
 // IsValid checks if the given grid has no conflicts (no duplicate values in rows, columns, or boxes).
 func IsValid(grid []int) bool {
+	conflicts := FindConflicts(grid)
+	return len(conflicts) == 0
+}
+
+// FindConflicts returns all conflicting cell pairs in the grid.
+// Each conflict identifies two cells with the same value in the same row, column, or box.
+func FindConflicts(grid []int) []Conflict {
+	var conflicts []Conflict
+	seen := make(map[string]bool) // Track already-reported conflicts to avoid duplicates
+
 	// Check rows
 	for row := 0; row < 9; row++ {
-		seen := make(map[int]bool)
+		positions := make(map[int][]int) // value -> list of column positions
 		for col := 0; col < 9; col++ {
 			val := grid[row*9+col]
 			if val == 0 {
 				continue
 			}
-			if seen[val] {
-				return false
+			positions[val] = append(positions[val], col)
+		}
+		for val, cols := range positions {
+			if len(cols) > 1 {
+				for i := 0; i < len(cols); i++ {
+					for j := i + 1; j < len(cols); j++ {
+						cell1, cell2 := row*9+cols[i], row*9+cols[j]
+						key := conflictKey(cell1, cell2, val)
+						if !seen[key] {
+							seen[key] = true
+							conflicts = append(conflicts, Conflict{Cell1: cell1, Cell2: cell2, Value: val, Type: "row"})
+						}
+					}
+				}
 			}
-			seen[val] = true
 		}
 	}
 
 	// Check columns
 	for col := 0; col < 9; col++ {
-		seen := make(map[int]bool)
+		positions := make(map[int][]int) // value -> list of row positions
 		for row := 0; row < 9; row++ {
 			val := grid[row*9+col]
 			if val == 0 {
 				continue
 			}
-			if seen[val] {
-				return false
+			positions[val] = append(positions[val], row)
+		}
+		for val, rows := range positions {
+			if len(rows) > 1 {
+				for i := 0; i < len(rows); i++ {
+					for j := i + 1; j < len(rows); j++ {
+						cell1, cell2 := rows[i]*9+col, rows[j]*9+col
+						key := conflictKey(cell1, cell2, val)
+						if !seen[key] {
+							seen[key] = true
+							conflicts = append(conflicts, Conflict{Cell1: cell1, Cell2: cell2, Value: val, Type: "column"})
+						}
+					}
+				}
 			}
-			seen[val] = true
 		}
 	}
 
 	// Check boxes
 	for box := 0; box < 9; box++ {
-		seen := make(map[int]bool)
+		positions := make(map[int][]int) // value -> list of cell indices
 		boxRow, boxCol := (box/3)*3, (box%3)*3
 		for r := boxRow; r < boxRow+3; r++ {
 			for c := boxCol; c < boxCol+3; c++ {
@@ -66,15 +106,32 @@ func IsValid(grid []int) bool {
 				if val == 0 {
 					continue
 				}
-				if seen[val] {
-					return false
+				positions[val] = append(positions[val], r*9+c)
+			}
+		}
+		for val, cells := range positions {
+			if len(cells) > 1 {
+				for i := 0; i < len(cells); i++ {
+					for j := i + 1; j < len(cells); j++ {
+						key := conflictKey(cells[i], cells[j], val)
+						if !seen[key] {
+							seen[key] = true
+							conflicts = append(conflicts, Conflict{Cell1: cells[i], Cell2: cells[j], Value: val, Type: "box"})
+						}
+					}
 				}
-				seen[val] = true
 			}
 		}
 	}
 
-	return true
+	return conflicts
+}
+
+func conflictKey(cell1, cell2, val int) string {
+	if cell1 > cell2 {
+		cell1, cell2 = cell2, cell1
+	}
+	return string(rune(cell1)) + "-" + string(rune(cell2)) + "-" + string(rune(val))
 }
 
 // CountSolutions counts solutions up to maxCount. Exported for custom puzzle validation.
