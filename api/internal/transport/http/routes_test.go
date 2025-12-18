@@ -227,7 +227,7 @@ func getValidToken(router *gin.Engine) string {
 	router.ServeHTTP(w, req)
 
 	var response map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &response)
+	_ = json.Unmarshal(w.Body.Bytes(), &response)
 	if token, ok := response["token"].(string); ok {
 		return token
 	}
@@ -555,7 +555,7 @@ func TestPuzzleDeterminism(t *testing.T) {
 	router.ServeHTTP(w1, req1)
 
 	var response1 map[string]interface{}
-	json.Unmarshal(w1.Body.Bytes(), &response1)
+	_ = json.Unmarshal(w1.Body.Bytes(), &response1)
 	givens1 := response1["givens"].([]interface{})
 
 	// Get second puzzle with same seed
@@ -564,7 +564,7 @@ func TestPuzzleDeterminism(t *testing.T) {
 	router.ServeHTTP(w2, req2)
 
 	var response2 map[string]interface{}
-	json.Unmarshal(w2.Body.Bytes(), &response2)
+	_ = json.Unmarshal(w2.Body.Bytes(), &response2)
 	givens2 := response2["givens"].([]interface{})
 
 	// Compare
@@ -589,8 +589,8 @@ func TestDifferentDifficulties(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/puzzle/"+seed+"?d="+diff, nil)
 		router.ServeHTTP(w, req)
 
-		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+	var response map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &response)
 		givens := response["givens"].([]interface{})
 
 		count := 0
@@ -644,7 +644,7 @@ func TestUnsolvableBoardValidation(t *testing.T) {
 	}
 
 	var response map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &response)
+	_ = json.Unmarshal(w.Body.Bytes(), &response)
 
 	if response["valid"] != false {
 		t.Errorf("Expected valid=false for conflicting board, got %v", response["valid"])

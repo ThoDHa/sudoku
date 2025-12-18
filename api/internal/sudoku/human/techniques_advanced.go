@@ -374,15 +374,16 @@ func detectFinnedXWingInRows(b *Board, digit int) *core.Move {
 
 			// Find common columns and fin column
 			c1, c2 := baseRow.cols[0], baseRow.cols[1]
-			var finCol int = -1
+			finCol := -1
 			hasC1, hasC2 := false, false
 
 			for _, c := range finRow.cols {
-				if c == c1 {
+				switch c {
+				case c1:
 					hasC1 = true
-				} else if c == c2 {
+				case c2:
 					hasC2 = true
-				} else {
+				default:
 					finCol = c
 				}
 			}
@@ -396,7 +397,7 @@ func detectFinnedXWingInRows(b *Board, digit int) *core.Move {
 			finColBox := finCol / 3
 
 			// Find which base column the fin shares a box with
-			var targetCol int = -1
+			targetCol := -1
 			if c1/3 == finColBox {
 				targetCol = c1
 			} else if c2/3 == finColBox {
@@ -486,15 +487,16 @@ func detectFinnedXWingInCols(b *Board, digit int) *core.Move {
 
 			// Find common rows and fin row
 			r1, r2 := baseCol.rows[0], baseCol.rows[1]
-			var finRow int = -1
+			finRow := -1
 			hasR1, hasR2 := false, false
 
 			for _, r := range finCol.rows {
-				if r == r1 {
+				switch r {
+				case r1:
 					hasR1 = true
-				} else if r == r2 {
+				case r2:
 					hasR2 = true
-				} else {
+				default:
 					finRow = r
 				}
 			}
@@ -508,7 +510,7 @@ func detectFinnedXWingInCols(b *Board, digit int) *core.Move {
 			finRowBox := finRow / 3
 
 			// Find which base row the fin shares a box with
-			var targetRow int = -1
+			targetRow := -1
 			if r1/3 == finRowBox {
 				targetRow = r1
 			} else if r2/3 == finRowBox {
@@ -608,7 +610,7 @@ func detectUniqueRectangle(b *Board) *core.Move {
 								continue
 							}
 							// Columns must match c1 and c2
-							if !((c3 == c1 && c4 == c2) || (c3 == c2 && c4 == c1)) {
+							if (c3 != c1 || c4 != c2) && (c3 != c2 || c4 != c1) {
 								continue
 							}
 
@@ -636,7 +638,7 @@ func detectUniqueRectangle(b *Board) *core.Move {
 
 							// Count how many are bivalue (exactly d1 and d2)
 							bivalueCount := 0
-							var nonBivalueIdx int = -1
+							nonBivalueIdx := -1
 							for _, corner := range corners {
 								if len(b.Candidates[corner]) == 2 {
 									bivalueCount++
@@ -731,7 +733,7 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 								continue
 							}
 							// Columns must match c1 and c2
-							if !((c3 == c1 && c4 == c2) || (c3 == c2 && c4 == c1)) {
+							if (c3 != c1 || c4 != c2) && (c3 != c2 || c4 != c1) {
 								continue
 							}
 
@@ -751,7 +753,7 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 							// Check Type 2: 2 diagonal corners are bivalue, other 2 have same extra
 							// Diagonal pairs: (0,3) and (1,2)
 							for _, diagPair := range [][2]int{{0, 3}, {1, 2}} {
-								other := [2]int{}
+								var other [2]int
 								if diagPair[0] == 0 {
 									other = [2]int{1, 2}
 								} else {
@@ -894,7 +896,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 								continue
 							}
 							// Columns must match c1 and c2
-							if !((c3 == c1 && c4 == c2) || (c3 == c2 && c4 == c1)) {
+							if (c3 != c1 || c4 != c2) && (c3 != c2 || c4 != c1) {
 								continue
 							}
 
@@ -912,7 +914,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 
 							// Check Type 3: 2 diagonal corners are bivalue, other 2 have extras
 							for _, diagPair := range [][2]int{{0, 3}, {1, 2}} {
-								other := [2]int{}
+								var other [2]int
 								if diagPair[0] == 0 {
 									other = [2]int{1, 2}
 								} else {
@@ -1192,7 +1194,7 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 								continue
 							}
 							// Columns must match c1 and c2
-							if !((c3 == c1 && c4 == c2) || (c3 == c2 && c4 == c1)) {
+							if (c3 != c1 || c4 != c2) && (c3 != c2 || c4 != c1) {
 								continue
 							}
 

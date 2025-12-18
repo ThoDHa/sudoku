@@ -198,9 +198,10 @@ func findPetalsForCandidate(b *Board, stem int, cand int, allALS []ALS) []ALS {
 func tryPetalCombinations(b *Board, stem int, stemCands []int, petalsByCandidate map[int][]ALS) *core.Move {
 	n := len(stemCands)
 
-	if n == 2 {
+	switch n {
+	case 2:
 		return tryTwoPetals(b, stem, stemCands, petalsByCandidate)
-	} else if n == 3 {
+	case 3:
 		return tryThreePetals(b, stem, stemCands, petalsByCandidate)
 	}
 

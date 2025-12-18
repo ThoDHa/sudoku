@@ -572,7 +572,7 @@ func detectWWing(b *Board) *core.Move {
 					}
 
 					// Check if one cell sees bv1 and the other sees bv2
-					var link1, link2 int = -1, -1
+					link1, link2 := -1, -1
 					if sees(cells[0], bv1.idx) && sees(cells[1], bv2.idx) {
 						link1, link2 = cells[0], cells[1]
 					} else if sees(cells[1], bv1.idx) && sees(cells[0], bv2.idx) {
@@ -635,7 +635,7 @@ func detectWWing(b *Board) *core.Move {
 						continue
 					}
 
-					var link1, link2 int = -1, -1
+					link1, link2 := -1, -1
 					if sees(cells[0], bv1.idx) && sees(cells[1], bv2.idx) {
 						link1, link2 = cells[0], cells[1]
 					} else if sees(cells[1], bv1.idx) && sees(cells[0], bv2.idx) {
@@ -782,7 +782,7 @@ func detectEmptyRectangle(b *Board) *core.Move {
 						}
 
 						// Check if one of them is in erRow
-						var linkRow int = -1
+						linkRow := -1
 						for _, r := range colPositions {
 							if r == erRow {
 								// Found the connection - the other position is the link
@@ -850,7 +850,7 @@ func detectEmptyRectangle(b *Board) *core.Move {
 						}
 
 						// Check if one of them is in erCol
-						var linkCol int = -1
+						linkCol := -1
 						for _, c := range rowPositions {
 							if c == erCol {
 								// Found the connection - the other position is the link

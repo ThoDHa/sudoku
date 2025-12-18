@@ -196,18 +196,18 @@ func propagateFromPlacement(b *Board, idx, digit int) *digitForcingResult {
 				r, c := i/9, i%9
 				br, bc := (r/3)*3, (c/3)*3
 				for cc := 0; cc < 9; cc++ {
-					if cc != c && b.Candidates[r*9+cc][d] && simBoard.Candidates[r*9+cc][d] == false {
+					if cc != c && b.Candidates[r*9+cc][d] && !simBoard.Candidates[r*9+cc][d] {
 						result.addElimination(r*9+cc, d)
 					}
 				}
 				for rr := 0; rr < 9; rr++ {
-					if rr != r && b.Candidates[rr*9+c][d] && simBoard.Candidates[rr*9+c][d] == false {
+					if rr != r && b.Candidates[rr*9+c][d] && !simBoard.Candidates[rr*9+c][d] {
 						result.addElimination(rr*9+c, d)
 					}
 				}
 				for rr := br; rr < br+3; rr++ {
 					for cc := bc; cc < bc+3; cc++ {
-						if (rr != r || cc != c) && b.Candidates[rr*9+cc][d] && simBoard.Candidates[rr*9+cc][d] == false {
+						if (rr != r || cc != c) && b.Candidates[rr*9+cc][d] && !simBoard.Candidates[rr*9+cc][d] {
 							result.addElimination(rr*9+cc, d)
 						}
 					}

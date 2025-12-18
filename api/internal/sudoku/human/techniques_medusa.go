@@ -393,67 +393,6 @@ func checkUncoloredSeesBothColors(b *Board, color1, color2 []candidatePair, colo
 	return nil
 }
 
-// checkAllCandidatesSameColor checks if all candidates in a cell are the same color
-// If so, that color is false (the cell would have no valid value)
-func checkAllCandidatesSameColor(b *Board, colorToCheck, otherColor []candidatePair, colors map[int]int, colorNum int) *core.Move {
-	// For each unsolved cell, check if all its candidates are in colorToCheck
-	for cell := 0; cell < 81; cell++ {
-		if b.Cells[cell] != 0 || len(b.Candidates[cell]) < 2 {
-			continue
-		}
-
-		allInColor := true
-		coloredCount := 0
-
-		for digit := range b.Candidates[cell] {
-			cp := candidatePair{cell, digit}
-			if colors[cp.key()] == colorNum {
-				coloredCount++
-			} else if colors[cp.key()] == 0 {
-				// Uncolored candidate - not all in the color
-				allInColor = false
-				break
-			} else {
-				// In the other color
-				allInColor = false
-				break
-			}
-		}
-
-		// All candidates must be colored and in the same color
-		if allInColor && coloredCount == len(b.Candidates[cell]) && coloredCount >= 2 {
-			// All candidates are this color - contradiction
-			// This color is false, eliminate all
-			var eliminations []core.Candidate
-			for _, cp := range colorToCheck {
-				if b.Candidates[cp.cell][cp.digit] {
-					eliminations = append(eliminations, core.Candidate{
-						Row: cp.cell / 9, Col: cp.cell % 9, Digit: cp.digit,
-					})
-				}
-			}
-
-			if len(eliminations) > 0 {
-				allPairs := append(colorToCheck, otherColor...)
-				return &core.Move{
-					Action:       "eliminate",
-					Digit:        0,
-					Targets:      pairsToTargets(allPairs),
-					Eliminations: eliminations,
-					Explanation: fmt.Sprintf("3D Medusa: All candidates in R%dC%d are color %d; eliminate all color %d",
-						cell/9+1, cell%9+1, colorNum, colorNum),
-					Highlights: core.Highlights{
-						Primary:   pairsToTargets(colorToCheck),
-						Secondary: pairsToTargets(otherColor),
-					},
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
 // pairsToTargets converts candidate pairs to cell references
 func pairsToTargets(pairs []candidatePair) []core.CellRef {
 	seen := make(map[int]bool)

@@ -93,10 +93,9 @@ func main() {
 				stalled++
 
 				// For stalled puzzles, verify with DP solver that it's solvable
-				if solution := dp.Solve(givens); solution != nil {
-					// Puzzle is solvable but human solver can't solve it
-					// This means we need more advanced techniques
-				}
+				// Puzzle is solvable but human solver can't solve it
+				// This means we need more advanced techniques
+				_ = dp.Solve(givens)
 
 			default:
 				fmt.Printf("?")

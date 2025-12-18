@@ -132,12 +132,6 @@ func findXCyclesDFS(b *Board, digit int, cells []int, strongLinks []strongLink) 
 	return nil
 }
 
-type cycleState struct {
-	cell         int
-	path         []int
-	lastWasStrong bool  // Was the link TO this cell strong?
-}
-
 func searchCycle(b *Board, digit int, cells []int, strongLinks []strongLink, startCell int, startWithStrong bool) *core.Move {
 	// DFS with proper alternation tracking
 	// path[i] connected to path[i+1] via linkStrong[i]

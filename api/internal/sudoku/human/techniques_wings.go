@@ -263,23 +263,6 @@ func detectWXYZWing(b *Board) *core.Move {
 	return nil
 }
 
-// isWXYZConnected checks if 4 cells form a connected pattern for WXYZ-Wing
-// At least one cell must see at least 2 others (acts as a "hinge")
-func isWXYZConnected(cells []int) bool {
-	for _, cell := range cells {
-		count := 0
-		for _, other := range cells {
-			if cell != other && sees(cell, other) {
-				count++
-			}
-		}
-		if count >= 2 {
-			return true
-		}
-	}
-	return false
-}
-
 // Almost Locked Set (ALS) representation
 type ALS struct {
 	Cells   []int          // Cell indices in the ALS

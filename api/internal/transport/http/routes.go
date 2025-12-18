@@ -42,30 +42,6 @@ func RegisterRoutes(r *gin.Engine, c *config.Config) {
 	}
 }
 
-// validatePuzzleString checks if a puzzle string is valid
-// Returns nil if valid, error with details if invalid
-func validatePuzzleString(puzzle string) error {
-	if len(puzzle) != 81 {
-		return fmt.Errorf("puzzle must be exactly 81 characters, got %d", len(puzzle))
-	}
-	
-	clueCount := 0
-	for i, c := range puzzle {
-		if c < '0' || c > '9' {
-			return fmt.Errorf("invalid character '%c' at position %d", c, i)
-		}
-		if c != '0' {
-			clueCount++
-		}
-	}
-	
-	if clueCount < 17 {
-		return fmt.Errorf("puzzle must have at least 17 clues for a unique solution, got %d", clueCount)
-	}
-	
-	return nil
-}
-
 func healthHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "ok",
