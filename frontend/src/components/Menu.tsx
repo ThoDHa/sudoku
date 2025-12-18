@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ColorTheme, FontSize } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed, HomepageMode } from '../lib/preferences'
 import { clearAllCaches, CACHE_VERSION } from '../lib/cache-version'
+import { getAutoSaveEnabled, setAutoSaveEnabled } from '../lib/gameSettings'
 
 // Font size options
 const fontSizes: { key: FontSize; label: string }[] = [
@@ -115,6 +116,7 @@ export default function Menu({
 }: MenuProps) {
   const [newPuzzleMenuOpen, setNewPuzzleMenuOpen] = useState(false)
   const [cacheCleared, setCacheCleared] = useState(false)
+  const [autoSaveEnabled, setAutoSaveEnabledState] = useState(getAutoSaveEnabled)
 
   // Close submenu when menu closes
   useEffect(() => {
@@ -128,6 +130,12 @@ export default function Menu({
       setAutoSolveSpeed(speed)
       gameActions.onSetAutoSolveSpeed(speed)
     }
+  }
+
+  const handleAutoSaveToggle = () => {
+    const newValue = !autoSaveEnabled
+    setAutoSaveEnabledState(newValue)
+    setAutoSaveEnabled(newValue)
   }
 
   if (!isOpen) return null
@@ -431,7 +439,25 @@ export default function Menu({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                     ) : (
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    )}
+            )}
+
+            {/* Auto-save toggle (game only) */}
+            {gameActions && (
+              <button
+                onClick={handleAutoSaveToggle}
+                className="flex w-full items-center justify-between px-3 py-2 text-sm text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+              >
+                <div className="flex items-center gap-3">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <span>Auto-Save Progress</span>
+                </div>
+                <div className={`w-8 h-5 rounded-full transition-colors ${autoSaveEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border-light)]'}`}>
+                  <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${autoSaveEnabled ? 'translate-x-3' : 'translate-x-0'}`} />
+                </div>
+              </button>
+            )}
                   </svg>
                   <span>{gameActions.hideTimerState ? 'Show Timer' : 'Hide Timer'}</span>
                 </div>
