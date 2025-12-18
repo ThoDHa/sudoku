@@ -1,0 +1,124 @@
+
+Run go test -v -race -coverprofile=coverage.out ./...
+	sudoku-api/cmd/generate		coverage: 0.0% of statements
+	sudoku-api/cmd/generate_practice		coverage: 0.0% of statements
+?   	sudoku-api/internal/core	[no test files]
+	sudoku-api/cmd/test_puzzles		coverage: 0.0% of statements
+	sudoku-api/cmd/server		coverage: 0.0% of statements
+	sudoku-api/internal/puzzles		coverage: 0.0% of statements
+	sudoku-api/internal/sudoku/dp		coverage: 0.0% of statements
+=== RUN   TestDetectNakedSingle
+=== RUN   TestDetectNakedSingle/single_candidate_in_first_cell
+=== RUN   TestDetectNakedSingle/single_candidate_in_middle_of_board
+=== RUN   TestDetectNakedSingle/no_naked_single_-_all_cells_have_multiple_candidates
+=== RUN   TestDetectNakedSingle/filled_cell_is_skipped
+=== RUN   TestDetectNakedSingle/returns_first_naked_single_by_index
+--- PASS: TestDetectNakedSingle (0.00s)
+    --- PASS: TestDetectNakedSingle/single_candidate_in_first_cell (0.00s)
+    --- PASS: TestDetectNakedSingle/single_candidate_in_middle_of_board (0.00s)
+    --- PASS: TestDetectNakedSingle/no_naked_single_-_all_cells_have_multiple_candidates (0.00s)
+    --- PASS: TestDetectNakedSingle/filled_cell_is_skipped (0.00s)
+    --- PASS: TestDetectNakedSingle/returns_first_naked_single_by_index (0.00s)
+=== RUN   TestDetectHiddenSingle
+=== RUN   TestDetectHiddenSingle/hidden_single_in_row
+=== RUN   TestDetectHiddenSingle/hidden_single_in_column
+=== RUN   TestDetectHiddenSingle/hidden_single_in_box
+=== RUN   TestDetectHiddenSingle/no_hidden_single_-_all_digits_in_multiple_places
+=== RUN   TestDetectHiddenSingle/skip_if_digit_already_placed_in_unit
+=== RUN   TestDetectHiddenSingle/skip_naked_single_-_only_report_if_cell_has_multiple_candidates
+--- PASS: TestDetectHiddenSingle (0.01s)
+    --- PASS: TestDetectHiddenSingle/hidden_single_in_row (0.00s)
+    --- PASS: TestDetectHiddenSingle/hidden_single_in_column (0.00s)
+    --- PASS: TestDetectHiddenSingle/hidden_single_in_box (0.00s)
+    --- PASS: TestDetectHiddenSingle/no_hidden_single_-_all_digits_in_multiple_places (0.00s)
+    --- PASS: TestDetectHiddenSingle/skip_if_digit_already_placed_in_unit (0.00s)
+    --- PASS: TestDetectHiddenSingle/skip_naked_single_-_only_report_if_cell_has_multiple_candidates (0.00s)
+=== RUN   TestDetectNakedPair
+=== RUN   TestDetectNakedPair/naked_pair_in_row
+=== RUN   TestDetectNakedPair/naked_pair_in_column
+=== RUN   TestDetectNakedPair/naked_pair_in_box
+=== RUN   TestDetectNakedPair/no_naked_pair_-_cells_have_different_candidates
+=== RUN   TestDetectNakedPair/naked_pair_exists_but_no_eliminations_possible
+--- PASS: TestDetectNakedPair (0.00s)
+    --- PASS: TestDetectNakedPair/naked_pair_in_row (0.00s)
+    --- PASS: TestDetectNakedPair/naked_pair_in_column (0.00s)
+    --- PASS: TestDetectNakedPair/naked_pair_in_box (0.00s)
+    --- PASS: TestDetectNakedPair/no_naked_pair_-_cells_have_different_candidates (0.00s)
+    --- PASS: TestDetectNakedPair/naked_pair_exists_but_no_eliminations_possible (0.00s)
+=== RUN   TestDetectHiddenPair
+=== RUN   TestDetectHiddenPair/hidden_pair_in_row
+=== RUN   TestDetectHiddenPair/hidden_pair_in_column
+=== RUN   TestDetectHiddenPair/no_hidden_pair_-_digits_in_more_than_2_cells
+=== RUN   TestDetectHiddenPair/hidden_pair_exists_but_already_naked_-_no_eliminations
+--- PASS: TestDetectHiddenPair (0.00s)
+    --- PASS: TestDetectHiddenPair/hidden_pair_in_row (0.00s)
+    --- PASS: TestDetectHiddenPair/hidden_pair_in_column (0.00s)
+    --- PASS: TestDetectHiddenPair/no_hidden_pair_-_digits_in_more_than_2_cells (0.00s)
+    --- PASS: TestDetectHiddenPair/hidden_pair_exists_but_already_naked_-_no_eliminations (0.00s)
+=== RUN   TestDetectPointingPair
+=== RUN   TestDetectPointingPair/pointing_pair_in_row_-_eliminates_from_rest_of_row
+=== RUN   TestDetectPointingPair/pointing_pair_in_column_-_eliminates_from_rest_of_column
+=== RUN   TestDetectPointingPair/no_pointing_pair_-_digit_in_multiple_rows/cols_in_box
+--- PASS: TestDetectPointingPair (0.00s)
+    --- PASS: TestDetectPointingPair/pointing_pair_in_row_-_eliminates_from_rest_of_row (0.00s)
+    --- PASS: TestDetectPointingPair/pointing_pair_in_column_-_eliminates_from_rest_of_column (0.00s)
+    --- PASS: TestDetectPointingPair/no_pointing_pair_-_digit_in_multiple_rows/cols_in_box (0.00s)
+=== RUN   TestDetectBoxLineReduction
+=== RUN   TestDetectBoxLineReduction/box-line_reduction_in_row_-_eliminates_from_rest_of_box
+=== RUN   TestDetectBoxLineReduction/box-line_reduction_in_column_-_eliminates_from_rest_of_box
+--- PASS: TestDetectBoxLineReduction (0.00s)
+    --- PASS: TestDetectBoxLineReduction/box-line_reduction_in_row_-_eliminates_from_rest_of_box (0.00s)
+    --- PASS: TestDetectBoxLineReduction/box-line_reduction_in_column_-_eliminates_from_rest_of_box (0.00s)
+=== RUN   TestDetectRemotePairs
+=== RUN   TestDetectRemotePairs/no_remote_pairs_-_fewer_than_4_bivalue_cells_with_same_digits
+=== RUN   TestDetectRemotePairs/no_remote_pairs_-_bivalue_cells_not_connected
+=== RUN   TestDetectRemotePairs/no_remote_pairs_-_4_cells_in_a_line_without_elimination_target
+--- PASS: TestDetectRemotePairs (0.00s)
+    --- PASS: TestDetectRemotePairs/no_remote_pairs_-_fewer_than_4_bivalue_cells_with_same_digits (0.00s)
+    --- PASS: TestDetectRemotePairs/no_remote_pairs_-_bivalue_cells_not_connected (0.00s)
+    --- PASS: TestDetectRemotePairs/no_remote_pairs_-_4_cells_in_a_line_without_elimination_target (0.00s)
+=== RUN   TestDetectGroupedXCycles
+=== RUN   TestDetectGroupedXCycles/x-cycle_type_2_-_two_weak_links_meet
+    techniques_test.go:938: got unexpected move: &{StepIndex:0 Technique: Action:eliminate Digit:3 Targets:[] Eliminations:[{Row:4 Col:1 Digit:3}] Explanation:X-Cycle Type 2: two weak links meet at R5C2, eliminating 3 Refs:{Title: Slug: URL:} Highlights:{Primary:[{Row:4 Col:1} {Row:3 Col:0} {Row:1 Col:0} {Row:0 Col:2} {Row:0 Col:1}] Secondary:[{Row:4 Col:1}]}}
+=== RUN   TestDetectGroupedXCycles/no_x-cycle_-_insufficient_strong_links
+--- PASS: TestDetectGroupedXCycles (1.12s)
+    --- PASS: TestDetectGroupedXCycles/x-cycle_type_2_-_two_weak_links_meet (0.21s)
+    --- PASS: TestDetectGroupedXCycles/no_x-cycle_-_insufficient_strong_links (0.91s)
+=== RUN   TestDetectMedusa3D
+=== RUN   TestDetectMedusa3D/medusa_-_uncolored_sees_both_colors
+=== RUN   TestDetectMedusa3D/no_medusa_-_no_bivalue_cells_or_strong_links
+=== RUN   TestDetectMedusa3D/medusa_with_bivalue_chain
+    techniques_test.go:1022: unexpected move found: &{StepIndex:0 Technique: Action:eliminate Digit:0 Targets:[{Row:0 Col:0} {Row:0 Col:6} {Row:0 Col:1} {Row:0 Col:8} {Row:0 Col:2} {Row:0 Col:4} {Row:0 Col:5} {Row:0 Col:7} {Row:0 Col:3}] Eliminations:[{Row:0 Col:0 Digit:2} {Row:0 Col:6 Digit:1} {Row:0 Col:1 Digit:3} {Row:0 Col:8 Digit:6} {Row:0 Col:2 Digit:4} {Row:0 Col:4 Digit:8} {Row:0 Col:5 Digit:5} {Row:0 Col:7 Digit:7} {Row:0 Col:3 Digit:6}] Explanation:3D Medusa: Color 2 has 6 twice in same unit (R1C9, R1C4); eliminate all color 2 Refs:{Title: Slug: URL:} Highlights:{Primary:[{Row:0 Col:0} {Row:0 Col:6} {Row:0 Col:1} {Row:0 Col:8} {Row:0 Col:2} {Row:0 Col:4} {Row:0 Col:5} {Row:0 Col:7} {Row:0 Col:3}] Secondary:[{Row:0 Col:0} {Row:0 Col:1} {Row:0 Col:6} {Row:0 Col:2} {Row:0 Col:8} {Row:0 Col:5} {Row:0 Col:4} {Row:0 Col:7} {Row:0 Col:3}]}}
+--- PASS: TestDetectMedusa3D (0.00s)
+    --- PASS: TestDetectMedusa3D/medusa_-_uncolored_sees_both_colors (0.00s)
+    --- PASS: TestDetectMedusa3D/no_medusa_-_no_bivalue_cells_or_strong_links (0.00s)
+    --- PASS: TestDetectMedusa3D/medusa_with_bivalue_chain (0.00s)
+=== RUN   TestDetectSueDeCoq
+=== RUN   TestDetectSueDeCoq/no_sue_de_coq_-_intersection_too_small
+=== RUN   TestDetectSueDeCoq/no_sue_de_coq_-_not_enough_candidates_in_intersection
+--- PASS: TestDetectSueDeCoq (0.00s)
+    --- PASS: TestDetectSueDeCoq/no_sue_de_coq_-_intersection_too_small (0.00s)
+    --- PASS: TestDetectSueDeCoq/no_sue_de_coq_-_not_enough_candidates_in_intersection (0.00s)
+=== RUN   TestDetectDeathBlossom
+=== RUN   TestDetectDeathBlossom/no_death_blossom_-_stem_has_no_valid_petals
+=== RUN   TestDetectDeathBlossom/no_death_blossom_-_not_enough_ALS
+--- PASS: TestDetectDeathBlossom (0.00s)
+    --- PASS: TestDetectDeathBlossom/no_death_blossom_-_stem_has_no_valid_petals (0.00s)
+    --- PASS: TestDetectDeathBlossom/no_death_blossom_-_not_enough_ALS (0.00s)
+=== RUN   TestGetRowIndices
+--- PASS: TestGetRowIndices (0.00s)
+=== RUN   TestGetColIndices
+--- PASS: TestGetColIndices (0.00s)
+=== RUN   TestGetBoxIndices
+--- PASS: TestGetBoxIndices (0.00s)
+=== RUN   TestSees
+--- PASS: TestSees (0.00s)
+=== RUN   TestCandidatesEqual
+--- PASS: TestCandidatesEqual (0.00s)
+=== RUN   TestGetCandidateSlice
+--- PASS: TestGetCandidateSlice (0.00s)
+PASS
+coverage: 16.0% of statements
+ok  	sudoku-api/internal/sudoku/human	2.176s	coverage: 16.0% of statements
+?   	sudoku-api/pkg/constants	[no test files]
+	sudoku-api/pkg/config		coverage: 0.0% of statements
