@@ -140,12 +140,25 @@ export default function Header() {
                 <>
                   {/* Mobile fullscreen overlay */}
                   <div 
-                    className="sm:hidden fixed inset-0 top-14 bg-[var(--bg)] z-50"
+                    className="sm:hidden fixed inset-0 bg-[var(--bg)] z-50 overflow-hidden"
                     onClick={() => setMenuOpen(false)}
                   >
-                    <div className="flex flex-col h-full" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-col h-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                      {/* Header with close button */}
+                      <div className="flex items-center justify-between px-4 h-14 border-b border-[var(--border-light)]">
+                        <span className="text-lg font-semibold text-[var(--text)]">Menu</span>
+                        <button
+                          onClick={() => setMenuOpen(false)}
+                          className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)]"
+                        >
+                          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      
                       {/* Navigation links */}
-                      <div className="flex-1 p-4 space-y-2">
+                      <div className="flex-1 p-4 space-y-2 overflow-y-auto">
                         <Link
                           to="/"
                           onClick={() => setMenuOpen(false)}
