@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTheme, ColorTheme } from '../lib/ThemeContext'
 import { getHomepageMode, setHomepageMode, HomepageMode } from '../lib/preferences'
+import { getScores, getDailyStreak, getDailyCompletions } from '../lib/scores'
 
 function MenuIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
@@ -38,6 +39,7 @@ const colorThemes: { key: ColorTheme; color: string }[] = [
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [homepageMode, setHomepageModeState] = useState<HomepageMode>('daily')
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
   const { colorTheme, setColorTheme, mode, toggleMode } = useTheme()
   const location = useLocation()
   const navigate = useNavigate()
@@ -56,6 +58,120 @@ export default function Header() {
   useEffect(() => {
     setMenuOpen(false)
   }, [location.pathname])
+
+  // Bug report handler - collects general debug info
+  const handleReportBug = useCallback(async () => {
+    const scores = getScores()
+    const streak = getDailyStreak()
+    const completions = getDailyCompletions()
+    
+    const debugInfo = {
+      timestamp: new Date().toISOString(),
+      page: location.pathname,
+      settings: {
+        colorTheme: colorTheme,
+        mode: mode,
+        homepageMode: homepageMode,
+      },
+      stats: {
+        totalGamesPlayed: scores.length,
+        dailyStreak: streak.currentStreak,
+        longestStreak: streak.longestStreak,
+        dailyCompletions: completions.size,
+      },
+      browser: {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        cookiesEnabled: navigator.cookieEnabled,
+        onLine: navigator.onLine,
+        screenSize: `${window.screen.width}x${window.screen.height}`,
+        viewportSize: `${window.innerWidth}x${window.innerHeight}`,
+        devicePixelRatio: window.devicePixelRatio,
+      },
+      storage: {
+        localStorageAvailable: (() => {
+          try {
+            localStorage.setItem('test', 'test')
+            localStorage.removeItem('test')
+            return true
+          } catch {
+            return false
+          }
+        })(),
+      },
+    }
+
+    const debugJson = JSON.stringify(debugInfo, null, 2)
+    
+    const issueBody = `## Bug Description
+<!-- Please describe the bug you encountered -->
+
+## Steps to Reproduce
+1. 
+2. 
+3. 
+
+## Expected Behavior
+<!-- What did you expect to happen? -->
+
+## Actual Behavior
+<!-- What actually happened? -->
+
+<details>
+<summary>Debug Information (click to expand)</summary>
+
+\`\`\`json
+${debugJson}
+\`\`\`
+
+</details>
+`
+
+    // Copy debug info to clipboard
+    try {
+      await navigator.clipboard.writeText(debugJson)
+    } catch {
+      const textarea = document.createElement('textarea')
+      textarea.value = debugJson
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    
+    setToastMessage('Debug info copied!')
+    setTimeout(() => setToastMessage(null), 2000)
+    
+    // Open GitHub issue
+    const issueUrl = new URL('https://github.com/ThoDHa/sudoku/issues/new')
+    issueUrl.searchParams.set('title', `Bug: [Please describe briefly]`)
+    issueUrl.searchParams.set('body', issueBody)
+    issueUrl.searchParams.set('labels', 'bug')
+    
+    window.open(issueUrl.toString(), '_blank')
+    setMenuOpen(false)
+  }, [location.pathname, colorTheme, mode, homepageMode])
+
+  // Feature request handler
+  const handleFeatureRequest = useCallback(() => {
+    const issueBody = `## Feature Description
+<!-- Please describe the feature you'd like to see -->
+
+## Use Case
+<!-- Why would this feature be useful? -->
+
+## Possible Implementation
+<!-- Optional: any ideas on how this could work? -->
+`
+
+    const issueUrl = new URL('https://github.com/ThoDHa/sudoku/issues/new')
+    issueUrl.searchParams.set('title', `Feature: [Please describe briefly]`)
+    issueUrl.searchParams.set('body', issueBody)
+    issueUrl.searchParams.set('labels', 'enhancement')
+    
+    window.open(issueUrl.toString(), '_blank')
+    setMenuOpen(false)
+  }, [])
 
   if (isGamePage) return null
 
@@ -182,6 +298,23 @@ export default function Header() {
               >
                 How to Play
               </Link>
+              
+              {/* Divider */}
+              <div className="my-4 border-t border-[var(--border-light)]" />
+              
+              {/* Feedback section */}
+              <button
+                onClick={handleFeatureRequest}
+                className="w-full text-left px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
+              >
+                Request Feature
+              </button>
+              <button
+                onClick={handleReportBug}
+                className="w-full text-left px-4 py-4 text-lg font-medium text-[var(--text)] rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--btn-hover)]"
+              >
+                Report Bug
+              </button>
             </div>
 
             {/* Settings at bottom */}
@@ -261,6 +394,13 @@ export default function Header() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {toastMessage && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 bg-[var(--text)] text-[var(--bg)] rounded-lg shadow-lg text-sm font-medium">
+          {toastMessage}
         </div>
       )}
     </>
