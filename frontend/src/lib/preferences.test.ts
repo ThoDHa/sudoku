@@ -28,9 +28,21 @@ const localStorageMock = (() => {
 
 Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock })
 
+// Mock window for event dispatching
+const windowMock = {
+  dispatchEvent: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+}
+
+Object.defineProperty(globalThis, 'window', { value: windowMock })
+
 describe('preferences', () => {
   beforeEach(() => {
     localStorageMock.clear()
+    windowMock.dispatchEvent.mockClear()
+    windowMock.addEventListener.mockClear()
+    windowMock.removeEventListener.mockClear()
     vi.clearAllMocks()
   })
 
