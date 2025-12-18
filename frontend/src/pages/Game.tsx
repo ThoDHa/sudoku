@@ -25,7 +25,7 @@ import {
 import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
 import { validateBoard, solveNext, getPuzzle } from '../lib/solver-service'
 
-import { saveScore, type Score } from '../lib/scores'
+import { saveScore, markDailyCompleted, type Score } from '../lib/scores'
 import { decodePuzzle, encodePuzzle } from '../lib/puzzleEncoding'
 
 // Type for saved game state in localStorage
@@ -636,6 +636,12 @@ export default function Game() {
     }
 
     saveScore(score)
+    
+    // Mark daily puzzle as completed for streak tracking
+    if (puzzle.seed.startsWith('daily-')) {
+      markDailyCompleted()
+    }
+    
     setShowResultModal(true)
   }, [puzzle, hintsUsed, timer.elapsedMs, encodedPuzzle, autoFillUsed, autoSolveUsed])
 

@@ -37,6 +37,8 @@ export const STORAGE_KEYS = {
   CUSTOM_PUZZLE_PREFIX: 'custom_puzzle_',
   GAME_STATE_PREFIX: 'sudoku_game_',
   ONBOARDING_COMPLETE: 'sudoku_onboarding_complete',
+  DAILY_COMPLETIONS: 'sudoku_daily_completions',
+  DAILY_STREAK: 'sudoku_daily_streak',
 } as const
 
 // =============================================================================

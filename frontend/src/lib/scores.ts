@@ -116,3 +116,123 @@ export function generatePuzzleUrl(score: Score, baseUrl: string): string {
   }
   return `${baseUrl}/game/${score.seed}?d=${score.difficulty}`
 }
+
+// =============================================================================
+// DAILY PUZZLE TRACKING
+// =============================================================================
+
+interface DailyStreak {
+  currentStreak: number
+  longestStreak: number
+  lastCompletedDate: string | null // YYYY-MM-DD format
+}
+
+/**
+ * Get the current UTC date as YYYY-MM-DD string
+ */
+export function getTodayUTC(): string {
+  const now = new Date()
+  const year = now.getUTCFullYear()
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(now.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * Get yesterday's UTC date as YYYY-MM-DD string
+ */
+function getYesterdayUTC(): string {
+  const now = new Date()
+  now.setUTCDate(now.getUTCDate() - 1)
+  const year = now.getUTCFullYear()
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(now.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * Get the set of completed daily dates
+ */
+export function getDailyCompletions(): Set<string> {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.DAILY_COMPLETIONS)
+    return data ? new Set(JSON.parse(data)) : new Set()
+  } catch {
+    return new Set()
+  }
+}
+
+/**
+ * Check if today's daily puzzle has been completed
+ */
+export function isTodayCompleted(): boolean {
+  const completions = getDailyCompletions()
+  return completions.has(getTodayUTC())
+}
+
+/**
+ * Get the daily streak data
+ */
+export function getDailyStreak(): DailyStreak {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.DAILY_STREAK)
+    if (data) {
+      const streak = JSON.parse(data) as DailyStreak
+      // Check if streak is still valid (last completed was today or yesterday)
+      const today = getTodayUTC()
+      const yesterday = getYesterdayUTC()
+      if (streak.lastCompletedDate !== today && streak.lastCompletedDate !== yesterday) {
+        // Streak is broken
+        return {
+          currentStreak: 0,
+          longestStreak: streak.longestStreak,
+          lastCompletedDate: streak.lastCompletedDate,
+        }
+      }
+      return streak
+    }
+  } catch {
+    // Ignore errors
+  }
+  return { currentStreak: 0, longestStreak: 0, lastCompletedDate: null }
+}
+
+/**
+ * Mark today's daily puzzle as completed and update streak
+ */
+export function markDailyCompleted(): void {
+  const today = getTodayUTC()
+  const yesterday = getYesterdayUTC()
+  
+  // Add to completions set
+  const completions = getDailyCompletions()
+  if (completions.has(today)) {
+    // Already completed today
+    return
+  }
+  completions.add(today)
+  localStorage.setItem(STORAGE_KEYS.DAILY_COMPLETIONS, JSON.stringify([...completions]))
+  
+  // Update streak
+  const streak = getDailyStreak()
+  let newStreak: number
+  
+  if (streak.lastCompletedDate === yesterday) {
+    // Continuing streak
+    newStreak = streak.currentStreak + 1
+  } else if (streak.lastCompletedDate === today) {
+    // Already counted today
+    return
+  } else {
+    // Starting new streak
+    newStreak = 1
+  }
+  
+  const newLongest = Math.max(streak.longestStreak, newStreak)
+  
+  localStorage.setItem(STORAGE_KEYS.DAILY_STREAK, JSON.stringify({
+    currentStreak: newStreak,
+    longestStreak: newLongest,
+    lastCompletedDate: today,
+  }))
+}
