@@ -132,6 +132,7 @@ export default function GameHeader({
 
   return (
     <header className="sticky top-0 z-40 bg-[var(--bg)]/95 backdrop-blur border-b border-[var(--border-light)]">
+      {/* Main header row */}
       <div className="mx-auto max-w-4xl px-2 sm:px-4 h-14 flex items-center justify-between gap-2">
         {/* Left: Logo + Difficulty */}
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
@@ -142,9 +143,9 @@ export default function GameHeader({
           <DifficultyBadge difficulty={difficulty} size="sm" />
         </div>
 
-        {/* Center: Timer (hidden when hideTimer is true or auto-solving on mobile) */}
+        {/* Center: Timer (hidden when hideTimer is true) */}
         {!hideTimer && (
-          <div className={`flex items-center gap-1 sm:gap-2 ${isAutoSolving ? 'hidden sm:flex' : ''} ${isPausedDueToVisibility ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>
+          <div className={`flex items-center gap-1 sm:gap-2 ${isPausedDueToVisibility ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>
             {isPausedDueToVisibility ? (
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -163,17 +164,17 @@ export default function GameHeader({
 
         {/* Right: Actions */}
         <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
-          {/* Speed controls + Stop button - shown when auto-solving */}
+          {/* Speed controls + Stop button - shown when auto-solving (desktop only, mobile uses second row) */}
           {isAutoSolving && (
-            <div className="flex items-center gap-0.5 sm:gap-1">
+            <div className="hidden sm:flex items-center gap-1">
               {/* Speed controls */}
-              <div className="flex items-center rounded-md sm:rounded-lg overflow-hidden border border-[var(--border-light)]">
+              <div className="flex items-center rounded-lg overflow-hidden border border-[var(--border-light)]">
                 {speedOptions.map(({ speed, icon, label }) => (
                   <button
                     key={speed}
                     onClick={() => handleSpeedChange(speed)}
                     title={label}
-                    className={`px-1.5 sm:px-2 py-1 sm:py-1.5 transition-colors ${
+                    className={`px-2 py-1.5 transition-colors ${
                       autoSolveSpeed === speed
                         ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
                         : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
@@ -186,7 +187,7 @@ export default function GameHeader({
               {/* Pause/Resume button */}
               <button
                 onClick={onTogglePause}
-                className={`flex items-center gap-1 rounded-md sm:rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 text-sm transition-colors ${
+                className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
                   isPaused
                     ? 'bg-green-500 text-white hover:bg-green-600'
                     : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] border border-[var(--border-light)]'
@@ -207,13 +208,13 @@ export default function GameHeader({
               {/* Stop button */}
               <button
                 onClick={onStopAutoSolve}
-                className="flex items-center gap-1 rounded-md sm:rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 text-sm bg-red-500 text-white hover:bg-red-600 transition-colors"
+                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm bg-red-500 text-white hover:bg-red-600 transition-colors"
                 title="Stop solving"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                <span className="hidden sm:inline">Stop</span>
+                <span>Stop</span>
               </button>
             </div>
           )}
@@ -299,6 +300,69 @@ export default function GameHeader({
           </div>
         </div>
       </div>
+
+      {/* Mobile auto-solve controls - second row */}
+      {isAutoSolving && (
+        <div className="sm:hidden border-t border-[var(--border-light)] px-2 py-2">
+          <div className="flex items-center justify-center gap-2">
+            {/* Speed controls */}
+            <div className="flex items-center rounded-lg overflow-hidden border border-[var(--border-light)]">
+              {speedOptions.map(({ speed, icon, label }) => (
+                <button
+                  key={speed}
+                  onClick={() => handleSpeedChange(speed)}
+                  title={label}
+                  className={`px-3 py-2 transition-colors ${
+                    autoSolveSpeed === speed
+                      ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
+                      : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                  }`}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+            {/* Pause/Resume button */}
+            <button
+              onClick={onTogglePause}
+              className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                isPaused
+                  ? 'bg-green-500 text-white hover:bg-green-600'
+                  : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] border border-[var(--border-light)]'
+              }`}
+              title={isPaused ? 'Resume' : 'Pause'}
+            >
+              {isPaused ? (
+                <>
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  Play
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="4" width="4" height="16"/>
+                    <rect x="14" y="4" width="4" height="16"/>
+                  </svg>
+                  Pause
+                </>
+              )}
+            </button>
+            {/* Stop button */}
+            <button
+              onClick={onStopAutoSolve}
+              className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors"
+              title="Stop solving"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Stop
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   )
 }
