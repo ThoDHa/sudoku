@@ -54,16 +54,16 @@ export default defineConfig({
         // Cache strategies - NetworkFirst for app, CacheFirst for static assets
         runtimeCaching: [
           {
-            // App JS/CSS/HTML - NetworkFirst so we always get fresh content when online
+            // App JS/CSS/HTML - NetworkFirst with shorter timeout for fresh content
             urlPattern: /\.(?:js|css|html)$/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'app-assets',
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+                maxAgeSeconds: 60 * 60 * 24 * 1 // 1 day instead of 7
               },
-              networkTimeoutSeconds: 3, // Fall back to cache after 3 seconds
+              networkTimeoutSeconds: 1, // Reduced from 3 to 1 second
               cacheableResponse: {
                 statuses: [0, 200]
               }

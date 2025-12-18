@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ColorTheme, FontSize } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed, HomepageMode } from '../lib/preferences'
+import { clearAllCaches, CACHE_VERSION } from '../lib/cache-version'
 
 // Font size options
 const fontSizes: { key: FontSize; label: string }[] = [
@@ -113,6 +114,7 @@ export default function Menu({
   onFeatureRequest,
 }: MenuProps) {
   const [newPuzzleMenuOpen, setNewPuzzleMenuOpen] = useState(false)
+  const [cacheCleared, setCacheCleared] = useState(false)
 
   // Close submenu when menu closes
   useEffect(() => {
@@ -495,6 +497,56 @@ export default function Menu({
                 Request Feature
               </button>
             )}
+
+            {/* Debug Section */}
+            {import.meta.env.DEV && (
+              <>
+                <div className="my-2 border-t border-[var(--border-light)]" />
+                <div className="px-3 py-1">
+                  <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Debug</span>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      await clearAllCaches()
+                      setCacheCleared(true)
+                      setTimeout(() => setCacheCleared(false), 3000)
+                      // Reload page to get fresh content
+                      window.location.reload()
+                    } catch (error) {
+                      console.error('Failed to clear caches:', error)
+                    }
+                  }}
+                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text-muted)] rounded-lg hover:bg-[var(--btn-hover)]"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {cacheCleared ? 'Cache Cleared!' : `Clear Cache (v${CACHE_VERSION})`}
+                </button>
+              </>
+            )}
+
+            {/* Production Cache Clear (always available) */}
+            <button
+              onClick={async () => {
+                try {
+                  await clearAllCaches()
+                  setCacheCleared(true)
+                  setTimeout(() => setCacheCleared(false), 3000)
+                  // Reload page to get fresh content
+                  window.location.reload()
+                } catch (error) {
+                  console.error('Failed to clear caches:', error)
+                }
+              }}
+              className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text-muted)] rounded-lg hover:bg-[var(--btn-hover)]"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {cacheCleared ? 'App Cache Cleared!' : 'Clear App Cache'}
+            </button>
 
             {/* Report Bug */}
             <button

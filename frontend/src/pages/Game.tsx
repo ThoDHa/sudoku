@@ -528,8 +528,18 @@ export default function Game() {
 
     // If a digit is highlighted and this cell is empty, fill it
     if (highlightedDigit !== null && game.board[idx] === 0) {
+      const candidates = game.candidates[idx]
+      const wasCandidateRemoval = notesMode && candidates && candidates.has(highlightedDigit)
+      const candidatesBeforeOperation = candidates ? candidates.size : 0
+      
       game.setCell(idx, highlightedDigit, notesMode)
-      setCurrentHighlight(null)
+      
+      // If we just removed the last candidate, delay clearing highlight for visual feedback
+      if (wasCandidateRemoval && candidatesBeforeOperation === 1) {
+        setTimeout(() => setCurrentHighlight(null), 150)
+      } else {
+        setCurrentHighlight(null)
+      }
       // Keep digit highlighted so user can fill multiple cells with same digit
       return
     }
@@ -561,8 +571,18 @@ export default function Game() {
       return
     }
 
+    const candidates = game.candidates[selectedCell]
+    const wasCandidateRemoval = notesMode && candidates && candidates.has(digit)
+    const candidatesBeforeOperation = candidates ? candidates.size : 0
+    
     game.setCell(selectedCell, digit, notesMode)
-    setCurrentHighlight(null)
+    
+    // If we just removed the last candidate, delay clearing highlight for visual feedback
+    if (wasCandidateRemoval && candidatesBeforeOperation === 1) {
+      setTimeout(() => setCurrentHighlight(null), 150)
+    } else {
+      setCurrentHighlight(null)
+    }
     
     // Keep cell selected so user can erase or change immediately
     // Keep digit highlighted so user can fill multiple cells with same digit
@@ -575,8 +595,18 @@ export default function Game() {
       game.eraseCell(idx)
       setCurrentHighlight(null)
     } else {
+      const candidates = game.candidates[idx]
+      const wasCandidateRemoval = notesMode && candidates && candidates.has(value)
+      const candidatesBeforeOperation = candidates ? candidates.size : 0
+      
       game.setCell(idx, value, notesMode)
-      setCurrentHighlight(null)
+      
+      // If we just removed the last candidate, delay clearing highlight for visual feedback
+      if (wasCandidateRemoval && candidatesBeforeOperation === 1) {
+        setTimeout(() => setCurrentHighlight(null), 150)
+      } else {
+        setCurrentHighlight(null)
+      }
     }
   }, [game, notesMode])
 
