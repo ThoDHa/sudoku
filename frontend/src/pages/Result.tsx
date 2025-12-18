@@ -16,7 +16,7 @@ export default function Result() {
 
   if (!seed || !difficulty) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[var(--bg)]">
+      <div className="flex h-full flex-col items-center justify-center gap-4 bg-[var(--bg)]">
         <p className="text-xl font-medium text-[var(--text)]">Result not found</p>
         <p className="text-[var(--text-muted)]">Invalid or missing result data in URL</p>
         <Link
@@ -71,7 +71,7 @@ export default function Result() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
+    <div className="flex h-full flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
       <h1 className="mb-6 text-2xl font-bold">Puzzle Complete!</h1>
       
       <ResultSummary

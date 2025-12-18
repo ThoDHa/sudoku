@@ -13,7 +13,7 @@ export default function Daily() {
   // If today's daily is completed, redirect to play page
   if (completed) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
+      <div className="flex h-full flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
         <div className="mb-6 text-6xl">✅</div>
         <h1 className="mb-2 text-3xl font-bold">Daily Complete!</h1>
         <p className="mb-4 text-[var(--text-muted)]">{data.date_utc}</p>
@@ -68,7 +68,7 @@ export default function Daily() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
+    <div className="flex h-full flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
       <h1 className="mb-2 text-3xl font-bold">Daily Sudoku</h1>
       <p className="mb-2 text-[var(--text-muted)]">{data.date_utc}</p>
       

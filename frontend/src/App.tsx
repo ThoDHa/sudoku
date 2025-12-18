@@ -21,9 +21,9 @@ function AppContent() {
                      location.pathname.startsWith('/c/')
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
+    <div className="h-[100dvh] flex flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
       <Header />
-      <main className={isGamePage ? '' : 'pt-14'}>
+      <main className={`flex-1 overflow-y-auto scrollbar-hide ${isGamePage ? '' : 'pt-14'}`}>
         <Routes>
           <Route path="/" element={<Navigate to="/daily" replace />} />
           <Route path="/daily" element={<Daily />} />
