@@ -5,8 +5,8 @@
  * Run: npm run generate-puzzles (or equivalent) to regenerate
  */
 
-// Difficulty key mapping
-export const DifficultyKey: Record<string, string> = {
+// Difficulty key mapping (internal use)
+const DifficultyKey: Record<string, string> = {
   easy: 'e',
   medium: 'm',
   hard: 'h',
@@ -14,7 +14,7 @@ export const DifficultyKey: Record<string, string> = {
   impossible: 'i',
 }
 
-export const KeyToDifficulty: Record<string, string> = {
+const KeyToDifficulty: Record<string, string> = {
   e: 'easy',
   m: 'medium',
   h: 'hard',
@@ -43,16 +43,9 @@ const puzzlesData = puzzlesJson as { puzzles: CompactPuzzle[] }
 const practiceData = practiceJson as { techniques: Record<string, PracticePuzzleRef[]> }
 
 /**
- * Get puzzle count
+ * Get a puzzle by index and difficulty (internal use)
  */
-export function getPuzzleCount(): number {
-  return puzzlesData.puzzles.length
-}
-
-/**
- * Get a puzzle by index and difficulty
- */
-export function getPuzzleByIndex(
+function getPuzzleByIndex(
   index: number,
   difficulty: string
 ): { givens: number[]; solution: number[] } | null {
@@ -85,35 +78,6 @@ export function getPuzzleByIndex(
 }
 
 /**
- * Hash a string to get a deterministic puzzle index (FNV-1a)
- */
-function hashSeed(seed: string): number {
-  let hash = 2166136261 // FNV offset basis
-  for (let i = 0; i < seed.length; i++) {
-    hash ^= seed.charCodeAt(i)
-    hash = Math.imul(hash, 16777619) // FNV prime
-  }
-  return Math.abs(hash)
-}
-
-/**
- * Get a puzzle by seed and difficulty
- */
-export function getPuzzleBySeed(
-  seed: string,
-  difficulty: string
-): { givens: number[]; puzzleIndex: number } | null {
-  const count = getPuzzleCount()
-  if (count === 0) return null
-
-  const index = hashSeed(seed) % count
-  const result = getPuzzleByIndex(index, difficulty)
-  if (!result) return null
-
-  return { givens: result.givens, puzzleIndex: index }
-}
-
-/**
  * Get a practice puzzle for a technique
  */
 export function getPracticePuzzle(
@@ -140,11 +104,4 @@ export function getPracticePuzzle(
     difficulty,
     puzzleIndex: ref.i,
   }
-}
-
-/**
- * Get all available technique slugs that have practice puzzles
- */
-export function getAvailablePracticeTechniques(): string[] {
-  return Object.keys(practiceData.techniques)
 }

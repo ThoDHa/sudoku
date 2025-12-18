@@ -51,12 +51,6 @@ export interface Move {
   userEntryCount?: number
 }
 
-export interface SolveNextResult {
-  board: number[]
-  candidates: (number[] | null)[]
-  move: Move | null
-}
-
 export interface SolveAllResult {
   moves: Array<{
     board: number[]
@@ -107,24 +101,6 @@ async function getApi(): Promise<SudokuWasmAPI> {
     throw new Error('WASM not loaded')
   }
   return wasmApi
-}
-
-export function isAvailable(): boolean {
-  return isWasmReady()
-}
-
-export async function solveNext(
-  board: number[],
-  candidates: number[][],
-  _givens: number[]
-): Promise<SolveNextResult> {
-  const api = await getApi()
-  const result = api.findNextMove(board, candidates)
-  return {
-    board: result.board.cells,
-    candidates: result.board.candidates,
-    move: result.move,
-  }
 }
 
 export async function solveAll(
@@ -244,10 +220,8 @@ function hashGivens(givens: number[]): string {
 
 // Default export for backward compatibility
 export default {
-  solveNext,
   solveAll,
   validateBoard,
   validateCustomPuzzle,
   getPuzzle,
-  isAvailable,
 }

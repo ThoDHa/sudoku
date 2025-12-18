@@ -13,14 +13,12 @@ export {
   type TechniqueRef,
   type Highlights,
   type Move,
-  type SolveNextResult,
   type SolveAllResult,
   type ValidateBoardResult,
   type ValidateCustomResult,
   type PuzzleResult,
   
   // Solver functions
-  solveNext,
   solveAll,
   validateBoard,
   validateCustomPuzzle,
@@ -34,9 +32,3 @@ export {
   initializeSolver,
   isWasmReady,
 } from './solver-service'
-
-// Re-export DailyResponse type for hooks.ts
-export type DailyResponse = {
-  date_utc: string
-  seed: string
-}

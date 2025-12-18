@@ -20,7 +20,7 @@ export default function Result() {
         <p className="text-xl font-medium text-[var(--text)]">Result not found</p>
         <p className="text-[var(--text-muted)]">Invalid or missing result data in URL</p>
         <Link
-          to="/daily"
+          to="/"
           className="rounded-lg bg-[var(--accent)] px-4 py-2 text-[var(--btn-active-text)] hover:opacity-90"
         >
           Back to Daily
@@ -114,7 +114,7 @@ export default function Result() {
           Try Again
         </Link>
         <Link
-          to="/daily"
+          to="/"
           className="rounded-lg bg-[var(--accent)] px-4 py-2 text-[var(--btn-active-text)] hover:opacity-90"
         >
           New Puzzle

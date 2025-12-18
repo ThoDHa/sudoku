@@ -226,38 +226,6 @@ func (b *Board) GetCandidates() [][]int {
 	return result
 }
 
-// GetEliminated returns eliminated candidates as a 2D slice
-func (b *Board) GetEliminated() [][]int {
-	result := make([][]int, 81)
-	for i := 0; i < 81; i++ {
-		for d := range b.Eliminated[i] {
-			result[i] = append(result[i], d)
-		}
-	}
-	return result
-}
-
-// NewBoardWithCandidatesAndEliminated creates a board with pre-set candidates and eliminated
-func NewBoardWithCandidatesAndEliminated(cells []int, candidates [][]int, eliminated [][]int) *Board {
-	b := &Board{}
-	for i := 0; i < 81; i++ {
-		b.Cells[i] = cells[i]
-		b.Candidates[i] = make(map[int]bool)
-		b.Eliminated[i] = make(map[int]bool)
-		if candidates != nil && i < len(candidates) && candidates[i] != nil {
-			for _, d := range candidates[i] {
-				b.Candidates[i][d] = true
-			}
-		}
-		if eliminated != nil && i < len(eliminated) && eliminated[i] != nil {
-			for _, d := range eliminated[i] {
-				b.Eliminated[i][d] = true
-			}
-		}
-	}
-	return b
-}
-
 // Technique represents a solving technique
 type Technique struct {
 	Name     string
@@ -760,29 +728,4 @@ func (s *Solver) AnalyzePuzzleDifficulty(givens []int) (core.Difficulty, map[str
 	}
 
 	return requiredDifficulty, techniqueCounts, constants.StatusCompleted
-}
-
-// RequiresExtremeTechniques checks if solving the puzzle requires extreme techniques
-func (s *Solver) RequiresExtremeTechniques(givens []int) bool {
-	difficulty, _, status := s.AnalyzePuzzleDifficulty(givens)
-	return status == constants.StatusCompleted && difficulty == core.DifficultyImpossible
-}
-
-// CanSolveWithDifficulty checks if puzzle can be solved using only techniques
-// allowed for the given difficulty level
-func (s *Solver) CanSolveWithDifficulty(givens []int, targetDifficulty core.Difficulty) bool {
-	difficulty, _, status := s.AnalyzePuzzleDifficulty(givens)
-	if status != constants.StatusCompleted {
-		return false
-	}
-
-	difficultyOrder := map[core.Difficulty]int{
-		core.DifficultyEasy:       0,
-		core.DifficultyMedium:     1,
-		core.DifficultyHard:       2,
-		core.DifficultyExtreme:    3,
-		core.DifficultyImpossible: 4,
-	}
-
-	return difficultyOrder[difficulty] <= difficultyOrder[targetDifficulty]
 }

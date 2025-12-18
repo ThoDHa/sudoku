@@ -6,6 +6,7 @@ interface DifficultyGridProps {
   seed: string
   lastSelected: Difficulty | null
   onSelect: (difficulty: Difficulty) => void
+  routePrefix?: string // '/p' for daily, '/game' for practice
 }
 
 const difficulties: { key: Difficulty; givensHint: string }[] = [
@@ -16,12 +17,12 @@ const difficulties: { key: Difficulty; givensHint: string }[] = [
   { key: 'impossible', givensHint: '~17-21' },
 ]
 
-export default function DifficultyGrid({ seed, lastSelected, onSelect }: DifficultyGridProps) {
+export default function DifficultyGrid({ seed, lastSelected, onSelect, routePrefix = '/p' }: DifficultyGridProps) {
   const navigate = useNavigate()
 
   const handlePlay = (difficulty: Difficulty) => {
     onSelect(difficulty)
-    navigate(`/p/${seed}?d=${difficulty}`)
+    navigate(`${routePrefix}/${seed}?d=${difficulty}`)
   }
 
   return (

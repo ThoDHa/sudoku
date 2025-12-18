@@ -29,20 +29,6 @@ export function saveScore(score: Score): void {
   localStorage.setItem(STORAGE_KEYS.SCORES, JSON.stringify(trimmed))
 }
 
-export function getBestScores(): Record<string, Score> {
-  const scores = getScores()
-  const best: Record<string, Score> = {}
-  
-  for (const score of scores) {
-    const existing = best[score.difficulty]
-    if (!existing || score.timeMs < existing.timeMs) {
-      best[score.difficulty] = score
-    }
-  }
-  
-  return best
-}
-
 // Helper to check if a score used any assists (hints or auto-solve)
 function isAssistedScore(score: Score): boolean {
   return score.hintsUsed > 0 || score.autoSolveUsed === true

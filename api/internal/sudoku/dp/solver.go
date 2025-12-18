@@ -2,7 +2,6 @@ package dp
 
 import (
 	"sudoku-api/internal/core"
-	"sudoku-api/internal/sudoku/human"
 )
 
 // Solver provides DP/backtracking based Sudoku solving for verification
@@ -422,26 +421,4 @@ type PuzzleAnalysis struct {
 	RequiredDifficulty core.Difficulty
 	TechniqueCounts  map[string]int
 	Status           string
-}
-
-// CarveGivensWithAnalysis generates puzzles and analyzes technique requirements.
-// Returns puzzles that have been verified to be solvable with human techniques.
-func CarveGivensWithAnalysis(fullGrid []int, seed int64) map[string]*PuzzleAnalysis {
-	puzzles := CarveGivensWithSubset(fullGrid, seed)
-	solver := human.NewSolver()
-
-	result := make(map[string]*PuzzleAnalysis)
-
-	for diff, givens := range puzzles {
-		requiredDiff, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(givens)
-
-		result[diff] = &PuzzleAnalysis{
-			Givens:           givens,
-			RequiredDifficulty: requiredDiff,
-			TechniqueCounts:  techniqueCounts,
-			Status:           status,
-		}
-	}
-
-	return result
 }
