@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { formatTime, generateShareText, generatePuzzleUrl, getDailyStreak, isDailySeed, type Score } from '../lib/scores'
 import { DIFFICULTIES } from '../lib/constants'
 import { CloseIcon } from './ui'
@@ -236,22 +236,6 @@ export default function ResultModal({
             className="w-full rounded-lg border-2 border-[var(--accent)] py-2.5 font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--btn-active-text)]"
           >
             Play {selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)}
-          </button>
-        </div>
-
-        {/* Navigation links */}
-        <div className="flex gap-3">
-          <Link
-            to="/"
-            className="flex-1 rounded-lg border border-[var(--border-light)] py-2 text-center font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
-          >
-            📅 Daily Puzzles
-          </Link>
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-[var(--border-light)] py-2 text-center font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
-          >
-            🔍 Review Puzzle
           </button>
         </div>
       </div>
