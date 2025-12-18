@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+frontend/dist/
+api/server
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test outputs
+coverage.out
+*.coverprofile
+playwright-report/
+test-results/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Debug and log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Go specific
+*.test
+*.out
+
+# Python cache (for debug scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp

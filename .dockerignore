@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+api/vendor/
+
+# Build outputs
+frontend/dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test files
+*_test.go
+*.test
+coverage.out
+playwright-report/
+test-results/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Environment files (SECURITY)
+.env
+.env.*
+*.env
+
+# Documentation
+*.md
+LICENSE
+
+# CI/CD
+.github/
+
+# OS files
+.DS_Store
+Thumbs.db
