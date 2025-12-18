@@ -233,7 +233,9 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
   wasmLoadPromise = (async () => {
     try {
       // Load wasm_exec.js first
+      console.log('[WASM] Loading wasm_exec.js from:', `${getBaseUrl()}wasm_exec.js`)
       await loadWasmExec();
+      console.log('[WASM] wasm_exec.js loaded')
 
       // Ensure Go is available
       if (typeof window === 'undefined' || !window.Go) {
@@ -243,13 +245,16 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       const go = new window.Go();
 
       // Fetch and instantiate the WASM module
+      console.log('[WASM] Fetching WASM from:', `${getBaseUrl()}sudoku.wasm`)
       const wasmResponse = await fetch(`${getBaseUrl()}sudoku.wasm`);
       if (!wasmResponse.ok) {
         throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`);
       }
+      console.log('[WASM] WASM fetched, instantiating...')
 
       const wasmBuffer = await wasmResponse.arrayBuffer();
       const result = await WebAssembly.instantiate(wasmBuffer, go.importObject);
+      console.log('[WASM] WASM instantiated, running Go...')
 
       // Run the Go program (this sets up window.SudokuWasm)
       // Don't await this - it blocks forever (intentionally)
@@ -263,6 +268,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
 
         // Check if already ready
         if (window.SudokuWasm) {
+          console.log('[WASM] SudokuWasm already available')
           clearTimeout(timeout);
           resolve();
           return;
@@ -270,6 +276,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
 
         // Wait for the wasmReady event
         const handler = () => {
+          console.log('[WASM] wasmReady event received')
           clearTimeout(timeout);
           window.removeEventListener('wasmReady', handler);
           resolve();

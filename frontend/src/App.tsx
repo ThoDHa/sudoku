@@ -44,9 +44,11 @@ function AppContent() {
 }
 
 function App() {
-  // Initialize solver (WASM) on app startup and auto-update if needed
+  // Initialize solver (WASM) on app startup
   useEffect(() => {
-    initializeSolver()
+    initializeSolver().catch((err) => {
+      console.error('Failed to initialize WASM solver:', err)
+    })
   }, [])
 
   return (
