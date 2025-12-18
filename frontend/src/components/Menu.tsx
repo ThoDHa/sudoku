@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ColorTheme, FontSize } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed, HomepageMode } from '../lib/preferences'
 import { clearAllCaches, CACHE_VERSION } from '../lib/cache-version'
 import { getAutoSaveEnabled, setAutoSaveEnabled } from '../lib/gameSettings'
+import { createGameRoute } from '../lib/constants'
 
 // Font size options
 const fontSizes: { key: FontSize; label: string }[] = [
@@ -114,6 +115,7 @@ export default function Menu({
   showNavigation = false,
   onFeatureRequest,
 }: MenuProps) {
+  const navigate = useNavigate()
   const [newPuzzleMenuOpen, setNewPuzzleMenuOpen] = useState(false)
   const [cacheCleared, setCacheCleared] = useState(false)
   const [autoSaveEnabled, setAutoSaveEnabledState] = useState(getAutoSaveEnabled)
@@ -351,14 +353,20 @@ export default function Menu({
                       {['easy', 'medium', 'hard', 'extreme', 'impossible'].map((d) => (
                         <button
                           key={d}
-                          onClick={() => { window.location.href = `/game/P${Date.now()}?d=${d}` }}
+                          onClick={() => { 
+                            navigate(createGameRoute(d))
+                            onClose()
+                          }}
                           className="block w-full px-3 py-1.5 text-left text-sm capitalize text-[var(--text-muted)] hover:text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
                         >
                           {d}
                         </button>
                       ))}
                       <button
-                        onClick={() => { window.location.href = '/custom' }}
+                        onClick={() => { 
+                          navigate('/custom')
+                          onClose()
+                        }}
                         className="block w-full px-3 py-1.5 text-left text-sm text-[var(--text-muted)] hover:text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
                       >
                         Custom

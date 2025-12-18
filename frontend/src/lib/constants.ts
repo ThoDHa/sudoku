@@ -102,3 +102,14 @@ export function getTierColor(tier: string): string {
 export function getTechniqueColor(technique: string): string {
   return TECHNIQUE_COLORS[technique] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
 }
+
+// =============================================================================
+// NAVIGATION UTILITIES
+// =============================================================================
+export function generatePuzzleSeed(): string {
+  return `P${Date.now()}`
+}
+
+export function createGameRoute(difficulty: string): string {
+  return `/game/${generatePuzzleSeed()}?d=${difficulty}`
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { createGameRoute } from '../lib/constants'
 import { useDailySeed, useLastDailyDifficulty, Difficulty } from '../lib/hooks'
 import { isTodayCompleted, getDailyStreak } from '../lib/scores'
 import { getHomepageMode, onHomepageModeChange, HomepageMode } from '../lib/preferences'
@@ -20,8 +21,6 @@ export default function Homepage() {
   
   const completed = isTodayCompleted()
   const streak = getDailyStreak()
-
-  const generateSeed = () => `P${Date.now()}`
 
   // Generate a new practice seed when switching to practice mode
   useEffect(() => {
@@ -64,7 +63,7 @@ export default function Homepage() {
           </p>
           
           <button
-            onClick={() => navigate(`/game/${generateSeed()}?d=medium`)}
+            onClick={() => navigate(createGameRoute('medium'))}
             className="w-full rounded-xl bg-[var(--accent)] px-6 py-3 font-semibold text-white transition-colors hover:opacity-90"
           >
             Play Practice Game

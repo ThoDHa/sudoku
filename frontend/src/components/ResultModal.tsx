@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatTime, generateShareText, generatePuzzleUrl, getDailyStreak, isDailySeed, type Score } from '../lib/scores'
-import { DIFFICULTIES } from '../lib/constants'
+import { DIFFICULTIES, createGameRoute } from '../lib/constants'
 import { CloseIcon } from './ui'
 import DifficultyBadge from './DifficultyBadge'
 
@@ -232,7 +232,7 @@ export default function ResultModal({
           </div>
           
           <button
-            onClick={() => navigate(`/game/P${Date.now()}?d=${selectedDifficulty}`)}
+            onClick={() => navigate(createGameRoute(selectedDifficulty))}
             className="w-full rounded-lg border-2 border-[var(--accent)] py-2.5 font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--btn-active-text)]"
           >
             Play {selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)}
