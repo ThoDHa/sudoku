@@ -60,7 +60,7 @@ describe('scores', () => {
 
   describe('generateShareText', () => {
     const baseScore: Score = {
-      seed: '2024-01-15',
+      seed: 'daily-2024-01-15',
       difficulty: 'medium',
       timeMs: 300000, // 5 minutes
       hintsUsed: 0,
@@ -75,6 +75,19 @@ describe('scores', () => {
       expect(text).toContain('Medium')
       expect(text).toContain('5:00')
       expect(text).toContain('https://example.com')
+    })
+
+    it('should include streak for daily puzzles', () => {
+      const text = generateShareText(baseScore, 'https://example.com', 5)
+      
+      expect(text).toContain('Daily Sudoku 2024-01-15')
+      expect(text).toContain('🔥 5 day streak')
+    })
+
+    it('should not include streak of 1', () => {
+      const text = generateShareText(baseScore, 'https://example.com', 1)
+      
+      expect(text).not.toContain('streak')
     })
 
     it('should generate text for practice puzzle', () => {

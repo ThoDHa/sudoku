@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { formatTime, generateShareText, generatePuzzleUrl, type Score } from '../lib/scores'
+import { formatTime, generateShareText, generatePuzzleUrl, getDailyStreak, isDailySeed, type Score } from '../lib/scores'
 import { DIFFICULTIES } from '../lib/constants'
 import { CloseIcon } from './ui'
 import DifficultyBadge from './DifficultyBadge'
@@ -60,6 +60,9 @@ export default function ResultModal({
 
   if (!isOpen) return null
 
+  const isDaily = isDailySeed(seed)
+  const streak = isDaily ? getDailyStreak() : null
+
   const score: Score = {
     seed,
     difficulty,
@@ -73,7 +76,7 @@ export default function ResultModal({
   }
 
   const puzzleUrl = generatePuzzleUrl(score)
-  const shareText = generateShareText(score, puzzleUrl)
+  const shareText = generateShareText(score, puzzleUrl, streak?.currentStreak)
 
   const handleShare = async () => {
     try {
@@ -115,8 +118,32 @@ export default function ResultModal({
         {/* Header */}
         <div className="mb-6 text-center">
           <h2 className="text-2xl font-bold text-[var(--text)]">🎉 Puzzle Complete!</h2>
-          <p className="mt-1 text-[var(--text-muted)]">Great job solving the puzzle</p>
+          <p className="mt-1 text-[var(--text-muted)]">
+            {isDaily ? 'Daily challenge completed!' : 'Great job solving the puzzle'}
+          </p>
         </div>
+
+        {/* Streak display for daily puzzles */}
+        {isDaily && streak && streak.currentStreak > 0 && (
+          <div className="mb-4 flex items-center justify-center gap-4 rounded-lg bg-[var(--bg-secondary)] p-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🔥</span>
+              <div>
+                <p className="text-xl font-bold text-[var(--accent)]">{streak.currentStreak}</p>
+                <p className="text-xs text-[var(--text-muted)]">Day Streak</p>
+              </div>
+            </div>
+            {streak.longestStreak > streak.currentStreak && (
+              <>
+                <div className="h-8 w-px bg-[var(--border-light)]" />
+                <div className="text-center">
+                  <p className="text-lg font-bold text-[var(--text)]">{streak.longestStreak}</p>
+                  <p className="text-xs text-[var(--text-muted)]">Best</p>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="mb-6 grid grid-cols-3 gap-4">

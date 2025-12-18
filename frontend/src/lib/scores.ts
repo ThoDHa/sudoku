@@ -87,22 +87,28 @@ export function formatTime(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
-// Check if a seed is a daily puzzle (date format like YYYY-MM-DD)
-function isDailySeed(seed: string): boolean {
-  // Daily seeds are dates in format YYYY-MM-DD
-  return /^\d{4}-\d{2}-\d{2}$/.test(seed)
+// Check if a seed is a daily puzzle (format: daily-YYYY-MM-DD)
+export function isDailySeed(seed: string): boolean {
+  return /^daily-\d{4}-\d{2}-\d{2}$/.test(seed)
+}
+
+// Extract the date from a daily seed (e.g., "daily-2025-01-15" -> "2025-01-15")
+export function getDailyDate(seed: string): string | null {
+  const match = seed.match(/^daily-(\d{4}-\d{2}-\d{2})$/)
+  return match?.[1] ?? null
 }
 
 // Generate Wordle-style share text
-export function generateShareText(score: Score, puzzleUrl: string): string {
+export function generateShareText(score: Score, puzzleUrl: string, streak?: number): string {
   const difficulty = score.difficulty.charAt(0).toUpperCase() + score.difficulty.slice(1)
   const time = formatTime(score.timeMs)
   
   let text = ''
   
   // Include appropriate header based on puzzle type
-  if (isDailySeed(score.seed)) {
-    text += `Daily Sudoku ${score.seed}\n`
+  const dailyDate = getDailyDate(score.seed)
+  if (dailyDate) {
+    text += `Daily Sudoku ${dailyDate}\n`
   } else if (score.difficulty === 'custom') {
     text += `Sudoku (Custom)\n`
   } else {
@@ -124,6 +130,11 @@ export function generateShareText(score: Score, puzzleUrl: string): string {
   
   if (assists.length > 0) {
     text += ` (${assists.join(', ')})`
+  }
+  
+  // Add streak for daily puzzles
+  if (dailyDate && streak && streak > 1) {
+    text += `\n🔥 ${streak} day streak`
   }
   
   text += `\n\n${puzzleUrl}`
