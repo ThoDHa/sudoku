@@ -14,6 +14,16 @@ const localStorageMock = (() => {
 
 Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock })
 
+// Mock window.location for generatePuzzleUrl
+Object.defineProperty(globalThis, 'window', {
+  value: {
+    location: {
+      origin: 'https://example.com'
+    }
+  },
+  writable: true
+})
+
 describe('scores', () => {
   beforeEach(() => {
     localStorageMock.clear()
@@ -61,7 +71,7 @@ describe('scores', () => {
     it('should generate text for daily puzzle', () => {
       const text = generateShareText(baseScore, 'https://example.com')
       
-      expect(text).toContain('Sudoku 2024-01-15')
+      expect(text).toContain('Daily Sudoku 2024-01-15')
       expect(text).toContain('Medium')
       expect(text).toContain('5:00')
       expect(text).toContain('https://example.com')
@@ -139,9 +149,10 @@ describe('scores', () => {
     }
 
     it('should generate URL for daily/practice puzzle', () => {
-      const url = generatePuzzleUrl(baseScore, 'https://example.com')
+      const url = generatePuzzleUrl(baseScore)
       
-      expect(url).toBe('https://example.com/game/2024-01-15?d=medium')
+      // Uses window.location.origin + import.meta.env.BASE_URL
+      expect(url).toContain('/game/2024-01-15?d=medium')
     })
 
     it('should generate URL for custom puzzle with encoded data', () => {
@@ -150,24 +161,24 @@ describe('scores', () => {
         difficulty: 'custom',
         encodedPuzzle: 'sABCDEF123'
       }
-      const url = generatePuzzleUrl(score, 'https://example.com')
+      const url = generatePuzzleUrl(score)
       
-      expect(url).toBe('https://example.com/c/sABCDEF123')
+      expect(url).toContain('/c/sABCDEF123')
     })
 
     it('should generate URL for custom puzzle without encoded data', () => {
       const score = { ...baseScore, difficulty: 'custom' }
-      const url = generatePuzzleUrl(score, 'https://example.com')
+      const url = generatePuzzleUrl(score)
       
-      expect(url).toBe('https://example.com/custom')
+      expect(url).toContain('/custom')
     })
 
     it('should include difficulty in query string', () => {
       const easyScore = { ...baseScore, difficulty: 'easy' }
       const hardScore = { ...baseScore, difficulty: 'hard' }
       
-      expect(generatePuzzleUrl(easyScore, 'https://example.com')).toContain('d=easy')
-      expect(generatePuzzleUrl(hardScore, 'https://example.com')).toContain('d=hard')
+      expect(generatePuzzleUrl(easyScore)).toContain('d=easy')
+      expect(generatePuzzleUrl(hardScore)).toContain('d=hard')
     })
   })
 })

@@ -39,8 +39,7 @@ export default function Result() {
     autoSolveUsed,
   }
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-  const puzzleUrl = generatePuzzleUrl(score, baseUrl)
+  const puzzleUrl = generatePuzzleUrl(score)
   const shareText = generateShareText(score, puzzleUrl)
 
   const handleShare = async () => {

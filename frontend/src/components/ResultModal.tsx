@@ -72,8 +72,7 @@ export default function ResultModal({
     ...(encodedPuzzle ? { encodedPuzzle } : {}),
   }
 
-  const baseUrl = window.location.origin
-  const puzzleUrl = generatePuzzleUrl(score, baseUrl)
+  const puzzleUrl = generatePuzzleUrl(score)
   const shareText = generateShareText(score, puzzleUrl)
 
   const handleShare = async () => {

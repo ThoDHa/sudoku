@@ -114,9 +114,9 @@ export function generateShareText(score: Score, puzzleUrl: string): string {
   
   let text = ''
   
-  // Only include date for daily puzzles
+  // Include appropriate header based on puzzle type
   if (isDailySeed(score.seed)) {
-    text += `Sudoku ${score.seed}\n`
+    text += `Daily Sudoku ${score.seed}\n`
   } else if (score.difficulty === 'custom') {
     text += `Sudoku (Custom)\n`
   } else {
@@ -146,16 +146,21 @@ export function generateShareText(score: Score, puzzleUrl: string): string {
 }
 
 // Generate puzzle URL for challenge
-export function generatePuzzleUrl(score: Score, baseUrl: string): string {
+export function generatePuzzleUrl(score: Score): string {
+  // Use the current page URL's base (handles GitHub Pages /sudoku/ path)
+  const baseUrl = window.location.origin + (import.meta.env.BASE_URL || '/')
+  // Remove trailing slash if present to avoid double slashes
+  const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+  
   // For custom puzzles with encoded data, use the /c/ route
   if (score.difficulty === 'custom' && score.encodedPuzzle) {
-    return `${baseUrl}/c/${score.encodedPuzzle}`
+    return `${base}/c/${score.encodedPuzzle}`
   }
   // For custom puzzles without encoded data (legacy), don't include a shareable link
   if (score.difficulty === 'custom') {
-    return `${baseUrl}/custom`
+    return `${base}/custom`
   }
-  return `${baseUrl}/game/${score.seed}?d=${score.difficulty}`
+  return `${base}/game/${score.seed}?d=${score.difficulty}`
 }
 
 // =============================================================================
