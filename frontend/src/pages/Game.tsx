@@ -16,7 +16,8 @@ import { useGameTimer } from '../hooks/useGameTimer'
 import { useSudokuGame } from '../hooks/useSudokuGame'
 import { useAutoSolve } from '../hooks/useAutoSolve'
 import { useBackgroundManager } from '../hooks/useBackgroundManager'
-import { useHighlightManager } from '../hooks/useHighlightManager'
+import { useHighlightState } from '../hooks/useHighlightState'
+import type { MoveHighlight } from '../hooks/useHighlightState'
 import { useVisibilityAwareTimeout } from '../hooks/useVisibilityAwareTimeout'
 import type { Move } from '../hooks/useSudokuGame'
 import {
@@ -80,14 +81,11 @@ export default function Game() {
   const [error, setError] = useState<string | null>(null)
 
   // UI state (not game logic)
-  const [selectedCell, setSelectedCell] = useState<number | null>(null)
-  const [highlightedDigit, setHighlightedDigit] = useState<number | null>(null)
+  // Highlight state is now managed by useHighlightState hook (see CUSTOM HOOKS section)
   const [eraseMode, setEraseMode] = useState(false)
   const [notesMode, setNotesMode] = useState(false)
   const [showResultModal, setShowResultModal] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [currentHighlight, setCurrentHighlight] = useState<Move | null>(null)
-  const [selectedMoveIndex, setSelectedMoveIndex] = useState<number | null>(null)
   const [techniqueModal, setTechniqueModal] = useState<{ title: string; slug: string } | null>(null)
   const [techniquesListOpen, setTechniquesListOpen] = useState(false)
   const [solveConfirmOpen, setSolveConfirmOpen] = useState(false)
@@ -131,13 +129,29 @@ export default function Game() {
   // Visibility-aware timeouts for toast messages - cancelled on background
   const { setTimeout: visibilityAwareTimeout } = useVisibilityAwareTimeout()
 
-  // Centralized highlight management for consistent behavior
-  const highlightManager = useHighlightManager({
-    setHighlightedDigit,
-    setCurrentHighlight,
-    setSelectedCell,
-    setSelectedMoveIndex,
-  })
+  // Centralized highlight state management with atomic updates
+  // This replaces the old separate useState calls and useHighlightManager
+  // All state updates are now atomic, preventing race conditions on mobile
+  const {
+    selectedCell,
+    highlightedDigit,
+    currentHighlight,
+    selectedMoveIndex,
+    selectCell,
+    deselectCell,
+    setDigitHighlight,
+    clearDigitHighlight,
+    toggleDigitHighlight,
+    setMoveHighlight,
+    clearMoveHighlight,
+    clearAllAndDeselect,
+    clearAfterUserCandidateOp,
+    clearAfterDigitPlacement,
+    clearAfterErase,
+    clearOnModeChange,
+    clearAfterDigitToggle,
+    clickGivenCell,
+  } = useHighlightState()
 
     // Extended background pause - completely suspend operations after 30 seconds hidden
     const [isExtendedPaused, setIsExtendedPaused] = useState(false)
@@ -180,12 +194,11 @@ export default function Game() {
       const candidatesArray = newCandidates.map(set => Array.from(set))
       const uint16Candidates = arraysToCandidates(candidatesArray)
       game.applyExternalMove(newBoard, uint16Candidates, move)
-      setCurrentHighlight(move)
-      setSelectedMoveIndex(index)
+      setMoveHighlight(move as MoveHighlight, index)
       
       // Highlight the digit being placed/modified
       if (move.digit && move.digit > 0) {
-        setHighlightedDigit(move.digit)
+        setDigitHighlight(move.digit)
       }
       
       // Show notes mode if it's a candidate operation
@@ -200,14 +213,13 @@ export default function Game() {
       const candidatesArray = candidates.map(set => Array.from(set))
       const uint16Candidates = arraysToCandidates(candidatesArray)
       game.setBoardState(board, uint16Candidates)
-      setCurrentHighlight(move)
-      setSelectedMoveIndex(index)
+      setMoveHighlight(move as MoveHighlight, index)
       
       // Update digit highlight based on move
       if (move && move.digit && move.digit > 0) {
-        setHighlightedDigit(move.digit)
+        setDigitHighlight(move.digit)
       } else {
-        setHighlightedDigit(null)
+        clearDigitHighlight()
       }
       
       // Update notes mode based on move action
@@ -338,11 +350,10 @@ export default function Game() {
     game.clearAll()
     clearSavedGameState()
     invalidateCachedSolution()
-    highlightManager.clearAllAndDeselect()
-    setSelectedMoveIndex(null)
+    clearAllAndDeselect()
     setNotesMode(false)
     setAutoSolveStepsUsed(0)
-  }, [game, clearSavedGameState, invalidateCachedSolution, highlightManager])
+  }, [game, clearSavedGameState, invalidateCachedSolution, clearAllAndDeselect])
 
   // Restart puzzle (clears all AND resets timer)
   const handleRestart = useCallback(() => {
@@ -351,8 +362,7 @@ export default function Game() {
     invalidateCachedSolution()
     timer.resetTimer()
     timer.startTimer()
-    highlightManager.clearAllAndDeselect()
-    setSelectedMoveIndex(null)
+    clearAllAndDeselect()
     setNotesMode(false)
     setHintsUsed(0)
     setAutoFillUsed(false)
@@ -360,7 +370,7 @@ export default function Game() {
     autoSolveUsedRef.current = false
     setAutoSolveStepsUsed(0)
     setShowResultModal(false)
-  }, [game, timer, clearSavedGameState, invalidateCachedSolution, highlightManager])
+  }, [game, timer, clearSavedGameState, invalidateCachedSolution, clearAllAndDeselect])
 
   // Auto-fill notes based on current board state
   const autoFillNotes = useCallback(() => {
@@ -439,7 +449,7 @@ export default function Game() {
   // Returns true if more steps available, false otherwise
   const executeHintStep = useCallback(async (showNotification: boolean = true): Promise<boolean> => {
     // Deselect any highlighted digit when using hint
-    highlightManager.clearAllAndDeselect()
+    clearAllAndDeselect()
 
     // Check if we need to fetch a new solution
     // Invalidate cache if user made changes (history length changed unexpectedly)
@@ -507,7 +517,7 @@ export default function Game() {
       invalidateCachedSolution()
       if (game.canUndo) {
         game.undo()
-        setCurrentHighlight(null)
+        clearMoveHighlight()
         if (showNotification) {
           setValidationMessage({ 
             type: 'error', 
@@ -538,8 +548,7 @@ export default function Game() {
     // Update the cached history length to account for this hint
     cachedAtHistoryLength.current = game.history.length + 1
     
-    setCurrentHighlight(move)
-    setSelectedMoveIndex(game.history.length)
+    setMoveHighlight(move as MoveHighlight, game.history.length)
 
     if (showNotification) {
       const firstTarget = move.targets?.[0]
@@ -585,23 +594,24 @@ export default function Game() {
       resumeFromExtendedPause()
      // Given cells: just highlight the digit, don't select
      if (game.isGivenCell(idx)) {
-       const cellDigit = game.board[idx] ?? null
-       highlightManager.setDigitHighlight(cellDigit)
+       const cellDigit = game.board[idx]
+       if (cellDigit && cellDigit > 0) {
+         clickGivenCell(cellDigit)
+       }
        setEraseMode(false)
-       setSelectedCell(null)
        return
      }
 
      // Toggle selection: clicking the same cell again deselects it (highest priority for user-fillable cells)
      if (selectedCell === idx) {
-       highlightManager.clearAllAndDeselect()
+       clearAllAndDeselect()
        return
      }
 
      // If erase mode is active and cell has a value, erase it
      if (eraseMode && game.board[idx] !== 0) {
        game.eraseCell(idx)
-       highlightManager.clearAfterEraseOperation()
+       clearAfterErase()
        // Keep erase mode active so user can erase multiple cells
        return
      }
@@ -612,20 +622,20 @@ export default function Game() {
           game.setCell(idx, highlightedDigit, notesMode)
           
           // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
-          highlightManager.clearAfterUserCandidateOperation()
+          clearAfterUserCandidateOp()
         } else {
           // For digit placement, clear move highlights but preserve digit highlight for multi-fill
           game.setCell(idx, highlightedDigit, notesMode)
-          highlightManager.clearAfterDigitPlacement()
+          clearAfterDigitPlacement()
         }
         return
       }
 
      // Select the cell (works for both empty and user-filled cells)
-     setSelectedCell(idx)
-     highlightManager.clearAfterCellSelection()
+     // selectCell atomically selects and clears highlights
+     selectCell(idx)
      setEraseMode(false)
-   }, [game, highlightedDigit, eraseMode, notesMode, selectedCell, highlightManager])
+   }, [game, highlightedDigit, eraseMode, notesMode, selectedCell, selectCell, clearAllAndDeselect, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement, clickGivenCell])
 
     // Digit input handler
     const handleDigitInput = useCallback((digit: number) => {
@@ -635,7 +645,7 @@ export default function Game() {
 
      // If no cell selected, toggle digit highlight for multi-fill mode
      if (selectedCell === null) {
-       highlightManager.setDigitHighlight(highlightedDigit === digit ? null : digit, 'multi-fill')
+       toggleDigitHighlight(digit)
        return
      }
 
@@ -644,7 +654,7 @@ export default function Game() {
      // If cell already has this digit, erase it
      if (game.board[selectedCell] === digit) {
        game.eraseCell(selectedCell)
-       highlightManager.clearAfterDigitToggle()
+       clearAfterDigitToggle()
        return
      }
 
@@ -652,15 +662,15 @@ export default function Game() {
 
       if (notesMode) {
         // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
-        highlightManager.clearAfterUserCandidateOperation()
+        clearAfterUserCandidateOp()
       } else {
         // For digit placement, clear move highlights but preserve digit highlight for multi-fill
-        highlightManager.clearAfterDigitPlacement()
+        clearAfterDigitPlacement()
       }
 
      // Keep cell selected so user can erase or change immediately
      // Keep digit highlighted for adding candidates (multi-fill)
-   }, [game, selectedCell, highlightedDigit, notesMode, highlightManager])
+   }, [game, selectedCell, notesMode, toggleDigitHighlight, clearAfterDigitToggle, clearAfterUserCandidateOp, clearAfterDigitPlacement])
 
     // Keyboard cell change handler (from Board component)
     const handleCellChange = useCallback((idx: number, value: number) => {
@@ -668,25 +678,25 @@ export default function Game() {
       if (game.isGivenCell(idx)) return
      if (value === 0) {
        game.eraseCell(idx)
-       highlightManager.clearAfterEraseOperation()
+       clearAfterErase()
         } else {
           if (notesMode) {
             game.setCell(idx, value, notesMode)
             
             // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
-            highlightManager.clearAfterUserCandidateOperation()
+            clearAfterUserCandidateOp()
           } else {
             game.setCell(idx, value, notesMode)
-            highlightManager.clearAfterDigitPlacement()
+            clearAfterDigitPlacement()
           }
         }
-   }, [game, notesMode, highlightManager])
+   }, [game, notesMode, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement])
 
   // Toggle erase mode handler
   const handleEraseMode = useCallback(() => {
     setEraseMode(prev => !prev)
-    highlightManager.clearOnModeChange()
-  }, [highlightManager])
+    clearOnModeChange()
+  }, [clearOnModeChange])
 
   // Undo handler - during auto-solve, this steps backward
   const handleUndo = useCallback(() => {
@@ -696,10 +706,9 @@ export default function Game() {
       game.undo()
       invalidateCachedSolution()
       // Clear selection and highlights after undo
-      highlightManager.clearAllAndDeselect()
-      setSelectedMoveIndex(null)
+      clearAllAndDeselect()
     }
-  }, [game, autoSolve, invalidateCachedSolution, highlightManager])
+  }, [game, autoSolve, invalidateCachedSolution, clearAllAndDeselect])
 
   // Redo handler - during auto-solve, this steps forward
   const handleRedo = useCallback(() => {
@@ -709,10 +718,9 @@ export default function Game() {
       game.redo()
       invalidateCachedSolution()
       // Clear selection and highlights after redo
-      highlightManager.clearAllAndDeselect()
-      setSelectedMoveIndex(null)
+      clearAllAndDeselect()
     }
-  }, [game, autoSolve, invalidateCachedSolution, highlightManager])
+  }, [game, autoSolve, invalidateCachedSolution, clearAllAndDeselect])
 
   // Submit handler
   const handleSubmit = useCallback(async () => {
@@ -742,11 +750,11 @@ export default function Game() {
 
   // Auto-solve handler
   const handleSolve = useCallback(async () => {
-    highlightManager.clearAllAndDeselect()
+    clearAllAndDeselect()
     setAutoSolveUsed(true) // Mark that auto-solve was used
     autoSolveUsedRef.current = true
     await autoSolve.startAutoSolve()
-  }, [autoSolve, highlightManager])
+  }, [autoSolve, clearAllAndDeselect])
 
   // Bug report handler - opens GitHub issue with state
   const handleReportBug = useCallback(async () => {
@@ -882,14 +890,14 @@ ${bugReportJson}
     const handleBackgroundClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement
       if (target.classList.contains('game-background')) {
-        setSelectedCell(null)
+        deselectCell()
         // Don't clear highlightedDigit - user may want to keep filling cells
-        setCurrentHighlight(null)
+        clearMoveHighlight()
       }
     }
     document.addEventListener('click', handleBackgroundClick)
     return () => document.removeEventListener('click', handleBackgroundClick)
-  }, [])
+  }, [deselectCell, clearMoveHighlight])
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -947,7 +955,7 @@ ${bugReportJson}
       // Escape = Deselect cell and clear highlights
       if (e.key === 'Escape') {
         e.preventDefault()
-        highlightManager.clearAllAndDeselect()
+        clearAllAndDeselect()
         return
       }
 
@@ -988,12 +996,13 @@ ${bugReportJson}
     return () => setGameState(null)
   }, [loading, puzzle, difficulty, game.history.length, game.isComplete, autoFillNotes, setGameState])
 
-  // Clear highlighted digit when auto-solve stops
+  // Only clear digit highlight when auto-solve stops
+  // Preserve currentHighlight and selectedMoveIndex so user can see where it stopped
   useEffect(() => {
     if (!autoSolve.isAutoSolving) {
-      setHighlightedDigit(null)
+      clearDigitHighlight()
     }
-  }, [autoSolve.isAutoSolving])
+  }, [autoSolve.isAutoSolving, clearDigitHighlight])
 
   // Track auto-solve steps when auto-solve stops
   useEffect(() => {
@@ -1010,8 +1019,7 @@ ${bugReportJson}
       try {
         setLoading(true)
         setError(null)
-        highlightManager.clearAllAndDeselect()
-        setSelectedMoveIndex(null)
+        clearAllAndDeselect()
         setShowResultModal(false)
 
         let givens: number[]
@@ -1222,7 +1230,10 @@ ${bugReportJson}
         onShowResult={() => setShowResultModal(true)}
         onAutoFillNotes={autoFillNotes}
         onCheckNotes={handleCheckNotes}
-        onClearNotes={game.clearCandidates}
+        onClearNotes={() => {
+          game.clearCandidates()
+          clearMoveHighlight()
+        }}
         onValidate={handleValidate}
         onSolve={() => setSolveConfirmOpen(true)}
         onClearAll={() => setShowClearConfirm(true)}
@@ -1261,9 +1272,9 @@ ${bugReportJson}
           // Deselect cell when clicking on the background (not on board or controls)
           // Keep highlightedDigit for multi-fill workflow
           if (e.target === e.currentTarget) {
-            setSelectedCell(null)
+            deselectCell()
             setEraseMode(false)
-            setCurrentHighlight(null)
+            clearMoveHighlight()
           }
         }}
       >
@@ -1332,8 +1343,7 @@ ${bugReportJson}
         isOpen={historyOpen}
         onClose={() => setHistoryOpen(false)}
         onMoveClick={(move, index) => {
-          setCurrentHighlight(move)
-          setSelectedMoveIndex(index)
+          setMoveHighlight(move as MoveHighlight, index)
         }}
         onTechniqueClick={(technique) => setTechniqueModal(technique)}
         selectedMoveIndex={selectedMoveIndex}

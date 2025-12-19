@@ -62,6 +62,8 @@ export type HighlightAction =
   | { type: 'CLEAR_AFTER_CELL_SELECTION' }     // Clears highlights when selecting cell
   | { type: 'CLEAR_AFTER_ERASE' }              // Preserves digit highlight
   | { type: 'CLEAR_ON_MODE_CHANGE' }           // Clears everything
+  | { type: 'CLEAR_AFTER_DIGIT_TOGGLE' }       // User toggled same digit (erase) - clears all highlights
+  | { type: 'CLEAR_HIGHLIGHTS_KEEP_SELECTION' } // Clears highlights but keeps selected cell
   
   // Given cell click - highlight the digit, deselect cell
   | { type: 'CLICK_GIVEN_CELL'; digit: number }
@@ -212,6 +214,27 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         version: nextVersion,
       }
     
+    case 'CLEAR_AFTER_DIGIT_TOGGLE':
+      // User toggled the same digit (erased it)
+      // Clear all highlights
+      return {
+        ...state,
+        highlightedDigit: null,
+        currentHighlight: null,
+        selectedMoveIndex: null,
+        version: nextVersion,
+      }
+    
+    case 'CLEAR_HIGHLIGHTS_KEEP_SELECTION':
+      // Clear digit and move highlights but keep cell selection
+      return {
+        ...state,
+        highlightedDigit: null,
+        currentHighlight: null,
+        selectedMoveIndex: null,
+        version: nextVersion,
+      }
+    
     case 'CLICK_GIVEN_CELL':
       // User clicked on a given cell - highlight that digit, deselect
       return {
@@ -271,6 +294,8 @@ export function useHighlightState() {
     clearAfterCellSelection: () => dispatch({ type: 'CLEAR_AFTER_CELL_SELECTION' }),
     clearAfterErase: () => dispatch({ type: 'CLEAR_AFTER_ERASE' }),
     clearOnModeChange: () => dispatch({ type: 'CLEAR_ON_MODE_CHANGE' }),
+    clearAfterDigitToggle: () => dispatch({ type: 'CLEAR_AFTER_DIGIT_TOGGLE' }),
+    clearHighlightsKeepSelection: () => dispatch({ type: 'CLEAR_HIGHLIGHTS_KEEP_SELECTION' }),
     clickGivenCell: (digit: number) => dispatch({ type: 'CLICK_GIVEN_CELL', digit }),
   }), [])
 
