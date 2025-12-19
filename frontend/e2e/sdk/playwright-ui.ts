@@ -367,8 +367,24 @@ export class PlaywrightUISDK extends SudokuSDK {
       // Use auto-solve feature from menu
       await this.clickAutoSolve();
       
-      // Wait for solve to complete
-      await this.page.waitForTimeout(2000);
+      // Wait for solve to complete by checking for completion or all cells filled
+      await this.page.waitForFunction(
+        () => {
+          const cells = document.querySelectorAll('.sudoku-cell');
+          let filledCount = 0;
+          cells.forEach(cell => {
+            const text = cell.textContent?.trim();
+            if (text && /^[1-9]$/.test(text)) filledCount++;
+          });
+          // Check if solved or if completion modal is visible
+          const hasCompletion = document.querySelector('[role="dialog"]') !== null ||
+                               document.body.innerText.includes('Congratulations');
+          return filledCount === 81 || hasCompletion;
+        },
+        { timeout: 60000 }
+      ).catch(() => {
+        // May timeout if puzzle can't be fully solved
+      });
       
       const finalBoard = await this.readBoardFromDOM();
       
@@ -400,8 +416,13 @@ export class PlaywrightUISDK extends SudokuSDK {
       // Click validate button or use keyboard shortcut
       await this.clickValidate();
       
-      // Wait for validation result
-      await this.page.waitForTimeout(500);
+      // Wait for validation result to appear (toast, modal, or error highlighting)
+      await this.page.waitForSelector(
+        '[role="alert"], .toast, .error-cell, [class*="valid"]',
+        { timeout: 2000 }
+      ).catch(() => {
+        // Validation feedback may not always show a distinct element
+      });
       
       // Try to read validation message from UI
       const validationResult = await this.readValidationResult();
@@ -475,7 +496,9 @@ export class PlaywrightUISDK extends SudokuSDK {
     // Open menu first
     const menuButton = this.page.locator('header button').last();
     await menuButton.click();
-    await this.page.waitForTimeout(300);
+    
+    // Wait for menu to appear
+    await this.page.waitForSelector('button:has-text("Solve"), button:has-text("Auto")', { timeout: 2000 });
     
     // Look for solve option
     const autoSolve = this.page.locator('button:has-text("Auto"), button:has-text("Solve")').first();
@@ -585,28 +608,35 @@ export class PlaywrightUISDK extends SudokuSDK {
    */
   async waitForMove(previousBoard: Board, previousCandidates: Candidates): Promise<void> {
     const maxWait = 5000;
-    const pollInterval = 100;
-    let waited = 0;
     
-    while (waited < maxWait) {
-      await this.page.waitForTimeout(pollInterval);
-      waited += pollInterval;
+    try {
+      // Use waitForFunction for efficient polling
+      await this.page.waitForFunction(
+        (prevBoardStr: string) => {
+          const cells = document.querySelectorAll('.sudoku-cell');
+          const currentBoard: number[] = [];
+          cells.forEach(cell => {
+            const text = cell.textContent?.trim();
+            // Check for main digit (not candidates)
+            const digitMatch = text?.match(/^(\d)$/);
+            currentBoard.push(digitMatch ? parseInt(digitMatch[1]) : 0);
+          });
+          
+          // Also check for candidate changes
+          const candidateGrids = document.querySelectorAll('.candidate-grid');
+          const hasCandidateChange = candidateGrids.length > 0;
+          
+          return JSON.stringify(currentBoard) !== prevBoardStr || hasCandidateChange;
+        },
+        JSON.stringify(previousBoard),
+        { timeout: maxWait }
+      );
       
-      const currentBoard = await this.readBoardFromDOM();
-      const currentCandidates = await this.readCandidatesFromDOM();
-      
-      // Check if anything changed
-      const boardChanged = JSON.stringify(previousBoard) !== JSON.stringify(currentBoard);
-      const candidatesChanged = JSON.stringify(previousCandidates) !== JSON.stringify(currentCandidates);
-      
-      if (boardChanged || candidatesChanged) {
-        // Give a little extra time for animations
-        await this.page.waitForTimeout(200);
-        return;
-      }
+      // Small delay for any animations to settle
+      await this.page.waitForLoadState('domcontentloaded');
+    } catch {
+      // Timeout - board didn't change, which is acceptable
     }
-    
-    // Timeout - board didn't change
   }
 
   /**
