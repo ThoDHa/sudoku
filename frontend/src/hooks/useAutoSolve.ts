@@ -115,11 +115,38 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const currentIndexRef = useRef(-1)
   const playNextMoveRef = useRef<(() => Promise<void>) | null>(null)
   const stepDelayRef = useRef(stepDelay)
+  
+  // Track active timers for cleanup - prevents battery drain from orphaned timers
+  const activeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const activeIdleCallbackRef = useRef<number | null>(null)
 
   // Keep stepDelayRef in sync with prop so speed changes take effect dynamically
   useEffect(() => {
     stepDelayRef.current = stepDelay
   }, [stepDelay])
+
+  // Helper to clear any active timers
+  const clearActiveTimers = useCallback(() => {
+    if (activeTimeoutRef.current !== null) {
+      clearTimeout(activeTimeoutRef.current)
+      activeTimeoutRef.current = null
+    }
+    if (activeIdleCallbackRef.current !== null) {
+      if ('cancelIdleCallback' in window) {
+        cancelIdleCallback(activeIdleCallbackRef.current)
+      }
+      activeIdleCallbackRef.current = null
+    }
+  }, [])
+
+  // Helper to schedule next move with proper timer tracking
+  const scheduleNextMove = useCallback((callback: () => void, delay: number) => {
+    // Clear any existing timers first
+    clearActiveTimers()
+    
+    // Use setTimeout directly - requestIdleCallback can delay too long and cause issues
+    activeTimeoutRef.current = setTimeout(callback, delay)
+  }, [clearActiveTimers])
 
   // Sync gamePaused prop and background manager with our internal pause state
   useEffect(() => {
@@ -139,6 +166,9 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   }, [gamePaused, manualPaused, backgroundManager.shouldPauseOperations])
 
   const stopAutoSolve = useCallback(() => {
+    // Clear all active timers first to prevent battery drain
+    clearActiveTimers()
+    
     autoSolveRef.current = false
     pausedRef.current = false
     manualPausedRef.current = false
@@ -152,7 +182,15 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     setManualPaused(false)
     setCurrentIndex(-1)
     setTotalMoves(0)
-  }, [])
+  }, [clearActiveTimers])
+
+  // Cleanup on unmount - prevents battery drain from orphaned timers
+  useEffect(() => {
+    return () => {
+      clearActiveTimers()
+      autoSolveRef.current = false
+    }
+  }, [clearActiveTimers])
 
   const togglePause = useCallback(() => {
     if (!isAutoSolving) return
@@ -306,8 +344,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         if (moveResult.move.action === 'contradiction') {
           // Backend detected a contradiction but continued - just skip this move in playback
           if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            await new Promise(resolve => setTimeout(resolve, stepDelayRef.current))
-            playNextMove()
+            scheduleNextMove(playNextMove, stepDelayRef.current)
           } else {
             onError?.('Puzzle has a contradiction that could not be resolved.')
             stopAutoSolve()
@@ -331,14 +368,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           onStatus?.(moveResult.move.explanation || 'Taking another look...')
           // Continue with next moves
           if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            // Schedule next move with requestIdleCallback for better performance
-            if ('requestIdleCallback' in window) {
-              requestIdleCallback(() => {
-                setTimeout(playNextMove, stepDelayRef.current)
-              }, { timeout: stepDelayRef.current + 100 })
-            } else {
-              setTimeout(playNextMove, stepDelayRef.current)
-            }
+            scheduleNextMove(playNextMove, stepDelayRef.current)
           } else {
             stopAutoSolve()
           }
@@ -376,14 +406,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           })
           
           if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            // Schedule next move with requestIdleCallback for better performance
-            if ('requestIdleCallback' in window) {
-              requestIdleCallback(() => {
-                setTimeout(playNextMove, stepDelayRef.current)
-              }, { timeout: stepDelayRef.current + 100 })
-            } else {
-              setTimeout(playNextMove, stepDelayRef.current)
-            }
+            scheduleNextMove(playNextMove, stepDelayRef.current)
           } else {
             stopAutoSolve()
           }
@@ -426,14 +449,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           } else {
             // No callback - just continue after delay
             if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-              // Schedule next move with requestIdleCallback for better performance
-              if ('requestIdleCallback' in window) {
-                requestIdleCallback(() => {
-                  setTimeout(playNextMove, stepDelayRef.current)
-                }, { timeout: stepDelayRef.current + 100 })
-              } else {
-                setTimeout(playNextMove, stepDelayRef.current)
-              }
+              scheduleNextMove(playNextMove, stepDelayRef.current)
             } else {
               stopAutoSolve()
             }
@@ -459,15 +475,9 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           move: moveResult.move,
         })
 
-        // Wait then play next - use requestIdleCallback for better performance
+        // Wait then play next
         if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-          if ('requestIdleCallback' in window) {
-            requestIdleCallback(() => {
-              setTimeout(playNextMove, stepDelayRef.current)
-            }, { timeout: stepDelayRef.current + 100 })
-          } else {
-            setTimeout(playNextMove, stepDelayRef.current)
-          }
+          scheduleNextMove(playNextMove, stepDelayRef.current)
         } else {
           stopAutoSolve()
         }
@@ -484,7 +494,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
     }
-  }, [isAutoSolving, getBoard, getCandidates, getGivens, applyMove, isComplete, onError, onUnpinpointableError, onStatus, onErrorFixed, stopAutoSolve])
+  }, [isAutoSolving, getBoard, getCandidates, getGivens, applyMove, isComplete, onError, onUnpinpointableError, onStatus, onErrorFixed, stopAutoSolve, scheduleNextMove])
 
   // Solve from givens only - used when user clicks "Show Solution"
   const solveFromGivens = useCallback(async () => {
@@ -541,8 +551,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         // Skip diagnostic/error moves when solving from givens
         if (['contradiction', 'error', 'diagnostic', 'unpinpointable-error', 'stalled'].includes(moveResult.move.action)) {
           if (movesQueueRef.current.length > 0) {
-            await new Promise(resolve => setTimeout(resolve, stepDelayRef.current))
-            playNextMove()
+            scheduleNextMove(playNextMove, stepDelayRef.current)
           } else {
             stopAutoSolve()
           }
@@ -567,8 +576,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         })
 
         if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-          await new Promise(resolve => setTimeout(resolve, stepDelayRef.current))
-          playNextMove()
+          scheduleNextMove(playNextMove, stepDelayRef.current)
         } else {
           stopAutoSolve()
         }
@@ -582,7 +590,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
     }
-  }, [isAutoSolving, getGivens, getCandidates, applyMove, onError, stopAutoSolve])
+  }, [isAutoSolving, getGivens, getCandidates, applyMove, onError, stopAutoSolve, scheduleNextMove])
 
   return {
     isAutoSolving,
