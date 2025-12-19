@@ -186,6 +186,119 @@ test.describe('@integration Notes Mode - Removing Candidates', () => {
   });
 });
 
+test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
+  /**
+   * This test verifies the fix for a regression where digit highlighting
+   * would disappear after toggling candidates in notes mode.
+   * 
+   * Expected behavior: When a digit is highlighted (for multi-fill workflow),
+   * adding or removing candidates should NOT clear that highlight.
+   */
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/game/highlight-persist-test?d=easy');
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+  });
+
+  test('digit highlight persists after toggling candidate in notes mode', async ({ page }) => {
+    // Enable notes mode
+    const notesButton = page.locator('button[title="Notes mode"]');
+    await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+
+    // Find the digit "1" button and click to highlight
+    const digitButton = page.locator('button[aria-label*="Enter 1"]');
+    await digitButton.click();
+    await page.waitForTimeout(200);
+
+    // Verify digit button is highlighted (has ring-2 class indicating selection)
+    await expect(digitButton).toHaveClass(/ring-2/);
+
+    // Find an empty cell (one without .given class and without a filled digit)
+    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
+    const emptyCell = emptyCells.first();
+
+    if (await emptyCell.count() > 0) {
+      // Click the empty cell to toggle the candidate
+      await emptyCell.click();
+      await page.waitForTimeout(300);
+
+      // CRITICAL: Verify the digit button is STILL highlighted
+      // This was the regression - highlight would disappear after candidate operation
+      await expect(digitButton).toHaveClass(/ring-2/);
+    }
+  });
+
+  test('digit highlight persists after adding multiple candidates', async ({ page }) => {
+    // Enable notes mode
+    const notesButton = page.locator('button[title="Notes mode"]');
+    await notesButton.click();
+
+    // Highlight digit "5"
+    const digit5Button = page.locator('button[aria-label*="Enter 5"]');
+    await digit5Button.click();
+    await page.waitForTimeout(200);
+
+    // Verify initial highlight
+    await expect(digit5Button).toHaveClass(/ring-2/);
+
+    // Find empty cells
+    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
+
+    // Click multiple empty cells to add candidates
+    for (let i = 0; i < 3; i++) {
+      const cell = emptyCells.nth(i);
+      if (await cell.count() > 0) {
+        await cell.click();
+        await page.waitForTimeout(150);
+      }
+    }
+
+    // CRITICAL: Digit highlight should still be active after all operations
+    await expect(digit5Button).toHaveClass(/ring-2/);
+  });
+
+  test('digit highlight persists when removing candidate', async ({ page }) => {
+    // Enable notes mode
+    const notesButton = page.locator('button[title="Notes mode"]');
+    await notesButton.click();
+
+    // Find an empty cell
+    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
+    const emptyCell = emptyCells.first();
+
+    if (await emptyCell.count() > 0) {
+      // First, add a candidate manually
+      await emptyCell.click();
+      await page.keyboard.press('3');
+      await page.waitForTimeout(200);
+
+      // Verify candidate was added
+      let cellContent = await emptyCell.textContent();
+      expect(cellContent).toContain('3');
+
+      // Now highlight digit 3
+      const digit3Button = page.locator('button[aria-label*="Enter 3"]');
+      await digit3Button.click();
+      await page.waitForTimeout(200);
+
+      // Verify digit is highlighted
+      await expect(digit3Button).toHaveClass(/ring-2/);
+
+      // Click the same cell to REMOVE the candidate (toggle off)
+      await emptyCell.click();
+      await page.waitForTimeout(300);
+
+      // Verify candidate was removed
+      cellContent = await emptyCell.textContent();
+      expect(cellContent).not.toContain('3');
+
+      // CRITICAL: Digit highlight should STILL be active after removing candidate
+      // This was the specific regression case
+      await expect(digit3Button).toHaveClass(/ring-2/);
+    }
+  });
+});
+
 test.describe('@integration Notes Mode - Persistence', () => {
   test('notes persist when switching between cells', async ({ page }) => {
     await page.goto('/game/notes-persist-test?d=easy');

@@ -70,12 +70,12 @@ export function useHighlightManager(options: UseHighlightManagerOptions): Highli
   }, [setHighlightedDigit, setCurrentHighlight])
 
   const clearAfterUserCandidateOperation = useCallback(() => {
-    // Clear all highlights when user adds/removes candidates
-    // This includes the digit highlight to prevent persistent cell backgrounds
-    setHighlightedDigit(null)
+    // Clear move-related highlights when user adds/removes candidates
+    // PRESERVE digit highlight for multi-fill workflow (user's explicit selection)
+    // Only currentHighlight needs clearing to prevent persistent technique/hint backgrounds
     setCurrentHighlight(null)
     setSelectedMoveIndex(null)
-  }, [setHighlightedDigit, setCurrentHighlight, setSelectedMoveIndex])
+  }, [setCurrentHighlight, setSelectedMoveIndex])
 
   const clearAfterDigitPlacement = useCallback(() => {
     // Clear move highlights but preserve digit highlight for multi-fill
