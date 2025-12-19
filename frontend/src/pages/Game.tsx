@@ -744,6 +744,7 @@ export default function Game() {
   // Bug report handler - opens GitHub issue with state
   const handleReportBug = useCallback(async () => {
     const bugReport = {
+      version: __COMMIT_HASH__,
       timestamp: new Date().toISOString(),
       puzzle: {
         seed: puzzle?.seed,
@@ -786,6 +787,7 @@ export default function Game() {
 <!-- Please describe the bug you encountered -->
 
 ## Puzzle State
+- **Version:** ${__COMMIT_HASH__}
 - **Seed:** ${puzzle?.seed || 'Unknown'}
 - **Difficulty:** ${puzzle?.difficulty || 'Unknown'}
 - **Time:** ${Math.floor(timer.elapsedMs / 1000)}s

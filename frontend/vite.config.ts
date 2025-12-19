@@ -2,13 +2,26 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'child_process'
 
 // Base path for GitHub Pages deployment
 // Set VITE_BASE_PATH=/repo-name/ for GitHub Pages, or leave empty for root
 const base = process.env.VITE_BASE_PATH || '/'
 
+// Get git commit hash at build time
+const getCommitHash = () => {
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim()
+  } catch {
+    return 'unknown'
+  }
+}
+
 export default defineConfig({
   base,
+  define: {
+    __COMMIT_HASH__: JSON.stringify(getCommitHash()),
+  },
   build: {
     rollupOptions: {
       output: {
