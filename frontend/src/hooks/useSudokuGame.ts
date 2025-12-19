@@ -49,6 +49,8 @@ interface UseSudokuGameReturn {
   // State
   board: number[]
   candidates: Uint16Array
+  /** Version counter - increments on every candidates change for reliable React detection */
+  candidatesVersion: number
   history: Move[]
   historyIndex: number
   canUndo: boolean
@@ -118,6 +120,16 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   const [candidates, setCandidates] = useState<Uint16Array>(
     () => new Uint16Array(81)
   )
+  
+  // Version counter for candidates - ensures React detects Uint16Array changes
+  // This is critical for mobile where typed array reference changes may not trigger re-renders
+  const [candidatesVersion, setCandidatesVersion] = useState(0)
+  
+  // Helper to update candidates with version bump
+  const updateCandidates = useCallback((newCandidates: Uint16Array) => {
+    setCandidates(newCandidates)
+    setCandidatesVersion(v => v + 1)
+  }, [])
   
   // Move history (serves as undo stack - each move stores boardBefore/candidatesBefore)
   const [history, setHistory] = useState<Move[]>([])
@@ -358,9 +370,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
          isUserMove: true,
        }, board, newCandidates)
       const newHistory = [...truncatedHistory, noteMove]
-      setHistory(newHistory)
+       setHistory(newHistory)
       setHistoryIndex(newHistory.length - 1)
-      setCandidates(newCandidates)
+      updateCandidates(newCandidates)
     } else {
       const row = Math.floor(idx / 9)
       const col = idx % 9
@@ -394,7 +406,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       setHistoryIndex(newHistory.length - 1)
 
       setBoard(newBoard)
-      setCandidates(newCandidates)
+      updateCandidates(newCandidates)
 
       checkCompletion(newBoard)
     }
@@ -435,8 +447,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const newHistory = [...truncatedHistory, toggleMove]
     setHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
-    setCandidates(newCandidates)
-  }, [board, candidates, history, historyIndex, isGivenCell])
+    updateCandidates(newCandidates)
+  }, [board, candidates, history, historyIndex, isGivenCell, updateCandidates])
 
   const eraseCell = useCallback((idx: number) => {
     if (isGivenCell(idx)) return
@@ -480,8 +492,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     setHistoryIndex(newHistory.length - 1)
 
     setBoard(newBoard)
-    setCandidates(newCandidates)
-  }, [board, candidates, history, historyIndex, isGivenCell, calculateCandidatesForCell])
+    updateCandidates(newCandidates)
+  }, [board, candidates, history, historyIndex, isGivenCell, calculateCandidatesForCell, updateCandidates])
 
   const undo = useCallback(() => {
     // Can't undo if no moves in history or at the beginning
@@ -495,11 +507,11 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       const { board: prevBoard, candidates: prevCandidates } = 
         unapplyStateDiff(board, candidates, currentMove.stateDiff)
       setBoard(prevBoard)
-      setCandidates(prevCandidates)
+      updateCandidates(prevCandidates)
     } else if (currentMove.boardBefore && currentMove.candidatesBefore) {
       // Legacy fallback
       setBoard(currentMove.boardBefore)
-      setCandidates(arraysToCandidates(currentMove.candidatesBefore))
+      updateCandidates(arraysToCandidates(currentMove.candidatesBefore))
     }
     
     // Move back in history
@@ -509,7 +521,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     if (isComplete) {
       setIsComplete(false)
     }
-  }, [history, historyIndex, isComplete])
+  }, [history, historyIndex, isComplete, board, candidates, updateCandidates])
 
   const redo = useCallback(() => {
     // Can't redo if at the end of history
@@ -523,14 +535,14 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       const { board: nextBoard, candidates: nextCandidates } = 
         applyStateDiff(board, candidates, nextMove.stateDiff)
       setBoard(nextBoard)
-      setCandidates(nextCandidates)
+      updateCandidates(nextCandidates)
     } else {
       // Legacy fallback - replay the move
       replayMove(nextMove)
     }
     
     setHistoryIndex(historyIndex + 1)
-  }, [board, candidates, history, historyIndex])
+  }, [board, candidates, history, historyIndex, updateCandidates])
   
   // Helper to replay a move's effects
   const replayMove = useCallback((move: Move) => {
@@ -577,24 +589,24 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     }
     
     setBoard(newBoard)
-    setCandidates(newCandidates)
-  }, [eliminateFromPeers, calculateCandidatesForCell, fillAllCandidates])
+    updateCandidates(newCandidates)
+  }, [eliminateFromPeers, calculateCandidatesForCell, fillAllCandidates, updateCandidates])
 
   const resetGame = useCallback(() => {
     setGivenCells([...initialBoard])
     setBoard([...initialBoard])
-    setCandidates(new Uint16Array(81))
+    updateCandidates(new Uint16Array(81))
     setHistory([])
     setHistoryIndex(-1)
     setIsComplete(false)
-  }, [initialBoard])
+  }, [initialBoard, updateCandidates])
 
   const clearAll = useCallback(() => {
     setBoard([...givenCells])
-    setCandidates(new Uint16Array(81))
+    updateCandidates(new Uint16Array(81))
     setHistory([])
     setHistoryIndex(-1)
-  }, [givenCells])
+  }, [givenCells, updateCandidates])
 
   const clearCandidates = useCallback(() => {
     // Truncate history if we're in the middle
@@ -620,8 +632,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     setHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
     
-    setCandidates(newCandidates)
-  }, [board, candidates, history, historyIndex])
+    updateCandidates(newCandidates)
+  }, [board, candidates, history, historyIndex, updateCandidates])
 
   // For external updates (hints, auto-solve)
   const applyExternalMove = useCallback((
@@ -645,10 +657,10 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     setHistoryIndex(newHistory.length - 1)
     
     setBoard(newBoard)
-    setCandidates(newCandidates)
+    updateCandidates(newCandidates)
     
     checkCompletion(newBoard)
-  }, [board, candidates, history, historyIndex, checkCompletion])
+  }, [board, candidates, history, historyIndex, checkCompletion, updateCandidates])
 
   // Restore saved game state (for auto-save/resume functionality)
   const restoreState = useCallback((
@@ -657,11 +669,11 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     savedHistory: Move[]
   ) => {
     setBoard(savedBoard)
-    setCandidates(savedCandidates)
+    updateCandidates(savedCandidates)
     setHistory(savedHistory)
     setHistoryIndex(savedHistory.length - 1)
     setIsComplete(false)
-  }, [])
+  }, [updateCandidates])
 
   // Set board state without modifying history (for auto-solve rewind)
   const setBoardState = useCallback((
@@ -669,8 +681,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     newCandidates: Uint16Array
   ) => {
     setBoard(newBoard)
-    setCandidates(newCandidates)
-  }, [])
+    updateCandidates(newCandidates)
+  }, [updateCandidates])
 
   // Check notes for errors
   // Returns: { valid: true } if all notes are correct
@@ -726,6 +738,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     // State
     board,
     candidates,
+    candidatesVersion,
     history,
     historyIndex,
     canUndo: historyIndex >= 0,

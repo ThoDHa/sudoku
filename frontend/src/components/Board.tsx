@@ -21,6 +21,8 @@ interface BoardProps {
   board: number[]
   initialBoard: number[]
   candidates: Uint16Array
+  /** Version counter for candidates - ensures React detects changes to Uint16Array */
+  candidatesVersion?: number
   selectedCell: number | null
   highlightedDigit: number | null
   highlight: Move | null
@@ -103,6 +105,7 @@ export default function Board({
   board,
   initialBoard,
   candidates,
+  candidatesVersion,
   selectedCell,
   highlightedDigit,
   highlight,
@@ -120,6 +123,7 @@ export default function Board({
 
   // Memoize the set of cells that have the highlighted digit
   // This ensures React properly tracks changes to candidates and triggers re-renders
+  // candidatesVersion ensures this recomputes even when Uint16Array reference comparison fails
   const cellsWithHighlightedDigit = React.useMemo(() => {
     const result = new Set<number>()
     if (highlightedDigit === null) return result
@@ -137,7 +141,8 @@ export default function Board({
       }
     }
     return result
-  }, [board, candidates, highlightedDigit])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board, candidates, highlightedDigit, candidatesVersion])
 
   // Find next non-given cell in a direction, returns null if none found
   const findNextNonGivenCell = (startIdx: number, direction: 'up' | 'down' | 'left' | 'right'): number | null => {

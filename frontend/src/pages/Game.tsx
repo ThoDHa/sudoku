@@ -1276,6 +1276,7 @@ ${bugReportJson}
               board={game.board}
               initialBoard={initialBoard}
               candidates={game.candidates}
+              candidatesVersion={game.candidatesVersion}
               selectedCell={selectedCell}
               highlightedDigit={highlightedDigit}
               highlight={currentHighlight}
