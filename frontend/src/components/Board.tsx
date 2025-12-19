@@ -118,6 +118,27 @@ export default function Board({
     }
   }, [selectedCell])
 
+  // Memoize the set of cells that have the highlighted digit
+  // This ensures React properly tracks changes to candidates and triggers re-renders
+  const cellsWithHighlightedDigit = React.useMemo(() => {
+    const result = new Set<number>()
+    if (highlightedDigit === null) return result
+    
+    for (let idx = 0; idx < 81; idx++) {
+      // Check if cell is filled with the highlighted digit
+      if (board[idx] === highlightedDigit) {
+        result.add(idx)
+        continue
+      }
+      // Check if cell has the highlighted digit as a candidate
+      const cellCandidates = candidates[idx]
+      if (cellCandidates !== undefined && hasCandidate(cellCandidates, highlightedDigit)) {
+        result.add(idx)
+      }
+    }
+    return result
+  }, [board, candidates, highlightedDigit])
+
   // Find next non-given cell in a direction, returns null if none found
   const findNextNonGivenCell = (startIdx: number, direction: 'up' | 'down' | 'left' | 'right'): number | null => {
     let row = Math.floor(startIdx / 9)
@@ -266,11 +287,9 @@ export default function Board({
   }
 
   // Check if cell contains the highlighted digit (either filled or as candidate)
+  // Uses the memoized set for proper React dependency tracking
   const cellHasHighlightedDigit = (idx: number): boolean => {
-    if (highlightedDigit === null) return false
-    if (board[idx] === highlightedDigit) return true
-    if (candidates[idx] !== undefined && hasCandidate(candidates[idx], highlightedDigit)) return true
-    return false
+    return cellsWithHighlightedDigit.has(idx)
   }
 
   // Check if cell is a peer of the selected cell (same row, column, or box)
