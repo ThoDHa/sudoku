@@ -211,8 +211,8 @@ export default function Board({
     const givenText = isGiven ? ', given' : ''
     return `${position}, value ${value}${givenText}`
   }
-  // Compute duplicates
-  const duplicates = findDuplicates(board)
+  // Compute duplicates - memoized to avoid expensive recomputation on every render
+  const duplicates = React.useMemo(() => findDuplicates(board), [board])
 
   const isHighlightedPrimary = (row: number, col: number): boolean => {
     if (!highlight) return false
