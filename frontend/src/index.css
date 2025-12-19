@@ -576,9 +576,21 @@ html, body {
                 color 150ms ease-in-out;
   }
 
-  /* Sudoku cells - background transitions for selection/hover feedback */
+  /* Sudoku cells - NO background transition to prevent visual "layering" 
+     effect when highlight state changes rapidly on mobile.
+     Previous 150ms transition caused old highlights to appear to persist
+     briefly when toggling candidates in multi-fill mode. */
   .sudoku-cell {
-    transition: background-color 150ms ease-in-out;
+    /* transition: background-color 150ms ease-in-out; */
+  }
+
+  /* Hover effects only on devices with true pointer hover capability (not touch).
+     On mobile/touch devices, :hover states can become "sticky" after tapping,
+     causing a persistent highlight that looks like a second layer. */
+  @media (hover: hover) and (pointer: fine) {
+    .sudoku-cell:hover {
+      background-color: var(--cell-hover);
+    }
   }
 
   /* Control buttons - interactive feedback */

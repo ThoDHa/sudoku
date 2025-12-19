@@ -367,7 +367,7 @@ export default function Board({
     } else if (isPeer) {
       classes.push('bg-[var(--cell-peer)]')
     } else {
-      classes.push('bg-[var(--cell-bg)] hover:bg-[var(--cell-hover)]')
+      classes.push('bg-[var(--cell-bg)]')
     }
 
     // Text color - duplicates get red text
