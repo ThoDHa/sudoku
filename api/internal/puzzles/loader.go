@@ -80,6 +80,16 @@ func Global() *Loader {
 	return globalLoader
 }
 
+// SetGlobal sets the global loader instance (for testing)
+func SetGlobal(l *Loader) {
+	globalLoader = l
+}
+
+// NewLoaderFromPuzzles creates a loader from puzzle data (for testing)
+func NewLoaderFromPuzzles(puzzles []CompactPuzzle) *Loader {
+	return &Loader{puzzles: puzzles}
+}
+
 // Count returns the number of puzzles
 func (l *Loader) Count() int {
 	l.mu.RLock()
