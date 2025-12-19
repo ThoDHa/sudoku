@@ -29,6 +29,11 @@ test-results/
 *~
 .DS_Store
 
+# Vite files
+.vite/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
 # Debug and log files
 *.log
 npm-debug.log*
@@ -38,6 +43,14 @@ yarn-error.log*
 # Go specific
 *.test
 *.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Code coverage profiles and other test artifacts
+coverage.*
+profile.cov
 
 # Python cache (for debug scripts)
 __pycache__/
