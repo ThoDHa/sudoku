@@ -215,7 +215,7 @@ func TestSimpleMediumTechniquePuzzlesUseTechnique(t *testing.T) {
 			moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
 
 			if status != constants.StatusCompleted {
-				t.Skipf("Puzzle for %s did not complete - skipping technique check", technique)
+				t.Errorf("Puzzle for %s did not complete: status=%s", technique, status)
 				return
 			}
 
@@ -228,16 +228,17 @@ func TestSimpleMediumTechniquePuzzlesUseTechnique(t *testing.T) {
 				}
 			}
 
+			// List techniques that were used for logging
+			usedTechniques := make(map[string]int)
+			for _, move := range moves {
+				usedTechniques[move.Technique]++
+			}
+
 			if !techniqueUsed {
-				// List techniques that were used
-				usedTechniques := make(map[string]int)
-				for _, move := range moves {
-					usedTechniques[move.Technique]++
-				}
-				t.Logf("Puzzle for %s did not use the expected technique. Used: %v",
+				t.Errorf("Puzzle for %s did not use the expected technique. Used: %v",
 					technique, usedTechniques)
-				// Note: This is logged but not failed, as puzzles may be solved
-				// by simpler techniques depending on solver ordering
+			} else {
+				t.Logf("SUCCESS: %s technique was used. All techniques: %v", technique, usedTechniques)
 			}
 		})
 	}
@@ -313,13 +314,16 @@ func TestMediumTierPuzzles(t *testing.T) {
 				}
 			}
 
+			usedTechniques := make(map[string]int)
+			for _, move := range moves {
+				usedTechniques[move.Technique]++
+			}
+
 			if !techniqueUsed {
-				usedTechniques := make(map[string]int)
-				for _, move := range moves {
-					usedTechniques[move.Technique]++
-				}
-				t.Logf("Puzzle for %s did not use the expected technique. Used: %v",
+				t.Errorf("Puzzle for %s did not use the expected technique. Used: %v",
 					technique, usedTechniques)
+			} else {
+				t.Logf("SUCCESS: %s technique was used. All: %v", technique, usedTechniques)
 			}
 		})
 	}

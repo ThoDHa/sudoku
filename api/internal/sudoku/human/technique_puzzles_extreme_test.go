@@ -214,7 +214,7 @@ func TestExtremeTechniqueDetection(t *testing.T) {
 
 			// Create a board and solve
 			board := NewBoard(cells)
-			moves, _ := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+			moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
 
 			// Check if the target technique was used at any point
 			techniqueUsed := false
@@ -225,21 +225,17 @@ func TestExtremeTechniqueDetection(t *testing.T) {
 				}
 			}
 
+			// List all techniques that were used
+			usedTechniques := make(map[string]int)
+			for _, move := range moves {
+				usedTechniques[move.Technique]++
+			}
+
 			if !techniqueUsed {
-				// List all techniques that were used
-				usedTechniques := make(map[string]int)
-				for _, move := range moves {
-					usedTechniques[move.Technique]++
-				}
-
-				t.Logf("Puzzle for %s did not require %s", targetSlug, targetSlug)
-				t.Logf("Techniques used: %v", usedTechniques)
-				t.Logf("Total moves: %d", len(moves))
-
-				// This is a warning, not a failure - puzzles may be solved by
-				// other techniques depending on the solver's strategy ordering
+				t.Errorf("Puzzle for %s did not use %s technique. Status: %s, Used: %v",
+					targetSlug, targetSlug, status, usedTechniques)
 			} else {
-				t.Logf("SUCCESS: %s technique was applied during solving", targetSlug)
+				t.Logf("SUCCESS: %s technique was applied during solving. All: %v", targetSlug, usedTechniques)
 			}
 		})
 	}
@@ -296,7 +292,7 @@ func TestHardTierTechniquesDetection(t *testing.T) {
 
 			// Create a board and solve
 			board := NewBoard(cells)
-			moves, _ := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+			moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
 
 			// Check if the target technique was used
 			techniqueUsed := false
@@ -307,15 +303,17 @@ func TestHardTierTechniquesDetection(t *testing.T) {
 				}
 			}
 
+			// List all techniques that were used
+			usedTechniques := make(map[string]int)
+			for _, move := range moves {
+				usedTechniques[move.Technique]++
+			}
+
 			if !techniqueUsed {
-				usedTechniques := make(map[string]int)
-				for _, move := range moves {
-					usedTechniques[move.Technique]++
-				}
-				t.Logf("Puzzle for %s did not require %s", targetSlug, targetSlug)
-				t.Logf("Techniques used: %v", usedTechniques)
+				t.Errorf("Puzzle for %s did not use %s technique. Status: %s, Used: %v",
+					targetSlug, targetSlug, status, usedTechniques)
 			} else {
-				t.Logf("SUCCESS: %s technique was applied during solving", targetSlug)
+				t.Logf("SUCCESS: %s technique was applied during solving. All: %v", targetSlug, usedTechniques)
 			}
 		})
 	}
