@@ -94,7 +94,7 @@ export default function Controls({
       </div>
 
       {/* Single Row of 4 Action Buttons */}
-      <div className="flex gap-1.5 sm:gap-2 justify-center mt-2 sm:mt-3">
+      <div className="flex gap-2 sm:gap-2.5 justify-center mt-2 sm:mt-3">
         <button
           onClick={onNotesToggle}
           disabled={controlsDisabled}
