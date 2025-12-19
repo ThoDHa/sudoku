@@ -124,7 +124,7 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
       {/* SVG Diagram */}
       <svg 
         viewBox={`0 0 ${boardSize} ${boardSize}`} 
-        className="w-full max-w-[200px] mx-auto rounded-lg overflow-hidden transition-all duration-300"
+        className="w-full max-w-[200px] mx-auto rounded-lg overflow-hidden transition-colors duration-300"
         style={{ background: 'var(--board-bg)' }}
       >
         {/* Cells */}
@@ -139,7 +139,7 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
               width={cellSize}
               height={cellSize}
               fill={getCellFill(row, col)}
-              className="transition-all duration-300"
+              className="transition-colors duration-300"
             />
           )
         })}
