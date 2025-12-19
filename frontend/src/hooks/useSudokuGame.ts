@@ -9,6 +9,12 @@ import {
   arraysToCandidates,
   type CandidateMask
 } from '../lib/candidatesUtils'
+import {
+  createStateDiff,
+  applyStateDiff,
+  unapplyStateDiff,
+  type StateDiff
+} from '../lib/diffUtils'
 
 // Move can be either a solver technique or a user action
 export interface Move {
@@ -25,9 +31,11 @@ export interface Move {
     secondary?: { row: number; col: number }[]
   }
   isUserMove?: boolean
-  // Board state before this move was applied (for undo)
+  // Compact diff instead of full board states (new approach)
+  stateDiff?: StateDiff
+  // Legacy fields for backward compatibility with saves
   boardBefore?: number[]
-  candidatesBefore?: number[][] // Serialized Set<number>[] for storage
+  candidatesBefore?: number[][] // Serialized for storage
 }
 
 interface UseSudokuGameOptions {
@@ -286,6 +294,22 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     }
   }, [isComplete, isValidSolution, onComplete])
 
+  // Helper to create move with state diff for compact history
+  const createMoveWithDiff = useCallback((
+    moveBase: Omit<Move, 'stateDiff' | 'boardBefore' | 'candidatesBefore'>,
+    newBoard: number[],
+    newCandidates: Uint16Array
+  ): Move => {
+    const stateDiff = createStateDiff(board, newBoard, candidates, newCandidates)
+    return {
+      ...moveBase,
+      stateDiff,
+      // Keep legacy fields for backward compatibility with saves
+      boardBefore: [...board],
+      candidatesBefore: candidatesToArrays(candidates)
+    }
+  }, [board, candidates])
+
   // ============================================================
   // CORE ACTIONS
   // ============================================================
@@ -319,8 +343,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       const newCandidates = new Uint16Array(candidates)
       newCandidates[idx] = toggleCandidateBit(newCandidates[idx] || 0, digit)
       
-       // Add note toggle move to history with board state before
-       const noteMove: Move = {
+       // Add note toggle move to history with compact diff
+       const noteMove = createMoveWithDiff({
          step_index: truncatedHistory.length,
          technique: 'User Input',
          action: hadCandidate ? 'eliminate' : 'note',
@@ -332,9 +356,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
          refs: { title: '', slug: '', url: '' },
          highlights: { primary: [] }, // No highlights for user moves
          isUserMove: true,
-         boardBefore: [...board],
-         candidatesBefore: candidatesToArrays(candidates),
-       }
+       }, board, newCandidates)
       const newHistory = [...truncatedHistory, noteMove]
       setHistory(newHistory)
       setHistoryIndex(newHistory.length - 1)
@@ -346,31 +368,32 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       // Truncate history if we're in the middle
       const truncatedHistory = history.slice(0, historyIndex + 1)
 
-        // Add user move to history with board state before
-        const userMove: Move = {
-          step_index: truncatedHistory.length,
-          technique: 'User Input',
-          action: 'place',
-          digit,
-          targets: [{ row, col }],
-          explanation: `Placed ${digit} at R${row + 1}C${col + 1}`,
-          refs: { title: '', slug: '', url: '' },
-          highlights: { primary: [] }, // No highlights for user moves
-          isUserMove: true,
-          boardBefore: [...board],
-          candidatesBefore: candidatesToArrays(candidates),
-        }
+      // Calculate new state first
+      const newBoard = [...board]
+      newBoard[idx] = digit
+      
+      // Eliminate candidates from peers
+      const newCandidates = new Uint16Array(candidates)
+      eliminateFromPeers(newCandidates, idx, digit)
+
+      // Add user move to history with compact diff
+      const userMove = createMoveWithDiff({
+        step_index: truncatedHistory.length,
+        technique: 'User Input',
+        action: 'place',
+        digit,
+        targets: [{ row, col }],
+        explanation: `Placed ${digit} at R${row + 1}C${col + 1}`,
+        refs: { title: '', slug: '', url: '' },
+        highlights: { primary: [] }, // No highlights for user moves
+        isUserMove: true,
+      }, newBoard, newCandidates)
+      
       const newHistory = [...truncatedHistory, userMove]
       setHistory(newHistory)
       setHistoryIndex(newHistory.length - 1)
 
-      const newBoard = [...board]
-      newBoard[idx] = digit
       setBoard(newBoard)
-
-      // Eliminate candidates from peers
-      const newCandidates = new Uint16Array(candidates)
-      eliminateFromPeers(newCandidates, idx, digit)
       setCandidates(newCandidates)
 
       checkCompletion(newBoard)
@@ -394,8 +417,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const newCandidates = new Uint16Array(candidates)
     newCandidates[idx] = toggleCandidateBit(newCandidates[idx] || 0, digit)
     
-    // Add toggle move to history with board state before
-    const toggleMove: Move = {
+    // Add toggle move to history with compact diff
+    const toggleMove = createMoveWithDiff({
       step_index: truncatedHistory.length,
       technique: 'User Input',
       action: hadCandidate ? 'eliminate' : 'note',
@@ -407,9 +430,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       refs: { title: '', slug: '', url: '' },
       highlights: { primary: [{ row, col }] },
       isUserMove: true,
-      boardBefore: [...board],
-      candidatesBefore: candidatesToArrays(candidates),
-    }
+    }, board, newCandidates)
+    
     const newHistory = [...truncatedHistory, toggleMove]
     setHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
@@ -430,8 +452,16 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     // Truncate history if we're in the middle
     const truncatedHistory = history.slice(0, historyIndex + 1)
     
-     // Add erase move to history with board state before
-     const eraseMove: Move = {
+    // Calculate new state first
+    const newBoard = [...board]
+    newBoard[idx] = 0
+    
+    // Recalculate valid candidates for the erased cell
+    const newCandidates = new Uint16Array(candidates)
+    newCandidates[idx] = calculateCandidatesForCell(idx, newBoard)
+    
+     // Add erase move to history with compact diff
+     const eraseMove = createMoveWithDiff({
        step_index: truncatedHistory.length,
        technique: 'User Input',
        action: 'erase',
@@ -443,20 +473,13 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
        refs: { title: '', slug: '', url: '' },
        highlights: { primary: [] }, // No highlights for user moves
        isUserMove: true,
-       boardBefore: [...board],
-       candidatesBefore: candidatesToArrays(candidates),
-     }
+     }, newBoard, newCandidates)
+     
     const newHistory = [...truncatedHistory, eraseMove]
     setHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
 
-    const newBoard = [...board]
-    newBoard[idx] = 0
     setBoard(newBoard)
-
-    // Recalculate valid candidates for the erased cell
-    const newCandidates = new Uint16Array(candidates)
-    newCandidates[idx] = calculateCandidatesForCell(idx, newBoard)
     setCandidates(newCandidates)
   }, [board, candidates, history, historyIndex, isGivenCell, calculateCandidatesForCell])
 
@@ -467,8 +490,14 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const currentMove = history[historyIndex]
     if (!currentMove) return
     
-    // Restore board state from before this move
-    if (currentMove.boardBefore && currentMove.candidatesBefore) {
+    // Use diff-based undo if available, fallback to legacy approach
+    if (currentMove.stateDiff) {
+      const { board: prevBoard, candidates: prevCandidates } = 
+        unapplyStateDiff(board, candidates, currentMove.stateDiff)
+      setBoard(prevBoard)
+      setCandidates(prevCandidates)
+    } else if (currentMove.boardBefore && currentMove.candidatesBefore) {
+      // Legacy fallback
       setBoard(currentMove.boardBefore)
       setCandidates(arraysToCandidates(currentMove.candidatesBefore))
     }
@@ -489,36 +518,19 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const nextMove = history[historyIndex + 1]
     if (!nextMove) return
     
-    // We need to replay this move to get the "after" state
-    // The move stores "before" state, so the "after" state is what we had when historyIndex was at this position
-    // We need to reapply the move's effects
-    
-    // For now, we'll need to replay from boardBefore through the action
-    // This is complex, so let's store the "after" state too, or replay the move
-    
-    // Simpler approach: store the current board/candidates as the "after" state in the NEXT move's boardBefore
-    // Actually, the "after" state of move N is the "before" state of move N+1
-    // And for the last move, the current board/candidates IS the after state
-    
-    // So for redo: if there's a move after, use its boardBefore as our target
-    // If it's the last move, we need to replay the move
-    
-    if (historyIndex + 2 < history.length) {
-      // There's a move after the one we're redoing - use its boardBefore
-      const moveAfterNext = history[historyIndex + 2]
-      if (moveAfterNext?.boardBefore && moveAfterNext.candidatesBefore) {
-        setBoard(moveAfterNext.boardBefore)
-        setCandidates(arraysToCandidates(moveAfterNext.candidatesBefore))
-      }
+    // Use diff-based redo if available, fallback to legacy approach
+    if (nextMove.stateDiff) {
+      const { board: nextBoard, candidates: nextCandidates } = 
+        applyStateDiff(board, candidates, nextMove.stateDiff)
+      setBoard(nextBoard)
+      setCandidates(nextCandidates)
     } else {
-      // Redoing the last move - need to replay it
-      // For simplicity, store afterBoard/afterCandidates too, or compute it
-      // For now, let's just replay based on the action type
+      // Legacy fallback - replay the move
       replayMove(nextMove)
     }
     
     setHistoryIndex(historyIndex + 1)
-  }, [history, historyIndex])
+  }, [board, candidates, history, historyIndex])
   
   // Helper to replay a move's effects
   const replayMove = useCallback((move: Move) => {
@@ -588,8 +600,11 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     // Truncate history if we're in the middle
     const truncatedHistory = history.slice(0, historyIndex + 1)
     
-     // Add clear candidates move to history
-     const clearMove: Move = {
+    // Calculate new state (cleared candidates)
+    const newCandidates = new Uint16Array(81)
+    
+     // Add clear candidates move to history with compact diff
+     const clearMove = createMoveWithDiff({
        step_index: truncatedHistory.length,
        technique: 'Clear Notes',
        action: 'clear-candidates',
@@ -599,14 +614,13 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
        refs: { title: '', slug: '', url: '' },
        highlights: { primary: [] }, // Already no highlights
        isUserMove: true,
-       boardBefore: [...board],
-       candidatesBefore: candidatesToArrays(candidates),
-     }
+     }, board, newCandidates)
+     
     const newHistory = [...truncatedHistory, clearMove]
     setHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
     
-    setCandidates(new Uint16Array(81))
+    setCandidates(newCandidates)
   }, [board, candidates, history, historyIndex])
 
   // For external updates (hints, auto-solve)
@@ -615,9 +629,12 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     newCandidates: Uint16Array,
     move: Move
   ) => {
-    // Capture board state before this move for undo
+    // Create move with compact diff and legacy compatibility
+    const stateDiff = createStateDiff(board, newBoard, candidates, newCandidates)
     const moveWithState: Move = {
       ...move,
+      stateDiff,
+      // Keep legacy fields for backward compatibility
       boardBefore: [...board],
       candidatesBefore: candidatesToArrays(candidates),
     }
