@@ -12,7 +12,7 @@ const (
 
 // Solver limits
 const (
-	MaxSolverSteps     = 500
+	MaxSolverSteps     = 5000
 	SolutionCountLimit = 2
 )
 
