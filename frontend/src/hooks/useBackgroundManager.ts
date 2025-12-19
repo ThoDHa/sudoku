@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 interface BackgroundManagerOptions {
   /** Whether to enable background pause functionality */
   enabled?: boolean
-  /** Delay in ms before entering deep pause mode (default: 30000 = 30s) */
+  /** Delay in ms before entering deep pause mode (default: 5000 = 5s) */
   deepPauseDelay?: number
 }
 
@@ -34,7 +34,7 @@ interface BackgroundManagerReturn {
  * - Safe error handling for all callbacks
  */
 export function useBackgroundManager(options: BackgroundManagerOptions = {}): BackgroundManagerReturn {
-  const { enabled = true, deepPauseDelay = 30000 } = options
+  const { enabled = true, deepPauseDelay = 5000 } = options
 
   const [isHidden, setIsHidden] = useState(false)
   const [visibilityState, setVisibilityState] = useState<'visible' | 'hidden'>('visible')
@@ -155,6 +155,43 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
     return () => {
       window.removeEventListener('pagehide', handlePageHide)
       window.removeEventListener('pageshow', handlePageShow)
+    }
+  }, [enabled])
+
+  // Handle freeze/resume events for Chrome/Android
+  // These fire when the page is being frozen to conserve resources
+  useEffect(() => {
+    if (!enabled) return
+
+    const handleFreeze = () => {
+      setIsHidden(true)
+      setVisibilityState('hidden')
+      setIsInDeepPause(true)
+      hiddenStartTimeRef.current = Date.now()
+      
+      // Clear deep pause timer since we're already in deep pause
+      if (deepPauseTimeoutRef.current) {
+        clearTimeout(deepPauseTimeoutRef.current)
+        deepPauseTimeoutRef.current = null
+      }
+    }
+
+    const handleResume = () => {
+      setIsHidden(false)
+      setVisibilityState('visible')
+      setIsInDeepPause(false)
+      setForcePaused(false)
+      hiddenStartTimeRef.current = null
+    }
+
+    // freeze/resume are part of the Page Lifecycle API
+    // https://developer.chrome.com/blog/page-lifecycle-api/
+    document.addEventListener('freeze', handleFreeze)
+    document.addEventListener('resume', handleResume)
+
+    return () => {
+      document.removeEventListener('freeze', handleFreeze)
+      document.removeEventListener('resume', handleResume)
     }
   }, [enabled])
 

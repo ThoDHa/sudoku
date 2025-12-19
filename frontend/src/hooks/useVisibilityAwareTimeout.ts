@@ -36,11 +36,33 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
         activeTimeoutsRef.current.clear()
       }
     }
+    
+    // Handle pagehide for mobile (fires more reliably than visibilitychange)
+    const handlePageHide = () => {
+      isHiddenRef.current = true
+      activeTimeoutsRef.current.forEach(id => {
+        window.clearTimeout(id)
+      })
+      activeTimeoutsRef.current.clear()
+    }
+    
+    // Handle freeze event for Chrome/Android Page Lifecycle API
+    const handleFreeze = () => {
+      isHiddenRef.current = true
+      activeTimeoutsRef.current.forEach(id => {
+        window.clearTimeout(id)
+      })
+      activeTimeoutsRef.current.clear()
+    }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', handlePageHide)
+    document.addEventListener('freeze', handleFreeze)
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', handlePageHide)
+      document.removeEventListener('freeze', handleFreeze)
       // Clean up all timeouts on unmount
       activeTimeoutsRef.current.forEach(id => {
         window.clearTimeout(id)
