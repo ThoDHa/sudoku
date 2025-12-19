@@ -130,6 +130,7 @@ export default function Game() {
     setHighlightedDigit,
     setCurrentHighlight,
     setSelectedCell,
+    setSelectedMoveIndex,
   })
 
     // Extended background pause - completely suspend operations after 30 seconds hidden
@@ -588,9 +589,8 @@ export default function Game() {
         if (notesMode) {
           game.setCell(idx, highlightedDigit, notesMode)
           
-          // For both adding and removing candidates: preserve digit highlight for multi-fill
-          // and clear cell highlights to show the action is complete
-          highlightManager.clearAfterDigitPlacement()
+          // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
+          highlightManager.clearAfterUserCandidateOperation()
         } else {
           // For digit placement, clear move highlights but preserve digit highlight for multi-fill
           game.setCell(idx, highlightedDigit, notesMode)
@@ -629,9 +629,8 @@ export default function Game() {
       game.setCell(selectedCell, digit, notesMode)
 
       if (notesMode) {
-        // For both adding and removing candidates: preserve digit highlight for multi-fill
-        // and clear cell highlights to show the action is complete
-        highlightManager.clearAfterDigitPlacement()
+        // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
+        highlightManager.clearAfterUserCandidateOperation()
       } else {
         // For digit placement, clear move highlights but preserve digit highlight for multi-fill
         highlightManager.clearAfterDigitPlacement()
@@ -648,18 +647,17 @@ export default function Game() {
      if (value === 0) {
        game.eraseCell(idx)
        highlightManager.clearAfterEraseOperation()
-       } else {
-         if (notesMode) {
-           game.setCell(idx, value, notesMode)
-           
-           // For both adding and removing candidates: preserve digit highlight for multi-fill
-           // and clear cell highlights to show the action is complete
-           highlightManager.clearAfterDigitPlacement()
-         } else {
-           game.setCell(idx, value, notesMode)
-           highlightManager.clearAfterDigitPlacement()
-         }
-       }
+        } else {
+          if (notesMode) {
+            game.setCell(idx, value, notesMode)
+            
+            // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
+            highlightManager.clearAfterUserCandidateOperation()
+          } else {
+            game.setCell(idx, value, notesMode)
+            highlightManager.clearAfterDigitPlacement()
+          }
+        }
    }, [game, notesMode, highlightManager])
 
   // Toggle erase mode handler

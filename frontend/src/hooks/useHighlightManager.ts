@@ -4,6 +4,7 @@ export interface UseHighlightManagerOptions {
   setHighlightedDigit: (digit: number | null) => void
   setCurrentHighlight: (highlight: any) => void  // Using any for flexibility with different highlight types
   setSelectedCell: (cell: number | null) => void
+  setSelectedMoveIndex: (index: number | null) => void
 }
 
 export interface HighlightManager {
@@ -15,6 +16,7 @@ export interface HighlightManager {
   
   // Semantic clearing operations for specific contexts
   clearAfterCandidateOperation: () => void
+  clearAfterUserCandidateOperation: () => void
   clearAfterDigitPlacement: () => void
   clearAfterDigitToggle: () => void
   clearAfterCellSelection: () => void
@@ -39,7 +41,7 @@ export interface HighlightManager {
  * 4. Provide semantic methods for different interaction contexts
  */
 export function useHighlightManager(options: UseHighlightManagerOptions): HighlightManager {
-  const { setHighlightedDigit, setCurrentHighlight, setSelectedCell } = options
+  const { setHighlightedDigit, setCurrentHighlight, setSelectedCell, setSelectedMoveIndex } = options
 
   // Core clearing operations
   const clearDigitHighlight = useCallback(() => {
@@ -66,6 +68,14 @@ export function useHighlightManager(options: UseHighlightManagerOptions): Highli
     setHighlightedDigit(null)
     setCurrentHighlight(null)
   }, [setHighlightedDigit, setCurrentHighlight])
+
+  const clearAfterUserCandidateOperation = useCallback(() => {
+    // Clear all move-related highlights when user adds/removes candidates
+    // This ensures no stale cell background highlights from previous hints/moves persist
+    // Note: digit highlight is preserved for multi-fill workflow
+    setCurrentHighlight(null)
+    setSelectedMoveIndex(null)
+  }, [setCurrentHighlight, setSelectedMoveIndex])
 
   const clearAfterDigitPlacement = useCallback(() => {
     // Clear move highlights but preserve digit highlight for multi-fill
@@ -129,6 +139,7 @@ export function useHighlightManager(options: UseHighlightManagerOptions): Highli
     
     // Semantic operations
     clearAfterCandidateOperation,
+    clearAfterUserCandidateOperation,
     clearAfterDigitPlacement,
     clearAfterDigitToggle,
     clearAfterCellSelection,
