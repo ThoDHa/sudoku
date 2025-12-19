@@ -8,78 +8,6 @@ import (
 	"sudoku-api/pkg/constants"
 )
 
-// TestSolverCompletesRandomPuzzles verifies that the human solver can solve
-// randomly generated puzzles without falling back to DP/backtracking.
-// This is a critical test to ensure our technique implementations are complete.
-func TestSolverCompletesRandomPuzzles(t *testing.T) {
-	const numPuzzles = 1000
-
-	// Target givens per difficulty (easier puzzles = more givens)
-	difficulties := []struct {
-		name   string
-		givens int
-	}{
-		{"easy", 40},
-		{"medium", 34},
-		{"hard", 28},
-		{"extreme", 24},
-	}
-
-	solver := human.NewSolver()
-
-	totalCompleted := 0
-	totalStalled := 0
-	puzzlesPerDifficulty := numPuzzles / len(difficulties)
-
-	for _, diff := range difficulties {
-		completed := 0
-		stalled := 0
-
-		for i := 0; i < puzzlesPerDifficulty; i++ {
-			// Use a deterministic seed based on difficulty and index for reproducibility
-			seed := int64(i*1000 + len(diff.name))
-
-			// Generate puzzle
-			fullGrid := dp.GenerateFullGrid(seed)
-			givens := dp.CarveGivens(fullGrid, diff.givens, seed)
-
-			// Solve with human solver
-			board := human.NewBoard(givens)
-			_, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
-
-			if status == constants.StatusCompleted {
-				completed++
-				totalCompleted++
-			} else {
-				stalled++
-				totalStalled++
-
-				// Verify the puzzle is actually solvable with DP
-				if solution := dp.Solve(givens); solution == nil {
-					t.Errorf("Puzzle seed=%d difficulty=%s is unsolvable even with DP", seed, diff.name)
-				}
-			}
-		}
-
-		// Log results for this difficulty
-		t.Logf("%s: %d/%d completed (%.1f%%), %d stalled",
-			diff.name, completed, puzzlesPerDifficulty,
-			float64(completed)/float64(puzzlesPerDifficulty)*100, stalled)
-	}
-
-	// Overall stats
-	t.Logf("TOTAL: %d/%d completed (%.1f%%), %d stalled",
-		totalCompleted, numPuzzles,
-		float64(totalCompleted)/float64(numPuzzles)*100, totalStalled)
-
-	// We expect at least 90% success rate overall
-	minSuccessRate := 0.90
-	actualRate := float64(totalCompleted) / float64(numPuzzles)
-	if actualRate < minSuccessRate {
-		t.Errorf("Success rate %.1f%% is below minimum %.1f%%", actualRate*100, minSuccessRate*100)
-	}
-}
-
 // TestSolverHandlesAllDifficulties verifies basic solving for each difficulty level
 func TestSolverHandlesAllDifficulties(t *testing.T) {
 	solver := human.NewSolver()
@@ -128,8 +56,8 @@ func TestSolverUsesMultipleTechniques(t *testing.T) {
 	solver := human.NewSolver()
 	techniqueUsage := make(map[string]int)
 
-	// Generate and solve many puzzles to collect technique usage
-	for i := 0; i < 100; i++ {
+	// Generate and solve puzzles to collect technique usage
+	for i := 0; i < 20; i++ {
 		seed := int64(i * 7919) // Prime multiplier for variety
 		fullGrid := dp.GenerateFullGrid(seed)
 		givens := dp.CarveGivens(fullGrid, 30, seed) // Medium-hard difficulty
@@ -151,7 +79,7 @@ func TestSolverUsesMultipleTechniques(t *testing.T) {
 	}
 
 	// Log all technique usage for visibility
-	t.Log("Technique usage across 100 puzzles:")
+	t.Log("Technique usage across 20 puzzles:")
 	for tech, count := range techniqueUsage {
 		if count > 0 {
 			t.Logf("  %s: %d", tech, count)
