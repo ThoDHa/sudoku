@@ -9,7 +9,7 @@ export const MIN_GIVENS = 17
 // TIMING CONSTANTS (milliseconds)
 // =============================================================================
 export const PLAY_DELAY = 25
-export const TIMER_UPDATE_INTERVAL = 100
+export const TIMER_UPDATE_INTERVAL = 1000  // Reduced from 100ms to 1000ms for battery savings
 export const TOAST_DURATION_SUCCESS = 2000
 export const TOAST_DURATION_INFO = 3000
 export const TOAST_DURATION_ERROR = 4000

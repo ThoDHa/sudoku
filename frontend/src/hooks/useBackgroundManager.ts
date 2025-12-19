@@ -16,8 +16,6 @@ interface BackgroundManagerReturn {
   isInDeepPause: boolean
   /** Current visibility state */
   visibilityState: 'visible' | 'hidden'
-  /** How long the page has been hidden (ms) */
-  hiddenDuration: number
   /** Force operations to resume (for manual override) */
   forceResume: () => void
   /** Force operations to pause (for manual override) */
@@ -43,12 +41,10 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
   const [forcePaused, setForcePaused] = useState(false)
   const [forceResumed, setForceResumed] = useState(false)
   const [isInDeepPause, setIsInDeepPause] = useState(false)
-  const [hiddenDuration, setHiddenDuration] = useState(0)
 
   const hiddenStartTimeRef = useRef<number | null>(null)
   const visibilityChangeCallbacksRef = useRef<Set<() => void>>(new Set())
   const deepPauseTimeoutRef = useRef<number | null>(null)
-  const hiddenDurationIntervalRef = useRef<number | null>(null)
 
   // Determine if operations should be paused
   const shouldPauseOperations = enabled && (
@@ -74,27 +70,15 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
         }, deepPauseDelay)
       }
       
-      // Start tracking hidden duration
-      hiddenDurationIntervalRef.current = window.setInterval(() => {
-        if (hiddenStartTimeRef.current) {
-          setHiddenDuration(Date.now() - hiddenStartTimeRef.current)
-        }
-      }, 1000)
-      
     } else {
       setForcePaused(false)
       setIsInDeepPause(false)
-      setHiddenDuration(0)
       hiddenStartTimeRef.current = null
       
       // Clear timers
       if (deepPauseTimeoutRef.current) {
         clearTimeout(deepPauseTimeoutRef.current)
         deepPauseTimeoutRef.current = null
-      }
-      if (hiddenDurationIntervalRef.current) {
-        clearInterval(hiddenDurationIntervalRef.current)
-        hiddenDurationIntervalRef.current = null
       }
     }
 
@@ -142,9 +126,6 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
       if (deepPauseTimeoutRef.current) {
         clearTimeout(deepPauseTimeoutRef.current)
       }
-      if (hiddenDurationIntervalRef.current) {
-        clearInterval(hiddenDurationIntervalRef.current)
-      }
     }
   }, [enabled, handleVisibilityChange])
 
@@ -165,7 +146,6 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
       setIsHidden(false)
       setVisibilityState('visible')
       setIsInDeepPause(false)
-      setHiddenDuration(0)
       hiddenStartTimeRef.current = null
     }
 
@@ -199,7 +179,6 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
     shouldPauseOperations,
     isInDeepPause,
     visibilityState,
-    hiddenDuration,
     forceResume,
     forcePause,
   }

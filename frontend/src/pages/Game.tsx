@@ -924,7 +924,7 @@ ${bugReportJson}
       setGameState({
         isPlaying: true,
         difficulty,
-        elapsedMs: timer.elapsedMs,
+        elapsedMs: timer.elapsedMs, // Static snapshot, not updated every second
         historyCount: game.history.length,
         isComplete: game.isComplete,
         onHint: null,
@@ -933,7 +933,7 @@ ${bugReportJson}
       })
     }
     return () => setGameState(null)
-  }, [loading, puzzle, difficulty, timer.elapsedMs, game.history.length, game.isComplete, autoFillNotes, setGameState])
+  }, [loading, puzzle, difficulty, game.history.length, game.isComplete, autoFillNotes, setGameState])
 
   // Clear highlighted digit when auto-solve stops
   useEffect(() => {

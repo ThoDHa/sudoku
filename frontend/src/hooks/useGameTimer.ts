@@ -91,23 +91,23 @@ export function useGameTimer(options: UseGameTimerOptions = {}): UseGameTimerRet
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }, [elapsedMs])
 
-  // Main timer interval - optimized for battery life
+  // Main timer interval - completely stopped when hidden for battery savings
   useEffect(() => {
     if (!isRunning) return
 
-    // Use longer intervals when page is hidden to save battery
-    const updateInterval = pauseOnHidden && backgroundManager.isHidden 
-      ? TIMER_UPDATE_INTERVAL * 4  // 4x longer updates when hidden
-      : TIMER_UPDATE_INTERVAL
+    // Don't run timer at all when page is hidden to save battery
+    if (pauseOnHidden && backgroundManager.shouldPauseOperations) {
+      return // No interval when hidden
+    }
 
     const interval = setInterval(() => {
       if (startTimeRef.current !== null) {
         setElapsedMs(accumulatedRef.current + (Date.now() - startTimeRef.current))
       }
-    }, updateInterval)
+    }, TIMER_UPDATE_INTERVAL)
 
     return () => clearInterval(interval)
-  }, [isRunning, pauseOnHidden, backgroundManager.isHidden])
+  }, [isRunning, pauseOnHidden, backgroundManager.shouldPauseOperations])
 
   // Handle visibility changes using central background manager
   useEffect(() => {
