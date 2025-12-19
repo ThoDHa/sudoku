@@ -97,6 +97,7 @@ export default function Game() {
   const [bugReportCopied, setBugReportCopied] = useState(false)
   const [autoFillUsed, setAutoFillUsed] = useState(false)
   const [autoSolveUsed, setAutoSolveUsed] = useState(false)
+  const autoSolveUsedRef = useRef(false)  // Ref for immediate access in callbacks
   const [autoSolveStepsUsed, setAutoSolveStepsUsed] = useState(0)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [validationMessage, setValidationMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -356,6 +357,7 @@ export default function Game() {
     setHintsUsed(0)
     setAutoFillUsed(false)
     setAutoSolveUsed(false)
+    autoSolveUsedRef.current = false
     setAutoSolveStepsUsed(0)
     setShowResultModal(false)
   }, [game, timer, clearSavedGameState, invalidateCachedSolution, highlightManager])
@@ -724,7 +726,7 @@ export default function Game() {
       mistakes: 0,
       completedAt: new Date().toISOString(),
       autoFillUsed: autoFillUsed,
-      autoSolveUsed: autoSolveUsed,
+      autoSolveUsed: autoSolveUsedRef.current,
       ...(encodedPuzzle ? { encodedPuzzle } : {}),
     }
 
@@ -736,12 +738,13 @@ export default function Game() {
     }
     
     setShowResultModal(true)
-  }, [puzzle, hintsUsed, timer.elapsedMs, encodedPuzzle, autoFillUsed, autoSolveUsed])
+  }, [puzzle, hintsUsed, timer.elapsedMs, encodedPuzzle, autoFillUsed])
 
   // Auto-solve handler
   const handleSolve = useCallback(async () => {
     highlightManager.clearAllAndDeselect()
     setAutoSolveUsed(true) // Mark that auto-solve was used
+    autoSolveUsedRef.current = true
     await autoSolve.startAutoSolve()
   }, [autoSolve, highlightManager])
 

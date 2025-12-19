@@ -54,7 +54,7 @@ export const MAX_HISTORY_BADGE_COUNT = 99
 // =============================================================================
 // DIFFICULTIES & TIERS
 // =============================================================================
-export const TIERS = ['Simple', 'Medium', 'Hard'] as const
+export const TIERS = ['Simple', 'Medium', 'Hard', 'NotImplemented'] as const
 export type Tier = (typeof TIERS)[number]
 
 export const DIFFICULTIES = ['easy', 'medium', 'hard', 'extreme', 'impossible'] as const
@@ -66,6 +66,7 @@ export const TIER_COLORS: Record<string, string> = {
   medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
   hard: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   auto: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+  notimplemented: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
 }
 
 // Technique-specific colors for history view (more granular than tier)

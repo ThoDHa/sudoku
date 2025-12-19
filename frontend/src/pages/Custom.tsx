@@ -125,15 +125,18 @@ export default function Custom() {
         </p>
       </div>
 
-      <Board
-        board={board}
-        initialBoard={Array(81).fill(0)}
-        candidates={candidates}
-        selectedCell={selectedCell}
-        highlightedDigit={null}
-        highlight={null}
-        onCellClick={handleCellClick}
-      />
+      {/* Board container - uses game-container for proper sizing like Game.tsx */}
+      <div className="game-container flex flex-col items-center">
+        <Board
+          board={board}
+          initialBoard={Array(81).fill(0)}
+          candidates={candidates}
+          selectedCell={selectedCell}
+          highlightedDigit={null}
+          highlight={null}
+          onCellClick={handleCellClick}
+        />
+      </div>
 
       {/* Digit input */}
       <div className="mt-6 flex gap-2">

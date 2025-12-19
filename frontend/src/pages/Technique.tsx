@@ -28,6 +28,7 @@ export default function Technique() {
     const simpleTechniques = getTechniquesByTier('Simple')
     const mediumTechniques = getTechniquesByTier('Medium')
     const hardTechniques = getTechniquesByTier('Hard')
+    const notImplementedTechniques = getTechniquesByTier('NotImplemented')
 
     return (
       <div className="mx-auto max-w-4xl p-6 bg-[var(--bg)] h-full">
@@ -57,7 +58,7 @@ export default function Technique() {
         </section>
 
         {/* Techniques by Tier */}
-        {TIERS.map((tier) => {
+        {TIERS.filter(tier => tier !== 'NotImplemented').map((tier) => {
           const techniques = tier === 'Simple' ? simpleTechniques 
             : tier === 'Medium' ? mediumTechniques 
             : hardTechniques
@@ -94,6 +95,21 @@ export default function Technique() {
             </section>
           )
         })}
+
+        {/* Not Implemented / Coming Soon Section */}
+        {notImplementedTechniques.length > 0 && (
+          <section className="mb-8">
+            <h2 className="mb-4 text-xl font-semibold text-slate-600 dark:text-slate-400">🔬 Advanced (Coming Soon)</h2>
+            <p className="mb-4 text-sm text-[var(--text-muted)]">
+              These advanced techniques are documented but not yet implemented in the solver. They represent the cutting edge of human solving methods.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {notImplementedTechniques.map((t) => (
+                <TechniqueCard key={t.slug} technique={t} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     )
   }

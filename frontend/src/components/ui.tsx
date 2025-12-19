@@ -50,6 +50,7 @@ const TIER_EMOJIS: Record<string, string> = {
   medium: '🌿',
   hard: '🌳',
   auto: '🤖',
+  notimplemented: '🔬',
 }
 
 export function TierBadge({ tier, size = 'sm', showEmoji = false }: TierBadgeProps) {

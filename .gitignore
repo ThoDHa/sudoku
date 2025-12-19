@@ -4,6 +4,7 @@ vendor/
 
 # Build outputs
 frontend/dist/
+frontend/dist_old/
 api/server
 *.exe
 *.dll
@@ -15,6 +16,7 @@ coverage.out
 *.coverprofile
 playwright-report/
 test-results/
+.playwright/
 
 # Environment files
 .env
@@ -31,6 +33,7 @@ test-results/
 
 # Vite files
 .vite/
+node_modules/.vite/
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 

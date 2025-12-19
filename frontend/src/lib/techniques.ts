@@ -1039,7 +1039,7 @@ export function getDisplayTechniques(): TechniqueInfo[] {
 }
 
 // Get techniques by tier
-export function getTechniquesByTier(tier: 'Simple' | 'Medium' | 'Hard'): TechniqueInfo[] {
+export function getTechniquesByTier(tier: 'Simple' | 'Medium' | 'Hard' | 'NotImplemented'): TechniqueInfo[] {
   return TECHNIQUES.filter(t => t.tier === tier)
 }
 
