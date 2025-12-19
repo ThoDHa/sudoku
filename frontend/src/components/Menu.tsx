@@ -605,6 +605,11 @@ export default function Menu({
                 Request Feature
               </button>
             )}
+
+            {/* Version */}
+            <div className="px-3 py-2 text-xs text-[var(--text-muted)] text-center border-t border-[var(--border-light)] mt-2">
+              v{__COMMIT_HASH__}
+            </div>
           </div>
         </div>
         </div>

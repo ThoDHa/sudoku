@@ -93,76 +93,70 @@ export default function Controls({
         </div>
       </div>
 
-      {/* 2x2 Action Grid */}
-      <div className="flex flex-col gap-2 sm:gap-2.5 mt-2 sm:mt-3">
-        {/* Row 1: Notes + Delete */}
-        <div className="flex gap-2 sm:gap-2.5 justify-center">
-          <button
-            onClick={onNotesToggle}
-            disabled={controlsDisabled}
-            aria-label={notesMode ? 'Notes mode on' : 'Notes mode off'}
-            aria-pressed={notesMode}
-            className={`control-action-btn-wide ${
-              notesShowSelectedMuted
-                ? 'bg-[var(--btn-active)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)] opacity-60 cursor-not-allowed'
-                : controlsDisabled
-                ? 'bg-[var(--btn-bg)] opacity-40 cursor-not-allowed'
-                : notesMode
-                ? 'bg-[var(--btn-active)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]'
-                : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
-            }`}
-            title="Notes mode"
-          >
-            <span aria-hidden="true" className="text-lg">✏️</span>
-          </button>
+      {/* Single Row of 4 Action Buttons */}
+      <div className="flex gap-1.5 sm:gap-2 justify-center mt-2 sm:mt-3">
+        <button
+          onClick={onNotesToggle}
+          disabled={controlsDisabled}
+          aria-label={notesMode ? 'Notes mode on' : 'Notes mode off'}
+          aria-pressed={notesMode}
+          className={`control-action-btn-compact ${
+            notesShowSelectedMuted
+              ? 'bg-[var(--btn-active)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg)] opacity-60 cursor-not-allowed'
+              : controlsDisabled
+              ? 'bg-[var(--btn-bg)] opacity-40 cursor-not-allowed'
+              : notesMode
+              ? 'bg-[var(--btn-active)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg)]'
+              : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
+          }`}
+          title="Notes mode"
+        >
+          <span aria-hidden="true" className="text-base">✏️</span>
+        </button>
 
-          {/* Delete/Erase button */}
-          <button
-            onClick={onEraseMode}
-            disabled={controlsDisabled}
-            aria-label="Erase mode"
-            aria-pressed={eraseMode}
-            className={`control-action-btn-wide ${
-              controlsDisabled
-                ? 'bg-[var(--btn-bg)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
-                : eraseMode
-                ? 'bg-[var(--accent)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]'
-                : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] active:bg-[var(--accent)] active:text-[var(--btn-active-text)]'
-            }`}
-            title="Erase"
-          >
-            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414-6.414a2 2 0 011.414-.586H19a2 2 0 012 2v10a2 2 0 01-2 2h-8.172a2 2 0 01-1.414-.586L3 12z" />
-            </svg>
-          </button>
-        </div>
+        {/* Delete/Erase button */}
+        <button
+          onClick={onEraseMode}
+          disabled={controlsDisabled}
+          aria-label="Erase mode"
+          aria-pressed={eraseMode}
+          className={`control-action-btn-compact ${
+            controlsDisabled
+              ? 'bg-[var(--btn-bg)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
+              : eraseMode
+              ? 'bg-[var(--accent)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg)]'
+              : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] active:bg-[var(--accent)] active:text-[var(--btn-active-text)]'
+          }`}
+          title="Erase"
+        >
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414-6.414a2 2 0 011.414-.586H19a2 2 0 012 2v10a2 2 0 01-2 2h-8.172a2 2 0 01-1.414-.586L3 12z" />
+          </svg>
+        </button>
 
-        {/* Row 2: Undo + Redo */}
-        <div className="flex gap-2 sm:gap-2.5 justify-center">
-          <button
-            onClick={onUndo}
-            disabled={!canUndo}
-            aria-label="Undo"
-            className="control-action-btn-wide bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Undo"
-          >
-            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4" />
-            </svg>
-          </button>
+        <button
+          onClick={onUndo}
+          disabled={!canUndo}
+          aria-label="Undo"
+          className="control-action-btn-compact bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+          title="Undo"
+        >
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4" />
+          </svg>
+        </button>
 
-          <button
-            onClick={onRedo}
-            disabled={!canRedo}
-            aria-label="Redo"
-            className="control-action-btn-wide bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Redo"
-          >
-            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 10h-10a5 5 0 00-5 5v2M21 10l-4-4m4 4l-4 4" />
-            </svg>
-          </button>
-        </div>
+        <button
+          onClick={onRedo}
+          disabled={!canRedo}
+          aria-label="Redo"
+          className="control-action-btn-compact bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+          title="Redo"
+        >
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 10h-10a5 5 0 00-5 5v2M21 10l-4-4m4 4l-4 4" />
+          </svg>
+        </button>
       </div>
     </div>
   )
