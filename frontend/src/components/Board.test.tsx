@@ -1,6 +1,7 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi, describe, it, expect } from 'vitest'
 import Board from './Board'
 import { addCandidate, removeCandidate } from '../lib/candidatesUtils'
 
@@ -13,9 +14,9 @@ describe('Board candidate highlight behavior', () => {
     const candidates = new Uint16Array(81)
     candidates[0] = addCandidate(0, 1)
 
-    const onCellClick = jest.fn()
+    const onCellClick = vi.fn()
 
-    const { rerender } = render(
+    const { rerender, container } = render(
       <Board
         board={board}
         initialBoard={initialBoard}
@@ -30,7 +31,7 @@ describe('Board candidate highlight behavior', () => {
     // Cell 0 should render a candidate digit '1'
     expect(screen.getByText('1')).toBeInTheDocument()
 
-    // Now remove the candidate and rerender
+    // Now remove the candidate and rerender with a highlight that points to cell 0
     candidates[0] = removeCandidate(candidates[0], 1)
     rerender(
       <Board
@@ -48,8 +49,11 @@ describe('Board candidate highlight behavior', () => {
     expect(screen.queryByText('1')).not.toBeInTheDocument()
 
     // The cell should not have the primary highlight background class
-    // We check that no element has class 'bg-[var(--cell-primary)]'
-    const highlightedElements = document.querySelectorAll('.bg-[var(--cell-primary)]')
-    expect(highlightedElements.length).toBe(0)
+    // Check that the first cell (R1C1) doesn't have the cell-primary class in its className
+    const cells = container.querySelectorAll('.sudoku-cell')
+    const firstCell = cells[0]
+    expect(firstCell).toBeDefined()
+    // The cell should NOT have bg-[var(--cell-primary)] class since the candidate was removed
+    expect(firstCell?.className).not.toContain('bg-[var(--cell-primary)]')
   })
 })

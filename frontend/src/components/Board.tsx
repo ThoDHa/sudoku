@@ -216,25 +216,51 @@ export default function Board({
 
   const isHighlightedPrimary = (row: number, col: number): boolean => {
     if (!highlight) return false
-    return highlight.highlights.primary.some(
+    const inPrimary = highlight.highlights.primary.some(
       (h) => h.row === row && h.col === col
     )
+    if (!inPrimary) return false
+    
+    // Always highlight filled cells
+    const idx = row * 9 + col
+    if (board[idx] !== 0) return true
+    
+    // For empty cells, only highlight if the cell still has the relevant candidate
+    // If no specific digit or user move, keep the highlight
+    if (!highlight.digit || highlight.digit === 0 || highlight.isUserMove) return true
+    
+    return hasCandidate(candidates[idx] || 0, highlight.digit)
   }
 
   const isHighlightedSecondary = (row: number, col: number): boolean => {
     if (!highlight) return false
+    
+    const idx = row * 9 + col
+    const isFilled = board[idx] !== 0
+    
+    // Helper to check if cell should still be highlighted based on candidate
+    const shouldHighlight = (digit?: number): boolean => {
+      // Always highlight filled cells
+      if (isFilled) return true
+      // If no specific digit or user move, keep the highlight
+      if (!digit || digit === 0 || highlight.isUserMove) return true
+      // For empty cells, only highlight if the cell still has the relevant candidate
+      return hasCandidate(candidates[idx] || 0, digit)
+    }
+    
     // Check explicit secondary highlights
     if (highlight.highlights.secondary?.some((h) => h.row === row && h.col === col)) {
-      return true
+      return shouldHighlight(highlight.digit)
     }
-    // Also highlight elimination cells as secondary
-    if (highlight.eliminations?.some((e) => e.row === row && e.col === col)) {
-      return true
+    // Also highlight elimination cells as secondary (check specific elimination digit)
+    const elimination = highlight.eliminations?.find((e) => e.row === row && e.col === col)
+    if (elimination) {
+      return shouldHighlight(elimination.digit)
     }
     // Highlight targets as secondary if not already primary
     if (highlight.targets?.some((t) => t.row === row && t.col === col) && 
         !isHighlightedPrimary(row, col)) {
-      return true
+      return shouldHighlight(highlight.digit)
     }
     return false
   }

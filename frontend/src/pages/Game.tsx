@@ -1222,10 +1222,10 @@ ${bugReportJson}
       <div 
         className="game-background flex flex-1 flex-col items-center justify-center p-4 lg:p-8 overflow-hidden"
         onClick={(e) => {
-          // Deselect when clicking on the background (not on board or controls)
+          // Deselect cell when clicking on the background (not on board or controls)
+          // Keep highlightedDigit for multi-fill workflow
           if (e.target === e.currentTarget) {
             setSelectedCell(null)
-            setHighlightedDigit(null)
             setEraseMode(false)
             setCurrentHighlight(null)
           }
