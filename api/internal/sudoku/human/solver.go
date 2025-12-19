@@ -254,73 +254,21 @@ var DifficultyAllowedTiers = map[core.Difficulty][]string{
 
 // Solver holds the technique registry and orchestrates solving
 type Solver struct {
-	techniques []Technique
+	registry *TechniqueRegistry
 }
 
-// NewSolver creates a solver with all techniques registered
+// NewSolver creates a solver with the technique registry
 func NewSolver() *Solver {
-	s := &Solver{}
-	s.registerTechniques()
-	return s
+	return &Solver{
+		registry: NewTechniqueRegistry(),
+	}
 }
 
-func (s *Solver) registerTechniques() {
-	// Simple tier - eliminations first, then assignments
-	// This ensures users see WHY a cell has only one candidate before filling it
-	s.techniques = append(s.techniques,
-		Technique{"Pointing Pair", "pointing-pair", constants.TierSimple, detectPointingPair},
-		Technique{"Box-Line Reduction", "box-line-reduction", constants.TierSimple, detectBoxLineReduction},
-		Technique{"Naked Pair", "naked-pair", constants.TierSimple, detectNakedPair},
-		Technique{"Hidden Pair", "hidden-pair", constants.TierSimple, detectHiddenPair},
-		Technique{"Naked Single", "naked-single", constants.TierSimple, detectNakedSingle},
-		Technique{"Hidden Single", "hidden-single", constants.TierSimple, detectHiddenSingle},
-	)
-
-	// Medium tier
-	s.techniques = append(s.techniques,
-		Technique{"Naked Triple", "naked-triple", constants.TierMedium, detectNakedTriple},
-		Technique{"Hidden Triple", "hidden-triple", constants.TierMedium, detectHiddenTriple},
-		Technique{"Naked Quad", "naked-quad", constants.TierMedium, detectNakedQuad},
-		Technique{"Hidden Quad", "hidden-quad", constants.TierMedium, detectHiddenQuad},
-		Technique{"X-Wing", "x-wing", constants.TierMedium, detectXWing},
-		Technique{"XY-Wing", "xy-wing", constants.TierMedium, detectXYWing},
-		Technique{"Simple Coloring", "simple-coloring", constants.TierMedium, detectSimpleColoring},
-	)
-
-	// Hard tier - advanced techniques for expert puzzles
-	s.techniques = append(s.techniques,
-		Technique{"Swordfish", "swordfish", constants.TierHard, detectSwordfish},
-		Technique{"Skyscraper", "skyscraper", constants.TierHard, detectSkyscraper},
-		Technique{"Finned X-Wing", "finned-x-wing", constants.TierHard, detectFinnedXWing},
-		Technique{"Finned Swordfish", "finned-swordfish", constants.TierHard, detectFinnedSwordfish},
-		Technique{"Unique Rectangle", "unique-rectangle", constants.TierHard, detectUniqueRectangle},
-		Technique{"BUG", "bug", constants.TierHard, detectBUG},
-		Technique{"Jellyfish", "jellyfish", constants.TierHard, detectJellyfish},
-		Technique{"X-Chain", "x-chain", constants.TierHard, detectXChain},
-		Technique{"XY-Chain", "xy-chain", constants.TierHard, detectXYChain},
-		Technique{"W-Wing", "w-wing", constants.TierHard, detectWWing},
-		Technique{"Empty Rectangle", "empty-rectangle", constants.TierHard, detectEmptyRectangle},
-		Technique{"XYZ-Wing", "xyz-wing", constants.TierHard, detectXYZWing},
-		Technique{"WXYZ-Wing", "wxyz-wing", constants.TierHard, detectWXYZWing},
-		Technique{"ALS-XZ", "als-xz", constants.TierHard, detectALSXZ},
-		Technique{"Remote Pairs", "remote-pairs", constants.TierHard, detectRemotePairs},
-		Technique{"Unique Rectangle Type 2", "unique-rectangle-type-2", constants.TierHard, detectUniqueRectangleType2},
-		Technique{"Unique Rectangle Type 3", "unique-rectangle-type-3", constants.TierHard, detectUniqueRectangleType3},
-		Technique{"Unique Rectangle Type 4", "unique-rectangle-type-4", constants.TierHard, detectUniqueRectangleType4},
-	)
-
-	// Extreme tier - techniques only for "impossible" difficulty puzzles
-	s.techniques = append(s.techniques,
-		Technique{"Sue de Coq", "sue-de-coq", constants.TierExtreme, detectSueDeCoq},
-		Technique{"3D Medusa", "medusa-3d", constants.TierExtreme, detectMedusa3D},
-		Technique{"Grouped X-Cycles", "grouped-x-cycles", constants.TierExtreme, detectGroupedXCycles},
-		Technique{"AIC", "aic", constants.TierExtreme, detectAIC},
-		Technique{"ALS-XY-Wing", "als-xy-wing", constants.TierExtreme, detectALSXYWing},
-		Technique{"ALS-XY-Chain", "als-xy-chain", constants.TierExtreme, detectALSXYChain},
-		Technique{"Forcing Chain", "forcing-chain", constants.TierExtreme, detectForcingChain},
-		Technique{"Digit Forcing Chain", "digit-forcing-chain", constants.TierExtreme, detectDigitForcingChain},
-		Technique{"Death Blossom", "death-blossom", constants.TierExtreme, detectDeathBlossom},
-	)
+// NewSolverWithRegistry creates a solver with a specific registry (for testing)
+func NewSolverWithRegistry(registry *TechniqueRegistry) *Solver {
+	return &Solver{
+		registry: registry,
+	}
 }
 
 // FindNextMove finds the next applicable move using simple-first strategy
@@ -419,62 +367,54 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 	}
 
 	// Try simple techniques first
-	for _, t := range s.techniques {
-		if t.Tier == constants.TierSimple {
-			if move := t.Detect(b); move != nil {
-				move.Technique = t.Slug
-				move.Refs = core.TechniqueRef{
-					Title: t.Name,
-					Slug:  t.Slug,
-					URL:   fmt.Sprintf("/technique/%s", t.Slug),
-				}
-				return move
+	for _, t := range s.registry.GetByTier(constants.TierSimple) {
+		if move := t.Detector(b); move != nil {
+			move.Technique = t.Slug
+			move.Refs = core.TechniqueRef{
+				Title: t.Name,
+				Slug:  t.Slug,
+				URL:   fmt.Sprintf("/technique/%s", t.Slug),
 			}
+			return move
 		}
 	}
 
 	// Try medium techniques, then return to simple
-	for _, t := range s.techniques {
-		if t.Tier == constants.TierMedium {
-			if move := t.Detect(b); move != nil {
-				move.Technique = t.Slug
-				move.Refs = core.TechniqueRef{
-					Title: t.Name,
-					Slug:  t.Slug,
-					URL:   fmt.Sprintf("/technique/%s", t.Slug),
-				}
-				return move
+	for _, t := range s.registry.GetByTier(constants.TierMedium) {
+		if move := t.Detector(b); move != nil {
+			move.Technique = t.Slug
+			move.Refs = core.TechniqueRef{
+				Title: t.Name,
+				Slug:  t.Slug,
+				URL:   fmt.Sprintf("/technique/%s", t.Slug),
 			}
+			return move
 		}
 	}
 
 	// Try hard techniques
-	for _, t := range s.techniques {
-		if t.Tier == constants.TierHard {
-			if move := t.Detect(b); move != nil {
-				move.Technique = t.Slug
-				move.Refs = core.TechniqueRef{
-					Title: t.Name,
-					Slug:  t.Slug,
-					URL:   fmt.Sprintf("/technique/%s", t.Slug),
-				}
-				return move
+	for _, t := range s.registry.GetByTier(constants.TierHard) {
+		if move := t.Detector(b); move != nil {
+			move.Technique = t.Slug
+			move.Refs = core.TechniqueRef{
+				Title: t.Name,
+				Slug:  t.Slug,
+				URL:   fmt.Sprintf("/technique/%s", t.Slug),
 			}
+			return move
 		}
 	}
 
 	// Try extreme techniques
-	for _, t := range s.techniques {
-		if t.Tier == constants.TierExtreme {
-			if move := t.Detect(b); move != nil {
-				move.Technique = t.Slug
-				move.Refs = core.TechniqueRef{
-					Title: t.Name,
-					Slug:  t.Slug,
-					URL:   fmt.Sprintf("/technique/%s", t.Slug),
-				}
-				return move
+	for _, t := range s.registry.GetByTier(constants.TierExtreme) {
+		if move := t.Detector(b); move != nil {
+			move.Technique = t.Slug
+			move.Refs = core.TechniqueRef{
+				Title: t.Name,
+				Slug:  t.Slug,
+				URL:   fmt.Sprintf("/technique/%s", t.Slug),
 			}
+			return move
 		}
 	}
 
@@ -678,12 +618,20 @@ func (s *Solver) SolveWithSteps(b *Board, maxSteps int) ([]core.Move, string) {
 
 // GetTechniqueTier returns the tier of a technique by its slug
 func (s *Solver) GetTechniqueTier(slug string) string {
-	for _, t := range s.techniques {
-		if t.Slug == slug {
-			return t.Tier
-		}
+	if tech := s.registry.GetBySlug(slug); tech != nil {
+		return tech.Tier
 	}
 	return ""
+}
+
+// GetRegistry returns the technique registry for external access
+func (s *Solver) GetRegistry() *TechniqueRegistry {
+	return s.registry
+}
+
+// SetTechniqueEnabled enables or disables a technique by slug
+func (s *Solver) SetTechniqueEnabled(slug string, enabled bool) bool {
+	return s.registry.SetEnabled(slug, enabled)
 }
 
 // AnalyzePuzzleDifficulty solves the puzzle and returns the required difficulty level
