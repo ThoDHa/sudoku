@@ -11,7 +11,11 @@
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
     "test:unit": "vitest run",
-    "test:unit:watch": "vitest"
+    "test:unit:watch": "vitest",
+    "test:api": "playwright test e2e/api/",
+    "test:e2e": "playwright test e2e/integration/",
+    "test:e2e:slow": "playwright test e2e/slow/",
+    "test:e2e:all": "playwright test"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",
