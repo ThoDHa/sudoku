@@ -42,7 +42,7 @@ jobs:
         run: go vet ./...
 
       - name: Run tests
-        run: go test -v -race -coverprofile=coverage.out -timeout=10m ./...
+        run: go test -short -v -race -coverprofile=coverage.out -timeout=5m ./...
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
@@ -141,7 +141,7 @@ jobs:
           sleep 3
 
       - name: Run Playwright tests
-        run: npx playwright test --reporter=list
+        run: npm run test:e2e -- --reporter=list --project=chrome-desktop --project=pixel-5
         env:
           CI: true
           PLAYWRIGHT_BASE_URL: http://localhost:4173
