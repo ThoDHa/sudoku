@@ -350,13 +350,12 @@ html, body {
   align-items: center;
   justify-content: center;
   position: relative;
-  flex: 1;
   aspect-ratio: 1;
-  max-width: var(--control-btn-size);
-  min-width: 36px;
-  min-height: 36px;
+  width: 4rem;
+  min-width: 4rem;
+  min-height: 4rem;
   border-radius: 0.5rem;
-  font-size: var(--control-font-size);
+  font-size: 1.5rem;
   font-weight: 600;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -366,24 +365,27 @@ html, body {
 /* Larger touch targets on mobile */
 @media (max-width: 639px) {
   .control-digit-btn {
-    min-width: 40px;
-    min-height: 40px;
-    max-width: 3.25rem;
-    font-size: 1.25rem;
+    width: 4.25rem;
+    min-width: 4.25rem;
+    min-height: 4.25rem;
+    font-size: 1.625rem;
   }
 
   /* Even larger for large font size */
   :root.font-large .control-digit-btn {
-    min-width: 48px;
-    min-height: 48px;
-    max-width: 4rem;
-    font-size: 1.5rem;
+    width: 5rem;
+    min-width: 5rem;
+    min-height: 5rem;
+    font-size: 1.875rem;
   }
 }
 
 @media (min-width: 640px) {
   .control-digit-btn {
-    max-width: 3.5rem;
+    width: 4.5rem;
+    min-width: 4.5rem;
+    min-height: 4.5rem;
+    font-size: 1.75rem;
   }
 }
 
@@ -413,6 +415,49 @@ html, body {
     min-width: 56px;
     min-height: 56px;
     font-size: 1.5rem;
+  }
+}
+
+/* Wide action buttons for 2x2 action grid (Notes, Delete, Undo, Redo) */
+.control-action-btn-wide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 1.25rem;
+  width: 6.25rem;
+  min-width: 6.25rem;
+  min-height: 3.5rem;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+@media (max-width: 639px) {
+  .control-action-btn-wide {
+    width: 6.625rem;
+    min-width: 6.625rem;
+    min-height: 3.75rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 1.375rem;
+  }
+
+  :root.font-large .control-action-btn-wide {
+    width: 7.75rem;
+    min-width: 7.75rem;
+    min-height: 4.25rem;
+    padding: 0.875rem 1.75rem;
+    font-size: 1.5rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .control-action-btn-wide {
+    width: 7rem;
+    min-width: 7rem;
+    min-height: 4rem;
+    padding: 0.75rem 1.5rem;
   }
 }
 

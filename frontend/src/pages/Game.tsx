@@ -1253,7 +1253,7 @@ ${bugReportJson}
       )}
 
       <div 
-        className="game-background flex flex-1 flex-col items-center justify-center p-4 lg:p-8 overflow-hidden"
+        className="game-background flex flex-1 flex-col items-center justify-center p-5 lg:p-10 overflow-hidden"
         onClick={(e) => {
           // Deselect cell when clicking on the background (not on board or controls)
           // Keep highlightedDigit for multi-fill workflow
