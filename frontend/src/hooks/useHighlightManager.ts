@@ -124,10 +124,9 @@ export function useHighlightManager(options: UseHighlightManagerOptions): Highli
   const setDigitHighlight = useCallback((digit: number | null, _context: 'multi-fill' | 'single-fill' = 'single-fill') => {
     setHighlightedDigit(digit)
     
-    // Clear other highlights when setting a new digit highlight
-    if (digit !== null) {
-      setCurrentHighlight(null)
-    }
+    // Always clear move-related highlights when changing digit selection
+    // This fixes the bug where cell highlights persist after deselecting a digit
+    setCurrentHighlight(null)
   }, [setHighlightedDigit, setCurrentHighlight])
 
   return {
