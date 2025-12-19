@@ -17,6 +17,7 @@ import { useSudokuGame } from '../hooks/useSudokuGame'
 import { useAutoSolve } from '../hooks/useAutoSolve'
 import { useBackgroundManager } from '../hooks/useBackgroundManager'
 import { useHighlightManager } from '../hooks/useHighlightManager'
+import { useVisibilityAwareTimeout } from '../hooks/useVisibilityAwareTimeout'
 import type { Move } from '../hooks/useSudokuGame'
 import {
   TOAST_DURATION_SUCCESS,
@@ -126,6 +127,9 @@ export default function Game() {
   // Background manager for coordinating all background operations
   const backgroundManager = useBackgroundManager()
 
+  // Visibility-aware timeouts for toast messages - cancelled on background
+  const { setTimeout: visibilityAwareTimeout } = useVisibilityAwareTimeout()
+
   // Centralized highlight management for consistent behavior
   const highlightManager = useHighlightManager({
     setHighlightedDigit,
@@ -217,7 +221,7 @@ export default function Game() {
     isComplete: () => game.isComplete,
     onError: (message) => {
       setValidationMessage({ type: 'error', message })
-      setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
     },
     onUnpinpointableError: (message, count) => {
       setUnpinpointableErrorInfo({ message, count })
@@ -225,12 +229,12 @@ export default function Game() {
     },
     onStatus: (message) => {
       throttledSetValidationMessage({ type: 'success', message })
-      setTimeout(() => setValidationMessage(null), 2000)
+      visibilityAwareTimeout(() => setValidationMessage(null), 2000)
     },
     onErrorFixed: (message, resumeCallback) => {
       // Show toast for fix-error (longer duration than normal hints)
       setValidationMessage({ type: 'error', message: `Fixed: ${message}` })
-      setTimeout(() => {
+      visibilityAwareTimeout(() => {
         setValidationMessage(null)
         resumeCallback()
       }, TOAST_DURATION_FIX_ERROR)
@@ -390,7 +394,7 @@ export default function Game() {
     
     if (result.cellsWithNotes === 0) {
       setValidationMessage({ type: 'error', message: 'No notes to check. Add some notes first!' })
-      setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
       return
     }
     
@@ -410,8 +414,8 @@ export default function Game() {
         message: `Found ${wrongCount} incorrect note${wrongCount > 1 ? 's' : ''}. Some notes are impossible.`
       })
     }
-    setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
-  }, [game])
+    visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+  }, [game, visibilityAwareTimeout])
 
   // Validate current board state
   const handleValidate = useCallback(async () => {
@@ -422,12 +426,12 @@ export default function Game() {
       } else {
         setValidationMessage({ type: 'error', message: data.message || 'There are errors in the puzzle' })
       }
-      setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
     } catch {
       setValidationMessage({ type: 'error', message: 'Failed to validate puzzle' })
-      setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
     }
-  }, [game.board])
+  }, [game.board, visibilityAwareTimeout])
 
   // Core hint step logic - uses cached solution or fetches new one
   // Returns true if more steps available, false otherwise
@@ -456,7 +460,7 @@ export default function Game() {
                 ? 'Puzzle is already complete!' 
                 : 'This puzzle requires advanced techniques beyond our hint system.' 
             })
-            setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+            visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
           }
           return false
         }
@@ -468,7 +472,7 @@ export default function Game() {
         console.error('Hint error:', err)
         if (showNotification) {
           setValidationMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to get hint' })
-          setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+          visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
         }
         return false
       }
@@ -479,7 +483,7 @@ export default function Game() {
     if (!nextMoveResult) {
       if (showNotification) {
         setValidationMessage({ type: 'success', message: 'Puzzle complete!' })
-        setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
       }
       return false
     }
@@ -507,7 +511,7 @@ export default function Game() {
             type: 'error', 
             message: move.explanation || 'Contradiction found - undoing last move'
           })
-          setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+          visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
         }
         return true // More steps available after backtrack
       } else {
@@ -516,7 +520,7 @@ export default function Game() {
             type: 'error', 
             message: 'The puzzle cannot be solved - initial state has errors.'
           })
-          setTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+          visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
         }
         return false
       }
@@ -544,12 +548,12 @@ export default function Game() {
         type: 'success', 
         message: techniqueName
       })
-      setTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
     }
 
     // Check if more moves available
     return cachedSolutionMoves.current.length > 0 || newBoard.some(v => v === 0)
-  }, [game, initialBoard, invalidateCachedSolution])
+  }, [game, initialBoard, invalidateCachedSolution, visibilityAwareTimeout])
 
   // Handle hint button - calls executeHintStep with notifications and increments counter
   const handleNext = useCallback(async () => {
@@ -835,7 +839,7 @@ ${bugReportJson}
     }
     
     setBugReportCopied(true)
-    setTimeout(() => setBugReportCopied(false), TOAST_DURATION_SUCCESS)
+    visibilityAwareTimeout(() => setBugReportCopied(false), TOAST_DURATION_SUCCESS)
     
     // Open GitHub issue with pre-filled content
     const issueUrl = new URL('https://github.com/ThoDHa/sudoku/issues/new')
@@ -844,7 +848,7 @@ ${bugReportJson}
     issueUrl.searchParams.set('labels', 'bug')
     
     window.open(issueUrl.toString(), '_blank')
-  }, [puzzle, initialBoard, game, timer.elapsedMs, colorTheme, mode])
+  }, [puzzle, initialBoard, game, timer.elapsedMs, colorTheme, mode, visibilityAwareTimeout])
 
   // Feature request handler - opens GitHub issue for new features
   const handleFeatureRequest = useCallback(() => {

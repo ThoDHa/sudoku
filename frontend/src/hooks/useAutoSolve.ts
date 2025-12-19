@@ -331,21 +331,14 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           onStatus?.(moveResult.move.explanation || 'Taking another look...')
           // Continue with next moves
           if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            const scheduleNext = () => {
-              if ('requestIdleCallback' in window && backgroundManager.shouldPauseOperations) {
-                // When paused, use longer delays to save battery
-                setTimeout(() => playNextMove(), stepDelayRef.current * 2)
-              } else if ('requestIdleCallback' in window) {
-                // Use requestIdleCallback for better performance when available
-                requestIdleCallback(() => {
-                  setTimeout(() => playNextMove(), stepDelayRef.current)
-                }, { timeout: stepDelayRef.current + 100 })
-              } else {
-                // Fallback to setTimeout
-                setTimeout(() => playNextMove(), stepDelayRef.current)
-              }
+            // Schedule next move with requestIdleCallback for better performance
+            if ('requestIdleCallback' in window) {
+              requestIdleCallback(() => {
+                setTimeout(playNextMove, stepDelayRef.current)
+              }, { timeout: stepDelayRef.current + 100 })
+            } else {
+              setTimeout(playNextMove, stepDelayRef.current)
             }
-            scheduleNext()
           } else {
             stopAutoSolve()
           }
@@ -383,21 +376,14 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           })
           
           if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            const scheduleNext = () => {
-              if ('requestIdleCallback' in window && backgroundManager.shouldPauseOperations) {
-                // When paused, use longer delays to save battery
-                setTimeout(() => playNextMove(), stepDelayRef.current * 2)
-              } else if ('requestIdleCallback' in window) {
-                // Use requestIdleCallback for better performance when available
-                requestIdleCallback(() => {
-                  setTimeout(() => playNextMove(), stepDelayRef.current)
-                }, { timeout: stepDelayRef.current + 100 })
-              } else {
-                // Fallback to setTimeout
-                setTimeout(() => playNextMove(), stepDelayRef.current)
-              }
+            // Schedule next move with requestIdleCallback for better performance
+            if ('requestIdleCallback' in window) {
+              requestIdleCallback(() => {
+                setTimeout(playNextMove, stepDelayRef.current)
+              }, { timeout: stepDelayRef.current + 100 })
+            } else {
+              setTimeout(playNextMove, stepDelayRef.current)
             }
-            scheduleNext()
           } else {
             stopAutoSolve()
           }
@@ -440,21 +426,14 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           } else {
             // No callback - just continue after delay
             if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-              const scheduleNext = () => {
-                if ('requestIdleCallback' in window && backgroundManager.shouldPauseOperations) {
-                  // When paused, use longer delays to save battery
-                  setTimeout(() => playNextMove(), stepDelayRef.current * 2)
-                } else if ('requestIdleCallback' in window) {
-                  // Use requestIdleCallback for better performance when available
-                  requestIdleCallback(() => {
-                    setTimeout(() => playNextMove(), stepDelayRef.current)
-                  }, { timeout: stepDelayRef.current + 100 })
-                } else {
-                  // Fallback to setTimeout
-                  setTimeout(() => playNextMove(), stepDelayRef.current)
-                }
+              // Schedule next move with requestIdleCallback for better performance
+              if ('requestIdleCallback' in window) {
+                requestIdleCallback(() => {
+                  setTimeout(playNextMove, stepDelayRef.current)
+                }, { timeout: stepDelayRef.current + 100 })
+              } else {
+                setTimeout(playNextMove, stepDelayRef.current)
               }
-              scheduleNext()
             } else {
               stopAutoSolve()
             }
@@ -480,23 +459,15 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           move: moveResult.move,
         })
 
-        // Wait then play next - use requestIdleCallback for battery optimization
+        // Wait then play next - use requestIdleCallback for better performance
         if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-          const scheduleNext = () => {
-            if ('requestIdleCallback' in window && backgroundManager.shouldPauseOperations) {
-              // When paused, use longer delays to save battery
-              setTimeout(() => playNextMove(), stepDelayRef.current * 2)
-            } else if ('requestIdleCallback' in window) {
-              // Use requestIdleCallback for better performance when available
-              requestIdleCallback(() => {
-                setTimeout(() => playNextMove(), stepDelayRef.current)
-              }, { timeout: stepDelayRef.current + 100 })
-            } else {
-              // Fallback to setTimeout
-              setTimeout(() => playNextMove(), stepDelayRef.current)
-            }
+          if ('requestIdleCallback' in window) {
+            requestIdleCallback(() => {
+              setTimeout(playNextMove, stepDelayRef.current)
+            }, { timeout: stepDelayRef.current + 100 })
+          } else {
+            setTimeout(playNextMove, stepDelayRef.current)
           }
-          scheduleNext()
         } else {
           stopAutoSolve()
         }
