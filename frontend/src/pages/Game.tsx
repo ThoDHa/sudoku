@@ -588,8 +588,8 @@ export default function Game() {
         game.setCell(idx, highlightedDigit, notesMode)
         
         if (notesMode) {
-          // Always clear highlights after candidate operations
-          highlightManager.clearAfterCandidateOperation()
+          // For candidate operations, clear move highlights but preserve digit highlight for multi-fill
+          highlightManager.clearAfterDigitPlacement()
         } else {
           // For digit placement, clear move highlights but preserve digit highlight for multi-fill
           highlightManager.clearAfterDigitPlacement()
@@ -627,9 +627,8 @@ export default function Game() {
       game.setCell(selectedCell, digit, notesMode)
 
       if (notesMode) {
-        // Always clear highlights after ANY candidate operation (add/remove)
-        // This fixes the persistent highlighting bug
-        highlightManager.clearAfterCandidateOperation()
+        // For candidate operations, clear move highlights but preserve digit highlight for multi-fill
+        highlightManager.clearAfterDigitPlacement()
       } else {
         // For digit placement, clear move highlights but preserve digit highlight for multi-fill
         highlightManager.clearAfterDigitPlacement()
@@ -650,8 +649,8 @@ export default function Game() {
         game.setCell(idx, value, notesMode)
         
         if (notesMode) {
-          // Always clear highlights after candidate operations
-          highlightManager.clearAfterCandidateOperation()
+          // For candidate operations, clear move highlights but preserve digit highlight for multi-fill
+          highlightManager.clearAfterDigitPlacement()
         } else {
           highlightManager.clearAfterDigitPlacement()
         }
