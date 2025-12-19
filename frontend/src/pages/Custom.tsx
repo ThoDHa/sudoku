@@ -108,7 +108,7 @@ export default function Custom() {
   }
 
   // Create empty candidates for display
-  const candidates = board.map(() => new Set<number>())
+  const candidates = new Uint16Array(81)
 
   return (
     <div className="flex h-full flex-col items-center justify-center p-4 bg-[var(--bg)]">

@@ -142,7 +142,7 @@ export const difference = (mask1: CandidateMask, mask2: CandidateMask): Candidat
 export const candidatesToArrays = (candidates: Uint16Array): number[][] => {
   const result: number[][] = []
   for (let i = 0; i < candidates.length; i++) {
-    result.push(getCandidatesArray(candidates[i]))
+    result.push(getCandidatesArray(candidates[i]!))
   }
   return result
 }
@@ -153,7 +153,8 @@ export const candidatesToArrays = (candidates: Uint16Array): number[][] => {
 export const arraysToCandidates = (arrays: number[][]): Uint16Array => {
   const result = new Uint16Array(arrays.length)
   for (let i = 0; i < arrays.length; i++) {
-    result[i] = createCandidateMask(arrays[i])
+    const arr = arrays[i]
+    result[i] = arr ? createCandidateMask(arr) : 0
   }
   return result
 }
@@ -168,7 +169,8 @@ export const arraysToCandidates = (arrays: number[][]): Uint16Array => {
 export const setsToMasks = (sets: Set<number>[]): Uint16Array => {
   const result = new Uint16Array(sets.length)
   for (let i = 0; i < sets.length; i++) {
-    result[i] = createCandidateMask(Array.from(sets[i]))
+    const set = sets[i]
+    result[i] = set ? createCandidateMask(Array.from(set)) : 0
   }
   return result
 }
@@ -179,7 +181,7 @@ export const setsToMasks = (sets: Set<number>[]): Uint16Array => {
 export const masksToSets = (masks: Uint16Array): Set<number>[] => {
   const result: Set<number>[] = []
   for (let i = 0; i < masks.length; i++) {
-    result.push(new Set(getCandidatesArray(masks[i])))
+    result.push(new Set(getCandidatesArray(masks[i]!)))
   }
   return result
 }

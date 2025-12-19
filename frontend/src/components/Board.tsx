@@ -1,4 +1,5 @@
 import React from 'react'
+import { hasCandidate, countCandidates } from '../lib/candidatesUtils'
 
 interface Move {
   step_index: number
@@ -19,7 +20,7 @@ interface Move {
 interface BoardProps {
   board: number[]
   initialBoard: number[]
-  candidates: Set<number>[]
+  candidates: Uint16Array
   selectedCell: number | null
   highlightedDigit: number | null
   highlight: Move | null
@@ -242,7 +243,7 @@ export default function Board({
   const cellHasHighlightedDigit = (idx: number): boolean => {
     if (highlightedDigit === null) return false
     if (board[idx] === highlightedDigit) return true
-    if (candidates[idx]?.has(highlightedDigit)) return true
+    if (candidates[idx] !== undefined && hasCandidate(candidates[idx], highlightedDigit)) return true
     return false
   }
 
@@ -335,7 +336,7 @@ export default function Board({
     const row = Math.floor(idx / 9)
     const col = idx % 9
     const value = board[idx]
-    const cellCandidates = candidates[idx]
+    const cellCandidates = candidates[idx] || 0
 
     // Filled cell
     if (value !== 0) {
@@ -347,7 +348,7 @@ export default function Board({
       )
     }
 
-    if (cellCandidates && cellCandidates.size > 0) {
+    if (cellCandidates && countCandidates(cellCandidates) > 0) {
       // Check if this cell is highlighted (primary or secondary)
       const isPrimary = isHighlightedPrimary(row, col)
       const isSecondary = isHighlightedSecondary(row, col)
@@ -365,7 +366,7 @@ export default function Board({
       return (
         <div className="candidate-grid">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => {
-            const hasCandidate = cellCandidates.has(d)
+            const hasCandidate_ = hasCandidate(cellCandidates, d)
             
             // Check if this specific digit in this cell is being eliminated
             const isEliminated = highlight?.eliminations?.some(
@@ -378,18 +379,18 @@ export default function Board({
             const isRelevantDigit = singleDigit ? d === singleDigit : isTarget
             
             // Check if this candidate matches the user's highlighted digit
-            const isUserHighlighted = highlightedDigit === d && hasCandidate
+            const isUserHighlighted = highlightedDigit === d && hasCandidate_
             
             // Determine styling for this specific candidate
             let digitClass = "candidate-digit "
             
-            if (hasCandidate && isEliminated) {
+            if (hasCandidate_ && isEliminated) {
               // This candidate is being eliminated - show in red with strikethrough
               // Use darker red on highlighted backgrounds for contrast
               digitClass += isHighlightedCell 
                 ? "text-red-700 dark:text-red-200 line-through font-bold"
                 : "text-[var(--elimination-text-light)] dark:text-[var(--elimination-text-dark)] line-through font-bold"
-            } else if (hasCandidate && isRelevantDigit && isTarget) {
+            } else if (hasCandidate_ && isRelevantDigit && isTarget) {
               // This candidate is relevant to the technique - use contrasting color on highlighted bg
               digitClass += isHighlightedCell
                 ? "text-white dark:text-gray-900 font-bold drop-shadow-sm"
@@ -407,7 +408,7 @@ export default function Board({
             
             return (
               <span key={d} className={digitClass}>
-                {hasCandidate ? d : ''}
+                {hasCandidate_ ? d : ''}
               </span>
             )
           })}

@@ -31,6 +31,7 @@ import { validateBoard, solveAll, getPuzzle } from '../lib/solver-service'
 
 import { saveScore, markDailyCompleted, type Score } from '../lib/scores'
 import { decodePuzzle, encodePuzzle } from '../lib/puzzleEncoding'
+import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/candidatesUtils'
 
 // Type for saved game state in localStorage
 interface SavedGameState {
@@ -163,10 +164,17 @@ export default function Game() {
     gamePaused: timer.isPausedDueToVisibility || isExtendedPaused,
     backgroundManager,
     getBoard: () => game.board,
-    getCandidates: () => game.candidates,
+    getCandidates: () => {
+      // Convert Uint16Array to Set<number>[] for legacy API compatibility
+      const arrays = candidatesToArrays(game.candidates)
+      return arrays.map(arr => new Set(arr))
+    },
     getGivens: () => initialBoard,
     applyMove: (newBoard, newCandidates, move, index) => {
-      game.applyExternalMove(newBoard, newCandidates, move)
+      // Convert Set<number>[] back to Uint16Array
+      const candidatesArray = newCandidates.map(set => Array.from(set))
+      const uint16Candidates = arraysToCandidates(candidatesArray)
+      game.applyExternalMove(newBoard, uint16Candidates, move)
       setCurrentHighlight(move)
       setSelectedMoveIndex(index)
       
@@ -183,7 +191,10 @@ export default function Game() {
       }
     },
     applyState: (board, candidates, move, index) => {
-      game.setBoardState(board, candidates)
+      // Convert Set<number>[] back to Uint16Array
+      const candidatesArray = candidates.map(set => Array.from(set))
+      const uint16Candidates = arraysToCandidates(candidatesArray)
+      game.setBoardState(board, uint16Candidates)
       setCurrentHighlight(move)
       setSelectedMoveIndex(index)
       
@@ -264,7 +275,7 @@ export default function Game() {
     const storageKey = getStorageKey(puzzle.seed)
     const savedState: SavedGameState = {
       board: game.board,
-      candidates: game.candidates.map(set => Array.from(set)),
+        candidates: candidatesToArrays(game.candidates),
       elapsedMs: timer.elapsedMs,
       history: game.history,
       autoFillUsed,
@@ -349,7 +360,12 @@ export default function Game() {
   const autoFillNotes = useCallback(() => {
     if (game.board.length !== 81) return
     const newCandidates = game.fillAllCandidates(game.board)
-    const cellsWithCandidates = newCandidates.filter(set => set.size > 0).length
+    let cellsWithCandidates = 0
+    for (let i = 0; i < 81; i++) {
+      if (countCandidates(newCandidates[i] || 0) > 0) {
+        cellsWithCandidates++
+      }
+    }
     
     const fillMove: Move = {
       step_index: game.history.length,
@@ -427,7 +443,7 @@ export default function Game() {
     if (userMadeChanges || cachedSolutionMoves.current.length === 0) {
       // Fetch fresh solution from current state
       const boardSnapshot = [...game.board]
-      const candidatesArray = game.candidates.map(set => Array.from(set))
+      const candidatesArray = candidatesToArrays(game.candidates)
 
       try {
         const data = await solveAll(boardSnapshot, candidatesArray, initialBoard)
@@ -509,8 +525,8 @@ export default function Game() {
     // Apply the move
     const newBoard = nextMoveResult.board
     const newCandidates = nextMoveResult.candidates
-      ? nextMoveResult.candidates.map((cellCands: number[] | null) => new Set<number>(cellCands || []))
-      : game.candidates.map(() => new Set<number>())
+      ? arraysToCandidates(nextMoveResult.candidates.map(cellCands => cellCands || []))
+      : new Uint16Array(81)
 
     game.applyExternalMove(newBoard, newCandidates, move)
     // Update the cached history length to account for this hint
@@ -737,7 +753,7 @@ export default function Game() {
       state: {
         initialBoard: initialBoard,
         currentBoard: game.board,
-        candidates: game.candidates.map(set => Array.from(set)),
+      candidates: candidatesToArrays(game.candidates),
         elapsedMs: timer.elapsedMs,
         isComplete: game.isComplete,
       },
@@ -1048,7 +1064,7 @@ ${bugReportJson}
       
       if (savedState) {
         // Restore saved state
-        const restoredCandidates = savedState.candidates.map(arr => new Set(arr))
+        const restoredCandidates = arraysToCandidates(savedState.candidates)
         game.restoreState(savedState.board, restoredCandidates, savedState.history)
         timer.setElapsedMs(savedState.elapsedMs)
         setAutoFillUsed(savedState.autoFillUsed)

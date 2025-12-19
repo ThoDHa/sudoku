@@ -2,6 +2,7 @@ import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Board from './Board'
+import { addCandidate, removeCandidate } from '../lib/candidatesUtils'
 
 // Minimal smoke test to ensure candidate highlight clears when last candidate removed
 describe('Board candidate highlight behavior', () => {
@@ -9,8 +10,8 @@ describe('Board candidate highlight behavior', () => {
     const board = Array(81).fill(0)
     const initialBoard = Array(81).fill(0)
     // Put a candidate (1) into cell 0
-    const candidates = Array.from({ length: 81 }, (_, i) => new Set<number>())
-    candidates[0].add(1)
+    const candidates = new Uint16Array(81)
+    candidates[0] = addCandidate(0, 1)
 
     const onCellClick = jest.fn()
 
@@ -30,7 +31,7 @@ describe('Board candidate highlight behavior', () => {
     expect(screen.getByText('1')).toBeInTheDocument()
 
     // Now remove the candidate and rerender
-    candidates[0].delete(1)
+    candidates[0] = removeCandidate(candidates[0], 1)
     rerender(
       <Board
         board={board}
