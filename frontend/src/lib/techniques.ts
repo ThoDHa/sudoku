@@ -277,7 +277,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
   {
     title: 'Naked Triple',
     slug: 'naked-triple',
-    tier: 'Medium',
+    tier: 'Simple',
     description: 'Three cells in the same unit containing only three candidates (in any combination). Those candidates can be eliminated from other cells in the unit.',
     example: 'Cells with {1,2}, {2,3}, and {1,3} form a naked triple. Eliminate 1, 2, 3 from other cells in that unit.',
     relatedTechniques: ['naked-pair', 'naked-quad', 'hidden-triple'],
@@ -298,7 +298,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
   {
     title: 'Hidden Triple',
     slug: 'hidden-triple',
-    tier: 'Medium',
+    tier: 'Simple',
     description: 'Three candidates that only appear in three cells of a unit. All other candidates can be eliminated from those three cells.',
     example: 'If 2, 5, and 9 only appear in three specific cells of box 4, remove all other candidates from those cells.',
     relatedTechniques: ['hidden-pair', 'naked-triple'],
@@ -415,7 +415,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
   {
     title: 'Swordfish',
     slug: 'swordfish',
-    tier: 'Hard',
+    tier: 'Medium',
     description: 'An extension of X-Wing to three rows and three columns. When a candidate appears in 2-3 cells per row across three rows, and all positions fall in the same three columns.',
     example: 'If 7 in rows 2, 5, 8 only appears in columns 1, 4, 9, eliminate 7 from these columns in other rows.',
     relatedTechniques: ['x-wing', 'jellyfish'],
@@ -475,7 +475,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
   {
     title: 'Finned X-Wing',
     slug: 'finned-x-wing',
-    tier: 'Hard',
+    tier: 'Extreme',
     description: 'An X-Wing pattern with extra candidates (fins) in one corner. The pattern still works for eliminations that also see the fin.',
     example: 'X-Wing on 4 with an extra 4 in one corner box. Eliminate 4 from cells that see both an X-Wing corner and the fin.',
     relatedTechniques: ['x-wing'],
@@ -546,7 +546,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
   {
     title: 'Unique Rectangle',
     slug: 'unique-rectangle',
-    tier: 'Hard',
+    tier: 'Medium',
     description: 'Uses the assumption that valid Sudoku puzzles have unique solutions. If four cells would form a "deadly pattern" allowing two solutions, something must break it.',
     example: 'If cells form a rectangle with same two candidates, and one has extra candidates, those extras must be true.',
     diagram: {
@@ -695,7 +695,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
   {
     title: 'BUG',
     slug: 'bug',
-    tier: 'Hard',
+    tier: 'Medium',
     description: 'BUG (Bivalue Universal Grave) - When all unsolved cells have exactly 2 candidates except one with 3, that cell\'s unique candidate must be true.',
     example: 'All cells have 2 candidates except R5C5 with {2,5,7}. Only 7 appears 3 times in its row/col/box, so place 7.',
     diagram: {
@@ -728,7 +728,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
   {
     title: 'XYZ-Wing',
     slug: 'xyz-wing',
-    tier: 'Hard',
+    tier: 'Medium',
     description: 'A pivot cell with three candidates {X,Y,Z} connected to two wing cells with {X,Z} and {Y,Z}. Cells seeing all three can eliminate Z.',
     example: 'Pivot {1,5,9}, wings {1,9} and {5,9}. Cells seeing all three can eliminate 9.',
     relatedTechniques: ['xy-wing', 'wxyz-wing'],
@@ -744,23 +744,15 @@ export const TECHNIQUES: TechniqueInfo[] = [
   {
     title: 'Finned Swordfish',
     slug: 'finned-swordfish',
-    tier: 'Hard',
+    tier: 'Extreme',
     description: 'A Swordfish pattern with extra candidates (fins) in one corner. Eliminations are possible for cells that see both the pattern and the fin.',
     example: 'Swordfish on 7 with an extra 7 in one corner. Eliminate 7 from cells seeing both a pattern corner and the fin.',
     relatedTechniques: ['swordfish', 'finned-x-wing'],
   },
   {
-    title: 'Remote Pairs',
-    slug: 'remote-pairs',
-    tier: 'Hard',
-    description: 'A chain of cells all containing the same two candidates. Cells seeing both ends of an even-length chain can eliminate both candidates.',
-    example: 'Chain of {3,7} cells: A-B-C-D (4 cells). Cells seeing both A and D can eliminate 3 and 7.',
-    relatedTechniques: ['xy-chain'],
-  },
-  {
     title: 'ALS-XZ',
     slug: 'als-xz',
-    tier: 'Hard',
+    tier: 'Extreme',
     description: 'Two Almost Locked Sets (ALS) sharing a restricted common candidate (X). Another common candidate (Z) can be eliminated from cells seeing both ALSs.',
     example: 'ALS A and ALS B share candidate 5 (restricted). Candidate 3 appears in both. Eliminate 3 from cells seeing both.',
     relatedTechniques: ['als-xy-wing', 'als-xy-chain'],
@@ -777,7 +769,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
   {
     title: '3D Medusa',
     slug: 'medusa-3d',
-    tier: 'Extreme',
+    tier: 'Hard',
     description: 'An extension of simple coloring that uses both strong links within digits and bivalue cells to create a multi-digit coloring network.',
     example: 'Color candidates across multiple digits using bivalue cells as bridges. Contradictions reveal eliminations.',
     relatedTechniques: ['simple-coloring'],
@@ -966,7 +958,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
     tier: 'NotImplemented',
     description: 'An odd-length loop of bivalue cells sharing candidates. Such a loop cannot exist, so cells that would complete it can make eliminations.',
     example: 'Five bivalue cells would form a loop if R3C3 had candidate 5. Therefore R3C3≠5.',
-    relatedTechniques: ['xy-chain', 'remote-pairs'],
+    relatedTechniques: ['xy-chain'],
   },
   {
     title: 'Dual Empty Rectangle',
