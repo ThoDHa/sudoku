@@ -585,13 +585,21 @@ export default function Game() {
 
       // If a digit is highlighted and this cell is empty, fill it
       if (highlightedDigit !== null && game.board[idx] === 0) {
-        game.setCell(idx, highlightedDigit, notesMode)
-        
         if (notesMode) {
-          // For candidate operations, clear move highlights but preserve digit highlight for multi-fill
-          highlightManager.clearAfterDigitPlacement()
+          // Check if we're removing or adding a candidate
+          const hadCandidate = game.candidates[idx]?.has(highlightedDigit) ?? false
+          game.setCell(idx, highlightedDigit, notesMode)
+          
+          if (hadCandidate) {
+            // Removing candidate - clear all highlights since interaction is complete
+            highlightManager.clearAfterCandidateOperation()
+          } else {
+            // Adding candidate - preserve digit highlight for multi-fill
+            highlightManager.clearAfterDigitPlacement()
+          }
         } else {
           // For digit placement, clear move highlights but preserve digit highlight for multi-fill
+          game.setCell(idx, highlightedDigit, notesMode)
           highlightManager.clearAfterDigitPlacement()
         }
         return
@@ -624,11 +632,18 @@ export default function Game() {
        return
      }
 
+      // Check if we're removing or adding a candidate (check BEFORE setCell since it toggles)
+      const hadCandidate = game.candidates[selectedCell]?.has(digit) ?? false
       game.setCell(selectedCell, digit, notesMode)
 
       if (notesMode) {
-        // For candidate operations, clear move highlights but preserve digit highlight for multi-fill
-        highlightManager.clearAfterDigitPlacement()
+        if (hadCandidate) {
+          // Removing candidate - clear all highlights since interaction is complete
+          highlightManager.clearAfterCandidateOperation()
+        } else {
+          // Adding candidate - preserve digit highlight for multi-fill
+          highlightManager.clearAfterDigitPlacement()
+        }
       } else {
         // For digit placement, clear move highlights but preserve digit highlight for multi-fill
         highlightManager.clearAfterDigitPlacement()
@@ -645,16 +660,24 @@ export default function Game() {
      if (value === 0) {
        game.eraseCell(idx)
        highlightManager.clearAfterEraseOperation()
-      } else {
-        game.setCell(idx, value, notesMode)
-        
-        if (notesMode) {
-          // For candidate operations, clear move highlights but preserve digit highlight for multi-fill
-          highlightManager.clearAfterDigitPlacement()
-        } else {
-          highlightManager.clearAfterDigitPlacement()
-        }
-      }
+       } else {
+         if (notesMode) {
+           // Check if we're removing or adding a candidate (check BEFORE setCell since it toggles)
+           const hadCandidate = game.candidates[idx]?.has(value) ?? false
+           game.setCell(idx, value, notesMode)
+           
+           if (hadCandidate) {
+             // Removing candidate - clear all highlights since interaction is complete
+             highlightManager.clearAfterCandidateOperation()
+           } else {
+             // Adding candidate - preserve digit highlight for multi-fill
+             highlightManager.clearAfterDigitPlacement()
+           }
+         } else {
+           game.setCell(idx, value, notesMode)
+           highlightManager.clearAfterDigitPlacement()
+         }
+       }
    }, [game, notesMode, highlightManager])
 
   // Toggle erase mode handler
