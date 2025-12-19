@@ -786,7 +786,21 @@ export default function Game() {
     const issueBody = `## Bug Description
 <!-- Please describe the bug you encountered -->
 
-## Puzzle State
+## Steps to Reproduce (optional)
+<!-- The debug state below includes move history, but feel free to describe steps here -->
+1. 
+2. 
+3. 
+
+## Expected Behavior
+<!-- What did you expect to happen? -->
+
+## Actual Behavior
+<!-- What actually happened? -->
+
+---
+
+## Puzzle State (auto-filled)
 - **Version:** ${__COMMIT_HASH__}
 - **Seed:** ${puzzle?.seed || 'Unknown'}
 - **Difficulty:** ${puzzle?.difficulty || 'Unknown'}
@@ -805,12 +819,6 @@ ${bugReportJson}
 \`\`\`
 
 </details>
-
-## Expected Behavior
-<!-- What did you expect to happen? -->
-
-## Actual Behavior
-<!-- What actually happened? -->
 `
 
     // Also copy to clipboard as backup
