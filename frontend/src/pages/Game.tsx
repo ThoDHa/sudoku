@@ -846,6 +846,26 @@ ${bugReportJson}
     window.open(issueUrl.toString(), '_blank')
   }, [puzzle, initialBoard, game, timer.elapsedMs, colorTheme, mode])
 
+  // Feature request handler - opens GitHub issue for new features
+  const handleFeatureRequest = useCallback(() => {
+    const issueBody = `## Feature Description
+<!-- Please describe the feature you'd like to see -->
+
+## Use Case
+<!-- Why would this feature be useful? -->
+
+## Possible Implementation (optional)
+<!-- Any ideas on how this could work? -->
+`
+
+    const issueUrl = new URL('https://github.com/ThoDHa/sudoku/issues/new')
+    issueUrl.searchParams.set('title', `Feature: [Please describe briefly]`)
+    issueUrl.searchParams.set('body', issueBody)
+    issueUrl.searchParams.set('labels', 'enhancement')
+    
+    window.open(issueUrl.toString(), '_blank')
+  }, [])
+
   // ============================================================
   // EFFECTS
   // ============================================================
@@ -1201,6 +1221,7 @@ ${bugReportJson}
         onClearAll={() => setShowClearConfirm(true)}
         onTechniquesList={() => setTechniquesListOpen(true)}
         onReportBug={handleReportBug}
+        onFeatureRequest={handleFeatureRequest}
         bugReportCopied={bugReportCopied}
         mode={mode}
         colorTheme={colorTheme}

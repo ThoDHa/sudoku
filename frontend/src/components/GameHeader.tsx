@@ -34,6 +34,7 @@ interface GameHeaderProps {
   onClearAll: () => void
   onTechniquesList: () => void
   onReportBug: () => void
+  onFeatureRequest: () => void
   bugReportCopied: boolean
   // Theme settings
   mode: 'light' | 'dark'
@@ -70,6 +71,7 @@ export default function GameHeader({
   onClearAll,
   onTechniquesList,
   onReportBug,
+  onFeatureRequest,
   bugReportCopied,
   mode,
   colorTheme,
@@ -338,6 +340,7 @@ export default function GameHeader({
         onSetColorTheme={onSetColorTheme}
         onSetFontSize={onSetFontSize}
         onReportBug={onReportBug}
+        onFeatureRequest={onFeatureRequest}
         bugReportCopied={bugReportCopied}
         gameActions={{
           onAutoFillNotes,
