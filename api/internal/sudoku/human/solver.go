@@ -594,6 +594,8 @@ func (s *Solver) ApplyMove(b *Board, move *core.Move) {
 }
 
 // SolveWithSteps attempts to solve using human techniques, returning all moves
+// Note: fill-candidate moves are not counted toward maxSteps since they are
+// bookkeeping operations, not actual solving steps.
 func (s *Solver) SolveWithSteps(b *Board, maxSteps int) ([]core.Move, string) {
 	var moves []core.Move
 	step := 0
@@ -607,7 +609,16 @@ func (s *Solver) SolveWithSteps(b *Board, maxSteps int) ([]core.Move, string) {
 		move.StepIndex = step
 		s.ApplyMove(b, move)
 		moves = append(moves, *move)
-		step++
+		
+		// If we hit a contradiction, stop solving - the puzzle is invalid or we made a mistake
+		if move.Technique == "contradiction" {
+			return moves, constants.StatusStalled
+		}
+		
+		// Only count actual solving moves as steps, not candidate-filling
+		if move.Technique != "fill-candidate" {
+			step++
+		}
 	}
 
 	if b.IsSolved() {

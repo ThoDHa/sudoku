@@ -31,11 +31,18 @@ func main() {
 	moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
 	
 	fmt.Printf("Status: %s\n", status)
-	fmt.Printf("Moves: %d\n", len(moves))
 	
+	// Count solving steps (excluding fill-candidate which is bookkeeping)
+	solvingSteps := 0
 	techniques := make(map[string]int)
 	for _, move := range moves {
 		techniques[move.Technique]++
+		if move.Technique != "fill-candidate" {
+			solvingSteps++
+		}
 	}
+	
+	fmt.Printf("Solving steps: %d\n", solvingSteps)
+	fmt.Printf("Total moves (incl. candidates): %d\n", len(moves))
 	fmt.Printf("Techniques used: %v\n", techniques)
 }
