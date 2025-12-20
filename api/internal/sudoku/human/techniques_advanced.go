@@ -764,27 +764,34 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 								corners[3] = cells[k] // (r3, c2)
 							}
 
-							// Check Type 2: 2 diagonal corners are bivalue, other 2 have same extra
-							// Diagonal pairs: (0,3) and (1,2)
-							for _, diagPair := range [][2]int{{0, 3}, {1, 2}} {
-								var other [2]int
-								if diagPair[0] == 0 {
-									other = [2]int{1, 2}
-								} else {
-									other = [2]int{0, 3}
+							// Check Type 2: 2 corners in same row/col are bivalue (floor), other 2 have same extra (roof)
+							// Row pairs: [0,1] (row r1) and [2,3] (row r3)
+							// Column pairs: [0,2] (col c1) and [1,3] (col c2)
+							// NOTE: Diagonal pairs {0,3} and {1,2} are WRONG - roof cells must share a unit for eliminations
+							for _, floorPair := range [][2]int{{0, 1}, {2, 3}, {0, 2}, {1, 3}} {
+								var roofPair [2]int
+								switch {
+								case floorPair[0] == 0 && floorPair[1] == 1:
+									roofPair = [2]int{2, 3} // floor is row r1, roof is row r3
+								case floorPair[0] == 2 && floorPair[1] == 3:
+									roofPair = [2]int{0, 1} // floor is row r3, roof is row r1
+								case floorPair[0] == 0 && floorPair[1] == 2:
+									roofPair = [2]int{1, 3} // floor is col c1, roof is col c2
+								case floorPair[0] == 1 && floorPair[1] == 3:
+									roofPair = [2]int{0, 2} // floor is col c2, roof is col c1
 								}
 
-								// Check if diagonal corners are bivalue with exactly {d1, d2}
-								isBivalue0 := len(b.Candidates[corners[diagPair[0]]]) == 2
-								isBivalue1 := len(b.Candidates[corners[diagPair[1]]]) == 2
+								// Check if floor corners are bivalue with exactly {d1, d2}
+								isBivalue0 := len(b.Candidates[corners[floorPair[0]]]) == 2
+								isBivalue1 := len(b.Candidates[corners[floorPair[1]]]) == 2
 
 								if !isBivalue0 || !isBivalue1 {
 									continue
 								}
 
-								// Check if other two corners have extras
-								cands0 := b.Candidates[corners[other[0]]]
-								cands1 := b.Candidates[corners[other[1]]]
+								// Check if roof corners have extras
+								cands0 := b.Candidates[corners[roofPair[0]]]
+								cands1 := b.Candidates[corners[roofPair[1]]]
 
 								if len(cands0) <= 2 || len(cands1) <= 2 {
 									continue
@@ -803,7 +810,7 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 									}
 								}
 
-								// Type 2: both have exactly one extra, and it's the same
+								// Type 2: both roof cells have exactly one extra, and it's the same digit
 								if len(extras0) != 1 || len(extras1) != 1 {
 									continue
 								}
@@ -812,19 +819,19 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 								}
 
 								extraDigit := extras0[0]
-								extraCorner0 := corners[other[0]]
-								extraCorner1 := corners[other[1]]
+								roofCorner0 := corners[roofPair[0]]
+								roofCorner1 := corners[roofPair[1]]
 
-								// Eliminate extraDigit from cells that see BOTH extra corners
+								// Eliminate extraDigit from cells that see BOTH roof corners
 								var eliminations []core.Candidate
 								for idx := 0; idx < 81; idx++ {
-									if idx == extraCorner0 || idx == extraCorner1 {
+									if idx == roofCorner0 || idx == roofCorner1 {
 										continue
 									}
 									if !b.Candidates[idx][extraDigit] {
 										continue
 									}
-									if sees(idx, extraCorner0) && sees(idx, extraCorner1) {
+									if sees(idx, roofCorner0) && sees(idx, roofCorner1) {
 										eliminations = append(eliminations, core.Candidate{
 											Row: idx / 9, Col: idx % 9, Digit: extraDigit,
 										})
@@ -843,10 +850,10 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 										Targets:      targets,
 										Eliminations: eliminations,
 										Explanation: fmt.Sprintf("Unique Rectangle Type 2: %d/%d with extra %d; eliminate %d from cells seeing both R%dC%d and R%dC%d",
-											d1, d2, extraDigit, extraDigit, extraCorner0/9+1, extraCorner0%9+1, extraCorner1/9+1, extraCorner1%9+1),
+											d1, d2, extraDigit, extraDigit, roofCorner0/9+1, roofCorner0%9+1, roofCorner1/9+1, roofCorner1%9+1),
 										Highlights: core.Highlights{
-											Primary:   []core.CellRef{{Row: corners[diagPair[0]] / 9, Col: corners[diagPair[0]] % 9}, {Row: corners[diagPair[1]] / 9, Col: corners[diagPair[1]] % 9}},
-											Secondary: []core.CellRef{{Row: extraCorner0 / 9, Col: extraCorner0 % 9}, {Row: extraCorner1 / 9, Col: extraCorner1 % 9}},
+											Primary:   []core.CellRef{{Row: corners[floorPair[0]] / 9, Col: corners[floorPair[0]] % 9}, {Row: corners[floorPair[1]] / 9, Col: corners[floorPair[1]] % 9}},
+											Secondary: []core.CellRef{{Row: roofCorner0 / 9, Col: roofCorner0 % 9}, {Row: roofCorner1 / 9, Col: roofCorner1 % 9}},
 										},
 									}
 								}
@@ -940,36 +947,44 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 								corners[3] = cells[k]
 							}
 
-							// Check Type 3: 2 diagonal corners are bivalue, other 2 have extras
-							for _, diagPair := range [][2]int{{0, 3}, {1, 2}} {
-								var other [2]int
-								if diagPair[0] == 0 {
-									other = [2]int{1, 2}
-								} else {
-									other = [2]int{0, 3}
+							// Check Type 3: 2 corners in same row/col are bivalue (floor), other 2 have extras (roof)
+							// Row pairs: [0,1] (row r1) and [2,3] (row r3)
+							// Column pairs: [0,2] (col c1) and [1,3] (col c2)
+							// NOTE: Diagonal pairs {0,3} and {1,2} are WRONG - roof cells must share a unit
+							for _, floorPair := range [][2]int{{0, 1}, {2, 3}, {0, 2}, {1, 3}} {
+								var roofPair [2]int
+								switch {
+								case floorPair[0] == 0 && floorPair[1] == 1:
+									roofPair = [2]int{2, 3} // floor is row r1, roof is row r3
+								case floorPair[0] == 2 && floorPair[1] == 3:
+									roofPair = [2]int{0, 1} // floor is row r3, roof is row r1
+								case floorPair[0] == 0 && floorPair[1] == 2:
+									roofPair = [2]int{1, 3} // floor is col c1, roof is col c2
+								case floorPair[0] == 1 && floorPair[1] == 3:
+									roofPair = [2]int{0, 2} // floor is col c2, roof is col c1
 								}
 
-								// Check if diagonal corners are bivalue
-								if len(b.Candidates[corners[diagPair[0]]]) != 2 || len(b.Candidates[corners[diagPair[1]]]) != 2 {
+								// Check if floor corners are bivalue
+								if len(b.Candidates[corners[floorPair[0]]]) != 2 || len(b.Candidates[corners[floorPair[1]]]) != 2 {
 									continue
 								}
 
-								// Get extras from the other two corners
-								extraCorner0 := corners[other[0]]
-								extraCorner1 := corners[other[1]]
+								// Get extras from the roof corners (they share a row/col and can form pseudo-cell)
+								roofCorner0 := corners[roofPair[0]]
+								roofCorner1 := corners[roofPair[1]]
 
-								if len(b.Candidates[extraCorner0]) <= 2 && len(b.Candidates[extraCorner1]) <= 2 {
+								if len(b.Candidates[roofCorner0]) <= 2 && len(b.Candidates[roofCorner1]) <= 2 {
 									continue
 								}
 
 								// Combine extras from both corners (excluding d1, d2)
 								combinedExtras := make(map[int]bool)
-								for d := range b.Candidates[extraCorner0] {
+								for d := range b.Candidates[roofCorner0] {
 									if d != d1 && d != d2 {
 										combinedExtras[d] = true
 									}
 								}
-								for d := range b.Candidates[extraCorner1] {
+								for d := range b.Candidates[roofCorner1] {
 									if d != d1 && d != d2 {
 										combinedExtras[d] = true
 									}
@@ -981,10 +996,10 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 
 								extraSlice := getCandidateSlice(combinedExtras)
 
-								// The two extra corners must share a unit (row, col, or box) to form a pseudo-cell
+								// The two roof corners must share a unit (row, col, or box) to form a pseudo-cell
 								// Check which units they share
-								row0, col0 := extraCorner0/9, extraCorner0%9
-								row1, col1 := extraCorner1/9, extraCorner1%9
+								row0, col0 := roofCorner0/9, roofCorner0%9
+								row1, col1 := roofCorner1/9, roofCorner1%9
 								box0 := (row0/3)*3 + col0/3
 								box1 := (row1/3)*3 + col1/3
 
@@ -1012,7 +1027,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 									if len(extraSlice) == 2 {
 										// Look for naked pair: one other cell with exactly these 2 candidates
 										for _, idx := range unit.indices {
-											if idx == extraCorner0 || idx == extraCorner1 {
+											if idx == roofCorner0 || idx == roofCorner1 {
 												continue
 											}
 											if b.Cells[idx] != 0 {
@@ -1028,7 +1043,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 												// Eliminate these digits from other cells in the unit
 												var eliminations []core.Candidate
 												for _, elimIdx := range unit.indices {
-													if elimIdx == extraCorner0 || elimIdx == extraCorner1 || elimIdx == idx {
+													if elimIdx == roofCorner0 || elimIdx == roofCorner1 || elimIdx == idx {
 														continue
 													}
 													if b.Cells[elimIdx] != 0 {
@@ -1057,8 +1072,8 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 														Explanation: fmt.Sprintf("Unique Rectangle Type 3: %d/%d; pseudo-cell with %v forms naked pair with R%dC%d in %s",
 															d1, d2, extraSlice, idx/9+1, idx%9+1, unit.unitType),
 														Highlights: core.Highlights{
-															Primary:   []core.CellRef{{Row: corners[diagPair[0]] / 9, Col: corners[diagPair[0]] % 9}, {Row: corners[diagPair[1]] / 9, Col: corners[diagPair[1]] % 9}},
-															Secondary: []core.CellRef{{Row: extraCorner0 / 9, Col: extraCorner0 % 9}, {Row: extraCorner1 / 9, Col: extraCorner1 % 9}, {Row: idx / 9, Col: idx % 9}},
+															Primary:   []core.CellRef{{Row: corners[floorPair[0]] / 9, Col: corners[floorPair[0]] % 9}, {Row: corners[floorPair[1]] / 9, Col: corners[floorPair[1]] % 9}},
+															Secondary: []core.CellRef{{Row: roofCorner0 / 9, Col: roofCorner0 % 9}, {Row: roofCorner1 / 9, Col: roofCorner1 % 9}, {Row: idx / 9, Col: idx % 9}},
 														},
 													}
 												}
@@ -1071,7 +1086,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 										// Need (3 - 1) = 2 more cells if extras has 2 or 3 digits
 										var candidateCells []int
 										for _, idx := range unit.indices {
-											if idx == extraCorner0 || idx == extraCorner1 {
+											if idx == roofCorner0 || idx == roofCorner1 {
 												continue
 											}
 											if b.Cells[idx] != 0 {
@@ -1122,7 +1137,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 													// Eliminate these 3 digits from other cells in unit
 													var eliminations []core.Candidate
 													for _, elimIdx := range unit.indices {
-														if elimIdx == extraCorner0 || elimIdx == extraCorner1 || elimIdx == idx1 || elimIdx == idx2 {
+														if elimIdx == roofCorner0 || elimIdx == roofCorner1 || elimIdx == idx1 || elimIdx == idx2 {
 															continue
 														}
 														if b.Cells[elimIdx] != 0 {
@@ -1151,8 +1166,8 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 															Explanation: fmt.Sprintf("Unique Rectangle Type 3: %d/%d; pseudo-cell forms naked triple with R%dC%d and R%dC%d in %s",
 																d1, d2, idx1/9+1, idx1%9+1, idx2/9+1, idx2%9+1, unit.unitType),
 															Highlights: core.Highlights{
-																Primary:   []core.CellRef{{Row: corners[diagPair[0]] / 9, Col: corners[diagPair[0]] % 9}, {Row: corners[diagPair[1]] / 9, Col: corners[diagPair[1]] % 9}},
-																Secondary: []core.CellRef{{Row: extraCorner0 / 9, Col: extraCorner0 % 9}, {Row: extraCorner1 / 9, Col: extraCorner1 % 9}, {Row: idx1 / 9, Col: idx1 % 9}, {Row: idx2 / 9, Col: idx2 % 9}},
+																Primary:   []core.CellRef{{Row: corners[floorPair[0]] / 9, Col: corners[floorPair[0]] % 9}, {Row: corners[floorPair[1]] / 9, Col: corners[floorPair[1]] % 9}},
+																Secondary: []core.CellRef{{Row: roofCorner0 / 9, Col: roofCorner0 % 9}, {Row: roofCorner1 / 9, Col: roofCorner1 % 9}, {Row: idx1 / 9, Col: idx1 % 9}, {Row: idx2 / 9, Col: idx2 % 9}},
 															},
 														}
 													}
