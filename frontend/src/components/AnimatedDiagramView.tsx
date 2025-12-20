@@ -17,23 +17,20 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
   // Use background manager to pause animation when hidden
   const backgroundManager = useBackgroundManager()
 
-  // Early return if no step data (shouldn't happen in practice but satisfies type checker)
-  if (!currentStepData) {
-    return null
-  }
-
   const cellSize = 20
   const boardSize = cellSize * 9
 
   // Auto-advance when playing and not hidden - loops automatically (1→2→3→1→2→3→...)
   useEffect(() => {
-    if (!isPlaying || backgroundManager.shouldPauseOperations) return
+    if (!isPlaying || backgroundManager.shouldPauseOperations) {
+      return
+    }
 
     const timer = setInterval(() => {
       setCurrentStep(prev => (prev + 1) % stepCount)
     }, 2500) // 2.5 seconds per step
 
-    return () => clearInterval(timer)
+    return () => { clearInterval(timer) }
   }, [isPlaying, stepCount, backgroundManager.shouldPauseOperations])
   
   const handlePrevious = useCallback(() => {
@@ -49,6 +46,12 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
   const togglePlay = useCallback(() => {
     setIsPlaying(prev => !prev)
   }, [])
+
+  // Early return if no step data (shouldn't happen in practice but satisfies type checker)
+  // Must be after all hooks
+  if (!currentStepData) {
+    return null
+  }
   
   // Create a map for quick cell lookup
   const cellMap = new Map<string, DiagramCell>()

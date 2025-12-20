@@ -196,6 +196,7 @@ export function getWasmApi(): SudokuWasmAPI | null {
  * Call this when WASM is no longer needed to save ~4MB RAM
  */
 export function unloadWasm(): void {
+  // eslint-disable-next-line no-console -- Intentional logging for WASM lifecycle debugging
   console.log('[WASM] Unloading WASM module...')
   
   // Clear WASM instance and API
@@ -225,11 +226,11 @@ export function unloadWasm(): void {
   // Clear global references
   if (typeof window !== 'undefined') {
     if (window.SudokuWasm) {
-      // @ts-ignore - We know this exists and want to delete it
+      // @ts-expect-error - We know this exists and want to delete it
       delete window.SudokuWasm;
     }
     if (window.Go) {
-      // @ts-ignore - We know this exists and want to delete it  
+      // @ts-expect-error - We know this exists and want to delete it  
       delete window.Go;
     }
   }
@@ -239,6 +240,7 @@ export function unloadWasm(): void {
     window.gc();
   }
   
+  // eslint-disable-next-line no-console -- Intentional logging for WASM lifecycle debugging
   console.log('[WASM] WASM module unloaded, memory freed')
 }
 
@@ -294,8 +296,10 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
   wasmLoadPromise = (async () => {
     try {
       // Load wasm_exec.js first
+      // eslint-disable-next-line no-console -- Intentional logging for WASM lifecycle debugging
       console.log('[WASM] Loading wasm_exec.js from:', `${getBaseUrl()}wasm_exec.js`)
       await loadWasmExec();
+      // eslint-disable-next-line no-console -- Intentional logging for WASM lifecycle debugging
       console.log('[WASM] wasm_exec.js loaded')
 
       // Ensure Go is available
@@ -307,15 +311,18 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       goInstance = go; // Store reference for cleanup
 
       // Fetch and instantiate the WASM module
+      // eslint-disable-next-line no-console -- Intentional logging for WASM lifecycle debugging
       console.log('[WASM] Fetching WASM from:', `${getBaseUrl()}sudoku.wasm`)
       const wasmResponse = await fetch(`${getBaseUrl()}sudoku.wasm`);
       if (!wasmResponse.ok) {
         throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`);
       }
+      // eslint-disable-next-line no-console -- Intentional logging for WASM lifecycle debugging
       console.log('[WASM] WASM fetched, instantiating...')
 
       const wasmBuffer = await wasmResponse.arrayBuffer();
       const result = await WebAssembly.instantiate(wasmBuffer, go.importObject);
+      // eslint-disable-next-line no-console -- Intentional logging for WASM lifecycle debugging
       console.log('[WASM] WASM instantiated, running Go...')
 
       // Run the Go program (this sets up window.SudokuWasm)
@@ -330,6 +337,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
 
         // Check if already ready
         if (window.SudokuWasm) {
+          // eslint-disable-next-line no-console -- Intentional logging for WASM lifecycle debugging
           console.log('[WASM] SudokuWasm already available')
           clearTimeout(timeout);
           resolve();
@@ -338,6 +346,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
 
         // Wait for the wasmReady event
         const handler = () => {
+          // eslint-disable-next-line no-console -- Intentional logging for WASM lifecycle debugging
           console.log('[WASM] wasmReady event received')
           clearTimeout(timeout);
           window.removeEventListener('wasmReady', handler);

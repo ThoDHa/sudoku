@@ -85,7 +85,8 @@ function parseText(text: string): TextSegment[] {
   
   let match: RegExpExecArray | null
   while ((match = termPattern.exec(text)) !== null) {
-    const term = glossaryMap.get(match[1]!.toLowerCase())
+    const matchedTerm = match[1]
+    const term = matchedTerm ? glossaryMap.get(matchedTerm.toLowerCase()) : undefined
     if (term) {
       matches.push({
         index: match.index,
@@ -172,7 +173,7 @@ export default function GlossaryLinkedText({ text, className = '' }: GlossaryLin
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      handleTermClick(segment.term!.term)
+                      if (segment.term) handleTermClick(segment.term.term)
                     }}
                     className="inline border-b border-dashed border-[var(--accent)] text-[var(--accent)] hover:border-solid focus:outline-none"
                   >
@@ -183,7 +184,7 @@ export default function GlossaryLinkedText({ text, className = '' }: GlossaryLin
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    handleTermClick(segment.term!.term)
+                    if (segment.term) handleTermClick(segment.term.term)
                   }}
                   className="inline border-b border-dashed border-[var(--accent)] text-[var(--accent)] hover:border-solid focus:outline-none"
                 >
@@ -201,6 +202,7 @@ export default function GlossaryLinkedText({ text, className = '' }: GlossaryLin
 }
 
 // Export a simpler version for use in places where interactivity isn't needed
+// eslint-disable-next-line react-refresh/only-export-components -- Utility function shared between components
 export function highlightGlossaryTerms(text: string): React.ReactNode {
   const segments = parseText(text)
   

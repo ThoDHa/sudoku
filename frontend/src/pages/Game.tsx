@@ -602,6 +602,7 @@ export default function Game() {
 
     // Check if more moves available
     return cachedSolutionMoves.current.length > 0 || newBoard.some(v => v === 0)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- clearAllAndDeselect and setMoveHighlight are stable callbacks
   }, [game, initialBoard, invalidateCachedSolution, visibilityAwareTimeout])
 
   // Handle hint button - calls executeHintStep with notifications and increments counter
@@ -774,7 +775,7 @@ export default function Game() {
      // selectCell atomically selects and clears highlights
      selectCell(idx)
      setEraseMode(false)
-   }, [game, highlightedDigit, eraseMode, notesMode, selectedCell, selectCell, clearAllAndDeselect, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement, clickGivenCell])
+   }, [game, highlightedDigit, eraseMode, notesMode, selectedCell, selectCell, clearAllAndDeselect, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement, clickGivenCell, resumeFromExtendedPause])
 
     // Digit input handler
     const handleDigitInput = useCallback((digit: number) => {
@@ -814,9 +815,10 @@ export default function Game() {
        }
        setTechniqueHintPending(false) // Re-enable technique hint button
 
-     // Keep cell selected so user can erase or change immediately
-     // Keep digit highlighted for adding candidates (multi-fill)
-   }, [game, selectedCell, notesMode, toggleDigitHighlight, clearAfterDigitToggle, clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell])
+       // Keep cell selected so user can erase or change immediately
+       // Keep digit highlighted for adding candidates (multi-fill)
+     // eslint-disable-next-line react-hooks/exhaustive-deps -- resumeFromExtendedPause is a stable callback
+     }, [game, selectedCell, notesMode, toggleDigitHighlight, clearAfterDigitToggle, clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell])
 
     // Keyboard cell change handler (from Board component)
     const handleCellChange = useCallback((idx: number, value: number) => {
@@ -838,7 +840,8 @@ export default function Game() {
           }
           setTechniqueHintPending(false) // Re-enable technique hint button
         }
-   }, [game, notesMode, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement])
+     // eslint-disable-next-line react-hooks/exhaustive-deps -- resumeFromExtendedPause is a stable callback
+     }, [game, notesMode, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement])
 
   // Toggle erase mode handler
   const handleEraseMode = useCallback(() => {
@@ -1122,6 +1125,7 @@ ${bugReportJson}
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- clearAllAndDeselect is a stable callback
   }, [
     handleUndo, handleRedo, handleNext, handleValidate,
     showResultModal, historyOpen, techniqueModal, techniquesListOpen,
@@ -1143,6 +1147,7 @@ ${bugReportJson}
       })
     }
     return () => setGameState(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- timer.elapsedMs is intentionally not included to avoid constant re-renders
   }, [loading, puzzle, difficulty, game.history.length, game.isComplete, autoFillNotes, setGameState])
 
   // Only clear digit highlight when auto-solve stops
@@ -1257,7 +1262,7 @@ ${bugReportJson}
           }
         } else {
           // Fetch puzzle using solver service (WASM-first)
-          const fetchedPuzzle = await getPuzzle(seed!, difficulty)
+          const fetchedPuzzle = await getPuzzle(seed ?? '', difficulty)
           puzzleData = {
             puzzle_id: fetchedPuzzle.puzzle_id,
             seed: fetchedPuzzle.seed,
@@ -1284,6 +1289,7 @@ ${bugReportJson}
     }
 
     loadPuzzle()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- timer and clearAllAndDeselect are stable callbacks
   }, [seed, encoded, isEncodedCustom, difficulty])
 
   // Reset game state when initialBoard changes (new puzzle loaded) and restore saved state if available

@@ -31,6 +31,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- Hook is co-located with context provider for better organization
 export function useGameContext() {
   return useContext(GameContext)
 }

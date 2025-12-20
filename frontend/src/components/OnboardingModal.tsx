@@ -167,7 +167,7 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
   )
 }
 
-// Hook to check if onboarding should be shown
+// eslint-disable-next-line react-refresh/only-export-components -- Hook is co-located with modal component for better organization
 export function useOnboarding() {
   const [showOnboarding, setShowOnboarding] = useState(false)
 

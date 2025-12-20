@@ -46,7 +46,7 @@ function findDuplicates(board: number[]): Set<number> {
         if (!seen.has(val)) {
           seen.set(val, [])
         }
-        seen.get(val)!.push(idx)
+        seen.get(val)?.push(idx)
       }
     }
     seen.forEach((indices) => {
@@ -66,7 +66,7 @@ function findDuplicates(board: number[]): Set<number> {
         if (!seen.has(val)) {
           seen.set(val, [])
         }
-        seen.get(val)!.push(idx)
+        seen.get(val)?.push(idx)
       }
     }
     seen.forEach((indices) => {
@@ -89,7 +89,7 @@ function findDuplicates(board: number[]): Set<number> {
           if (!seen.has(val)) {
             seen.set(val, [])
           }
-          seen.get(val)!.push(idx)
+          seen.get(val)?.push(idx)
         }
       }
     }
@@ -332,8 +332,8 @@ export default function Board({
     const col = idx % 9
     const isGiven = initialBoard[idx] !== 0
     const isSelected = selectedCell === idx
-    let isPrimary = isHighlightedPrimary(row, col)
-    let isSecondary = isHighlightedSecondary(row, col)
+    const isPrimary = isHighlightedPrimary(row, col)
+    const isSecondary = isHighlightedSecondary(row, col)
     const isDuplicate = duplicates.has(idx)
     const hasDigitMatch = cellHasHighlightedDigit(idx)
     const isPeer = isPeerOfSelected(idx)

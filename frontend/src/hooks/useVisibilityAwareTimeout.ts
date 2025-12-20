@@ -59,15 +59,16 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
     window.addEventListener('pagehide', handlePageHide)
     document.addEventListener('freeze', handleFreeze)
     
+    const timeoutsRef = activeTimeoutsRef.current
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('pagehide', handlePageHide)
       document.removeEventListener('freeze', handleFreeze)
       // Clean up all timeouts on unmount
-      activeTimeoutsRef.current.forEach(id => {
+      timeoutsRef.forEach(id => {
         window.clearTimeout(id)
       })
-      activeTimeoutsRef.current.clear()
+      timeoutsRef.clear()
     }
   }, [])
 

@@ -121,19 +121,24 @@ export function getFullStateMemorySize(): number {
 /**
  * Serialize diff for storage (JSON-compatible)
  */
-export function serializeDiff(diff: StateDiff): any {
+export function serializeDiff(diff: StateDiff): SerializedDiff {
   return {
     boardChanges: diff.boardChanges,
     candidateChanges: diff.candidateChanges
   }
 }
 
+interface SerializedDiff {
+  boardChanges?: CellChange[]
+  candidateChanges?: CandidateChange[]
+}
+
 /**
  * Deserialize diff from storage
  */
-export function deserializeDiff(data: any): StateDiff {
+export function deserializeDiff(data: SerializedDiff): StateDiff {
   return {
-    boardChanges: data.boardChanges || [],
-    candidateChanges: data.candidateChanges || []
+    boardChanges: data.boardChanges ?? [],
+    candidateChanges: data.candidateChanges ?? []
   }
 }

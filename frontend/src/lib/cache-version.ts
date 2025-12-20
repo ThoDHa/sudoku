@@ -13,13 +13,13 @@ export async function checkCacheVersion(): Promise<boolean> {
     const storedVersion = localStorage.getItem(CACHE_KEY);
     
     if (storedVersion !== CACHE_VERSION) {
-      console.log(`Cache version changed: ${storedVersion} → ${CACHE_VERSION}`);
+      console.warn(`Cache version changed: ${storedVersion} → ${CACHE_VERSION}`);
       
       // Clear all caches
       if ('caches' in window) {
         const cacheNames = await caches.keys();
         await Promise.all(cacheNames.map(name => caches.delete(name)));
-        console.log('Cleared all caches due to version change');
+        console.warn('Cleared all caches due to version change');
       }
       
       // Update stored version
@@ -56,7 +56,7 @@ export async function clearAllCaches(): Promise<void> {
     // Clear localStorage cache version
     localStorage.removeItem(CACHE_KEY);
     
-    console.log('All caches cleared successfully');
+    console.warn('All caches cleared successfully');
   } catch (error) {
     console.error('Failed to clear caches:', error);
     throw error;

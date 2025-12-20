@@ -410,6 +410,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
       checkCompletion(newBoard)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- createMoveWithDiff and updateCandidates are stable callbacks
   }, [
     board, candidates, history, historyIndex, isGivenCell,
     eliminateFromPeers, checkCompletion
@@ -448,6 +449,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     setHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
     updateCandidates(newCandidates)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- createMoveWithDiff is a stable callback
   }, [board, candidates, history, historyIndex, isGivenCell, updateCandidates])
 
   const eraseCell = useCallback((idx: number) => {
@@ -494,6 +496,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
     setBoard(newBoard)
     updateCandidates(newCandidates)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- createMoveWithDiff is a stable callback
   }, [board, candidates, history, historyIndex, isGivenCell, calculateCandidatesForCell, updateCandidates])
 
   const undo = useCallback(() => {
@@ -543,6 +546,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     }
     
     setHistoryIndex(historyIndex + 1)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- replayMove is a stable callback
   }, [board, candidates, history, historyIndex, updateCandidates])
   
   // Helper to replay a move's effects
@@ -634,6 +638,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     setHistoryIndex(newHistory.length - 1)
     
     updateCandidates(newCandidates)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- createMoveWithDiff is a stable callback
   }, [board, candidates, history, historyIndex, updateCandidates])
 
   // For external updates (hints, auto-solve)

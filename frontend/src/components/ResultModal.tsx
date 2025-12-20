@@ -177,7 +177,7 @@ export default function ResultModal({
         {(techniqueHintsUsed ?? 0) > 0 && !autoSolveUsed && (
           <div className="mb-4 rounded-lg bg-[var(--bg-secondary)] p-3 text-center">
             <span className="text-sm text-[var(--text-muted)]">
-              ❓ {techniqueHintsUsed} technique hint{techniqueHintsUsed! > 1 ? 's' : ''} used
+              ❓ {techniqueHintsUsed} technique hint{(techniqueHintsUsed ?? 0) > 1 ? 's' : ''} used
             </span>
           </div>
         )}

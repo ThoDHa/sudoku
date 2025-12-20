@@ -28,7 +28,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
 
   const log = useCallback((message: string) => {
     if (enableLogging) {
-      console.log(`[WasmLifecycle] ${message}`)
+      console.warn(`[WasmLifecycle] ${message}`)
     }
   }, [enableLogging])
 

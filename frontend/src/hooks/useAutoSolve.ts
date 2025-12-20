@@ -335,7 +335,8 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           return
         }
 
-        const moveResult = movesQueueRef.current.shift()!
+        const moveResult = movesQueueRef.current.shift()
+        if (!moveResult) return
         const newIndex = allMovesRef.current.length - movesQueueRef.current.length
         currentIndexRef.current = newIndex
         setCurrentIndex(newIndex)
@@ -543,7 +544,8 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           return
         }
 
-        const moveResult = movesQueueRef.current.shift()!
+        const moveResult = movesQueueRef.current.shift()
+        if (!moveResult) return
         const newIndex = allMovesRef.current.length - movesQueueRef.current.length
         currentIndexRef.current = newIndex
         setCurrentIndex(newIndex)

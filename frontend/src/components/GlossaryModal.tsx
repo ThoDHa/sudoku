@@ -28,7 +28,7 @@ export default function GlossaryModal({ isOpen, onClose }: GlossaryModalProps) {
       if (!groups[letter]) {
         groups[letter] = []
       }
-      groups[letter]!.push(term)
+      groups[letter]?.push(term)
     })
     return groups
   }, [terms])

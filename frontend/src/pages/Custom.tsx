@@ -102,7 +102,7 @@ export default function Custom() {
       } else {
         setError(`Expected 81 digits, got ${digits.length}. Use 0 or . for empty cells.`)
       }
-    } catch (err) {
+    } catch {
       setError('Failed to read clipboard')
     }
   }

@@ -126,7 +126,7 @@ export function generateShareText(score: Score, puzzleUrl: string, streak?: numb
     assists.push(`💡 ${score.hintsUsed} hint${score.hintsUsed > 1 ? 's' : ''}`)
   }
   if ((score.techniqueHintsUsed ?? 0) > 0) {
-    assists.push(`❓ ${score.techniqueHintsUsed} technique hint${score.techniqueHintsUsed! > 1 ? 's' : ''}`)
+    assists.push(`❓ ${score.techniqueHintsUsed} technique hint${(score.techniqueHintsUsed ?? 0) > 1 ? 's' : ''}`)
   }
   if (score.autoFillUsed) {
     assists.push(`📝 auto-fill`)
