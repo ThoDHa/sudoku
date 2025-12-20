@@ -1150,13 +1150,13 @@ ${bugReportJson}
   // eslint-disable-next-line react-hooks/exhaustive-deps -- timer.elapsedMs is intentionally not included to avoid constant re-renders
   }, [loading, puzzle, difficulty, game.history.length, game.isComplete, autoFillNotes, setGameState])
 
-  // Only clear digit highlight when auto-solve stops
-  // Preserve currentHighlight and selectedMoveIndex so user can see where it stopped
+  // Clear highlights when auto-solve stops so History shows the summary, not last move
   useEffect(() => {
     if (!autoSolve.isAutoSolving) {
       clearDigitHighlight()
+      clearMoveHighlight()
     }
-  }, [autoSolve.isAutoSolving, clearDigitHighlight])
+  }, [autoSolve.isAutoSolving, clearDigitHighlight, clearMoveHighlight])
 
   // Track auto-solve steps when auto-solve stops
   useEffect(() => {
