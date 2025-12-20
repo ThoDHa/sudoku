@@ -188,7 +188,7 @@ describe('scores', () => {
       const url = generatePuzzleUrl(baseScore)
       
       // Uses window.location.origin + import.meta.env.BASE_URL
-      expect(url).toContain('/game/2024-01-15?d=medium')
+      expect(url).toContain('/p/2024-01-15?d=medium')
     })
 
     it('should generate URL for custom puzzle with encoded data', () => {

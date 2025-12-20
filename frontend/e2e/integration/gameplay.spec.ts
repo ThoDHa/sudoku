@@ -19,8 +19,9 @@ test.describe('@integration Gameplay - Cell Selection', () => {
   test('clicking an empty cell selects it', async ({ page }) => {
     const cells = page.locator('.sudoku-cell');
     
-    // Find an empty cell (no pre-filled digit)
-    const emptyCell = cells.filter({ hasNot: page.locator('.given') }).first();
+    // Find an empty cell from the middle of the board (to avoid sticky header overlap)
+    const emptyCells = cells.filter({ hasNot: page.locator('.given') });
+    const emptyCell = emptyCells.nth(Math.min(10, await emptyCells.count() - 1));
     await emptyCell.click();
     
     // Check the cell is selected (has selection styling)

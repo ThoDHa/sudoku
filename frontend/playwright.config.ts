@@ -19,11 +19,14 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   
-  // Test execution
+  // Global setup - runs once before all tests
+  globalSetup: './e2e/global-setup.ts',
+  
+  // Test execution - parallel for speed
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: undefined, // Use all available CPUs
   
   // Timeouts
   timeout: 60000, // 60s default test timeout
@@ -43,6 +46,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     actionTimeout: 15000, // 15s action timeout
+    // Use storage state from global setup (skips onboarding)
+    storageState: 'e2e/.auth/storage-state.json',
   },
   
   // Browser projects - Chrome desktop + mobile (Pixel 5 + iPhone 12)
