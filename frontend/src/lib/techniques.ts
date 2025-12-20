@@ -77,7 +77,21 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
-          description: 'Start with all candidates in the cell',
+          description: 'Look at this row with one empty cell',
+          cells: [
+            { row: 0, col: 0, value: 1 },
+            { row: 0, col: 1, value: 2 },
+            { row: 0, col: 2, value: 3 },
+            { row: 0, col: 3, value: 4 },
+            { row: 0, col: 4, candidates: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
+            { row: 0, col: 5, value: 5 },
+            { row: 0, col: 6, value: 6 },
+            { row: 0, col: 7, value: 8 },
+            { row: 0, col: 8, value: 9 },
+          ]
+        },
+        {
+          description: 'The cell starts with all candidates',
           cells: [
             { row: 0, col: 0, value: 1 },
             { row: 0, col: 1, value: 2 },
@@ -143,7 +157,21 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
-          description: 'Look at Box 1 - where can 5 go?',
+          description: 'Look at Box 1 - can you find where 5 must go?',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2] },
+            { row: 0, col: 1, candidates: [2, 3] },
+            { row: 0, col: 2, candidates: [3, 5, 7] },
+            { row: 1, col: 0, value: 6 },
+            { row: 1, col: 1, candidates: [1, 4] },
+            { row: 1, col: 2, value: 8 },
+            { row: 2, col: 0, value: 9 },
+            { row: 2, col: 1, candidates: [1, 4, 7] },
+            { row: 2, col: 2, candidates: [3, 7] },
+          ]
+        },
+        {
+          description: 'Scan all cells in the box for candidate 5',
           cells: [
             { row: 0, col: 0, candidates: [1, 2], highlight: 'secondary' },
             { row: 0, col: 1, candidates: [2, 3], highlight: 'secondary' },
@@ -157,7 +185,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
           ]
         },
         {
-          description: 'Scan all cells in the box for candidate 5',
+          description: '5 can only go in R1C3!',
           cells: [
             { row: 0, col: 0, candidates: [1, 2] },
             { row: 0, col: 1, candidates: [2, 3] },
@@ -171,7 +199,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
           ]
         },
         {
-          description: '5 can only go in R1C3 - place it!',
+          description: 'Place 5 there!',
           cells: [
             { row: 0, col: 0, candidates: [1, 2] },
             { row: 0, col: 1, candidates: [2, 3] },
@@ -211,7 +239,23 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
-          description: 'Look at Box 1 - where can 4 go?',
+          description: 'Look at Box 1 and Row 1',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 4] },
+            { row: 0, col: 1, candidates: [2, 4] },
+            { row: 0, col: 2, value: 3 },
+            { row: 0, col: 3, candidates: [4, 5, 6] },
+            { row: 0, col: 4, value: 7 },
+            { row: 0, col: 5, candidates: [4, 8] },
+            { row: 0, col: 6, value: 9 },
+            { row: 1, col: 0, candidates: [1, 2] },
+            { row: 1, col: 1, value: 5 },
+            { row: 2, col: 0, value: 6 },
+            { row: 2, col: 1, candidates: [2, 8] },
+          ]
+        },
+        {
+          description: 'In Box 1, where can 4 go?',
           cells: [
             { row: 0, col: 0, candidates: [1, 4], highlight: 'secondary' },
             { row: 0, col: 1, candidates: [2, 4], highlight: 'secondary' },
@@ -286,7 +330,24 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
-          description: 'Look at Row 3 - where can 6 go?',
+          description: 'Look at Row 3 and Box 1',
+          cells: [
+            { row: 2, col: 0, candidates: [1, 6] },
+            { row: 2, col: 1, candidates: [2, 6] },
+            { row: 2, col: 2, value: 3 },
+            { row: 2, col: 3, value: 4 },
+            { row: 2, col: 4, value: 5 },
+            { row: 2, col: 5, candidates: [7, 8] },
+            { row: 0, col: 0, candidates: [1, 6, 7] },
+            { row: 0, col: 1, value: 8 },
+            { row: 0, col: 2, candidates: [6, 9] },
+            { row: 1, col: 0, value: 4 },
+            { row: 1, col: 1, candidates: [5, 9] },
+            { row: 1, col: 2, value: 2 },
+          ]
+        },
+        {
+          description: 'In Row 3, where can 6 go?',
           cells: [
             { row: 2, col: 0, candidates: [1, 6], highlight: 'secondary' },
             { row: 2, col: 1, candidates: [2, 6], highlight: 'secondary' },
@@ -362,6 +423,20 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
+          description: 'Look at Column 5',
+          cells: [
+            { row: 0, col: 4, candidates: [2, 8] },
+            { row: 1, col: 4, candidates: [1, 2, 5] },
+            { row: 2, col: 4, value: 3 },
+            { row: 3, col: 4, candidates: [2, 8] },
+            { row: 4, col: 4, value: 4 },
+            { row: 5, col: 4, candidates: [5, 8, 9] },
+            { row: 6, col: 4, value: 6 },
+            { row: 7, col: 4, candidates: [1, 2, 8] },
+            { row: 8, col: 4, value: 7 },
+          ]
+        },
+        {
           description: 'Find two cells with the same two candidates',
           cells: [
             { row: 0, col: 4, candidates: [2, 8], highlight: 'secondary' },
@@ -429,7 +504,21 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
-          description: 'Look at Row 1 - where can 3 and 7 go?',
+          description: 'Look at Row 1',
+          cells: [
+            { row: 0, col: 0, value: 1 },
+            { row: 0, col: 1, candidates: [2, 3, 5, 7] },
+            { row: 0, col: 2, candidates: [2, 4] },
+            { row: 0, col: 3, value: 6 },
+            { row: 0, col: 4, candidates: [3, 4, 7, 9] },
+            { row: 0, col: 5, value: 8 },
+            { row: 0, col: 6, candidates: [2, 4, 5] },
+            { row: 0, col: 7, candidates: [2, 9] },
+            { row: 0, col: 8, candidates: [4, 5, 9] },
+          ]
+        },
+        {
+          description: 'Where can 3 and 7 go in this row?',
           cells: [
             { row: 0, col: 0, value: 1 },
             { row: 0, col: 1, candidates: [2, 3, 5, 7], highlight: 'secondary' },
@@ -495,6 +584,20 @@ export const TECHNIQUES: TechniqueInfo[] = [
     },
     animatedDiagram: {
       steps: [
+        {
+          description: 'Look at Row 1',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2] },
+            { row: 0, col: 1, candidates: [2, 3] },
+            { row: 0, col: 2, candidates: [1, 3] },
+            { row: 0, col: 3, candidates: [1, 4, 5] },
+            { row: 0, col: 4, value: 6 },
+            { row: 0, col: 5, candidates: [2, 3, 7] },
+            { row: 0, col: 6, value: 8 },
+            { row: 0, col: 7, candidates: [1, 2, 9] },
+            { row: 0, col: 8, value: 4 },
+          ]
+        },
         {
           description: 'Find three cells with candidates from only 3 digits',
           cells: [
@@ -625,7 +728,20 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
-          description: 'Find a digit with exactly 2 positions in two rows',
+          description: 'Look at these cells with candidate 3',
+          cells: [
+            { row: 1, col: 2, candidates: [1, 3] },
+            { row: 1, col: 7, candidates: [3, 5] },
+            { row: 5, col: 2, candidates: [3, 6] },
+            { row: 5, col: 7, candidates: [3, 9] },
+            { row: 0, col: 2, candidates: [2, 3, 4] },
+            { row: 3, col: 2, candidates: [3, 7] },
+            { row: 2, col: 7, candidates: [3, 8] },
+            { row: 7, col: 7, candidates: [1, 3] },
+          ]
+        },
+        {
+          description: 'Find digit 3 with exactly 2 positions in two rows',
           cells: [
             { row: 1, col: 2, candidates: [1, 3], highlight: 'secondary' },
             { row: 1, col: 7, candidates: [3, 5], highlight: 'secondary' },
@@ -683,6 +799,15 @@ export const TECHNIQUES: TechniqueInfo[] = [
     },
     animatedDiagram: {
       steps: [
+        {
+          description: 'Look at this XY-Wing pattern',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5] },
+            { row: 4, col: 0, candidates: [2, 8] },
+            { row: 0, col: 4, candidates: [5, 8] },
+            { row: 0, col: 0, candidates: [3, 8] },
+          ]
+        },
         {
           description: 'Find a pivot cell with 2 candidates',
           cells: [
@@ -763,7 +888,21 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
-          description: 'Find a digit in 2-3 positions per row across 3 rows',
+          description: 'Look at these cells with candidate 7',
+          cells: [
+            { row: 2, col: 1, candidates: [7] },
+            { row: 2, col: 4, candidates: [7] },
+            { row: 5, col: 4, candidates: [7] },
+            { row: 5, col: 8, candidates: [7] },
+            { row: 8, col: 1, candidates: [7] },
+            { row: 8, col: 8, candidates: [7] },
+            { row: 0, col: 1, candidates: [3, 7] },
+            { row: 6, col: 4, candidates: [2, 7] },
+            { row: 3, col: 8, candidates: [5, 7] },
+          ]
+        },
+        {
+          description: 'Find digit 7 in 2-3 positions per row across 3 rows',
           cells: [
             { row: 2, col: 1, candidates: [7], highlight: 'secondary' },
             { row: 2, col: 4, candidates: [7], highlight: 'secondary' },
@@ -849,7 +988,18 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
-          description: 'Find two rows with a digit in exactly 2 positions each',
+          description: 'Look at these cells with candidate 5',
+          cells: [
+            { row: 1, col: 2, candidates: [5] },
+            { row: 1, col: 6, candidates: [5] },
+            { row: 7, col: 2, candidates: [5] },
+            { row: 7, col: 8, candidates: [5] },
+            { row: 1, col: 8, candidates: [2, 5] },
+            { row: 7, col: 6, candidates: [5, 9] },
+          ]
+        },
+        {
+          description: 'Find two rows with digit 5 in exactly 2 positions each',
           cells: [
             { row: 1, col: 2, candidates: [5], highlight: 'secondary' },
             { row: 1, col: 6, candidates: [5], highlight: 'secondary' },
@@ -932,6 +1082,17 @@ export const TECHNIQUES: TechniqueInfo[] = [
     },
     animatedDiagram: {
       steps: [
+        {
+          description: 'Look at these bivalue cells with {3,7}',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 7] },
+            { row: 0, col: 4, candidates: [3] },
+            { row: 6, col: 4, candidates: [3] },
+            { row: 6, col: 8, candidates: [3, 7] },
+            { row: 0, col: 8, candidates: [1, 7] },
+            { row: 6, col: 0, candidates: [4, 7] },
+          ]
+        },
         {
           description: 'Find two bivalue cells with the same candidates',
           cells: [
@@ -1042,7 +1203,16 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
-          description: 'Find 4 cells in 2 rows and 2 boxes forming a rectangle',
+          description: 'Look at these four cells forming a rectangle',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 7] },
+            { row: 0, col: 4, candidates: [3, 7] },
+            { row: 2, col: 0, candidates: [3, 7] },
+            { row: 2, col: 4, candidates: [3, 5, 7] },
+          ]
+        },
+        {
+          description: 'These 4 cells span 2 rows and 2 boxes',
           cells: [
             { row: 0, col: 0, candidates: [3, 7], highlight: 'secondary' },
             { row: 0, col: 4, candidates: [3, 7], highlight: 'secondary' },
@@ -1233,6 +1403,16 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
+          description: 'Look at all the unsolved cells',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5, 7] },
+            { row: 4, col: 0, candidates: [2, 5] },
+            { row: 4, col: 8, candidates: [5, 7] },
+            { row: 0, col: 4, candidates: [2, 7] },
+            { row: 8, col: 4, candidates: [5, 7] },
+          ]
+        },
+        {
           description: 'Notice: all unsolved cells are bivalue (2 candidates)',
           cells: [
             { row: 4, col: 4, candidates: [2, 5, 7] },
@@ -1311,6 +1491,15 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
+          description: 'Look at this XYZ-Wing pattern',
+          cells: [
+            { row: 4, col: 4, candidates: [1, 5, 9] },
+            { row: 4, col: 0, candidates: [1, 9] },
+            { row: 3, col: 4, candidates: [5, 9] },
+            { row: 3, col: 3, candidates: [2, 9] },
+          ]
+        },
+        {
           description: 'Find a pivot cell with 3 candidates',
           cells: [
             { row: 4, col: 4, candidates: [1, 5, 9], highlight: 'primary' },
@@ -1377,6 +1566,16 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
+          description: 'Look at this WXYZ-Wing pattern',
+          cells: [
+            { row: 4, col: 4, candidates: [1, 3, 7] },
+            { row: 4, col: 0, candidates: [1, 9] },
+            { row: 3, col: 4, candidates: [3, 9] },
+            { row: 4, col: 5, candidates: [7, 9] },
+            { row: 3, col: 3, candidates: [2, 9] },
+          ]
+        },
+        {
           description: 'Find a pivot with 3 candidates {W,X,Y}',
           cells: [
             { row: 4, col: 4, candidates: [1, 3, 7], highlight: 'primary' },
@@ -1441,6 +1640,19 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
+          description: 'Look at this Finned Swordfish pattern',
+          cells: [
+            { row: 2, col: 1, candidates: [7] },
+            { row: 2, col: 4, candidates: [7] },
+            { row: 5, col: 4, candidates: [7] },
+            { row: 5, col: 8, candidates: [7] },
+            { row: 8, col: 1, candidates: [7] },
+            { row: 8, col: 8, candidates: [7] },
+            { row: 8, col: 7, candidates: [7] },
+            { row: 7, col: 8, candidates: [3, 7] },
+          ]
+        },
+        {
           description: 'Find a Swordfish pattern on digit 7',
           cells: [
             { row: 2, col: 1, candidates: [7], highlight: 'secondary' },
@@ -1501,6 +1713,17 @@ export const TECHNIQUES: TechniqueInfo[] = [
     },
     animatedDiagram: {
       steps: [
+        {
+          description: 'Look at these two groups of cells',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2, 3] },
+            { row: 0, col: 1, candidates: [1, 5] },
+            { row: 0, col: 2, candidates: [3, 5] },
+            { row: 2, col: 0, candidates: [2, 5] },
+            { row: 2, col: 1, candidates: [2, 7] },
+            { row: 1, col: 0, candidates: [4, 5] },
+          ]
+        },
         {
           description: 'Find ALS A: 3 cells with 4 candidates {1,2,3,5}',
           cells: [
@@ -1569,6 +1792,17 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
+          description: 'Look at this Sue de Coq pattern',
+          cells: [
+            { row: 0, col: 0, candidates: [2, 3, 5] },
+            { row: 0, col: 1, candidates: [3, 5, 7] },
+            { row: 0, col: 5, candidates: [2, 3] },
+            { row: 1, col: 0, candidates: [5, 7] },
+            { row: 0, col: 2, candidates: [1, 5] },
+            { row: 2, col: 0, candidates: [3, 4] },
+          ]
+        },
+        {
           description: 'Find intersection cells with candidates {2,3,5,7}',
           cells: [
             { row: 0, col: 0, candidates: [2, 3, 5], highlight: 'primary' },
@@ -1636,6 +1870,17 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
+          description: 'Look at this 3D Medusa coloring pattern',
+          cells: [
+            { row: 0, col: 0, candidates: [4] },
+            { row: 0, col: 5, candidates: [4, 7] },
+            { row: 3, col: 5, candidates: [7] },
+            { row: 3, col: 8, candidates: [7] },
+            { row: 6, col: 0, candidates: [4] },
+            { row: 6, col: 8, candidates: [4, 7] },
+          ]
+        },
+        {
           description: 'Start coloring digit 4 with two colors',
           cells: [
             { row: 0, col: 0, candidates: [4], highlight: 'primary' },
@@ -1702,6 +1947,17 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
+          description: 'Look at these cells with candidate 4',
+          cells: [
+            { row: 0, col: 0, candidates: [4] },
+            { row: 0, col: 1, candidates: [4] },
+            { row: 0, col: 6, candidates: [4] },
+            { row: 6, col: 6, candidates: [4] },
+            { row: 6, col: 2, candidates: [4] },
+            { row: 3, col: 2, candidates: [2, 4] },
+          ]
+        },
+        {
           description: 'Find a grouped node - digit 4 locked in Row 1 of Box 1',
           cells: [
             { row: 0, col: 0, candidates: [4], highlight: 'primary' },
@@ -1754,6 +2010,15 @@ export const TECHNIQUES: TechniqueInfo[] = [
     },
     animatedDiagram: {
       steps: [
+        {
+          description: 'Look at this AIC pattern',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 5] },
+            { row: 4, col: 0, candidates: [3, 7] },
+            { row: 4, col: 5, candidates: [5, 7] },
+            { row: 0, col: 5, candidates: [1, 5] },
+          ]
+        },
         {
           description: 'Start chain at R1C1 with candidate 5',
           cells: [
@@ -1849,6 +2114,16 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
+          description: 'Look at this Forcing Chain pattern',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 5] },
+            { row: 2, col: 0, candidates: [5, 7] },
+            { row: 4, col: 4, candidates: [7, 9] },
+            { row: 0, col: 4, candidates: [3, 9] },
+            { row: 4, col: 0, candidates: [7] },
+          ]
+        },
+        {
           description: 'If R1C1=5, follow the implications...',
           cells: [
             { row: 0, col: 0, candidates: [3, 5], highlight: 'primary' },
@@ -1909,7 +2184,16 @@ export const TECHNIQUES: TechniqueInfo[] = [
     animatedDiagram: {
       steps: [
         {
-          description: 'Consider all positions for digit 6 in row 3',
+          description: 'Look at all positions for digit 6 in Row 3',
+          cells: [
+            { row: 2, col: 0, candidates: [6] },
+            { row: 2, col: 3, candidates: [6] },
+            { row: 2, col: 7, candidates: [6] },
+            { row: 2, col: 4, candidates: [4, 5] },
+          ]
+        },
+        {
+          description: 'Consider all positions for digit 6 in Row 3',
           cells: [
             { row: 2, col: 0, candidates: [6], highlight: 'primary' },
             { row: 2, col: 3, candidates: [6], highlight: 'primary' },
@@ -1968,6 +2252,19 @@ export const TECHNIQUES: TechniqueInfo[] = [
     },
     animatedDiagram: {
       steps: [
+        {
+          description: 'Look at this Death Blossom pattern',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5, 7] },
+            { row: 4, col: 0, candidates: [2, 9] },
+            { row: 4, col: 1, candidates: [2, 3, 9] },
+            { row: 3, col: 4, candidates: [5, 9] },
+            { row: 3, col: 5, candidates: [5, 6, 9] },
+            { row: 4, col: 7, candidates: [7, 9] },
+            { row: 4, col: 8, candidates: [7, 8, 9] },
+            { row: 3, col: 3, candidates: [1, 9] },
+          ]
+        },
         {
           description: 'Find stem cell with candidates {2,5,7}',
           cells: [
