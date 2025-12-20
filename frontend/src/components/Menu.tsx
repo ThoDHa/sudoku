@@ -36,8 +36,9 @@ const speedOptions = [
   ), label: 'Skip' },
 ]
 
-// Color theme options - popular community themes
+// Color theme options - popular community themes + classic
 const colorThemes: { key: ColorTheme; name: string; color: string }[] = [
+  { key: 'classic', name: 'Classic', color: 'bg-[#3b82f6]' },
   { key: 'tokyonight', name: 'Tokyo Night', color: 'bg-[#7aa2f7]' },
   { key: 'catppuccin', name: 'Catppuccin', color: 'bg-[#cba6f7]' },
   { key: 'dracula', name: 'Dracula', color: 'bg-[#bd93f9]' },

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
-// Popular community themes
-export type ColorTheme = 'catppuccin' | 'tokyonight' | 'dracula' | 'nord' | 'gruvbox' | 'rosepine' | 'solarized' | 'onedark'
+// Popular community themes + classic
+export type ColorTheme = 'classic' | 'catppuccin' | 'tokyonight' | 'dracula' | 'nord' | 'gruvbox' | 'rosepine' | 'solarized' | 'onedark'
 export type ModePreference = 'light' | 'dark' | 'system'
 export type Mode = 'light' | 'dark' // The effective/resolved mode
 export type FontSize = 'xs' | 'small' | 'medium' | 'large' | 'xl'
@@ -23,6 +23,61 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 // Popular community color themes
 // Each theme has official light and dark variants based on their published color palettes
 const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Record<string, string> }> = {
+  // Classic - Clean blue theme based on Tailwind CSS blue palette
+  // The original default theme
+  classic: {
+    light: {
+      '--bg': '#eff6ff',           // blue-50
+      '--bg-secondary': '#dbeafe', // blue-100
+      '--text': '#1e3a5f',         // Custom dark blue
+      '--text-muted': '#4a6fa5',   // Custom muted blue
+      '--board-bg': '#ffffff',     // White
+      '--cell-bg': '#ffffff',      // White
+      '--cell-hover': '#dbeafe',   // blue-100
+      '--cell-selected': '#93c5fd', // blue-300
+      '--cell-peer': '#bfdbfe',    // blue-200
+      '--cell-primary': '#60a5fa', // blue-400
+      '--cell-secondary': '#93c5fd', // blue-300
+      '--border-strong': '#1e3a5f', // Custom dark blue
+      '--border-light': '#93c5fd', // blue-300
+      '--text-given': '#1e3a5f',   // Custom dark blue
+      '--text-entered': '#2563eb', // blue-600
+      '--text-candidate': '#3b82f6', // blue-500
+      '--text-on-highlight': '#ffffff', // White
+      '--btn-bg': '#dbeafe',       // blue-100
+      '--btn-hover': '#bfdbfe',    // blue-200
+      '--btn-active': '#2563eb',   // blue-600
+      '--btn-active-text': '#ffffff', // White
+      '--accent': '#2563eb',       // blue-600
+      '--accent-light': '#dbeafe', // blue-100
+    },
+    dark: {
+      '--bg': '#0f1729',           // Custom deep navy
+      '--bg-secondary': '#172140', // Custom dark blue
+      '--text': '#e2e8f0',         // slate-200
+      '--text-muted': '#94a3b8',   // slate-400
+      '--board-bg': '#1a2850',     // Custom navy
+      '--cell-bg': '#1a2850',      // Custom navy
+      '--cell-hover': '#243565',   // Custom blue
+      '--cell-selected': '#3b5998', // Custom selection blue
+      '--cell-peer': '#1e3060',    // Custom peer blue
+      '--cell-primary': '#3b82f6', // blue-500
+      '--cell-secondary': '#60a5fa', // blue-400
+      '--border-strong': '#e2e8f0', // slate-200
+      '--border-light': '#3b5998', // Custom border blue
+      '--text-given': '#e2e8f0',   // slate-200
+      '--text-entered': '#93c5fd', // blue-300
+      '--text-candidate': '#60a5fa', // blue-400
+      '--text-on-highlight': '#0f1729', // Deep navy
+      '--btn-bg': '#1e3570',       // Custom button blue
+      '--btn-hover': '#2a4585',    // Custom hover blue
+      '--btn-active': '#5b8bd4',   // Custom active blue
+      '--btn-active-text': '#ffffff', // White
+      '--accent': '#60a5fa',       // blue-400
+      '--accent-light': '#1e3570', // Custom accent
+    },
+  },
+
   // Catppuccin - Soothing pastel theme
   // Light: Latte, Dark: Mocha (deep variant using Crust as base)
   // https://github.com/catppuccin/catppuccin
@@ -539,7 +594,7 @@ const FONT_SIZE_VARS: Record<FontSize, Record<string, string>> = {
 
 // Map old theme names to new ones for migration
 const THEME_MIGRATION: Record<string, ColorTheme> = {
-  'blue': 'catppuccin',
+  'blue': 'classic',
   'green': 'gruvbox',
   'purple': 'dracula',
   'orange': 'gruvbox',
@@ -556,7 +611,7 @@ function getSystemMode(): Mode {
 
 // Helper to validate and migrate theme
 function getValidTheme(saved: string | null): ColorTheme {
-  if (!saved) return 'tokyonight'
+  if (!saved) return 'classic'
   
   // Check if it's already a valid new theme
   if (saved in COLOR_THEMES) {
@@ -570,7 +625,7 @@ function getValidTheme(saved: string | null): ColorTheme {
   }
   
   // Default fallback
-  return 'tokyonight'
+  return 'classic'
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
