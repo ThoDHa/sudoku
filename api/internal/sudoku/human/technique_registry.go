@@ -231,6 +231,19 @@ func (r *TechniqueRegistry) registerTechniques() {
 	// SudokuWiki tests 16-25
 	// ==========================================================================
 	
+	// Skyscraper is a simple turbot fish variant - should come BEFORE x-chain
+	// since it's a specific case of length-4 x-chain. It's one of the simplest
+	// single-digit chain techniques.
+	r.register(TechniqueDescriptor{
+		Name:        "Skyscraper",
+		Slug:        "skyscraper",
+		Tier:        "hard",
+		Description: "A turbot fish variant for eliminations",
+		Detector:    detectSkyscraper,
+		Enabled:     true,
+		Order:       19,
+	})
+	
 	r.register(TechniqueDescriptor{
 		Name:        "X-Chain",
 		Slug:        "x-chain",
@@ -312,16 +325,6 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Detector:    detectWXYZWing,
 		Enabled:     true,
 		Order:       27,
-	})
-	
-	r.register(TechniqueDescriptor{
-		Name:        "Skyscraper",
-		Slug:        "skyscraper",
-		Tier:        "hard",
-		Description: "A turbot fish variant for eliminations",
-		Detector:    detectSkyscraper,
-		Enabled:     true,
-		Order:       28,
 	})
 	
 	r.register(TechniqueDescriptor{
