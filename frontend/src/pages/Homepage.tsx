@@ -1,15 +1,65 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { createGameRoute } from '../lib/constants'
+import { Link } from 'react-router-dom'
 import { useDailySeed, useLastDailyDifficulty, Difficulty } from '../lib/hooks'
 import { isTodayCompleted, getDailyStreak } from '../lib/scores'
-import { getHomepageMode, onHomepageModeChange, HomepageMode } from '../lib/preferences'
+import { getHomepageMode, setHomepageMode, onHomepageModeChange, HomepageMode } from '../lib/preferences'
 import DifficultyGrid from '../components/DifficultyGrid'
+
+// Enso circle with 9 - Zen brushstroke logo
+function EnsoLogo({ size = 80 }: { size?: number }) {
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 512 512" 
+      className="mb-4"
+    >
+      {/* Background - subtle warm paper texture color */}
+      <rect width="512" height="512" fill="var(--bg)" rx="64"/>
+      
+      {/* Enso circle - the Zen brushstroke, intentionally incomplete */}
+      <g transform="translate(256, 256)">
+        {/* Main enso stroke - thick calligraphic brush arc */}
+        <path 
+          d="M 140 -100 
+             A 180 180 0 1 0 100 -145
+             Q 115 -140 130 -125
+             A 140 140 0 1 1 105 -80
+             Q 115 -90 140 -100"
+          fill="var(--text)"
+          stroke="none"
+        />
+        
+        {/* Brush stroke start - thicker with ink pooling effect */}
+        <ellipse cx="140" cy="-100" rx="28" ry="20" fill="var(--text)" transform="rotate(-35 140 -100)"/>
+        
+        {/* Brush stroke tail - tapered end where brush lifts */}
+        <path 
+          d="M 100 -145 
+             Q 85 -155 70 -160
+             Q 80 -150 100 -145"
+          fill="var(--text)"
+          opacity="0.8"
+        />
+      </g>
+      
+      {/* Number 9 - clean, centered within the enso */}
+      <text 
+        x="256" 
+        y="305" 
+        fontFamily="Georgia, 'Times New Roman', serif" 
+        fontSize="220" 
+        fontWeight="400" 
+        fill="var(--text)" 
+        textAnchor="middle"
+      >9</text>
+    </svg>
+  )
+}
 
 export default function Homepage() {
   const { data } = useDailySeed()
   const { difficulty, setDifficulty } = useLastDailyDifficulty()
-  const navigate = useNavigate()
   
   const [mode, setMode] = useState<HomepageMode>(getHomepageMode())
   const [practiceSeed, setPracticeSeed] = useState(() => `P${Date.now()}`)
@@ -41,7 +91,7 @@ export default function Homepage() {
       <div className="flex h-full flex-col items-center justify-center p-4 bg-[var(--bg)] text-[var(--text)]">
         {/* Constrain to puzzle size - uses .game-container class from index.css */}
         <div className="game-container aspect-square flex flex-col items-center justify-center">
-          <div className="mb-4 text-5xl">✅</div>
+          <EnsoLogo size={80} />
           <h1 className="mb-1 text-2xl font-bold">Daily Complete!</h1>
           <p className="mb-3 text-sm text-[var(--text-muted)]">{data.date_utc}</p>
           
@@ -63,7 +113,10 @@ export default function Homepage() {
           </p>
           
           <button
-            onClick={() => navigate(createGameRoute('medium'))}
+            onClick={() => {
+              setHomepageMode('practice')
+              setMode('practice')
+            }}
             className="w-full rounded-xl bg-[var(--accent)] px-6 py-3 font-semibold text-white transition-colors hover:opacity-90"
           >
             Play Practice Game
@@ -100,6 +153,7 @@ export default function Homepage() {
       <div className="game-container aspect-square flex flex-col items-center justify-center">
         {mode === 'daily' ? (
           <>
+            <EnsoLogo size={80} />
             <h1 className="mb-1 text-2xl font-bold">Daily Sudoku</h1>
             <p className="mb-1 text-sm text-[var(--text-muted)]">{data.date_utc}</p>
             
@@ -122,6 +176,7 @@ export default function Homepage() {
           </>
         ) : (
           <>
+            <EnsoLogo size={80} />
             <h1 className="mb-1 text-2xl font-bold">Practice Mode</h1>
             <p className="mb-4 text-sm text-[var(--text-muted)]">Choose your difficulty</p>
 
