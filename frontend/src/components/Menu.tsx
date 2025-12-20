@@ -96,10 +96,10 @@ interface MenuProps {
 export default function Menu({
   isOpen,
   onClose,
-  mode,
+  mode: _mode,
   colorTheme,
   fontSize: _fontSize,
-  onSetMode,
+  onSetMode: _onSetMode,
   onSetColorTheme,
   onSetFontSize: _onSetFontSize,
   onReportBug,
@@ -109,9 +109,11 @@ export default function Menu({
   showNavigation = false,
   onFeatureRequest,
 }: MenuProps) {
-  // Keep fontSize and onSetFontSize in props for API compatibility but unused after font size selector removal
+  // Keep these in props for API compatibility but unused after removal from UI
   void _fontSize
   void _onSetFontSize
+  void _mode
+  void _onSetMode
   
   const navigate = useNavigate()
   const [newPuzzleMenuOpen, setNewPuzzleMenuOpen] = useState(false)
@@ -397,29 +399,15 @@ export default function Menu({
               </button>
               {settingsExpanded && (
                 <div className="ml-4 py-1 space-y-1">
-                  {/* Theme: dark mode toggle + color picker */}
+                  {/* Color theme picker */}
                   <div className="flex items-center justify-between px-3 py-2">
-                    <button
-                      onClick={() => onSetMode(mode === 'light' ? 'dark' : 'light')}
-                      className="p-1.5 rounded-lg text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
-                      title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                    >
-                      {mode === 'dark' ? (
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                      ) : (
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                        </svg>
-                      )}
-                    </button>
-                    <div className="flex gap-1.5">
+                    <span className="text-sm text-[var(--text-muted)]">Theme</span>
+                    <div className="flex gap-1">
                       {colorThemes.map((theme) => (
                         <button
                           key={theme.key}
                           onClick={() => onSetColorTheme(theme.key)}
-                          className={`w-5 h-5 rounded-full ${theme.color} transition-transform ${
+                          className={`w-4 h-4 rounded-full ${theme.color} transition-transform ${
                             colorTheme === theme.key 
                               ? 'ring-2 ring-offset-1 ring-[var(--text)] scale-110' 
                               : 'hover:scale-110'
