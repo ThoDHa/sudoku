@@ -678,6 +678,16 @@ export default function Game() {
 
       const move = nextMove.move
 
+      // If the next move is just filling candidates, show a helpful message instead of the modal
+      if (move.technique === 'fill-candidate') {
+        setValidationMessage({ 
+          type: 'error', 
+          message: 'Fill in some candidates first, or use 💡 Hint to get started'
+        })
+        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+        return
+      }
+
       // Handle special moves - for these, just show a message
       if (move.action === 'unpinpointable-error' || move.action === 'contradiction' || move.action === 'error') {
         setValidationMessage({ 
