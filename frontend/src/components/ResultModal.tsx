@@ -20,23 +20,23 @@ interface ResultModalProps {
 
 const difficultyColors: Record<string, { base: string; selected: string }> = {
   easy: {
-    base: 'bg-[var(--bg-secondary)] text-[var(--text)] border-2 border-green-500 hover:bg-green-50 dark:hover:bg-green-900/30',
+    base: 'bg-background-secondary text-foreground border-2 border-green-500 hover:bg-green-50 dark:hover:bg-green-900/30',
     selected: 'bg-green-600 text-white border-2 border-green-600',
   },
   medium: {
-    base: 'bg-[var(--bg-secondary)] text-[var(--text)] border-2 border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/30',
+    base: 'bg-background-secondary text-foreground border-2 border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/30',
     selected: 'bg-amber-500 text-white border-2 border-amber-500',
   },
   hard: {
-    base: 'bg-[var(--bg-secondary)] text-[var(--text)] border-2 border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/30',
+    base: 'bg-background-secondary text-foreground border-2 border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/30',
     selected: 'bg-orange-600 text-white border-2 border-orange-600',
   },
   extreme: {
-    base: 'bg-[var(--bg-secondary)] text-[var(--text)] border-2 border-red-500 hover:bg-red-50 dark:hover:bg-red-900/30',
+    base: 'bg-background-secondary text-foreground border-2 border-red-500 hover:bg-red-50 dark:hover:bg-red-900/30',
     selected: 'bg-red-600 text-white border-2 border-red-600',
   },
   impossible: {
-    base: 'bg-[var(--bg-secondary)] text-[var(--text)] border-2 border-fuchsia-500 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-900/30',
+    base: 'bg-background-secondary text-foreground border-2 border-fuchsia-500 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-900/30',
     selected: 'bg-fuchsia-600 text-white border-2 border-fuchsia-600',
   },
 }
@@ -108,11 +108,11 @@ export default function ResultModal({
       />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-md rounded-2xl bg-[var(--bg)] p-6 shadow-2xl">
+      <div className="relative z-10 w-full max-w-md rounded-2xl bg-background p-6 shadow-2xl">
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-1 text-[var(--text-muted)] hover:bg-[var(--btn-hover)] hover:text-[var(--text)]"
+          className="absolute right-4 top-4 rounded-full p-1 text-foreground-muted hover:bg-btn-hover hover:text-foreground"
           aria-label="Close"
         >
           <CloseIcon />
@@ -120,28 +120,28 @@ export default function ResultModal({
 
         {/* Header */}
         <div className="mb-6 text-center">
-          <h2 className="text-2xl font-bold text-[var(--text)]">🎉 Puzzle Complete!</h2>
-          <p className="mt-1 text-[var(--text-muted)]">
+          <h2 className="text-2xl font-bold text-foreground">🎉 Puzzle Complete!</h2>
+          <p className="mt-1 text-foreground-muted">
             {isDaily ? 'Daily challenge completed!' : 'Great job solving the puzzle'}
           </p>
         </div>
 
         {/* Streak display for daily puzzles */}
         {isDaily && streak && streak.currentStreak > 0 && (
-          <div className="mb-4 flex items-center justify-center gap-4 rounded-lg bg-[var(--bg-secondary)] p-3">
+          <div className="mb-4 flex items-center justify-center gap-4 rounded-lg bg-background-secondary p-3">
             <div className="flex items-center gap-2">
               <span className="text-2xl">🔥</span>
               <div>
-                <p className="text-xl font-bold text-[var(--accent)]">{streak.currentStreak}</p>
-                <p className="text-xs text-[var(--text-muted)]">Day Streak</p>
+                <p className="text-xl font-bold text-accent">{streak.currentStreak}</p>
+                <p className="text-xs text-foreground-muted">Day Streak</p>
               </div>
             </div>
             {streak.longestStreak > streak.currentStreak && (
               <>
-                <div className="h-8 w-px bg-[var(--border-light)]" />
+                <div className="h-8 w-px bg-board-border-light" />
                 <div className="text-center">
-                  <p className="text-lg font-bold text-[var(--text)]">{streak.longestStreak}</p>
-                  <p className="text-xs text-[var(--text-muted)]">Best</p>
+                  <p className="text-lg font-bold text-foreground">{streak.longestStreak}</p>
+                  <p className="text-xs text-foreground-muted">Best</p>
                 </div>
               </>
             )}
@@ -150,24 +150,24 @@ export default function ResultModal({
 
         {/* Stats */}
         <div className="mb-6 grid grid-cols-3 gap-4">
-          <div className="rounded-lg bg-[var(--bg-secondary)] p-4 text-center">
-            <p className="text-2xl font-bold text-[var(--accent)]">{formatTime(timeMs)}</p>
-            <p className="text-xs text-[var(--text-muted)]">⏱️ Time</p>
+          <div className="rounded-lg bg-background-secondary p-4 text-center">
+            <p className="text-2xl font-bold text-accent">{formatTime(timeMs)}</p>
+            <p className="text-xs text-foreground-muted">⏱️ Time</p>
           </div>
-          <div className="rounded-lg bg-[var(--bg-secondary)] p-4 text-center flex flex-col items-center justify-center">
+          <div className="rounded-lg bg-background-secondary p-4 text-center flex flex-col items-center justify-center">
             <DifficultyBadge difficulty={difficulty} size="md" />
-            <p className="text-xs text-[var(--text-muted)] mt-1">🎯 Difficulty</p>
+            <p className="text-xs text-foreground-muted mt-1">🎯 Difficulty</p>
           </div>
-          <div className="rounded-lg bg-[var(--bg-secondary)] p-4 text-center">
+          <div className="rounded-lg bg-background-secondary p-4 text-center">
             {autoSolveUsed ? (
               <>
-                <p className="text-2xl font-bold text-[var(--accent)]">🤖</p>
-                <p className="text-xs text-[var(--text-muted)]">Solved</p>
+                <p className="text-2xl font-bold text-accent">🤖</p>
+                <p className="text-xs text-foreground-muted">Solved</p>
               </>
             ) : (
               <>
-                <p className="text-2xl font-bold text-[var(--accent)]">{hintsUsed}</p>
-                <p className="text-xs text-[var(--text-muted)]">💡 Hints</p>
+                <p className="text-2xl font-bold text-accent">{hintsUsed}</p>
+                <p className="text-xs text-foreground-muted">💡 Hints</p>
               </>
             )}
           </div>
@@ -175,8 +175,8 @@ export default function ResultModal({
 
         {/* Technique hints (if used) */}
         {(techniqueHintsUsed ?? 0) > 0 && !autoSolveUsed && (
-          <div className="mb-4 rounded-lg bg-[var(--bg-secondary)] p-3 text-center">
-            <span className="text-sm text-[var(--text-muted)]">
+          <div className="mb-4 rounded-lg bg-background-secondary p-3 text-center">
+            <span className="text-sm text-foreground-muted">
               ❓ {techniqueHintsUsed} technique hint{(techniqueHintsUsed ?? 0) > 1 ? 's' : ''} used
             </span>
           </div>
@@ -185,19 +185,19 @@ export default function ResultModal({
         {/* Share button */}
         <button
           onClick={handleShare}
-          className="mb-4 w-full rounded-lg bg-[var(--accent)] py-3 font-medium text-[var(--btn-active-text)] transition-opacity hover:opacity-90"
+          className="mb-4 w-full rounded-lg bg-accent py-3 font-medium text-btn-active-text transition-opacity hover:opacity-90"
         >
           {copied ? '✅ Copied!' : '📤 Share Result'}
         </button>
 
         {/* Share preview */}
-        <div className="mb-6 rounded-lg bg-[var(--bg-secondary)] p-3">
-          <pre className="whitespace-pre-wrap text-xs text-[var(--text-muted)]">{shareText}</pre>
+        <div className="mb-6 rounded-lg bg-background-secondary p-3">
+          <pre className="whitespace-pre-wrap text-xs text-foreground-muted">{shareText}</pre>
         </div>
 
         {/* New Game Section */}
         <div className="mb-4">
-          <p className="mb-3 text-sm font-medium text-[var(--text)] text-center">Start a new puzzle:</p>
+          <p className="mb-3 text-sm font-medium text-foreground text-center">Start a new puzzle:</p>
           
           {/* Pyramid layout: 3 on top, 2 on bottom */}
           <div className="space-y-2 mb-3">
@@ -245,7 +245,7 @@ export default function ResultModal({
           
           <button
             onClick={() => navigate(createGameRoute(selectedDifficulty))}
-            className="w-full rounded-lg border-2 border-[var(--accent)] py-2.5 font-medium text-[var(--accent)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--btn-active-text)]"
+            className="w-full rounded-lg border-2 border-accent py-2.5 font-medium text-accent transition-colors hover:bg-accent hover:text-btn-active-text"
           >
             Play {selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)}
           </button>

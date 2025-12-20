@@ -36,19 +36,19 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
       />
 
       {/* Modal */}
-      <div className="relative z-10 flex h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-[var(--bg)] shadow-2xl">
+      <div className="relative z-10 flex h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-background shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--border-light)] p-4">
+        <div className="flex items-center justify-between border-b border-board-border-light p-4">
           <div className="flex items-center gap-3">
             {view !== 'list' ? (
               <button
                 onClick={() => setView('list')}
-                className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--btn-hover)]"
+                className="rounded p-1 text-foreground-muted hover:bg-btn-hover"
               >
                 <ChevronLeftIcon />
               </button>
             ) : null}
-            <h2 className="text-lg font-bold text-[var(--text)]">
+            <h2 className="text-lg font-bold text-foreground">
               {view === 'overview' ? 'How to Play Sudoku' : selectedTechnique ? selectedTechnique.title : 'Techniques'}
             </h2>
             {selectedTechnique && (
@@ -57,7 +57,7 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
           </div>
           <button
             onClick={onClose}
-            className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--btn-hover)]"
+            className="rounded p-1 text-foreground-muted hover:bg-btn-hover"
             aria-label="Close"
           >
             <CloseIcon />
@@ -81,27 +81,27 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
               {/* How to Play button */}
               <button
                 onClick={() => setView('overview')}
-                className="mb-4 flex w-full items-center justify-between rounded-lg border-2 border-[var(--accent)] bg-[var(--accent-light)] p-3 text-left transition-colors hover:opacity-90"
+                className="mb-4 flex w-full items-center justify-between rounded-lg border-2 border-accent bg-accent-light p-3 text-left transition-colors hover:opacity-90"
               >
                 <div className="flex items-center gap-3">
-                  <InfoIcon className="h-5 w-5 text-[var(--accent)]" />
-                  <span className="font-medium text-[var(--accent)]">How to Play Sudoku</span>
+                  <InfoIcon className="h-5 w-5 text-accent" />
+                  <span className="font-medium text-accent">How to Play Sudoku</span>
                 </div>
-                <ChevronRightIcon className="h-4 w-4 text-[var(--accent)]" />
+                <ChevronRightIcon className="h-4 w-4 text-accent" />
               </button>
 
               {/* Glossary button */}
               <button
                 onClick={() => setShowGlossary(true)}
-                className="mb-4 flex w-full items-center justify-between rounded-lg border border-[var(--border-light)] bg-[var(--bg-secondary)] p-3 text-left transition-colors hover:bg-[var(--btn-hover)]"
+                className="mb-4 flex w-full items-center justify-between rounded-lg border border-board-border-light bg-background-secondary p-3 text-left transition-colors hover:bg-btn-hover"
               >
                 <div className="flex items-center gap-3">
-                  <svg className="h-5 w-5 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 text-foreground-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
-                  <span className="font-medium text-[var(--text)]">Sudoku Glossary</span>
+                  <span className="font-medium text-foreground">Sudoku Glossary</span>
                 </div>
-                <ChevronRightIcon className="h-4 w-4 text-[var(--text-muted)]" />
+                <ChevronRightIcon className="h-4 w-4 text-foreground-muted" />
               </button>
 
               {/* Filter tabs */}
@@ -110,8 +110,8 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
                   onClick={() => setFilterTier(null)}
                   className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
                     filterTier === null
-                      ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                      : 'bg-[var(--bg-secondary)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                      ? 'bg-accent text-btn-active-text'
+                      : 'bg-background-secondary text-foreground hover:bg-btn-hover'
                   }`}
                 >
                   All
@@ -122,8 +122,8 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
                     onClick={() => setFilterTier(tier)}
                     className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
                       filterTier === tier
-                        ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                        : 'bg-[var(--bg-secondary)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                        ? 'bg-accent text-btn-active-text'
+                        : 'bg-background-secondary text-foreground hover:bg-btn-hover'
                     }`}
                   >
                     {tier}
@@ -137,13 +137,13 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
                   <button
                     key={technique.slug}
                     onClick={() => setView(technique)}
-                    className="flex items-center justify-between rounded-lg border border-[var(--border-light)] bg-[var(--bg-secondary)] p-3 text-left transition-colors hover:bg-[var(--btn-hover)]"
+                    className="flex items-center justify-between rounded-lg border border-board-border-light bg-background-secondary p-3 text-left transition-colors hover:bg-btn-hover"
                   >
                     <div className="flex items-center gap-3">
                       <TierBadge tier={technique.tier} />
-                      <span className="font-medium text-[var(--text)]">{technique.title}</span>
+                      <span className="font-medium text-foreground">{technique.title}</span>
                     </div>
-                    <ChevronRightIcon className="h-4 w-4 text-[var(--text-muted)]" />
+                    <ChevronRightIcon className="h-4 w-4 text-foreground-muted" />
                   </button>
                 ))}
               </div>
@@ -152,10 +152,10 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
         </div>
 
         {/* Footer */}
-        <div className="border-t border-[var(--border-light)] p-4">
+        <div className="border-t border-board-border-light p-4">
           <button
             onClick={onClose}
-            className="w-full rounded-lg border border-[var(--border-light)] py-2 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+            className="w-full rounded-lg border border-board-border-light py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
           >
             Close
           </button>

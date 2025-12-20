@@ -201,11 +201,11 @@ ${debugJson}
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 bg-[var(--bg)]/95 backdrop-blur border-b border-[var(--border-light)] h-16">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-b border-board-border-light h-16">
         <div className="mx-auto max-w-4xl px-4 h-full">
           <div className="flex h-full items-center justify-between">
             {/* Left: Logo */}
-            <Link to="/" className="flex items-center gap-2 font-semibold text-[var(--text)]">
+            <Link to="/" className="flex items-center gap-2 font-semibold text-foreground">
               <img src={mode === 'dark' ? '/sudoku-icon-dark.svg' : '/sudoku-icon.svg'} alt="Sudoku" className="h-8 w-8" />
               <span>Sudoku</span>
             </Link>
@@ -216,8 +216,8 @@ ${debugJson}
                 to="/"
                 className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                   location.pathname === '/'
-                    ? 'text-[var(--accent)]'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                    ? 'text-accent'
+                    : 'text-foreground-muted hover:text-foreground'
                 }`}
               >
                 Play
@@ -226,8 +226,8 @@ ${debugJson}
                 to="/techniques"
                 className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                   location.pathname.startsWith('/technique')
-                    ? 'text-[var(--accent)]'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                    ? 'text-accent'
+                    : 'text-foreground-muted hover:text-foreground'
                 }`}
               >
                 Learn
@@ -236,8 +236,8 @@ ${debugJson}
                 to="/leaderboard"
                 className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                   location.pathname === '/leaderboard'
-                    ? 'text-[var(--accent)]'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                    ? 'text-accent'
+                    : 'text-foreground-muted hover:text-foreground'
                 }`}
               >
                 Scores
@@ -250,19 +250,19 @@ ${debugJson}
               <div className="relative" ref={modeDropdownRef}>
                 <button
                   onClick={() => setModeDropdownOpen(!modeDropdownOpen)}
-                  className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
+                  className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
                   title={`Theme: ${modePreference}`}
                 >
                   {modePreference === 'system' ? <ComputerIcon /> : mode === 'dark' ? <SunIcon /> : <MoonIcon />}
                 </button>
                 {modeDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-light)] shadow-lg overflow-hidden z-50">
+                  <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-background-secondary border border-board-border-light shadow-lg overflow-hidden z-50">
                     <button
                       onClick={() => { setModePreference('light'); setModeDropdownOpen(false) }}
                       className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
                         modePreference === 'light' 
-                          ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
-                          : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                          ? 'bg-accent text-btn-active-text' 
+                          : 'text-foreground hover:bg-btn-hover'
                       }`}
                     >
                       <SunIcon className="h-4 w-4" />
@@ -272,8 +272,8 @@ ${debugJson}
                       onClick={() => { setModePreference('dark'); setModeDropdownOpen(false) }}
                       className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
                         modePreference === 'dark' 
-                          ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
-                          : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                          ? 'bg-accent text-btn-active-text' 
+                          : 'text-foreground hover:bg-btn-hover'
                       }`}
                     >
                       <MoonIcon className="h-4 w-4" />
@@ -283,8 +283,8 @@ ${debugJson}
                       onClick={() => { setModePreference('system'); setModeDropdownOpen(false) }}
                       className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
                         modePreference === 'system' 
-                          ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
-                          : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                          ? 'bg-accent text-btn-active-text' 
+                          : 'text-foreground hover:bg-btn-hover'
                       }`}
                     >
                       <ComputerIcon className="h-4 w-4" />
@@ -297,7 +297,7 @@ ${debugJson}
               {/* Menu button */}
               <button
                 onClick={() => setMenuOpen(true)}
-                className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
+                className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
                 title="Menu"
               >
                 <MenuIcon />
@@ -328,7 +328,7 @@ ${debugJson}
 
       {/* Toast notification */}
       {toastMessage && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 bg-[var(--text)] text-[var(--bg)] rounded-lg shadow-lg text-sm font-medium">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 bg-foreground text-background rounded-lg shadow-lg text-sm font-medium">
           {toastMessage}
         </div>
       )}

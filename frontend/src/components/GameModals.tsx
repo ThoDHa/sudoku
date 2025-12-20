@@ -50,15 +50,15 @@ export default function GameModals({
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setSolveConfirmOpen(false)}
           />
-          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-[var(--bg)] p-6 shadow-2xl">
-            <h2 className="mb-2 text-lg font-bold text-[var(--text)]">Solve Puzzle?</h2>
-            <p className="mb-6 text-sm text-[var(--text-muted)]">
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl">
+            <h2 className="mb-2 text-lg font-bold text-foreground">Solve Puzzle?</h2>
+            <p className="mb-6 text-sm text-foreground-muted">
               This will automatically solve the entire puzzle using logical techniques. Are you sure?
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setSolveConfirmOpen(false)}
-                className="flex-1 rounded-lg border border-[var(--border-light)] py-2 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+                className="flex-1 rounded-lg border border-board-border-light py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
               >
                 Cancel
               </button>
@@ -67,7 +67,7 @@ export default function GameModals({
                   setSolveConfirmOpen(false)
                   onSolve()
                 }}
-                className="flex-1 rounded-lg bg-[var(--accent)] py-2 font-medium text-[var(--btn-active-text)] transition-colors hover:opacity-90"
+                className="flex-1 rounded-lg bg-accent py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
               >
                 Solve
               </button>
@@ -83,11 +83,11 @@ export default function GameModals({
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setShowClearConfirm(false)}
           />
-          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-[var(--bg)] p-6 shadow-2xl">
-            <h2 className="mb-2 text-lg font-bold text-[var(--text)]">
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl">
+            <h2 className="mb-2 text-lg font-bold text-foreground">
               {isComplete ? 'Restart Puzzle?' : 'Clear All Entries?'}
             </h2>
-            <p className="mb-6 text-sm text-[var(--text-muted)]">
+            <p className="mb-6 text-sm text-foreground-muted">
               {isComplete 
                 ? 'This will reset the puzzle to its initial state and restart the timer from zero.'
                 : 'This will remove all your entered numbers and notes, but keep your timer running.'
@@ -96,7 +96,7 @@ export default function GameModals({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowClearConfirm(false)}
-                className="flex-1 rounded-lg border border-[var(--border-light)] py-2 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+                className="flex-1 rounded-lg border border-board-border-light py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
               >
                 Cancel
               </button>
@@ -109,7 +109,7 @@ export default function GameModals({
                     onClearAll()
                   }
                 }}
-                className="flex-1 rounded-lg bg-[var(--accent)] py-2 font-medium text-[var(--btn-active-text)] transition-colors hover:opacity-90"
+                className="flex-1 rounded-lg bg-accent py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
               >
                 {isComplete ? 'Restart' : 'Confirm'}
               </button>
@@ -121,15 +121,15 @@ export default function GameModals({
       {/* Show Solution Confirmation Dialog */}
       {showSolutionConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-[var(--bg)] p-6 shadow-2xl">
-            <h2 className="mb-2 text-lg font-bold text-[var(--text)]">Show Solution?</h2>
-            <p className="mb-6 text-sm text-[var(--text-muted)]">
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl">
+            <h2 className="mb-2 text-lg font-bold text-foreground">Show Solution?</h2>
+            <p className="mb-6 text-sm text-foreground-muted">
               {unpinpointableErrorMessage || "Hmm, I couldn't pinpoint the error. One of your entries might need checking."}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowSolutionConfirm(false)}
-                className="flex-1 rounded-lg border border-[var(--border-light)] py-2 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+                className="flex-1 rounded-lg border border-board-border-light py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
               >
                 Let Me Fix It
               </button>
@@ -138,7 +138,7 @@ export default function GameModals({
                   setShowSolutionConfirm(false)
                   onShowSolution()
                 }}
-                className="flex-1 rounded-lg bg-[var(--accent)] py-2 font-medium text-[var(--btn-active-text)] transition-colors hover:opacity-90"
+                className="flex-1 rounded-lg bg-accent py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
               >
                 Show Solution
               </button>

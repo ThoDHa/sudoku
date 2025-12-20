@@ -146,17 +146,17 @@ export default function TechniqueDiagramView({ diagram }: TechniqueDiagramViewPr
 // Legend component for diagram colors
 export function TechniqueDiagramLegend() {
   return (
-    <div className="mt-3 flex flex-wrap justify-center gap-3 text-xs text-[var(--text-muted)]">
+    <div className="mt-3 flex flex-wrap justify-center gap-3 text-xs text-foreground-muted">
       <span className="flex items-center gap-1">
-        <span className="inline-block h-3 w-3 rounded" style={{ background: 'var(--cell-primary)' }}></span>
+        <span className="inline-block h-3 w-3 rounded bg-cell-primary"></span>
         Primary
       </span>
       <span className="flex items-center gap-1">
-        <span className="inline-block h-3 w-3 rounded" style={{ background: 'var(--cell-secondary)' }}></span>
+        <span className="inline-block h-3 w-3 rounded bg-cell-secondary"></span>
         Secondary
       </span>
       <span className="flex items-center gap-1">
-        <span className="inline-block h-3 w-3 rounded" style={{ background: 'var(--accent-light)' }}></span>
+        <span className="inline-block h-3 w-3 rounded bg-accent-light"></span>
         Elimination
       </span>
     </div>

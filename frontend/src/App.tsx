@@ -16,7 +16,7 @@ const Leaderboard = lazy(() => import('./pages/Leaderboard'))
 // Loading fallback component
 const PageLoading = () => (
   <div className="flex items-center justify-center h-full">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]"></div>
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
   </div>
 )
 
@@ -36,7 +36,7 @@ function AppContent() {
                      location.pathname.startsWith('/c/')
 
   return (
-    <div className="h-[100dvh] flex flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
+    <div className="h-[100dvh] flex flex-col overflow-hidden bg-background text-foreground">
       <Header />
       <main className={`flex-1 overflow-y-auto scrollbar-hide ${isGamePage ? '' : 'pt-16'}`}>
         <Suspense fallback={<PageLoading />}>

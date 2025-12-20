@@ -169,12 +169,12 @@ export default function GameHeader({
 
   return (
     <>
-    <header className="sticky top-0 z-40 bg-[var(--bg)]/95 backdrop-blur border-b border-[var(--border-light)]">
+    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-board-border-light">
       {/* Main header row */}
       <div className="mx-auto max-w-4xl px-2 sm:px-4 h-16 flex items-center justify-between gap-2">
         {/* Left: Logo + Difficulty */}
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          <Link to="/" className="flex items-center gap-1 sm:gap-2 font-semibold text-[var(--text)]">
+          <Link to="/" className="flex items-center gap-1 sm:gap-2 font-semibold text-foreground">
             <img src={mode === 'dark' ? '/sudoku-icon-dark.svg' : '/sudoku-icon.svg'} alt="Sudoku" className="h-6 w-6 sm:h-7 sm:w-7" />
             <span className="hidden sm:inline">Sudoku</span>
           </Link>
@@ -183,7 +183,7 @@ export default function GameHeader({
 
         {/* Center: Timer (hidden when hideTimer is true) */}
         {!hideTimer && (
-          <div className={`flex items-center gap-1 sm:gap-2 ${isPausedDueToVisibility ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>
+          <div className={`flex items-center gap-1 sm:gap-2 ${isPausedDueToVisibility ? 'text-accent' : 'text-foreground-muted'}`}>
             {isPausedDueToVisibility ? (
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -206,7 +206,7 @@ export default function GameHeader({
           {isAutoSolving && (
             <div className="hidden sm:flex items-center gap-1">
               {/* Speed controls */}
-              <div className="flex items-center rounded-lg overflow-hidden border border-[var(--border-light)]">
+              <div className="flex items-center rounded-lg overflow-hidden border border-board-border-light">
                 {speedOptions.map(({ speed, icon, label }) => (
                   <button
                     key={speed}
@@ -214,8 +214,8 @@ export default function GameHeader({
                     title={label}
                     className={`px-2 py-1.5 transition-colors ${
                       autoSolveSpeed === speed
-                        ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                        : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                        ? 'bg-accent text-btn-active-text'
+                        : 'bg-btn-bg text-foreground hover:bg-btn-hover'
                     }`}
                   >
                     {icon}
@@ -228,7 +228,7 @@ export default function GameHeader({
                 className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
                   isPaused
                     ? 'bg-green-500 text-white hover:bg-green-600'
-                    : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] border border-[var(--border-light)]'
+                    : 'bg-btn-bg text-foreground hover:bg-btn-hover border border-board-border-light'
                 }`}
                 title={isPaused ? 'Resume' : 'Pause'}
               >
@@ -264,8 +264,8 @@ export default function GameHeader({
               disabled={techniqueHintDisabled}
               className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
                 techniqueHintDisabled 
-                  ? 'text-[var(--text-muted)]/50 cursor-not-allowed' 
-                  : 'text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--btn-hover)]'
+                  ? 'text-foreground-muted/50 cursor-not-allowed' 
+                  : 'text-foreground-muted hover:text-accent hover:bg-btn-hover'
               }`}
               title={techniqueHintDisabled ? "Make a move to use again" : "Learn which technique to use"}
             >
@@ -278,7 +278,7 @@ export default function GameHeader({
           {!isComplete && !isAutoSolving && (
             <button
               onClick={onHint}
-              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--btn-hover)] transition-colors"
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-accent hover:bg-btn-hover transition-colors"
               title="Get a hint"
             >
               <span className="text-base">💡</span>
@@ -289,7 +289,7 @@ export default function GameHeader({
           {/* History button */}
           <button
             onClick={onHistoryOpen}
-            className="relative flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
+            className="relative flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
             title="View move history"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -297,7 +297,7 @@ export default function GameHeader({
             </svg>
             <span className="hidden sm:inline">History</span>
             {historyCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-[var(--btn-active-text)]">
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-btn-active-text">
                 {historyCount > MAX_HISTORY_BADGE_COUNT ? `${MAX_HISTORY_BADGE_COUNT}+` : historyCount}
               </span>
             )}
@@ -307,7 +307,7 @@ export default function GameHeader({
           {isComplete && (
             <button
               onClick={onShowResult}
-              className="flex items-center gap-1 rounded-full bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-[var(--btn-active-text)] transition-opacity hover:opacity-90"
+              className="flex items-center gap-1 rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-btn-active-text transition-opacity hover:opacity-90"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -320,19 +320,19 @@ export default function GameHeader({
           <div className="relative" ref={modeDropdownRef}>
             <button
               onClick={() => setModeDropdownOpen(!modeDropdownOpen)}
-              className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
+              className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
               title={`Theme: ${modePreference}`}
             >
               {modePreference === 'system' ? <ComputerIcon /> : mode === 'dark' ? <SunIcon /> : <MoonIcon />}
             </button>
             {modeDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-light)] shadow-lg overflow-hidden z-50">
+              <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-background-secondary border border-board-border-light shadow-lg overflow-hidden z-50">
                 <button
                   onClick={() => { onSetModePreference('light'); setModeDropdownOpen(false) }}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
                     modePreference === 'light' 
-                      ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
-                      : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                      ? 'bg-accent text-btn-active-text' 
+                      : 'text-foreground hover:bg-btn-hover'
                   }`}
                 >
                   <SunIcon className="h-4 w-4" />
@@ -342,8 +342,8 @@ export default function GameHeader({
                   onClick={() => { onSetModePreference('dark'); setModeDropdownOpen(false) }}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
                     modePreference === 'dark' 
-                      ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
-                      : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                      ? 'bg-accent text-btn-active-text' 
+                      : 'text-foreground hover:bg-btn-hover'
                   }`}
                 >
                   <MoonIcon className="h-4 w-4" />
@@ -353,8 +353,8 @@ export default function GameHeader({
                   onClick={() => { onSetModePreference('system'); setModeDropdownOpen(false) }}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
                     modePreference === 'system' 
-                      ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
-                      : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                      ? 'bg-accent text-btn-active-text' 
+                      : 'text-foreground hover:bg-btn-hover'
                   }`}
                 >
                   <ComputerIcon className="h-4 w-4" />
@@ -367,7 +367,7 @@ export default function GameHeader({
           {/* Menu button */}
           <button
             onClick={() => setMenuOpen(true)}
-            className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
+            className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
             title="Menu"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -379,10 +379,10 @@ export default function GameHeader({
 
       {/* Mobile auto-solve controls - second row */}
       {isAutoSolving && (
-        <div className="sm:hidden border-t border-[var(--border-light)] px-2 py-2">
+        <div className="sm:hidden border-t border-board-border-light px-2 py-2">
           <div className="flex items-center justify-center gap-2">
             {/* Speed controls */}
-            <div className="flex items-center rounded-lg overflow-hidden border border-[var(--border-light)]">
+            <div className="flex items-center rounded-lg overflow-hidden border border-board-border-light">
               {speedOptions.map(({ speed, icon, label }) => (
                 <button
                   key={speed}
@@ -390,8 +390,8 @@ export default function GameHeader({
                   title={label}
                   className={`px-3 py-2 transition-colors ${
                     autoSolveSpeed === speed
-                      ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                      : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                      ? 'bg-accent text-btn-active-text'
+                      : 'bg-btn-bg text-foreground hover:bg-btn-hover'
                   }`}
                 >
                   {icon}
@@ -404,7 +404,7 @@ export default function GameHeader({
               className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                 isPaused
                   ? 'bg-green-500 text-white hover:bg-green-600'
-                  : 'bg-[var(--btn-bg)] text-[var(--text)] hover:bg-[var(--btn-hover)] border border-[var(--border-light)]'
+                  : 'bg-btn-bg text-foreground hover:bg-btn-hover border border-board-border-light'
               }`}
               title={isPaused ? 'Resume' : 'Pause'}
             >

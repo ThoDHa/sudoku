@@ -92,7 +92,7 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={handleSkip}
       />
-      <div className="relative z-10 w-full max-w-md rounded-2xl bg-[var(--bg)] p-6 shadow-2xl">
+      <div className="relative z-10 w-full max-w-md rounded-2xl bg-background p-6 shadow-2xl">
         {/* Progress dots */}
         <div className="flex justify-center gap-2 mb-6">
           {ONBOARDING_STEPS.map((_, idx) => (
@@ -101,10 +101,10 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
               onClick={() => setCurrentStep(idx)}
               className={`w-2 h-2 rounded-full transition-all ${
                 idx === currentStep
-                  ? 'bg-[var(--accent)] w-6'
+                  ? 'bg-accent w-6'
                   : idx < currentStep
-                  ? 'bg-[var(--accent)]'
-                  : 'bg-[var(--border-light)]'
+                  ? 'bg-accent'
+                  : 'bg-board-border-light'
               }`}
               aria-label={`Go to step ${idx + 1}`}
             />
@@ -115,19 +115,19 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
         <div className="text-center text-5xl mb-4">{step.icon}</div>
 
         {/* Title */}
-        <h2 className="text-xl font-bold text-center text-[var(--text)] mb-3">
+        <h2 className="text-xl font-bold text-center text-foreground mb-3">
           {step.title}
         </h2>
 
         {/* Description */}
-        <p className="text-center text-[var(--text-muted)] mb-4">
+        <p className="text-center text-foreground-muted mb-4">
           {step.description}
         </p>
 
         {/* Tip */}
         {step.tip && (
-          <div className="bg-[var(--accent-light)] rounded-lg p-3 mb-6">
-            <p className="text-sm text-center text-[var(--accent)] font-medium">
+          <div className="bg-accent-light rounded-lg p-3 mb-6">
+            <p className="text-sm text-center text-accent font-medium">
               💡 {step.tip}
             </p>
           </div>
@@ -138,28 +138,28 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
           {currentStep > 0 ? (
             <button
               onClick={handlePrev}
-              className="flex-1 rounded-lg border border-[var(--border-light)] py-2.5 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+              className="flex-1 rounded-lg border border-board-border-light py-2.5 font-medium text-foreground transition-colors hover:bg-btn-hover"
             >
               Back
             </button>
           ) : (
             <button
               onClick={handleSkip}
-              className="flex-1 rounded-lg border border-[var(--border-light)] py-2.5 font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--btn-hover)]"
+              className="flex-1 rounded-lg border border-board-border-light py-2.5 font-medium text-foreground-muted transition-colors hover:bg-btn-hover"
             >
               Skip
             </button>
           )}
           <button
             onClick={handleNext}
-            className="flex-1 rounded-lg bg-[var(--accent)] py-2.5 font-medium text-[var(--btn-active-text)] transition-colors hover:opacity-90"
+            className="flex-1 rounded-lg bg-accent py-2.5 font-medium text-btn-active-text transition-colors hover:opacity-90"
           >
             {isLastStep ? "Let's Play!" : 'Next'}
           </button>
         </div>
 
         {/* Step counter */}
-        <p className="text-center text-xs text-[var(--text-muted)] mt-4">
+        <p className="text-center text-xs text-foreground-muted mt-4">
           {currentStep + 1} of {ONBOARDING_STEPS.length}
         </p>
       </div>

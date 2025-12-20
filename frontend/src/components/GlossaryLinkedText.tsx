@@ -18,14 +18,14 @@ function GlossaryTooltip({ term, children, onClose }: GlossaryTooltipProps) {
     <span className="relative inline-block">
       {children}
       <div 
-        className="absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 rounded-lg border border-[var(--border-light)] bg-[var(--bg)] p-3 shadow-lg"
+        className="absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 rounded-lg border border-board-border-light bg-background p-3 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-2">
-          <h4 className="font-semibold text-[var(--accent)]">{term.term}</h4>
+          <h4 className="font-semibold text-accent">{term.term}</h4>
           <button 
             onClick={onClose}
-            className="text-[var(--text-muted)] hover:text-[var(--text)]"
+            className="text-foreground-muted hover:text-foreground"
             aria-label="Close tooltip"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -33,14 +33,14 @@ function GlossaryTooltip({ term, children, onClose }: GlossaryTooltipProps) {
             </svg>
           </button>
         </div>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">{term.definition}</p>
+        <p className="mt-1 text-sm text-foreground-muted">{term.definition}</p>
         {term.example && (
-          <p className="mt-2 text-xs text-[var(--text-muted)] italic">
+          <p className="mt-2 text-xs text-foreground-muted italic">
             Example: {term.example}
           </p>
         )}
         {/* Arrow pointing down */}
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[var(--bg)]" />
+        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-background" />
       </div>
     </span>
   )
@@ -175,7 +175,7 @@ export default function GlossaryLinkedText({ text, className = '' }: GlossaryLin
                       e.stopPropagation()
                       if (segment.term) handleTermClick(segment.term.term)
                     }}
-                    className="inline border-b border-dashed border-[var(--accent)] text-[var(--accent)] hover:border-solid focus:outline-none"
+                    className="inline border-b border-dashed border-accent text-accent hover:border-solid focus:outline-none"
                   >
                     {segment.content}
                   </button>
@@ -186,7 +186,7 @@ export default function GlossaryLinkedText({ text, className = '' }: GlossaryLin
                     e.stopPropagation()
                     if (segment.term) handleTermClick(segment.term.term)
                   }}
-                  className="inline border-b border-dashed border-[var(--accent)] text-[var(--accent)] hover:border-solid focus:outline-none"
+                  className="inline border-b border-dashed border-accent text-accent hover:border-solid focus:outline-none"
                 >
                   {segment.content}
                 </button>
@@ -213,7 +213,7 @@ export function highlightGlossaryTerms(text: string): React.ReactNode {
     
     if (segment.type === 'glossary') {
       return (
-        <span key={idx} className="font-medium text-[var(--accent)]" title={segment.term?.definition}>
+        <span key={idx} className="font-medium text-accent" title={segment.term?.definition}>
           {segment.content}
         </span>
       )

@@ -38,33 +38,33 @@ export default function GlossaryModal({ isOpen, onClose }: GlossaryModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div 
-        className="relative max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-[var(--bg)] shadow-xl flex flex-col"
+        className="relative max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-background shadow-xl flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--border-light)] p-4">
-          <h2 className="text-xl font-bold text-[var(--text)]">Sudoku Glossary</h2>
+        <div className="flex items-center justify-between border-b border-board-border-light p-4">
+          <h2 className="text-xl font-bold text-foreground">Sudoku Glossary</h2>
           <button
             onClick={onClose}
-            className="rounded-full p-2 hover:bg-[var(--btn-hover)] transition-colors"
+            className="rounded-full p-2 hover:bg-btn-hover transition-colors"
             aria-label="Close glossary"
           >
-            <CloseIcon className="h-5 w-5 text-[var(--text-muted)]" />
+            <CloseIcon className="h-5 w-5 text-foreground-muted" />
           </button>
         </div>
         
         {/* Search */}
-        <div className="border-b border-[var(--border-light)] p-4">
+        <div className="border-b border-board-border-light p-4">
           <div className="relative">
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search terms..."
-              className="w-full rounded-lg border border-[var(--border-light)] bg-[var(--bg-secondary)] px-4 py-2 pl-10 text-[var(--text)] placeholder-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none"
+              className="w-full rounded-lg border border-board-border-light bg-background-secondary px-4 py-2 pl-10 text-foreground placeholder-foreground-muted focus:border-accent focus:outline-none"
             />
             <svg 
-              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" 
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" 
               fill="none" 
               viewBox="0 0 24 24" 
               stroke="currentColor"
@@ -74,13 +74,13 @@ export default function GlossaryModal({ isOpen, onClose }: GlossaryModalProps) {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text)]"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
               >
                 <CloseIcon className="h-4 w-4" />
               </button>
             )}
           </div>
-          <p className="mt-2 text-sm text-[var(--text-muted)]">
+          <p className="mt-2 text-sm text-foreground-muted">
             {terms.length} term{terms.length !== 1 ? 's' : ''} {searchQuery ? 'found' : 'total'}
           </p>
         </div>
@@ -88,7 +88,7 @@ export default function GlossaryModal({ isOpen, onClose }: GlossaryModalProps) {
         {/* Terms list */}
         <div className="flex-1 overflow-y-auto p-4">
           {terms.length === 0 ? (
-            <div className="py-8 text-center text-[var(--text-muted)]">
+            <div className="py-8 text-center text-foreground-muted">
               No terms found matching "{searchQuery}"
             </div>
           ) : searchQuery ? (
@@ -111,7 +111,7 @@ export default function GlossaryModal({ isOpen, onClose }: GlossaryModalProps) {
                 if (!termsForLetter) return null
                 return (
                   <div key={letter}>
-                    <h3 className="mb-2 text-lg font-bold text-[var(--accent)]">{letter}</h3>
+                    <h3 className="mb-2 text-lg font-bold text-accent">{letter}</h3>
                     <div className="space-y-2">
                       {termsForLetter.map(term => (
                         <GlossaryTermCard
@@ -144,8 +144,8 @@ function GlossaryTermCard({ term, isExpanded, onToggle }: GlossaryTermCardProps)
     <div 
       className={`rounded-lg border transition-colors ${
         isExpanded 
-          ? 'border-[var(--accent)] bg-[var(--accent-light)]' 
-          : 'border-[var(--border-light)] bg-[var(--bg-secondary)] hover:border-[var(--accent)]'
+          ? 'border-accent bg-accent-light' 
+          : 'border-board-border-light bg-background-secondary hover:border-accent'
       }`}
     >
       <button
@@ -153,15 +153,15 @@ function GlossaryTermCard({ term, isExpanded, onToggle }: GlossaryTermCardProps)
         className="flex w-full items-start justify-between p-3 text-left"
       >
         <div className="flex-1">
-          <h4 className="font-semibold text-[var(--text)]">{term.term}</h4>
+          <h4 className="font-semibold text-foreground">{term.term}</h4>
           {!isExpanded && (
-            <p className="mt-1 text-sm text-[var(--text-muted)] line-clamp-2">
+            <p className="mt-1 text-sm text-foreground-muted line-clamp-2">
               {term.definition}
             </p>
           )}
         </div>
         <svg 
-          className={`ml-2 h-5 w-5 flex-shrink-0 text-[var(--text-muted)] transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          className={`ml-2 h-5 w-5 flex-shrink-0 text-foreground-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`}
           fill="none" 
           viewBox="0 0 24 24" 
           stroke="currentColor"
@@ -171,21 +171,21 @@ function GlossaryTermCard({ term, isExpanded, onToggle }: GlossaryTermCardProps)
       </button>
       
       {isExpanded && (
-        <div className="border-t border-[var(--border-light)] p-3">
-          <p className="text-[var(--text)]">{term.definition}</p>
+        <div className="border-t border-board-border-light p-3">
+          <p className="text-foreground">{term.definition}</p>
           
           {term.example && (
-            <div className="mt-3 rounded-lg bg-[var(--bg)] p-3">
+            <div className="mt-3 rounded-lg bg-background p-3">
               <p className="text-sm">
-                <span className="font-medium text-[var(--accent)]">Example: </span>
-                <span className="text-[var(--text-muted)]">{term.example}</span>
+                <span className="font-medium text-accent">Example: </span>
+                <span className="text-foreground-muted">{term.example}</span>
               </p>
             </div>
           )}
           
           {term.relatedTerms && term.relatedTerms.length > 0 && (
             <div className="mt-3">
-              <p className="text-sm text-[var(--text-muted)]">
+              <p className="text-sm text-foreground-muted">
                 <span className="font-medium">Related: </span>
                 {term.relatedTerms.join(', ')}
               </p>

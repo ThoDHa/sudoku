@@ -1386,22 +1386,22 @@ ${bugReportJson}
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center bg-[var(--bg)]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--border-light)] border-t-[var(--accent)]" />
+      <div className="flex h-full items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-board-border-light border-t-accent" />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 bg-[var(--bg)]">
+      <div className="flex h-full flex-col items-center justify-center gap-4 bg-background">
         <p className="text-red-600">{error}</p>
       </div>
     )
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
+    <div className="flex h-full flex-col overflow-hidden bg-background text-foreground">
       {/* Game Header */}
       <GameHeader
         difficulty={difficulty}
@@ -1462,7 +1462,7 @@ ${bugReportJson}
       )}
 
       <div 
-        className="game-background flex flex-1 flex-col items-center justify-center p-5 lg:p-10 overflow-hidden"
+        className="game-background flex flex-1 flex-col items-center p-2 overflow-hidden"
         onClick={(e) => {
           // Deselect cell when clicking on the background (not on board or controls)
           // Keep highlightedDigit for multi-fill workflow
@@ -1474,10 +1474,12 @@ ${bugReportJson}
         }}
       >
 
-        {/* Game container - centers board and controls together */}
-        <div className="game-container flex flex-col items-center">
-          {/* Board container with pause overlay */}
-          <div className="relative w-full">
+        {/* Game container - fills available space */}
+        <div className="flex flex-col items-center w-full flex-1 min-h-0 gap-2">
+          {/* Board wrapper - flexes to fill available height */}
+          <div className="flex-1 flex items-center justify-center w-full min-h-0">
+            {/* Board container with pause overlay */}
+            <div className="relative aspect-square h-full max-w-full">
             <Board
               board={game.board}
               initialBoard={initialBoard}
@@ -1494,26 +1496,27 @@ ${bugReportJson}
             {/* Pause overlay - shown when timer is paused due to tab/window losing focus */}
             {timer.isPausedDueToVisibility && !game.isComplete && (
               <div 
-                className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg)]/95 backdrop-blur-md rounded-xl z-20"
+                className="absolute inset-0 flex flex-col items-center justify-center bg-background/95 backdrop-blur-md rounded-xl z-20"
                 onClick={() => {
                   // Clicking the overlay brings focus back, which auto-resumes the timer
                   window.focus()
                 }}
               >
                 <div className="text-6xl mb-4">
-                  <svg className="w-16 h-16 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-16 h-16 text-foreground-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-[var(--text)] mb-2">Game Paused</h3>
-                <p className="text-sm text-[var(--text-muted)] text-center px-4">
+                <h3 className="text-xl font-semibold text-foreground mb-2">Game Paused</h3>
+                <p className="text-sm text-foreground-muted text-center px-4">
                   Click anywhere or return to this tab to continue
                 </p>
-                <div className="mt-4 text-2xl font-mono text-[var(--accent)]">
+                <div className="mt-4 text-2xl font-mono text-accent">
                   {timer.formatTime()}
                 </div>
               </div>
             )}
+            </div>
           </div>
 
           <Controls

@@ -63,9 +63,9 @@ export default function Leaderboard() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-6 bg-[var(--bg)] h-full">
+    <div className="mx-auto max-w-4xl p-6 bg-background h-full">
       <div className="mb-8">
-        <Link to="/" className="text-sm text-[var(--accent)] hover:underline">
+        <Link to="/" className="text-sm text-accent hover:underline">
           &larr; Back to puzzles
         </Link>
       </div>
@@ -87,14 +87,14 @@ export default function Leaderboard() {
               </h3>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-[var(--text-muted)]">Best</span>
-                  <span className="font-mono text-[var(--text)]">
+                  <span className="text-foreground-muted">Best</span>
+                  <span className="font-mono text-foreground">
                     {pureScore ? formatTime(pureScore.timeMs) : 'No times'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[var(--text-muted)]">Assisted</span>
-                  <span className="font-mono text-[var(--text)]">
+                  <span className="text-foreground-muted">Assisted</span>
+                  <span className="font-mono text-foreground">
                     {assistedScore ? (
                       <>
                         {formatTime(assistedScore.timeMs)} {getAssistIcon(assistedScore)}

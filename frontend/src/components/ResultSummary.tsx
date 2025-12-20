@@ -26,34 +26,34 @@ export default function ResultSummary({
 }: ResultSummaryProps) {
   return (
     <div className="text-center">
-      <p className="text-5xl font-bold text-[var(--text)]">{formatTime(timeMs)}</p>
+      <p className="text-5xl font-bold text-foreground">{formatTime(timeMs)}</p>
       <div className="mt-4 flex justify-center gap-4">
-        <span className="inline-flex items-center rounded-full bg-[var(--btn-bg)] px-3 py-1 text-sm font-medium capitalize text-[var(--text)]">
+        <span className="inline-flex items-center rounded-full bg-btn-bg px-3 py-1 text-sm font-medium capitalize text-foreground">
           {difficulty}
         </span>
-        <span className="inline-flex items-center rounded-full bg-[var(--btn-bg)] px-3 py-1 text-sm text-[var(--text)]">
+        <span className="inline-flex items-center rounded-full bg-btn-bg px-3 py-1 text-sm text-foreground">
           {dateUtc}
         </span>
       </div>
-      <div className="mt-4 flex justify-center gap-6 text-sm text-[var(--text-muted)]">
+      <div className="mt-4 flex justify-center gap-6 text-sm text-foreground-muted">
         {autoSolveUsed ? (
           <span>
-            <strong className="text-[var(--text)]">🤖</strong> solved
+            <strong className="text-foreground">🤖</strong> solved
           </span>
         ) : (
           <>
             <span>
-              <strong className="text-[var(--text)]">{hintsUsed}</strong> hints
+              <strong className="text-foreground">{hintsUsed}</strong> hints
             </span>
             {(techniqueHintsUsed ?? 0) > 0 && (
               <span>
-                <strong className="text-[var(--text)]">{techniqueHintsUsed}</strong> technique hints
+                <strong className="text-foreground">{techniqueHintsUsed}</strong> technique hints
               </span>
             )}
           </>
         )}
         <span>
-          <strong className="text-[var(--text)]">{mistakes}</strong> mistakes
+          <strong className="text-foreground">{mistakes}</strong> mistakes
         </span>
       </div>
     </div>

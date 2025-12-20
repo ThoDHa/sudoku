@@ -46,20 +46,20 @@ export default function Controls({
         aria-label={`Enter ${digit}, ${remaining} remaining`}
         className={`control-digit-btn ${
           showSelectedMuted
-            ? 'bg-[var(--accent)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)] opacity-60 cursor-not-allowed'
+            ? 'bg-accent text-btn-active-text ring-2 ring-accent ring-offset-2 ring-offset-background opacity-60 cursor-not-allowed'
             : isDisabled
-            ? 'bg-[var(--btn-bg)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
+            ? 'bg-btn-bg text-foreground-muted opacity-40 cursor-not-allowed'
             : isSelected
-            ? 'bg-[var(--accent)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]'
-              : 'bg-[var(--btn-bg)] text-[var(--text)]'
+            ? 'bg-accent text-btn-active-text ring-2 ring-accent ring-offset-2 ring-offset-background'
+              : 'bg-btn-bg text-foreground'
         }`}
       >
         {digit}
         <span
           className={`digit-remaining-badge ${
             digitComplete
-              ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-              : 'bg-[var(--accent-light)] text-[var(--accent)]'
+              ? 'bg-accent text-btn-active-text'
+              : 'bg-accent-light text-accent'
           }`}
         >
           {remaining}
@@ -102,12 +102,12 @@ export default function Controls({
           aria-pressed={notesMode}
           className={`control-action-btn-compact ${
             notesShowSelectedMuted
-              ? 'bg-[var(--btn-active)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg)] opacity-60 cursor-not-allowed'
+              ? 'bg-btn-active text-btn-active-text ring-2 ring-accent ring-offset-1 ring-offset-background opacity-60 cursor-not-allowed'
               : controlsDisabled
-              ? 'bg-[var(--btn-bg)] opacity-40 cursor-not-allowed'
+              ? 'bg-btn-bg opacity-40 cursor-not-allowed'
               : notesMode
-              ? 'bg-[var(--btn-active)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg)]'
-              : 'bg-[var(--btn-bg)] text-[var(--text)]'
+              ? 'bg-btn-active text-btn-active-text ring-2 ring-accent ring-offset-1 ring-offset-background'
+              : 'bg-btn-bg text-foreground'
           }`}
           title="Notes mode"
         >
@@ -122,10 +122,10 @@ export default function Controls({
           aria-pressed={eraseMode}
           className={`control-action-btn-compact ${
             controlsDisabled
-              ? 'bg-[var(--btn-bg)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
+              ? 'bg-btn-bg text-foreground-muted opacity-40 cursor-not-allowed'
               : eraseMode
-              ? 'bg-[var(--accent)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg)]'
-            : 'bg-[var(--btn-bg)] text-[var(--text)]'
+              ? 'bg-accent text-btn-active-text ring-2 ring-accent ring-offset-1 ring-offset-background'
+            : 'bg-btn-bg text-foreground'
           }`}
           title="Erase"
         >
@@ -138,7 +138,7 @@ export default function Controls({
           onClick={onUndo}
           disabled={!canUndo}
           aria-label="Undo"
-          className="control-action-btn-compact bg-[var(--btn-bg)] text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="control-action-btn-compact bg-btn-bg text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
           title="Undo"
         >
           <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -150,7 +150,7 @@ export default function Controls({
           onClick={onRedo}
           disabled={!canRedo}
           aria-label="Redo"
-          className="control-action-btn-compact bg-[var(--btn-bg)] text-[var(--text)] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="control-action-btn-compact bg-btn-bg text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
           title="Redo"
         >
           <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

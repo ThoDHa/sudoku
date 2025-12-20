@@ -25,11 +25,11 @@ export default function TechniqueModal({ isOpen, onClose, technique }: Technique
       />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl bg-[var(--bg)] p-6 shadow-2xl">
+      <div className="relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl bg-background p-6 shadow-2xl">
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-1 text-[var(--text-muted)] hover:bg-[var(--btn-hover)] hover:text-[var(--text)]"
+          className="absolute right-4 top-4 rounded-full p-1 text-foreground-muted hover:bg-btn-hover hover:text-foreground"
           aria-label="Close"
         >
           <CloseIcon />
@@ -38,7 +38,7 @@ export default function TechniqueModal({ isOpen, onClose, technique }: Technique
         {/* Header */}
         <div className="mb-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-[var(--text)]">{technique.title}</h2>
+            <h2 className="text-xl font-bold text-foreground">{technique.title}</h2>
             {info && <TierBadge tier={info.tier} />}
           </div>
         </div>
@@ -46,7 +46,7 @@ export default function TechniqueModal({ isOpen, onClose, technique }: Technique
         {info ? (
           <TechniqueDetailView technique={info} variant="modal" />
         ) : (
-          <p className="text-sm text-[var(--text-muted)]">
+          <p className="text-sm text-foreground-muted">
             No detailed information available for this technique yet.
           </p>
         )}
@@ -54,7 +54,7 @@ export default function TechniqueModal({ isOpen, onClose, technique }: Technique
         {/* Close button */}
         <button
           onClick={onClose}
-          className="mt-6 w-full rounded-lg border border-[var(--border-light)] py-2 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+          className="mt-6 w-full rounded-lg border border-board-border-light py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
         >
           Got it
         </button>

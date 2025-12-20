@@ -344,15 +344,15 @@ export default function Board({
 
     // Borders - using theme colors
     if (col === 2 || col === 5) {
-      classes.push('border-r-2 border-r-[var(--border-strong)]')
+      classes.push('border-r-2 border-r-board-border')
     } else if (col < 8) {
-      classes.push('border-r border-r-[var(--border-light)]')
+      classes.push('border-r border-r-board-border-light')
     }
 
     if (row === 2 || row === 5) {
-      classes.push('border-b-2 border-b-[var(--border-strong)]')
+      classes.push('border-b-2 border-b-board-border')
     } else if (row < 8) {
-      classes.push('border-b border-b-[var(--border-light)]')
+      classes.push('border-b border-b-board-border-light')
     }
 
     // Incorrect cells get a red ring
@@ -360,37 +360,37 @@ export default function Board({
       classes.push('ring-2 ring-inset ring-red-500 z-10')
     } else if (isSelected) {
       // Selected cell gets a prominent ring
-      classes.push('ring-2 ring-inset ring-[var(--accent)] z-10')
+      classes.push('ring-2 ring-inset ring-accent z-10')
     }
 
     // Background priority: incorrect > duplicate > selected > primary > secondary > digit match > peer > default
     if (isIncorrect) {
       classes.push('bg-red-100 dark:bg-red-900/30')
     } else if (isDuplicate) {
-      classes.push('bg-[var(--duplicate-bg-light)] dark:bg-[var(--duplicate-bg-dark)]')
+      classes.push('bg-duplicate-bg')
     } else if (isPrimary) {
-      classes.push('bg-[var(--cell-primary)]')
+      classes.push('bg-cell-primary')
     } else if (isSecondary) {
-      classes.push('bg-[var(--cell-secondary)]')
+      classes.push('bg-cell-secondary')
     } else if (isSelected) {
-      classes.push('bg-[var(--cell-selected)]')
+      classes.push('bg-cell-selected')
     } else if (hasDigitMatch) {
-      classes.push('bg-[var(--accent-light)]')
+      classes.push('bg-accent-light')
     } else if (isPeer) {
-      classes.push('bg-[var(--cell-peer)]')
+      classes.push('bg-cell-peer')
     } else {
-      classes.push('bg-[var(--cell-bg)]')
+      classes.push('bg-cell-bg')
     }
 
     // Text color - incorrect and duplicates get red text
     if (isIncorrect) {
       classes.push('text-red-600 dark:text-red-400')
     } else if (isDuplicate) {
-      classes.push('text-[var(--duplicate-text-light)] dark:text-[var(--duplicate-text-dark)]')
+      classes.push('text-duplicate-text')
     } else if (isGiven) {
-      classes.push('text-[var(--text-given)]')
+      classes.push('text-cell-text-given')
     } else {
-      classes.push('text-[var(--text-entered)]')
+      classes.push('text-cell-text-entered')
     }
 
     return classes.join(' ')
@@ -406,7 +406,7 @@ export default function Board({
     if (value !== 0) {
       const isHighlighted = highlightedDigit === value
       return (
-        <span className={isHighlighted ? 'text-[var(--accent)] font-bold' : ''}>
+        <span className={isHighlighted ? 'text-accent font-bold' : ''}>
           {value}
         </span>
       )
@@ -453,21 +453,21 @@ export default function Board({
               // Use darker red on highlighted backgrounds for contrast
               digitClass += isHighlightedCell 
                 ? "text-red-700 dark:text-red-200 line-through font-bold"
-                : "text-[var(--elimination-text-light)] dark:text-[var(--elimination-text-dark)] line-through font-bold"
+                : "text-red-500 dark:text-red-400 line-through font-bold"
             } else if (hasCandidate_ && isRelevantDigit && isTarget) {
               // This candidate is relevant to the technique - use contrasting color on highlighted bg
               digitClass += isHighlightedCell
                 ? "text-white dark:text-gray-900 font-bold drop-shadow-sm"
-                : "text-[var(--accent)] font-bold"
+                : "text-accent font-bold"
             } else if (isUserHighlighted) {
               // User has this digit selected - show in accent color
-              digitClass += "text-[var(--accent)] font-bold"
+              digitClass += "text-accent font-bold"
             } else if (isHighlightedCell) {
               // Normal candidate on highlighted background - use contrasting color
-              digitClass += "text-[var(--text-on-highlight)]"
+              digitClass += "text-cell-text-on-highlight"
             } else {
               // Normal candidate
-              digitClass += "text-[var(--text-candidate)]"
+              digitClass += "text-cell-text-candidate"
             }
             
             return (
@@ -484,7 +484,7 @@ export default function Board({
   }
 
   return (
-    <div className="sudoku-board" role="grid" aria-label="Sudoku puzzle">
+    <div className="sudoku-board aspect-square w-full max-w-[40rem] max-h-full" role="grid" aria-label="Sudoku puzzle">
       {Array.from({ length: 9 }, (_, rowIdx) => (
         <div key={rowIdx} role="row" className="contents">
           {Array.from({ length: 9 }, (_, colIdx) => {

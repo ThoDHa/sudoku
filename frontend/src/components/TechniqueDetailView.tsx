@@ -29,12 +29,12 @@ function SubsectionView({ subsection, index }: SubsectionViewProps) {
   return (
     <div 
       id={`subsection-${index}`}
-      className={`rounded-lg border p-4 ${isNotImplemented ? 'border-[var(--border-light)] bg-[var(--bg-secondary)] opacity-60' : 'border-[var(--accent)] bg-[var(--bg-secondary)]'}`}
+      className={`rounded-lg border p-4 ${isNotImplemented ? 'border-board-border-light bg-background-secondary opacity-60' : 'border-accent bg-background-secondary'}`}
     >
-      <h3 className="mb-2 text-lg font-semibold text-[var(--text)]">
+      <h3 className="mb-2 text-lg font-semibold text-foreground">
         {subsection.title}
       </h3>
-      <p className="mb-3 text-[var(--text-muted)]">
+      <p className="mb-3 text-foreground-muted">
         <GlossaryLinkedText text={subsection.description} />
       </p>
       
@@ -44,8 +44,8 @@ function SubsectionView({ subsection, index }: SubsectionViewProps) {
         </div>
       )}
       
-      <div className="rounded border border-[var(--border-light)] bg-[var(--cell-bg)] p-3">
-        <p className="text-sm text-[var(--text)]">
+      <div className="rounded border border-board-border-light bg-cell-bg p-3">
+        <p className="text-sm text-foreground">
           <span className="font-medium">Example:</span> <GlossaryLinkedText text={subsection.example} />
         </p>
       </div>
@@ -73,7 +73,7 @@ function RelatedTechniques({ slugs, onRelatedClick, variant }: RelatedTechniques
             <button
               key={slug}
               onClick={() => onRelatedClick(related)}
-              className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-secondary)] px-3 py-1 text-sm text-[var(--accent)] hover:bg-[var(--btn-hover)]"
+              className="inline-flex items-center gap-1 rounded-full bg-background-secondary px-3 py-1 text-sm text-accent hover:bg-btn-hover"
             >
               {related.title}
               <ChevronRightIcon className="h-3 w-3" />
@@ -85,7 +85,7 @@ function RelatedTechniques({ slugs, onRelatedClick, variant }: RelatedTechniques
           <Link
             key={slug}
             to={`/technique/${slug}`}
-            className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-secondary)] px-3 py-1 text-sm text-[var(--accent)] hover:bg-[var(--btn-hover)]"
+            className="inline-flex items-center gap-1 rounded-full bg-background-secondary px-3 py-1 text-sm text-accent hover:bg-btn-hover"
           >
             {related.title}
             <ChevronRightIcon className="h-3 w-3" />
@@ -138,9 +138,9 @@ export default function TechniqueDetailView({
       {/* Diagram - prefer animated if available */}
       {(technique.animatedDiagram || technique.diagram) && (
         <div className={isPage ? 'mb-8' : ''}>
-          {isPage && <h2 className={`mb-4 ${headingClass} text-[var(--text)]`}>📊 Diagram</h2>}
-          <div className="rounded-lg bg-[var(--bg-secondary)] p-4">
-            {!isPage && <h3 className="mb-3 text-sm font-semibold text-[var(--text)]">Diagram</h3>}
+          {isPage && <h2 className={`mb-4 ${headingClass} text-foreground`}>📊 Diagram</h2>}
+          <div className="rounded-lg bg-background-secondary p-4">
+            {!isPage && <h3 className="mb-3 text-sm font-semibold text-foreground">Diagram</h3>}
             {technique.animatedDiagram ? (
               <AnimatedDiagramView diagram={technique.animatedDiagram} />
             ) : technique.diagram ? (
@@ -155,21 +155,21 @@ export default function TechniqueDetailView({
 
       {/* Description / How it works */}
       <div className={isPage ? 'mb-8' : ''}>
-        <h2 className={`${isPage ? 'mb-4' : 'mb-2'} ${headingClass} text-[var(--text)]`}>
+        <h2 className={`${isPage ? 'mb-4' : 'mb-2'} ${headingClass} text-foreground`}>
           {isPage ? '⚙️ How it works' : 'How it works'}
         </h2>
-        <p className={`${isPage ? '' : 'text-sm'} leading-relaxed text-[var(--text-muted)]`}>
+        <p className={`${isPage ? '' : 'text-sm'} leading-relaxed text-foreground-muted`}>
           <GlossaryLinkedText text={technique.description} />
         </p>
       </div>
 
       {/* Example */}
       <div className={isPage ? 'mb-8' : ''}>
-        <h2 className={`${isPage ? 'mb-4' : 'mb-2'} ${headingClass} text-[var(--text)]`}>
+        <h2 className={`${isPage ? 'mb-4' : 'mb-2'} ${headingClass} text-foreground`}>
           {isPage ? '💡 Example' : 'Example'}
         </h2>
-        <div className={`rounded-lg p-4 ${isPage ? 'border border-[var(--accent)] bg-[var(--accent-light)]' : 'bg-[var(--bg-secondary)]'}`}>
-          <p className={`${isPage ? '' : 'text-sm'} leading-relaxed text-[var(--text${isPage ? '' : '-muted'})]`}>
+        <div className={`rounded-lg p-4 ${isPage ? 'border border-accent bg-accent-light' : 'bg-background-secondary'}`}>
+          <p className={`${isPage ? '' : 'text-sm'} leading-relaxed text-foreground${isPage ? '' : '-muted'}`}>
             <GlossaryLinkedText text={technique.example} />
           </p>
         </div>
@@ -178,7 +178,7 @@ export default function TechniqueDetailView({
       {/* Subsections / Variations (page only) */}
       {isPage && technique.subsections && technique.subsections.length > 0 && (
         <div className="mb-8">
-          <h2 className={`mb-4 ${headingClass} text-[var(--text)]`}>📋 Variations</h2>
+          <h2 className={`mb-4 ${headingClass} text-foreground`}>📋 Variations</h2>
           
           {/* Quick navigation */}
           <div className="mb-4 flex flex-wrap gap-2">
@@ -188,8 +188,8 @@ export default function TechniqueDetailView({
                 href={`#subsection-${idx}`}
                 className={`rounded-full px-3 py-1 text-sm transition-colors ${
                   sub.title.includes('Not Implemented')
-                    ? 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
-                    : 'bg-[var(--accent-light)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white'
+                    ? 'bg-background-secondary text-foreground-muted'
+                    : 'bg-accent-light text-accent hover:bg-accent hover:text-white'
                 }`}
               >
                 {sub.title.replace(' (Not Implemented)', '')}
@@ -208,7 +208,7 @@ export default function TechniqueDetailView({
       {/* Related Techniques */}
       {technique.relatedTechniques && technique.relatedTechniques.length > 0 && (
         <div className={isPage ? 'mb-8' : ''}>
-          <h2 className={`${isPage ? 'mb-4' : 'mb-2'} ${headingClass} text-[var(--text)]`}>
+          <h2 className={`${isPage ? 'mb-4' : 'mb-2'} ${headingClass} text-foreground`}>
             {isPage ? '🔗 Related Techniques' : 'Related Techniques'}
           </h2>
           <RelatedTechniques 
@@ -221,9 +221,9 @@ export default function TechniqueDetailView({
 
       {/* Tips (modal only) */}
       {showTips && (
-        <div className="rounded-lg border border-[var(--border-light)] p-4">
-          <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">Tips</h3>
-          <ul className="list-inside list-disc space-y-1 text-sm text-[var(--text-muted)]">
+        <div className="rounded-lg border border-board-border-light p-4">
+          <h3 className="mb-2 text-sm font-semibold text-foreground">Tips</h3>
+          <ul className="list-inside list-disc space-y-1 text-sm text-foreground-muted">
             <li>Use "Auto-fill notes" from the menu to see all candidates</li>
             <li>Click "Hint" to get a suggestion and apply it automatically</li>
             <li>Look for patterns matching this technique in your puzzle</li>
@@ -236,7 +236,7 @@ export default function TechniqueDetailView({
         <div className={isPage ? 'mb-8' : 'mt-4'}>
           <button
             onClick={handlePractice}
-            className="w-full rounded-lg bg-[var(--accent)] py-3 font-medium text-white transition-colors hover:opacity-90"
+            className="w-full rounded-lg bg-accent py-3 font-medium text-white transition-colors hover:opacity-90"
           >
             <span className="flex items-center justify-center gap-2">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -17,12 +17,12 @@ export default function Result() {
 
   if (!seed || !difficulty) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 bg-[var(--bg)]">
-        <p className="text-xl font-medium text-[var(--text)]">Result not found</p>
-        <p className="text-[var(--text-muted)]">Invalid or missing result data in URL</p>
+      <div className="flex h-full flex-col items-center justify-center gap-4 bg-background">
+        <p className="text-xl font-medium text-foreground">Result not found</p>
+        <p className="text-foreground-muted">Invalid or missing result data in URL</p>
         <Link
           to="/"
-          className="rounded-lg bg-[var(--accent)] px-4 py-2 text-[var(--btn-active-text)] hover:opacity-90"
+          className="rounded-lg bg-accent px-4 py-2 text-btn-active-text hover:opacity-90"
         >
           Back to Daily
         </Link>
@@ -72,7 +72,7 @@ export default function Result() {
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center p-8 bg-[var(--bg)] text-[var(--text)]">
+    <div className="flex h-full flex-col items-center justify-center p-8 bg-background text-foreground">
       <h1 className="mb-6 text-2xl font-bold">Puzzle Complete!</h1>
       
       <ResultSummary
@@ -86,14 +86,14 @@ export default function Result() {
       />
       
       {/* Share preview */}
-      <div className="mt-6 w-full max-w-sm rounded-lg border border-[var(--border-light)] bg-[var(--bg-secondary)] p-4">
-        <p className="mb-3 text-sm font-medium text-[var(--text-muted)]">Share your result</p>
-        <pre className="mb-4 whitespace-pre-wrap text-sm text-[var(--text)] font-mono bg-[var(--bg)] p-3 rounded border border-[var(--border-light)]">
+      <div className="mt-6 w-full max-w-sm rounded-lg border border-board-border-light bg-background-secondary p-4">
+        <p className="mb-3 text-sm font-medium text-foreground-muted">Share your result</p>
+        <pre className="mb-4 whitespace-pre-wrap text-sm text-foreground font-mono bg-background p-3 rounded border border-board-border-light">
           {shareText}
         </pre>
         <button
           onClick={handleShare}
-          className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-[var(--btn-active-text)] hover:opacity-90 transition-colors"
+          className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-btn-active-text hover:opacity-90 transition-colors"
         >
           {copied ? (
             <>
@@ -112,13 +112,13 @@ export default function Result() {
       <div className="mt-8 flex gap-4">
         <Link
           to={`/game/${seed}?d=${difficulty}`}
-          className="rounded-lg border border-[var(--border-light)] px-4 py-2 hover:bg-[var(--btn-hover)] text-[var(--text)]"
+          className="rounded-lg border border-board-border-light px-4 py-2 hover:bg-btn-hover text-foreground"
         >
           Try Again
         </Link>
         <Link
           to="/"
-          className="rounded-lg bg-[var(--accent)] px-4 py-2 text-[var(--btn-active-text)] hover:opacity-90"
+          className="rounded-lg bg-accent px-4 py-2 text-btn-active-text hover:opacity-90"
         >
           New Puzzle
         </Link>

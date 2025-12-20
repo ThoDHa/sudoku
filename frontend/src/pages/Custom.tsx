@@ -111,16 +111,16 @@ export default function Custom() {
   const candidates = new Uint16Array(81)
 
   return (
-    <div className="flex h-full flex-col items-center justify-center p-4 bg-[var(--bg)]">
+    <div className="flex h-full flex-col items-center justify-center p-4 bg-background">
       <div className="mb-4">
-        <Link to="/" className="text-sm text-[var(--accent)] hover:underline">
+        <Link to="/" className="text-sm text-accent hover:underline">
           &larr; Back to puzzles
         </Link>
       </div>
 
       <div className="mb-6 text-center">
-        <h1 className="mb-2 text-2xl font-bold text-[var(--text)]">Custom Puzzle</h1>
-        <p className="text-[var(--text-muted)]">
+        <h1 className="mb-2 text-2xl font-bold text-foreground">Custom Puzzle</h1>
+        <p className="text-foreground-muted">
           Enter your own puzzle or paste from clipboard. Share the URL to challenge others!
         </p>
       </div>
@@ -144,7 +144,7 @@ export default function Custom() {
           <button
             key={digit}
             onClick={() => handleDigitInput(digit)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--btn-bg)] text-lg font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)] sm:h-12 sm:w-12 sm:text-xl"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-btn-bg text-lg font-medium text-foreground transition-colors hover:bg-btn-hover sm:h-12 sm:w-12 sm:text-xl"
           >
             {digit}
           </button>
@@ -155,19 +155,19 @@ export default function Custom() {
       <div className="mt-4 flex flex-wrap justify-center gap-2">
         <button
           onClick={handleErase}
-          className="rounded-lg bg-[var(--btn-bg)] px-4 py-2 text-sm font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+          className="rounded-lg bg-btn-bg px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
         >
           Erase
         </button>
         <button
           onClick={handleClear}
-          className="rounded-lg bg-[var(--btn-bg)] px-4 py-2 text-sm font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+          className="rounded-lg bg-btn-bg px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
         >
           Clear All
         </button>
         <button
           onClick={handlePaste}
-          className="rounded-lg bg-[var(--btn-bg)] px-4 py-2 text-sm font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+          className="rounded-lg bg-btn-bg px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
         >
           Paste
         </button>
@@ -182,25 +182,25 @@ export default function Custom() {
       <div className="mt-6 flex gap-4">
         <button
           onClick={() => navigate('/')}
-          className="rounded-lg border border-[var(--border-light)] px-6 py-3 font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+          className="rounded-lg border border-board-border-light px-6 py-3 font-medium text-foreground transition-colors hover:bg-btn-hover"
         >
           Cancel
         </button>
         <button
           onClick={handleValidateAndPlay}
           disabled={validating}
-          className="rounded-lg bg-[var(--accent)] px-6 py-3 font-medium text-[var(--btn-active-text)] transition-colors hover:opacity-90 disabled:opacity-50"
+          className="rounded-lg bg-accent px-6 py-3 font-medium text-btn-active-text transition-colors hover:opacity-90 disabled:opacity-50"
         >
           {validating ? 'Validating...' : 'Validate & Play'}
         </button>
       </div>
 
-      <div className="mt-8 max-w-md text-center text-sm text-[var(--text-muted)]">
+      <div className="mt-8 max-w-md text-center text-sm text-foreground-muted">
         <p className="mb-2">
-          <strong className="text-[var(--text)]">Paste format:</strong> 81 characters using digits 1-9 and 0 or . for empty cells.
+          <strong className="text-foreground">Paste format:</strong> 81 characters using digits 1-9 and 0 or . for empty cells.
         </p>
         <p>
-          Example: <code className="rounded bg-[var(--bg-secondary)] px-1 text-[var(--text)]">530070000600195000098000060800060003400803001700020006060000280000419005000080079</code>
+          Example: <code className="rounded bg-background-secondary px-1 text-foreground">530070000600195000098000060800060003400803001700020006060000280000419005000080079</code>
         </p>
       </div>
     </div>

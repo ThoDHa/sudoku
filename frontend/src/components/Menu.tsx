@@ -159,15 +159,15 @@ export default function Menu({
       >
         <div className="min-h-full flex items-center justify-center p-4">
           <div 
-            className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-xl border border-[var(--border-light)] bg-[var(--bg)] shadow-2xl"
+            className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-xl border border-board-border-light bg-background shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-light)]">
-            <span className="text-lg font-semibold text-[var(--text)]">Menu</span>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-board-border-light">
+            <span className="text-lg font-semibold text-foreground">Menu</span>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)]"
+              className="p-1.5 rounded-lg text-foreground-muted hover:text-foreground hover:bg-btn-hover"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -182,7 +182,7 @@ export default function Menu({
                 <Link
                   to="/"
                   onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-2.5 text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                  className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -193,7 +193,7 @@ export default function Menu({
                 <Link
                   to="/techniques"
                   onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-2.5 text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                  className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -203,7 +203,7 @@ export default function Menu({
                 <Link
                   to="/leaderboard"
                   onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-2.5 text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                  className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -213,7 +213,7 @@ export default function Menu({
                 <Link
                   to="/custom"
                   onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-2.5 text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                  className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -223,14 +223,14 @@ export default function Menu({
                 <Link
                   to="/techniques/how-to-play"
                   onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-2.5 text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                  className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   How to Play
                 </Link>
-                <div className="my-1 border-t border-[var(--border-light)]" />
+                <div className="my-1 border-t border-board-border-light" />
               </>
             )}
 
@@ -238,11 +238,11 @@ export default function Menu({
             {gameActions && (
               <>
                 <div className="px-3 py-1">
-                  <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Actions</span>
+                  <span className="text-xs font-medium text-foreground-muted uppercase tracking-wide">Actions</span>
                 </div>
                 <button
                   onClick={() => { gameActions.onAutoFillNotes(); onClose() }}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -251,7 +251,7 @@ export default function Menu({
                 </button>
                 <button
                   onClick={() => { gameActions.onCheckNotes(); onClose() }}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -260,7 +260,7 @@ export default function Menu({
                 </button>
                 <button
                   onClick={() => { gameActions.onClearNotes(); onClose() }}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -269,7 +269,7 @@ export default function Menu({
                 </button>
                 <button
                   onClick={() => { gameActions.onValidate(); onClose() }}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -278,10 +278,10 @@ export default function Menu({
                 </button>
                 
                 {/* Solve with speed options */}
-                <div className="flex w-full items-center px-3 py-2 rounded-lg hover:bg-[var(--btn-hover)]">
+                <div className="flex w-full items-center px-3 py-2 rounded-lg hover:bg-btn-hover">
                   <button
                     onClick={() => { gameActions.onSolve(); onClose() }}
-                    className="flex items-center gap-3 text-sm text-[var(--text)]"
+                    className="flex items-center gap-3 text-sm text-foreground"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -301,8 +301,8 @@ export default function Menu({
                         title={`${label} - Click to start`}
                         className={`p-1 rounded ${
                           gameActions.autoSolveSpeed === speed
-                            ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                            : 'text-[var(--text-muted)] hover:bg-[var(--btn-hover)] hover:text-[var(--text)]'
+                            ? 'bg-accent text-btn-active-text'
+                            : 'text-foreground-muted hover:bg-btn-hover hover:text-foreground'
                         }`}
                       >
                         {icon}
@@ -313,7 +313,7 @@ export default function Menu({
                 
                 <button
                   onClick={() => { gameActions.onClearAll(); onClose() }}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
                 >
                   {gameActions.isComplete ? (
                     <>
@@ -332,13 +332,16 @@ export default function Menu({
                   )}
                 </button>
 
-                <div className="my-1 border-t border-[var(--border-light)]" />
+                <div className="my-1 border-t border-board-border-light" />
 
                 {/* New Puzzle submenu */}
                 <div className="rounded-lg overflow-hidden">
                   <button
-                    onClick={() => setNewPuzzleMenuOpen(!newPuzzleMenuOpen)}
-                    className="flex w-full items-center justify-between px-3 py-2 text-sm text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                    onClick={() => {
+                      setNewPuzzleMenuOpen(!newPuzzleMenuOpen)
+                      setSettingsExpanded(false)
+                    }}
+                    className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
                   >
                     <span className="flex items-center gap-3">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -359,7 +362,7 @@ export default function Menu({
                             navigate(createGameRoute(d))
                             onClose()
                           }}
-                          className="block w-full px-3 py-1.5 text-left text-sm capitalize text-[var(--text-muted)] hover:text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                          className="block w-full px-3 py-1.5 text-left text-sm capitalize text-foreground-muted hover:text-foreground rounded-lg hover:bg-btn-hover"
                         >
                           {d}
                         </button>
@@ -369,7 +372,7 @@ export default function Menu({
                           navigate('/custom')
                           onClose()
                         }}
-                        className="block w-full px-3 py-1.5 text-left text-sm text-[var(--text-muted)] hover:text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                        className="block w-full px-3 py-1.5 text-left text-sm text-foreground-muted hover:text-foreground rounded-lg hover:bg-btn-hover"
                       >
                         Custom
                       </button>
@@ -377,15 +380,18 @@ export default function Menu({
                   )}
                 </div>
 
-                <div className="my-1 border-t border-[var(--border-light)]" />
+                <div className="my-1 border-t border-board-border-light" />
               </>
             )}
 
             {/* Settings Section - Collapsible */}
             <div className="rounded-lg overflow-hidden">
               <button
-                onClick={() => setSettingsExpanded(!settingsExpanded)}
-                className="flex w-full items-center justify-between px-3 py-2 text-sm text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                onClick={() => {
+                  setSettingsExpanded(!settingsExpanded)
+                  setNewPuzzleMenuOpen(false)
+                }}
+                className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
               >
                 <span className="flex items-center gap-3">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -402,7 +408,7 @@ export default function Menu({
                 <div className="ml-4 py-1 space-y-1">
                   {/* Color theme picker */}
                   <div className="flex items-center justify-between px-3 py-2">
-                    <span className="text-sm text-[var(--text-muted)]">{colorThemes.find(t => t.key === colorTheme)?.name ?? 'Theme'}</span>
+                    <span className="text-sm text-foreground-muted">{colorThemes.find(t => t.key === colorTheme)?.name ?? 'Theme'}</span>
                     <div className="flex gap-1">
                       {colorThemes.map((theme) => (
                         <button
@@ -410,7 +416,7 @@ export default function Menu({
                           onClick={() => onSetColorTheme(theme.key)}
                           className={`w-4 h-4 rounded-full ${theme.color} transition-transform ${
                             colorTheme === theme.key 
-                              ? 'ring-2 ring-offset-1 ring-[var(--text)] scale-110' 
+                              ? 'ring-2 ring-offset-1 ring-foreground scale-110' 
                               : 'hover:scale-110'
                           }`}
                           title={theme.name}
@@ -425,7 +431,7 @@ export default function Menu({
                       {/* Show Timer toggle */}
                       <button
                         onClick={gameActions.onToggleHideTimer}
-                        className="flex w-full items-center justify-between px-3 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)] rounded-lg"
+                        className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-btn-hover rounded-lg"
                       >
                         <span className="flex items-center gap-3">
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -433,7 +439,7 @@ export default function Menu({
                           </svg>
                           Show Timer
                         </span>
-                        <div className={`w-9 h-5 rounded-full transition-colors ${!gameActions.hideTimerState ? 'bg-[var(--accent)]' : 'bg-[var(--border-light)]'}`}>
+                        <div className={`w-9 h-5 rounded-full transition-colors ${!gameActions.hideTimerState ? 'bg-accent' : 'bg-board-border-light'}`}>
                           <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${!gameActions.hideTimerState ? 'translate-x-4' : 'translate-x-0'}`} />
                         </div>
                       </button>
@@ -441,7 +447,7 @@ export default function Menu({
                       {/* Auto-save Progress toggle */}
                       <button
                         onClick={handleAutoSaveToggle}
-                        className="flex w-full items-center justify-between px-3 py-2 text-sm text-[var(--text)] hover:bg-[var(--btn-hover)] rounded-lg"
+                        className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-btn-hover rounded-lg"
                       >
                         <span className="flex items-center gap-3">
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -449,7 +455,7 @@ export default function Menu({
                           </svg>
                           Auto-Save Progress
                         </span>
-                        <div className={`w-9 h-5 rounded-full transition-colors ${autoSaveEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--border-light)]'}`}>
+                        <div className={`w-9 h-5 rounded-full transition-colors ${autoSaveEnabled ? 'bg-accent' : 'bg-board-border-light'}`}>
                           <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${autoSaveEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
                         </div>
                       </button>
@@ -462,14 +468,14 @@ export default function Menu({
             {/* Homepage mode toggle (homepage only) */}
             {homepageActions && (
               <div className="px-3 py-2">
-                <div className="text-xs text-[var(--text-muted)] mb-2">Homepage Mode</div>
+                <div className="text-xs text-foreground-muted mb-2">Homepage Mode</div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => homepageActions.onSetHomepageMode('daily')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                       homepageActions.homepageMode === 'daily'
-                        ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                        : 'bg-[var(--bg-secondary)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                        ? 'bg-accent text-btn-active-text'
+                        : 'bg-background-secondary text-foreground hover:bg-btn-hover'
                     }`}
                   >
                     Daily Puzzle
@@ -478,8 +484,8 @@ export default function Menu({
                     onClick={() => homepageActions.onSetHomepageMode('practice')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                       homepageActions.homepageMode === 'practice'
-                        ? 'bg-[var(--accent)] text-[var(--btn-active-text)]'
-                        : 'bg-[var(--bg-secondary)] text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                        ? 'bg-accent text-btn-active-text'
+                        : 'bg-background-secondary text-foreground hover:bg-btn-hover'
                     }`}
                   >
                     Practice Mode
@@ -488,13 +494,13 @@ export default function Menu({
               </div>
             )}
 
-            <div className="my-1 border-t border-[var(--border-light)]" />
+            <div className="my-1 border-t border-board-border-light" />
 
             {/* Learn Techniques (game page) */}
             {gameActions && (
               <button
                 onClick={() => { gameActions.onTechniquesList(); onClose() }}
-                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -507,7 +513,7 @@ export default function Menu({
             {onFeatureRequest && (
               <button
                 onClick={() => { onFeatureRequest(); onClose() }}
-                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text)] rounded-lg hover:bg-[var(--btn-hover)]"
+                className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -519,9 +525,9 @@ export default function Menu({
             {/* Debug Section */}
             {import.meta.env.DEV && (
               <>
-                <div className="my-1 border-t border-[var(--border-light)]" />
+                <div className="my-1 border-t border-board-border-light" />
                 <div className="px-3 py-1">
-                  <span className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">Debug</span>
+                  <span className="text-xs font-medium text-foreground-muted uppercase tracking-wide">Debug</span>
                 </div>
                 <button
                   onClick={async () => {
@@ -535,7 +541,7 @@ export default function Menu({
                       console.error('Failed to clear caches:', error)
                     }
                   }}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text-muted)] rounded-lg hover:bg-[var(--btn-hover)]"
+                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground-muted rounded-lg hover:bg-btn-hover"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -558,7 +564,7 @@ export default function Menu({
                   console.error('Failed to clear caches:', error)
                 }
               }}
-              className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text-muted)] rounded-lg hover:bg-[var(--btn-hover)]"
+              className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground-muted rounded-lg hover:bg-btn-hover"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -569,7 +575,7 @@ export default function Menu({
             {/* Report Bug */}
             <button
               onClick={() => { onReportBug(); onClose() }}
-              className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text-muted)] rounded-lg hover:bg-[var(--btn-hover)]"
+              className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground-muted rounded-lg hover:bg-btn-hover"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -583,7 +589,7 @@ export default function Menu({
               target="_blank"
               rel="noopener noreferrer"
               onClick={onClose}
-              className="flex w-full items-center gap-3 px-3 py-2 text-sm text-[var(--text-muted)] rounded-lg hover:bg-[var(--btn-hover)]"
+              className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground-muted rounded-lg hover:bg-btn-hover"
             >
               <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                 <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
@@ -592,7 +598,7 @@ export default function Menu({
             </a>
 
             {/* Version */}
-            <div className="px-3 py-2 text-xs text-[var(--text-muted)] text-center border-t border-[var(--border-light)] mt-2">
+            <div className="px-3 py-2 text-xs text-foreground-muted text-center border-t border-board-border-light mt-2">
               v{__COMMIT_HASH__}
             </div>
           </div>

@@ -202,7 +202,7 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
       
       {/* Step description */}
       <div className="mt-3 min-h-[2.5rem] text-center">
-        <p className="text-sm font-medium text-[var(--text)]">
+        <p className="text-sm font-medium text-foreground">
           {currentStepData.description}
         </p>
       </div>
@@ -212,10 +212,10 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
         {/* Previous button */}
         <button
           onClick={handlePrevious}
-          className="rounded-full p-1.5 hover:bg-[var(--btn-hover)] transition-colors"
+          className="rounded-full p-1.5 hover:bg-btn-hover transition-colors"
           aria-label="Previous step"
         >
-          <svg className="h-4 w-4 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="h-4 w-4 text-foreground-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
@@ -223,15 +223,15 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
         {/* Play/Pause button */}
         <button
           onClick={togglePlay}
-          className="rounded-full p-1.5 hover:bg-[var(--btn-hover)] transition-colors"
+          className="rounded-full p-1.5 hover:bg-btn-hover transition-colors"
           aria-label={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying ? (
-            <svg className="h-4 w-4 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ) : (
-            <svg className="h-4 w-4 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -241,16 +241,16 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
         {/* Next button */}
         <button
           onClick={handleNext}
-          className="rounded-full p-1.5 hover:bg-[var(--btn-hover)] transition-colors"
+          className="rounded-full p-1.5 hover:bg-btn-hover transition-colors"
           aria-label="Next step"
         >
-          <svg className="h-4 w-4 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="h-4 w-4 text-foreground-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
         
         {/* Step indicator */}
-        <span className="ml-2 text-xs text-[var(--text-muted)]">
+        <span className="ml-2 text-xs text-foreground-muted">
           {currentStep + 1} / {stepCount}
         </span>
       </div>
@@ -266,8 +266,8 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
             }}
             className={`h-1.5 w-1.5 rounded-full transition-colors ${
               idx === currentStep 
-                ? 'bg-[var(--accent)]' 
-                : 'bg-[var(--border-light)] hover:bg-[var(--text-muted)]'
+                ? 'bg-accent' 
+                : 'bg-board-border-light hover:bg-foreground-muted'
             }`}
             aria-label={`Go to step ${idx + 1}`}
           />

@@ -11,37 +11,37 @@ interface DailyCardProps {
 // Card border colors for each difficulty
 const difficultyColors: Record<Difficulty, { bg: string; border: string; hoverBorder: string; ring: string }> = {
   easy: { 
-    bg: 'bg-[var(--bg-secondary)]', 
+    bg: 'bg-background-secondary', 
     border: 'border-green-500', 
     hoverBorder: 'hover:border-green-600',
     ring: 'ring-green-500',
   },
   medium: { 
-    bg: 'bg-[var(--bg-secondary)]', 
+    bg: 'bg-background-secondary', 
     border: 'border-amber-500', 
     hoverBorder: 'hover:border-amber-600',
     ring: 'ring-amber-500',
   },
   hard: { 
-    bg: 'bg-[var(--bg-secondary)]', 
+    bg: 'bg-background-secondary', 
     border: 'border-orange-500', 
     hoverBorder: 'hover:border-orange-600',
     ring: 'ring-orange-500',
   },
   extreme: { 
-    bg: 'bg-[var(--bg-secondary)]', 
+    bg: 'bg-background-secondary', 
     border: 'border-red-500', 
     hoverBorder: 'hover:border-red-600',
     ring: 'ring-red-500',
   },
   impossible: { 
-    bg: 'bg-[var(--bg-secondary)]', 
+    bg: 'bg-background-secondary', 
     border: 'border-fuchsia-500', 
     hoverBorder: 'hover:border-fuchsia-600',
     ring: 'ring-fuchsia-500',
   },
   custom: { 
-    bg: 'bg-[var(--bg-secondary)]', 
+    bg: 'bg-background-secondary', 
     border: 'border-purple-500', 
     hoverBorder: 'hover:border-purple-600',
     ring: 'ring-purple-500',
@@ -72,8 +72,8 @@ export default function DailyCard({ difficulty, givensHint, selected, onPlay }: 
       className={`${baseClasses} ${bgClass} ${borderClass} ${hoverClass} ${ringClass} flex flex-col items-center justify-center gap-3`}
     >
       <DifficultyBadge difficulty={difficulty} size="lg" />
-      <p className="text-sm text-[var(--text-muted)]">{givensHint} givens</p>
-      <span className="mt-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--btn-active-text)] hover:opacity-90">
+      <p className="text-sm text-foreground-muted">{givensHint} givens</p>
+      <span className="mt-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-btn-active-text hover:opacity-90">
         Play
       </span>
     </button>

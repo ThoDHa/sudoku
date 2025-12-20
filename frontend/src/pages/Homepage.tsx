@@ -15,7 +15,7 @@ function EnsoLogo({ size = 80 }: { size?: number }) {
       className="mb-4"
     >
       {/* Background - subtle warm paper texture color */}
-      <rect width="512" height="512" fill="var(--bg)" rx="64"/>
+      <rect width="512" height="512" className="fill-background" rx="64"/>
       
       {/* Enso circle - the Zen brushstroke, intentionally incomplete */}
       <g transform="translate(256, 256)">
@@ -26,19 +26,19 @@ function EnsoLogo({ size = 80 }: { size?: number }) {
              Q 115 -140 130 -125
              A 140 140 0 1 1 105 -80
              Q 115 -90 140 -100"
-          fill="var(--text)"
+          className="fill-foreground"
           stroke="none"
         />
         
         {/* Brush stroke start - thicker with ink pooling effect */}
-        <ellipse cx="140" cy="-100" rx="28" ry="20" fill="var(--text)" transform="rotate(-35 140 -100)"/>
+        <ellipse cx="140" cy="-100" rx="28" ry="20" className="fill-foreground" transform="rotate(-35 140 -100)"/>
         
         {/* Brush stroke tail - tapered end where brush lifts */}
         <path 
           d="M 100 -145 
              Q 85 -155 70 -160
              Q 80 -150 100 -145"
-          fill="var(--text)"
+          className="fill-foreground"
           opacity="0.8"
         />
       </g>
@@ -50,7 +50,7 @@ function EnsoLogo({ size = 80 }: { size?: number }) {
         fontFamily="Georgia, 'Times New Roman', serif" 
         fontSize="220" 
         fontWeight="400" 
-        fill="var(--text)" 
+        className="fill-foreground" 
         textAnchor="middle"
       >9</text>
     </svg>
@@ -88,27 +88,27 @@ export default function Homepage() {
   // If today's daily is completed and we're in daily mode, show completion screen
   if (mode === 'daily' && completed) {
     return (
-      <div className="flex h-full flex-col items-center justify-center p-4 bg-[var(--bg)] text-[var(--text)]">
+      <div className="flex h-full flex-col items-center justify-center p-4 bg-background text-foreground">
         {/* Constrain to puzzle size - uses .game-container class from index.css */}
         <div className="game-container aspect-square flex flex-col items-center justify-center">
           <EnsoLogo size={80} />
           <h1 className="mb-1 text-2xl font-bold">Daily Complete!</h1>
-          <p className="mb-3 text-sm text-[var(--text-muted)]">{data.date_utc}</p>
+          <p className="mb-3 text-sm text-foreground-muted">{data.date_utc}</p>
           
           {/* Streak display */}
           <div className="mb-4 flex items-center gap-4">
             <div className="text-center">
-              <div className="text-3xl font-bold text-[var(--accent)]">{streak.currentStreak}</div>
-              <div className="text-xs text-[var(--text-muted)]">Current Streak</div>
+              <div className="text-3xl font-bold text-accent">{streak.currentStreak}</div>
+              <div className="text-xs text-foreground-muted">Current Streak</div>
             </div>
-            <div className="h-10 w-px bg-[var(--border-light)]" />
+            <div className="h-10 w-px bg-board-border-light" />
             <div className="text-center">
               <div className="text-3xl font-bold">{streak.longestStreak}</div>
-              <div className="text-xs text-[var(--text-muted)]">Best Streak</div>
+              <div className="text-xs text-foreground-muted">Best Streak</div>
             </div>
           </div>
           
-          <p className="mb-4 text-center text-sm text-[var(--text-muted)]">
+          <p className="mb-4 text-center text-sm text-foreground-muted">
             Come back tomorrow for a new puzzle!
           </p>
           
@@ -117,7 +117,7 @@ export default function Homepage() {
               setHomepageMode('practice')
               setMode('practice')
             }}
-            className="w-full rounded-xl bg-[var(--accent)] px-6 py-3 font-semibold text-white transition-colors hover:opacity-90"
+            className="w-full rounded-xl bg-accent px-6 py-3 font-semibold text-white transition-colors hover:opacity-90"
           >
             Play Practice Game
           </button>
@@ -125,19 +125,19 @@ export default function Homepage() {
           <div className="mt-4 flex w-full gap-2">
             <Link
               to="/custom"
-              className="flex-1 rounded-lg border border-[var(--border-light)] px-3 py-2 text-center text-sm font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+              className="flex-1 rounded-lg border border-board-border-light px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
             >
               Custom
             </Link>
             <Link
               to="/techniques"
-              className="flex-1 rounded-lg border border-[var(--border-light)] px-3 py-2 text-center text-sm font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+              className="flex-1 rounded-lg border border-board-border-light px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
             >
               Techniques
             </Link>
             <Link
               to="/leaderboard"
-              className="flex-1 rounded-lg border border-[var(--border-light)] px-3 py-2 text-center text-sm font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+              className="flex-1 rounded-lg border border-board-border-light px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
             >
               Stats
             </Link>
@@ -148,18 +148,18 @@ export default function Homepage() {
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center p-4 bg-[var(--bg)] text-[var(--text)]">
+    <div className="flex h-full flex-col items-center justify-center p-4 bg-background text-foreground">
       {/* Constrain to puzzle size - uses .game-container class from index.css */}
       <div className="game-container aspect-square flex flex-col items-center justify-center">
         {mode === 'daily' ? (
           <>
             <EnsoLogo size={80} />
             <h1 className="mb-1 text-2xl font-bold">Daily Sudoku</h1>
-            <p className="mb-1 text-sm text-[var(--text-muted)]">{data.date_utc}</p>
+            <p className="mb-1 text-sm text-foreground-muted">{data.date_utc}</p>
             
             {/* Streak display */}
             {streak.currentStreak > 0 && (
-              <div className="mb-4 flex items-center gap-2 text-[var(--accent)]">
+              <div className="mb-4 flex items-center gap-2 text-accent">
                 <span className="text-lg">🔥</span>
                 <span className="text-sm font-semibold">{streak.currentStreak} day streak</span>
               </div>
@@ -178,7 +178,7 @@ export default function Homepage() {
           <>
             <EnsoLogo size={80} />
             <h1 className="mb-1 text-2xl font-bold">Practice Mode</h1>
-            <p className="mb-4 text-sm text-[var(--text-muted)]">Choose your difficulty</p>
+            <p className="mb-4 text-sm text-foreground-muted">Choose your difficulty</p>
 
             <div className="w-full">
               <DifficultyGrid
@@ -194,19 +194,19 @@ export default function Homepage() {
         <div className="mt-6 flex w-full gap-2">
           <Link
             to="/custom"
-            className="flex-1 rounded-lg border border-[var(--border-light)] px-3 py-2 text-center text-sm font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+            className="flex-1 rounded-lg border border-board-border-light px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
           >
             Custom
           </Link>
           <Link
             to="/techniques"
-            className="flex-1 rounded-lg border border-[var(--border-light)] px-3 py-2 text-center text-sm font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+            className="flex-1 rounded-lg border border-board-border-light px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
           >
             Techniques
           </Link>
           <Link
             to="/leaderboard"
-            className="flex-1 rounded-lg border border-[var(--border-light)] px-3 py-2 text-center text-sm font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)]"
+            className="flex-1 rounded-lg border border-board-border-light px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
           >
             Stats
           </Link>

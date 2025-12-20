@@ -44,11 +44,6 @@
 
   /* Board specific */
   --board-radius: 0.75rem;
-  --board-max-width-mobile: min(95vw, 26rem);
-  --board-max-width-sm: 28rem;
-  --board-max-width-md: 32rem;
-  --board-max-width-lg: 36rem;
-  --board-max-width-xl: 40rem;
 
   /* Font sizes - defaults, overridden by ThemeContext based on fontSize setting */
   --cell-font-size: 1.125rem;
@@ -90,9 +85,7 @@
 }
 
 html, body {
-  background-color: var(--bg);
-  color: var(--text);
-  @apply antialiased;
+  @apply bg-background text-foreground antialiased;
   /* Prevent scroll and fix mobile viewport issues */
   overflow: hidden;
   height: 100vh;
@@ -113,133 +106,9 @@ html, body {
 
 /* Transitions moved to end of file with prefers-reduced-motion support */
 
-/* Game container - wraps board and controls for consistent centering */
-.game-container {
-  width: 100%;
-  max-width: var(--board-max-width-mobile);
-}
-
-@media (min-width: 640px) {
-  .game-container {
-    max-width: var(--board-max-width-sm);
-  }
-}
-
-@media (min-width: 768px) {
-  .game-container {
-    max-width: var(--board-max-width-md);
-  }
-}
-
-@media (min-width: 1024px) {
-  .game-container {
-    max-width: var(--board-max-width-lg);
-  }
-}
-
-@media (min-width: 1280px) {
-  .game-container {
-    max-width: var(--board-max-width-xl);
-  }
-}
-
-:root.font-large .game-container {
-  max-width: min(98vw, 28rem);
-}
-
-@media (min-width: 640px) {
-  :root.font-large .game-container {
-    max-width: 30rem;
-  }
-}
-
-@media (min-width: 768px) {
-  :root.font-large .game-container {
-    max-width: 36rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  :root.font-large .game-container {
-    max-width: 40rem;
-  }
-}
-
-@media (min-width: 1280px) {
-  :root.font-large .game-container {
-    max-width: 44rem;
-  }
-}
-
-/* Sudoku board styling */
+/* Sudoku board styling - grid and visual appearance only */
 .sudoku-board {
-  display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  border: 2px solid var(--border-strong);
-  background-color: var(--board-bg);
-  border-radius: var(--board-radius);
-  overflow: hidden;
-  width: 100%;
-  max-width: var(--board-max-width-mobile);
-  aspect-ratio: 1;
-}
-
-@media (min-width: 640px) {
-  .sudoku-board {
-    max-width: var(--board-max-width-sm);
-  }
-}
-
-@media (min-width: 768px) {
-  .sudoku-board {
-    max-width: var(--board-max-width-md);
-  }
-}
-
-@media (min-width: 1024px) {
-  .sudoku-board {
-    max-width: var(--board-max-width-lg);
-  }
-}
-
-@media (min-width: 1280px) {
-  .sudoku-board {
-    max-width: var(--board-max-width-xl);
-  }
-}
-
-/* Large font size makes board larger on mobile */
-:root.font-large .sudoku-board {
-  max-width: min(98vw, 28rem);
-}
-
-@media (min-width: 640px) {
-  :root.font-large .sudoku-board {
-    max-width: 30rem;
-  }
-}
-
-@media (min-width: 768px) {
-  :root.font-large .sudoku-board {
-    max-width: 36rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  :root.font-large .sudoku-board {
-    max-width: 40rem;
-  }
-}
-
-@media (min-width: 1280px) {
-  :root.font-large .sudoku-board {
-    max-width: 44rem;
-  }
-}
-
-/* Controls container - takes full width of parent game-container */
-.controls-container {
-  width: 100%;
+  @apply grid grid-cols-9 border-2 border-board-border bg-board-bg rounded-board overflow-hidden;
 }
 
 /* Cell styling */

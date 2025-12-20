@@ -85,13 +85,13 @@ export default function History({
       />
 
       {/* Modal */}
-      <div className="relative max-h-[80vh] w-full max-w-md overflow-hidden rounded-lg bg-[var(--bg)] shadow-xl">
+      <div className="relative max-h-[80vh] w-full max-w-md overflow-hidden rounded-lg bg-background shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--border-light)] bg-[var(--bg-secondary)] p-4">
-          <h2 className="text-lg font-semibold text-[var(--text)]">Move History</h2>
+        <div className="flex items-center justify-between border-b border-board-border-light bg-background-secondary p-4">
+          <h2 className="text-lg font-semibold text-foreground">Move History</h2>
           <button
             onClick={onClose}
-            className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--btn-hover)]"
+            className="rounded p-1 text-foreground-muted hover:bg-btn-hover"
             aria-label="Close history"
           >
             <CloseIcon className="h-5 w-5" />
@@ -105,17 +105,17 @@ export default function History({
           className="max-h-[calc(80vh-4rem)] overflow-y-auto p-4"
         >
           {moves.length === 0 ? (
-            <p className="text-center text-sm text-[var(--text-muted)]">
+            <p className="text-center text-sm text-foreground-muted">
               No moves yet. Use Hint or Next Step to see technique explanations.
             </p>
           ) : (
             <ul className="space-y-3" ref={listRef}>
               {/* Auto-fill and Auto-solve summaries (shown first since newest is first) */}
               {autoFillUsed && (
-                <li className="rounded-lg border border-[var(--border-light)] bg-[var(--bg-secondary)] p-3 shadow-sm">
+                <li className="rounded-lg border border-board-border-light bg-background-secondary p-3 shadow-sm">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">📝</span>
-                    <span className="text-sm text-[var(--text)]">
+                    <span className="text-sm text-foreground">
                       {(() => {
                         // Find the auto-fill move to get the cell count
                         const autoFillMove = moves.find(move => move.technique === 'Fill Candidates')
@@ -132,10 +132,10 @@ export default function History({
                 </li>
               )}
               {autoSolveStepsUsed && autoSolveStepsUsed > 0 && (
-                <li className="rounded-lg border border-[var(--border-light)] bg-[var(--bg-secondary)] p-3 shadow-sm">
+                <li className="rounded-lg border border-board-border-light bg-background-secondary p-3 shadow-sm">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">🤖</span>
-                    <span className="text-sm text-[var(--text)]">
+                    <span className="text-sm text-foreground">
                       Automatically applied {autoSolveStepsUsed} move{autoSolveStepsUsed !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -156,12 +156,12 @@ export default function History({
                       move.isUserMove ? 'opacity-75' : ''
                     } ${
                       selectedMoveIndex === originalIdx
-                        ? 'border-[var(--accent)] bg-[var(--accent)]/10'
-                        : 'border-[var(--border-light)] bg-[var(--bg-secondary)]'
+                        ? 'border-accent bg-accent/10'
+                        : 'border-board-border-light bg-background-secondary'
                     }`}
                   >
                     <div className="mb-2 flex items-start justify-between">
-                      <span className="text-xs text-[var(--text-muted)]">#{displayNumber}</span>
+                      <span className="text-xs text-foreground-muted">#{displayNumber}</span>
                       {move.isUserMove ? (
                         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
                           You
@@ -175,11 +175,11 @@ export default function History({
                       )}
                     </div>
 
-                    <p className="mb-2 text-sm text-[var(--text)]">
+                    <p className="mb-2 text-sm text-foreground">
                       {move.action === 'place' || move.action === 'assign' ? (
                         <>
                           {move.isUserMove ? 'Placed' : 'Place'}{' '}
-                          <span className="font-bold text-[var(--accent)]">
+                          <span className="font-bold text-accent">
                             {move.digit}
                           </span>{' '}
                           at{' '}
@@ -190,7 +190,7 @@ export default function History({
                       ) : move.action === 'note' || move.action === 'candidate' ? (
                         <>
                           {move.isUserMove ? 'Added' : 'Add'} candidate{' '}
-                          <span className="font-bold text-[var(--accent)]">
+                          <span className="font-bold text-accent">
                             {move.digit}
                           </span>{' '}
                           {move.isUserMove ? 'to' : 'at'}{' '}
@@ -226,7 +226,7 @@ export default function History({
                     </p>
 
                     {!move.isUserMove && (
-                      <p className="text-xs text-[var(--text-muted)]">{move.explanation}</p>
+                      <p className="text-xs text-foreground-muted">{move.explanation}</p>
                     )}
 
                     {!move.isUserMove && move.refs && move.refs.slug && (
@@ -235,7 +235,7 @@ export default function History({
                           e.stopPropagation()
                           onTechniqueClick({ title: move.refs.title, slug: move.refs.slug })
                         }}
-                        className="mt-2 inline-block text-xs text-[var(--accent)] hover:underline"
+                        className="mt-2 inline-block text-xs text-accent hover:underline"
                       >
                         Learn more: {move.refs.title}
                       </button>

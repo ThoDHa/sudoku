@@ -104,11 +104,11 @@ export function Modal({
       />
 
       {/* Modal */}
-      <div className={`relative z-10 w-full ${maxWidthClasses[maxWidth]} rounded-2xl bg-[var(--bg)] shadow-2xl ${className}`}>
+      <div className={`relative z-10 w-full ${maxWidthClasses[maxWidth]} rounded-2xl bg-background shadow-2xl ${className}`}>
         {showCloseButton && (
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 rounded-full p-1 text-[var(--text-muted)] hover:bg-[var(--btn-hover)] hover:text-[var(--text)]"
+            className="absolute right-4 top-4 rounded-full p-1 text-foreground-muted hover:bg-btn-hover hover:text-foreground"
             aria-label="Close"
           >
             <CloseIcon />
@@ -146,9 +146,9 @@ export function Button({
   const baseClasses = 'rounded-lg font-medium transition-colors'
   
   const variantClasses = {
-    primary: 'bg-[var(--accent)] text-[var(--btn-active-text)] hover:opacity-90',
-    secondary: 'border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--btn-active-text)]',
-    ghost: 'border border-[var(--border-light)] text-[var(--text)] hover:bg-[var(--btn-hover)]',
+    primary: 'bg-accent text-btn-active-text hover:opacity-90',
+    secondary: 'border border-accent text-accent hover:bg-accent hover:text-btn-active-text',
+    ghost: 'border border-board-border-light text-foreground hover:bg-btn-hover',
   }
   
   const sizeClasses = {
@@ -179,15 +179,15 @@ export function HowToPlayContent() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">🎯 The Goal</h3>
-        <p className="text-sm leading-relaxed text-[var(--text-muted)]">
+        <h3 className="mb-2 text-sm font-semibold text-foreground">🎯 The Goal</h3>
+        <p className="text-sm leading-relaxed text-foreground-muted">
           Fill every cell in the 9×9 grid with a digit from 1 to 9 so that each digit appears exactly once in every row, column, and 3×3 box.
         </p>
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">📋 The Rules</h3>
-        <ul className="space-y-1 text-sm text-[var(--text-muted)]">
+        <h3 className="mb-2 text-sm font-semibold text-foreground">📋 The Rules</h3>
+        <ul className="space-y-1 text-sm text-foreground-muted">
           <li>↔️ Each row must contain the digits 1-9 with no repeats</li>
           <li>↕️ Each column must contain the digits 1-9 with no repeats</li>
           <li>⬚ Each 3×3 box must contain the digits 1-9 with no repeats</li>
@@ -196,8 +196,8 @@ export function HowToPlayContent() {
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">🚀 Getting Started</h3>
-        <ul className="space-y-1 text-sm text-[var(--text-muted)]">
+        <h3 className="mb-2 text-sm font-semibold text-foreground">🚀 Getting Started</h3>
+        <ul className="space-y-1 text-sm text-foreground-muted">
           <li>🔒 <strong>Givens:</strong> The pre-filled numbers are clues — these cannot be changed</li>
           <li>✏️ <strong>Candidates/Notes:</strong> Use notes to track which digits are possible in each empty cell</li>
           <li>❌ <strong>Elimination:</strong> When you place a digit, eliminate it as a candidate from all cells in the same row, column, and box</li>
@@ -205,8 +205,8 @@ export function HowToPlayContent() {
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">🧠 Basic Strategy</h3>
-        <ol className="list-inside list-decimal space-y-1 text-sm text-[var(--text-muted)]">
+        <h3 className="mb-2 text-sm font-semibold text-foreground">🧠 Basic Strategy</h3>
+        <ol className="list-inside list-decimal space-y-1 text-sm text-foreground-muted">
           <li>Use "Auto-fill notes" from the menu to see all possible candidates</li>
           <li>Look for cells with only one candidate (Naked Singles)</li>
           <li>Look for digits that can only go in one place in a row/column/box (Hidden Singles)</li>
@@ -216,17 +216,17 @@ export function HowToPlayContent() {
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">💡 Hints vs Solve</h3>
-        <ul className="space-y-1 text-sm text-[var(--text-muted)]">
+        <h3 className="mb-2 text-sm font-semibold text-foreground">💡 Hints vs Solve</h3>
+        <ul className="space-y-1 text-sm text-foreground-muted">
           <li>💡 <strong>Hints:</strong> Get one logical step at a time. Each hint counts toward your score.</li>
           <li>🤖 <strong>Solve:</strong> Watch the solver complete the puzzle step-by-step. Tracked separately from hints.</li>
           <li>⚡ <strong>Smart Detection:</strong> The solver immediately fills cells when they have only one possible digit.</li>
         </ul>
       </div>
 
-      <div className="rounded-lg bg-[var(--bg-secondary)] p-4">
-        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">📊 Difficulty Levels</h3>
-        <ul className="space-y-2 text-sm text-[var(--text-muted)]">
+      <div className="rounded-lg bg-background-secondary p-4">
+        <h3 className="mb-2 text-sm font-semibold text-foreground">📊 Difficulty Levels</h3>
+        <ul className="space-y-2 text-sm text-foreground-muted">
           <li>🟢 <span className="font-medium text-green-600 dark:text-green-400">Easy:</span> Can be solved with Naked and Hidden Singles only</li>
           <li>🟡 <span className="font-medium text-yellow-600 dark:text-yellow-400">Medium:</span> Requires pairs, triples, and basic intersection techniques</li>
           <li>🟠 <span className="font-medium text-orange-600 dark:text-orange-400">Hard:</span> Requires X-Wings, XY-Wings, and other advanced patterns</li>
@@ -234,9 +234,9 @@ export function HowToPlayContent() {
         </ul>
       </div>
 
-      <div className="rounded-lg border border-[var(--border-light)] p-4">
-        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">🎮 Tips for Success</h3>
-        <ul className="space-y-1 text-sm text-[var(--text-muted)]">
+      <div className="rounded-lg border border-board-border-light p-4">
+        <h3 className="mb-2 text-sm font-semibold text-foreground">🎮 Tips for Success</h3>
+        <ul className="space-y-1 text-sm text-foreground-muted">
           <li>✏️ Always use pencil marks (notes) — they're essential for harder puzzles</li>
           <li>👀 Scan rows, columns, and boxes systematically</li>
           <li>🔍 When stuck, look for pairs and triples of candidates</li>
