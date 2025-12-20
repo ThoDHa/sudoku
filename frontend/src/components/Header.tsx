@@ -206,7 +206,7 @@ ${debugJson}
           <div className="flex h-full items-center justify-between">
             {/* Left: Logo */}
             <Link to="/" className="flex items-center gap-2 font-semibold text-[var(--text)]">
-              <span className="text-xl">🧩</span>
+              <img src={mode === 'dark' ? '/sudoku-icon-dark.svg' : '/sudoku-icon.svg'} alt="Sudoku" className="h-8 w-8" />
               <span>Sudoku</span>
             </Link>
 

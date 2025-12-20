@@ -175,7 +175,7 @@ export default function GameHeader({
         {/* Left: Logo + Difficulty */}
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <Link to="/" className="flex items-center gap-1 sm:gap-2 font-semibold text-[var(--text)]">
-            <span className="text-lg sm:text-xl">🧩</span>
+            <img src={mode === 'dark' ? '/sudoku-icon-dark.svg' : '/sudoku-icon.svg'} alt="Sudoku" className="h-6 w-6 sm:h-7 sm:w-7" />
             <span className="hidden sm:inline">Sudoku</span>
           </Link>
           <DifficultyBadge difficulty={difficulty} size="sm" />
