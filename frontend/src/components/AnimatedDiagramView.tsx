@@ -25,7 +25,7 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
   const cellSize = 20
   const boardSize = cellSize * 9
 
-  // Auto-advance when playing and not hidden
+  // Auto-advance when playing and not hidden - loops automatically (1→2→3→1→2→3→...)
   useEffect(() => {
     if (!isPlaying || backgroundManager.shouldPauseOperations) return
 
@@ -71,6 +71,9 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
     const x = col * cellSize
     const y = row * cellSize
     
+    // Check if this cell is highlighted - affects text color for contrast
+    const isHighlighted = cell.highlight === 'primary' || cell.highlight === 'secondary' || cell.highlight === 'elimination'
+    
     if (cell.value) {
       // Filled cell
       return (
@@ -81,7 +84,7 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
           textAnchor="middle"
           fontSize="12"
           fontWeight="600"
-          fill="var(--text-given)"
+          fill={isHighlighted ? 'var(--text-given)' : 'var(--text-given)'}
         >
           {cell.value}
         </text>
@@ -98,6 +101,15 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
         const cy = y + cRow * candidateSize + candidateSize / 2 + 1.5
         const isEliminated = cell.eliminatedCandidates?.includes(d)
         
+        // Use lighter color on highlighted cells for better contrast
+        // On highlighted cells: use text-on-highlight (contrasting with cell-primary/secondary)
+        // On normal cells: use text-candidate (theme color)
+        const candidateFill = isEliminated 
+          ? 'var(--elimination-text-light)' 
+          : isHighlighted 
+            ? 'var(--text-on-highlight)' 
+            : 'var(--text-candidate)'
+        
         return (
           <g key={`cand-${row}-${col}-${d}`}>
             <text
@@ -106,7 +118,7 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
               textAnchor="middle"
               fontSize="5"
               fontWeight={isEliminated ? "700" : "400"}
-              fill={isEliminated ? 'var(--elimination-text-light)' : 'var(--text-candidate)'}
+              fill={candidateFill}
               style={isEliminated ? { textDecoration: 'line-through' } : {}}
             >
               {d}

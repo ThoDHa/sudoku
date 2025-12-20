@@ -464,7 +464,7 @@ export default function Board({
               digitClass += "text-[var(--accent)] font-bold"
             } else if (isHighlightedCell) {
               // Normal candidate on highlighted background - use contrasting color
-              digitClass += "text-gray-700 dark:text-gray-100"
+              digitClass += "text-[var(--text-on-highlight)]"
             } else {
               // Normal candidate
               digitClass += "text-[var(--text-candidate)]"
