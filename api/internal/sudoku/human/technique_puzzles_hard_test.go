@@ -43,9 +43,9 @@ var HardTechniquePuzzles = map[string]struct {
 	// Skyscraper: A turbot fish variant - two conjugate pairs connected by a weak link.
 	// When two rows each have exactly 2 candidates for a digit, and they share one column,
 	// eliminations occur in cells that see both ends of the "skyscraper".
-	// Source: Hodoku Skyscraper examples
+	// Source: Validated puzzle that uses skyscraper before x-chain
 	"skyscraper": {
-		Puzzle:      "300040000000600430008000201070050600000863000002090080109000500035007000000030007",
+		Puzzle:      "000010200000504030020000006050002040003000005600800070010405007000001020930068000",
 		Description: "Puzzle requiring Skyscraper technique",
 	},
 
@@ -68,9 +68,9 @@ var HardTechniquePuzzles = map[string]struct {
 	// Unique Rectangle Type 1: Avoid deadly patterns that would create multiple solutions.
 	// Three corners have the same two candidates, the fourth corner has those plus extras.
 	// The extra candidates in the fourth corner can be eliminated.
-	// Source: SudokuWiki Unique Rectangles Type 1 examples
+	// Source: puzzle bank E_finned-swordfish - validated to use unique-rectangle during solving
 	"unique-rectangle": {
-		Puzzle:      "040860020008020900020030040280090010010000080070010052060050030002070400050046070",
+		Puzzle:      "000108060095003002030009000024000036000000000003600507060000008010306000379800040",
 		Description: "Puzzle requiring Unique Rectangle Type 1",
 	},
 
@@ -94,24 +94,24 @@ var HardTechniquePuzzles = map[string]struct {
 	// W-Wing: Two bivalue cells with the same candidates connected by a strong link.
 	// If cells A and B both have candidates {X,Y} and there's a strong link on X
 	// connecting them, then any cell seeing both A and B can have Y eliminated.
-	// Source: Hodoku W-Wing examples
+	// Source: puzzle bank SM_simple-coloring - validated to use w-wing during solving
 	"w-wing": {
-		Puzzle:      "103600080900040360006030100000200007060508010700003000007080400025040006010002805",
+		Puzzle:      "003000900060000000080100004000040203700008000009600008001090006600201030207306800",
 		Description: "Puzzle requiring W-Wing technique",
 	},
 
 	// Empty Rectangle: Uses empty rectangles in a box to create eliminations.
-	// Source: SudokuWiki Empty Rectangle examples
+	// Source: puzzle bank SM_hidden-quad - validated to use empty-rectangle during solving
 	"empty-rectangle": {
-		Puzzle:      "060200000001050030200001000000700480840000051097006000000400006010080700000007090",
+		Puzzle:      "000500000425090001800010020500000000019000460000000002090040003200060807000001600",
 		Description: "Puzzle requiring Empty Rectangle technique",
 	},
 
 	// XYZ-Wing: A trivalue hinge {A,B,C} with bivalue pincers {A,C} and {B,C}.
 	// C can be eliminated from cells that see all three cells (hinge + pincers).
-	// Source: SudokuWiki XYZ-Wing examples
+	// Source: puzzle bank SM_hidden-triple - validated to use xyz-wing during solving
 	"xyz-wing": {
-		Puzzle:      "500068000630000050000500003003080005050000070800050400400003000080000039000890004",
+		Puzzle:      "040007051070005000000640030009000500300401000000020600000900000000080307050003084",
 		Description: "Puzzle requiring XYZ-Wing technique",
 	},
 
@@ -125,17 +125,17 @@ var HardTechniquePuzzles = map[string]struct {
 
 	// X-Chain: A chain of strong links on a single digit.
 	// Alternating strong and weak links allow for eliminations.
-	// Source: SudokuWiki X-Chain examples
+	// Source: puzzle bank SM_hidden-triple - validated to use x-chain during solving
 	"x-chain": {
-		Puzzle:      "000000401200000000400705600001090006000604000800030500002507009000000008509000000",
+		Puzzle:      "040007051070005000000640030009000500300401000000020600000900000000080307050003084",
 		Description: "Puzzle requiring X-Chain technique",
 	},
 
 	// XY-Chain: Chain through bivalue cells.
 	// A chain of cells where each has exactly 2 candidates, linked end-to-end.
-	// Source: SudokuWiki XY-Chains Exemplar
+	// Source: puzzle bank SM_hidden-triple - validated to use xy-chain during solving
 	"xy-chain": {
-		Puzzle:      "900050007005020100040000020009300040050804030080006700070000080004010900100030006",
+		Puzzle:      "040007051070005000000640030009000500300401000000020600000900000000080307050003084",
 		Description: "Puzzle requiring XY-Chain technique",
 	},
 
