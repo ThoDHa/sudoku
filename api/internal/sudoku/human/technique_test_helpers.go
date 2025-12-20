@@ -31,18 +31,18 @@ const (
 
 // TechniqueTestResult holds the result of a technique detection test
 type TechniqueTestResult struct {
-	Detected       bool         // Whether the target technique was detected
-	Move           *core.Move   // The move that was returned (nil if not detected)
+	Detected       bool           // Whether the target technique was detected
+	Move           *core.Move     // The move that was returned (nil if not detected)
 	TechniquesUsed map[string]int // Count of each technique used during solving
-	Status         string       // Solve status (completed, stalled, etc.)
-	TotalMoves     int          // Total moves taken
+	Status         string         // Solve status (completed, stalled, etc.)
+	TotalMoves     int            // Total moves taken
 }
 
 // TechniqueTestConfig holds configuration for technique testing
 type TechniqueTestConfig struct {
-	MaxSteps          int              // Maximum solve steps (default 200)
-	PrefilledBoard    *Board           // Optional pre-configured board
-	Strategy          TechniqueIsolationStrategy
+	MaxSteps       int    // Maximum solve steps (default 200)
+	PrefilledBoard *Board // Optional pre-configured board
+	Strategy       TechniqueIsolationStrategy
 }
 
 // DefaultTechniqueTestConfig returns a default configuration
@@ -213,4 +213,157 @@ func CreateSolverForTechnique(targetSlug string) *Solver {
 	}
 
 	return NewSolverWithRegistry(registry)
+}
+
+// =============================================================================
+// CONVENIENCE HELPER FUNCTIONS
+// =============================================================================
+
+// CreateSolverWithOnlyTechniques creates a solver with ONLY the specified techniques enabled.
+// All other techniques are disabled. Useful for testing specific technique combinations.
+//
+// Example:
+//
+//	solver := CreateSolverWithOnlyTechniques("naked-single", "hidden-single", "x-wing")
+//	moves, status := solver.SolveWithSteps(board, 200)
+func CreateSolverWithOnlyTechniques(slugs ...string) *Solver {
+	registry := NewTechniqueRegistry()
+
+	// Build a set of enabled slugs for O(1) lookup
+	enabledSet := make(map[string]bool)
+	for _, slug := range slugs {
+		enabledSet[slug] = true
+	}
+
+	// Disable all techniques not in the set
+	for _, tech := range registry.GetAll() {
+		if !enabledSet[tech.Slug] {
+			registry.SetEnabled(tech.Slug, false)
+		}
+	}
+
+	return NewSolverWithRegistry(registry)
+}
+
+// CreateSolverWithTierOnly creates a solver that only uses techniques from the specified tier.
+// Useful for testing difficulty-appropriate solving.
+//
+// Example:
+//
+//	solver := CreateSolverWithTierOnly("simple")
+//	moves, status := solver.SolveWithSteps(board, 200)
+func CreateSolverWithTierOnly(tier string) *Solver {
+	registry := NewTechniqueRegistry()
+
+	for _, tech := range registry.GetAll() {
+		if tech.Tier != tier {
+			registry.SetEnabled(tech.Slug, false)
+		}
+	}
+
+	return NewSolverWithRegistry(registry)
+}
+
+// CreateSolverUpToTier creates a solver that uses techniques up to and including the specified tier.
+// Techniques in higher tiers are disabled.
+//
+// Example:
+//
+//	solver := CreateSolverUpToTier("medium") // simple + medium techniques only
+//	moves, status := solver.SolveWithSteps(board, 200)
+func CreateSolverUpToTier(maxTier string) *Solver {
+	registry := NewTechniqueRegistry()
+
+	tierOrder := map[string]int{
+		constants.TierSimple:  0,
+		constants.TierMedium:  1,
+		constants.TierHard:    2,
+		constants.TierExtreme: 3,
+	}
+
+	maxTierOrder, ok := tierOrder[maxTier]
+	if !ok {
+		return NewSolver() // fallback if invalid tier
+	}
+
+	for _, tech := range registry.GetAll() {
+		techTierOrder := tierOrder[tech.Tier]
+		if techTierOrder > maxTierOrder {
+			registry.SetEnabled(tech.Slug, false)
+		}
+	}
+
+	return NewSolverWithRegistry(registry)
+}
+
+// CreateSolverWithoutTechniques creates a solver with specific techniques disabled.
+// All other techniques remain enabled. Useful for testing what happens when
+// certain techniques are unavailable.
+//
+// Example:
+//
+//	solver := CreateSolverWithoutTechniques("als-xz", "xy-chain", "forcing-chain")
+//	moves, status := solver.SolveWithSteps(board, 200)
+func CreateSolverWithoutTechniques(slugs ...string) *Solver {
+	registry := NewTechniqueRegistry()
+
+	for _, slug := range slugs {
+		registry.SetEnabled(slug, false)
+	}
+
+	return NewSolverWithRegistry(registry)
+}
+
+// CreateSolverForDifficulty creates a solver appropriate for a given difficulty level.
+// Uses the DifficultyAllowedTiers mapping to determine which techniques to enable.
+//
+// Example:
+//
+//	solver := CreateSolverForDifficulty(core.DifficultyMedium)
+//	moves, status := solver.SolveWithSteps(board, 200)
+func CreateSolverForDifficulty(difficulty core.Difficulty) *Solver {
+	allowedTiers, ok := DifficultyAllowedTiers[difficulty]
+	if !ok {
+		return NewSolver() // fallback if unknown difficulty
+	}
+
+	registry := NewTechniqueRegistry()
+
+	// Build set of allowed tiers
+	allowedTierSet := make(map[string]bool)
+	for _, tier := range allowedTiers {
+		allowedTierSet[tier] = true
+	}
+
+	// Disable techniques not in allowed tiers
+	for _, tech := range registry.GetAll() {
+		if !allowedTierSet[tech.Tier] {
+			registry.SetEnabled(tech.Slug, false)
+		}
+	}
+
+	return NewSolverWithRegistry(registry)
+}
+
+// GetAllTechniqueSlugs returns all registered technique slugs.
+// Useful for iterating over techniques or building UI lists.
+func GetAllTechniqueSlugs() []string {
+	registry := NewTechniqueRegistry()
+	all := registry.GetAll()
+	slugs := make([]string, len(all))
+	for i, tech := range all {
+		slugs[i] = tech.Slug
+	}
+	return slugs
+}
+
+// GetTechniqueSlugsForTier returns all technique slugs for a given tier.
+func GetTechniqueSlugsForTier(tier string) []string {
+	registry := NewTechniqueRegistry()
+	techniques := registry.GetByTier(tier)
+	slugs := make([]string, len(techniques))
+	for i, tech := range techniques {
+		slugs[i] = tech.Slug
+	}
+	return slugs
 }

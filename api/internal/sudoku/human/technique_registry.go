@@ -1,16 +1,99 @@
+// Package human provides human-like Sudoku solving techniques with support
+// for enabling/disabling individual techniques at runtime.
+//
+// # Technique Enable/Disable System
+//
+// The technique registry supports enabling and disabling techniques dynamically.
+// This is useful for:
+//   - Testing specific techniques in isolation
+//   - Simulating different difficulty levels
+//   - Debugging technique detection
+//   - Finding which techniques are required to solve a puzzle
+//
+// # Basic Usage
+//
+// ## Disable specific techniques on an existing solver:
+//
+//	solver := NewSolver()
+//	solver.SetTechniqueEnabled("x-wing", false)
+//	solver.SetTechniqueEnabled("swordfish", false)
+//	moves, status := solver.SolveWithSteps(board, 200)
+//
+// ## Create a solver with a custom registry:
+//
+//	registry := NewTechniqueRegistry()
+//	registry.SetEnabled("als-xz", false)
+//	registry.SetEnabled("forcing-chain", false)
+//	solver := NewSolverWithRegistry(registry)
+//	moves, status := solver.SolveWithSteps(board, 200)
+//
+// # Convenience Functions (in technique_test_helpers.go)
+//
+// For common patterns, use the convenience functions:
+//
+//	// Only enable specific techniques
+//	solver := CreateSolverWithOnlyTechniques("naked-single", "hidden-single", "x-wing")
+//
+//	// Disable specific techniques
+//	solver := CreateSolverWithoutTechniques("als-xz", "xy-chain")
+//
+//	// Enable techniques up to a tier
+//	solver := CreateSolverUpToTier("medium") // simple + medium only
+//
+//	// Enable only one tier
+//	solver := CreateSolverWithTierOnly("simple")
+//
+//	// Create solver for a difficulty level
+//	solver := CreateSolverForDifficulty(core.DifficultyMedium)
+//
+// # Testing Specific Techniques
+//
+// To test that a specific technique fires on a puzzle:
+//
+//	config := TechniqueTestConfig{
+//	    MaxSteps: 300,
+//	    Strategy: DisableAllExceptTargetAndBasics,
+//	}
+//	result := TestTechniqueDetection(puzzleString, "x-wing", config)
+//	if result.Detected {
+//	    fmt.Println("X-Wing was used!")
+//	}
+//
+// # Isolation Strategies
+//
+// When testing techniques, choose an appropriate isolation strategy:
+//
+//   - DisableHigherTiers: Keep all techniques in target's tier and below
+//   - DisableSameAndHigherOrder: Keep only techniques that run before target
+//   - DisableAllExceptTarget: Only the target technique (risky - unrealistic state)
+//   - DisableAllExceptTargetAndBasics: Target + naked/hidden singles only
+//
+// # Example: Finding Required Techniques
+//
+//	// Try solving with progressively more techniques until it works
+//	tiers := []string{"simple", "medium", "hard", "extreme"}
+//	for _, tier := range tiers {
+//	    solver := CreateSolverUpToTier(tier)
+//	    board := NewBoard(puzzleCells)
+//	    _, status := solver.SolveWithSteps(board, 300)
+//	    if status == constants.StatusCompleted {
+//	        fmt.Printf("Puzzle solvable with %s tier techniques\n", tier)
+//	        break
+//	    }
+//	}
 package human
 
 import "sudoku-api/internal/core"
 
 // TechniqueDescriptor holds metadata about a solving technique
 type TechniqueDescriptor struct {
-	Name        string                     // Display name
-	Slug        string                     // URL-friendly identifier
-	Tier        string                     // Difficulty tier (constants.TierSimple, etc.)
-	Description string                     // Brief description
-	Detector    func(b *Board) *core.Move  // Detection function
-	Enabled     bool                       // Whether technique is enabled
-	Order       int                        // Execution order within tier
+	Name        string                    // Display name
+	Slug        string                    // URL-friendly identifier
+	Tier        string                    // Difficulty tier (constants.TierSimple, etc.)
+	Description string                    // Brief description
+	Detector    func(b *Board) *core.Move // Detection function
+	Enabled     bool                      // Whether technique is enabled
+	Order       int                       // Execution order within tier
 }
 
 // TechniqueRegistry holds all available techniques organized by tier
@@ -43,19 +126,19 @@ func (r *TechniqueRegistry) registerTechniques() {
 	// SIMPLE TIER (Basic) - Singles, Pairs, Intersection Removal, Triples
 	// SudokuWiki tests 1-5
 	// ==========================================================================
-	
+
 	// Note: Naked/Hidden Singles are detected during candidate filling in solver.go
 	// These detectors catch any that slip through after eliminations
 	r.register(TechniqueDescriptor{
 		Name:        "Hidden Single",
-		Slug:        "hidden-single", 
+		Slug:        "hidden-single",
 		Tier:        "simple",
 		Description: "A digit that can only go in one cell in a row, column, or box",
 		Detector:    detectHiddenSingle,
 		Enabled:     true,
 		Order:       1,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Naked Single",
 		Slug:        "naked-single",
@@ -65,7 +148,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       2,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Naked Pair",
 		Slug:        "naked-pair",
@@ -75,17 +158,17 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       3,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Hidden Pair",
 		Slug:        "hidden-pair",
-		Tier:        "simple", 
+		Tier:        "simple",
 		Description: "Two digits that can only be in two cells eliminate other candidates from those cells",
 		Detector:    detectHiddenPair,
 		Enabled:     true,
 		Order:       4,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Pointing Pair",
 		Slug:        "pointing-pair",
@@ -95,17 +178,17 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       5,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Box-Line Reduction",
-		Slug:        "box-line-reduction", 
+		Slug:        "box-line-reduction",
 		Tier:        "simple",
 		Description: "If a digit in a row/column can only be in one box, eliminate it from the rest of that box",
 		Detector:    detectBoxLineReduction,
 		Enabled:     true,
 		Order:       6,
 	})
-	
+
 	// Triples are Basic in SudokuWiki (test 5)
 	r.register(TechniqueDescriptor{
 		Name:        "Naked Triple",
@@ -116,7 +199,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       7,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Hidden Triple",
 		Slug:        "hidden-triple",
@@ -131,7 +214,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	// MEDIUM TIER (Tough) - Quads, Basic Fish, Wings, Coloring, BUG, UR Type 1
 	// SudokuWiki tests 6-15
 	// ==========================================================================
-	
+
 	// BUG is early in SudokuWiki (test 6)
 	r.register(TechniqueDescriptor{
 		Name:        "BUG",
@@ -142,7 +225,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       10,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "X-Wing",
 		Slug:        "x-wing",
@@ -152,7 +235,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       11,
 	})
-	
+
 	// Unique Rectangle Type 1 is Tough in SudokuWiki (test 8)
 	r.register(TechniqueDescriptor{
 		Name:        "Unique Rectangle",
@@ -163,17 +246,17 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       12,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "XY-Wing",
 		Slug:        "xy-wing",
-		Tier:        "medium", 
+		Tier:        "medium",
 		Description: "A hinge cell and two pincers eliminate candidates",
 		Detector:    detectXYWing,
 		Enabled:     true,
 		Order:       13,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Simple Coloring",
 		Slug:        "simple-coloring",
@@ -183,7 +266,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       14,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Naked Quad",
 		Slug:        "naked-quad",
@@ -193,7 +276,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       15,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Hidden Quad",
 		Slug:        "hidden-quad",
@@ -203,7 +286,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       16,
 	})
-	
+
 	// Swordfish is Tough in SudokuWiki (test 14)
 	r.register(TechniqueDescriptor{
 		Name:        "Swordfish",
@@ -214,7 +297,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       17,
 	})
-	
+
 	// XYZ-Wing is Tough in SudokuWiki (test 15)
 	r.register(TechniqueDescriptor{
 		Name:        "XYZ-Wing",
@@ -230,7 +313,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	// HARD TIER (Diabolical) - Chains, Medusa, Jellyfish, Advanced URs, WXYZ
 	// SudokuWiki tests 16-25
 	// ==========================================================================
-	
+
 	// Skyscraper is a simple turbot fish variant - should come BEFORE x-chain
 	// since it's a specific case of length-4 x-chain. It's one of the simplest
 	// single-digit chain techniques.
@@ -243,7 +326,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       19,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "X-Chain",
 		Slug:        "x-chain",
@@ -253,7 +336,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       20,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "XY-Chain",
 		Slug:        "xy-chain",
@@ -263,7 +346,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       21,
 	})
-	
+
 	// 3D Medusa is Diabolical in SudokuWiki (test 18)
 	r.register(TechniqueDescriptor{
 		Name:        "3D Medusa",
@@ -274,7 +357,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       22,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Jellyfish",
 		Slug:        "jellyfish",
@@ -284,7 +367,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       23,
 	})
-	
+
 	// Advanced Unique Rectangles are Diabolical (test 20)
 	r.register(TechniqueDescriptor{
 		Name:        "Unique Rectangle Type 2",
@@ -295,7 +378,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       24,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Unique Rectangle Type 3",
 		Slug:        "unique-rectangle-type-3",
@@ -305,7 +388,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       25,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Unique Rectangle Type 4",
 		Slug:        "unique-rectangle-type-4",
@@ -315,7 +398,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       26,
 	})
-	
+
 	// WXYZ-Wing is Diabolical in SudokuWiki (test 24)
 	r.register(TechniqueDescriptor{
 		Name:        "WXYZ-Wing",
@@ -326,7 +409,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       27,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "W-Wing",
 		Slug:        "w-wing",
@@ -336,7 +419,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       29,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Empty Rectangle",
 		Slug:        "empty-rectangle",
@@ -351,7 +434,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	// EXTREME TIER - Finned Fish, AICs, ALS, Forcing Chains
 	// SudokuWiki tests 26-40
 	// ==========================================================================
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Grouped X-Cycles",
 		Slug:        "grouped-x-cycles",
@@ -361,7 +444,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       40,
 	})
-	
+
 	// Finned Fish are Extreme in SudokuWiki (tests 28-29)
 	r.register(TechniqueDescriptor{
 		Name:        "Finned X-Wing",
@@ -372,7 +455,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       41,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Finned Swordfish",
 		Slug:        "finned-swordfish",
@@ -382,7 +465,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       42,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "AIC",
 		Slug:        "aic",
@@ -392,7 +475,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       43,
 	})
-	
+
 	// ALS techniques are Extreme in SudokuWiki (test 31)
 	r.register(TechniqueDescriptor{
 		Name:        "ALS-XZ",
@@ -403,7 +486,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       44,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "ALS-XY-Wing",
 		Slug:        "als-xy-wing",
@@ -413,7 +496,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       45,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "ALS-XY-Chain",
 		Slug:        "als-xy-chain",
@@ -423,7 +506,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       46,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Sue de Coq",
 		Slug:        "sue-de-coq",
@@ -433,7 +516,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       47,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Digit Forcing Chain",
 		Slug:        "digit-forcing-chain",
@@ -443,7 +526,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       48,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Forcing Chain",
 		Slug:        "forcing-chain",
@@ -453,7 +536,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Enabled:     true,
 		Order:       49,
 	})
-	
+
 	r.register(TechniqueDescriptor{
 		Name:        "Death Blossom",
 		Slug:        "death-blossom",
@@ -469,7 +552,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 func (r *TechniqueRegistry) register(desc TechniqueDescriptor) {
 	// Store a copy of the descriptor in the map
 	r.techniques[desc.Slug] = &desc
-	
+
 	// Add to tier ordering
 	r.tierOrder[desc.Tier] = append(r.tierOrder[desc.Tier], desc.Slug)
 }
