@@ -51,7 +51,7 @@ export default function Controls({
             ? 'bg-[var(--btn-bg)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
             : isSelected
             ? 'bg-[var(--accent)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]'
-              : 'bg-[var(--btn-bg)] text-[var(--text)] active:bg-[var(--accent)] active:text-[var(--btn-active-text)]'
+              : 'bg-[var(--btn-bg)] text-[var(--text)]'
         }`}
       >
         {digit}
@@ -125,7 +125,7 @@ export default function Controls({
               ? 'bg-[var(--btn-bg)] text-[var(--text-muted)] opacity-40 cursor-not-allowed'
               : eraseMode
               ? 'bg-[var(--accent)] text-[var(--btn-active-text)] ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg)]'
-            : 'bg-[var(--btn-bg)] text-[var(--text)] active:bg-[var(--accent)] active:text-[var(--btn-active-text)]'
+            : 'bg-[var(--btn-bg)] text-[var(--text)]'
           }`}
           title="Erase"
         >

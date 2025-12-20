@@ -144,7 +144,7 @@ export default function Custom() {
           <button
             key={digit}
             onClick={() => handleDigitInput(digit)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--btn-bg)] text-lg font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)] active:bg-[var(--accent)] active:text-[var(--btn-active-text)] sm:h-12 sm:w-12 sm:text-xl"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--btn-bg)] text-lg font-medium text-[var(--text)] transition-colors hover:bg-[var(--btn-hover)] sm:h-12 sm:w-12 sm:text-xl"
           >
             {digit}
           </button>

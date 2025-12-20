@@ -65,8 +65,8 @@ export type HighlightAction =
   | { type: 'CLEAR_AFTER_DIGIT_TOGGLE' }       // User toggled same digit (erase) - clears all highlights
   | { type: 'CLEAR_HIGHLIGHTS_KEEP_SELECTION' } // Clears highlights but keeps selected cell
   
-  // Given cell click - highlight the digit, deselect cell
-  | { type: 'CLICK_GIVEN_CELL'; digit: number }
+  // Given cell click - highlight the digit and select the cell for peer highlighting
+  | { type: 'CLICK_GIVEN_CELL'; digit: number; cell: number }
 
 const initialState: HighlightState = {
   selectedCell: null,
@@ -236,10 +236,10 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
       }
     
     case 'CLICK_GIVEN_CELL':
-      // User clicked on a given cell - highlight that digit, deselect
+      // User clicked on a given cell - highlight that digit and select cell for peer highlighting
       return {
         ...state,
-        selectedCell: null,
+        selectedCell: action.cell,
         highlightedDigit: action.digit,
         currentHighlight: null,
         version: nextVersion,
@@ -296,7 +296,7 @@ export function useHighlightState() {
     clearOnModeChange: () => dispatch({ type: 'CLEAR_ON_MODE_CHANGE' }),
     clearAfterDigitToggle: () => dispatch({ type: 'CLEAR_AFTER_DIGIT_TOGGLE' }),
     clearHighlightsKeepSelection: () => dispatch({ type: 'CLEAR_HIGHLIGHTS_KEEP_SELECTION' }),
-    clickGivenCell: (digit: number) => dispatch({ type: 'CLICK_GIVEN_CELL', digit }),
+    clickGivenCell: (digit: number, cell: number) => dispatch({ type: 'CLICK_GIVEN_CELL', digit, cell }),
   }), [])
 
   // Backward compatibility getters (for gradual migration)
