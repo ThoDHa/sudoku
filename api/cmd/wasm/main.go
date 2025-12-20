@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"syscall/js"
 
 	"sudoku-api/internal/core"
@@ -620,24 +621,30 @@ func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 		})
 	}
 
+	// Solve to get the solution
+	solution := dp.Solve(givens)
+
 	return toJSValue(map[string]interface{}{
-		"valid":  true,
-		"unique": true,
+		"valid":    true,
+		"unique":   true,
+		"solution": solution,
 	})
 }
 
-// validateBoard validates current board state during gameplay
-// Input: board (number[81])
-// Output: { valid: boolean, reason?: string, conflicts?: Conflict[], solvable?: boolean }
+// validateBoard validates current board state during gameplay by comparing against solution
+// Input: board (number[81]), solution (number[81])
+// Output: { valid: boolean, reason?: string, message?: string, incorrectCells?: number[] }
 func validateBoard(this js.Value, args []js.Value) interface{} {
-	if len(args) < 1 {
+	if len(args) < 2 {
 		return toJSValue(map[string]interface{}{
 			"valid":  false,
-			"reason": "board required",
+			"reason": "board and solution required",
 		})
 	}
 
 	board := jsArrayToIntSlice(args[0])
+	solution := jsArrayToIntSlice(args[1])
+
 	if len(board) != 81 {
 		return toJSValue(map[string]interface{}{
 			"valid":  false,
@@ -645,35 +652,31 @@ func validateBoard(this js.Value, args []js.Value) interface{} {
 		})
 	}
 
-	// Check for conflicts
-	conflicts := dp.FindConflicts(board)
-	if len(conflicts) > 0 {
-		conflictCells := make(map[int]bool)
-		for _, c := range conflicts {
-			conflictCells[c.Cell1] = true
-			conflictCells[c.Cell2] = true
-		}
-		cellList := make([]int, 0, len(conflictCells))
-		for cell := range conflictCells {
-			cellList = append(cellList, cell)
-		}
-
+	if len(solution) != 81 {
 		return toJSValue(map[string]interface{}{
-			"valid":         false,
-			"reason":        "conflicts",
-			"message":       "There are conflicting numbers in the puzzle",
-			"conflicts":     conflicts,
-			"conflictCells": cellList,
+			"valid":  false,
+			"reason": "solution must have 81 elements",
 		})
 	}
 
-	// Check if solvable
-	solutions := dp.CountSolutions(board, 1)
-	if solutions == 0 {
+	// Find incorrect cells (where user entry doesn't match solution)
+	incorrectCells := []int{}
+	for i := 0; i < 81; i++ {
+		if board[i] != 0 && board[i] != solution[i] {
+			incorrectCells = append(incorrectCells, i)
+		}
+	}
+
+	if len(incorrectCells) > 0 {
+		msg := fmt.Sprintf("Found %d incorrect cell", len(incorrectCells))
+		if len(incorrectCells) > 1 {
+			msg += "s"
+		}
 		return toJSValue(map[string]interface{}{
-			"valid":   false,
-			"reason":  "unsolvable",
-			"message": "The puzzle cannot be solved from this state",
+			"valid":          false,
+			"reason":         "incorrect_entries",
+			"message":        msg,
+			"incorrectCells": incorrectCells,
 		})
 	}
 
@@ -687,7 +690,7 @@ func validateBoard(this js.Value, args []js.Value) interface{} {
 
 // getPuzzleForSeed generates or retrieves a puzzle for a given seed
 // Input: seed (string), difficulty (string)
-// Output: { givens: number[81], puzzleId: string }
+// Output: { givens: number[81], solution: number[81], puzzleId: string, seed: string, difficulty: string }
 func getPuzzleForSeed(this js.Value, args []js.Value) interface{} {
 	if len(args) < 2 {
 		return toJSValue(map[string]interface{}{"error": "seed and difficulty required"})
@@ -713,9 +716,10 @@ func getPuzzleForSeed(this js.Value, args []js.Value) interface{} {
 	puzzleID := seed + "-" + difficulty
 
 	return toJSValue(map[string]interface{}{
-		"givens":    givens,
-		"puzzleId":  puzzleID,
-		"seed":      seed,
+		"givens":     givens,
+		"solution":   fullGrid,
+		"puzzleId":   puzzleID,
+		"seed":       seed,
 		"difficulty": difficulty,
 	})
 }
