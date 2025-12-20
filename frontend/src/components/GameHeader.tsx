@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import DifficultyBadge from './DifficultyBadge'
 import Menu from './Menu'
 import { Difficulty } from '../lib/hooks'
-import { ColorTheme, FontSize } from '../lib/ThemeContext'
+import { ColorTheme, FontSize, ModePreference } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed } from '../lib/preferences'
 
 function SunIcon({ className = 'h-4 w-4' }: { className?: string }) {
@@ -18,6 +18,14 @@ function MoonIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+    </svg>
+  )
+}
+
+function ComputerIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
     </svg>
   )
 }
@@ -56,10 +64,12 @@ interface GameHeaderProps {
   bugReportCopied: boolean
   // Theme settings
   mode: 'light' | 'dark'
+  modePreference: ModePreference
   colorTheme: ColorTheme
   fontSize: FontSize
   hideTimerState: boolean
-  onSetMode: (mode: 'light' | 'dark') => void
+  onSetModePreference: (mode: ModePreference) => void
+  onSetMode: (mode: 'light' | 'dark') => void // Deprecated, kept for compatibility
   onSetColorTheme: (theme: ColorTheme) => void
   onSetFontSize: (size: FontSize) => void
   onToggleHideTimer: () => void
@@ -94,15 +104,32 @@ export default function GameHeader({
   onFeatureRequest,
   bugReportCopied,
   mode,
+  modePreference,
   colorTheme,
   fontSize,
   hideTimerState,
+  onSetModePreference,
   onSetMode,
   onSetColorTheme,
   onSetFontSize,
   onToggleHideTimer,
 }: GameHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [modeDropdownOpen, setModeDropdownOpen] = useState(false)
+  const modeDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(event.target as Node)) {
+        setModeDropdownOpen(false)
+      }
+    }
+    if (modeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [modeDropdownOpen])
 
   const MAX_HISTORY_BADGE_COUNT = 99
 
@@ -289,14 +316,53 @@ export default function GameHeader({
             </button>
           )}
 
-          {/* Dark mode toggle */}
-          <button
-            onClick={() => onSetMode(mode === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
-            title={mode === 'dark' ? 'Light mode' : 'Dark mode'}
-          >
-            {mode === 'dark' ? <SunIcon /> : <MoonIcon />}
-          </button>
+          {/* Theme mode dropdown */}
+          <div className="relative" ref={modeDropdownRef}>
+            <button
+              onClick={() => setModeDropdownOpen(!modeDropdownOpen)}
+              className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
+              title={`Theme: ${modePreference}`}
+            >
+              {modePreference === 'system' ? <ComputerIcon /> : mode === 'dark' ? <SunIcon /> : <MoonIcon />}
+            </button>
+            {modeDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-light)] shadow-lg overflow-hidden z-50">
+                <button
+                  onClick={() => { onSetModePreference('light'); setModeDropdownOpen(false) }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                    modePreference === 'light' 
+                      ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
+                      : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                  }`}
+                >
+                  <SunIcon className="h-4 w-4" />
+                  Light
+                </button>
+                <button
+                  onClick={() => { onSetModePreference('dark'); setModeDropdownOpen(false) }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                    modePreference === 'dark' 
+                      ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
+                      : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                  }`}
+                >
+                  <MoonIcon className="h-4 w-4" />
+                  Dark
+                </button>
+                <button
+                  onClick={() => { onSetModePreference('system'); setModeDropdownOpen(false) }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                    modePreference === 'system' 
+                      ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
+                      : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                  }`}
+                >
+                  <ComputerIcon className="h-4 w-4" />
+                  System
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Menu button */}
           <button

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/ThemeContext'
 import { getHomepageMode, setHomepageMode, HomepageMode } from '../lib/preferences'
@@ -29,13 +29,36 @@ function MoonIcon({ className = 'h-4 w-4' }: { className?: string }) {
   )
 }
 
+function ComputerIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+  )
+}
+
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [modeDropdownOpen, setModeDropdownOpen] = useState(false)
+  const modeDropdownRef = useRef<HTMLDivElement>(null)
   const [homepageModeState, setHomepageModeState] = useState<HomepageMode>('daily')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
-  const { colorTheme, setColorTheme, mode, toggleMode, fontSize, setFontSize } = useTheme()
+  const { colorTheme, setColorTheme, mode, modePreference, setModePreference, toggleMode, fontSize, setFontSize } = useTheme()
   const location = useLocation()
   const navigate = useNavigate()
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(event.target as Node)) {
+        setModeDropdownOpen(false)
+      }
+    }
+    if (modeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [modeDropdownOpen])
 
   // Load homepage preference on mount
   useEffect(() => {
@@ -223,14 +246,53 @@ ${debugJson}
 
             {/* Right: Actions */}
             <div className="flex items-center gap-1">
-              {/* Dark mode toggle */}
-              <button
-                onClick={toggleMode}
-                className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
-                title={mode === 'dark' ? 'Light mode' : 'Dark mode'}
-              >
-                {mode === 'dark' ? <SunIcon /> : <MoonIcon />}
-              </button>
+              {/* Theme mode dropdown */}
+              <div className="relative" ref={modeDropdownRef}>
+                <button
+                  onClick={() => setModeDropdownOpen(!modeDropdownOpen)}
+                  className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
+                  title={`Theme: ${modePreference}`}
+                >
+                  {modePreference === 'system' ? <ComputerIcon /> : mode === 'dark' ? <SunIcon /> : <MoonIcon />}
+                </button>
+                {modeDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-light)] shadow-lg overflow-hidden z-50">
+                    <button
+                      onClick={() => { setModePreference('light'); setModeDropdownOpen(false) }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                        modePreference === 'light' 
+                          ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
+                          : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                      }`}
+                    >
+                      <SunIcon className="h-4 w-4" />
+                      Light
+                    </button>
+                    <button
+                      onClick={() => { setModePreference('dark'); setModeDropdownOpen(false) }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                        modePreference === 'dark' 
+                          ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
+                          : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                      }`}
+                    >
+                      <MoonIcon className="h-4 w-4" />
+                      Dark
+                    </button>
+                    <button
+                      onClick={() => { setModePreference('system'); setModeDropdownOpen(false) }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                        modePreference === 'system' 
+                          ? 'bg-[var(--accent)] text-[var(--btn-active-text)]' 
+                          : 'text-[var(--text)] hover:bg-[var(--btn-hover)]'
+                      }`}
+                    >
+                      <ComputerIcon className="h-4 w-4" />
+                      System
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* Menu button */}
               <button

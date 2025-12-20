@@ -1,15 +1,18 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
 export type ColorTheme = 'blue' | 'green' | 'purple' | 'orange' | 'pink' | 'teal' | 'red' | 'indigo'
-export type Mode = 'light' | 'dark'
+export type ModePreference = 'light' | 'dark' | 'system'
+export type Mode = 'light' | 'dark' // The effective/resolved mode
 export type FontSize = 'xs' | 'small' | 'medium' | 'large' | 'xl'
 
 interface ThemeContextType {
   colorTheme: ColorTheme
-  mode: Mode
+  mode: Mode // The effective mode (always light or dark)
+  modePreference: ModePreference // User's preference (light, dark, or system)
   fontSize: FontSize
   setColorTheme: (theme: ColorTheme) => void
-  setMode: (mode: Mode) => void
+  setModePreference: (mode: ModePreference) => void
+  setMode: (mode: Mode) => void // Deprecated, kept for compatibility
   setFontSize: (size: FontSize) => void
   toggleMode: () => void
 }
@@ -473,27 +476,60 @@ const FONT_SIZE_VARS: Record<FontSize, Record<string, string>> = {
   },
 }
 
+// Helper to get system preference
+function getSystemMode(): Mode {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [colorTheme, setColorTheme] = useState<ColorTheme>(() => {
     const saved = localStorage.getItem('colorTheme')
     return (saved as ColorTheme) || 'blue'
   })
 
-  const [mode, setMode] = useState<Mode>(() => {
-    const saved = localStorage.getItem('mode')
-    if (saved) return saved as Mode
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  // Migration: convert old 'mode' to new 'modePreference'
+  // Old values were 'light' or 'dark', new values include 'system'
+  const [modePreference, setModePreference] = useState<ModePreference>(() => {
+    const saved = localStorage.getItem('modePreference')
+    if (saved && ['light', 'dark', 'system'].includes(saved)) {
+      return saved as ModePreference
+    }
+    // Migrate from old 'mode' key if it exists
+    const oldMode = localStorage.getItem('mode')
+    if (oldMode && (oldMode === 'light' || oldMode === 'dark')) {
+      return oldMode as ModePreference
+    }
+    // Default to system
+    return 'system'
   })
+
+  // Track system preference for 'system' mode
+  const [systemMode, setSystemMode] = useState<Mode>(getSystemMode)
 
   const [fontSize, setFontSize] = useState<FontSize>(() => {
     const saved = localStorage.getItem('fontSize')
     return (saved as FontSize) || 'xl'
   })
 
+  // Listen for system preference changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (e: MediaQueryListEvent) => {
+      setSystemMode(e.matches ? 'dark' : 'light')
+    }
+    mediaQuery.addEventListener('change', handler)
+    return () => mediaQuery.removeEventListener('change', handler)
+  }, [])
+
+  // Compute effective mode from preference
+  const mode: Mode = modePreference === 'system' ? systemMode : modePreference
+
   useEffect(() => {
     localStorage.setItem('colorTheme', colorTheme)
-    localStorage.setItem('mode', mode)
+    localStorage.setItem('modePreference', modePreference)
     localStorage.setItem('fontSize', fontSize)
+    // Clean up old key
+    localStorage.removeItem('mode')
 
     const theme = COLOR_THEMES[colorTheme][mode]
     const fontSizeVars = FONT_SIZE_VARS[fontSize]
@@ -519,14 +555,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       document.documentElement.classList.remove('dark')
     }
-  }, [colorTheme, mode, fontSize])
+  }, [colorTheme, mode, modePreference, fontSize])
 
+  // Toggle cycles through: current -> opposite -> system (if different from current)
   const toggleMode = () => {
-    setMode((prev) => (prev === 'light' ? 'dark' : 'light'))
+    setModePreference((prev) => {
+      if (prev === 'light') return 'dark'
+      if (prev === 'dark') return 'system'
+      return 'light'
+    })
+  }
+
+  // Compatibility: setMode now sets modePreference directly
+  const setMode = (newMode: Mode) => {
+    setModePreference(newMode)
   }
 
   return (
-    <ThemeContext.Provider value={{ colorTheme, mode, fontSize, setColorTheme, setMode, setFontSize, toggleMode }}>
+    <ThemeContext.Provider value={{ colorTheme, mode, modePreference, fontSize, setColorTheme, setMode, setModePreference, setFontSize, toggleMode }}>
       {children}
     </ThemeContext.Provider>
   )

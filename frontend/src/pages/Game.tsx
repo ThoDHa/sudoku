@@ -70,7 +70,7 @@ export default function Game() {
     difficultyParam || (seed?.startsWith('custom-') ? 'custom' : 'medium')
   ) as Difficulty
   
-  const { mode, setMode, colorTheme, setColorTheme, fontSize, setFontSize } = useTheme()
+  const { mode, modePreference, setMode, setModePreference, colorTheme, setColorTheme, fontSize, setFontSize } = useTheme()
   const { setGameState } = useGameContext()
   const { showOnboarding, closeOnboarding } = useOnboarding()
   
@@ -1414,9 +1414,11 @@ ${bugReportJson}
         onFeatureRequest={handleFeatureRequest}
         bugReportCopied={bugReportCopied}
         mode={mode}
+        modePreference={modePreference}
         colorTheme={colorTheme}
         fontSize={fontSize}
         hideTimerState={hideTimerState}
+        onSetModePreference={setModePreference}
         onSetMode={setMode}
         onSetColorTheme={setColorTheme}
         onSetFontSize={setFontSize}
