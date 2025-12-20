@@ -12,6 +12,7 @@ interface ResultModalProps {
   difficulty: string
   timeMs: number
   hintsUsed: number
+  techniqueHintsUsed?: number
   autoFillUsed?: boolean
   autoSolveUsed?: boolean
   encodedPuzzle?: string | null // For custom puzzles - the encoded givens for sharing
@@ -47,6 +48,7 @@ export default function ResultModal({
   difficulty,
   timeMs,
   hintsUsed,
+  techniqueHintsUsed,
   autoFillUsed,
   autoSolveUsed,
   encodedPuzzle,
@@ -68,6 +70,7 @@ export default function ResultModal({
     difficulty,
     timeMs,
     hintsUsed,
+    techniqueHintsUsed: techniqueHintsUsed || 0,
     mistakes: 0,
     completedAt: new Date().toISOString(),
     autoFillUsed: autoFillUsed || false,
@@ -169,6 +172,15 @@ export default function ResultModal({
             )}
           </div>
         </div>
+
+        {/* Technique hints (if used) */}
+        {(techniqueHintsUsed ?? 0) > 0 && !autoSolveUsed && (
+          <div className="mb-4 rounded-lg bg-[var(--bg-secondary)] p-3 text-center">
+            <span className="text-sm text-[var(--text-muted)]">
+              ❓ {techniqueHintsUsed} technique hint{techniqueHintsUsed! > 1 ? 's' : ''} used
+            </span>
+          </div>
+        )}
 
         {/* Share button */}
         <button

@@ -149,6 +149,29 @@ describe('scores', () => {
       expect(text).toContain('2 hints')
       expect(text).toContain('auto-fill')
     })
+
+    it('should include technique hints if used', () => {
+      const score = { ...baseScore, techniqueHintsUsed: 3 }
+      const text = generateShareText(score, 'https://example.com')
+      
+      expect(text).toContain('3 technique hints')
+    })
+
+    it('should include singular technique hint', () => {
+      const score = { ...baseScore, techniqueHintsUsed: 1 }
+      const text = generateShareText(score, 'https://example.com')
+      
+      expect(text).toContain('1 technique hint')
+      expect(text).not.toContain('technique hints')
+    })
+
+    it('should combine hints and technique hints', () => {
+      const score = { ...baseScore, hintsUsed: 2, techniqueHintsUsed: 3 }
+      const text = generateShareText(score, 'https://example.com')
+      
+      expect(text).toContain('2 hints')
+      expect(text).toContain('3 technique hints')
+    })
   })
 
   describe('generatePuzzleUrl', () => {

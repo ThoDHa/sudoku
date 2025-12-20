@@ -5,6 +5,7 @@ export interface Score {
   difficulty: string
   timeMs: number
   hintsUsed: number
+  techniqueHintsUsed?: number // Technique-only hints (shows technique name, doesn't apply move)
   mistakes: number
   completedAt: string // ISO date string
   encodedPuzzle?: string // For custom puzzles - the encoded givens for sharing
@@ -29,9 +30,9 @@ export function saveScore(score: Score): void {
   localStorage.setItem(STORAGE_KEYS.SCORES, JSON.stringify(trimmed))
 }
 
-// Helper to check if a score used any assists (hints or auto-solve)
+// Helper to check if a score used any assists (hints, technique hints, or auto-solve)
 function isAssistedScore(score: Score): boolean {
-  return score.hintsUsed > 0 || score.autoSolveUsed === true
+  return score.hintsUsed > 0 || (score.techniqueHintsUsed ?? 0) > 0 || score.autoSolveUsed === true
 }
 
 // Get best scores for each difficulty without any assists (pure solves)
@@ -124,6 +125,9 @@ export function generateShareText(score: Score, puzzleUrl: string, streak?: numb
   } else if (score.hintsUsed > 0) {
     assists.push(`💡 ${score.hintsUsed} hint${score.hintsUsed > 1 ? 's' : ''}`)
   }
+  if ((score.techniqueHintsUsed ?? 0) > 0) {
+    assists.push(`❓ ${score.techniqueHintsUsed} technique hint${score.techniqueHintsUsed! > 1 ? 's' : ''}`)
+  }
   if (score.autoFillUsed) {
     assists.push(`📝 auto-fill`)
   }
@@ -157,7 +161,7 @@ export function generatePuzzleUrl(score: Score): string {
   if (score.difficulty === 'custom') {
     return `${base}/custom`
   }
-  return `${base}/game/${score.seed}?d=${score.difficulty}`
+  return `${base}/p/${score.seed}?d=${score.difficulty}`
 }
 
 // =============================================================================

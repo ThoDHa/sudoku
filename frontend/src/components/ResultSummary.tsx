@@ -3,6 +3,7 @@ interface ResultSummaryProps {
   difficulty: string
   dateUtc: string
   hintsUsed: number
+  techniqueHintsUsed?: number
   mistakes: number
   autoSolveUsed?: boolean
 }
@@ -19,6 +20,7 @@ export default function ResultSummary({
   difficulty,
   dateUtc,
   hintsUsed,
+  techniqueHintsUsed,
   mistakes,
   autoSolveUsed,
 }: ResultSummaryProps) {
@@ -39,9 +41,16 @@ export default function ResultSummary({
             <strong className="text-[var(--text)]">🤖</strong> solved
           </span>
         ) : (
-          <span>
-            <strong className="text-[var(--text)]">{hintsUsed}</strong> hints
-          </span>
+          <>
+            <span>
+              <strong className="text-[var(--text)]">{hintsUsed}</strong> hints
+            </span>
+            {(techniqueHintsUsed ?? 0) > 0 && (
+              <span>
+                <strong className="text-[var(--text)]">{techniqueHintsUsed}</strong> technique hints
+              </span>
+            )}
+          </>
         )}
         <span>
           <strong className="text-[var(--text)]">{mistakes}</strong> mistakes

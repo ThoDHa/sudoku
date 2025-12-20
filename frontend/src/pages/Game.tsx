@@ -103,6 +103,8 @@ export default function Game() {
   const autoSolveUsedRef = useRef(false)  // Ref for immediate access in callbacks
   const [autoSolveStepsUsed, setAutoSolveStepsUsed] = useState(0)
   const [hintsUsed, setHintsUsed] = useState(0)
+  const [techniqueHintsUsed, setTechniqueHintsUsed] = useState(0)
+  const [techniqueHintPending, setTechniqueHintPending] = useState(false) // Disables technique hint button until user makes a move
   const [validationMessage, setValidationMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [autoSolveSpeedState, setAutoSolveSpeedState] = useState<AutoSolveSpeed>(getAutoSolveSpeed())
   const [hideTimerState, setHideTimerState] = useState(getHideTimer())
@@ -612,11 +614,94 @@ export default function Game() {
       if (result !== false) {
         // Only count as hint if it was successful (not an error)
         setHintsUsed(prev => prev + 1)
+        // Also re-enable technique hint button since we applied a move
+        setTechniqueHintPending(false)
       }
     } finally {
       hintInProgress.current = false
     }
   }, [executeHintStep])
+
+  // Handle technique hint button - shows technique modal without applying the move
+  const handleTechniqueHint = useCallback(async () => {
+    // If already shown a technique, wait for user to make a move
+    if (techniqueHintPending) return
+    // Prevent concurrent requests
+    if (hintInProgress.current) return
+    hintInProgress.current = true
+
+    try {
+      // Deselect any highlighted digit when using technique hint
+      clearAllAndDeselect()
+
+      // Check if we need to fetch a new solution
+      const userMadeChanges = cachedAtHistoryLength.current >= 0 && 
+                              game.history.length !== cachedAtHistoryLength.current
+
+      if (userMadeChanges || cachedSolutionMoves.current.length === 0) {
+        // Fetch fresh solution from current state
+        const boardSnapshot = [...game.board]
+        const candidatesArray = candidatesToArrays(game.candidates)
+
+        try {
+          const data = await solveAll(boardSnapshot, candidatesArray, initialBoard)
+          
+          if (!data.moves || data.moves.length === 0) {
+            setValidationMessage({ 
+              type: 'error', 
+              message: data.solved 
+                ? 'Puzzle is already complete!' 
+                : 'This puzzle requires advanced techniques beyond our hint system.' 
+            })
+            visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+            return
+          }
+
+          // Cache the solution
+          cachedSolutionMoves.current = [...data.moves]
+          cachedAtHistoryLength.current = game.history.length
+        } catch (err) {
+          console.error('Technique hint error:', err)
+          setValidationMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to get technique' })
+          visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+          return
+        }
+      }
+
+      // Peek at the next move WITHOUT consuming it
+      const nextMove = cachedSolutionMoves.current[0]
+      if (!nextMove) {
+        setValidationMessage({ type: 'success', message: 'Puzzle complete!' })
+        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+        return
+      }
+
+      const move = nextMove.move
+
+      // Handle special moves - for these, just show a message
+      if (move.action === 'unpinpointable-error' || move.action === 'contradiction' || move.action === 'error') {
+        setValidationMessage({ 
+          type: 'error', 
+          message: 'There seems to be an error in the puzzle. Try using the full hint to fix it.'
+        })
+        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+        return
+      }
+
+      // Get the technique info
+      const techniqueName = move.technique || 'Unknown Technique'
+      const techniqueSlug = move.technique?.toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-') || 'unknown'
+
+      // Open the technique modal
+      setTechniqueModal({ title: techniqueName, slug: techniqueSlug })
+
+      // Increment counter and disable button until user makes a move
+      setTechniqueHintsUsed(prev => prev + 1)
+      setTechniqueHintPending(true)
+    } finally {
+      hintInProgress.current = false
+    }
+  }, [techniqueHintPending, game.board, game.candidates, game.history.length, initialBoard, clearAllAndDeselect, visibilityAwareTimeout])
 
     // Resume from extended pause on user interaction
     const resumeFromExtendedPause = useCallback(() => {
@@ -628,11 +713,16 @@ export default function Game() {
     // Cell click handler
     const handleCellClick = useCallback((idx: number) => {
       resumeFromExtendedPause()
-     // Given cells: just highlight the digit, don't select
+     // Given cells: highlight the digit AND select the cell for peer highlighting
      if (game.isGivenCell(idx)) {
        const cellDigit = game.board[idx]
        if (cellDigit && cellDigit > 0) {
-         clickGivenCell(cellDigit)
+         // Toggle: if same given cell is clicked again, deselect
+         if (selectedCell === idx) {
+           clearAllAndDeselect()
+         } else {
+           clickGivenCell(cellDigit, idx)
+         }
        }
        setEraseMode(false)
        return
@@ -645,27 +735,30 @@ export default function Game() {
      }
 
      // If erase mode is active and cell has a value, erase it
-     if (eraseMode && game.board[idx] !== 0) {
-       game.eraseCell(idx)
-       clearAfterErase()
-       // Keep erase mode active so user can erase multiple cells
-       return
-     }
-
-      // If a digit is highlighted, fill the cell (overwriting any existing value)
-      if (highlightedDigit !== null) {
-        if (notesMode) {
-          game.setCell(idx, highlightedDigit, notesMode)
-          
-          // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
-          clearAfterUserCandidateOp()
-        } else {
-          // For digit placement, clear move highlights but preserve digit highlight for multi-fill
-          game.setCell(idx, highlightedDigit, notesMode)
-          clearAfterDigitPlacement()
-        }
+      if (eraseMode && game.board[idx] !== 0) {
+        game.eraseCell(idx)
+        clearAfterErase()
+        setTechniqueHintPending(false) // Re-enable technique hint button
+        // Keep erase mode active so user can erase multiple cells
         return
       }
+
+       // If a digit is highlighted, fill the cell (overwriting any existing value)
+       if (highlightedDigit !== null) {
+         if (notesMode) {
+           game.setCell(idx, highlightedDigit, notesMode)
+           
+           // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
+           clearAfterUserCandidateOp()
+           setTechniqueHintPending(false) // Re-enable technique hint button
+         } else {
+           // For digit placement, clear move highlights but preserve digit highlight for multi-fill
+           game.setCell(idx, highlightedDigit, notesMode)
+           clearAfterDigitPlacement()
+           setTechniqueHintPending(false) // Re-enable technique hint button
+         }
+         return
+       }
 
      // Select the cell (works for both empty and user-filled cells)
      // selectCell atomically selects and clears highlights
@@ -688,21 +781,23 @@ export default function Game() {
      if (game.isGivenCell(selectedCell)) return
 
      // If cell already has this digit, erase it
-     if (game.board[selectedCell] === digit) {
-       game.eraseCell(selectedCell)
-       clearAfterDigitToggle()
-       return
-     }
-
-      game.setCell(selectedCell, digit, notesMode)
-
-      if (notesMode) {
-        // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
-        clearAfterUserCandidateOp()
-      } else {
-        // For digit placement, clear move highlights but preserve digit highlight for multi-fill
-        clearAfterDigitPlacement()
+      if (game.board[selectedCell] === digit) {
+        game.eraseCell(selectedCell)
+        clearAfterDigitToggle()
+        setTechniqueHintPending(false) // Re-enable technique hint button
+        return
       }
+
+       game.setCell(selectedCell, digit, notesMode)
+
+       if (notesMode) {
+         // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
+         clearAfterUserCandidateOp()
+       } else {
+         // For digit placement, clear move highlights but preserve digit highlight for multi-fill
+         clearAfterDigitPlacement()
+       }
+       setTechniqueHintPending(false) // Re-enable technique hint button
 
      // Keep cell selected so user can erase or change immediately
      // Keep digit highlighted for adding candidates (multi-fill)
@@ -715,6 +810,7 @@ export default function Game() {
      if (value === 0) {
        game.eraseCell(idx)
        clearAfterErase()
+       setTechniqueHintPending(false) // Re-enable technique hint button
         } else {
           if (notesMode) {
             game.setCell(idx, value, notesMode)
@@ -725,6 +821,7 @@ export default function Game() {
             game.setCell(idx, value, notesMode)
             clearAfterDigitPlacement()
           }
+          setTechniqueHintPending(false) // Re-enable technique hint button
         }
    }, [game, notesMode, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement])
 
@@ -767,6 +864,7 @@ export default function Game() {
       difficulty: puzzle.difficulty,
       timeMs: timer.elapsedMs,
       hintsUsed: hintsUsed,
+      techniqueHintsUsed: techniqueHintsUsed,
       mistakes: 0,
       completedAt: new Date().toISOString(),
       autoFillUsed: autoFillUsed,
@@ -782,7 +880,7 @@ export default function Game() {
     }
     
     setShowResultModal(true)
-  }, [puzzle, hintsUsed, timer.elapsedMs, encodedPuzzle, autoFillUsed])
+  }, [puzzle, hintsUsed, techniqueHintsUsed, timer.elapsedMs, encodedPuzzle, autoFillUsed])
 
   // Auto-solve handler
   const handleSolve = useCallback(async () => {
@@ -1297,6 +1395,8 @@ ${bugReportJson}
         onTogglePause={autoSolve.togglePause}
         onStopAutoSolve={autoSolve.stopAutoSolve}
         onSetAutoSolveSpeed={setAutoSolveSpeedState}
+        onTechniqueHint={handleTechniqueHint}
+        techniqueHintDisabled={techniqueHintPending}
         onHint={handleNext}
         onHistoryOpen={() => setHistoryOpen(true)}
         onShowResult={() => setShowResultModal(true)}
@@ -1431,6 +1531,7 @@ ${bugReportJson}
         difficulty={difficulty}
         timeMs={timer.elapsedMs}
         hintsUsed={hintsUsed}
+        techniqueHintsUsed={techniqueHintsUsed}
         autoFillUsed={autoFillUsed}
         autoSolveUsed={autoSolveUsed}
         encodedPuzzle={encodedPuzzle}

@@ -56,8 +56,10 @@ export default function Leaderboard() {
   const getAssistIcon = (score: Score | undefined): string => {
     if (!score) return ''
     if (score.autoSolveUsed) return '🤖'
-    if (score.hintsUsed > 0) return `💡${score.hintsUsed}`
-    return ''
+    const parts: string[] = []
+    if (score.hintsUsed > 0) parts.push(`💡${score.hintsUsed}`)
+    if ((score.techniqueHintsUsed ?? 0) > 0) parts.push(`❓${score.techniqueHintsUsed}`)
+    return parts.join(' ')
   }
 
   return (

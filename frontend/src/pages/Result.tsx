@@ -12,6 +12,7 @@ export default function Result() {
   const difficulty = searchParams.get('d')
   const timeMs = parseInt(searchParams.get('t') || '0', 10)
   const hintsUsed = parseInt(searchParams.get('h') || '0', 10)
+  const techniqueHintsUsed = parseInt(searchParams.get('th') || '0', 10)
   const autoSolveUsed = searchParams.get('a') === '1'
 
   if (!seed || !difficulty) {
@@ -34,6 +35,7 @@ export default function Result() {
     difficulty,
     timeMs,
     hintsUsed,
+    techniqueHintsUsed,
     mistakes: 0,
     completedAt: new Date().toISOString(),
     autoSolveUsed,
@@ -78,6 +80,7 @@ export default function Result() {
         difficulty={difficulty}
         dateUtc={new Date().toISOString().split('T')[0] ?? ''}
         hintsUsed={hintsUsed}
+        techniqueHintsUsed={techniqueHintsUsed}
         mistakes={0}
         autoSolveUsed={autoSolveUsed}
       />

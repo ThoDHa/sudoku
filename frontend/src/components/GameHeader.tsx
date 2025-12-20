@@ -6,6 +6,22 @@ import { Difficulty } from '../lib/hooks'
 import { ColorTheme, FontSize } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed } from '../lib/preferences'
 
+function SunIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  )
+}
+
+function MoonIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+    </svg>
+  )
+}
+
 interface GameHeaderProps {
   difficulty: Difficulty
   // Timer state
@@ -23,6 +39,8 @@ interface GameHeaderProps {
   onStopAutoSolve: () => void
   onSetAutoSolveSpeed: (speed: AutoSolveSpeed) => void
   // Actions
+  onTechniqueHint: () => void
+  techniqueHintDisabled: boolean
   onHint: () => void
   onHistoryOpen: () => void
   onShowResult: () => void
@@ -60,6 +78,8 @@ export default function GameHeader({
   onTogglePause,
   onStopAutoSolve,
   onSetAutoSolveSpeed,
+  onTechniqueHint,
+  techniqueHintDisabled,
   onHint,
   onHistoryOpen,
   onShowResult,
@@ -210,6 +230,23 @@ export default function GameHeader({
             </div>
           )}
 
+          {/* Technique hint button - shows technique modal without applying move */}
+          {!isComplete && !isAutoSolving && (
+            <button
+              onClick={onTechniqueHint}
+              disabled={techniqueHintDisabled}
+              className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+                techniqueHintDisabled 
+                  ? 'text-[var(--text-muted)]/50 cursor-not-allowed' 
+                  : 'text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--btn-hover)]'
+              }`}
+              title={techniqueHintDisabled ? "Make a move to use again" : "Learn which technique to use"}
+            >
+              <span className="text-base">❓</span>
+              <span className="hidden sm:inline">Technique</span>
+            </button>
+          )}
+
           {/* Hint button */}
           {!isComplete && !isAutoSolving && (
             <button
@@ -251,6 +288,15 @@ export default function GameHeader({
               Share
             </button>
           )}
+
+          {/* Dark mode toggle */}
+          <button
+            onClick={() => onSetMode(mode === 'dark' ? 'light' : 'dark')}
+            className="p-2 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--btn-hover)] transition-colors"
+            title={mode === 'dark' ? 'Light mode' : 'Dark mode'}
+          >
+            {mode === 'dark' ? <SunIcon /> : <MoonIcon />}
+          </button>
 
           {/* Menu button */}
           <button
