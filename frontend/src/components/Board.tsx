@@ -28,6 +28,8 @@ interface BoardProps {
   highlight: Move | null
   onCellClick: (idx: number) => void
   onCellChange?: (idx: number, value: number) => void
+  /** Cells that contain incorrect values (compared to the solution) */
+  incorrectCells?: number[]
 }
 
 // Find all cells that have duplicate values in their row, column, or box
@@ -111,6 +113,7 @@ export default function Board({
   highlight,
   onCellClick,
   onCellChange,
+  incorrectCells = [],
 }: BoardProps) {
   const cellRefs = React.useRef<(HTMLDivElement | null)[]>([])
 
@@ -120,6 +123,9 @@ export default function Board({
       cellRefs.current[selectedCell]?.focus()
     }
   }, [selectedCell])
+
+  // Memoize the set of incorrect cells for efficient lookup
+  const incorrectCellsSet = React.useMemo(() => new Set(incorrectCells), [incorrectCells])
 
   // Memoize the set of cells that have the highlighted digit
   // This ensures React properly tracks changes to candidates and triggers re-renders
@@ -331,6 +337,7 @@ export default function Board({
     const isDuplicate = duplicates.has(idx)
     const hasDigitMatch = cellHasHighlightedDigit(idx)
     const isPeer = isPeerOfSelected(idx)
+    const isIncorrect = incorrectCellsSet.has(idx)
 
     // Start with base CSS class
     const classes = ['sudoku-cell']
@@ -348,13 +355,18 @@ export default function Board({
       classes.push('border-b border-b-[var(--border-light)]')
     }
 
-    // Selected cell gets a prominent ring
-    if (isSelected) {
+    // Incorrect cells get a red ring
+    if (isIncorrect) {
+      classes.push('ring-2 ring-inset ring-red-500 z-10')
+    } else if (isSelected) {
+      // Selected cell gets a prominent ring
       classes.push('ring-2 ring-inset ring-[var(--accent)] z-10')
     }
 
-    // Background priority: duplicate > selected > primary > secondary > digit match > peer > default
-    if (isDuplicate) {
+    // Background priority: incorrect > duplicate > selected > primary > secondary > digit match > peer > default
+    if (isIncorrect) {
+      classes.push('bg-red-100 dark:bg-red-900/30')
+    } else if (isDuplicate) {
       classes.push('bg-[var(--duplicate-bg-light)] dark:bg-[var(--duplicate-bg-dark)]')
     } else if (isPrimary) {
       classes.push('bg-[var(--cell-primary)]')
@@ -370,8 +382,10 @@ export default function Board({
       classes.push('bg-[var(--cell-bg)]')
     }
 
-    // Text color - duplicates get red text
-    if (isDuplicate) {
+    // Text color - incorrect and duplicates get red text
+    if (isIncorrect) {
+      classes.push('text-red-600 dark:text-red-400')
+    } else if (isDuplicate) {
       classes.push('text-[var(--duplicate-text-light)] dark:text-[var(--duplicate-text-dark)]')
     } else if (isGiven) {
       classes.push('text-[var(--text-given)]')
@@ -484,7 +498,7 @@ export default function Board({
                 tabIndex={selectedCell === idx ? 0 : -1}
                 aria-label={getCellAriaLabel(idx)}
                 className={getCellClass(idx)}
-                onClick={() => !isGiven && onCellClick(idx)}
+                onClick={() => onCellClick(idx)}
                 onKeyDown={(e) => handleKeyDown(e, idx)}
                 style={isGiven ? { cursor: 'default' } : undefined}
               >
