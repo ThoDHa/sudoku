@@ -23,6 +23,7 @@ services:
   # Playwright test runner
   playwright:
     image: mcr.microsoft.com/playwright:v1.48.0-jammy
+    user: "${UID:-1000}:${GID:-1000}"
     working_dir: /app
     volumes:
       - ./frontend:/app
