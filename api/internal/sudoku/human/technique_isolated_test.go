@@ -463,18 +463,16 @@ func TestTechniqueIsolated_Jellyfish(t *testing.T) {
 }
 
 func TestTechniqueIsolated_UniqueRectangleType2(t *testing.T) {
-	// TODO: Find a valid puzzle that demonstrates UR Type 2.
-	// The current puzzle string is invalid (DP solver cannot solve).
-	// UR Type 2 requires a rectangle where two corner cells have the UR digits
-	// plus the same extra candidate - that extra candidate can be eliminated.
-	t.Skip("Skipping: No valid puzzle available for unique-rectangle-type-2")
+	// Disable chain-based techniques that often solve before UR Type 2 fires
+	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-2", []string{"aic", "medusa-3d", "x-chain", "xy-chain", "grouped-x-cycles", "simple-coloring"})
 }
 
 func TestTechniqueIsolated_UniqueRectangleType3(t *testing.T) {
-	// TODO: Find a valid puzzle that demonstrates UR Type 3.
-	// The current puzzle string is invalid (DP solver cannot solve).
-	// UR Type 3 requires a rectangle where extra candidates form a naked pair/triple.
-	t.Skip("Skipping: No valid puzzle available for unique-rectangle-type-3")
+	// Disable chain-based and fish techniques that often solve before UR Type 3 fires
+	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-3", []string{
+		"aic", "medusa-3d", "x-chain", "xy-chain", "grouped-x-cycles", "simple-coloring",
+		"skyscraper", "empty-rectangle", "w-wing", "finned-x-wing", "finned-swordfish",
+	})
 }
 
 func TestTechniqueIsolated_UniqueRectangleType4(t *testing.T) {
@@ -483,9 +481,8 @@ func TestTechniqueIsolated_UniqueRectangleType4(t *testing.T) {
 }
 
 func TestTechniqueIsolated_WXYZWing(t *testing.T) {
-	// TODO: WXYZ-Wing implementation has bugs causing incorrect eliminations.
-	// The detector needs proper structural verification of the bent pattern.
-	t.Skip("Skipping: WXYZ-Wing detector needs fixing")
+	// Uses early stop for faster execution - full solver until technique fires
+	runEarlyStopTechniqueTest(t, "wxyz-wing")
 }
 
 func TestTechniqueIsolated_WWing(t *testing.T) {
@@ -537,27 +534,25 @@ func TestTechniqueIsolated_ALSXYChain(t *testing.T) {
 }
 
 func TestTechniqueIsolated_SueDeCoq(t *testing.T) {
-	// TODO: Find a puzzle that actually uses Sue-de-Coq.
-	// The current puzzle (index 716) is solved using other ALS techniques.
-	// Sue-de-Coq requires intersecting ALSs with specific constraints.
-	t.Skip("Skipping: No puzzle found that requires sue-de-coq")
+	// AIC and ALS techniques are disabled to prevent them from preempting Sue-de-Coq
+	runEarlyStopWithDisabledTechniques(t, "sue-de-coq", []string{"aic", "als-xz", "als-xy-wing", "als-xy-chain", "digit-forcing-chain", "forcing-chain"})
 }
 
 func TestTechniqueIsolated_DigitForcingChain(t *testing.T) {
-	// AIC is disabled to prevent it from preempting forcing chain techniques
-	runEarlyStopWithDisabledTechniques(t, "digit-forcing-chain", []string{"aic"})
+	// Disable AIC and ALS techniques that would fire before digit-forcing-chain
+	// This allows testing digit-forcing-chain detection in isolation
+	runEarlyStopWithDisabledTechniques(t, "digit-forcing-chain", []string{"aic", "als-xz", "als-xy-wing", "als-xy-chain"})
 }
 
 func TestTechniqueIsolated_ForcingChain(t *testing.T) {
-	// AIC is disabled to prevent it from preempting forcing chain techniques
-	runEarlyStopWithDisabledTechniques(t, "forcing-chain", []string{"aic"})
+	// Disable AIC and other forcing/ALS techniques that would fire before forcing-chain
+	// This allows testing forcing-chain detection in isolation without waiting for slower techniques
+	runEarlyStopWithDisabledTechniques(t, "forcing-chain", []string{"aic", "als-xz", "als-xy-wing", "als-xy-chain", "digit-forcing-chain"})
 }
 
 func TestTechniqueIsolated_DeathBlossom(t *testing.T) {
-	// TODO: Find a valid puzzle that demonstrates Death Blossom.
-	// The current puzzle string is invalid (DP solver cannot solve).
-	// Death Blossom uses a stem cell connected to ALS petals.
-	t.Skip("Skipping: No valid puzzle available for death-blossom")
+	// AIC and ALS chain techniques are disabled to prevent them from preempting Death Blossom
+	runEarlyStopWithDisabledTechniques(t, "death-blossom", []string{"aic", "als-xz", "als-xy-wing", "als-xy-chain", "digit-forcing-chain", "forcing-chain"})
 }
 
 // =============================================================================
@@ -609,13 +604,8 @@ func TestAllPuzzlesHaveTechniques(t *testing.T) {
 
 // Techniques with known invalid or missing puzzle strings.
 // These are rare techniques that need valid puzzles from external sources.
-var techniquesWithInvalidPuzzles = map[string]bool{
-	"unique-rectangle-type-2": true, // Technique not used in available puzzles
-	"unique-rectangle-type-3": true, // Technique not used in available puzzles
-	"wxyz-wing":               true, // Invalid puzzle string
-	"sue-de-coq":              true, // Technique not used in available puzzles
-	"death-blossom":           true, // Technique not used in available puzzles
-}
+// Currently all techniques have valid puzzles!
+var techniquesWithInvalidPuzzles = map[string]bool{}
 
 // TestAllPuzzlesAreValid verifies all test puzzles are valid and have unique solutions
 func TestAllPuzzlesAreValid(t *testing.T) {
