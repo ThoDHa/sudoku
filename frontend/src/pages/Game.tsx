@@ -788,7 +788,12 @@ export default function Game() {
        return
      }
 
-     if (game.isGivenCell(selectedCell)) return
+     // If a given cell is selected, deselect it and toggle digit highlight for multi-fill mode
+     if (game.isGivenCell(selectedCell)) {
+       deselectCell()
+       toggleDigitHighlight(digit)
+       return
+     }
 
      // If cell already has this digit, erase it
       if (game.board[selectedCell] === digit) {
@@ -811,7 +816,7 @@ export default function Game() {
 
      // Keep cell selected so user can erase or change immediately
      // Keep digit highlighted for adding candidates (multi-fill)
-   }, [game, selectedCell, notesMode, toggleDigitHighlight, clearAfterDigitToggle, clearAfterUserCandidateOp, clearAfterDigitPlacement])
+   }, [game, selectedCell, notesMode, toggleDigitHighlight, clearAfterDigitToggle, clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell])
 
     // Keyboard cell change handler (from Board component)
     const handleCellChange = useCallback((idx: number, value: number) => {
