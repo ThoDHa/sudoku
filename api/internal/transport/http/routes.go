@@ -10,13 +10,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"sudoku-api/internal/core"
 	"sudoku-api/internal/puzzles"
 	"sudoku-api/internal/sudoku/dp"
 	"sudoku-api/internal/sudoku/human"
 	"sudoku-api/pkg/config"
 	"sudoku-api/pkg/constants"
+
+	"github.com/gin-gonic/gin"
 )
 
 var cfg *config.Config
@@ -212,18 +213,18 @@ type practicePuzzle struct {
 // practiceHandler finds a puzzle that requires a specific technique
 func practiceHandler(c *gin.Context) {
 	technique := c.Param("technique")
-	
+
 	if technique == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "technique required"})
 		return
 	}
-	
+
 	loader := puzzles.Global()
 	if loader == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "puzzles not loaded"})
 		return
 	}
-	
+
 	// Map technique to appropriate difficulty levels to search
 	// Simple techniques are in all puzzles, medium in medium+, etc.
 	techniqueToDifficulties := map[string][]string{
@@ -234,60 +235,60 @@ func practiceHandler(c *gin.Context) {
 		"box-line-reduction": {"easy", "medium", "hard"},
 		"naked-pair":         {"easy", "medium", "hard"},
 		"hidden-pair":        {"easy", "medium", "hard"},
-		
+
 		// Medium techniques
-		"naked-triple":     {"easy", "medium", "hard", "extreme", "impossible"},
-		"hidden-triple":    {"easy", "medium", "hard", "extreme", "impossible"},
-		"naked-quad":       {"hard", "extreme"},
-		"hidden-quad":      {"hard", "extreme"},
-		"x-wing":           {"medium", "hard", "extreme"},
-		"xy-wing":          {"medium", "hard", "extreme"},
-		"simple-coloring":  {"medium", "hard", "extreme"},
-		
+		"naked-triple":    {"easy", "medium", "hard", "extreme", "impossible"},
+		"hidden-triple":   {"easy", "medium", "hard", "extreme", "impossible"},
+		"naked-quad":      {"hard", "extreme"},
+		"hidden-quad":     {"hard", "extreme"},
+		"x-wing":          {"medium", "hard", "extreme"},
+		"xy-wing":         {"medium", "hard", "extreme"},
+		"simple-coloring": {"medium", "hard", "extreme"},
+
 		// Hard techniques
-		"swordfish":         {"medium", "hard", "extreme", "impossible"},
-		"skyscraper":        {"hard", "extreme", "impossible"},
-		"finned-x-wing":     {"impossible"},
-		"finned-swordfish":  {"impossible"},
-		"unique-rectangle":  {"medium", "hard", "extreme", "impossible"},
-		"bug":               {"medium", "hard", "extreme", "impossible"},
-		"jellyfish":         {"extreme", "impossible"},
-		"x-chain":           {"hard", "extreme", "impossible"},
-		"xy-chain":          {"hard", "extreme", "impossible"},
-		"w-wing":            {"hard", "extreme", "impossible"},
-		"empty-rectangle":   {"hard", "extreme", "impossible"},
-		"xyz-wing":          {"medium", "hard", "extreme", "impossible"},
-		"wxyz-wing":         {"hard", "extreme", "impossible"},
-		"als-xz":            {"impossible"},
-		
+		"swordfish":        {"medium", "hard", "extreme", "impossible"},
+		"skyscraper":       {"hard", "extreme", "impossible"},
+		"finned-x-wing":    {"impossible"},
+		"finned-swordfish": {"impossible"},
+		"unique-rectangle": {"medium", "hard", "extreme", "impossible"},
+		"bug":              {"medium", "hard", "extreme", "impossible"},
+		"jellyfish":        {"extreme", "impossible"},
+		"x-chain":          {"hard", "extreme", "impossible"},
+		"xy-chain":         {"hard", "extreme", "impossible"},
+		"w-wing":           {"hard", "extreme", "impossible"},
+		"empty-rectangle":  {"hard", "extreme", "impossible"},
+		"xyz-wing":         {"medium", "hard", "extreme", "impossible"},
+		"wxyz-wing":        {"hard", "extreme", "impossible"},
+		"als-xz":           {"impossible"},
+
 		// Extreme techniques
-		"sue-de-coq":         {"impossible"},
-		"medusa-3d":          {"hard", "extreme", "impossible"},
-		"grouped-x-cycles":   {"impossible"},
-		"aic":                {"impossible"},
-		"als-xy-wing":        {"impossible"},
-		"als-xy-chain":       {"impossible"},
-		"forcing-chain":      {"impossible"},
+		"sue-de-coq":          {"impossible"},
+		"medusa-3d":           {"hard", "extreme", "impossible"},
+		"grouped-x-cycles":    {"impossible"},
+		"aic":                 {"impossible"},
+		"als-xy-wing":         {"impossible"},
+		"als-xy-chain":        {"impossible"},
+		"forcing-chain":       {"impossible"},
 		"digit-forcing-chain": {"impossible"},
-		"death-blossom":      {"impossible"},
+		"death-blossom":       {"impossible"},
 	}
-	
+
 	difficulties, known := techniqueToDifficulties[technique]
 	if !known {
 		// Unknown technique - try medium/hard/extreme
 		difficulties = []string{"medium", "hard", "extreme", "impossible"}
 	}
-	
+
 	// Check cache first (thread-safe read)
 	practiceCache.RLock()
 	cached := practiceCache.puzzles[technique]
 	practiceCache.RUnlock()
-	
+
 	if len(cached) > 0 {
 		// Pick a random one from cache using current time
 		idx := int(time.Now().UnixNano()) % len(cached)
 		p := cached[idx]
-		
+
 		givens, _, err := loader.GetPuzzle(p.index, p.difficulty)
 		if err == nil {
 			seed := fmt.Sprintf("practice-%s-%d", technique, p.index)
@@ -302,32 +303,32 @@ func practiceHandler(c *gin.Context) {
 			return
 		}
 	}
-	
+
 	// Not in cache - search for a puzzle
 	// We'll sample puzzles to find one that uses the technique
 	solver := human.NewSolver()
 	puzzleCount := loader.Count()
-	
+
 	// Sample up to 50 puzzles to find one with this technique
 	maxSamples := 50
 	startIdx := int(time.Now().UnixNano()) % puzzleCount
-	
+
 	for i := 0; i < maxSamples; i++ {
 		idx := (startIdx + i) % puzzleCount
-		
+
 		// Try each difficulty level for this technique
 		for _, diff := range difficulties {
 			givens, _, err := loader.GetPuzzle(idx, diff)
 			if err != nil {
 				continue
 			}
-			
+
 			// Analyze the puzzle
 			_, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(givens)
 			if status != "completed" {
 				continue
 			}
-			
+
 			// Check if this technique is used
 			if count, ok := techniqueCounts[technique]; ok && count > 0 {
 				// Found one! Cache it (thread-safe write) and return
@@ -337,7 +338,7 @@ func practiceHandler(c *gin.Context) {
 					difficulty: diff,
 				})
 				practiceCache.Unlock()
-				
+
 				seed := fmt.Sprintf("practice-%s-%d", technique, idx)
 				c.JSON(http.StatusOK, gin.H{
 					"seed":         seed,
@@ -351,7 +352,7 @@ func practiceHandler(c *gin.Context) {
 			}
 		}
 	}
-	
+
 	// Didn't find a puzzle with this technique
 	c.JSON(http.StatusNotFound, gin.H{
 		"error":     "no puzzle found",
@@ -363,7 +364,7 @@ func practiceHandler(c *gin.Context) {
 func hashSeed(seed string) int64 {
 	h := fnv.New64a()
 	h.Write([]byte(seed))
-	return int64(h.Sum64())
+	return int64(h.Sum64()) //nolint:gosec // hash value overflow is expected behavior
 }
 
 func hashSolution(board []int) string {
@@ -494,7 +495,7 @@ func solveNextHandler(c *gin.Context) {
 				fixedBoard := make([]int, len(req.Board))
 				copy(fixedBoard, req.Board)
 				fixedBoard[badCell] = 0
-				
+
 				// Preserve user's candidates but clear the fixed cell's candidates
 				// Always allocate 81 slots even if req.Candidates is shorter/empty
 				fixedCandidates := make([][]int, constants.TotalCells)
@@ -540,7 +541,7 @@ func solveNextHandler(c *gin.Context) {
 			fixedBoard := make([]int, len(req.Board))
 			copy(fixedBoard, req.Board)
 			fixedBoard[badCell] = 0
-			
+
 			// Preserve user's candidates but clear the fixed cell's candidates
 			// Always allocate 81 slots even if req.Candidates is shorter/empty
 			fixedCandidates := make([][]int, constants.TotalCells)
@@ -698,27 +699,27 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int, int) {
 	// Create a fresh board and fill all candidates
 	freshBoard := human.NewBoardWithCandidates(originalUserBoard, nil)
-	
+
 	// Find any cell with zero candidates
 	for idx := 0; idx < constants.TotalCells; idx++ {
 		if originalUserBoard[idx] != 0 {
 			continue // Skip filled cells
 		}
-		
+
 		candidates := freshBoard.Candidates[idx]
 		if len(candidates) == 0 {
 			// Found a cell with no candidates - this points to an error
 			// Find which user-entered cell is blocking all candidates
 			row, col := idx/9, idx%9
 			boxRow, boxCol := (row/3)*3, (col/3)*3
-			
+
 			// For each digit 1-9, find what's blocking it
 			type blocker struct {
 				cellIdx int
 				digit   int
 			}
 			var userBlockers []blocker
-			
+
 			for digit := 1; digit <= 9; digit++ {
 				// Check row
 				for c := 0; c < 9; c++ {
@@ -744,7 +745,7 @@ func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int
 					}
 				}
 			}
-			
+
 			if len(userBlockers) > 0 {
 				// Return the first blocker found (any of them could be wrong)
 				// Also return the zero-candidate cell index for the message
@@ -752,7 +753,7 @@ func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int
 			}
 		}
 	}
-	
+
 	return -1, 0, -1
 }
 
@@ -804,11 +805,11 @@ func solveAllHandler(c *gin.Context) {
 
 	// Use provided candidates (may be empty/incomplete - solver will fill one at a time)
 	board := human.NewBoardWithCandidates(req.Board, req.Candidates)
-	
+
 	// Keep a copy of the original user board to distinguish user entries from solver placements
 	originalUserBoard := make([]int, len(req.Board))
 	copy(originalUserBoard, req.Board)
-	
+
 	// Keep a copy of the original user candidates to preserve them when fixing errors
 	// Always allocate 81 slots even if req.Candidates is shorter/empty
 	originalUserCandidates := make([][]int, constants.TotalCells)
@@ -892,7 +893,7 @@ func solveAllHandler(c *gin.Context) {
 
 					// Update originalUserBoard to remove the bad cell
 					originalUserBoard[badCell] = 0
-					
+
 					// Reset the board to the original user state (minus the fixed cell)
 					// This removes any solver-placed cells that may have been wrong due to the user error
 					// Use nil for candidates so the solver will rebuild them from scratch
@@ -908,7 +909,7 @@ func solveAllHandler(c *gin.Context) {
 							"technique":   "fix-error",
 							"action":      "fix-error",
 							"digit":       badDigit,
-					"explanation": fmt.Sprintf("Removing incorrect %d from R%dC%d.", badDigit, badRow+1, badCol+1),
+							"explanation": fmt.Sprintf("Removing incorrect %d from R%dC%d.", badDigit, badRow+1, badCol+1),
 							"targets":     []map[string]int{{"row": badRow, "col": badCol}},
 							"highlights": map[string]interface{}{
 								"primary":   []map[string]int{{"row": badRow, "col": badCol}},
@@ -933,7 +934,7 @@ func solveAllHandler(c *gin.Context) {
 			})
 
 			badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(originalUserBoard, givens)
-			
+
 			if badCell >= 0 {
 				badRow, badCol := badCell/9, badCell%9
 				zeroCandRow, zeroCandCol := zeroCandCell/9, zeroCandCell%9
@@ -941,7 +942,7 @@ func solveAllHandler(c *gin.Context) {
 
 				// Update originalUserBoard to remove the bad cell (for future reference)
 				originalUserBoard[badCell] = 0
-				
+
 				// Instead of resetting the entire board, just clear the bad cell
 				// and let the solver continue from the current state
 				board.ClearCell(badCell)
@@ -954,7 +955,7 @@ func solveAllHandler(c *gin.Context) {
 						"technique":   "fix-error",
 						"action":      "fix-error",
 						"digit":       badDigit,
-					"explanation": fmt.Sprintf("Removing incorrect %d from R%dC%d.", badDigit, badRow+1, badCol+1),
+						"explanation": fmt.Sprintf("Removing incorrect %d from R%dC%d.", badDigit, badRow+1, badCol+1),
 						"targets":     []map[string]int{{"row": badRow, "col": badCol}},
 						"highlights": map[string]interface{}{
 							"primary":   []map[string]int{{"row": badRow, "col": badCol}},
@@ -968,15 +969,15 @@ func solveAllHandler(c *gin.Context) {
 			// Both methods failed - return unpinpointable error
 			// Count user entries so frontend can display helpful message
 			userEntryCount := countUserEntries(originalUserBoard, givens)
-			
+
 			moves = append(moves, MoveResult{
 				Board:      board.GetCells(),
 				Candidates: board.GetCandidates(),
 				Move: map[string]interface{}{
-					"technique":       "unpinpointable-error",
-					"action":          "unpinpointable-error",
-					"explanation":     fmt.Sprintf("Hmm, I couldn't pinpoint the error. One of your %d entries might need checking.", userEntryCount),
-					"userEntryCount":  userEntryCount,
+					"technique":      "unpinpointable-error",
+					"action":         "unpinpointable-error",
+					"explanation":    fmt.Sprintf("Hmm, I couldn't pinpoint the error. One of your %d entries might need checking.", userEntryCount),
+					"userEntryCount": userEntryCount,
 				},
 			})
 			break // Stop auto-solving - let user decide what to do
@@ -1088,7 +1089,7 @@ func validateBoardHandler(c *gin.Context) {
 		for cell := range conflictCells {
 			cellList = append(cellList, cell)
 		}
-		
+
 		c.JSON(http.StatusOK, gin.H{
 			"valid":         false,
 			"reason":        "conflicts",

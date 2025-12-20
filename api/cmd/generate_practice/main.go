@@ -23,8 +23,8 @@ type PracticePuzzle struct {
 
 // PracticeFile is the output structure
 type PracticeFile struct {
-	Version    int                        `json:"version"`
-	Generated  string                     `json:"generated"`
+	Version    int                         `json:"version"`
+	Generated  string                      `json:"generated"`
 	Techniques map[string][]PracticePuzzle `json:"techniques"`
 }
 
@@ -206,7 +206,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := os.WriteFile(*output, data, 0644); err != nil {
+	if err := os.WriteFile(*output, data, 0600); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
 		os.Exit(1)
 	}

@@ -9,10 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"sudoku-api/internal/puzzles"
 	httpTransport "sudoku-api/internal/transport/http"
 	"sudoku-api/pkg/config"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -39,8 +40,9 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:    ":" + port,
-		Handler: r,
+		Addr:              ":" + port,
+		Handler:           r,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	// Graceful shutdown

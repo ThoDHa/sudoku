@@ -144,7 +144,6 @@ func findHiddenPairInUnit(b *Board, indices []int, unitType string, unitNum int)
 			// Check if same two positions
 			if len(pos1) == 2 && len(pos2) == 2 &&
 				pos1[0] == pos2[0] && pos1[1] == pos2[1] {
-
 				idx1, idx2 := pos1[0], pos1[1]
 
 				// Check if there are other candidates to eliminate

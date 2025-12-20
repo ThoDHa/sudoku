@@ -10,11 +10,11 @@ func TestRowOf(t *testing.T) {
 		idx      int
 		expected int
 	}{
-		{0, 0},   // top-left
-		{8, 0},   // top-right
-		{9, 1},   // second row, first col
-		{80, 8},  // bottom-right
-		{40, 4},  // middle
+		{0, 0},  // top-left
+		{8, 0},  // top-right
+		{9, 1},  // second row, first col
+		{80, 8}, // bottom-right
+		{40, 4}, // middle
 	}
 
 	for _, test := range tests {
@@ -29,11 +29,11 @@ func TestColOf(t *testing.T) {
 		idx      int
 		expected int
 	}{
-		{0, 0},   // top-left
-		{8, 8},   // top-right
-		{9, 0},   // second row, first col
-		{80, 8},  // bottom-right
-		{40, 4},  // middle
+		{0, 0},  // top-left
+		{8, 8},  // top-right
+		{9, 0},  // second row, first col
+		{80, 8}, // bottom-right
+		{40, 4}, // middle
 	}
 
 	for _, test := range tests {
@@ -48,16 +48,16 @@ func TestBoxOf(t *testing.T) {
 		idx      int
 		expected int
 	}{
-		{0, 0},   // top-left box
-		{2, 0},   // top-left box
-		{6, 2},   // top-right box
-		{8, 2},   // top-right box
-		{27, 3},  // middle-left box
-		{40, 4},  // center box
-		{53, 5},  // middle-right box
-		{72, 6},  // bottom-left box
-		{76, 7},  // bottom-middle box
-		{80, 8},  // bottom-right box
+		{0, 0},  // top-left box
+		{2, 0},  // top-left box
+		{6, 2},  // top-right box
+		{8, 2},  // top-right box
+		{27, 3}, // middle-left box
+		{40, 4}, // center box
+		{53, 5}, // middle-right box
+		{72, 6}, // bottom-left box
+		{76, 7}, // bottom-middle box
+		{80, 8}, // bottom-right box
 	}
 
 	for _, test := range tests {
@@ -176,7 +176,7 @@ func TestBoxPeersCount(t *testing.T) {
 func TestTotalPeersCount(t *testing.T) {
 	// Each cell should have exactly 20 total peers (8+8+8 with 4 overlaps)
 	// Corner cells: 8 (row) + 8 (col) + 8 (box) - 4 (overlaps) = 20
-	// Edge cells: 8 + 8 + 8 - 4 = 20  
+	// Edge cells: 8 + 8 + 8 - 4 = 20
 	// Center cells: 8 + 8 + 8 - 4 = 20
 	for i := 0; i < 81; i++ {
 		if len(Peers[i]) != 20 {
@@ -229,13 +229,13 @@ func TestGetRowCells(t *testing.T) {
 	if len(cells) != 9 {
 		t.Errorf("GetRowCells(0) returned %d cells, want 9", len(cells))
 	}
-	
+
 	expected := []core.CellRef{
 		{Row: 0, Col: 0}, {Row: 0, Col: 1}, {Row: 0, Col: 2},
 		{Row: 0, Col: 3}, {Row: 0, Col: 4}, {Row: 0, Col: 5},
 		{Row: 0, Col: 6}, {Row: 0, Col: 7}, {Row: 0, Col: 8},
 	}
-	
+
 	for i, cell := range cells {
 		if cell != expected[i] {
 			t.Errorf("GetRowCells(0)[%d] = %v, want %v", i, cell, expected[i])
@@ -248,13 +248,13 @@ func TestGetBoxCells(t *testing.T) {
 	if len(cells) != 9 {
 		t.Errorf("GetBoxCells(0) returned %d cells, want 9", len(cells))
 	}
-	
+
 	expected := []core.CellRef{
 		{Row: 0, Col: 0}, {Row: 0, Col: 1}, {Row: 0, Col: 2},
 		{Row: 1, Col: 0}, {Row: 1, Col: 1}, {Row: 1, Col: 2},
 		{Row: 2, Col: 0}, {Row: 2, Col: 1}, {Row: 2, Col: 2},
 	}
-	
+
 	for i, cell := range cells {
 		if cell != expected[i] {
 			t.Errorf("GetBoxCells(0)[%d] = %v, want %v", i, cell, expected[i])
@@ -266,19 +266,19 @@ func TestForEachPeer(t *testing.T) {
 	// Test that ForEachPeer visits exactly 20 peers for cell 40 (center)
 	count := 0
 	visited := make(map[int]bool)
-	
+
 	ForEachPeer(40, func(peerIdx int) {
 		count++
 		if visited[peerIdx] {
 			t.Errorf("Peer %d visited twice", peerIdx)
 		}
 		visited[peerIdx] = true
-		
+
 		if !ArePeers(40, peerIdx) {
 			t.Errorf("Peer %d is not actually a peer of 40", peerIdx)
 		}
 	})
-	
+
 	if count != 20 {
 		t.Errorf("ForEachPeer visited %d peers, want 20", count)
 	}

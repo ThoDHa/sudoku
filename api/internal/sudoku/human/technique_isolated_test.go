@@ -157,6 +157,8 @@ func runIsolatedTechniqueTest(t *testing.T, slug string) {
 // runFullSolverTechniqueTest is for rare techniques that require the full solver
 // to fire. Some techniques like jellyfish are so rare that they need higher-tier
 // techniques to set up the board state before they can be applied.
+//
+//nolint:unused // Reserved for future tests
 func runFullSolverTechniqueTest(t *testing.T, slug string) {
 	t.Helper()
 
@@ -208,6 +210,8 @@ func runFullSolverTechniqueTest(t *testing.T, slug string) {
 // the given partial solve state. This is the fastest test mode - it only calls
 // the detector once and validates the move. Use this for expensive techniques
 // where we have a partial state that triggers the technique on the first move.
+//
+//nolint:unused // Reserved for future tests
 func runDirectDetectionTest(t *testing.T, slug string) {
 	t.Helper()
 

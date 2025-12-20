@@ -55,7 +55,7 @@ func (c Candidates) Count() int {
 	return count
 }
 
-// Only returns the single digit if there's exactly one candidate, 
+// Only returns the single digit if there's exactly one candidate,
 // otherwise returns (0, false)
 func (c Candidates) Only() (int, bool) {
 	if c.Count() != 1 {
@@ -110,7 +110,7 @@ func (c Candidates) String() string {
 	if c == 0 {
 		return "{}"
 	}
-	
+
 	digits := c.ToSlice()
 	result := "{"
 	for i, d := range digits {

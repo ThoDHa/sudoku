@@ -26,25 +26,25 @@ type Daily struct {
 }
 
 type Puzzle struct {
-	ID                 string                 `json:"id"`
-	Seed               string                 `json:"seed"`
-	GivensByDifficulty map[Difficulty][]int   `json:"givens_by_difficulty"`
-	CreatedAt          time.Time              `json:"created_at"`
+	ID                 string               `json:"id"`
+	Seed               string               `json:"seed"`
+	GivensByDifficulty map[Difficulty][]int `json:"givens_by_difficulty"`
+	CreatedAt          time.Time            `json:"created_at"`
 }
 
 type Score struct {
-	ID               string            `json:"id"`
-	UserID           *string           `json:"user_id,omitempty"`
-	DeviceID         string            `json:"device_id"`
-	PuzzleID         string            `json:"puzzle_id"`
-	Difficulty       Difficulty        `json:"difficulty"`
-	TimeMs           int               `json:"time_ms"`
-	Mistakes         int               `json:"mistakes"`
-	Hints            int               `json:"hints"`
-	IsCustom         bool              `json:"is_custom"`
-	Validated        bool              `json:"validated"`
-	TechniqueSummary map[string]int    `json:"technique_summary,omitempty"`
-	CreatedAt        time.Time         `json:"created_at"`
+	ID               string         `json:"id"`
+	UserID           *string        `json:"user_id,omitempty"`
+	DeviceID         string         `json:"device_id"`
+	PuzzleID         string         `json:"puzzle_id"`
+	Difficulty       Difficulty     `json:"difficulty"`
+	TimeMs           int            `json:"time_ms"`
+	Mistakes         int            `json:"mistakes"`
+	Hints            int            `json:"hints"`
+	IsCustom         bool           `json:"is_custom"`
+	Validated        bool           `json:"validated"`
+	TechniqueSummary map[string]int `json:"technique_summary,omitempty"`
+	CreatedAt        time.Time      `json:"created_at"`
 }
 
 type Result struct {

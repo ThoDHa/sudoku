@@ -6,22 +6,22 @@ import "sudoku-api/internal/core"
 var (
 	// Peers contains all peer indices for each cell (row + col + box peers, excluding self)
 	Peers [81][]int
-	
+
 	// RowPeers contains peer indices within the same row for each cell
 	RowPeers [81][]int
-	
-	// ColPeers contains peer indices within the same column for each cell  
+
+	// ColPeers contains peer indices within the same column for each cell
 	ColPeers [81][]int
-	
+
 	// BoxPeers contains peer indices within the same box for each cell
 	BoxPeers [81][]int
-	
+
 	// RowIndices maps row number to all cell indices in that row
 	RowIndices [9][]int
-	
+
 	// ColIndices maps column number to all cell indices in that column
 	ColIndices [9][]int
-	
+
 	// BoxIndices maps box number to all cell indices in that box
 	BoxIndices [9][]int
 )
@@ -38,20 +38,20 @@ func initializePeers() {
 			idx := r*9 + c
 			RowIndices[r] = append(RowIndices[r], idx)
 			ColIndices[c] = append(ColIndices[c], idx)
-			
+
 			boxNum := (r/3)*3 + c/3
 			BoxIndices[boxNum] = append(BoxIndices[boxNum], idx)
 		}
 	}
-	
+
 	// For each cell, compute its peers
 	for i := 0; i < 81; i++ {
 		row, col := i/9, i%9
 		boxNum := (row/3)*3 + col/3
-		
+
 		// Collect unique peers (avoiding duplicates)
 		peerSet := make(map[int]bool)
-		
+
 		// Row peers
 		for _, idx := range RowIndices[row] {
 			if idx != i {
@@ -59,7 +59,7 @@ func initializePeers() {
 				peerSet[idx] = true
 			}
 		}
-		
+
 		// Column peers
 		for _, idx := range ColIndices[col] {
 			if idx != i {
@@ -67,7 +67,7 @@ func initializePeers() {
 				peerSet[idx] = true
 			}
 		}
-		
+
 		// Box peers
 		for _, idx := range BoxIndices[boxNum] {
 			if idx != i {
@@ -75,7 +75,7 @@ func initializePeers() {
 				peerSet[idx] = true
 			}
 		}
-		
+
 		// All unique peers
 		for peerIdx := range peerSet {
 			Peers[i] = append(Peers[i], peerIdx)
@@ -90,7 +90,7 @@ func RowOf(idx int) int {
 	return idx / 9
 }
 
-// ColOf returns the column number (0-8) for a cell index  
+// ColOf returns the column number (0-8) for a cell index
 func ColOf(idx int) int {
 	return idx % 9
 }
@@ -125,7 +125,7 @@ func AreRowPeers(idx1, idx2 int) bool {
 
 // AreColPeers returns true if two cells are in the same column
 func AreColPeers(idx1, idx2 int) bool {
-	return ColOf(idx1) == ColOf(idx2)  
+	return ColOf(idx1) == ColOf(idx2)
 }
 
 // AreBoxPeers returns true if two cells are in the same box
@@ -152,7 +152,7 @@ func GetRowCells(row int) []core.CellRef {
 	return cells
 }
 
-// GetColCells returns CellRef slice for all cells in a column  
+// GetColCells returns CellRef slice for all cells in a column
 func GetColCells(col int) []core.CellRef {
 	cells := make([]core.CellRef, 9)
 	for r := 0; r < 9; r++ {
@@ -195,7 +195,7 @@ func ForEachRowPeer(idx int, fn func(peerIdx int)) {
 	}
 }
 
-// ForEachColPeer calls fn for each peer of idx in the same column  
+// ForEachColPeer calls fn for each peer of idx in the same column
 func ForEachColPeer(idx int, fn func(peerIdx int)) {
 	for _, peerIdx := range ColPeers[idx] {
 		fn(peerIdx)

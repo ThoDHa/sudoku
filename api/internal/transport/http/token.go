@@ -12,12 +12,12 @@ import (
 )
 
 type SessionToken struct {
-	DeviceID  string    `json:"device_id"`
-	PuzzleID  string    `json:"puzzle_id"`
-	Seed      string    `json:"seed"`
-	Difficulty string   `json:"difficulty"`
-	StartedAt time.Time `json:"started_at"`
-	ExpiresAt time.Time `json:"expires_at"`
+	DeviceID   string    `json:"device_id"`
+	PuzzleID   string    `json:"puzzle_id"`
+	Seed       string    `json:"seed"`
+	Difficulty string    `json:"difficulty"`
+	StartedAt  time.Time `json:"started_at"`
+	ExpiresAt  time.Time `json:"expires_at"`
 }
 
 func createToken(secret string, session SessionToken) (string, error) {

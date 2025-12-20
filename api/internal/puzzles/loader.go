@@ -11,8 +11,8 @@ import (
 
 // CompactPuzzle stores a puzzle in minimal format
 type CompactPuzzle struct {
-	S string            `json:"s"` // solution as 81-char string
-	G map[string][]int  `json:"g"` // givens: difficulty key -> cell indices
+	S string           `json:"s"` // solution as 81-char string
+	G map[string][]int `json:"g"` // givens: difficulty key -> cell indices
 }
 
 // PuzzleFile is the top-level structure for the JSON file
@@ -149,7 +149,7 @@ func (l *Loader) GetPuzzleBySeed(seed string, difficulty string) (givens []int, 
 	// Hash seed to get puzzle index
 	h := fnv.New64a()
 	h.Write([]byte(seed))
-	puzzleIndex = int(h.Sum64() % uint64(count))
+	puzzleIndex = int(h.Sum64() % uint64(count)) //nolint:gosec // count is bounded by slice length
 
 	givens, solution, err = l.GetPuzzle(puzzleIndex, difficulty)
 	return

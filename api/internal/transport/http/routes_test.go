@@ -8,9 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"sudoku-api/internal/puzzles"
 	"sudoku-api/pkg/config"
+
+	"github.com/gin-gonic/gin"
 )
 
 // testPuzzles contains pre-generated puzzles for fast testing
@@ -624,8 +625,8 @@ func TestDifferentDifficulties(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/puzzle/"+seed+"?d="+diff, nil)
 		router.ServeHTTP(w, req)
 
-	var response map[string]interface{}
-	_ = json.Unmarshal(w.Body.Bytes(), &response)
+		var response map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &response)
 		givens := response["givens"].([]interface{})
 
 		count := 0

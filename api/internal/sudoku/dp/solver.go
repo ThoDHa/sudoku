@@ -25,10 +25,10 @@ func HasUniqueSolution(grid []int) bool {
 
 // Conflict represents a pair of cells that have the same value where they shouldn't
 type Conflict struct {
-	Cell1 int `json:"cell1"` // First cell index (0-80)
-	Cell2 int `json:"cell2"` // Second cell index (0-80)
-	Value int `json:"value"` // The conflicting value
-	Type  string `json:"type"` // "row", "column", or "box"
+	Cell1 int    `json:"cell1"` // First cell index (0-80)
+	Cell2 int    `json:"cell2"` // Second cell index (0-80)
+	Value int    `json:"value"` // The conflicting value
+	Type  string `json:"type"`  // "row", "column", or "box"
 }
 
 // IsValid checks if the given grid has no conflicts (no duplicate values in rows, columns, or boxes).
@@ -417,8 +417,8 @@ func CarveGivensWithSubset(fullGrid []int, seed int64) map[string][]int {
 
 // PuzzleAnalysis contains the analysis results for a puzzle
 type PuzzleAnalysis struct {
-	Givens           []int
+	Givens             []int
 	RequiredDifficulty core.Difficulty
-	TechniqueCounts  map[string]int
-	Status           string
+	TechniqueCounts    map[string]int
+	Status             string
 }

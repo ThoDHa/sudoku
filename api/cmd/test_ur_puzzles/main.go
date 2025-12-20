@@ -19,12 +19,12 @@ func main() {
 	// Let's test the SudokuWiki Type2 puzzle step by step
 	puzzle := "020000000060000794809060200700003000900102003000500008004020507682000030000000010"
 	name := "SudokuWiki Type2"
-	
+
 	fmt.Printf("=== Deep dive into %s ===\n", name)
 	fmt.Printf("Puzzle: %s\n\n", puzzle)
-	
+
 	cells := parsePuzzle(puzzle)
-	
+
 	// Verify validity
 	if dp.Solve(cells) == nil {
 		fmt.Println("❌ INVALID")
@@ -38,7 +38,7 @@ func main() {
 
 	// Get the technique registry
 	registry := human.NewTechniqueRegistry()
-	
+
 	urType1 := registry.GetBySlug("unique-rectangle")
 	urType2 := registry.GetBySlug("unique-rectangle-type-2")
 	urType3 := registry.GetBySlug("unique-rectangle-type-3")
@@ -47,10 +47,10 @@ func main() {
 	// Create board and solve step by step, testing UR detectors after each step
 	board := human.NewBoard(cells)
 	solver := human.NewSolver()
-	
+
 	fmt.Println("Solving step by step and testing UR detectors at each step...")
 	fmt.Println("=============================================================")
-	
+
 	for step := 0; step < constants.MaxSolverSteps; step++ {
 		// Count empty cells
 		emptyCells := 0
@@ -59,21 +59,21 @@ func main() {
 				emptyCells++
 			}
 		}
-		
+
 		if emptyCells == 0 {
 			fmt.Printf("\n✅ Puzzle solved after %d steps!\n", step)
 			break
 		}
-		
+
 		// Test UR detectors every 5 steps
 		if step%5 == 0 || step < 10 {
 			ur1Result := urType1.Detector(board)
 			ur2Result := urType2.Detector(board)
 			ur3Result := urType3.Detector(board)
 			ur4Result := urType4.Detector(board)
-			
+
 			hasUR := ur1Result != nil || ur2Result != nil || ur3Result != nil || ur4Result != nil
-			
+
 			if hasUR {
 				fmt.Printf("\n>>> Step %d (empty: %d) - UR FOUND! <<<\n", step, emptyCells)
 				if ur1Result != nil {
@@ -90,12 +90,12 @@ func main() {
 				}
 			}
 		}
-		
+
 		// Get next move
 		move := solver.FindNextMove(board)
 		if move == nil {
 			fmt.Printf("\n❌ Solver stalled after %d steps (empty: %d)\n", step, emptyCells)
-			
+
 			// Final UR check
 			fmt.Println("\nFinal UR detector check:")
 			if ur1Result := urType1.Detector(board); ur1Result != nil {
@@ -112,7 +112,7 @@ func main() {
 			}
 			break
 		}
-		
+
 		// Apply the move
 		if move.Action == "set" {
 			for _, target := range move.Targets {
@@ -124,18 +124,18 @@ func main() {
 				delete(board.Candidates[elim.Row*9+elim.Col], elim.Digit)
 			}
 		}
-		
+
 		// Print every move
-		if step < 30 || move.Technique == "unique-rectangle" || move.Technique == "unique-rectangle-type-2" || 
-		   move.Technique == "unique-rectangle-type-3" || move.Technique == "unique-rectangle-type-4" {
+		if step < 30 || move.Technique == "unique-rectangle" || move.Technique == "unique-rectangle-type-2" ||
+			move.Technique == "unique-rectangle-type-3" || move.Technique == "unique-rectangle-type-4" {
 			fmt.Printf("Step %d: %s - %s\n", step+1, move.Technique, move.Explanation)
 		}
 	}
-	
+
 	fmt.Println("\n\n========================================")
 	fmt.Println("Now testing with the SudokuWiki puzzle bank")
 	fmt.Println("========================================")
-	
+
 	// Test more puzzles from practice_puzzles.json in the repo
 	// These are known to be valid
 	testPuzzles := []string{
@@ -146,16 +146,16 @@ func main() {
 		"001000400030500098000006000300000009008000654620000000040020000005380000060400703",
 		"000010200000504030020000006050002040003000005600800070010405007000001020930068000",
 	}
-	
+
 	for i, puzz := range testPuzzles {
 		cells := parsePuzzle(puzz)
 		if dp.Solve(cells) == nil || !dp.HasUniqueSolution(cells) {
 			continue
 		}
-		
+
 		board := human.NewBoard(cells)
 		moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
-		
+
 		// Check for UR types 2/3/4
 		for _, m := range moves {
 			switch m.Technique {

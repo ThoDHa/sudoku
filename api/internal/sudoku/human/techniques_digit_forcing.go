@@ -11,7 +11,7 @@ const maxDigitForcingPropagation = 10
 
 // digitForcingResult tracks the outcomes of placing a digit at a specific position
 type digitForcingResult struct {
-	placements  map[int]int // cell index -> digit placed
+	placements   map[int]int          // cell index -> digit placed
 	eliminations map[int]map[int]bool // cell index -> set of eliminated digits
 }
 
@@ -138,11 +138,7 @@ func tryDigitForcingChain(b *Board, digit int, positions []int, unitType string,
 	}
 
 	// Find common eliminations across all branches
-	if move := findCommonElimination(b, digit, positions, results, unitType, unitIdx); move != nil {
-		return move
-	}
-
-	return nil
+	return findCommonElimination(b, digit, positions, results, unitType, unitIdx)
 }
 
 // propagateFromPlacement simulates placing a digit and propagates forced implications

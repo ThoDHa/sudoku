@@ -17,15 +17,15 @@ import (
 // Solution: 81-char string of digits
 // Givens: map of difficulty -> indices to reveal
 type CompactPuzzle struct {
-	S string         `json:"s"` // solution as 81-char string
+	S string           `json:"s"` // solution as 81-char string
 	G map[string][]int `json:"g"` // givens: difficulty -> cell indices to show
 }
 
 // PuzzleFile is the top-level structure for the JSON file
 type PuzzleFile struct {
-	Version  int             `json:"version"`
-	Count    int             `json:"count"`
-	Puzzles  []CompactPuzzle `json:"puzzles"`
+	Version int             `json:"version"`
+	Count   int             `json:"count"`
+	Puzzles []CompactPuzzle `json:"puzzles"`
 }
 
 func main() {
@@ -94,7 +94,7 @@ func main() {
 
 	// Write to file
 	fmt.Printf("Writing to %s...\n", *output)
-	
+
 	file := PuzzleFile{
 		Version: 1,
 		Count:   *count,
@@ -107,7 +107,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := os.WriteFile(*output, data, 0644); err != nil {
+	if err := os.WriteFile(*output, data, 0600); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
 		os.Exit(1)
 	}

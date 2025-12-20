@@ -16,9 +16,9 @@ func detectNakedSingle(b *Board) *core.Move {
 			}
 			row, col := i/9, i%9
 			return &core.Move{
-				Action: "assign",
-				Digit:  digit,
-				Targets: []core.CellRef{{Row: row, Col: col}},
+				Action:      "assign",
+				Digit:       digit,
+				Targets:     []core.CellRef{{Row: row, Col: col}},
 				Explanation: fmt.Sprintf("Cell R%dC%d has only one candidate: %d", row+1, col+1, digit),
 				Highlights: core.Highlights{
 					Primary: []core.CellRef{{Row: row, Col: col}},
@@ -50,9 +50,9 @@ func detectHiddenSingle(b *Board) *core.Move {
 				idx := row*9 + col
 				if len(b.Candidates[idx]) > 1 {
 					return &core.Move{
-						Action:  "assign",
-						Digit:   digit,
-						Targets: []core.CellRef{{Row: row, Col: col}},
+						Action:      "assign",
+						Digit:       digit,
+						Targets:     []core.CellRef{{Row: row, Col: col}},
 						Explanation: fmt.Sprintf("In row %d, %d can only go in R%dC%d", row+1, digit, row+1, col+1),
 						Highlights: core.Highlights{
 							Primary:   []core.CellRef{{Row: row, Col: col}},
@@ -83,9 +83,9 @@ func detectHiddenSingle(b *Board) *core.Move {
 				idx := row*9 + col
 				if len(b.Candidates[idx]) > 1 {
 					return &core.Move{
-						Action:  "assign",
-						Digit:   digit,
-						Targets: []core.CellRef{{Row: row, Col: col}},
+						Action:      "assign",
+						Digit:       digit,
+						Targets:     []core.CellRef{{Row: row, Col: col}},
 						Explanation: fmt.Sprintf("In column %d, %d can only go in R%dC%d", col+1, digit, row+1, col+1),
 						Highlights: core.Highlights{
 							Primary:   []core.CellRef{{Row: row, Col: col}},
@@ -123,9 +123,9 @@ func detectHiddenSingle(b *Board) *core.Move {
 				idx := pos.Row*9 + pos.Col
 				if len(b.Candidates[idx]) > 1 {
 					return &core.Move{
-						Action:  "assign",
-						Digit:   digit,
-						Targets: []core.CellRef{pos},
+						Action:      "assign",
+						Digit:       digit,
+						Targets:     []core.CellRef{pos},
 						Explanation: fmt.Sprintf("In box %d, %d can only go in R%dC%d", box+1, digit, pos.Row+1, pos.Col+1),
 						Highlights: core.Highlights{
 							Primary:   []core.CellRef{pos},

@@ -48,9 +48,9 @@ func main() {
 
 	// Target givens per difficulty
 	targetGivens := map[string]int{
-		"easy":   40,
-		"medium": 34,
-		"hard":   28,
+		"easy":    40,
+		"medium":  34,
+		"hard":    28,
 		"extreme": 24,
 	}
 
@@ -64,7 +64,7 @@ func main() {
 		failed := 0
 
 		for i := 1; i <= puzzlesPerDifficulty; i++ {
-			seed := int64(time.Now().UnixNano()) + int64(i)*1000
+			seed := time.Now().UnixNano() + int64(i)*1000
 
 			// Generate puzzle using dp package
 			fullGrid := dp.GenerateFullGrid(seed)

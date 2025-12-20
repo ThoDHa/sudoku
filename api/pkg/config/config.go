@@ -15,11 +15,11 @@ type Config struct {
 // Returns an error if JWT_SECRET is not set or equals "changeme".
 func Load() (*Config, error) {
 	jwtSecret := os.Getenv("JWT_SECRET")
-	
+
 	if jwtSecret == "" {
 		return nil, errors.New("SECURITY ERROR: JWT_SECRET environment variable is required but not set")
 	}
-	
+
 	if jwtSecret == "changeme" {
 		return nil, errors.New("SECURITY ERROR: JWT_SECRET cannot be 'changeme' - please set a secure secret")
 	}

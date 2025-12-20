@@ -201,10 +201,10 @@ func (b *Board) ClearCell(idx int) {
 	if idx < 0 || idx >= 81 {
 		return
 	}
-	
+
 	// Clear the cell value
 	b.Cells[idx] = 0
-	
+
 	// Recalculate candidates for this cell based on current board state
 	b.Candidates[idx] = make(map[int]bool)
 	b.Eliminated[idx] = make(map[int]bool)
@@ -228,10 +228,10 @@ func (b *Board) GetCandidates() [][]int {
 
 // Technique represents a solving technique
 type Technique struct {
-	Name     string
-	Slug     string
-	Tier     string // constants.TierSimple, TierMedium, TierHard, TierExtreme
-	Detect   func(b *Board) *core.Move
+	Name   string
+	Slug   string
+	Tier   string // constants.TierSimple, TierMedium, TierHard, TierExtreme
+	Detect func(b *Board) *core.Move
 }
 
 // TechniqueDifficultyLevel maps technique tiers to puzzle difficulties
@@ -282,13 +282,13 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 			if b.Cells[i] != 0 {
 				continue
 			}
-			
+
 			row, col := i/9, i%9
-			
+
 			// Only add if: can place AND not already a candidate AND not eliminated
 			if b.canPlace(i, d) && !b.Candidates[i][d] && !b.Eliminated[i][d] {
 				// Before returning a fill-candidate move, check if this cell should be assigned immediately
-				
+
 				// Check for naked single: count total valid candidates for this cell
 				// (including ones we haven't added yet but excluding eliminated ones)
 				validCount := 0
@@ -299,7 +299,7 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 						onlyValidDigit = digit
 					}
 				}
-				
+
 				if validCount == 1 {
 					// This cell can only have one digit - naked single!
 					return &core.Move{
@@ -318,12 +318,12 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 						},
 					}
 				}
-				
+
 				// Check for hidden single: this digit can only go in one place in row/col/box
 				if move := s.checkHiddenSingleForDigitImmediate(b, i, d); move != nil {
 					return move
 				}
-				
+
 				// No immediate assignment - return the fill-candidate move
 				return &core.Move{
 					Technique:   "fill-candidate",
@@ -426,7 +426,7 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 // This is used during candidate-filling to detect immediate assignments
 func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.Move {
 	row, col := idx/9, idx%9
-	
+
 	// Helper to check if digit d can potentially go in a cell
 	canPlaceDigit := func(cellIdx, digit int) bool {
 		if b.Cells[cellIdx] != 0 {
@@ -437,7 +437,7 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 		}
 		return b.canPlace(cellIdx, digit)
 	}
-	
+
 	// Check row: is this the only place for digit d in this row?
 	rowCount := 0
 	for c := 0; c < 9; c++ {
@@ -468,7 +468,7 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 			},
 		}
 	}
-	
+
 	// Check column: is this the only place for digit d in this column?
 	colCount := 0
 	for r := 0; r < 9; r++ {
@@ -499,7 +499,7 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 			},
 		}
 	}
-	
+
 	// Check box: is this the only place for digit d in this box?
 	boxRow, boxCol := (row/3)*3, (col/3)*3
 	boxNum := (row/3)*3 + col/3
@@ -537,7 +537,7 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 			},
 		}
 	}
-	
+
 	return nil
 }
 
@@ -609,12 +609,12 @@ func (s *Solver) SolveWithSteps(b *Board, maxSteps int) ([]core.Move, string) {
 		move.StepIndex = step
 		s.ApplyMove(b, move)
 		moves = append(moves, *move)
-		
+
 		// If we hit a contradiction, stop solving - the puzzle is invalid or we made a mistake
 		if move.Technique == "contradiction" {
 			return moves, constants.StatusStalled
 		}
-		
+
 		// Only count actual solving moves as steps, not candidate-filling
 		if move.Technique != "fill-candidate" {
 			step++
