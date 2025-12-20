@@ -591,6 +591,14 @@ html, body {
     .sudoku-cell:hover {
       background-color: var(--cell-hover);
     }
+
+    /* Control button hover states - only for mouse/trackpad users */
+    .control-digit-btn:not(:disabled):hover,
+    .control-action-btn:not(:disabled):hover,
+    .control-action-btn-compact:not(:disabled):hover,
+    .control-action-btn-labeled:not(:disabled):hover {
+      background-color: var(--btn-hover);
+    }
   }
 
   /* Control buttons - interactive feedback */
