@@ -36,16 +36,16 @@ const speedOptions = [
   ), label: 'Skip' },
 ]
 
-// Color theme options
-const colorThemes: { key: ColorTheme; color: string }[] = [
-  { key: 'blue', color: 'bg-blue-500' },
-  { key: 'green', color: 'bg-green-500' },
-  { key: 'purple', color: 'bg-purple-500' },
-  { key: 'orange', color: 'bg-orange-500' },
-  { key: 'pink', color: 'bg-pink-500' },
-  { key: 'teal', color: 'bg-teal-500' },
-  { key: 'red', color: 'bg-red-500' },
-  { key: 'indigo', color: 'bg-indigo-500' },
+// Color theme options - popular community themes
+const colorThemes: { key: ColorTheme; name: string; color: string }[] = [
+  { key: 'tokyonight', name: 'Tokyo Night', color: 'bg-[#7aa2f7]' },
+  { key: 'catppuccin', name: 'Catppuccin', color: 'bg-[#cba6f7]' },
+  { key: 'dracula', name: 'Dracula', color: 'bg-[#bd93f9]' },
+  { key: 'nord', name: 'Nord', color: 'bg-[#88c0d0]' },
+  { key: 'gruvbox', name: 'Gruvbox', color: 'bg-[#fe8019]' },
+  { key: 'rosepine', name: 'Rosé Pine', color: 'bg-[#c4a7e7]' },
+  { key: 'solarized', name: 'Solarized', color: 'bg-[#268bd2]' },
+  { key: 'onedark', name: 'One Dark', color: 'bg-[#c678dd]' },
 ]
 
 // Game actions (for game page)
@@ -412,7 +412,7 @@ export default function Menu({
                               ? 'ring-2 ring-offset-1 ring-[var(--text)] scale-110' 
                               : 'hover:scale-110'
                           }`}
-                          title={`${theme.key} theme`}
+                          title={theme.name}
                         />
                       ))}
                     </div>
