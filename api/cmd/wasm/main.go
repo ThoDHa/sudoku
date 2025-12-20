@@ -370,12 +370,144 @@ func solveAll(this js.Value, args []js.Value) interface{} {
 	fixCount := 0
 
 	for i := 0; i < maxMoves; i++ {
+		// Check if board appears complete
 		if board.IsSolved() {
+			// Before declaring victory, verify the board is actually valid
+			currentCells := board.GetCells()
+			conflicts := dp.FindConflicts(currentCells)
+
+			if len(conflicts) > 0 {
+				// Board is filled but has conflicts - this is an error state
+				if fixCount >= maxFixes {
+					moves = append(moves, MoveResult{
+						Board:      currentCells,
+						Candidates: board.GetCandidates(),
+						Move: map[string]interface{}{
+							"technique":   "error",
+							"action":      "error",
+							"explanation": "Too many incorrect entries to fix automatically.",
+						},
+					})
+					break
+				}
+
+				// Find the first conflict and report it
+				conflict := conflicts[0]
+				cell1Row, cell1Col := conflict.Cell1/9, conflict.Cell1%9
+				cell2Row, cell2Col := conflict.Cell2/9, conflict.Cell2%9
+
+				// Find which cell is a user entry (not a given)
+				badCell := -1
+				badDigit := conflict.Value
+				if givens[conflict.Cell1] == 0 {
+					badCell = conflict.Cell1
+				} else if givens[conflict.Cell2] == 0 {
+					badCell = conflict.Cell2
+				}
+
+				if badCell >= 0 {
+					badRow, badCol := badCell/9, badCell%9
+					fixCount++
+					originalUserBoard[badCell] = 0
+
+					// Reset board without the bad cell
+					board = human.NewBoardWithCandidates(originalUserBoard, nil)
+					board.InitCandidates()
+
+					moves = append(moves, MoveResult{
+						Board:      board.GetCells(),
+						Candidates: board.GetCandidates(),
+						Move: map[string]interface{}{
+							"technique":   "fix-error",
+							"action":      "fix-error",
+							"digit":       badDigit,
+							"explanation": formatExplanation("R%dC%d and R%dC%d both have %d in the same %s. Removing %d from R%dC%d.", cell1Row+1, cell1Col+1, cell2Row+1, cell2Col+1, badDigit, conflict.Type, badDigit, badRow+1, badCol+1),
+							"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+							"highlights": map[string]interface{}{
+								"primary": []map[string]int{{"row": cell1Row, "col": cell1Col}, {"row": cell2Row, "col": cell2Col}},
+							},
+						},
+					})
+					continue // Continue solving after fixing
+				} else {
+					// Both cells are givens - puzzle itself is invalid
+					moves = append(moves, MoveResult{
+						Board:      currentCells,
+						Candidates: board.GetCandidates(),
+						Move: map[string]interface{}{
+							"technique":   "error",
+							"action":      "error",
+							"explanation": "The puzzle has conflicting givens and cannot be solved.",
+						},
+					})
+					break
+				}
+			}
+
+			// No conflicts - board is truly solved, but verify against solution
+			correctSolution := dp.Solve(givens)
+			if correctSolution != nil {
+				var wrongCells []int
+				for idx := 0; idx < 81; idx++ {
+					if currentCells[idx] != correctSolution[idx] && givens[idx] == 0 {
+						wrongCells = append(wrongCells, idx)
+					}
+				}
+
+				if len(wrongCells) > 0 {
+					if fixCount >= maxFixes {
+						moves = append(moves, MoveResult{
+							Board:      currentCells,
+							Candidates: board.GetCandidates(),
+							Move: map[string]interface{}{
+								"technique":      "error",
+								"action":         "error",
+								"explanation":    "Too many incorrect entries to fix automatically.",
+								"userEntryCount": len(wrongCells),
+							},
+						})
+						break
+					}
+
+					// Fix the first wrong cell
+					badIdx := wrongCells[0]
+					badRow, badCol := badIdx/9, badIdx%9
+					wrongDigit := currentCells[badIdx]
+					correctDigit := correctSolution[badIdx]
+					fixCount++
+					originalUserBoard[badIdx] = 0
+
+					// Reset board without the bad cell
+					board = human.NewBoardWithCandidates(originalUserBoard, nil)
+					board.InitCandidates()
+
+					moves = append(moves, MoveResult{
+						Board:      board.GetCells(),
+						Candidates: board.GetCandidates(),
+						Move: map[string]interface{}{
+							"technique":   "fix-error",
+							"action":      "fix-error",
+							"digit":       wrongDigit,
+							"explanation": formatExplanation("R%dC%d has %d but should be %d. Removing the incorrect value.", badRow+1, badCol+1, wrongDigit, correctDigit),
+							"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+							"highlights": map[string]interface{}{
+								"primary": []map[string]int{{"row": badRow, "col": badCol}},
+							},
+							"userEntryCount": len(wrongCells),
+						},
+					})
+					continue // Continue solving after fixing
+				}
+			}
+
+			// Board is truly complete and correct
 			break
 		}
 
 		move := solver.FindNextMove(board)
 		if move == nil {
+			// Solver returned nil but board isn't solved - shouldn't happen normally
+			// This could mean the puzzle is unsolvable or in an unexpected state
 			break
 		}
 
@@ -449,10 +581,88 @@ func solveAll(this js.Value, args []js.Value) interface{} {
 		})
 	}
 
+	// Final validation: if board appears solved but might have errors
+	finalCells := board.GetCells()
+	allFilled := true
+	for _, cell := range finalCells {
+		if cell == 0 {
+			allFilled = false
+			break
+		}
+	}
+
+	// If all cells are filled, verify it's actually correct
+	if allFilled && len(moves) == 0 {
+		// No moves were generated - this means user filled everything but it might be wrong
+		// First check for obvious conflicts
+		conflicts := dp.FindConflicts(finalCells)
+		if len(conflicts) > 0 {
+			conflict := conflicts[0]
+			cell1Row, cell1Col := conflict.Cell1/9, conflict.Cell1%9
+			cell2Row, cell2Col := conflict.Cell2/9, conflict.Cell2%9
+
+			// Find which cell is a user entry
+			badRow, badCol := cell1Row, cell1Col
+			if givens[conflict.Cell1] != 0 {
+				badRow, badCol = cell2Row, cell2Col
+			}
+
+			moves = append(moves, MoveResult{
+				Board:      finalCells,
+				Candidates: board.GetCandidates(),
+				Move: map[string]interface{}{
+					"technique":   "fix-error",
+					"action":      "fix-error",
+					"digit":       conflict.Value,
+					"explanation": formatExplanation("R%dC%d and R%dC%d both have %d in the same %s.", cell1Row+1, cell1Col+1, cell2Row+1, cell2Col+1, conflict.Value, conflict.Type),
+					"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+					"highlights": map[string]interface{}{
+						"primary": []map[string]int{{"row": cell1Row, "col": cell1Col}, {"row": cell2Row, "col": cell2Col}},
+					},
+				},
+			})
+		} else {
+			// No conflicts, but check against correct solution
+			correctSolution := dp.Solve(givens)
+			if correctSolution != nil {
+				// Find cells that don't match
+				var wrongCells []int
+				for i := 0; i < 81; i++ {
+					if finalCells[i] != correctSolution[i] && givens[i] == 0 {
+						wrongCells = append(wrongCells, i)
+					}
+				}
+				if len(wrongCells) > 0 {
+					// Report the first wrong cell
+					badIdx := wrongCells[0]
+					badRow, badCol := badIdx/9, badIdx%9
+					wrongDigit := finalCells[badIdx]
+					correctDigit := correctSolution[badIdx]
+
+					moves = append(moves, MoveResult{
+						Board:      finalCells,
+						Candidates: board.GetCandidates(),
+						Move: map[string]interface{}{
+							"technique":   "fix-error",
+							"action":      "fix-error",
+							"digit":       wrongDigit,
+							"explanation": formatExplanation("R%dC%d has %d but should be %d.", badRow+1, badCol+1, wrongDigit, correctDigit),
+							"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+							"highlights": map[string]interface{}{
+								"primary": []map[string]int{{"row": badRow, "col": badCol}},
+							},
+							"userEntryCount": len(wrongCells),
+						},
+					})
+				}
+			}
+		}
+	}
+
 	return toJSValue(map[string]interface{}{
 		"moves":      moves,
-		"solved":     board.IsSolved(),
-		"finalBoard": board.GetCells(),
+		"solved":     board.IsSolved() && dp.IsValid(finalCells),
+		"finalBoard": finalCells,
 	})
 }
 
@@ -536,6 +746,14 @@ func formatExplanation(format string, args ...interface{}) string {
 			for i := 0; i < len(result)-1; i++ {
 				if result[i] == '%' && result[i+1] == 'd' {
 					result = result[:i] + intToString(v) + result[i+2:]
+					break
+				}
+			}
+		case string:
+			// Replace first %s
+			for i := 0; i < len(result)-1; i++ {
+				if result[i] == '%' && result[i+1] == 's' {
+					result = result[:i] + v + result[i+2:]
 					break
 				}
 			}
@@ -752,20 +970,20 @@ func main() {
 	// Create the SudokuWasm global object with all exported functions
 	exports := map[string]interface{}{
 		// Human solver
-		"createBoard":             js.FuncOf(createBoard),
+		"createBoard":               js.FuncOf(createBoard),
 		"createBoardWithCandidates": js.FuncOf(createBoardWithCandidates),
-		"findNextMove":            js.FuncOf(findNextMove),
-		"solveWithSteps":          js.FuncOf(solveWithSteps),
-		"analyzePuzzle":           js.FuncOf(analyzePuzzle),
-		"solveAll":                js.FuncOf(solveAll),
+		"findNextMove":              js.FuncOf(findNextMove),
+		"solveWithSteps":            js.FuncOf(solveWithSteps),
+		"analyzePuzzle":             js.FuncOf(analyzePuzzle),
+		"solveAll":                  js.FuncOf(solveAll),
 
 		// DP solver
-		"solve":                js.FuncOf(solve),
-		"hasUniqueSolution":    js.FuncOf(hasUniqueSolution),
-		"isValid":              js.FuncOf(isValid),
-		"findConflicts":        js.FuncOf(findConflicts),
-		"generateFullGrid":     js.FuncOf(generateFullGrid),
-		"carveGivens":          js.FuncOf(carveGivens),
+		"solve":                 js.FuncOf(solve),
+		"hasUniqueSolution":     js.FuncOf(hasUniqueSolution),
+		"isValid":               js.FuncOf(isValid),
+		"findConflicts":         js.FuncOf(findConflicts),
+		"generateFullGrid":      js.FuncOf(generateFullGrid),
+		"carveGivens":           js.FuncOf(carveGivens),
 		"carveGivensWithSubset": js.FuncOf(carveGivensWithSubset),
 
 		// Validation
