@@ -260,7 +260,7 @@ func checkChainConclusion(b *Board, chain []chainLink, start candidateNode, star
 		if startPolarity && endPolarity {
 			// Both ON means this candidate is definitely true - assign it
 			return &core.Move{
-				Technique:   "AIC",
+				Technique:   "aic",
 				Action:      "assign",
 				Digit:       start.digit,
 				Targets:     []core.CellRef{{Row: start.cell / 9, Col: start.cell % 9}},
@@ -268,18 +268,45 @@ func checkChainConclusion(b *Board, chain []chainLink, start candidateNode, star
 				Highlights:  buildAICHighlights(chain),
 			}
 		}
-		// Note: startPolarity false and endPolarity false case would mean eliminate,
-		// but this is less common in standard AIC search starting with ON
 	}
 
-	// Type 2: Discontinuous Nice Loop - endpoints are different but can eliminate
-	// This requires proper verification that both endpoints have strong links,
-	// which the current polarity tracking doesn't provide.
-	// The current logic produces "A implies B" but for elimination we need "A or B".
-	// Disabling this to avoid incorrect eliminations until proper link verification is added.
-	// TODO: Implement proper endpoint strong link verification
+	// Type 2: Endpoints have same digit, both ON, but are DIFFERENT cells that SEE each other
+	// Chain proves: Start=ON => End=ON
+	// But if they see each other, they can't both be ON (weak link)
+	// This is a CONTRADICTION - therefore Start must be OFF!
+	// We eliminate the digit from Start.
+	if start.digit == end.digit && start.cell != end.cell && startPolarity && endPolarity {
+		if sees(start.cell, end.cell) {
+			// Contradiction: Start=ON leads to End=ON, but they see each other
+			// So Start CANNOT be ON - eliminate it
+			return &core.Move{
+				Technique:    "aic",
+				Action:       "eliminate",
+				Digit:        start.digit,
+				Targets:      getChainCellRefs(chain),
+				Eliminations: []core.Candidate{{Row: start.cell / 9, Col: start.cell % 9, Digit: start.digit}},
+				Explanation: fmt.Sprintf("AIC: Chain proves r%dc%d=%d leads to r%dc%d=%d, but they see each other - contradiction",
+					start.cell/9+1, start.cell%9+1, start.digit, end.cell/9+1, end.cell%9+1, end.digit),
+				Highlights: buildAICHighlights(chain),
+			}
+		}
+
+		// If they DON'T see each other, we can't make eliminations without
+		// verifying the chain works bidirectionally (which requires the chain
+		// structure to have weak links at both ends - more complex to verify).
+		// For now, skip this case.
+	}
 
 	return nil
+}
+
+// getChainCellRefs extracts cell references from a chain
+func getChainCellRefs(chain []chainLink) []core.CellRef {
+	refs := make([]core.CellRef, len(chain))
+	for i, link := range chain {
+		refs[i] = core.CellRef{Row: link.node.cell / 9, Col: link.node.cell % 9}
+	}
+	return refs
 }
 
 // buildAICHighlights creates highlight information for the chain

@@ -7,18 +7,18 @@ import (
 )
 
 // detectDeathBlossom finds Death Blossom pattern:
-// - A "stem" cell with N candidates (N = 2 or 3)
-// - N "petal" ALS, one for each stem candidate
-// - Each petal ALS is connected to the stem through exactly one candidate
-// - A digit Z that appears in ALL petal ALS (but NOT in the stem) can be eliminated
-//   from any cell that sees ALL cells containing Z in ALL petals
+//   - A "stem" cell with N candidates (N = 2 or 3)
+//   - N "petal" ALS, one for each stem candidate
+//   - Each petal ALS is connected to the stem through exactly one candidate
+//   - A digit Z that appears in ALL petal ALS (but NOT in the stem) can be eliminated
+//     from any cell that sees ALL cells containing Z in ALL petals
 //
 // Why it works:
-// - One of the stem's candidates must be true
-// - That forces the corresponding petal's ALS to lock (becomes a naked set)
-// - Z gets placed somewhere in that petal
-// - Since we don't know WHICH petal will lock, Z must appear in any position
-//   that all petals cover for Z
+//   - One of the stem's candidates must be true
+//   - That forces the corresponding petal's ALS to lock (becomes a naked set)
+//   - Z gets placed somewhere in that petal
+//   - Since we don't know WHICH petal will lock, Z must appear in any position
+//     that all petals cover for Z
 func detectDeathBlossom(b *Board) *core.Move {
 	// Find all ALS with size 2-4 cells for efficiency
 	allALS := findBlossomALS(b)
@@ -95,8 +95,8 @@ func findBlossomALS(b *Board) []ALS {
 			}
 		}
 
-		// Find ALS of sizes 2 to 4 (size 1 is just a bivalue cell, larger is expensive)
-		for size := 2; size <= 4 && size <= len(emptyCells); size++ {
+		// Find ALS of sizes 1 to 4 (size 1 is a bivalue cell - crucial for Death Blossom)
+		for size := 1; size <= 4 && size <= len(emptyCells); size++ {
 			combos := combinations(emptyCells, size)
 			for _, combo := range combos {
 				// Count combined candidates
@@ -164,29 +164,14 @@ func findPetalsForCandidate(b *Board, stem int, cand int, allALS []ALS) []ALS {
 			}
 		}
 
-		// Must have exactly one cell with this candidate seeing the stem
-		// This ensures the connection is specifically through this candidate
-		if len(candCellsThatSeeStem) != 1 {
+		// At least one cell with this candidate must see the stem
+		// This ensures the ALS is connected to the stem through this candidate
+		if len(candCellsThatSeeStem) == 0 {
 			continue
 		}
 
-		// Also ensure no other cells in the ALS see the stem
-		// (to ensure the ALS is truly attached only via this candidate)
-		otherCellsSeeStem := false
-		for _, cell := range als.Cells {
-			if cell == candCellsThatSeeStem[0] {
-				continue
-			}
-			if sees(cell, stem) {
-				otherCellsSeeStem = true
-				break
-			}
-		}
-
-		// If other cells see the stem, the connection is ambiguous
-		// We allow this but the candidate connection must still be unique
-		// Actually for Death Blossom, we just need the candidate link to be unique
-		_ = otherCellsSeeStem // Allow other cells to see stem, just need unique candidate link
+		// Note: Other cells in the ALS may also see the stem - that's fine.
+		// What matters is that this candidate provides a connection.
 
 		validPetals = append(validPetals, als)
 	}

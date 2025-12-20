@@ -713,12 +713,12 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 					if r1 != r2 {
 						continue
 					}
-					// Must be in different box columns
-					if c1/3 == c2/3 {
+					// Columns must be different
+					if c1 == c2 {
 						continue
 					}
 
-					// Look for matching cells in a different row (different box row)
+					// Look for matching cells in a different row
 					for k := j + 1; k < len(cells); k++ {
 						for l := k + 1; l < len(cells); l++ {
 							r3, c3 := cells[k]/9, cells[k]%9
@@ -728,12 +728,26 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 							if r3 != r4 {
 								continue
 							}
-							// Different box row than r1
-							if r3/3 == r1/3 {
+							// Different row than r1
+							if r3 == r1 {
 								continue
 							}
 							// Columns must match c1 and c2
 							if (c3 != c1 || c4 != c2) && (c3 != c2 || c4 != c1) {
+								continue
+							}
+
+							// Check that the rectangle spans exactly 2 boxes
+							box1 := (r1/3)*3 + c1/3
+							box2 := (r1/3)*3 + c2/3
+							box3 := (r3/3)*3 + c3/3
+							box4 := (r3/3)*3 + c4/3
+							boxes := make(map[int]bool)
+							boxes[box1] = true
+							boxes[box2] = true
+							boxes[box3] = true
+							boxes[box4] = true
+							if len(boxes) != 2 {
 								continue
 							}
 
@@ -876,12 +890,12 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 					if r1 != r2 {
 						continue
 					}
-					// Must be in different box columns
-					if c1/3 == c2/3 {
+					// Columns must be different
+					if c1 == c2 {
 						continue
 					}
 
-					// Look for matching cells in a different row (different box row)
+					// Look for matching cells in a different row
 					for k := j + 1; k < len(cells); k++ {
 						for l := k + 1; l < len(cells); l++ {
 							r3, c3 := cells[k]/9, cells[k]%9
@@ -891,12 +905,26 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 							if r3 != r4 {
 								continue
 							}
-							// Different box row than r1
-							if r3/3 == r1/3 {
+							// Different row than r1
+							if r3 == r1 {
 								continue
 							}
 							// Columns must match c1 and c2
 							if (c3 != c1 || c4 != c2) && (c3 != c2 || c4 != c1) {
+								continue
+							}
+
+							// Check that the rectangle spans exactly 2 boxes
+							box1 := (r1/3)*3 + c1/3
+							box2 := (r1/3)*3 + c2/3
+							box3 := (r3/3)*3 + c3/3
+							box4 := (r3/3)*3 + c4/3
+							boxes := make(map[int]bool)
+							boxes[box1] = true
+							boxes[box2] = true
+							boxes[box3] = true
+							boxes[box4] = true
+							if len(boxes) != 2 {
 								continue
 							}
 
@@ -1174,12 +1202,12 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 					if r1 != r2 {
 						continue
 					}
-					// Must be in different box columns
-					if c1/3 == c2/3 {
+					// Columns must be different
+					if c1 == c2 {
 						continue
 					}
 
-					// Look for matching cells in a different row (different box row)
+					// Look for matching cells in a different row
 					for k := j + 1; k < len(cells); k++ {
 						for l := k + 1; l < len(cells); l++ {
 							r3, c3 := cells[k]/9, cells[k]%9
@@ -1189,8 +1217,8 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 							if r3 != r4 {
 								continue
 							}
-							// Different box row than r1
-							if r3/3 == r1/3 {
+							// Different row than r1
+							if r3 == r1 {
 								continue
 							}
 							// Columns must match c1 and c2
@@ -1889,9 +1917,9 @@ func detectBUG(b *Board) *core.Move {
 		// If this digit appears 3 times in row, col, or box, it's the BUG digit
 		if rowCount == 3 || colCount == 3 || boxCount == 3 {
 			return &core.Move{
-				Action:  "assign",
-				Digit:   digit,
-				Targets: []core.CellRef{{Row: row, Col: col}},
+				Action:      "assign",
+				Digit:       digit,
+				Targets:     []core.CellRef{{Row: row, Col: col}},
 				Explanation: fmt.Sprintf("BUG+1: All other cells are bi-value; R%dC%d must be %d to avoid multiple solutions", row+1, col+1, digit),
 				Highlights: core.Highlights{
 					Primary: []core.CellRef{{Row: row, Col: col}},

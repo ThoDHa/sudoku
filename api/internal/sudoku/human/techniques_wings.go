@@ -138,136 +138,25 @@ func detectXYZWing(b *Board) *core.Move {
 }
 
 // detectWXYZWing finds WXYZ-Wing pattern:
-// - 4 cells in a single unit (row, column, or box) with combined candidates = 4 digits
-// - One "restricted common" digit Z can be eliminated from cells seeing all Z-cells
+// TODO: The current implementation has bugs causing incorrect eliminations.
+// WXYZ-Wing is a complex bent pattern that requires careful structural verification.
+// For now, this detector is disabled until it can be properly implemented.
 //
-// For a valid WXYZ-Wing, the 4 cells must all be in the same row, column, or box
-// to ensure they form a proper locked set.
+// A proper WXYZ-Wing should:
+// 1. Have a hinge cell with 3 candidates (like XYZ-Wing pivot)
+// 2. Have 3 wing cells that are bivalue
+// 3. Form a proper bent pattern spanning 2 units
+// 4. Only eliminate from cells that see ALL instances of the restricted common
 func detectWXYZWing(b *Board) *core.Move {
-	// Check each unit for WXYZ-Wing patterns
-	units := [][]int{}
-	for row := 0; row < 9; row++ {
-		units = append(units, getRowIndices(row))
-	}
-	for col := 0; col < 9; col++ {
-		units = append(units, getColIndices(col))
-	}
-	for box := 0; box < 9; box++ {
-		units = append(units, getBoxIndices(box))
-	}
-
-	for _, unit := range units {
-		// Find cells in this unit with 2-4 candidates
-		var candidates []int
-		for _, idx := range unit {
-			n := len(b.Candidates[idx])
-			if n >= 2 && n <= 4 {
-				candidates = append(candidates, idx)
-			}
-		}
-
-		if len(candidates) < 4 {
-			continue
-		}
-
-		// Try all combinations of 4 cells from this unit
-		combos := combinations(candidates, 4)
-		for _, cells := range combos {
-			// Check if combined candidates are exactly 4 digits
-			combined := make(map[int]bool)
-			for _, cell := range cells {
-				for d := range b.Candidates[cell] {
-					combined[d] = true
-				}
-			}
-
-			if len(combined) != 4 {
-				continue
-			}
-
-			digits := getCandidateSlice(combined)
-
-			// For each digit, check if it's a "restricted common"
-			// A digit Z is restricted common if all cells containing Z see each other
-			// (they're in the same unit, so they all see each other by definition)
-			for _, z := range digits {
-				// Find cells containing z
-				var zCells []int
-				for _, cell := range cells {
-					if b.Candidates[cell][z] {
-						zCells = append(zCells, cell)
-					}
-				}
-
-				if len(zCells) < 2 {
-					continue
-				}
-
-				// All zCells see each other (they're in the same unit)
-				// Find cells that see ALL zCells and have z as candidate
-				var eliminations []core.Candidate
-				for idx := 0; idx < 81; idx++ {
-					// Skip the 4 wing cells
-					isWingCell := false
-					for _, cell := range cells {
-						if idx == cell {
-							isWingCell = true
-							break
-						}
-					}
-					if isWingCell {
-						continue
-					}
-
-					if !b.Candidates[idx][z] {
-						continue
-					}
-
-					// Must see all zCells
-					seesAll := true
-					for _, zCell := range zCells {
-						if !sees(idx, zCell) {
-							seesAll = false
-							break
-						}
-					}
-
-					if seesAll {
-						eliminations = append(eliminations, core.Candidate{
-							Row: idx / 9, Col: idx % 9, Digit: z,
-						})
-					}
-				}
-
-				if len(eliminations) > 0 {
-					targets := make([]core.CellRef, 4)
-					for idx, cell := range cells {
-						targets[idx] = core.CellRef{Row: cell / 9, Col: cell % 9}
-					}
-
-					return &core.Move{
-						Action:       "eliminate",
-						Digit:        z,
-						Targets:      targets,
-						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("WXYZ-Wing: cells with {%d,%d,%d,%d}, eliminate %d", digits[0], digits[1], digits[2], digits[3], z),
-						Highlights: core.Highlights{
-							Primary: targets,
-						},
-					}
-				}
-			}
-		}
-	}
-
+	// Disabled - implementation needs fixing
 	return nil
 }
 
 // Almost Locked Set (ALS) representation
 type ALS struct {
-	Cells   []int          // Cell indices in the ALS
-	Digits  []int          // Candidates in the ALS (N+1 digits for N cells)
-	ByDigit map[int][]int  // For each digit, which cells contain it
+	Cells   []int         // Cell indices in the ALS
+	Digits  []int         // Candidates in the ALS (N+1 digits for N cells)
+	ByDigit map[int][]int // For each digit, which cells contain it
 }
 
 // findAllALS finds all Almost Locked Sets in the board

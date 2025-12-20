@@ -59,7 +59,7 @@ func makeFullCandidateBoard(cells [81]int, candidateMap map[int][]int) *Board {
 // func makeRealisticBoard(cells [81]int, eliminations map[int][]int) *Board {
 // 	// Create board with proper candidate initialization
 // 	b := NewBoard(cells[:])
-// 	
+//
 // 	// Apply specific eliminations to simulate prior technique applications
 // 	for idx, digits := range eliminations {
 // 		for _, digit := range digits {
@@ -69,7 +69,7 @@ func makeFullCandidateBoard(cells [81]int, candidateMap map[int][]int) *Board {
 // 			}
 // 		}
 // 	}
-// 	
+//
 // 	return b
 // }
 
@@ -87,17 +87,17 @@ func applyTechniqueIsolation(b *Board, technique string) {
 				}
 			}
 		}
-		
+
 	case "hidden_single":
 		// For hidden single test: eliminate digit 7 from all cells in row 1 except R1C2
 		for col := 0; col < 9; col++ {
-			idx := 0*9 + col // row 1
+			idx := 0*9 + col                          // row 1
 			if col != 1 && b.Candidates[idx] != nil { // except R1C2
 				delete(b.Candidates[idx], 7)
 				b.Eliminated[idx][7] = true
 			}
 		}
-		
+
 	case "naked_pair":
 		// For naked pair test: ensure R1C1 and R1C2 have only candidates {1,2}
 		// and eliminate 1,2 from other cells in row 1
@@ -124,7 +124,7 @@ func applyTechniqueIsolation(b *Board, technique string) {
 				}
 			}
 		}
-		
+
 	case "hidden_pair":
 		// For hidden pair test: ensure digits 1,4 appear only in R1C1 and R1C4
 		// Remove 1,4 from all other cells in row 1
@@ -146,7 +146,7 @@ func applyTechniqueIsolation(b *Board, technique string) {
 				}
 			}
 		}
-		
+
 	case "pointing_pair":
 		// For pointing pair test: ensure digit 2 in box 1 appears only in row 1
 		// Remove 2 from rows 2,3 in box 1
@@ -159,7 +159,7 @@ func applyTechniqueIsolation(b *Board, technique string) {
 				}
 			}
 		}
-		
+
 	case "box_line_reduction":
 		// For box line reduction: digit 1 in row 1 appears only in box 1
 		// Remove 1 from rest of row 1 (boxes 2,3)
@@ -170,14 +170,14 @@ func applyTechniqueIsolation(b *Board, technique string) {
 				b.Eliminated[idx][1] = true
 			}
 		}
-		
+
 	case "x_wing":
 		// For X-Wing test: digit 1 appears only in cols 1,7 of rows 1,8
 		// Set up proper candidate pattern
 		digit := 1
-		xWingRows := []int{0, 7}    // rows 1,8
-		xWingCols := []int{0, 6}    // cols 1,7
-		
+		xWingRows := []int{0, 7} // rows 1,8
+		xWingCols := []int{0, 6} // cols 1,7
+
 		// Remove digit from non-X-Wing positions in these rows
 		for _, row := range xWingRows {
 			for col := 0; col < 9; col++ {
@@ -197,14 +197,14 @@ func applyTechniqueIsolation(b *Board, technique string) {
 				}
 			}
 		}
-		
+
 	case "xy_wing":
 		// For XY-Wing: create pivot cell with {A,B}, pincer1 with {A,C}, pincer2 with {B,C}
 		// Then eliminate C from cells that see both pincers
-		pivot := 0    // R1C1 with {1,2}
-		pincer1 := 1  // R1C2 with {1,3} 
-		pincer2 := 9  // R2C1 with {2,3}
-		
+		pivot := 0   // R1C1 with {1,2}
+		pincer1 := 1 // R1C2 with {1,3}
+		pincer2 := 9 // R2C1 with {2,3}
+
 		// Set up wing candidates
 		if b.Candidates[pivot] != nil {
 			b.Candidates[pivot] = map[int]bool{1: true, 2: true}
@@ -215,12 +215,12 @@ func applyTechniqueIsolation(b *Board, technique string) {
 		if b.Candidates[pincer2] != nil {
 			b.Candidates[pincer2] = map[int]bool{2: true, 3: true}
 		}
-		
+
 	case "naked_triple":
 		// For naked triple: three cells with same three candidates {1,2,3}
 		tripleCells := []int{0, 1, 2} // R1C1, R1C2, R1C3
 		tripleDigits := []int{1, 2, 3}
-		
+
 		// Set triple candidates
 		for _, idx := range tripleCells {
 			if b.Candidates[idx] != nil {
@@ -231,7 +231,7 @@ func applyTechniqueIsolation(b *Board, technique string) {
 				b.Candidates[idx] = newCands
 			}
 		}
-		
+
 		// Remove triple digits from rest of row
 		for col := 3; col < 9; col++ {
 			idx := 0*9 + col
@@ -242,13 +242,13 @@ func applyTechniqueIsolation(b *Board, technique string) {
 				}
 			}
 		}
-		
+
 	case "swordfish":
 		// For swordfish: digit appears in specific pattern across 3 rows/cols
 		digit := 1
-		fishRows := []int{0, 3, 6}  // rows 1, 4, 7
-		fishCols := []int{0, 3, 6}  // cols 1, 4, 7
-		
+		fishRows := []int{0, 3, 6} // rows 1, 4, 7
+		fishCols := []int{0, 3, 6} // cols 1, 4, 7
+
 		// Remove digit from non-swordfish positions in these rows
 		for _, row := range fishRows {
 			for col := 0; col < 9; col++ {
@@ -288,7 +288,7 @@ var (
 		0, 0, 4, 0, 1, 0, 0, 0, 0,
 		0, 7, 0, 3, 0, 0, 0, 9, 0,
 	}
-	
+
 	// Hidden Single scenario: After eliminations, only one cell in row can have digit 7
 	hiddenSinglePuzzle = [81]int{
 		1, 0, 0, 0, 0, 0, 0, 0, 9,
@@ -301,7 +301,7 @@ var (
 		0, 0, 0, 0, 0, 0, 0, 0, 0,
 		9, 0, 0, 0, 0, 0, 0, 0, 1,
 	}
-	
+
 	// Naked Pair scenario: R1C1 and R1C2 both have only candidates {1,2}
 	nakedPairPuzzle = [81]int{
 		0, 0, 3, 4, 5, 6, 7, 8, 9,
@@ -314,7 +314,7 @@ var (
 		6, 7, 8, 9, 1, 2, 3, 4, 5,
 		9, 1, 2, 3, 4, 5, 6, 7, 8,
 	}
-	
+
 	// Hidden Pair scenario: digits 1,4 appear only in R1C1 and R1C4
 	hiddenPairPuzzle = [81]int{
 		0, 2, 3, 0, 5, 6, 7, 8, 9,
@@ -327,7 +327,7 @@ var (
 		7, 8, 9, 1, 2, 3, 4, 5, 6,
 		1, 5, 6, 7, 8, 9, 1, 2, 3,
 	}
-	
+
 	// Pointing Pair scenario: digit 2 in box 1 appears only in row 1
 	pointingPairPuzzle = [81]int{
 		0, 0, 0, 4, 5, 6, 7, 8, 9,
@@ -340,7 +340,7 @@ var (
 		0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0,
 	}
-	
+
 	// Box Line Reduction scenario
 	boxLineReductionPuzzle = [81]int{
 		0, 0, 0, 4, 5, 6, 7, 8, 9,
@@ -353,7 +353,7 @@ var (
 		0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0,
 	}
-	
+
 	// X-Wing scenario
 	xWingPuzzle = [81]int{
 		0, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -366,7 +366,7 @@ var (
 		6, 7, 8, 9, 1, 2, 3, 4, 5,
 		9, 1, 2, 3, 4, 5, 6, 7, 8,
 	}
-	
+
 	// XY-Wing scenario
 	xyWingPuzzle = [81]int{
 		0, 2, 3, 0, 5, 6, 7, 8, 0,
@@ -379,7 +379,7 @@ var (
 		6, 7, 8, 9, 1, 2, 3, 4, 5,
 		9, 1, 2, 3, 4, 5, 6, 7, 8,
 	}
-	
+
 	// Naked Triple scenario
 	nakedTriplePuzzle = [81]int{
 		0, 0, 0, 4, 5, 6, 7, 8, 9,
@@ -392,7 +392,7 @@ var (
 		6, 7, 8, 9, 1, 2, 3, 4, 5,
 		9, 1, 2, 3, 4, 5, 6, 7, 8,
 	}
-	
+
 	// Swordfish scenario
 	swordfishPuzzle = [81]int{
 		0, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -414,13 +414,13 @@ var (
 
 func TestDetectNakedSingle(t *testing.T) {
 	tests := []struct {
-		name           string
-		cells          [81]int
-		candidates     map[int][]int
-		expectFound    bool
-		expectRow      int
-		expectCol      int
-		expectDigit    int
+		name        string
+		cells       [81]int
+		candidates  map[int][]int
+		expectFound bool
+		expectRow   int
+		expectCol   int
+		expectDigit int
 	}{
 		{
 			name:  "single candidate in first cell",
@@ -509,32 +509,32 @@ func TestDetectNakedSingle(t *testing.T) {
 
 func TestDetectHiddenSingle(t *testing.T) {
 	tests := []struct {
-		name        string
-		cells       [81]int
-		candidates  map[int][]int
+		name         string
+		cells        [81]int
+		candidates   map[int][]int
 		useFullBoard bool // if true, use makeFullCandidateBoard instead of makeTestBoard
-		expectFound bool
-		expectRow   int
-		expectCol   int
-		expectDigit int
-		expectUnit  string // "row", "column", or "box"
+		expectFound  bool
+		expectRow    int
+		expectCol    int
+		expectDigit  int
+		expectUnit   string // "row", "column", or "box"
 	}{
 		{
-			name:  "hidden single in row",
-			cells: [81]int{},
+			name:         "hidden single in row",
+			cells:        [81]int{},
 			useFullBoard: true,
 			candidates: map[int][]int{
 				// Row 0: remove 7 from all cells except column 3
 				// Start with full board, then override row 0 to have 7 only in col 3
-				cellIdx(0, 0): {1, 2, 3, 4, 5, 6, 8, 9},     // no 7
-				cellIdx(0, 1): {1, 2, 3, 4, 5, 6, 8, 9},     // no 7
-				cellIdx(0, 2): {1, 2, 3, 4, 5, 6, 8, 9},     // no 7
-				cellIdx(0, 3): {1, 2, 3, 4, 5, 6, 7, 8, 9},  // has 7 - hidden single!
-				cellIdx(0, 4): {1, 2, 3, 4, 5, 6, 8, 9},     // no 7
-				cellIdx(0, 5): {1, 2, 3, 4, 5, 6, 8, 9},     // no 7
-				cellIdx(0, 6): {1, 2, 3, 4, 5, 6, 8, 9},     // no 7
-				cellIdx(0, 7): {1, 2, 3, 4, 5, 6, 8, 9},     // no 7
-				cellIdx(0, 8): {1, 2, 3, 4, 5, 6, 8, 9},     // no 7
+				cellIdx(0, 0): {1, 2, 3, 4, 5, 6, 8, 9},    // no 7
+				cellIdx(0, 1): {1, 2, 3, 4, 5, 6, 8, 9},    // no 7
+				cellIdx(0, 2): {1, 2, 3, 4, 5, 6, 8, 9},    // no 7
+				cellIdx(0, 3): {1, 2, 3, 4, 5, 6, 7, 8, 9}, // has 7 - hidden single!
+				cellIdx(0, 4): {1, 2, 3, 4, 5, 6, 8, 9},    // no 7
+				cellIdx(0, 5): {1, 2, 3, 4, 5, 6, 8, 9},    // no 7
+				cellIdx(0, 6): {1, 2, 3, 4, 5, 6, 8, 9},    // no 7
+				cellIdx(0, 7): {1, 2, 3, 4, 5, 6, 8, 9},    // no 7
+				cellIdx(0, 8): {1, 2, 3, 4, 5, 6, 8, 9},    // no 7
 			},
 			expectFound: true,
 			expectRow:   0,
@@ -543,20 +543,20 @@ func TestDetectHiddenSingle(t *testing.T) {
 			expectUnit:  "row",
 		},
 		{
-			name:  "hidden single in column",
-			cells: [81]int{},
+			name:         "hidden single in column",
+			cells:        [81]int{},
 			useFullBoard: true,
 			candidates: map[int][]int{
 				// Column 0: remove 8 from all rows except row 5
-				cellIdx(0, 0): {1, 2, 3, 4, 5, 6, 7, 9},     // no 8
-				cellIdx(1, 0): {1, 2, 3, 4, 5, 6, 7, 9},     // no 8
-				cellIdx(2, 0): {1, 2, 3, 4, 5, 6, 7, 9},     // no 8
-				cellIdx(3, 0): {1, 2, 3, 4, 5, 6, 7, 9},     // no 8
-				cellIdx(4, 0): {1, 2, 3, 4, 5, 6, 7, 9},     // no 8
-				cellIdx(5, 0): {1, 2, 3, 4, 5, 6, 7, 8, 9},  // has 8 - hidden single!
-				cellIdx(6, 0): {1, 2, 3, 4, 5, 6, 7, 9},     // no 8
-				cellIdx(7, 0): {1, 2, 3, 4, 5, 6, 7, 9},     // no 8
-				cellIdx(8, 0): {1, 2, 3, 4, 5, 6, 7, 9},     // no 8
+				cellIdx(0, 0): {1, 2, 3, 4, 5, 6, 7, 9},    // no 8
+				cellIdx(1, 0): {1, 2, 3, 4, 5, 6, 7, 9},    // no 8
+				cellIdx(2, 0): {1, 2, 3, 4, 5, 6, 7, 9},    // no 8
+				cellIdx(3, 0): {1, 2, 3, 4, 5, 6, 7, 9},    // no 8
+				cellIdx(4, 0): {1, 2, 3, 4, 5, 6, 7, 9},    // no 8
+				cellIdx(5, 0): {1, 2, 3, 4, 5, 6, 7, 8, 9}, // has 8 - hidden single!
+				cellIdx(6, 0): {1, 2, 3, 4, 5, 6, 7, 9},    // no 8
+				cellIdx(7, 0): {1, 2, 3, 4, 5, 6, 7, 9},    // no 8
+				cellIdx(8, 0): {1, 2, 3, 4, 5, 6, 7, 9},    // no 8
 			},
 			expectFound: true,
 			expectRow:   5,
@@ -565,20 +565,20 @@ func TestDetectHiddenSingle(t *testing.T) {
 			expectUnit:  "column",
 		},
 		{
-			name:  "hidden single in box",
-			cells: [81]int{},
+			name:         "hidden single in box",
+			cells:        [81]int{},
 			useFullBoard: true,
 			candidates: map[int][]int{
 				// Box 0: remove 9 from all cells except (2,2)
-				cellIdx(0, 0): {1, 2, 3, 4, 5, 6, 7, 8},     // no 9
-				cellIdx(0, 1): {1, 2, 3, 4, 5, 6, 7, 8},     // no 9
-				cellIdx(0, 2): {1, 2, 3, 4, 5, 6, 7, 8},     // no 9
-				cellIdx(1, 0): {1, 2, 3, 4, 5, 6, 7, 8},     // no 9
-				cellIdx(1, 1): {1, 2, 3, 4, 5, 6, 7, 8},     // no 9
-				cellIdx(1, 2): {1, 2, 3, 4, 5, 6, 7, 8},     // no 9
-				cellIdx(2, 0): {1, 2, 3, 4, 5, 6, 7, 8},     // no 9
-				cellIdx(2, 1): {1, 2, 3, 4, 5, 6, 7, 8},     // no 9
-				cellIdx(2, 2): {1, 2, 3, 4, 5, 6, 7, 8, 9},  // has 9 - hidden single!
+				cellIdx(0, 0): {1, 2, 3, 4, 5, 6, 7, 8},    // no 9
+				cellIdx(0, 1): {1, 2, 3, 4, 5, 6, 7, 8},    // no 9
+				cellIdx(0, 2): {1, 2, 3, 4, 5, 6, 7, 8},    // no 9
+				cellIdx(1, 0): {1, 2, 3, 4, 5, 6, 7, 8},    // no 9
+				cellIdx(1, 1): {1, 2, 3, 4, 5, 6, 7, 8},    // no 9
+				cellIdx(1, 2): {1, 2, 3, 4, 5, 6, 7, 8},    // no 9
+				cellIdx(2, 0): {1, 2, 3, 4, 5, 6, 7, 8},    // no 9
+				cellIdx(2, 1): {1, 2, 3, 4, 5, 6, 7, 8},    // no 9
+				cellIdx(2, 2): {1, 2, 3, 4, 5, 6, 7, 8, 9}, // has 9 - hidden single!
 			},
 			expectFound: true,
 			expectRow:   2,
@@ -587,11 +587,11 @@ func TestDetectHiddenSingle(t *testing.T) {
 			expectUnit:  "box",
 		},
 		{
-			name:  "no hidden single - all digits in multiple places",
-			cells: [81]int{},
+			name:         "no hidden single - all digits in multiple places",
+			cells:        [81]int{},
 			useFullBoard: true,
-			candidates: map[int][]int{}, // empty override = all cells have all candidates
-			expectFound: false,
+			candidates:   map[int][]int{}, // empty override = all cells have all candidates
+			expectFound:  false,
 		},
 		{
 			name: "skip if digit already placed in unit",
@@ -741,7 +741,7 @@ func TestDetectNakedPair(t *testing.T) {
 			cells: [81]int{},
 			candidates: map[int][]int{
 				// Box 4 (center): R4C4 and R5C5 both have only {1,9}
-				cellIdx(3, 3): {1, 9},    // pair cell 1
+				cellIdx(3, 3): {1, 9}, // pair cell 1
 				cellIdx(3, 4): {2, 3},
 				cellIdx(3, 5): {4, 5},
 				cellIdx(4, 3): {1, 6, 9}, // should eliminate 1,9
@@ -788,12 +788,12 @@ func TestDetectNakedPair(t *testing.T) {
 			expectFound: false, // no eliminations means no move returned
 		},
 		{
-			name:                 "realistic puzzle - naked pair in row (placeholder)",
-			cells:                [81]int{}, // Empty board placeholder
-			candidates:           map[int][]int{
+			name:  "realistic puzzle - naked pair in row (placeholder)",
+			cells: [81]int{}, // Empty board placeholder
+			candidates: map[int][]int{
 				// Placeholder test case - naked pair in first two cells
-				0: {1, 2}, // R1C1 has candidates 1,2
-				1: {1, 2}, // R1C2 has candidates 1,2
+				0: {1, 2},       // R1C1 has candidates 1,2
+				1: {1, 2},       // R1C2 has candidates 1,2
 				2: {1, 2, 3, 4}, // R1C3 should have 1,2 eliminated
 			},
 			expectFound:          true,
@@ -856,10 +856,10 @@ func TestDetectNakedPair(t *testing.T) {
 
 func TestDetectHiddenPair(t *testing.T) {
 	tests := []struct {
-		name        string
-		cells       [81]int
-		candidates  map[int][]int
-		expectFound bool
+		name         string
+		cells        [81]int
+		candidates   map[int][]int
+		expectFound  bool
 		expectDigits []int // the two digits forming the hidden pair
 	}{
 		{
@@ -980,8 +980,8 @@ func TestDetectPointingPair(t *testing.T) {
 				// Box 0: digit 5 only appears in row 0, cols 0 and 1
 				cellIdx(0, 0): {1, 5},
 				cellIdx(0, 1): {2, 5},
-				cellIdx(0, 2): {3, 4},   // no 5
-				cellIdx(1, 0): {1, 2},   // no 5 in rest of box
+				cellIdx(0, 2): {3, 4}, // no 5
+				cellIdx(1, 0): {1, 2}, // no 5 in rest of box
 				cellIdx(1, 1): {3, 4},
 				cellIdx(1, 2): {6, 7},
 				cellIdx(2, 0): {8, 9},
@@ -1000,9 +1000,9 @@ func TestDetectPointingPair(t *testing.T) {
 			candidates: map[int][]int{
 				// Box 0: digit 7 only appears in col 0, rows 0 and 2
 				cellIdx(0, 0): {1, 7},
-				cellIdx(0, 1): {2, 3},   // no 7
+				cellIdx(0, 1): {2, 3}, // no 7
 				cellIdx(0, 2): {4, 5},
-				cellIdx(1, 0): {1, 2},   // no 7
+				cellIdx(1, 0): {1, 2}, // no 7
 				cellIdx(1, 1): {3, 4},
 				cellIdx(1, 2): {5, 6},
 				cellIdx(2, 0): {7, 8},
@@ -1133,8 +1133,6 @@ func TestDetectBoxLineReduction(t *testing.T) {
 		})
 	}
 }
-
-
 
 // =============================================================================
 // X-Cycles Tests
@@ -1410,6 +1408,24 @@ func TestDetectDeathBlossom(t *testing.T) {
 				cellIdx(0, 1): {3, 4},
 			},
 			expectFound: false,
+		},
+		{
+			// Death Blossom with bivalue stem and two bivalue petals
+			// Stem: r5c5 with {1,2}
+			// Petal1: r5c1 with {1,3} (bivalue, sees stem, connects via 1)
+			// Petal2: r5c9 with {2,3} (bivalue, sees stem, connects via 2)
+			// Common Z = 3
+			// Target: r5c3 with {3,4} sees both petals (all in same row)
+			// Elimination: 3 from r5c3
+			name:  "death blossom - bivalue stem with bivalue petals",
+			cells: [81]int{},
+			candidates: map[int][]int{
+				cellIdx(4, 4): {1, 2}, // Stem
+				cellIdx(4, 0): {1, 3}, // Petal 1 (ALS size 1)
+				cellIdx(4, 8): {2, 3}, // Petal 2 (ALS size 1)
+				cellIdx(4, 2): {3, 4}, // Target for elimination
+			},
+			expectFound: true,
 		},
 	}
 

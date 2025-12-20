@@ -26,7 +26,7 @@ func TestSkyscraperCandidates(t *testing.T) {
 }
 
 func testSkyscraperPuzzle(t *testing.T, puzzleStr string) {
-	puzzle := parsePuzzle(puzzleStr)
+	puzzle := parsePuzzleString(puzzleStr)
 
 	// Step 1: Check DP validity
 	solution := dp.Solve(puzzle)
@@ -65,7 +65,7 @@ func testSkyscraperPuzzle(t *testing.T, puzzleStr string) {
 
 	// Step 3: Test with x-chain disabled (skyscraper comes before x-chain in order)
 	// Let's also disable other chain techniques that might fire first
-	solverNoXChain := NewSolverWithoutTechniques("x-chain", "xy-chain")
+	solverNoXChain := CreateSolverWithoutTechniques("x-chain", "xy-chain")
 	board2 := NewBoard(puzzle)
 	moves2, status2 := solverNoXChain.SolveWithSteps(board2, constants.MaxSolverSteps)
 
@@ -118,10 +118,10 @@ func TestSkyscraperVsXChainOrder(t *testing.T) {
 // TestSkyscraperDetectorDirect tests the skyscraper detector directly on the board state
 func TestSkyscraperDetectorDirect(t *testing.T) {
 	puzzleStr := "000010200000504030020000006050002040003000005600800070010405007000001020930068000"
-	puzzle := parsePuzzle(puzzleStr)
+	puzzle := parsePuzzleString(puzzleStr)
 
 	// First solve with simpler techniques to get to a state where skyscraper might apply
-	solver := NewSolverWithOnlyTechniques(
+	solver := CreateSolverWithOnlyTechniques(
 		"naked-single", "hidden-single", "pointing-pair", "box-line-reduction",
 		"naked-pair", "hidden-pair", "naked-triple", "hidden-triple",
 		"x-wing", "swordfish",
@@ -155,7 +155,7 @@ func TestSkyscraperDetectorDirect(t *testing.T) {
 // TestSkyscraperSolveTrace prints detailed trace of solve path
 func TestSkyscraperSolveTrace(t *testing.T) {
 	puzzleStr := "000010200000504030020000006050002040003000005600800070010405007000001020930068000"
-	puzzle := parsePuzzle(puzzleStr)
+	puzzle := parsePuzzleString(puzzleStr)
 
 	solver := NewSolver()
 	board := NewBoard(puzzle)
@@ -173,10 +173,10 @@ func TestSkyscraperSolveTrace(t *testing.T) {
 // TestSkyscraperWithURDisabled tests with unique-rectangle disabled
 func TestSkyscraperWithURDisabled(t *testing.T) {
 	puzzleStr := "000010200000504030020000006050002040003000005600800070010405007000001020930068000"
-	puzzle := parsePuzzle(puzzleStr)
+	puzzle := parsePuzzleString(puzzleStr)
 
 	// Disable all techniques that might fire BEFORE skyscraper and steal its elimination
-	solver := NewSolverWithoutTechniques(
+	solver := CreateSolverWithoutTechniques(
 		"unique-rectangle", "unique-rectangle-type-2", "unique-rectangle-type-3", "unique-rectangle-type-4",
 		"x-chain", "xy-chain", "medusa-3d", // These are after skyscraper in theory
 	)

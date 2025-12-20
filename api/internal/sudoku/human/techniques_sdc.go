@@ -10,11 +10,11 @@ import (
 // detectSueDeCoq finds Sue de Coq (Two-Sector Disjoint Subset) patterns.
 //
 // A Sue de Coq occurs at the intersection of a box and a line (row/column):
-// - The intersection has 2-3 cells with N candidates total
-// - Find an Almost Locked Set (ALS) in the REST of the box (not in the line)
-//   that shares some candidates with the intersection
-// - Find an ALS in the REST of the line (not in the box) that shares other candidates
-// - If the two ALS together cover all N candidates with no overlap, eliminations can be made:
+//   - The intersection has 2-3 cells with N candidates total
+//   - Find an Almost Locked Set (ALS) in the REST of the box (not in the line)
+//     that shares some candidates with the intersection
+//   - Find an ALS in the REST of the line (not in the box) that shares other candidates
+//   - If the two ALS together cover all N candidates with no overlap, eliminations can be made:
 //   - Eliminate ALS-A candidates from rest of box
 //   - Eliminate ALS-B candidates from rest of line
 func detectSueDeCoq(b *Board) *core.Move {
@@ -339,44 +339,64 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 }
 
 // findALSInCells finds Almost Locked Sets within the given cells
-// that contain only digits from the allowed set
-func findALSInCells(b *Board, cells []int, allowedDigits []int) []ALS {
+// that share at least one digit with the intersection digits.
+// The ALS may contain extra digits - we filter by overlap, not exact match.
+func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 	var result []ALS
 
-	allowedSet := make(map[int]bool)
-	for _, d := range allowedDigits {
-		allowedSet[d] = true
+	intersectionSet := make(map[int]bool)
+	for _, d := range intersectionDigits {
+		intersectionSet[d] = true
+	}
+
+	// Helper to check if ALS shares at least one digit with intersection
+	sharesDigitWithIntersection := func(digits []int) bool {
+		for _, d := range digits {
+			if intersectionSet[d] {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Helper to get only intersection-overlapping digits from ALS
+	getOverlappingDigits := func(digits []int) []int {
+		var overlap []int
+		for _, d := range digits {
+			if intersectionSet[d] {
+				overlap = append(overlap, d)
+			}
+		}
+		return overlap
 	}
 
 	// Try ALS of size 1 (bivalue cell - 1 cell with 2 candidates)
 	for _, cell := range cells {
 		cands := getCandidateSlice(b.Candidates[cell])
 
-		// Check all candidates are in allowed set
-		allAllowed := true
-		for _, d := range cands {
-			if !allowedSet[d] {
-				allAllowed = false
-				break
-			}
-		}
-		if !allAllowed {
+		// For ALS: N cells need N+1 candidates
+		// 1 cell needs 2 candidates
+		if len(cands) != 2 {
 			continue
 		}
 
-		// For ALS: N cells need N+1 candidates
-		// 1 cell needs 2 candidates
-		if len(cands) == 2 {
-			byDigit := make(map[int][]int)
-			for _, d := range cands {
-				byDigit[d] = []int{cell}
-			}
-			result = append(result, ALS{
-				Cells:   []int{cell},
-				Digits:  cands,
-				ByDigit: byDigit,
-			})
+		// Must share at least one digit with intersection
+		if !sharesDigitWithIntersection(cands) {
+			continue
 		}
+
+		// Store only the overlapping digits for matching purposes
+		overlapDigits := getOverlappingDigits(cands)
+
+		byDigit := make(map[int][]int)
+		for _, d := range cands {
+			byDigit[d] = []int{cell}
+		}
+		result = append(result, ALS{
+			Cells:   []int{cell},
+			Digits:  overlapDigits, // Only intersection-overlapping digits
+			ByDigit: byDigit,
+		})
 	}
 
 	// Try ALS of size 2 (2 cells with 3 candidates total)
@@ -390,36 +410,34 @@ func findALSInCells(b *Board, cells []int, allowedDigits []int) []ALS {
 				combined[d] = true
 			}
 
-			// Check all candidates are in allowed set
-			allAllowed := true
-			for d := range combined {
-				if !allowedSet[d] {
-					allAllowed = false
-					break
-				}
-			}
-			if !allAllowed {
+			// For ALS: 2 cells need 3 candidates
+			if len(combined) != 3 {
 				continue
 			}
 
-			// For ALS: 2 cells need 3 candidates
-			if len(combined) == 3 {
-				digits := getCandidateSlice(combined)
-				byDigit := make(map[int][]int)
-				for _, d := range digits {
-					if b.Candidates[cells[i]][d] {
-						byDigit[d] = append(byDigit[d], cells[i])
-					}
-					if b.Candidates[cells[j]][d] {
-						byDigit[d] = append(byDigit[d], cells[j])
-					}
-				}
-				result = append(result, ALS{
-					Cells:   []int{cells[i], cells[j]},
-					Digits:  digits,
-					ByDigit: byDigit,
-				})
+			digits := getCandidateSlice(combined)
+
+			// Must share at least one digit with intersection
+			if !sharesDigitWithIntersection(digits) {
+				continue
 			}
+
+			overlapDigits := getOverlappingDigits(digits)
+
+			byDigit := make(map[int][]int)
+			for _, d := range digits {
+				if b.Candidates[cells[i]][d] {
+					byDigit[d] = append(byDigit[d], cells[i])
+				}
+				if b.Candidates[cells[j]][d] {
+					byDigit[d] = append(byDigit[d], cells[j])
+				}
+			}
+			result = append(result, ALS{
+				Cells:   []int{cells[i], cells[j]},
+				Digits:  overlapDigits, // Only intersection-overlapping digits
+				ByDigit: byDigit,
+			})
 		}
 	}
 
@@ -438,39 +456,37 @@ func findALSInCells(b *Board, cells []int, allowedDigits []int) []ALS {
 					combined[d] = true
 				}
 
-				// Check all candidates are in allowed set
-				allAllowed := true
-				for d := range combined {
-					if !allowedSet[d] {
-						allAllowed = false
-						break
-					}
-				}
-				if !allAllowed {
+				// For ALS: 3 cells need 4 candidates
+				if len(combined) != 4 {
 					continue
 				}
 
-				// For ALS: 3 cells need 4 candidates
-				if len(combined) == 4 {
-					digits := getCandidateSlice(combined)
-					byDigit := make(map[int][]int)
-					for _, d := range digits {
-						if b.Candidates[cells[i]][d] {
-							byDigit[d] = append(byDigit[d], cells[i])
-						}
-						if b.Candidates[cells[j]][d] {
-							byDigit[d] = append(byDigit[d], cells[j])
-						}
-						if b.Candidates[cells[k]][d] {
-							byDigit[d] = append(byDigit[d], cells[k])
-						}
-					}
-					result = append(result, ALS{
-						Cells:   []int{cells[i], cells[j], cells[k]},
-						Digits:  digits,
-						ByDigit: byDigit,
-					})
+				digits := getCandidateSlice(combined)
+
+				// Must share at least one digit with intersection
+				if !sharesDigitWithIntersection(digits) {
+					continue
 				}
+
+				overlapDigits := getOverlappingDigits(digits)
+
+				byDigit := make(map[int][]int)
+				for _, d := range digits {
+					if b.Candidates[cells[i]][d] {
+						byDigit[d] = append(byDigit[d], cells[i])
+					}
+					if b.Candidates[cells[j]][d] {
+						byDigit[d] = append(byDigit[d], cells[j])
+					}
+					if b.Candidates[cells[k]][d] {
+						byDigit[d] = append(byDigit[d], cells[k])
+					}
+				}
+				result = append(result, ALS{
+					Cells:   []int{cells[i], cells[j], cells[k]},
+					Digits:  overlapDigits, // Only intersection-overlapping digits
+					ByDigit: byDigit,
+				})
 			}
 		}
 	}
