@@ -139,8 +139,9 @@ export function useGameTimer(options: UseGameTimerOptions = {}): UseGameTimerRet
       resumeFromVisibility()
     }
 
-    // Update isPausedDueToVisibility based on background manager state
-    setIsPausedDueToVisibility(backgroundManager.shouldPauseOperations)
+    // Only mark as paused due to visibility if timer is actually running
+    // This prevents the pause overlay from showing for completed games
+    setIsPausedDueToVisibility(isRunning && backgroundManager.shouldPauseOperations)
 
   }, [backgroundManager.shouldPauseOperations, backgroundManager.isHidden, isRunning, pauseOnHidden])
 
