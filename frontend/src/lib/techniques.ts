@@ -1365,6 +1365,59 @@ export const TECHNIQUES: TechniqueInfo[] = [
     description: 'Extension of XYZ-Wing to four cells with four candidates {W,X,Y,Z}. One candidate (the restricted common) appears in a way that guarantees it will be in one of the four cells. Cells seeing all relevant parts can eliminate that candidate.',
     example: 'Four cells forming a wing pattern with candidates from {1,3,7,9}. If 9 is the restricted common, cells seeing all parts of the pattern where 9 appears can eliminate 9.',
     relatedTechniques: ['xyz-wing', 'xy-wing', 'als-xz'],
+    diagram: {
+      cells: [
+        { row: 4, col: 4, candidates: [1, 3, 7], highlight: 'primary' },
+        { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },
+        { row: 3, col: 4, candidates: [3, 9], highlight: 'secondary' },
+        { row: 4, col: 5, candidates: [7, 9], highlight: 'secondary' },
+        { row: 3, col: 3, candidates: [2, 9], highlight: 'elimination', eliminatedCandidates: [9] },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find a pivot with 3 candidates {W,X,Y}',
+          cells: [
+            { row: 4, col: 4, candidates: [1, 3, 7], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [1, 9] },
+            { row: 3, col: 4, candidates: [3, 9] },
+            { row: 4, col: 5, candidates: [7, 9] },
+            { row: 3, col: 3, candidates: [2, 9] },
+          ]
+        },
+        {
+          description: 'Find 3 wings with {W,Z}, {X,Z}, {Y,Z}',
+          cells: [
+            { row: 4, col: 4, candidates: [1, 3, 7], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },
+            { row: 3, col: 4, candidates: [3, 9], highlight: 'secondary' },
+            { row: 4, col: 5, candidates: [7, 9], highlight: 'secondary' },
+            { row: 3, col: 3, candidates: [2, 9] },
+          ]
+        },
+        {
+          description: 'Z (digit 9) must be in one of the four cells',
+          cells: [
+            { row: 4, col: 4, candidates: [1, 3, 7], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },
+            { row: 3, col: 4, candidates: [3, 9], highlight: 'secondary' },
+            { row: 4, col: 5, candidates: [7, 9], highlight: 'secondary' },
+            { row: 3, col: 3, candidates: [2, 9] },
+          ]
+        },
+        {
+          description: 'Cells seeing all wings can eliminate 9',
+          cells: [
+            { row: 4, col: 4, candidates: [1, 3, 7], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },
+            { row: 3, col: 4, candidates: [3, 9], highlight: 'secondary' },
+            { row: 4, col: 5, candidates: [7, 9], highlight: 'secondary' },
+            { row: 3, col: 3, candidates: [2, 9], highlight: 'elimination', eliminatedCandidates: [9] },
+          ]
+        }
+      ]
+    }
   },
   {
     title: 'Finned Swordfish',
@@ -1373,6 +1426,61 @@ export const TECHNIQUES: TechniqueInfo[] = [
     description: 'A Swordfish pattern with extra candidates (fins) breaking the pure pattern. Like Finned X-Wing, eliminations are possible for cells that see both a Swordfish position AND the fin. This combines the power of Swordfish with finned logic.',
     example: 'Swordfish on digit 7 across 3 rows/columns, with an extra 7 (fin) in one corner box. Cells seeing both that Swordfish corner and the fin can eliminate 7.',
     relatedTechniques: ['swordfish', 'finned-x-wing'],
+    diagram: {
+      cells: [
+        { row: 2, col: 1, candidates: [7], highlight: 'primary' },
+        { row: 2, col: 4, candidates: [7], highlight: 'primary' },
+        { row: 5, col: 4, candidates: [7], highlight: 'primary' },
+        { row: 5, col: 8, candidates: [7], highlight: 'primary' },
+        { row: 8, col: 1, candidates: [7], highlight: 'primary' },
+        { row: 8, col: 8, candidates: [7], highlight: 'primary' },
+        { row: 8, col: 7, candidates: [7], highlight: 'secondary' },
+        { row: 7, col: 8, candidates: [3, 7], highlight: 'elimination', eliminatedCandidates: [7] },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find a Swordfish pattern on digit 7',
+          cells: [
+            { row: 2, col: 1, candidates: [7], highlight: 'secondary' },
+            { row: 2, col: 4, candidates: [7], highlight: 'secondary' },
+            { row: 5, col: 4, candidates: [7], highlight: 'secondary' },
+            { row: 5, col: 8, candidates: [7], highlight: 'secondary' },
+            { row: 8, col: 1, candidates: [7], highlight: 'secondary' },
+            { row: 8, col: 8, candidates: [7], highlight: 'secondary' },
+            { row: 8, col: 7, candidates: [7] },
+            { row: 7, col: 8, candidates: [3, 7] },
+          ]
+        },
+        {
+          description: 'There\'s an extra 7 (fin) at R9C8',
+          cells: [
+            { row: 2, col: 1, candidates: [7], highlight: 'primary' },
+            { row: 2, col: 4, candidates: [7], highlight: 'primary' },
+            { row: 5, col: 4, candidates: [7], highlight: 'primary' },
+            { row: 5, col: 8, candidates: [7], highlight: 'primary' },
+            { row: 8, col: 1, candidates: [7], highlight: 'primary' },
+            { row: 8, col: 8, candidates: [7], highlight: 'primary' },
+            { row: 8, col: 7, candidates: [7], highlight: 'secondary' },
+            { row: 7, col: 8, candidates: [3, 7] },
+          ]
+        },
+        {
+          description: 'Cells seeing both the corner (R9C9) and fin can eliminate 7',
+          cells: [
+            { row: 2, col: 1, candidates: [7], highlight: 'primary' },
+            { row: 2, col: 4, candidates: [7], highlight: 'primary' },
+            { row: 5, col: 4, candidates: [7], highlight: 'primary' },
+            { row: 5, col: 8, candidates: [7], highlight: 'primary' },
+            { row: 8, col: 1, candidates: [7], highlight: 'primary' },
+            { row: 8, col: 8, candidates: [7], highlight: 'primary' },
+            { row: 8, col: 7, candidates: [7], highlight: 'secondary' },
+            { row: 7, col: 8, candidates: [3, 7], highlight: 'elimination', eliminatedCandidates: [7] },
+          ]
+        }
+      ]
+    }
   },
   {
     title: 'ALS-XZ',
@@ -1381,6 +1489,64 @@ export const TECHNIQUES: TechniqueInfo[] = [
     description: 'Two Almost Locked Sets connected by a Restricted Common Candidate (RCC). An ALS is N cells with N+1 candidates - remove one candidate and it becomes locked. When two ALSs share an RCC (candidate X that\'s restricted), they\'re linked. Another shared candidate (Z) can be eliminated from cells seeing Z in both ALSs.',
     example: 'ALS A: 3 cells with {1,2,3,5}. ALS B: 2 cells with {2,5,7}. Candidate 2 is the RCC. Both also contain 5. Cells seeing 5 in both ALSs can eliminate 5.',
     relatedTechniques: ['als-xy-wing', 'als-xy-chain', 'sue-de-coq'],
+    diagram: {
+      cells: [
+        { row: 0, col: 0, candidates: [1, 2, 3], highlight: 'primary' },
+        { row: 0, col: 1, candidates: [1, 5], highlight: 'primary' },
+        { row: 0, col: 2, candidates: [3, 5], highlight: 'primary' },
+        { row: 2, col: 0, candidates: [2, 5], highlight: 'secondary' },
+        { row: 2, col: 1, candidates: [2, 7], highlight: 'secondary' },
+        { row: 1, col: 0, candidates: [4, 5], highlight: 'elimination', eliminatedCandidates: [5] },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find ALS A: 3 cells with 4 candidates {1,2,3,5}',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2, 3], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [1, 5], highlight: 'primary' },
+            { row: 0, col: 2, candidates: [3, 5], highlight: 'primary' },
+            { row: 2, col: 0, candidates: [2, 5] },
+            { row: 2, col: 1, candidates: [2, 7] },
+            { row: 1, col: 0, candidates: [4, 5] },
+          ]
+        },
+        {
+          description: 'Find ALS B: 2 cells with 3 candidates {2,5,7}',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2, 3], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [1, 5], highlight: 'primary' },
+            { row: 0, col: 2, candidates: [3, 5], highlight: 'primary' },
+            { row: 2, col: 0, candidates: [2, 5], highlight: 'secondary' },
+            { row: 2, col: 1, candidates: [2, 7], highlight: 'secondary' },
+            { row: 1, col: 0, candidates: [4, 5] },
+          ]
+        },
+        {
+          description: 'Digit 2 is the restricted common (RCC) - links the ALSs',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2, 3], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [1, 5], highlight: 'primary' },
+            { row: 0, col: 2, candidates: [3, 5], highlight: 'primary' },
+            { row: 2, col: 0, candidates: [2, 5], highlight: 'secondary' },
+            { row: 2, col: 1, candidates: [2, 7], highlight: 'secondary' },
+            { row: 1, col: 0, candidates: [4, 5] },
+          ]
+        },
+        {
+          description: 'Both ALSs contain 5 - cells seeing 5 in both can eliminate it',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2, 3], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [1, 5], highlight: 'primary' },
+            { row: 0, col: 2, candidates: [3, 5], highlight: 'primary' },
+            { row: 2, col: 0, candidates: [2, 5], highlight: 'secondary' },
+            { row: 2, col: 1, candidates: [2, 7], highlight: 'secondary' },
+            { row: 1, col: 0, candidates: [4, 5], highlight: 'elimination', eliminatedCandidates: [5] },
+          ]
+        }
+      ]
+    }
   },
   // Extreme tier techniques - for "impossible" difficulty
   {
@@ -1390,6 +1556,64 @@ export const TECHNIQUES: TechniqueInfo[] = [
     description: 'A powerful technique involving a box-line intersection (2-3 cells) that, together with cells from the line and box outside the intersection, forms a constrained pattern. The intersection contains specific candidates that must be distributed in a particular way, enabling multiple eliminations.',
     example: 'Cells R1C1-R1C2 (in Box 1 and Row 1) have candidates {2,3,5,7}. Combined with a {2,3} cell in Row 1 and a {5,7} cell in Box 1, we know how candidates distribute, allowing eliminations.',
     relatedTechniques: ['als-xz'],
+    diagram: {
+      cells: [
+        { row: 0, col: 0, candidates: [2, 3, 5], highlight: 'primary' },
+        { row: 0, col: 1, candidates: [3, 5, 7], highlight: 'primary' },
+        { row: 0, col: 5, candidates: [2, 3], highlight: 'secondary' },
+        { row: 1, col: 0, candidates: [5, 7], highlight: 'secondary' },
+        { row: 0, col: 2, candidates: [1, 5], highlight: 'elimination', eliminatedCandidates: [5] },
+        { row: 2, col: 0, candidates: [3, 4], highlight: 'elimination', eliminatedCandidates: [3] },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find intersection cells with candidates {2,3,5,7}',
+          cells: [
+            { row: 0, col: 0, candidates: [2, 3, 5], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [3, 5, 7], highlight: 'primary' },
+            { row: 0, col: 5, candidates: [2, 3] },
+            { row: 1, col: 0, candidates: [5, 7] },
+            { row: 0, col: 2, candidates: [1, 5] },
+            { row: 2, col: 0, candidates: [3, 4] },
+          ]
+        },
+        {
+          description: 'Find {2,3} in the row and {5,7} in the box',
+          cells: [
+            { row: 0, col: 0, candidates: [2, 3, 5], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [3, 5, 7], highlight: 'primary' },
+            { row: 0, col: 5, candidates: [2, 3], highlight: 'secondary' },
+            { row: 1, col: 0, candidates: [5, 7], highlight: 'secondary' },
+            { row: 0, col: 2, candidates: [1, 5] },
+            { row: 2, col: 0, candidates: [3, 4] },
+          ]
+        },
+        {
+          description: 'The pattern forces candidate distribution',
+          cells: [
+            { row: 0, col: 0, candidates: [2, 3, 5], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [3, 5, 7], highlight: 'primary' },
+            { row: 0, col: 5, candidates: [2, 3], highlight: 'secondary' },
+            { row: 1, col: 0, candidates: [5, 7], highlight: 'secondary' },
+            { row: 0, col: 2, candidates: [1, 5] },
+            { row: 2, col: 0, candidates: [3, 4] },
+          ]
+        },
+        {
+          description: 'Eliminate 5 from row, 3 from box',
+          cells: [
+            { row: 0, col: 0, candidates: [2, 3, 5], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [3, 5, 7], highlight: 'primary' },
+            { row: 0, col: 5, candidates: [2, 3], highlight: 'secondary' },
+            { row: 1, col: 0, candidates: [5, 7], highlight: 'secondary' },
+            { row: 0, col: 2, candidates: [1, 5], highlight: 'elimination', eliminatedCandidates: [5] },
+            { row: 2, col: 0, candidates: [3, 4], highlight: 'elimination', eliminatedCandidates: [3] },
+          ]
+        }
+      ]
+    }
   },
   {
     title: '3D Medusa',
@@ -1398,6 +1622,65 @@ export const TECHNIQUES: TechniqueInfo[] = [
     description: 'Extends Simple Coloring to multiple digits by using bivalue cells as bridges. Color propagates through conjugate pairs (within a digit) AND through bivalue cells (between digits). Six rules detect contradictions and enable eliminations based on the multi-colored network.',
     example: 'Start coloring digit 4. Reach a bivalue cell {4,7}. Continue coloring digit 7. If two cells of the same color see each other (same digit), or a cell has two candidates of the same color, that color is false.',
     relatedTechniques: ['simple-coloring', 'aic'],
+    diagram: {
+      cells: [
+        { row: 0, col: 0, candidates: [4], highlight: 'primary' },
+        { row: 0, col: 5, candidates: [4], highlight: 'secondary' },
+        { row: 0, col: 5, candidates: [4, 7], highlight: 'secondary' },
+        { row: 3, col: 5, candidates: [7], highlight: 'primary' },
+        { row: 3, col: 8, candidates: [7], highlight: 'secondary' },
+        { row: 6, col: 0, candidates: [4], highlight: 'secondary' },
+        { row: 6, col: 8, candidates: [4, 7], highlight: 'elimination', eliminatedCandidates: [4, 7] },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Start coloring digit 4 with two colors',
+          cells: [
+            { row: 0, col: 0, candidates: [4], highlight: 'primary' },
+            { row: 0, col: 5, candidates: [4, 7], highlight: 'secondary' },
+            { row: 3, col: 5, candidates: [7] },
+            { row: 3, col: 8, candidates: [7] },
+            { row: 6, col: 0, candidates: [4] },
+            { row: 6, col: 8, candidates: [4, 7] },
+          ]
+        },
+        {
+          description: 'At bivalue cell {4,7}, bridge to digit 7',
+          cells: [
+            { row: 0, col: 0, candidates: [4], highlight: 'primary' },
+            { row: 0, col: 5, candidates: [4, 7], highlight: 'secondary' },
+            { row: 3, col: 5, candidates: [7], highlight: 'primary' },
+            { row: 3, col: 8, candidates: [7], highlight: 'secondary' },
+            { row: 6, col: 0, candidates: [4] },
+            { row: 6, col: 8, candidates: [4, 7] },
+          ]
+        },
+        {
+          description: 'Continue coloring - both digits in network',
+          cells: [
+            { row: 0, col: 0, candidates: [4], highlight: 'primary' },
+            { row: 0, col: 5, candidates: [4, 7], highlight: 'secondary' },
+            { row: 3, col: 5, candidates: [7], highlight: 'primary' },
+            { row: 3, col: 8, candidates: [7], highlight: 'secondary' },
+            { row: 6, col: 0, candidates: [4], highlight: 'secondary' },
+            { row: 6, col: 8, candidates: [4, 7] },
+          ]
+        },
+        {
+          description: 'Cell seeing both colors can eliminate those candidates',
+          cells: [
+            { row: 0, col: 0, candidates: [4], highlight: 'primary' },
+            { row: 0, col: 5, candidates: [4, 7], highlight: 'secondary' },
+            { row: 3, col: 5, candidates: [7], highlight: 'primary' },
+            { row: 3, col: 8, candidates: [7], highlight: 'secondary' },
+            { row: 6, col: 0, candidates: [4], highlight: 'secondary' },
+            { row: 6, col: 8, candidates: [4, 7], highlight: 'elimination', eliminatedCandidates: [4, 7] },
+          ]
+        }
+      ]
+    }
   },
   {
     title: 'Grouped X-Cycles',
@@ -1406,6 +1689,53 @@ export const TECHNIQUES: TechniqueInfo[] = [
     description: 'X-Cycles where some nodes are "groups" - multiple cells in a box acting as a single node. When a candidate is confined to 2-3 cells in a box for a row/column, these cells form a grouped strong link. This extends X-Cycle reach significantly.',
     example: 'Digit 4 in Box 1 only appears in Row 1 (cells R1C1, R1C2). This group acts as one node. Build a chain: Group→R1C7→R7C7→R7C3→(Group). Apply X-Cycle rules.',
     relatedTechniques: ['x-chain', 'simple-coloring', 'aic'],
+    diagram: {
+      cells: [
+        { row: 0, col: 0, candidates: [4], highlight: 'primary' },
+        { row: 0, col: 1, candidates: [4], highlight: 'primary' },
+        { row: 0, col: 6, candidates: [4], highlight: 'secondary' },
+        { row: 6, col: 6, candidates: [4], highlight: 'primary' },
+        { row: 6, col: 2, candidates: [4], highlight: 'secondary' },
+        { row: 3, col: 2, candidates: [2, 4], highlight: 'elimination', eliminatedCandidates: [4] },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find a grouped node - digit 4 locked in Row 1 of Box 1',
+          cells: [
+            { row: 0, col: 0, candidates: [4], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [4], highlight: 'primary' },
+            { row: 0, col: 6, candidates: [4] },
+            { row: 6, col: 6, candidates: [4] },
+            { row: 6, col: 2, candidates: [4] },
+            { row: 3, col: 2, candidates: [2, 4] },
+          ]
+        },
+        {
+          description: 'Build a chain from the group',
+          cells: [
+            { row: 0, col: 0, candidates: [4], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [4], highlight: 'primary' },
+            { row: 0, col: 6, candidates: [4], highlight: 'secondary' },
+            { row: 6, col: 6, candidates: [4], highlight: 'primary' },
+            { row: 6, col: 2, candidates: [4], highlight: 'secondary' },
+            { row: 3, col: 2, candidates: [2, 4] },
+          ]
+        },
+        {
+          description: 'Chain connects back - cells seeing start and end eliminate 4',
+          cells: [
+            { row: 0, col: 0, candidates: [4], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [4], highlight: 'primary' },
+            { row: 0, col: 6, candidates: [4], highlight: 'secondary' },
+            { row: 6, col: 6, candidates: [4], highlight: 'primary' },
+            { row: 6, col: 2, candidates: [4], highlight: 'secondary' },
+            { row: 3, col: 2, candidates: [2, 4], highlight: 'elimination', eliminatedCandidates: [4] },
+          ]
+        }
+      ]
+    }
   },
   {
     title: 'AIC (Alternating Inference Chain)',
@@ -1414,6 +1744,54 @@ export const TECHNIQUES: TechniqueInfo[] = [
     description: 'The most general chaining technique: alternating strong and weak links across ANY candidates in ANY cells. Strong links: "if A is false, B is true." Weak links: "if A is true, B is false." Chain endpoints with the same candidate allow eliminations; endpoints with different candidates can set values.',
     example: 'Chain: R1C1=5 → R1C1=3 - R5C1=3 → R5C1=7. Strong links (→) and weak links (-) alternate. Cells seeing both endpoints with candidate 5 and 7 respectively can make deductions.',
     relatedTechniques: ['x-chain', 'xy-chain', 'forcing-chain'],
+    diagram: {
+      cells: [
+        { row: 0, col: 0, candidates: [3, 5], highlight: 'primary' },
+        { row: 4, col: 0, candidates: [3, 7], highlight: 'secondary' },
+        { row: 4, col: 5, candidates: [5, 7], highlight: 'primary' },
+        { row: 0, col: 5, candidates: [1, 5], highlight: 'elimination', eliminatedCandidates: [5] },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Start chain at R1C1 with candidate 5',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 5], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [3, 7] },
+            { row: 4, col: 5, candidates: [5, 7] },
+            { row: 0, col: 5, candidates: [1, 5] },
+          ]
+        },
+        {
+          description: 'Strong link within cell: if not 5, must be 3',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 5], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [3, 7], highlight: 'secondary' },
+            { row: 4, col: 5, candidates: [5, 7] },
+            { row: 0, col: 5, candidates: [1, 5] },
+          ]
+        },
+        {
+          description: 'Continue chain through cells with alternating links',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 5], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [3, 7], highlight: 'secondary' },
+            { row: 4, col: 5, candidates: [5, 7], highlight: 'primary' },
+            { row: 0, col: 5, candidates: [1, 5] },
+          ]
+        },
+        {
+          description: 'Endpoints share 5 - cells seeing both can eliminate 5',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 5], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [3, 7], highlight: 'secondary' },
+            { row: 4, col: 5, candidates: [5, 7], highlight: 'primary' },
+            { row: 0, col: 5, candidates: [1, 5], highlight: 'elimination', eliminatedCandidates: [5] },
+          ]
+        }
+      ]
+    }
   },
   {
     title: 'ALS-XY-Wing',
@@ -1422,6 +1800,17 @@ export const TECHNIQUES: TechniqueInfo[] = [
     description: 'Three Almost Locked Sets connected in a wing pattern. The restricted common candidates allow eliminations of another shared candidate.',
     example: 'Three ALSs forming a wing. The Z candidate appearing in wing tips can be eliminated from cells seeing both.',
     relatedTechniques: ['als-xz', 'xy-wing'],
+    diagram: {
+      cells: [
+        { row: 0, col: 0, candidates: [1, 2, 5], highlight: 'primary' },
+        { row: 0, col: 1, candidates: [2, 3], highlight: 'primary' },
+        { row: 2, col: 0, candidates: [3, 5, 7], highlight: 'secondary' },
+        { row: 2, col: 1, candidates: [5, 7], highlight: 'secondary' },
+        { row: 0, col: 4, candidates: [1, 7, 9], highlight: 'secondary' },
+        { row: 0, col: 5, candidates: [1, 9], highlight: 'secondary' },
+        { row: 2, col: 4, candidates: [4, 7], highlight: 'elimination', eliminatedCandidates: [7] },
+      ]
+    }
   },
   {
     title: 'ALS-XY-Chain',
@@ -1430,6 +1819,16 @@ export const TECHNIQUES: TechniqueInfo[] = [
     description: 'A chain of Almost Locked Sets where consecutive ALSs share restricted common candidates. Enables complex eliminations.',
     example: 'Chain of ALSs: A-B-C-D. Each pair shares a restricted common. Eliminate the endpoint common from cells seeing both.',
     relatedTechniques: ['als-xz', 'als-xy-wing', 'xy-chain'],
+    diagram: {
+      cells: [
+        { row: 0, col: 0, candidates: [1, 2], highlight: 'primary' },
+        { row: 0, col: 1, candidates: [2, 3], highlight: 'secondary' },
+        { row: 0, col: 2, candidates: [3, 5], highlight: 'secondary' },
+        { row: 0, col: 3, candidates: [5, 7], highlight: 'secondary' },
+        { row: 0, col: 4, candidates: [1, 7], highlight: 'primary' },
+        { row: 0, col: 6, candidates: [1, 8], highlight: 'elimination', eliminatedCandidates: [1] },
+      ]
+    }
   },
   {
     title: 'Forcing Chain',
@@ -1438,6 +1837,59 @@ export const TECHNIQUES: TechniqueInfo[] = [
     description: 'Assume a candidate is true and follow all logical implications. If all paths lead to the same conclusion, that conclusion must be true.',
     example: 'If R1C1=5 leads to R5C5=7, and R1C1≠5 also leads to R5C5=7, then R5C5 must be 7.',
     relatedTechniques: ['aic', 'digit-forcing-chain'],
+    diagram: {
+      cells: [
+        { row: 0, col: 0, candidates: [3, 5], highlight: 'primary' },
+        { row: 2, col: 0, candidates: [5, 7], highlight: 'secondary' },
+        { row: 4, col: 4, candidates: [7, 9], highlight: 'secondary' },
+        { row: 0, col: 4, candidates: [3, 9], highlight: 'secondary' },
+        { row: 4, col: 0, value: 7, highlight: 'primary' },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'If R1C1=5, follow the implications...',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 5], highlight: 'primary' },
+            { row: 2, col: 0, candidates: [5, 7], highlight: 'secondary' },
+            { row: 4, col: 4, candidates: [7, 9] },
+            { row: 0, col: 4, candidates: [3, 9] },
+            { row: 4, col: 0, candidates: [7] },
+          ]
+        },
+        {
+          description: 'Path 1: R1C1=5 → R3C1=7 → R5C1=7',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 5], highlight: 'primary' },
+            { row: 2, col: 0, candidates: [5, 7], highlight: 'secondary' },
+            { row: 4, col: 4, candidates: [7, 9] },
+            { row: 0, col: 4, candidates: [3, 9] },
+            { row: 4, col: 0, candidates: [7], highlight: 'secondary' },
+          ]
+        },
+        {
+          description: 'If R1C1=3, follow different path...',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 5], highlight: 'primary' },
+            { row: 2, col: 0, candidates: [5, 7] },
+            { row: 4, col: 4, candidates: [7, 9], highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [3, 9], highlight: 'secondary' },
+            { row: 4, col: 0, candidates: [7], highlight: 'secondary' },
+          ]
+        },
+        {
+          description: 'Both paths lead to R5C1=7, so it must be true!',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 5], highlight: 'primary' },
+            { row: 2, col: 0, candidates: [5, 7] },
+            { row: 4, col: 4, candidates: [7, 9] },
+            { row: 0, col: 4, candidates: [3, 9] },
+            { row: 4, col: 0, value: 7, highlight: 'primary' },
+          ]
+        }
+      ]
+    }
   },
   {
     title: 'Digit Forcing Chain',
@@ -1446,6 +1898,54 @@ export const TECHNIQUES: TechniqueInfo[] = [
     description: 'Similar to forcing chain but starts with all candidates of a digit in a unit. If all lead to the same result, it must be true.',
     example: 'All positions for 6 in row 3, when assumed true, eliminate 4 from R3C5. So R3C5 cannot be 4.',
     relatedTechniques: ['forcing-chain'],
+    diagram: {
+      cells: [
+        { row: 2, col: 0, candidates: [6], highlight: 'primary' },
+        { row: 2, col: 3, candidates: [6], highlight: 'primary' },
+        { row: 2, col: 7, candidates: [6], highlight: 'primary' },
+        { row: 2, col: 4, candidates: [4, 5], highlight: 'elimination', eliminatedCandidates: [4] },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Consider all positions for digit 6 in row 3',
+          cells: [
+            { row: 2, col: 0, candidates: [6], highlight: 'primary' },
+            { row: 2, col: 3, candidates: [6], highlight: 'primary' },
+            { row: 2, col: 7, candidates: [6], highlight: 'primary' },
+            { row: 2, col: 4, candidates: [4, 5] },
+          ]
+        },
+        {
+          description: 'If R3C1=6, chain leads to R3C5≠4',
+          cells: [
+            { row: 2, col: 0, candidates: [6], highlight: 'secondary' },
+            { row: 2, col: 3, candidates: [6] },
+            { row: 2, col: 7, candidates: [6] },
+            { row: 2, col: 4, candidates: [4, 5], highlight: 'elimination', eliminatedCandidates: [4] },
+          ]
+        },
+        {
+          description: 'If R3C4=6, chain also leads to R3C5≠4',
+          cells: [
+            { row: 2, col: 0, candidates: [6] },
+            { row: 2, col: 3, candidates: [6], highlight: 'secondary' },
+            { row: 2, col: 7, candidates: [6] },
+            { row: 2, col: 4, candidates: [4, 5], highlight: 'elimination', eliminatedCandidates: [4] },
+          ]
+        },
+        {
+          description: 'All paths eliminate 4 from R3C5 - it must be true!',
+          cells: [
+            { row: 2, col: 0, candidates: [6], highlight: 'primary' },
+            { row: 2, col: 3, candidates: [6], highlight: 'primary' },
+            { row: 2, col: 7, candidates: [6], highlight: 'primary' },
+            { row: 2, col: 4, candidates: [4, 5], highlight: 'elimination', eliminatedCandidates: [4] },
+          ]
+        }
+      ]
+    }
   },
   {
     title: 'Death Blossom',
@@ -1454,6 +1954,74 @@ export const TECHNIQUES: TechniqueInfo[] = [
     description: 'A stem cell with N candidates connected to N Almost Locked Sets, each sharing one stem candidate. Common candidates in all ALSs can be eliminated.',
     example: 'Stem {2,5,7} connected to 3 ALSs. Candidate 9 appears in all ALSs. Eliminate 9 from cells seeing all ALSs.',
     relatedTechniques: ['als-xz', 'als-xy-wing'],
+    diagram: {
+      cells: [
+        { row: 4, col: 4, candidates: [2, 5, 7], highlight: 'primary' },
+        { row: 4, col: 0, candidates: [2, 9], highlight: 'secondary' },
+        { row: 4, col: 1, candidates: [2, 3, 9], highlight: 'secondary' },
+        { row: 3, col: 4, candidates: [5, 9], highlight: 'secondary' },
+        { row: 3, col: 5, candidates: [5, 6, 9], highlight: 'secondary' },
+        { row: 4, col: 7, candidates: [7, 9], highlight: 'secondary' },
+        { row: 4, col: 8, candidates: [7, 8, 9], highlight: 'secondary' },
+        { row: 3, col: 3, candidates: [1, 9], highlight: 'elimination', eliminatedCandidates: [9] },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find stem cell with candidates {2,5,7}',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5, 7], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [2, 9] },
+            { row: 4, col: 1, candidates: [2, 3, 9] },
+            { row: 3, col: 4, candidates: [5, 9] },
+            { row: 3, col: 5, candidates: [5, 6, 9] },
+            { row: 4, col: 7, candidates: [7, 9] },
+            { row: 4, col: 8, candidates: [7, 8, 9] },
+            { row: 3, col: 3, candidates: [1, 9] },
+          ]
+        },
+        {
+          description: 'Find 3 ALSs, each sharing one stem candidate',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5, 7], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [2, 9], highlight: 'secondary' },
+            { row: 4, col: 1, candidates: [2, 3, 9], highlight: 'secondary' },
+            { row: 3, col: 4, candidates: [5, 9], highlight: 'secondary' },
+            { row: 3, col: 5, candidates: [5, 6, 9], highlight: 'secondary' },
+            { row: 4, col: 7, candidates: [7, 9], highlight: 'secondary' },
+            { row: 4, col: 8, candidates: [7, 8, 9], highlight: 'secondary' },
+            { row: 3, col: 3, candidates: [1, 9] },
+          ]
+        },
+        {
+          description: 'Digit 9 appears in ALL three ALSs',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5, 7], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [2, 9], highlight: 'secondary' },
+            { row: 4, col: 1, candidates: [2, 3, 9], highlight: 'secondary' },
+            { row: 3, col: 4, candidates: [5, 9], highlight: 'secondary' },
+            { row: 3, col: 5, candidates: [5, 6, 9], highlight: 'secondary' },
+            { row: 4, col: 7, candidates: [7, 9], highlight: 'secondary' },
+            { row: 4, col: 8, candidates: [7, 8, 9], highlight: 'secondary' },
+            { row: 3, col: 3, candidates: [1, 9] },
+          ]
+        },
+        {
+          description: 'Cells seeing all ALSs can eliminate 9',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5, 7], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [2, 9], highlight: 'secondary' },
+            { row: 4, col: 1, candidates: [2, 3, 9], highlight: 'secondary' },
+            { row: 3, col: 4, candidates: [5, 9], highlight: 'secondary' },
+            { row: 3, col: 5, candidates: [5, 6, 9], highlight: 'secondary' },
+            { row: 4, col: 7, candidates: [7, 9], highlight: 'secondary' },
+            { row: 4, col: 8, candidates: [7, 8, 9], highlight: 'secondary' },
+            { row: 3, col: 3, candidates: [1, 9], highlight: 'elimination', eliminatedCandidates: [9] },
+          ]
+        }
+      ]
+    }
   },
   {
     title: 'Auto Fill',
