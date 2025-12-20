@@ -468,9 +468,10 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const newBoard = [...board]
     newBoard[idx] = 0
     
-    // Recalculate valid candidates for the erased cell
+    // Clear candidates for the erased cell - don't auto-populate
+    // Candidates should only appear when user manually adds them or clicks "Fill Candidates"
     const newCandidates = new Uint16Array(candidates)
-    newCandidates[idx] = calculateCandidatesForCell(idx, newBoard)
+    newCandidates[idx] = 0
     
      // Add erase move to history with compact diff
      const eraseMove = createMoveWithDiff({
