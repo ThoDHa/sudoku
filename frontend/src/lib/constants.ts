@@ -14,7 +14,11 @@ export const TOAST_DURATION_SUCCESS = 2000
 export const TOAST_DURATION_INFO = 3000
 export const TOAST_DURATION_ERROR = 4000
 export const TOAST_DURATION_FIX_ERROR = 2000
+export const ERROR_FIX_RESUME_DELAY = 500  // Delay before resuming solve after error fix (shorter than toast)
 export const HISTORY_SCROLL_DELAY = 50
+
+// Background/battery management timing
+export const EXTENDED_PAUSE_DELAY = 15000  // Suspend all operations after 15 seconds hidden
 
 // =============================================================================
 // TIME CONVERSION
