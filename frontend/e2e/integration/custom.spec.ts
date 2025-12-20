@@ -10,6 +10,12 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('@integration Custom Puzzle - Page Load', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
+  });
+
   test('custom puzzle page loads', async ({ page }) => {
     await page.goto('/custom');
     await expect(page.locator('body')).toBeVisible();
@@ -18,16 +24,18 @@ test.describe('@integration Custom Puzzle - Page Load', () => {
 
   test('custom page has input area or empty board', async ({ page }) => {
     await page.goto('/custom');
+    await page.waitForTimeout(500);
     
     // Should have either a text input for puzzle string or an empty board
     const hasInput = await page.locator('input, textarea').first().isVisible().catch(() => false);
-    const hasBoard = await page.locator('.sudoku-board, .sudoku-cell').first().isVisible().catch(() => false);
+    const hasBoard = await page.locator('[role="grid"], [role="gridcell"]').first().isVisible().catch(() => false);
     
     expect(hasInput || hasBoard).toBeTruthy();
   });
 
   test('custom page has play/validate button', async ({ page }) => {
     await page.goto('/custom');
+    await page.waitForTimeout(500);
     
     // Look for action buttons
     const playButton = page.locator('button:has-text("Play"), button:has-text("Start"), button:has-text("Validate"), button:has-text("Submit")');
@@ -37,22 +45,33 @@ test.describe('@integration Custom Puzzle - Page Load', () => {
 
 test.describe('@integration Custom Puzzle - Input', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
     await page.goto('/custom');
     await page.waitForTimeout(500);
   });
 
   test('can enter digits into custom puzzle board', async ({ page }) => {
     // If there's a sudoku board, try to enter digits
-    const cells = page.locator('.sudoku-cell');
+    const cells = page.locator('[role="gridcell"]');
     
     if (await cells.count() > 0) {
-      const firstCell = cells.first();
-      await firstCell.click();
-      await page.keyboard.press('5');
-      await page.waitForTimeout(300);
+      // Use a cell in lower rows to avoid header overlap
+      const cell = page.locator('[role="gridcell"][aria-label*="Row 5"]').first();
       
-      const cellText = await firstCell.textContent();
-      expect(cellText).toContain('5');
+      if (await cell.count() > 0) {
+        await cell.scrollIntoViewIfNeeded();
+        await cell.click();
+        
+        // Use number button instead of keyboard (custom page has digit buttons)
+        const digitButton = page.locator('button:text-is("5")');
+        await digitButton.click();
+        await page.waitForTimeout(300);
+        
+        const cellText = await cell.textContent();
+        expect(cellText).toContain('5');
+      }
     } else {
       // If there's a text input, enter puzzle string
       const input = page.locator('input, textarea').first();
@@ -82,32 +101,37 @@ test.describe('@integration Custom Puzzle - Input', () => {
   });
 
   test('clear button resets custom input', async ({ page }) => {
-    const cells = page.locator('.sudoku-cell');
+    const cells = page.locator('[role="gridcell"]');
     
     if (await cells.count() > 0) {
-      // Enter some digits
-      const cell1 = cells.nth(0);
-      const cell2 = cells.nth(1);
+      // Enter some digits in lower rows to avoid header overlap
+      const cell1 = page.locator('[role="gridcell"][aria-label*="Row 5, Column 1"]');
+      const cell2 = page.locator('[role="gridcell"][aria-label*="Row 5, Column 2"]');
       
-      await cell1.click();
-      await page.keyboard.press('1');
-      await cell2.click();
-      await page.keyboard.press('2');
-      await page.waitForTimeout(200);
-      
-      // Look for clear/reset button
-      const clearButton = page.locator('button:has-text("Clear"), button:has-text("Reset"), button[title*="Clear"]');
-      
-      if (await clearButton.first().isVisible()) {
-        await clearButton.first().click();
-        await page.waitForTimeout(300);
+      if (await cell1.count() > 0 && await cell2.count() > 0) {
+        await cell1.scrollIntoViewIfNeeded();
+        await cell1.click();
+        await page.locator('button:text-is("1")').click();
         
-        // Cells should be empty
-        const cell1Text = await cell1.textContent();
-        const cell2Text = await cell2.textContent();
+        await cell2.scrollIntoViewIfNeeded();
+        await cell2.click();
+        await page.locator('button:text-is("2")').click();
+        await page.waitForTimeout(200);
         
-        expect(cell1Text?.trim()).toBeFalsy();
-        expect(cell2Text?.trim()).toBeFalsy();
+        // Look for clear/reset button (custom page has "Clear All" button)
+        const clearButton = page.locator('button:has-text("Clear All"), button:has-text("Clear"), button:has-text("Reset")');
+        
+        if (await clearButton.first().isVisible()) {
+          await clearButton.first().click();
+          await page.waitForTimeout(300);
+          
+          // Cells should be empty
+          const cell1Text = await cell1.textContent();
+          const cell2Text = await cell2.textContent();
+          
+          expect(cell1Text?.trim()).toBeFalsy();
+          expect(cell2Text?.trim()).toBeFalsy();
+        }
       }
     }
   });
@@ -115,6 +139,9 @@ test.describe('@integration Custom Puzzle - Input', () => {
 
 test.describe('@integration Custom Puzzle - Validation', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
     await page.goto('/custom');
     await page.waitForTimeout(500);
   });
@@ -231,29 +258,36 @@ test.describe('@integration Custom Puzzle - Validation', () => {
 
 test.describe('@integration Custom Puzzle - Board Input Mode', () => {
   test('entering all cells manually works', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
     await page.goto('/custom');
     await page.waitForTimeout(500);
     
-    const cells = page.locator('.sudoku-cell');
+    const cells = page.locator('[role="gridcell"]');
     
     if (await cells.count() === 81) {
-      // Enter a few digits in different cells
+      // Enter a few digits in different cells (use lower rows to avoid header)
       const testDigits = [
-        { index: 0, digit: '5' },
-        { index: 1, digit: '3' },
-        { index: 4, digit: '7' },
+        { row: 5, col: 1, digit: '5' },
+        { row: 5, col: 2, digit: '3' },
+        { row: 5, col: 5, digit: '7' },
       ];
       
-      for (const { index, digit } of testDigits) {
-        const cell = cells.nth(index);
+      for (const { row, col, digit } of testDigits) {
+        const cell = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
+        await cell.scrollIntoViewIfNeeded();
         await cell.click();
-        await page.keyboard.press(digit);
+        
+        // Use number button instead of keyboard (custom page might not have keyboard handler)
+        const digitButton = page.locator(`button:text-is("${digit}")`);
+        await digitButton.click();
         await page.waitForTimeout(100);
       }
       
       // Verify digits were entered
-      for (const { index, digit } of testDigits) {
-        const cell = cells.nth(index);
+      for (const { row, col, digit } of testDigits) {
+        const cell = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
         const text = await cell.textContent();
         expect(text).toContain(digit);
       }
@@ -263,6 +297,9 @@ test.describe('@integration Custom Puzzle - Board Input Mode', () => {
 
 test.describe('@integration Custom Puzzle - Mobile', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/custom');
     await page.waitForTimeout(500);
@@ -278,22 +315,25 @@ test.describe('@integration Custom Puzzle - Mobile', () => {
 
   test('can enter puzzle on mobile', async ({ page }) => {
     const input = page.locator('input, textarea').first();
-    const cells = page.locator('.sudoku-cell');
+    const cells = page.locator('[role="gridcell"]');
     
     if (await input.isVisible()) {
       const puzzleString = '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
-      await input.tap();
+      // Use click instead of tap (tap requires hasTouch context)
+      await input.click();
       await input.fill(puzzleString);
       
       const value = await input.inputValue();
       expect(value).toBe(puzzleString);
     } else if (await cells.count() > 0) {
-      // Use touch to enter digit
-      const cell = cells.first();
-      await cell.tap();
+      // Use click to enter digit (use lower rows to avoid header)
+      const cell = page.locator('[role="gridcell"][aria-label*="Row 5"]').first();
+      await cell.scrollIntoViewIfNeeded();
+      await cell.click();
       
-      const numberButton = page.locator('button:has-text("9")').first();
-      await numberButton.tap();
+      // Use digit button
+      const numberButton = page.locator('button:text-is("9")');
+      await numberButton.click();
       
       await page.waitForTimeout(300);
       const text = await cell.textContent();

@@ -16,17 +16,23 @@ test.describe('@smoke Navigation', () => {
     await expect(page.locator('header')).toBeVisible();
   });
 
-  test('can navigate to play/difficulty selection page', async ({ page }) => {
-    await page.goto('/play');
-    await expect(page.locator('text=Easy')).toBeVisible();
-    await expect(page.locator('text=Medium')).toBeVisible();
-    await expect(page.locator('text=Hard')).toBeVisible();
-    await expect(page.locator('text=Expert')).toBeVisible();
+  test('can navigate to homepage with difficulty selection', async ({ page }) => {
+    await page.goto('/');
+    // Homepage shows difficulty cards - check for difficulty badges
+    await expect(page.locator('text=easy').first()).toBeVisible();
+    await expect(page.locator('text=medium').first()).toBeVisible();
+    await expect(page.locator('text=hard').first()).toBeVisible();
   });
 
-  test('can navigate to daily page', async ({ page }) => {
-    await page.goto('/daily');
-    await expect(page.locator('text=Daily')).toBeVisible();
+  test('homepage shows daily or practice mode', async ({ page }) => {
+    await page.goto('/');
+    // Should show either "Daily Sudoku" or "Practice Mode"
+    const dailyHeading = page.locator('h1:has-text("Daily Sudoku")');
+    const practiceHeading = page.locator('h1:has-text("Practice Mode")');
+    const completedHeading = page.locator('h1:has-text("Daily Complete")');
+    
+    // Wait for any of these to be visible (one must be true)
+    await expect(dailyHeading.or(practiceHeading).or(completedHeading)).toBeVisible();
   });
 
   test('can navigate to techniques/learn page', async ({ page }) => {
@@ -41,7 +47,9 @@ test.describe('@smoke Navigation', () => {
 
   test('can navigate to leaderboard/stats page', async ({ page }) => {
     await page.goto('/leaderboard');
-    await expect(page.locator('h1:has-text("Your Stats")')).toBeVisible();
+    // Leaderboard shows difficulty sections with Best/Assisted times
+    await expect(page.locator('text=Best').first()).toBeVisible();
+    await expect(page.locator('text=easy').first()).toBeVisible();
   });
 
   test('result page handles empty state gracefully', async ({ page }) => {
@@ -51,37 +59,53 @@ test.describe('@smoke Navigation', () => {
 });
 
 test.describe('@smoke Difficulty Selection', () => {
+  test.beforeEach(async ({ page }) => {
+    // Skip onboarding modal
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
+  });
+
   test('clicking Easy starts an easy game', async ({ page }) => {
-    await page.goto('/play');
-    await page.locator('button:has-text("Easy")').first().click();
-    await page.waitForURL(/\/game\//, { timeout: 10000 });
+    await page.goto('/');
+    // Find the Easy card and click its Play button
+    const easyCard = page.locator('button:has-text("easy")').first();
+    await easyCard.click();
+    await page.waitForURL(/\/(p|game)\//, { timeout: 10000 });
     await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
   });
 
   test('clicking Medium starts a medium game', async ({ page }) => {
-    await page.goto('/play');
-    await page.locator('button:has-text("Medium")').first().click();
-    await page.waitForURL(/\/game\//, { timeout: 10000 });
+    await page.goto('/');
+    const mediumCard = page.locator('button:has-text("medium")').first();
+    await mediumCard.click();
+    await page.waitForURL(/\/(p|game)\//, { timeout: 10000 });
     await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
   });
 
   test('clicking Hard starts a hard game', async ({ page }) => {
-    await page.goto('/play');
-    await page.locator('button:has-text("Hard")').first().click();
-    await page.waitForURL(/\/game\//, { timeout: 10000 });
+    await page.goto('/');
+    const hardCard = page.locator('button:has-text("hard")').first();
+    await hardCard.click();
+    await page.waitForURL(/\/(p|game)\//, { timeout: 10000 });
     await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
   });
 
-  test('clicking Expert starts an expert game', async ({ page }) => {
-    await page.goto('/play');
-    await page.locator('button:has-text("Expert")').first().click();
-    await page.waitForURL(/\/game\//, { timeout: 10000 });
+  test('clicking Extreme starts an extreme game', async ({ page }) => {
+    await page.goto('/');
+    const extremeCard = page.locator('button:has-text("extreme")').first();
+    await extremeCard.click();
+    await page.waitForURL(/\/(p|game)\//, { timeout: 10000 });
     await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
   });
 });
 
 test.describe('@smoke Game Page Elements', () => {
   test.beforeEach(async ({ page }) => {
+    // Skip onboarding modal
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
     await page.goto('/game/smoke-test-seed?d=easy');
     await page.waitForSelector('.game-background', { timeout: 15000 });
   });
@@ -133,6 +157,10 @@ test.describe('@smoke Responsive Design', () => {
   });
 
   test('game works on mobile viewport', async ({ page }) => {
+    // Skip onboarding modal
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/game/mobile-test?d=easy');
     await page.waitForSelector('.game-background', { timeout: 15000 });

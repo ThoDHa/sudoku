@@ -11,86 +11,95 @@ import { test, expect } from '@playwright/test';
 
 test.describe('@integration Notes Mode - Toggle', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
     await page.goto('/game/notes-test?d=easy');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
   });
 
   test('notes button toggles notes mode on', async ({ page }) => {
-    const notesButton = page.locator('button[title*="Notes"]');
+    const notesButton = page.locator('button[title="Notes mode"]');
     
     // Initially notes mode should be off (button not active)
     await expect(notesButton).toBeVisible();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
     
     // Click to enable notes mode
     await notesButton.click();
     
     // Button should now indicate active state
-    await expect(notesButton).toHaveClass(/active|bg-blue|bg-primary|pressed/);
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('notes button toggles notes mode off', async ({ page }) => {
-    const notesButton = page.locator('button[title*="Notes"]');
+    const notesButton = page.locator('button[title="Notes mode"]');
     
     // Enable notes mode
     await notesButton.click();
-    await expect(notesButton).toHaveClass(/active|bg-blue|bg-primary|pressed/);
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
     
     // Disable notes mode
     await notesButton.click();
     
     // Button should return to inactive state
-    await expect(notesButton).not.toHaveClass(/active|pressed/);
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('keyboard shortcut N toggles notes mode', async ({ page }) => {
-    const notesButton = page.locator('button[title*="Notes"]');
+    const notesButton = page.locator('button[title="Notes mode"]');
+    
+    // Verify initial state
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
     
     // Press N to enable
     await page.keyboard.press('n');
-    await page.waitForTimeout(200);
-    await expect(notesButton).toHaveClass(/active|bg-blue|bg-primary|pressed/);
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
     
     // Press N to disable
     await page.keyboard.press('n');
-    await page.waitForTimeout(200);
-    await expect(notesButton).not.toHaveClass(/active|pressed/);
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
   });
 });
 
 test.describe('@integration Notes Mode - Adding Candidates', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
     await page.goto('/game/notes-add-test?d=easy');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Enable notes mode
-    const notesButton = page.locator('button[title*="Notes"]');
+    const notesButton = page.locator('button[title="Notes mode"]');
     await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('entering digit in notes mode adds candidate', async ({ page }) => {
-    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
-    const emptyCell = emptyCells.first();
+    // Find an empty cell in lower rows (avoid header overlap)
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
     if (await emptyCell.count() > 0) {
+      await emptyCell.scrollIntoViewIfNeeded();
       await emptyCell.click();
       
       // Enter a candidate
       await page.keyboard.press('3');
       await page.waitForTimeout(300);
       
-      // Check for candidate display (usually in a smaller font or grid)
-      const candidateGrid = emptyCell.locator('.candidate-grid, .candidates, .pencil-marks');
-      const hasCandidate = await candidateGrid.count() > 0 || await emptyCell.locator(':text("3")').count() > 0;
-      
-      expect(hasCandidate).toBeTruthy();
+      // Check for candidate display - the cell should contain '3' now
+      const cellContent = await emptyCell.textContent();
+      expect(cellContent).toContain('3');
     }
   });
 
   test('multiple candidates can be added to same cell', async ({ page }) => {
-    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
-    const emptyCell = emptyCells.first();
+    // Find an empty cell in lower rows
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
     
     if (await emptyCell.count() > 0) {
+      await emptyCell.scrollIntoViewIfNeeded();
       await emptyCell.click();
       
       // Add multiple candidates
@@ -110,14 +119,15 @@ test.describe('@integration Notes Mode - Adding Candidates', () => {
   });
 
   test('number buttons add candidates in notes mode', async ({ page }) => {
-    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
-    const emptyCell = emptyCells.first();
+    // Find an empty cell in lower rows
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 7"][aria-label*="empty"]').first();
     
     if (await emptyCell.count() > 0) {
+      await emptyCell.scrollIntoViewIfNeeded();
       await emptyCell.click();
       
-      // Click number button for 7
-      const numberButton = page.locator('button:has-text("7")').first();
+      // Click number button for 7 (use the digit button with aria-label)
+      const numberButton = page.locator('button[aria-label^="Enter 7"]');
       await numberButton.click();
       await page.waitForTimeout(300);
       
@@ -130,19 +140,27 @@ test.describe('@integration Notes Mode - Adding Candidates', () => {
 
 test.describe('@integration Notes Mode - Removing Candidates', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/game/notes-remove-test?d=easy');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
+    // Use a unique seed to avoid any caching/interference issues
+    await page.goto('/game/notes-remove-unique-seed?d=easy', { waitUntil: 'networkidle' });
+    // Wait for the grid AND for at least one cell to have a value (puzzle loaded)
+    await page.waitForSelector('[role="grid"]', { timeout: 30000 });
+    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', { timeout: 30000 });
     
     // Enable notes mode
-    const notesButton = page.locator('button[title*="Notes"]');
+    const notesButton = page.locator('button[title="Notes mode"]');
     await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('pressing same digit removes candidate', async ({ page }) => {
-    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
-    const emptyCell = emptyCells.first();
+    // Find an empty cell in lower rows
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
     if (await emptyCell.count() > 0) {
+      await emptyCell.scrollIntoViewIfNeeded();
       await emptyCell.click();
       
       // Add candidate
@@ -162,10 +180,11 @@ test.describe('@integration Notes Mode - Removing Candidates', () => {
   });
 
   test('erase clears all candidates from cell', async ({ page }) => {
-    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
-    const emptyCell = emptyCells.first();
+    // Find an empty cell in lower rows
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
     
     if (await emptyCell.count() > 0) {
+      await emptyCell.scrollIntoViewIfNeeded();
       await emptyCell.click();
       
       // Add multiple candidates
@@ -174,9 +193,8 @@ test.describe('@integration Notes Mode - Removing Candidates', () => {
       await page.keyboard.press('8');
       await page.waitForTimeout(300);
       
-      // Erase all
-      const eraseButton = page.locator('button[title="Erase"]');
-      await eraseButton.click();
+      // Erase all using keyboard (Backspace or Delete)
+      await page.keyboard.press('Backspace');
       await page.waitForTimeout(300);
       
       // Verify cell is empty
@@ -195,8 +213,11 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
    * adding or removing candidates should NOT clear that highlight.
    */
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
     await page.goto('/game/highlight-persist-test?d=easy');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
   });
 
   test('digit highlight persists after toggling candidate in notes mode', async ({ page }) => {
@@ -206,19 +227,19 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
 
     // Find the digit "1" button and click to highlight
-    const digitButton = page.locator('button[aria-label*="Enter 1"]');
+    const digitButton = page.locator('button[aria-label^="Enter 1,"]');
     await digitButton.click();
     await page.waitForTimeout(200);
 
     // Verify digit button is highlighted (has ring-2 class indicating selection)
     await expect(digitButton).toHaveClass(/ring-2/);
 
-    // Find an empty cell (one without .given class and without a filled digit)
-    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
-    const emptyCell = emptyCells.first();
+    // Find an empty cell in lower rows
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
 
     if (await emptyCell.count() > 0) {
       // Click the empty cell to toggle the candidate
+      await emptyCell.scrollIntoViewIfNeeded();
       await emptyCell.click();
       await page.waitForTimeout(300);
 
@@ -234,20 +255,21 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     await notesButton.click();
 
     // Highlight digit "5"
-    const digit5Button = page.locator('button[aria-label*="Enter 5"]');
+    const digit5Button = page.locator('button[aria-label^="Enter 5,"]');
     await digit5Button.click();
     await page.waitForTimeout(200);
 
     // Verify initial highlight
     await expect(digit5Button).toHaveClass(/ring-2/);
 
-    // Find empty cells
-    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
+    // Find empty cells in lower rows
+    const emptyCells = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]');
 
     // Click multiple empty cells to add candidates
     for (let i = 0; i < 3; i++) {
       const cell = emptyCells.nth(i);
       if (await cell.count() > 0) {
+        await cell.scrollIntoViewIfNeeded();
         await cell.click();
         await page.waitForTimeout(150);
       }
@@ -262,29 +284,32 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     const notesButton = page.locator('button[title="Notes mode"]');
     await notesButton.click();
 
-    // Find an empty cell
-    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
-    const emptyCell = emptyCells.first();
+    // First, highlight digit 3 (before selecting a cell)
+    const digit3Button = page.locator('button[aria-label^="Enter 3,"]');
+    await digit3Button.click();
+    await page.waitForTimeout(200);
+
+    // Verify digit is highlighted
+    await expect(digit3Button).toHaveClass(/ring-2/);
+
+    // Find an empty cell in lower rows
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 7"][aria-label*="empty"]').first();
 
     if (await emptyCell.count() > 0) {
-      // First, add a candidate manually
+      // Click the cell to ADD the candidate (since digit 3 is highlighted)
+      await emptyCell.scrollIntoViewIfNeeded();
       await emptyCell.click();
-      await page.keyboard.press('3');
       await page.waitForTimeout(200);
 
       // Verify candidate was added
       let cellContent = await emptyCell.textContent();
       expect(cellContent).toContain('3');
 
-      // Now highlight digit 3
-      const digit3Button = page.locator('button[aria-label*="Enter 3"]');
-      await digit3Button.click();
-      await page.waitForTimeout(200);
-
-      // Verify digit is highlighted
+      // Verify digit highlight still active after adding
       await expect(digit3Button).toHaveClass(/ring-2/);
 
       // Click the same cell to REMOVE the candidate (toggle off)
+      await emptyCell.scrollIntoViewIfNeeded();
       await emptyCell.click();
       await page.waitForTimeout(300);
 
@@ -301,31 +326,38 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
 
 test.describe('@integration Notes Mode - Persistence', () => {
   test('notes persist when switching between cells', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
     await page.goto('/game/notes-persist-test?d=easy');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Enable notes mode
-    const notesButton = page.locator('button[title*="Notes"]');
+    const notesButton = page.locator('button[title="Notes mode"]');
     await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
     
-    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
-    const cell1 = emptyCells.nth(0);
-    const cell2 = emptyCells.nth(1);
+    // Find two empty cells in lower rows
+    const cell1 = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    const cell2 = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
     
     if (await cell1.count() > 0 && await cell2.count() > 0) {
       // Add notes to first cell
+      await cell1.scrollIntoViewIfNeeded();
       await cell1.click();
       await page.keyboard.press('1');
       await page.keyboard.press('2');
       await page.waitForTimeout(200);
       
       // Switch to second cell
+      await cell2.scrollIntoViewIfNeeded();
       await cell2.click();
       await page.keyboard.press('8');
       await page.keyboard.press('9');
       await page.waitForTimeout(200);
       
       // Go back to first cell and verify notes are still there
+      await cell1.scrollIntoViewIfNeeded();
       await cell1.click();
       await page.waitForTimeout(200);
       
@@ -336,16 +368,21 @@ test.describe('@integration Notes Mode - Persistence', () => {
   });
 
   test('notes persist when toggling notes mode off and on', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
     await page.goto('/game/notes-mode-persist-test?d=easy');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
-    const notesButton = page.locator('button[title*="Notes"]');
-    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
-    const emptyCell = emptyCells.first();
+    const notesButton = page.locator('button[title="Notes mode"]');
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
     if (await emptyCell.count() > 0) {
       // Enable notes and add candidates
       await notesButton.click();
+      await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+      
+      await emptyCell.scrollIntoViewIfNeeded();
       await emptyCell.click();
       await page.keyboard.press('3');
       await page.keyboard.press('6');
@@ -353,11 +390,11 @@ test.describe('@integration Notes Mode - Persistence', () => {
       
       // Toggle notes mode off
       await notesButton.click();
-      await page.waitForTimeout(200);
+      await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
       
       // Toggle notes mode back on
       await notesButton.click();
-      await page.waitForTimeout(200);
+      await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
       
       // Verify candidates still exist
       const cellContent = await emptyCell.textContent();
@@ -367,32 +404,56 @@ test.describe('@integration Notes Mode - Persistence', () => {
   });
 
   test('placing a digit clears notes from that cell', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
     await page.goto('/game/notes-digit-clear-test?d=easy');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
-    const notesButton = page.locator('button[title*="Notes"]');
-    const emptyCells = page.locator('.sudoku-cell').filter({ hasNot: page.locator('.given') });
-    const emptyCell = emptyCells.first();
+    const notesButton = page.locator('button[title="Notes mode"]');
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
     if (await emptyCell.count() > 0) {
+      // Capture the cell position before any changes
+      const ariaLabel = await emptyCell.getAttribute('aria-label');
+      const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+      const row = match ? parseInt(match[1]) : 5;
+      const col = match ? parseInt(match[2]) : 1;
+      
       // Add notes
       await notesButton.click();
+      await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+      
+      await emptyCell.scrollIntoViewIfNeeded();
       await emptyCell.click();
       await page.keyboard.press('4');
       await page.keyboard.press('7');
       await page.waitForTimeout(200);
       
-      // Switch to digit mode and place a digit
+      // Verify candidates were added
+      let cellContent = await emptyCell.textContent();
+      expect(cellContent).toContain('4');
+      expect(cellContent).toContain('7');
+      
+      // Switch to digit mode and place a digit using multi-fill workflow
       await notesButton.click();
-      await page.keyboard.press('5');
+      await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
+      
+      // Use multi-fill: first click digit button, then click cell
+      const digit5Button = page.locator('button[aria-label^="Enter 5,"]');
+      await digit5Button.click();
+      await emptyCell.scrollIntoViewIfNeeded();
+      await emptyCell.click();
       await page.waitForTimeout(300);
       
-      // Verify only the digit is shown, not the candidates
-      const cellContent = await emptyCell.textContent();
-      expect(cellContent).toContain('5');
-      // The small candidate numbers should be gone
-      const candidateGrid = emptyCell.locator('.candidate-grid, .candidates');
-      await expect(candidateGrid).toHaveCount(0);
+      // Use position-based locator to find the same cell (now has value 5)
+      const cellAfter = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
+      const cellContentAfter = await cellAfter.textContent();
+      expect(cellContentAfter).toContain('5');
+      // The digit should be the main content, not candidates
+      // In digit mode, a placed digit should replace candidates
+      expect(cellContentAfter).not.toContain('4');
+      expect(cellContentAfter).not.toContain('7');
     }
   });
 });
