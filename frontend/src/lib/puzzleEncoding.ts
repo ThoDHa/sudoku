@@ -146,11 +146,37 @@ function encodeDense(cells: number[]): string {
 }
 
 /**
+ * Check if a string is a raw 81-digit puzzle string
+ * Accepts digits 0-9 and . for empty cells
+ */
+function isRaw81String(str: string): boolean {
+  if (str.length !== 81) return false
+  return /^[0-9.]{81}$/.test(str)
+}
+
+/**
+ * Decode a raw 81-character puzzle string (digits 0-9, or . for empty)
+ */
+function decodeRaw81(str: string): number[] {
+  return str.split('').map(c => c === '.' ? 0 : parseInt(c, 10))
+}
+
+/**
  * Decode a compact URL-safe string back to a sudoku puzzle
+ * Supports:
+ * - Raw 81-digit strings (e.g., "530070000600195000098000060...")
+ * - Sparse encoded (prefix 's')
+ * - Dense encoded (prefix 'd')
+ * - Legacy dense format (no prefix)
  */
 export function decodePuzzle(encoded: string): number[] {
   if (encoded.length === 0) {
     return Array(81).fill(0)
+  }
+  
+  // Check for raw 81-digit string first
+  if (isRaw81String(encoded)) {
+    return decodeRaw81(encoded)
   }
   
   const type = encoded[0]
