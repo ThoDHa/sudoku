@@ -24,7 +24,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 // Each theme has official light and dark variants based on their published color palettes
 const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Record<string, string> }> = {
   // Catppuccin - Soothing pastel theme
-  // Light: Latte, Dark: Mocha
+  // Light: Latte, Dark: Mocha (deep variant using Crust as base)
   // https://github.com/catppuccin/catppuccin
   catppuccin: {
     light: {
@@ -54,8 +54,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--accent-light': '#dce0e8', // Crust
     },
     dark: {
-      // Mocha palette
-      '--bg': '#1e1e2e',           // Base
+      // Mocha palette - Deep variant (Crust-based for maximum darkness)
+      '--bg': '#11111b',           // Crust (deepest)
       '--bg-secondary': '#181825', // Mantle
       '--text': '#cdd6f4',         // Text
       '--text-muted': '#a6adc8',   // Subtext0
@@ -63,7 +63,7 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--cell-bg': '#1e1e2e',      // Base
       '--cell-hover': '#313244',   // Surface0
       '--cell-selected': '#45475a', // Surface1
-      '--cell-peer': '#11111b',    // Crust
+      '--cell-peer': '#181825',    // Mantle
       '--cell-primary': '#cba6f7', // Mauve
       '--cell-secondary': '#b4befe', // Lavender
       '--border-strong': '#cdd6f4', // Text
@@ -71,18 +71,18 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--text-given': '#cdd6f4',   // Text
       '--text-entered': '#cba6f7', // Mauve
       '--text-candidate': '#b4befe', // Lavender
-      '--text-on-highlight': '#1e1e2e', // Base (dark on light highlight)
+      '--text-on-highlight': '#11111b', // Crust (dark on light highlight)
       '--btn-bg': '#313244',       // Surface0
       '--btn-hover': '#45475a',    // Surface1
       '--btn-active': '#cba6f7',   // Mauve
-      '--btn-active-text': '#1e1e2e', // Base
+      '--btn-active-text': '#11111b', // Crust
       '--accent': '#cba6f7',       // Mauve
       '--accent-light': '#313244', // Surface0
     },
   },
 
   // Tokyo Night - Clean theme inspired by Tokyo city lights
-  // Light: Tokyo Night Light, Dark: Tokyo Night Storm
+  // Light: Tokyo Night Day, Dark: Tokyo Night (deepest variant)
   // https://github.com/enkia/tokyo-night-vscode-theme
   tokyonight: {
     light: {
@@ -111,16 +111,16 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--accent-light': '#dcdee4', // Light accent
     },
     dark: {
-      // Storm variant
-      '--bg': '#1a1b26',           // Background (Night)
-      '--bg-secondary': '#16161e', // Darker
+      // Night variant (deepest) - darker than Storm
+      '--bg': '#16161e',           // Background (Night - deepest)
+      '--bg-secondary': '#1a1b26', // Night secondary
       '--text': '#a9b1d6',         // Foreground
       '--text-muted': '#565f89',   // Comments
-      '--board-bg': '#1a1b26',     // Background
-      '--cell-bg': '#24283b',      // Storm background
+      '--board-bg': '#1a1b26',     // Night secondary
+      '--cell-bg': '#1f2335',      // Editor background
       '--cell-hover': '#292e42',   // Hover
       '--cell-selected': '#33467c', // Selection
-      '--cell-peer': '#1f2335',    // Peer cells
+      '--cell-peer': '#1a1b26',    // Night secondary
       '--cell-primary': '#bb9af7', // Purple
       '--cell-secondary': '#7aa2f7', // Blue
       '--border-strong': '#a9b1d6', // Foreground
@@ -128,11 +128,11 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--text-given': '#c0caf5',   // Variables
       '--text-entered': '#7aa2f7', // Blue
       '--text-candidate': '#bb9af7', // Purple
-      '--text-on-highlight': '#1a1b26', // Dark bg
+      '--text-on-highlight': '#16161e', // Night (deepest)
       '--btn-bg': '#292e42',       // Button bg
       '--btn-hover': '#33467c',    // Button hover
       '--btn-active': '#7aa2f7',   // Blue
-      '--btn-active-text': '#1a1b26', // Dark
+      '--btn-active-text': '#16161e', // Night
       '--accent': '#7aa2f7',       // Blue
       '--accent-light': '#292e42', // Dark accent
     },
@@ -254,6 +254,7 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
   },
 
   // Gruvbox - Retro groove color scheme
+  // Light: Gruvbox Light, Dark: Gruvbox Dark Hard (deepest variant)
   // https://github.com/morhetz/gruvbox
   gruvbox: {
     light: {
@@ -283,16 +284,16 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--accent-light': '#ebdbb2', // bg1
     },
     dark: {
-      // Gruvbox Dark
-      '--bg': '#282828',           // bg0
-      '--bg-secondary': '#3c3836', // bg1
+      // Gruvbox Dark Hard (deepest variant)
+      '--bg': '#1d2021',           // bg0_h (hard - deepest)
+      '--bg-secondary': '#282828', // bg0
       '--text': '#ebdbb2',         // fg0
       '--text-muted': '#a89984',   // fg3
-      '--board-bg': '#3c3836',     // bg1
-      '--cell-bg': '#282828',      // bg0
+      '--board-bg': '#282828',     // bg0
+      '--cell-bg': '#32302f',      // bg0_s (soft)
       '--cell-hover': '#504945',   // bg2
       '--cell-selected': '#665c54', // bg3
-      '--cell-peer': '#32302f',    // bg0_h
+      '--cell-peer': '#282828',    // bg0
       '--cell-primary': '#fe8019', // orange
       '--cell-secondary': '#fabd2f', // yellow
       '--border-strong': '#ebdbb2', // fg0
@@ -300,18 +301,18 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--text-given': '#ebdbb2',   // fg0
       '--text-entered': '#fe8019', // orange
       '--text-candidate': '#fabd2f', // yellow
-      '--text-on-highlight': '#282828', // bg0
+      '--text-on-highlight': '#1d2021', // bg0_h (hard)
       '--btn-bg': '#504945',       // bg2
       '--btn-hover': '#665c54',    // bg3
       '--btn-active': '#fe8019',   // orange
-      '--btn-active-text': '#282828', // bg0
+      '--btn-active-text': '#1d2021', // bg0_h
       '--accent': '#fe8019',       // orange
       '--accent-light': '#3c3836', // bg1
     },
   },
 
   // Rosé Pine - All natural pine, faux fur and a bit of soho vibes
-  // Light: Dawn, Dark: Moon
+  // Light: Dawn, Dark: Main (deepest variant, darker than Moon)
   // https://rosepinetheme.com
   rosepine: {
     light: {
@@ -341,30 +342,30 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--accent-light': '#f4ede8', // highlight low
     },
     dark: {
-      // Rosé Pine Moon
-      '--bg': '#232136',           // base
-      '--bg-secondary': '#2a273f', // surface
+      // Rosé Pine Main (deepest variant - darker than Moon)
+      '--bg': '#191724',           // base (Main - deepest)
+      '--bg-secondary': '#1f1d2e', // surface
       '--text': '#e0def4',         // text
       '--text-muted': '#908caa',   // muted
-      '--board-bg': '#2a273f',     // surface
-      '--cell-bg': '#232136',      // base
-      '--cell-hover': '#393552',   // overlay
-      '--cell-selected': '#44415a', // highlight med
-      '--cell-peer': '#2a283e',    // highlight low
+      '--board-bg': '#1f1d2e',     // surface
+      '--cell-bg': '#26233a',      // overlay
+      '--cell-hover': '#393552',   // highlight med (using Moon's overlay)
+      '--cell-selected': '#403d52', // highlight high
+      '--cell-peer': '#1f1d2e',    // surface
       '--cell-primary': '#c4a7e7', // iris
-      '--cell-secondary': '#ea9a97', // rose
+      '--cell-secondary': '#ebbcba', // rose
       '--border-strong': '#e0def4', // text
-      '--border-light': '#44415a', // highlight med
+      '--border-light': '#403d52', // highlight high
       '--text-given': '#e0def4',   // text
       '--text-entered': '#c4a7e7', // iris
-      '--text-candidate': '#ea9a97', // rose
-      '--text-on-highlight': '#232136', // base
-      '--btn-bg': '#393552',       // overlay
-      '--btn-hover': '#44415a',    // highlight med
+      '--text-candidate': '#ebbcba', // rose
+      '--text-on-highlight': '#191724', // base (Main)
+      '--btn-bg': '#393552',       // highlight med
+      '--btn-hover': '#403d52',    // highlight high
       '--btn-active': '#c4a7e7',   // iris
-      '--btn-active-text': '#232136', // base
+      '--btn-active-text': '#191724', // base
       '--accent': '#c4a7e7',       // iris
-      '--accent-light': '#2a283e', // highlight low
+      '--accent-light': '#26233a', // overlay
     },
   },
 
@@ -424,6 +425,7 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
   },
 
   // One Dark / One Light - Atom's iconic theme
+  // Light: One Light, Dark: One Dark Darker (deepest variant)
   // https://github.com/atom/atom/tree/master/packages/one-dark-syntax
   onedark: {
     light: {
@@ -453,16 +455,16 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--accent-light': '#f0f0f0', // secondary
     },
     dark: {
-      // One Dark
-      '--bg': '#282c34',           // background
-      '--bg-secondary': '#21252b', // darker
+      // One Dark Darker (deepest variant)
+      '--bg': '#1e2227',           // darker background (One Dark Darker)
+      '--bg-secondary': '#23272e', // secondary
       '--text': '#abb2bf',         // foreground
       '--text-muted': '#5c6370',   // comment
-      '--board-bg': '#21252b',     // darker
-      '--cell-bg': '#282c34',      // background
+      '--board-bg': '#23272e',     // secondary
+      '--cell-bg': '#282c34',      // standard One Dark background
       '--cell-hover': '#2c323c',   // hover
       '--cell-selected': '#3e4451', // selection
-      '--cell-peer': '#2a2e36',    // peer
+      '--cell-peer': '#23272e',    // secondary
       '--cell-primary': '#c678dd', // purple
       '--cell-secondary': '#61afef', // blue
       '--border-strong': '#abb2bf', // foreground
@@ -470,11 +472,11 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--text-given': '#abb2bf',   // foreground
       '--text-entered': '#c678dd', // purple
       '--text-candidate': '#61afef', // blue
-      '--text-on-highlight': '#282c34', // background
+      '--text-on-highlight': '#1e2227', // darker background
       '--btn-bg': '#2c323c',       // hover
       '--btn-hover': '#3e4451',    // selection
       '--btn-active': '#c678dd',   // purple
-      '--btn-active-text': '#282c34', // background
+      '--btn-active-text': '#1e2227', // darker background
       '--accent': '#c678dd',       // purple
       '--accent-light': '#2c323c', // hover
     },

@@ -401,7 +401,7 @@ export default function Menu({
                 <div className="ml-4 py-1 space-y-1">
                   {/* Color theme picker */}
                   <div className="flex items-center justify-between px-3 py-2">
-                    <span className="text-sm text-[var(--text-muted)]">Theme</span>
+                    <span className="text-sm text-[var(--text-muted)]">{colorThemes.find(t => t.key === colorTheme)?.name ?? 'Theme'}</span>
                     <div className="flex gap-1">
                       {colorThemes.map((theme) => (
                         <button
