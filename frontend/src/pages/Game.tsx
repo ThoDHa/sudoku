@@ -25,11 +25,13 @@ import {
   TOAST_DURATION_INFO,
   TOAST_DURATION_ERROR,
   TOAST_DURATION_FIX_ERROR,
+  ERROR_FIX_RESUME_DELAY,
+  EXTENDED_PAUSE_DELAY,
   STORAGE_KEYS,
 } from '../lib/constants'
 import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
 import { getAutoSaveEnabled } from '../lib/gameSettings'
-import { validateBoard, solveAll, getPuzzle } from '../lib/solver-service'
+import { validateBoard, validateCustomPuzzle, solveAll, getPuzzle, cleanupSolver, initializeSolver } from '../lib/solver-service'
 
 import { saveScore, markDailyCompleted, type Score } from '../lib/scores'
 import { decodePuzzle, encodePuzzle } from '../lib/puzzleEncoding'
@@ -50,6 +52,7 @@ interface PuzzleData {
   seed: string
   difficulty: string
   givens: number[]
+  solution: number[]
 }
 
 export default function Game() {
@@ -77,8 +80,10 @@ export default function Game() {
   // Puzzle loading state
   const [puzzle, setPuzzle] = useState<PuzzleData | null>(null)
   const [initialBoard, setInitialBoard] = useState<number[]>([])
+  const [solution, setSolution] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [incorrectCells, setIncorrectCells] = useState<number[]>([])
 
   // UI state (not game logic)
   // Highlight state is now managed by useHighlightState hook (see CUSTOM HOOKS section)
@@ -247,14 +252,14 @@ export default function Game() {
     onErrorFixed: (message, resumeCallback) => {
       // Show toast for fix-error (longer duration than normal hints)
       setValidationMessage({ type: 'error', message: `Fixed: ${message}` })
-      visibilityAwareTimeout(() => {
-        setValidationMessage(null)
-        resumeCallback()
-      }, TOAST_DURATION_FIX_ERROR)
+      // Clear toast after full duration
+      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_FIX_ERROR)
+      // But resume solving sooner for better UX
+      visibilityAwareTimeout(resumeCallback, ERROR_FIX_RESUME_DELAY)
     },
   })
 
-  // Extended background pause logic - suspend all operations after 30 seconds hidden
+  // Extended background pause logic - suspend all operations after EXTENDED_PAUSE_DELAY hidden
   useEffect(() => {
     if (!backgroundManager.isHidden) {
       // Reset extended pause when visible
@@ -262,7 +267,7 @@ export default function Game() {
       return
     }
 
-    // Set extended pause after 30 seconds hidden
+    // Set extended pause after EXTENDED_PAUSE_DELAY hidden
     const timeout = setTimeout(() => {
       setIsExtendedPaused(true)
       // Pause auto-solve if running
@@ -271,10 +276,28 @@ export default function Game() {
       }
       // Pause timer
       timer.pauseTimer()
-    }, 30000) // 30 seconds
+    }, EXTENDED_PAUSE_DELAY)
 
     return () => clearTimeout(timeout)
   }, [backgroundManager.isHidden, autoSolve, timer])
+
+  // Unload WASM immediately when entering deep pause to save ~4MB memory
+  useEffect(() => {
+    if (backgroundManager.isInDeepPause) {
+      cleanupSolver()
+    }
+  }, [backgroundManager.isInDeepPause])
+
+  // Reload WASM when returning from deep pause (if needed for next hint/solve)
+  useEffect(() => {
+    if (!backgroundManager.isHidden && !backgroundManager.isInDeepPause) {
+      // Pre-load WASM in the background when user returns
+      // This happens asynchronously so it won't block the UI
+      initializeSolver().catch(() => {
+        // Silently ignore - WASM will be loaded on-demand when needed
+      })
+    }
+  }, [backgroundManager.isHidden, backgroundManager.isInDeepPause])
 
   // ============================================================
   // HELPER FUNCTIONS
@@ -429,21 +452,34 @@ export default function Game() {
     visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
   }, [game, visibilityAwareTimeout])
 
-  // Validate current board state
+  // Validate current board state by comparing against the known solution
   const handleValidate = useCallback(async () => {
+    if (solution.length !== 81) {
+      setValidationMessage({ type: 'error', message: 'Solution not available' })
+      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      return
+    }
+
     try {
-      const data = await validateBoard(game.board)
+      const data = await validateBoard(game.board, solution)
       if (data.valid) {
         setValidationMessage({ type: 'success', message: data.message || 'All entries are correct!' })
+        setIncorrectCells([])
       } else {
         setValidationMessage({ type: 'error', message: data.message || 'There are errors in the puzzle' })
+        if (data.incorrectCells) {
+          setIncorrectCells(data.incorrectCells)
+        }
       }
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      visibilityAwareTimeout(() => {
+        setValidationMessage(null)
+        setIncorrectCells([])
+      }, TOAST_DURATION_INFO)
     } catch {
       setValidationMessage({ type: 'error', message: 'Failed to validate puzzle' })
       visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
     }
-  }, [game.board, visibilityAwareTimeout])
+  }, [game.board, solution, visibilityAwareTimeout])
 
   // Core hint step logic - uses cached solution or fetches new one
   // Returns true if more steps available, false otherwise
@@ -616,8 +652,8 @@ export default function Game() {
        return
      }
 
-      // If a digit is highlighted and this cell is empty, fill it
-      if (highlightedDigit !== null && game.board[idx] === 0) {
+      // If a digit is highlighted, fill the cell (overwriting any existing value)
+      if (highlightedDigit !== null) {
         if (notesMode) {
           game.setCell(idx, highlightedDigit, notesMode)
           
@@ -1021,8 +1057,10 @@ ${bugReportJson}
         setError(null)
         clearAllAndDeselect()
         setShowResultModal(false)
+        setIncorrectCells([])
 
         let givens: number[]
+        let puzzleSolution: number[]
         let puzzleData: PuzzleData
 
         if (isEncodedCustom && encoded) {
@@ -1035,6 +1073,19 @@ ${bugReportJson}
             throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
           }
           
+          // Validate the encoded puzzle before playing
+          const validation = await validateCustomPuzzle(givens, '')
+          if (!validation.valid) {
+            throw new Error(`Invalid puzzle: ${validation.reason || 'unknown error'}`)
+          }
+          if (!validation.unique) {
+            throw new Error('Invalid puzzle: has multiple solutions')
+          }
+          if (!validation.solution) {
+            throw new Error('Invalid puzzle: could not compute solution')
+          }
+          puzzleSolution = validation.solution
+          
           setEncodedPuzzle(encoded)
           
           puzzleData = {
@@ -1042,6 +1093,7 @@ ${bugReportJson}
             seed: `encoded-${encoded.substring(0, 8)}`,
             difficulty: 'custom',
             givens: givens,
+            solution: puzzleSolution,
           }
         } else if (difficulty === 'custom' && seed?.startsWith('custom-')) {
           const storedGivens = localStorage.getItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${seed}`)
@@ -1050,6 +1102,13 @@ ${bugReportJson}
           }
           givens = JSON.parse(storedGivens)
           
+          // Validate to get solution
+          const validation = await validateCustomPuzzle(givens, '')
+          if (!validation.valid || !validation.unique || !validation.solution) {
+            throw new Error('Stored puzzle is invalid')
+          }
+          puzzleSolution = validation.solution
+          
           setEncodedPuzzle(encodePuzzle(givens))
           
           puzzleData = {
@@ -1057,6 +1116,7 @@ ${bugReportJson}
             seed: seed,
             difficulty: 'custom',
             givens: givens,
+            solution: puzzleSolution,
           }
         } else if (seed?.startsWith('practice-')) {
           // Practice puzzles are stored in localStorage by TechniqueDetailView
@@ -1065,6 +1125,14 @@ ${bugReportJson}
             throw new Error('Practice puzzle not found. Please try again from the technique page.')
           }
           givens = JSON.parse(storedGivens)
+          
+          // Validate to get solution
+          const validation = await validateCustomPuzzle(givens, '')
+          if (!validation.valid || !validation.unique || !validation.solution) {
+            throw new Error('Practice puzzle is invalid')
+          }
+          puzzleSolution = validation.solution
+          
           setEncodedPuzzle(null)
           
           puzzleData = {
@@ -1072,6 +1140,7 @@ ${bugReportJson}
             seed: seed,
             difficulty: difficulty,
             givens: givens,
+            solution: puzzleSolution,
           }
         } else {
           // Fetch puzzle using solver service (WASM-first)
@@ -1081,13 +1150,16 @@ ${bugReportJson}
             seed: fetchedPuzzle.seed,
             difficulty: fetchedPuzzle.difficulty,
             givens: fetchedPuzzle.givens,
+            solution: fetchedPuzzle.solution,
           }
           givens = puzzleData.givens
+          puzzleSolution = puzzleData.solution
           setEncodedPuzzle(null)
         }
 
         setPuzzle(puzzleData)
         setInitialBoard([...givens])
+        setSolution([...puzzleData.solution])
 
         timer.resetTimer()
         timer.startTimer()
@@ -1293,6 +1365,7 @@ ${bugReportJson}
               highlight={currentHighlight}
               onCellClick={handleCellClick}
               onCellChange={handleCellChange}
+              incorrectCells={incorrectCells}
             />
             
             {/* Pause overlay - shown when timer is paused due to tab/window losing focus */}
