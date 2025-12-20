@@ -1,10 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface BackgroundManagerOptions {
   /** Whether to enable background pause functionality */
   enabled?: boolean
-  /** Delay in ms before entering deep pause mode (default: 5000 = 5s) */
-  deepPauseDelay?: number
 }
 
 interface BackgroundManagerReturn {
@@ -12,7 +10,7 @@ interface BackgroundManagerReturn {
   isHidden: boolean
   /** Whether background operations should be paused */
   shouldPauseOperations: boolean
-  /** Whether in deep pause mode (more aggressive battery saving) */
+  /** Whether in deep pause mode (immediate on hide for battery saving) */
   isInDeepPause: boolean
   /** Current visibility state */
   visibilityState: 'visible' | 'hidden'
@@ -28,23 +26,17 @@ interface BackgroundManagerReturn {
  * when the page becomes hidden from the user.
  *
  * Features:
- * - Immediate pause on visibility change
- * - Deep pause mode after configurable delay for extended battery savings
+ * - Immediate pause and deep pause on visibility change
  * - Comprehensive event handling (Page Visibility API + focus/blur + page show/hide)
- * - Safe error handling for all callbacks
  */
 export function useBackgroundManager(options: BackgroundManagerOptions = {}): BackgroundManagerReturn {
-  const { enabled = true, deepPauseDelay = 5000 } = options
+  const { enabled = true } = options
 
   const [isHidden, setIsHidden] = useState(false)
   const [visibilityState, setVisibilityState] = useState<'visible' | 'hidden'>('visible')
   const [forcePaused, setForcePaused] = useState(false)
   const [forceResumed, setForceResumed] = useState(false)
   const [isInDeepPause, setIsInDeepPause] = useState(false)
-
-  const hiddenStartTimeRef = useRef<number | null>(null)
-  const visibilityChangeCallbacksRef = useRef<Set<() => void>>(new Set())
-  const deepPauseTimeoutRef = useRef<number | null>(null)
 
   // Determine if operations should be paused
   const shouldPauseOperations = enabled && (
@@ -58,38 +50,13 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
     const newIsHidden = newVisibilityState === 'hidden'
     setIsHidden(newIsHidden)
 
-    // Reset force states when visibility changes
     if (newIsHidden) {
       setForceResumed(false)
-      hiddenStartTimeRef.current = Date.now()
-      
-      // Start deep pause timer
-      if (deepPauseDelay > 0) {
-        deepPauseTimeoutRef.current = window.setTimeout(() => {
-          setIsInDeepPause(true)
-        }, deepPauseDelay)
-      }
-      
+      setIsInDeepPause(true)
     } else {
       setForcePaused(false)
       setIsInDeepPause(false)
-      hiddenStartTimeRef.current = null
-      
-      // Clear timers
-      if (deepPauseTimeoutRef.current) {
-        clearTimeout(deepPauseTimeoutRef.current)
-        deepPauseTimeoutRef.current = null
-      }
     }
-
-    // Notify all registered callbacks
-    visibilityChangeCallbacksRef.current.forEach(callback => {
-      try {
-        callback()
-      } catch (error) {
-        console.warn('Background manager callback error:', error)
-      }
-    })
   }, [])
 
   const forceResume = useCallback(() => {
@@ -111,6 +78,9 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
     const initialVisibility = document.visibilityState as 'visible' | 'hidden'
     setVisibilityState(initialVisibility)
     setIsHidden(initialVisibility === 'hidden')
+    if (initialVisibility === 'hidden') {
+      setIsInDeepPause(true)
+    }
 
     // Add event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -121,11 +91,6 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('blur', handleVisibilityChange)
       window.removeEventListener('focus', handleVisibilityChange)
-      
-      // Clean up timers
-      if (deepPauseTimeoutRef.current) {
-        clearTimeout(deepPauseTimeoutRef.current)
-      }
     }
   }, [enabled, handleVisibilityChange])
 
@@ -136,9 +101,6 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
     const handlePageHide = () => {
       setIsHidden(true)
       setVisibilityState('hidden')
-      hiddenStartTimeRef.current = Date.now()
-      
-      // Immediately enter deep pause on pagehide (mobile optimization)
       setIsInDeepPause(true)
     }
 
@@ -146,7 +108,6 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
       setIsHidden(false)
       setVisibilityState('visible')
       setIsInDeepPause(false)
-      hiddenStartTimeRef.current = null
     }
 
     window.addEventListener('pagehide', handlePageHide)
@@ -159,7 +120,6 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
   }, [enabled])
 
   // Handle freeze/resume events for Chrome/Android
-  // These fire when the page is being frozen to conserve resources
   useEffect(() => {
     if (!enabled) return
 
@@ -167,13 +127,6 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
       setIsHidden(true)
       setVisibilityState('hidden')
       setIsInDeepPause(true)
-      hiddenStartTimeRef.current = Date.now()
-      
-      // Clear deep pause timer since we're already in deep pause
-      if (deepPauseTimeoutRef.current) {
-        clearTimeout(deepPauseTimeoutRef.current)
-        deepPauseTimeoutRef.current = null
-      }
     }
 
     const handleResume = () => {
@@ -181,11 +134,8 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
       setVisibilityState('visible')
       setIsInDeepPause(false)
       setForcePaused(false)
-      hiddenStartTimeRef.current = null
     }
 
-    // freeze/resume are part of the Page Lifecycle API
-    // https://developer.chrome.com/blog/page-lifecycle-api/
     document.addEventListener('freeze', handleFreeze)
     document.addEventListener('resume', handleResume)
 
