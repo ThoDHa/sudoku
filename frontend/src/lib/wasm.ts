@@ -84,18 +84,19 @@ export interface ValidateBoardResult {
   valid: boolean;
   reason?: string;
   message?: string;
-  conflicts?: Conflict[];
-  conflictCells?: number[];
+  incorrectCells?: number[];
 }
 
 export interface ValidateCustomResult {
   valid: boolean;
   unique?: boolean;
   reason?: string;
+  solution?: number[];
 }
 
 export interface PuzzleForSeedResult {
   givens: number[];
+  solution: number[];
   puzzleId: string;
   seed: string;
   difficulty: string;
@@ -128,7 +129,7 @@ export interface SudokuWasmAPI {
 
   // Validation
   validateCustomPuzzle(givens: number[]): ValidateCustomResult;
-  validateBoard(board: number[]): ValidateBoardResult;
+  validateBoard(board: number[], solution: number[]): ValidateBoardResult;
 
   // Utility
   getPuzzleForSeed(seed: string, difficulty: string): PuzzleForSeedResult;
@@ -442,15 +443,16 @@ export async function wasmSolve(grid: number[]): Promise<number[] | null> {
 }
 
 /**
- * Validate a board for conflicts and solvability
+ * Validate a board by comparing against the known solution
  * Returns null if WASM not loaded
  */
 export async function wasmValidateBoard(
-  board: number[]
+  board: number[],
+  solution: number[]
 ): Promise<ValidateBoardResult | null> {
   try {
     const api = await loadWasm();
-    return api.validateBoard(board);
+    return api.validateBoard(board, solution);
   } catch {
     return null;
   }

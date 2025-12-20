@@ -64,8 +64,7 @@ export interface ValidateBoardResult {
   valid: boolean
   reason?: string
   message?: string
-  conflicts?: Array<{ cell1: number; cell2: number; value: number; type: string }>
-  conflictCells?: number[]
+  incorrectCells?: number[]
 }
 
 export interface ValidateCustomResult {
@@ -73,6 +72,7 @@ export interface ValidateCustomResult {
   unique?: boolean
   reason?: string
   puzzle_id?: string
+  solution?: number[]
 }
 
 export interface PuzzleResult {
@@ -80,6 +80,7 @@ export interface PuzzleResult {
   seed: string
   difficulty: string
   givens: number[]
+  solution: number[]
   puzzle_index?: number
 }
 
@@ -144,9 +145,9 @@ export async function solveAll(
   }
 }
 
-export async function validateBoard(board: number[]): Promise<ValidateBoardResult> {
+export async function validateBoard(board: number[], solution: number[]): Promise<ValidateBoardResult> {
   const api = await getApi()
-  return api.validateBoard(board)
+  return api.validateBoard(board, solution)
 }
 
 export async function validateCustomPuzzle(
@@ -173,6 +174,7 @@ export async function getPuzzle(seed: string, difficulty: string): Promise<Puzzl
     seed: result.seed,
     difficulty: result.difficulty,
     givens: result.givens,
+    solution: result.solution,
     puzzle_index: -1,
   }
 }

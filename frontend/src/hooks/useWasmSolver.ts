@@ -33,9 +33,9 @@ interface UseWasmSolverReturn {
   // Solver functions (return null if WASM not available)
   findNextMove: (cells: number[], candidates: number[][]) => FindNextMoveResult | null
   solveAll: (cells: number[], candidates: number[][], givens: number[]) => SolveAllResult | null
-  validateBoard: (board: number[]) => ValidateBoardResult | null
+  validateBoard: (board: number[], solution: number[]) => ValidateBoardResult | null
   validateCustom: (givens: number[]) => ValidateCustomResult | null
-  getPuzzle: (seed: string, difficulty: string) => { givens: number[], puzzleId: string } | null
+  getPuzzle: (seed: string, difficulty: string) => { givens: number[], solution: number[], puzzleId: string } | null
   
   /** The raw WASM API (null if not loaded) */
   api: SudokuWasmAPI | null
@@ -128,10 +128,10 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
     }
   }, [api])
   
-  const validateBoard = useCallback((board: number[]): ValidateBoardResult | null => {
+  const validateBoard = useCallback((board: number[], solution: number[]): ValidateBoardResult | null => {
     if (!api) return null
     try {
-      return api.validateBoard(board)
+      return api.validateBoard(board, solution)
     } catch (err) {
       console.error('WASM validateBoard error:', err)
       return null
@@ -148,12 +148,12 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
     }
   }, [api])
   
-  const getPuzzle = useCallback((seed: string, difficulty: string): { givens: number[], puzzleId: string } | null => {
+  const getPuzzle = useCallback((seed: string, difficulty: string): { givens: number[], solution: number[], puzzleId: string } | null => {
     if (!api) return null
     try {
       const result = api.getPuzzleForSeed(seed, difficulty)
       if (result.error) return null
-      return { givens: result.givens, puzzleId: result.puzzleId }
+      return { givens: result.givens, solution: result.solution, puzzleId: result.puzzleId }
     } catch (err) {
       console.error('WASM getPuzzle error:', err)
       return null
