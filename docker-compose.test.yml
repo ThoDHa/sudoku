@@ -1,0 +1,43 @@
+# Docker Compose for E2E Testing
+# Usage: docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
+#
+# The frontend container includes WASM (compiled from Go) - no separate API needed.
+# E2E tests exercise the browser-based WASM solver, not the API directly.
+
+services:
+  # Frontend (nginx serving built app with WASM)
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "4173:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # Playwright test runner
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.48.0-jammy
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - playwright-cache:/app/node_modules
+    depends_on:
+      frontend:
+        condition: service_healthy
+    environment:
+      - PLAYWRIGHT_BASE_URL=http://frontend:80
+      - CI=true
+    command: >
+      sh -c "
+        npm ci &&
+        npx playwright install chromium &&
+        npx playwright test --project=chrome-desktop --reporter=list
+      "
+
+volumes:
+  playwright-cache:
