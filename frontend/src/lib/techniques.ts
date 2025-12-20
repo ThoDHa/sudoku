@@ -191,8 +191,8 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'Pointing Pair',
     slug: 'pointing-pair',
     tier: 'Simple',
-    description: 'When a candidate in a box is restricted to a single row or column, it can be eliminated from that row/column outside the box.',
-    example: 'If 4 only appears in the top row of box 1, eliminate 4 from the rest of row 1 (outside box 1).',
+    description: 'When a candidate in a box is restricted to a single row or column, those cells "point" outward. Since one of these cells must contain that digit, the candidate can be eliminated from that row or column outside the box. This is also called a "Locked Candidates" type.',
+    example: 'In Box 1, the digit 4 only appears as a candidate in R1C1 and R1C2 (both in row 1). Since 4 must go in one of these cells, we can eliminate 4 from all other cells in row 1 outside box 1.',
     diagram: {
       cells: [
         { row: 0, col: 0, candidates: [1, 4], highlight: 'primary' },
@@ -207,14 +207,66 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 2, col: 0, value: 6 },
         { row: 2, col: 1, candidates: [2, 8] },
       ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Look at Box 1 - where can 4 go?',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 4], highlight: 'secondary' },
+            { row: 0, col: 1, candidates: [2, 4], highlight: 'secondary' },
+            { row: 0, col: 2, value: 3 },
+            { row: 0, col: 3, candidates: [4, 5, 6] },
+            { row: 0, col: 4, value: 7 },
+            { row: 0, col: 5, candidates: [4, 8] },
+            { row: 0, col: 6, value: 9 },
+            { row: 1, col: 0, candidates: [1, 2] },
+            { row: 1, col: 1, value: 5 },
+            { row: 2, col: 0, value: 6 },
+            { row: 2, col: 1, candidates: [2, 8] },
+          ]
+        },
+        {
+          description: '4 only appears in row 1 within Box 1',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 4], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [2, 4], highlight: 'primary' },
+            { row: 0, col: 2, value: 3 },
+            { row: 0, col: 3, candidates: [4, 5, 6] },
+            { row: 0, col: 4, value: 7 },
+            { row: 0, col: 5, candidates: [4, 8] },
+            { row: 0, col: 6, value: 9 },
+            { row: 1, col: 0, candidates: [1, 2] },
+            { row: 1, col: 1, value: 5 },
+            { row: 2, col: 0, value: 6 },
+            { row: 2, col: 1, candidates: [2, 8] },
+          ]
+        },
+        {
+          description: 'Eliminate 4 from row 1 outside the box',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 4], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [2, 4], highlight: 'primary' },
+            { row: 0, col: 2, value: 3 },
+            { row: 0, col: 3, candidates: [4, 5, 6], highlight: 'elimination', eliminatedCandidates: [4] },
+            { row: 0, col: 4, value: 7 },
+            { row: 0, col: 5, candidates: [4, 8], highlight: 'elimination', eliminatedCandidates: [4] },
+            { row: 0, col: 6, value: 9 },
+            { row: 1, col: 0, candidates: [1, 2] },
+            { row: 1, col: 1, value: 5 },
+            { row: 2, col: 0, value: 6 },
+            { row: 2, col: 1, candidates: [2, 8] },
+          ]
+        }
+      ]
     }
   },
   {
     title: 'Box-Line Reduction',
     slug: 'box-line-reduction',
     tier: 'Simple',
-    description: 'When a candidate in a row or column is restricted to a single box, it can be eliminated from the rest of that box.',
-    example: 'If 6 in row 2 only appears within box 1, eliminate 6 from the rest of box 1 (cells not in row 2).',
+    description: 'The reverse of Pointing Pair: when a candidate in a row or column is restricted to cells within a single box, it can be eliminated from the rest of that box. The line "claims" that candidate for itself within the box.',
+    example: 'In row 3, the digit 6 only appears within Box 1 (at R3C1 and R3C2). Since 6 must go somewhere in row 3 of Box 1, we can eliminate 6 from all other cells in Box 1 that are not in row 3.',
     diagram: {
       cells: [
         { row: 2, col: 0, candidates: [1, 6], highlight: 'primary' },
@@ -230,14 +282,69 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 1, col: 1, candidates: [5, 9] },
         { row: 1, col: 2, value: 2 },
       ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Look at Row 3 - where can 6 go?',
+          cells: [
+            { row: 2, col: 0, candidates: [1, 6], highlight: 'secondary' },
+            { row: 2, col: 1, candidates: [2, 6], highlight: 'secondary' },
+            { row: 2, col: 2, value: 3 },
+            { row: 2, col: 3, value: 4 },
+            { row: 2, col: 4, value: 5 },
+            { row: 2, col: 5, candidates: [7, 8] },
+            { row: 0, col: 0, candidates: [1, 6, 7] },
+            { row: 0, col: 1, value: 8 },
+            { row: 0, col: 2, candidates: [6, 9] },
+            { row: 1, col: 0, value: 4 },
+            { row: 1, col: 1, candidates: [5, 9] },
+            { row: 1, col: 2, value: 2 },
+          ]
+        },
+        {
+          description: '6 in Row 3 only appears within Box 1',
+          cells: [
+            { row: 2, col: 0, candidates: [1, 6], highlight: 'primary' },
+            { row: 2, col: 1, candidates: [2, 6], highlight: 'primary' },
+            { row: 2, col: 2, value: 3 },
+            { row: 2, col: 3, value: 4 },
+            { row: 2, col: 4, value: 5 },
+            { row: 2, col: 5, candidates: [7, 8] },
+            { row: 0, col: 0, candidates: [1, 6, 7] },
+            { row: 0, col: 1, value: 8 },
+            { row: 0, col: 2, candidates: [6, 9] },
+            { row: 1, col: 0, value: 4 },
+            { row: 1, col: 1, candidates: [5, 9] },
+            { row: 1, col: 2, value: 2 },
+          ]
+        },
+        {
+          description: 'Eliminate 6 from Box 1 cells not in Row 3',
+          cells: [
+            { row: 2, col: 0, candidates: [1, 6], highlight: 'primary' },
+            { row: 2, col: 1, candidates: [2, 6], highlight: 'primary' },
+            { row: 2, col: 2, value: 3 },
+            { row: 2, col: 3, value: 4 },
+            { row: 2, col: 4, value: 5 },
+            { row: 2, col: 5, candidates: [7, 8] },
+            { row: 0, col: 0, candidates: [1, 6, 7], highlight: 'elimination', eliminatedCandidates: [6] },
+            { row: 0, col: 1, value: 8 },
+            { row: 0, col: 2, candidates: [6, 9], highlight: 'elimination', eliminatedCandidates: [6] },
+            { row: 1, col: 0, value: 4 },
+            { row: 1, col: 1, candidates: [5, 9] },
+            { row: 1, col: 2, value: 2 },
+          ]
+        }
+      ]
     }
   },
   {
     title: 'Naked Pair',
     slug: 'naked-pair',
     tier: 'Simple',
-    description: 'Two cells in the same unit (row, column, or box) that contain only the same two candidates. These digits can be eliminated from other cells in that unit.',
-    example: 'If two cells in column 5 both have only {2,8}, eliminate 2 and 8 from all other cells in column 5.',
+    description: 'When two cells in the same unit contain only the same two candidates, those digits must go in those two cells. Since the pair "locks" these candidates, they can be eliminated from all other cells in that unit. The key is that both cells have exactly these two candidates and nothing else.',
+    example: 'In column 5, cells R1C5 and R4C5 both have only candidates {2,8}. One must be 2, the other must be 8. So we can eliminate 2 and 8 from all other cells in column 5.',
     relatedTechniques: ['naked-triple', 'naked-quad', 'hidden-pair'],
     diagram: {
       cells: [
@@ -251,14 +358,60 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 7, col: 4, candidates: [1, 2, 8], highlight: 'elimination', eliminatedCandidates: [2, 8] },
         { row: 8, col: 4, value: 7 },
       ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find two cells with the same two candidates',
+          cells: [
+            { row: 0, col: 4, candidates: [2, 8], highlight: 'secondary' },
+            { row: 1, col: 4, candidates: [1, 2, 5] },
+            { row: 2, col: 4, value: 3 },
+            { row: 3, col: 4, candidates: [2, 8], highlight: 'secondary' },
+            { row: 4, col: 4, value: 4 },
+            { row: 5, col: 4, candidates: [5, 8, 9] },
+            { row: 6, col: 4, value: 6 },
+            { row: 7, col: 4, candidates: [1, 2, 8] },
+            { row: 8, col: 4, value: 7 },
+          ]
+        },
+        {
+          description: 'R1C5 and R4C5 both have only {2,8}',
+          cells: [
+            { row: 0, col: 4, candidates: [2, 8], highlight: 'primary' },
+            { row: 1, col: 4, candidates: [1, 2, 5] },
+            { row: 2, col: 4, value: 3 },
+            { row: 3, col: 4, candidates: [2, 8], highlight: 'primary' },
+            { row: 4, col: 4, value: 4 },
+            { row: 5, col: 4, candidates: [5, 8, 9] },
+            { row: 6, col: 4, value: 6 },
+            { row: 7, col: 4, candidates: [1, 2, 8] },
+            { row: 8, col: 4, value: 7 },
+          ]
+        },
+        {
+          description: 'Eliminate 2 and 8 from other cells in the column',
+          cells: [
+            { row: 0, col: 4, candidates: [2, 8], highlight: 'primary' },
+            { row: 1, col: 4, candidates: [1, 2, 5], highlight: 'elimination', eliminatedCandidates: [2] },
+            { row: 2, col: 4, value: 3 },
+            { row: 3, col: 4, candidates: [2, 8], highlight: 'primary' },
+            { row: 4, col: 4, value: 4 },
+            { row: 5, col: 4, candidates: [5, 8, 9], highlight: 'elimination', eliminatedCandidates: [8] },
+            { row: 6, col: 4, value: 6 },
+            { row: 7, col: 4, candidates: [1, 2, 8], highlight: 'elimination', eliminatedCandidates: [2, 8] },
+            { row: 8, col: 4, value: 7 },
+          ]
+        }
+      ]
     }
   },
   {
     title: 'Hidden Pair',
     slug: 'hidden-pair',
     tier: 'Simple',
-    description: 'Two candidates that only appear in two cells of a unit. All other candidates can be eliminated from those two cells.',
-    example: 'If 3 and 7 only appear in cells R1C2 and R1C5 of row 1, remove all other candidates from those cells.',
+    description: 'When two candidates only appear in exactly two cells within a unit, those two cells must contain those candidates. The pair is "hidden" because the cells may have other candidates too, but we can eliminate all other candidates from these cells. This is the inverse of Naked Pair.',
+    example: 'In row 1, candidates 3 and 7 only appear in R1C2 and R1C5 (even though those cells have other candidates too). Since 3 and 7 must go in these cells, remove all other candidates from them.',
     relatedTechniques: ['hidden-triple', 'naked-pair'],
     diagram: {
       cells: [
@@ -272,14 +425,60 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 0, col: 7, candidates: [2, 9] },
         { row: 0, col: 8, candidates: [4, 5, 9] },
       ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Look at Row 1 - where can 3 and 7 go?',
+          cells: [
+            { row: 0, col: 0, value: 1 },
+            { row: 0, col: 1, candidates: [2, 3, 5, 7], highlight: 'secondary' },
+            { row: 0, col: 2, candidates: [2, 4] },
+            { row: 0, col: 3, value: 6 },
+            { row: 0, col: 4, candidates: [3, 4, 7, 9], highlight: 'secondary' },
+            { row: 0, col: 5, value: 8 },
+            { row: 0, col: 6, candidates: [2, 4, 5] },
+            { row: 0, col: 7, candidates: [2, 9] },
+            { row: 0, col: 8, candidates: [4, 5, 9] },
+          ]
+        },
+        {
+          description: '3 and 7 only appear in R1C2 and R1C5',
+          cells: [
+            { row: 0, col: 0, value: 1 },
+            { row: 0, col: 1, candidates: [2, 3, 5, 7], highlight: 'primary' },
+            { row: 0, col: 2, candidates: [2, 4] },
+            { row: 0, col: 3, value: 6 },
+            { row: 0, col: 4, candidates: [3, 4, 7, 9], highlight: 'primary' },
+            { row: 0, col: 5, value: 8 },
+            { row: 0, col: 6, candidates: [2, 4, 5] },
+            { row: 0, col: 7, candidates: [2, 9] },
+            { row: 0, col: 8, candidates: [4, 5, 9] },
+          ]
+        },
+        {
+          description: 'These cells MUST contain 3 and 7 - eliminate others',
+          cells: [
+            { row: 0, col: 0, value: 1 },
+            { row: 0, col: 1, candidates: [2, 3, 5, 7], highlight: 'primary', eliminatedCandidates: [2, 5] },
+            { row: 0, col: 2, candidates: [2, 4] },
+            { row: 0, col: 3, value: 6 },
+            { row: 0, col: 4, candidates: [3, 4, 7, 9], highlight: 'primary', eliminatedCandidates: [4, 9] },
+            { row: 0, col: 5, value: 8 },
+            { row: 0, col: 6, candidates: [2, 4, 5] },
+            { row: 0, col: 7, candidates: [2, 9] },
+            { row: 0, col: 8, candidates: [4, 5, 9] },
+          ]
+        }
+      ]
     }
   },
   {
     title: 'Naked Triple',
     slug: 'naked-triple',
     tier: 'Simple',
-    description: 'Three cells in the same unit containing only three candidates (in any combination). Those candidates can be eliminated from other cells in the unit.',
-    example: 'Cells with {1,2}, {2,3}, and {1,3} form a naked triple. Eliminate 1, 2, 3 from other cells in that unit.',
+    description: 'Three cells in the same unit containing only three candidates between them (not every cell needs all three). These candidates are "locked" to the three cells and can be eliminated elsewhere in the unit. Note: cells can have subsets like {1,2}, {2,3}, {1,3} - they still form a naked triple on {1,2,3}.',
+    example: 'Three cells have candidates {1,2}, {2,3}, and {1,3}. Together they only use three digits (1, 2, 3), so these must go in those cells. Eliminate 1, 2, and 3 from all other cells in the unit.',
     relatedTechniques: ['naked-pair', 'naked-quad', 'hidden-triple'],
     diagram: {
       cells: [
@@ -293,14 +492,60 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 0, col: 7, candidates: [1, 2, 9], highlight: 'elimination', eliminatedCandidates: [1, 2] },
         { row: 0, col: 8, value: 4 },
       ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find three cells with candidates from only 3 digits',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2], highlight: 'secondary' },
+            { row: 0, col: 1, candidates: [2, 3], highlight: 'secondary' },
+            { row: 0, col: 2, candidates: [1, 3], highlight: 'secondary' },
+            { row: 0, col: 3, candidates: [1, 4, 5] },
+            { row: 0, col: 4, value: 6 },
+            { row: 0, col: 5, candidates: [2, 3, 7] },
+            { row: 0, col: 6, value: 8 },
+            { row: 0, col: 7, candidates: [1, 2, 9] },
+            { row: 0, col: 8, value: 4 },
+          ]
+        },
+        {
+          description: '{1,2}, {2,3}, {1,3} together use only 1, 2, 3',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [2, 3], highlight: 'primary' },
+            { row: 0, col: 2, candidates: [1, 3], highlight: 'primary' },
+            { row: 0, col: 3, candidates: [1, 4, 5] },
+            { row: 0, col: 4, value: 6 },
+            { row: 0, col: 5, candidates: [2, 3, 7] },
+            { row: 0, col: 6, value: 8 },
+            { row: 0, col: 7, candidates: [1, 2, 9] },
+            { row: 0, col: 8, value: 4 },
+          ]
+        },
+        {
+          description: 'Eliminate 1, 2, 3 from other cells in the row',
+          cells: [
+            { row: 0, col: 0, candidates: [1, 2], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [2, 3], highlight: 'primary' },
+            { row: 0, col: 2, candidates: [1, 3], highlight: 'primary' },
+            { row: 0, col: 3, candidates: [1, 4, 5], highlight: 'elimination', eliminatedCandidates: [1] },
+            { row: 0, col: 4, value: 6 },
+            { row: 0, col: 5, candidates: [2, 3, 7], highlight: 'elimination', eliminatedCandidates: [2, 3] },
+            { row: 0, col: 6, value: 8 },
+            { row: 0, col: 7, candidates: [1, 2, 9], highlight: 'elimination', eliminatedCandidates: [1, 2] },
+            { row: 0, col: 8, value: 4 },
+          ]
+        }
+      ]
     }
   },
   {
     title: 'Hidden Triple',
     slug: 'hidden-triple',
     tier: 'Simple',
-    description: 'Three candidates that only appear in three cells of a unit. All other candidates can be eliminated from those three cells.',
-    example: 'If 2, 5, and 9 only appear in three specific cells of box 4, remove all other candidates from those cells.',
+    description: 'Three candidates that only appear in exactly three cells of a unit. Even though these cells may have other candidates, the three "hidden" candidates must go in these cells. We can eliminate all other candidates from these three cells.',
+    example: 'In Box 4, candidates 2, 5, and 9 only appear in three specific cells (even though those cells have other candidates). Since 2, 5, and 9 must occupy these cells, remove all other candidates from them.',
     relatedTechniques: ['hidden-pair', 'naked-triple'],
     diagram: {
       cells: [
@@ -320,8 +565,8 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'Naked Quad',
     slug: 'naked-quad',
     tier: 'Medium',
-    description: 'Four cells in the same unit containing only four candidates. Those candidates can be eliminated from other cells in the unit.',
-    example: 'Four cells with candidates from {1,2,5,7} form a naked quad. Eliminate 1, 2, 5, 7 from other cells in that unit.',
+    description: 'Four cells in the same unit containing only four candidates between them. Like Naked Triple, not every cell needs all four candidates. These four digits are locked to the four cells and can be eliminated from all other cells in the unit.',
+    example: 'Four cells have candidates drawn from {1,2,5,7} - for example {1,2}, {2,5,7}, {1,5}, {1,7}. These four digits must fill these four cells, so eliminate 1, 2, 5, and 7 from other cells in the unit.',
     relatedTechniques: ['naked-pair', 'naked-triple'],
     diagram: {
       cells: [
@@ -341,8 +586,8 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'Hidden Quad',
     slug: 'hidden-quad',
     tier: 'Medium',
-    description: 'Four candidates that only appear in four cells of a unit. All other candidates can be eliminated from those four cells.',
-    example: 'If 1, 4, 6, and 8 only appear in four specific cells of row 7, remove all other candidates from those cells.',
+    description: 'Four candidates that only appear in exactly four cells of a unit. Even though these cells may have other candidates, the four "hidden" candidates must occupy these cells. We can eliminate all other candidates from these four cells. Hidden Quads are rare but powerful.',
+    example: 'In row 7, candidates 1, 4, 6, and 8 only appear in four specific cells. Since these four digits must fill those cells, remove all other candidates from them.',
     relatedTechniques: ['hidden-triple'],
     diagram: {
       cells: [
@@ -362,9 +607,9 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'X-Wing',
     slug: 'x-wing',
     tier: 'Medium',
-    description: 'When a candidate appears in exactly two cells in each of two rows, and these cells are in the same two columns, the candidate can be eliminated from other cells in those columns.',
-    example: 'If 3 appears only in columns 2 and 7 of both rows 1 and 5, eliminate 3 from columns 2 and 7 in other rows.',
-    relatedTechniques: ['swordfish'],
+    description: 'A powerful Fish technique: when a candidate appears in exactly two cells in each of two rows, and these four cells align in exactly two columns, the candidate forms an "X" pattern. One of each pair must be true, which means we can eliminate that candidate from all other cells in those two columns. The same logic works with columns as the base and rows for elimination.',
+    example: 'Digit 3 appears in exactly two cells in row 2 (columns 3 and 8) and exactly two cells in row 6 (same columns 3 and 8). This forms an X-Wing. We can eliminate 3 from all other cells in columns 3 and 8.',
+    relatedTechniques: ['swordfish', 'finned-x-wing'],
     diagram: {
       cells: [
         { row: 1, col: 2, candidates: [1, 3], highlight: 'primary' },
@@ -376,15 +621,58 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 2, col: 7, candidates: [3, 8], highlight: 'elimination', eliminatedCandidates: [3] },
         { row: 7, col: 7, candidates: [1, 3], highlight: 'elimination', eliminatedCandidates: [3] },
       ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find a digit with exactly 2 positions in two rows',
+          cells: [
+            { row: 1, col: 2, candidates: [1, 3], highlight: 'secondary' },
+            { row: 1, col: 7, candidates: [3, 5], highlight: 'secondary' },
+            { row: 5, col: 2, candidates: [3, 6], highlight: 'secondary' },
+            { row: 5, col: 7, candidates: [3, 9], highlight: 'secondary' },
+            { row: 0, col: 2, candidates: [2, 3, 4] },
+            { row: 3, col: 2, candidates: [3, 7] },
+            { row: 2, col: 7, candidates: [3, 8] },
+            { row: 7, col: 7, candidates: [1, 3] },
+          ]
+        },
+        {
+          description: 'Digit 3 forms an X in rows 2 & 6, columns 3 & 8',
+          cells: [
+            { row: 1, col: 2, candidates: [1, 3], highlight: 'primary' },
+            { row: 1, col: 7, candidates: [3, 5], highlight: 'primary' },
+            { row: 5, col: 2, candidates: [3, 6], highlight: 'primary' },
+            { row: 5, col: 7, candidates: [3, 9], highlight: 'primary' },
+            { row: 0, col: 2, candidates: [2, 3, 4] },
+            { row: 3, col: 2, candidates: [3, 7] },
+            { row: 2, col: 7, candidates: [3, 8] },
+            { row: 7, col: 7, candidates: [1, 3] },
+          ]
+        },
+        {
+          description: 'Eliminate 3 from other cells in columns 3 & 8',
+          cells: [
+            { row: 1, col: 2, candidates: [1, 3], highlight: 'primary' },
+            { row: 1, col: 7, candidates: [3, 5], highlight: 'primary' },
+            { row: 5, col: 2, candidates: [3, 6], highlight: 'primary' },
+            { row: 5, col: 7, candidates: [3, 9], highlight: 'primary' },
+            { row: 0, col: 2, candidates: [2, 3, 4], highlight: 'elimination', eliminatedCandidates: [3] },
+            { row: 3, col: 2, candidates: [3, 7], highlight: 'elimination', eliminatedCandidates: [3] },
+            { row: 2, col: 7, candidates: [3, 8], highlight: 'elimination', eliminatedCandidates: [3] },
+            { row: 7, col: 7, candidates: [1, 3], highlight: 'elimination', eliminatedCandidates: [3] },
+          ]
+        }
+      ]
     }
   },
   {
     title: 'XY-Wing',
     slug: 'xy-wing',
     tier: 'Medium',
-    description: 'Three cells forming a "Y" pattern with bivalue cells. The pivot cell shares one candidate with each wing. Cells that see both wings can have the common candidate eliminated.',
-    example: 'Pivot {2,5}, wings {2,8} and {5,8}. Cells seeing both wings can eliminate 8.',
-    relatedTechniques: ['w-wing', 'xy-chain'],
+    description: 'Three bivalue cells forming a "Y" pattern. The pivot cell has candidates {X,Y} and sees two wing cells with {X,Z} and {Y,Z}. The key insight: if the pivot is X, the {Y,Z} wing must be Z; if the pivot is Y, the {X,Z} wing must be Z. Either way, one wing is Z! Any cell that sees both wings can eliminate Z.',
+    example: 'Pivot cell has {2,5}. One wing has {2,8}, the other has {5,8}. If pivot=2, then the {5,8} wing must be 8. If pivot=5, then the {2,8} wing must be 8. Either way, 8 is in a wing! Cells seeing both wings can eliminate 8.',
+    relatedTechniques: ['w-wing', 'xyz-wing', 'xy-chain'],
     diagram: {
       cells: [
         { row: 4, col: 4, candidates: [2, 5], highlight: 'primary' },
@@ -392,15 +680,55 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 0, col: 4, candidates: [5, 8], highlight: 'secondary' },
         { row: 0, col: 0, candidates: [3, 8], highlight: 'elimination', eliminatedCandidates: [8] },
       ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find a pivot cell with 2 candidates',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [2, 8] },
+            { row: 0, col: 4, candidates: [5, 8] },
+            { row: 0, col: 0, candidates: [3, 8] },
+          ]
+        },
+        {
+          description: 'Find wings sharing one candidate each with pivot',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [2, 8], highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [5, 8], highlight: 'secondary' },
+            { row: 0, col: 0, candidates: [3, 8] },
+          ]
+        },
+        {
+          description: 'Wings share candidate 8 - one wing must be 8!',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [2, 8], highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [5, 8], highlight: 'secondary' },
+            { row: 0, col: 0, candidates: [3, 8] },
+          ]
+        },
+        {
+          description: 'Eliminate 8 from cells seeing both wings',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [2, 8], highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [5, 8], highlight: 'secondary' },
+            { row: 0, col: 0, candidates: [3, 8], highlight: 'elimination', eliminatedCandidates: [8] },
+          ]
+        }
+      ]
     }
   },
   {
     title: 'Simple Coloring',
     slug: 'simple-coloring',
     tier: 'Medium',
-    description: 'Assign two colors to candidates in a chain of conjugate pairs for a single digit. If two cells of the same color see each other, that color is false.',
-    example: 'Color cells with 4 in conjugate chains. If two "blue" cells see each other, all blue cells can eliminate 4.',
-    relatedTechniques: ['x-chain'],
+    description: 'A chain-based technique using conjugate pairs for a single digit. Color alternating cells in the chain with two colors (like blue/green). If two cells of the same color see each other, that color is false everywhere (Color Trap). If a cell outside the chain sees both colors, that candidate can be eliminated (Color Wrap).',
+    example: 'Build a chain of conjugate pairs for digit 4. Color them alternately blue/green. If two blue cells are in the same row, all blue cells cannot be 4. Or if an uncolored cell sees both a blue and green 4, it cannot be 4.',
+    relatedTechniques: ['x-chain', 'medusa-3d'],
     diagram: {
       cells: [
         { row: 0, col: 0, candidates: [4], highlight: 'primary' },
@@ -416,9 +744,9 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'Swordfish',
     slug: 'swordfish',
     tier: 'Medium',
-    description: 'An extension of X-Wing to three rows and three columns. When a candidate appears in 2-3 cells per row across three rows, and all positions fall in the same three columns.',
-    example: 'If 7 in rows 2, 5, 8 only appears in columns 1, 4, 9, eliminate 7 from these columns in other rows.',
-    relatedTechniques: ['x-wing', 'jellyfish'],
+    description: 'An extension of X-Wing to three rows and three columns. When a candidate appears in 2-3 cells per row across exactly three rows, and all these positions fall within exactly three columns, one position per column must be true. This allows eliminating that candidate from other cells in those three columns.',
+    example: 'Digit 7 appears in rows 3, 6, 9, but only in columns 2, 5, 9. Each row has 2-3 occurrences, all within these columns. We can eliminate 7 from columns 2, 5, 9 in all other rows.',
+    relatedTechniques: ['x-wing', 'jellyfish', 'finned-swordfish'],
     diagram: {
       cells: [
         { row: 2, col: 1, candidates: [7], highlight: 'primary' },
@@ -431,15 +759,61 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 6, col: 4, candidates: [2, 7], highlight: 'elimination', eliminatedCandidates: [7] },
         { row: 3, col: 8, candidates: [5, 7], highlight: 'elimination', eliminatedCandidates: [7] },
       ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find a digit in 2-3 positions per row across 3 rows',
+          cells: [
+            { row: 2, col: 1, candidates: [7], highlight: 'secondary' },
+            { row: 2, col: 4, candidates: [7], highlight: 'secondary' },
+            { row: 5, col: 4, candidates: [7], highlight: 'secondary' },
+            { row: 5, col: 8, candidates: [7], highlight: 'secondary' },
+            { row: 8, col: 1, candidates: [7], highlight: 'secondary' },
+            { row: 8, col: 8, candidates: [7], highlight: 'secondary' },
+            { row: 0, col: 1, candidates: [3, 7] },
+            { row: 6, col: 4, candidates: [2, 7] },
+            { row: 3, col: 8, candidates: [5, 7] },
+          ]
+        },
+        {
+          description: 'Digit 7 in rows 3, 6, 9 spans only columns 2, 5, 9',
+          cells: [
+            { row: 2, col: 1, candidates: [7], highlight: 'primary' },
+            { row: 2, col: 4, candidates: [7], highlight: 'primary' },
+            { row: 5, col: 4, candidates: [7], highlight: 'primary' },
+            { row: 5, col: 8, candidates: [7], highlight: 'primary' },
+            { row: 8, col: 1, candidates: [7], highlight: 'primary' },
+            { row: 8, col: 8, candidates: [7], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [3, 7] },
+            { row: 6, col: 4, candidates: [2, 7] },
+            { row: 3, col: 8, candidates: [5, 7] },
+          ]
+        },
+        {
+          description: 'Eliminate 7 from those columns in other rows',
+          cells: [
+            { row: 2, col: 1, candidates: [7], highlight: 'primary' },
+            { row: 2, col: 4, candidates: [7], highlight: 'primary' },
+            { row: 5, col: 4, candidates: [7], highlight: 'primary' },
+            { row: 5, col: 8, candidates: [7], highlight: 'primary' },
+            { row: 8, col: 1, candidates: [7], highlight: 'primary' },
+            { row: 8, col: 8, candidates: [7], highlight: 'primary' },
+            { row: 0, col: 1, candidates: [3, 7], highlight: 'elimination', eliminatedCandidates: [7] },
+            { row: 6, col: 4, candidates: [2, 7], highlight: 'elimination', eliminatedCandidates: [7] },
+            { row: 3, col: 8, candidates: [5, 7], highlight: 'elimination', eliminatedCandidates: [7] },
+          ]
+        }
+      ]
     }
   },
   {
     title: 'Jellyfish',
     slug: 'jellyfish',
     tier: 'Hard',
-    description: 'Extension of Swordfish to four rows and four columns. When a candidate appears in 2-4 cells per row across four rows, and all positions fall in the same four columns.',
-    example: 'If 6 in rows 1, 3, 6, 9 only appears in columns 2, 4, 5, 8, eliminate 6 from these columns in other rows.',
-    relatedTechniques: ['swordfish'],
+    description: 'The largest practical Fish technique: extends Swordfish to four rows and four columns. When a candidate appears in 2-4 cells per row across exactly four rows, and all positions fall within exactly four columns. Rarely needed but very powerful when it appears.',
+    example: 'Digit 6 appears in rows 1, 3, 6, 9, and only in columns 2, 4, 5, 8 across those rows. We can eliminate 6 from columns 2, 4, 5, 8 in all other rows.',
+    relatedTechniques: ['swordfish', 'x-wing'],
     diagram: {
       cells: [
         { row: 0, col: 1, candidates: [6], highlight: 'primary' },
@@ -459,8 +833,9 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'Skyscraper',
     slug: 'skyscraper',
     tier: 'Hard',
-    description: 'Two rows (or columns) each have a candidate in exactly two cells. One end of each "skyscraper" shares a column (or row), creating an elimination opportunity.',
-    example: 'Two rows with 5 in two cells, sharing one column. Cells seeing both unshared ends can eliminate 5.',
+    description: 'A turbot-fish pattern: two rows (or columns) each have a candidate in exactly two cells, forming two parallel "towers." When one end of each tower shares a column (or row), they create a strong link chain. Cells seeing both unshared ends can eliminate that candidate.',
+    example: 'Row 2 has 5 in columns 3 and 7. Row 8 has 5 in columns 3 and 9. They share column 3. Cells that see both column 7 in row 2 AND column 9 in row 8 can eliminate 5.',
+    relatedTechniques: ['x-chain', 'empty-rectangle'],
     diagram: {
       cells: [
         { row: 1, col: 2, candidates: [5], highlight: 'primary' },
@@ -470,15 +845,63 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 1, col: 8, candidates: [2, 5], highlight: 'elimination', eliminatedCandidates: [5] },
         { row: 7, col: 6, candidates: [5, 9], highlight: 'elimination', eliminatedCandidates: [5] },
       ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find two rows with a digit in exactly 2 positions each',
+          cells: [
+            { row: 1, col: 2, candidates: [5], highlight: 'secondary' },
+            { row: 1, col: 6, candidates: [5], highlight: 'secondary' },
+            { row: 7, col: 2, candidates: [5], highlight: 'secondary' },
+            { row: 7, col: 8, candidates: [5], highlight: 'secondary' },
+            { row: 1, col: 8, candidates: [2, 5] },
+            { row: 7, col: 6, candidates: [5, 9] },
+          ]
+        },
+        {
+          description: 'The towers share column 3 - this is the base',
+          cells: [
+            { row: 1, col: 2, candidates: [5], highlight: 'primary' },
+            { row: 1, col: 6, candidates: [5], highlight: 'secondary' },
+            { row: 7, col: 2, candidates: [5], highlight: 'primary' },
+            { row: 7, col: 8, candidates: [5], highlight: 'secondary' },
+            { row: 1, col: 8, candidates: [2, 5] },
+            { row: 7, col: 6, candidates: [5, 9] },
+          ]
+        },
+        {
+          description: 'The unshared ends are the "tops" of the skyscrapers',
+          cells: [
+            { row: 1, col: 2, candidates: [5], highlight: 'primary' },
+            { row: 1, col: 6, candidates: [5], highlight: 'secondary' },
+            { row: 7, col: 2, candidates: [5], highlight: 'primary' },
+            { row: 7, col: 8, candidates: [5], highlight: 'secondary' },
+            { row: 1, col: 8, candidates: [2, 5] },
+            { row: 7, col: 6, candidates: [5, 9] },
+          ]
+        },
+        {
+          description: 'Cells seeing both tops can eliminate 5',
+          cells: [
+            { row: 1, col: 2, candidates: [5], highlight: 'primary' },
+            { row: 1, col: 6, candidates: [5], highlight: 'secondary' },
+            { row: 7, col: 2, candidates: [5], highlight: 'primary' },
+            { row: 7, col: 8, candidates: [5], highlight: 'secondary' },
+            { row: 1, col: 8, candidates: [2, 5], highlight: 'elimination', eliminatedCandidates: [5] },
+            { row: 7, col: 6, candidates: [5, 9], highlight: 'elimination', eliminatedCandidates: [5] },
+          ]
+        }
+      ]
     }
   },
   {
     title: 'Finned X-Wing',
     slug: 'finned-x-wing',
     tier: 'Extreme',
-    description: 'An X-Wing pattern with extra candidates (fins) in one corner. The pattern still works for eliminations that also see the fin.',
-    example: 'X-Wing on 4 with an extra 4 in one corner box. Eliminate 4 from cells that see both an X-Wing corner and the fin.',
-    relatedTechniques: ['x-wing'],
+    description: 'An X-Wing pattern with extra candidates (fins) in one corner box. The fin "breaks" the pure X-Wing, but eliminations are still possible for cells that see both an X-Wing corner AND the fin. If the fin is true, it eliminates; if false, the pure X-Wing eliminates.',
+    example: 'X-Wing on digit 4 with corners at R2C3, R2C8, R6C3, R6C8. An extra 4 exists at R6C9 (the fin). Cells that see R6C8 (the adjacent corner) AND R6C9 (the fin) can eliminate 4.',
+    relatedTechniques: ['x-wing', 'finned-swordfish'],
     diagram: {
       cells: [
         { row: 1, col: 2, candidates: [4], highlight: 'primary' },
@@ -494,9 +917,9 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'W-Wing',
     slug: 'w-wing',
     tier: 'Hard',
-    description: 'Two cells with identical bivalue candidates connected by a strong link on one of those candidates. The other candidate can be eliminated from cells seeing both.',
-    example: 'Two {3,7} cells connected by a strong link on 3. Cells seeing both can eliminate 7.',
-    relatedTechniques: ['xy-wing'],
+    description: 'Two bivalue cells with identical candidates {X,Y}, connected by a strong link on one candidate (say X). If cell A is Y, it forces the strong link to make cell B also Y - impossible since they see each other! So one must be X, the other Y. Cells seeing both can eliminate Y.',
+    example: 'Two cells both have {3,7}. A strong link on 3 connects them via intermediate cells. If both were 7, the strong link forces a contradiction. So cells seeing both bivalue cells can eliminate 7.',
+    relatedTechniques: ['xy-wing', 'xy-chain'],
     diagram: {
       cells: [
         { row: 0, col: 0, candidates: [3, 7], highlight: 'primary' },
@@ -506,15 +929,74 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 0, col: 8, candidates: [1, 7], highlight: 'elimination', eliminatedCandidates: [7] },
         { row: 6, col: 0, candidates: [4, 7], highlight: 'elimination', eliminatedCandidates: [7] },
       ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find two bivalue cells with the same candidates',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 7], highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [3] },
+            { row: 6, col: 4, candidates: [3] },
+            { row: 6, col: 8, candidates: [3, 7], highlight: 'secondary' },
+            { row: 0, col: 8, candidates: [1, 7] },
+            { row: 6, col: 0, candidates: [4, 7] },
+          ]
+        },
+        {
+          description: 'Both cells have {3,7}',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 7], highlight: 'primary' },
+            { row: 0, col: 4, candidates: [3] },
+            { row: 6, col: 4, candidates: [3] },
+            { row: 6, col: 8, candidates: [3, 7], highlight: 'primary' },
+            { row: 0, col: 8, candidates: [1, 7] },
+            { row: 6, col: 0, candidates: [4, 7] },
+          ]
+        },
+        {
+          description: 'A strong link on 3 connects them via column 5',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 7], highlight: 'primary' },
+            { row: 0, col: 4, candidates: [3], highlight: 'secondary' },
+            { row: 6, col: 4, candidates: [3], highlight: 'secondary' },
+            { row: 6, col: 8, candidates: [3, 7], highlight: 'primary' },
+            { row: 0, col: 8, candidates: [1, 7] },
+            { row: 6, col: 0, candidates: [4, 7] },
+          ]
+        },
+        {
+          description: 'If both bivalue cells are 7, the strong link breaks - impossible!',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 7], highlight: 'primary' },
+            { row: 0, col: 4, candidates: [3], highlight: 'secondary' },
+            { row: 6, col: 4, candidates: [3], highlight: 'secondary' },
+            { row: 6, col: 8, candidates: [3, 7], highlight: 'primary' },
+            { row: 0, col: 8, candidates: [1, 7] },
+            { row: 6, col: 0, candidates: [4, 7] },
+          ]
+        },
+        {
+          description: 'Cells seeing both bivalue cells can eliminate 7',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 7], highlight: 'primary' },
+            { row: 0, col: 4, candidates: [3], highlight: 'secondary' },
+            { row: 6, col: 4, candidates: [3], highlight: 'secondary' },
+            { row: 6, col: 8, candidates: [3, 7], highlight: 'primary' },
+            { row: 0, col: 8, candidates: [1, 7], highlight: 'elimination', eliminatedCandidates: [7] },
+            { row: 6, col: 0, candidates: [4, 7], highlight: 'elimination', eliminatedCandidates: [7] },
+          ]
+        }
+      ]
     }
   },
   {
     title: 'X-Chain',
     slug: 'x-chain',
     tier: 'Hard',
-    description: 'A chain of cells connected by conjugate pairs for a single digit. Cells that see both ends of an even-length chain can eliminate that digit.',
-    example: 'Chain of 6s: A-B-C-D (4 cells, even). Any cell seeing both A and D can eliminate 6.',
-    relatedTechniques: ['simple-coloring', 'xy-chain'],
+    description: 'A chain of conjugate pairs for a single digit, alternating between strong links. In an even-length chain, the endpoints have opposite polarity - one must be true, one false. Any cell seeing both endpoints can eliminate that digit. X-Chains extend Simple Coloring with a focus on specific elimination targets.',
+    example: 'Chain of digit 6: A→B→C→D (4 cells, even length). A and D have opposite truth values. Any cell that sees both A and D cannot be 6.',
+    relatedTechniques: ['simple-coloring', 'xy-chain', 'aic'],
     diagram: {
       cells: [
         { row: 0, col: 0, candidates: [6], highlight: 'primary' },
@@ -529,9 +1011,9 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'XY-Chain',
     slug: 'xy-chain',
     tier: 'Hard',
-    description: 'A chain of bivalue cells where each cell shares one candidate with its neighbors. The chain\'s endpoints determine what can be eliminated.',
-    example: 'Chain: {2,5}-{5,8}-{8,3}-{3,2}. Cells seeing both ends can eliminate 2.',
-    relatedTechniques: ['xy-wing', 'x-chain'],
+    description: 'A chain of bivalue cells where each adjacent pair shares exactly one candidate. The chain alternates: if cell A is X, cell B must be Y (not X), forcing C to be Z (not Y), and so on. If both endpoints share a common candidate, cells seeing both ends can eliminate it.',
+    example: 'Chain: {2,5}→{5,8}→{8,3}→{3,2}. If start is 2, end must be 3. If start is 5, following the chain, end is 2. Either way, cells seeing both ends can eliminate 2.',
+    relatedTechniques: ['xy-wing', 'x-chain', 'aic'],
     diagram: {
       cells: [
         { row: 0, col: 0, candidates: [2, 5], highlight: 'primary' },
@@ -547,14 +1029,54 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'Unique Rectangle',
     slug: 'unique-rectangle',
     tier: 'Medium',
-    description: 'Uses the assumption that valid Sudoku puzzles have unique solutions. If four cells would form a "deadly pattern" allowing two solutions, something must break it.',
-    example: 'If cells form a rectangle with same two candidates, and one has extra candidates, those extras must be true.',
+    description: 'Exploits the uniqueness assumption: valid Sudoku puzzles have exactly one solution. A "deadly pattern" is four cells in two rows and two boxes sharing exactly two candidates - this would allow swapping the digits without violating rules, creating multiple solutions. Since puzzles must be unique, we can use this to make eliminations.',
+    example: 'Four cells form a rectangle with candidates {3,7} in three corners and {3,5,7} in one corner. If that corner were only {3,7}, we\'d have a deadly pattern. So the 5 must be true - eliminate 3 and 7 from that cell.',
     diagram: {
       cells: [
         { row: 0, col: 0, candidates: [3, 7], highlight: 'secondary' },
         { row: 0, col: 4, candidates: [3, 7], highlight: 'secondary' },
         { row: 2, col: 0, candidates: [3, 7], highlight: 'secondary' },
         { row: 2, col: 4, candidates: [3, 5, 7], highlight: 'primary', eliminatedCandidates: [3, 7] },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find 4 cells in 2 rows and 2 boxes forming a rectangle',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 7], highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [3, 7], highlight: 'secondary' },
+            { row: 2, col: 0, candidates: [3, 7], highlight: 'secondary' },
+            { row: 2, col: 4, candidates: [3, 5, 7], highlight: 'secondary' },
+          ]
+        },
+        {
+          description: 'Three corners have exactly {3,7}',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 7], highlight: 'primary' },
+            { row: 0, col: 4, candidates: [3, 7], highlight: 'primary' },
+            { row: 2, col: 0, candidates: [3, 7], highlight: 'primary' },
+            { row: 2, col: 4, candidates: [3, 5, 7], highlight: 'secondary' },
+          ]
+        },
+        {
+          description: 'If R3C5 were also just {3,7}, we\'d have a deadly pattern!',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 7], highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [3, 7], highlight: 'secondary' },
+            { row: 2, col: 0, candidates: [3, 7], highlight: 'secondary' },
+            { row: 2, col: 4, candidates: [3, 5, 7], highlight: 'primary' },
+          ]
+        },
+        {
+          description: 'To avoid the deadly pattern, 5 must be true here',
+          cells: [
+            { row: 0, col: 0, candidates: [3, 7], highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [3, 7], highlight: 'secondary' },
+            { row: 2, col: 0, candidates: [3, 7], highlight: 'secondary' },
+            { row: 2, col: 4, candidates: [3, 5, 7], highlight: 'primary', eliminatedCandidates: [3, 7] },
+          ]
+        }
       ]
     },
     relatedTechniques: ['bug', 'als-xz'],
@@ -696,8 +1218,9 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'BUG',
     slug: 'bug',
     tier: 'Medium',
-    description: 'BUG (Bivalue Universal Grave) - When all unsolved cells have exactly 2 candidates except one with 3, that cell\'s unique candidate must be true.',
-    example: 'All cells have 2 candidates except R5C5 with {2,5,7}. Only 7 appears 3 times in its row/col/box, so place 7.',
+    description: 'BUG (Bivalue Universal Grave) exploits uniqueness: if every unsolved cell had exactly 2 candidates, multiple solutions would exist (a "deadly pattern"). When all cells are bivalue except one with 3 candidates, that extra candidate MUST be true to avoid the BUG state.',
+    example: 'Every unsolved cell has 2 candidates except R5C5 with {2,5,7}. Looking at R5C5\'s row, column, and box, only 7 would appear an odd number of times. The 7 must be placed to break the BUG.',
+    relatedTechniques: ['unique-rectangle'],
     diagram: {
       cells: [
         { row: 4, col: 4, candidates: [2, 5, 7], highlight: 'primary' },
@@ -706,14 +1229,59 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 0, col: 4, candidates: [2, 7], highlight: 'secondary' },
         { row: 8, col: 4, candidates: [5, 7], highlight: 'secondary' },
       ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Notice: all unsolved cells are bivalue (2 candidates)',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5, 7] },
+            { row: 4, col: 0, candidates: [2, 5], highlight: 'secondary' },
+            { row: 4, col: 8, candidates: [5, 7], highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [2, 7], highlight: 'secondary' },
+            { row: 8, col: 4, candidates: [5, 7], highlight: 'secondary' },
+          ]
+        },
+        {
+          description: 'Except ONE cell with 3 candidates - the BUG+1',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5, 7], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [2, 5], highlight: 'secondary' },
+            { row: 4, col: 8, candidates: [5, 7], highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [2, 7], highlight: 'secondary' },
+            { row: 8, col: 4, candidates: [5, 7], highlight: 'secondary' },
+          ]
+        },
+        {
+          description: 'If this cell were bivalue, we\'d have a deadly pattern',
+          cells: [
+            { row: 4, col: 4, candidates: [2, 5, 7], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [2, 5], highlight: 'secondary' },
+            { row: 4, col: 8, candidates: [5, 7], highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [2, 7], highlight: 'secondary' },
+            { row: 8, col: 4, candidates: [5, 7], highlight: 'secondary' },
+          ]
+        },
+        {
+          description: 'The "extra" candidate (7) must be true to break the BUG',
+          cells: [
+            { row: 4, col: 4, value: 7, highlight: 'primary' },
+            { row: 4, col: 0, candidates: [2, 5], highlight: 'secondary' },
+            { row: 4, col: 8, candidates: [5, 7], highlight: 'secondary' },
+            { row: 0, col: 4, candidates: [2, 7], highlight: 'secondary' },
+            { row: 8, col: 4, candidates: [5, 7], highlight: 'secondary' },
+          ]
+        }
+      ]
     }
   },
   {
     title: 'Empty Rectangle',
     slug: 'empty-rectangle',
     tier: 'Hard',
-    description: 'A box where a candidate forms an L-shape or plus pattern, with a strong link extending outside. This creates elimination opportunities.',
-    example: 'Box has 5 in L-shape; strong link on 5 extends to another row. Cells at intersection can eliminate 5.',
+    description: 'In a box, a candidate appears in an L-shape or plus pattern, leaving an "empty rectangle" in the corner. Combined with a conjugate pair outside the box, this creates a chain that enables eliminations. The empty rectangle acts as a grouped strong link.',
+    example: 'Box 4 has digit 5 only in an L-shape (rows 4-5, columns 1-2). A conjugate pair on 5 in column 8 connects to the ER. Cells at the intersection can eliminate 5.',
+    relatedTechniques: ['skyscraper', 'x-chain'],
     diagram: {
       cells: [
         { row: 3, col: 0, candidates: [5], highlight: 'primary' },
@@ -729,66 +1297,123 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'XYZ-Wing',
     slug: 'xyz-wing',
     tier: 'Medium',
-    description: 'A pivot cell with three candidates {X,Y,Z} connected to two wing cells with {X,Z} and {Y,Z}. Cells seeing all three can eliminate Z.',
-    example: 'Pivot {1,5,9}, wings {1,9} and {5,9}. Cells seeing all three can eliminate 9.',
+    description: 'An extension of XY-Wing: the pivot has THREE candidates {X,Y,Z} instead of two. The pivot sees wing cells with {X,Z} and {Y,Z}. No matter what the pivot becomes, one of the three cells must be Z. Cells seeing ALL three (pivot and both wings) can eliminate Z.',
+    example: 'Pivot has {1,5,9}. Wing 1 has {1,9}, Wing 2 has {5,9}. If pivot=1, Wing 1 becomes 9. If pivot=5, Wing 2 becomes 9. If pivot=9, it\'s 9. Cells seeing all three can eliminate 9.',
     relatedTechniques: ['xy-wing', 'wxyz-wing'],
+    diagram: {
+      cells: [
+        { row: 4, col: 4, candidates: [1, 5, 9], highlight: 'primary' },
+        { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },
+        { row: 3, col: 4, candidates: [5, 9], highlight: 'secondary' },
+        { row: 3, col: 3, candidates: [2, 9], highlight: 'elimination', eliminatedCandidates: [9] },
+      ]
+    },
+    animatedDiagram: {
+      steps: [
+        {
+          description: 'Find a pivot cell with 3 candidates',
+          cells: [
+            { row: 4, col: 4, candidates: [1, 5, 9], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [1, 9] },
+            { row: 3, col: 4, candidates: [5, 9] },
+            { row: 3, col: 3, candidates: [2, 9] },
+          ]
+        },
+        {
+          description: 'Find wings with {X,Z} and {Y,Z} - sharing Z with pivot',
+          cells: [
+            { row: 4, col: 4, candidates: [1, 5, 9], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },
+            { row: 3, col: 4, candidates: [5, 9], highlight: 'secondary' },
+            { row: 3, col: 3, candidates: [2, 9] },
+          ]
+        },
+        {
+          description: 'Wings {1,9} and {5,9} both share 9 with pivot',
+          cells: [
+            { row: 4, col: 4, candidates: [1, 5, 9], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },
+            { row: 3, col: 4, candidates: [5, 9], highlight: 'secondary' },
+            { row: 3, col: 3, candidates: [2, 9] },
+          ]
+        },
+        {
+          description: 'One of these three cells MUST be 9',
+          cells: [
+            { row: 4, col: 4, candidates: [1, 5, 9], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },
+            { row: 3, col: 4, candidates: [5, 9], highlight: 'secondary' },
+            { row: 3, col: 3, candidates: [2, 9] },
+          ]
+        },
+        {
+          description: 'Cells seeing all three can eliminate 9',
+          cells: [
+            { row: 4, col: 4, candidates: [1, 5, 9], highlight: 'primary' },
+            { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },
+            { row: 3, col: 4, candidates: [5, 9], highlight: 'secondary' },
+            { row: 3, col: 3, candidates: [2, 9], highlight: 'elimination', eliminatedCandidates: [9] },
+          ]
+        }
+      ]
+    }
   },
   {
     title: 'WXYZ-Wing',
     slug: 'wxyz-wing',
     tier: 'Hard',
-    description: 'An extension of XYZ-Wing with four cells and four candidates. Similar elimination logic applies to the common candidate.',
-    example: 'Four cells with candidates from {W,X,Y,Z} forming a wing pattern. The restricted common candidate can be eliminated.',
-    relatedTechniques: ['xyz-wing', 'xy-wing'],
+    description: 'Extension of XYZ-Wing to four cells with four candidates {W,X,Y,Z}. One candidate (the restricted common) appears in a way that guarantees it will be in one of the four cells. Cells seeing all relevant parts can eliminate that candidate.',
+    example: 'Four cells forming a wing pattern with candidates from {1,3,7,9}. If 9 is the restricted common, cells seeing all parts of the pattern where 9 appears can eliminate 9.',
+    relatedTechniques: ['xyz-wing', 'xy-wing', 'als-xz'],
   },
   {
     title: 'Finned Swordfish',
     slug: 'finned-swordfish',
     tier: 'Extreme',
-    description: 'A Swordfish pattern with extra candidates (fins) in one corner. Eliminations are possible for cells that see both the pattern and the fin.',
-    example: 'Swordfish on 7 with an extra 7 in one corner. Eliminate 7 from cells seeing both a pattern corner and the fin.',
+    description: 'A Swordfish pattern with extra candidates (fins) breaking the pure pattern. Like Finned X-Wing, eliminations are possible for cells that see both a Swordfish position AND the fin. This combines the power of Swordfish with finned logic.',
+    example: 'Swordfish on digit 7 across 3 rows/columns, with an extra 7 (fin) in one corner box. Cells seeing both that Swordfish corner and the fin can eliminate 7.',
     relatedTechniques: ['swordfish', 'finned-x-wing'],
   },
   {
     title: 'ALS-XZ',
     slug: 'als-xz',
     tier: 'Extreme',
-    description: 'Two Almost Locked Sets (ALS) sharing a restricted common candidate (X). Another common candidate (Z) can be eliminated from cells seeing both ALSs.',
-    example: 'ALS A and ALS B share candidate 5 (restricted). Candidate 3 appears in both. Eliminate 3 from cells seeing both.',
-    relatedTechniques: ['als-xy-wing', 'als-xy-chain'],
+    description: 'Two Almost Locked Sets connected by a Restricted Common Candidate (RCC). An ALS is N cells with N+1 candidates - remove one candidate and it becomes locked. When two ALSs share an RCC (candidate X that\'s restricted), they\'re linked. Another shared candidate (Z) can be eliminated from cells seeing Z in both ALSs.',
+    example: 'ALS A: 3 cells with {1,2,3,5}. ALS B: 2 cells with {2,5,7}. Candidate 2 is the RCC. Both also contain 5. Cells seeing 5 in both ALSs can eliminate 5.',
+    relatedTechniques: ['als-xy-wing', 'als-xy-chain', 'sue-de-coq'],
   },
   // Extreme tier techniques - for "impossible" difficulty
   {
     title: 'Sue de Coq',
     slug: 'sue-de-coq',
     tier: 'Extreme',
-    description: 'A complex technique involving a box-line intersection with specific candidate patterns that allow multiple eliminations.',
-    example: 'Cells at box-line intersection with candidates that must contain certain digits. Eliminate those digits from related cells.',
+    description: 'A powerful technique involving a box-line intersection (2-3 cells) that, together with cells from the line and box outside the intersection, forms a constrained pattern. The intersection contains specific candidates that must be distributed in a particular way, enabling multiple eliminations.',
+    example: 'Cells R1C1-R1C2 (in Box 1 and Row 1) have candidates {2,3,5,7}. Combined with a {2,3} cell in Row 1 and a {5,7} cell in Box 1, we know how candidates distribute, allowing eliminations.',
     relatedTechniques: ['als-xz'],
   },
   {
     title: '3D Medusa',
     slug: 'medusa-3d',
     tier: 'Hard',
-    description: 'An extension of simple coloring that uses both strong links within digits and bivalue cells to create a multi-digit coloring network.',
-    example: 'Color candidates across multiple digits using bivalue cells as bridges. Contradictions reveal eliminations.',
-    relatedTechniques: ['simple-coloring'],
+    description: 'Extends Simple Coloring to multiple digits by using bivalue cells as bridges. Color propagates through conjugate pairs (within a digit) AND through bivalue cells (between digits). Six rules detect contradictions and enable eliminations based on the multi-colored network.',
+    example: 'Start coloring digit 4. Reach a bivalue cell {4,7}. Continue coloring digit 7. If two cells of the same color see each other (same digit), or a cell has two candidates of the same color, that color is false.',
+    relatedTechniques: ['simple-coloring', 'aic'],
   },
   {
     title: 'Grouped X-Cycles',
     slug: 'grouped-x-cycles',
     tier: 'Extreme',
-    description: 'X-Cycles extended to include grouped nodes (multiple cells in a box acting as one node). Enables more complex chain logic.',
-    example: 'Chain on digit 4 with grouped nodes in boxes. Apply X-Cycle rules with groups as single nodes.',
-    relatedTechniques: ['x-chain', 'simple-coloring'],
+    description: 'X-Cycles where some nodes are "groups" - multiple cells in a box acting as a single node. When a candidate is confined to 2-3 cells in a box for a row/column, these cells form a grouped strong link. This extends X-Cycle reach significantly.',
+    example: 'Digit 4 in Box 1 only appears in Row 1 (cells R1C1, R1C2). This group acts as one node. Build a chain: Group→R1C7→R7C7→R7C3→(Group). Apply X-Cycle rules.',
+    relatedTechniques: ['x-chain', 'simple-coloring', 'aic'],
   },
   {
     title: 'AIC (Alternating Inference Chain)',
     slug: 'aic',
     tier: 'Extreme',
-    description: 'A chain of strong and weak links across multiple digits and cells. The chain endpoints determine what can be eliminated.',
-    example: 'Chain: A=5 → A=3 - B=3 → B=7. If A is 5, then B is 7. Cells seeing both endpoints can make eliminations.',
-    relatedTechniques: ['x-chain', 'xy-chain'],
+    description: 'The most general chaining technique: alternating strong and weak links across ANY candidates in ANY cells. Strong links: "if A is false, B is true." Weak links: "if A is true, B is false." Chain endpoints with the same candidate allow eliminations; endpoints with different candidates can set values.',
+    example: 'Chain: R1C1=5 → R1C1=3 - R5C1=3 → R5C1=7. Strong links (→) and weak links (-) alternate. Cells seeing both endpoints with candidate 5 and 7 respectively can make deductions.',
+    relatedTechniques: ['x-chain', 'xy-chain', 'forcing-chain'],
   },
   {
     title: 'ALS-XY-Wing',

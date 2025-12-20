@@ -4,6 +4,7 @@ import { getTechniqueBySlug, type TechniqueInfo, type TechniqueSubsection } from
 import { ChevronRightIcon } from './ui'
 import TechniqueDiagramView, { TechniqueDiagramLegend } from './TechniqueDiagram'
 import AnimatedDiagramView from './AnimatedDiagramView'
+import GlossaryLinkedText from './GlossaryLinkedText'
 import { getPracticePuzzle } from '../lib/puzzles-data'
 import { STORAGE_KEYS } from '../lib/constants'
 
@@ -33,7 +34,9 @@ function SubsectionView({ subsection, index }: SubsectionViewProps) {
       <h3 className="mb-2 text-lg font-semibold text-[var(--text)]">
         {subsection.title}
       </h3>
-      <p className="mb-3 text-[var(--text-muted)]">{subsection.description}</p>
+      <p className="mb-3 text-[var(--text-muted)]">
+        <GlossaryLinkedText text={subsection.description} />
+      </p>
       
       {subsection.diagram && (
         <div className="mb-3">
@@ -43,7 +46,7 @@ function SubsectionView({ subsection, index }: SubsectionViewProps) {
       
       <div className="rounded border border-[var(--border-light)] bg-[var(--cell-bg)] p-3">
         <p className="text-sm text-[var(--text)]">
-          <span className="font-medium">Example:</span> {subsection.example}
+          <span className="font-medium">Example:</span> <GlossaryLinkedText text={subsection.example} />
         </p>
       </div>
     </div>
@@ -156,7 +159,7 @@ export default function TechniqueDetailView({
           {isPage ? '⚙️ How it works' : 'How it works'}
         </h2>
         <p className={`${isPage ? '' : 'text-sm'} leading-relaxed text-[var(--text-muted)]`}>
-          {technique.description}
+          <GlossaryLinkedText text={technique.description} />
         </p>
       </div>
 
@@ -167,7 +170,7 @@ export default function TechniqueDetailView({
         </h2>
         <div className={`rounded-lg p-4 ${isPage ? 'border border-[var(--accent)] bg-[var(--accent-light)]' : 'bg-[var(--bg-secondary)]'}`}>
           <p className={`${isPage ? '' : 'text-sm'} leading-relaxed text-[var(--text${isPage ? '' : '-muted'})]`}>
-            {technique.example}
+            <GlossaryLinkedText text={technique.example} />
           </p>
         </div>
       </div>
