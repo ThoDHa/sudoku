@@ -1,12 +1,13 @@
 # Docker Compose for E2E Testing
-# Usage: docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
+# 
+# Usage: docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from playwright
 #
 # The frontend container includes WASM (compiled from Go) - no separate API needed.
-# E2E tests exercise the browser-based WASM solver, not the API directly.
+# E2E tests exercise the browser-based WASM solver, as users experience it.
 
 services:
-  # Frontend (nginx serving built app with WASM)
-  frontend:
+  # Sudoku app (nginx serving built app with WASM)
+  sudoku:
     build:
       context: .
       dockerfile: frontend/Dockerfile
@@ -27,10 +28,10 @@ services:
       - ./frontend:/app
       - playwright-cache:/app/node_modules
     depends_on:
-      frontend:
+      sudoku:
         condition: service_healthy
     environment:
-      - PLAYWRIGHT_BASE_URL=http://frontend:80
+      - PLAYWRIGHT_BASE_URL=http://sudoku:80
       - CI=true
     command: >
       sh -c "

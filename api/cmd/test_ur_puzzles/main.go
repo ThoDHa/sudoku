@@ -34,7 +34,7 @@ func main() {
 		fmt.Println("❌ NOT UNIQUE")
 		return
 	}
-	fmt.Println("✅ Valid puzzle\n")
+	fmt.Println("✅ Valid puzzle")
 
 	// Get the technique registry
 	registry := human.NewTechniqueRegistry()
@@ -49,7 +49,7 @@ func main() {
 	solver := human.NewSolver()
 	
 	fmt.Println("Solving step by step and testing UR detectors at each step...")
-	fmt.Println("=============================================================\n")
+	fmt.Println("=============================================================")
 	
 	for step := 0; step < constants.MaxSolverSteps; step++ {
 		// Count empty cells

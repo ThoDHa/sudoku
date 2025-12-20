@@ -79,7 +79,7 @@ The entire application runs locally in your browser - no server required after i
 - **Solver**: Go 1.23, WebAssembly, constraint propagation + backtracking
 - **State Management**: React hooks, Context API, localStorage persistence
 - **Performance**: Route-based code splitting, lazy loading, WASM worker threads
-- **Testing**: Playwright E2E, Jest unit tests, Go test suite
+- **Testing**: Vitest unit tests, Playwright E2E, Go test suite (all via Docker)
 
 ## 📊 Performance & Mobile Optimization
 
@@ -245,38 +245,52 @@ The solver implements techniques across 4 tiers:
 
 ### Prerequisites
 
+- Go 1.22+
 - Node.js 20+
-- Go 1.23+ (only for rebuilding WASM)
+- Docker (for E2E tests only)
+
+### Setup
+
+```bash
+# Install dependencies
+cd frontend && npm install && cd ..
+
+# Install git hooks (one-time setup)
+make install-hooks
+```
+
+This installs a pre-push hook that runs Go and Frontend tests before each push.
+
+### Run Tests
+
+```bash
+# Run all tests (same as pre-push hook)
+make test
+
+# Run Go tests only
+make test-go
+
+# Run Frontend tests only (TypeScript check + unit tests + build)
+make test-frontend
+
+# Run E2E tests (Playwright in Docker - use after big changes)
+make test-e2e
+```
 
 ### Rebuild WASM Solver
 
 ```bash
-cd api
-make wasm
+cd api && make wasm
 # Outputs to frontend/public/sudoku.wasm
 ```
 
 ### Regenerate Practice Puzzles
 
 ```bash
-docker run --rm -v "$(pwd):/app" -w /app/api golang:1.23-alpine \
-  go run ./cmd/generate_practice \
-    -puzzles /app/puzzles.json \
-    -o /app/practice_puzzles.json \
-    -max 5
-```
-
-### Run Tests
-
-```bash
-# Go tests
-cd api && go test ./...
-
-# Frontend unit tests
-cd frontend && npm run test:unit
-
-# E2E tests
-cd frontend && npm run test
+cd api && go run ./cmd/generate_practice \
+  -puzzles ../puzzles.json \
+  -o ../practice_puzzles.json \
+  -max 5
 ```
 
 ## Deployment
@@ -284,6 +298,8 @@ cd frontend && npm run test
 ### GitHub Pages (Automatic)
 
 Push to `main` branch - GitHub Actions will build and deploy automatically.
+
+**Note**: CI testing runs locally via pre-push git hooks (not in GitHub Actions). Run `make install-hooks` to set up.
 
 ### Docker
 

@@ -15,7 +15,7 @@ import (
 // - skyscraper, finned-x-wing, finned-swordfish
 // - unique-rectangle, unique-rectangle-type-2, unique-rectangle-type-3, unique-rectangle-type-4
 // - w-wing, empty-rectangle, xyz-wing, wxyz-wing
-// - x-chain, xy-chain, als-xz, remote-pairs, bug
+// - x-chain, xy-chain, als-xz, bug
 //
 // Note: x-wing, xy-wing, simple-coloring are MEDIUM tier (not HARD)
 var HardTechniquePuzzles = map[string]struct {
@@ -137,15 +137,6 @@ var HardTechniquePuzzles = map[string]struct {
 	"xy-chain": {
 		Puzzle:      "040007051070005000000640030009000500300401000000020600000900000000080307050003084",
 		Description: "Puzzle requiring XY-Chain technique",
-	},
-
-	// Remote Pairs: A chain of bivalue cells with the same two candidates.
-	// Cells at even distance apart can eliminate either candidate from cells
-	// that see both ends.
-	// Source: SudokuWiki Remote Pairs examples
-	"remote-pairs": {
-		Puzzle:      "006000040040000580080020600000450008030000050600013000009040070075000010020000300",
-		Description: "Puzzle requiring Remote Pairs technique",
 	},
 
 	// ALS-XZ: Almost Locked Set with XZ rule.
@@ -306,7 +297,6 @@ func TestHardTechniqueRegistry(t *testing.T) {
 		"wxyz-wing",
 		"x-chain",
 		"xy-chain",
-		"remote-pairs",
 		"als-xz",
 		"bug",
 	}

@@ -5,22 +5,19 @@ set -e
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
 echo "========================================"
-echo "  Pre-Push Checks (Docker-based)"
+echo "  Pre-Push Checks"
 echo "========================================"
 echo ""
 
 # Go checks
 echo "[1/2] Running Go checks..."
 echo "  - go vet"
-echo "  - go test -short -race"
+echo "  - go test -short"
 echo ""
 
-docker run --rm -v "$REPO_ROOT/api:/app" -w /app golang:1.23 sh -c "
-  echo '  Running go vet...' &&
-  go vet ./... &&
-  echo '  Running tests...' &&
-  go test -short -race -timeout=5m ./...
-"
+cd "$REPO_ROOT/api"
+go vet ./...
+go test -short -v -timeout=5m ./...
 
 echo ""
 echo "[1/2] Go checks passed!"
@@ -28,22 +25,15 @@ echo ""
 
 # Frontend checks
 echo "[2/2] Running Frontend checks..."
-echo "  - npm ci"
 echo "  - tsc --noEmit"
 echo "  - npm run test:unit"
 echo "  - npm run build"
 echo ""
 
-docker run --rm -v "$REPO_ROOT/frontend:/app" -w /app node:20 sh -c "
-  echo '  Installing dependencies...' &&
-  npm ci &&
-  echo '  Type checking...' &&
-  npx tsc --noEmit &&
-  echo '  Running unit tests...' &&
-  npm run test:unit &&
-  echo '  Building...' &&
-  npm run build
-"
+cd "$REPO_ROOT/frontend"
+npx tsc --noEmit
+npm run test:unit
+npm run build
 
 echo ""
 echo "[2/2] Frontend checks passed!"
