@@ -6,6 +6,13 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { checkCacheVersion } from './lib/cache-version'
 import './index.css'
 
+// Type declaration for recovery script in index.html
+declare global {
+  interface Window {
+    __markAppReady?: () => void;
+  }
+}
+
 // Get base path from Vite's BASE_URL (set during build)
 // This handles GitHub Pages subpath (/sudoku/) vs root deployment (/)
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || ''
@@ -26,3 +33,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </React.StrictMode>,
 )
+
+// Signal that the app has booted successfully (for BFCache recovery script in index.html)
+// This prevents the recovery script from reloading the page unnecessarily
+window.__markAppReady?.()

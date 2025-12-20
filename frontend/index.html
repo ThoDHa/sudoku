@@ -11,6 +11,81 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Sudoku" />
     <title>Sudoku</title>
+    <!-- BFCache / Chrome tab restoration recovery script -->
+    <!-- This runs BEFORE React to detect "zombie" states where JS didn't properly boot -->
+    <!-- On Android, force-killing Chrome can leave tabs in a "preview" state -->
+    <script>
+      (function() {
+        var appReady = false;
+        var recoveryPending = false;
+        
+        window.__markAppReady = function() { 
+          appReady = true; 
+          // Remove any recovery UI if it was shown
+          var el = document.getElementById('recovery-overlay');
+          if (el) el.remove();
+        };
+        
+        function getThemeColors() {
+          // Read theme from localStorage to match user's preference
+          var modePreference = localStorage.getItem('modePreference') || 'system';
+          var mode = modePreference;
+          if (modePreference === 'system') {
+            mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          // Default colors (blue theme)
+          if (mode === 'dark') {
+            return { bg: '#0f1729', accent: '#60a5fa', text: '#e2e8f0' };
+          } else {
+            return { bg: '#eff6ff', accent: '#2563eb', text: '#1e3a5f' };
+          }
+        }
+        
+        function showRecoveryUI() {
+          if (document.getElementById('recovery-overlay')) return;
+          var colors = getThemeColors();
+          var overlay = document.createElement('div');
+          overlay.id = 'recovery-overlay';
+          overlay.style.cssText = 'position:fixed;inset:0;background:' + colors.bg + ';display:flex;align-items:center;justify-content:center;z-index:9999';
+          overlay.innerHTML = '<div style="text-align:center;color:' + colors.text + '">' +
+            '<div style="width:32px;height:32px;border:3px solid ' + colors.accent + ';border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto"></div>' +
+            '<p style="margin-top:16px;font-size:14px">Restoring...</p>' +
+            '</div>' +
+            '<style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+          document.body.appendChild(overlay);
+        }
+        
+        function attemptRecovery(delay) {
+          if (recoveryPending || appReady) return;
+          recoveryPending = true;
+          
+          setTimeout(function() {
+            if (!appReady) {
+              showRecoveryUI();
+              // Small delay to show UI, then reload
+              setTimeout(function() {
+                if (!appReady) window.location.reload();
+              }, 300);
+            }
+            recoveryPending = false;
+          }, delay);
+        }
+        
+        // BFCache restoration - fires when page is restored from cache
+        window.addEventListener('pageshow', function(e) {
+          if (e.persisted && !appReady) {
+            attemptRecovery(2000); // 2 second timeout for BFCache
+          }
+        });
+        
+        // Fallback: visibility change (covers Chrome's tab discard/restore)
+        document.addEventListener('visibilitychange', function() {
+          if (document.visibilityState === 'visible' && !appReady) {
+            attemptRecovery(3000); // 3 second timeout for general visibility
+          }
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
