@@ -23,9 +23,13 @@ function AppContent() {
   const location = useLocation()
   
   // Game pages need less padding (slim header)
-  const isGamePage = location.pathname.startsWith('/p/') || 
-                     location.pathname.startsWith('/game/') || 
-                     location.pathname.startsWith('/c/')
+  // Game routes: /c/* for custom, or /:seed for daily/practice (anything not a known route)
+  const knownRoutes = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard']
+  const isKnownRoute = knownRoutes.some(route => 
+    location.pathname === route || location.pathname.startsWith(route + '/')
+  )
+  const isGamePage = location.pathname.startsWith('/c/') ||
+                     (!isKnownRoute && location.pathname !== '/')
 
   return (
     <div className="h-[100dvh] flex flex-col overflow-hidden bg-background text-foreground">
@@ -34,8 +38,6 @@ function AppContent() {
         <Suspense fallback={<PageLoading />}>
           <Routes>
             <Route path="/" element={<Homepage />} />
-            <Route path="/p/:seed" element={<Game />} />
-            <Route path="/game/:seed" element={<Game />} />
             <Route path="/c/:encoded" element={<Game />} />
             <Route path="/r" element={<Result />} />
             <Route path="/techniques" element={<Technique />} />
@@ -43,6 +45,8 @@ function AppContent() {
             <Route path="/technique/:slug" element={<Technique />} />
             <Route path="/custom" element={<Custom />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            {/* Catch-all for puzzles: /:seed (daily if YYYYMMDD format, otherwise practice) */}
+            <Route path="/:seed" element={<Game />} />
           </Routes>
         </Suspense>
       </main>

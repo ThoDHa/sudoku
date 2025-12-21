@@ -2,13 +2,14 @@ import { useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 
 interface UseWasmLifecycleOptions {
-  /** Routes that require WASM (default: game routes) */
-  wasmRoutes?: string[]
   /** Delay before unloading WASM when leaving routes (default: 2000ms) */
   unloadDelay?: number
   /** Enable console logging for WASM lifecycle events */
   enableLogging?: boolean
 }
+
+// Known non-game routes - everything else is a game route (/:seed or /c/:encoded)
+const KNOWN_NON_GAME_ROUTES = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard']
 
 /**
  * Hook to manage WASM loading and unloading based on current route
@@ -17,7 +18,6 @@ interface UseWasmLifecycleOptions {
  */
 export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   const {
-    wasmRoutes = ['/p/', '/game/', '/c/', '/custom'],
     unloadDelay = 2000,
     enableLogging = false
   } = options
@@ -33,8 +33,15 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   }, [enableLogging])
 
   const isWasmRoute = useCallback((pathname: string): boolean => {
-    return wasmRoutes.some(route => pathname.startsWith(route))
-  }, [wasmRoutes])
+    // Custom puzzles always need WASM
+    if (pathname.startsWith('/c/')) return true
+    // Check if it's a known non-game route
+    const isKnownRoute = KNOWN_NON_GAME_ROUTES.some(route => 
+      pathname === route || pathname.startsWith(route + '/')
+    )
+    // If not a known route and not homepage, it's a game route (/:seed)
+    return !isKnownRoute && pathname !== '/'
+  }, [])
 
   const loadWasm = useCallback(async () => {
     try {

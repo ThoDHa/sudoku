@@ -170,7 +170,6 @@ export default function Homepage() {
                 seed={data.seed}
                 lastSelected={difficulty}
                 onSelect={handleDailySelect}
-                routePrefix="/p"
                 resumeDifficulty={inProgressGame?.difficulty}
                 onBeforeNavigate={(path) => {
                   // Only show confirmation if clicking a DIFFERENT difficulty than the resumable one
@@ -195,7 +194,6 @@ export default function Homepage() {
                 seed={gameSeed}
                 lastSelected={null}
                 onSelect={handleGameSelect}
-                routePrefix="/game"
                 resumeDifficulty={inProgressGame?.difficulty}
                 resumeSeed={inProgressGame?.seed}
                 onBeforeNavigate={(path) => {

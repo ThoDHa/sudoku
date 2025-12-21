@@ -111,7 +111,7 @@ export default function Result() {
 
       <div className="mt-8 flex gap-4">
         <Link
-          to={`/game/${seed}?d=${difficulty}`}
+          to={`/${seed}?d=${difficulty}`}
           className="rounded-lg border border-board-border-light px-4 py-2 hover:bg-btn-hover text-foreground"
         >
           Try Again

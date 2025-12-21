@@ -1687,7 +1687,6 @@ ${bugReportJson}
                 seed={seed || ''}
                 lastSelected={null}
                 onSelect={() => {}}
-                routePrefix=""
                 onBeforeNavigate={(path) => {
                   // Extract difficulty from path (e.g., "/?d=medium" -> "medium")
                   const match = path.match(/d=(\w+)/)

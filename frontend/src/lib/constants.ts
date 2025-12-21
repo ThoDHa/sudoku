@@ -116,5 +116,5 @@ export function generatePuzzleSeed(): string {
 }
 
 export function createGameRoute(difficulty: string): string {
-  return `/game/${generatePuzzleSeed()}?d=${difficulty}`
+  return `/${generatePuzzleSeed()}?d=${difficulty}`
 }

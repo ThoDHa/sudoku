@@ -66,9 +66,13 @@ export default function Header() {
   }, [])
 
   // Hide header on game pages - they have their own UI
-  const isGamePage = location.pathname.startsWith('/p/') || 
-                     location.pathname.startsWith('/game/') || 
-                     location.pathname.startsWith('/c/')
+  // Game routes: /c/* for custom, or /:seed (anything not a known route)
+  const knownRoutes = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard']
+  const isKnownRoute = knownRoutes.some(route => 
+    location.pathname === route || location.pathname.startsWith(route + '/')
+  )
+  const isGamePage = location.pathname.startsWith('/c/') ||
+                     (!isKnownRoute && location.pathname !== '/')
 
   // Close menu on route change
   useEffect(() => {

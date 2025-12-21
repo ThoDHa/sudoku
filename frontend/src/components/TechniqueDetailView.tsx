@@ -95,7 +95,7 @@ export default function TechniqueDetailView({
     localStorage.setItem(storageKey, JSON.stringify(puzzle.givens))
     
     // Navigate to the puzzle
-    navigate(`/game/${seed}?d=${puzzle.difficulty}`)
+    navigate(`/${seed}?d=${puzzle.difficulty}`)
   }
 
   return (
