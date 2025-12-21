@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { TIMER_UPDATE_INTERVAL, MS_PER_SECOND } from '../lib/constants'
-import { useBackgroundManager } from './useBackgroundManager'
+import type { useBackgroundManager } from './useBackgroundManager'
+
+type BackgroundManagerReturn = ReturnType<typeof useBackgroundManager>
 
 interface UseGameTimerOptions {
   /** Whether to auto-start the timer (default: false) */
   autoStart?: boolean
   /** Pause timer when tab is hidden or window loses focus (default: true) */
   pauseOnHidden?: boolean
+  /** Background manager instance to use (required for shared context) */
+  backgroundManager: BackgroundManagerReturn
 }
 
 interface UseGameTimerReturn {
@@ -33,8 +37,8 @@ interface UseGameTimerReturn {
   * Uses central background manager for consistent visibility handling.
   * Auto-resumes when visible again to prevent cheating.
   */
-export function useGameTimer(options: UseGameTimerOptions = {}): UseGameTimerReturn {
-  const { autoStart = false, pauseOnHidden = true } = options
+export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
+  const { autoStart = false, pauseOnHidden = true, backgroundManager } = options
 
   const [elapsedMs, setElapsedMs] = useState(0)
   const [isRunning, setIsRunning] = useState(autoStart)
@@ -47,8 +51,7 @@ export function useGameTimer(options: UseGameTimerOptions = {}): UseGameTimerRet
   // Track if timer was running before visibility pause
   const wasRunningBeforePauseRef = useRef(false)
 
-  // Use central background manager
-  const backgroundManager = useBackgroundManager({ enabled: pauseOnHidden })
+  // Use the provided background manager (from shared context)
 
   const startTimer = useCallback(() => {
     if (!isRunning) {
@@ -101,6 +104,11 @@ export function useGameTimer(options: UseGameTimerOptions = {}): UseGameTimerRet
     }
 
     const interval = setInterval(() => {
+      // Direct visibility check as safety net for Android/mobile
+      // React state may be stale if visibility events fire late
+      if (document.visibilityState === 'hidden') {
+        return // Skip update when hidden
+      }
       if (startTimeRef.current !== null) {
         setElapsedMs(accumulatedRef.current + (Date.now() - startTimeRef.current))
       }

@@ -16,7 +16,7 @@ import { useGameContext } from '../lib/GameContext'
 import { useGameTimer } from '../hooks/useGameTimer'
 import { useSudokuGame } from '../hooks/useSudokuGame'
 import { useAutoSolve } from '../hooks/useAutoSolve'
-import { useBackgroundManager } from '../hooks/useBackgroundManager'
+import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import { useHighlightState } from '../hooks/useHighlightState'
 import type { MoveHighlight } from '../hooks/useHighlightState'
 import { useVisibilityAwareTimeout } from '../hooks/useVisibilityAwareTimeout'
@@ -171,7 +171,7 @@ export default function Game() {
   // ============================================================
 
   // Background manager for coordinating all background operations
-  const backgroundManager = useBackgroundManager()
+  const backgroundManager = useBackgroundManagerContext()
 
   // Visibility-aware timeouts for toast messages - cancelled on background
   const { setTimeout: visibilityAwareTimeout } = useVisibilityAwareTimeout()
@@ -213,7 +213,7 @@ export default function Game() {
    }, [backgroundManager.shouldPauseOperations])
 
    // Timer hook
-   const timer = useGameTimer({ pauseOnHidden: true })
+   const timer = useGameTimer({ pauseOnHidden: true, backgroundManager })
 
    // Game state hook - only initialize after we have the initial board
    const game = useSudokuGame({

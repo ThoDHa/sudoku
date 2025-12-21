@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useBackgroundManager } from '../hooks/useBackgroundManager'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import type { AnimatedTechniqueDiagram, DiagramCell } from '../lib/techniques'
 
 interface AnimatedDiagramViewProps {
@@ -15,7 +15,7 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
   const currentStepData = diagram.steps[currentStep]
 
   // Use background manager to pause animation when hidden
-  const backgroundManager = useBackgroundManager()
+  const backgroundManager = useBackgroundManagerContext()
 
   const cellSize = 20
   const boardSize = cellSize * 9
@@ -54,10 +54,13 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
   }
   
   // Create a map for quick cell lookup
-  const cellMap = new Map<string, DiagramCell>()
-  currentStepData.cells.forEach((cell: DiagramCell) => {
-    cellMap.set(`${cell.row}-${cell.col}`, cell)
-  })
+  const cellMap = useMemo(() => {
+    const map = new Map<string, DiagramCell>()
+    currentStepData.cells.forEach((cell: DiagramCell) => {
+      map.set(`${cell.row}-${cell.col}`, cell)
+    })
+    return map
+  }, [currentStepData])
   
   const getCellFill = (row: number, col: number) => {
     const cell = cellMap.get(`${row}-${col}`)

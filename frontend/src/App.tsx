@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
 import { GameProvider } from './lib/GameContext'
+import { BackgroundManagerProvider } from './lib/BackgroundManagerContext'
 import Header from './components/Header'
 
 // Lazy load all pages for code splitting
@@ -59,7 +60,9 @@ function App() {
   return (
     <ThemeProvider>
       <GameProvider>
-        <AppContent />
+        <BackgroundManagerProvider>
+          <AppContent />
+        </BackgroundManagerProvider>
       </GameProvider>
     </ThemeProvider>
   )
