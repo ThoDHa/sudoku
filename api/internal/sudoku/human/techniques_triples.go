@@ -37,22 +37,13 @@ func findNakedTripleInUnit(b *Board, indices []int, unitType string, unitNum int
 				idx1, idx2, idx3 := candidates[i], candidates[j], candidates[k]
 
 				// Union of candidates
-				union := make(map[int]bool)
-				for _, d := range b.Candidates[idx1].ToSlice() {
-					union[d] = true
-				}
-				for _, d := range b.Candidates[idx2].ToSlice() {
-					union[d] = true
-				}
-				for _, d := range b.Candidates[idx3].ToSlice() {
-					union[d] = true
-				}
+				union := b.Candidates[idx1].Union(b.Candidates[idx2]).Union(b.Candidates[idx3])
 
-				if len(union) != 3 {
+				if union.Count() != 3 {
 					continue
 				}
 
-				digits := getCandidateSlice(union)
+				digits := union.ToSlice()
 
 				// Find eliminations
 				var eliminations []core.Candidate
@@ -221,18 +212,13 @@ func findNakedQuadInUnit(b *Board, indices []int, unitType string, unitNum int) 
 				for l := k + 1; l < len(candidates); l++ {
 					idxs := []int{candidates[i], candidates[j], candidates[k], candidates[l]}
 
-					union := make(map[int]bool)
-					for _, idx := range idxs {
-						for _, d := range b.Candidates[idx].ToSlice() {
-							union[d] = true
-						}
-					}
+					union := b.Candidates[idxs[0]].Union(b.Candidates[idxs[1]]).Union(b.Candidates[idxs[2]]).Union(b.Candidates[idxs[3]])
 
-					if len(union) != 4 {
+					if union.Count() != 4 {
 						continue
 					}
 
-					digits := getCandidateSlice(union)
+					digits := union.ToSlice()
 
 					var eliminations []core.Candidate
 					for _, idx := range indices {

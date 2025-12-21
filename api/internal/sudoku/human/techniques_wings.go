@@ -167,19 +167,14 @@ func detectWXYZWing(b *Board) *core.Move {
 					quad := [4]int{cells[i], cells[j], cells[k], cells[l]}
 
 					// Check if these 4 cells contain exactly 4 distinct digits total
-					combined := make(map[int]bool)
-					for _, cell := range quad {
-						for _, d := range b.Candidates[cell].ToSlice() {
-							combined[d] = true
-						}
-					}
+					combined := b.Candidates[quad[0]].Union(b.Candidates[quad[1]]).Union(b.Candidates[quad[2]]).Union(b.Candidates[quad[3]])
 
-					if len(combined) != 4 {
+					if combined.Count() != 4 {
 						continue
 					}
 
 					// Get the 4 digits
-					digits := getCandidateSlice(combined)
+					digits := combined.ToSlice()
 
 					// Check connectivity: cells must be interlinked (form a valid pattern)
 					// At minimum, each cell must see at least one other cell in the quad
@@ -383,16 +378,14 @@ func findAllALS(b *Board) []ALS {
 			combos := Combinations(emptyCells, size)
 			for _, combo := range combos {
 				// Count combined candidates
-				combined := make(map[int]bool)
+				var combined Candidates
 				for _, cell := range combo {
-					for _, d := range b.Candidates[cell].ToSlice() {
-						combined[d] = true
-					}
+					combined = combined.Union(b.Candidates[cell])
 				}
 
 				// ALS: N cells with N+1 candidates
-				if len(combined) == size+1 {
-					digits := getCandidateSlice(combined)
+				if combined.Count() == size+1 {
+					digits := combined.ToSlice()
 
 					// Build digit-to-cells map
 					byDigit := make(map[int][]int)

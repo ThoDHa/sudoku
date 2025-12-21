@@ -255,31 +255,18 @@ func findEliminationDigits(b *Board, stem int, petals []ALS) []int {
 	}
 
 	// Start with digits from first petal
-	commonDigits := make(map[int]bool)
-	for _, d := range petals[0].Digits {
-		commonDigits[d] = true
-	}
+	commonDigits := NewCandidates(petals[0].Digits)
 
 	// Intersect with other petals
 	for i := 1; i < len(petals); i++ {
-		petalDigits := make(map[int]bool)
-		for _, d := range petals[i].Digits {
-			petalDigits[d] = true
-		}
-
-		for d := range commonDigits {
-			if !petalDigits[d] {
-				delete(commonDigits, d)
-			}
-		}
+		petalDigits := NewCandidates(petals[i].Digits)
+		commonDigits = commonDigits.Intersect(petalDigits)
 	}
 
 	// Remove digits that appear in stem
-	for _, d := range b.Candidates[stem].ToSlice() {
-		delete(commonDigits, d)
-	}
+	commonDigits = commonDigits.Subtract(b.Candidates[stem])
 
-	return getCandidateSlice(commonDigits)
+	return commonDigits.ToSlice()
 }
 
 // findBlossomEliminations finds cells where digit z can be eliminated
