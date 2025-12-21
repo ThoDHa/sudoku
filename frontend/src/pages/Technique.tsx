@@ -64,9 +64,9 @@ export default function Technique() {
             : hardTechniques
           
           const tierColors = {
-            Simple: 'text-green-700 dark:text-green-400',
-            Medium: 'text-yellow-700 dark:text-yellow-400',
-            Hard: 'text-red-700 dark:text-red-400',
+            Simple: 'text-diff-easy',
+            Medium: 'text-diff-medium',
+            Hard: 'text-diff-extreme',
           }
           
           const tierEmojis = {
@@ -99,7 +99,7 @@ export default function Technique() {
         {/* Not Implemented / Coming Soon Section */}
         {notImplementedTechniques.length > 0 && (
           <section className="mb-8">
-            <h2 className="mb-4 text-xl font-semibold text-slate-600 dark:text-slate-400">🔬 Advanced (Coming Soon)</h2>
+            <h2 className="mb-4 text-xl font-semibold text-foreground-muted">🔬 Advanced (Coming Soon)</h2>
             <p className="mb-4 text-sm text-foreground-muted">
               These advanced techniques are documented but not yet implemented in the solver. They represent the cutting edge of human solving methods.
             </p>
