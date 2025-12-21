@@ -19,7 +19,7 @@ This isn't just another Sudoku app - it's a comprehensive learning platform that
 ### 🧩 **Game Modes**
 - **5 Difficulty Levels**: Easy → Medium → Hard → Extreme → Impossible
 - **Daily Puzzles**: Fresh puzzle every day, synchronized globally
-- **Practice Mode**: Target specific techniques with hand-selected puzzles
+- **Game Mode**: Play random puzzles at your chosen difficulty
 - **Custom Puzzles**: Enter, validate, and solve your own creations
 
 ### 🧠 **Intelligent Assistance**
@@ -164,14 +164,25 @@ Visit **https://thodha.github.io/sudoku/** - Fast loading (~170KB initial), offl
 ### Docker
 
 ```bash
-docker compose up -d
+# Development (hot reload)
+make dev
+# or: docker compose up
+
+# Production build
+make prod
+# or: docker compose -f docker-compose.prod.yml up --build
+
 # Open http://localhost
 ```
 
 ### Local Development
 
 ```bash
-# Frontend only (uses WASM solver)
+# With Docker (recommended)
+make dev
+# Open http://localhost
+
+# Without Docker
 cd frontend
 npm install
 npm run dev
@@ -295,16 +306,24 @@ cd api && go run ./cmd/generate_practice \
 
 ## Deployment
 
-### GitHub Pages (Automatic)
+### GitHub Pages
 
-Push to `main` branch - GitHub Actions will build and deploy automatically.
+Build and deploy manually, or set up your own CI pipeline:
+
+```bash
+cd frontend
+npm run build
+# Deploy dist/ to GitHub Pages
+```
 
 **Note**: CI testing runs locally via pre-push git hooks (not in GitHub Actions). Run `make install-hooks` to set up.
 
 ### Docker
 
 ```bash
-docker compose up -d
+# Production build
+make prod
+# or: docker compose -f docker-compose.prod.yml up --build
 ```
 
 ### Static Hosting
