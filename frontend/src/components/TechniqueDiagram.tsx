@@ -65,7 +65,7 @@ export default function TechniqueDiagramView({ diagram }: TechniqueDiagramViewPr
               textAnchor="middle"
               fontSize="5"
               fontWeight={isEliminated ? "700" : "400"}
-              fill={isEliminated ? 'var(--elimination-text-light)' : 'var(--text-candidate)'}
+              fill={isEliminated ? 'var(--accent)' : 'var(--text-candidate)'}
               style={isEliminated ? { textDecoration: 'line-through' } : {}}
             >
               {d}

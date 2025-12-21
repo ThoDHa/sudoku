@@ -247,7 +247,7 @@ export default function TechniqueDetailView({
             </span>
           </button>
           {practiceError && (
-            <p className="mt-2 text-center text-sm text-red-500">{practiceError}</p>
+            <p className="mt-2 text-center text-sm text-error-text">{practiceError}</p>
           )}
         </div>
       )}

@@ -356,8 +356,9 @@ export default function Board({
     }
 
     // Incorrect cells get a red ring
+    // Incorrect cells get an error ring
     if (isIncorrect) {
-      classes.push('ring-2 ring-inset ring-red-500 z-10')
+      classes.push('ring-2 ring-inset ring-error-text z-10')
     } else if (isSelected) {
       // Selected cell gets a prominent ring
       classes.push('ring-2 ring-inset ring-accent z-10')
@@ -365,9 +366,9 @@ export default function Board({
 
     // Background priority: incorrect > duplicate > selected > primary > secondary > digit match > peer > default
     if (isIncorrect) {
-      classes.push('bg-red-100 dark:bg-red-900/30')
+      classes.push('bg-error-bg')
     } else if (isDuplicate) {
-      classes.push('bg-duplicate-bg')
+      classes.push('bg-error-bg')
     } else if (isPrimary) {
       classes.push('bg-cell-primary')
     } else if (isSecondary) {
@@ -378,15 +379,17 @@ export default function Board({
       classes.push('bg-accent-light')
     } else if (isPeer) {
       classes.push('bg-cell-peer')
+    } else if (isGiven) {
+      classes.push('bg-cell-given')
     } else {
       classes.push('bg-cell-bg')
     }
 
-    // Text color - incorrect and duplicates get red text
+    // Text color - incorrect and duplicates get error text
     if (isIncorrect) {
-      classes.push('text-red-600 dark:text-red-400')
+      classes.push('text-error-text')
     } else if (isDuplicate) {
-      classes.push('text-duplicate-text')
+      classes.push('text-error-text')
     } else if (isGiven) {
       classes.push('text-cell-text-given')
     } else {
@@ -446,15 +449,12 @@ export default function Board({
             let digitClass = "candidate-digit "
             
             if (hasCandidate_ && isEliminated) {
-              // This candidate is being eliminated - show in red with strikethrough
-              // Use darker red on highlighted backgrounds for contrast
-              digitClass += isHighlightedCell 
-                ? "text-red-700 dark:text-red-200 line-through font-bold"
-                : "text-red-500 dark:text-red-400 line-through font-bold"
+              // This candidate is being eliminated - show with error color and strikethrough
+              digitClass += "text-error-text line-through font-bold"
             } else if (hasCandidate_ && isRelevantDigit && isTarget) {
               // This candidate is relevant to the technique - use contrasting color on highlighted bg
               digitClass += isHighlightedCell
-                ? "text-white dark:text-gray-900 font-bold drop-shadow-sm"
+                ? "text-cell-text-on-highlight font-bold"
                 : "text-accent font-bold"
             } else if (isHighlightedCell) {
               // Normal candidate on highlighted background - use contrasting color

@@ -108,7 +108,7 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
         // On highlighted cells: use text-on-highlight (contrasting with cell-primary/secondary)
         // On normal cells: use text-candidate (theme color)
         const candidateFill = isEliminated 
-          ? 'var(--elimination-text-light)' 
+          ? 'var(--accent)' 
           : isHighlighted 
             ? 'var(--text-on-highlight)' 
             : 'var(--text-candidate)'
