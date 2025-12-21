@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getTechniqueBySlug, type TechniqueInfo, type TechniqueSubsection } from '../lib/techniques'
+import { getTechniqueBySlug, type TechniqueInfo } from '../lib/techniques'
 import { ChevronRightIcon } from './ui'
 import TechniqueDiagramView, { TechniqueDiagramLegend } from './TechniqueDiagram'
 import AnimatedDiagramView from './AnimatedDiagramView'
@@ -16,41 +16,6 @@ interface TechniqueDetailViewProps {
   variant?: 'modal' | 'page'
   // Show tips section (only in modal list view)
   showTips?: boolean
-}
-
-interface SubsectionViewProps {
-  subsection: TechniqueSubsection
-  index: number
-}
-
-function SubsectionView({ subsection, index }: SubsectionViewProps) {
-  const isNotImplemented = subsection.title.includes('Not Implemented')
-  
-  return (
-    <div 
-      id={`subsection-${index}`}
-      className={`rounded-lg border p-4 ${isNotImplemented ? 'border-board-border-light bg-background-secondary opacity-60' : 'border-accent bg-background-secondary'}`}
-    >
-      <h3 className="mb-2 text-lg font-semibold text-foreground">
-        {subsection.title}
-      </h3>
-      <p className="mb-3 text-foreground-muted">
-        <GlossaryLinkedText text={subsection.description} />
-      </p>
-      
-      {subsection.diagram && (
-        <div className="mb-3">
-          <TechniqueDiagramView diagram={subsection.diagram} />
-        </div>
-      )}
-      
-      <div className="rounded border border-board-border-light bg-cell-bg p-3">
-        <p className="text-sm text-foreground">
-          <span className="font-medium">Example:</span> <GlossaryLinkedText text={subsection.example} />
-        </p>
-      </div>
-    </div>
-  )
 }
 
 interface RelatedTechniquesProps {
@@ -106,8 +71,8 @@ export default function TechniqueDetailView({
   const [practiceError, setPracticeError] = useState<string | null>(null)
   
   const isPage = variant === 'page'
-  const headingClass = isPage ? 'text-xl font-semibold' : 'text-sm font-semibold'
-  const sectionClass = isPage ? 'mb-8' : 'space-y-4'
+  const headingClass = isPage ? 'text-base font-semibold' : 'text-sm font-semibold'
+  const sectionClass = isPage ? 'space-y-4' : 'space-y-4'
   
   // Only show practice for implemented techniques (not 'NotImplemented' tier)
   const canPractice = technique.tier !== 'NotImplemented' && technique.tier !== 'Auto'
@@ -137,10 +102,10 @@ export default function TechniqueDetailView({
     <div className={sectionClass}>
       {/* Diagram - prefer animated if available */}
       {(technique.animatedDiagram || technique.diagram) && (
-        <div className={isPage ? 'mb-8' : ''}>
-          {isPage && <h2 className={`mb-4 ${headingClass} text-foreground`}>📊 Diagram</h2>}
-          <div className="rounded-lg bg-background-secondary p-4">
-            {!isPage && <h3 className="mb-3 text-sm font-semibold text-foreground">Diagram</h3>}
+        <div>
+          {isPage && <h2 className={`mb-2 ${headingClass} text-foreground`}>Diagram</h2>}
+          <div className="rounded-lg bg-background-secondary p-3">
+            {!isPage && <h3 className="mb-2 text-sm font-semibold text-foreground">Diagram</h3>}
             {technique.animatedDiagram ? (
               <AnimatedDiagramView diagram={technique.animatedDiagram} />
             ) : technique.diagram ? (
@@ -153,40 +118,28 @@ export default function TechniqueDetailView({
         </div>
       )}
 
-      {/* Description / How it works */}
-      <div className={isPage ? 'mb-8' : ''}>
-        <h2 className={`${isPage ? 'mb-4' : 'mb-2'} ${headingClass} text-foreground`}>
-          {isPage ? '⚙️ How it works' : 'How it works'}
-        </h2>
-        <p className={`${isPage ? '' : 'text-sm'} leading-relaxed text-foreground-muted`}>
-          <GlossaryLinkedText text={technique.description} />
-        </p>
-      </div>
-
       {/* Example */}
-      <div className={isPage ? 'mb-8' : ''}>
-        <h2 className={`${isPage ? 'mb-4' : 'mb-2'} ${headingClass} text-foreground`}>
-          {isPage ? '💡 Example' : 'Example'}
+      <div>
+        <h2 className={`mb-2 ${headingClass} text-foreground`}>
+          {isPage ? 'Example' : 'Example'}
         </h2>
-        <div className={`rounded-lg p-4 ${isPage ? 'border border-accent bg-accent-light' : 'bg-background-secondary'}`}>
-          <p className={`${isPage ? '' : 'text-sm'} leading-relaxed text-foreground${isPage ? '' : '-muted'}`}>
+        <div className={`rounded-lg p-3 ${isPage ? 'border border-accent bg-accent-light' : 'bg-background-secondary'}`}>
+          <p className="text-sm leading-relaxed text-foreground">
             <GlossaryLinkedText text={technique.example} />
           </p>
         </div>
       </div>
 
-      {/* Subsections / Variations (page only) */}
+      {/* Subsections / Variations (page only) - collapsed for space */}
       {isPage && technique.subsections && technique.subsections.length > 0 && (
-        <div className="mb-8">
-          <h2 className={`mb-4 ${headingClass} text-foreground`}>📋 Variations</h2>
-          
-          {/* Quick navigation */}
-          <div className="mb-4 flex flex-wrap gap-2">
+        <div>
+          <h2 className={`mb-2 ${headingClass} text-foreground`}>Variations</h2>
+          <div className="flex flex-wrap gap-2">
             {technique.subsections.map((sub, idx) => (
               <a
                 key={sub.slug}
                 href={`#subsection-${idx}`}
-                className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                className={`rounded-full px-3 py-1 text-xs transition-colors ${
                   sub.title.includes('Not Implemented')
                     ? 'bg-background-secondary text-foreground-muted'
                     : 'bg-accent-light text-accent hover:bg-accent hover:text-white'
@@ -196,20 +149,14 @@ export default function TechniqueDetailView({
               </a>
             ))}
           </div>
-          
-          <div className="space-y-4">
-            {technique.subsections.map((subsection, index) => (
-              <SubsectionView key={subsection.slug} subsection={subsection} index={index} />
-            ))}
-          </div>
         </div>
       )}
 
       {/* Related Techniques */}
       {technique.relatedTechniques && technique.relatedTechniques.length > 0 && (
-        <div className={isPage ? 'mb-8' : ''}>
-          <h2 className={`${isPage ? 'mb-4' : 'mb-2'} ${headingClass} text-foreground`}>
-            {isPage ? '🔗 Related Techniques' : 'Related Techniques'}
+        <div>
+          <h2 className={`mb-2 ${headingClass} text-foreground`}>
+            {isPage ? 'Related' : 'Related Techniques'}
           </h2>
           <RelatedTechniques 
             slugs={technique.relatedTechniques} 
@@ -221,7 +168,7 @@ export default function TechniqueDetailView({
 
       {/* Tips (modal only) */}
       {showTips && (
-        <div className="rounded-lg border border-board-border-light p-4">
+        <div className="rounded-lg border border-board-border-light p-3">
           <h3 className="mb-2 text-sm font-semibold text-foreground">Tips</h3>
           <ul className="list-inside list-disc space-y-1 text-sm text-foreground-muted">
             <li>Use "Auto-fill notes" from the menu to see all candidates</li>
@@ -233,10 +180,10 @@ export default function TechniqueDetailView({
       
       {/* Practice button */}
       {canPractice && (
-        <div className={isPage ? 'mb-8' : 'mt-4'}>
+        <div>
           <button
             onClick={handlePractice}
-            className="w-full rounded-lg bg-accent py-3 font-medium text-white transition-colors hover:opacity-90"
+            className="w-full rounded-lg bg-accent py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
           >
             <span className="flex items-center justify-center gap-2">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -247,7 +194,7 @@ export default function TechniqueDetailView({
             </span>
           </button>
           {practiceError && (
-            <p className="mt-2 text-center text-sm text-error-text">{practiceError}</p>
+            <p className="mt-1 text-center text-xs text-error-text">{practiceError}</p>
           )}
         </div>
       )}

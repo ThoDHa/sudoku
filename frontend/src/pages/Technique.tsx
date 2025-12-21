@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useParams } from 'react-router-dom'
-import { getTechniqueBySlug, getTechniquesByTier, TechniqueInfo } from '../lib/techniques'
+import { getTechniqueBySlug, getTechniquesByTier, TechniqueInfo, getPreviousTechnique, getNextTechnique } from '../lib/techniques'
 import { TIERS } from '../lib/constants'
 import { TierBadge, HowToPlayContent, ChevronRightIcon } from '../components/ui'
 import TechniqueDetailView from '../components/TechniqueDetailView'
@@ -153,6 +153,8 @@ export default function Technique() {
 
   // Show specific technique
   const technique = getTechniqueBySlug(slug)
+  const prevTechnique = getPreviousTechnique(slug)
+  const nextTechnique = getNextTechnique(slug)
 
   if (!technique) {
     return (
@@ -166,28 +168,57 @@ export default function Technique() {
   }
 
   return (
-    <div className="page-container max-w-3xl">
-      <div className="mb-8">
-        <Link to="/techniques" className="text-sm text-accent hover:underline">
-          &larr; All techniques
-        </Link>
+    <div className="flex h-full flex-col overflow-hidden bg-background">
+      {/* Header - fixed height */}
+      <div className="flex-shrink-0 px-4 pt-4">
+        <div className="mx-auto max-w-3xl">
+          <Link to="/techniques" className="text-sm text-accent hover:underline">
+            &larr; All techniques
+          </Link>
+          <div className="mt-2 flex items-center gap-3">
+            <h1 className="text-xl font-bold text-foreground">{technique.title}</h1>
+            <TierBadge tier={technique.tier} size="md" />
+          </div>
+        </div>
       </div>
 
-      <div className="mb-6 flex items-center gap-4">
-        <h1 className="text-3xl font-bold text-foreground">{technique.title}</h1>
-        <TierBadge tier={technique.tier} size="md" />
+      {/* Content - scrollable, takes remaining space */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+        <div className="mx-auto max-w-3xl">
+          <div className="mb-3 rounded-lg bg-background-secondary p-2">
+            <p className="text-sm text-foreground">{technique.description}</p>
+          </div>
+          <TechniqueDetailView technique={technique} variant="page" />
+        </div>
       </div>
 
-      <div className="mb-8 rounded-lg bg-background-secondary p-4">
-        <p className="text-lg text-foreground">{technique.description}</p>
-      </div>
-
-      <TechniqueDetailView technique={technique} variant="page" />
-
-      <div className="border-t border-board-border-light pt-6">
-        <Link to="/" className="text-accent hover:underline">
-          Try a puzzle &rarr;
-        </Link>
+      {/* Footer - fixed at bottom */}
+      <div className="flex-shrink-0 border-t border-board-border-light bg-background px-4 py-2">
+        <div className="mx-auto max-w-3xl">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              {prevTechnique && (
+                <Link to={`/technique/${prevTechnique.slug}`} className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+                  <span>&larr;</span>
+                  <span className="truncate">{prevTechnique.title}</span>
+                </Link>
+              )}
+            </div>
+            <div className="flex-shrink-0 text-center">
+              <Link to="/" className="text-sm text-accent hover:underline">
+                Try a puzzle
+              </Link>
+            </div>
+            <div className="min-w-0 flex-1 text-right">
+              {nextTechnique && (
+                <Link to={`/technique/${nextTechnique.slug}`} className="inline-flex items-center gap-1 justify-end text-sm text-accent hover:underline">
+                  <span className="truncate">{nextTechnique.title}</span>
+                  <span>&rarr;</span>
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
