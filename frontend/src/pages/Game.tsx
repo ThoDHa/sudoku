@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams, useSearchParams, useLocation } from 'react-router-dom'
+import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import Board from '../components/Board'
 import Controls from '../components/Controls'
 import History from '../components/History'
@@ -31,9 +31,9 @@ import {
 } from '../lib/constants'
 import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
 import { getAutoSaveEnabled } from '../lib/gameSettings'
-import { validateBoard, validateCustomPuzzle, solveAll, getPuzzle, cleanupSolver, initializeSolver } from '../lib/solver-service'
+import { validateBoard, validateCustomPuzzle, solveAll, getPuzzle, cleanupSolver } from '../lib/solver-service'
 
-import { saveScore, markDailyCompleted, type Score } from '../lib/scores'
+import { saveScore, markDailyCompleted, isTodayCompleted, getTodayUTC, getScores, type Score } from '../lib/scores'
 import { decodePuzzle, encodePuzzle } from '../lib/puzzleEncoding'
 import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/candidatesUtils'
 
@@ -64,12 +64,32 @@ export default function Game() {
   // Determine if this is an encoded custom puzzle (from /c/:encoded route)
   const isEncodedCustom = location.pathname.startsWith('/c/') && encoded
   
-  // Detect custom puzzle from seed prefix if no difficulty param
+  // Check if difficulty was provided in URL - if not, we need to show chooser
   const difficultyParam = searchParams.get('d')
+  const needsDifficultyChoice = !difficultyParam && !isEncodedCustom && !seed?.startsWith('custom-') && !seed?.startsWith('practice-')
+  
+  // Check if this is today's daily puzzle and user already completed it
+  const isTodaysDailyPuzzle = seed === `daily-${getTodayUTC()}`
+  const alreadyCompletedToday = isTodaysDailyPuzzle && isTodayCompleted()
+  
+  // Get the completed score for today's daily if already completed
+  const completedDailyScore = alreadyCompletedToday 
+    ? getScores().find(s => s.seed === seed)
+    : null
+  
+  // State for difficulty chooser modal
+  const [showDifficultyChooser, setShowDifficultyChooser] = useState(needsDifficultyChoice && !alreadyCompletedToday)
+  const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(
+    difficultyParam as Difficulty | null
+  )
+  
+  // The effective difficulty - either from URL, user selection, or default
   const difficulty = (
     isEncodedCustom ? 'custom' :
-    difficultyParam || (seed?.startsWith('custom-') ? 'custom' : 'medium')
+    selectedDifficulty || difficultyParam || (seed?.startsWith('custom-') ? 'custom' : 'medium')
   ) as Difficulty
+  
+  const navigate = useNavigate()
   
   const { mode, modePreference, setMode, setModePreference, colorTheme, setColorTheme, fontSize, setFontSize } = useTheme()
   const { setGameState } = useGameContext()
@@ -90,7 +110,7 @@ export default function Game() {
   // Highlight state is now managed by useHighlightState hook (see CUSTOM HOOKS section)
   const [eraseMode, setEraseMode] = useState(false)
   const [notesMode, setNotesMode] = useState(false)
-  const [showResultModal, setShowResultModal] = useState(false)
+  const [showResultModal, setShowResultModal] = useState(alreadyCompletedToday) // Show result if already completed today
   const [historyOpen, setHistoryOpen] = useState(false)
   const [techniqueModal, setTechniqueModal] = useState<{ title: string; slug: string } | null>(null)
   const [techniquesListOpen, setTechniquesListOpen] = useState(false)
@@ -293,16 +313,8 @@ export default function Game() {
     }
   }, [backgroundManager.isInDeepPause])
 
-  // Reload WASM when returning from deep pause (if needed for next hint/solve)
-  useEffect(() => {
-    if (!backgroundManager.isHidden && !backgroundManager.isInDeepPause) {
-      // Pre-load WASM in the background when user returns
-      // This happens asynchronously so it won't block the UI
-      initializeSolver().catch(() => {
-        // Silently ignore - WASM will be loaded on-demand when needed
-      })
-    }
-  }, [backgroundManager.isHidden, backgroundManager.isInDeepPause])
+  // WASM is loaded on-demand when hints/solve are requested (see solver-service.ts getApi())
+  // No need to eagerly preload - the solver functions handle initialization automatically
 
   // Close solve confirmation modal when solving finishes
   useEffect(() => {
@@ -740,6 +752,12 @@ export default function Game() {
     // Cell click handler
     const handleCellClick = useCallback((idx: number) => {
       resumeFromExtendedPause()
+     // If a digit is already highlighted, don't allow selecting given cells
+     // (they can't be modified anyway, and changing highlight would be confusing)
+     if (highlightedDigit !== null && game.isGivenCell(idx)) {
+       return
+     }
+     
      // Given cells: highlight the digit AND select the cell for peer highlighting
      if (game.isGivenCell(idx)) {
        const cellDigit = game.board[idx]
@@ -1400,6 +1418,39 @@ ${bugReportJson}
   // RENDER
   // ============================================================
 
+  // Show difficulty chooser modal if no difficulty was provided in URL
+  if (showDifficultyChooser) {
+    const difficulties: Difficulty[] = ['easy', 'medium', 'hard', 'extreme']
+    return (
+      <div className="flex h-full items-center justify-center bg-background">
+        <div className="mx-4 w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-xl border border-board-border-light">
+          <h2 className="text-xl font-semibold text-foreground text-center mb-2">
+            Choose Difficulty
+          </h2>
+          <p className="text-sm text-foreground-muted text-center mb-6">
+            Select a difficulty level to start the puzzle
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {difficulties.map((diff) => (
+              <button
+                key={diff}
+                onClick={() => {
+                  setSelectedDifficulty(diff)
+                  setShowDifficultyChooser(false)
+                  // Update URL with difficulty param
+                  navigate(`${location.pathname}?d=${diff}`, { replace: true })
+                }}
+                className="rounded-lg bg-btn-bg px-4 py-3 text-sm font-medium text-foreground hover:bg-btn-hover transition-colors capitalize border border-board-border-light"
+              >
+                {diff}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center bg-background">
@@ -1573,14 +1624,14 @@ ${bugReportJson}
       <ResultModal
         isOpen={showResultModal}
         onClose={() => setShowResultModal(false)}
-        seed={puzzle?.seed || ''}
-        difficulty={difficulty}
-        timeMs={timer.elapsedMs}
-        hintsUsed={hintsUsed}
-        techniqueHintsUsed={techniqueHintsUsed}
-        autoFillUsed={autoFillUsed}
-        autoSolveUsed={autoSolveUsed}
-        encodedPuzzle={encodedPuzzle}
+        seed={completedDailyScore?.seed || puzzle?.seed || ''}
+        difficulty={completedDailyScore?.difficulty as Difficulty || difficulty}
+        timeMs={completedDailyScore?.timeMs || timer.elapsedMs}
+        hintsUsed={completedDailyScore?.hintsUsed || hintsUsed}
+        techniqueHintsUsed={completedDailyScore?.techniqueHintsUsed || techniqueHintsUsed}
+        autoFillUsed={completedDailyScore?.autoFillUsed || autoFillUsed}
+        autoSolveUsed={completedDailyScore?.autoSolveUsed || autoSolveUsed}
+        encodedPuzzle={completedDailyScore?.encodedPuzzle || encodedPuzzle}
       />
 
       <TechniqueModal
