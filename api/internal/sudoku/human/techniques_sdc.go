@@ -68,13 +68,11 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 	}
 
 	// Get combined candidates of intersection cells
-	intersectionCands := make(map[int]bool)
+	var intersectionCands Candidates
 	for _, idx := range intersectionCells {
-		for _, d := range b.Candidates[idx].ToSlice() {
-			intersectionCands[d] = true
-		}
+		intersectionCands = intersectionCands.Union(b.Candidates[idx])
 	}
-	intersectionDigits := getCandidateSlice(intersectionCands)
+	intersectionDigits := intersectionCands.ToSlice()
 
 	// For a valid Sue de Coq with N intersection cells:
 	// We need at least N+2 candidates (to cover with 2 ALS)
@@ -146,26 +144,10 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 			}
 
 			// Combined ALS candidates must cover all intersection candidates exactly
-			combinedALS := make(map[int]bool)
-			for _, d := range boxALS.Digits {
-				combinedALS[d] = true
-			}
-			for _, d := range lineALS.Digits {
-				combinedALS[d] = true
-			}
+			combinedALS := NewCandidates(boxALS.Digits).Union(NewCandidates(lineALS.Digits))
 
 			// Check if combined covers exactly the intersection candidates
-			if len(combinedALS) != len(intersectionDigits) {
-				continue
-			}
-			coversAll := true
-			for _, d := range intersectionDigits {
-				if !combinedALS[d] {
-					coversAll = false
-					break
-				}
-			}
-			if !coversAll {
+			if combinedALS != intersectionCands {
 				continue
 			}
 
@@ -343,39 +325,25 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 	var result []ALS
 
-	intersectionSet := make(map[int]bool)
-	for _, d := range intersectionDigits {
-		intersectionSet[d] = true
-	}
+	intersectionSet := NewCandidates(intersectionDigits)
 
 	// Helper to check if ALS shares at least one digit with intersection
-	sharesDigitWithIntersection := func(digits []int) bool {
-		for _, d := range digits {
-			if intersectionSet[d] {
-				return true
-			}
-		}
-		return false
+	sharesDigitWithIntersection := func(digits Candidates) bool {
+		return digits.Intersect(intersectionSet) != 0
 	}
 
 	// Helper to get only intersection-overlapping digits from ALS
-	getOverlappingDigits := func(digits []int) []int {
-		var overlap []int
-		for _, d := range digits {
-			if intersectionSet[d] {
-				overlap = append(overlap, d)
-			}
-		}
-		return overlap
+	getOverlappingDigits := func(digits Candidates) []int {
+		return digits.Intersect(intersectionSet).ToSlice()
 	}
 
 	// Try ALS of size 1 (bivalue cell - 1 cell with 2 candidates)
 	for _, cell := range cells {
-		cands := b.Candidates[cell].ToSlice()
+		cands := b.Candidates[cell]
 
 		// For ALS: N cells need N+1 candidates
 		// 1 cell needs 2 candidates
-		if len(cands) != 2 {
+		if cands.Count() != 2 {
 			continue
 		}
 
@@ -388,7 +356,7 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 		overlapDigits := getOverlappingDigits(cands)
 
 		byDigit := make(map[int][]int)
-		for _, d := range cands {
+		for _, d := range cands.ToSlice() {
 			byDigit[d] = []int{cell}
 		}
 		result = append(result, ALS{
@@ -401,27 +369,20 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 	// Try ALS of size 2 (2 cells with 3 candidates total)
 	for i := 0; i < len(cells); i++ {
 		for j := i + 1; j < len(cells); j++ {
-			combined := make(map[int]bool)
-			for _, d := range b.Candidates[cells[i]].ToSlice() {
-				combined[d] = true
-			}
-			for _, d := range b.Candidates[cells[j]].ToSlice() {
-				combined[d] = true
-			}
+			combined := b.Candidates[cells[i]].Union(b.Candidates[cells[j]])
 
 			// For ALS: 2 cells need 3 candidates
-			if len(combined) != 3 {
+			if combined.Count() != 3 {
 				continue
 			}
-
-			digits := getCandidateSlice(combined)
 
 			// Must share at least one digit with intersection
-			if !sharesDigitWithIntersection(digits) {
+			if !sharesDigitWithIntersection(combined) {
 				continue
 			}
 
-			overlapDigits := getOverlappingDigits(digits)
+			overlapDigits := getOverlappingDigits(combined)
+			digits := combined.ToSlice()
 
 			byDigit := make(map[int][]int)
 			for _, d := range digits {
@@ -444,30 +405,20 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 	for i := 0; i < len(cells); i++ {
 		for j := i + 1; j < len(cells); j++ {
 			for k := j + 1; k < len(cells); k++ {
-				combined := make(map[int]bool)
-				for _, d := range b.Candidates[cells[i]].ToSlice() {
-					combined[d] = true
-				}
-				for _, d := range b.Candidates[cells[j]].ToSlice() {
-					combined[d] = true
-				}
-				for _, d := range b.Candidates[cells[k]].ToSlice() {
-					combined[d] = true
-				}
+				combined := b.Candidates[cells[i]].Union(b.Candidates[cells[j]]).Union(b.Candidates[cells[k]])
 
 				// For ALS: 3 cells need 4 candidates
-				if len(combined) != 4 {
+				if combined.Count() != 4 {
 					continue
 				}
-
-				digits := getCandidateSlice(combined)
 
 				// Must share at least one digit with intersection
-				if !sharesDigitWithIntersection(digits) {
+				if !sharesDigitWithIntersection(combined) {
 					continue
 				}
 
-				overlapDigits := getOverlappingDigits(digits)
+				overlapDigits := getOverlappingDigits(combined)
+				digits := combined.ToSlice()
 
 				byDigit := make(map[int][]int)
 				for _, d := range digits {
@@ -495,14 +446,5 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 
 // digitsOverlap returns true if the two digit slices share any common digit
 func digitsOverlap(a, b []int) bool {
-	set := make(map[int]bool)
-	for _, d := range a {
-		set[d] = true
-	}
-	for _, d := range b {
-		if set[d] {
-			return true
-		}
-	}
-	return false
+	return NewCandidates(a).Intersect(NewCandidates(b)) != 0
 }

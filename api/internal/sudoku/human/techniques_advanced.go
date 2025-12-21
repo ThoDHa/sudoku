@@ -978,23 +978,15 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 								}
 
 								// Combine extras from both corners (excluding d1, d2)
-								combinedExtras := make(map[int]bool)
-								for _, d := range b.Candidates[roofCorner0].ToSlice() {
-									if d != d1 && d != d2 {
-										combinedExtras[d] = true
-									}
-								}
-								for _, d := range b.Candidates[roofCorner1].ToSlice() {
-									if d != d1 && d != d2 {
-										combinedExtras[d] = true
-									}
-								}
+								urDigits := NewCandidates([]int{d1, d2})
+								combinedExtras := b.Candidates[roofCorner0].Subtract(urDigits).Union(
+									b.Candidates[roofCorner1].Subtract(urDigits))
 
-								if len(combinedExtras) == 0 || len(combinedExtras) > 3 {
+								if combinedExtras.Count() == 0 || combinedExtras.Count() > 3 {
 									continue
 								}
 
-								extraSlice := getCandidateSlice(combinedExtras)
+								extraSlice := combinedExtras.ToSlice()
 
 								// The two roof corners must share a unit (row, col, or box) to form a pseudo-cell
 								// Check which units they share
@@ -1099,7 +1091,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 											}
 											isSubset := true
 											for _, d := range cellCands.ToSlice() {
-												if !combinedExtras[d] {
+												if !combinedExtras.Has(d) {
 													isSubset = false
 													break
 												}
@@ -1117,22 +1109,13 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 													idx1, idx2 := candidateCells[ci], candidateCells[cj]
 
 													// Combined candidates of pseudo-cell + these 2 cells must be exactly 3 digits
-													allCands := make(map[int]bool)
-													for d := range combinedExtras {
-														allCands[d] = true
-													}
-													for _, d := range b.Candidates[idx1].ToSlice() {
-														allCands[d] = true
-													}
-													for _, d := range b.Candidates[idx2].ToSlice() {
-														allCands[d] = true
-													}
+													allCands := combinedExtras.Union(b.Candidates[idx1]).Union(b.Candidates[idx2])
 
-													if len(allCands) != 3 {
+													if allCands.Count() != 3 {
 														continue
 													}
 
-													tripleDigits := getCandidateSlice(allCands)
+													tripleDigits := allCands.ToSlice()
 
 													// Eliminate these 3 digits from other cells in unit
 													var eliminations []core.Candidate
