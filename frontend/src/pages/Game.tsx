@@ -105,6 +105,8 @@ export default function Game() {
   const [hintsUsed, setHintsUsed] = useState(0)
   const [techniqueHintsUsed, setTechniqueHintsUsed] = useState(0)
   const [techniqueHintPending, setTechniqueHintPending] = useState(false) // Disables technique hint button until user makes a move
+  const [hintLoading, setHintLoading] = useState(false) // Loading spinner for hint button
+  const [techniqueHintLoading, setTechniqueHintLoading] = useState(false) // Loading spinner for technique hint button
   const [validationMessage, setValidationMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [autoSolveSpeedState, setAutoSolveSpeedState] = useState<AutoSolveSpeed>(getAutoSolveSpeed())
   const [hideTimerState, setHideTimerState] = useState(getHideTimer())
@@ -610,6 +612,7 @@ export default function Game() {
     // Prevent concurrent hint requests (spam protection)
     if (hintInProgress.current) return
     hintInProgress.current = true
+    setHintLoading(true)
     try {
       const result = await executeHintStep(true)
       if (result !== false) {
@@ -620,6 +623,7 @@ export default function Game() {
       }
     } finally {
       hintInProgress.current = false
+      setHintLoading(false)
     }
   }, [executeHintStep])
 
@@ -630,6 +634,7 @@ export default function Game() {
     // Prevent concurrent requests
     if (hintInProgress.current) return
     hintInProgress.current = true
+    setTechniqueHintLoading(true)
 
     try {
       // Deselect any highlighted digit when using technique hint
@@ -711,6 +716,7 @@ export default function Game() {
       setTechniqueHintPending(true)
     } finally {
       hintInProgress.current = false
+      setTechniqueHintLoading(false)
     }
   }, [techniqueHintPending, game.board, game.candidates, game.history.length, initialBoard, clearAllAndDeselect, visibilityAwareTimeout])
 
@@ -1411,6 +1417,7 @@ ${bugReportJson}
         isComplete={game.isComplete}
         historyCount={game.history.length}
         isAutoSolving={autoSolve.isAutoSolving}
+        isFetchingSolution={autoSolve.isFetching}
         isPaused={autoSolve.isPaused}
         autoSolveSpeed={autoSolveSpeedState}
         onTogglePause={autoSolve.togglePause}
@@ -1418,7 +1425,9 @@ ${bugReportJson}
         onSetAutoSolveSpeed={setAutoSolveSpeedState}
         onTechniqueHint={handleTechniqueHint}
         techniqueHintDisabled={techniqueHintPending}
+        techniqueHintLoading={techniqueHintLoading}
         onHint={handleNext}
+        hintLoading={hintLoading}
         onHistoryOpen={() => setHistoryOpen(true)}
         onShowResult={() => setShowResultModal(true)}
         onAutoFillNotes={autoFillNotes}
@@ -1462,7 +1471,7 @@ ${bugReportJson}
       )}
 
       <div 
-        className="game-background flex flex-1 flex-col items-center p-2 overflow-hidden"
+        className="game-background game-area flex-1"
         onClick={(e) => {
           // Deselect cell when clicking on the background (not on board or controls)
           // Keep highlightedDigit for multi-fill workflow
@@ -1474,66 +1483,66 @@ ${bugReportJson}
         }}
       >
 
-        {/* Game container - fills available space */}
-        <div className="flex flex-col items-center w-full flex-1 min-h-0 gap-2">
-          {/* Board wrapper - flexes to fill available height */}
-          <div className="flex-1 flex items-center justify-center w-full min-h-0">
-            {/* Board container with pause overlay */}
-            <div className="relative aspect-square h-full max-w-full">
-            <Board
-              board={game.board}
-              initialBoard={initialBoard}
-              candidates={game.candidates}
-              candidatesVersion={game.candidatesVersion}
-              selectedCell={selectedCell}
-              highlightedDigit={highlightedDigit}
-              highlight={currentHighlight}
-              onCellClick={handleCellClick}
-              onCellChange={handleCellChange}
-              incorrectCells={incorrectCells}
-            />
-            
-            {/* Pause overlay - shown when timer is paused due to tab/window losing focus */}
-            {timer.isPausedDueToVisibility && !game.isComplete && (
-              <div 
-                className="absolute inset-0 flex flex-col items-center justify-center bg-background/95 backdrop-blur-md rounded-xl z-20"
-                onClick={() => {
-                  // Clicking the overlay brings focus back, which auto-resumes the timer
-                  window.focus()
-                }}
-              >
-                <div className="text-6xl mb-4">
-                  <svg className="w-16 h-16 text-foreground-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">Game Paused</h3>
-                <p className="text-sm text-foreground-muted text-center px-4">
-                  Click anywhere or return to this tab to continue
-                </p>
-                <div className="mt-4 text-2xl font-mono text-accent">
-                  {timer.formatTime()}
-                </div>
+        {/* Game container - sizes based on available height and width */}
+        <div className="game-container flex flex-col items-center">
+          {/* Board container with pause overlay */}
+          <div className="relative aspect-square w-full">
+          <Board
+            board={game.board}
+            initialBoard={initialBoard}
+            candidates={game.candidates}
+            candidatesVersion={game.candidatesVersion}
+            selectedCell={selectedCell}
+            highlightedDigit={highlightedDigit}
+            highlight={currentHighlight}
+            onCellClick={handleCellClick}
+            onCellChange={handleCellChange}
+            incorrectCells={incorrectCells}
+          />
+          
+          {/* Pause overlay - shown when timer is paused due to tab/window losing focus */}
+          {timer.isPausedDueToVisibility && !game.isComplete && (
+            <div 
+              className="absolute inset-0 flex flex-col items-center justify-center bg-background/95 backdrop-blur-md rounded-xl z-20"
+              onClick={() => {
+                // Clicking the overlay brings focus back, which auto-resumes the timer
+                window.focus()
+              }}
+            >
+              <div className="text-6xl mb-4">
+                <svg className="w-16 h-16 text-foreground-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
-            )}
+              <h3 className="text-xl font-semibold text-foreground mb-2">Game Paused</h3>
+              <p className="text-sm text-foreground-muted text-center px-4">
+                Click anywhere or return to this tab to continue
+              </p>
+              <div className="mt-4 text-2xl font-mono text-accent">
+                {timer.formatTime()}
+              </div>
             </div>
+          )}
           </div>
 
-          <Controls
-            notesMode={notesMode}
-            onNotesToggle={() => setNotesMode(!notesMode)}
-            onDigit={handleDigitInput}
-            onEraseMode={handleEraseMode}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            canUndo={autoSolve.isAutoSolving ? (autoSolve.isPaused && autoSolve.canStepBack) : game.canUndo}
-            canRedo={autoSolve.isAutoSolving ? (autoSolve.isPaused && autoSolve.canStepForward) : game.canRedo}
-            eraseMode={eraseMode}
-            digitCounts={game.digitCounts}
-            highlightedDigit={highlightedDigit}
-            isComplete={game.isComplete}
-            isSolving={autoSolve.isAutoSolving}
-          />
+          {/* Controls - same width as board, scales with container */}
+          <div className="w-full mt-2 flex-shrink-0">
+            <Controls
+              notesMode={notesMode}
+              onNotesToggle={() => setNotesMode(!notesMode)}
+              onDigit={handleDigitInput}
+              onEraseMode={handleEraseMode}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              canUndo={autoSolve.isAutoSolving ? (autoSolve.isPaused && autoSolve.canStepBack) : game.canUndo}
+              canRedo={autoSolve.isAutoSolving ? (autoSolve.isPaused && autoSolve.canStepForward) : game.canRedo}
+              eraseMode={eraseMode}
+              digitCounts={game.digitCounts}
+              highlightedDigit={highlightedDigit}
+              isComplete={game.isComplete}
+              isSolving={autoSolve.isAutoSolving}
+            />
+          </div>
         </div>
       </div>
 

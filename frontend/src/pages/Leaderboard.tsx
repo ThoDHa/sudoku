@@ -63,14 +63,14 @@ export default function Leaderboard() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-6 bg-background h-full">
-      <div className="mb-8">
-        <Link to="/" className="text-sm text-accent hover:underline">
+    <div className="page-container">
+      <div className="back-link">
+        <Link to="/" className="text-accent hover:underline">
           &larr; Back to puzzles
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="content-grid grid-cols-2">
         {difficulties.map((difficulty) => {
           const colors = difficultyColors[difficulty]
           if (!colors) return null
@@ -80,7 +80,7 @@ export default function Leaderboard() {
           return (
             <div
               key={difficulty}
-              className={`rounded-lg border-2 ${colors.border} ${colors.bg} p-3`}
+              className={`content-card rounded-lg border-2 ${colors.border} ${colors.bg}`}
             >
               <h3 className={`font-semibold capitalize ${colors.text} mb-2`}>
                 {difficulty}

@@ -3,57 +3,20 @@ import { Link } from 'react-router-dom'
 import { useDailySeed, useLastDailyDifficulty, Difficulty } from '../lib/hooks'
 import { isTodayCompleted, getDailyStreak } from '../lib/scores'
 import { getHomepageMode, setHomepageMode, onHomepageModeChange, HomepageMode } from '../lib/preferences'
+import { useTheme } from '../lib/ThemeContext'
 import DifficultyGrid from '../components/DifficultyGrid'
 
-// Enso circle with 9 - Zen brushstroke logo
-function EnsoLogo({ size = 80 }: { size?: number }) {
+// Enso logo - loads light or dark version based on theme
+function EnsoLogo() {
+  const { mode } = useTheme()
+  const src = mode === 'dark' ? '/sudoku-icon-dark.svg' : '/sudoku-icon.svg'
+  
   return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 512 512" 
-      className="mb-4"
-    >
-      {/* Background - subtle warm paper texture color */}
-      <rect width="512" height="512" className="fill-background" rx="64"/>
-      
-      {/* Enso circle - the Zen brushstroke, intentionally incomplete */}
-      <g transform="translate(256, 256)">
-        {/* Main enso stroke - thick calligraphic brush arc */}
-        <path 
-          d="M 140 -100 
-             A 180 180 0 1 0 100 -145
-             Q 115 -140 130 -125
-             A 140 140 0 1 1 105 -80
-             Q 115 -90 140 -100"
-          className="fill-foreground"
-          stroke="none"
-        />
-        
-        {/* Brush stroke start - thicker with ink pooling effect */}
-        <ellipse cx="140" cy="-100" rx="28" ry="20" className="fill-foreground" transform="rotate(-35 140 -100)"/>
-        
-        {/* Brush stroke tail - tapered end where brush lifts */}
-        <path 
-          d="M 100 -145 
-             Q 85 -155 70 -160
-             Q 80 -150 100 -145"
-          className="fill-foreground"
-          opacity="0.8"
-        />
-      </g>
-      
-      {/* Number 9 - clean, centered within the enso */}
-      <text 
-        x="256" 
-        y="305" 
-        fontFamily="Georgia, 'Times New Roman', serif" 
-        fontSize="220" 
-        fontWeight="400" 
-        className="fill-foreground" 
-        textAnchor="middle"
-      >9</text>
-    </svg>
+    <img 
+      src={src} 
+      alt="Enso" 
+      className="enso-logo"
+    />
   )
 }
 
@@ -90,10 +53,10 @@ export default function Homepage() {
     return (
       <div className="flex h-full flex-col items-center justify-center p-4 bg-background text-foreground">
         {/* Constrain to puzzle size - uses .game-container class from index.css */}
-        <div className="game-container aspect-square flex flex-col items-center justify-center">
-          <EnsoLogo size={80} />
-          <h1 className="mb-1 text-2xl font-bold">Daily Complete!</h1>
-          <p className="mb-3 text-sm text-foreground-muted">{data.date_utc}</p>
+        <div className="game-container flex flex-col items-center justify-center">
+          <EnsoLogo />
+          <h1 className="homepage-title">Daily Complete!</h1>
+          <p className="homepage-subtitle text-foreground-muted">{data.date_utc}</p>
           
           {/* Streak display */}
           <div className="mb-4 flex items-center gap-4">
@@ -150,12 +113,13 @@ export default function Homepage() {
   return (
     <div className="flex h-full flex-col items-center justify-center p-4 bg-background text-foreground">
       {/* Constrain to puzzle size - uses .game-container class from index.css */}
-      <div className="game-container aspect-square flex flex-col items-center justify-center">
+      {/* Removed aspect-square to allow content to flow naturally on all viewport sizes */}
+      <div className="game-container flex flex-col items-center justify-center">
         {mode === 'daily' ? (
           <>
-            <EnsoLogo size={80} />
-            <h1 className="mb-1 text-2xl font-bold">Daily Sudoku</h1>
-            <p className="mb-1 text-sm text-foreground-muted">{data.date_utc}</p>
+            <EnsoLogo />
+            <h1 className="homepage-title">Daily Sudoku</h1>
+            <p className="homepage-subtitle text-foreground-muted">{data.date_utc}</p>
             
             {/* Streak display */}
             {streak.currentStreak > 0 && (
@@ -176,9 +140,9 @@ export default function Homepage() {
           </>
         ) : (
           <>
-            <EnsoLogo size={80} />
-            <h1 className="mb-1 text-2xl font-bold">Practice Mode</h1>
-            <p className="mb-4 text-sm text-foreground-muted">Choose your difficulty</p>
+            <EnsoLogo />
+            <h1 className="homepage-title">Practice Mode</h1>
+            <p className="homepage-subtitle text-foreground-muted">Choose your difficulty</p>
 
             <div className="w-full">
               <DifficultyGrid

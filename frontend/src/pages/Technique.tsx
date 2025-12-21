@@ -31,15 +31,15 @@ export default function Technique() {
     const notImplementedTechniques = getTechniquesByTier('NotImplemented')
 
     return (
-      <div className="mx-auto max-w-4xl p-6 bg-background h-full">
-        <div className="mb-8">
-          <Link to="/" className="text-sm text-accent hover:underline">
+      <div className="page-container">
+        <div className="back-link">
+          <Link to="/" className="text-accent hover:underline">
             &larr; Back to puzzles
           </Link>
         </div>
 
-        <h1 className="mb-2 text-3xl font-bold text-foreground">📚 Learn Sudoku</h1>
-        <p className="mb-8 text-foreground-muted">
+        <h1 className="page-title text-foreground">📚 Learn Sudoku</h1>
+        <p className="mb-8 text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
           Master the techniques used to solve Sudoku puzzles without guessing.
         </p>
 
@@ -87,7 +87,7 @@ export default function Technique() {
               <p className="mb-4 text-sm text-foreground-muted">
                 {tierDescriptions[tier]}
               </p>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="content-grid sm:grid-cols-2">
                 {techniques.map((t) => (
                   <TechniqueCard key={t.slug} technique={t} />
                 ))}
@@ -103,7 +103,7 @@ export default function Technique() {
             <p className="mb-4 text-sm text-foreground-muted">
               These advanced techniques are documented but not yet implemented in the solver. They represent the cutting edge of human solving methods.
             </p>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="content-grid sm:grid-cols-2">
               {notImplementedTechniques.map((t) => (
                 <TechniqueCard key={t.slug} technique={t} />
               ))}
@@ -117,7 +117,7 @@ export default function Technique() {
   // Special case: How to Play page
   if (slug === 'how-to-play') {
     return (
-      <div className="mx-auto max-w-3xl p-6 bg-background h-full">
+      <div className="page-container max-w-3xl">
         <div className="mb-8">
           <Link to="/techniques" className="text-sm text-accent hover:underline">
             &larr; All techniques
@@ -166,7 +166,7 @@ export default function Technique() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-6 bg-background h-full">
+    <div className="page-container max-w-3xl">
       <div className="mb-8">
         <Link to="/techniques" className="text-sm text-accent hover:underline">
           &larr; All techniques

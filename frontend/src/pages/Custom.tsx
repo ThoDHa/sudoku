@@ -111,44 +111,75 @@ export default function Custom() {
   const candidates = new Uint16Array(81)
 
   return (
-    <div className="flex h-full flex-col items-center justify-center p-4 bg-background">
+    <div className="flex h-full flex-col items-center justify-center bg-background" style={{ padding: 'var(--page-padding)' }}>
       <div className="mb-4">
         <Link to="/" className="text-sm text-accent hover:underline">
           &larr; Back to puzzles
         </Link>
       </div>
 
-      <div className="mb-6 text-center">
-        <h1 className="mb-2 text-2xl font-bold text-foreground">Custom Puzzle</h1>
-        <p className="text-foreground-muted">
-          Enter your own puzzle or paste from clipboard. Share the URL to challenge others!
+      <div className="mb-4 text-center">
+        <h1 className="homepage-title text-foreground">Custom Puzzle</h1>
+        <p className="text-sm text-foreground-muted">
+          Enter your own puzzle or paste from clipboard.
         </p>
       </div>
 
       {/* Board container - uses game-container for proper sizing like Game.tsx */}
       <div className="game-container flex flex-col items-center">
-        <Board
-          board={board}
-          initialBoard={Array(81).fill(0)}
-          candidates={candidates}
-          selectedCell={selectedCell}
-          highlightedDigit={null}
-          highlight={null}
-          onCellClick={handleCellClick}
-        />
-      </div>
+        <div className="relative aspect-square w-full">
+          <Board
+            board={board}
+            initialBoard={Array(81).fill(0)}
+            candidates={candidates}
+            selectedCell={selectedCell}
+            highlightedDigit={null}
+            highlight={null}
+            onCellClick={handleCellClick}
+          />
+        </div>
 
-      {/* Digit input */}
-      <div className="mt-6 flex gap-2">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
-          <button
-            key={digit}
-            onClick={() => handleDigitInput(digit)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-btn-bg text-lg font-medium text-foreground transition-colors hover:bg-btn-hover sm:h-12 sm:w-12 sm:text-xl"
-          >
-            {digit}
-          </button>
-        ))}
+        {/* Digit input - inside container for scaling */}
+        <div className="controls-grid flex flex-col items-center mt-2 flex-shrink-0">
+          <div className="digit-grid flex flex-col">
+            {/* Row 1: Digits 1-3 */}
+            <div className="digit-row flex justify-center">
+              {[1, 2, 3].map((digit) => (
+                <button
+                  key={digit}
+                  onClick={() => handleDigitInput(digit)}
+                  className="control-digit-btn bg-btn-bg text-foreground"
+                >
+                  {digit}
+                </button>
+              ))}
+            </div>
+            {/* Row 2: Digits 4-6 */}
+            <div className="digit-row flex justify-center">
+              {[4, 5, 6].map((digit) => (
+                <button
+                  key={digit}
+                  onClick={() => handleDigitInput(digit)}
+                  className="control-digit-btn bg-btn-bg text-foreground"
+                >
+                  {digit}
+                </button>
+              ))}
+            </div>
+            {/* Row 3: Digits 7-9 */}
+            <div className="digit-row flex justify-center">
+              {[7, 8, 9].map((digit) => (
+                <button
+                  key={digit}
+                  onClick={() => handleDigitInput(digit)}
+                  className="control-digit-btn bg-btn-bg text-foreground"
+                >
+                  {digit}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Action buttons */}
@@ -179,7 +210,7 @@ export default function Custom() {
         </div>
       )}
 
-      <div className="mt-6 flex gap-4">
+      <div className="mt-4 flex gap-4">
         <button
           onClick={() => navigate('/')}
           className="rounded-lg border border-board-border-light px-6 py-3 font-medium text-foreground transition-colors hover:bg-btn-hover"
@@ -195,12 +226,9 @@ export default function Custom() {
         </button>
       </div>
 
-      <div className="mt-8 max-w-md text-center text-sm text-foreground-muted">
-        <p className="mb-2">
-          <strong className="text-foreground">Paste format:</strong> 81 characters using digits 1-9 and 0 or . for empty cells.
-        </p>
-        <p>
-          Example: <code className="rounded bg-background-secondary px-1 text-foreground">530070000600195000098000060800060003400803001700020006060000280000419005000080079</code>
+      <div className="mt-6 max-w-md text-center text-xs text-foreground-muted">
+        <p className="mb-1">
+          <strong className="text-foreground">Paste format:</strong> 81 digits (0 or . for empty)
         </p>
       </div>
     </div>

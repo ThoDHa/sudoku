@@ -72,8 +72,8 @@ export default function Result() {
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center p-8 bg-background text-foreground">
-      <h1 className="mb-6 text-2xl font-bold">Puzzle Complete!</h1>
+    <div className="page-container flex h-full flex-col items-center justify-center text-foreground">
+      <h1 className="page-title text-center">Puzzle Complete!</h1>
       
       <ResultSummary
         timeMs={timeMs}
