@@ -442,9 +442,6 @@ export default function Board({
             // For multi-digit techniques: highlight all candidates in target cells
             const isRelevantDigit = singleDigit ? d === singleDigit : isTarget
             
-            // Check if this candidate matches the user's highlighted digit
-            const isUserHighlighted = highlightedDigit === d && hasCandidate_
-            
             // Determine styling for this specific candidate
             let digitClass = "candidate-digit "
             
@@ -459,14 +456,11 @@ export default function Board({
               digitClass += isHighlightedCell
                 ? "text-white dark:text-gray-900 font-bold drop-shadow-sm"
                 : "text-accent font-bold"
-            } else if (isUserHighlighted) {
-              // User has this digit selected - show in accent color
-              digitClass += "text-accent font-bold"
             } else if (isHighlightedCell) {
               // Normal candidate on highlighted background - use contrasting color
               digitClass += "text-cell-text-on-highlight"
             } else {
-              // Normal candidate
+              // Normal candidate - always the same color regardless of digit selection
               digitClass += "text-cell-text-candidate"
             }
             
@@ -484,7 +478,7 @@ export default function Board({
   }
 
   return (
-    <div className="sudoku-board aspect-square w-full max-w-[40rem] max-h-full" role="grid" aria-label="Sudoku puzzle">
+    <div className="sudoku-board aspect-square w-full max-h-full" role="grid" aria-label="Sudoku puzzle">
       {Array.from({ length: 9 }, (_, rowIdx) => (
         <div key={rowIdx} role="row" className="contents">
           {Array.from({ length: 9 }, (_, colIdx) => {
