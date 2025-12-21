@@ -161,13 +161,65 @@ func (b *Board) RemoveCandidate(idx, digit int) bool {
 	return false
 }
 
-// IsSolved returns true if all cells are filled
+// IsSolved returns true if all cells are filled AND the solution is valid (no duplicates)
 func (b *Board) IsSolved() bool {
 	for i := 0; i < 81; i++ {
 		if b.Cells[i] == 0 {
 			return false
 		}
 	}
+	// Also verify the solution is valid (no duplicates)
+	return b.IsValid()
+}
+
+// IsValid checks if the current board state has no conflicts (duplicates in row/col/box)
+func (b *Board) IsValid() bool {
+	// Check each row for duplicates
+	for row := 0; row < 9; row++ {
+		seen := make(map[int]bool)
+		for col := 0; col < 9; col++ {
+			digit := b.Cells[row*9+col]
+			if digit != 0 {
+				if seen[digit] {
+					return false // Duplicate in row
+				}
+				seen[digit] = true
+			}
+		}
+	}
+
+	// Check each column for duplicates
+	for col := 0; col < 9; col++ {
+		seen := make(map[int]bool)
+		for row := 0; row < 9; row++ {
+			digit := b.Cells[row*9+col]
+			if digit != 0 {
+				if seen[digit] {
+					return false // Duplicate in column
+				}
+				seen[digit] = true
+			}
+		}
+	}
+
+	// Check each 3x3 box for duplicates
+	for boxRow := 0; boxRow < 3; boxRow++ {
+		for boxCol := 0; boxCol < 3; boxCol++ {
+			seen := make(map[int]bool)
+			for r := boxRow * 3; r < boxRow*3+3; r++ {
+				for c := boxCol * 3; c < boxCol*3+3; c++ {
+					digit := b.Cells[r*9+c]
+					if digit != 0 {
+						if seen[digit] {
+							return false // Duplicate in box
+						}
+						seen[digit] = true
+					}
+				}
+			}
+		}
+	}
+
 	return true
 }
 

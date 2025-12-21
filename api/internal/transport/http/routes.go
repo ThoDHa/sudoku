@@ -697,8 +697,9 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 // If a cell has zero candidates, trace back to find which user-entered cell is blocking it.
 // Returns the cell index and digit, or -1 if no error found this way.
 func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int, int) {
-	// Create a fresh board and fill all candidates
-	freshBoard := human.NewBoardWithCandidates(originalUserBoard, nil)
+	// Create a fresh board with candidates properly initialized
+	// Use NewBoard which auto-fills candidates based on current cell values
+	freshBoard := human.NewBoard(originalUserBoard)
 
 	// Find any cell with zero candidates
 	for idx := 0; idx < constants.TotalCells; idx++ {
