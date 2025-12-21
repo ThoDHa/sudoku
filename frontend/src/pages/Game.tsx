@@ -45,6 +45,7 @@ interface SavedGameState {
   history: Move[]
   autoFillUsed: boolean
   savedAt: number // timestamp
+  difficulty: string // difficulty level for resume display
 }
 
 interface PuzzleData {
@@ -319,11 +320,12 @@ export default function Game() {
     const storageKey = getStorageKey(puzzle.seed)
     const savedState: SavedGameState = {
       board: game.board,
-        candidates: candidatesToArrays(game.candidates),
+      candidates: candidatesToArrays(game.candidates),
       elapsedMs: timer.elapsedMs,
       history: game.history,
       autoFillUsed,
       savedAt: Date.now(),
+      difficulty: puzzle.difficulty,
     }
     
     try {
@@ -1267,8 +1269,8 @@ ${bugReportJson}
             solution: puzzleSolution,
           }
         } else {
-          // Fetch puzzle using solver service (WASM-first)
-          const fetchedPuzzle = await getPuzzle(seed ?? '', difficulty)
+          // Fetch puzzle from static pool (synchronous, no WASM needed)
+          const fetchedPuzzle = getPuzzle(seed ?? '', difficulty)
           puzzleData = {
             puzzle_id: fetchedPuzzle.puzzle_id,
             seed: fetchedPuzzle.seed,
@@ -1401,7 +1403,7 @@ ${bugReportJson}
   if (error) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 bg-background">
-        <p className="text-red-600">{error}</p>
+        <p className="text-error-text">{error}</p>
       </div>
     )
   }
@@ -1416,6 +1418,7 @@ ${bugReportJson}
         hideTimer={hideTimerState}
         isComplete={game.isComplete}
         historyCount={game.history.length}
+        hasUnsavedProgress={game.history.length > 0 && !game.isComplete}
         isAutoSolving={autoSolve.isAutoSolving}
         isFetchingSolution={autoSolve.isFetching}
         isPaused={autoSolve.isPaused}
@@ -1463,8 +1466,8 @@ ${bugReportJson}
       {validationMessage && (
         <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg ${
           validationMessage.type === 'success' 
-            ? 'bg-green-500 text-white' 
-            : 'bg-red-500 text-white'
+            ? 'bg-accent text-btn-active-text' 
+            : 'bg-error-text text-white'
         }`}>
           {validationMessage.message}
         </div>

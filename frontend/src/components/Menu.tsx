@@ -62,6 +62,7 @@ interface GameActions {
   onSetAutoSolveSpeed: (speed: AutoSolveSpeed) => void
   hideTimerState: boolean
   onToggleHideTimer: () => void
+  hasUnsavedProgress?: boolean // True if user has made moves and game not complete
 }
 
 // Homepage actions (for homepage)
@@ -120,11 +121,13 @@ export default function Menu({
   const [settingsExpanded, setSettingsExpanded] = useState(!gameActions) // Collapsed on game page
   const [cacheCleared, setCacheCleared] = useState(false)
   const [autoSaveEnabled, setAutoSaveEnabledState] = useState(getAutoSaveEnabled)
+  const [confirmNewPuzzle, setConfirmNewPuzzle] = useState<string | null>(null) // Difficulty to confirm
 
   // Close submenu when menu closes
   useEffect(() => {
     if (!isOpen) {
       setNewPuzzleMenuOpen(false)
+      setConfirmNewPuzzle(null)
     }
   }, [isOpen])
 
@@ -139,6 +142,32 @@ export default function Menu({
     const newValue = !autoSaveEnabled
     setAutoSaveEnabledState(newValue)
     setAutoSaveEnabled(newValue)
+  }
+
+  // Handle starting a new puzzle - show confirmation if game in progress
+  const handleNewPuzzle = (difficulty: string) => {
+    if (gameActions?.hasUnsavedProgress) {
+      setConfirmNewPuzzle(difficulty)
+    } else {
+      if (difficulty === 'custom') {
+        navigate('/custom')
+      } else {
+        navigate(createGameRoute(difficulty))
+      }
+      onClose()
+    }
+  }
+
+  // Confirm and navigate to new puzzle
+  const confirmAndNavigate = () => {
+    if (confirmNewPuzzle) {
+      if (confirmNewPuzzle === 'custom') {
+        navigate('/custom')
+      } else {
+        navigate(createGameRoute(confirmNewPuzzle))
+      }
+      onClose()
+    }
   }
 
   if (!isOpen) return null
@@ -357,20 +386,14 @@ export default function Menu({
                       {['easy', 'medium', 'hard', 'extreme', 'impossible'].map((d) => (
                         <button
                           key={d}
-                          onClick={() => { 
-                            navigate(createGameRoute(d))
-                            onClose()
-                          }}
+                          onClick={() => handleNewPuzzle(d)}
                           className="block w-full px-3 py-1.5 text-left text-sm capitalize text-foreground-muted hover:text-foreground rounded-lg hover:bg-btn-hover"
                         >
                           {d}
                         </button>
                       ))}
                       <button
-                        onClick={() => { 
-                          navigate('/custom')
-                          onClose()
-                        }}
+                        onClick={() => handleNewPuzzle('custom')}
                         className="block w-full px-3 py-1.5 text-left text-sm text-foreground-muted hover:text-foreground rounded-lg hover:bg-btn-hover"
                       >
                         Custom
@@ -439,7 +462,7 @@ export default function Menu({
                           Show Timer
                         </span>
                         <div className={`w-9 h-5 rounded-full transition-colors ${!gameActions.hideTimerState ? 'bg-accent' : 'bg-board-border-light'}`}>
-                          <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${!gameActions.hideTimerState ? 'translate-x-4' : 'translate-x-0'}`} />
+                          <div className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${!gameActions.hideTimerState ? 'translate-x-4' : 'translate-x-0'}`} />
                         </div>
                       </button>
                       
@@ -455,7 +478,7 @@ export default function Menu({
                           Auto-Save Progress
                         </span>
                         <div className={`w-9 h-5 rounded-full transition-colors ${autoSaveEnabled ? 'bg-accent' : 'bg-board-border-light'}`}>
-                          <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${autoSaveEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                          <div className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${autoSaveEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
                         </div>
                       </button>
                     </div>
@@ -604,6 +627,41 @@ export default function Menu({
         </div>
         </div>
       </div>
+
+      {/* Confirmation Modal for New Puzzle */}
+      {confirmNewPuzzle && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 z-[101]" 
+            onClick={() => setConfirmNewPuzzle(null)}
+          />
+          <div className="fixed inset-0 z-[102] flex items-center justify-center p-4">
+            <div 
+              className="w-full max-w-xs rounded-xl border border-board-border-light bg-background shadow-2xl p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-foreground mb-2">Start New Puzzle?</h3>
+              <p className="text-sm text-foreground-muted mb-4">
+                You have a game in progress. Starting a new puzzle will abandon your current progress.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmNewPuzzle(null)}
+                  className="flex-1 px-3 py-2 text-sm font-medium rounded-lg border border-board-border-light text-foreground hover:bg-btn-hover"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmAndNavigate}
+                  className="flex-1 px-3 py-2 text-sm font-medium rounded-lg bg-accent text-btn-active-text hover:opacity-90"
+                >
+                  Start New
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }

@@ -49,6 +49,7 @@ interface GameHeaderProps {
   // Game state
   isComplete: boolean
   historyCount: number
+  hasUnsavedProgress: boolean
   // Auto-solve state
   isAutoSolving: boolean
   isFetchingSolution: boolean
@@ -95,6 +96,7 @@ export default function GameHeader({
   hideTimer,
   isComplete,
   historyCount,
+  hasUnsavedProgress,
   isAutoSolving,
   isFetchingSolution,
   isPaused,
@@ -511,6 +513,7 @@ export default function GameHeader({
           onSetAutoSolveSpeed,
           hideTimerState,
           onToggleHideTimer,
+          hasUnsavedProgress,
         }}
       />
     </>
