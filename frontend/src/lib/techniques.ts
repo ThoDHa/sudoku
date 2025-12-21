@@ -715,10 +715,24 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['swordfish', 'finned-x-wing'],
     diagram: {
       cells: [
+        // Context: filled cells to show the grid
+        { row: 0, col: 0, value: 5 },
+        { row: 0, col: 1, value: 9 },
+        { row: 1, col: 0, value: 8 },
+        { row: 1, col: 1, value: 6 },
+        { row: 2, col: 2, value: 1 },
+        { row: 3, col: 2, value: 4 },
+        { row: 4, col: 7, value: 2 },
+        { row: 5, col: 0, value: 2 },
+        { row: 5, col: 1, value: 4 },
+        { row: 6, col: 2, value: 7 },
+        { row: 7, col: 2, value: 5 },
+        // The X-Wing pattern (digit 3 in rows 2,6 and columns 3,8)
         { row: 1, col: 2, candidates: [1, 3], highlight: 'primary' },
         { row: 1, col: 7, candidates: [3, 5], highlight: 'primary' },
         { row: 5, col: 2, candidates: [3, 6], highlight: 'primary' },
         { row: 5, col: 7, candidates: [3, 9], highlight: 'primary' },
+        // Elimination targets
         { row: 0, col: 2, candidates: [2, 3, 4], highlight: 'elimination', eliminatedCandidates: [3] },
         { row: 3, col: 2, candidates: [3, 7], highlight: 'elimination', eliminatedCandidates: [3] },
         { row: 2, col: 7, candidates: [3, 8], highlight: 'elimination', eliminatedCandidates: [3] },
@@ -791,9 +805,23 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['w-wing', 'xyz-wing', 'xy-chain'],
     diagram: {
       cells: [
-        { row: 4, col: 4, candidates: [2, 5], highlight: 'primary' },
-        { row: 4, col: 0, candidates: [2, 8], highlight: 'secondary' },
-        { row: 0, col: 4, candidates: [5, 8], highlight: 'secondary' },
+        // Context: filled cells to show the grid layout
+        { row: 0, col: 1, value: 1 },
+        { row: 0, col: 2, value: 6 },
+        { row: 0, col: 3, value: 9 },
+        { row: 1, col: 0, value: 4 },
+        { row: 1, col: 4, value: 7 },
+        { row: 2, col: 0, value: 9 },
+        { row: 2, col: 4, value: 1 },
+        { row: 3, col: 4, value: 3 },
+        { row: 4, col: 1, value: 7 },
+        { row: 4, col: 2, value: 3 },
+        { row: 4, col: 3, value: 6 },
+        // The XY-Wing pattern
+        { row: 4, col: 4, candidates: [2, 5], highlight: 'primary' },   // Pivot {X,Y}
+        { row: 4, col: 0, candidates: [2, 8], highlight: 'secondary' }, // Wing {X,Z}
+        { row: 0, col: 4, candidates: [5, 8], highlight: 'secondary' }, // Wing {Y,Z}
+        // Elimination target
         { row: 0, col: 0, candidates: [3, 8], highlight: 'elimination', eliminatedCandidates: [8] },
       ]
     },
@@ -856,6 +884,20 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['x-chain', 'medusa-3d'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 1, value: 2 },
+        { row: 0, col: 2, value: 7 },
+        { row: 0, col: 3, value: 1 },
+        { row: 0, col: 4, value: 8 },
+        { row: 1, col: 0, value: 3 },
+        { row: 2, col: 0, value: 6 },
+        { row: 3, col: 0, value: 9 },
+        { row: 3, col: 4, value: 5 },
+        { row: 4, col: 5, value: 1 },
+        { row: 5, col: 5, value: 2 },
+        { row: 6, col: 1, value: 8 },
+        { row: 6, col: 5, value: 7 },
+        // The coloring chain on digit 4
         { row: 0, col: 0, candidates: [4], highlight: 'primary' },
         { row: 0, col: 5, candidates: [4], highlight: 'secondary' },
         { row: 3, col: 5, candidates: [4], highlight: 'primary' },
@@ -874,12 +916,28 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['x-wing', 'jellyfish', 'finned-swordfish'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 0, value: 2 },
+        { row: 0, col: 2, value: 8 },
+        { row: 1, col: 1, value: 5 },
+        { row: 2, col: 0, value: 4 },
+        { row: 2, col: 2, value: 9 },
+        { row: 3, col: 1, value: 2 },
+        { row: 4, col: 4, value: 1 },
+        { row: 5, col: 0, value: 1 },
+        { row: 5, col: 1, value: 3 },
+        { row: 6, col: 1, value: 9 },
+        { row: 7, col: 4, value: 4 },
+        { row: 8, col: 0, value: 3 },
+        { row: 8, col: 4, value: 2 },
+        // The Swordfish pattern (digit 7)
         { row: 2, col: 1, candidates: [7], highlight: 'primary' },
         { row: 2, col: 4, candidates: [7], highlight: 'primary' },
         { row: 5, col: 4, candidates: [7], highlight: 'primary' },
         { row: 5, col: 8, candidates: [7], highlight: 'primary' },
         { row: 8, col: 1, candidates: [7], highlight: 'primary' },
         { row: 8, col: 8, candidates: [7], highlight: 'primary' },
+        // Elimination targets
         { row: 0, col: 1, candidates: [3, 7], highlight: 'elimination', eliminatedCandidates: [7] },
         { row: 6, col: 4, candidates: [2, 7], highlight: 'elimination', eliminatedCandidates: [7] },
         { row: 3, col: 8, candidates: [5, 7], highlight: 'elimination', eliminatedCandidates: [7] },
@@ -955,6 +1013,22 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['swordfish', 'x-wing'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 0, value: 3 },
+        { row: 0, col: 2, value: 5 },
+        { row: 0, col: 3, value: 8 },
+        { row: 1, col: 1, value: 9 },
+        { row: 2, col: 0, value: 7 },
+        { row: 2, col: 1, value: 8 },
+        { row: 2, col: 2, value: 2 },
+        { row: 3, col: 3, value: 4 },
+        { row: 4, col: 0, value: 8 },
+        { row: 5, col: 0, value: 5 },
+        { row: 5, col: 2, value: 9 },
+        { row: 6, col: 1, value: 4 },
+        { row: 7, col: 7, value: 5 },
+        { row: 8, col: 0, value: 9 },
+        // The Jellyfish pattern (digit 6)
         { row: 0, col: 1, candidates: [6], highlight: 'primary' },
         { row: 0, col: 4, candidates: [6], highlight: 'primary' },
         { row: 2, col: 3, candidates: [6], highlight: 'primary' },
@@ -963,6 +1037,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
         { row: 5, col: 3, candidates: [6], highlight: 'primary' },
         { row: 8, col: 4, candidates: [6], highlight: 'primary' },
         { row: 8, col: 7, candidates: [6], highlight: 'primary' },
+        // Elimination targets
         { row: 4, col: 1, candidates: [2, 6], highlight: 'elimination', eliminatedCandidates: [6] },
         { row: 6, col: 4, candidates: [6, 9], highlight: 'elimination', eliminatedCandidates: [6] },
       ]
@@ -977,10 +1052,26 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['x-chain', 'empty-rectangle'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 0, value: 3 },
+        { row: 0, col: 1, value: 8 },
+        { row: 1, col: 0, value: 6 },
+        { row: 1, col: 1, value: 4 },
+        { row: 1, col: 3, value: 2 },
+        { row: 2, col: 2, value: 9 },
+        { row: 3, col: 2, value: 4 },
+        { row: 4, col: 6, value: 1 },
+        { row: 5, col: 2, value: 2 },
+        { row: 6, col: 2, value: 7 },
+        { row: 7, col: 0, value: 2 },
+        { row: 7, col: 1, value: 9 },
+        { row: 8, col: 2, value: 8 },
+        // The Skyscraper pattern (digit 5)
         { row: 1, col: 2, candidates: [5], highlight: 'primary' },
         { row: 1, col: 6, candidates: [5], highlight: 'secondary' },
         { row: 7, col: 2, candidates: [5], highlight: 'primary' },
         { row: 7, col: 8, candidates: [5], highlight: 'secondary' },
+        // Elimination targets
         { row: 1, col: 8, candidates: [2, 5], highlight: 'elimination', eliminatedCandidates: [5] },
         { row: 7, col: 6, candidates: [5, 9], highlight: 'elimination', eliminatedCandidates: [5] },
       ]
@@ -1054,11 +1145,25 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['x-wing', 'finned-swordfish'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 0, value: 7 },
+        { row: 0, col: 1, value: 3 },
+        { row: 1, col: 0, value: 9 },
+        { row: 1, col: 1, value: 6 },
+        { row: 2, col: 2, value: 1 },
+        { row: 3, col: 2, value: 8 },
+        { row: 4, col: 0, value: 1 },
+        { row: 4, col: 1, value: 9 },
+        { row: 5, col: 0, value: 3 },
+        { row: 5, col: 1, value: 2 },
+        { row: 6, col: 7, value: 6 },
+        // The Finned X-Wing pattern (digit 4)
         { row: 1, col: 2, candidates: [4], highlight: 'primary' },
         { row: 1, col: 7, candidates: [4], highlight: 'primary' },
         { row: 5, col: 2, candidates: [4], highlight: 'primary' },
         { row: 5, col: 7, candidates: [4], highlight: 'primary' },
-        { row: 5, col: 8, candidates: [4], highlight: 'secondary' },
+        { row: 5, col: 8, candidates: [4], highlight: 'secondary' }, // The fin
+        // Elimination target
         { row: 4, col: 7, candidates: [2, 4], highlight: 'elimination', eliminatedCandidates: [4] },
       ]
     }
@@ -1072,10 +1177,26 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['xy-wing', 'xy-chain'],
     diagram: {
       cells: [
-        { row: 0, col: 0, candidates: [3, 7], highlight: 'primary' },
-        { row: 0, col: 4, candidates: [3], highlight: 'secondary' },
-        { row: 6, col: 4, candidates: [3], highlight: 'secondary' },
-        { row: 6, col: 8, candidates: [3, 7], highlight: 'primary' },
+        // Context: filled cells
+        { row: 0, col: 1, value: 5 },
+        { row: 0, col: 2, value: 2 },
+        { row: 0, col: 3, value: 9 },
+        { row: 1, col: 0, value: 8 },
+        { row: 2, col: 0, value: 4 },
+        { row: 3, col: 4, value: 6 },
+        { row: 4, col: 4, value: 2 },
+        { row: 5, col: 4, value: 8 },
+        { row: 6, col: 0, value: 2 },
+        { row: 6, col: 1, value: 9 },
+        { row: 6, col: 2, value: 1 },
+        { row: 6, col: 3, value: 6 },
+        { row: 7, col: 4, value: 5 },
+        // The W-Wing pattern
+        { row: 0, col: 0, candidates: [3, 7], highlight: 'primary' },   // Bivalue {3,7}
+        { row: 0, col: 4, candidates: [3], highlight: 'secondary' },    // Strong link on 3
+        { row: 6, col: 4, candidates: [3], highlight: 'secondary' },    // Strong link on 3
+        { row: 6, col: 8, candidates: [3, 7], highlight: 'primary' },   // Bivalue {3,7}
+        // Elimination targets
         { row: 0, col: 8, candidates: [1, 7], highlight: 'elimination', eliminatedCandidates: [7] },
         { row: 6, col: 0, candidates: [4, 7], highlight: 'elimination', eliminatedCandidates: [7] },
       ]
@@ -1160,10 +1281,25 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['simple-coloring', 'xy-chain', 'aic'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 1, value: 3 },
+        { row: 0, col: 2, value: 8 },
+        { row: 0, col: 3, value: 1 },
+        { row: 0, col: 4, value: 9 },
+        { row: 0, col: 5, value: 4 },
+        { row: 1, col: 6, value: 2 },
+        { row: 2, col: 0, value: 7 },
+        { row: 3, col: 6, value: 5 },
+        { row: 4, col: 0, value: 9 },
+        { row: 4, col: 1, value: 8 },
+        { row: 5, col: 6, value: 1 },
+        { row: 6, col: 0, value: 5 },
+        // The X-Chain pattern (digit 6)
         { row: 0, col: 0, candidates: [6], highlight: 'primary' },
         { row: 0, col: 6, candidates: [6], highlight: 'secondary' },
         { row: 4, col: 6, candidates: [6], highlight: 'primary' },
         { row: 4, col: 2, candidates: [6], highlight: 'secondary' },
+        // Elimination target
         { row: 4, col: 0, candidates: [2, 6], highlight: 'elimination', eliminatedCandidates: [6] },
       ]
     }
@@ -1177,10 +1313,25 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['xy-wing', 'x-chain', 'aic'],
     diagram: {
       cells: [
-        { row: 0, col: 0, candidates: [2, 5], highlight: 'primary' },
+        // Context: filled cells
+        { row: 0, col: 1, value: 9 },
+        { row: 0, col: 2, value: 4 },
+        { row: 0, col: 3, value: 6 },
+        { row: 1, col: 0, value: 7 },
+        { row: 1, col: 4, value: 1 },
+        { row: 2, col: 0, value: 6 },
+        { row: 3, col: 4, value: 9 },
+        { row: 4, col: 0, value: 1 },
+        { row: 4, col: 1, value: 4 },
+        { row: 4, col: 2, value: 6 },
+        { row: 4, col: 3, value: 5 },
+        { row: 5, col: 8, value: 4 },
+        // The XY-Chain pattern
+        { row: 0, col: 0, candidates: [2, 5], highlight: 'primary' },   // Start
         { row: 0, col: 4, candidates: [5, 8], highlight: 'secondary' },
         { row: 4, col: 4, candidates: [3, 8], highlight: 'secondary' },
-        { row: 4, col: 8, candidates: [2, 3], highlight: 'primary' },
+        { row: 4, col: 8, candidates: [2, 3], highlight: 'primary' },   // End
+        // Elimination targets
         { row: 0, col: 8, candidates: [1, 2], highlight: 'elimination', eliminatedCandidates: [2] },
         { row: 4, col: 0, candidates: [2, 7], highlight: 'elimination', eliminatedCandidates: [2] },
       ]
@@ -1194,6 +1345,16 @@ export const TECHNIQUES: TechniqueInfo[] = [
     example: 'Four cells form a rectangle with candidates {3,7} in three corners and {3,5,7} in one corner. If that corner were only {3,7}, we\'d have a deadly pattern. So the 5 must be true - eliminate 3 and 7 from that cell.',
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 1, value: 8 },
+        { row: 0, col: 2, value: 2 },
+        { row: 0, col: 3, value: 9 },
+        { row: 1, col: 0, value: 5 },
+        { row: 1, col: 4, value: 1 },
+        { row: 2, col: 1, value: 6 },
+        { row: 2, col: 2, value: 4 },
+        { row: 2, col: 3, value: 8 },
+        // The Unique Rectangle pattern
         { row: 0, col: 0, candidates: [3, 7], highlight: 'secondary' },
         { row: 0, col: 4, candidates: [3, 7], highlight: 'secondary' },
         { row: 2, col: 0, candidates: [3, 7], highlight: 'secondary' },
@@ -1258,6 +1419,14 @@ export const TECHNIQUES: TechniqueInfo[] = [
         example: 'Rectangle with {3,7} in three corners and {3,5,7} in one corner. The 5 must be true, so eliminate 3 and 7 from that cell.',
         diagram: {
           cells: [
+            // Context cells
+            { row: 0, col: 1, value: 8 },
+            { row: 0, col: 2, value: 2 },
+            { row: 0, col: 3, value: 9 },
+            { row: 1, col: 0, value: 5 },
+            { row: 2, col: 1, value: 6 },
+            { row: 2, col: 2, value: 4 },
+            // UR pattern
             { row: 0, col: 0, candidates: [3, 7], highlight: 'secondary' },
             { row: 0, col: 4, candidates: [3, 7], highlight: 'secondary' },
             { row: 2, col: 0, candidates: [3, 7], highlight: 'secondary' },
@@ -1272,6 +1441,12 @@ export const TECHNIQUES: TechniqueInfo[] = [
         example: 'Rectangle with {3,7} and two corners with {3,7,9}. Eliminate 9 from cells seeing both extra corners.',
         diagram: {
           cells: [
+            // Context cells
+            { row: 0, col: 1, value: 8 },
+            { row: 0, col: 2, value: 2 },
+            { row: 1, col: 0, value: 5 },
+            { row: 2, col: 1, value: 6 },
+            // UR pattern
             { row: 0, col: 0, candidates: [3, 7], highlight: 'secondary' },
             { row: 0, col: 4, candidates: [3, 7], highlight: 'secondary' },
             { row: 2, col: 0, candidates: [3, 7, 9], highlight: 'primary' },
@@ -1287,6 +1462,12 @@ export const TECHNIQUES: TechniqueInfo[] = [
         example: 'Rectangle with {3,7} base and extras {5} and {6} forming a naked pair with a cell having {5,6}. Apply naked pair logic.',
         diagram: {
           cells: [
+            // Context cells
+            { row: 0, col: 1, value: 8 },
+            { row: 0, col: 3, value: 9 },
+            { row: 1, col: 0, value: 4 },
+            { row: 2, col: 1, value: 1 },
+            // UR pattern
             { row: 0, col: 0, candidates: [3, 7], highlight: 'secondary' },
             { row: 0, col: 4, candidates: [3, 7], highlight: 'secondary' },
             { row: 2, col: 0, candidates: [3, 5, 7], highlight: 'primary' },
@@ -1303,6 +1484,12 @@ export const TECHNIQUES: TechniqueInfo[] = [
         example: 'Rectangle with {3,7}. If 3 only appears in UR cells in column 1, eliminate 7 from those UR cells.',
         diagram: {
           cells: [
+            // Context cells
+            { row: 0, col: 1, value: 8 },
+            { row: 0, col: 2, value: 2 },
+            { row: 1, col: 0, value: 5 },
+            { row: 2, col: 1, value: 6 },
+            // UR pattern
             { row: 0, col: 0, candidates: [3, 7], highlight: 'secondary' },
             { row: 0, col: 4, candidates: [3, 7], highlight: 'secondary' },
             { row: 2, col: 0, candidates: [3, 5, 7], highlight: 'primary', eliminatedCandidates: [7] },
@@ -1317,6 +1504,12 @@ export const TECHNIQUES: TechniqueInfo[] = [
         example: 'Rectangle with {3,7} and corners R1C1,R2C4 having extra 9. If R1C1≠9 and R2C4≠9, deadly pattern forms, so one must be 9.',
         diagram: {
           cells: [
+            // Context cells
+            { row: 0, col: 1, value: 8 },
+            { row: 0, col: 2, value: 2 },
+            { row: 1, col: 0, value: 5 },
+            { row: 2, col: 1, value: 6 },
+            // UR pattern
             { row: 0, col: 0, candidates: [3, 7, 9], highlight: 'primary' },
             { row: 0, col: 4, candidates: [3, 7], highlight: 'secondary' },
             { row: 2, col: 0, candidates: [3, 7], highlight: 'secondary' },
@@ -1331,6 +1524,12 @@ export const TECHNIQUES: TechniqueInfo[] = [
         example: 'UR where one candidate forms X-Wing in the UR rows/columns. Apply X-Wing eliminations enhanced by UR logic.',
         diagram: {
           cells: [
+            // Context cells
+            { row: 0, col: 1, value: 8 },
+            { row: 0, col: 2, value: 2 },
+            { row: 1, col: 0, value: 5 },
+            { row: 2, col: 1, value: 6 },
+            // UR pattern
             { row: 0, col: 0, candidates: [3, 7], highlight: 'primary' },
             { row: 0, col: 4, candidates: [3, 7], highlight: 'primary' },
             { row: 2, col: 0, candidates: [3, 5, 7], highlight: 'primary', eliminatedCandidates: [3] },
@@ -1345,6 +1544,12 @@ export const TECHNIQUES: TechniqueInfo[] = [
         example: 'Four cells with many candidates, but {4,9} appear in UR pattern. Apply UR logic despite other candidates.',
         diagram: {
           cells: [
+            // Context cells
+            { row: 0, col: 1, value: 7 },
+            { row: 0, col: 2, value: 3 },
+            { row: 1, col: 0, value: 2 },
+            { row: 2, col: 1, value: 8 },
+            // UR pattern
             { row: 0, col: 0, candidates: [1, 4, 5, 9], highlight: 'secondary' },
             { row: 0, col: 4, candidates: [2, 4, 6, 9], highlight: 'secondary' },
             { row: 2, col: 0, candidates: [3, 4, 7, 9], highlight: 'secondary' },
@@ -1359,6 +1564,12 @@ export const TECHNIQUES: TechniqueInfo[] = [
         example: 'Two givens and two cells that would form a deadly pattern. The cells must avoid creating the pattern.',
         diagram: {
           cells: [
+            // Context cells
+            { row: 0, col: 1, value: 8 },
+            { row: 0, col: 2, value: 2 },
+            { row: 1, col: 0, value: 5 },
+            { row: 2, col: 1, value: 6 },
+            // UR pattern with givens
             { row: 0, col: 0, value: 3, highlight: 'secondary' },
             { row: 0, col: 4, value: 7, highlight: 'secondary' },
             { row: 2, col: 0, candidates: [3, 7], highlight: 'secondary' },
@@ -1373,6 +1584,12 @@ export const TECHNIQUES: TechniqueInfo[] = [
         example: 'Six cells forming a double-rectangle pattern with shared candidates. Extended UR logic applies.',
         diagram: {
           cells: [
+            // Context cells
+            { row: 0, col: 1, value: 9 },
+            { row: 0, col: 2, value: 5 },
+            { row: 1, col: 0, value: 4 },
+            { row: 2, col: 1, value: 6 },
+            // Extended UR pattern
             { row: 0, col: 0, candidates: [3, 7], highlight: 'secondary' },
             { row: 0, col: 4, candidates: [3, 7], highlight: 'secondary' },
             { row: 0, col: 8, candidates: [3, 7], highlight: 'secondary' },
@@ -1393,6 +1610,27 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['unique-rectangle'],
     diagram: {
       cells: [
+        // Context: filled cells showing a nearly-complete grid
+        { row: 0, col: 0, value: 1 },
+        { row: 0, col: 1, value: 3 },
+        { row: 0, col: 2, value: 4 },
+        { row: 0, col: 3, value: 6 },
+        { row: 1, col: 4, value: 8 },
+        { row: 2, col: 4, value: 3 },
+        { row: 3, col: 0, value: 4 },
+        { row: 3, col: 4, value: 1 },
+        { row: 4, col: 1, value: 8 },
+        { row: 4, col: 2, value: 6 },
+        { row: 4, col: 3, value: 4 },
+        { row: 5, col: 4, value: 9 },
+        { row: 6, col: 0, value: 8 },
+        { row: 6, col: 4, value: 4 },
+        { row: 7, col: 4, value: 6 },
+        { row: 8, col: 0, value: 6 },
+        { row: 8, col: 1, value: 1 },
+        { row: 8, col: 2, value: 9 },
+        { row: 8, col: 3, value: 3 },
+        // The BUG pattern - all bivalue except one with 3 candidates
         { row: 4, col: 4, candidates: [2, 5, 7], highlight: 'primary' },
         { row: 4, col: 0, candidates: [2, 5], highlight: 'secondary' },
         { row: 4, col: 8, candidates: [5, 7], highlight: 'secondary' },
@@ -1464,11 +1702,30 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['skyscraper', 'x-chain'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 0, value: 2 },
+        { row: 0, col: 2, value: 9 },
+        { row: 1, col: 0, value: 7 },
+        { row: 1, col: 1, value: 8 },
+        { row: 2, col: 0, value: 4 },
+        { row: 2, col: 2, value: 6 },
+        { row: 3, col: 2, value: 2 },
+        { row: 4, col: 1, value: 1 },
+        { row: 4, col: 2, value: 8 },
+        { row: 5, col: 0, value: 9 },
+        { row: 5, col: 1, value: 6 },
+        { row: 5, col: 2, value: 3 },
+        { row: 6, col: 7, value: 2 },
+        { row: 7, col: 0, value: 3 },
+        { row: 7, col: 7, value: 4 },
+        // The Empty Rectangle pattern (digit 5, L-shape in Box 4)
         { row: 3, col: 0, candidates: [5], highlight: 'primary' },
         { row: 3, col: 1, candidates: [5], highlight: 'primary' },
         { row: 4, col: 0, candidates: [5], highlight: 'primary' },
+        // Conjugate pair connection
         { row: 3, col: 7, candidates: [5], highlight: 'secondary' },
         { row: 7, col: 7, candidates: [5], highlight: 'secondary' },
+        // Elimination target
         { row: 7, col: 0, candidates: [2, 5], highlight: 'elimination', eliminatedCandidates: [5] },
       ]
     }
@@ -1482,9 +1739,26 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['xy-wing', 'wxyz-wing'],
     diagram: {
       cells: [
-        { row: 4, col: 4, candidates: [1, 5, 9], highlight: 'primary' },
-        { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },
-        { row: 3, col: 4, candidates: [5, 9], highlight: 'secondary' },
+        // Context: filled cells
+        { row: 0, col: 0, value: 8 },
+        { row: 0, col: 1, value: 2 },
+        { row: 0, col: 2, value: 7 },
+        { row: 1, col: 0, value: 6 },
+        { row: 1, col: 1, value: 3 },
+        { row: 2, col: 0, value: 4 },
+        { row: 2, col: 2, value: 1 },
+        { row: 3, col: 0, value: 7 },
+        { row: 3, col: 1, value: 8 },
+        { row: 3, col: 2, value: 2 },
+        { row: 4, col: 1, value: 6 },
+        { row: 4, col: 2, value: 4 },
+        { row: 4, col: 3, value: 8 },
+        { row: 5, col: 4, value: 3 },
+        // The XYZ-Wing pattern
+        { row: 4, col: 4, candidates: [1, 5, 9], highlight: 'primary' },   // Pivot {X,Y,Z}
+        { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },    // Wing {X,Z}
+        { row: 3, col: 4, candidates: [5, 9], highlight: 'secondary' },    // Wing {Y,Z}
+        // Elimination target (sees all three)
         { row: 3, col: 3, candidates: [2, 9], highlight: 'elimination', eliminatedCandidates: [9] },
       ]
     },
@@ -1556,10 +1830,27 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['xyz-wing', 'xy-wing', 'als-xz'],
     diagram: {
       cells: [
-        { row: 4, col: 4, candidates: [1, 3, 7], highlight: 'primary' },
-        { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },
-        { row: 3, col: 4, candidates: [3, 9], highlight: 'secondary' },
-        { row: 4, col: 5, candidates: [7, 9], highlight: 'secondary' },
+        // Context: filled cells
+        { row: 0, col: 0, value: 8 },
+        { row: 0, col: 1, value: 2 },
+        { row: 0, col: 2, value: 6 },
+        { row: 1, col: 0, value: 5 },
+        { row: 1, col: 1, value: 4 },
+        { row: 2, col: 0, value: 2 },
+        { row: 2, col: 2, value: 8 },
+        { row: 3, col: 0, value: 6 },
+        { row: 3, col: 1, value: 8 },
+        { row: 3, col: 2, value: 5 },
+        { row: 4, col: 1, value: 9 },
+        { row: 4, col: 2, value: 2 },
+        { row: 4, col: 3, value: 4 },
+        { row: 5, col: 4, value: 5 },
+        // The WXYZ-Wing pattern
+        { row: 4, col: 4, candidates: [1, 3, 7], highlight: 'primary' },   // Pivot {W,X,Y}
+        { row: 4, col: 0, candidates: [1, 9], highlight: 'secondary' },    // Wing {W,Z}
+        { row: 3, col: 4, candidates: [3, 9], highlight: 'secondary' },    // Wing {X,Z}
+        { row: 4, col: 5, candidates: [7, 9], highlight: 'secondary' },    // Wing {Y,Z}
+        // Elimination target
         { row: 3, col: 3, candidates: [2, 9], highlight: 'elimination', eliminatedCandidates: [9] },
       ]
     },
@@ -1627,13 +1918,29 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['swordfish', 'finned-x-wing'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 1, value: 9 },
+        { row: 0, col: 4, value: 3 },
+        { row: 1, col: 1, value: 5 },
+        { row: 2, col: 0, value: 3 },
+        { row: 2, col: 2, value: 6 },
+        { row: 3, col: 1, value: 2 },
+        { row: 4, col: 4, value: 1 },
+        { row: 5, col: 0, value: 1 },
+        { row: 5, col: 2, value: 5 },
+        { row: 6, col: 1, value: 8 },
+        { row: 7, col: 8, value: 4 },
+        { row: 8, col: 0, value: 4 },
+        { row: 8, col: 2, value: 2 },
+        // The Finned Swordfish pattern (digit 7)
         { row: 2, col: 1, candidates: [7], highlight: 'primary' },
         { row: 2, col: 4, candidates: [7], highlight: 'primary' },
         { row: 5, col: 4, candidates: [7], highlight: 'primary' },
         { row: 5, col: 8, candidates: [7], highlight: 'primary' },
         { row: 8, col: 1, candidates: [7], highlight: 'primary' },
         { row: 8, col: 8, candidates: [7], highlight: 'primary' },
-        { row: 8, col: 7, candidates: [7], highlight: 'secondary' },
+        { row: 8, col: 7, candidates: [7], highlight: 'secondary' }, // The fin
+        // Elimination target
         { row: 7, col: 8, candidates: [3, 7], highlight: 'elimination', eliminatedCandidates: [7] },
       ]
     },
@@ -1703,11 +2010,24 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['als-xy-wing', 'als-xy-chain', 'sue-de-coq'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 3, value: 8 },
+        { row: 0, col: 4, value: 6 },
+        { row: 0, col: 5, value: 9 },
+        { row: 1, col: 2, value: 6 },
+        { row: 1, col: 3, value: 4 },
+        { row: 2, col: 2, value: 8 },
+        { row: 2, col: 3, value: 9 },
+        { row: 3, col: 0, value: 8 },
+        { row: 3, col: 1, value: 9 },
+        // ALS A: 3 cells with candidates {1,2,3,5}
         { row: 0, col: 0, candidates: [1, 2, 3], highlight: 'primary' },
         { row: 0, col: 1, candidates: [1, 5], highlight: 'primary' },
         { row: 0, col: 2, candidates: [3, 5], highlight: 'primary' },
+        // ALS B: 2 cells with candidates {2,5,7}
         { row: 2, col: 0, candidates: [2, 5], highlight: 'secondary' },
         { row: 2, col: 1, candidates: [2, 7], highlight: 'secondary' },
+        // Elimination target
         { row: 1, col: 0, candidates: [4, 5], highlight: 'elimination', eliminatedCandidates: [5] },
       ]
     },
@@ -1781,10 +2101,24 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['als-xz'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 2, value: 4 },
+        { row: 0, col: 3, value: 9 },
+        { row: 0, col: 4, value: 8 },
+        { row: 1, col: 1, value: 9 },
+        { row: 1, col: 2, value: 8 },
+        { row: 1, col: 3, value: 2 },
+        { row: 2, col: 0, value: 6 },
+        { row: 2, col: 1, value: 4 },
+        { row: 2, col: 2, value: 1 },
+        // Sue de Coq intersection cells
         { row: 0, col: 0, candidates: [2, 3, 5], highlight: 'primary' },
         { row: 0, col: 1, candidates: [3, 5, 7], highlight: 'primary' },
+        // Row companion
         { row: 0, col: 5, candidates: [2, 3], highlight: 'secondary' },
+        // Box companion
         { row: 1, col: 0, candidates: [5, 7], highlight: 'secondary' },
+        // Elimination targets
         { row: 0, col: 2, candidates: [1, 5], highlight: 'elimination', eliminatedCandidates: [5] },
         { row: 2, col: 0, candidates: [3, 4], highlight: 'elimination', eliminatedCandidates: [3] },
       ]
@@ -1858,8 +2192,20 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['simple-coloring', 'aic'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 1, value: 9 },
+        { row: 0, col: 2, value: 3 },
+        { row: 0, col: 3, value: 2 },
+        { row: 1, col: 0, value: 6 },
+        { row: 1, col: 5, value: 8 },
+        { row: 2, col: 0, value: 2 },
+        { row: 2, col: 8, value: 1 },
+        { row: 3, col: 3, value: 5 },
+        { row: 4, col: 5, value: 2 },
+        { row: 5, col: 8, value: 3 },
+        { row: 6, col: 3, value: 9 },
+        // 3D Medusa coloring pattern
         { row: 0, col: 0, candidates: [4], highlight: 'primary' },
-        { row: 0, col: 5, candidates: [4], highlight: 'secondary' },
         { row: 0, col: 5, candidates: [4, 7], highlight: 'secondary' },
         { row: 3, col: 5, candidates: [7], highlight: 'primary' },
         { row: 3, col: 8, candidates: [7], highlight: 'secondary' },
@@ -1936,6 +2282,22 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['x-chain', 'simple-coloring', 'aic'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 3, value: 7 },
+        { row: 0, col: 5, value: 2 },
+        { row: 1, col: 0, value: 8 },
+        { row: 1, col: 4, value: 3 },
+        { row: 1, col: 7, value: 6 },
+        { row: 2, col: 2, value: 5 },
+        { row: 2, col: 6, value: 1 },
+        { row: 3, col: 5, value: 9 },
+        { row: 4, col: 1, value: 3 },
+        { row: 4, col: 8, value: 7 },
+        { row: 5, col: 3, value: 1 },
+        { row: 5, col: 6, value: 8 },
+        { row: 7, col: 0, value: 6 },
+        { row: 7, col: 4, value: 5 },
+        // The Grouped X-Cycles pattern
         { row: 0, col: 0, candidates: [4], highlight: 'primary' },
         { row: 0, col: 1, candidates: [4], highlight: 'primary' },
         { row: 0, col: 6, candidates: [4], highlight: 'secondary' },
@@ -2002,6 +2364,21 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['x-chain', 'xy-chain', 'forcing-chain'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 2, value: 8 },
+        { row: 0, col: 7, value: 2 },
+        { row: 1, col: 1, value: 6 },
+        { row: 1, col: 4, value: 9 },
+        { row: 2, col: 3, value: 4 },
+        { row: 2, col: 6, value: 1 },
+        { row: 3, col: 2, value: 2 },
+        { row: 3, col: 5, value: 8 },
+        { row: 5, col: 1, value: 4 },
+        { row: 5, col: 4, value: 6 },
+        { row: 6, col: 3, value: 9 },
+        { row: 6, col: 7, value: 3 },
+        { row: 7, col: 0, value: 1 },
+        { row: 8, col: 5, value: 2 },
         { row: 0, col: 0, candidates: [3, 5], highlight: 'primary' },
         { row: 4, col: 0, candidates: [3, 7], highlight: 'secondary' },
         { row: 4, col: 5, candidates: [5, 7], highlight: 'primary' },
@@ -2067,6 +2444,21 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['als-xz', 'xy-wing'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 2, value: 4 },
+        { row: 0, col: 3, value: 8 },
+        { row: 0, col: 6, value: 6 },
+        { row: 1, col: 0, value: 6 },
+        { row: 1, col: 2, value: 9 },
+        { row: 1, col: 4, value: 4 },
+        { row: 1, col: 5, value: 3 },
+        { row: 2, col: 2, value: 8 },
+        { row: 2, col: 3, value: 6 },
+        { row: 2, col: 5, value: 2 },
+        { row: 2, col: 6, value: 9 },
+        { row: 3, col: 0, value: 2 },
+        { row: 3, col: 1, value: 1 },
+        // Technique cells
         { row: 0, col: 0, candidates: [1, 2, 5], highlight: 'primary' },
         { row: 0, col: 1, candidates: [2, 3], highlight: 'primary' },
         { row: 2, col: 0, candidates: [3, 5, 7], highlight: 'secondary' },
@@ -2086,6 +2478,21 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['als-xz', 'als-xy-wing', 'xy-chain'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 1, col: 0, value: 4 },
+        { row: 1, col: 2, value: 6 },
+        { row: 1, col: 4, value: 9 },
+        { row: 1, col: 6, value: 3 },
+        { row: 2, col: 1, value: 8 },
+        { row: 2, col: 3, value: 4 },
+        { row: 2, col: 5, value: 6 },
+        { row: 3, col: 0, value: 9 },
+        { row: 3, col: 2, value: 1 },
+        { row: 3, col: 4, value: 3 },
+        { row: 3, col: 6, value: 5 },
+        { row: 4, col: 1, value: 7 },
+        { row: 4, col: 3, value: 2 },
+        // Technique cells
         { row: 0, col: 0, candidates: [1, 2], highlight: 'primary' },
         { row: 0, col: 1, candidates: [2, 3], highlight: 'secondary' },
         { row: 0, col: 2, candidates: [3, 5], highlight: 'secondary' },
@@ -2175,6 +2582,22 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['forcing-chain'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 1, value: 6 },
+        { row: 0, col: 5, value: 3 },
+        { row: 0, col: 8, value: 9 },
+        { row: 1, col: 2, value: 8 },
+        { row: 1, col: 4, value: 6 },
+        { row: 1, col: 6, value: 2 },
+        { row: 3, col: 0, value: 1 },
+        { row: 3, col: 4, value: 9 },
+        { row: 4, col: 3, value: 6 },
+        { row: 5, col: 7, value: 6 },
+        { row: 6, col: 1, value: 4 },
+        { row: 7, col: 5, value: 7 },
+        { row: 8, col: 2, value: 5 },
+        { row: 8, col: 8, value: 1 },
+        // Technique cells
         { row: 2, col: 0, candidates: [6], highlight: 'primary' },
         { row: 2, col: 3, candidates: [6], highlight: 'primary' },
         { row: 2, col: 7, candidates: [6], highlight: 'primary' },
@@ -2240,6 +2663,22 @@ export const TECHNIQUES: TechniqueInfo[] = [
     relatedTechniques: ['als-xz', 'als-xy-wing'],
     diagram: {
       cells: [
+        // Context: filled cells
+        { row: 0, col: 0, value: 1 },
+        { row: 0, col: 3, value: 4 },
+        { row: 0, col: 6, value: 8 },
+        { row: 1, col: 1, value: 6 },
+        { row: 1, col: 4, value: 3 },
+        { row: 1, col: 7, value: 4 },
+        { row: 2, col: 2, value: 8 },
+        { row: 2, col: 5, value: 1 },
+        { row: 2, col: 8, value: 6 },
+        { row: 3, col: 0, value: 4 },
+        { row: 3, col: 7, value: 3 },
+        { row: 4, col: 2, value: 6 },
+        { row: 4, col: 5, value: 4 },
+        { row: 5, col: 3, value: 8 },
+        { row: 5, col: 6, value: 1 },
         { row: 4, col: 4, candidates: [2, 5, 7], highlight: 'primary' },
         { row: 4, col: 0, candidates: [2, 9], highlight: 'secondary' },
         { row: 4, col: 1, candidates: [2, 3, 9], highlight: 'secondary' },
@@ -2523,6 +2962,27 @@ export function getDisplayTechniques(): TechniqueInfo[] {
 // Get techniques by tier
 export function getTechniquesByTier(tier: 'Simple' | 'Medium' | 'Hard' | 'NotImplemented'): TechniqueInfo[] {
   return TECHNIQUES.filter(t => t.tier === tier)
+}
+
+// Get navigable techniques (excludes Auto and NotImplemented)
+function getNavigableTechniques(): TechniqueInfo[] {
+  return TECHNIQUES.filter(t => t.tier !== 'Auto' && t.tier !== 'NotImplemented')
+}
+
+// Get previous technique in learning order (returns undefined if first)
+export function getPreviousTechnique(slug: string): TechniqueInfo | undefined {
+  const techniques = getNavigableTechniques()
+  const index = techniques.findIndex(t => t.slug === slug)
+  if (index <= 0) return undefined
+  return techniques[index - 1]
+}
+
+// Get next technique in learning order (returns undefined if last)
+export function getNextTechnique(slug: string): TechniqueInfo | undefined {
+  const techniques = getNavigableTechniques()
+  const index = techniques.findIndex(t => t.slug === slug)
+  if (index === -1 || index >= techniques.length - 1) return undefined
+  return techniques[index + 1]
 }
 
 // Convert backend technique key (snake_case) to display name
