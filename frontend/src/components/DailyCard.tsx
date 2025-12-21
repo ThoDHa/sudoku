@@ -4,63 +4,74 @@ import DifficultyBadge from './DifficultyBadge'
 interface DailyCardProps {
   difficulty: Difficulty
   selected: boolean
+  isResumable?: boolean // This card has an in-progress game
   onPlay: () => void
 }
 
-// Card border colors for each difficulty
+// Card border colors for each difficulty - using theme-aware colors
 const difficultyColors: Record<Difficulty, { bg: string; border: string; hoverBorder: string; ring: string }> = {
   easy: { 
     bg: 'bg-background-secondary', 
-    border: 'border-green-500', 
-    hoverBorder: 'hover:border-green-600',
-    ring: 'ring-green-500',
+    border: 'border-diff-easy', 
+    hoverBorder: 'hover:border-diff-easy/80',
+    ring: 'ring-diff-easy',
   },
   medium: { 
     bg: 'bg-background-secondary', 
-    border: 'border-amber-500', 
-    hoverBorder: 'hover:border-amber-600',
-    ring: 'ring-amber-500',
+    border: 'border-diff-medium', 
+    hoverBorder: 'hover:border-diff-medium/80',
+    ring: 'ring-diff-medium',
   },
   hard: { 
     bg: 'bg-background-secondary', 
-    border: 'border-orange-500', 
-    hoverBorder: 'hover:border-orange-600',
-    ring: 'ring-orange-500',
+    border: 'border-diff-hard', 
+    hoverBorder: 'hover:border-diff-hard/80',
+    ring: 'ring-diff-hard',
   },
   extreme: { 
     bg: 'bg-background-secondary', 
-    border: 'border-red-500', 
-    hoverBorder: 'hover:border-red-600',
-    ring: 'ring-red-500',
+    border: 'border-diff-extreme', 
+    hoverBorder: 'hover:border-diff-extreme/80',
+    ring: 'ring-diff-extreme',
   },
   impossible: { 
     bg: 'bg-background-secondary', 
-    border: 'border-fuchsia-500', 
-    hoverBorder: 'hover:border-fuchsia-600',
-    ring: 'ring-fuchsia-500',
+    border: 'border-diff-impossible', 
+    hoverBorder: 'hover:border-diff-impossible/80',
+    ring: 'ring-diff-impossible',
   },
   custom: { 
     bg: 'bg-background-secondary', 
-    border: 'border-purple-500', 
-    hoverBorder: 'hover:border-purple-600',
-    ring: 'ring-purple-500',
+    border: 'border-diff-impossible', 
+    hoverBorder: 'hover:border-diff-impossible/80',
+    ring: 'ring-diff-impossible',
   },
 }
 
 const selectedBorders: Record<Difficulty, string> = {
-  easy: 'border-green-500 dark:border-green-400',
-  medium: 'border-amber-500 dark:border-yellow-400',
-  hard: 'border-orange-500 dark:border-orange-400',
-  extreme: 'border-red-500 dark:border-red-400',
-  impossible: 'border-fuchsia-500 dark:border-fuchsia-400',
-  custom: 'border-purple-500 dark:border-purple-400',
+  easy: 'border-diff-easy',
+  medium: 'border-diff-medium',
+  hard: 'border-diff-hard',
+  extreme: 'border-diff-extreme',
+  impossible: 'border-diff-impossible',
+  custom: 'border-diff-impossible',
 }
 
-export default function DailyCard({ difficulty, selected, onPlay }: DailyCardProps) {
+// Resumable background colors (subtle tint of difficulty color)
+const resumableBg: Record<Difficulty, string> = {
+  easy: 'bg-diff-easy/10',
+  medium: 'bg-diff-medium/10',
+  hard: 'bg-diff-hard/10',
+  extreme: 'bg-diff-extreme/10',
+  impossible: 'bg-diff-impossible/10',
+  custom: 'bg-diff-impossible/10',
+}
+
+export default function DailyCard({ difficulty, selected, isResumable, onPlay }: DailyCardProps) {
   const colors = difficultyColors[difficulty]
   const baseClasses = 'daily-card rounded-xl border-2 transition-all duration-200 cursor-pointer focus:outline-none'
   
-  const bgClass = colors.bg
+  const bgClass = isResumable ? resumableBg[difficulty] : colors.bg
   const borderClass = selected ? selectedBorders[difficulty] : colors.border
   const hoverClass = selected ? '' : colors.hoverBorder
   const ringClass = selected ? `ring-2 ${colors.ring}` : ''
@@ -72,7 +83,7 @@ export default function DailyCard({ difficulty, selected, onPlay }: DailyCardPro
     >
       <DifficultyBadge difficulty={difficulty} size="lg" />
       <span className="mt-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-btn-active-text hover:opacity-90">
-        Play
+        {isResumable ? 'Resume' : 'Play'}
       </span>
     </button>
   )

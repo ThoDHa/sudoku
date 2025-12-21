@@ -1,10 +1,19 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { useDailySeed, useLastDailyDifficulty, Difficulty } from '../lib/hooks'
 import { isTodayCompleted, getDailyStreak } from '../lib/scores'
 import { getHomepageMode, setHomepageMode, onHomepageModeChange, HomepageMode } from '../lib/preferences'
+import { getMostRecentGame, clearInProgressGame, getInProgressGames } from '../lib/gameSettings'
 import { useTheme } from '../lib/ThemeContext'
 import DifficultyGrid from '../components/DifficultyGrid'
+
+/**
+ * Find an in-progress game for a specific seed (e.g., today's daily seed)
+ */
+function getInProgressGameForSeed(seed: string) {
+  const games = getInProgressGames()
+  return games.find(g => g.seed === seed) ?? null
+}
 
 // Enso logo - loads light or dark version based on theme
 function EnsoLogo() {
@@ -23,17 +32,34 @@ function EnsoLogo() {
 export default function Homepage() {
   const { data } = useDailySeed()
   const { difficulty, setDifficulty } = useLastDailyDifficulty()
+  const navigate = useNavigate()
   
   const [mode, setMode] = useState<HomepageMode>(getHomepageMode())
   const [practiceSeed, setPracticeSeed] = useState(() => `P${Date.now()}`)
+  const [inProgressGame, setInProgressGame] = useState(() => getMostRecentGame())
+  const [showNewGameConfirm, setShowNewGameConfirm] = useState(false)
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
+  
+  // Check if today's daily puzzle has an in-progress game
+  const dailyInProgress = getInProgressGameForSeed(data.seed)
   
   // Subscribe to homepage mode changes from the menu
   useEffect(() => {
     return onHomepageModeChange(setMode)
   }, [])
   
+  // Refresh in-progress game status when returning to homepage
+  useEffect(() => {
+    setInProgressGame(getMostRecentGame())
+  }, [])
+  
   const completed = isTodayCompleted()
   const streak = getDailyStreak()
+  
+  // AUTO-REDIRECT: If in daily mode and today's daily has an in-progress game, resume it immediately
+  if (mode === 'daily' && !completed && dailyInProgress) {
+    return <Navigate to={`/p/${data.seed}?d=${dailyInProgress.difficulty}`} replace />
+  }
 
   // Generate a new practice seed when switching to practice mode
   useEffect(() => {
@@ -42,10 +68,33 @@ export default function Homepage() {
     }
   }, [mode])
 
-  // Handler for practice mode - just navigates, DifficultyGrid handles the rest
+  // Confirm starting new game (abandoning current)
+  const confirmNewGame = () => {
+    // Clear the old in-progress game before navigating
+    if (inProgressGame) {
+      clearInProgressGame(inProgressGame.seed)
+      setInProgressGame(null)
+    }
+    if (pendingNavigation) {
+      navigate(pendingNavigation)
+    }
+    setShowNewGameConfirm(false)
+    setPendingNavigation(null)
+  }
+
+  // Handler for practice mode - persist mode and generate new seed
   const handlePracticeSelect = (_diff: Difficulty) => {
+    // Persist practice mode so returning to homepage shows practice
+    setHomepageMode('practice')
     // Generate new seed for next time
     setPracticeSeed(`P${Date.now()}`)
+  }
+
+  // Handler for daily mode - persist mode
+  const handleDailySelect = (diff: Difficulty) => {
+    // Persist daily mode so returning to homepage shows daily
+    setHomepageMode('daily')
+    setDifficulty(diff)
   }
 
   // If today's daily is completed and we're in daily mode, show completion screen
@@ -133,8 +182,18 @@ export default function Homepage() {
               <DifficultyGrid
                 seed={data.seed}
                 lastSelected={difficulty}
-                onSelect={setDifficulty}
+                onSelect={handleDailySelect}
                 routePrefix="/p"
+                resumeDifficulty={inProgressGame?.difficulty}
+                onBeforeNavigate={(path) => {
+                  // Only show confirmation if clicking a DIFFERENT difficulty than the resumable one
+                  if (inProgressGame && !path.includes(`d=${inProgressGame.difficulty}`)) {
+                    setPendingNavigation(path)
+                    setShowNewGameConfirm(true)
+                    return false
+                  }
+                  return true
+                }}
               />
             </div>
           </>
@@ -150,6 +209,18 @@ export default function Homepage() {
                 lastSelected={null}
                 onSelect={handlePracticeSelect}
                 routePrefix="/game"
+                resumeDifficulty={inProgressGame?.difficulty}
+                resumeSeed={inProgressGame?.seed}
+                onBeforeNavigate={(path) => {
+                  // Only show confirmation if there's an in-progress game AND we're starting a NEW game
+                  // (not resuming the existing one)
+                  if (inProgressGame && !path.includes(inProgressGame.seed)) {
+                    setPendingNavigation(path)
+                    setShowNewGameConfirm(true)
+                    return false
+                  }
+                  return true
+                }}
               />
             </div>
           </>
@@ -176,6 +247,35 @@ export default function Homepage() {
           </Link>
         </div>
       </div>
+
+      {/* Confirmation modal for starting new game */}
+      {showNewGameConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme">
+            <h2 className="mb-2 text-lg font-semibold text-foreground">Start New Game?</h2>
+            <p className="mb-6 text-sm text-foreground-muted">
+              You have a <span className="capitalize font-medium">{inProgressGame?.difficulty}</span> game in progress. Starting a new game will abandon your current progress.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowNewGameConfirm(false)
+                  setPendingNavigation(null)
+                }}
+                className="flex-1 rounded-lg border border-board-border-light px-4 py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmNewGame}
+                className="flex-1 rounded-lg bg-accent px-4 py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
+              >
+                Start New
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
