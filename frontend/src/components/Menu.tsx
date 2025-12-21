@@ -362,7 +362,7 @@ export default function Menu({
 
                 <div className="my-1 border-t border-board-border-light" />
 
-                {/* New Puzzle submenu */}
+                {/* New Game submenu */}
                 <div className="rounded-lg overflow-hidden">
                   <button
                     onClick={() => {
@@ -375,7 +375,7 @@ export default function Menu({
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
-                      New Puzzle
+                      New Game
                     </span>
                     <svg className={`h-3 w-3 transition-transform ${newPuzzleMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -503,14 +503,14 @@ export default function Menu({
                     Daily Puzzle
                   </button>
                   <button
-                    onClick={() => homepageActions.onSetHomepageMode('practice')}
+                    onClick={() => homepageActions.onSetHomepageMode('game')}
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      homepageActions.homepageMode === 'practice'
+                      homepageActions.homepageMode === 'game'
                         ? 'bg-accent text-btn-active-text'
                         : 'bg-background-secondary text-foreground hover:bg-btn-hover'
                     }`}
                   >
-                    Practice Mode
+                    Game
                   </button>
                 </div>
               </div>
@@ -628,7 +628,7 @@ export default function Menu({
         </div>
       </div>
 
-      {/* Confirmation Modal for New Puzzle */}
+      {/* Confirmation Modal for New Game */}
       {confirmNewPuzzle && (
         <>
           <div 
@@ -640,7 +640,7 @@ export default function Menu({
               className="w-full max-w-xs rounded-xl border border-board-border-light bg-background shadow-2xl p-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-semibold text-foreground mb-2">Start New Puzzle?</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Start New Game?</h3>
               <p className="text-sm text-foreground-muted mb-4">
                 You have a game in progress. Starting a new puzzle will abandon your current progress.
               </p>

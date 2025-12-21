@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate, Navigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useDailySeed, useLastDailyDifficulty, Difficulty } from '../lib/hooks'
 import { isTodayCompleted, getDailyStreak } from '../lib/scores'
 import { getHomepageMode, setHomepageMode, onHomepageModeChange, HomepageMode } from '../lib/preferences'
@@ -36,7 +36,7 @@ export default function Homepage() {
   const navigate = useNavigate()
   
   const [mode, setMode] = useState<HomepageMode>(getHomepageMode())
-  const [practiceSeed, setPracticeSeed] = useState(() => `P${Date.now()}`)
+  const [gameSeed, setGameSeed] = useState(() => `P${Date.now()}`)
   const [inProgressGame, setInProgressGame] = useState(() => getMostRecentGame())
   const [showNewGameConfirm, setShowNewGameConfirm] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
@@ -57,15 +57,12 @@ export default function Homepage() {
   const completed = isTodayCompleted()
   const streak = getDailyStreak()
   
-  // AUTO-REDIRECT: If in daily mode and today's daily has an in-progress game, resume it immediately
-  if (mode === 'daily' && !completed && dailyInProgress) {
-    return <Navigate to={`/p/${data.seed}?d=${dailyInProgress.difficulty}`} replace />
-  }
 
-  // Generate a new practice seed when switching to practice mode
+
+  // Generate a new game seed when switching to game mode
   useEffect(() => {
-    if (mode === 'practice') {
-      setPracticeSeed(`P${Date.now()}`)
+    if (mode === 'game') {
+      setGameSeed(`P${Date.now()}`)
     }
   }, [mode])
 
@@ -83,12 +80,12 @@ export default function Homepage() {
     setPendingNavigation(null)
   }
 
-  // Handler for practice mode - persist mode and generate new seed
-  const handlePracticeSelect = (_diff: Difficulty) => {
-    // Persist practice mode so returning to homepage shows practice
-    setHomepageMode('practice')
+  // Handler for game mode - persist mode and generate new seed
+  const handleGameSelect = (_diff: Difficulty) => {
+    // Persist game mode so returning to homepage shows game
+    setHomepageMode('game')
     // Generate new seed for next time
-    setPracticeSeed(`P${Date.now()}`)
+    setGameSeed(`P${Date.now()}`)
   }
 
   // Handler for daily mode - persist mode
@@ -127,12 +124,12 @@ export default function Homepage() {
           
           <button
             onClick={() => {
-              setHomepageMode('practice')
-              setMode('practice')
+              setHomepageMode('game')
+              setMode('game')
             }}
             className="w-full rounded-xl bg-accent px-6 py-3 font-semibold text-white transition-colors hover:opacity-90"
           >
-            Play Practice Game
+            Play
           </button>
           
           <div className="mt-4 flex w-full gap-2">
@@ -201,14 +198,14 @@ export default function Homepage() {
         ) : (
           <>
             <EnsoLogo />
-            <h1 className="homepage-title">Practice Mode</h1>
+            <h1 className="homepage-title">Game Mode</h1>
             <p className="homepage-subtitle text-foreground-muted">Choose your difficulty</p>
 
             <div className="w-full">
               <DifficultyGrid
-                seed={practiceSeed}
+                seed={gameSeed}
                 lastSelected={null}
-                onSelect={handlePracticeSelect}
+                onSelect={handleGameSelect}
                 routePrefix="/game"
                 resumeDifficulty={inProgressGame?.difficulty}
                 resumeSeed={inProgressGame?.seed}

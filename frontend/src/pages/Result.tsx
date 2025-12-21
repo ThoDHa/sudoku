@@ -120,7 +120,7 @@ export default function Result() {
           to="/"
           className="rounded-lg bg-accent px-4 py-2 text-btn-active-text hover:opacity-90"
         >
-          New Puzzle
+          New Game
         </Link>
       </div>
     </div>

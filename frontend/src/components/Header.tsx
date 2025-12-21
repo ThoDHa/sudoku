@@ -220,7 +220,7 @@ ${debugJson}
                     : 'text-foreground-muted hover:text-foreground'
                 }`}
               >
-                Play
+                {homepageModeState === 'daily' ? 'Daily' : 'Game'}
               </Link>
               <Link
                 to="/techniques"
