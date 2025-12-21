@@ -3,6 +3,9 @@
  * 
  * All solving, validation, and puzzle generation is done locally via WASM.
  * No API calls required.
+ * 
+ * Note: getPuzzle uses static puzzle data for standard seeds to avoid WASM loading.
+ * WASM is only needed for solving, hints, and custom puzzle validation.
  */
 
 import {
@@ -12,6 +15,8 @@ import {
   unloadWasm,
   type SudokuWasmAPI,
 } from './wasm'
+
+import { getPuzzleForSeed as getStaticPuzzle } from './puzzles-data'
 
 // ==================== Types ====================
 
@@ -164,19 +169,21 @@ export async function validateCustomPuzzle(
   return result
 }
 
-export async function getPuzzle(seed: string, difficulty: string): Promise<PuzzleResult> {
-  const api = await getApi()
-  const result = api.getPuzzleForSeed(seed, difficulty)
-  if (result.error) {
-    throw new Error(result.error)
+export function getPuzzle(seed: string, difficulty: string): PuzzleResult {
+  // All puzzles come from the static pool - no WASM needed!
+  // The seed is hashed to deterministically select a puzzle index
+  const staticPuzzle = getStaticPuzzle(seed, difficulty)
+  if (!staticPuzzle) {
+    throw new Error(`Failed to load puzzle for seed "${seed}" with difficulty "${difficulty}"`)
   }
+  
   return {
-    puzzle_id: result.puzzleId,
-    seed: result.seed,
-    difficulty: result.difficulty,
-    givens: result.givens,
-    solution: result.solution,
-    puzzle_index: -1,
+    puzzle_id: `static-${staticPuzzle.puzzleIndex}`,
+    seed: seed,
+    difficulty: difficulty,
+    givens: staticPuzzle.givens,
+    solution: staticPuzzle.solution,
+    puzzle_index: staticPuzzle.puzzleIndex,
   }
 }
 

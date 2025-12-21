@@ -78,6 +78,46 @@ function getPuzzleByIndex(
 }
 
 /**
+ * Get the total number of puzzles in the pool
+ */
+export function getPuzzleCount(): number {
+  return puzzlesData.puzzles.length
+}
+
+/**
+ * Hash a string seed to get a deterministic puzzle index
+ */
+function hashSeedToIndex(seed: string): number {
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) {
+    const char = seed.charCodeAt(i)
+    hash = ((hash << 5) - hash + char) | 0
+  }
+  // Ensure positive and within range
+  const count = puzzlesData.puzzles.length
+  return ((hash % count) + count) % count
+}
+
+/**
+ * Get a puzzle from the static pool using a seed
+ * The seed is hashed to deterministically select a puzzle index
+ */
+export function getPuzzleForSeed(
+  seed: string,
+  difficulty: string
+): { givens: number[]; solution: number[]; puzzleIndex: number } | null {
+  const index = hashSeedToIndex(seed)
+  const result = getPuzzleByIndex(index, difficulty)
+  if (!result) return null
+  
+  return {
+    givens: result.givens,
+    solution: result.solution,
+    puzzleIndex: index,
+  }
+}
+
+/**
  * Get a practice puzzle for a technique
  */
 export function getPracticePuzzle(
