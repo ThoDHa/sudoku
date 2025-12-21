@@ -128,6 +128,10 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     stepDelayRef.current = stepDelay
   }, [stepDelay])
 
+  // Note: stateHistoryRef is bounded per-session since it's reset at the start
+  // of each solve. MAX_MOVE_HISTORY is imported but not used here because the
+  // history is cleared on stopAutoSolve. If needed, add limit check after each push.
+
   // Helper to clear any active timers
   const clearActiveTimers = useCallback(() => {
     if (activeTimeoutRef.current !== null) {
@@ -148,7 +152,14 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     clearActiveTimers()
     
     // Use setTimeout directly - requestIdleCallback can delay too long and cause issues
-    activeTimeoutRef.current = setTimeout(callback, delay)
+    activeTimeoutRef.current = setTimeout(() => {
+      // Direct visibility check as safety net for Android/mobile
+      // React state may be stale if visibility events fire late
+      if (document.visibilityState === 'hidden') {
+        return // Skip callback when hidden
+      }
+      callback()
+    }, delay)
   }, [clearActiveTimers])
 
   // Sync gamePaused prop and background manager with our internal pause state
