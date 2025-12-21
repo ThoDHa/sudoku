@@ -18,6 +18,7 @@ import {
 
 import { getPuzzleForSeed as getStaticPuzzle } from './puzzles-data'
 import { debugLog } from './debug'
+import { validatePuzzle as dpValidatePuzzle, validateBoard as dpValidateBoard } from './dp-solver'
 
 // ==================== Types ====================
 
@@ -151,22 +152,36 @@ export async function solveAll(
   }
 }
 
-export async function validateBoard(board: number[], solution: number[]): Promise<ValidateBoardResult> {
-  const api = await getApi()
-  return api.validateBoard(board, solution)
+export function validateBoard(board: number[], solution: number[]): ValidateBoardResult {
+  // Use pure TypeScript - no WASM needed!
+  // The solution is already known at puzzle load time
+  return dpValidateBoard(board, solution)
 }
 
 export async function validateCustomPuzzle(
   givens: number[],
   _deviceId: string
 ): Promise<ValidateCustomResult> {
-  const api = await getApi()
-  const result = api.validateCustomPuzzle(givens)
-  if (result.valid && result.unique) {
+  // Use pure TypeScript solver - no WASM needed for validation!
+  // This avoids loading 3.3MB WASM just to check if a puzzle is valid
+  const result = dpValidatePuzzle(givens)
+  
+  if (result.valid && result.unique && result.solution) {
     const puzzleId = 'custom-' + hashGivens(givens).slice(0, 16)
-    return { ...result, puzzle_id: puzzleId }
+    return { 
+      valid: true, 
+      unique: true, 
+      puzzle_id: puzzleId,
+      solution: result.solution 
+    }
   }
-  return result
+  
+  // Build result object, only including defined properties
+  const response: ValidateCustomResult = { valid: result.valid }
+  if (result.unique !== undefined) response.unique = result.unique
+  if (result.reason) response.reason = result.reason
+  if (result.solution) response.solution = result.solution
+  return response
 }
 
 export function getPuzzle(seed: string, difficulty: string): PuzzleResult {

@@ -479,32 +479,27 @@ export default function Game() {
   }, [game, visibilityAwareTimeout])
 
   // Validate current board state by comparing against the known solution
-  const handleValidate = useCallback(async () => {
+  const handleValidate = useCallback(() => {
     if (solution.length !== 81) {
       setValidationMessage({ type: 'error', message: 'Solution not available' })
       visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
       return
     }
 
-    try {
-      const data = await validateBoard(game.board, solution)
-      if (data.valid) {
-        setValidationMessage({ type: 'success', message: data.message || 'All entries are correct!' })
-        setIncorrectCells([])
-      } else {
-        setValidationMessage({ type: 'error', message: data.message || 'There are errors in the puzzle' })
-        if (data.incorrectCells) {
-          setIncorrectCells(data.incorrectCells)
-        }
+    const data = validateBoard(game.board, solution)
+    if (data.valid) {
+      setValidationMessage({ type: 'success', message: data.message || 'All entries are correct!' })
+      setIncorrectCells([])
+    } else {
+      setValidationMessage({ type: 'error', message: data.message || 'There are errors in the puzzle' })
+      if (data.incorrectCells) {
+        setIncorrectCells(data.incorrectCells)
       }
-      visibilityAwareTimeout(() => {
-        setValidationMessage(null)
-        setIncorrectCells([])
-      }, TOAST_DURATION_INFO)
-    } catch {
-      setValidationMessage({ type: 'error', message: 'Failed to validate puzzle' })
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
     }
+    visibilityAwareTimeout(() => {
+      setValidationMessage(null)
+      setIncorrectCells([])
+    }, TOAST_DURATION_INFO)
   }, [game.board, solution, visibilityAwareTimeout])
 
   // Core hint step logic - uses cached solution or fetches new one
