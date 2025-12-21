@@ -3,17 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useDailySeed, useLastDailyDifficulty, Difficulty } from '../lib/hooks'
 import { isTodayCompleted, getDailyStreak } from '../lib/scores'
 import { getHomepageMode, setHomepageMode, onHomepageModeChange, HomepageMode } from '../lib/preferences'
-import { getMostRecentGame, clearInProgressGame, getInProgressGames } from '../lib/gameSettings'
+import { getMostRecentGame, clearInProgressGame } from '../lib/gameSettings'
 import { useTheme } from '../lib/ThemeContext'
 import DifficultyGrid from '../components/DifficultyGrid'
-
-/**
- * Find an in-progress game for a specific seed (e.g., today's daily seed)
- */
-function getInProgressGameForSeed(seed: string) {
-  const games = getInProgressGames()
-  return games.find(g => g.seed === seed) ?? null
-}
 
 // Enso logo - loads light or dark version based on theme
 function EnsoLogo() {
@@ -40,9 +32,6 @@ export default function Homepage() {
   const [inProgressGame, setInProgressGame] = useState(() => getMostRecentGame())
   const [showNewGameConfirm, setShowNewGameConfirm] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
-  
-  // Check if today's daily puzzle has an in-progress game
-  const dailyInProgress = getInProgressGameForSeed(data.seed)
   
   // Subscribe to homepage mode changes from the menu
   useEffect(() => {

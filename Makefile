@@ -1,7 +1,7 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-.PHONY: install-hooks test test-e2e test-go test-frontend lint lint-go lint-frontend help generate-icons
+.PHONY: install-hooks test test-e2e test-go test-frontend lint lint-go lint-frontend help generate-icons dev prod
 
 #-----------------------------------------------------------------------
 # Git Hooks
@@ -13,6 +13,20 @@ install-hooks:
 	@ln -sf ../../hooks/pre-push .git/hooks/pre-push
 	@chmod +x hooks/pre-push
 	@echo "Git hooks installed!"
+
+#-----------------------------------------------------------------------
+# Development & Production
+#-----------------------------------------------------------------------
+
+# Run development server with hot reload (default)
+dev:
+	@echo "Starting development server..."
+	@docker compose up
+
+# Run production build
+prod:
+	@echo "Starting production server..."
+	@docker compose -f docker-compose.prod.yml up --build
 
 #-----------------------------------------------------------------------
 # Linting
@@ -91,6 +105,8 @@ generate-icons:
 
 help:
 	@echo "Available targets:"
+	@echo "  dev             - Run development server with hot reload (default)"
+	@echo "  prod            - Run production build"
 	@echo "  install-hooks   - Install git pre-push hook"
 	@echo "  lint            - Run all linters (Go + Frontend)"
 	@echo "  lint-go         - Run Go linter only"
