@@ -304,6 +304,14 @@ export default function Game() {
     }
   }, [backgroundManager.isHidden, backgroundManager.isInDeepPause])
 
+  // Close solve confirmation modal when solving finishes
+  useEffect(() => {
+    if (solveConfirmOpen && !autoSolve.isFetching && autoSolve.isAutoSolving) {
+      // Solution has been fetched, auto-solve is now playing back - close modal
+      setSolveConfirmOpen(false)
+    }
+  }, [solveConfirmOpen, autoSolve.isFetching, autoSolve.isAutoSolving])
+
   // ============================================================
   // HELPER FUNCTIONS
   // ============================================================
@@ -1529,7 +1537,7 @@ ${bugReportJson}
           </div>
 
           {/* Controls - same width as board, scales with container */}
-          <div className="w-full mt-2 flex-shrink-0">
+          <div className="w-full flex-shrink-0">
             <Controls
               notesMode={notesMode}
               onNotesToggle={() => setNotesMode(!notesMode)}
@@ -1591,6 +1599,7 @@ ${bugReportJson}
         solveConfirmOpen={solveConfirmOpen}
         setSolveConfirmOpen={setSolveConfirmOpen}
         onSolve={handleSolve}
+        isSolving={autoSolve.isFetching}
         showClearConfirm={showClearConfirm}
         setShowClearConfirm={setShowClearConfirm}
         isComplete={game.isComplete}
