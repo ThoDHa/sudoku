@@ -188,7 +188,9 @@ describe('scores', () => {
       const url = generatePuzzleUrl(baseScore)
       
       // Uses window.location.origin + import.meta.env.BASE_URL
-      expect(url).toContain('/p/2024-01-15?d=medium')
+      // Routes are now /:seed (no /p/ prefix)
+      expect(url).toContain('/2024-01-15')
+      expect(url).not.toContain('/p/')
     })
 
     it('should generate URL for custom puzzle with encoded data', () => {
@@ -216,9 +218,12 @@ describe('scores', () => {
       // URLs should NOT contain difficulty param - recipient chooses
       expect(generatePuzzleUrl(easyScore)).not.toContain('d=')
       expect(generatePuzzleUrl(hardScore)).not.toContain('d=')
-      // But should contain the seed
-      expect(generatePuzzleUrl(easyScore)).toContain('/p/')
-      expect(generatePuzzleUrl(hardScore)).toContain('/p/')
+      // But should contain the seed (routes are now /:seed, no /p/ prefix)
+      expect(generatePuzzleUrl(easyScore)).toContain('/2024-01-15')
+      expect(generatePuzzleUrl(hardScore)).toContain('/2024-01-15')
+      // Should NOT have the old /p/ prefix
+      expect(generatePuzzleUrl(easyScore)).not.toContain('/p/')
+      expect(generatePuzzleUrl(hardScore)).not.toContain('/p/')
     })
   })
 })

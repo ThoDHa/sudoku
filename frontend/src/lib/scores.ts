@@ -163,7 +163,8 @@ export function generatePuzzleUrl(score: Score): string {
     return `${base}/custom`
   }
   // Share link without difficulty - recipient chooses their own
-  return `${base}/p/${score.seed}`
+  // Routes are now /:seed (no /p/ prefix)
+  return `${base}/${score.seed}`
 }
 
 // =============================================================================
