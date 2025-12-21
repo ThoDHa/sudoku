@@ -147,6 +147,7 @@ export function generateShareText(score: Score, puzzleUrl: string, streak?: numb
 }
 
 // Generate puzzle URL for challenge
+// Note: We don't include difficulty in the URL - recipient chooses their own difficulty
 export function generatePuzzleUrl(score: Score): string {
   // Use the current page URL's base (handles GitHub Pages /sudoku/ path)
   const baseUrl = window.location.origin + (import.meta.env.BASE_URL || '/')
@@ -161,7 +162,8 @@ export function generatePuzzleUrl(score: Score): string {
   if (score.difficulty === 'custom') {
     return `${base}/custom`
   }
-  return `${base}/p/${score.seed}?d=${score.difficulty}`
+  // Share link without difficulty - recipient chooses their own
+  return `${base}/p/${score.seed}`
 }
 
 // =============================================================================
