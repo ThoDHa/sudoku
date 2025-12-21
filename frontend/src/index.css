@@ -27,7 +27,43 @@
   --accent: #2563eb;
   --accent-light: #dbeafe;
 
-  /* Spacing */
+  /* ============================================================
+     FLUID SPACING SCALE
+     Uses dvmin (smaller of vw/vh) for aspect-ratio-aware scaling
+     ============================================================ */
+  --space-xs: clamp(0.125rem, 0.5dvmin, 0.25rem);
+  --space-sm: clamp(0.25rem, 1dvmin, 0.5rem);
+  --space-md: clamp(0.5rem, 1.5dvmin, 0.75rem);
+  --space-lg: clamp(0.75rem, 2dvmin, 1rem);
+  --space-xl: clamp(1rem, 3dvmin, 1.5rem);
+  --space-2xl: clamp(1.5rem, 4dvmin, 2rem);
+
+  /* ============================================================
+     FLUID TYPOGRAPHY SCALE
+     Scales with viewport while respecting min/max readability
+     ============================================================ */
+  --text-xs: clamp(0.625rem, 1.5dvmin, 0.75rem);
+  --text-sm: clamp(0.75rem, 2dvmin, 0.875rem);
+  --text-base: clamp(0.875rem, 2.5dvmin, 1rem);
+  --text-lg: clamp(1rem, 3dvmin, 1.125rem);
+  --text-xl: clamp(1.125rem, 3.5dvmin, 1.25rem);
+  --text-2xl: clamp(1.25rem, 4dvmin, 1.5rem);
+  --text-3xl: clamp(1.5rem, 5dvmin, 2rem);
+
+  /* ============================================================
+     LAYOUT CONSTANTS
+     Fixed values for structural elements
+     ============================================================ */
+  --header-height: 4rem;
+  --game-header-height: 4rem;
+  --page-padding: clamp(0.5rem, 2dvw, 1.5rem);
+  
+  /* ============================================================
+     GAME-SPECIFIC VARIABLES
+     Height-aware sizing for board + controls
+     ============================================================ */
+
+  /* Legacy spacing (kept for backwards compatibility) */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
@@ -106,12 +142,122 @@ html, body {
 
 /* Transitions moved to end of file with prefers-reduced-motion support */
 
-/* Sudoku board styling - grid and visual appearance only */
-.sudoku-board {
-  @apply grid grid-cols-9 border-2 border-board-border bg-board-bg rounded-board overflow-hidden;
+/* ============================================================
+   GAME CONTAINER - Master layout for board + controls
+   ============================================================ */
+
+/* Game area wrapper - establishes height constraints for game pages */
+/* Calculates available space after header for board + controls */
+/* Controls height is ~40% of board width (3 digit rows + actions + gaps) */
+/* So total = board + 0.4*board = 1.4*board, meaning board = available / 1.4 ≈ 71% */
+.game-area {
+  --available-height: calc(100dvh - var(--game-header-height) - var(--page-padding) * 2);
+  /* Board can be at most 70% of available height (controls take remaining 30%) */
+  --board-max-by-height: calc(var(--available-height) * 0.70);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: var(--available-height);
+  padding: var(--page-padding);
 }
 
-/* Cell styling */
+/* Game container - establishes container query context for all game elements */
+/* Used by Game.tsx, Custom.tsx, Homepage.tsx for consistent sizing */
+/* Respects available height constraint for proper scaling */
+/* Also has absolute max-width to prevent excessive stretching on ultrawides */
+.game-container {
+  container-type: inline-size;
+  container-name: game;
+  width: 100%;
+  /* Constrain by available height to prevent overflow */
+  /* Also cap at 40rem (640px) to prevent ultrawide sprawl */
+  max-width: min(var(--board-max-by-height, 100%), 40rem);
+}
+
+/* Page container - for content pages that need max-width and padding */
+/* Uses fluid spacing for consistent scaling */
+.page-container {
+  @apply mx-auto max-w-4xl bg-background min-h-full;
+  padding: var(--page-padding);
+}
+
+/* Page title - fluid scaling for content page headers */
+.page-title {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  margin-bottom: var(--space-md);
+}
+
+/* Section title - fluid scaling for section headers */
+.section-title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  margin-bottom: var(--space-md);
+}
+
+/* Back link - consistent styling for navigation */
+.back-link {
+  display: inline-block;
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-xl);
+}
+
+/* Content card - fluid padding for cards in content pages */
+.content-card {
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+}
+
+/* Content grid - fluid gaps for card grids */
+.content-grid {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+/* ============================================================
+   HOMEPAGE / DIFFICULTY GRID SCALING
+   ============================================================ */
+
+/* Difficulty grid - fluid gaps */
+.difficulty-grid {
+  gap: 2dvmin;
+}
+
+/* Daily card - fluid padding and sizing */
+.daily-card {
+  padding: 3dvmin;
+  gap: 1.5dvmin;
+}
+
+/* Enso logo - scales with viewport */
+.enso-logo {
+  width: 12dvmin;
+  height: auto;
+  margin-bottom: var(--space-md);
+}
+
+/* Homepage heading - fluid typography */
+.homepage-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  margin-bottom: var(--space-xs);
+}
+
+.homepage-subtitle {
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-md);
+}
+
+/* Sudoku board styling - grid and visual appearance only */
+/* Container query context for font scaling */
+.sudoku-board {
+  @apply grid grid-cols-9 border-2 border-board-border bg-board-bg rounded-board overflow-hidden;
+  container-type: inline-size;
+  container-name: sudoku-board;
+}
+
+/* Cell styling - fonts scale with container width using cqi units */
 .sudoku-cell {
   display: flex;
   align-items: center;
@@ -120,44 +266,11 @@ html, body {
   cursor: pointer;
   box-sizing: border-box;
   font-weight: 600;
-  font-size: var(--cell-font-size);
-  /* Improve touch targets */
-  min-height: 32px;
-  min-width: 32px;
+  /* Font size scales purely with container - no min/max constraints */
+  font-size: 5cqi;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-}
-
-@media (min-width: 640px) {
-  .sudoku-cell {
-    font-size: var(--cell-font-size-sm);
-    min-height: 40px;
-    min-width: 40px;
-  }
-}
-
-@media (min-width: 768px) {
-  .sudoku-cell {
-    font-size: var(--cell-font-size-md);
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .sudoku-cell {
-    font-size: var(--cell-font-size-lg);
-    min-height: 48px;
-    min-width: 48px;
-  }
-}
-
-@media (min-width: 1280px) {
-  .sudoku-cell {
-    font-size: var(--cell-font-size-xl);
-    min-height: 52px;
-    min-width: 52px;
-  }
+  /* No min-width/min-height - let the grid control sizing */
 }
 
 /* Candidate grid */
@@ -167,94 +280,77 @@ html, body {
   grid-template-rows: repeat(3, 1fr);
   width: 100%;
   height: 100%;
-  padding: 1px;
+  padding: 0.5cqi;
 }
 
-@media (min-width: 640px) {
-  .candidate-grid {
-    padding: 2px;
-  }
-}
-
+/* Candidate digits - scale with container */
 .candidate-digit {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--candidate-font-size);
+  /* Candidate font scales purely with container */
+  font-size: 1.6cqi;
   font-weight: 500;
   line-height: 1;
-}
-
-@media (min-width: 640px) {
-  .candidate-digit {
-    font-size: var(--candidate-font-size-sm);
-  }
-}
-
-@media (min-width: 768px) {
-  .candidate-digit {
-    font-size: var(--candidate-font-size-md);
-  }
-}
-
-@media (min-width: 1024px) {
-  .candidate-digit {
-    font-size: var(--candidate-font-size-lg);
-  }
-}
-
-@media (min-width: 1280px) {
-  .candidate-digit {
-    font-size: var(--candidate-font-size-xl);
-  }
 }
 
 /* ============================================================
    MOBILE TOUCH-FRIENDLY NUMBER PAD
    ============================================================ */
 
-/* Control digit buttons - compact for better fit */
+/* Controls scale based on the parent .game-container's width */
+/* No separate container needed - inherits from game container */
+
+/* Controls grid layout - gaps scale with container */
+.controls-grid {
+  /* Gap between digit grid and action row */
+  gap: 1.5cqi;
+  /* Top margin to separate from board */
+  margin-top: 1.5cqi;
+}
+
+.digit-grid {
+  /* 3x3 grid layout */
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 1cqi;
+  justify-content: center;
+}
+
+.digit-row {
+  /* Gap between digit buttons in a row */
+  gap: 1cqi;
+}
+
+.action-row {
+  /* Gap between action buttons */
+  gap: 1cqi;
+}
+
+/* Control digit buttons - scale with container width */
+/* Container already accounts for height constraints, so we just follow container */
+/* Cell size = 100%/9 ≈ 11.11cqi, buttons slightly smaller for gaps */
 .control-digit-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   aspect-ratio: 1;
-  width: 3.25rem;
-  min-width: 3.25rem;
-  min-height: 3.25rem;
+  /* Width matches cell size (100%/9 ≈ 11.11cqi) minus small gap */
+  width: 10.5cqi;
   border-radius: 0.375rem;
-  font-size: 1.25rem;
+  /* Font scales with button size */
+  font-size: 4.5cqi;
   font-weight: 600;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   user-select: none;
 }
 
-/* Mobile sizes */
-@media (max-width: 639px) {
-  .control-digit-btn {
-    width: 3.5rem;
-    min-width: 3.5rem;
-    min-height: 3.5rem;
-    font-size: 1.375rem;
-  }
-
-  /* Larger for large font size */
+/* Font size scales with button for large font preference */
+@container game (min-width: 1px) {
   :root.font-large .control-digit-btn {
-    width: 4rem;
-    min-width: 4rem;
-    min-height: 4rem;
-    font-size: 1.5rem;
-  }
-}
-
-@media (min-width: 640px) {
-  .control-digit-btn {
-    width: 3.75rem;
-    min-width: 3.75rem;
-    min-height: 3.75rem;
-    font-size: 1.5rem;
+    font-size: 5cqi;
   }
 }
 
@@ -288,50 +384,29 @@ html, body {
 }
 
 /* Compact action buttons for single row layout (Notes, Delete, Undo, Redo) */
-/* Width calculated to match 3x3 digit grid: (3 * digit_width + 2 * gap) = (4 * action_width + 3 * gap) */
+/* 4 action buttons should span same width as 3 digit buttons + 2 gaps */
 .control-action-btn-compact {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
+  padding: 0.375rem;
   border-radius: 0.375rem;
-  font-size: 1rem;
-  width: 2.375rem;
-  min-width: 2.375rem;
-  min-height: 2.375rem;
+  /* Width scales purely with container - no min/max constraints */
+  width: 6.5cqi;
+  aspect-ratio: 1;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   user-select: none;
 }
 
-@media (max-width: 639px) {
-  .control-action-btn-compact {
-    /* Match mobile digit buttons: 3*3.5 + 2*0.5 = 11.5rem, so 4*x + 3*0.5 = 11.5, x = 2.5rem */
-    width: 2.5rem;
-    min-width: 2.5rem;
-    min-height: 2.5rem;
-    padding: 0.5rem;
-    font-size: 1rem;
-  }
-
-  :root.font-large .control-action-btn-compact {
-    /* Match large font digit buttons: 3*4 + 2*0.5 = 13rem, so 4*x + 3*0.5 = 13, x = 2.875rem */
-    width: 2.875rem;
-    min-width: 2.875rem;
-    min-height: 2.875rem;
-    padding: 0.5rem;
-    font-size: 1.125rem;
-  }
+/* Icon sizing within action buttons - scales with container */
+.control-action-btn-compact svg {
+  width: 3.5cqi;
+  height: 3.5cqi;
 }
 
-@media (min-width: 640px) {
-  .control-action-btn-compact {
-    /* Match sm digit buttons: 3*3.75 + 2*0.625 = 12.5rem, so 4*x + 3*0.625 = 12.5, x = 2.656rem ≈ 2.625rem */
-    width: 2.625rem;
-    min-width: 2.625rem;
-    min-height: 2.625rem;
-    padding: 0.5rem;
-  }
+.control-action-btn-compact .text-base {
+  font-size: 3cqi;
 }
 
 /* Action buttons with text labels (shown on larger screens) */
@@ -375,24 +450,16 @@ html, body {
 /* Remaining count badge on digit buttons */
 .digit-remaining-badge {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
+  bottom: -0.5cqi;
+  right: -0.5cqi;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1rem;
-  height: 1rem;
+  width: 3cqi;
+  height: 3cqi;
   border-radius: 9999px;
-  font-size: 0.625rem;
+  font-size: 1.5cqi;
   font-weight: 600;
-}
-
-@media (min-width: 640px) {
-  .digit-remaining-badge {
-    width: 1.125rem;
-    height: 1.125rem;
-    font-size: 0.6875rem;
-  }
 }
 
 /* Font size selector buttons */
