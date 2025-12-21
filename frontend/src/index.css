@@ -218,13 +218,14 @@ html, body {
 
 /* Difficulty grid - fluid gaps */
 .difficulty-grid {
-  gap: 2dvmin;
+  gap: 3dvmin;
 }
 
-/* Daily card - fluid padding and sizing */
+/* Daily card - fluid padding and sizing, wider than tall */
 .daily-card {
-  padding: 3dvmin;
-  gap: 1.5dvmin;
+  padding: 1dvmin 3dvmin;
+  gap: 0.25dvmin;
+  aspect-ratio: 10 / 2;
 }
 
 /* Enso logo - scales with viewport */

@@ -209,12 +209,16 @@ describe('scores', () => {
       expect(url).toContain('/custom')
     })
 
-    it('should include difficulty in query string', () => {
+    it('should NOT include difficulty in URL - recipient chooses their own', () => {
       const easyScore = { ...baseScore, difficulty: 'easy' }
       const hardScore = { ...baseScore, difficulty: 'hard' }
       
-      expect(generatePuzzleUrl(easyScore)).toContain('d=easy')
-      expect(generatePuzzleUrl(hardScore)).toContain('d=hard')
+      // URLs should NOT contain difficulty param - recipient chooses
+      expect(generatePuzzleUrl(easyScore)).not.toContain('d=')
+      expect(generatePuzzleUrl(hardScore)).not.toContain('d=')
+      // But should contain the seed
+      expect(generatePuzzleUrl(easyScore)).toContain('/p/')
+      expect(generatePuzzleUrl(hardScore)).toContain('/p/')
     })
   })
 })

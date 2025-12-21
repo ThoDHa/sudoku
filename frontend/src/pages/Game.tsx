@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
+import { useParams, useSearchParams, useLocation } from 'react-router-dom'
 import Board from '../components/Board'
 import Controls from '../components/Controls'
 import History from '../components/History'
@@ -9,6 +9,7 @@ import TechniquesListModal from '../components/TechniquesListModal'
 import GameHeader from '../components/GameHeader'
 import GameModals from '../components/GameModals'
 import OnboardingModal, { useOnboarding } from '../components/OnboardingModal'
+import DifficultyGrid from '../components/DifficultyGrid'
 import { Difficulty } from '../lib/hooks'
 import { useTheme } from '../lib/ThemeContext'
 import { useGameContext } from '../lib/GameContext'
@@ -77,8 +78,16 @@ export default function Game() {
     ? getScores().find(s => s.seed === seed)
     : null
   
+  // Track if onboarding is complete (as state so it updates when onboarding is dismissed)
+  const [onboardingComplete, setOnboardingComplete] = useState(
+    () => localStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE) !== null
+  )
+  
   // State for difficulty chooser modal
-  const [showDifficultyChooser, setShowDifficultyChooser] = useState(needsDifficultyChoice && !alreadyCompletedToday)
+  // Only show immediately if onboarding is already complete; otherwise wait for onboarding to finish
+  const [showDifficultyChooser, setShowDifficultyChooser] = useState(
+    needsDifficultyChoice && !alreadyCompletedToday && onboardingComplete
+  )
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(
     difficultyParam as Difficulty | null
   )
@@ -89,11 +98,19 @@ export default function Game() {
     selectedDifficulty || difficultyParam || (seed?.startsWith('custom-') ? 'custom' : 'medium')
   ) as Difficulty
   
-  const navigate = useNavigate()
   
   const { mode, modePreference, setMode, setModePreference, colorTheme, setColorTheme, fontSize, setFontSize } = useTheme()
   const { setGameState } = useGameContext()
-  const { showOnboarding, closeOnboarding } = useOnboarding()
+  const { showOnboarding, closeOnboarding: baseCloseOnboarding } = useOnboarding()
+  
+  // Wrap closeOnboarding to mark onboarding complete and show difficulty chooser (if needed)
+  const closeOnboarding = () => {
+    baseCloseOnboarding()
+    setOnboardingComplete(true)
+    if (needsDifficultyChoice && !alreadyCompletedToday) {
+      setShowDifficultyChooser(true)
+    }
+  }
   
   // Store the encoded string for sharing custom puzzles
   const [encodedPuzzle, setEncodedPuzzle] = useState<string | null>(encoded || null)
@@ -1196,6 +1213,22 @@ ${bugReportJson}
 
   // Fetch puzzle
   useEffect(() => {
+    // Don't load puzzle while onboarding is showing
+    if (showOnboarding) {
+      setLoading(false) // Show empty board behind modal, not loading spinner
+      return
+    }
+    // Don't load puzzle until difficulty is chosen (for shared links without ?d= param)
+    if (showDifficultyChooser) {
+      setLoading(false)
+      return
+    }
+    // For new users, wait for onboarding to appear first (500ms delay in useOnboarding)
+    // This prevents the puzzle from loading before onboarding shows
+    if (!onboardingComplete) {
+      setLoading(false)
+      return
+    }
     if (!seed && !isEncodedCustom) return
 
     const loadPuzzle = async () => {
@@ -1203,7 +1236,10 @@ ${bugReportJson}
         setLoading(true)
         setError(null)
         clearAllAndDeselect()
-        setShowResultModal(false)
+        // Don't hide result modal if revisiting a completed daily
+        if (!alreadyCompletedToday) {
+          setShowResultModal(false)
+        }
         setIncorrectCells([])
 
         let givens: number[]
@@ -1305,11 +1341,20 @@ ${bugReportJson}
         }
 
         setPuzzle(puzzleData)
-        setInitialBoard([...givens])
+        // For completed daily puzzles, show the solved board (solution)
+        // Otherwise show the initial givens
+        if (alreadyCompletedToday) {
+          setInitialBoard([...puzzleData.solution])
+        } else {
+          setInitialBoard([...givens])
+        }
         setSolution([...puzzleData.solution])
 
-        timer.resetTimer()
-        timer.startTimer()
+        // Don't start timer for completed daily puzzles or when choosing difficulty
+        if (!alreadyCompletedToday && !showDifficultyChooser) {
+          timer.resetTimer()
+          timer.startTimer()
+        }
         setLoading(false)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error')
@@ -1319,7 +1364,7 @@ ${bugReportJson}
 
     loadPuzzle()
   // eslint-disable-next-line react-hooks/exhaustive-deps -- timer and clearAllAndDeselect are stable callbacks
-  }, [seed, encoded, isEncodedCustom, difficulty])
+  }, [seed, encoded, isEncodedCustom, difficulty, alreadyCompletedToday, showDifficultyChooser, showOnboarding])
 
   // Reset game state when initialBoard changes (new puzzle loaded) and restore saved state if available
   useEffect(() => {
@@ -1412,39 +1457,6 @@ ${bugReportJson}
   // ============================================================
   // RENDER
   // ============================================================
-
-  // Show difficulty chooser modal if no difficulty was provided in URL
-  if (showDifficultyChooser) {
-    const difficulties: Difficulty[] = ['easy', 'medium', 'hard', 'extreme']
-    return (
-      <div className="flex h-full items-center justify-center bg-background">
-        <div className="mx-4 w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-xl border border-board-border-light">
-          <h2 className="text-xl font-semibold text-foreground text-center mb-2">
-            Choose Difficulty
-          </h2>
-          <p className="text-sm text-foreground-muted text-center mb-6">
-            Select a difficulty level to start the puzzle
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {difficulties.map((diff) => (
-              <button
-                key={diff}
-                onClick={() => {
-                  setSelectedDifficulty(diff)
-                  setShowDifficultyChooser(false)
-                  // Update URL with difficulty param
-                  navigate(`${location.pathname}?d=${diff}`, { replace: true })
-                }}
-                className="rounded-lg bg-btn-bg px-4 py-3 text-sm font-medium text-foreground hover:bg-btn-hover transition-colors capitalize border border-board-border-light"
-              >
-                {diff}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   if (loading) {
     return (
@@ -1659,6 +1671,40 @@ ${bugReportJson}
 
       {/* Onboarding Modal - shown for first-time users */}
       <OnboardingModal isOpen={showOnboarding} onClose={closeOnboarding} />
+
+      {/* Difficulty Chooser Modal - shown when opening shared link without difficulty */}
+      {showDifficultyChooser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-theme">
+            <h2 className="text-xl font-semibold text-foreground text-center mb-2">
+              Choose Difficulty
+            </h2>
+            <p className="text-sm text-foreground-muted text-center mb-6">
+              Select a difficulty level to start the puzzle
+            </p>
+            <div className="flex justify-center">
+              <DifficultyGrid
+                seed={seed || ''}
+                lastSelected={null}
+                onSelect={() => {}}
+                routePrefix=""
+                onBeforeNavigate={(path) => {
+                  // Extract difficulty from path (e.g., "/?d=medium" -> "medium")
+                  const match = path.match(/d=(\w+)/)
+                  if (match && match[1]) {
+                    const diff = match[1] as Difficulty
+                    setSelectedDifficulty(diff)
+                    setShowDifficultyChooser(false)
+                    // Update URL without triggering navigation/re-render
+                    window.history.replaceState(null, '', `${location.pathname}?d=${diff}`)
+                  }
+                  return false // Prevent grid's own navigation
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
