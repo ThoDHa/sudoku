@@ -145,6 +145,7 @@ let wasmLoadPromise: Promise<SudokuWasmAPI> | null = null;
 let wasmLoadError: Error | null = null;
 let goInstance: GoInstance | null = null;
 let wasmScriptElement: HTMLScriptElement | null = null;
+let wasmAbortController: AbortController | null = null;
 
 // Extend globalThis for TypeScript
 declare global {
@@ -200,6 +201,12 @@ export function getWasmApi(): SudokuWasmAPI | null {
 export function unloadWasm(): void {
   debugLog('[WASM] Unloading WASM module...')
   
+  // Abort any in-progress fetch first
+  if (wasmAbortController) {
+    wasmAbortController.abort();
+    wasmAbortController = null;
+  }
+  
   // Clear WASM instance and API
   wasmInstance = null;
   wasmLoadPromise = null;
@@ -242,6 +249,20 @@ export function unloadWasm(): void {
   }
   
   debugLog('[WASM] WASM module unloaded, memory freed')
+}
+
+/**
+ * Abort an in-progress WASM load
+ * Call this when navigating away from a page that initiated WASM loading
+ * to prevent wasted bandwidth on the 3.3MB download
+ */
+export function abortWasmLoad(): void {
+  if (wasmAbortController) {
+    debugLog('[WASM] Aborting WASM fetch...')
+    wasmAbortController.abort();
+    wasmAbortController = null;
+    wasmLoadPromise = null;
+  }
 }
 
 /**
@@ -308,16 +329,32 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       const go = new window.Go();
       goInstance = go; // Store reference for cleanup
 
+      // Create AbortController for the fetch
+      wasmAbortController = new AbortController();
+
       // Fetch and instantiate the WASM module
       debugLog('[WASM] Fetching WASM from:', `${getBaseUrl()}sudoku.wasm`)
-      const wasmResponse = await fetch(`${getBaseUrl()}sudoku.wasm`);
+      const wasmResponse = await fetch(`${getBaseUrl()}sudoku.wasm`, {
+        signal: wasmAbortController.signal
+      });
       if (!wasmResponse.ok) {
         throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`);
       }
       debugLog('[WASM] WASM fetched, instantiating...')
+      
+      // Clear the abort controller since fetch completed
+      wasmAbortController = null;
 
-      const wasmBuffer = await wasmResponse.arrayBuffer();
-      const result = await WebAssembly.instantiate(wasmBuffer, go.importObject);
+      let result: WebAssembly.WebAssemblyInstantiatedSource;
+      if (WebAssembly.instantiateStreaming) {
+        debugLog('[WASM] Using streaming instantiation')
+        result = await WebAssembly.instantiateStreaming(wasmResponse, go.importObject);
+      } else {
+        // Fallback for older browsers
+        debugLog('[WASM] Falling back to buffer instantiation')
+        const wasmBuffer = await wasmResponse.arrayBuffer();
+        result = await WebAssembly.instantiate(wasmBuffer, go.importObject);
+      }
       debugLog('[WASM] WASM instantiated, running Go...')
 
       // Run the Go program (this sets up window.SudokuWasm)
@@ -356,6 +393,16 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       wasmInstance = window.SudokuWasm;
       return wasmInstance;
     } catch (error) {
+      // Clean up abort controller on any error
+      wasmAbortController = null;
+      
+      // Don't store abort as an error - it's intentional cancellation
+      if (error instanceof Error && error.name === 'AbortError') {
+        debugLog('[WASM] WASM fetch was aborted')
+        wasmLoadPromise = null;
+        throw error;
+      }
+      
       wasmLoadError = error instanceof Error ? error : new Error(String(error));
       wasmLoadPromise = null;
       throw wasmLoadError;
