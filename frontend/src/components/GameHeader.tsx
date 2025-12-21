@@ -219,7 +219,7 @@ export default function GameHeader({
         )}
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {/* Loading indicator - shown while fetching solution */}
           {isAutoSolving && isFetchingSolution && (
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-foreground-muted">
