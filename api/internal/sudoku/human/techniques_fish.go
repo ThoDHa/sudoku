@@ -167,7 +167,7 @@ func detectXYWing(b *Board) *core.Move {
 			if wing == pivot {
 				continue
 			}
-			if !sees(pivot, wing) {
+			if !ArePeers(pivot, wing) {
 				continue
 			}
 
@@ -219,7 +219,7 @@ func detectXYWing(b *Board) *core.Move {
 					if !b.Candidates[i].Has(z) {
 						continue
 					}
-					if sees(i, xzWing) && sees(i, yzWing) {
+					if ArePeers(i, xzWing) && ArePeers(i, yzWing) {
 						eliminations = append(eliminations, core.Candidate{
 							Row: i / 9, Col: i % 9, Digit: z,
 						})
@@ -362,13 +362,13 @@ func detectSimpleColoring(b *Board) *core.Move {
 				seesColor1 := false
 				seesColor2 := false
 				for _, c1 := range color1 {
-					if sees(i, c1) {
+					if ArePeers(i, c1) {
 						seesColor1 = true
 						break
 					}
 				}
 				for _, c2 := range color2 {
-					if sees(i, c2) {
+					if ArePeers(i, c2) {
 						seesColor2 = true
 						break
 					}

@@ -77,13 +77,13 @@ func findBlossomALS(b *Board) []ALS {
 	// Check each unit type
 	units := [][]int{}
 	for row := 0; row < 9; row++ {
-		units = append(units, getRowIndices(row))
+		units = append(units, RowIndices[row])
 	}
 	for col := 0; col < 9; col++ {
-		units = append(units, getColIndices(col))
+		units = append(units, ColIndices[col])
 	}
 	for box := 0; box < 9; box++ {
-		units = append(units, getBoxIndices(box))
+		units = append(units, BoxIndices[box])
 	}
 
 	for _, unit := range units {
@@ -159,7 +159,7 @@ func findPetalsForCandidate(b *Board, stem int, cand int, allALS []ALS) []ALS {
 		// Find cells in the ALS that contain this candidate AND see the stem
 		candCellsThatSeeStem := []int{}
 		for _, cell := range als.ByDigit[cand] {
-			if sees(cell, stem) {
+			if ArePeers(cell, stem) {
 				candCellsThatSeeStem = append(candCellsThatSeeStem, cell)
 			}
 		}
@@ -318,7 +318,7 @@ func findBlossomEliminations(b *Board, stem int, petals []ALS, z int, stemCands 
 		// Must see ALL z cells in ALL petals
 		seesAll := true
 		for _, zCell := range allZCells {
-			if !sees(idx, zCell) {
+			if !ArePeers(idx, zCell) {
 				seesAll = false
 				break
 			}

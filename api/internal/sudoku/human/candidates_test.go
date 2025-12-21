@@ -111,22 +111,6 @@ func TestCandidates_Operations(t *testing.T) {
 	}
 }
 
-func TestCandidates_MapConversion(t *testing.T) {
-	// Test conversion from map
-	m := map[int]bool{1: true, 3: true, 7: true}
-	c := candidatesFromMap(m)
-	if !c.Has(1) || !c.Has(3) || !c.Has(7) || c.Has(2) {
-		t.Error("candidatesFromMap conversion failed")
-	}
-
-	// Test conversion to map
-	c = NewCandidates([]int{2, 4, 6})
-	m2 := candidatesToMap(c)
-	if len(m2) != 3 || !m2[2] || !m2[4] || !m2[6] {
-		t.Error("candidatesToMap conversion failed")
-	}
-}
-
 func TestCandidates_BoundaryConditions(t *testing.T) {
 	var c Candidates
 

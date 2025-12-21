@@ -249,7 +249,7 @@ func findXChainFrom(b *Board, digit int, start int, conjugates map[int][]int) *c
 				}
 
 				// Must see both ends
-				if sees(i, chainStart) && sees(i, chainEnd) {
+				if ArePeers(i, chainStart) && ArePeers(i, chainEnd) {
 					var targets []core.CellRef
 					for _, c := range node.path {
 						targets = append(targets, core.CellRef{Row: c / 9, Col: c % 9})
@@ -308,7 +308,7 @@ func detectXYChain(b *Board) *core.Move {
 
 	for _, c1 := range bivalue {
 		for _, c2 := range bivalue {
-			if c1 >= c2 || !sees(c1, c2) {
+			if c1 >= c2 || !ArePeers(c1, c2) {
 				continue
 			}
 			// Find shared candidate
@@ -394,7 +394,7 @@ func findXYChainFrom(b *Board, start int, adj map[int][]struct {
 						continue
 					}
 
-					if sees(i, chainStart) && sees(i, chainEnd) {
+					if ArePeers(i, chainStart) && ArePeers(i, chainEnd) {
 						var targets []core.CellRef
 						for _, c := range n.path {
 							targets = append(targets, core.CellRef{Row: c / 9, Col: c % 9})
@@ -474,7 +474,7 @@ func detectWWing(b *Board) *core.Move {
 			if bv1.digits != bv2.digits {
 				continue
 			}
-			if sees(bv1.idx, bv2.idx) {
+			if ArePeers(bv1.idx, bv2.idx) {
 				continue // They shouldn't see each other directly
 			}
 
@@ -503,9 +503,9 @@ func detectWWing(b *Board) *core.Move {
 
 						// Check if one cell sees bv1 and the other sees bv2
 						link1, link2 := -1, -1
-						if sees(cells[0], bv1.idx) && sees(cells[1], bv2.idx) {
+						if ArePeers(cells[0], bv1.idx) && ArePeers(cells[1], bv2.idx) {
 							link1, link2 = cells[0], cells[1]
-						} else if sees(cells[1], bv1.idx) && sees(cells[0], bv2.idx) {
+						} else if ArePeers(cells[1], bv1.idx) && ArePeers(cells[0], bv2.idx) {
 							link1, link2 = cells[1], cells[0]
 						}
 
@@ -519,7 +519,7 @@ func detectWWing(b *Board) *core.Move {
 								if idx == bv1.idx || idx == bv2.idx || idx == link1 || idx == link2 {
 									continue
 								}
-								if sees(idx, bv1.idx) && sees(idx, bv2.idx) {
+								if ArePeers(idx, bv1.idx) && ArePeers(idx, bv2.idx) {
 									eliminations = append(eliminations, core.Candidate{
 										Row: idx / 9, Col: idx % 9, Digit: elimDigit,
 									})

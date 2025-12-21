@@ -1431,7 +1431,7 @@ func TestDetectDeathBlossom(t *testing.T) {
 // =============================================================================
 
 func TestGetRowIndices(t *testing.T) {
-	indices := getRowIndices(0)
+	indices := RowIndices[0]
 	expected := []int{0, 1, 2, 3, 4, 5, 6, 7, 8}
 	if len(indices) != 9 {
 		t.Errorf("expected 9 indices, got %d", len(indices))
@@ -1442,14 +1442,14 @@ func TestGetRowIndices(t *testing.T) {
 		}
 	}
 
-	indices = getRowIndices(5)
+	indices = RowIndices[5]
 	if indices[0] != 45 || indices[8] != 53 {
 		t.Errorf("row 5 indices incorrect: got %v", indices)
 	}
 }
 
 func TestGetColIndices(t *testing.T) {
-	indices := getColIndices(0)
+	indices := ColIndices[0]
 	expected := []int{0, 9, 18, 27, 36, 45, 54, 63, 72}
 	if len(indices) != 9 {
 		t.Errorf("expected 9 indices, got %d", len(indices))
@@ -1460,7 +1460,7 @@ func TestGetColIndices(t *testing.T) {
 		}
 	}
 
-	indices = getColIndices(4)
+	indices = ColIndices[4]
 	if indices[0] != 4 || indices[8] != 76 {
 		t.Errorf("col 4 indices incorrect: got %v", indices)
 	}
@@ -1468,7 +1468,7 @@ func TestGetColIndices(t *testing.T) {
 
 func TestGetBoxIndices(t *testing.T) {
 	// Box 0 (top-left)
-	indices := getBoxIndices(0)
+	indices := BoxIndices[0]
 	expected := []int{0, 1, 2, 9, 10, 11, 18, 19, 20}
 	if len(indices) != 9 {
 		t.Errorf("expected 9 indices, got %d", len(indices))
@@ -1480,7 +1480,7 @@ func TestGetBoxIndices(t *testing.T) {
 	}
 
 	// Box 4 (center)
-	indices = getBoxIndices(4)
+	indices = BoxIndices[4]
 	expected = []int{30, 31, 32, 39, 40, 41, 48, 49, 50}
 	for i, idx := range indices {
 		if idx != expected[i] {
@@ -1491,45 +1491,28 @@ func TestGetBoxIndices(t *testing.T) {
 
 func TestSees(t *testing.T) {
 	// Same row
-	if !sees(0, 8) {
+	if !ArePeers(0, 8) {
 		t.Error("cells 0 and 8 should see each other (same row)")
 	}
 
 	// Same column
-	if !sees(0, 72) {
+	if !ArePeers(0, 72) {
 		t.Error("cells 0 and 72 should see each other (same column)")
 	}
 
 	// Same box
-	if !sees(0, 20) {
+	if !ArePeers(0, 20) {
 		t.Error("cells 0 and 20 should see each other (same box)")
 	}
 
 	// Same cell
-	if sees(0, 0) {
+	if ArePeers(0, 0) {
 		t.Error("cell should not see itself")
 	}
 
 	// Different row, column, and box
-	if sees(0, 40) {
+	if ArePeers(0, 40) {
 		t.Error("cells 0 and 40 should not see each other")
-	}
-}
-
-func TestCandidatesEqual(t *testing.T) {
-	a := map[int]bool{1: true, 2: true, 3: true}
-	b := map[int]bool{1: true, 2: true, 3: true}
-	c := map[int]bool{1: true, 2: true}
-	d := map[int]bool{1: true, 2: true, 4: true}
-
-	if !candidatesEqual(a, b) {
-		t.Error("a and b should be equal")
-	}
-	if candidatesEqual(a, c) {
-		t.Error("a and c should not be equal (different lengths)")
-	}
-	if candidatesEqual(a, d) {
-		t.Error("a and d should not be equal (different values)")
 	}
 }
 

@@ -281,7 +281,7 @@ func checkSameUnitContradiction(b *Board, colorToCheck, otherColor []candidatePa
 		// Check if any two cells with this digit see each other
 		for i := 0; i < len(pairs); i++ {
 			for j := i + 1; j < len(pairs); j++ {
-				if sees(pairs[i].cell, pairs[j].cell) {
+				if ArePeers(pairs[i].cell, pairs[j].cell) {
 					// Contradiction: two same-digit candidates of the same color in the same unit
 					var eliminations []core.Candidate
 					for _, cp := range colorToCheck {
@@ -353,7 +353,7 @@ func checkUncoloredSeesBothColors(b *Board, color1, color2 []candidatePair, colo
 			// Check if it sees a cell in color1 with this digit
 			seesColor1 := false
 			for _, c1 := range cells1 {
-				if sees(cell, c1) {
+				if ArePeers(cell, c1) {
 					seesColor1 = true
 					break
 				}
@@ -362,7 +362,7 @@ func checkUncoloredSeesBothColors(b *Board, color1, color2 []candidatePair, colo
 			// Check if it sees a cell in color2 with this digit
 			seesColor2 := false
 			for _, c2 := range cells2 {
-				if sees(cell, c2) {
+				if ArePeers(cell, c2) {
 					seesColor2 = true
 					break
 				}

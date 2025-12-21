@@ -138,7 +138,7 @@ func buildWeakLinks(b *Board) map[candidateNode][]candidateNode {
 		}
 		for i := 0; i < len(cells); i++ {
 			for j := i + 1; j < len(cells); j++ {
-				if sees(cells[i], cells[j]) {
+				if ArePeers(cells[i], cells[j]) {
 					n1 := candidateNode{cell: cells[i], digit: digit}
 					n2 := candidateNode{cell: cells[j], digit: digit}
 					links[n1] = append(links[n1], n2)
@@ -276,7 +276,7 @@ func checkChainConclusion(b *Board, chain []chainLink, start candidateNode, star
 	// This is a CONTRADICTION - therefore Start must be OFF!
 	// We eliminate the digit from Start.
 	if start.digit == end.digit && start.cell != end.cell && startPolarity && endPolarity {
-		if sees(start.cell, end.cell) {
+		if ArePeers(start.cell, end.cell) {
 			// Contradiction: Start=ON leads to End=ON, but they see each other
 			// So Start CANNOT be ON - eliminate it
 			return &core.Move{

@@ -361,7 +361,7 @@ func findZEliminations(b *Board, z int, zCellsFirst, zCellsLast []int, excludedC
 		// Must see all Z cells in first group
 		seesAllFirst := true
 		for _, zCell := range zCellsFirst {
-			if !sees(idx, zCell) {
+			if !ArePeers(idx, zCell) {
 				seesAllFirst = false
 				break
 			}
@@ -373,7 +373,7 @@ func findZEliminations(b *Board, z int, zCellsFirst, zCellsLast []int, excludedC
 		// Must see all Z cells in last group
 		seesAllLast := true
 		for _, zCell := range zCellsLast {
-			if !sees(idx, zCell) {
+			if !ArePeers(idx, zCell) {
 				seesAllLast = false
 				break
 			}

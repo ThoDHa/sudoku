@@ -9,17 +9,17 @@ import (
 // detectNakedTriple finds three cells in a unit with candidates that are a subset of three digits
 func detectNakedTriple(b *Board) *core.Move {
 	for row := 0; row < 9; row++ {
-		if move := findNakedTripleInUnit(b, getRowIndices(row), "row", row+1); move != nil {
+		if move := findNakedTripleInUnit(b, RowIndices[row], "row", row+1); move != nil {
 			return move
 		}
 	}
 	for col := 0; col < 9; col++ {
-		if move := findNakedTripleInUnit(b, getColIndices(col), "column", col+1); move != nil {
+		if move := findNakedTripleInUnit(b, ColIndices[col], "column", col+1); move != nil {
 			return move
 		}
 	}
 	for box := 0; box < 9; box++ {
-		if move := findNakedTripleInUnit(b, getBoxIndices(box), "box", box+1); move != nil {
+		if move := findNakedTripleInUnit(b, BoxIndices[box], "box", box+1); move != nil {
 			return move
 		}
 	}
@@ -108,17 +108,17 @@ func findNakedTripleInUnit(b *Board, indices []int, unitType string, unitNum int
 // detectHiddenTriple finds three digits that only appear in three cells within a unit
 func detectHiddenTriple(b *Board) *core.Move {
 	for row := 0; row < 9; row++ {
-		if move := findHiddenTripleInUnit(b, getRowIndices(row), "row", row+1); move != nil {
+		if move := findHiddenTripleInUnit(b, RowIndices[row], "row", row+1); move != nil {
 			return move
 		}
 	}
 	for col := 0; col < 9; col++ {
-		if move := findHiddenTripleInUnit(b, getColIndices(col), "column", col+1); move != nil {
+		if move := findHiddenTripleInUnit(b, ColIndices[col], "column", col+1); move != nil {
 			return move
 		}
 	}
 	for box := 0; box < 9; box++ {
-		if move := findHiddenTripleInUnit(b, getBoxIndices(box), "box", box+1); move != nil {
+		if move := findHiddenTripleInUnit(b, BoxIndices[box], "box", box+1); move != nil {
 			return move
 		}
 	}
@@ -215,17 +215,17 @@ func findHiddenTripleInUnit(b *Board, indices []int, unitType string, unitNum in
 // detectNakedQuad finds four cells with candidates that are a subset of four digits
 func detectNakedQuad(b *Board) *core.Move {
 	for row := 0; row < 9; row++ {
-		if move := findNakedQuadInUnit(b, getRowIndices(row), "row", row+1); move != nil {
+		if move := findNakedQuadInUnit(b, RowIndices[row], "row", row+1); move != nil {
 			return move
 		}
 	}
 	for col := 0; col < 9; col++ {
-		if move := findNakedQuadInUnit(b, getColIndices(col), "column", col+1); move != nil {
+		if move := findNakedQuadInUnit(b, ColIndices[col], "column", col+1); move != nil {
 			return move
 		}
 	}
 	for box := 0; box < 9; box++ {
-		if move := findNakedQuadInUnit(b, getBoxIndices(box), "box", box+1); move != nil {
+		if move := findNakedQuadInUnit(b, BoxIndices[box], "box", box+1); move != nil {
 			return move
 		}
 	}
@@ -317,17 +317,17 @@ func findNakedQuadInUnit(b *Board, indices []int, unitType string, unitNum int) 
 // detectHiddenQuad finds four digits that only appear in four cells
 func detectHiddenQuad(b *Board) *core.Move {
 	for row := 0; row < 9; row++ {
-		if move := findHiddenQuadInUnit(b, getRowIndices(row), "row", row+1); move != nil {
+		if move := findHiddenQuadInUnit(b, RowIndices[row], "row", row+1); move != nil {
 			return move
 		}
 	}
 	for col := 0; col < 9; col++ {
-		if move := findHiddenQuadInUnit(b, getColIndices(col), "column", col+1); move != nil {
+		if move := findHiddenQuadInUnit(b, ColIndices[col], "column", col+1); move != nil {
 			return move
 		}
 	}
 	for box := 0; box < 9; box++ {
-		if move := findHiddenQuadInUnit(b, getBoxIndices(box), "box", box+1); move != nil {
+		if move := findHiddenQuadInUnit(b, BoxIndices[box], "box", box+1); move != nil {
 			return move
 		}
 	}

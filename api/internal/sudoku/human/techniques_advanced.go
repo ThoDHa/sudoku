@@ -279,8 +279,8 @@ func detectSkyscraper(b *Board) *core.Move {
 					}
 
 					// Check if sees both unshared ends
-					seesEnd1 := sees(idx, r1.row*9+unshared1)
-					seesEnd2 := sees(idx, r2.row*9+unshared2)
+					seesEnd1 := ArePeers(idx, r1.row*9+unshared1)
+					seesEnd2 := ArePeers(idx, r2.row*9+unshared2)
 
 					if seesEnd1 && seesEnd2 {
 						eliminations = append(eliminations, core.Candidate{
@@ -831,7 +831,7 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 									if !b.Candidates[idx].Has(extraDigit) {
 										continue
 									}
-									if sees(idx, roofCorner0) && sees(idx, roofCorner1) {
+									if ArePeers(idx, roofCorner0) && ArePeers(idx, roofCorner1) {
 										eliminations = append(eliminations, core.Candidate{
 											Row: idx / 9, Col: idx % 9, Digit: extraDigit,
 										})
@@ -1010,13 +1010,13 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 								var sharedUnits []unitInfo
 
 								if row0 == row1 {
-									sharedUnits = append(sharedUnits, unitInfo{"row", getRowIndices(row0)})
+									sharedUnits = append(sharedUnits, unitInfo{"row", RowIndices[row0]})
 								}
 								if col0 == col1 {
-									sharedUnits = append(sharedUnits, unitInfo{"column", getColIndices(col0)})
+									sharedUnits = append(sharedUnits, unitInfo{"column", ColIndices[col0]})
 								}
 								if box0 == box1 {
-									sharedUnits = append(sharedUnits, unitInfo{"box", getBoxIndices(box0)})
+									sharedUnits = append(sharedUnits, unitInfo{"box", BoxIndices[box0]})
 								}
 
 								// For each shared unit, look for naked subset with the pseudo-cell
@@ -1624,7 +1624,7 @@ func detectFinnedSwordfishInRows(b *Board, digit int) *core.Move {
 								seesAllFins := true
 								for _, fc := range finCols {
 									finIdx := finnedRow.row*9 + fc
-									if !sees(idx, finIdx) {
+									if !ArePeers(idx, finIdx) {
 										seesAllFins = false
 										break
 									}
@@ -1812,7 +1812,7 @@ func detectFinnedSwordfishInCols(b *Board, digit int) *core.Move {
 								seesAllFins := true
 								for _, fr := range finRows {
 									finIdx := fr*9 + finnedCol.col
-									if !sees(idx, finIdx) {
+									if !ArePeers(idx, finIdx) {
 										seesAllFins = false
 										break
 									}

@@ -7,254 +7,21 @@ import (
 	"sudoku-api/pkg/constants"
 )
 
-// Board represents the Sudoku board state with candidates
-type Board struct {
-	Cells      [81]int        // 0 for empty, 1-9 for filled
-	Candidates [81]Candidates // possible values for each cell (bitmask)
-	Eliminated [81]Candidates // candidates that have been eliminated (don't re-add)
-}
-
-// NewBoard creates a board from givens and initializes candidates
-func NewBoard(givens []int) *Board {
-	b := &Board{}
-	for i := 0; i < 81; i++ {
-		b.Cells[i] = givens[i]
-		// Candidates and Eliminated are zero-valued (empty bitmask)
-	}
-	b.InitCandidates()
-	return b
-}
-
-// NewBoardWithCandidates creates a board with pre-set candidates (for persisting eliminations)
-// Does NOT auto-fill candidates - let FindNextMove handle that one at a time
-func NewBoardWithCandidates(cells []int, candidates [][]int) *Board {
-	b := &Board{}
-	for i := 0; i < 81; i++ {
-		b.Cells[i] = cells[i]
-		if candidates != nil && i < len(candidates) && candidates[i] != nil {
-			b.Candidates[i] = NewCandidates(candidates[i])
-		}
-		// Mark candidates that could be valid but aren't present as eliminated
-		// This preserves eliminations from previous moves
-		if cells[i] == 0 && candidates != nil && i < len(candidates) && candidates[i] != nil && len(candidates[i]) > 0 {
-			for d := 1; d <= 9; d++ {
-				if b.canPlace(i, d) && !b.Candidates[i].Has(d) {
-					b.Eliminated[i] = b.Eliminated[i].Set(d)
-				}
-			}
-		}
-	}
-	return b
-}
-
-// InitCandidates populates candidates for empty cells
-func (b *Board) InitCandidates() {
-	for i := 0; i < 81; i++ {
-		if b.Cells[i] == 0 {
-			var cands Candidates
-			for d := 1; d <= 9; d++ {
-				if b.canPlace(i, d) {
-					cands = cands.Set(d)
-				}
-			}
-			b.Candidates[i] = cands
-		} else {
-			b.Candidates[i] = 0
-		}
-	}
-}
-
-func (b *Board) canPlace(idx, digit int) bool {
-	row, col := idx/9, idx%9
-
-	// Check row
-	for c := 0; c < 9; c++ {
-		if b.Cells[row*9+c] == digit {
-			return false
-		}
-	}
-
-	// Check column
-	for r := 0; r < 9; r++ {
-		if b.Cells[r*9+col] == digit {
-			return false
-		}
-	}
-
-	// Check box
-	boxRow, boxCol := (row/3)*3, (col/3)*3
-	for r := boxRow; r < boxRow+3; r++ {
-		for c := boxCol; c < boxCol+3; c++ {
-			if b.Cells[r*9+c] == digit {
-				return false
-			}
-		}
-	}
-
-	return true
-}
-
-// SetCell places a digit and updates candidates
-func (b *Board) SetCell(idx, digit int) {
-	b.Cells[idx] = digit
-	b.Candidates[idx] = 0 // Clear candidates for filled cell
-	b.Eliminated[idx] = 0 // Clear eliminated for filled cell
-
-	row, col := idx/9, idx%9
-
-	// Remove from row and mark as eliminated
-	for c := 0; c < 9; c++ {
-		peerIdx := row*9 + c
-		if b.Candidates[peerIdx].Has(digit) {
-			b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
-			b.Eliminated[peerIdx] = b.Eliminated[peerIdx].Set(digit)
-		}
-	}
-
-	// Remove from column and mark as eliminated
-	for r := 0; r < 9; r++ {
-		peerIdx := r*9 + col
-		if b.Candidates[peerIdx].Has(digit) {
-			b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
-			b.Eliminated[peerIdx] = b.Eliminated[peerIdx].Set(digit)
-		}
-	}
-
-	// Remove from box and mark as eliminated
-	boxRow, boxCol := (row/3)*3, (col/3)*3
-	for r := boxRow; r < boxRow+3; r++ {
-		for c := boxCol; c < boxCol+3; c++ {
-			peerIdx := r*9 + c
-			if b.Candidates[peerIdx].Has(digit) {
-				b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
-				b.Eliminated[peerIdx] = b.Eliminated[peerIdx].Set(digit)
-			}
-		}
-	}
-}
-
-// RemoveCandidate removes a candidate from a cell and marks it as eliminated
-func (b *Board) RemoveCandidate(idx, digit int) bool {
-	if b.Candidates[idx].Has(digit) {
-		b.Candidates[idx] = b.Candidates[idx].Clear(digit)
-		b.Eliminated[idx] = b.Eliminated[idx].Set(digit)
-		return true
-	}
-	return false
-}
-
-// AddCandidate adds a candidate to a cell (used by ApplyMove for "candidate" action)
-func (b *Board) AddCandidate(idx, digit int) {
-	b.Candidates[idx] = b.Candidates[idx].Set(digit)
-}
-
-// IsSolved returns true if all cells are filled AND the solution is valid (no duplicates)
-func (b *Board) IsSolved() bool {
-	for i := 0; i < 81; i++ {
-		if b.Cells[i] == 0 {
-			return false
-		}
-	}
-	// Also verify the solution is valid (no duplicates)
-	return b.IsValid()
-}
-
-// IsValid checks if the current board state has no conflicts (duplicates in row/col/box)
-func (b *Board) IsValid() bool {
-	// Check each row for duplicates
-	for row := 0; row < 9; row++ {
-		seen := make(map[int]bool)
-		for col := 0; col < 9; col++ {
-			digit := b.Cells[row*9+col]
-			if digit != 0 {
-				if seen[digit] {
-					return false // Duplicate in row
-				}
-				seen[digit] = true
-			}
-		}
-	}
-
-	// Check each column for duplicates
-	for col := 0; col < 9; col++ {
-		seen := make(map[int]bool)
-		for row := 0; row < 9; row++ {
-			digit := b.Cells[row*9+col]
-			if digit != 0 {
-				if seen[digit] {
-					return false // Duplicate in column
-				}
-				seen[digit] = true
-			}
-		}
-	}
-
-	// Check each 3x3 box for duplicates
-	for boxRow := 0; boxRow < 3; boxRow++ {
-		for boxCol := 0; boxCol < 3; boxCol++ {
-			seen := make(map[int]bool)
-			for r := boxRow * 3; r < boxRow*3+3; r++ {
-				for c := boxCol * 3; c < boxCol*3+3; c++ {
-					digit := b.Cells[r*9+c]
-					if digit != 0 {
-						if seen[digit] {
-							return false // Duplicate in box
-						}
-						seen[digit] = true
-					}
-				}
-			}
-		}
-	}
-
-	return true
-}
-
-// Clone creates a deep copy of the board
-func (b *Board) Clone() *Board {
-	nb := &Board{}
-	copy(nb.Cells[:], b.Cells[:])
-	copy(nb.Candidates[:], b.Candidates[:])
-	copy(nb.Eliminated[:], b.Eliminated[:])
-	return nb
-}
-
-// GetCells returns cells as a slice
-func (b *Board) GetCells() []int {
-	result := make([]int, 81)
-	copy(result, b.Cells[:])
-	return result
-}
-
-// ClearCell removes a digit from a cell and recalculates candidates for that cell
-// This is used when fixing user errors - we want to keep solver progress but undo the bad placement
-func (b *Board) ClearCell(idx int) {
-	if idx < 0 || idx >= 81 {
-		return
-	}
-
-	// Clear the cell value
-	b.Cells[idx] = 0
-
-	// Recalculate candidates for this cell based on current board state
-	b.Eliminated[idx] = 0
-	var cands Candidates
-	for d := 1; d <= 9; d++ {
-		if b.canPlace(idx, d) {
-			cands = cands.Set(d)
-		}
-	}
-	b.Candidates[idx] = cands
-}
-
-// GetCandidates returns candidates as a 2D slice
-func (b *Board) GetCandidates() [][]int {
-	result := make([][]int, 81)
-	for i := 0; i < 81; i++ {
-		result[i] = b.Candidates[i].ToSlice()
-	}
-	return result
-}
+// ============================================================================
+// Solver - Sudoku Solving Orchestration
+// ============================================================================
+//
+// Solver orchestrates the solving process by:
+// - Managing the technique registry
+// - Finding the next applicable move
+// - Applying moves to the board
+// - Tracking difficulty based on techniques used
+//
+// For board state, see board.go
+// For grid utilities, see grid.go
+// For technique implementations, see techniques_*.go
+//
+// ============================================================================
 
 // Technique represents a solving technique
 type Technique struct {
@@ -264,8 +31,7 @@ type Technique struct {
 	Detect func(b *Board) *core.Move
 }
 
-// TechniqueDifficultyLevel maps technique tiers to puzzle difficulties
-// A puzzle of a given difficulty can only use techniques up to and including its tier
+// TechniqueTierToDifficulty maps technique tiers to puzzle difficulties
 var TechniqueTierToDifficulty = map[string]core.Difficulty{
 	constants.TierSimple:  core.DifficultyEasy,
 	constants.TierMedium:  core.DifficultyMedium,
@@ -281,6 +47,10 @@ var DifficultyAllowedTiers = map[core.Difficulty][]string{
 	core.DifficultyExtreme:    {constants.TierSimple, constants.TierMedium, constants.TierHard},
 	core.DifficultyImpossible: {constants.TierSimple, constants.TierMedium, constants.TierHard, constants.TierExtreme},
 }
+
+// ============================================================================
+// Solver Struct
+// ============================================================================
 
 // Solver holds the technique registry and orchestrates solving
 type Solver struct {
@@ -300,6 +70,10 @@ func NewSolverWithRegistry(registry *TechniqueRegistry) *Solver {
 		registry: registry,
 	}
 }
+
+// ============================================================================
+// Move Finding
+// ============================================================================
 
 // FindNextMove finds the next applicable move using simple-first strategy
 func (s *Solver) FindNextMove(b *Board) *core.Move {
@@ -396,55 +170,18 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 		}
 	}
 
-	// Try simple techniques first
-	for _, t := range s.registry.GetByTier(constants.TierSimple) {
-		if move := t.Detector(b); move != nil {
-			move.Technique = t.Slug
-			move.Refs = core.TechniqueRef{
-				Title: t.Name,
-				Slug:  t.Slug,
-				URL:   fmt.Sprintf("/technique/%s", t.Slug),
+	// Try techniques by tier
+	for _, tier := range []string{constants.TierSimple, constants.TierMedium, constants.TierHard, constants.TierExtreme} {
+		for _, t := range s.registry.GetByTier(tier) {
+			if move := t.Detector(b); move != nil {
+				move.Technique = t.Slug
+				move.Refs = core.TechniqueRef{
+					Title: t.Name,
+					Slug:  t.Slug,
+					URL:   fmt.Sprintf("/technique/%s", t.Slug),
+				}
+				return move
 			}
-			return move
-		}
-	}
-
-	// Try medium techniques, then return to simple
-	for _, t := range s.registry.GetByTier(constants.TierMedium) {
-		if move := t.Detector(b); move != nil {
-			move.Technique = t.Slug
-			move.Refs = core.TechniqueRef{
-				Title: t.Name,
-				Slug:  t.Slug,
-				URL:   fmt.Sprintf("/technique/%s", t.Slug),
-			}
-			return move
-		}
-	}
-
-	// Try hard techniques
-	for _, t := range s.registry.GetByTier(constants.TierHard) {
-		if move := t.Detector(b); move != nil {
-			move.Technique = t.Slug
-			move.Refs = core.TechniqueRef{
-				Title: t.Name,
-				Slug:  t.Slug,
-				URL:   fmt.Sprintf("/technique/%s", t.Slug),
-			}
-			return move
-		}
-	}
-
-	// Try extreme techniques
-	for _, t := range s.registry.GetByTier(constants.TierExtreme) {
-		if move := t.Detector(b); move != nil {
-			move.Technique = t.Slug
-			move.Refs = core.TechniqueRef{
-				Title: t.Name,
-				Slug:  t.Slug,
-				URL:   fmt.Sprintf("/technique/%s", t.Slug),
-			}
-			return move
 		}
 	}
 
@@ -453,27 +190,26 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 
 // checkHiddenSingleForDigitImmediate checks if digit d at cell idx is a hidden single
 // by looking at all POTENTIAL placements (not just current candidates)
-// This is used during candidate-filling to detect immediate assignments
 func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.Move {
 	row, col := idx/9, idx%9
 
 	// Helper to check if digit d can potentially go in a cell
 	canPlaceDigit := func(cellIdx, digit int) bool {
 		if b.Cells[cellIdx] != 0 {
-			return false // Cell already filled
+			return false
 		}
 		if b.Eliminated[cellIdx].Has(digit) {
-			return false // Previously eliminated
+			return false
 		}
 		return b.canPlace(cellIdx, digit)
 	}
 
-	// Check row: is this the only place for digit d in this row?
+	// Check row
 	rowCount := 0
 	for c := 0; c < 9; c++ {
 		cellIdx := row*9 + c
 		if b.Cells[cellIdx] == d {
-			rowCount = 99 // Already placed
+			rowCount = 99
 			break
 		}
 		if canPlaceDigit(cellIdx, d) {
@@ -489,7 +225,7 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 			Explanation: fmt.Sprintf("In row %d, %d can only go in R%dC%d (hidden single)", row+1, d, row+1, col+1),
 			Highlights: core.Highlights{
 				Primary:   []core.CellRef{{Row: row, Col: col}},
-				Secondary: getRowCellsInternal(row),
+				Secondary: getRowCellRefs(row),
 			},
 			Refs: core.TechniqueRef{
 				Title: "Hidden Single",
@@ -499,7 +235,7 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 		}
 	}
 
-	// Check column: is this the only place for digit d in this column?
+	// Check column
 	colCount := 0
 	for r := 0; r < 9; r++ {
 		cellIdx := r*9 + col
@@ -520,7 +256,7 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 			Explanation: fmt.Sprintf("In column %d, %d can only go in R%dC%d (hidden single)", col+1, d, row+1, col+1),
 			Highlights: core.Highlights{
 				Primary:   []core.CellRef{{Row: row, Col: col}},
-				Secondary: getColCellsInternal(col),
+				Secondary: getColCellRefs(col),
 			},
 			Refs: core.TechniqueRef{
 				Title: "Hidden Single",
@@ -530,7 +266,7 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 		}
 	}
 
-	// Check box: is this the only place for digit d in this box?
+	// Check box
 	boxRow, boxCol := (row/3)*3, (col/3)*3
 	boxNum := (row/3)*3 + col/3
 	boxCount := 0
@@ -558,7 +294,7 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 			Explanation: fmt.Sprintf("In box %d, %d can only go in R%dC%d (hidden single)", boxNum+1, d, row+1, col+1),
 			Highlights: core.Highlights{
 				Primary:   []core.CellRef{{Row: row, Col: col}},
-				Secondary: getBoxCellsInternal(boxNum),
+				Secondary: getBoxCellRefs(boxNum),
 			},
 			Refs: core.TechniqueRef{
 				Title: "Hidden Single",
@@ -571,8 +307,8 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 	return nil
 }
 
-// Helper functions for internal use (to avoid import cycle with techniques_simple.go)
-func getRowCellsInternal(row int) []core.CellRef {
+// Helper functions for generating CellRef slices
+func getRowCellRefs(row int) []core.CellRef {
 	cells := make([]core.CellRef, 9)
 	for c := 0; c < 9; c++ {
 		cells[c] = core.CellRef{Row: row, Col: c}
@@ -580,7 +316,7 @@ func getRowCellsInternal(row int) []core.CellRef {
 	return cells
 }
 
-func getColCellsInternal(col int) []core.CellRef {
+func getColCellRefs(col int) []core.CellRef {
 	cells := make([]core.CellRef, 9)
 	for r := 0; r < 9; r++ {
 		cells[r] = core.CellRef{Row: r, Col: col}
@@ -588,7 +324,7 @@ func getColCellsInternal(col int) []core.CellRef {
 	return cells
 }
 
-func getBoxCellsInternal(box int) []core.CellRef {
+func getBoxCellRefs(box int) []core.CellRef {
 	cells := make([]core.CellRef, 0, 9)
 	boxRow, boxCol := (box/3)*3, (box%3)*3
 	for r := boxRow; r < boxRow+3; r++ {
@@ -598,6 +334,10 @@ func getBoxCellsInternal(box int) []core.CellRef {
 	}
 	return cells
 }
+
+// ============================================================================
+// Move Application
+// ============================================================================
 
 // ApplyMove applies a move to the board
 func (s *Solver) ApplyMove(b *Board, move *core.Move) {
@@ -611,18 +351,19 @@ func (s *Solver) ApplyMove(b *Board, move *core.Move) {
 			b.RemoveCandidate(elim.Row*9+elim.Col, elim.Digit)
 		}
 	case "candidate":
-		// Add a candidate to a cell
 		for _, target := range move.Targets {
 			idx := target.Row*9 + target.Col
 			b.AddCandidate(idx, move.Digit)
 		}
 	}
-	// "contradiction" action doesn't change the board - it signals the frontend to backtrack
+	// "contradiction" action doesn't change the board
 }
 
+// ============================================================================
+// Solving
+// ============================================================================
+
 // SolveWithSteps attempts to solve using human techniques, returning all moves
-// Note: fill-candidate moves are not counted toward maxSteps since they are
-// bookkeeping operations, not actual solving steps.
 func (s *Solver) SolveWithSteps(b *Board, maxSteps int) ([]core.Move, string) {
 	var moves []core.Move
 	step := 0
@@ -637,7 +378,6 @@ func (s *Solver) SolveWithSteps(b *Board, maxSteps int) ([]core.Move, string) {
 		s.ApplyMove(b, move)
 		moves = append(moves, *move)
 
-		// If we hit a contradiction, stop solving - the puzzle is invalid or we made a mistake
 		if move.Technique == "contradiction" {
 			return moves, constants.StatusStalled
 		}
@@ -653,6 +393,10 @@ func (s *Solver) SolveWithSteps(b *Board, maxSteps int) ([]core.Move, string) {
 	}
 	return moves, constants.StatusMaxStepsReached
 }
+
+// ============================================================================
+// Registry Access
+// ============================================================================
 
 // GetTechniqueTier returns the tier of a technique by its slug
 func (s *Solver) GetTechniqueTier(slug string) string {
@@ -672,8 +416,11 @@ func (s *Solver) SetTechniqueEnabled(slug string, enabled bool) bool {
 	return s.registry.SetEnabled(slug, enabled)
 }
 
+// ============================================================================
+// Difficulty Analysis
+// ============================================================================
+
 // AnalyzePuzzleDifficulty solves the puzzle and returns the required difficulty level
-// based on the techniques used. Returns the minimum difficulty needed and technique counts.
 func (s *Solver) AnalyzePuzzleDifficulty(givens []int) (core.Difficulty, map[string]int, string) {
 	b := NewBoard(givens)
 	moves, status := s.SolveWithSteps(b, constants.MaxSolverSteps)
@@ -700,7 +447,6 @@ func (s *Solver) AnalyzePuzzleDifficulty(givens []int) (core.Difficulty, map[str
 		}
 	}
 
-	// Map tier to difficulty
 	var requiredDifficulty core.Difficulty
 	switch highestTier {
 	case constants.TierSimple:

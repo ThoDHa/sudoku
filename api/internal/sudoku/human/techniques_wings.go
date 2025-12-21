@@ -55,7 +55,7 @@ func detectXYZWing(b *Board) *core.Move {
 				if wing == pivot {
 					continue
 				}
-				if !sees(pivot, wing) {
+				if !ArePeers(pivot, wing) {
 					continue
 				}
 
@@ -94,7 +94,7 @@ func detectXYZWing(b *Board) *core.Move {
 						if !b.Candidates[i].Has(zDigit) {
 							continue
 						}
-						if sees(i, pivot) && sees(i, xzWing) && sees(i, yzWing) {
+						if ArePeers(i, pivot) && ArePeers(i, xzWing) && ArePeers(i, yzWing) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: i / 9, Col: i % 9, Digit: zDigit,
 							})
@@ -238,7 +238,7 @@ func detectWXYZWing(b *Board) *core.Move {
 						// Must see ALL z-containing cells
 						seesAll := true
 						for _, zc := range zCells {
-							if !sees(idx, zc) {
+							if !ArePeers(idx, zc) {
 								seesAll = false
 								break
 							}
@@ -305,7 +305,7 @@ func isConnectedQuad(quad [4]int) bool {
 	for i, cell := range quad {
 		seesAnother := false
 		for j, other := range quad {
-			if i != j && sees(cell, other) {
+			if i != j && ArePeers(cell, other) {
 				seesAnother = true
 				break
 			}
@@ -335,7 +335,7 @@ func isDigitRestricted(b *Board, quad [4]int, digit int) bool {
 	// All pairs must see each other
 	for i := 0; i < len(digitCells); i++ {
 		for j := i + 1; j < len(digitCells); j++ {
-			if !sees(digitCells[i], digitCells[j]) {
+			if !ArePeers(digitCells[i], digitCells[j]) {
 				return false // Found a pair that can't see each other
 			}
 		}
@@ -359,13 +359,13 @@ func findAllALS(b *Board) []ALS {
 	// Check each unit type
 	units := [][]int{}
 	for row := 0; row < 9; row++ {
-		units = append(units, getRowIndices(row))
+		units = append(units, RowIndices[row])
 	}
 	for col := 0; col < 9; col++ {
-		units = append(units, getColIndices(col))
+		units = append(units, ColIndices[col])
 	}
 	for box := 0; box < 9; box++ {
-		units = append(units, getBoxIndices(box))
+		units = append(units, BoxIndices[box])
 	}
 
 	for _, unit := range units {
@@ -505,14 +505,14 @@ func detectALSXZ(b *Board) *core.Move {
 						// Must see all Z cells in both ALS
 						seesAllZ := true
 						for _, zCell := range zCellsA {
-							if !sees(idx, zCell) {
+							if !ArePeers(idx, zCell) {
 								seesAllZ = false
 								break
 							}
 						}
 						if seesAllZ {
 							for _, zCell := range zCellsB {
-								if !sees(idx, zCell) {
+								if !ArePeers(idx, zCell) {
 									seesAllZ = false
 									break
 								}
@@ -587,7 +587,7 @@ func findCommonDigits(a, b []int) []int {
 func allSeeAll(cellsA, cellsB []int) bool {
 	for _, a := range cellsA {
 		for _, b := range cellsB {
-			if !sees(a, b) {
+			if !ArePeers(a, b) {
 				return false
 			}
 		}

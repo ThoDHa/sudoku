@@ -115,7 +115,7 @@ func hasStrongLink(strongLinks []strongLink, cell1, cell2 int) bool {
 
 // hasWeakLink checks if there's a weak link (cells see each other)
 func hasWeakLink(cell1, cell2 int) bool {
-	return cell1 != cell2 && sees(cell1, cell2)
+	return cell1 != cell2 && ArePeers(cell1, cell2)
 }
 
 // findXCyclesDFS searches for X-Cycles using DFS
@@ -323,7 +323,7 @@ func findNiceLoopEliminationsFixed(b *Board, digit int, path []int, linkStrong [
 					continue
 				}
 
-				if sees(idx, cell1) && sees(idx, cell2) {
+				if ArePeers(idx, cell1) && ArePeers(idx, cell2) {
 					eliminations = append(eliminations, core.Candidate{
 						Row: idx / 9, Col: idx % 9, Digit: digit,
 					})

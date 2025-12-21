@@ -145,9 +145,9 @@ func getUnitsForCell(cellIdx int) []Unit {
 	row, col := cellIdx/9, cellIdx%9
 	box := (row/3)*3 + col/3
 	return []Unit{
-		{Type: UnitRow, Index: row, Cells: getRowIndices(row)},
-		{Type: UnitCol, Index: col, Cells: getColIndices(col)},
-		{Type: UnitBox, Index: box, Cells: getBoxIndices(box)},
+		{Type: UnitRow, Index: row, Cells: RowIndices[row]},
+		{Type: UnitCol, Index: col, Cells: ColIndices[col]},
+		{Type: UnitBox, Index: box, Cells: BoxIndices[box]},
 	}
 }
 

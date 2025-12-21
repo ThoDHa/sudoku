@@ -224,66 +224,6 @@ func TestBoxIndices(t *testing.T) {
 	}
 }
 
-func TestGetRowCells(t *testing.T) {
-	cells := GetRowCells(0)
-	if len(cells) != 9 {
-		t.Errorf("GetRowCells(0) returned %d cells, want 9", len(cells))
-	}
-
-	expected := []core.CellRef{
-		{Row: 0, Col: 0}, {Row: 0, Col: 1}, {Row: 0, Col: 2},
-		{Row: 0, Col: 3}, {Row: 0, Col: 4}, {Row: 0, Col: 5},
-		{Row: 0, Col: 6}, {Row: 0, Col: 7}, {Row: 0, Col: 8},
-	}
-
-	for i, cell := range cells {
-		if cell != expected[i] {
-			t.Errorf("GetRowCells(0)[%d] = %v, want %v", i, cell, expected[i])
-		}
-	}
-}
-
-func TestGetBoxCells(t *testing.T) {
-	cells := GetBoxCells(0)
-	if len(cells) != 9 {
-		t.Errorf("GetBoxCells(0) returned %d cells, want 9", len(cells))
-	}
-
-	expected := []core.CellRef{
-		{Row: 0, Col: 0}, {Row: 0, Col: 1}, {Row: 0, Col: 2},
-		{Row: 1, Col: 0}, {Row: 1, Col: 1}, {Row: 1, Col: 2},
-		{Row: 2, Col: 0}, {Row: 2, Col: 1}, {Row: 2, Col: 2},
-	}
-
-	for i, cell := range cells {
-		if cell != expected[i] {
-			t.Errorf("GetBoxCells(0)[%d] = %v, want %v", i, cell, expected[i])
-		}
-	}
-}
-
-func TestForEachPeer(t *testing.T) {
-	// Test that ForEachPeer visits exactly 20 peers for cell 40 (center)
-	count := 0
-	visited := make(map[int]bool)
-
-	ForEachPeer(40, func(peerIdx int) {
-		count++
-		if visited[peerIdx] {
-			t.Errorf("Peer %d visited twice", peerIdx)
-		}
-		visited[peerIdx] = true
-
-		if !ArePeers(40, peerIdx) {
-			t.Errorf("Peer %d is not actually a peer of 40", peerIdx)
-		}
-	})
-
-	if count != 20 {
-		t.Errorf("ForEachPeer visited %d peers, want 20", count)
-	}
-}
-
 // Helper function to compare slices
 func slicesEqual(a, b []int) bool {
 	if len(a) != len(b) {
