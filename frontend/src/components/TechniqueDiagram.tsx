@@ -50,12 +50,22 @@ export default function TechniqueDiagramView({ diagram }: TechniqueDiagramViewPr
     if (cell.candidates && cell.candidates.length > 0) {
       // Candidates - show in 3x3 mini grid
       const candidateSize = cellSize / 3
+      // Check if cell is highlighted - affects text color for contrast
+      const isHighlighted = cell.highlight === 'primary' || cell.highlight === 'secondary'
+      
       return cell.candidates.map((d: number) => {
         const cRow = Math.floor((d - 1) / 3)
         const cCol = (d - 1) % 3
         const cx = x + cCol * candidateSize + candidateSize / 2
         const cy = y + cRow * candidateSize + candidateSize / 2 + 1.5
         const isEliminated = cell.eliminatedCandidates?.includes(d)
+        
+        // Use contrasting color on highlighted cells, matching Board behavior
+        const candidateFill = isEliminated 
+          ? 'var(--error-text)' 
+          : isHighlighted 
+            ? 'var(--text-on-highlight)' 
+            : 'var(--text-candidate)'
         
         return (
           <g key={`cand-${row}-${col}-${d}`}>
@@ -65,7 +75,7 @@ export default function TechniqueDiagramView({ diagram }: TechniqueDiagramViewPr
               textAnchor="middle"
               fontSize="5"
               fontWeight={isEliminated ? "700" : "400"}
-              fill={isEliminated ? 'var(--accent)' : 'var(--text-candidate)'}
+              fill={candidateFill}
               style={isEliminated ? { textDecoration: 'line-through' } : {}}
             >
               {d}
@@ -81,7 +91,7 @@ export default function TechniqueDiagramView({ diagram }: TechniqueDiagramViewPr
   return (
     <svg 
       viewBox={`0 0 ${boardSize} ${boardSize}`} 
-      className="w-full max-w-[200px] mx-auto rounded-lg overflow-hidden"
+      className="w-full max-w-[280px] mx-auto rounded-lg overflow-hidden"
       style={{ background: 'var(--board-bg)' }}
     >
       {/* Cells */}

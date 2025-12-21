@@ -104,11 +104,12 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
         const cy = y + cRow * candidateSize + candidateSize / 2 + 1.5
         const isEliminated = cell.eliminatedCandidates?.includes(d)
         
-        // Use lighter color on highlighted cells for better contrast
+        // Use contrasting color on highlighted cells, matching Board behavior
         // On highlighted cells: use text-on-highlight (contrasting with cell-primary/secondary)
         // On normal cells: use text-candidate (theme color)
+        // Eliminated candidates use error-text to match Board
         const candidateFill = isEliminated 
-          ? 'var(--accent)' 
+          ? 'var(--error-text)' 
           : isHighlighted 
             ? 'var(--text-on-highlight)' 
             : 'var(--text-candidate)'
@@ -139,7 +140,7 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
       {/* SVG Diagram */}
       <svg 
         viewBox={`0 0 ${boardSize} ${boardSize}`} 
-        className="w-full max-w-[200px] mx-auto rounded-lg overflow-hidden transition-colors duration-300"
+        className="w-full max-w-[280px] mx-auto rounded-lg overflow-hidden transition-colors duration-300"
         style={{ background: 'var(--board-bg)' }}
       >
         {/* Cells */}
