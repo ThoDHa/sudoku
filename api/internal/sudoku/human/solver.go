@@ -9,9 +9,9 @@ import (
 
 // Board represents the Sudoku board state with candidates
 type Board struct {
-	Cells      [81]int          // 0 for empty, 1-9 for filled
-	Candidates [81]map[int]bool // possible values for each cell
-	Eliminated [81]map[int]bool // candidates that have been eliminated (don't re-add)
+	Cells      [81]int        // 0 for empty, 1-9 for filled
+	Candidates [81]Candidates // possible values for each cell (bitmask)
+	Eliminated [81]Candidates // candidates that have been eliminated (don't re-add)
 }
 
 // NewBoard creates a board from givens and initializes candidates
@@ -19,8 +19,7 @@ func NewBoard(givens []int) *Board {
 	b := &Board{}
 	for i := 0; i < 81; i++ {
 		b.Cells[i] = givens[i]
-		b.Candidates[i] = make(map[int]bool)
-		b.Eliminated[i] = make(map[int]bool)
+		// Candidates and Eliminated are zero-valued (empty bitmask)
 	}
 	b.InitCandidates()
 	return b
@@ -32,19 +31,15 @@ func NewBoardWithCandidates(cells []int, candidates [][]int) *Board {
 	b := &Board{}
 	for i := 0; i < 81; i++ {
 		b.Cells[i] = cells[i]
-		b.Candidates[i] = make(map[int]bool)
-		b.Eliminated[i] = make(map[int]bool)
 		if candidates != nil && i < len(candidates) && candidates[i] != nil {
-			for _, d := range candidates[i] {
-				b.Candidates[i][d] = true
-			}
+			b.Candidates[i] = NewCandidates(candidates[i])
 		}
 		// Mark candidates that could be valid but aren't present as eliminated
 		// This preserves eliminations from previous moves
 		if cells[i] == 0 && candidates != nil && i < len(candidates) && candidates[i] != nil && len(candidates[i]) > 0 {
 			for d := 1; d <= 9; d++ {
-				if b.canPlace(i, d) && !b.Candidates[i][d] {
-					b.Eliminated[i][d] = true
+				if b.canPlace(i, d) && !b.Candidates[i].Has(d) {
+					b.Eliminated[i] = b.Eliminated[i].Set(d)
 				}
 			}
 		}
@@ -56,14 +51,15 @@ func NewBoardWithCandidates(cells []int, candidates [][]int) *Board {
 func (b *Board) InitCandidates() {
 	for i := 0; i < 81; i++ {
 		if b.Cells[i] == 0 {
-			b.Candidates[i] = make(map[int]bool)
+			var cands Candidates
 			for d := 1; d <= 9; d++ {
 				if b.canPlace(i, d) {
-					b.Candidates[i][d] = true
+					cands = cands.Set(d)
 				}
 			}
+			b.Candidates[i] = cands
 		} else {
-			b.Candidates[i] = make(map[int]bool)
+			b.Candidates[i] = 0
 		}
 	}
 }
@@ -101,33 +97,26 @@ func (b *Board) canPlace(idx, digit int) bool {
 // SetCell places a digit and updates candidates
 func (b *Board) SetCell(idx, digit int) {
 	b.Cells[idx] = digit
-	b.Candidates[idx] = make(map[int]bool)
-	// Clear eliminated for this cell since it's now filled
-	b.Eliminated[idx] = make(map[int]bool)
+	b.Candidates[idx] = 0 // Clear candidates for filled cell
+	b.Eliminated[idx] = 0 // Clear eliminated for filled cell
 
 	row, col := idx/9, idx%9
 
 	// Remove from row and mark as eliminated
 	for c := 0; c < 9; c++ {
 		peerIdx := row*9 + c
-		if b.Candidates[peerIdx][digit] {
-			delete(b.Candidates[peerIdx], digit)
-			if b.Eliminated[peerIdx] == nil {
-				b.Eliminated[peerIdx] = make(map[int]bool)
-			}
-			b.Eliminated[peerIdx][digit] = true
+		if b.Candidates[peerIdx].Has(digit) {
+			b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
+			b.Eliminated[peerIdx] = b.Eliminated[peerIdx].Set(digit)
 		}
 	}
 
 	// Remove from column and mark as eliminated
 	for r := 0; r < 9; r++ {
 		peerIdx := r*9 + col
-		if b.Candidates[peerIdx][digit] {
-			delete(b.Candidates[peerIdx], digit)
-			if b.Eliminated[peerIdx] == nil {
-				b.Eliminated[peerIdx] = make(map[int]bool)
-			}
-			b.Eliminated[peerIdx][digit] = true
+		if b.Candidates[peerIdx].Has(digit) {
+			b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
+			b.Eliminated[peerIdx] = b.Eliminated[peerIdx].Set(digit)
 		}
 	}
 
@@ -136,12 +125,9 @@ func (b *Board) SetCell(idx, digit int) {
 	for r := boxRow; r < boxRow+3; r++ {
 		for c := boxCol; c < boxCol+3; c++ {
 			peerIdx := r*9 + c
-			if b.Candidates[peerIdx][digit] {
-				delete(b.Candidates[peerIdx], digit)
-				if b.Eliminated[peerIdx] == nil {
-					b.Eliminated[peerIdx] = make(map[int]bool)
-				}
-				b.Eliminated[peerIdx][digit] = true
+			if b.Candidates[peerIdx].Has(digit) {
+				b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
+				b.Eliminated[peerIdx] = b.Eliminated[peerIdx].Set(digit)
 			}
 		}
 	}
@@ -149,16 +135,17 @@ func (b *Board) SetCell(idx, digit int) {
 
 // RemoveCandidate removes a candidate from a cell and marks it as eliminated
 func (b *Board) RemoveCandidate(idx, digit int) bool {
-	if b.Candidates[idx][digit] {
-		delete(b.Candidates[idx], digit)
-		// Mark as eliminated so it won't be re-added
-		if b.Eliminated[idx] == nil {
-			b.Eliminated[idx] = make(map[int]bool)
-		}
-		b.Eliminated[idx][digit] = true
+	if b.Candidates[idx].Has(digit) {
+		b.Candidates[idx] = b.Candidates[idx].Clear(digit)
+		b.Eliminated[idx] = b.Eliminated[idx].Set(digit)
 		return true
 	}
 	return false
+}
+
+// AddCandidate adds a candidate to a cell (used by ApplyMove for "candidate" action)
+func (b *Board) AddCandidate(idx, digit int) {
+	b.Candidates[idx] = b.Candidates[idx].Set(digit)
 }
 
 // IsSolved returns true if all cells are filled AND the solution is valid (no duplicates)
@@ -227,16 +214,8 @@ func (b *Board) IsValid() bool {
 func (b *Board) Clone() *Board {
 	nb := &Board{}
 	copy(nb.Cells[:], b.Cells[:])
-	for i := 0; i < 81; i++ {
-		nb.Candidates[i] = make(map[int]bool)
-		for k, v := range b.Candidates[i] {
-			nb.Candidates[i][k] = v
-		}
-		nb.Eliminated[i] = make(map[int]bool)
-		for k, v := range b.Eliminated[i] {
-			nb.Eliminated[i][k] = v
-		}
-	}
+	copy(nb.Candidates[:], b.Candidates[:])
+	copy(nb.Eliminated[:], b.Eliminated[:])
 	return nb
 }
 
@@ -258,22 +237,21 @@ func (b *Board) ClearCell(idx int) {
 	b.Cells[idx] = 0
 
 	// Recalculate candidates for this cell based on current board state
-	b.Candidates[idx] = make(map[int]bool)
-	b.Eliminated[idx] = make(map[int]bool)
+	b.Eliminated[idx] = 0
+	var cands Candidates
 	for d := 1; d <= 9; d++ {
 		if b.canPlace(idx, d) {
-			b.Candidates[idx][d] = true
+			cands = cands.Set(d)
 		}
 	}
+	b.Candidates[idx] = cands
 }
 
 // GetCandidates returns candidates as a 2D slice
 func (b *Board) GetCandidates() [][]int {
 	result := make([][]int, 81)
 	for i := 0; i < 81; i++ {
-		for d := range b.Candidates[i] {
-			result[i] = append(result[i], d)
-		}
+		result[i] = b.Candidates[i].ToSlice()
 	}
 	return result
 }
@@ -338,7 +316,7 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 			row, col := i/9, i%9
 
 			// Only add if: can place AND not already a candidate AND not eliminated
-			if b.canPlace(i, d) && !b.Candidates[i][d] && !b.Eliminated[i][d] {
+			if b.canPlace(i, d) && !b.Candidates[i].Has(d) && !b.Eliminated[i].Has(d) {
 				// Before returning a fill-candidate move, check if this cell should be assigned immediately
 
 				// Check for naked single: count total valid candidates for this cell
@@ -346,7 +324,7 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 				validCount := 0
 				var onlyValidDigit int
 				for digit := 1; digit <= 9; digit++ {
-					if b.canPlace(i, digit) && !b.Eliminated[i][digit] {
+					if b.canPlace(i, digit) && !b.Eliminated[i].Has(digit) {
 						validCount++
 						onlyValidDigit = digit
 					}
@@ -398,7 +376,7 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 
 	// Check for contradictions (cells with no candidates)
 	for i := 0; i < 81; i++ {
-		if b.Cells[i] == 0 && len(b.Candidates[i]) == 0 {
+		if b.Cells[i] == 0 && b.Candidates[i].IsEmpty() {
 			row, col := i/9, i%9
 			return &core.Move{
 				Technique:   "contradiction",
@@ -484,7 +462,7 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 		if b.Cells[cellIdx] != 0 {
 			return false // Cell already filled
 		}
-		if b.Eliminated[cellIdx][digit] {
+		if b.Eliminated[cellIdx].Has(digit) {
 			return false // Previously eliminated
 		}
 		return b.canPlace(cellIdx, digit)
@@ -636,10 +614,7 @@ func (s *Solver) ApplyMove(b *Board, move *core.Move) {
 		// Add a candidate to a cell
 		for _, target := range move.Targets {
 			idx := target.Row*9 + target.Col
-			if b.Candidates[idx] == nil {
-				b.Candidates[idx] = make(map[int]bool)
-			}
-			b.Candidates[idx][move.Digit] = true
+			b.AddCandidate(idx, move.Digit)
 		}
 	}
 	// "contradiction" action doesn't change the board - it signals the frontend to backtrack

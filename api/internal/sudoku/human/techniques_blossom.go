@@ -29,14 +29,14 @@ func detectDeathBlossom(b *Board) *core.Move {
 	// Find potential stem cells (2-3 candidates)
 	var stems []int
 	for i := 0; i < 81; i++ {
-		n := len(b.Candidates[i])
+		n := b.Candidates[i].Count()
 		if n >= 2 && n <= 3 {
 			stems = append(stems, i)
 		}
 	}
 
 	for _, stem := range stems {
-		stemCands := getCandidateSlice(b.Candidates[stem])
+		stemCands := b.Candidates[stem].ToSlice()
 
 		// Try to find petal ALS for each stem candidate
 		// Build a map: stem candidate -> list of valid petal ALS
@@ -90,7 +90,7 @@ func findBlossomALS(b *Board) []ALS {
 		// Get empty cells in this unit
 		var emptyCells []int
 		for _, idx := range unit {
-			if len(b.Candidates[idx]) > 0 {
+			if b.Candidates[idx].Count() > 0 {
 				emptyCells = append(emptyCells, idx)
 			}
 		}
@@ -102,7 +102,7 @@ func findBlossomALS(b *Board) []ALS {
 				// Count combined candidates
 				combined := make(map[int]bool)
 				for _, cell := range combo {
-					for d := range b.Candidates[cell] {
+					for _, d := range b.Candidates[cell].ToSlice() {
 						combined[d] = true
 					}
 				}
@@ -114,7 +114,7 @@ func findBlossomALS(b *Board) []ALS {
 					// Build digit-to-cells map
 					byDigit := make(map[int][]int)
 					for _, cell := range combo {
-						for d := range b.Candidates[cell] {
+						for _, d := range b.Candidates[cell].ToSlice() {
 							byDigit[d] = append(byDigit[d], cell)
 						}
 					}
@@ -274,7 +274,7 @@ func findEliminationDigits(b *Board, stem int, petals []ALS) []int {
 	}
 
 	// Remove digits that appear in stem
-	for d := range b.Candidates[stem] {
+	for _, d := range b.Candidates[stem].ToSlice() {
 		delete(commonDigits, d)
 	}
 
@@ -311,7 +311,7 @@ func findBlossomEliminations(b *Board, stem int, petals []ALS, z int, stemCands 
 			continue
 		}
 
-		if !b.Candidates[idx][z] {
+		if !b.Candidates[idx].Has(z) {
 			continue
 		}
 

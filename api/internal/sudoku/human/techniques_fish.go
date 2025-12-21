@@ -17,7 +17,7 @@ func detectXWing(b *Board) *core.Move {
 		for row := 0; row < 9; row++ {
 			var cols []int
 			for col := 0; col < 9; col++ {
-				if b.Candidates[row*9+col][digit] {
+				if b.Candidates[row*9+col].Has(digit) {
 					cols = append(cols, col)
 				}
 			}
@@ -46,10 +46,10 @@ func detectXWing(b *Board) *core.Move {
 						if row == r1 || row == r2 {
 							continue
 						}
-						if b.Candidates[row*9+c1][digit] {
+						if b.Candidates[row*9+c1].Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: row, Col: c1, Digit: digit})
 						}
-						if b.Candidates[row*9+c2][digit] {
+						if b.Candidates[row*9+c2].Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: row, Col: c2, Digit: digit})
 						}
 					}
@@ -81,7 +81,7 @@ func detectXWing(b *Board) *core.Move {
 		for col := 0; col < 9; col++ {
 			var rows []int
 			for row := 0; row < 9; row++ {
-				if b.Candidates[row*9+col][digit] {
+				if b.Candidates[row*9+col].Has(digit) {
 					rows = append(rows, row)
 				}
 			}
@@ -108,10 +108,10 @@ func detectXWing(b *Board) *core.Move {
 						if col == c1 || col == c2 {
 							continue
 						}
-						if b.Candidates[r1*9+col][digit] {
+						if b.Candidates[r1*9+col].Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: r1, Col: col, Digit: digit})
 						}
-						if b.Candidates[r2*9+col][digit] {
+						if b.Candidates[r2*9+col].Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: r2, Col: col, Digit: digit})
 						}
 					}
@@ -148,13 +148,13 @@ func detectXYWing(b *Board) *core.Move {
 	// Find cells with exactly 2 candidates (potential pivots or wings)
 	var bivalues []int
 	for i := 0; i < 81; i++ {
-		if len(b.Candidates[i]) == 2 {
+		if b.Candidates[i].Count() == 2 {
 			bivalues = append(bivalues, i)
 		}
 	}
 
 	for _, pivot := range bivalues {
-		pivotCands := getCandidateSlice(b.Candidates[pivot])
+		pivotCands := b.Candidates[pivot].ToSlice()
 		if len(pivotCands) != 2 {
 			continue
 		}
@@ -171,7 +171,7 @@ func detectXYWing(b *Board) *core.Move {
 				continue
 			}
 
-			wingCands := getCandidateSlice(b.Candidates[wing])
+			wingCands := b.Candidates[wing].ToSlice()
 			if len(wingCands) != 2 {
 				continue
 			}
@@ -188,7 +188,7 @@ func detectXYWing(b *Board) *core.Move {
 
 		// Try all XZ-YZ pairs
 		for _, xzWing := range xzWings {
-			xzCands := getCandidateSlice(b.Candidates[xzWing])
+			xzCands := b.Candidates[xzWing].ToSlice()
 			var z1 int
 			if xzCands[0] == x {
 				z1 = xzCands[1]
@@ -197,7 +197,7 @@ func detectXYWing(b *Board) *core.Move {
 			}
 
 			for _, yzWing := range yzWings {
-				yzCands := getCandidateSlice(b.Candidates[yzWing])
+				yzCands := b.Candidates[yzWing].ToSlice()
 				var z2 int
 				if yzCands[0] == y {
 					z2 = yzCands[1]
@@ -216,7 +216,7 @@ func detectXYWing(b *Board) *core.Move {
 					if i == pivot || i == xzWing || i == yzWing {
 						continue
 					}
-					if !b.Candidates[i][z] {
+					if !b.Candidates[i].Has(z) {
 						continue
 					}
 					if sees(i, xzWing) && sees(i, yzWing) {
@@ -263,7 +263,7 @@ func detectSimpleColoring(b *Board) *core.Move {
 		for row := 0; row < 9; row++ {
 			var cells []int
 			for col := 0; col < 9; col++ {
-				if b.Candidates[row*9+col][digit] {
+				if b.Candidates[row*9+col].Has(digit) {
 					cells = append(cells, row*9+col)
 				}
 			}
@@ -277,7 +277,7 @@ func detectSimpleColoring(b *Board) *core.Move {
 		for col := 0; col < 9; col++ {
 			var cells []int
 			for row := 0; row < 9; row++ {
-				if b.Candidates[row*9+col][digit] {
+				if b.Candidates[row*9+col].Has(digit) {
 					cells = append(cells, row*9+col)
 				}
 			}
@@ -293,7 +293,7 @@ func detectSimpleColoring(b *Board) *core.Move {
 			boxRow, boxCol := (box/3)*3, (box%3)*3
 			for r := boxRow; r < boxRow+3; r++ {
 				for c := boxCol; c < boxCol+3; c++ {
-					if b.Candidates[r*9+c][digit] {
+					if b.Candidates[r*9+c].Has(digit) {
 						cells = append(cells, r*9+c)
 					}
 				}
@@ -355,7 +355,7 @@ func detectSimpleColoring(b *Board) *core.Move {
 
 			// Check for eliminations: cells that see both colors OF THIS COMPONENT
 			for i := 0; i < 81; i++ {
-				if !b.Candidates[i][digit] || colors[i] != 0 {
+				if !b.Candidates[i].Has(digit) || colors[i] != 0 {
 					continue
 				}
 

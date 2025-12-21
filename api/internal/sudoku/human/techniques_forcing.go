@@ -39,7 +39,7 @@ func propagateSingles(b *Board, startCell, startDigit int, maxSteps int) *propag
 
 	// Track which eliminations were caused by this chain
 	for i := 0; i < 81; i++ {
-		if i != startCell && b.Candidates[i][startDigit] && !sim.Candidates[i][startDigit] {
+		if i != startCell && b.Candidates[i].Has(startDigit) && !sim.Candidates[i].Has(startDigit) {
 			if result.eliminations[i] == nil {
 				result.eliminations[i] = make(map[int]bool)
 			}
@@ -58,17 +58,14 @@ func propagateSingles(b *Board, startCell, startDigit int, maxSteps int) *propag
 			}
 
 			cands := sim.Candidates[i]
-			if len(cands) == 0 {
+			if cands.IsEmpty() {
 				// Contradiction - no candidates left
 				result.valid = false
 				return result
 			}
 
-			if len(cands) == 1 {
-				var digit int
-				for d := range cands {
-					digit = d
-				}
+			if cands.Count() == 1 {
+				digit, _ := cands.Only()
 
 				// Record eliminations before placing
 				recordEliminationsForPeers(sim, i, digit, result.eliminations)
@@ -89,7 +86,7 @@ func propagateSingles(b *Board, startCell, startDigit int, maxSteps int) *propag
 						found = true
 						break
 					}
-					if sim.Candidates[idx][digit] {
+					if sim.Candidates[idx].Has(digit) {
 						positions = append(positions, idx)
 					}
 				}
@@ -133,7 +130,7 @@ func hasDigitInUnit(b *Board, unit Unit, digit int) bool {
 func recordEliminationsForPeers(b *Board, cellIdx, digit int, eliminations map[int]map[int]bool) {
 	for _, unit := range getUnitsForCell(cellIdx) {
 		for _, peerIdx := range unit.Cells {
-			if peerIdx != cellIdx && b.Candidates[peerIdx][digit] {
+			if peerIdx != cellIdx && b.Candidates[peerIdx].Has(digit) {
 				if eliminations[peerIdx] == nil {
 					eliminations[peerIdx] = make(map[int]bool)
 				}
@@ -173,11 +170,11 @@ func detectCellForcingChain(b *Board) *core.Move {
 	// Find bivalue cells first (most likely to yield results), then trivalue
 	for numCands := 2; numCands <= 3; numCands++ {
 		for cell := 0; cell < 81; cell++ {
-			if b.Cells[cell] != 0 || len(b.Candidates[cell]) != numCands {
+			if b.Cells[cell] != 0 || b.Candidates[cell].Count() != numCands {
 				continue
 			}
 
-			cands := getCandidateSlice(b.Candidates[cell])
+			cands := b.Candidates[cell].ToSlice()
 			results := make([]*propagationResult, len(cands))
 			allValid := true
 
@@ -267,7 +264,7 @@ func detectCellForcingChain(b *Board) *core.Move {
 				}
 
 				for digit := 1; digit <= 9; digit++ {
-					if !b.Candidates[targetCell][digit] {
+					if !b.Candidates[targetCell].Has(digit) {
 						continue
 					}
 
@@ -318,7 +315,7 @@ func detectUnitForcingChain(b *Board) *core.Move {
 		for _, unit := range AllUnits() {
 			var positions []int
 			for _, idx := range unit.Cells {
-				if b.Candidates[idx][digit] {
+				if b.Candidates[idx].Has(digit) {
 					positions = append(positions, idx)
 				}
 			}
@@ -448,7 +445,7 @@ func tryUnitForcingChain(b *Board, digit int, positions []int, unitDesc string) 
 		}
 
 		for elimDigit := 1; elimDigit <= 9; elimDigit++ {
-			if !b.Candidates[targetCell][elimDigit] {
+			if !b.Candidates[targetCell].Has(elimDigit) {
 				continue
 			}
 

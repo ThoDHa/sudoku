@@ -32,7 +32,7 @@ func findGroupedXCycleForDigit(b *Board, digit int) *core.Move {
 	// Build list of cells with this candidate
 	var cells []int
 	for idx := 0; idx < 81; idx++ {
-		if b.Candidates[idx][digit] {
+		if b.Candidates[idx].Has(digit) {
 			cells = append(cells, idx)
 		}
 	}
@@ -271,7 +271,7 @@ func analyzeCycleFixed(b *Board, digit int, path []int, linkStrong []bool) *core
 
 		// Type 2: Two weak links meet -> cell must be OFF
 		if !linkIn && !linkOut {
-			if b.Candidates[cell][digit] {
+			if b.Candidates[cell].Has(digit) {
 				return &core.Move{
 					Action: "eliminate",
 					Digit:  digit,
@@ -307,7 +307,7 @@ func findNiceLoopEliminationsFixed(b *Board, digit int, path []int, linkStrong [
 
 			// Cells that see BOTH ends of this weak link can eliminate the digit
 			for idx := 0; idx < 81; idx++ {
-				if !b.Candidates[idx][digit] {
+				if !b.Candidates[idx].Has(digit) {
 					continue
 				}
 

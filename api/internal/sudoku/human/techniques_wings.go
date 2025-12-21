@@ -19,7 +19,7 @@ func detectXYZWing(b *Board) *core.Move {
 	// Find cells with exactly 3 candidates (potential pivots)
 	var trivalues []int
 	for i := 0; i < 81; i++ {
-		if len(b.Candidates[i]) == 3 {
+		if b.Candidates[i].Count() == 3 {
 			trivalues = append(trivalues, i)
 		}
 	}
@@ -27,13 +27,13 @@ func detectXYZWing(b *Board) *core.Move {
 	// Find cells with exactly 2 candidates (potential wings)
 	var bivalues []int
 	for i := 0; i < 81; i++ {
-		if len(b.Candidates[i]) == 2 {
+		if b.Candidates[i].Count() == 2 {
 			bivalues = append(bivalues, i)
 		}
 	}
 
 	for _, pivot := range trivalues {
-		pivotCands := getCandidateSlice(b.Candidates[pivot])
+		pivotCands := b.Candidates[pivot].ToSlice()
 		// pivotCands = [X, Y, Z] (sorted)
 		x, y, z := pivotCands[0], pivotCands[1], pivotCands[2]
 
@@ -59,7 +59,7 @@ func detectXYZWing(b *Board) *core.Move {
 					continue
 				}
 
-				wingCands := getCandidateSlice(b.Candidates[wing])
+				wingCands := b.Candidates[wing].ToSlice()
 				if len(wingCands) != 2 {
 					continue
 				}
@@ -91,7 +91,7 @@ func detectXYZWing(b *Board) *core.Move {
 						if i == pivot || i == xzWing || i == yzWing {
 							continue
 						}
-						if !b.Candidates[i][zDigit] {
+						if !b.Candidates[i].Has(zDigit) {
 							continue
 						}
 						if sees(i, pivot) && sees(i, xzWing) && sees(i, yzWing) {
@@ -149,7 +149,7 @@ func detectWXYZWing(b *Board) *core.Move {
 	// Find all empty cells with 2-4 candidates
 	var cells []int
 	for i := 0; i < 81; i++ {
-		n := len(b.Candidates[i])
+		n := b.Candidates[i].Count()
 		if n >= 2 && n <= 4 {
 			cells = append(cells, i)
 		}
@@ -169,7 +169,7 @@ func detectWXYZWing(b *Board) *core.Move {
 					// Check if these 4 cells contain exactly 4 distinct digits total
 					combined := make(map[int]bool)
 					for _, cell := range quad {
-						for d := range b.Candidates[cell] {
+						for _, d := range b.Candidates[cell].ToSlice() {
 							combined[d] = true
 						}
 					}
@@ -207,7 +207,7 @@ func detectWXYZWing(b *Board) *core.Move {
 					// Find cells in the quad that contain Z
 					var zCells []int
 					for _, cell := range quad {
-						if b.Candidates[cell][z] {
+						if b.Candidates[cell].Has(z) {
 							zCells = append(zCells, cell)
 						}
 					}
@@ -231,7 +231,7 @@ func detectWXYZWing(b *Board) *core.Move {
 							continue
 						}
 
-						if !b.Candidates[idx][z] {
+						if !b.Candidates[idx].Has(z) {
 							continue
 						}
 
@@ -261,7 +261,7 @@ func detectWXYZWing(b *Board) *core.Move {
 						// Find the hinge (cell with most candidates, or any with all 4)
 						hingeIdx := quad[0]
 						for _, cell := range quad {
-							if len(b.Candidates[cell]) > len(b.Candidates[hingeIdx]) {
+							if b.Candidates[cell].Count() > b.Candidates[hingeIdx].Count() {
 								hingeIdx = cell
 							}
 						}
@@ -269,7 +269,7 @@ func detectWXYZWing(b *Board) *core.Move {
 						// Primary = cells with Z (wing cells), Secondary = hinge
 						var primary, secondary []core.CellRef
 						for _, cell := range quad {
-							if b.Candidates[cell][z] {
+							if b.Candidates[cell].Has(z) {
 								primary = append(primary, core.CellRef{Row: cell / 9, Col: cell % 9})
 							} else {
 								secondary = append(secondary, core.CellRef{Row: cell / 9, Col: cell % 9})
@@ -322,7 +322,7 @@ func isDigitRestricted(b *Board, quad [4]int, digit int) bool {
 	// Find all cells in quad containing this digit
 	var digitCells []int
 	for _, cell := range quad {
-		if b.Candidates[cell][digit] {
+		if b.Candidates[cell].Has(digit) {
 			digitCells = append(digitCells, cell)
 		}
 	}
@@ -372,7 +372,7 @@ func findAllALS(b *Board) []ALS {
 		// Get empty cells in this unit
 		var emptyCells []int
 		for _, idx := range unit {
-			if len(b.Candidates[idx]) > 0 {
+			if b.Candidates[idx].Count() > 0 {
 				emptyCells = append(emptyCells, idx)
 			}
 		}
@@ -385,7 +385,7 @@ func findAllALS(b *Board) []ALS {
 				// Count combined candidates
 				combined := make(map[int]bool)
 				for _, cell := range combo {
-					for d := range b.Candidates[cell] {
+					for _, d := range b.Candidates[cell].ToSlice() {
 						combined[d] = true
 					}
 				}
@@ -397,7 +397,7 @@ func findAllALS(b *Board) []ALS {
 					// Build digit-to-cells map
 					byDigit := make(map[int][]int)
 					for _, cell := range combo {
-						for d := range b.Candidates[cell] {
+						for _, d := range b.Candidates[cell].ToSlice() {
 							byDigit[d] = append(byDigit[d], cell)
 						}
 					}
@@ -498,7 +498,7 @@ func detectALSXZ(b *Board) *core.Move {
 							continue
 						}
 
-						if !b.Candidates[idx][z] {
+						if !b.Candidates[idx].Has(z) {
 							continue
 						}
 

@@ -36,7 +36,7 @@ func findNakedPairInUnit(b *Board, indices []int, unitType string, unitNum int) 
 	// Find cells with exactly 2 candidates
 	var pairs []int
 	for _, idx := range indices {
-		if len(b.Candidates[idx]) == 2 {
+		if b.Candidates[idx].Count() == 2 {
 			pairs = append(pairs, idx)
 		}
 	}
@@ -45,9 +45,9 @@ func findNakedPairInUnit(b *Board, indices []int, unitType string, unitNum int) 
 	for i := 0; i < len(pairs); i++ {
 		for j := i + 1; j < len(pairs); j++ {
 			idx1, idx2 := pairs[i], pairs[j]
-			if candidatesEqual(b.Candidates[idx1], b.Candidates[idx2]) {
+			if b.Candidates[idx1] == b.Candidates[idx2] {
 				// Found a naked pair
-				digits := getCandidateSlice(b.Candidates[idx1])
+				digits := b.Candidates[idx1].ToSlice()
 				var eliminations []core.Candidate
 
 				for _, idx := range indices {
@@ -55,7 +55,7 @@ func findNakedPairInUnit(b *Board, indices []int, unitType string, unitNum int) 
 						continue
 					}
 					for _, d := range digits {
-						if b.Candidates[idx][d] {
+						if b.Candidates[idx].Has(d) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: idx / 9, Col: idx % 9, Digit: d,
 							})
@@ -121,7 +121,7 @@ func findHiddenPairInUnit(b *Board, indices []int, unitType string, unitNum int)
 	digitPositions := make(map[int][]int)
 	for digit := 1; digit <= 9; digit++ {
 		for _, idx := range indices {
-			if b.Candidates[idx][digit] {
+			if b.Candidates[idx].Has(digit) {
 				digitPositions[digit] = append(digitPositions[digit], idx)
 			}
 		}
@@ -149,7 +149,7 @@ func findHiddenPairInUnit(b *Board, indices []int, unitType string, unitNum int)
 				// Check if there are other candidates to eliminate
 				var eliminations []core.Candidate
 				for _, idx := range []int{idx1, idx2} {
-					for d := range b.Candidates[idx] {
+					for _, d := range b.Candidates[idx].ToSlice() {
 						if d != d1 && d != d2 {
 							eliminations = append(eliminations, core.Candidate{
 								Row: idx / 9, Col: idx % 9, Digit: d,

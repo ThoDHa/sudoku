@@ -50,14 +50,14 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 	if isRow {
 		for c := boxCol; c < boxCol+3; c++ {
 			idx := lineIdx*9 + c
-			if b.Cells[idx] == 0 && len(b.Candidates[idx]) > 0 {
+			if b.Cells[idx] == 0 && b.Candidates[idx].Count() > 0 {
 				intersectionCells = append(intersectionCells, idx)
 			}
 		}
 	} else {
 		for r := boxRow; r < boxRow+3; r++ {
 			idx := r*9 + lineIdx
-			if b.Cells[idx] == 0 && len(b.Candidates[idx]) > 0 {
+			if b.Cells[idx] == 0 && b.Candidates[idx].Count() > 0 {
 				intersectionCells = append(intersectionCells, idx)
 			}
 		}
@@ -71,7 +71,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 	// Get combined candidates of intersection cells
 	intersectionCands := make(map[int]bool)
 	for _, idx := range intersectionCells {
-		for d := range b.Candidates[idx] {
+		for _, d := range b.Candidates[idx].ToSlice() {
 			intersectionCands[d] = true
 		}
 	}
@@ -89,7 +89,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 	for r := boxRow; r < boxRow+3; r++ {
 		for c := boxCol; c < boxCol+3; c++ {
 			idx := r*9 + c
-			if b.Cells[idx] != 0 || len(b.Candidates[idx]) == 0 {
+			if b.Cells[idx] != 0 || b.Candidates[idx].Count() == 0 {
 				continue
 			}
 			// Check if in intersection
@@ -115,7 +115,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 				continue
 			}
 			idx := lineIdx*9 + c
-			if b.Cells[idx] == 0 && len(b.Candidates[idx]) > 0 {
+			if b.Cells[idx] == 0 && b.Candidates[idx].Count() > 0 {
 				lineRemainderCells = append(lineRemainderCells, idx)
 			}
 		}
@@ -126,7 +126,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 				continue
 			}
 			idx := r*9 + lineIdx
-			if b.Cells[idx] == 0 && len(b.Candidates[idx]) > 0 {
+			if b.Cells[idx] == 0 && b.Candidates[idx].Count() > 0 {
 				lineRemainderCells = append(lineRemainderCells, idx)
 			}
 		}
@@ -207,7 +207,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 
 					// Eliminate boxALS digits
 					for _, d := range boxALS.Digits {
-						if b.Candidates[idx][d] {
+						if b.Candidates[idx].Has(d) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: r, Col: c, Digit: d,
 							})
@@ -244,7 +244,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 
 					// Eliminate lineALS digits
 					for _, d := range lineALS.Digits {
-						if b.Candidates[idx][d] {
+						if b.Candidates[idx].Has(d) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: lineIdx, Col: c, Digit: d,
 							})
@@ -278,7 +278,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 
 					// Eliminate lineALS digits
 					for _, d := range lineALS.Digits {
-						if b.Candidates[idx][d] {
+						if b.Candidates[idx].Has(d) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: r, Col: lineIdx, Digit: d,
 							})
@@ -372,7 +372,7 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 
 	// Try ALS of size 1 (bivalue cell - 1 cell with 2 candidates)
 	for _, cell := range cells {
-		cands := getCandidateSlice(b.Candidates[cell])
+		cands := b.Candidates[cell].ToSlice()
 
 		// For ALS: N cells need N+1 candidates
 		// 1 cell needs 2 candidates
@@ -403,10 +403,10 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 	for i := 0; i < len(cells); i++ {
 		for j := i + 1; j < len(cells); j++ {
 			combined := make(map[int]bool)
-			for d := range b.Candidates[cells[i]] {
+			for _, d := range b.Candidates[cells[i]].ToSlice() {
 				combined[d] = true
 			}
-			for d := range b.Candidates[cells[j]] {
+			for _, d := range b.Candidates[cells[j]].ToSlice() {
 				combined[d] = true
 			}
 
@@ -426,10 +426,10 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 
 			byDigit := make(map[int][]int)
 			for _, d := range digits {
-				if b.Candidates[cells[i]][d] {
+				if b.Candidates[cells[i]].Has(d) {
 					byDigit[d] = append(byDigit[d], cells[i])
 				}
-				if b.Candidates[cells[j]][d] {
+				if b.Candidates[cells[j]].Has(d) {
 					byDigit[d] = append(byDigit[d], cells[j])
 				}
 			}
@@ -446,13 +446,13 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 		for j := i + 1; j < len(cells); j++ {
 			for k := j + 1; k < len(cells); k++ {
 				combined := make(map[int]bool)
-				for d := range b.Candidates[cells[i]] {
+				for _, d := range b.Candidates[cells[i]].ToSlice() {
 					combined[d] = true
 				}
-				for d := range b.Candidates[cells[j]] {
+				for _, d := range b.Candidates[cells[j]].ToSlice() {
 					combined[d] = true
 				}
-				for d := range b.Candidates[cells[k]] {
+				for _, d := range b.Candidates[cells[k]].ToSlice() {
 					combined[d] = true
 				}
 
@@ -472,13 +472,13 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 
 				byDigit := make(map[int][]int)
 				for _, d := range digits {
-					if b.Candidates[cells[i]][d] {
+					if b.Candidates[cells[i]].Has(d) {
 						byDigit[d] = append(byDigit[d], cells[i])
 					}
-					if b.Candidates[cells[j]][d] {
+					if b.Candidates[cells[j]].Has(d) {
 						byDigit[d] = append(byDigit[d], cells[j])
 					}
-					if b.Candidates[cells[k]][d] {
+					if b.Candidates[cells[k]].Has(d) {
 						byDigit[d] = append(byDigit[d], cells[k])
 					}
 				}

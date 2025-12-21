@@ -36,7 +36,7 @@ func detectMedusa3D(b *Board) *core.Move {
 	// Find all bivalue cells
 	var bivalueCells []int
 	for i := 0; i < 81; i++ {
-		if len(b.Candidates[i]) == 2 {
+		if b.Candidates[i].Count() == 2 {
 			bivalueCells = append(bivalueCells, i)
 		}
 	}
@@ -47,7 +47,7 @@ func detectMedusa3D(b *Board) *core.Move {
 
 	// Add bivalue connections: same cell, different candidates
 	for _, cell := range bivalueCells {
-		cands := getCandidateSlice(b.Candidates[cell])
+		cands := b.Candidates[cell].ToSlice()
 		if len(cands) == 2 {
 			p1 := candidatePair{cell, cands[0]}
 			p2 := candidatePair{cell, cands[1]}
@@ -184,7 +184,7 @@ func findConjugatePairs(b *Board, digit int) [][2]int {
 	for row := 0; row < 9; row++ {
 		var cells []int
 		for col := 0; col < 9; col++ {
-			if b.Candidates[row*9+col][digit] {
+			if b.Candidates[row*9+col].Has(digit) {
 				cells = append(cells, row*9+col)
 			}
 		}
@@ -197,7 +197,7 @@ func findConjugatePairs(b *Board, digit int) [][2]int {
 	for col := 0; col < 9; col++ {
 		var cells []int
 		for row := 0; row < 9; row++ {
-			if b.Candidates[row*9+col][digit] {
+			if b.Candidates[row*9+col].Has(digit) {
 				cells = append(cells, row*9+col)
 			}
 		}
@@ -212,7 +212,7 @@ func findConjugatePairs(b *Board, digit int) [][2]int {
 		boxRow, boxCol := (box/3)*3, (box%3)*3
 		for r := boxRow; r < boxRow+3; r++ {
 			for c := boxCol; c < boxCol+3; c++ {
-				if b.Candidates[r*9+c][digit] {
+				if b.Candidates[r*9+c].Has(digit) {
 					cells = append(cells, r*9+c)
 				}
 			}
@@ -240,7 +240,7 @@ func checkSameCellContradiction(b *Board, colorToCheck, otherColor []candidatePa
 			// This color is false, eliminate all candidates of this color
 			var eliminations []core.Candidate
 			for _, cp := range colorToCheck {
-				if b.Candidates[cp.cell][cp.digit] {
+				if b.Candidates[cp.cell].Has(cp.digit) {
 					eliminations = append(eliminations, core.Candidate{
 						Row: cp.cell / 9, Col: cp.cell % 9, Digit: cp.digit,
 					})
@@ -285,7 +285,7 @@ func checkSameUnitContradiction(b *Board, colorToCheck, otherColor []candidatePa
 					// Contradiction: two same-digit candidates of the same color in the same unit
 					var eliminations []core.Candidate
 					for _, cp := range colorToCheck {
-						if b.Candidates[cp.cell][cp.digit] {
+						if b.Candidates[cp.cell].Has(cp.digit) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: cp.cell / 9, Col: cp.cell % 9, Digit: cp.digit,
 							})
@@ -340,7 +340,7 @@ func checkUncoloredSeesBothColors(b *Board, color1, color2 []candidatePair, colo
 
 		// Check each uncolored cell with this digit
 		for cell := 0; cell < 81; cell++ {
-			if !b.Candidates[cell][digit] {
+			if !b.Candidates[cell].Has(digit) {
 				continue
 			}
 

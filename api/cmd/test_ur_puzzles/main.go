@@ -121,7 +121,8 @@ func main() {
 			}
 		} else {
 			for _, elim := range move.Eliminations {
-				delete(board.Candidates[elim.Row*9+elim.Col], elim.Digit)
+				idx := elim.Row*9 + elim.Col
+				board.Candidates[idx] = board.Candidates[idx].Clear(elim.Digit)
 			}
 		}
 

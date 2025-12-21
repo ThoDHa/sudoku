@@ -28,7 +28,7 @@ func detectAIC(b *Board) *core.Move {
 		if b.Cells[cell] != 0 {
 			continue
 		}
-		for digit := range b.Candidates[cell] {
+		for _, digit := range b.Candidates[cell].ToSlice() {
 			startNode := candidateNode{cell: cell, digit: digit}
 
 			// BFS to find chains - start with strong link (node is ON if true)
@@ -53,7 +53,7 @@ func buildStrongLinks(b *Board) map[candidateNode][]candidateNode {
 			cells := []int{}
 			for col := 0; col < 9; col++ {
 				idx := row*9 + col
-				if b.Cells[idx] == 0 && b.Candidates[idx][digit] {
+				if b.Cells[idx] == 0 && b.Candidates[idx].Has(digit) {
 					cells = append(cells, idx)
 				}
 			}
@@ -70,7 +70,7 @@ func buildStrongLinks(b *Board) map[candidateNode][]candidateNode {
 			cells := []int{}
 			for row := 0; row < 9; row++ {
 				idx := row*9 + col
-				if b.Cells[idx] == 0 && b.Candidates[idx][digit] {
+				if b.Cells[idx] == 0 && b.Candidates[idx].Has(digit) {
 					cells = append(cells, idx)
 				}
 			}
@@ -90,7 +90,7 @@ func buildStrongLinks(b *Board) map[candidateNode][]candidateNode {
 			for r := 0; r < 3; r++ {
 				for c := 0; c < 3; c++ {
 					idx := (startRow+r)*9 + (startCol + c)
-					if b.Cells[idx] == 0 && b.Candidates[idx][digit] {
+					if b.Cells[idx] == 0 && b.Candidates[idx].Has(digit) {
 						cells = append(cells, idx)
 					}
 				}
@@ -112,7 +112,7 @@ func buildStrongLinks(b *Board) map[candidateNode][]candidateNode {
 		if b.Cells[cell] != 0 {
 			continue
 		}
-		cands := getCandidateSlice(b.Candidates[cell])
+		cands := b.Candidates[cell].ToSlice()
 		if len(cands) == 2 {
 			n1 := candidateNode{cell: cell, digit: cands[0]}
 			n2 := candidateNode{cell: cell, digit: cands[1]}
@@ -132,7 +132,7 @@ func buildWeakLinks(b *Board) map[candidateNode][]candidateNode {
 	for digit := 1; digit <= 9; digit++ {
 		cells := []int{}
 		for cell := 0; cell < 81; cell++ {
-			if b.Cells[cell] == 0 && b.Candidates[cell][digit] {
+			if b.Cells[cell] == 0 && b.Candidates[cell].Has(digit) {
 				cells = append(cells, cell)
 			}
 		}
@@ -153,7 +153,7 @@ func buildWeakLinks(b *Board) map[candidateNode][]candidateNode {
 		if b.Cells[cell] != 0 {
 			continue
 		}
-		cands := getCandidateSlice(b.Candidates[cell])
+		cands := b.Candidates[cell].ToSlice()
 		for i := 0; i < len(cands); i++ {
 			for j := i + 1; j < len(cands); j++ {
 				n1 := candidateNode{cell: cell, digit: cands[i]}

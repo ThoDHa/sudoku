@@ -232,7 +232,7 @@ func TestFullSolve_ValidateMoves(t *testing.T) {
 								step, move.Technique, i, board.Cells[i], solution[i])
 						}
 					} else {
-						if !board.Candidates[i][solution[i]] {
+						if !board.Candidates[i].Has(solution[i]) {
 							t.Errorf("Step %d (%s): Cell %d eliminated solution digit %d",
 								step, move.Technique, i, solution[i])
 						}

@@ -80,7 +80,7 @@ func getDigitPositionsInRow(b *Board, row, digit int) []int {
 	var positions []int
 	for col := 0; col < 9; col++ {
 		idx := row*9 + col
-		if b.Candidates[idx][digit] {
+		if b.Candidates[idx].Has(digit) {
 			positions = append(positions, idx)
 		}
 	}
@@ -92,7 +92,7 @@ func getDigitPositionsInCol(b *Board, col, digit int) []int {
 	var positions []int
 	for row := 0; row < 9; row++ {
 		idx := row*9 + col
-		if b.Candidates[idx][digit] {
+		if b.Candidates[idx].Has(digit) {
 			positions = append(positions, idx)
 		}
 	}
@@ -106,7 +106,7 @@ func getDigitPositionsInBox(b *Board, box, digit int) []int {
 	for r := boxRow; r < boxRow+3; r++ {
 		for c := boxCol; c < boxCol+3; c++ {
 			idx := r*9 + c
-			if b.Candidates[idx][digit] {
+			if b.Candidates[idx].Has(digit) {
 				positions = append(positions, idx)
 			}
 		}
@@ -157,18 +157,18 @@ func propagateFromPlacement(b *Board, idx, digit int) *digitForcingResult {
 
 	// Record eliminations in row, column, and box
 	for c := 0; c < 9; c++ {
-		if c != col && b.Candidates[row*9+c][digit] {
+		if c != col && b.Candidates[row*9+c].Has(digit) {
 			result.addElimination(row*9+c, digit)
 		}
 	}
 	for r := 0; r < 9; r++ {
-		if r != row && b.Candidates[r*9+col][digit] {
+		if r != row && b.Candidates[r*9+col].Has(digit) {
 			result.addElimination(r*9+col, digit)
 		}
 	}
 	for r := boxRow; r < boxRow+3; r++ {
 		for c := boxCol; c < boxCol+3; c++ {
-			if (r != row || c != col) && b.Candidates[r*9+c][digit] {
+			if (r != row || c != col) && b.Candidates[r*9+c].Has(digit) {
 				result.addElimination(r*9+c, digit)
 			}
 		}
@@ -180,11 +180,8 @@ func propagateFromPlacement(b *Board, idx, digit int) *digitForcingResult {
 
 		// Look for naked singles
 		for i := 0; i < 81; i++ {
-			if simBoard.Cells[i] == 0 && len(simBoard.Candidates[i]) == 1 {
-				var d int
-				for cand := range simBoard.Candidates[i] {
-					d = cand
-				}
+			if simBoard.Cells[i] == 0 && simBoard.Candidates[i].Count() == 1 {
+				d, _ := simBoard.Candidates[i].Only()
 				simBoard.SetCell(i, d)
 				result.addPlacement(i, d)
 
@@ -192,18 +189,18 @@ func propagateFromPlacement(b *Board, idx, digit int) *digitForcingResult {
 				r, c := i/9, i%9
 				br, bc := (r/3)*3, (c/3)*3
 				for cc := 0; cc < 9; cc++ {
-					if cc != c && b.Candidates[r*9+cc][d] && !simBoard.Candidates[r*9+cc][d] {
+					if cc != c && b.Candidates[r*9+cc].Has(d) && !simBoard.Candidates[r*9+cc].Has(d) {
 						result.addElimination(r*9+cc, d)
 					}
 				}
 				for rr := 0; rr < 9; rr++ {
-					if rr != r && b.Candidates[rr*9+c][d] && !simBoard.Candidates[rr*9+c][d] {
+					if rr != r && b.Candidates[rr*9+c].Has(d) && !simBoard.Candidates[rr*9+c].Has(d) {
 						result.addElimination(rr*9+c, d)
 					}
 				}
 				for rr := br; rr < br+3; rr++ {
 					for cc := bc; cc < bc+3; cc++ {
-						if (rr != r || cc != c) && b.Candidates[rr*9+cc][d] && !simBoard.Candidates[rr*9+cc][d] {
+						if (rr != r || cc != c) && b.Candidates[rr*9+cc].Has(d) && !simBoard.Candidates[rr*9+cc].Has(d) {
 							result.addElimination(rr*9+cc, d)
 						}
 					}
@@ -224,7 +221,7 @@ func propagateFromPlacement(b *Board, idx, digit int) *digitForcingResult {
 				var possibleCells []int
 				for c := 0; c < 9; c++ {
 					i := r*9 + c
-					if simBoard.Cells[i] == 0 && simBoard.Candidates[i][d] {
+					if simBoard.Cells[i] == 0 && simBoard.Candidates[i].Has(d) {
 						possibleCells = append(possibleCells, i)
 					}
 				}
@@ -238,18 +235,18 @@ func propagateFromPlacement(b *Board, idx, digit int) *digitForcingResult {
 						rr, cc := i/9, i%9
 						br, bc := (rr/3)*3, (cc/3)*3
 						for ccc := 0; ccc < 9; ccc++ {
-							if ccc != cc && b.Candidates[rr*9+ccc][d] {
+							if ccc != cc && b.Candidates[rr*9+ccc].Has(d) {
 								result.addElimination(rr*9+ccc, d)
 							}
 						}
 						for rrr := 0; rrr < 9; rrr++ {
-							if rrr != rr && b.Candidates[rrr*9+cc][d] {
+							if rrr != rr && b.Candidates[rrr*9+cc].Has(d) {
 								result.addElimination(rrr*9+cc, d)
 							}
 						}
 						for rrr := br; rrr < br+3; rrr++ {
 							for ccc := bc; ccc < bc+3; ccc++ {
-								if (rrr != rr || ccc != cc) && b.Candidates[rrr*9+ccc][d] {
+								if (rrr != rr || ccc != cc) && b.Candidates[rrr*9+ccc].Has(d) {
 									result.addElimination(rrr*9+ccc, d)
 								}
 							}
@@ -275,7 +272,7 @@ func propagateFromPlacement(b *Board, idx, digit int) *digitForcingResult {
 				var possibleCells []int
 				for r := 0; r < 9; r++ {
 					i := r*9 + c
-					if simBoard.Cells[i] == 0 && simBoard.Candidates[i][d] {
+					if simBoard.Cells[i] == 0 && simBoard.Candidates[i].Has(d) {
 						possibleCells = append(possibleCells, i)
 					}
 				}
@@ -288,18 +285,18 @@ func propagateFromPlacement(b *Board, idx, digit int) *digitForcingResult {
 						rr, cc := i/9, i%9
 						br, bc := (rr/3)*3, (cc/3)*3
 						for ccc := 0; ccc < 9; ccc++ {
-							if ccc != cc && b.Candidates[rr*9+ccc][d] {
+							if ccc != cc && b.Candidates[rr*9+ccc].Has(d) {
 								result.addElimination(rr*9+ccc, d)
 							}
 						}
 						for rrr := 0; rrr < 9; rrr++ {
-							if rrr != rr && b.Candidates[rrr*9+cc][d] {
+							if rrr != rr && b.Candidates[rrr*9+cc].Has(d) {
 								result.addElimination(rrr*9+cc, d)
 							}
 						}
 						for rrr := br; rrr < br+3; rrr++ {
 							for ccc := bc; ccc < bc+3; ccc++ {
-								if (rrr != rr || ccc != cc) && b.Candidates[rrr*9+ccc][d] {
+								if (rrr != rr || ccc != cc) && b.Candidates[rrr*9+ccc].Has(d) {
 									result.addElimination(rrr*9+ccc, d)
 								}
 							}
@@ -327,7 +324,7 @@ func propagateFromPlacement(b *Board, idx, digit int) *digitForcingResult {
 				for rr := br; rr < br+3; rr++ {
 					for cc := bc; cc < bc+3; cc++ {
 						i := rr*9 + cc
-						if simBoard.Cells[i] == 0 && simBoard.Candidates[i][d] {
+						if simBoard.Cells[i] == 0 && simBoard.Candidates[i].Has(d) {
 							possibleCells = append(possibleCells, i)
 						}
 					}
@@ -341,18 +338,18 @@ func propagateFromPlacement(b *Board, idx, digit int) *digitForcingResult {
 						rr, cc := i/9, i%9
 						boxR, boxC := (rr/3)*3, (cc/3)*3
 						for ccc := 0; ccc < 9; ccc++ {
-							if ccc != cc && b.Candidates[rr*9+ccc][d] {
+							if ccc != cc && b.Candidates[rr*9+ccc].Has(d) {
 								result.addElimination(rr*9+ccc, d)
 							}
 						}
 						for rrr := 0; rrr < 9; rrr++ {
-							if rrr != rr && b.Candidates[rrr*9+cc][d] {
+							if rrr != rr && b.Candidates[rrr*9+cc].Has(d) {
 								result.addElimination(rrr*9+cc, d)
 							}
 						}
 						for rrr := boxR; rrr < boxR+3; rrr++ {
 							for ccc := boxC; ccc < boxC+3; ccc++ {
-								if (rrr != rr || ccc != cc) && b.Candidates[rrr*9+ccc][d] {
+								if (rrr != rr || ccc != cc) && b.Candidates[rrr*9+ccc].Has(d) {
 									result.addElimination(rrr*9+ccc, d)
 								}
 							}
@@ -462,7 +459,7 @@ func findCommonElimination(b *Board, digit int, positions []int, results []*digi
 
 		for elimDigit := range digits {
 			// Skip if candidate doesn't exist on original board
-			if !b.Candidates[idx][elimDigit] {
+			if !b.Candidates[idx].Has(elimDigit) {
 				continue
 			}
 

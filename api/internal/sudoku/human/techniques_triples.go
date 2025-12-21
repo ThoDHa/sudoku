@@ -30,7 +30,7 @@ func findNakedTripleInUnit(b *Board, indices []int, unitType string, unitNum int
 	// Find cells with 2-3 candidates
 	var candidates []int
 	for _, idx := range indices {
-		n := len(b.Candidates[idx])
+		n := b.Candidates[idx].Count()
 		if n >= 2 && n <= 3 {
 			candidates = append(candidates, idx)
 		}
@@ -48,13 +48,13 @@ func findNakedTripleInUnit(b *Board, indices []int, unitType string, unitNum int
 
 				// Union of candidates
 				union := make(map[int]bool)
-				for d := range b.Candidates[idx1] {
+				for _, d := range b.Candidates[idx1].ToSlice() {
 					union[d] = true
 				}
-				for d := range b.Candidates[idx2] {
+				for _, d := range b.Candidates[idx2].ToSlice() {
 					union[d] = true
 				}
-				for d := range b.Candidates[idx3] {
+				for _, d := range b.Candidates[idx3].ToSlice() {
 					union[d] = true
 				}
 
@@ -71,7 +71,7 @@ func findNakedTripleInUnit(b *Board, indices []int, unitType string, unitNum int
 						continue
 					}
 					for _, d := range digits {
-						if b.Candidates[idx][d] {
+						if b.Candidates[idx].Has(d) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: idx / 9, Col: idx % 9, Digit: d,
 							})
@@ -129,7 +129,7 @@ func findHiddenTripleInUnit(b *Board, indices []int, unitType string, unitNum in
 	digitPositions := make(map[int][]int)
 	for digit := 1; digit <= 9; digit++ {
 		for _, idx := range indices {
-			if b.Candidates[idx][digit] {
+			if b.Candidates[idx].Has(digit) {
 				digitPositions[digit] = append(digitPositions[digit], idx)
 			}
 		}
@@ -177,7 +177,7 @@ func findHiddenTripleInUnit(b *Board, indices []int, unitType string, unitNum in
 
 				var eliminations []core.Candidate
 				for _, idx := range cells {
-					for d := range b.Candidates[idx] {
+					for _, d := range b.Candidates[idx].ToSlice() {
 						if d != d1 && d != d2 && d != d3 {
 							eliminations = append(eliminations, core.Candidate{
 								Row: idx / 9, Col: idx % 9, Digit: d,
@@ -235,7 +235,7 @@ func detectNakedQuad(b *Board) *core.Move {
 func findNakedQuadInUnit(b *Board, indices []int, unitType string, unitNum int) *core.Move {
 	var candidates []int
 	for _, idx := range indices {
-		n := len(b.Candidates[idx])
+		n := b.Candidates[idx].Count()
 		if n >= 2 && n <= 4 {
 			candidates = append(candidates, idx)
 		}
@@ -253,7 +253,7 @@ func findNakedQuadInUnit(b *Board, indices []int, unitType string, unitNum int) 
 
 					union := make(map[int]bool)
 					for _, idx := range idxs {
-						for d := range b.Candidates[idx] {
+						for _, d := range b.Candidates[idx].ToSlice() {
 							union[d] = true
 						}
 					}
@@ -277,7 +277,7 @@ func findNakedQuadInUnit(b *Board, indices []int, unitType string, unitNum int) 
 							continue
 						}
 						for _, d := range digits {
-							if b.Candidates[idx][d] {
+							if b.Candidates[idx].Has(d) {
 								eliminations = append(eliminations, core.Candidate{
 									Row: idx / 9, Col: idx % 9, Digit: d,
 								})
@@ -338,7 +338,7 @@ func findHiddenQuadInUnit(b *Board, indices []int, unitType string, unitNum int)
 	digitPositions := make(map[int][]int)
 	for digit := 1; digit <= 9; digit++ {
 		for _, idx := range indices {
-			if b.Candidates[idx][digit] {
+			if b.Candidates[idx].Has(digit) {
 				digitPositions[digit] = append(digitPositions[digit], idx)
 			}
 		}
@@ -390,7 +390,7 @@ func findHiddenQuadInUnit(b *Board, indices []int, unitType string, unitNum int)
 
 					var eliminations []core.Candidate
 					for _, idx := range cells {
-						for d := range b.Candidates[idx] {
+						for _, d := range b.Candidates[idx].ToSlice() {
 							if d != d1 && d != d2 && d != d3 && d != d4 {
 								eliminations = append(eliminations, core.Candidate{
 									Row: idx / 9, Col: idx % 9, Digit: d,

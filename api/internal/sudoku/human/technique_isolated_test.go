@@ -83,7 +83,7 @@ func validateMoveAgainstSolution(t *testing.T, board *Board, solution []int, tec
 
 		// If cell is empty, the solution digit must still be a candidate
 		solutionDigit := solution[i]
-		if !board.Candidates[i][solutionDigit] {
+		if !board.Candidates[i].Has(solutionDigit) {
 			t.Errorf("%s: Cell %d eliminated solution digit %d from candidates",
 				technique, i, solutionDigit)
 		}

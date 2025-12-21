@@ -30,7 +30,7 @@ func detectSwordfishInRows(b *Board, digit int) *core.Move {
 	for row := 0; row < 9; row++ {
 		var cols []int
 		for col := 0; col < 9; col++ {
-			if b.Candidates[row*9+col][digit] {
+			if b.Candidates[row*9+col].Has(digit) {
 				cols = append(cols, col)
 			}
 		}
@@ -82,7 +82,7 @@ func detectSwordfishInRows(b *Board, digit int) *core.Move {
 						if row == r1 || row == r2 || row == r3 {
 							continue
 						}
-						if b.Candidates[row*9+col][digit] {
+						if b.Candidates[row*9+col].Has(digit) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: row, Col: col, Digit: digit,
 							})
@@ -122,7 +122,7 @@ func detectSwordfishInCols(b *Board, digit int) *core.Move {
 	for col := 0; col < 9; col++ {
 		var rows []int
 		for row := 0; row < 9; row++ {
-			if b.Candidates[row*9+col][digit] {
+			if b.Candidates[row*9+col].Has(digit) {
 				rows = append(rows, row)
 			}
 		}
@@ -174,7 +174,7 @@ func detectSwordfishInCols(b *Board, digit int) *core.Move {
 						if col == c1 || col == c2 || col == c3 {
 							continue
 						}
-						if b.Candidates[row*9+col][digit] {
+						if b.Candidates[row*9+col].Has(digit) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: row, Col: col, Digit: digit,
 							})
@@ -220,7 +220,7 @@ func detectSkyscraper(b *Board) *core.Move {
 		for row := 0; row < 9; row++ {
 			var cols []int
 			for col := 0; col < 9; col++ {
-				if b.Candidates[row*9+col][digit] {
+				if b.Candidates[row*9+col].Has(digit) {
 					cols = append(cols, col)
 				}
 			}
@@ -270,7 +270,7 @@ func detectSkyscraper(b *Board) *core.Move {
 				// Find eliminations: cells that see both unshared ends
 				var eliminations []core.Candidate
 				for idx := 0; idx < 81; idx++ {
-					if !b.Candidates[idx][digit] {
+					if !b.Candidates[idx].Has(digit) {
 						continue
 					}
 					row, col := idx/9, idx%9
@@ -344,7 +344,7 @@ func detectFinnedXWingInRows(b *Board, digit int) *core.Move {
 	for row := 0; row < 9; row++ {
 		var cols []int
 		for col := 0; col < 9; col++ {
-			if b.Candidates[row*9+col][digit] {
+			if b.Candidates[row*9+col].Has(digit) {
 				cols = append(cols, col)
 			}
 		}
@@ -417,7 +417,7 @@ func detectFinnedXWingInRows(b *Board, digit int) *core.Move {
 					continue
 				}
 				idx := r*9 + targetCol
-				if b.Candidates[idx][digit] {
+				if b.Candidates[idx].Has(digit) {
 					eliminations = append(eliminations, core.Candidate{Row: r, Col: targetCol, Digit: digit})
 				}
 			}
@@ -459,7 +459,7 @@ func detectFinnedXWingInCols(b *Board, digit int) *core.Move {
 	for col := 0; col < 9; col++ {
 		var rows []int
 		for row := 0; row < 9; row++ {
-			if b.Candidates[row*9+col][digit] {
+			if b.Candidates[row*9+col].Has(digit) {
 				rows = append(rows, row)
 			}
 		}
@@ -529,7 +529,7 @@ func detectFinnedXWingInCols(b *Board, digit int) *core.Move {
 					continue
 				}
 				idx := targetRow*9 + c
-				if b.Candidates[idx][digit] {
+				if b.Candidates[idx].Has(digit) {
 					eliminations = append(eliminations, core.Candidate{Row: targetRow, Col: c, Digit: digit})
 				}
 			}
@@ -571,7 +571,7 @@ func detectUniqueRectangle(b *Board) *core.Move {
 			// Find all cells that have both d1 and d2 as candidates
 			var cells []int
 			for i := 0; i < 81; i++ {
-				if b.Candidates[i][d1] && b.Candidates[i][d2] {
+				if b.Candidates[i].Has(d1) && b.Candidates[i].Has(d2) {
 					cells = append(cells, i)
 				}
 			}
@@ -640,9 +640,9 @@ func detectUniqueRectangle(b *Board) *core.Move {
 							bivalueCount := 0
 							nonBivalueIdx := -1
 							for _, corner := range corners {
-								if len(b.Candidates[corner]) == 2 {
+								if b.Candidates[corner].Count() == 2 {
 									bivalueCount++
-								} else if len(b.Candidates[corner]) > 2 {
+								} else if b.Candidates[corner].Count() > 2 {
 									nonBivalueIdx = corner
 								}
 							}
@@ -694,7 +694,7 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 			// Find all cells that have both d1 and d2 as candidates
 			var cells []int
 			for i := 0; i < 81; i++ {
-				if b.Candidates[i][d1] && b.Candidates[i][d2] {
+				if b.Candidates[i].Has(d1) && b.Candidates[i].Has(d2) {
 					cells = append(cells, i)
 				}
 			}
@@ -782,8 +782,8 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 								}
 
 								// Check if floor corners are bivalue with exactly {d1, d2}
-								isBivalue0 := len(b.Candidates[corners[floorPair[0]]]) == 2
-								isBivalue1 := len(b.Candidates[corners[floorPair[1]]]) == 2
+								isBivalue0 := b.Candidates[corners[floorPair[0]]].Count() == 2
+								isBivalue1 := b.Candidates[corners[floorPair[1]]].Count() == 2
 
 								if !isBivalue0 || !isBivalue1 {
 									continue
@@ -793,18 +793,18 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 								cands0 := b.Candidates[corners[roofPair[0]]]
 								cands1 := b.Candidates[corners[roofPair[1]]]
 
-								if len(cands0) <= 2 || len(cands1) <= 2 {
+								if cands0.Count() <= 2 || cands1.Count() <= 2 {
 									continue
 								}
 
 								// Find extras (candidates beyond d1 and d2)
 								var extras0, extras1 []int
-								for d := range cands0 {
+								for _, d := range cands0.ToSlice() {
 									if d != d1 && d != d2 {
 										extras0 = append(extras0, d)
 									}
 								}
-								for d := range cands1 {
+								for _, d := range cands1.ToSlice() {
 									if d != d1 && d != d2 {
 										extras1 = append(extras1, d)
 									}
@@ -828,7 +828,7 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 									if idx == roofCorner0 || idx == roofCorner1 {
 										continue
 									}
-									if !b.Candidates[idx][extraDigit] {
+									if !b.Candidates[idx].Has(extraDigit) {
 										continue
 									}
 									if sees(idx, roofCorner0) && sees(idx, roofCorner1) {
@@ -878,7 +878,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 			// Find all cells that have both d1 and d2 as candidates
 			var cells []int
 			for i := 0; i < 81; i++ {
-				if b.Candidates[i][d1] && b.Candidates[i][d2] {
+				if b.Candidates[i].Has(d1) && b.Candidates[i].Has(d2) {
 					cells = append(cells, i)
 				}
 			}
@@ -965,7 +965,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 								}
 
 								// Check if floor corners are bivalue
-								if len(b.Candidates[corners[floorPair[0]]]) != 2 || len(b.Candidates[corners[floorPair[1]]]) != 2 {
+								if b.Candidates[corners[floorPair[0]]].Count() != 2 || b.Candidates[corners[floorPair[1]]].Count() != 2 {
 									continue
 								}
 
@@ -973,18 +973,18 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 								roofCorner0 := corners[roofPair[0]]
 								roofCorner1 := corners[roofPair[1]]
 
-								if len(b.Candidates[roofCorner0]) <= 2 && len(b.Candidates[roofCorner1]) <= 2 {
+								if b.Candidates[roofCorner0].Count() <= 2 && b.Candidates[roofCorner1].Count() <= 2 {
 									continue
 								}
 
 								// Combine extras from both corners (excluding d1, d2)
 								combinedExtras := make(map[int]bool)
-								for d := range b.Candidates[roofCorner0] {
+								for _, d := range b.Candidates[roofCorner0].ToSlice() {
 									if d != d1 && d != d2 {
 										combinedExtras[d] = true
 									}
 								}
-								for d := range b.Candidates[roofCorner1] {
+								for _, d := range b.Candidates[roofCorner1].ToSlice() {
 									if d != d1 && d != d2 {
 										combinedExtras[d] = true
 									}
@@ -1034,7 +1034,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 												continue
 											}
 
-											cellCands := getCandidateSlice(b.Candidates[idx])
+											cellCands := b.Candidates[idx].ToSlice()
 											if len(cellCands) != 2 {
 												continue
 											}
@@ -1050,7 +1050,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 														continue
 													}
 													for _, d := range extraSlice {
-														if b.Candidates[elimIdx][d] {
+														if b.Candidates[elimIdx].Has(d) {
 															eliminations = append(eliminations, core.Candidate{
 																Row: elimIdx / 9, Col: elimIdx % 9, Digit: d,
 															})
@@ -1094,11 +1094,11 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 											}
 											// Cell must have only candidates from extraSlice (subset)
 											cellCands := b.Candidates[idx]
-											if len(cellCands) < 2 || len(cellCands) > 3 {
+											if cellCands.Count() < 2 || cellCands.Count() > 3 {
 												continue
 											}
 											isSubset := true
-											for d := range cellCands {
+											for _, d := range cellCands.ToSlice() {
 												if !combinedExtras[d] {
 													isSubset = false
 													break
@@ -1121,10 +1121,10 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 													for d := range combinedExtras {
 														allCands[d] = true
 													}
-													for d := range b.Candidates[idx1] {
+													for _, d := range b.Candidates[idx1].ToSlice() {
 														allCands[d] = true
 													}
-													for d := range b.Candidates[idx2] {
+													for _, d := range b.Candidates[idx2].ToSlice() {
 														allCands[d] = true
 													}
 
@@ -1144,7 +1144,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 															continue
 														}
 														for _, d := range tripleDigits {
-															if b.Candidates[elimIdx][d] {
+															if b.Candidates[elimIdx].Has(d) {
 																eliminations = append(eliminations, core.Candidate{
 																	Row: elimIdx / 9, Col: elimIdx % 9, Digit: d,
 																})
@@ -1198,7 +1198,7 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 			// Find all cells that have both d1 and d2 as candidates
 			var cells []int
 			for i := 0; i < 81; i++ {
-				if b.Candidates[i][d1] && b.Candidates[i][d2] {
+				if b.Candidates[i].Has(d1) && b.Candidates[i].Has(d2) {
 					cells = append(cells, i)
 				}
 			}
@@ -1288,12 +1288,12 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 								ex0, ex1 := corners[config.extras[0]], corners[config.extras[1]]
 
 								// Check bivalue corners have exactly {d1, d2}
-								if len(b.Candidates[bv0]) != 2 || len(b.Candidates[bv1]) != 2 {
+								if b.Candidates[bv0].Count() != 2 || b.Candidates[bv1].Count() != 2 {
 									continue
 								}
 
 								// Check extra corners have more than {d1, d2}
-								if len(b.Candidates[ex0]) <= 2 || len(b.Candidates[ex1]) <= 2 {
+								if b.Candidates[ex0].Count() <= 2 || b.Candidates[ex1].Count() <= 2 {
 									continue
 								}
 
@@ -1313,10 +1313,10 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 										if idx == ex0 || idx == ex1 {
 											continue
 										}
-										if b.Candidates[idx][d1] {
+										if b.Candidates[idx].Has(d1) {
 											d1OnlyInUR = false
 										}
-										if b.Candidates[idx][d2] {
+										if b.Candidates[idx].Has(d2) {
 											d2OnlyInUR = false
 										}
 									}
@@ -1324,10 +1324,10 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 									if d1OnlyInUR && !d2OnlyInUR {
 										// d1 confined to UR, eliminate d2 from extra corners
 										var eliminations []core.Candidate
-										if b.Candidates[ex0][d2] {
+										if b.Candidates[ex0].Has(d2) {
 											eliminations = append(eliminations, core.Candidate{Row: exRow0, Col: exCol0, Digit: d2})
 										}
-										if b.Candidates[ex1][d2] {
+										if b.Candidates[ex1].Has(d2) {
 											eliminations = append(eliminations, core.Candidate{Row: exRow1, Col: exCol1, Digit: d2})
 										}
 
@@ -1355,10 +1355,10 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 									if d2OnlyInUR && !d1OnlyInUR {
 										// d2 confined to UR, eliminate d1 from extra corners
 										var eliminations []core.Candidate
-										if b.Candidates[ex0][d1] {
+										if b.Candidates[ex0].Has(d1) {
 											eliminations = append(eliminations, core.Candidate{Row: exRow0, Col: exCol0, Digit: d1})
 										}
-										if b.Candidates[ex1][d1] {
+										if b.Candidates[ex1].Has(d1) {
 											eliminations = append(eliminations, core.Candidate{Row: exRow1, Col: exCol1, Digit: d1})
 										}
 
@@ -1395,10 +1395,10 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 										if idx == ex0 || idx == ex1 {
 											continue
 										}
-										if b.Candidates[idx][d1] {
+										if b.Candidates[idx].Has(d1) {
 											d1OnlyInUR = false
 										}
-										if b.Candidates[idx][d2] {
+										if b.Candidates[idx].Has(d2) {
 											d2OnlyInUR = false
 										}
 									}
@@ -1406,10 +1406,10 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 									if d1OnlyInUR && !d2OnlyInUR {
 										// d1 confined to UR, eliminate d2 from extra corners
 										var eliminations []core.Candidate
-										if b.Candidates[ex0][d2] {
+										if b.Candidates[ex0].Has(d2) {
 											eliminations = append(eliminations, core.Candidate{Row: exRow0, Col: exCol0, Digit: d2})
 										}
-										if b.Candidates[ex1][d2] {
+										if b.Candidates[ex1].Has(d2) {
 											eliminations = append(eliminations, core.Candidate{Row: exRow1, Col: exCol1, Digit: d2})
 										}
 
@@ -1437,10 +1437,10 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 									if d2OnlyInUR && !d1OnlyInUR {
 										// d2 confined to UR, eliminate d1 from extra corners
 										var eliminations []core.Candidate
-										if b.Candidates[ex0][d1] {
+										if b.Candidates[ex0].Has(d1) {
 											eliminations = append(eliminations, core.Candidate{Row: exRow0, Col: exCol0, Digit: d1})
 										}
-										if b.Candidates[ex1][d1] {
+										if b.Candidates[ex1].Has(d1) {
 											eliminations = append(eliminations, core.Candidate{Row: exRow1, Col: exCol1, Digit: d1})
 										}
 
@@ -1505,7 +1505,7 @@ func detectFinnedSwordfishInRows(b *Board, digit int) *core.Move {
 	for row := 0; row < 9; row++ {
 		var cols []int
 		for col := 0; col < 9; col++ {
-			if b.Candidates[row*9+col][digit] {
+			if b.Candidates[row*9+col].Has(digit) {
 				cols = append(cols, col)
 			}
 		}
@@ -1619,7 +1619,7 @@ func detectFinnedSwordfishInRows(b *Board, digit int) *core.Move {
 								continue
 							}
 							idx := row*9 + tc
-							if b.Candidates[idx][digit] {
+							if b.Candidates[idx].Has(digit) {
 								// Verify this cell sees the fin (it will if in same box)
 								seesAllFins := true
 								for _, fc := range finCols {
@@ -1693,7 +1693,7 @@ func detectFinnedSwordfishInCols(b *Board, digit int) *core.Move {
 	for col := 0; col < 9; col++ {
 		var rows []int
 		for row := 0; row < 9; row++ {
-			if b.Candidates[row*9+col][digit] {
+			if b.Candidates[row*9+col].Has(digit) {
 				rows = append(rows, row)
 			}
 		}
@@ -1807,7 +1807,7 @@ func detectFinnedSwordfishInCols(b *Board, digit int) *core.Move {
 								continue
 							}
 							idx := tr*9 + col
-							if b.Candidates[idx][digit] {
+							if b.Candidates[idx].Has(digit) {
 								// Verify this cell sees the fin (it will if in same box)
 								seesAllFins := true
 								for _, fr := range finRows {
@@ -1878,7 +1878,7 @@ func detectBUG(b *Board) *core.Move {
 		if b.Cells[i] != 0 {
 			continue
 		}
-		if len(b.Candidates[i]) != 2 {
+		if b.Candidates[i].Count() != 2 {
 			extraCells = append(extraCells, i)
 		}
 	}
@@ -1889,7 +1889,7 @@ func detectBUG(b *Board) *core.Move {
 	}
 
 	bugCell := extraCells[0]
-	if len(b.Candidates[bugCell]) != 3 {
+	if b.Candidates[bugCell].Count() != 3 {
 		return nil
 	}
 
@@ -1901,11 +1901,11 @@ func detectBUG(b *Board) *core.Move {
 	row, col := bugCell/9, bugCell%9
 	box := (row/3)*3 + col/3
 
-	for digit := range b.Candidates[bugCell] {
+	for _, digit := range b.Candidates[bugCell].ToSlice() {
 		// Count occurrences in row
 		rowCount := 0
 		for c := 0; c < 9; c++ {
-			if b.Candidates[row*9+c][digit] {
+			if b.Candidates[row*9+c].Has(digit) {
 				rowCount++
 			}
 		}
@@ -1913,7 +1913,7 @@ func detectBUG(b *Board) *core.Move {
 		// Count occurrences in column
 		colCount := 0
 		for r := 0; r < 9; r++ {
-			if b.Candidates[r*9+col][digit] {
+			if b.Candidates[r*9+col].Has(digit) {
 				colCount++
 			}
 		}
@@ -1923,7 +1923,7 @@ func detectBUG(b *Board) *core.Move {
 		boxRow, boxCol := (box/3)*3, (box%3)*3
 		for r := boxRow; r < boxRow+3; r++ {
 			for c := boxCol; c < boxCol+3; c++ {
-				if b.Candidates[r*9+c][digit] {
+				if b.Candidates[r*9+c].Has(digit) {
 					boxCount++
 				}
 			}

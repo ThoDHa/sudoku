@@ -12,11 +12,11 @@ func makeTestBoard(cells [81]int, candidateMap map[int][]int) *Board {
 	b := &Board{}
 	for i := 0; i < 81; i++ {
 		b.Cells[i] = cells[i]
-		b.Candidates[i] = make(map[int]bool)
+		b.Candidates[i] = 0 // Empty bitmask
 	}
 	for idx, cands := range candidateMap {
 		for _, d := range cands {
-			b.Candidates[idx][d] = true
+			b.Candidates[idx] = b.Candidates[idx].Set(d)
 		}
 	}
 	return b
@@ -34,19 +34,19 @@ func makeFullCandidateBoard(cells [81]int, candidateMap map[int][]int) *Board {
 	b := &Board{}
 	for i := 0; i < 81; i++ {
 		b.Cells[i] = cells[i]
-		b.Candidates[i] = make(map[int]bool)
+		b.Candidates[i] = 0 // Empty bitmask
 		// If cell is empty, populate with all 9 candidates by default
 		if cells[i] == 0 {
 			for d := 1; d <= 9; d++ {
-				b.Candidates[i][d] = true
+				b.Candidates[i] = b.Candidates[i].Set(d)
 			}
 		}
 	}
 	// Override with specific candidate sets from the map
 	for idx, cands := range candidateMap {
-		b.Candidates[idx] = make(map[int]bool)
+		b.Candidates[idx] = 0 // Reset to empty
 		for _, d := range cands {
-			b.Candidates[idx][d] = true
+			b.Candidates[idx] = b.Candidates[idx].Set(d)
 		}
 	}
 	return b
@@ -79,22 +79,20 @@ func applyTechniqueIsolation(b *Board, technique string) {
 	switch technique {
 	case "naked_single":
 		// For naked single test: eliminate all but candidate 5 from R1C1
-		if b.Candidates[0] != nil {
-			for d := 1; d <= 9; d++ {
-				if d != 5 {
-					delete(b.Candidates[0], d)
-					b.Eliminated[0][d] = true
-				}
+		for d := 1; d <= 9; d++ {
+			if d != 5 {
+				b.Candidates[0] = b.Candidates[0].Clear(d)
+				b.Eliminated[0] = b.Eliminated[0].Set(d)
 			}
 		}
 
 	case "hidden_single":
 		// For hidden single test: eliminate digit 7 from all cells in row 1 except R1C2
 		for col := 0; col < 9; col++ {
-			idx := 0*9 + col                          // row 1
-			if col != 1 && b.Candidates[idx] != nil { // except R1C2
-				delete(b.Candidates[idx], 7)
-				b.Eliminated[idx][7] = true
+			idx := 0*9 + col // row 1
+			if col != 1 {    // except R1C2
+				b.Candidates[idx] = b.Candidates[idx].Clear(7)
+				b.Eliminated[idx] = b.Eliminated[idx].Set(7)
 			}
 		}
 
@@ -103,25 +101,21 @@ func applyTechniqueIsolation(b *Board, technique string) {
 		// and eliminate 1,2 from other cells in row 1
 		pairIndices := []int{0, 1} // R1C1, R1C2
 		for _, idx := range pairIndices {
-			if b.Candidates[idx] != nil {
-				// Keep only 1,2
-				newCands := make(map[int]bool)
-				for _, d := range []int{1, 2} {
-					if b.Candidates[idx][d] {
-						newCands[d] = true
-					}
+			// Keep only 1,2
+			var newCands Candidates
+			for _, d := range []int{1, 2} {
+				if b.Candidates[idx].Has(d) {
+					newCands = newCands.Set(d)
 				}
-				b.Candidates[idx] = newCands
 			}
+			b.Candidates[idx] = newCands
 		}
 		// Eliminate 1,2 from rest of row 1
 		for col := 2; col < 9; col++ {
 			idx := 0*9 + col
-			if b.Candidates[idx] != nil {
-				for _, d := range []int{1, 2} {
-					delete(b.Candidates[idx], d)
-					b.Eliminated[idx][d] = true
-				}
+			for _, d := range []int{1, 2} {
+				b.Candidates[idx] = b.Candidates[idx].Clear(d)
+				b.Eliminated[idx] = b.Eliminated[idx].Set(d)
 			}
 		}
 
@@ -139,10 +133,10 @@ func applyTechniqueIsolation(b *Board, technique string) {
 					break
 				}
 			}
-			if !isPairCell && b.Candidates[idx] != nil {
+			if !isPairCell {
 				for _, d := range pairDigits {
-					delete(b.Candidates[idx], d)
-					b.Eliminated[idx][d] = true
+					b.Candidates[idx] = b.Candidates[idx].Clear(d)
+					b.Eliminated[idx] = b.Eliminated[idx].Set(d)
 				}
 			}
 		}
@@ -153,10 +147,8 @@ func applyTechniqueIsolation(b *Board, technique string) {
 		for row := 1; row < 3; row++ { // rows 2,3 of box 1
 			for col := 0; col < 3; col++ {
 				idx := row*9 + col
-				if b.Candidates[idx] != nil {
-					delete(b.Candidates[idx], 2)
-					b.Eliminated[idx][2] = true
-				}
+				b.Candidates[idx] = b.Candidates[idx].Clear(2)
+				b.Eliminated[idx] = b.Eliminated[idx].Set(2)
 			}
 		}
 
@@ -165,10 +157,8 @@ func applyTechniqueIsolation(b *Board, technique string) {
 		// Remove 1 from rest of row 1 (boxes 2,3)
 		for col := 3; col < 9; col++ { // columns 4-9 of row 1
 			idx := 0*9 + col
-			if b.Candidates[idx] != nil {
-				delete(b.Candidates[idx], 1)
-				b.Eliminated[idx][1] = true
-			}
+			b.Candidates[idx] = b.Candidates[idx].Clear(1)
+			b.Eliminated[idx] = b.Eliminated[idx].Set(1)
 		}
 
 	case "x_wing":
@@ -190,10 +180,8 @@ func applyTechniqueIsolation(b *Board, technique string) {
 				}
 				if !isXWingCol {
 					idx := row*9 + col
-					if b.Candidates[idx] != nil {
-						delete(b.Candidates[idx], digit)
-						b.Eliminated[idx][digit] = true
-					}
+					b.Candidates[idx] = b.Candidates[idx].Clear(digit)
+					b.Eliminated[idx] = b.Eliminated[idx].Set(digit)
 				}
 			}
 		}
@@ -206,15 +194,9 @@ func applyTechniqueIsolation(b *Board, technique string) {
 		pincer2 := 9 // R2C1 with {2,3}
 
 		// Set up wing candidates
-		if b.Candidates[pivot] != nil {
-			b.Candidates[pivot] = map[int]bool{1: true, 2: true}
-		}
-		if b.Candidates[pincer1] != nil {
-			b.Candidates[pincer1] = map[int]bool{1: true, 3: true}
-		}
-		if b.Candidates[pincer2] != nil {
-			b.Candidates[pincer2] = map[int]bool{2: true, 3: true}
-		}
+		b.Candidates[pivot] = Candidates(0).Set(1).Set(2)
+		b.Candidates[pincer1] = Candidates(0).Set(1).Set(3)
+		b.Candidates[pincer2] = Candidates(0).Set(2).Set(3)
 
 	case "naked_triple":
 		// For naked triple: three cells with same three candidates {1,2,3}
@@ -223,23 +205,19 @@ func applyTechniqueIsolation(b *Board, technique string) {
 
 		// Set triple candidates
 		for _, idx := range tripleCells {
-			if b.Candidates[idx] != nil {
-				newCands := make(map[int]bool)
-				for _, d := range tripleDigits {
-					newCands[d] = true
-				}
-				b.Candidates[idx] = newCands
+			var newCands Candidates
+			for _, d := range tripleDigits {
+				newCands = newCands.Set(d)
 			}
+			b.Candidates[idx] = newCands
 		}
 
 		// Remove triple digits from rest of row
 		for col := 3; col < 9; col++ {
 			idx := 0*9 + col
-			if b.Candidates[idx] != nil {
-				for _, d := range tripleDigits {
-					delete(b.Candidates[idx], d)
-					b.Eliminated[idx][d] = true
-				}
+			for _, d := range tripleDigits {
+				b.Candidates[idx] = b.Candidates[idx].Clear(d)
+				b.Eliminated[idx] = b.Eliminated[idx].Set(d)
 			}
 		}
 
@@ -261,10 +239,8 @@ func applyTechniqueIsolation(b *Board, technique string) {
 				}
 				if !isFishCol {
 					idx := row*9 + col
-					if b.Candidates[idx] != nil {
-						delete(b.Candidates[idx], digit)
-						b.Eliminated[idx][digit] = true
-					}
+					b.Candidates[idx] = b.Candidates[idx].Clear(digit)
+					b.Eliminated[idx] = b.Eliminated[idx].Set(digit)
 				}
 			}
 		}

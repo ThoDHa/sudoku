@@ -313,8 +313,8 @@ func TestSolverHandlesAllCandidatesRemoved(t *testing.T) {
 	// Let's eliminate ALL of them to force a contradiction
 	// First, mark them all as eliminated
 	for d := 1; d <= 9; d++ {
-		board.Eliminated[2][d] = true
-		delete(board.Candidates[2], d)
+		board.Eliminated[2] = board.Eliminated[2].Set(d)
+		board.Candidates[2] = board.Candidates[2].Clear(d)
 	}
 
 	// The solver should detect a contradiction at R1C3

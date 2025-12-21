@@ -354,7 +354,7 @@ func findZEliminations(b *Board, z int, zCellsFirst, zCellsLast []int, excludedC
 		if excluded[idx] {
 			continue
 		}
-		if !b.Candidates[idx][z] {
+		if !b.Candidates[idx].Has(z) {
 			continue
 		}
 

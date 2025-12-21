@@ -708,7 +708,7 @@ func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int
 		}
 
 		candidates := freshBoard.Candidates[idx]
-		if len(candidates) == 0 {
+		if candidates.IsEmpty() {
 			// Found a cell with no candidates - this points to an error
 			// Find which user-entered cell is blocking all candidates
 			row, col := idx/9, idx%9
