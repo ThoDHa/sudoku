@@ -18,7 +18,8 @@ function getInProgressGameForSeed(seed: string) {
 // Enso logo - loads light or dark version based on theme
 function EnsoLogo() {
   const { mode } = useTheme()
-  const src = mode === 'dark' ? '/sudoku-icon-dark.svg' : '/sudoku-icon.svg'
+  const base = import.meta.env.BASE_URL
+  const src = mode === 'dark' ? `${base}sudoku-icon-dark.svg` : `${base}sudoku-icon.svg`
   
   return (
     <img 
