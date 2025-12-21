@@ -36,17 +36,16 @@ const speedOptions = [
   ), label: 'Skip' },
 ]
 
-// Color theme options - popular community themes + classic
-const colorThemes: { key: ColorTheme; name: string; color: string }[] = [
-  { key: 'classic', name: 'Classic', color: 'bg-[#3b82f6]' },
-  { key: 'tokyonight', name: 'Tokyo Night', color: 'bg-[#7aa2f7]' },
-  { key: 'catppuccin', name: 'Catppuccin', color: 'bg-[#cba6f7]' },
-  { key: 'dracula', name: 'Dracula', color: 'bg-[#bd93f9]' },
-  { key: 'nord', name: 'Nord', color: 'bg-[#88c0d0]' },
-  { key: 'gruvbox', name: 'Gruvbox', color: 'bg-[#fe8019]' },
-  { key: 'rosepine', name: 'Rosé Pine', color: 'bg-[#c4a7e7]' },
-  { key: 'solarized', name: 'Solarized', color: 'bg-[#268bd2]' },
-  { key: 'onedark', name: 'One Dark', color: 'bg-[#c678dd]' },
+// Color theme options - open-source community themes
+const colorThemes: { key: ColorTheme; color: string; label: string }[] = [
+  { key: 'tokyonight', color: 'bg-[#7aa2f7]', label: 'Tokyo Night' },
+  { key: 'dracula', color: 'bg-[#bd93f9]', label: 'Dracula' },
+  { key: 'nord', color: 'bg-[#88c0d0]', label: 'Nord' },
+  { key: 'catppuccin', color: 'bg-[#cba6f7]', label: 'Catppuccin' },
+  { key: 'gruvbox', color: 'bg-[#fabd2f]', label: 'Gruvbox' },
+  { key: 'rosepine', color: 'bg-[#ebbcba]', label: 'Rosé Pine' },
+  { key: 'solarized', color: 'bg-[#2aa198]', label: 'Solarized' },
+  { key: 'onedark', color: 'bg-[#61afef]', label: 'One Dark' },
 ]
 
 // Game actions (for game page)
@@ -408,7 +407,7 @@ export default function Menu({
                 <div className="ml-4 py-1 space-y-1">
                   {/* Color theme picker */}
                   <div className="flex items-center justify-between px-3 py-2">
-                    <span className="text-sm text-foreground-muted">{colorThemes.find(t => t.key === colorTheme)?.name ?? 'Theme'}</span>
+                    <span className="text-sm text-foreground-muted">{colorThemes.find(t => t.key === colorTheme)?.label ?? colorTheme}</span>
                     <div className="flex gap-1">
                       {colorThemes.map((theme) => (
                         <button
@@ -419,7 +418,7 @@ export default function Menu({
                               ? 'ring-2 ring-offset-1 ring-foreground scale-110' 
                               : 'hover:scale-110'
                           }`}
-                          title={theme.name}
+                          title={theme.label}
                         />
                       ))}
                     </div>

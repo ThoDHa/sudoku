@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
-// Popular community themes + classic
-export type ColorTheme = 'classic' | 'catppuccin' | 'tokyonight' | 'dracula' | 'nord' | 'gruvbox' | 'rosepine' | 'solarized' | 'onedark'
+// Open-source community theme names with decidedly blue default
+export type ColorTheme = 'tokyonight' | 'dracula' | 'nord' | 'catppuccin' | 'gruvbox' | 'rosepine' | 'solarized' | 'onedark'
 export type ModePreference = 'light' | 'dark' | 'system'
 export type Mode = 'light' | 'dark' // The effective/resolved mode
 export type FontSize = 'xs' | 'small' | 'medium' | 'large' | 'xl'
@@ -20,520 +20,437 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
-// Popular community color themes
-// Each theme has official light and dark variants based on their published color palettes
+// Open-source themes with their authentic deepest dark mode colors
 const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Record<string, string> }> = {
-  // Classic - Clean blue theme based on Tailwind CSS blue palette
-  // The original default theme
-  classic: {
-    light: {
-      '--bg': '#eff6ff',           // blue-50
-      '--bg-secondary': '#dbeafe', // blue-100
-      '--text': '#1e3a5f',         // Custom dark blue
-      '--text-muted': '#4a6fa5',   // Custom muted blue
-      '--board-bg': '#ffffff',     // White
-      '--cell-bg': '#ffffff',      // White
-      '--cell-hover': '#dbeafe',   // blue-100
-      '--cell-selected': '#93c5fd', // blue-300
-      '--cell-peer': '#bfdbfe',    // blue-200
-      '--cell-primary': '#60a5fa', // blue-400
-      '--cell-secondary': '#93c5fd', // blue-300
-      '--border-strong': '#1e3a5f', // Custom dark blue
-      '--border-light': '#93c5fd', // blue-300
-      '--text-given': '#1e3a5f',   // Custom dark blue
-      '--text-entered': '#2563eb', // blue-600
-      '--text-candidate': '#3b82f6', // blue-500
-      '--text-on-highlight': '#ffffff', // White
-      '--btn-bg': '#dbeafe',       // blue-100
-      '--btn-hover': '#bfdbfe',    // blue-200
-      '--btn-active': '#2563eb',   // blue-600
-      '--btn-active-text': '#ffffff', // White
-      '--accent': '#2563eb',       // blue-600
-      '--accent-light': '#dbeafe', // blue-100
-    },
-    dark: {
-      '--bg': '#0f1729',           // Custom deep navy
-      '--bg-secondary': '#172140', // Custom dark blue
-      '--text': '#e2e8f0',         // slate-200
-      '--text-muted': '#94a3b8',   // slate-400
-      '--board-bg': '#1a2850',     // Custom navy
-      '--cell-bg': '#1a2850',      // Custom navy
-      '--cell-hover': '#243565',   // Custom blue
-      '--cell-selected': '#3b5998', // Custom selection blue
-      '--cell-peer': '#1e3060',    // Custom peer blue
-      '--cell-primary': '#3b82f6', // blue-500
-      '--cell-secondary': '#60a5fa', // blue-400
-      '--border-strong': '#e2e8f0', // slate-200
-      '--border-light': '#3b5998', // Custom border blue
-      '--text-given': '#e2e8f0',   // slate-200
-      '--text-entered': '#93c5fd', // blue-300
-      '--text-candidate': '#60a5fa', // blue-400
-      '--text-on-highlight': '#0f1729', // Deep navy
-      '--btn-bg': '#1e3570',       // Custom button blue
-      '--btn-hover': '#2a4585',    // Custom hover blue
-      '--btn-active': '#5b8bd4',   // Custom active blue
-      '--btn-active-text': '#ffffff', // White
-      '--accent': '#60a5fa',       // blue-400
-      '--accent-light': '#1e3570', // Custom accent
-    },
-  },
-
-  // Catppuccin - Soothing pastel theme
-  // Light: Latte, Dark: Mocha (deep variant using Crust as base)
-  // https://github.com/catppuccin/catppuccin
-  catppuccin: {
-    light: {
-      // Latte palette
-      '--bg': '#eff1f5',           // Base
-      '--bg-secondary': '#e6e9ef', // Mantle
-      '--text': '#4c4f69',         // Text
-      '--text-muted': '#6c6f85',   // Subtext0
-      '--board-bg': '#e6e9ef',     // Mantle
-      '--cell-bg': '#eff1f5',      // Base
-      '--cell-hover': '#ccd0da',   // Surface0
-      '--cell-selected': '#bcc0cc', // Surface1
-      '--cell-peer': '#dce0e8',    // Crust
-      '--cell-primary': '#8839ef', // Mauve (accent)
-      '--cell-secondary': '#ca9ee6', // Lighter mauve
-      '--border-strong': '#4c4f69', // Text
-      '--border-light': '#acb0be', // Surface2
-      '--text-given': '#4c4f69',   // Text
-      '--text-entered': '#8839ef', // Mauve
-      '--text-candidate': '#7287fd', // Lavender
-      '--text-on-highlight': '#eff1f5', // Base (light on dark highlight)
-      '--btn-bg': '#ccd0da',       // Surface0
-      '--btn-hover': '#bcc0cc',    // Surface1
-      '--btn-active': '#8839ef',   // Mauve
-      '--btn-active-text': '#eff1f5', // Base
-      '--accent': '#8839ef',       // Mauve
-      '--accent-light': '#dce0e8', // Crust
-    },
-    dark: {
-      // Mocha palette - Deep variant (Crust-based for maximum darkness)
-      '--bg': '#11111b',           // Crust (deepest)
-      '--bg-secondary': '#181825', // Mantle
-      '--text': '#cdd6f4',         // Text
-      '--text-muted': '#a6adc8',   // Subtext0
-      '--board-bg': '#181825',     // Mantle
-      '--cell-bg': '#1e1e2e',      // Base
-      '--cell-hover': '#313244',   // Surface0
-      '--cell-selected': '#45475a', // Surface1
-      '--cell-peer': '#181825',    // Mantle
-      '--cell-primary': '#cba6f7', // Mauve
-      '--cell-secondary': '#b4befe', // Lavender
-      '--border-strong': '#cdd6f4', // Text
-      '--border-light': '#585b70', // Surface2
-      '--text-given': '#cdd6f4',   // Text
-      '--text-entered': '#cba6f7', // Mauve
-      '--text-candidate': '#b4befe', // Lavender
-      '--text-on-highlight': '#11111b', // Crust (dark on light highlight)
-      '--btn-bg': '#313244',       // Surface0
-      '--btn-hover': '#45475a',    // Surface1
-      '--btn-active': '#cba6f7',   // Mauve
-      '--btn-active-text': '#11111b', // Crust
-      '--accent': '#cba6f7',       // Mauve
-      '--accent-light': '#313244', // Surface0
-    },
-  },
-
-  // Tokyo Night - Clean theme inspired by Tokyo city lights
-  // Light: Tokyo Night Day, Dark: Tokyo Night (deepest variant)
-  // https://github.com/enkia/tokyo-night-vscode-theme
+  // Tokyo Night - Deep storm blue, decidedly blue theme (DEFAULT)
   tokyonight: {
     light: {
-      '--bg': '#d5d6db',           // Background
-      '--bg-secondary': '#cbccd1', // Secondary bg
-      '--text': '#343b58',         // Foreground
-      '--text-muted': '#6c6e75',   // Comments
-      '--board-bg': '#d5d6db',     // Background
-      '--cell-bg': '#e6e7ed',      // Editor background
-      '--cell-hover': '#c4c5cb',   // Hover
-      '--cell-selected': '#b6b8c0', // Selection
-      '--cell-peer': '#dcdee4',    // Peer cells
-      '--cell-primary': '#5a3e8e', // Purple (control keywords)
-      '--cell-secondary': '#7287fd', // Blue (functions)
-      '--border-strong': '#343b58', // Foreground
-      '--border-light': '#9ca0b0', // Overlay
-      '--text-given': '#343b58',   // Foreground
-      '--text-entered': '#2959aa', // Blue
-      '--text-candidate': '#5a3e8e', // Purple
-      '--text-on-highlight': '#e6e7ed', // Light bg
-      '--btn-bg': '#c4c5cb',       // Button bg
-      '--btn-hover': '#b6b8c0',    // Button hover
-      '--btn-active': '#2959aa',   // Blue
-      '--btn-active-text': '#e6e7ed', // Light
-      '--accent': '#2959aa',       // Blue
-      '--accent-light': '#dcdee4', // Light accent
+      '--bg': '#d5d6db',
+      '--bg-secondary': '#c4c5cb',
+      '--text': '#343b58',
+      '--text-muted': '#565a6e',
+      '--board-bg': '#e9e9ec',
+      '--cell-bg': '#e9e9ec',
+      '--cell-hover': '#c4c5cb',
+      '--cell-selected': '#99a0c4',
+      '--cell-peer': '#d0d1d8',
+      '--cell-primary': '#7aa2f7',
+      '--cell-secondary': '#99a0c4',
+      '--border-strong': '#343b58',
+      '--border-light': '#9699a3',
+      '--text-given': '#343b58',
+      '--text-entered': '#2e7de9',
+      '--text-candidate': '#7aa2f7',
+      '--text-on-highlight': '#ffffff',
+      '--btn-bg': '#c4c5cb',
+      '--btn-hover': '#b4b5bb',
+      '--btn-active': '#2e7de9',
+      '--btn-active-text': '#ffffff',
+      '--accent': '#2e7de9',
+      '--accent-light': '#c4c5cb',
     },
     dark: {
-      // Night variant (deepest) - darker than Storm
-      '--bg': '#16161e',           // Background (Night - deepest)
-      '--bg-secondary': '#1a1b26', // Night secondary
-      '--text': '#a9b1d6',         // Foreground
-      '--text-muted': '#565f89',   // Comments
-      '--board-bg': '#1a1b26',     // Night secondary
-      '--cell-bg': '#1f2335',      // Editor background
-      '--cell-hover': '#292e42',   // Hover
-      '--cell-selected': '#33467c', // Selection
-      '--cell-peer': '#1a1b26',    // Night secondary
-      '--cell-primary': '#bb9af7', // Purple
-      '--cell-secondary': '#7aa2f7', // Blue
-      '--border-strong': '#a9b1d6', // Foreground
-      '--border-light': '#414868', // Terminal black
-      '--text-given': '#c0caf5',   // Variables
-      '--text-entered': '#7aa2f7', // Blue
-      '--text-candidate': '#bb9af7', // Purple
-      '--text-on-highlight': '#16161e', // Night (deepest)
-      '--btn-bg': '#292e42',       // Button bg
-      '--btn-hover': '#33467c',    // Button hover
-      '--btn-active': '#7aa2f7',   // Blue
-      '--btn-active-text': '#16161e', // Night
-      '--accent': '#7aa2f7',       // Blue
-      '--accent-light': '#292e42', // Dark accent
+      '--bg': '#1a1b26',
+      '--bg-secondary': '#16161e',
+      '--text': '#c0caf5',
+      '--text-muted': '#565f89',
+      '--board-bg': '#1f2335',
+      '--cell-bg': '#1f2335',
+      '--cell-hover': '#292e42',
+      '--cell-selected': '#33467c',
+      '--cell-peer': '#24283b',
+      '--cell-primary': '#7aa2f7',
+      '--cell-secondary': '#3d59a1',
+      '--border-strong': '#c0caf5',
+      '--border-light': '#3b4261',
+      '--text-given': '#c0caf5',
+      '--text-entered': '#7aa2f7',
+      '--text-candidate': '#7aa2f7',
+      '--text-on-highlight': '#1a1b26',
+      '--btn-bg': '#24283b',
+      '--btn-hover': '#292e42',
+      '--btn-active': '#7aa2f7',
+      '--btn-active-text': '#1a1b26',
+      '--accent': '#7aa2f7',
+      '--accent-light': '#24283b',
     },
   },
 
-  // Dracula - Dark theme with vibrant colors
-  // Light: Van Helsing (community light variant), Dark: Dracula
-  // https://draculatheme.com
+  // Dracula - Deep purple-gray
   dracula: {
     light: {
-      // Van Helsing - Dracula's light counterpart
-      '--bg': '#f8f8f2',           // Foreground as bg
-      '--bg-secondary': '#f2f2ec', // Lighter
-      '--text': '#282a36',         // Background as text
-      '--text-muted': '#6272a4',   // Comment
-      '--board-bg': '#f2f2ec',     // Secondary
-      '--cell-bg': '#f8f8f2',      // Main bg
-      '--cell-hover': '#e8e8e2',   // Hover
-      '--cell-selected': '#d8d8d2', // Selected
-      '--cell-peer': '#ececec',    // Peer
-      '--cell-primary': '#bd93f9', // Purple
-      '--cell-secondary': '#ff79c6', // Pink
-      '--border-strong': '#282a36', // Dark
-      '--border-light': '#d0d0d0', // Light border
-      '--text-given': '#282a36',   // Dark text
-      '--text-entered': '#bd93f9', // Purple
-      '--text-candidate': '#6272a4', // Comment
-      '--text-on-highlight': '#f8f8f2', // Light
-      '--btn-bg': '#e8e8e2',       // Button
-      '--btn-hover': '#d8d8d2',    // Hover
-      '--btn-active': '#bd93f9',   // Purple
-      '--btn-active-text': '#f8f8f2', // Light
-      '--accent': '#bd93f9',       // Purple
-      '--accent-light': '#ececec', // Light accent
+      '--bg': '#f8f8f2',
+      '--bg-secondary': '#e9e9e4',
+      '--text': '#282a36',
+      '--text-muted': '#44475a',
+      '--board-bg': '#ffffff',
+      '--cell-bg': '#ffffff',
+      '--cell-hover': '#e9e9e4',
+      '--cell-selected': '#d6acff',
+      '--cell-peer': '#f0f0eb',
+      '--cell-primary': '#bd93f9',
+      '--cell-secondary': '#d6acff',
+      '--border-strong': '#282a36',
+      '--border-light': '#b8b8b2',
+      '--text-given': '#282a36',
+      '--text-entered': '#8b5cf6',
+      '--text-candidate': '#bd93f9',
+      '--text-on-highlight': '#ffffff',
+      '--btn-bg': '#e9e9e4',
+      '--btn-hover': '#dcdcd6',
+      '--btn-active': '#8b5cf6',
+      '--btn-active-text': '#ffffff',
+      '--accent': '#8b5cf6',
+      '--accent-light': '#e9e9e4',
     },
     dark: {
-      // Official Dracula palette
-      '--bg': '#282a36',           // Background
-      '--bg-secondary': '#21222c', // Darker bg
-      '--text': '#f8f8f2',         // Foreground
-      '--text-muted': '#6272a4',   // Comment
-      '--board-bg': '#21222c',     // Board bg
-      '--cell-bg': '#282a36',      // Background
-      '--cell-hover': '#343746',   // Hover
-      '--cell-selected': '#44475a', // Current line / Selection
-      '--cell-peer': '#2d2f3b',    // Peer cells
-      '--cell-primary': '#bd93f9', // Purple
-      '--cell-secondary': '#ff79c6', // Pink
-      '--border-strong': '#f8f8f2', // Foreground
-      '--border-light': '#44475a', // Selection
-      '--text-given': '#f8f8f2',   // Foreground
-      '--text-entered': '#bd93f9', // Purple
-      '--text-candidate': '#ff79c6', // Pink
-      '--text-on-highlight': '#282a36', // Background
-      '--btn-bg': '#343746',       // Button
-      '--btn-hover': '#44475a',    // Selection
-      '--btn-active': '#bd93f9',   // Purple
-      '--btn-active-text': '#282a36', // Background
-      '--accent': '#bd93f9',       // Purple
-      '--accent-light': '#343746', // Dark accent
+      '--bg': '#282a36',
+      '--bg-secondary': '#1e1f29',
+      '--text': '#f8f8f2',
+      '--text-muted': '#6272a4',
+      '--board-bg': '#21222c',
+      '--cell-bg': '#21222c',
+      '--cell-hover': '#343746',
+      '--cell-selected': '#44475a',
+      '--cell-peer': '#2c2d3a',
+      '--cell-primary': '#bd93f9',
+      '--cell-secondary': '#6272a4',
+      '--border-strong': '#f8f8f2',
+      '--border-light': '#44475a',
+      '--text-given': '#f8f8f2',
+      '--text-entered': '#bd93f9',
+      '--text-candidate': '#bd93f9',
+      '--text-on-highlight': '#282a36',
+      '--btn-bg': '#343746',
+      '--btn-hover': '#44475a',
+      '--btn-active': '#bd93f9',
+      '--btn-active-text': '#282a36',
+      '--accent': '#bd93f9',
+      '--accent-light': '#343746',
     },
   },
 
-  // Nord - Arctic, north-bluish color palette
-  // https://www.nordtheme.com
+  // Nord - Polar night, muted arctic blue-gray
   nord: {
     light: {
-      // Nord Light (Snow Storm as base)
-      '--bg': '#eceff4',           // nord6
-      '--bg-secondary': '#e5e9f0', // nord5
-      '--text': '#2e3440',         // nord0
-      '--text-muted': '#4c566a',   // nord3
-      '--board-bg': '#e5e9f0',     // nord5
-      '--cell-bg': '#eceff4',      // nord6
-      '--cell-hover': '#d8dee9',   // nord4
-      '--cell-selected': '#d8dee9', // nord4
-      '--cell-peer': '#e5e9f0',    // nord5
-      '--cell-primary': '#5e81ac', // nord10
-      '--cell-secondary': '#81a1c1', // nord9
-      '--border-strong': '#2e3440', // nord0
-      '--border-light': '#d8dee9', // nord4
-      '--text-given': '#2e3440',   // nord0
-      '--text-entered': '#5e81ac', // nord10
-      '--text-candidate': '#81a1c1', // nord9
-      '--text-on-highlight': '#eceff4', // nord6
-      '--btn-bg': '#d8dee9',       // nord4
-      '--btn-hover': '#e5e9f0',    // nord5
-      '--btn-active': '#5e81ac',   // nord10
-      '--btn-active-text': '#eceff4', // nord6
-      '--accent': '#5e81ac',       // nord10
-      '--accent-light': '#e5e9f0', // nord5
+      '--bg': '#eceff4',
+      '--bg-secondary': '#e5e9f0',
+      '--text': '#2e3440',
+      '--text-muted': '#4c566a',
+      '--board-bg': '#ffffff',
+      '--cell-bg': '#ffffff',
+      '--cell-hover': '#e5e9f0',
+      '--cell-selected': '#88c0d0',
+      '--cell-peer': '#eceff4',
+      '--cell-primary': '#5e81ac',
+      '--cell-secondary': '#81a1c1',
+      '--border-strong': '#2e3440',
+      '--border-light': '#b4bdc8',
+      '--text-given': '#2e3440',
+      '--text-entered': '#5e81ac',
+      '--text-candidate': '#5e81ac',
+      '--text-on-highlight': '#ffffff',
+      '--btn-bg': '#e5e9f0',
+      '--btn-hover': '#d8dee9',
+      '--btn-active': '#5e81ac',
+      '--btn-active-text': '#ffffff',
+      '--accent': '#5e81ac',
+      '--accent-light': '#e5e9f0',
     },
     dark: {
-      // Nord Dark (Polar Night as base)
-      '--bg': '#2e3440',           // nord0
-      '--bg-secondary': '#3b4252', // nord1
-      '--text': '#eceff4',         // nord6
-      '--text-muted': '#d8dee9',   // nord4
-      '--board-bg': '#3b4252',     // nord1
-      '--cell-bg': '#2e3440',      // nord0
-      '--cell-hover': '#434c5e',   // nord2
-      '--cell-selected': '#4c566a', // nord3
-      '--cell-peer': '#3b4252',    // nord1
-      '--cell-primary': '#88c0d0', // nord8
-      '--cell-secondary': '#81a1c1', // nord9
-      '--border-strong': '#eceff4', // nord6
-      '--border-light': '#4c566a', // nord3
-      '--text-given': '#eceff4',   // nord6
-      '--text-entered': '#88c0d0', // nord8
-      '--text-candidate': '#81a1c1', // nord9
-      '--text-on-highlight': '#2e3440', // nord0
-      '--btn-bg': '#434c5e',       // nord2
-      '--btn-hover': '#4c566a',    // nord3
-      '--btn-active': '#88c0d0',   // nord8
-      '--btn-active-text': '#2e3440', // nord0
-      '--accent': '#88c0d0',       // nord8
-      '--accent-light': '#434c5e', // nord2
+      '--bg': '#2e3440',
+      '--bg-secondary': '#242933',
+      '--text': '#eceff4',
+      '--text-muted': '#8892a6',
+      '--board-bg': '#3b4252',
+      '--cell-bg': '#3b4252',
+      '--cell-hover': '#434c5e',
+      '--cell-selected': '#4c566a',
+      '--cell-peer': '#3f4859',
+      '--cell-primary': '#88c0d0',
+      '--cell-secondary': '#5e81ac',
+      '--border-strong': '#eceff4',
+      '--border-light': '#4c566a',
+      '--text-given': '#eceff4',
+      '--text-entered': '#88c0d0',
+      '--text-candidate': '#88c0d0',
+      '--text-on-highlight': '#2e3440',
+      '--btn-bg': '#434c5e',
+      '--btn-hover': '#4c566a',
+      '--btn-active': '#88c0d0',
+      '--btn-active-text': '#2e3440',
+      '--accent': '#88c0d0',
+      '--accent-light': '#434c5e',
     },
   },
 
-  // Gruvbox - Retro groove color scheme
-  // Light: Gruvbox Light, Dark: Gruvbox Dark Hard (deepest variant)
-  // https://github.com/morhetz/gruvbox
+  // Catppuccin Mocha - Deep purple-brown, rich and warm
+  catppuccin: {
+    light: {
+      '--bg': '#eff1f5',
+      '--bg-secondary': '#e6e9ef',
+      '--text': '#4c4f69',
+      '--text-muted': '#6c6f85',
+      '--board-bg': '#ffffff',
+      '--cell-bg': '#ffffff',
+      '--cell-hover': '#e6e9ef',
+      '--cell-selected': '#cba6f7',
+      '--cell-peer': '#f2f4f8',
+      '--cell-primary': '#8839ef',
+      '--cell-secondary': '#cba6f7',
+      '--border-strong': '#4c4f69',
+      '--border-light': '#acb0be',
+      '--text-given': '#4c4f69',
+      '--text-entered': '#8839ef',
+      '--text-candidate': '#8839ef',
+      '--text-on-highlight': '#ffffff',
+      '--btn-bg': '#e6e9ef',
+      '--btn-hover': '#dce0e8',
+      '--btn-active': '#8839ef',
+      '--btn-active-text': '#ffffff',
+      '--accent': '#8839ef',
+      '--accent-light': '#e6e9ef',
+    },
+    dark: {
+      '--bg': '#1e1e2e',
+      '--bg-secondary': '#181825',
+      '--text': '#cdd6f4',
+      '--text-muted': '#6c7086',
+      '--board-bg': '#24243a',
+      '--cell-bg': '#24243a',
+      '--cell-hover': '#313244',
+      '--cell-selected': '#45475a',
+      '--cell-peer': '#2a2a40',
+      '--cell-primary': '#cba6f7',
+      '--cell-secondary': '#6c7086',
+      '--border-strong': '#cdd6f4',
+      '--border-light': '#45475a',
+      '--text-given': '#cdd6f4',
+      '--text-entered': '#cba6f7',
+      '--text-candidate': '#cba6f7',
+      '--text-on-highlight': '#1e1e2e',
+      '--btn-bg': '#313244',
+      '--btn-hover': '#45475a',
+      '--btn-active': '#cba6f7',
+      '--btn-active-text': '#1e1e2e',
+      '--accent': '#cba6f7',
+      '--accent-light': '#313244',
+    },
+  },
+
+  // Gruvbox - Retro earthy brown, deepest dark variant
   gruvbox: {
     light: {
-      // Gruvbox Light
-      '--bg': '#fbf1c7',           // bg0
-      '--bg-secondary': '#ebdbb2', // bg1
-      '--text': '#3c3836',         // fg0
-      '--text-muted': '#665c54',   // fg3
-      '--board-bg': '#ebdbb2',     // bg1
-      '--cell-bg': '#fbf1c7',      // bg0
-      '--cell-hover': '#d5c4a1',   // bg2
-      '--cell-selected': '#bdae93', // bg3
-      '--cell-peer': '#f2e5bc',    // bg0_h
-      '--cell-primary': '#d65d0e', // orange
-      '--cell-secondary': '#af3a03', // dark orange
-      '--border-strong': '#3c3836', // fg0
-      '--border-light': '#bdae93', // bg3
-      '--text-given': '#3c3836',   // fg0
-      '--text-entered': '#d65d0e', // orange
-      '--text-candidate': '#b57614', // yellow dark
-      '--text-on-highlight': '#fbf1c7', // bg0
-      '--btn-bg': '#d5c4a1',       // bg2
-      '--btn-hover': '#bdae93',    // bg3
-      '--btn-active': '#d65d0e',   // orange
-      '--btn-active-text': '#fbf1c7', // bg0
-      '--accent': '#d65d0e',       // orange
-      '--accent-light': '#ebdbb2', // bg1
+      '--bg': '#fbf1c7',
+      '--bg-secondary': '#f2e5bc',
+      '--text': '#282828',
+      '--text-muted': '#504945',
+      '--board-bg': '#fffdf5',
+      '--cell-bg': '#fffdf5',
+      '--cell-hover': '#f2e5bc',
+      '--cell-selected': '#d8a657',
+      '--cell-peer': '#f9f3d9',
+      '--cell-primary': '#d79921',
+      '--cell-secondary': '#e9c46a',
+      '--border-strong': '#282828',
+      '--border-light': '#bdae93',
+      '--text-given': '#282828',
+      '--text-entered': '#b57614',
+      '--text-candidate': '#d79921',
+      '--text-on-highlight': '#282828',
+      '--btn-bg': '#f2e5bc',
+      '--btn-hover': '#ebdbb2',
+      '--btn-active': '#b57614',
+      '--btn-active-text': '#fbf1c7',
+      '--accent': '#b57614',
+      '--accent-light': '#f2e5bc',
     },
     dark: {
-      // Gruvbox Dark Hard (deepest variant)
-      '--bg': '#1d2021',           // bg0_h (hard - deepest)
-      '--bg-secondary': '#282828', // bg0
-      '--text': '#ebdbb2',         // fg0
-      '--text-muted': '#a89984',   // fg3
-      '--board-bg': '#282828',     // bg0
-      '--cell-bg': '#32302f',      // bg0_s (soft)
-      '--cell-hover': '#504945',   // bg2
-      '--cell-selected': '#665c54', // bg3
-      '--cell-peer': '#282828',    // bg0
-      '--cell-primary': '#fe8019', // orange
-      '--cell-secondary': '#fabd2f', // yellow
-      '--border-strong': '#ebdbb2', // fg0
-      '--border-light': '#665c54', // bg3
-      '--text-given': '#ebdbb2',   // fg0
-      '--text-entered': '#fe8019', // orange
-      '--text-candidate': '#fabd2f', // yellow
-      '--text-on-highlight': '#1d2021', // bg0_h (hard)
-      '--btn-bg': '#504945',       // bg2
-      '--btn-hover': '#665c54',    // bg3
-      '--btn-active': '#fe8019',   // orange
-      '--btn-active-text': '#1d2021', // bg0_h
-      '--accent': '#fe8019',       // orange
-      '--accent-light': '#3c3836', // bg1
+      '--bg': '#1d2021',
+      '--bg-secondary': '#141617',
+      '--text': '#ebdbb2',
+      '--text-muted': '#928374',
+      '--board-bg': '#282828',
+      '--cell-bg': '#282828',
+      '--cell-hover': '#32302f',
+      '--cell-selected': '#3c3836',
+      '--cell-peer': '#2c2a29',
+      '--cell-primary': '#fabd2f',
+      '--cell-secondary': '#665c54',
+      '--border-strong': '#ebdbb2',
+      '--border-light': '#504945',
+      '--text-given': '#ebdbb2',
+      '--text-entered': '#fabd2f',
+      '--text-candidate': '#fabd2f',
+      '--text-on-highlight': '#1d2021',
+      '--btn-bg': '#32302f',
+      '--btn-hover': '#3c3836',
+      '--btn-active': '#fabd2f',
+      '--btn-active-text': '#1d2021',
+      '--accent': '#fabd2f',
+      '--accent-light': '#32302f',
     },
   },
 
-  // Rosé Pine - All natural pine, faux fur and a bit of soho vibes
-  // Light: Dawn, Dark: Main (deepest variant, darker than Moon)
-  // https://rosepinetheme.com
+  // Rosé Pine - Muted rose/pink with deep purple-brown base
   rosepine: {
     light: {
-      // Rosé Pine Dawn
-      '--bg': '#faf4ed',           // base
-      '--bg-secondary': '#fffaf3', // surface
-      '--text': '#575279',         // text
-      '--text-muted': '#797593',   // muted
-      '--board-bg': '#fffaf3',     // surface
-      '--cell-bg': '#faf4ed',      // base
-      '--cell-hover': '#f2e9e1',   // overlay
-      '--cell-selected': '#dfdad9', // highlight med
-      '--cell-peer': '#f4ede8',    // highlight low
-      '--cell-primary': '#907aa9', // iris
-      '--cell-secondary': '#d7827e', // rose
-      '--border-strong': '#575279', // text
-      '--border-light': '#dfdad9', // highlight med
-      '--text-given': '#575279',   // text
-      '--text-entered': '#907aa9', // iris
-      '--text-candidate': '#d7827e', // rose
-      '--text-on-highlight': '#faf4ed', // base
-      '--btn-bg': '#f2e9e1',       // overlay
-      '--btn-hover': '#dfdad9',    // highlight med
-      '--btn-active': '#907aa9',   // iris
-      '--btn-active-text': '#faf4ed', // base
-      '--accent': '#907aa9',       // iris
-      '--accent-light': '#f4ede8', // highlight low
+      '--bg': '#faf4ed',
+      '--bg-secondary': '#f2e9e1',
+      '--text': '#575279',
+      '--text-muted': '#6e6a86',
+      '--board-bg': '#fffaf3',
+      '--cell-bg': '#fffaf3',
+      '--cell-hover': '#f2e9e1',
+      '--cell-selected': '#ebbcba',
+      '--cell-peer': '#f8f0e7',
+      '--cell-primary': '#d7827e',
+      '--cell-secondary': '#ebbcba',
+      '--border-strong': '#575279',
+      '--border-light': '#9893a5',
+      '--text-given': '#575279',
+      '--text-entered': '#d7827e',
+      '--text-candidate': '#d7827e',
+      '--text-on-highlight': '#575279',
+      '--btn-bg': '#f2e9e1',
+      '--btn-hover': '#e4dcd4',
+      '--btn-active': '#d7827e',
+      '--btn-active-text': '#faf4ed',
+      '--accent': '#d7827e',
+      '--accent-light': '#f2e9e1',
     },
     dark: {
-      // Rosé Pine Main (deepest variant - darker than Moon)
-      '--bg': '#191724',           // base (Main - deepest)
-      '--bg-secondary': '#1f1d2e', // surface
-      '--text': '#e0def4',         // text
-      '--text-muted': '#908caa',   // muted
-      '--board-bg': '#1f1d2e',     // surface
-      '--cell-bg': '#26233a',      // overlay
-      '--cell-hover': '#393552',   // highlight med (using Moon's overlay)
-      '--cell-selected': '#403d52', // highlight high
-      '--cell-peer': '#1f1d2e',    // surface
-      '--cell-primary': '#c4a7e7', // iris
-      '--cell-secondary': '#ebbcba', // rose
-      '--border-strong': '#e0def4', // text
-      '--border-light': '#403d52', // highlight high
-      '--text-given': '#e0def4',   // text
-      '--text-entered': '#c4a7e7', // iris
-      '--text-candidate': '#ebbcba', // rose
-      '--text-on-highlight': '#191724', // base (Main)
-      '--btn-bg': '#393552',       // highlight med
-      '--btn-hover': '#403d52',    // highlight high
-      '--btn-active': '#c4a7e7',   // iris
-      '--btn-active-text': '#191724', // base
-      '--accent': '#c4a7e7',       // iris
-      '--accent-light': '#26233a', // overlay
+      '--bg': '#191724',
+      '--bg-secondary': '#13111d',
+      '--text': '#e0def4',
+      '--text-muted': '#6e6a86',
+      '--board-bg': '#1f1d2e',
+      '--cell-bg': '#1f1d2e',
+      '--cell-hover': '#26233a',
+      '--cell-selected': '#393552',
+      '--cell-peer': '#221f31',
+      '--cell-primary': '#ebbcba',
+      '--cell-secondary': '#524f67',
+      '--border-strong': '#e0def4',
+      '--border-light': '#393552',
+      '--text-given': '#e0def4',
+      '--text-entered': '#ebbcba',
+      '--text-candidate': '#ebbcba',
+      '--text-on-highlight': '#191724',
+      '--btn-bg': '#26233a',
+      '--btn-hover': '#393552',
+      '--btn-active': '#ebbcba',
+      '--btn-active-text': '#191724',
+      '--accent': '#ebbcba',
+      '--accent-light': '#26233a',
     },
   },
 
-  // Solarized - Precision colors for machines and people
-  // https://ethanschoonover.com/solarized/
+  // Solarized Dark - Classic blue-gray with cyan accent
   solarized: {
     light: {
-      '--bg': '#fdf6e3',           // base3
-      '--bg-secondary': '#eee8d5', // base2
-      '--text': '#657b83',         // base00
-      '--text-muted': '#93a1a1',   // base1
-      '--board-bg': '#eee8d5',     // base2
-      '--cell-bg': '#fdf6e3',      // base3
-      '--cell-hover': '#eee8d5',   // base2
-      '--cell-selected': '#d6d0b8', // darker base2
-      '--cell-peer': '#f5efdc',    // between base2 and base3
-      '--cell-primary': '#268bd2', // blue
-      '--cell-secondary': '#2aa198', // cyan
-      '--border-strong': '#657b83', // base00
-      '--border-light': '#d6d0b8', // darker base2
-      '--text-given': '#586e75',   // base01 (darker)
-      '--text-entered': '#268bd2', // blue
-      '--text-candidate': '#2aa198', // cyan
-      '--text-on-highlight': '#fdf6e3', // base3
-      '--btn-bg': '#eee8d5',       // base2
-      '--btn-hover': '#d6d0b8',    // darker
-      '--btn-active': '#268bd2',   // blue
-      '--btn-active-text': '#fdf6e3', // base3
-      '--accent': '#268bd2',       // blue
-      '--accent-light': '#eee8d5', // base2
+      '--bg': '#fdf6e3',
+      '--bg-secondary': '#eee8d5',
+      '--text': '#657b83',
+      '--text-muted': '#839496',
+      '--board-bg': '#fffdf6',
+      '--cell-bg': '#fffdf6',
+      '--cell-hover': '#eee8d5',
+      '--cell-selected': '#93a1a1',
+      '--cell-peer': '#f5efdc',
+      '--cell-primary': '#268bd2',
+      '--cell-secondary': '#93a1a1',
+      '--border-strong': '#586e75',
+      '--border-light': '#b8c4c4',
+      '--text-given': '#586e75',
+      '--text-entered': '#268bd2',
+      '--text-candidate': '#268bd2',
+      '--text-on-highlight': '#fdf6e3',
+      '--btn-bg': '#eee8d5',
+      '--btn-hover': '#dfd9c6',
+      '--btn-active': '#268bd2',
+      '--btn-active-text': '#fdf6e3',
+      '--accent': '#268bd2',
+      '--accent-light': '#eee8d5',
     },
     dark: {
-      '--bg': '#002b36',           // base03
-      '--bg-secondary': '#073642', // base02
-      '--text': '#839496',         // base0
-      '--text-muted': '#586e75',   // base01
-      '--board-bg': '#073642',     // base02
-      '--cell-bg': '#002b36',      // base03
-      '--cell-hover': '#094656',   // lighter base02
-      '--cell-selected': '#0b5266', // even lighter
-      '--cell-peer': '#03303c',    // between base03 and base02
-      '--cell-primary': '#268bd2', // blue
-      '--cell-secondary': '#2aa198', // cyan
-      '--border-strong': '#839496', // base0
-      '--border-light': '#094656', // lighter base02
-      '--text-given': '#93a1a1',   // base1 (brighter)
-      '--text-entered': '#268bd2', // blue
-      '--text-candidate': '#2aa198', // cyan
-      '--text-on-highlight': '#002b36', // base03
-      '--btn-bg': '#094656',       // lighter base02
-      '--btn-hover': '#0b5266',    // even lighter
-      '--btn-active': '#268bd2',   // blue
-      '--btn-active-text': '#002b36', // base03
-      '--accent': '#268bd2',       // blue
-      '--accent-light': '#073642', // base02
+      '--bg': '#002b36',
+      '--bg-secondary': '#001e26',
+      '--text': '#839496',
+      '--text-muted': '#586e75',
+      '--board-bg': '#073642',
+      '--cell-bg': '#073642',
+      '--cell-hover': '#0a4a5a',
+      '--cell-selected': '#0d5c6e',
+      '--cell-peer': '#084350',
+      '--cell-primary': '#2aa198',
+      '--cell-secondary': '#586e75',
+      '--border-strong': '#93a1a1',
+      '--border-light': '#094555',
+      '--text-given': '#93a1a1',
+      '--text-entered': '#2aa198',
+      '--text-candidate': '#2aa198',
+      '--text-on-highlight': '#002b36',
+      '--btn-bg': '#0a4a5a',
+      '--btn-hover': '#0d5c6e',
+      '--btn-active': '#2aa198',
+      '--btn-active-text': '#002b36',
+      '--accent': '#2aa198',
+      '--accent-light': '#0a4a5a',
     },
   },
 
-  // One Dark / One Light - Atom's iconic theme
-  // Light: One Light, Dark: One Dark Darker (deepest variant)
-  // https://github.com/atom/atom/tree/master/packages/one-dark-syntax
+  // One Dark - Atom's signature deep gray-blue
   onedark: {
     light: {
-      // One Light
-      '--bg': '#fafafa',           // background
-      '--bg-secondary': '#f0f0f0', // secondary
-      '--text': '#383a42',         // foreground
-      '--text-muted': '#a0a1a7',   // comment
-      '--board-bg': '#f0f0f0',     // secondary
-      '--cell-bg': '#fafafa',      // background
-      '--cell-hover': '#e5e5e6',   // hover
-      '--cell-selected': '#d4d4d5', // selection
-      '--cell-peer': '#f0f0f0',    // peer
-      '--cell-primary': '#a626a4', // purple
-      '--cell-secondary': '#4078f2', // blue
-      '--border-strong': '#383a42', // foreground
-      '--border-light': '#d4d4d5', // selection
-      '--text-given': '#383a42',   // foreground
-      '--text-entered': '#a626a4', // purple
-      '--text-candidate': '#4078f2', // blue
-      '--text-on-highlight': '#fafafa', // background
-      '--btn-bg': '#e5e5e6',       // hover
-      '--btn-hover': '#d4d4d5',    // selection
-      '--btn-active': '#a626a4',   // purple
-      '--btn-active-text': '#fafafa', // background
-      '--accent': '#a626a4',       // purple
-      '--accent-light': '#f0f0f0', // secondary
+      '--bg': '#fafafa',
+      '--bg-secondary': '#eaeaeb',
+      '--text': '#383a42',
+      '--text-muted': '#696c77',
+      '--board-bg': '#ffffff',
+      '--cell-bg': '#ffffff',
+      '--cell-hover': '#eaeaeb',
+      '--cell-selected': '#a0a1a7',
+      '--cell-peer': '#f2f2f3',
+      '--cell-primary': '#4078f2',
+      '--cell-secondary': '#a0a1a7',
+      '--border-strong': '#383a42',
+      '--border-light': '#c5c5c7',
+      '--text-given': '#383a42',
+      '--text-entered': '#4078f2',
+      '--text-candidate': '#4078f2',
+      '--text-on-highlight': '#ffffff',
+      '--btn-bg': '#eaeaeb',
+      '--btn-hover': '#dbdbdc',
+      '--btn-active': '#4078f2',
+      '--btn-active-text': '#ffffff',
+      '--accent': '#4078f2',
+      '--accent-light': '#eaeaeb',
     },
     dark: {
-      // One Dark Darker (deepest variant)
-      '--bg': '#1e2227',           // darker background (One Dark Darker)
-      '--bg-secondary': '#23272e', // secondary
-      '--text': '#abb2bf',         // foreground
-      '--text-muted': '#5c6370',   // comment
-      '--board-bg': '#23272e',     // secondary
-      '--cell-bg': '#282c34',      // standard One Dark background
-      '--cell-hover': '#2c323c',   // hover
-      '--cell-selected': '#3e4451', // selection
-      '--cell-peer': '#23272e',    // secondary
-      '--cell-primary': '#c678dd', // purple
-      '--cell-secondary': '#61afef', // blue
-      '--border-strong': '#abb2bf', // foreground
-      '--border-light': '#3e4451', // selection
-      '--text-given': '#abb2bf',   // foreground
-      '--text-entered': '#c678dd', // purple
-      '--text-candidate': '#61afef', // blue
-      '--text-on-highlight': '#1e2227', // darker background
-      '--btn-bg': '#2c323c',       // hover
-      '--btn-hover': '#3e4451',    // selection
-      '--btn-active': '#c678dd',   // purple
-      '--btn-active-text': '#1e2227', // darker background
-      '--accent': '#c678dd',       // purple
-      '--accent-light': '#2c323c', // hover
+      '--bg': '#282c34',
+      '--bg-secondary': '#1e2127',
+      '--text': '#abb2bf',
+      '--text-muted': '#5c6370',
+      '--board-bg': '#2c323c',
+      '--cell-bg': '#2c323c',
+      '--cell-hover': '#3a404c',
+      '--cell-selected': '#4d5566',
+      '--cell-peer': '#323842',
+      '--cell-primary': '#61afef',
+      '--cell-secondary': '#5c6370',
+      '--border-strong': '#abb2bf',
+      '--border-light': '#4b5263',
+      '--text-given': '#abb2bf',
+      '--text-entered': '#61afef',
+      '--text-candidate': '#61afef',
+      '--text-on-highlight': '#282c34',
+      '--btn-bg': '#3a404c',
+      '--btn-hover': '#4d5566',
+      '--btn-active': '#61afef',
+      '--btn-active-text': '#282c34',
+      '--accent': '#61afef',
+      '--accent-light': '#3a404c',
     },
   },
 }
@@ -592,17 +509,21 @@ const FONT_SIZE_VARS: Record<FontSize, Record<string, string>> = {
   },
 }
 
-// Map old theme names to new ones for migration
+// Map old theme names to new open-source theme names
 const THEME_MIGRATION: Record<string, ColorTheme> = {
-  'blue': 'classic',
-  'green': 'gruvbox',
+  'blue': 'tokyonight',
+  'indigo': 'tokyonight',
   'purple': 'dracula',
+  'teal': 'nord',
+  'green': 'nord',
   'orange': 'gruvbox',
   'pink': 'rosepine',
-  'teal': 'nord',
-  'red': 'dracula',
-  'indigo': 'tokyonight',
+  'red': 'gruvbox',
+  'classic': 'tokyonight',
 }
+
+// Valid theme names
+const VALID_THEMES: ColorTheme[] = ['tokyonight', 'dracula', 'nord', 'catppuccin', 'gruvbox', 'rosepine', 'solarized', 'onedark']
 
 // Helper to get system preference
 function getSystemMode(): Mode {
@@ -611,21 +532,21 @@ function getSystemMode(): Mode {
 
 // Helper to validate and migrate theme
 function getValidTheme(saved: string | null): ColorTheme {
-  if (!saved) return 'classic'
+  if (!saved) return 'tokyonight'
   
-  // Check if it's already a valid new theme
-  if (saved in COLOR_THEMES) {
+  // Check if it's already a valid theme
+  if (VALID_THEMES.includes(saved as ColorTheme)) {
     return saved as ColorTheme
   }
   
-  // Try to migrate from old theme
+  // Try to migrate from old theme names
   const migrated = THEME_MIGRATION[saved]
   if (migrated) {
     return migrated
   }
   
-  // Default fallback
-  return 'classic'
+  // Default fallback - decidedly blue
+  return 'tokyonight'
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
