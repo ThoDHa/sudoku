@@ -51,6 +51,11 @@ export const STORAGE_KEYS = {
 export const MAX_STORED_SCORES = 100
 
 // =============================================================================
+// MEMORY MANAGEMENT
+// =============================================================================
+export const MAX_MOVE_HISTORY = 500  // Maximum moves to keep in history (prevents unbounded memory growth)
+
+// =============================================================================
 // UI CONSTANTS
 // =============================================================================
 export const MAX_HISTORY_BADGE_COUNT = 99

@@ -5,7 +5,6 @@ import {
   removeCandidate,
   toggleCandidate as toggleCandidateBit,
   countCandidates,
-  candidatesToArrays,
   arraysToCandidates,
   type CandidateMask
 } from '../lib/candidatesUtils'
@@ -15,6 +14,7 @@ import {
   unapplyStateDiff,
   type StateDiff
 } from '../lib/diffUtils'
+import { MAX_MOVE_HISTORY } from '../lib/constants'
 
 // Move can be either a solver technique or a user action
 export interface Move {
@@ -129,6 +129,21 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   const updateCandidates = useCallback((newCandidates: Uint16Array) => {
     setCandidates(newCandidates)
     setCandidatesVersion(v => v + 1)
+  }, [])
+  
+  // Helper to limit history size to prevent unbounded memory growth
+  // When history exceeds MAX_MOVE_HISTORY, remove oldest entries
+  const limitHistory = useCallback((historyArray: Move[], currentIndex: number): { history: Move[], index: number } => {
+    if (historyArray.length <= MAX_MOVE_HISTORY) {
+      return { history: historyArray, index: currentIndex }
+    }
+    
+    // Remove oldest entries to stay within limit
+    const excess = historyArray.length - MAX_MOVE_HISTORY
+    const trimmedHistory = historyArray.slice(excess)
+    const adjustedIndex = Math.max(0, currentIndex - excess)
+    
+    return { history: trimmedHistory, index: adjustedIndex }
   }, [])
   
   // Move history (serves as undo stack - each move stores boardBefore/candidatesBefore)
@@ -307,6 +322,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   }, [isComplete, isValidSolution, onComplete])
 
   // Helper to create move with state diff for compact history
+  // Note: We no longer store boardBefore/candidatesBefore for new moves (saves ~50% memory)
+  // Legacy fields are still READ by undo/redo for backward compatibility with old saves
   const createMoveWithDiff = useCallback((
     moveBase: Omit<Move, 'stateDiff' | 'boardBefore' | 'candidatesBefore'>,
     newBoard: number[],
@@ -316,9 +333,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     return {
       ...moveBase,
       stateDiff,
-      // Keep legacy fields for backward compatibility with saves
-      boardBefore: [...board],
-      candidatesBefore: candidatesToArrays(candidates)
+      // No longer storing legacy fields - stateDiff is sufficient
+      // Undo/redo will fall back to legacy fields only for old saved games
     }
   }, [board, candidates])
 
@@ -370,8 +386,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
          isUserMove: true,
        }, board, newCandidates)
       const newHistory = [...truncatedHistory, noteMove]
-       setHistory(newHistory)
-      setHistoryIndex(newHistory.length - 1)
+      const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
+       setHistory(limitedHistory)
+      setHistoryIndex(limitedIndex)
       updateCandidates(newCandidates)
     } else {
       const row = Math.floor(idx / 9)
@@ -402,8 +419,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       }, newBoard, newCandidates)
       
       const newHistory = [...truncatedHistory, userMove]
-      setHistory(newHistory)
-      setHistoryIndex(newHistory.length - 1)
+      const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
+      setHistory(limitedHistory)
+      setHistoryIndex(limitedIndex)
 
       setBoard(newBoard)
       updateCandidates(newCandidates)
@@ -446,8 +464,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     }, board, newCandidates)
     
     const newHistory = [...truncatedHistory, toggleMove]
-    setHistory(newHistory)
-    setHistoryIndex(newHistory.length - 1)
+    const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
+    setHistory(limitedHistory)
+    setHistoryIndex(limitedIndex)
     updateCandidates(newCandidates)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- createMoveWithDiff is a stable callback
   }, [board, candidates, history, historyIndex, isGivenCell, updateCandidates])
@@ -491,8 +510,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
      }, newBoard, newCandidates)
      
     const newHistory = [...truncatedHistory, eraseMove]
-    setHistory(newHistory)
-    setHistoryIndex(newHistory.length - 1)
+    const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
+    setHistory(limitedHistory)
+    setHistoryIndex(limitedIndex)
 
     setBoard(newBoard)
     updateCandidates(newCandidates)
@@ -634,8 +654,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
      }, board, newCandidates)
      
     const newHistory = [...truncatedHistory, clearMove]
-    setHistory(newHistory)
-    setHistoryIndex(newHistory.length - 1)
+    const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
+    setHistory(limitedHistory)
+    setHistoryIndex(limitedIndex)
     
     updateCandidates(newCandidates)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- createMoveWithDiff is a stable callback
@@ -647,26 +668,25 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     newCandidates: Uint16Array,
     move: Move
   ) => {
-    // Create move with compact diff and legacy compatibility
+    // Create move with compact diff only (no legacy fields for new moves)
     const stateDiff = createStateDiff(board, newBoard, candidates, newCandidates)
     const moveWithState: Move = {
       ...move,
       stateDiff,
-      // Keep legacy fields for backward compatibility
-      boardBefore: [...board],
-      candidatesBefore: candidatesToArrays(candidates),
+      // No longer storing legacy fields - stateDiff is sufficient
     }
     
     const truncatedHistory = history.slice(0, historyIndex + 1)
     const newHistory = [...truncatedHistory, moveWithState]
-    setHistory(newHistory)
-    setHistoryIndex(newHistory.length - 1)
+    const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
+    setHistory(limitedHistory)
+    setHistoryIndex(limitedIndex)
     
     setBoard(newBoard)
     updateCandidates(newCandidates)
     
     checkCompletion(newBoard)
-  }, [board, candidates, history, historyIndex, checkCompletion, updateCandidates])
+  }, [board, candidates, history, historyIndex, checkCompletion, updateCandidates, limitHistory])
 
   // Restore saved game state (for auto-save/resume functionality)
   const restoreState = useCallback((
