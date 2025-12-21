@@ -48,6 +48,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#ffffff',
       '--accent': '#2e7de9',
       '--accent-light': '#d5d6db',
+      '--duplicate-bg': '#c9ddf8',
+      '--duplicate-text': '#2e7de9',
     },
     dark: {
       '--bg': '#1a1b26',
@@ -73,6 +75,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#1a1b26',
       '--accent': '#7aa2f7',
       '--accent-light': '#24283b',
+      '--duplicate-bg': '#3d59a1',
+      '--duplicate-text': '#7aa2f7',
     },
   },
 
@@ -102,6 +106,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#ffffff',
       '--accent': '#bd93f9',
       '--accent-light': '#ebebeb',
+      '--duplicate-bg': '#e6d6ff',
+      '--duplicate-text': '#9d6df7',
     },
     dark: {
       '--bg': '#282a36',
@@ -127,6 +133,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#282a36',
       '--accent': '#bd93f9',
       '--accent-light': '#343746',
+      '--duplicate-bg': '#5a4d7a',
+      '--duplicate-text': '#bd93f9',
     },
   },
 
@@ -156,6 +164,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#ffffff',
       '--accent': '#5e81ac',
       '--accent-light': '#d8dee9',
+      '--duplicate-bg': '#c5d4e8',
+      '--duplicate-text': '#5e81ac',
     },
     dark: {
       '--bg': '#2e3440',
@@ -181,6 +191,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#2e3440',
       '--accent': '#88c0d0',
       '--accent-light': '#434c5e',
+      '--duplicate-bg': '#4c6a7a',
+      '--duplicate-text': '#88c0d0',
     },
   },
 
@@ -210,6 +222,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#ffffff',
       '--accent': '#8839ef',
       '--accent-light': '#dce0e8',
+      '--duplicate-bg': '#dcc6f7',
+      '--duplicate-text': '#8839ef',
     },
     dark: {
       '--bg': '#1e1e2e',
@@ -235,6 +249,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#1e1e2e',
       '--accent': '#cba6f7',
       '--accent-light': '#313244',
+      '--duplicate-bg': '#5c4a7a',
+      '--duplicate-text': '#cba6f7',
     },
   },
 
@@ -264,6 +280,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#282828',
       '--accent': '#d79921',
       '--accent-light': '#ebdbb2',
+      '--duplicate-bg': '#f5dfa0',
+      '--duplicate-text': '#b57614',
     },
     dark: {
       '--bg': '#1d2021',
@@ -289,6 +307,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#1d2021',
       '--accent': '#fabd2f',
       '--accent-light': '#32302f',
+      '--duplicate-bg': '#5a4a20',
+      '--duplicate-text': '#fabd2f',
     },
   },
 
@@ -318,6 +338,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#ffffff',
       '--accent': '#d7827e',
       '--accent-light': '#e4dcd4',
+      '--duplicate-bg': '#f4c6c3',
+      '--duplicate-text': '#d7827e',
     },
     dark: {
       '--bg': '#191724',
@@ -343,6 +365,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#191724',
       '--accent': '#ebbcba',
       '--accent-light': '#26233a',
+      '--duplicate-bg': '#5a4a4a',
+      '--duplicate-text': '#ebbcba',
     },
   },
 
@@ -372,6 +396,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#ffffff',
       '--accent': '#268bd2',
       '--accent-light': '#dfd9c6',
+      '--duplicate-bg': '#b8d4e8',
+      '--duplicate-text': '#268bd2',
     },
     dark: {
       '--bg': '#002b36',
@@ -397,6 +423,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#002b36',
       '--accent': '#2aa198',
       '--accent-light': '#0a4a5a',
+      '--duplicate-bg': '#1a5a5a',
+      '--duplicate-text': '#2aa198',
     },
   },
 
@@ -426,6 +454,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#ffffff',
       '--accent': '#4078f2',
       '--accent-light': '#e5e5e6',
+      '--duplicate-bg': '#c4d5f7',
+      '--duplicate-text': '#4078f2',
     },
     dark: {
       '--bg': '#282c34',
@@ -451,6 +481,8 @@ const COLOR_THEMES: Record<ColorTheme, { light: Record<string, string>; dark: Re
       '--btn-active-text': '#282c34',
       '--accent': '#61afef',
       '--accent-light': '#3a404c',
+      '--duplicate-bg': '#3a5070',
+      '--duplicate-text': '#61afef',
     },
   },
 }

@@ -109,11 +109,9 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
-  /* Duplicate cell colors */
-  --duplicate-bg-light: #fecaca;
-  --duplicate-bg-dark: rgba(127, 29, 29, 0.5);
-  --duplicate-text-light: #dc2626;
-  --duplicate-text-dark: #f87171;
+  /* Duplicate cell colors - now set by ThemeContext, these are fallbacks */
+  --duplicate-bg: #fecaca;
+  --duplicate-text: #dc2626;
 
   /* Elimination colors */
   --elimination-text-light: #ef4444;

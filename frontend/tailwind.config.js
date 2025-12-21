@@ -52,15 +52,10 @@ export default {
           light: 'var(--accent-light)',
         },
         
-        // Error/duplicate colors
+        // Error/duplicate colors - now theme-aware
         duplicate: {
-          bg: 'var(--duplicate-bg-light)',
-          text: 'var(--duplicate-text-light)',
-        },
-        
-        // Elimination colors
-        elimination: {
-          text: 'var(--elimination-text-light)',
+          bg: 'var(--duplicate-bg)',
+          text: 'var(--duplicate-text)',
         },
       },
       borderRadius: {
