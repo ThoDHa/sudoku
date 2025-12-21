@@ -38,6 +38,8 @@ interface UseAutoSolveReturn {
   isAutoSolving: boolean
   /** Whether auto-solve is paused (tab hidden or manual) */
   isPaused: boolean
+  /** Whether we are fetching the solution from the solver (initial load) */
+  isFetching: boolean
   /** Start the auto-solve process */
   startAutoSolve: () => Promise<void>
   /** Stop the auto-solve process */
@@ -102,6 +104,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
   const [isAutoSolving, setIsAutoSolving] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
+  const [isFetching, setIsFetching] = useState(false)
   const [manualPaused, setManualPaused] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [totalMoves, setTotalMoves] = useState(0)
@@ -301,8 +304,10 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     currentIndexRef.current = 0
     setCurrentIndex(0)
 
+    setIsFetching(true)
     try {
       const data = await solveAll(currentBoard, candidatesArray, givens)
+      setIsFetching(false)
       
       if (!data.moves || data.moves.length === 0) {
         if (!data.solved) {
@@ -491,6 +496,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       playNextMove()
 
     } catch (err) {
+      setIsFetching(false)
       console.error('Auto-solve error:', err)
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
@@ -515,8 +521,10 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     currentIndexRef.current = 0
     setCurrentIndex(0)
 
+    setIsFetching(true)
     try {
       const data = await solveAll(givens, [], givens)
+      setIsFetching(false)
       
       if (!data.moves || data.moves.length === 0) {
         if (!data.solved) {
@@ -588,6 +596,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       playNextMove()
 
     } catch (err) {
+      setIsFetching(false)
       console.error('Solve from givens error:', err)
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
@@ -597,6 +606,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   return {
     isAutoSolving,
     isPaused,
+    isFetching,
     startAutoSolve,
     stopAutoSolve,
     togglePause,

@@ -6,6 +6,16 @@ import { Difficulty } from '../lib/hooks'
 import { ColorTheme, FontSize, ModePreference } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed } from '../lib/preferences'
 
+// Small inline spinner for buttons
+function ButtonSpinner({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg className={`${className} animate-spin`} fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    </svg>
+  )
+}
+
 function SunIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -41,6 +51,7 @@ interface GameHeaderProps {
   historyCount: number
   // Auto-solve state
   isAutoSolving: boolean
+  isFetchingSolution: boolean
   isPaused: boolean
   autoSolveSpeed: AutoSolveSpeed
   onTogglePause: () => void
@@ -49,7 +60,9 @@ interface GameHeaderProps {
   // Actions
   onTechniqueHint: () => void
   techniqueHintDisabled: boolean
+  techniqueHintLoading: boolean
   onHint: () => void
+  hintLoading: boolean
   onHistoryOpen: () => void
   onShowResult: () => void
   onAutoFillNotes: () => void
@@ -83,6 +96,7 @@ export default function GameHeader({
   isComplete,
   historyCount,
   isAutoSolving,
+  isFetchingSolution,
   isPaused,
   autoSolveSpeed,
   onTogglePause,
@@ -90,7 +104,9 @@ export default function GameHeader({
   onSetAutoSolveSpeed,
   onTechniqueHint,
   techniqueHintDisabled,
+  techniqueHintLoading,
   onHint,
+  hintLoading,
   onHistoryOpen,
   onShowResult,
   onAutoFillNotes,
@@ -202,8 +218,16 @@ export default function GameHeader({
 
         {/* Right: Actions */}
         <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
-          {/* Speed controls + Stop button - shown when auto-solving (desktop only, mobile uses second row) */}
-          {isAutoSolving && (
+          {/* Loading indicator - shown while fetching solution */}
+          {isAutoSolving && isFetchingSolution && (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-foreground-muted">
+              <ButtonSpinner className="h-4 w-4" />
+              <span>Solving...</span>
+            </div>
+          )}
+
+          {/* Speed controls + Stop button - shown when auto-solving and solution is ready */}
+          {isAutoSolving && !isFetchingSolution && (
             <div className="hidden sm:flex items-center gap-1">
               {/* Speed controls */}
               <div className="flex items-center rounded-lg overflow-hidden border border-board-border-light">
@@ -261,15 +285,19 @@ export default function GameHeader({
           {!isComplete && !isAutoSolving && (
             <button
               onClick={onTechniqueHint}
-              disabled={techniqueHintDisabled}
+              disabled={techniqueHintDisabled || techniqueHintLoading}
               className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-                techniqueHintDisabled 
+                techniqueHintDisabled || techniqueHintLoading
                   ? 'text-foreground-muted/50 cursor-not-allowed' 
                   : 'text-foreground-muted hover:text-accent hover:bg-btn-hover'
               }`}
-              title={techniqueHintDisabled ? "Make a move to use again" : "Learn which technique to use"}
+              title={techniqueHintLoading ? "Loading..." : techniqueHintDisabled ? "Make a move to use again" : "Learn which technique to use"}
             >
-              <span className="text-base">❓</span>
+              {techniqueHintLoading ? (
+                <ButtonSpinner className="h-4 w-4" />
+              ) : (
+                <span className="text-base">❓</span>
+              )}
               <span className="hidden sm:inline">Technique</span>
             </button>
           )}
@@ -278,10 +306,19 @@ export default function GameHeader({
           {!isComplete && !isAutoSolving && (
             <button
               onClick={onHint}
-              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-accent hover:bg-btn-hover transition-colors"
-              title="Get a hint"
+              disabled={hintLoading}
+              className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+                hintLoading
+                  ? 'text-foreground-muted/50 cursor-not-allowed'
+                  : 'text-foreground-muted hover:text-accent hover:bg-btn-hover'
+              }`}
+              title={hintLoading ? "Loading..." : "Get a hint"}
             >
-              <span className="text-base">💡</span>
+              {hintLoading ? (
+                <ButtonSpinner className="h-4 w-4" />
+              ) : (
+                <span className="text-base">💡</span>
+              )}
               <span className="hidden sm:inline">Hint</span>
             </button>
           )}
@@ -380,6 +417,12 @@ export default function GameHeader({
       {/* Mobile auto-solve controls - second row */}
       {isAutoSolving && (
         <div className="sm:hidden border-t border-board-border-light px-2 py-2">
+          {isFetchingSolution ? (
+            <div className="flex items-center justify-center gap-2 py-1 text-foreground-muted">
+              <ButtonSpinner className="h-4 w-4" />
+              <span className="text-sm">Solving...</span>
+            </div>
+          ) : (
           <div className="flex items-center justify-center gap-2">
             {/* Speed controls */}
             <div className="flex items-center rounded-lg overflow-hidden border border-board-border-light">
@@ -437,6 +480,7 @@ export default function GameHeader({
               Stop
             </button>
           </div>
+          )}
         </div>
       )}
     </header>
