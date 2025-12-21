@@ -98,7 +98,7 @@ func detectALSXYWing(b *Board) *core.Move {
 									Eliminations: eliminations,
 									Explanation: fmt.Sprintf(
 										"ALS-XY-Wing: A=%s, B=%s, C=%s; RC(A-B)=%d, RC(A-C)=%d; eliminate %d",
-										formatCells(alsA.Cells), formatCells(alsB.Cells), formatCells(alsC.Cells),
+										FormatCells(alsA.Cells), FormatCells(alsB.Cells), FormatCells(alsC.Cells),
 										x, y, z),
 									Highlights: core.Highlights{
 										Primary: targets,

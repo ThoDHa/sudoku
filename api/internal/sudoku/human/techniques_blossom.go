@@ -97,7 +97,7 @@ func findBlossomALS(b *Board) []ALS {
 
 		// Find ALS of sizes 1 to 4 (size 1 is a bivalue cell - crucial for Death Blossom)
 		for size := 1; size <= 4 && size <= len(emptyCells); size++ {
-			combos := combinations(emptyCells, size)
+			combos := Combinations(emptyCells, size)
 			for _, combo := range combos {
 				// Count combined candidates
 				combined := make(map[int]bool)
@@ -147,12 +147,12 @@ func findPetalsForCandidate(b *Board, stem int, cand int, allALS []ALS) []ALS {
 
 	for _, als := range allALS {
 		// ALS must not contain the stem cell
-		if containsInt(als.Cells, stem) {
+		if ContainsInt(als.Cells, stem) {
 			continue
 		}
 
 		// ALS must have the candidate as one of its digits
-		if !containsInt(als.Digits, cand) {
+		if !ContainsInt(als.Digits, cand) {
 			continue
 		}
 

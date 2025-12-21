@@ -380,7 +380,7 @@ func findAllALS(b *Board) []ALS {
 		// Find ALS of sizes 1 to 4 (larger ones are rare and expensive)
 		for size := 1; size <= 4 && size <= len(emptyCells); size++ {
 			// Generate all combinations of 'size' cells
-			combos := combinations(emptyCells, size)
+			combos := Combinations(emptyCells, size)
 			for _, combo := range combos {
 				// Count combined candidates
 				combined := make(map[int]bool)
@@ -418,31 +418,6 @@ func findAllALS(b *Board) []ALS {
 	}
 
 	return allALS
-}
-
-// combinations generates all combinations of k elements from slice
-func combinations(slice []int, k int) [][]int {
-	if k == 0 {
-		return [][]int{{}}
-	}
-	if len(slice) < k {
-		return nil
-	}
-
-	var result [][]int
-
-	// Include first element
-	for _, rest := range combinations(slice[1:], k-1) {
-		combo := make([]int, k)
-		combo[0] = slice[0]
-		copy(combo[1:], rest)
-		result = append(result, combo)
-	}
-
-	// Exclude first element
-	result = append(result, combinations(slice[1:], k)...)
-
-	return result
 }
 
 // detectALSXZ finds ALS-XZ pattern:
@@ -494,7 +469,7 @@ func detectALSXZ(b *Board) *core.Move {
 					var eliminations []core.Candidate
 					for idx := 0; idx < 81; idx++ {
 						// Skip cells in either ALS
-						if containsInt(alsA.Cells, idx) || containsInt(alsB.Cells, idx) {
+						if ContainsInt(alsA.Cells, idx) || ContainsInt(alsB.Cells, idx) {
 							continue
 						}
 
@@ -542,7 +517,7 @@ func detectALSXZ(b *Board) *core.Move {
 							Targets:      targets,
 							Eliminations: eliminations,
 							Explanation: fmt.Sprintf("ALS-XZ: ALS A {%v} and ALS B {%v} with restricted common %d; eliminate %d",
-								formatCells(alsA.Cells), formatCells(alsB.Cells), x, z),
+								FormatCells(alsA.Cells), FormatCells(alsB.Cells), x, z),
 							Highlights: core.Highlights{
 								Primary: targets,
 							},
@@ -593,28 +568,4 @@ func allSeeAll(cellsA, cellsB []int) bool {
 		}
 	}
 	return true
-}
-
-func containsInt(slice []int, val int) bool {
-	for _, v := range slice {
-		if v == val {
-			return true
-		}
-	}
-	return false
-}
-
-func formatCells(cells []int) string {
-	var parts []string
-	for _, cell := range cells {
-		parts = append(parts, fmt.Sprintf("R%dC%d", cell/9+1, cell%9+1))
-	}
-	result := ""
-	for i, p := range parts {
-		if i > 0 {
-			result += ","
-		}
-		result += p
-	}
-	return result
 }

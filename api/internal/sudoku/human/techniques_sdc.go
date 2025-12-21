@@ -324,8 +324,8 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 						"box ALS {%s} covers {%s}, %s ALS {%s} covers {%s}",
 						box+1, lineType, lineNum,
 						formatDigits(intersectionDigits),
-						formatCells(boxALS.Cells), formatDigits(boxALS.Digits),
-						lineType, formatCells(lineALS.Cells), formatDigits(lineALS.Digits)),
+						FormatCells(boxALS.Cells), formatDigits(boxALS.Digits),
+						lineType, FormatCells(lineALS.Cells), formatDigits(lineALS.Digits)),
 					Highlights: core.Highlights{
 						Primary:   primary,
 						Secondary: secondary,

@@ -334,7 +334,7 @@ func findNiceLoopEliminationsFixed(b *Board, digit int, path []int, linkStrong [
 
 	if len(eliminations) > 0 {
 		// Deduplicate
-		eliminations = dedupeEliminations(eliminations)
+		eliminations = DedupeEliminations(eliminations)
 
 		return &core.Move{
 			Action:       "eliminate",
@@ -357,20 +357,4 @@ func pathToCellRefsSimple(path []int) []core.CellRef {
 		refs[i] = core.CellRef{Row: cell / 9, Col: cell % 9}
 	}
 	return refs
-}
-
-// dedupeEliminations removes duplicate eliminations
-func dedupeEliminations(elims []core.Candidate) []core.Candidate {
-	seen := make(map[string]bool)
-	var result []core.Candidate
-
-	for _, e := range elims {
-		key := fmt.Sprintf("%d-%d-%d", e.Row, e.Col, e.Digit)
-		if !seen[key] {
-			seen[key] = true
-			result = append(result, e)
-		}
-	}
-
-	return result
 }
