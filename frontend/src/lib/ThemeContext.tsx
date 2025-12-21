@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react'
 import { THEMES, themeToCssVars, getValidTheme, type ColorTheme } from './themes'
 
 // Re-export types from themes.ts for backwards compatibility
@@ -172,8 +172,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setModePreference(newMode)
   }
 
+  const contextValue = useMemo(
+    () => ({
+      colorTheme,
+      mode,
+      modePreference,
+      fontSize,
+      setColorTheme,
+      setMode,
+      setModePreference,
+      setFontSize,
+      toggleMode,
+    }),
+    [colorTheme, mode, modePreference, fontSize]
+  )
+
   return (
-    <ThemeContext.Provider value={{ colorTheme, mode, modePreference, fontSize, setColorTheme, setMode, setModePreference, setFontSize, toggleMode }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   )

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useMemo, ReactNode } from 'react'
 
 interface GameState {
   isPlaying: boolean
@@ -24,8 +24,10 @@ const GameContext = createContext<GameContextType>({
 export function GameProvider({ children }: { children: ReactNode }) {
   const [gameState, setGameState] = useState<GameState | null>(null)
 
+  const contextValue = useMemo(() => ({ gameState, setGameState }), [gameState])
+
   return (
-    <GameContext.Provider value={{ gameState, setGameState }}>
+    <GameContext.Provider value={contextValue}>
       {children}
     </GameContext.Provider>
   )
