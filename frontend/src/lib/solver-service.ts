@@ -17,6 +17,7 @@ import {
 } from './wasm'
 
 import { getPuzzleForSeed as getStaticPuzzle } from './puzzles-data'
+import { debugLog } from './debug'
 
 // ==================== Types ====================
 
@@ -124,8 +125,7 @@ export function cleanupSolver(): void {
   try {
     wasmApi = null
     unloadWasm()
-    // eslint-disable-next-line no-console -- Intentional logging for WASM lifecycle debugging
-    console.log('[SolverService] Solver cleaned up successfully')
+    debugLog('[SolverService] Solver cleaned up successfully')
   } catch (error) {
     console.warn('[SolverService] Error during solver cleanup:', error)
   }
