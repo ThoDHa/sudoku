@@ -23,6 +23,7 @@ export default {
         // Cell colors
         cell: {
           bg: 'var(--cell-bg)',
+          given: 'var(--cell-given)',
           hover: 'var(--cell-hover)',
           selected: 'var(--cell-selected)',
           peer: 'var(--cell-peer)',
@@ -52,11 +53,24 @@ export default {
           light: 'var(--accent-light)',
         },
         
-        // Error/duplicate colors - now theme-aware
-        duplicate: {
-          bg: 'var(--duplicate-bg)',
-          text: 'var(--duplicate-text)',
+        // Error/duplicate colors - theme-aware error tones
+        error: {
+          bg: 'var(--error-bg)',
+          text: 'var(--error-text)',
         },
+        
+        // Difficulty colors - theme-aware
+        diff: {
+          easy: 'var(--diff-easy)',
+          medium: 'var(--diff-medium)',
+          hard: 'var(--diff-hard)',
+          extreme: 'var(--diff-extreme)',
+          impossible: 'var(--diff-impossible)',
+        },
+      },
+      boxShadow: {
+        theme: 'var(--shadow)',
+        'theme-light': 'var(--shadow-light)',
       },
       borderRadius: {
         board: 'var(--board-radius)',
