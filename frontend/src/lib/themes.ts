@@ -162,6 +162,12 @@ function createSemanticColors(p: ThemePalette, isDark: boolean): SemanticColors 
     ? blendColors(p.boardBg, '#ffffff', 0.05)
     : p.cellHover
   
+  // accentLight: Subtle accent wash for digit matching highlights
+  // Lighter than accentMuted to contrast with candidate highlights
+  const accentLight = isDark
+    ? blendColors(p.boardBg, p.accent, 0.15)  // 15% accent on dark bg
+    : blendColors(p.boardBg, p.accent, 0.12)  // 12% accent on light bg
+  
   return {
     // Backgrounds
     bg: p.bg,
@@ -199,7 +205,7 @@ function createSemanticColors(p: ThemePalette, isDark: boolean): SemanticColors 
 
     // Accent
     accent: p.accent,
-    accentLight: p.bgSecondary,
+    accentLight: accentLight,
 
     // Errors
     errorBg: p.errorBg,
