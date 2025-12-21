@@ -10,78 +10,83 @@ import (
 // and those positions share exactly 4 columns (or vice versa)
 func detectJellyfish(b *Board) *core.Move {
 	for digit := 1; digit <= 9; digit++ {
-		// Check rows
-		if move := detectJellyfishInRows(b, digit); move != nil {
+		if move := detectJellyfishInDirection(b, digit, UnitRow); move != nil {
 			return move
 		}
-		// Check columns
-		if move := detectJellyfishInCols(b, digit); move != nil {
+		if move := detectJellyfishInDirection(b, digit, UnitCol); move != nil {
 			return move
 		}
 	}
 	return nil
 }
 
-func detectJellyfishInRows(b *Board, digit int) *core.Move {
-	rowPositions := make(map[int][]int)
-	for row := 0; row < 9; row++ {
-		var cols []int
-		for col := 0; col < 9; col++ {
-			if b.Candidates[row*9+col][digit] {
-				cols = append(cols, col)
+// detectJellyfishInDirection finds Jellyfish in the specified direction (rows or columns)
+func detectJellyfishInDirection(b *Board, digit int, dir UnitType) *core.Move {
+	// Build map of primary unit -> secondary positions where digit appears
+	unitPositions := make(map[int][]int)
+	for primary := 0; primary < 9; primary++ {
+		var secondaries []int
+		for secondary := 0; secondary < 9; secondary++ {
+			idx := cellIndexForDirection(dir, primary, secondary)
+			if b.Candidates[idx][digit] {
+				secondaries = append(secondaries, secondary)
 			}
 		}
-		if len(cols) >= 2 && len(cols) <= 4 {
-			rowPositions[row] = cols
+		if len(secondaries) >= 2 && len(secondaries) <= 4 {
+			unitPositions[primary] = secondaries
 		}
 	}
 
-	var rows []int
-	for row := range rowPositions {
-		rows = append(rows, row)
+	var units []int
+	for unit := range unitPositions {
+		units = append(units, unit)
 	}
 
-	if len(rows) < 4 {
+	if len(units) < 4 {
 		return nil
 	}
 
-	// Try all combinations of 4 rows
-	for i := 0; i < len(rows); i++ {
-		for j := i + 1; j < len(rows); j++ {
-			for k := j + 1; k < len(rows); k++ {
-				for l := k + 1; l < len(rows); l++ {
-					r1, r2, r3, r4 := rows[i], rows[j], rows[k], rows[l]
+	// Try all combinations of 4 units
+	for i := 0; i < len(units); i++ {
+		for j := i + 1; j < len(units); j++ {
+			for k := j + 1; k < len(units); k++ {
+				for l := k + 1; l < len(units); l++ {
+					u1, u2, u3, u4 := units[i], units[j], units[k], units[l]
 
-					colSet := make(map[int]bool)
-					for _, c := range rowPositions[r1] {
-						colSet[c] = true
+					// Collect all secondary positions from these 4 units
+					secondarySet := make(map[int]bool)
+					for _, s := range unitPositions[u1] {
+						secondarySet[s] = true
 					}
-					for _, c := range rowPositions[r2] {
-						colSet[c] = true
+					for _, s := range unitPositions[u2] {
+						secondarySet[s] = true
 					}
-					for _, c := range rowPositions[r3] {
-						colSet[c] = true
+					for _, s := range unitPositions[u3] {
+						secondarySet[s] = true
 					}
-					for _, c := range rowPositions[r4] {
-						colSet[c] = true
+					for _, s := range unitPositions[u4] {
+						secondarySet[s] = true
 					}
 
-					if len(colSet) != 4 {
+					if len(secondarySet) != 4 {
 						continue
 					}
 
-					var cols []int
-					for c := range colSet {
-						cols = append(cols, c)
+					var secondaries []int
+					for s := range secondarySet {
+						secondaries = append(secondaries, s)
 					}
 
+					// Find eliminations in secondary lines outside the 4 primary units
 					var eliminations []core.Candidate
-					for _, col := range cols {
-						for row := 0; row < 9; row++ {
-							if row == r1 || row == r2 || row == r3 || row == r4 {
+					for _, sec := range secondaries {
+						for pri := 0; pri < 9; pri++ {
+							if pri == u1 || pri == u2 || pri == u3 || pri == u4 {
 								continue
 							}
-							if b.Candidates[row*9+col][digit] {
+							idx := cellIndexForDirection(dir, pri, sec)
+							if b.Candidates[idx][digit] {
+								row, col := cellCoordsForDirection(dir, pri, sec)
 								eliminations = append(eliminations, core.Candidate{
 									Row: row, Col: col, Digit: digit,
 								})
@@ -91,8 +96,9 @@ func detectJellyfishInRows(b *Board, digit int) *core.Move {
 
 					if len(eliminations) > 0 {
 						var targets []core.CellRef
-						for _, row := range []int{r1, r2, r3, r4} {
-							for _, col := range rowPositions[row] {
+						for _, pri := range []int{u1, u2, u3, u4} {
+							for _, sec := range unitPositions[pri] {
+								row, col := cellCoordsForDirection(dir, pri, sec)
 								targets = append(targets, core.CellRef{Row: row, Col: col})
 							}
 						}
@@ -102,7 +108,7 @@ func detectJellyfishInRows(b *Board, digit int) *core.Move {
 							Digit:        digit,
 							Targets:      targets,
 							Eliminations: eliminations,
-							Explanation:  fmt.Sprintf("Jellyfish: %d in rows %d,%d,%d,%d", digit, r1+1, r2+1, r3+1, r4+1),
+							Explanation:  fmt.Sprintf("Jellyfish: %d in %s %d,%d,%d,%d", digit, directionNamePlural(dir), u1+1, u2+1, u3+1, u4+1),
 							Highlights: core.Highlights{
 								Primary: targets,
 							},
@@ -116,97 +122,30 @@ func detectJellyfishInRows(b *Board, digit int) *core.Move {
 	return nil
 }
 
-func detectJellyfishInCols(b *Board, digit int) *core.Move {
-	colPositions := make(map[int][]int)
-	for col := 0; col < 9; col++ {
-		var rows []int
-		for row := 0; row < 9; row++ {
-			if b.Candidates[row*9+col][digit] {
-				rows = append(rows, row)
-			}
-		}
-		if len(rows) >= 2 && len(rows) <= 4 {
-			colPositions[col] = rows
-		}
+// cellIndexForDirection returns the cell index given primary and secondary coordinates
+// For UnitRow: primary=row, secondary=col -> row*9+col
+// For UnitCol: primary=col, secondary=row -> row*9+col (note: secondary is row)
+func cellIndexForDirection(dir UnitType, primary, secondary int) int {
+	if dir == UnitRow {
+		return primary*9 + secondary
 	}
+	return secondary*9 + primary
+}
 
-	var cols []int
-	for col := range colPositions {
-		cols = append(cols, col)
+// cellCoordsForDirection returns (row, col) given primary and secondary coordinates
+func cellCoordsForDirection(dir UnitType, primary, secondary int) (int, int) {
+	if dir == UnitRow {
+		return primary, secondary
 	}
+	return secondary, primary
+}
 
-	if len(cols) < 4 {
-		return nil
+// directionNamePlural returns "rows" or "columns" for explanation strings
+func directionNamePlural(dir UnitType) string {
+	if dir == UnitRow {
+		return "rows"
 	}
-
-	for i := 0; i < len(cols); i++ {
-		for j := i + 1; j < len(cols); j++ {
-			for k := j + 1; k < len(cols); k++ {
-				for l := k + 1; l < len(cols); l++ {
-					c1, c2, c3, c4 := cols[i], cols[j], cols[k], cols[l]
-
-					rowSet := make(map[int]bool)
-					for _, r := range colPositions[c1] {
-						rowSet[r] = true
-					}
-					for _, r := range colPositions[c2] {
-						rowSet[r] = true
-					}
-					for _, r := range colPositions[c3] {
-						rowSet[r] = true
-					}
-					for _, r := range colPositions[c4] {
-						rowSet[r] = true
-					}
-
-					if len(rowSet) != 4 {
-						continue
-					}
-
-					var rows []int
-					for r := range rowSet {
-						rows = append(rows, r)
-					}
-
-					var eliminations []core.Candidate
-					for _, row := range rows {
-						for col := 0; col < 9; col++ {
-							if col == c1 || col == c2 || col == c3 || col == c4 {
-								continue
-							}
-							if b.Candidates[row*9+col][digit] {
-								eliminations = append(eliminations, core.Candidate{
-									Row: row, Col: col, Digit: digit,
-								})
-							}
-						}
-					}
-
-					if len(eliminations) > 0 {
-						var targets []core.CellRef
-						for _, col := range []int{c1, c2, c3, c4} {
-							for _, row := range colPositions[col] {
-								targets = append(targets, core.CellRef{Row: row, Col: col})
-							}
-						}
-
-						return &core.Move{
-							Action:       "eliminate",
-							Digit:        digit,
-							Targets:      targets,
-							Eliminations: eliminations,
-							Explanation:  fmt.Sprintf("Jellyfish: %d in columns %d,%d,%d,%d", digit, c1+1, c2+1, c3+1, c4+1),
-							Highlights: core.Highlights{
-								Primary: targets,
-							},
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return nil
+	return "columns"
 }
 
 // detectXChain finds X-Chain pattern: a chain of conjugate pairs for a single digit
@@ -231,31 +170,20 @@ func detectXChain(b *Board) *core.Move {
 func buildConjugateGraph(b *Board, digit int) map[int][]int {
 	conjugates := make(map[int][]int)
 
-	// Check rows
-	for row := 0; row < 9; row++ {
-		var cells []int
-		for col := 0; col < 9; col++ {
-			if b.Candidates[row*9+col][digit] {
-				cells = append(cells, row*9+col)
+	// Check rows and columns using UnitType abstraction
+	for _, dir := range []UnitType{UnitRow, UnitCol} {
+		for primary := 0; primary < 9; primary++ {
+			var cells []int
+			for secondary := 0; secondary < 9; secondary++ {
+				idx := cellIndexForDirection(dir, primary, secondary)
+				if b.Candidates[idx][digit] {
+					cells = append(cells, idx)
+				}
 			}
-		}
-		if len(cells) == 2 {
-			conjugates[cells[0]] = append(conjugates[cells[0]], cells[1])
-			conjugates[cells[1]] = append(conjugates[cells[1]], cells[0])
-		}
-	}
-
-	// Check columns
-	for col := 0; col < 9; col++ {
-		var cells []int
-		for row := 0; row < 9; row++ {
-			if b.Candidates[row*9+col][digit] {
-				cells = append(cells, row*9+col)
+			if len(cells) == 2 {
+				conjugates[cells[0]] = append(conjugates[cells[0]], cells[1])
+				conjugates[cells[1]] = append(conjugates[cells[1]], cells[0])
 			}
-		}
-		if len(cells) == 2 {
-			conjugates[cells[0]] = append(conjugates[cells[0]], cells[1])
-			conjugates[cells[1]] = append(conjugates[cells[1]], cells[0])
 		}
 	}
 
@@ -559,127 +487,68 @@ func detectWWing(b *Board) *core.Move {
 					elimDigit = d2
 				}
 
-				// Find cells with linkDigit that see bv1 and are part of a conjugate pair
-				for row := 0; row < 9; row++ {
-					var cells []int
-					for col := 0; col < 9; col++ {
-						if b.Candidates[row*9+col][linkDigit] {
-							cells = append(cells, row*9+col)
-						}
-					}
-					if len(cells) != 2 {
-						continue
-					}
-
-					// Check if one cell sees bv1 and the other sees bv2
-					link1, link2 := -1, -1
-					if sees(cells[0], bv1.idx) && sees(cells[1], bv2.idx) {
-						link1, link2 = cells[0], cells[1]
-					} else if sees(cells[1], bv1.idx) && sees(cells[0], bv2.idx) {
-						link1, link2 = cells[1], cells[0]
-					}
-
-					if link1 != -1 {
-						// W-Wing found! Eliminate elimDigit from cells seeing both bv1 and bv2
-						var eliminations []core.Candidate
-						for idx := 0; idx < 81; idx++ {
-							if !b.Candidates[idx][elimDigit] {
-								continue
-							}
-							if idx == bv1.idx || idx == bv2.idx || idx == link1 || idx == link2 {
-								continue
-							}
-							if sees(idx, bv1.idx) && sees(idx, bv2.idx) {
-								eliminations = append(eliminations, core.Candidate{
-									Row: idx / 9, Col: idx % 9, Digit: elimDigit,
-								})
+				// Check rows and columns for strong links using UnitType abstraction
+				for _, dir := range []UnitType{UnitRow, UnitCol} {
+					for primary := 0; primary < 9; primary++ {
+						var cells []int
+						for secondary := 0; secondary < 9; secondary++ {
+							idx := cellIndexForDirection(dir, primary, secondary)
+							if b.Candidates[idx][linkDigit] {
+								cells = append(cells, idx)
 							}
 						}
+						if len(cells) != 2 {
+							continue
+						}
 
-						if len(eliminations) > 0 {
-							return &core.Move{
-								Action: "eliminate",
-								Digit:  elimDigit,
-								Targets: []core.CellRef{
-									{Row: bv1.idx / 9, Col: bv1.idx % 9},
-									{Row: bv2.idx / 9, Col: bv2.idx % 9},
-									{Row: link1 / 9, Col: link1 % 9},
-									{Row: link2 / 9, Col: link2 % 9},
-								},
-								Eliminations: eliminations,
-								Explanation:  fmt.Sprintf("W-Wing: {%d,%d} cells connected by strong link on %d", d1, d2, linkDigit),
-								Highlights: core.Highlights{
-									Primary: []core.CellRef{
+						// Check if one cell sees bv1 and the other sees bv2
+						link1, link2 := -1, -1
+						if sees(cells[0], bv1.idx) && sees(cells[1], bv2.idx) {
+							link1, link2 = cells[0], cells[1]
+						} else if sees(cells[1], bv1.idx) && sees(cells[0], bv2.idx) {
+							link1, link2 = cells[1], cells[0]
+						}
+
+						if link1 != -1 {
+							// W-Wing found! Eliminate elimDigit from cells seeing both bv1 and bv2
+							var eliminations []core.Candidate
+							for idx := 0; idx < 81; idx++ {
+								if !b.Candidates[idx][elimDigit] {
+									continue
+								}
+								if idx == bv1.idx || idx == bv2.idx || idx == link1 || idx == link2 {
+									continue
+								}
+								if sees(idx, bv1.idx) && sees(idx, bv2.idx) {
+									eliminations = append(eliminations, core.Candidate{
+										Row: idx / 9, Col: idx % 9, Digit: elimDigit,
+									})
+								}
+							}
+
+							if len(eliminations) > 0 {
+								return &core.Move{
+									Action: "eliminate",
+									Digit:  elimDigit,
+									Targets: []core.CellRef{
 										{Row: bv1.idx / 9, Col: bv1.idx % 9},
 										{Row: bv2.idx / 9, Col: bv2.idx % 9},
-									},
-									Secondary: []core.CellRef{
 										{Row: link1 / 9, Col: link1 % 9},
 										{Row: link2 / 9, Col: link2 % 9},
 									},
-								},
-							}
-						}
-					}
-				}
-
-				// Also check columns and boxes for strong links
-				for col := 0; col < 9; col++ {
-					var cells []int
-					for row := 0; row < 9; row++ {
-						if b.Candidates[row*9+col][linkDigit] {
-							cells = append(cells, row*9+col)
-						}
-					}
-					if len(cells) != 2 {
-						continue
-					}
-
-					link1, link2 := -1, -1
-					if sees(cells[0], bv1.idx) && sees(cells[1], bv2.idx) {
-						link1, link2 = cells[0], cells[1]
-					} else if sees(cells[1], bv1.idx) && sees(cells[0], bv2.idx) {
-						link1, link2 = cells[1], cells[0]
-					}
-
-					if link1 != -1 {
-						var eliminations []core.Candidate
-						for idx := 0; idx < 81; idx++ {
-							if !b.Candidates[idx][elimDigit] {
-								continue
-							}
-							if idx == bv1.idx || idx == bv2.idx || idx == link1 || idx == link2 {
-								continue
-							}
-							if sees(idx, bv1.idx) && sees(idx, bv2.idx) {
-								eliminations = append(eliminations, core.Candidate{
-									Row: idx / 9, Col: idx % 9, Digit: elimDigit,
-								})
-							}
-						}
-
-						if len(eliminations) > 0 {
-							return &core.Move{
-								Action: "eliminate",
-								Digit:  elimDigit,
-								Targets: []core.CellRef{
-									{Row: bv1.idx / 9, Col: bv1.idx % 9},
-									{Row: bv2.idx / 9, Col: bv2.idx % 9},
-									{Row: link1 / 9, Col: link1 % 9},
-									{Row: link2 / 9, Col: link2 % 9},
-								},
-								Eliminations: eliminations,
-								Explanation:  fmt.Sprintf("W-Wing: {%d,%d} cells connected by strong link on %d", d1, d2, linkDigit),
-								Highlights: core.Highlights{
-									Primary: []core.CellRef{
-										{Row: bv1.idx / 9, Col: bv1.idx % 9},
-										{Row: bv2.idx / 9, Col: bv2.idx % 9},
+									Eliminations: eliminations,
+									Explanation:  fmt.Sprintf("W-Wing: {%d,%d} cells connected by strong link on %d", d1, d2, linkDigit),
+									Highlights: core.Highlights{
+										Primary: []core.CellRef{
+											{Row: bv1.idx / 9, Col: bv1.idx % 9},
+											{Row: bv2.idx / 9, Col: bv2.idx % 9},
+										},
+										Secondary: []core.CellRef{
+											{Row: link1 / 9, Col: link1 % 9},
+											{Row: link2 / 9, Col: link2 % 9},
+										},
 									},
-									Secondary: []core.CellRef{
-										{Row: link1 / 9, Col: link1 % 9},
-										{Row: link2 / 9, Col: link2 % 9},
-									},
-								},
+								}
 							}
 						}
 					}

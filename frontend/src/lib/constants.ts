@@ -123,3 +123,29 @@ export function generatePuzzleSeed(): string {
 export function createGameRoute(difficulty: string): string {
   return `/${generatePuzzleSeed()}?d=${difficulty}`
 }
+
+// =============================================================================
+// MENU CONFIGURATION
+// =============================================================================
+import type { ColorTheme } from './ThemeContext'
+import type { AutoSolveSpeed } from './preferences'
+
+// Auto-solve speed options with SVG icon paths
+export const SPEED_OPTIONS: { speed: AutoSolveSpeed; iconPaths: string[]; hasRect?: boolean; label: string }[] = [
+  { speed: 'slow', iconPaths: ['M8 5v14l11-7z'], label: '1x' },
+  { speed: 'normal', iconPaths: ['M4 5v14l8-7z', 'M12 5v14l8-7z'], label: '2x' },
+  { speed: 'fast', iconPaths: ['M2 5v14l6-7z', 'M9 5v14l6-7z', 'M16 5v14l6-7z'], label: '3x' },
+  { speed: 'instant', iconPaths: ['M2 5v14l5-7z', 'M8 5v14l5-7z', 'M14 5v14l5-7z'], hasRect: true, label: 'Skip' },
+]
+
+// Color theme options - open-source community themes
+export const COLOR_THEMES: { key: ColorTheme; color: string; label: string }[] = [
+  { key: 'tokyonight', color: 'bg-[#7aa2f7]', label: 'Tokyo Night' },
+  { key: 'dracula', color: 'bg-[#bd93f9]', label: 'Dracula' },
+  { key: 'nord', color: 'bg-[#88c0d0]', label: 'Nord' },
+  { key: 'catppuccin', color: 'bg-[#cba6f7]', label: 'Catppuccin' },
+  { key: 'gruvbox', color: 'bg-[#fabd2f]', label: 'Gruvbox' },
+  { key: 'rosepine', color: 'bg-[#ebbcba]', label: 'Rosé Pine' },
+  { key: 'solarized', color: 'bg-[#2aa198]', label: 'Solarized' },
+  { key: 'onedark', color: 'bg-[#61afef]', label: 'One Dark' },
+]

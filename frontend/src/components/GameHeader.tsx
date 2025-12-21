@@ -40,6 +40,252 @@ function ComputerIcon({ className = 'h-4 w-4' }: { className?: string }) {
   )
 }
 
+// Speed button options for auto-solve controls (module-level for reuse)
+const SPEED_OPTIONS = [
+  { speed: 'slow' as const, icon: (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8 5v14l11-7z"/>
+    </svg>
+  ), label: '1x' },
+  { speed: 'normal' as const, icon: (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M4 5v14l8-7z"/>
+      <path d="M12 5v14l8-7z"/>
+    </svg>
+  ), label: '2x' },
+  { speed: 'fast' as const, icon: (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M2 5v14l6-7z"/>
+      <path d="M9 5v14l6-7z"/>
+      <path d="M16 5v14l6-7z"/>
+    </svg>
+  ), label: '3x' },
+  { speed: 'instant' as const, icon: (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M2 5v14l5-7z"/>
+      <path d="M8 5v14l5-7z"/>
+      <path d="M14 5v14l5-7z"/>
+      <rect x="20" y="5" width="2" height="14"/>
+    </svg>
+  ), label: 'Skip' },
+]
+
+// ============================================================================
+// Subcomponent: AutoSolveControls
+// ============================================================================
+interface AutoSolveControlsProps {
+  isFetchingSolution: boolean
+  isPaused: boolean
+  autoSolveSpeed: AutoSolveSpeed
+  onTogglePause: () => void
+  onStopAutoSolve: () => void
+  onSpeedChange: (speed: AutoSolveSpeed) => void
+  variant: 'desktop' | 'mobile'
+}
+
+function AutoSolveControls({
+  isFetchingSolution,
+  isPaused,
+  autoSolveSpeed,
+  onTogglePause,
+  onStopAutoSolve,
+  onSpeedChange,
+  variant,
+}: AutoSolveControlsProps) {
+  if (variant === 'desktop') {
+    if (isFetchingSolution) {
+      return (
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-foreground-muted">
+          <ButtonSpinner className="h-4 w-4" />
+          <span>Solving...</span>
+        </div>
+      )
+    }
+    return (
+      <div className="hidden sm:flex items-center gap-1">
+        <div className="flex items-center rounded-lg overflow-hidden border border-board-border-light">
+          {SPEED_OPTIONS.map(({ speed, icon, label }) => (
+            <button
+              key={speed}
+              onClick={() => onSpeedChange(speed)}
+              title={label}
+              className={`px-2 py-1.5 transition-colors ${
+                autoSolveSpeed === speed
+                  ? 'bg-accent text-btn-active-text'
+                  : 'bg-btn-bg text-foreground hover:bg-btn-hover'
+              }`}
+            >
+              {icon}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={onTogglePause}
+          className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+            isPaused
+              ? 'bg-green-500 text-white hover:bg-green-600'
+              : 'bg-btn-bg text-foreground hover:bg-btn-hover border border-board-border-light'
+          }`}
+          title={isPaused ? 'Resume' : 'Pause'}
+        >
+          {isPaused ? (
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          ) : (
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          )}
+        </button>
+        <button
+          onClick={onStopAutoSolve}
+          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm bg-red-500 text-white hover:bg-red-600 transition-colors"
+          title="Stop solving"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          <span>Stop</span>
+        </button>
+      </div>
+    )
+  }
+
+  // Mobile variant
+  if (isFetchingSolution) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-1 text-foreground-muted">
+        <ButtonSpinner className="h-4 w-4" />
+        <span className="text-sm">Solving...</span>
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <div className="flex items-center rounded-lg overflow-hidden border border-board-border-light">
+        {SPEED_OPTIONS.map(({ speed, icon, label }) => (
+          <button
+            key={speed}
+            onClick={() => onSpeedChange(speed)}
+            title={label}
+            className={`px-3 py-2 transition-colors ${
+              autoSolveSpeed === speed
+                ? 'bg-accent text-btn-active-text'
+                : 'bg-btn-bg text-foreground hover:bg-btn-hover'
+            }`}
+          >
+            {icon}
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={onTogglePause}
+        className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+          isPaused
+            ? 'bg-green-500 text-white hover:bg-green-600'
+            : 'bg-btn-bg text-foreground hover:bg-btn-hover border border-board-border-light'
+        }`}
+        title={isPaused ? 'Resume' : 'Pause'}
+      >
+        {isPaused ? (
+          <><svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Play</>
+        ) : (
+          <><svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>Pause</>
+        )}
+      </button>
+      <button
+        onClick={onStopAutoSolve}
+        className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors"
+        title="Stop solving"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        Stop
+      </button>
+    </div>
+  )
+}
+
+// ============================================================================
+// Subcomponent: HintButtons
+// ============================================================================
+interface HintButtonsProps {
+  onTechniqueHint: () => void
+  techniqueHintDisabled: boolean
+  techniqueHintLoading: boolean
+  onHint: () => void
+  hintLoading: boolean
+}
+
+function HintButtons({ onTechniqueHint, techniqueHintDisabled, techniqueHintLoading, onHint, hintLoading }: HintButtonsProps) {
+  return (
+    <>
+      <button
+        onClick={onTechniqueHint}
+        disabled={techniqueHintDisabled || techniqueHintLoading}
+        className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+          techniqueHintDisabled || techniqueHintLoading
+            ? 'text-foreground-muted/50 cursor-not-allowed' 
+            : 'text-foreground-muted hover:text-accent hover:bg-btn-hover'
+        }`}
+        title={techniqueHintLoading ? "Loading..." : techniqueHintDisabled ? "Make a move to use again" : "Learn which technique to use"}
+      >
+        {techniqueHintLoading ? <ButtonSpinner className="h-4 w-4" /> : <span className="text-base">❓</span>}
+        <span className="hidden sm:inline">Technique</span>
+      </button>
+      <button
+        onClick={onHint}
+        disabled={hintLoading}
+        className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+          hintLoading ? 'text-foreground-muted/50 cursor-not-allowed' : 'text-foreground-muted hover:text-accent hover:bg-btn-hover'
+        }`}
+        title={hintLoading ? "Loading..." : "Get a hint"}
+      >
+        {hintLoading ? <ButtonSpinner className="h-4 w-4" /> : <span className="text-base">💡</span>}
+        <span className="hidden sm:inline">Hint</span>
+      </button>
+    </>
+  )
+}
+
+// ============================================================================
+// Subcomponent: ThemeModeDropdown
+// ============================================================================
+interface ThemeModeDropdownProps {
+  mode: 'light' | 'dark'
+  modePreference: ModePreference
+  isOpen: boolean
+  onToggle: () => void
+  onSetModePreference: (mode: ModePreference) => void
+  dropdownRef: React.RefObject<HTMLDivElement>
+}
+
+function ThemeModeDropdown({ mode, modePreference, isOpen, onToggle, onSetModePreference, dropdownRef }: ThemeModeDropdownProps) {
+  const handleSelect = (pref: ModePreference) => { onSetModePreference(pref); onToggle() }
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={onToggle}
+        className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
+        title={`Theme: ${modePreference}`}
+      >
+        {modePreference === 'system' ? <ComputerIcon /> : mode === 'dark' ? <SunIcon /> : <MoonIcon />}
+      </button>
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-background-secondary border border-board-border-light shadow-lg overflow-hidden z-50">
+          <button onClick={() => handleSelect('light')} className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${modePreference === 'light' ? 'bg-accent text-btn-active-text' : 'text-foreground hover:bg-btn-hover'}`}>
+            <SunIcon className="h-4 w-4" />Light
+          </button>
+          <button onClick={() => handleSelect('dark')} className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${modePreference === 'dark' ? 'bg-accent text-btn-active-text' : 'text-foreground hover:bg-btn-hover'}`}>
+            <MoonIcon className="h-4 w-4" />Dark
+          </button>
+          <button onClick={() => handleSelect('system')} className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${modePreference === 'system' ? 'bg-accent text-btn-active-text' : 'text-foreground hover:bg-btn-hover'}`}>
+            <ComputerIcon className="h-4 w-4" />System
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface GameHeaderProps {
   difficulty: Difficulty
   // Timer state
@@ -156,35 +402,6 @@ export default function GameHeader({
     onSetAutoSolveSpeed(speed)
   }
 
-  const speedOptions = [
-    { speed: 'slow' as const, icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M8 5v14l11-7z"/>
-      </svg>
-    ), label: '1x' },
-    { speed: 'normal' as const, icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M4 5v14l8-7z"/>
-        <path d="M12 5v14l8-7z"/>
-      </svg>
-    ), label: '2x' },
-    { speed: 'fast' as const, icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M2 5v14l6-7z"/>
-        <path d="M9 5v14l6-7z"/>
-        <path d="M16 5v14l6-7z"/>
-      </svg>
-    ), label: '3x' },
-    { speed: 'instant' as const, icon: (
-      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M2 5v14l5-7z"/>
-        <path d="M8 5v14l5-7z"/>
-        <path d="M14 5v14l5-7z"/>
-        <rect x="20" y="5" width="2" height="14"/>
-      </svg>
-    ), label: 'Skip' },
-  ]
-
   return (
     <>
     <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-board-border-light">
@@ -220,109 +437,28 @@ export default function GameHeader({
 
         {/* Right: Actions */}
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-          {/* Loading indicator - shown while fetching solution */}
-          {isAutoSolving && isFetchingSolution && (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-foreground-muted">
-              <ButtonSpinner className="h-4 w-4" />
-              <span>Solving...</span>
-            </div>
+          {/* Desktop auto-solve controls */}
+          {isAutoSolving && (
+            <AutoSolveControls
+              isFetchingSolution={isFetchingSolution}
+              isPaused={isPaused}
+              autoSolveSpeed={autoSolveSpeed}
+              onTogglePause={onTogglePause}
+              onStopAutoSolve={onStopAutoSolve}
+              onSpeedChange={handleSpeedChange}
+              variant="desktop"
+            />
           )}
 
-          {/* Speed controls + Stop button - shown when auto-solving and solution is ready */}
-          {isAutoSolving && !isFetchingSolution && (
-            <div className="hidden sm:flex items-center gap-1">
-              {/* Speed controls */}
-              <div className="flex items-center rounded-lg overflow-hidden border border-board-border-light">
-                {speedOptions.map(({ speed, icon, label }) => (
-                  <button
-                    key={speed}
-                    onClick={() => handleSpeedChange(speed)}
-                    title={label}
-                    className={`px-2 py-1.5 transition-colors ${
-                      autoSolveSpeed === speed
-                        ? 'bg-accent text-btn-active-text'
-                        : 'bg-btn-bg text-foreground hover:bg-btn-hover'
-                    }`}
-                  >
-                    {icon}
-                  </button>
-                ))}
-              </div>
-              {/* Pause/Resume button */}
-              <button
-                onClick={onTogglePause}
-                className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-                  isPaused
-                    ? 'bg-green-500 text-white hover:bg-green-600'
-                    : 'bg-btn-bg text-foreground hover:bg-btn-hover border border-board-border-light'
-                }`}
-                title={isPaused ? 'Resume' : 'Pause'}
-              >
-                {isPaused ? (
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                ) : (
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="6" y="4" width="4" height="16"/>
-                    <rect x="14" y="4" width="4" height="16"/>
-                  </svg>
-                )}
-              </button>
-              {/* Stop button */}
-              <button
-                onClick={onStopAutoSolve}
-                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm bg-red-500 text-white hover:bg-red-600 transition-colors"
-                title="Stop solving"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                <span>Stop</span>
-              </button>
-            </div>
-          )}
-
-          {/* Technique hint button - shows technique modal without applying move */}
+          {/* Hint buttons */}
           {!isComplete && !isAutoSolving && (
-            <button
-              onClick={onTechniqueHint}
-              disabled={techniqueHintDisabled || techniqueHintLoading}
-              className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-                techniqueHintDisabled || techniqueHintLoading
-                  ? 'text-foreground-muted/50 cursor-not-allowed' 
-                  : 'text-foreground-muted hover:text-accent hover:bg-btn-hover'
-              }`}
-              title={techniqueHintLoading ? "Loading..." : techniqueHintDisabled ? "Make a move to use again" : "Learn which technique to use"}
-            >
-              {techniqueHintLoading ? (
-                <ButtonSpinner className="h-4 w-4" />
-              ) : (
-                <span className="text-base">❓</span>
-              )}
-              <span className="hidden sm:inline">Technique</span>
-            </button>
-          )}
-
-          {/* Hint button */}
-          {!isComplete && !isAutoSolving && (
-            <button
-              onClick={onHint}
-              disabled={hintLoading}
-              className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-                hintLoading
-                  ? 'text-foreground-muted/50 cursor-not-allowed'
-                  : 'text-foreground-muted hover:text-accent hover:bg-btn-hover'
-              }`}
-              title={hintLoading ? "Loading..." : "Get a hint"}
-            >
-              {hintLoading ? (
-                <ButtonSpinner className="h-4 w-4" />
-              ) : (
-                <span className="text-base">💡</span>
-              )}
-              <span className="hidden sm:inline">Hint</span>
-            </button>
+            <HintButtons
+              onTechniqueHint={onTechniqueHint}
+              techniqueHintDisabled={techniqueHintDisabled}
+              techniqueHintLoading={techniqueHintLoading}
+              onHint={onHint}
+              hintLoading={hintLoading}
+            />
           )}
 
           {/* History button */}
@@ -356,52 +492,14 @@ export default function GameHeader({
           )}
 
           {/* Theme mode dropdown */}
-          <div className="relative" ref={modeDropdownRef}>
-            <button
-              onClick={() => setModeDropdownOpen(!modeDropdownOpen)}
-              className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
-              title={`Theme: ${modePreference}`}
-            >
-              {modePreference === 'system' ? <ComputerIcon /> : mode === 'dark' ? <SunIcon /> : <MoonIcon />}
-            </button>
-            {modeDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-background-secondary border border-board-border-light shadow-lg overflow-hidden z-50">
-                <button
-                  onClick={() => { onSetModePreference('light'); setModeDropdownOpen(false) }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                    modePreference === 'light' 
-                      ? 'bg-accent text-btn-active-text' 
-                      : 'text-foreground hover:bg-btn-hover'
-                  }`}
-                >
-                  <SunIcon className="h-4 w-4" />
-                  Light
-                </button>
-                <button
-                  onClick={() => { onSetModePreference('dark'); setModeDropdownOpen(false) }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                    modePreference === 'dark' 
-                      ? 'bg-accent text-btn-active-text' 
-                      : 'text-foreground hover:bg-btn-hover'
-                  }`}
-                >
-                  <MoonIcon className="h-4 w-4" />
-                  Dark
-                </button>
-                <button
-                  onClick={() => { onSetModePreference('system'); setModeDropdownOpen(false) }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                    modePreference === 'system' 
-                      ? 'bg-accent text-btn-active-text' 
-                      : 'text-foreground hover:bg-btn-hover'
-                  }`}
-                >
-                  <ComputerIcon className="h-4 w-4" />
-                  System
-                </button>
-              </div>
-            )}
-          </div>
+          <ThemeModeDropdown
+            mode={mode}
+            modePreference={modePreference}
+            isOpen={modeDropdownOpen}
+            onToggle={() => setModeDropdownOpen(!modeDropdownOpen)}
+            onSetModePreference={onSetModePreference}
+            dropdownRef={modeDropdownRef}
+          />
 
           {/* Menu button */}
           <button
@@ -419,70 +517,15 @@ export default function GameHeader({
       {/* Mobile auto-solve controls - second row */}
       {isAutoSolving && (
         <div className="sm:hidden border-t border-board-border-light px-2 py-2">
-          {isFetchingSolution ? (
-            <div className="flex items-center justify-center gap-2 py-1 text-foreground-muted">
-              <ButtonSpinner className="h-4 w-4" />
-              <span className="text-sm">Solving...</span>
-            </div>
-          ) : (
-          <div className="flex items-center justify-center gap-2">
-            {/* Speed controls */}
-            <div className="flex items-center rounded-lg overflow-hidden border border-board-border-light">
-              {speedOptions.map(({ speed, icon, label }) => (
-                <button
-                  key={speed}
-                  onClick={() => handleSpeedChange(speed)}
-                  title={label}
-                  className={`px-3 py-2 transition-colors ${
-                    autoSolveSpeed === speed
-                      ? 'bg-accent text-btn-active-text'
-                      : 'bg-btn-bg text-foreground hover:bg-btn-hover'
-                  }`}
-                >
-                  {icon}
-                </button>
-              ))}
-            </div>
-            {/* Pause/Resume button */}
-            <button
-              onClick={onTogglePause}
-              className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                isPaused
-                  ? 'bg-green-500 text-white hover:bg-green-600'
-                  : 'bg-btn-bg text-foreground hover:bg-btn-hover border border-board-border-light'
-              }`}
-              title={isPaused ? 'Resume' : 'Pause'}
-            >
-              {isPaused ? (
-                <>
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                  Play
-                </>
-              ) : (
-                <>
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="6" y="4" width="4" height="16"/>
-                    <rect x="14" y="4" width="4" height="16"/>
-                  </svg>
-                  Pause
-                </>
-              )}
-            </button>
-            {/* Stop button */}
-            <button
-              onClick={onStopAutoSolve}
-              className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors"
-              title="Stop solving"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Stop
-            </button>
-          </div>
-          )}
+          <AutoSolveControls
+            isFetchingSolution={isFetchingSolution}
+            isPaused={isPaused}
+            autoSolveSpeed={autoSolveSpeed}
+            onTogglePause={onTogglePause}
+            onStopAutoSolve={onStopAutoSolve}
+            onSpeedChange={handleSpeedChange}
+            variant="mobile"
+          />
         </div>
       )}
     </header>

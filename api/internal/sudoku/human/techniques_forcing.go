@@ -71,38 +71,7 @@ func propagateSingles(b *Board, startCell, startDigit int, maxSteps int) *propag
 				}
 
 				// Record eliminations before placing
-				row, col := i/9, i%9
-				// Check cells that will lose this candidate
-				for c := 0; c < 9; c++ {
-					idx := row*9 + c
-					if idx != i && sim.Candidates[idx][digit] {
-						if result.eliminations[idx] == nil {
-							result.eliminations[idx] = make(map[int]bool)
-						}
-						result.eliminations[idx][digit] = true
-					}
-				}
-				for r := 0; r < 9; r++ {
-					idx := r*9 + col
-					if idx != i && sim.Candidates[idx][digit] {
-						if result.eliminations[idx] == nil {
-							result.eliminations[idx] = make(map[int]bool)
-						}
-						result.eliminations[idx][digit] = true
-					}
-				}
-				boxRow, boxCol := (row/3)*3, (col/3)*3
-				for r := boxRow; r < boxRow+3; r++ {
-					for c := boxCol; c < boxCol+3; c++ {
-						idx := r*9 + c
-						if idx != i && sim.Candidates[idx][digit] {
-							if result.eliminations[idx] == nil {
-								result.eliminations[idx] = make(map[int]bool)
-							}
-							result.eliminations[idx][digit] = true
-						}
-					}
-				}
+				recordEliminationsForPeers(sim, i, digit, result.eliminations)
 
 				sim.SetCell(i, digit)
 				result.placements[i] = digit
@@ -111,186 +80,29 @@ func propagateSingles(b *Board, startCell, startDigit int, maxSteps int) *propag
 		}
 
 		// Check for hidden singles in each unit
-		// Rows
-		for row := 0; row < 9; row++ {
-			for digit := 1; digit <= 9; digit++ {
-				var positions []int
-				for col := 0; col < 9; col++ {
-					idx := row*9 + col
-					if sim.Cells[idx] == digit {
-						positions = nil
-						break
-					}
-					if sim.Candidates[idx][digit] {
-						positions = append(positions, idx)
-					}
-				}
-				if len(positions) == 0 && !hasDigitInRow(sim, row, digit) {
-					// Contradiction
-					result.valid = false
-					return result
-				}
-				if len(positions) == 1 {
-					idx := positions[0]
-					if sim.Cells[idx] == 0 {
-						// Record eliminations
-						for c := 0; c < 9; c++ {
-							cidx := row*9 + c
-							if cidx != idx && sim.Candidates[cidx][digit] {
-								if result.eliminations[cidx] == nil {
-									result.eliminations[cidx] = make(map[int]bool)
-								}
-								result.eliminations[cidx][digit] = true
-							}
-						}
-						col := idx % 9
-						for r := 0; r < 9; r++ {
-							ridx := r*9 + col
-							if ridx != idx && sim.Candidates[ridx][digit] {
-								if result.eliminations[ridx] == nil {
-									result.eliminations[ridx] = make(map[int]bool)
-								}
-								result.eliminations[ridx][digit] = true
-							}
-						}
-						boxRow, boxCol := (row/3)*3, (col/3)*3
-						for r := boxRow; r < boxRow+3; r++ {
-							for c := boxCol; c < boxCol+3; c++ {
-								bidx := r*9 + c
-								if bidx != idx && sim.Candidates[bidx][digit] {
-									if result.eliminations[bidx] == nil {
-										result.eliminations[bidx] = make(map[int]bool)
-									}
-									result.eliminations[bidx][digit] = true
-								}
-							}
-						}
-						sim.SetCell(idx, digit)
-						result.placements[idx] = digit
-						progress = true
-					}
-				}
-			}
-		}
-
-		// Columns
-		for col := 0; col < 9; col++ {
-			for digit := 1; digit <= 9; digit++ {
-				var positions []int
-				for row := 0; row < 9; row++ {
-					idx := row*9 + col
-					if sim.Cells[idx] == digit {
-						positions = nil
-						break
-					}
-					if sim.Candidates[idx][digit] {
-						positions = append(positions, idx)
-					}
-				}
-				if len(positions) == 0 && !hasDigitInCol(sim, col, digit) {
-					result.valid = false
-					return result
-				}
-				if len(positions) == 1 {
-					idx := positions[0]
-					if sim.Cells[idx] == 0 {
-						row := idx / 9
-						for c := 0; c < 9; c++ {
-							cidx := row*9 + c
-							if cidx != idx && sim.Candidates[cidx][digit] {
-								if result.eliminations[cidx] == nil {
-									result.eliminations[cidx] = make(map[int]bool)
-								}
-								result.eliminations[cidx][digit] = true
-							}
-						}
-						for r := 0; r < 9; r++ {
-							ridx := r*9 + col
-							if ridx != idx && sim.Candidates[ridx][digit] {
-								if result.eliminations[ridx] == nil {
-									result.eliminations[ridx] = make(map[int]bool)
-								}
-								result.eliminations[ridx][digit] = true
-							}
-						}
-						boxRow, boxCol := (row/3)*3, (col/3)*3
-						for r := boxRow; r < boxRow+3; r++ {
-							for c := boxCol; c < boxCol+3; c++ {
-								bidx := r*9 + c
-								if bidx != idx && sim.Candidates[bidx][digit] {
-									if result.eliminations[bidx] == nil {
-										result.eliminations[bidx] = make(map[int]bool)
-									}
-									result.eliminations[bidx][digit] = true
-								}
-							}
-						}
-						sim.SetCell(idx, digit)
-						result.placements[idx] = digit
-						progress = true
-					}
-				}
-			}
-		}
-
-		// Boxes
-		for box := 0; box < 9; box++ {
-			boxRow, boxCol := (box/3)*3, (box%3)*3
+		for _, unit := range AllUnits() {
 			for digit := 1; digit <= 9; digit++ {
 				var positions []int
 				found := false
-				for r := boxRow; r < boxRow+3; r++ {
-					for c := boxCol; c < boxCol+3; c++ {
-						idx := r*9 + c
-						if sim.Cells[idx] == digit {
-							found = true
-							break
-						}
-						if sim.Candidates[idx][digit] {
-							positions = append(positions, idx)
-						}
-					}
-					if found {
+				for _, idx := range unit.Cells {
+					if sim.Cells[idx] == digit {
+						found = true
 						break
+					}
+					if sim.Candidates[idx][digit] {
+						positions = append(positions, idx)
 					}
 				}
 				if !found && len(positions) == 0 {
+					// Contradiction - digit has nowhere to go in this unit
 					result.valid = false
 					return result
 				}
 				if !found && len(positions) == 1 {
 					idx := positions[0]
 					if sim.Cells[idx] == 0 {
-						row, col := idx/9, idx%9
-						for c := 0; c < 9; c++ {
-							cidx := row*9 + c
-							if cidx != idx && sim.Candidates[cidx][digit] {
-								if result.eliminations[cidx] == nil {
-									result.eliminations[cidx] = make(map[int]bool)
-								}
-								result.eliminations[cidx][digit] = true
-							}
-						}
-						for r := 0; r < 9; r++ {
-							ridx := r*9 + col
-							if ridx != idx && sim.Candidates[ridx][digit] {
-								if result.eliminations[ridx] == nil {
-									result.eliminations[ridx] = make(map[int]bool)
-								}
-								result.eliminations[ridx][digit] = true
-							}
-						}
-						for r := boxRow; r < boxRow+3; r++ {
-							for c := boxCol; c < boxCol+3; c++ {
-								bidx := r*9 + c
-								if bidx != idx && sim.Candidates[bidx][digit] {
-									if result.eliminations[bidx] == nil {
-										result.eliminations[bidx] = make(map[int]bool)
-									}
-									result.eliminations[bidx][digit] = true
-								}
-							}
-						}
+						// Record eliminations for all peers
+						recordEliminationsForPeers(sim, idx, digit, result.eliminations)
 						sim.SetCell(idx, digit)
 						result.placements[idx] = digit
 						progress = true
@@ -307,24 +119,39 @@ func propagateSingles(b *Board, startCell, startDigit int, maxSteps int) *propag
 	return result
 }
 
-// hasDigitInRow checks if digit is already placed in row
-func hasDigitInRow(b *Board, row, digit int) bool {
-	for c := 0; c < 9; c++ {
-		if b.Cells[row*9+c] == digit {
+// hasDigitInUnit checks if digit is already placed in the given unit
+func hasDigitInUnit(b *Board, unit Unit, digit int) bool {
+	for _, idx := range unit.Cells {
+		if b.Cells[idx] == digit {
 			return true
 		}
 	}
 	return false
 }
 
-// hasDigitInCol checks if digit is already placed in column
-func hasDigitInCol(b *Board, col, digit int) bool {
-	for r := 0; r < 9; r++ {
-		if b.Cells[r*9+col] == digit {
-			return true
+// recordEliminationsForPeers records eliminations for all cells that see the given cell
+func recordEliminationsForPeers(b *Board, cellIdx, digit int, eliminations map[int]map[int]bool) {
+	for _, unit := range getUnitsForCell(cellIdx) {
+		for _, peerIdx := range unit.Cells {
+			if peerIdx != cellIdx && b.Candidates[peerIdx][digit] {
+				if eliminations[peerIdx] == nil {
+					eliminations[peerIdx] = make(map[int]bool)
+				}
+				eliminations[peerIdx][digit] = true
+			}
 		}
 	}
-	return false
+}
+
+// getUnitsForCell returns the three units (row, col, box) that contain the given cell
+func getUnitsForCell(cellIdx int) []Unit {
+	row, col := cellIdx/9, cellIdx%9
+	box := (row/3)*3 + col/3
+	return []Unit{
+		{Type: UnitRow, Index: row, Cells: getRowIndices(row)},
+		{Type: UnitCol, Index: col, Cells: getColIndices(col)},
+		{Type: UnitBox, Index: box, Cells: getBoxIndices(box)},
+	}
 }
 
 // detectForcingChain detects forcing chain patterns
@@ -488,55 +315,17 @@ func detectCellForcingChain(b *Board) *core.Move {
 func detectUnitForcingChain(b *Board) *core.Move {
 	// Check each unit (rows, columns, boxes)
 	for digit := 1; digit <= 9; digit++ {
-		// Rows
-		for row := 0; row < 9; row++ {
+		for _, unit := range AllUnits() {
 			var positions []int
-			for col := 0; col < 9; col++ {
-				idx := row*9 + col
+			for _, idx := range unit.Cells {
 				if b.Candidates[idx][digit] {
 					positions = append(positions, idx)
 				}
 			}
 
 			if len(positions) >= 2 && len(positions) <= 3 {
-				if move := tryUnitForcingChain(b, digit, positions, fmt.Sprintf("row %d", row+1)); move != nil {
-					return move
-				}
-			}
-		}
-
-		// Columns
-		for col := 0; col < 9; col++ {
-			var positions []int
-			for row := 0; row < 9; row++ {
-				idx := row*9 + col
-				if b.Candidates[idx][digit] {
-					positions = append(positions, idx)
-				}
-			}
-
-			if len(positions) >= 2 && len(positions) <= 3 {
-				if move := tryUnitForcingChain(b, digit, positions, fmt.Sprintf("column %d", col+1)); move != nil {
-					return move
-				}
-			}
-		}
-
-		// Boxes
-		for box := 0; box < 9; box++ {
-			boxRow, boxCol := (box/3)*3, (box%3)*3
-			var positions []int
-			for r := boxRow; r < boxRow+3; r++ {
-				for c := boxCol; c < boxCol+3; c++ {
-					idx := r*9 + c
-					if b.Candidates[idx][digit] {
-						positions = append(positions, idx)
-					}
-				}
-			}
-
-			if len(positions) >= 2 && len(positions) <= 3 {
-				if move := tryUnitForcingChain(b, digit, positions, fmt.Sprintf("box %d", box+1)); move != nil {
+				unitDesc := fmt.Sprintf("%s %d", unit.Type.String(), unit.Index+1)
+				if move := tryUnitForcingChain(b, digit, positions, unitDesc); move != nil {
 					return move
 				}
 			}

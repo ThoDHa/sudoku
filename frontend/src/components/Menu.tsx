@@ -4,49 +4,7 @@ import { ColorTheme, FontSize } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed, HomepageMode } from '../lib/preferences'
 import { clearAllCaches, CACHE_VERSION } from '../lib/cache-version'
 import { getAutoSaveEnabled, setAutoSaveEnabled } from '../lib/gameSettings'
-import { createGameRoute } from '../lib/constants'
-
-// Auto-solve speed options
-const speedOptions = [
-  { speed: 'slow' as const, icon: (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M8 5v14l11-7z"/>
-    </svg>
-  ), label: '1x' },
-  { speed: 'normal' as const, icon: (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M4 5v14l8-7z"/>
-      <path d="M12 5v14l8-7z"/>
-    </svg>
-  ), label: '2x' },
-  { speed: 'fast' as const, icon: (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M2 5v14l6-7z"/>
-      <path d="M9 5v14l6-7z"/>
-      <path d="M16 5v14l6-7z"/>
-    </svg>
-  ), label: '3x' },
-  { speed: 'instant' as const, icon: (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M2 5v14l5-7z"/>
-      <path d="M8 5v14l5-7z"/>
-      <path d="M14 5v14l5-7z"/>
-      <rect x="20" y="5" width="2" height="14"/>
-    </svg>
-  ), label: 'Skip' },
-]
-
-// Color theme options - open-source community themes
-const colorThemes: { key: ColorTheme; color: string; label: string }[] = [
-  { key: 'tokyonight', color: 'bg-[#7aa2f7]', label: 'Tokyo Night' },
-  { key: 'dracula', color: 'bg-[#bd93f9]', label: 'Dracula' },
-  { key: 'nord', color: 'bg-[#88c0d0]', label: 'Nord' },
-  { key: 'catppuccin', color: 'bg-[#cba6f7]', label: 'Catppuccin' },
-  { key: 'gruvbox', color: 'bg-[#fabd2f]', label: 'Gruvbox' },
-  { key: 'rosepine', color: 'bg-[#ebbcba]', label: 'Rosé Pine' },
-  { key: 'solarized', color: 'bg-[#2aa198]', label: 'Solarized' },
-  { key: 'onedark', color: 'bg-[#61afef]', label: 'One Dark' },
-]
+import { createGameRoute, SPEED_OPTIONS, COLOR_THEMES } from '../lib/constants'
 
 // Game actions (for game page)
 interface GameActions {
@@ -94,6 +52,351 @@ interface MenuProps {
   onFeatureRequest?: () => void
 }
 
+// =============================================================================
+// SUBCOMPONENT: NavigationSection
+// =============================================================================
+interface NavigationSectionProps {
+  onClose: () => void
+}
+
+function NavigationSection({ onClose }: NavigationSectionProps) {
+  return (
+    <>
+      <Link
+        to="/"
+        onClick={onClose}
+        className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Play
+      </Link>
+      <Link
+        to="/techniques"
+        onClick={onClose}
+        className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+        Learn Techniques
+      </Link>
+      <Link
+        to="/leaderboard"
+        onClick={onClose}
+        className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        Leaderboard
+      </Link>
+      <Link
+        to="/custom"
+        onClick={onClose}
+        className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+        Custom Puzzle
+      </Link>
+      <Link
+        to="/techniques/how-to-play"
+        onClick={onClose}
+        className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        How to Play
+      </Link>
+      <div className="my-1 border-t border-board-border-light" />
+    </>
+  )
+}
+
+// =============================================================================
+// SUBCOMPONENT: GameActionsSection
+// =============================================================================
+interface GameActionsSectionProps {
+  gameActions: GameActions
+  onClose: () => void
+  newPuzzleMenuOpen: boolean
+  setNewPuzzleMenuOpen: (open: boolean) => void
+  setSettingsExpanded: (expanded: boolean) => void
+  handleNewPuzzle: (difficulty: string) => void
+  handleSpeedChange: (speed: AutoSolveSpeed) => void
+}
+
+function GameActionsSection({
+  gameActions,
+  onClose,
+  newPuzzleMenuOpen,
+  setNewPuzzleMenuOpen,
+  setSettingsExpanded,
+  handleNewPuzzle,
+  handleSpeedChange,
+}: GameActionsSectionProps) {
+  return (
+    <>
+      <div className="px-3 py-1">
+        <span className="text-xs font-medium text-foreground-muted uppercase tracking-wide">Actions</span>
+      </div>
+      <button
+        onClick={() => { gameActions.onAutoFillNotes(); onClose() }}
+        className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+        Auto-fill Notes
+      </button>
+      <button
+        onClick={() => { gameActions.onCheckNotes(); onClose() }}
+        className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+        Check Notes
+      </button>
+      <button
+        onClick={() => { gameActions.onClearNotes(); onClose() }}
+        className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        Clear Notes
+      </button>
+      <button
+        onClick={() => { gameActions.onValidate(); onClose() }}
+        className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Check Progress
+      </button>
+      
+      {/* Solve with speed options */}
+      <div className="flex w-full items-center px-3 py-2 rounded-lg hover:bg-btn-hover">
+        <button
+          onClick={() => { gameActions.onSolve(); onClose() }}
+          className="flex items-center gap-3 text-sm text-foreground"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Solve
+        </button>
+        <div className="ml-auto flex gap-0.5">
+          {SPEED_OPTIONS.map(({ speed, iconPaths, hasRect, label }) => (
+            <button
+              key={speed}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleSpeedChange(speed)
+                onClose()
+                gameActions.onSolve()
+              }}
+              title={`${label} - Click to start`}
+              className={`p-1 rounded ${
+                gameActions.autoSolveSpeed === speed
+                  ? 'bg-accent text-btn-active-text'
+                  : 'text-foreground-muted hover:bg-btn-hover hover:text-foreground'
+              }`}
+            >
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                {iconPaths.map((d, i) => <path key={i} d={d} />)}
+                {hasRect && <rect x="20" y="5" width="2" height="14" />}
+              </svg>
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      <button
+        onClick={() => { gameActions.onClearAll(); onClose() }}
+        className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
+      >
+        {gameActions.isComplete ? (
+          <>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Restart
+          </>
+        ) : (
+          <>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Clear All
+          </>
+        )}
+      </button>
+
+      <div className="my-1 border-t border-board-border-light" />
+
+      {/* New Game submenu */}
+      <div className="rounded-lg overflow-hidden">
+        <button
+          onClick={() => {
+            setNewPuzzleMenuOpen(!newPuzzleMenuOpen)
+            setSettingsExpanded(false)
+          }}
+          className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
+        >
+          <span className="flex items-center gap-3">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Game
+          </span>
+          <svg className={`h-3 w-3 transition-transform ${newPuzzleMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {newPuzzleMenuOpen && (
+          <div className="ml-8 py-1 space-y-0.5">
+            {['easy', 'medium', 'hard', 'extreme', 'impossible'].map((d) => (
+              <button
+                key={d}
+                onClick={() => handleNewPuzzle(d)}
+                className="block w-full px-3 py-1.5 text-left text-sm capitalize text-foreground-muted hover:text-foreground rounded-lg hover:bg-btn-hover"
+              >
+                {d}
+              </button>
+            ))}
+            <button
+              onClick={() => handleNewPuzzle('custom')}
+              className="block w-full px-3 py-1.5 text-left text-sm text-foreground-muted hover:text-foreground rounded-lg hover:bg-btn-hover"
+            >
+              Custom
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="my-1 border-t border-board-border-light" />
+    </>
+  )
+}
+
+// =============================================================================
+// SUBCOMPONENT: SettingsSection
+// =============================================================================
+interface SettingsSectionProps {
+  settingsExpanded: boolean
+  setSettingsExpanded: (expanded: boolean) => void
+  setNewPuzzleMenuOpen: (open: boolean) => void
+  colorTheme: ColorTheme
+  onSetColorTheme: (theme: ColorTheme) => void
+  gameActions: GameActions | undefined
+  autoSaveEnabled: boolean
+  handleAutoSaveToggle: () => void
+}
+
+function SettingsSection({
+  settingsExpanded,
+  setSettingsExpanded,
+  setNewPuzzleMenuOpen,
+  colorTheme,
+  onSetColorTheme,
+  gameActions,
+  autoSaveEnabled,
+  handleAutoSaveToggle,
+}: SettingsSectionProps) {
+  return (
+    <div className="rounded-lg overflow-hidden">
+      <button
+        onClick={() => {
+          setSettingsExpanded(!settingsExpanded)
+          setNewPuzzleMenuOpen(false)
+        }}
+        className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
+      >
+        <span className="flex items-center gap-3">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Settings
+        </span>
+        <svg className={`h-3 w-3 transition-transform ${settingsExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {settingsExpanded && (
+        <div className="ml-4 py-1 space-y-1">
+          {/* Color theme picker */}
+          <div className="flex items-center justify-between px-3 py-2">
+            <span className="text-sm text-foreground-muted">{COLOR_THEMES.find(t => t.key === colorTheme)?.label ?? colorTheme}</span>
+            <div className="flex gap-1">
+              {COLOR_THEMES.map((theme) => (
+                <button
+                  key={theme.key}
+                  onClick={() => onSetColorTheme(theme.key)}
+                  className={`w-4 h-4 rounded-full ${theme.color} transition-transform ${
+                    colorTheme === theme.key 
+                      ? 'ring-2 ring-offset-1 ring-foreground scale-110' 
+                      : 'hover:scale-110'
+                  }`}
+                  title={theme.label}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Timer + Auto-save toggles (game only) */}
+          {gameActions && (
+            <div className="space-y-1">
+              {/* Show Timer toggle */}
+              <button
+                onClick={gameActions.onToggleHideTimer}
+                className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-btn-hover rounded-lg"
+              >
+                <span className="flex items-center gap-3">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Show Timer
+                </span>
+                <div className={`w-9 h-5 rounded-full transition-colors ${!gameActions.hideTimerState ? 'bg-accent' : 'bg-board-border-light'}`}>
+                  <div className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${!gameActions.hideTimerState ? 'translate-x-4' : 'translate-x-0'}`} />
+                </div>
+              </button>
+              
+              {/* Auto-save Progress toggle */}
+              <button
+                onClick={handleAutoSaveToggle}
+                className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-btn-hover rounded-lg"
+              >
+                <span className="flex items-center gap-3">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  Auto-Save Progress
+                </span>
+                <div className={`w-9 h-5 rounded-full transition-colors ${autoSaveEnabled ? 'bg-accent' : 'bg-board-border-light'}`}>
+                  <div className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${autoSaveEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// MAIN COMPONENT: Menu
+// =============================================================================
 export default function Menu({
   isOpen,
   onClose,
@@ -170,6 +473,18 @@ export default function Menu({
     }
   }
 
+  const handleClearCache = async () => {
+    try {
+      await clearAllCaches()
+      setCacheCleared(true)
+      setTimeout(() => setCacheCleared(false), 3000)
+      // Reload page to get fresh content
+      window.location.reload()
+    } catch (error) {
+      console.error('Failed to clear caches:', error)
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -205,287 +520,32 @@ export default function Menu({
 
           <div className="p-3 space-y-1">
             {/* Navigation Links (for non-game pages) */}
-            {showNavigation && (
-              <>
-                <Link
-                  to="/"
-                  onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Play
-                </Link>
-                <Link
-                  to="/techniques"
-                  onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                  Learn Techniques
-                </Link>
-                <Link
-                  to="/leaderboard"
-                  onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  Leaderboard
-                </Link>
-                <Link
-                  to="/custom"
-                  onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Custom Puzzle
-                </Link>
-                <Link
-                  to="/techniques/how-to-play"
-                  onClick={onClose}
-                  className="flex items-center gap-3 px-3 py-2.5 text-foreground rounded-lg hover:bg-btn-hover"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  How to Play
-                </Link>
-                <div className="my-1 border-t border-board-border-light" />
-              </>
-            )}
+            {showNavigation && <NavigationSection onClose={onClose} />}
 
             {/* Game Actions (for game page) */}
             {gameActions && (
-              <>
-                <div className="px-3 py-1">
-                  <span className="text-xs font-medium text-foreground-muted uppercase tracking-wide">Actions</span>
-                </div>
-                <button
-                  onClick={() => { gameActions.onAutoFillNotes(); onClose() }}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Auto-fill Notes
-                </button>
-                <button
-                  onClick={() => { gameActions.onCheckNotes(); onClose() }}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
-                  Check Notes
-                </button>
-                <button
-                  onClick={() => { gameActions.onClearNotes(); onClose() }}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Clear Notes
-                </button>
-                <button
-                  onClick={() => { gameActions.onValidate(); onClose() }}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Check Progress
-                </button>
-                
-                {/* Solve with speed options */}
-                <div className="flex w-full items-center px-3 py-2 rounded-lg hover:bg-btn-hover">
-                  <button
-                    onClick={() => { gameActions.onSolve(); onClose() }}
-                    className="flex items-center gap-3 text-sm text-foreground"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    Solve
-                  </button>
-                  <div className="ml-auto flex gap-0.5">
-                    {speedOptions.map(({ speed, icon, label }) => (
-                      <button
-                        key={speed}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleSpeedChange(speed)
-                          onClose()
-                          gameActions.onSolve()
-                        }}
-                        title={`${label} - Click to start`}
-                        className={`p-1 rounded ${
-                          gameActions.autoSolveSpeed === speed
-                            ? 'bg-accent text-btn-active-text'
-                            : 'text-foreground-muted hover:bg-btn-hover hover:text-foreground'
-                        }`}
-                      >
-                        {icon}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                
-                <button
-                  onClick={() => { gameActions.onClearAll(); onClose() }}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
-                >
-                  {gameActions.isComplete ? (
-                    <>
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Restart
-                    </>
-                  ) : (
-                    <>
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Clear All
-                    </>
-                  )}
-                </button>
-
-                <div className="my-1 border-t border-board-border-light" />
-
-                {/* New Game submenu */}
-                <div className="rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => {
-                      setNewPuzzleMenuOpen(!newPuzzleMenuOpen)
-                      setSettingsExpanded(false)
-                    }}
-                    className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
-                  >
-                    <span className="flex items-center gap-3">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      New Game
-                    </span>
-                    <svg className={`h-3 w-3 transition-transform ${newPuzzleMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {newPuzzleMenuOpen && (
-                    <div className="ml-8 py-1 space-y-0.5">
-                      {['easy', 'medium', 'hard', 'extreme', 'impossible'].map((d) => (
-                        <button
-                          key={d}
-                          onClick={() => handleNewPuzzle(d)}
-                          className="block w-full px-3 py-1.5 text-left text-sm capitalize text-foreground-muted hover:text-foreground rounded-lg hover:bg-btn-hover"
-                        >
-                          {d}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => handleNewPuzzle('custom')}
-                        className="block w-full px-3 py-1.5 text-left text-sm text-foreground-muted hover:text-foreground rounded-lg hover:bg-btn-hover"
-                      >
-                        Custom
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="my-1 border-t border-board-border-light" />
-              </>
+              <GameActionsSection
+                gameActions={gameActions}
+                onClose={onClose}
+                newPuzzleMenuOpen={newPuzzleMenuOpen}
+                setNewPuzzleMenuOpen={setNewPuzzleMenuOpen}
+                setSettingsExpanded={setSettingsExpanded}
+                handleNewPuzzle={handleNewPuzzle}
+                handleSpeedChange={handleSpeedChange}
+              />
             )}
 
             {/* Settings Section - Collapsible */}
-            <div className="rounded-lg overflow-hidden">
-              <button
-                onClick={() => {
-                  setSettingsExpanded(!settingsExpanded)
-                  setNewPuzzleMenuOpen(false)
-                }}
-                className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
-              >
-                <span className="flex items-center gap-3">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  Settings
-                </span>
-                <svg className={`h-3 w-3 transition-transform ${settingsExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {settingsExpanded && (
-                <div className="ml-4 py-1 space-y-1">
-                  {/* Color theme picker */}
-                  <div className="flex items-center justify-between px-3 py-2">
-                    <span className="text-sm text-foreground-muted">{colorThemes.find(t => t.key === colorTheme)?.label ?? colorTheme}</span>
-                    <div className="flex gap-1">
-                      {colorThemes.map((theme) => (
-                        <button
-                          key={theme.key}
-                          onClick={() => onSetColorTheme(theme.key)}
-                          className={`w-4 h-4 rounded-full ${theme.color} transition-transform ${
-                            colorTheme === theme.key 
-                              ? 'ring-2 ring-offset-1 ring-foreground scale-110' 
-                              : 'hover:scale-110'
-                          }`}
-                          title={theme.label}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Timer + Auto-save toggles (game only) */}
-                  {gameActions && (
-                    <div className="space-y-1">
-                      {/* Show Timer toggle */}
-                      <button
-                        onClick={gameActions.onToggleHideTimer}
-                        className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-btn-hover rounded-lg"
-                      >
-                        <span className="flex items-center gap-3">
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          Show Timer
-                        </span>
-                        <div className={`w-9 h-5 rounded-full transition-colors ${!gameActions.hideTimerState ? 'bg-accent' : 'bg-board-border-light'}`}>
-                          <div className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${!gameActions.hideTimerState ? 'translate-x-4' : 'translate-x-0'}`} />
-                        </div>
-                      </button>
-                      
-                      {/* Auto-save Progress toggle */}
-                      <button
-                        onClick={handleAutoSaveToggle}
-                        className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-btn-hover rounded-lg"
-                      >
-                        <span className="flex items-center gap-3">
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
-                          </svg>
-                          Auto-Save Progress
-                        </span>
-                        <div className={`w-9 h-5 rounded-full transition-colors ${autoSaveEnabled ? 'bg-accent' : 'bg-board-border-light'}`}>
-                          <div className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${autoSaveEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
-                        </div>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <SettingsSection
+              settingsExpanded={settingsExpanded}
+              setSettingsExpanded={setSettingsExpanded}
+              setNewPuzzleMenuOpen={setNewPuzzleMenuOpen}
+              colorTheme={colorTheme}
+              onSetColorTheme={onSetColorTheme}
+              gameActions={gameActions}
+              autoSaveEnabled={autoSaveEnabled}
+              handleAutoSaveToggle={handleAutoSaveToggle}
+            />
 
             {/* Homepage mode toggle (homepage only) */}
             {homepageActions && (
@@ -552,17 +612,7 @@ export default function Menu({
                   <span className="text-xs font-medium text-foreground-muted uppercase tracking-wide">Debug</span>
                 </div>
                 <button
-                  onClick={async () => {
-                    try {
-                      await clearAllCaches()
-                      setCacheCleared(true)
-                      setTimeout(() => setCacheCleared(false), 3000)
-                      // Reload page to get fresh content
-                      window.location.reload()
-                    } catch (error) {
-                      console.error('Failed to clear caches:', error)
-                    }
-                  }}
+                  onClick={handleClearCache}
                   className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground-muted rounded-lg hover:bg-btn-hover"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -575,17 +625,7 @@ export default function Menu({
 
             {/* Production Cache Clear (always available) */}
             <button
-              onClick={async () => {
-                try {
-                  await clearAllCaches()
-                  setCacheCleared(true)
-                  setTimeout(() => setCacheCleared(false), 3000)
-                  // Reload page to get fresh content
-                  window.location.reload()
-                } catch (error) {
-                  console.error('Failed to clear caches:', error)
-                }
-              }}
+              onClick={handleClearCache}
               className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground-muted rounded-lg hover:bg-btn-hover"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
