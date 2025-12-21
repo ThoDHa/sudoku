@@ -48,57 +48,12 @@ func buildStrongLinks(b *Board) map[candidateNode][]candidateNode {
 
 	// Strong links from conjugate pairs (only 2 places for digit in a unit)
 	for digit := 1; digit <= 9; digit++ {
-		// Check rows
-		for row := 0; row < 9; row++ {
-			cells := []int{}
-			for col := 0; col < 9; col++ {
-				idx := row*9 + col
-				if b.Cells[idx] == 0 && b.Candidates[idx].Has(digit) {
-					cells = append(cells, idx)
-				}
-			}
+		for _, unit := range AllUnits() {
+			cells := b.CellsWithDigitInUnit(unit, digit)
 			if len(cells) == 2 {
 				n1 := candidateNode{cell: cells[0], digit: digit}
 				n2 := candidateNode{cell: cells[1], digit: digit}
-				links[n1] = append(links[n1], n2)
-				links[n2] = append(links[n2], n1)
-			}
-		}
-
-		// Check columns
-		for col := 0; col < 9; col++ {
-			cells := []int{}
-			for row := 0; row < 9; row++ {
-				idx := row*9 + col
-				if b.Cells[idx] == 0 && b.Candidates[idx].Has(digit) {
-					cells = append(cells, idx)
-				}
-			}
-			if len(cells) == 2 {
-				n1 := candidateNode{cell: cells[0], digit: digit}
-				n2 := candidateNode{cell: cells[1], digit: digit}
-				links[n1] = append(links[n1], n2)
-				links[n2] = append(links[n2], n1)
-			}
-		}
-
-		// Check boxes
-		for box := 0; box < 9; box++ {
-			cells := []int{}
-			startRow := (box / 3) * 3
-			startCol := (box % 3) * 3
-			for r := 0; r < 3; r++ {
-				for c := 0; c < 3; c++ {
-					idx := (startRow+r)*9 + (startCol + c)
-					if b.Cells[idx] == 0 && b.Candidates[idx].Has(digit) {
-						cells = append(cells, idx)
-					}
-				}
-			}
-			if len(cells) == 2 {
-				n1 := candidateNode{cell: cells[0], digit: digit}
-				n2 := candidateNode{cell: cells[1], digit: digit}
-				// Avoid duplicates if already added from row/col
+				// Avoid duplicates if pair appears in multiple units
 				if !containsNode(links[n1], n2) {
 					links[n1] = append(links[n1], n2)
 					links[n2] = append(links[n2], n1)

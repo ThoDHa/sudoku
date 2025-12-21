@@ -180,43 +180,9 @@ func findConjugatePairs(b *Board, digit int) [][2]int {
 		}
 	}
 
-	// Check rows
-	for row := 0; row < 9; row++ {
-		var cells []int
-		for col := 0; col < 9; col++ {
-			if b.Candidates[row*9+col].Has(digit) {
-				cells = append(cells, row*9+col)
-			}
-		}
-		if len(cells) == 2 {
-			addPair(cells[0], cells[1])
-		}
-	}
-
-	// Check columns
-	for col := 0; col < 9; col++ {
-		var cells []int
-		for row := 0; row < 9; row++ {
-			if b.Candidates[row*9+col].Has(digit) {
-				cells = append(cells, row*9+col)
-			}
-		}
-		if len(cells) == 2 {
-			addPair(cells[0], cells[1])
-		}
-	}
-
-	// Check boxes
-	for box := 0; box < 9; box++ {
-		var cells []int
-		boxRow, boxCol := (box/3)*3, (box%3)*3
-		for r := boxRow; r < boxRow+3; r++ {
-			for c := boxCol; c < boxCol+3; c++ {
-				if b.Candidates[r*9+c].Has(digit) {
-					cells = append(cells, r*9+c)
-				}
-			}
-		}
+	// Check all units (rows, columns, boxes)
+	for _, unit := range AllUnits() {
+		cells := b.CellsWithDigitInUnit(unit, digit)
 		if len(cells) == 2 {
 			addPair(cells[0], cells[1])
 		}

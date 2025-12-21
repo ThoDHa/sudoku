@@ -53,7 +53,7 @@ func detectHiddenSingle(b *Board) *core.Move {
 						Explanation: fmt.Sprintf("In row %d, %d can only go in R%dC%d", row+1, digit, row+1, col+1),
 						Highlights: core.Highlights{
 							Primary:   []core.CellRef{{Row: row, Col: col}},
-							Secondary: getRowCells(row),
+							Secondary: ToCellRefs(RowIndices[row]),
 						},
 					}
 				}
@@ -86,7 +86,7 @@ func detectHiddenSingle(b *Board) *core.Move {
 						Explanation: fmt.Sprintf("In column %d, %d can only go in R%dC%d", col+1, digit, row+1, col+1),
 						Highlights: core.Highlights{
 							Primary:   []core.CellRef{{Row: row, Col: col}},
-							Secondary: getColCells(col),
+							Secondary: ToCellRefs(ColIndices[col]),
 						},
 					}
 				}
@@ -126,7 +126,7 @@ func detectHiddenSingle(b *Board) *core.Move {
 						Explanation: fmt.Sprintf("In box %d, %d can only go in R%dC%d", box+1, digit, pos.Row+1, pos.Col+1),
 						Highlights: core.Highlights{
 							Primary:   []core.CellRef{pos},
-							Secondary: getBoxCells(box),
+							Secondary: ToCellRefs(BoxIndices[box]),
 						},
 					}
 				}
@@ -185,7 +185,7 @@ func detectPointingPair(b *Board) *core.Move {
 						Explanation:  fmt.Sprintf("In box %d, %d is confined to row %d; eliminate from rest of row", box+1, digit, row+1),
 						Highlights: core.Highlights{
 							Primary:   positions,
-							Secondary: getRowCells(row),
+							Secondary: ToCellRefs(RowIndices[row]),
 						},
 					}
 				}
@@ -220,7 +220,7 @@ func detectPointingPair(b *Board) *core.Move {
 						Explanation:  fmt.Sprintf("In box %d, %d is confined to column %d; eliminate from rest of column", box+1, digit, col+1),
 						Highlights: core.Highlights{
 							Primary:   positions,
-							Secondary: getColCells(col),
+							Secondary: ToCellRefs(ColIndices[col]),
 						},
 					}
 				}
@@ -278,7 +278,7 @@ func detectBoxLineReduction(b *Board) *core.Move {
 						Explanation:  fmt.Sprintf("In row %d, %d is confined to one box; eliminate from rest of box", row+1, digit),
 						Highlights: core.Highlights{
 							Primary:   positions,
-							Secondary: getBoxCells((row/3)*3 + boxCol/3),
+							Secondary: ToCellRefs(BoxIndices[(row/3)*3+boxCol/3]),
 						},
 					}
 				}
@@ -332,7 +332,7 @@ func detectBoxLineReduction(b *Board) *core.Move {
 						Explanation:  fmt.Sprintf("In column %d, %d is confined to one box; eliminate from rest of box", col+1, digit),
 						Highlights: core.Highlights{
 							Primary:   positions,
-							Secondary: getBoxCells(boxRow/3*3 + col/3),
+							Secondary: ToCellRefs(BoxIndices[boxRow/3*3+col/3]),
 						},
 					}
 				}
@@ -341,32 +341,4 @@ func detectBoxLineReduction(b *Board) *core.Move {
 	}
 
 	return nil
-}
-
-// Helper functions
-func getRowCells(row int) []core.CellRef {
-	cells := make([]core.CellRef, 9)
-	for c := 0; c < 9; c++ {
-		cells[c] = core.CellRef{Row: row, Col: c}
-	}
-	return cells
-}
-
-func getColCells(col int) []core.CellRef {
-	cells := make([]core.CellRef, 9)
-	for r := 0; r < 9; r++ {
-		cells[r] = core.CellRef{Row: r, Col: col}
-	}
-	return cells
-}
-
-func getBoxCells(box int) []core.CellRef {
-	cells := make([]core.CellRef, 0, 9)
-	boxRow, boxCol := (box/3)*3, (box%3)*3
-	for r := boxRow; r < boxRow+3; r++ {
-		for c := boxCol; c < boxCol+3; c++ {
-			cells = append(cells, core.CellRef{Row: r, Col: c})
-		}
-	}
-	return cells
 }
