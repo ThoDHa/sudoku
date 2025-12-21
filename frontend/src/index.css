@@ -142,18 +142,20 @@ html, body {
 
 /* Game area wrapper - establishes height constraints for game pages */
 /* Calculates available space after header for board + controls */
-/* Controls height is ~40% of board width (3 digit rows + actions + gaps) */
-/* So total = board + 0.4*board = 1.4*board, meaning board = available / 1.4 ≈ 71% */
+/* Controls are 4 board cells wide, with 3x3 digit grid + action row */
+/* Controls height ≈ 58% of board width (44.44 + 10.36 + gaps) */
+/* So total = board + 0.58*board = 1.58*board, meaning board = available / 1.58 ≈ 63% */
 .game-area {
   --available-height: calc(100dvh - var(--game-header-height) - var(--page-padding) * 2);
-  /* Board can be at most 70% of available height (controls take remaining 30%) */
-  --board-max-by-height: calc(var(--available-height) * 0.70);
+  /* Board can be at most 63% of available height (controls take remaining 37%) */
+  --board-max-by-height: calc(var(--available-height) * 0.63);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: var(--available-height);
+  height: calc(100dvh - var(--game-header-height));
+  /* Equal padding above board and below controls */
   padding: var(--page-padding);
 }
 
@@ -323,21 +325,22 @@ html, body {
 }
 
 /* Control digit buttons - scale with container width */
-/* Container already accounts for height constraints, so we just follow container */
-/* Cell size = 100%/9 ≈ 11.11cqi, buttons slightly smaller for gaps */
+/* Controls total width = 4 board cells = 4 × (100/9)cqi ≈ 44.44cqi */
+/* Digit grid: 3 buttons + 2 gaps (1cqi each) = 44.44cqi */
+/* So 3 buttons = 44.44 - 2 = 42.44cqi, each button ≈ 14.15cqi */
 .control-digit-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   aspect-ratio: 1;
-  /* Width matches cell size (100%/9 ≈ 11.11cqi) minus small gap */
-  width: 10.5cqi;
+  /* Width: (44.44 - 2) / 3 ≈ 14.15cqi */
+  width: 14.15cqi;
   border-radius: 0.375rem;
   /* Subtle border for contrast against background */
   border: 1px solid var(--border-light);
   /* Font scales with button size */
-  font-size: 4.5cqi;
+  font-size: 6cqi;
   font-weight: 600;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -347,7 +350,7 @@ html, body {
 /* Font size scales with button for large font preference */
 @container game (min-width: 1px) {
   :root.font-large .control-digit-btn {
-    font-size: 5cqi;
+    font-size: 7cqi;
   }
 }
 
@@ -383,7 +386,9 @@ html, body {
 }
 
 /* Compact action buttons for single row layout (Notes, Delete, Undo, Redo) */
-/* 4 action buttons should span same width as 3 digit buttons + 2 gaps */
+/* Controls total width = 4 board cells ≈ 44.44cqi */
+/* Action row: 4 buttons + 3 gaps (1cqi each) = 44.44cqi */
+/* So 4 buttons = 44.44 - 3 = 41.44cqi, each button ≈ 10.36cqi */
 .control-action-btn-compact {
   display: flex;
   align-items: center;
@@ -392,8 +397,8 @@ html, body {
   border-radius: 0.375rem;
   /* Subtle border for contrast against background */
   border: 1px solid var(--border-light);
-  /* Width scales purely with container - no min/max constraints */
-  width: 6.5cqi;
+  /* Width: (44.44 - 3) / 4 ≈ 10.36cqi */
+  width: 10.36cqi;
   aspect-ratio: 1;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -401,13 +406,14 @@ html, body {
 }
 
 /* Icon sizing within action buttons - scales with container */
+/* Icons scale proportionally with button size (roughly 50% of button width) */
 .control-action-btn-compact svg {
-  width: 3.5cqi;
-  height: 3.5cqi;
+  width: 5.5cqi;
+  height: 5.5cqi;
 }
 
 .control-action-btn-compact .text-base {
-  font-size: 3cqi;
+  font-size: 5cqi;
 }
 
 /* Action buttons with text labels (shown on larger screens) */
