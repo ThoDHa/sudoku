@@ -67,7 +67,7 @@ func detectALSXYWing(b *Board) *core.Move {
 						}
 
 						// Find common digit Z in B and C (but Z should not be an RC between B and C)
-						commonBC := findCommonDigits(alsB.Digits, alsC.Digits)
+						commonBC := IntersectInts(alsB.Digits, alsC.Digits)
 						for _, z := range commonBC {
 							if z == x || z == y {
 								continue
@@ -252,7 +252,7 @@ func checkChainElimination(b *Board, allALS []ALS, path []int, rcUsed []int) *co
 	lastALS := allALS[path[len(path)-1]]
 
 	// Find common digits between first and last ALS
-	commonDigits := findCommonDigits(firstALS.Digits, lastALS.Digits)
+	commonDigits := IntersectInts(firstALS.Digits, lastALS.Digits)
 
 	// Collect all cells in the chain
 	var allChainCells []int
@@ -315,7 +315,7 @@ func checkChainElimination(b *Board, allALS []ALS, path []int, rcUsed []int) *co
 func findRestrictedCommons(a, b ALS) []int {
 	var rcs []int
 
-	commonDigits := findCommonDigits(a.Digits, b.Digits)
+	commonDigits := IntersectInts(a.Digits, b.Digits)
 	for _, d := range commonDigits {
 		if isRestrictedCommon(a, b, d) {
 			rcs = append(rcs, d)
@@ -335,7 +335,7 @@ func isRestrictedCommon(a, b ALS, d int) bool {
 	}
 
 	// All cells in A with d must see all cells in B with d
-	return allSeeAll(cellsA, cellsB)
+	return AllSeeAll(cellsA, cellsB)
 }
 
 // findZEliminations finds cells that can eliminate digit z

@@ -440,7 +440,7 @@ func detectALSXZ(b *Board) *core.Move {
 			}
 
 			// Find common digits between the two ALS
-			commonDigits := findCommonDigits(alsA.Digits, alsB.Digits)
+			commonDigits := IntersectInts(alsA.Digits, alsB.Digits)
 			if len(commonDigits) < 2 {
 				continue // Need at least X (restricted common) and Z (elimination digit)
 			}
@@ -452,7 +452,7 @@ func detectALSXZ(b *Board) *core.Move {
 				xCellsA := alsA.ByDigit[x]
 				xCellsB := alsB.ByDigit[x]
 
-				if !allSeeAll(xCellsA, xCellsB) {
+				if !AllSeeAll(xCellsA, xCellsB) {
 					continue
 				}
 
@@ -542,30 +542,4 @@ func alsShareCells(a, b ALS) bool {
 		}
 	}
 	return false
-}
-
-func findCommonDigits(a, b []int) []int {
-	set := make(map[int]bool)
-	for _, d := range a {
-		set[d] = true
-	}
-
-	var common []int
-	for _, d := range b {
-		if set[d] {
-			common = append(common, d)
-		}
-	}
-	return common
-}
-
-func allSeeAll(cellsA, cellsB []int) bool {
-	for _, a := range cellsA {
-		for _, b := range cellsB {
-			if !ArePeers(a, b) {
-				return false
-			}
-		}
-	}
-	return true
 }

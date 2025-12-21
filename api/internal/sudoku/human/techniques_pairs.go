@@ -8,27 +8,11 @@ import (
 
 // detectNakedPair finds two cells in a unit with the same two candidates
 func detectNakedPair(b *Board) *core.Move {
-	// Check rows
-	for row := 0; row < 9; row++ {
-		if move := findNakedPairInUnit(b, RowIndices[row], "row", row+1); move != nil {
+	for _, unit := range AllUnits() {
+		if move := findNakedPairInUnit(b, unit.Cells, unit.Type.String(), unit.Index+1); move != nil {
 			return move
 		}
 	}
-
-	// Check columns
-	for col := 0; col < 9; col++ {
-		if move := findNakedPairInUnit(b, ColIndices[col], "column", col+1); move != nil {
-			return move
-		}
-	}
-
-	// Check boxes
-	for box := 0; box < 9; box++ {
-		if move := findNakedPairInUnit(b, BoxIndices[box], "box", box+1); move != nil {
-			return move
-		}
-	}
-
 	return nil
 }
 
@@ -92,27 +76,11 @@ func findNakedPairInUnit(b *Board, indices []int, unitType string, unitNum int) 
 
 // detectHiddenPair finds two digits that only appear in two cells within a unit
 func detectHiddenPair(b *Board) *core.Move {
-	// Check rows
-	for row := 0; row < 9; row++ {
-		if move := findHiddenPairInUnit(b, RowIndices[row], "row", row+1); move != nil {
+	for _, unit := range AllUnits() {
+		if move := findHiddenPairInUnit(b, unit.Cells, unit.Type.String(), unit.Index+1); move != nil {
 			return move
 		}
 	}
-
-	// Check columns
-	for col := 0; col < 9; col++ {
-		if move := findHiddenPairInUnit(b, ColIndices[col], "column", col+1); move != nil {
-			return move
-		}
-	}
-
-	// Check boxes
-	for box := 0; box < 9; box++ {
-		if move := findHiddenPairInUnit(b, BoxIndices[box], "box", box+1); move != nil {
-			return move
-		}
-	}
-
 	return nil
 }
 

@@ -258,6 +258,15 @@ func ToCellRef(idx int) core.CellRef {
 	return core.CellRef{Row: RowOf(idx), Col: ColOf(idx)}
 }
 
+// ToCellRefs converts a slice of cell indices to CellRefs
+func ToCellRefs(cells []int) []core.CellRef {
+	refs := make([]core.CellRef, len(cells))
+	for i, idx := range cells {
+		refs[i] = ToCellRef(idx)
+	}
+	return refs
+}
+
 // FromCellRef converts a CellRef to a cell index
 func FromCellRef(ref core.CellRef) int {
 	return IndexOf(ref.Row, ref.Col)
@@ -664,6 +673,18 @@ func AllSeeEachOther(cells []int) bool {
 	for i := 0; i < len(cells); i++ {
 		for j := i + 1; j < len(cells); j++ {
 			if !ArePeers(cells[i], cells[j]) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// AllSeeAll returns true if every cell in cellsA sees every cell in cellsB
+func AllSeeAll(cellsA, cellsB []int) bool {
+	for _, a := range cellsA {
+		for _, b := range cellsB {
+			if !ArePeers(a, b) {
 				return false
 			}
 		}

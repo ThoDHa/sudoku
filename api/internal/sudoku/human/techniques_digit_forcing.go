@@ -39,79 +39,17 @@ func (r *digitForcingResult) addElimination(idx, digit int) {
 // 2. Propagate forced implications (naked singles, hidden singles)
 // 3. Find conclusions common to ALL branches
 func detectDigitForcingChain(b *Board) *core.Move {
-	// Check each unit type: rows, columns, boxes
 	for digit := 1; digit <= 9; digit++ {
-		// Check rows
-		for row := 0; row < 9; row++ {
-			positions := getDigitPositionsInRow(b, row, digit)
+		for _, unit := range AllUnits() {
+			positions := b.CellsWithDigitInUnit(unit, digit)
 			if len(positions) >= 2 && len(positions) <= 3 {
-				if move := tryDigitForcingChain(b, digit, positions, "row", row); move != nil {
-					return move
-				}
-			}
-		}
-
-		// Check columns
-		for col := 0; col < 9; col++ {
-			positions := getDigitPositionsInCol(b, col, digit)
-			if len(positions) >= 2 && len(positions) <= 3 {
-				if move := tryDigitForcingChain(b, digit, positions, "column", col); move != nil {
-					return move
-				}
-			}
-		}
-
-		// Check boxes
-		for box := 0; box < 9; box++ {
-			positions := getDigitPositionsInBox(b, box, digit)
-			if len(positions) >= 2 && len(positions) <= 3 {
-				if move := tryDigitForcingChain(b, digit, positions, "box", box); move != nil {
+				if move := tryDigitForcingChain(b, digit, positions, unit.Type.String(), unit.Index); move != nil {
 					return move
 				}
 			}
 		}
 	}
-
 	return nil
-}
-
-// getDigitPositionsInRow returns cell indices where digit is a candidate in the row
-func getDigitPositionsInRow(b *Board, row, digit int) []int {
-	var positions []int
-	for col := 0; col < 9; col++ {
-		idx := row*9 + col
-		if b.Candidates[idx].Has(digit) {
-			positions = append(positions, idx)
-		}
-	}
-	return positions
-}
-
-// getDigitPositionsInCol returns cell indices where digit is a candidate in the column
-func getDigitPositionsInCol(b *Board, col, digit int) []int {
-	var positions []int
-	for row := 0; row < 9; row++ {
-		idx := row*9 + col
-		if b.Candidates[idx].Has(digit) {
-			positions = append(positions, idx)
-		}
-	}
-	return positions
-}
-
-// getDigitPositionsInBox returns cell indices where digit is a candidate in the box
-func getDigitPositionsInBox(b *Board, box, digit int) []int {
-	var positions []int
-	boxRow, boxCol := (box/3)*3, (box%3)*3
-	for r := boxRow; r < boxRow+3; r++ {
-		for c := boxCol; c < boxCol+3; c++ {
-			idx := r*9 + c
-			if b.Candidates[idx].Has(digit) {
-				positions = append(positions, idx)
-			}
-		}
-	}
-	return positions
 }
 
 // tryDigitForcingChain attempts to find a common conclusion when placing digit

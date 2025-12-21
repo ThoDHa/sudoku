@@ -2,7 +2,6 @@ package human
 
 import (
 	"fmt"
-	"sort"
 
 	"sudoku-api/internal/core"
 )
@@ -323,9 +322,9 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 					Explanation: fmt.Sprintf("Sue de Coq: intersection of box %d and %s %d with candidates {%s}; "+
 						"box ALS {%s} covers {%s}, %s ALS {%s} covers {%s}",
 						box+1, lineType, lineNum,
-						formatDigits(intersectionDigits),
-						FormatCells(boxALS.Cells), formatDigits(boxALS.Digits),
-						lineType, FormatCells(lineALS.Cells), formatDigits(lineALS.Digits)),
+						FormatDigits(intersectionDigits),
+						FormatCells(boxALS.Cells), FormatDigits(boxALS.Digits),
+						lineType, FormatCells(lineALS.Cells), FormatDigits(lineALS.Digits)),
 					Highlights: core.Highlights{
 						Primary:   primary,
 						Secondary: secondary,
@@ -506,20 +505,4 @@ func digitsOverlap(a, b []int) bool {
 		}
 	}
 	return false
-}
-
-// formatDigits formats a slice of digits for display
-func formatDigits(digits []int) string {
-	sorted := make([]int, len(digits))
-	copy(sorted, digits)
-	sort.Ints(sorted)
-
-	result := ""
-	for i, d := range sorted {
-		if i > 0 {
-			result += ","
-		}
-		result += fmt.Sprintf("%d", d)
-	}
-	return result
 }

@@ -279,3 +279,41 @@ func (b *Board) GetCandidates() [][]int {
 	}
 	return result
 }
+
+// ============================================================================
+// Query Helpers
+// ============================================================================
+
+// CellsWithNCandidates returns all cells with exactly n candidates
+func (b *Board) CellsWithNCandidates(n int) []int {
+	var cells []int
+	for i := 0; i < 81; i++ {
+		if b.Candidates[i].Count() == n {
+			cells = append(cells, i)
+		}
+	}
+	return cells
+}
+
+// CellsWithCandidateRange returns all cells with min to max candidates (inclusive)
+func (b *Board) CellsWithCandidateRange(min, max int) []int {
+	var cells []int
+	for i := 0; i < 81; i++ {
+		count := b.Candidates[i].Count()
+		if count >= min && count <= max {
+			cells = append(cells, i)
+		}
+	}
+	return cells
+}
+
+// CellsWithDigitInUnit returns cells in the unit that have digit as a candidate
+func (b *Board) CellsWithDigitInUnit(unit Unit, digit int) []int {
+	var cells []int
+	for _, idx := range unit.Cells {
+		if b.Candidates[idx].Has(digit) {
+			cells = append(cells, idx)
+		}
+	}
+	return cells
+}

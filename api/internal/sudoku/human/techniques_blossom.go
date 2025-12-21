@@ -2,6 +2,7 @@ package human
 
 import (
 	"fmt"
+	"sort"
 
 	"sudoku-api/internal/core"
 )
@@ -122,7 +123,7 @@ func findBlossomALS(b *Board) []ALS {
 					// Create sorted copy of cells
 					sortedCells := make([]int, len(combo))
 					copy(sortedCells, combo)
-					sortSlice(sortedCells)
+					sort.Ints(sortedCells)
 
 					allALS = append(allALS, ALS{
 						Cells:   sortedCells,
@@ -352,7 +353,7 @@ func findBlossomEliminations(b *Board, stem int, petals []ALS, z int, stemCands 
 	// Build explanation
 	stemRow, stemCol := stem/9, stem%9
 	explanation := fmt.Sprintf("Death Blossom: stem R%dC%d {%v} with %d petals; eliminate %d",
-		stemRow+1, stemCol+1, formatDigitsBlossom(stemCands), len(petals), z)
+		stemRow+1, stemCol+1, FormatDigits(stemCands), len(petals), z)
 
 	return &core.Move{
 		Action:       "eliminate",
@@ -365,27 +366,4 @@ func findBlossomEliminations(b *Board, stem int, petals []ALS, z int, stemCands 
 			Secondary: secondary,
 		},
 	}
-}
-
-// sortSlice sorts a slice of ints in ascending order
-func sortSlice(s []int) {
-	for i := 0; i < len(s)-1; i++ {
-		for j := i + 1; j < len(s); j++ {
-			if s[j] < s[i] {
-				s[i], s[j] = s[j], s[i]
-			}
-		}
-	}
-}
-
-// formatDigitsBlossom formats a slice of digits for display
-func formatDigitsBlossom(digits []int) string {
-	result := ""
-	for i, d := range digits {
-		if i > 0 {
-			result += ","
-		}
-		result += fmt.Sprintf("%d", d)
-	}
-	return result
 }
