@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { memo } from 'react'
 import { hasCandidate, countCandidates } from '../lib/candidatesUtils'
 
 interface Move {
@@ -103,7 +103,7 @@ function findDuplicates(board: number[]): Set<number> {
   return duplicates
 }
 
-export default function Board({
+const Board = memo(function Board({
   board,
   initialBoard,
   candidates,
@@ -504,4 +504,6 @@ export default function Board({
       ))}
     </div>
   )
-}
+})
+
+export default Board
