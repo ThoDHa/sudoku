@@ -8,12 +8,12 @@ interface DifficultyBadgeProps {
 }
 
 const difficultyStyles: Record<Difficulty, string> = {
-  easy: 'bg-green-500/10 text-green-600 dark:text-green-400',
-  medium: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
-  hard: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-  extreme: 'bg-red-500/10 text-red-600 dark:text-red-400',
-  impossible: 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400',
-  custom: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+  easy: 'bg-diff-easy/15 text-diff-easy',
+  medium: 'bg-diff-medium/15 text-diff-medium',
+  hard: 'bg-diff-hard/15 text-diff-hard',
+  extreme: 'bg-diff-extreme/15 text-diff-extreme',
+  impossible: 'bg-diff-impossible/15 text-diff-impossible',
+  custom: 'bg-diff-impossible/15 text-diff-impossible',
 }
 
 const sizeStyles: Record<BadgeSize, string> = {
