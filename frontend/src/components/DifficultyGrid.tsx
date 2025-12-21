@@ -9,12 +9,12 @@ interface DifficultyGridProps {
   routePrefix?: string // '/p' for daily, '/game' for practice
 }
 
-const difficulties: { key: Difficulty; givensHint: string }[] = [
-  { key: 'easy', givensHint: '~38-40' },
-  { key: 'medium', givensHint: '~32-36' },
-  { key: 'hard', givensHint: '~26-30' },
-  { key: 'extreme', givensHint: '~22-25' },
-  { key: 'impossible', givensHint: '~17-21' },
+const difficulties: Difficulty[] = [
+  'easy',
+  'medium',
+  'hard',
+  'extreme',
+  'impossible',
 ]
 
 export default function DifficultyGrid({ seed, lastSelected, onSelect, routePrefix = '/p' }: DifficultyGridProps) {
@@ -26,26 +26,24 @@ export default function DifficultyGrid({ seed, lastSelected, onSelect, routePref
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="difficulty-grid flex flex-col">
       {/* Top row: Easy, Medium, Hard */}
-      <div className="grid grid-cols-3 gap-4">
-        {difficulties.slice(0, 3).map(({ key, givensHint }) => (
+      <div className="grid grid-cols-3 gap-[inherit]">
+        {difficulties.slice(0, 3).map((key) => (
           <DailyCard
             key={key}
             difficulty={key}
-            givensHint={givensHint}
             selected={lastSelected === key}
             onPlay={() => handlePlay(key)}
           />
         ))}
       </div>
       {/* Bottom row: Expert, Impossible (centered) */}
-      <div className="grid grid-cols-2 gap-4 mx-auto w-2/3">
-        {difficulties.slice(3).map(({ key, givensHint }) => (
+      <div className="grid grid-cols-2 gap-[inherit] mx-auto w-2/3">
+        {difficulties.slice(3).map((key) => (
           <DailyCard
             key={key}
             difficulty={key}
-            givensHint={givensHint}
             selected={lastSelected === key}
             onPlay={() => handlePlay(key)}
           />

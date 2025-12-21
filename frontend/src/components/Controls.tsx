@@ -74,27 +74,15 @@ export default function Controls({
   const notesShowSelectedMuted = notesMode && isSolving
 
   return (
-    <div className="controls-container mt-5 sm:mt-6 flex flex-col items-center gap-2 sm:gap-2.5">
-      {/* 3x3 Digit Grid */}
-      <div className="flex flex-col gap-2 sm:gap-2.5">
-        {/* Row 1: Digits 1-3 */}
-        <div className="flex gap-2 sm:gap-2.5 justify-center">
-          {[1, 2, 3].map(renderDigitButton)}
-        </div>
-
-        {/* Row 2: Digits 4-6 */}
-        <div className="flex gap-2 sm:gap-2.5 justify-center">
-          {[4, 5, 6].map(renderDigitButton)}
-        </div>
-
-        {/* Row 3: Digits 7-9 */}
-        <div className="flex gap-2 sm:gap-2.5 justify-center">
-          {[7, 8, 9].map(renderDigitButton)}
-        </div>
+    <div className="controls-grid flex flex-col items-center">
+      {/* 3x3 Digit Grid - collapses to single row on very short screens */}
+      <div className="digit-grid">
+        {/* Default: 3x3 grid, Short screens: single row */}
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(renderDigitButton)}
       </div>
 
       {/* Single Row of 4 Action Buttons */}
-      <div className="flex gap-2 sm:gap-2.5 justify-center mt-2 sm:mt-3">
+      <div className="action-row flex justify-center">
         <button
           onClick={onNotesToggle}
           disabled={controlsDisabled}
@@ -129,7 +117,7 @@ export default function Controls({
           }`}
           title="Erase"
         >
-          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414-6.414a2 2 0 011.414-.586H19a2 2 0 012 2v10a2 2 0 01-2 2h-8.172a2 2 0 01-1.414-.586L3 12z" />
           </svg>
         </button>
@@ -141,7 +129,7 @@ export default function Controls({
           className="control-action-btn-compact bg-btn-bg text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
           title="Undo"
         >
-          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4" />
           </svg>
         </button>
@@ -153,7 +141,7 @@ export default function Controls({
           className="control-action-btn-compact bg-btn-bg text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
           title="Redo"
         >
-          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 10h-10a5 5 0 00-5 5v2M21 10l-4-4m4 4l-4 4" />
           </svg>
         </button>

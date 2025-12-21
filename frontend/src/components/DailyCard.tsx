@@ -3,7 +3,6 @@ import DifficultyBadge from './DifficultyBadge'
 
 interface DailyCardProps {
   difficulty: Difficulty
-  givensHint: string
   selected: boolean
   onPlay: () => void
 }
@@ -57,9 +56,9 @@ const selectedBorders: Record<Difficulty, string> = {
   custom: 'border-purple-500 dark:border-purple-400',
 }
 
-export default function DailyCard({ difficulty, givensHint, selected, onPlay }: DailyCardProps) {
+export default function DailyCard({ difficulty, selected, onPlay }: DailyCardProps) {
   const colors = difficultyColors[difficulty]
-  const baseClasses = 'rounded-xl border-2 p-6 transition-all duration-200 cursor-pointer focus:outline-none'
+  const baseClasses = 'daily-card rounded-xl border-2 transition-all duration-200 cursor-pointer focus:outline-none'
   
   const bgClass = colors.bg
   const borderClass = selected ? selectedBorders[difficulty] : colors.border
@@ -69,10 +68,9 @@ export default function DailyCard({ difficulty, givensHint, selected, onPlay }: 
   return (
     <button
       onClick={onPlay}
-      className={`${baseClasses} ${bgClass} ${borderClass} ${hoverClass} ${ringClass} flex flex-col items-center justify-center gap-3`}
+      className={`${baseClasses} ${bgClass} ${borderClass} ${hoverClass} ${ringClass} flex flex-col items-center justify-center`}
     >
       <DifficultyBadge difficulty={difficulty} size="lg" />
-      <p className="text-sm text-foreground-muted">{givensHint} givens</p>
       <span className="mt-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-btn-active-text hover:opacity-90">
         Play
       </span>
