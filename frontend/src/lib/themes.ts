@@ -157,9 +157,9 @@ function blendColors(color1: string, color2: string, ratio: number): string {
  * All themes use the same logic.
  */
 function createSemanticColors(p: ThemePalette, isDark: boolean): SemanticColors {
-  // cellGiven: Light mode uses cellHover, dark mode uses subtle 5% lighter blend
+  // cellGiven: Light mode uses cellHover, dark mode uses very subtle 2% lighter blend
   const cellGiven = isDark 
-    ? blendColors(p.boardBg, '#ffffff', 0.05)
+    ? blendColors(p.boardBg, '#ffffff', 0.02)
     : p.cellHover
   
   // accentLight: Subtle accent wash for digit matching highlights
