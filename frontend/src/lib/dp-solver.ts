@@ -80,8 +80,12 @@ export function findConflicts(grid: number[]): Conflict[] {
     for (let col = 0; col < 9; col++) {
       const val = getCell(row * 9 + col)
       if (val === 0) continue
-      if (!positions.has(val)) positions.set(val, [])
-      positions.get(val)!.push(col)
+      let arr = positions.get(val)
+      if (!arr) {
+        arr = []
+        positions.set(val, arr)
+      }
+      arr.push(col)
     }
     for (const [val, cols] of positions) {
       if (cols.length > 1) {
@@ -104,8 +108,12 @@ export function findConflicts(grid: number[]): Conflict[] {
     for (let row = 0; row < 9; row++) {
       const val = getCell(row * 9 + col)
       if (val === 0) continue
-      if (!positions.has(val)) positions.set(val, [])
-      positions.get(val)!.push(row)
+      let arr = positions.get(val)
+      if (!arr) {
+        arr = []
+        positions.set(val, arr)
+      }
+      arr.push(row)
     }
     for (const [val, rows] of positions) {
       if (rows.length > 1) {
@@ -131,8 +139,12 @@ export function findConflicts(grid: number[]): Conflict[] {
       for (let c = boxCol; c < boxCol + 3; c++) {
         const val = getCell(r * 9 + c)
         if (val === 0) continue
-        if (!positions.has(val)) positions.set(val, [])
-        positions.get(val)!.push(r * 9 + c)
+        let arr = positions.get(val)
+        if (!arr) {
+          arr = []
+          positions.set(val, arr)
+        }
+        arr.push(r * 9 + c)
       }
     }
     for (const [val, cells] of positions) {

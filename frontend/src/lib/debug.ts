@@ -32,7 +32,7 @@ function isDebugEnabled(): boolean {
  */
 export function debugLog(...args: unknown[]): void {
   if (isDebugEnabled()) {
-    console.log(...args)
+    console.debug(...args)
   }
 }
 
