@@ -3,7 +3,7 @@
 const PREFERENCES_KEY = 'sudoku_preferences'
 const HOMEPAGE_MODE_CHANGE_EVENT = 'homepageModeChange'
 
-export type HomepageMode = 'daily' | 'practice'
+export type HomepageMode = 'daily' | 'game'
 export type AutoSolveSpeed = 'slow' | 'normal' | 'fast' | 'instant'
 
 // Auto-solve speed delays in milliseconds
@@ -22,7 +22,7 @@ export const AUTO_SOLVE_SPEED_LABELS: Record<AutoSolveSpeed, string> = {
 }
 
 export interface UserPreferences {
-  // Which homepage to show: 'daily' or 'practice'
+  // Which homepage to show: 'daily' or 'game'
   homepageMode: HomepageMode
   // Auto-solve playback speed
   autoSolveSpeed: AutoSolveSpeed

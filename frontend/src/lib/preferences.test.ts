@@ -132,15 +132,15 @@ describe('preferences', () => {
     })
 
     it('should return stored homepage mode', () => {
-      setHomepageMode('practice')
-      expect(getHomepageMode()).toBe('practice')
+      setHomepageMode('game')
+      expect(getHomepageMode()).toBe('game')
     })
   })
 
   describe('setHomepageMode', () => {
     it('should set homepage mode', () => {
-      setHomepageMode('practice')
-      expect(getHomepageMode()).toBe('practice')
+      setHomepageMode('game')
+      expect(getHomepageMode()).toBe('game')
       
       setHomepageMode('daily')
       expect(getHomepageMode()).toBe('daily')
