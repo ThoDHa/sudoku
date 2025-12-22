@@ -387,7 +387,7 @@ func detectSimpleColoring(b *Board) *core.Move {
 						Explanation: fmt.Sprintf("Simple Coloring: cell R%dC%d sees both colors for %d", i/9+1, i%9+1, digit),
 						Highlights: core.Highlights{
 							Primary:   []core.CellRef{{Row: i / 9, Col: i % 9}},
-							Secondary: cellRefsFromIndices(append(color1, color2...)),
+							Secondary: CellRefsFromIndices(append(color1, color2...)...),
 						},
 					}
 				}
@@ -396,12 +396,4 @@ func detectSimpleColoring(b *Board) *core.Move {
 	}
 
 	return nil
-}
-
-func cellRefsFromIndices(indices []int) []core.CellRef {
-	refs := make([]core.CellRef, len(indices))
-	for i, idx := range indices {
-		refs[i] = core.CellRef{Row: idx / 9, Col: idx % 9}
-	}
-	return refs
 }

@@ -133,7 +133,7 @@ func tryTwoPetals(b *Board, stem int, stemCands []int, petalsByCandidate map[int
 	for _, petal1 := range petalsByCandidate[c1] {
 		for _, petal2 := range petalsByCandidate[c2] {
 			// Petals must not share cells
-			if alsShareCells(petal1, petal2) {
+			if ALSShareCells(petal1, petal2) {
 				continue
 			}
 
@@ -157,11 +157,11 @@ func tryThreePetals(b *Board, stem int, stemCands []int, petalsByCandidate map[i
 
 	for _, petal1 := range petalsByCandidate[c1] {
 		for _, petal2 := range petalsByCandidate[c2] {
-			if alsShareCells(petal1, petal2) {
+			if ALSShareCells(petal1, petal2) {
 				continue
 			}
 			for _, petal3 := range petalsByCandidate[c3] {
-				if alsShareCells(petal1, petal3) || alsShareCells(petal2, petal3) {
+				if ALSShareCells(petal1, petal3) || ALSShareCells(petal2, petal3) {
 					continue
 				}
 

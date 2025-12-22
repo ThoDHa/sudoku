@@ -353,51 +353,6 @@ func AllUnits() []Unit {
 	return units
 }
 
-// RowUnits returns just the 9 row units
-func RowUnits() []Unit {
-	units := make([]Unit, 9)
-	for i := 0; i < 9; i++ {
-		units[i] = Unit{Type: UnitRow, Index: i, Cells: RowIndices[i]}
-	}
-	return units
-}
-
-// ColUnits returns just the 9 column units
-func ColUnits() []Unit {
-	units := make([]Unit, 9)
-	for i := 0; i < 9; i++ {
-		units[i] = Unit{Type: UnitCol, Index: i, Cells: ColIndices[i]}
-	}
-	return units
-}
-
-// BoxUnits returns just the 9 box units
-func BoxUnits() []Unit {
-	units := make([]Unit, 9)
-	for i := 0; i < 9; i++ {
-		units[i] = Unit{Type: UnitBox, Index: i, Cells: BoxIndices[i]}
-	}
-	return units
-}
-
-// RowColUnits returns just rows and columns (used for line-based techniques)
-func RowColUnits() []Unit {
-	units := make([]Unit, 0, 18)
-	for i := 0; i < 9; i++ {
-		units = append(units, Unit{Type: UnitRow, Index: i, Cells: RowIndices[i]})
-		units = append(units, Unit{Type: UnitCol, Index: i, Cells: ColIndices[i]})
-	}
-	return units
-}
-
-// MakeLineUnit creates a row or column unit for a given index
-func MakeLineUnit(lineType UnitType, idx int) Unit {
-	if lineType == UnitRow {
-		return Unit{Type: UnitRow, Index: idx, Cells: RowIndices[idx]}
-	}
-	return Unit{Type: UnitCol, Index: idx, Cells: ColIndices[idx]}
-}
-
 // LineIndexFromPos returns the row or col index from a CellRef based on line type
 func (u UnitType) LineIndexFromPos(pos core.CellRef) int {
 	if u == UnitRow {
@@ -412,34 +367,6 @@ func (u UnitType) BoxIndexFromPos(pos core.CellRef) int {
 		return pos.Col / 3
 	}
 	return pos.Row / 3
-}
-
-// AllInSameLine checks if all positions are in the same row or column
-func AllInSameLine(lineType UnitType, positions []core.CellRef) (bool, int) {
-	if len(positions) == 0 {
-		return false, -1
-	}
-	lineIdx := lineType.LineIndexFromPos(positions[0])
-	for _, p := range positions[1:] {
-		if lineType.LineIndexFromPos(p) != lineIdx {
-			return false, -1
-		}
-	}
-	return true, lineIdx
-}
-
-// AllInSameBoxSegment checks if all positions are in the same box segment
-func AllInSameBoxSegment(lineType UnitType, positions []core.CellRef) (bool, int) {
-	if len(positions) == 0 {
-		return false, -1
-	}
-	boxIdx := lineType.BoxIndexFromPos(positions[0])
-	for _, p := range positions[1:] {
-		if lineType.BoxIndexFromPos(p) != boxIdx {
-			return false, -1
-		}
-	}
-	return true, boxIdx
 }
 
 // ============================================================================
@@ -520,29 +447,6 @@ func ContainsInt(slice []int, val int) bool {
 	return false
 }
 
-// RemoveInt removes first occurrence of val from slice
-func RemoveInt(slice []int, val int) []int {
-	for i, v := range slice {
-		if v == val {
-			return append(slice[:i], slice[i+1:]...)
-		}
-	}
-	return slice
-}
-
-// UniqueInts returns slice with duplicates removed
-func UniqueInts(slice []int) []int {
-	seen := make(map[int]bool)
-	result := make([]int, 0, len(slice))
-	for _, v := range slice {
-		if !seen[v] {
-			seen[v] = true
-			result = append(result, v)
-		}
-	}
-	return result
-}
-
 // IntersectInts returns intersection of two slices
 func IntersectInts(a, b []int) []int {
 	bSet := make(map[int]bool)
@@ -597,24 +501,6 @@ func MakeElimination(cell, digit int) core.Candidate {
 	}
 }
 
-// MakeEliminations creates eliminations for a digit in multiple cells
-func MakeEliminations(cells []int, digit int) []core.Candidate {
-	elims := make([]core.Candidate, len(cells))
-	for i, cell := range cells {
-		elims[i] = MakeElimination(cell, digit)
-	}
-	return elims
-}
-
-// MakeEliminationsMultiDigit creates eliminations for multiple digits in one cell
-func MakeEliminationsMultiDigit(cell int, digits []int) []core.Candidate {
-	elims := make([]core.Candidate, len(digits))
-	for i, digit := range digits {
-		elims[i] = MakeElimination(cell, digit)
-	}
-	return elims
-}
-
 // DedupeEliminations removes duplicate eliminations
 func DedupeEliminations(elims []core.Candidate) []core.Candidate {
 	if len(elims) <= 1 {
@@ -636,51 +522,6 @@ func DedupeEliminations(elims []core.Candidate) []core.Candidate {
 // Common Peers Calculation (stateless version)
 // ============================================================================
 
-// CommonPeersOf returns cells that are peers of ALL given cells
-func CommonPeersOf(cells []int) []int {
-	if len(cells) == 0 {
-		return nil
-	}
-	if len(cells) == 1 {
-		return Peers[cells[0]]
-	}
-
-	// Start with peers of first cell
-	peerSet := make(map[int]bool)
-	for _, p := range Peers[cells[0]] {
-		peerSet[p] = true
-	}
-
-	// Intersect with peers of remaining cells
-	for _, cell := range cells[1:] {
-		newSet := make(map[int]bool)
-		for _, p := range Peers[cell] {
-			if peerSet[p] {
-				newSet[p] = true
-			}
-		}
-		peerSet = newSet
-	}
-
-	result := make([]int, 0, len(peerSet))
-	for p := range peerSet {
-		result = append(result, p)
-	}
-	return result
-}
-
-// AllSeeEachOther returns true if all cells in the slice can see each other
-func AllSeeEachOther(cells []int) bool {
-	for i := 0; i < len(cells); i++ {
-		for j := i + 1; j < len(cells); j++ {
-			if !ArePeers(cells[i], cells[j]) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
 // AllSeeAll returns true if every cell in cellsA sees every cell in cellsB
 func AllSeeAll(cellsA, cellsB []int) bool {
 	for _, a := range cellsA {
@@ -691,50 +532,6 @@ func AllSeeAll(cellsA, cellsB []int) bool {
 		}
 	}
 	return true
-}
-
-// ============================================================================
-// Unit Position Helpers
-// ============================================================================
-
-// UnitPositions tracks where a digit appears in a unit (row or column)
-type UnitPositions struct {
-	UnitIndex int   // row/col index (0-8)
-	Positions []int // positions within unit where digit appears
-}
-
-// FindDigitPositionsInRows returns rows where digit appears in minCount-maxCount columns
-func FindDigitPositionsInRows(b *Board, digit, minCount, maxCount int) []UnitPositions {
-	var result []UnitPositions
-	for row := 0; row < 9; row++ {
-		var cols []int
-		for col := 0; col < 9; col++ {
-			if b.Candidates[row*9+col].Has(digit) {
-				cols = append(cols, col)
-			}
-		}
-		if len(cols) >= minCount && len(cols) <= maxCount {
-			result = append(result, UnitPositions{row, cols})
-		}
-	}
-	return result
-}
-
-// FindDigitPositionsInCols returns cols where digit appears in minCount-maxCount rows
-func FindDigitPositionsInCols(b *Board, digit, minCount, maxCount int) []UnitPositions {
-	var result []UnitPositions
-	for col := 0; col < 9; col++ {
-		var rows []int
-		for row := 0; row < 9; row++ {
-			if b.Candidates[row*9+col].Has(digit) {
-				rows = append(rows, row)
-			}
-		}
-		if len(rows) >= minCount && len(rows) <= maxCount {
-			result = append(result, UnitPositions{col, rows})
-		}
-	}
-	return result
 }
 
 // ============================================================================
@@ -878,24 +675,17 @@ func FindEliminationsSeeing(b *Board, digit int, exclude []int, mustSee ...int) 
 }
 
 // ============================================================================
-// Legacy Helpers (for gradual migration)
+// ALS Helpers
 // ============================================================================
 
-// getCandidateSlice converts a map[int]bool candidate map to a sorted slice.
-// This is a legacy helper for code that still uses map[int]bool internally.
-// For Candidates bitmask, use .ToSlice() method instead.
-func getCandidateSlice(cands map[int]bool) []int {
-	result := make([]int, 0, len(cands))
-	for d := range cands {
-		result = append(result, d)
-	}
-	// Sort for consistent output
-	for i := 0; i < len(result)-1; i++ {
-		for j := i + 1; j < len(result); j++ {
-			if result[i] > result[j] {
-				result[i], result[j] = result[j], result[i]
+// ALSShareCells returns true if two ALS share any cells
+func ALSShareCells(a, b ALS) bool {
+	for _, cellA := range a.Cells {
+		for _, cellB := range b.Cells {
+			if cellA == cellB {
+				return true
 			}
 		}
 	}
-	return result
+	return false
 }

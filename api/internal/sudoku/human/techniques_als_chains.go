@@ -32,7 +32,7 @@ func detectALSXYWing(b *Board) *core.Move {
 			alsB := allALS[bi]
 
 			// A and B must not share cells
-			if alsShareCells(alsA, alsB) {
+			if ALSShareCells(alsA, alsB) {
 				continue
 			}
 
@@ -49,7 +49,7 @@ func detectALSXYWing(b *Board) *core.Move {
 				alsC := allALS[ci]
 
 				// A and C must not share cells, B and C must not share cells
-				if alsShareCells(alsA, alsC) || alsShareCells(alsB, alsC) {
+				if ALSShareCells(alsA, alsC) || ALSShareCells(alsB, alsC) {
 					continue
 				}
 
@@ -134,7 +134,7 @@ func detectALSXYChain(b *Board) *core.Move {
 			if i == j {
 				continue
 			}
-			if alsShareCells(allALS[i], allALS[j]) {
+			if ALSShareCells(allALS[i], allALS[j]) {
 				continue
 			}
 			rcs := findRestrictedCommons(allALS[i], allALS[j])

@@ -317,3 +317,24 @@ func (b *Board) CellsWithDigitInUnit(unit Unit, digit int) []int {
 	}
 	return cells
 }
+
+// ============================================================================
+// BoardInterface Implementation
+// ============================================================================
+
+// GetCell returns the digit at the given cell index (0 = empty, 1-9 = filled)
+func (b *Board) GetCell(idx int) int {
+	return b.Cells[idx]
+}
+
+// GetCandidatesAt returns the candidates bitmask for the given cell index
+// Note: Named differently to avoid conflict with existing GetCandidates() [][]int
+func (b *Board) GetCandidatesAt(idx int) Candidates {
+	return b.Candidates[idx]
+}
+
+// CloneBoard creates a deep copy of the board, returning BoardInterface
+// This is used by techniques that need to simulate moves (forcing chains, etc.)
+func (b *Board) CloneBoard() BoardInterface {
+	return b.Clone()
+}

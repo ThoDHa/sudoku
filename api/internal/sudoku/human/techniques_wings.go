@@ -318,7 +318,7 @@ func detectALSXZ(b *Board) *core.Move {
 			alsB := allALS[j]
 
 			// ALS must not share any cells
-			if alsShareCells(alsA, alsB) {
+			if ALSShareCells(alsA, alsB) {
 				continue
 			}
 
@@ -378,17 +378,4 @@ func detectALSXZ(b *Board) *core.Move {
 	}
 
 	return nil
-}
-
-// Helper functions for ALS
-
-func alsShareCells(a, b ALS) bool {
-	for _, cellA := range a.Cells {
-		for _, cellB := range b.Cells {
-			if cellA == cellB {
-				return true
-			}
-		}
-	}
-	return false
 }

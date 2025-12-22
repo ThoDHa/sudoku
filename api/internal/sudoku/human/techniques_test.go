@@ -1515,16 +1515,3 @@ func TestSees(t *testing.T) {
 		t.Error("cells 0 and 40 should not see each other")
 	}
 }
-
-func TestGetCandidateSlice(t *testing.T) {
-	cands := map[int]bool{3: true, 1: true, 5: true}
-	slice := getCandidateSlice(cands)
-
-	if len(slice) != 3 {
-		t.Errorf("expected 3 candidates, got %d", len(slice))
-	}
-	// Should be sorted
-	if slice[0] != 1 || slice[1] != 3 || slice[2] != 5 {
-		t.Errorf("expected [1,3,5], got %v", slice)
-	}
-}
