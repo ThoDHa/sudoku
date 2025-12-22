@@ -82,6 +82,11 @@ const ABOUT_SECTIONS = [
         <p className="text-center text-foreground-muted mb-4">
           <strong className="text-foreground">Made a mistake?</strong> The solver can fix your errors and get you back on track.
         </p>
+        <div className="bg-accent-light rounded-lg p-3 mb-4">
+          <p className="text-sm text-center text-accent font-medium">
+            Pause the solver and use undo/redo to step through moves — toast messages explain each step!
+          </p>
+        </div>
         <div className="bg-accent-light rounded-lg p-3">
           <p className="text-sm text-center text-accent font-medium">
             Solve is tracked separately from hints — learn techniques without affecting your score.

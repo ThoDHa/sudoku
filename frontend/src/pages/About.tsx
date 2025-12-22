@@ -85,6 +85,11 @@ export default function About() {
             puzzle from its current state — even if you've made errors. It backtracks, 
             corrects, and finds a path to the solution.
           </p>
+          <p className="mb-4 text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
+            <strong className="text-foreground">Pause and step through:</strong> While the solver is paused, 
+            use undo/redo to step backward and forward through the moves. Toast messages will 
+            explain each step, helping you understand the technique being applied.
+          </p>
           <p className="text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
             This means you can experiment freely. Try a move, see where it leads, and if 
             you get stuck, let the solver guide you back on track.
