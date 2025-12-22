@@ -302,13 +302,12 @@ export default function Game() {
     },
     onStepNavigate: (move) => {
       // Show toast with move explanation when stepping through autosolve
+      // Toast persists until next step or autosolve stops (no timeout)
       if (move) {
         setValidationMessage({ type: 'success', message: move.explanation })
-        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
       } else {
         // Stepped back to initial state
         setValidationMessage({ type: 'success', message: 'Initial state' })
-        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
       }
     },
   })
@@ -1210,11 +1209,12 @@ ${bugReportJson}
   // eslint-disable-next-line react-hooks/exhaustive-deps -- timer.elapsedMs is intentionally not included to avoid constant re-renders
   }, [loading, puzzle, difficulty, game.history.length, game.isComplete, autoFillNotes, setGameState])
 
-  // Clear highlights when auto-solve stops so History shows the summary, not last move
+  // Clear highlights and toast when auto-solve stops so History shows the summary, not last move
   useEffect(() => {
     if (!autoSolve.isAutoSolving) {
       clearDigitHighlight()
       clearMoveHighlight()
+      setValidationMessage(null) // Clear any persisting autosolve toast
     }
   }, [autoSolve.isAutoSolving, clearDigitHighlight, clearMoveHighlight])
 
