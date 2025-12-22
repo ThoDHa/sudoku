@@ -12,6 +12,7 @@ const Game = lazy(() => import('./pages/Game'))
 const Technique = lazy(() => import('./pages/Technique'))
 const Custom = lazy(() => import('./pages/Custom'))
 const Leaderboard = lazy(() => import('./pages/Leaderboard'))
+const About = lazy(() => import('./pages/About'))
 
 // Loading fallback component
 const PageLoading = () => (
@@ -25,7 +26,7 @@ function AppContent() {
   
   // Game pages need less padding (slim header)
   // Game routes: /c/* for custom, or /:seed for daily/practice (anything not a known route)
-  const knownRoutes = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard']
+  const knownRoutes = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard', '/about']
   const isKnownRoute = knownRoutes.some(route => 
     location.pathname === route || location.pathname.startsWith(route + '/')
   )
@@ -46,6 +47,7 @@ function AppContent() {
             <Route path="/technique/:slug" element={<Technique />} />
             <Route path="/custom" element={<Custom />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/about" element={<About />} />
             {/* Catch-all for puzzles: /:seed (daily if YYYYMMDD format, otherwise practice) */}
             <Route path="/:seed" element={<Game />} />
           </Routes>
