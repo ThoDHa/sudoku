@@ -29,6 +29,8 @@ interface HistoryProps {
   onTechniqueClick: (technique: { title: string; slug: string }) => void
   selectedMoveIndex: number | null
   autoSolveStepsUsed?: number
+  autoSolveErrorsFixed?: number
+  isComplete?: boolean
   autoFillUsed?: boolean
 }
 
@@ -40,6 +42,8 @@ export default function History({
   onTechniqueClick,
   selectedMoveIndex,
   autoSolveStepsUsed,
+  autoSolveErrorsFixed,
+  isComplete,
   autoFillUsed,
 }: HistoryProps) {
   const listRef = useRef<HTMLUListElement>(null)
@@ -134,9 +138,13 @@ export default function History({
               {autoSolveStepsUsed && autoSolveStepsUsed > 0 && (
                 <li className="rounded-lg border border-board-border-light bg-background-secondary p-3 shadow-sm">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">🤖</span>
+                    <span className="text-lg">{isComplete ? '🏁' : '🤖'}</span>
                     <span className="text-sm text-foreground">
-                      Automatically applied {autoSolveStepsUsed} move{autoSolveStepsUsed !== 1 ? 's' : ''}
+                      {isComplete ? 'Puzzle solved! ' : ''}
+                      The autosolver performed {autoSolveStepsUsed} move{autoSolveStepsUsed !== 1 ? 's' : ''}
+                      {autoSolveErrorsFixed && autoSolveErrorsFixed > 0 
+                        ? `, fixed ${autoSolveErrorsFixed} error${autoSolveErrorsFixed !== 1 ? 's' : ''}`
+                        : ''}
                     </span>
                   </div>
                 </li>

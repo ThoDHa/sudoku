@@ -29,6 +29,8 @@ interface UseAutoSolveOptions {
   onStatus?: (message: string) => void
   /** Called when a user error is found and fixed - pauses to show user */
   onErrorFixed?: (message: string, resumeCallback: () => void) => void
+  /** Called when stepping back/forward through moves */
+  onStepNavigate?: (move: Move | null, direction: 'back' | 'forward') => void
   /** Optional background manager instance (will create one if not provided) */
   backgroundManager?: ReturnType<typeof useBackgroundManager>
 }
@@ -95,6 +97,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     onUnpinpointableError,
     onStatus,
     onErrorFixed,
+    onStepNavigate,
     backgroundManager: providedBackgroundManager,
   } = options
 
@@ -233,11 +236,13 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     if (snapshot) {
       const candidates = snapshot.candidates.map(arr => new Set(arr))
       applyState(snapshot.board, candidates, snapshot.move, newIndex)
+      // Notify about the step navigation with the move we're now viewing
+      onStepNavigate?.(snapshot.move, 'back')
     }
     
     // Update the moves queue so forward playback works from this point
     movesQueueRef.current = allMovesRef.current.slice(newIndex)
-  }, [isAutoSolving, applyState])
+  }, [isAutoSolving, applyState, onStepNavigate])
 
   // Step forward one move
   const stepForward = useCallback(() => {
@@ -261,6 +266,8 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       if (!snapshot) return
       const candidates = snapshot.candidates.map(arr => new Set(arr))
       applyState(snapshot.board, candidates, snapshot.move, newIndex)
+      // Notify about the step navigation
+      onStepNavigate?.(snapshot.move, 'forward')
       
       // Update the moves queue
       movesQueueRef.current = allMovesRef.current.slice(newIndex)
@@ -289,11 +296,14 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           move: moveResult.move,
         })
         
+        // Notify about the step navigation
+        onStepNavigate?.(moveResult.move, 'forward')
+        
         // Update the moves queue
         movesQueueRef.current = allMovesRef.current.slice(newIndex)
       }
     }
-  }, [isAutoSolving, applyMove, applyState, getCandidates])
+  }, [isAutoSolving, applyMove, applyState, getCandidates, onStepNavigate])
 
   const startAutoSolve = useCallback(async () => {
     if (isAutoSolving || isComplete()) return

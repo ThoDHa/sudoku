@@ -140,6 +140,7 @@ export default function Game() {
   const [autoSolveUsed, setAutoSolveUsed] = useState(false)
   const autoSolveUsedRef = useRef(false)  // Ref for immediate access in callbacks
   const [autoSolveStepsUsed, setAutoSolveStepsUsed] = useState(0)
+  const [autoSolveErrorsFixed, setAutoSolveErrorsFixed] = useState(0)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [techniqueHintsUsed, setTechniqueHintsUsed] = useState(0)
   const [techniqueHintPending, setTechniqueHintPending] = useState(false) // Disables technique hint button until user makes a move
@@ -299,6 +300,17 @@ export default function Game() {
       // But resume solving sooner for better UX
       visibilityAwareTimeout(resumeCallback, ERROR_FIX_RESUME_DELAY)
     },
+    onStepNavigate: (move) => {
+      // Show toast with move explanation when stepping through autosolve
+      if (move) {
+        setValidationMessage({ type: 'success', message: move.explanation })
+        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      } else {
+        // Stepped back to initial state
+        setValidationMessage({ type: 'success', message: 'Initial state' })
+        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      }
+    },
   })
 
   // Extended background pause logic - suspend all operations after EXTENDED_PAUSE_DELAY hidden
@@ -419,6 +431,7 @@ export default function Game() {
     clearAllAndDeselect()
     setNotesMode(false)
     setAutoSolveStepsUsed(0)
+    setAutoSolveErrorsFixed(0)
   }, [game, clearSavedGameState, invalidateCachedSolution, clearAllAndDeselect])
 
   // Restart puzzle (clears all AND resets timer)
@@ -435,6 +448,7 @@ export default function Game() {
     setAutoSolveUsed(false)
     autoSolveUsedRef.current = false
     setAutoSolveStepsUsed(0)
+    setAutoSolveErrorsFixed(0)
     setShowResultModal(false)
   }, [game, timer, clearSavedGameState, invalidateCachedSolution, clearAllAndDeselect])
 
@@ -1204,12 +1218,15 @@ ${bugReportJson}
     }
   }, [autoSolve.isAutoSolving, clearDigitHighlight, clearMoveHighlight])
 
-  // Track auto-solve steps when auto-solve stops
+  // Track auto-solve steps and errors fixed when auto-solve stops
   useEffect(() => {
     if (!autoSolve.isAutoSolving && autoSolve.currentIndex > 0) {
       setAutoSolveStepsUsed(prev => prev + autoSolve.currentIndex)
+      // Count fix-error moves in history (these are errors that were fixed during autosolve)
+      const errorsFixed = game.history.filter(move => move.action === 'fix-error').length
+      setAutoSolveErrorsFixed(errorsFixed)
     }
-  }, [autoSolve.isAutoSolving, autoSolve.currentIndex])
+  }, [autoSolve.isAutoSolving, autoSolve.currentIndex, game.history])
 
   // Fetch puzzle
   useEffect(() => {
@@ -1625,6 +1642,8 @@ ${bugReportJson}
         onTechniqueClick={(technique) => setTechniqueModal(technique)}
         selectedMoveIndex={selectedMoveIndex}
         autoSolveStepsUsed={autoSolveStepsUsed}
+        autoSolveErrorsFixed={autoSolveErrorsFixed}
+        isComplete={game.isComplete}
         autoFillUsed={autoFillUsed}
       />
 
