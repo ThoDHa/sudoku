@@ -8,7 +8,7 @@ import TechniqueModal from '../components/TechniqueModal'
 import TechniquesListModal from '../components/TechniquesListModal'
 import GameHeader from '../components/GameHeader'
 import GameModals from '../components/GameModals'
-import OnboardingModal, { useOnboarding } from '../components/OnboardingModal'
+import AboutModal, { useAboutModal } from '../components/AboutModal'
 import DifficultyGrid from '../components/DifficultyGrid'
 import { Difficulty } from '../lib/hooks'
 import { useTheme } from '../lib/ThemeContext'
@@ -101,13 +101,13 @@ export default function Game() {
   
   const { mode, modePreference, setMode, setModePreference, colorTheme, setColorTheme, fontSize, setFontSize } = useTheme()
   const { setGameState } = useGameContext()
-  const { showOnboarding, closeOnboarding: baseCloseOnboarding } = useOnboarding()
+  const { showOnboarding, closeOnboarding: baseCloseOnboarding, openAbout, showAbout, isOnboarding } = useAboutModal()
   
   // Wrap closeOnboarding to mark onboarding complete and show difficulty chooser (if needed)
-  const closeOnboarding = () => {
+  const closeAboutModal = () => {
     baseCloseOnboarding()
     setOnboardingComplete(true)
-    if (needsDifficultyChoice && !alreadyCompletedToday) {
+    if (isOnboarding && needsDifficultyChoice && !alreadyCompletedToday) {
       setShowDifficultyChooser(true)
     }
   }
@@ -1526,6 +1526,7 @@ ${bugReportJson}
         onSolve={() => setSolveConfirmOpen(true)}
         onClearAll={() => setShowClearConfirm(true)}
         onTechniquesList={() => setTechniquesListOpen(true)}
+        onAbout={openAbout}
         onReportBug={handleReportBug}
         onFeatureRequest={handleFeatureRequest}
         bugReportCopied={bugReportCopied}
@@ -1689,7 +1690,7 @@ ${bugReportJson}
       />
 
       {/* Onboarding Modal - shown for first-time users */}
-      <OnboardingModal isOpen={showOnboarding} onClose={closeOnboarding} />
+      <AboutModal isOpen={showAbout} onClose={closeAboutModal} isOnboarding={isOnboarding} />
 
       {/* Difficulty Chooser Modal - shown when opening shared link without difficulty */}
       {showDifficultyChooser && (

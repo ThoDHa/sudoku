@@ -319,6 +319,7 @@ interface GameHeaderProps {
   onSolve: () => void
   onClearAll: () => void
   onTechniquesList: () => void
+  onAbout: () => void
   onReportBug: () => void
   onFeatureRequest: () => void
   bugReportCopied: boolean
@@ -364,6 +365,7 @@ export default function GameHeader({
   onSolve,
   onClearAll,
   onTechniquesList,
+  onAbout,
   onReportBug,
   onFeatureRequest,
   bugReportCopied,
@@ -551,6 +553,7 @@ export default function GameHeader({
           onSolve,
           onClearAll,
           onTechniquesList,
+          onAbout,
           isComplete,
           autoSolveSpeed,
           onSetAutoSolveSpeed,

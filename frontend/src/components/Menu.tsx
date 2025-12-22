@@ -15,6 +15,7 @@ interface GameActions {
   onSolve: () => void
   onClearAll: () => void
   onTechniquesList: () => void
+  onAbout: () => void
   isComplete: boolean
   autoSolveSpeed: AutoSolveSpeed
   onSetAutoSolveSpeed: (speed: AutoSolveSpeed) => void
@@ -600,16 +601,15 @@ export default function Menu({
                   </svg>
                   Learn Techniques
                 </button>
-                <Link
-                  to="/about"
-                  onClick={onClose}
+                <button
+                  onClick={() => { gameActions.onAbout(); onClose() }}
                   className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground rounded-lg hover:bg-btn-hover"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   About
-                </Link>
+                </button>
               </>
             )}
 
