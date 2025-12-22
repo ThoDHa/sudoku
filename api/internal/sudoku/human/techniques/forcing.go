@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -27,11 +27,11 @@ func newPropagationResult() *propagationResult {
 
 // propagateSingles propagates naked and hidden singles from a starting assumption
 // This is NOT backtracking - it only follows deterministic implications
-func propagateSingles(b *Board, startCell, startDigit int, maxSteps int) *propagationResult {
+func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int) *propagationResult {
 	result := newPropagationResult()
 
 	// Clone the board to simulate
-	sim := b.Clone()
+	sim := b.CloneBoard()
 
 	// Make the initial placement
 	sim.SetCell(startCell, startDigit)
@@ -39,7 +39,7 @@ func propagateSingles(b *Board, startCell, startDigit int, maxSteps int) *propag
 
 	// Track which eliminations were caused by this chain
 	for i := 0; i < 81; i++ {
-		if i != startCell && b.Candidates[i].Has(startDigit) && !sim.Candidates[i].Has(startDigit) {
+		if i != startCell && b.GetCandidatesAt(i).Has(startDigit) && !sim.GetCandidatesAt(i).Has(startDigit) {
 			if result.eliminations[i] == nil {
 				result.eliminations[i] = make(map[int]bool)
 			}
@@ -53,11 +53,11 @@ func propagateSingles(b *Board, startCell, startDigit int, maxSteps int) *propag
 
 		// Check for naked singles
 		for i := 0; i < 81; i++ {
-			if sim.Cells[i] != 0 {
+			if sim.GetCell(i) != 0 {
 				continue
 			}
 
-			cands := sim.Candidates[i]
+			cands := sim.GetCandidatesAt(i)
 			if cands.IsEmpty() {
 				// Contradiction - no candidates left
 				result.valid = false
@@ -82,11 +82,11 @@ func propagateSingles(b *Board, startCell, startDigit int, maxSteps int) *propag
 				var positions []int
 				found := false
 				for _, idx := range unit.Cells {
-					if sim.Cells[idx] == digit {
+					if sim.GetCell(idx) == digit {
 						found = true
 						break
 					}
-					if sim.Candidates[idx].Has(digit) {
+					if sim.GetCandidatesAt(idx).Has(digit) {
 						positions = append(positions, idx)
 					}
 				}
@@ -97,7 +97,7 @@ func propagateSingles(b *Board, startCell, startDigit int, maxSteps int) *propag
 				}
 				if !found && len(positions) == 1 {
 					idx := positions[0]
-					if sim.Cells[idx] == 0 {
+					if sim.GetCell(idx) == 0 {
 						// Record eliminations for all peers
 						recordEliminationsForPeers(sim, idx, digit, result.eliminations)
 						sim.SetCell(idx, digit)
@@ -117,9 +117,9 @@ func propagateSingles(b *Board, startCell, startDigit int, maxSteps int) *propag
 }
 
 // hasDigitInUnit checks if digit is already placed in the given unit
-func hasDigitInUnit(b *Board, unit Unit, digit int) bool {
+func hasDigitInUnit(b BoardInterface, unit Unit, digit int) bool {
 	for _, idx := range unit.Cells {
-		if b.Cells[idx] == digit {
+		if b.GetCell(idx) == digit {
 			return true
 		}
 	}
@@ -127,10 +127,10 @@ func hasDigitInUnit(b *Board, unit Unit, digit int) bool {
 }
 
 // recordEliminationsForPeers records eliminations for all cells that see the given cell
-func recordEliminationsForPeers(b *Board, cellIdx, digit int, eliminations map[int]map[int]bool) {
+func recordEliminationsForPeers(b BoardInterface, cellIdx, digit int, eliminations map[int]map[int]bool) {
 	for _, unit := range getUnitsForCell(cellIdx) {
 		for _, peerIdx := range unit.Cells {
-			if peerIdx != cellIdx && b.Candidates[peerIdx].Has(digit) {
+			if peerIdx != cellIdx && b.GetCandidatesAt(peerIdx).Has(digit) {
 				if eliminations[peerIdx] == nil {
 					eliminations[peerIdx] = make(map[int]bool)
 				}
@@ -151,10 +151,10 @@ func getUnitsForCell(cellIdx int) []Unit {
 	}
 }
 
-// detectForcingChain detects forcing chain patterns
+// DetectForcingChain detects forcing chain patterns
 // This technique examines cells with 2-3 candidates and follows implications
 // If ALL branches lead to the same conclusion, that conclusion must be true
-func detectForcingChain(b *Board) *core.Move {
+func DetectForcingChain(b BoardInterface) *core.Move {
 	// Try cell forcing chains first (bivalue cells are most efficient)
 	if move := detectCellForcingChain(b); move != nil {
 		return move
@@ -166,15 +166,15 @@ func detectForcingChain(b *Board) *core.Move {
 
 // detectCellForcingChain examines cells with 2-3 candidates
 // For each candidate, propagate singles and find common conclusions
-func detectCellForcingChain(b *Board) *core.Move {
+func detectCellForcingChain(b BoardInterface) *core.Move {
 	// Find bivalue cells first (most likely to yield results), then trivalue
 	for numCands := 2; numCands <= 3; numCands++ {
 		for cell := 0; cell < 81; cell++ {
-			if b.Cells[cell] != 0 || b.Candidates[cell].Count() != numCands {
+			if b.GetCell(cell) != 0 || b.GetCandidatesAt(cell).Count() != numCands {
 				continue
 			}
 
-			cands := b.Candidates[cell].ToSlice()
+			cands := b.GetCandidatesAt(cell).ToSlice()
 			results := make([]*propagationResult, len(cands))
 			allValid := true
 
@@ -220,7 +220,7 @@ func detectCellForcingChain(b *Board) *core.Move {
 
 			// Find common placements across all branches
 			for targetCell := 0; targetCell < 81; targetCell++ {
-				if targetCell == cell || b.Cells[targetCell] != 0 {
+				if targetCell == cell || b.GetCell(targetCell) != 0 {
 					continue
 				}
 
@@ -259,12 +259,12 @@ func detectCellForcingChain(b *Board) *core.Move {
 
 			// Find common eliminations across all branches
 			for targetCell := 0; targetCell < 81; targetCell++ {
-				if targetCell == cell || b.Cells[targetCell] != 0 {
+				if targetCell == cell || b.GetCell(targetCell) != 0 {
 					continue
 				}
 
 				for digit := 1; digit <= 9; digit++ {
-					if !b.Candidates[targetCell].Has(digit) {
+					if !b.GetCandidatesAt(targetCell).Has(digit) {
 						continue
 					}
 
@@ -309,13 +309,13 @@ func detectCellForcingChain(b *Board) *core.Move {
 
 // detectUnitForcingChain examines units where a digit can only go in 2-3 cells
 // For each possible placement, propagate and find common conclusions
-func detectUnitForcingChain(b *Board) *core.Move {
+func detectUnitForcingChain(b BoardInterface) *core.Move {
 	// Check each unit (rows, columns, boxes)
 	for digit := 1; digit <= 9; digit++ {
 		for _, unit := range AllUnits() {
 			var positions []int
 			for _, idx := range unit.Cells {
-				if b.Candidates[idx].Has(digit) {
+				if b.GetCandidatesAt(idx).Has(digit) {
 					positions = append(positions, idx)
 				}
 			}
@@ -333,7 +333,7 @@ func detectUnitForcingChain(b *Board) *core.Move {
 }
 
 // tryUnitForcingChain tries forcing chains for a digit in specific positions within a unit
-func tryUnitForcingChain(b *Board, digit int, positions []int, unitDesc string) *core.Move {
+func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc string) *core.Move {
 	results := make([]*propagationResult, len(positions))
 
 	// Propagate for each possible position
@@ -375,7 +375,7 @@ func tryUnitForcingChain(b *Board, digit int, positions []int, unitDesc string) 
 
 	// Find common placements
 	for targetCell := 0; targetCell < 81; targetCell++ {
-		if b.Cells[targetCell] != 0 {
+		if b.GetCell(targetCell) != 0 {
 			continue
 		}
 
@@ -429,7 +429,7 @@ func tryUnitForcingChain(b *Board, digit int, positions []int, unitDesc string) 
 
 	// Find common eliminations
 	for targetCell := 0; targetCell < 81; targetCell++ {
-		if b.Cells[targetCell] != 0 {
+		if b.GetCell(targetCell) != 0 {
 			continue
 		}
 
@@ -445,7 +445,7 @@ func tryUnitForcingChain(b *Board, digit int, positions []int, unitDesc string) 
 		}
 
 		for elimDigit := 1; elimDigit <= 9; elimDigit++ {
-			if !b.Candidates[targetCell].Has(elimDigit) {
+			if !b.GetCandidatesAt(targetCell).Has(elimDigit) {
 				continue
 			}
 

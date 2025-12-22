@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -6,8 +6,8 @@ import (
 	"sudoku-api/internal/core"
 )
 
-// detectNakedTriple finds three cells in a unit with candidates that are a subset of three digits
-func detectNakedTriple(b *Board) *core.Move {
+// DetectNakedTriple finds three cells in a unit with candidates that are a subset of three digits
+func DetectNakedTriple(b BoardInterface) *core.Move {
 	for _, unit := range AllUnits() {
 		if move := findNakedTripleInUnit(b, unit.Cells, unit.Type.String(), unit.Index+1); move != nil {
 			return move
@@ -16,11 +16,11 @@ func detectNakedTriple(b *Board) *core.Move {
 	return nil
 }
 
-func findNakedTripleInUnit(b *Board, indices []int, unitType string, unitNum int) *core.Move {
+func findNakedTripleInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
 	// Find cells with 2-3 candidates
 	var candidates []int
 	for _, idx := range indices {
-		n := b.Candidates[idx].Count()
+		n := b.GetCandidatesAt(idx).Count()
 		if n >= 2 && n <= 3 {
 			candidates = append(candidates, idx)
 		}
@@ -37,7 +37,7 @@ func findNakedTripleInUnit(b *Board, indices []int, unitType string, unitNum int
 				idx1, idx2, idx3 := candidates[i], candidates[j], candidates[k]
 
 				// Union of candidates
-				union := b.Candidates[idx1].Union(b.Candidates[idx2]).Union(b.Candidates[idx3])
+				union := b.GetCandidatesAt(idx1).Union(b.GetCandidatesAt(idx2)).Union(b.GetCandidatesAt(idx3))
 
 				if union.Count() != 3 {
 					continue
@@ -52,7 +52,7 @@ func findNakedTripleInUnit(b *Board, indices []int, unitType string, unitNum int
 						continue
 					}
 					for _, d := range digits {
-						if b.Candidates[idx].Has(d) {
+						if b.GetCandidatesAt(idx).Has(d) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: idx / 9, Col: idx % 9, Digit: d,
 							})
@@ -86,8 +86,8 @@ func findNakedTripleInUnit(b *Board, indices []int, unitType string, unitNum int
 	return nil
 }
 
-// detectHiddenTriple finds three digits that only appear in three cells within a unit
-func detectHiddenTriple(b *Board) *core.Move {
+// DetectHiddenTriple finds three digits that only appear in three cells within a unit
+func DetectHiddenTriple(b BoardInterface) *core.Move {
 	for _, unit := range AllUnits() {
 		if move := findHiddenTripleInUnit(b, unit.Cells, unit.Type.String(), unit.Index+1); move != nil {
 			return move
@@ -96,11 +96,11 @@ func detectHiddenTriple(b *Board) *core.Move {
 	return nil
 }
 
-func findHiddenTripleInUnit(b *Board, indices []int, unitType string, unitNum int) *core.Move {
+func findHiddenTripleInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
 	digitPositions := make(map[int][]int)
 	for digit := 1; digit <= 9; digit++ {
 		for _, idx := range indices {
-			if b.Candidates[idx].Has(digit) {
+			if b.GetCandidatesAt(idx).Has(digit) {
 				digitPositions[digit] = append(digitPositions[digit], idx)
 			}
 		}
@@ -148,7 +148,7 @@ func findHiddenTripleInUnit(b *Board, indices []int, unitType string, unitNum in
 
 				var eliminations []core.Candidate
 				for _, idx := range cells {
-					for _, d := range b.Candidates[idx].ToSlice() {
+					for _, d := range b.GetCandidatesAt(idx).ToSlice() {
 						if d != d1 && d != d2 && d != d3 {
 							eliminations = append(eliminations, core.Candidate{
 								Row: idx / 9, Col: idx % 9, Digit: d,
@@ -183,8 +183,8 @@ func findHiddenTripleInUnit(b *Board, indices []int, unitType string, unitNum in
 	return nil
 }
 
-// detectNakedQuad finds four cells with candidates that are a subset of four digits
-func detectNakedQuad(b *Board) *core.Move {
+// DetectNakedQuad finds four cells with candidates that are a subset of four digits
+func DetectNakedQuad(b BoardInterface) *core.Move {
 	for _, unit := range AllUnits() {
 		if move := findNakedQuadInUnit(b, unit.Cells, unit.Type.String(), unit.Index+1); move != nil {
 			return move
@@ -193,10 +193,10 @@ func detectNakedQuad(b *Board) *core.Move {
 	return nil
 }
 
-func findNakedQuadInUnit(b *Board, indices []int, unitType string, unitNum int) *core.Move {
+func findNakedQuadInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
 	var candidates []int
 	for _, idx := range indices {
-		n := b.Candidates[idx].Count()
+		n := b.GetCandidatesAt(idx).Count()
 		if n >= 2 && n <= 4 {
 			candidates = append(candidates, idx)
 		}
@@ -212,7 +212,7 @@ func findNakedQuadInUnit(b *Board, indices []int, unitType string, unitNum int) 
 				for l := k + 1; l < len(candidates); l++ {
 					idxs := []int{candidates[i], candidates[j], candidates[k], candidates[l]}
 
-					union := b.Candidates[idxs[0]].Union(b.Candidates[idxs[1]]).Union(b.Candidates[idxs[2]]).Union(b.Candidates[idxs[3]])
+					union := b.GetCandidatesAt(idxs[0]).Union(b.GetCandidatesAt(idxs[1])).Union(b.GetCandidatesAt(idxs[2])).Union(b.GetCandidatesAt(idxs[3]))
 
 					if union.Count() != 4 {
 						continue
@@ -233,7 +233,7 @@ func findNakedQuadInUnit(b *Board, indices []int, unitType string, unitNum int) 
 							continue
 						}
 						for _, d := range digits {
-							if b.Candidates[idx].Has(d) {
+							if b.GetCandidatesAt(idx).Has(d) {
 								eliminations = append(eliminations, core.Candidate{
 									Row: idx / 9, Col: idx % 9, Digit: d,
 								})
@@ -270,8 +270,8 @@ func findNakedQuadInUnit(b *Board, indices []int, unitType string, unitNum int) 
 	return nil
 }
 
-// detectHiddenQuad finds four digits that only appear in four cells
-func detectHiddenQuad(b *Board) *core.Move {
+// DetectHiddenQuad finds four digits that only appear in four cells
+func DetectHiddenQuad(b BoardInterface) *core.Move {
 	for _, unit := range AllUnits() {
 		if move := findHiddenQuadInUnit(b, unit.Cells, unit.Type.String(), unit.Index+1); move != nil {
 			return move
@@ -280,11 +280,11 @@ func detectHiddenQuad(b *Board) *core.Move {
 	return nil
 }
 
-func findHiddenQuadInUnit(b *Board, indices []int, unitType string, unitNum int) *core.Move {
+func findHiddenQuadInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
 	digitPositions := make(map[int][]int)
 	for digit := 1; digit <= 9; digit++ {
 		for _, idx := range indices {
-			if b.Candidates[idx].Has(digit) {
+			if b.GetCandidatesAt(idx).Has(digit) {
 				digitPositions[digit] = append(digitPositions[digit], idx)
 			}
 		}
@@ -336,7 +336,7 @@ func findHiddenQuadInUnit(b *Board, indices []int, unitType string, unitNum int)
 
 					var eliminations []core.Candidate
 					for _, idx := range cells {
-						for _, d := range b.Candidates[idx].ToSlice() {
+						for _, d := range b.GetCandidatesAt(idx).ToSlice() {
 							if d != d1 && d != d2 && d != d3 && d != d4 {
 								eliminations = append(eliminations, core.Candidate{
 									Row: idx / 9, Col: idx % 9, Digit: d,

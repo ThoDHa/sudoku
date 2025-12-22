@@ -1,61 +1,12 @@
-package human
+package techniques
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"sudoku-api/internal/core"
-	"sudoku-api/internal/sudoku/human/techniques"
 )
-
-// ============================================================================
-// SDK - Stateless Utility Functions for Sudoku Techniques
-// ============================================================================
-//
-// This file contains pure utility functions with NO Board dependency.
-// All functions here operate on cell indices, coordinates, or data structures.
-//
-// For Board-specific methods, see board.go
-//
-// ============================================================================
-
-// ============================================================================
-// Type Aliases from techniques package
-// ============================================================================
-//
-// These type aliases allow the human package to use types defined in the
-// techniques package, ensuring compatibility with BoardInterface.
-//
-// ============================================================================
-
-// Candidates is an alias for techniques.Candidates - a bitmask of possible digits
-type Candidates = techniques.Candidates
-
-// UnitType is an alias for techniques.UnitType
-type UnitType = techniques.UnitType
-
-// Unit is an alias for techniques.Unit
-type Unit = techniques.Unit
-
-// BoardInterface is an alias for techniques.BoardInterface
-type BoardInterface = techniques.BoardInterface
-
-// UnitType constants from techniques package
-const (
-	UnitRow = techniques.UnitRow
-	UnitCol = techniques.UnitCol
-	UnitBox = techniques.UnitBox
-)
-
-// NewCandidates creates a Candidates bitmask from a slice of digits
-func NewCandidates(digits []int) Candidates {
-	return techniques.NewCandidates(digits)
-}
-
-// AllCandidates returns a Candidates with all digits 1-9 set
-func AllCandidates() Candidates {
-	return techniques.AllCandidates()
-}
 
 // ============================================================================
 // Precomputed Peer Data
@@ -217,6 +168,15 @@ func ArePeers(idx1, idx2 int) bool {
 // Unit Helpers
 // ============================================================================
 
+// GetCellRefs returns the cells for a unit as CellRefs (for highlights)
+func (u Unit) GetCellRefs() []core.CellRef {
+	refs := make([]core.CellRef, len(u.Cells))
+	for i, idx := range u.Cells {
+		refs[i] = core.CellRef{Row: idx / 9, Col: idx % 9}
+	}
+	return refs
+}
+
 // AllUnits returns all 27 units (9 rows + 9 cols + 9 boxes)
 func AllUnits() []Unit {
 	units := make([]Unit, 0, 27)
@@ -226,6 +186,22 @@ func AllUnits() []Unit {
 		units = append(units, Unit{Type: UnitBox, Index: i, Cells: BoxIndices[i]})
 	}
 	return units
+}
+
+// LineIndexFromPos returns the row or col index from a CellRef based on line type
+func (u UnitType) LineIndexFromPos(pos core.CellRef) int {
+	if u == UnitRow {
+		return pos.Row
+	}
+	return pos.Col
+}
+
+// BoxIndexFromPos returns which box segment (0, 1, or 2) a position belongs to
+func (u UnitType) BoxIndexFromPos(pos core.CellRef) int {
+	if u == UnitRow {
+		return pos.Col / 3
+	}
+	return pos.Row / 3
 }
 
 // ============================================================================
@@ -377,10 +353,6 @@ func DedupeEliminations(elims []core.Candidate) []core.Candidate {
 	return result
 }
 
-// ============================================================================
-// Common Peers Calculation (stateless version)
-// ============================================================================
-
 // AllSeeAll returns true if every cell in cellsA sees every cell in cellsB
 func AllSeeAll(cellsA, cellsB []int) bool {
 	for _, a := range cellsA {
@@ -391,4 +363,156 @@ func AllSeeAll(cellsA, cellsB []int) bool {
 		}
 	}
 	return true
+}
+
+// ============================================================================
+// Cell Reference Helpers
+// ============================================================================
+
+// CellRefsFromIndices converts cell indices to CellRef slice
+func CellRefsFromIndices(indices ...int) []core.CellRef {
+	result := make([]core.CellRef, len(indices))
+	for i, idx := range indices {
+		result[i] = core.CellRef{Row: idx / 9, Col: idx % 9}
+	}
+	return result
+}
+
+// ============================================================================
+// Elimination Helpers
+// ============================================================================
+
+// FindEliminationsSeeing finds cells with digit that see ALL specified mustSee cells.
+// Cells in the exclude set are skipped. If exclude is nil, mustSee cells are excluded.
+func FindEliminationsSeeing(b BoardInterface, digit int, exclude []int, mustSee ...int) []core.Candidate {
+	// Build exclusion set
+	excludeSet := make(map[int]bool)
+	if exclude != nil {
+		for _, idx := range exclude {
+			excludeSet[idx] = true
+		}
+	} else {
+		// Default: exclude the mustSee cells themselves
+		for _, idx := range mustSee {
+			excludeSet[idx] = true
+		}
+	}
+
+	var eliminations []core.Candidate
+	for idx := 0; idx < 81; idx++ {
+		if excludeSet[idx] {
+			continue
+		}
+		if !b.GetCandidatesAt(idx).Has(digit) {
+			continue
+		}
+		seesAll := true
+		for _, target := range mustSee {
+			if !ArePeers(idx, target) {
+				seesAll = false
+				break
+			}
+		}
+		if seesAll {
+			eliminations = append(eliminations, core.Candidate{
+				Row: idx / 9, Col: idx % 9, Digit: digit,
+			})
+		}
+	}
+	return eliminations
+}
+
+// ============================================================================
+// Almost Locked Set (ALS) Support
+// ============================================================================
+
+// ALS represents an Almost Locked Set: N cells with N+1 candidates
+type ALS struct {
+	Cells   []int         // Cell indices in the ALS
+	Digits  []int         // Candidates in the ALS (N+1 digits for N cells)
+	ByDigit map[int][]int // For each digit, which cells contain it
+}
+
+// FindAllALS finds all Almost Locked Sets in all units.
+// An ALS is a set of N cells containing exactly N+1 different candidates.
+// maxSize limits the ALS size (default 4 if <= 0).
+func FindAllALS(b BoardInterface, maxSize int) []ALS {
+	if maxSize <= 0 {
+		maxSize = 4
+	}
+
+	var allALS []ALS
+
+	// Build unit list in specific order: all rows, then all cols, then all boxes.
+	// This order affects which ALS are found first and can impact technique results.
+	units := make([][]int, 0, 27)
+	for i := 0; i < 9; i++ {
+		units = append(units, RowIndices[i])
+	}
+	for i := 0; i < 9; i++ {
+		units = append(units, ColIndices[i])
+	}
+	for i := 0; i < 9; i++ {
+		units = append(units, BoxIndices[i])
+	}
+
+	for _, unit := range units {
+		// Get empty cells in this unit
+		var emptyCells []int
+		for _, idx := range unit {
+			if b.GetCandidatesAt(idx).Count() > 0 {
+				emptyCells = append(emptyCells, idx)
+			}
+		}
+
+		// Find ALS of sizes 1 to maxSize
+		for size := 1; size <= maxSize && size <= len(emptyCells); size++ {
+			combos := Combinations(emptyCells, size)
+			for _, combo := range combos {
+				// Count combined candidates
+				var combined Candidates
+				for _, cell := range combo {
+					combined = combined.Union(b.GetCandidatesAt(cell))
+				}
+
+				// ALS: N cells with N+1 candidates
+				if combined.Count() == size+1 {
+					digits := combined.ToSlice()
+
+					// Build digit-to-cells map
+					byDigit := make(map[int][]int)
+					for _, cell := range combo {
+						for _, d := range b.GetCandidatesAt(cell).ToSlice() {
+							byDigit[d] = append(byDigit[d], cell)
+						}
+					}
+
+					// Sort cells for consistency
+					sortedCells := make([]int, len(combo))
+					copy(sortedCells, combo)
+					sort.Ints(sortedCells)
+
+					allALS = append(allALS, ALS{
+						Cells:   sortedCells,
+						Digits:  digits,
+						ByDigit: byDigit,
+					})
+				}
+			}
+		}
+	}
+
+	return allALS
+}
+
+// ALSShareCells returns true if two ALS share any cells
+func ALSShareCells(a, b ALS) bool {
+	for _, cellA := range a.Cells {
+		for _, cellB := range b.Cells {
+			if cellA == cellB {
+				return true
+			}
+		}
+	}
+	return false
 }

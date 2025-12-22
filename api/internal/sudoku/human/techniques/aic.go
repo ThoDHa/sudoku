@@ -1,7 +1,8 @@
-package human
+package techniques
 
 import (
 	"fmt"
+
 	"sudoku-api/internal/core"
 )
 
@@ -17,18 +18,18 @@ type chainLink struct {
 	strong bool // true if this node was reached via a strong link
 }
 
-// detectAIC finds Alternating Inference Chains and returns eliminations or assignments
-func detectAIC(b *Board) *core.Move {
+// DetectAIC finds Alternating Inference Chains and returns eliminations or assignments
+func DetectAIC(b BoardInterface) *core.Move {
 	// Build strong and weak link maps for efficient lookup
 	strongLinks := buildStrongLinks(b)
 	weakLinks := buildWeakLinks(b)
 
 	// Try starting from each candidate in each cell
 	for cell := 0; cell < 81; cell++ {
-		if b.Cells[cell] != 0 {
+		if b.GetCell(cell) != 0 {
 			continue
 		}
-		for _, digit := range b.Candidates[cell].ToSlice() {
+		for _, digit := range b.GetCandidatesAt(cell).ToSlice() {
 			startNode := candidateNode{cell: cell, digit: digit}
 
 			// BFS to find chains - start with strong link (node is ON if true)
@@ -43,7 +44,7 @@ func detectAIC(b *Board) *core.Move {
 }
 
 // buildStrongLinks builds a map of all strong links from each candidate node
-func buildStrongLinks(b *Board) map[candidateNode][]candidateNode {
+func buildStrongLinks(b BoardInterface) map[candidateNode][]candidateNode {
 	links := make(map[candidateNode][]candidateNode)
 
 	// Strong links from conjugate pairs (only 2 places for digit in a unit)
@@ -64,10 +65,10 @@ func buildStrongLinks(b *Board) map[candidateNode][]candidateNode {
 
 	// Strong links from bivalue cells (cells with exactly 2 candidates)
 	for cell := 0; cell < 81; cell++ {
-		if b.Cells[cell] != 0 {
+		if b.GetCell(cell) != 0 {
 			continue
 		}
-		cands := b.Candidates[cell].ToSlice()
+		cands := b.GetCandidatesAt(cell).ToSlice()
 		if len(cands) == 2 {
 			n1 := candidateNode{cell: cell, digit: cands[0]}
 			n2 := candidateNode{cell: cell, digit: cands[1]}
@@ -80,14 +81,14 @@ func buildStrongLinks(b *Board) map[candidateNode][]candidateNode {
 }
 
 // buildWeakLinks builds a map of all weak links from each candidate node
-func buildWeakLinks(b *Board) map[candidateNode][]candidateNode {
+func buildWeakLinks(b BoardInterface) map[candidateNode][]candidateNode {
 	links := make(map[candidateNode][]candidateNode)
 
 	// Weak links: same digit in cells that see each other
 	for digit := 1; digit <= 9; digit++ {
 		cells := []int{}
 		for cell := 0; cell < 81; cell++ {
-			if b.Cells[cell] == 0 && b.Candidates[cell].Has(digit) {
+			if b.GetCell(cell) == 0 && b.GetCandidatesAt(cell).Has(digit) {
 				cells = append(cells, cell)
 			}
 		}
@@ -105,10 +106,10 @@ func buildWeakLinks(b *Board) map[candidateNode][]candidateNode {
 
 	// Weak links: different digits in the same cell
 	for cell := 0; cell < 81; cell++ {
-		if b.Cells[cell] != 0 {
+		if b.GetCell(cell) != 0 {
 			continue
 		}
-		cands := b.Candidates[cell].ToSlice()
+		cands := b.GetCandidatesAt(cell).ToSlice()
 		for i := 0; i < len(cands); i++ {
 			for j := i + 1; j < len(cands); j++ {
 				n1 := candidateNode{cell: cell, digit: cands[i]}
@@ -133,7 +134,7 @@ func containsNode(nodes []candidateNode, target candidateNode) bool {
 }
 
 // bfsAIC performs BFS to find valid AIC chains
-func bfsAIC(b *Board, start candidateNode, startPolarity bool, strongLinks, weakLinks map[candidateNode][]candidateNode) *core.Move {
+func bfsAIC(b BoardInterface, start candidateNode, startPolarity bool, strongLinks, weakLinks map[candidateNode][]candidateNode) *core.Move {
 	type queueItem struct {
 		chain    []chainLink
 		polarity bool // current polarity: true=ON, false=OFF
@@ -205,7 +206,7 @@ func bfsAIC(b *Board, start candidateNode, startPolarity bool, strongLinks, weak
 }
 
 // checkChainConclusion checks if a chain leads to valid eliminations or assignments
-func checkChainConclusion(b *Board, chain []chainLink, start candidateNode, startPolarity bool, end candidateNode, endPolarity bool) *core.Move {
+func checkChainConclusion(b BoardInterface, chain []chainLink, start candidateNode, startPolarity bool, end candidateNode, endPolarity bool) *core.Move {
 	// Type 1: Discontinuous Nice Loop - endpoints are the same with same polarity
 	// If both ends are ON (or both OFF) for the same candidate, we have a contradiction
 	if start.cell == end.cell && start.digit == end.digit {

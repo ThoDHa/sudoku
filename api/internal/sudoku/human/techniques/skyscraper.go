@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -15,8 +15,8 @@ import (
 // forming the "base" of the skyscraper. The other ends (the "tops") are in
 // different boxes. Any cell that sees both tops can have the digit eliminated.
 
-// detectSkyscraper finds Skyscraper pattern: two conjugate pairs sharing one end
-func detectSkyscraper(b *Board) *core.Move {
+// DetectSkyscraper finds Skyscraper pattern: two conjugate pairs sharing one end
+func DetectSkyscraper(b BoardInterface) *core.Move {
 	for digit := 1; digit <= 9; digit++ {
 		// Find rows with exactly 2 candidates for this digit
 		var rowPairs []struct {
@@ -27,7 +27,7 @@ func detectSkyscraper(b *Board) *core.Move {
 		for row := 0; row < 9; row++ {
 			var cols []int
 			for col := 0; col < 9; col++ {
-				if b.Candidates[row*9+col].Has(digit) {
+				if b.GetCandidatesAt(row*9 + col).Has(digit) {
 					cols = append(cols, col)
 				}
 			}
@@ -77,7 +77,7 @@ func detectSkyscraper(b *Board) *core.Move {
 				// Find eliminations: cells that see both unshared ends
 				var eliminations []core.Candidate
 				for idx := 0; idx < 81; idx++ {
-					if !b.Candidates[idx].Has(digit) {
+					if !b.GetCandidatesAt(idx).Has(digit) {
 						continue
 					}
 					row, col := idx/9, idx%9

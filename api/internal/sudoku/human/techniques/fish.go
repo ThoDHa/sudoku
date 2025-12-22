@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -7,9 +7,9 @@ import (
 	"sudoku-api/internal/core"
 )
 
-// detectXWing finds X-Wing pattern: a digit in exactly 2 positions in 2 rows,
+// DetectXWing finds X-Wing pattern: a digit in exactly 2 positions in 2 rows,
 // and those positions share the same columns
-func detectXWing(b *Board) *core.Move {
+func DetectXWing(b BoardInterface) *core.Move {
 	// Check rows for X-Wing
 	for digit := 1; digit <= 9; digit++ {
 		// Find rows where digit appears in exactly 2 columns
@@ -17,7 +17,7 @@ func detectXWing(b *Board) *core.Move {
 		for row := 0; row < 9; row++ {
 			var cols []int
 			for col := 0; col < 9; col++ {
-				if b.Candidates[row*9+col].Has(digit) {
+				if b.GetCandidatesAt(row*9 + col).Has(digit) {
 					cols = append(cols, col)
 				}
 			}
@@ -46,10 +46,10 @@ func detectXWing(b *Board) *core.Move {
 						if row == r1 || row == r2 {
 							continue
 						}
-						if b.Candidates[row*9+c1].Has(digit) {
+						if b.GetCandidatesAt(row*9 + c1).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: row, Col: c1, Digit: digit})
 						}
-						if b.Candidates[row*9+c2].Has(digit) {
+						if b.GetCandidatesAt(row*9 + c2).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: row, Col: c2, Digit: digit})
 						}
 					}
@@ -81,7 +81,7 @@ func detectXWing(b *Board) *core.Move {
 		for col := 0; col < 9; col++ {
 			var rows []int
 			for row := 0; row < 9; row++ {
-				if b.Candidates[row*9+col].Has(digit) {
+				if b.GetCandidatesAt(row*9 + col).Has(digit) {
 					rows = append(rows, row)
 				}
 			}
@@ -108,10 +108,10 @@ func detectXWing(b *Board) *core.Move {
 						if col == c1 || col == c2 {
 							continue
 						}
-						if b.Candidates[r1*9+col].Has(digit) {
+						if b.GetCandidatesAt(r1*9 + col).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: r1, Col: col, Digit: digit})
 						}
-						if b.Candidates[r2*9+col].Has(digit) {
+						if b.GetCandidatesAt(r2*9 + col).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: r2, Col: col, Digit: digit})
 						}
 					}
@@ -142,19 +142,19 @@ func detectXWing(b *Board) *core.Move {
 	return nil
 }
 
-// detectXYWing finds XY-Wing pattern: pivot cell with candidates XY,
+// DetectXYWing finds XY-Wing pattern: pivot cell with candidates XY,
 // two wings with candidates XZ and YZ, eliminate Z from cells seeing both wings
-func detectXYWing(b *Board) *core.Move {
+func DetectXYWing(b BoardInterface) *core.Move {
 	// Find cells with exactly 2 candidates (potential pivots or wings)
 	var bivalues []int
 	for i := 0; i < 81; i++ {
-		if b.Candidates[i].Count() == 2 {
+		if b.GetCandidatesAt(i).Count() == 2 {
 			bivalues = append(bivalues, i)
 		}
 	}
 
 	for _, pivot := range bivalues {
-		pivotCands := b.Candidates[pivot].ToSlice()
+		pivotCands := b.GetCandidatesAt(pivot).ToSlice()
 		if len(pivotCands) != 2 {
 			continue
 		}
@@ -171,7 +171,7 @@ func detectXYWing(b *Board) *core.Move {
 				continue
 			}
 
-			wingCands := b.Candidates[wing].ToSlice()
+			wingCands := b.GetCandidatesAt(wing).ToSlice()
 			if len(wingCands) != 2 {
 				continue
 			}
@@ -188,7 +188,7 @@ func detectXYWing(b *Board) *core.Move {
 
 		// Try all XZ-YZ pairs
 		for _, xzWing := range xzWings {
-			xzCands := b.Candidates[xzWing].ToSlice()
+			xzCands := b.GetCandidatesAt(xzWing).ToSlice()
 			var z1 int
 			if xzCands[0] == x {
 				z1 = xzCands[1]
@@ -197,7 +197,7 @@ func detectXYWing(b *Board) *core.Move {
 			}
 
 			for _, yzWing := range yzWings {
-				yzCands := b.Candidates[yzWing].ToSlice()
+				yzCands := b.GetCandidatesAt(yzWing).ToSlice()
 				var z2 int
 				if yzCands[0] == y {
 					z2 = yzCands[1]
@@ -216,7 +216,7 @@ func detectXYWing(b *Board) *core.Move {
 					if i == pivot || i == xzWing || i == yzWing {
 						continue
 					}
-					if !b.Candidates[i].Has(z) {
+					if !b.GetCandidatesAt(i).Has(z) {
 						continue
 					}
 					if ArePeers(i, xzWing) && ArePeers(i, yzWing) {
@@ -253,8 +253,8 @@ func detectXYWing(b *Board) *core.Move {
 	return nil
 }
 
-// detectSimpleColoring uses single-digit coloring to find eliminations
-func detectSimpleColoring(b *Board) *core.Move {
+// DetectSimpleColoring uses single-digit coloring to find eliminations
+func DetectSimpleColoring(b BoardInterface) *core.Move {
 	for digit := 1; digit <= 9; digit++ {
 		// Find conjugate pairs (cells where digit appears exactly twice in a unit)
 		conjugates := make(map[int][]int) // cell -> connected cells
@@ -263,7 +263,7 @@ func detectSimpleColoring(b *Board) *core.Move {
 		for row := 0; row < 9; row++ {
 			var cells []int
 			for col := 0; col < 9; col++ {
-				if b.Candidates[row*9+col].Has(digit) {
+				if b.GetCandidatesAt(row*9 + col).Has(digit) {
 					cells = append(cells, row*9+col)
 				}
 			}
@@ -277,7 +277,7 @@ func detectSimpleColoring(b *Board) *core.Move {
 		for col := 0; col < 9; col++ {
 			var cells []int
 			for row := 0; row < 9; row++ {
-				if b.Candidates[row*9+col].Has(digit) {
+				if b.GetCandidatesAt(row*9 + col).Has(digit) {
 					cells = append(cells, row*9+col)
 				}
 			}
@@ -293,7 +293,7 @@ func detectSimpleColoring(b *Board) *core.Move {
 			boxRow, boxCol := (box/3)*3, (box%3)*3
 			for r := boxRow; r < boxRow+3; r++ {
 				for c := boxCol; c < boxCol+3; c++ {
-					if b.Candidates[r*9+c].Has(digit) {
+					if b.GetCandidatesAt(r*9 + c).Has(digit) {
 						cells = append(cells, r*9+c)
 					}
 				}
@@ -355,7 +355,7 @@ func detectSimpleColoring(b *Board) *core.Move {
 
 			// Check for eliminations: cells that see both colors OF THIS COMPONENT
 			for i := 0; i < 81; i++ {
-				if !b.Candidates[i].Has(digit) || colors[i] != 0 {
+				if !b.GetCandidatesAt(i).Has(digit) || colors[i] != 0 {
 					continue
 				}
 

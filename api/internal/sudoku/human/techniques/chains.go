@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -6,9 +6,9 @@ import (
 	"sudoku-api/internal/core"
 )
 
-// detectJellyfish finds Jellyfish pattern: 4 rows where a digit appears in 2-4 positions,
+// DetectJellyfish finds Jellyfish pattern: 4 rows where a digit appears in 2-4 positions,
 // and those positions share exactly 4 columns (or vice versa)
-func detectJellyfish(b *Board) *core.Move {
+func DetectJellyfish(b BoardInterface) *core.Move {
 	for digit := 1; digit <= 9; digit++ {
 		if move := detectJellyfishInDirection(b, digit, UnitRow); move != nil {
 			return move
@@ -21,14 +21,14 @@ func detectJellyfish(b *Board) *core.Move {
 }
 
 // detectJellyfishInDirection finds Jellyfish in the specified direction (rows or columns)
-func detectJellyfishInDirection(b *Board, digit int, dir UnitType) *core.Move {
+func detectJellyfishInDirection(b BoardInterface, digit int, dir UnitType) *core.Move {
 	// Build map of primary unit -> secondary positions where digit appears
 	unitPositions := make(map[int][]int)
 	for primary := 0; primary < 9; primary++ {
 		var secondaries []int
 		for secondary := 0; secondary < 9; secondary++ {
 			idx := cellIndexForDirection(dir, primary, secondary)
-			if b.Candidates[idx].Has(digit) {
+			if b.GetCandidatesAt(idx).Has(digit) {
 				secondaries = append(secondaries, secondary)
 			}
 		}
@@ -85,7 +85,7 @@ func detectJellyfishInDirection(b *Board, digit int, dir UnitType) *core.Move {
 								continue
 							}
 							idx := cellIndexForDirection(dir, pri, sec)
-							if b.Candidates[idx].Has(digit) {
+							if b.GetCandidatesAt(idx).Has(digit) {
 								row, col := cellCoordsForDirection(dir, pri, sec)
 								eliminations = append(eliminations, core.Candidate{
 									Row: row, Col: col, Digit: digit,
@@ -148,8 +148,8 @@ func directionNamePlural(dir UnitType) string {
 	return "columns"
 }
 
-// detectXChain finds X-Chain pattern: a chain of conjugate pairs for a single digit
-func detectXChain(b *Board) *core.Move {
+// DetectXChain finds X-Chain pattern: a chain of conjugate pairs for a single digit
+func DetectXChain(b BoardInterface) *core.Move {
 	for digit := 1; digit <= 9; digit++ {
 		// Build conjugate pair graph
 		conjugates := buildConjugateGraph(b, digit)
@@ -167,7 +167,7 @@ func detectXChain(b *Board) *core.Move {
 	return nil
 }
 
-func buildConjugateGraph(b *Board, digit int) map[int][]int {
+func buildConjugateGraph(b BoardInterface, digit int) map[int][]int {
 	conjugates := make(map[int][]int)
 
 	// Check rows and columns using UnitType abstraction
@@ -176,7 +176,7 @@ func buildConjugateGraph(b *Board, digit int) map[int][]int {
 			var cells []int
 			for secondary := 0; secondary < 9; secondary++ {
 				idx := cellIndexForDirection(dir, primary, secondary)
-				if b.Candidates[idx].Has(digit) {
+				if b.GetCandidatesAt(idx).Has(digit) {
 					cells = append(cells, idx)
 				}
 			}
@@ -193,7 +193,7 @@ func buildConjugateGraph(b *Board, digit int) map[int][]int {
 		boxRow, boxCol := (box/3)*3, (box%3)*3
 		for r := boxRow; r < boxRow+3; r++ {
 			for c := boxCol; c < boxCol+3; c++ {
-				if b.Candidates[r*9+c].Has(digit) {
+				if b.GetCandidatesAt(r*9 + c).Has(digit) {
 					cells = append(cells, r*9+c)
 				}
 			}
@@ -207,7 +207,7 @@ func buildConjugateGraph(b *Board, digit int) map[int][]int {
 	return conjugates
 }
 
-func findXChainFrom(b *Board, digit int, start int, conjugates map[int][]int) *core.Move {
+func findXChainFrom(b BoardInterface, digit int, start int, conjugates map[int][]int) *core.Move {
 	// BFS to find chains
 	type chainNode struct {
 		cell  int
@@ -233,7 +233,7 @@ func findXChainFrom(b *Board, digit int, start int, conjugates map[int][]int) *c
 			chainEnd := node.cell
 
 			for i := 0; i < 81; i++ {
-				if !b.Candidates[i].Has(digit) {
+				if !b.GetCandidatesAt(i).Has(digit) {
 					continue
 				}
 				// Skip cells in the chain
@@ -286,12 +286,12 @@ func findXChainFrom(b *Board, digit int, start int, conjugates map[int][]int) *c
 	return nil
 }
 
-// detectXYChain finds XY-Chain pattern: a chain of bivalue cells
-func detectXYChain(b *Board) *core.Move {
+// DetectXYChain finds XY-Chain pattern: a chain of bivalue cells
+func DetectXYChain(b BoardInterface) *core.Move {
 	// Find all bivalue cells
 	var bivalue []int
 	for i := 0; i < 81; i++ {
-		if b.Candidates[i].Count() == 2 {
+		if b.GetCandidatesAt(i).Count() == 2 {
 			bivalue = append(bivalue, i)
 		}
 	}
@@ -312,8 +312,8 @@ func detectXYChain(b *Board) *core.Move {
 				continue
 			}
 			// Find shared candidate
-			for _, d := range b.Candidates[c1].ToSlice() {
-				if b.Candidates[c2].Has(d) {
+			for _, d := range b.GetCandidatesAt(c1).ToSlice() {
+				if b.GetCandidatesAt(c2).Has(d) {
 					adj[c1] = append(adj[c1], struct {
 						cell       int
 						sharedCand int
@@ -338,11 +338,11 @@ func detectXYChain(b *Board) *core.Move {
 	return nil
 }
 
-func findXYChainFrom(b *Board, start int, adj map[int][]struct {
+func findXYChainFrom(b BoardInterface, start int, adj map[int][]struct {
 	cell       int
 	sharedCand int
 }) *core.Move {
-	cands := b.Candidates[start].ToSlice()
+	cands := b.GetCandidatesAt(start).ToSlice()
 	if len(cands) != 2 {
 		return nil
 	}
@@ -380,7 +380,7 @@ func findXYChainFrom(b *Board, start int, adj map[int][]struct {
 				chainEnd := n.cell
 
 				for i := 0; i < 81; i++ {
-					if !b.Candidates[i].Has(startCand) {
+					if !b.GetCandidatesAt(i).Has(startCand) {
 						continue
 					}
 					inChain := false
@@ -428,7 +428,7 @@ func findXYChainFrom(b *Board, start int, adj map[int][]struct {
 				}
 
 				// New end candidate is the other candidate of the neighbor cell
-				neighborCands := b.Candidates[neighbor.cell].ToSlice()
+				neighborCands := b.GetCandidatesAt(neighbor.cell).ToSlice()
 				if len(neighborCands) != 2 {
 					continue
 				}
@@ -448,9 +448,9 @@ func findXYChainFrom(b *Board, start int, adj map[int][]struct {
 	return nil
 }
 
-// detectWWing finds W-Wing pattern: two bivalue cells with same candidates,
+// DetectWWing finds W-Wing pattern: two bivalue cells with same candidates,
 // connected by a strong link on one of the candidates
-func detectWWing(b *Board) *core.Move {
+func DetectWWing(b BoardInterface) *core.Move {
 	// Find all bivalue cells
 	var bivalue []struct {
 		idx    int
@@ -458,8 +458,8 @@ func detectWWing(b *Board) *core.Move {
 	}
 
 	for i := 0; i < 81; i++ {
-		if b.Candidates[i].Count() == 2 {
-			cands := b.Candidates[i].ToSlice()
+		if b.GetCandidatesAt(i).Count() == 2 {
+			cands := b.GetCandidatesAt(i).ToSlice()
 			bivalue = append(bivalue, struct {
 				idx    int
 				digits [2]int
@@ -493,7 +493,7 @@ func detectWWing(b *Board) *core.Move {
 						var cells []int
 						for secondary := 0; secondary < 9; secondary++ {
 							idx := cellIndexForDirection(dir, primary, secondary)
-							if b.Candidates[idx].Has(linkDigit) {
+							if b.GetCandidatesAt(idx).Has(linkDigit) {
 								cells = append(cells, idx)
 							}
 						}
@@ -513,7 +513,7 @@ func detectWWing(b *Board) *core.Move {
 							// W-Wing found! Eliminate elimDigit from cells seeing both bv1 and bv2
 							var eliminations []core.Candidate
 							for idx := 0; idx < 81; idx++ {
-								if !b.Candidates[idx].Has(elimDigit) {
+								if !b.GetCandidatesAt(idx).Has(elimDigit) {
 									continue
 								}
 								if idx == bv1.idx || idx == bv2.idx || idx == link1 || idx == link2 {
@@ -560,11 +560,11 @@ func detectWWing(b *Board) *core.Move {
 	return nil
 }
 
-// detectEmptyRectangle finds Empty Rectangle pattern
+// DetectEmptyRectangle finds Empty Rectangle pattern
 // An empty rectangle is a box where all candidates for a digit are in an L-shape
 // (all in one row + one column within the box). Combined with a strong link (conjugate pair)
 // in a line outside the box, this can eliminate candidates.
-func detectEmptyRectangle(b *Board) *core.Move {
+func DetectEmptyRectangle(b BoardInterface) *core.Move {
 	for digit := 1; digit <= 9; digit++ {
 		for box := 0; box < 9; box++ {
 			boxRowStart, boxColStart := (box/3)*3, (box%3)*3
@@ -573,7 +573,7 @@ func detectEmptyRectangle(b *Board) *core.Move {
 			var positions []int
 			for r := boxRowStart; r < boxRowStart+3; r++ {
 				for c := boxColStart; c < boxColStart+3; c++ {
-					if b.Candidates[r*9+c].Has(digit) {
+					if b.GetCandidatesAt(r*9 + c).Has(digit) {
 						positions = append(positions, r*9+c)
 					}
 				}
@@ -640,7 +640,7 @@ func detectEmptyRectangle(b *Board) *core.Move {
 						// Find all candidates in this column
 						var colPositions []int
 						for r := 0; r < 9; r++ {
-							if b.Candidates[r*9+linkCol].Has(digit) {
+							if b.GetCandidatesAt(r*9 + linkCol).Has(digit) {
 								colPositions = append(colPositions, r)
 							}
 						}
@@ -674,7 +674,7 @@ func detectEmptyRectangle(b *Board) *core.Move {
 							continue // Target would be inside the ER box
 						}
 						targetIdx := linkRow*9 + erCol
-						if b.Candidates[targetIdx].Has(digit) {
+						if b.GetCandidatesAt(targetIdx).Has(digit) {
 							var targets []core.CellRef
 							for _, p := range positions {
 								targets = append(targets, core.CellRef{Row: p / 9, Col: p % 9})
@@ -708,7 +708,7 @@ func detectEmptyRectangle(b *Board) *core.Move {
 						// Find all candidates in this row
 						var rowPositions []int
 						for c := 0; c < 9; c++ {
-							if b.Candidates[linkRow*9+c].Has(digit) {
+							if b.GetCandidatesAt(linkRow*9 + c).Has(digit) {
 								rowPositions = append(rowPositions, c)
 							}
 						}
@@ -743,7 +743,7 @@ func detectEmptyRectangle(b *Board) *core.Move {
 
 						// Now we can eliminate from (erRow, linkCol) if it has the digit
 						targetIdx := erRow*9 + linkCol
-						if b.Candidates[targetIdx].Has(digit) {
+						if b.GetCandidatesAt(targetIdx).Has(digit) {
 							var targets []core.CellRef
 							for _, p := range positions {
 								targets = append(targets, core.CellRef{Row: p / 9, Col: p % 9})

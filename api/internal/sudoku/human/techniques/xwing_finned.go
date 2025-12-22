@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -14,8 +14,8 @@ import (
 // in one of the rows/columns. The fin restricts where eliminations can occur:
 // only cells that see both the X-Wing corner AND the fin can be eliminated.
 
-// detectFinnedXWing finds Finned X-Wing patterns
-func detectFinnedXWing(b *Board) *core.Move {
+// DetectFinnedXWing finds Finned X-Wing patterns
+func DetectFinnedXWing(b BoardInterface) *core.Move {
 	for digit := 1; digit <= 9; digit++ {
 		// Check row-based finned X-wing
 		if move := detectFinnedXWingInRows(b, digit); move != nil {
@@ -29,7 +29,7 @@ func detectFinnedXWing(b *Board) *core.Move {
 	return nil
 }
 
-func detectFinnedXWingInRows(b *Board, digit int) *core.Move {
+func detectFinnedXWingInRows(b BoardInterface, digit int) *core.Move {
 	// Find rows with 2-3 candidates for this digit
 	type rowInfo struct {
 		row  int
@@ -40,7 +40,7 @@ func detectFinnedXWingInRows(b *Board, digit int) *core.Move {
 	for row := 0; row < 9; row++ {
 		var cols []int
 		for col := 0; col < 9; col++ {
-			if b.Candidates[row*9+col].Has(digit) {
+			if b.GetCandidatesAt(row*9 + col).Has(digit) {
 				cols = append(cols, col)
 			}
 		}
@@ -113,7 +113,7 @@ func detectFinnedXWingInRows(b *Board, digit int) *core.Move {
 					continue
 				}
 				idx := r*9 + targetCol
-				if b.Candidates[idx].Has(digit) {
+				if b.GetCandidatesAt(idx).Has(digit) {
 					eliminations = append(eliminations, core.Candidate{Row: r, Col: targetCol, Digit: digit})
 				}
 			}
@@ -144,7 +144,7 @@ func detectFinnedXWingInRows(b *Board, digit int) *core.Move {
 	return nil
 }
 
-func detectFinnedXWingInCols(b *Board, digit int) *core.Move {
+func detectFinnedXWingInCols(b BoardInterface, digit int) *core.Move {
 	// Find columns with 2-3 candidates for this digit
 	type colInfo struct {
 		col  int
@@ -155,7 +155,7 @@ func detectFinnedXWingInCols(b *Board, digit int) *core.Move {
 	for col := 0; col < 9; col++ {
 		var rows []int
 		for row := 0; row < 9; row++ {
-			if b.Candidates[row*9+col].Has(digit) {
+			if b.GetCandidatesAt(row*9 + col).Has(digit) {
 				rows = append(rows, row)
 			}
 		}
@@ -225,7 +225,7 @@ func detectFinnedXWingInCols(b *Board, digit int) *core.Move {
 					continue
 				}
 				idx := targetRow*9 + c
-				if b.Candidates[idx].Has(digit) {
+				if b.GetCandidatesAt(idx).Has(digit) {
 					eliminations = append(eliminations, core.Candidate{Row: targetRow, Col: c, Digit: digit})
 				}
 			}

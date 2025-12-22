@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -15,8 +15,8 @@ import (
 // align to exactly 3 columns, the digit can be eliminated from other
 // cells in those columns (and vice versa for column-based Swordfish).
 
-// detectSwordfish finds Swordfish patterns
-func detectSwordfish(b *Board) *core.Move {
+// DetectSwordfish finds Swordfish patterns
+func DetectSwordfish(b BoardInterface) *core.Move {
 	for digit := 1; digit <= 9; digit++ {
 		if move := detectSwordfishInRows(b, digit); move != nil {
 			return move
@@ -28,13 +28,13 @@ func detectSwordfish(b *Board) *core.Move {
 	return nil
 }
 
-func detectSwordfishInRows(b *Board, digit int) *core.Move {
+func detectSwordfishInRows(b BoardInterface, digit int) *core.Move {
 	// Find rows where digit appears in 2-3 columns
 	rowPositions := make(map[int][]int)
 	for row := 0; row < 9; row++ {
 		var cols []int
 		for col := 0; col < 9; col++ {
-			if b.Candidates[row*9+col].Has(digit) {
+			if b.GetCandidatesAt(row*9 + col).Has(digit) {
 				cols = append(cols, col)
 			}
 		}
@@ -86,7 +86,7 @@ func detectSwordfishInRows(b *Board, digit int) *core.Move {
 						if row == r1 || row == r2 || row == r3 {
 							continue
 						}
-						if b.Candidates[row*9+col].Has(digit) {
+						if b.GetCandidatesAt(row*9 + col).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: row, Col: col, Digit: digit,
 							})
@@ -120,13 +120,13 @@ func detectSwordfishInRows(b *Board, digit int) *core.Move {
 	return nil
 }
 
-func detectSwordfishInCols(b *Board, digit int) *core.Move {
+func detectSwordfishInCols(b BoardInterface, digit int) *core.Move {
 	// Find columns where digit appears in 2-3 rows
 	colPositions := make(map[int][]int)
 	for col := 0; col < 9; col++ {
 		var rows []int
 		for row := 0; row < 9; row++ {
-			if b.Candidates[row*9+col].Has(digit) {
+			if b.GetCandidatesAt(row*9 + col).Has(digit) {
 				rows = append(rows, row)
 			}
 		}
@@ -178,7 +178,7 @@ func detectSwordfishInCols(b *Board, digit int) *core.Move {
 						if col == c1 || col == c2 || col == c3 {
 							continue
 						}
-						if b.Candidates[row*9+col].Has(digit) {
+						if b.GetCandidatesAt(row*9 + col).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: row, Col: col, Digit: digit,
 							})
@@ -222,7 +222,7 @@ func detectSwordfishInCols(b *Board, digit int) *core.Move {
 // - One row has extra positions (the "fin") not in the main columns
 // - Eliminate the digit from cells that are in one of the 3 columns AND see the fin cell
 
-func detectFinnedSwordfish(b *Board) *core.Move {
+func DetectFinnedSwordfish(b BoardInterface) *core.Move {
 	for digit := 1; digit <= 9; digit++ {
 		if move := detectFinnedSwordfishInRows(b, digit); move != nil {
 			return move
@@ -234,7 +234,7 @@ func detectFinnedSwordfish(b *Board) *core.Move {
 	return nil
 }
 
-func detectFinnedSwordfishInRows(b *Board, digit int) *core.Move {
+func detectFinnedSwordfishInRows(b BoardInterface, digit int) *core.Move {
 	// Find rows where digit appears in 2-4 columns (2-3 for base, up to 4 for finned row)
 	type rowInfo struct {
 		row  int
@@ -245,7 +245,7 @@ func detectFinnedSwordfishInRows(b *Board, digit int) *core.Move {
 	for row := 0; row < 9; row++ {
 		var cols []int
 		for col := 0; col < 9; col++ {
-			if b.Candidates[row*9+col].Has(digit) {
+			if b.GetCandidatesAt(row*9 + col).Has(digit) {
 				cols = append(cols, col)
 			}
 		}
@@ -359,7 +359,7 @@ func detectFinnedSwordfishInRows(b *Board, digit int) *core.Move {
 								continue
 							}
 							idx := row*9 + tc
-							if b.Candidates[idx].Has(digit) {
+							if b.GetCandidatesAt(idx).Has(digit) {
 								// Verify this cell sees the fin (it will if in same box)
 								seesAllFins := true
 								for _, fc := range finCols {
@@ -421,7 +421,7 @@ func detectFinnedSwordfishInRows(b *Board, digit int) *core.Move {
 	return nil
 }
 
-func detectFinnedSwordfishInCols(b *Board, digit int) *core.Move {
+func detectFinnedSwordfishInCols(b BoardInterface, digit int) *core.Move {
 	// Find columns where digit appears in 2-4 rows (2-3 for base, up to 4 for finned col)
 	type colInfo struct {
 		col  int
@@ -432,7 +432,7 @@ func detectFinnedSwordfishInCols(b *Board, digit int) *core.Move {
 	for col := 0; col < 9; col++ {
 		var rows []int
 		for row := 0; row < 9; row++ {
-			if b.Candidates[row*9+col].Has(digit) {
+			if b.GetCandidatesAt(row*9 + col).Has(digit) {
 				rows = append(rows, row)
 			}
 		}
@@ -546,7 +546,7 @@ func detectFinnedSwordfishInCols(b *Board, digit int) *core.Move {
 								continue
 							}
 							idx := tr*9 + col
-							if b.Candidates[idx].Has(digit) {
+							if b.GetCandidatesAt(idx).Has(digit) {
 								// Verify this cell sees the fin (it will if in same box)
 								seesAllFins := true
 								for _, fr := range finRows {

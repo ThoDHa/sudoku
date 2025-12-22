@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -43,11 +43,11 @@ var urFloorRoofPairs = [][2][2]int{
 
 // findURRectangles finds all valid Unique Rectangle configurations for digits d1, d2.
 // A UR rectangle has 4 cells forming a rectangle across exactly 2 boxes.
-func findURRectangles(b *Board, d1, d2 int) []urRectangle {
+func findURRectangles(b BoardInterface, d1, d2 int) []urRectangle {
 	// Find all cells that have both d1 and d2 as candidates
 	var cells []int
 	for i := 0; i < 81; i++ {
-		if b.Candidates[i].Has(d1) && b.Candidates[i].Has(d2) {
+		if b.GetCandidatesAt(i).Has(d1) && b.GetCandidatesAt(i).Has(d2) {
 			cells = append(cells, i)
 		}
 	}
@@ -131,11 +131,11 @@ func findURRectangles(b *Board, d1, d2 int) []urRectangle {
 	return rectangles
 }
 
-// detectUniqueRectangle finds Unique Rectangle Type 1 patterns
+// DetectUniqueRectangle finds Unique Rectangle Type 1 patterns
 // A UR occurs when 4 cells form a rectangle across EXACTLY 2 boxes, and 3 corners
 // are bivalue with the same 2 digits. The 4th corner must have extra candidates
 // to avoid a deadly pattern (multiple solutions).
-func detectUniqueRectangle(b *Board) *core.Move {
+func DetectUniqueRectangle(b BoardInterface) *core.Move {
 	for d1 := 1; d1 <= 8; d1++ {
 		for d2 := d1 + 1; d2 <= 9; d2++ {
 			for _, rect := range findURRectangles(b, d1, d2) {
@@ -143,9 +143,9 @@ func detectUniqueRectangle(b *Board) *core.Move {
 				bivalueCount := 0
 				nonBivalueIdx := -1
 				for _, corner := range rect.corners {
-					if b.Candidates[corner].Count() == 2 {
+					if b.GetCandidatesAt(corner).Count() == 2 {
 						bivalueCount++
-					} else if b.Candidates[corner].Count() > 2 {
+					} else if b.GetCandidatesAt(corner).Count() > 2 {
 						nonBivalueIdx = corner
 					}
 				}
@@ -179,12 +179,12 @@ func detectUniqueRectangle(b *Board) *core.Move {
 	return nil
 }
 
-// detectUniqueRectangleType2 finds UR Type 2 patterns
+// DetectUniqueRectangleType2 finds UR Type 2 patterns
 // 4 cells forming a rectangle across 2 boxes
 // 2 diagonal corners are bivalue with {A,B}
 // Other 2 corners have {A,B} plus one extra candidate X (same extra in both)
 // Eliminate X from cells that see BOTH corners with extra candidates
-func detectUniqueRectangleType2(b *Board) *core.Move {
+func DetectUniqueRectangleType2(b BoardInterface) *core.Move {
 	for d1 := 1; d1 <= 8; d1++ {
 		for d2 := d1 + 1; d2 <= 9; d2++ {
 			for _, rect := range findURRectangles(b, d1, d2) {
@@ -195,14 +195,14 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 					floorPair, roofPair := pair[0], pair[1]
 
 					// Check if floor corners are bivalue with exactly {d1, d2}
-					if b.Candidates[corners[floorPair[0]]].Count() != 2 ||
-						b.Candidates[corners[floorPair[1]]].Count() != 2 {
+					if b.GetCandidatesAt(corners[floorPair[0]]).Count() != 2 ||
+						b.GetCandidatesAt(corners[floorPair[1]]).Count() != 2 {
 						continue
 					}
 
 					// Check if roof corners have extras
-					cands0 := b.Candidates[corners[roofPair[0]]]
-					cands1 := b.Candidates[corners[roofPair[1]]]
+					cands0 := b.GetCandidatesAt(corners[roofPair[0]])
+					cands1 := b.GetCandidatesAt(corners[roofPair[1]])
 
 					if cands0.Count() <= 2 || cands1.Count() <= 2 {
 						continue
@@ -258,10 +258,10 @@ func detectUniqueRectangleType2(b *Board) *core.Move {
 	return nil
 }
 
-// detectUniqueRectangleType3 finds UR Type 3 patterns
+// DetectUniqueRectangleType3 finds UR Type 3 patterns
 // Similar setup to Type 2 but the two corners with extras form a "pseudo-cell"
 // If their combined extras would form a naked pair/triple with other cells in the unit, make that elimination
-func detectUniqueRectangleType3(b *Board) *core.Move {
+func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 	for d1 := 1; d1 <= 8; d1++ {
 		for d2 := d1 + 1; d2 <= 9; d2++ {
 			for _, rect := range findURRectangles(b, d1, d2) {
@@ -272,8 +272,8 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 					floorPair, roofPair := pair[0], pair[1]
 
 					// Check if floor corners are bivalue
-					if b.Candidates[corners[floorPair[0]]].Count() != 2 ||
-						b.Candidates[corners[floorPair[1]]].Count() != 2 {
+					if b.GetCandidatesAt(corners[floorPair[0]]).Count() != 2 ||
+						b.GetCandidatesAt(corners[floorPair[1]]).Count() != 2 {
 						continue
 					}
 
@@ -281,14 +281,14 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 					roofCorner0 := corners[roofPair[0]]
 					roofCorner1 := corners[roofPair[1]]
 
-					if b.Candidates[roofCorner0].Count() <= 2 && b.Candidates[roofCorner1].Count() <= 2 {
+					if b.GetCandidatesAt(roofCorner0).Count() <= 2 && b.GetCandidatesAt(roofCorner1).Count() <= 2 {
 						continue
 					}
 
 					// Combine extras from both corners (excluding d1, d2)
 					urDigits := NewCandidates([]int{d1, d2})
-					combinedExtras := b.Candidates[roofCorner0].Subtract(urDigits).Union(
-						b.Candidates[roofCorner1].Subtract(urDigits))
+					combinedExtras := b.GetCandidatesAt(roofCorner0).Subtract(urDigits).Union(
+						b.GetCandidatesAt(roofCorner1).Subtract(urDigits))
 
 					if combinedExtras.Count() == 0 || combinedExtras.Count() > 3 {
 						continue
@@ -330,11 +330,11 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 								if idx == roofCorner0 || idx == roofCorner1 {
 									continue
 								}
-								if b.Cells[idx] != 0 {
+								if b.GetCell(idx) != 0 {
 									continue
 								}
 
-								cellCands := b.Candidates[idx].ToSlice()
+								cellCands := b.GetCandidatesAt(idx).ToSlice()
 								if len(cellCands) != 2 {
 									continue
 								}
@@ -346,11 +346,11 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 										if elimIdx == roofCorner0 || elimIdx == roofCorner1 || elimIdx == idx {
 											continue
 										}
-										if b.Cells[elimIdx] != 0 {
+										if b.GetCell(elimIdx) != 0 {
 											continue
 										}
 										for _, d := range extraSlice {
-											if b.Candidates[elimIdx].Has(d) {
+											if b.GetCandidatesAt(elimIdx).Has(d) {
 												eliminations = append(eliminations, core.Candidate{
 													Row: elimIdx / 9, Col: elimIdx % 9, Digit: d,
 												})
@@ -385,11 +385,11 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 								if idx == roofCorner0 || idx == roofCorner1 {
 									continue
 								}
-								if b.Cells[idx] != 0 {
+								if b.GetCell(idx) != 0 {
 									continue
 								}
 								// Cell must have only candidates from extraSlice (subset)
-								cellCands := b.Candidates[idx]
+								cellCands := b.GetCandidatesAt(idx)
 								if cellCands.Count() < 2 || cellCands.Count() > 3 {
 									continue
 								}
@@ -413,7 +413,7 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 										idx1, idx2 := candidateCells[ci], candidateCells[cj]
 
 										// Combined candidates of pseudo-cell + these 2 cells must be exactly 3 digits
-										allCands := combinedExtras.Union(b.Candidates[idx1]).Union(b.Candidates[idx2])
+										allCands := combinedExtras.Union(b.GetCandidatesAt(idx1)).Union(b.GetCandidatesAt(idx2))
 
 										if allCands.Count() != 3 {
 											continue
@@ -427,11 +427,11 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 											if elimIdx == roofCorner0 || elimIdx == roofCorner1 || elimIdx == idx1 || elimIdx == idx2 {
 												continue
 											}
-											if b.Cells[elimIdx] != 0 {
+											if b.GetCell(elimIdx) != 0 {
 												continue
 											}
 											for _, d := range tripleDigits {
-												if b.Candidates[elimIdx].Has(d) {
+												if b.GetCandidatesAt(elimIdx).Has(d) {
 													eliminations = append(eliminations, core.Candidate{
 														Row: elimIdx / 9, Col: elimIdx % 9, Digit: d,
 													})
@@ -468,11 +468,11 @@ func detectUniqueRectangleType3(b *Board) *core.Move {
 	return nil
 }
 
-// detectUniqueRectangleType4 finds UR Type 4 patterns
+// DetectUniqueRectangleType4 finds UR Type 4 patterns
 // Two corners with just {A,B}, two corners with {A,B,+extras}
 // If one of A or B is confined to the UR cells within a row/column,
 // the other can be eliminated from the extra corners
-func detectUniqueRectangleType4(b *Board) *core.Move {
+func DetectUniqueRectangleType4(b BoardInterface) *core.Move {
 	for d1 := 1; d1 <= 8; d1++ {
 		for d2 := d1 + 1; d2 <= 9; d2++ {
 			for _, rect := range findURRectangles(b, d1, d2) {
@@ -486,12 +486,12 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 					ex0, ex1 := corners[roofPair[0]], corners[roofPair[1]]
 
 					// Check bivalue corners have exactly {d1, d2}
-					if b.Candidates[bv0].Count() != 2 || b.Candidates[bv1].Count() != 2 {
+					if b.GetCandidatesAt(bv0).Count() != 2 || b.GetCandidatesAt(bv1).Count() != 2 {
 						continue
 					}
 
 					// Check extra corners have more than {d1, d2}
-					if b.Candidates[ex0].Count() <= 2 || b.Candidates[ex1].Count() <= 2 {
+					if b.GetCandidatesAt(ex0).Count() <= 2 || b.GetCandidatesAt(ex1).Count() <= 2 {
 						continue
 					}
 
@@ -511,10 +511,10 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 							if idx == ex0 || idx == ex1 {
 								continue
 							}
-							if b.Candidates[idx].Has(d1) {
+							if b.GetCandidatesAt(idx).Has(d1) {
 								d1OnlyInUR = false
 							}
-							if b.Candidates[idx].Has(d2) {
+							if b.GetCandidatesAt(idx).Has(d2) {
 								d2OnlyInUR = false
 							}
 						}
@@ -522,10 +522,10 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 						if d1OnlyInUR && !d2OnlyInUR {
 							// d1 confined to UR, eliminate d2 from extra corners
 							var eliminations []core.Candidate
-							if b.Candidates[ex0].Has(d2) {
+							if b.GetCandidatesAt(ex0).Has(d2) {
 								eliminations = append(eliminations, core.Candidate{Row: exRow0, Col: exCol0, Digit: d2})
 							}
-							if b.Candidates[ex1].Has(d2) {
+							if b.GetCandidatesAt(ex1).Has(d2) {
 								eliminations = append(eliminations, core.Candidate{Row: exRow1, Col: exCol1, Digit: d2})
 							}
 
@@ -550,10 +550,10 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 						if d2OnlyInUR && !d1OnlyInUR {
 							// d2 confined to UR, eliminate d1 from extra corners
 							var eliminations []core.Candidate
-							if b.Candidates[ex0].Has(d1) {
+							if b.GetCandidatesAt(ex0).Has(d1) {
 								eliminations = append(eliminations, core.Candidate{Row: exRow0, Col: exCol0, Digit: d1})
 							}
-							if b.Candidates[ex1].Has(d1) {
+							if b.GetCandidatesAt(ex1).Has(d1) {
 								eliminations = append(eliminations, core.Candidate{Row: exRow1, Col: exCol1, Digit: d1})
 							}
 
@@ -587,10 +587,10 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 							if idx == ex0 || idx == ex1 {
 								continue
 							}
-							if b.Candidates[idx].Has(d1) {
+							if b.GetCandidatesAt(idx).Has(d1) {
 								d1OnlyInUR = false
 							}
-							if b.Candidates[idx].Has(d2) {
+							if b.GetCandidatesAt(idx).Has(d2) {
 								d2OnlyInUR = false
 							}
 						}
@@ -598,10 +598,10 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 						if d1OnlyInUR && !d2OnlyInUR {
 							// d1 confined to UR, eliminate d2 from extra corners
 							var eliminations []core.Candidate
-							if b.Candidates[ex0].Has(d2) {
+							if b.GetCandidatesAt(ex0).Has(d2) {
 								eliminations = append(eliminations, core.Candidate{Row: exRow0, Col: exCol0, Digit: d2})
 							}
-							if b.Candidates[ex1].Has(d2) {
+							if b.GetCandidatesAt(ex1).Has(d2) {
 								eliminations = append(eliminations, core.Candidate{Row: exRow1, Col: exCol1, Digit: d2})
 							}
 
@@ -626,10 +626,10 @@ func detectUniqueRectangleType4(b *Board) *core.Move {
 						if d2OnlyInUR && !d1OnlyInUR {
 							// d2 confined to UR, eliminate d1 from extra corners
 							var eliminations []core.Candidate
-							if b.Candidates[ex0].Has(d1) {
+							if b.GetCandidatesAt(ex0).Has(d1) {
 								eliminations = append(eliminations, core.Candidate{Row: exRow0, Col: exCol0, Digit: d1})
 							}
-							if b.Candidates[ex1].Has(d1) {
+							if b.GetCandidatesAt(ex1).Has(d1) {
 								eliminations = append(eliminations, core.Candidate{Row: exRow1, Col: exCol1, Digit: d1})
 							}
 

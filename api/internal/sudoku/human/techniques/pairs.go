@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -6,8 +6,8 @@ import (
 	"sudoku-api/internal/core"
 )
 
-// detectNakedPair finds two cells in a unit with the same two candidates
-func detectNakedPair(b *Board) *core.Move {
+// DetectNakedPair finds two cells in a unit with the same two candidates
+func DetectNakedPair(b BoardInterface) *core.Move {
 	for _, unit := range AllUnits() {
 		if move := findNakedPairInUnit(b, unit.Cells, unit.Type.String(), unit.Index+1); move != nil {
 			return move
@@ -16,11 +16,11 @@ func detectNakedPair(b *Board) *core.Move {
 	return nil
 }
 
-func findNakedPairInUnit(b *Board, indices []int, unitType string, unitNum int) *core.Move {
+func findNakedPairInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
 	// Find cells with exactly 2 candidates
 	var pairs []int
 	for _, idx := range indices {
-		if b.Candidates[idx].Count() == 2 {
+		if b.GetCandidatesAt(idx).Count() == 2 {
 			pairs = append(pairs, idx)
 		}
 	}
@@ -29,9 +29,9 @@ func findNakedPairInUnit(b *Board, indices []int, unitType string, unitNum int) 
 	for i := 0; i < len(pairs); i++ {
 		for j := i + 1; j < len(pairs); j++ {
 			idx1, idx2 := pairs[i], pairs[j]
-			if b.Candidates[idx1] == b.Candidates[idx2] {
+			if b.GetCandidatesAt(idx1) == b.GetCandidatesAt(idx2) {
 				// Found a naked pair
-				digits := b.Candidates[idx1].ToSlice()
+				digits := b.GetCandidatesAt(idx1).ToSlice()
 				var eliminations []core.Candidate
 
 				for _, idx := range indices {
@@ -39,7 +39,7 @@ func findNakedPairInUnit(b *Board, indices []int, unitType string, unitNum int) 
 						continue
 					}
 					for _, d := range digits {
-						if b.Candidates[idx].Has(d) {
+						if b.GetCandidatesAt(idx).Has(d) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: idx / 9, Col: idx % 9, Digit: d,
 							})
@@ -74,8 +74,8 @@ func findNakedPairInUnit(b *Board, indices []int, unitType string, unitNum int) 
 	return nil
 }
 
-// detectHiddenPair finds two digits that only appear in two cells within a unit
-func detectHiddenPair(b *Board) *core.Move {
+// DetectHiddenPair finds two digits that only appear in two cells within a unit
+func DetectHiddenPair(b BoardInterface) *core.Move {
 	for _, unit := range AllUnits() {
 		if move := findHiddenPairInUnit(b, unit.Cells, unit.Type.String(), unit.Index+1); move != nil {
 			return move
@@ -84,12 +84,12 @@ func detectHiddenPair(b *Board) *core.Move {
 	return nil
 }
 
-func findHiddenPairInUnit(b *Board, indices []int, unitType string, unitNum int) *core.Move {
+func findHiddenPairInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
 	// Find positions for each digit
 	digitPositions := make(map[int][]int)
 	for digit := 1; digit <= 9; digit++ {
 		for _, idx := range indices {
-			if b.Candidates[idx].Has(digit) {
+			if b.GetCandidatesAt(idx).Has(digit) {
 				digitPositions[digit] = append(digitPositions[digit], idx)
 			}
 		}
@@ -117,7 +117,7 @@ func findHiddenPairInUnit(b *Board, indices []int, unitType string, unitNum int)
 				// Check if there are other candidates to eliminate
 				var eliminations []core.Candidate
 				for _, idx := range []int{idx1, idx2} {
-					for _, d := range b.Candidates[idx].ToSlice() {
+					for _, d := range b.GetCandidatesAt(idx).ToSlice() {
 						if d != d1 && d != d2 {
 							eliminations = append(eliminations, core.Candidate{
 								Row: idx / 9, Col: idx % 9, Digit: d,
@@ -152,10 +152,3 @@ func findHiddenPairInUnit(b *Board, indices []int, unitType string, unitNum int)
 
 	return nil
 }
-
-// Helper functions have been moved to helpers.go:
-// - getRowIndices
-// - getColIndices
-// - getBoxIndices
-// - candidatesEqual
-// - getCandidateSlice

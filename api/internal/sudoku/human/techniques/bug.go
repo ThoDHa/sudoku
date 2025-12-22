@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -19,15 +19,15 @@ import (
 // has 3 candidates. The "extra" digit (the one that appears 3 times in its
 // row, column, or box) must be the solution for that cell.
 
-// detectBUG finds BUG (Bivalue Universal Grave) patterns
-func detectBUG(b *Board) *core.Move {
+// DetectBUG finds BUG (Bivalue Universal Grave) patterns
+func DetectBUG(b BoardInterface) *core.Move {
 	// Count cells with !=2 candidates
 	var extraCells []int
 	for i := 0; i < 81; i++ {
-		if b.Cells[i] != 0 {
+		if b.GetCell(i) != 0 {
 			continue
 		}
-		if b.Candidates[i].Count() != 2 {
+		if b.GetCandidatesAt(i).Count() != 2 {
 			extraCells = append(extraCells, i)
 		}
 	}
@@ -38,7 +38,7 @@ func detectBUG(b *Board) *core.Move {
 	}
 
 	bugCell := extraCells[0]
-	if b.Candidates[bugCell].Count() != 3 {
+	if b.GetCandidatesAt(bugCell).Count() != 3 {
 		return nil
 	}
 
@@ -50,11 +50,11 @@ func detectBUG(b *Board) *core.Move {
 	row, col := bugCell/9, bugCell%9
 	box := (row/3)*3 + col/3
 
-	for _, digit := range b.Candidates[bugCell].ToSlice() {
+	for _, digit := range b.GetCandidatesAt(bugCell).ToSlice() {
 		// Count occurrences in row
 		rowCount := 0
 		for c := 0; c < 9; c++ {
-			if b.Candidates[row*9+c].Has(digit) {
+			if b.GetCandidatesAt(row*9 + c).Has(digit) {
 				rowCount++
 			}
 		}
@@ -62,7 +62,7 @@ func detectBUG(b *Board) *core.Move {
 		// Count occurrences in column
 		colCount := 0
 		for r := 0; r < 9; r++ {
-			if b.Candidates[r*9+col].Has(digit) {
+			if b.GetCandidatesAt(r*9 + col).Has(digit) {
 				colCount++
 			}
 		}
@@ -72,7 +72,7 @@ func detectBUG(b *Board) *core.Move {
 		boxRow, boxCol := (box/3)*3, (box%3)*3
 		for r := boxRow; r < boxRow+3; r++ {
 			for c := boxCol; c < boxCol+3; c++ {
-				if b.Candidates[r*9+c].Has(digit) {
+				if b.GetCandidatesAt(r*9 + c).Has(digit) {
 					boxCount++
 				}
 			}

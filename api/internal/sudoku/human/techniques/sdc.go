@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"sudoku-api/internal/core"
 )
 
-// detectSueDeCoq finds Sue de Coq (Two-Sector Disjoint Subset) patterns.
+// DetectSueDeCoq finds Sue de Coq (Two-Sector Disjoint Subset) patterns.
 //
 // A Sue de Coq occurs at the intersection of a box and a line (row/column):
 //   - The intersection has 2-3 cells with N candidates total
@@ -16,7 +16,7 @@ import (
 //   - If the two ALS together cover all N candidates with no overlap, eliminations can be made:
 //   - Eliminate ALS-A candidates from rest of box
 //   - Eliminate ALS-B candidates from rest of line
-func detectSueDeCoq(b *Board) *core.Move {
+func DetectSueDeCoq(b BoardInterface) *core.Move {
 	// Try each box
 	for box := 0; box < 9; box++ {
 		boxRow, boxCol := (box/3)*3, (box%3)*3
@@ -41,7 +41,7 @@ func detectSueDeCoq(b *Board) *core.Move {
 
 // detectSueDeCoqIntersection checks for Sue de Coq at a box/line intersection
 // isRow indicates whether lineIdx is a row (true) or column (false)
-func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *core.Move {
+func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bool) *core.Move {
 	boxRow, boxCol := (box/3)*3, (box%3)*3
 
 	// Get intersection cells (cells that are in both box and line)
@@ -49,14 +49,14 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 	if isRow {
 		for c := boxCol; c < boxCol+3; c++ {
 			idx := lineIdx*9 + c
-			if b.Cells[idx] == 0 && b.Candidates[idx].Count() > 0 {
+			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
 				intersectionCells = append(intersectionCells, idx)
 			}
 		}
 	} else {
 		for r := boxRow; r < boxRow+3; r++ {
 			idx := r*9 + lineIdx
-			if b.Cells[idx] == 0 && b.Candidates[idx].Count() > 0 {
+			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
 				intersectionCells = append(intersectionCells, idx)
 			}
 		}
@@ -70,7 +70,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 	// Get combined candidates of intersection cells
 	var intersectionCands Candidates
 	for _, idx := range intersectionCells {
-		intersectionCands = intersectionCands.Union(b.Candidates[idx])
+		intersectionCands = intersectionCands.Union(b.GetCandidatesAt(idx))
 	}
 	intersectionDigits := intersectionCands.ToSlice()
 
@@ -86,7 +86,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 	for r := boxRow; r < boxRow+3; r++ {
 		for c := boxCol; c < boxCol+3; c++ {
 			idx := r*9 + c
-			if b.Cells[idx] != 0 || b.Candidates[idx].Count() == 0 {
+			if b.GetCell(idx) != 0 || b.GetCandidatesAt(idx).Count() == 0 {
 				continue
 			}
 			// Check if in intersection
@@ -112,7 +112,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 				continue
 			}
 			idx := lineIdx*9 + c
-			if b.Cells[idx] == 0 && b.Candidates[idx].Count() > 0 {
+			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
 				lineRemainderCells = append(lineRemainderCells, idx)
 			}
 		}
@@ -123,7 +123,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 				continue
 			}
 			idx := r*9 + lineIdx
-			if b.Cells[idx] == 0 && b.Candidates[idx].Count() > 0 {
+			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
 				lineRemainderCells = append(lineRemainderCells, idx)
 			}
 		}
@@ -158,7 +158,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 			for r := boxRow; r < boxRow+3; r++ {
 				for c := boxCol; c < boxCol+3; c++ {
 					idx := r*9 + c
-					if b.Cells[idx] != 0 {
+					if b.GetCell(idx) != 0 {
 						continue
 					}
 
@@ -188,7 +188,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 
 					// Eliminate boxALS digits
 					for _, d := range boxALS.Digits {
-						if b.Candidates[idx].Has(d) {
+						if b.GetCandidatesAt(idx).Has(d) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: r, Col: c, Digit: d,
 							})
@@ -207,7 +207,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 						continue
 					}
 
-					if b.Cells[idx] != 0 {
+					if b.GetCell(idx) != 0 {
 						continue
 					}
 
@@ -225,7 +225,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 
 					// Eliminate lineALS digits
 					for _, d := range lineALS.Digits {
-						if b.Candidates[idx].Has(d) {
+						if b.GetCandidatesAt(idx).Has(d) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: lineIdx, Col: c, Digit: d,
 							})
@@ -241,7 +241,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 						continue
 					}
 
-					if b.Cells[idx] != 0 {
+					if b.GetCell(idx) != 0 {
 						continue
 					}
 
@@ -259,7 +259,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 
 					// Eliminate lineALS digits
 					for _, d := range lineALS.Digits {
-						if b.Candidates[idx].Has(d) {
+						if b.GetCandidatesAt(idx).Has(d) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: r, Col: lineIdx, Digit: d,
 							})
@@ -322,7 +322,7 @@ func detectSueDeCoqIntersection(b *Board, box int, lineIdx int, isRow bool) *cor
 // findALSInCells finds Almost Locked Sets within the given cells
 // that share at least one digit with the intersection digits.
 // The ALS may contain extra digits - we filter by overlap, not exact match.
-func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
+func findALSInCells(b BoardInterface, cells []int, intersectionDigits []int) []ALS {
 	var result []ALS
 
 	intersectionSet := NewCandidates(intersectionDigits)
@@ -339,7 +339,7 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 
 	// Try ALS of size 1 (bivalue cell - 1 cell with 2 candidates)
 	for _, cell := range cells {
-		cands := b.Candidates[cell]
+		cands := b.GetCandidatesAt(cell)
 
 		// For ALS: N cells need N+1 candidates
 		// 1 cell needs 2 candidates
@@ -369,7 +369,7 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 	// Try ALS of size 2 (2 cells with 3 candidates total)
 	for i := 0; i < len(cells); i++ {
 		for j := i + 1; j < len(cells); j++ {
-			combined := b.Candidates[cells[i]].Union(b.Candidates[cells[j]])
+			combined := b.GetCandidatesAt(cells[i]).Union(b.GetCandidatesAt(cells[j]))
 
 			// For ALS: 2 cells need 3 candidates
 			if combined.Count() != 3 {
@@ -386,10 +386,10 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 
 			byDigit := make(map[int][]int)
 			for _, d := range digits {
-				if b.Candidates[cells[i]].Has(d) {
+				if b.GetCandidatesAt(cells[i]).Has(d) {
 					byDigit[d] = append(byDigit[d], cells[i])
 				}
-				if b.Candidates[cells[j]].Has(d) {
+				if b.GetCandidatesAt(cells[j]).Has(d) {
 					byDigit[d] = append(byDigit[d], cells[j])
 				}
 			}
@@ -405,7 +405,7 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 	for i := 0; i < len(cells); i++ {
 		for j := i + 1; j < len(cells); j++ {
 			for k := j + 1; k < len(cells); k++ {
-				combined := b.Candidates[cells[i]].Union(b.Candidates[cells[j]]).Union(b.Candidates[cells[k]])
+				combined := b.GetCandidatesAt(cells[i]).Union(b.GetCandidatesAt(cells[j])).Union(b.GetCandidatesAt(cells[k]))
 
 				// For ALS: 3 cells need 4 candidates
 				if combined.Count() != 4 {
@@ -422,13 +422,13 @@ func findALSInCells(b *Board, cells []int, intersectionDigits []int) []ALS {
 
 				byDigit := make(map[int][]int)
 				for _, d := range digits {
-					if b.Candidates[cells[i]].Has(d) {
+					if b.GetCandidatesAt(cells[i]).Has(d) {
 						byDigit[d] = append(byDigit[d], cells[i])
 					}
-					if b.Candidates[cells[j]].Has(d) {
+					if b.GetCandidatesAt(cells[j]).Has(d) {
 						byDigit[d] = append(byDigit[d], cells[j])
 					}
-					if b.Candidates[cells[k]].Has(d) {
+					if b.GetCandidatesAt(cells[k]).Has(d) {
 						byDigit[d] = append(byDigit[d], cells[k])
 					}
 				}

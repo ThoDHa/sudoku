@@ -83,17 +83,20 @@
 //	}
 package human
 
-import "sudoku-api/internal/core"
+import (
+	"sudoku-api/internal/core"
+	"sudoku-api/internal/sudoku/human/techniques"
+)
 
 // TechniqueDescriptor holds metadata about a solving technique
 type TechniqueDescriptor struct {
-	Name        string                    // Display name
-	Slug        string                    // URL-friendly identifier
-	Tier        string                    // Difficulty tier (constants.TierSimple, etc.)
-	Description string                    // Brief description
-	Detector    func(b *Board) *core.Move // Detection function
-	Enabled     bool                      // Whether technique is enabled
-	Order       int                       // Execution order within tier
+	Name        string                                       // Display name
+	Slug        string                                       // URL-friendly identifier
+	Tier        string                                       // Difficulty tier (constants.TierSimple, etc.)
+	Description string                                       // Brief description
+	Detector    func(b techniques.BoardInterface) *core.Move // Detection function
+	Enabled     bool                                         // Whether technique is enabled
+	Order       int                                          // Execution order within tier
 }
 
 // TechniqueRegistry holds all available techniques organized by tier
@@ -134,7 +137,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "hidden-single",
 		Tier:        "simple",
 		Description: "A digit that can only go in one cell in a row, column, or box",
-		Detector:    detectHiddenSingle,
+		Detector:    techniques.DetectHiddenSingle,
 		Enabled:     true,
 		Order:       1,
 	})
@@ -144,7 +147,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "naked-single",
 		Tier:        "simple",
 		Description: "A cell with only one possible candidate",
-		Detector:    detectNakedSingle,
+		Detector:    techniques.DetectNakedSingle,
 		Enabled:     true,
 		Order:       2,
 	})
@@ -154,7 +157,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "naked-pair",
 		Tier:        "simple",
 		Description: "Two cells with the same two candidates eliminate those digits from their peers",
-		Detector:    detectNakedPair,
+		Detector:    techniques.DetectNakedPair,
 		Enabled:     true,
 		Order:       3,
 	})
@@ -164,7 +167,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "hidden-pair",
 		Tier:        "simple",
 		Description: "Two digits that can only be in two cells eliminate other candidates from those cells",
-		Detector:    detectHiddenPair,
+		Detector:    techniques.DetectHiddenPair,
 		Enabled:     true,
 		Order:       4,
 	})
@@ -174,7 +177,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "pointing-pair",
 		Tier:        "simple",
 		Description: "If a digit in a box can only be in one row/column, eliminate it from the rest of that row/column",
-		Detector:    detectPointingPair,
+		Detector:    techniques.DetectPointingPair,
 		Enabled:     true,
 		Order:       5,
 	})
@@ -184,7 +187,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "box-line-reduction",
 		Tier:        "simple",
 		Description: "If a digit in a row/column can only be in one box, eliminate it from the rest of that box",
-		Detector:    detectBoxLineReduction,
+		Detector:    techniques.DetectBoxLineReduction,
 		Enabled:     true,
 		Order:       6,
 	})
@@ -195,7 +198,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "naked-triple",
 		Tier:        "simple",
 		Description: "Three cells with the same three candidates eliminate those digits from their peers",
-		Detector:    detectNakedTriple,
+		Detector:    techniques.DetectNakedTriple,
 		Enabled:     true,
 		Order:       7,
 	})
@@ -205,7 +208,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "hidden-triple",
 		Tier:        "simple",
 		Description: "Three digits that can only be in three cells eliminate other candidates from those cells",
-		Detector:    detectHiddenTriple,
+		Detector:    techniques.DetectHiddenTriple,
 		Enabled:     true,
 		Order:       8,
 	})
@@ -221,7 +224,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "bug",
 		Tier:        "medium",
 		Description: "Bivalue Universal Grave - avoid patterns with multiple solutions",
-		Detector:    detectBUG,
+		Detector:    techniques.DetectBUG,
 		Enabled:     true,
 		Order:       10,
 	})
@@ -231,7 +234,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "x-wing",
 		Tier:        "medium",
 		Description: "A digit forming a rectangle pattern allows eliminations",
-		Detector:    detectXWing,
+		Detector:    techniques.DetectXWing,
 		Enabled:     true,
 		Order:       11,
 	})
@@ -242,7 +245,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "unique-rectangle",
 		Tier:        "medium",
 		Description: "Avoid deadly rectangles that would make puzzle have multiple solutions",
-		Detector:    detectUniqueRectangle,
+		Detector:    techniques.DetectUniqueRectangle,
 		Enabled:     true,
 		Order:       12,
 	})
@@ -252,7 +255,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "xy-wing",
 		Tier:        "medium",
 		Description: "A hinge cell and two pincers eliminate candidates",
-		Detector:    detectXYWing,
+		Detector:    techniques.DetectXYWing,
 		Enabled:     true,
 		Order:       13,
 	})
@@ -262,7 +265,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "simple-coloring",
 		Tier:        "medium",
 		Description: "Color chains of strong links to find eliminations",
-		Detector:    detectSimpleColoring,
+		Detector:    techniques.DetectSimpleColoring,
 		Enabled:     true,
 		Order:       14,
 	})
@@ -272,7 +275,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "naked-quad",
 		Tier:        "medium",
 		Description: "Four cells with the same four candidates eliminate those digits from their peers",
-		Detector:    detectNakedQuad,
+		Detector:    techniques.DetectNakedQuad,
 		Enabled:     true,
 		Order:       15,
 	})
@@ -282,7 +285,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "hidden-quad",
 		Tier:        "medium",
 		Description: "Four digits that can only be in four cells eliminate other candidates from those cells",
-		Detector:    detectHiddenQuad,
+		Detector:    techniques.DetectHiddenQuad,
 		Enabled:     true,
 		Order:       16,
 	})
@@ -293,7 +296,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "swordfish",
 		Tier:        "medium",
 		Description: "A 3x3 fish pattern for eliminations",
-		Detector:    detectSwordfish,
+		Detector:    techniques.DetectSwordfish,
 		Enabled:     true,
 		Order:       17,
 	})
@@ -304,7 +307,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "xyz-wing",
 		Tier:        "medium",
 		Description: "A trivalue hinge with bivalue pincers",
-		Detector:    detectXYZWing,
+		Detector:    techniques.DetectXYZWing,
 		Enabled:     true,
 		Order:       18,
 	})
@@ -322,7 +325,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "skyscraper",
 		Tier:        "hard",
 		Description: "A turbot fish variant for eliminations",
-		Detector:    detectSkyscraper,
+		Detector:    techniques.DetectSkyscraper,
 		Enabled:     true,
 		Order:       19,
 	})
@@ -332,7 +335,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "x-chain",
 		Tier:        "hard",
 		Description: "Chain of alternating strong/weak links for a single digit",
-		Detector:    detectXChain,
+		Detector:    techniques.DetectXChain,
 		Enabled:     true,
 		Order:       20,
 	})
@@ -342,7 +345,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "xy-chain",
 		Tier:        "hard",
 		Description: "Chain through bivalue cells",
-		Detector:    detectXYChain,
+		Detector:    techniques.DetectXYChain,
 		Enabled:     true,
 		Order:       21,
 	})
@@ -353,7 +356,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "medusa-3d",
 		Tier:        "hard",
 		Description: "Multi-digit coloring with strong/weak link chains",
-		Detector:    detectMedusa3D,
+		Detector:    techniques.DetectMedusa3D,
 		Enabled:     true,
 		Order:       22,
 	})
@@ -363,7 +366,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "jellyfish",
 		Tier:        "hard",
 		Description: "A 4x4 fish pattern for eliminations",
-		Detector:    detectJellyfish,
+		Detector:    techniques.DetectJellyfish,
 		Enabled:     true,
 		Order:       23,
 	})
@@ -374,7 +377,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "unique-rectangle-type-2",
 		Tier:        "hard",
 		Description: "Unique rectangle with extra candidates in one corner",
-		Detector:    detectUniqueRectangleType2,
+		Detector:    techniques.DetectUniqueRectangleType2,
 		Enabled:     true,
 		Order:       24,
 	})
@@ -384,7 +387,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "unique-rectangle-type-3",
 		Tier:        "hard",
 		Description: "Unique rectangle with naked pair/triple",
-		Detector:    detectUniqueRectangleType3,
+		Detector:    techniques.DetectUniqueRectangleType3,
 		Enabled:     true,
 		Order:       25,
 	})
@@ -394,7 +397,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "unique-rectangle-type-4",
 		Tier:        "hard",
 		Description: "Unique rectangle with hidden pair",
-		Detector:    detectUniqueRectangleType4,
+		Detector:    techniques.DetectUniqueRectangleType4,
 		Enabled:     true,
 		Order:       26,
 	})
@@ -405,7 +408,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "wxyz-wing",
 		Tier:        "hard",
 		Description: "A four-candidate wing pattern",
-		Detector:    detectWXYZWing,
+		Detector:    techniques.DetectWXYZWing,
 		Enabled:     true,
 		Order:       27,
 	})
@@ -415,7 +418,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "w-wing",
 		Tier:        "hard",
 		Description: "Two bivalue cells connected by strong link",
-		Detector:    detectWWing,
+		Detector:    techniques.DetectWWing,
 		Enabled:     true,
 		Order:       29,
 	})
@@ -425,7 +428,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "empty-rectangle",
 		Tier:        "hard",
 		Description: "Use empty rectangles to create eliminations",
-		Detector:    detectEmptyRectangle,
+		Detector:    techniques.DetectEmptyRectangle,
 		Enabled:     true,
 		Order:       30,
 	})
@@ -440,7 +443,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "grouped-x-cycles",
 		Tier:        "extreme",
 		Description: "X-Cycles using group strong links",
-		Detector:    detectGroupedXCycles,
+		Detector:    techniques.DetectGroupedXCycles,
 		Enabled:     true,
 		Order:       40,
 	})
@@ -451,7 +454,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "finned-x-wing",
 		Tier:        "extreme",
 		Description: "An X-Wing with extra candidates (fins)",
-		Detector:    detectFinnedXWing,
+		Detector:    techniques.DetectFinnedXWing,
 		Enabled:     true,
 		Order:       41,
 	})
@@ -461,7 +464,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "finned-swordfish",
 		Tier:        "extreme",
 		Description: "A Swordfish with extra candidates (fins)",
-		Detector:    detectFinnedSwordfish,
+		Detector:    techniques.DetectFinnedSwordfish,
 		Enabled:     true,
 		Order:       42,
 	})
@@ -471,7 +474,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "aic",
 		Tier:        "extreme",
 		Description: "Alternating Inference Chains",
-		Detector:    detectAIC,
+		Detector:    techniques.DetectAIC,
 		Enabled:     true,
 		Order:       43,
 	})
@@ -482,7 +485,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "als-xz",
 		Tier:        "extreme",
 		Description: "Almost Locked Set with XZ rule",
-		Detector:    detectALSXZ,
+		Detector:    techniques.DetectALSXZ,
 		Enabled:     true,
 		Order:       44,
 	})
@@ -492,7 +495,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "als-xy-wing",
 		Tier:        "extreme",
 		Description: "Almost Locked Set XY-Wing pattern",
-		Detector:    detectALSXYWing,
+		Detector:    techniques.DetectALSXYWing,
 		Enabled:     true,
 		Order:       45,
 	})
@@ -502,7 +505,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "als-xy-chain",
 		Tier:        "extreme",
 		Description: "Chain of Almost Locked Sets",
-		Detector:    detectALSXYChain,
+		Detector:    techniques.DetectALSXYChain,
 		Enabled:     true,
 		Order:       46,
 	})
@@ -512,7 +515,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "sue-de-coq",
 		Tier:        "extreme",
 		Description: "Two intersecting almost locked sets",
-		Detector:    detectSueDeCoq,
+		Detector:    techniques.DetectSueDeCoq,
 		Enabled:     true,
 		Order:       47,
 	})
@@ -522,7 +525,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "digit-forcing-chain",
 		Tier:        "extreme",
 		Description: "Forcing chain focused on single digit",
-		Detector:    detectDigitForcingChain,
+		Detector:    techniques.DetectDigitForcingChain,
 		Enabled:     true,
 		Order:       48,
 	})
@@ -532,7 +535,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "forcing-chain",
 		Tier:        "extreme",
 		Description: "Chain of implications from candidate assumptions",
-		Detector:    detectForcingChain,
+		Detector:    techniques.DetectForcingChain,
 		Enabled:     true,
 		Order:       49,
 	})
@@ -542,7 +545,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Slug:        "death-blossom",
 		Tier:        "extreme",
 		Description: "Advanced ALS pattern with stem and petals",
-		Detector:    detectDeathBlossom,
+		Detector:    techniques.DetectDeathBlossom,
 		Enabled:     true,
 		Order:       50,
 	})

@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"sudoku-api/internal/core"
 )
 
-// detectDeathBlossom finds Death Blossom pattern:
+// DetectDeathBlossom finds Death Blossom pattern:
 //   - A "stem" cell with N candidates (N = 2 or 3)
 //   - N "petal" ALS, one for each stem candidate
 //   - Each petal ALS is connected to the stem through exactly one candidate
@@ -19,7 +19,7 @@ import (
 //   - Z gets placed somewhere in that petal
 //   - Since we don't know WHICH petal will lock, Z must appear in any position
 //     that all petals cover for Z
-func detectDeathBlossom(b *Board) *core.Move {
+func DetectDeathBlossom(b BoardInterface) *core.Move {
 	// Find all ALS with size 1-4 cells
 	allALS := FindAllALS(b, 4)
 	if len(allALS) < 2 {
@@ -29,14 +29,14 @@ func detectDeathBlossom(b *Board) *core.Move {
 	// Find potential stem cells (2-3 candidates)
 	var stems []int
 	for i := 0; i < 81; i++ {
-		n := b.Candidates[i].Count()
+		n := b.GetCandidatesAt(i).Count()
 		if n >= 2 && n <= 3 {
 			stems = append(stems, i)
 		}
 	}
 
 	for _, stem := range stems {
-		stemCands := b.Candidates[stem].ToSlice()
+		stemCands := b.GetCandidatesAt(stem).ToSlice()
 
 		// Try to find petal ALS for each stem candidate
 		// Build a map: stem candidate -> list of valid petal ALS
@@ -75,7 +75,7 @@ func detectDeathBlossom(b *Board) *core.Move {
 // - Contains the candidate as one of its digits
 // - Has exactly one cell that sees the stem (the connection point)
 // - That connection is through the given candidate specifically
-func findPetalsForCandidate(b *Board, stem int, cand int, allALS []ALS) []ALS {
+func findPetalsForCandidate(b BoardInterface, stem int, cand int, allALS []ALS) []ALS {
 	var validPetals []ALS
 
 	for _, als := range allALS {
@@ -113,7 +113,7 @@ func findPetalsForCandidate(b *Board, stem int, cand int, allALS []ALS) []ALS {
 }
 
 // tryPetalCombinations tries all combinations of petals and looks for eliminations
-func tryPetalCombinations(b *Board, stem int, stemCands []int, petalsByCandidate map[int][]ALS) *core.Move {
+func tryPetalCombinations(b BoardInterface, stem int, stemCands []int, petalsByCandidate map[int][]ALS) *core.Move {
 	n := len(stemCands)
 
 	switch n {
@@ -127,7 +127,7 @@ func tryPetalCombinations(b *Board, stem int, stemCands []int, petalsByCandidate
 }
 
 // tryTwoPetals handles stems with 2 candidates
-func tryTwoPetals(b *Board, stem int, stemCands []int, petalsByCandidate map[int][]ALS) *core.Move {
+func tryTwoPetals(b BoardInterface, stem int, stemCands []int, petalsByCandidate map[int][]ALS) *core.Move {
 	c1, c2 := stemCands[0], stemCands[1]
 
 	for _, petal1 := range petalsByCandidate[c1] {
@@ -152,7 +152,7 @@ func tryTwoPetals(b *Board, stem int, stemCands []int, petalsByCandidate map[int
 }
 
 // tryThreePetals handles stems with 3 candidates
-func tryThreePetals(b *Board, stem int, stemCands []int, petalsByCandidate map[int][]ALS) *core.Move {
+func tryThreePetals(b BoardInterface, stem int, stemCands []int, petalsByCandidate map[int][]ALS) *core.Move {
 	c1, c2, c3 := stemCands[0], stemCands[1], stemCands[2]
 
 	for _, petal1 := range petalsByCandidate[c1] {
@@ -181,7 +181,7 @@ func tryThreePetals(b *Board, stem int, stemCands []int, petalsByCandidate map[i
 }
 
 // findEliminationDigits finds digits that appear in ALL petals but NOT in the stem
-func findEliminationDigits(b *Board, stem int, petals []ALS) []int {
+func findEliminationDigits(b BoardInterface, stem int, petals []ALS) []int {
 	if len(petals) == 0 {
 		return nil
 	}
@@ -196,14 +196,14 @@ func findEliminationDigits(b *Board, stem int, petals []ALS) []int {
 	}
 
 	// Remove digits that appear in stem
-	commonDigits = commonDigits.Subtract(b.Candidates[stem])
+	commonDigits = commonDigits.Subtract(b.GetCandidatesAt(stem))
 
 	return commonDigits.ToSlice()
 }
 
 // findBlossomEliminations finds cells where digit z can be eliminated
 // A cell can eliminate z if it sees ALL cells containing z in ALL petals
-func findBlossomEliminations(b *Board, stem int, petals []ALS, z int, stemCands []int) *core.Move {
+func findBlossomEliminations(b BoardInterface, stem int, petals []ALS, z int, stemCands []int) *core.Move {
 	// Collect all cells containing z in all petals
 	var allZCells []int
 	for _, petal := range petals {

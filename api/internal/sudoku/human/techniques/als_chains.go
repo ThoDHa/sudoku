@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"sudoku-api/internal/core"
 )
 
-// detectALSXYWing finds ALS-XY-Wing pattern:
+// DetectALSXYWing finds ALS-XY-Wing pattern:
 // - Three ALS (A, B, C) where:
 //   - ALS A shares a restricted common (RC) digit X with ALS B
 //   - ALS A shares a different RC digit Y with ALS C
@@ -17,7 +17,7 @@ import (
 // Similarly for Y between A and C. If A contains X, it doesn't contain Y (since
 // A would be locked on its N digits). So either B has X locked out and contains Z,
 // or C has Y locked out and contains Z. Either way, Z appears in B or C.
-func detectALSXYWing(b *Board) *core.Move {
+func DetectALSXYWing(b BoardInterface) *core.Move {
 	allALS := FindAllALS(b, 4)
 
 	// Try all combinations of 3 ALS for A, B, C
@@ -115,13 +115,13 @@ func detectALSXYWing(b *Board) *core.Move {
 	return nil
 }
 
-// detectALSXYChain finds ALS-XY-Chain pattern:
+// DetectALSXYChain finds ALS-XY-Chain pattern:
 // - A chain of ALS connected by restricted commons
 // - First and last ALS share a non-RC digit Z
 // - Cells seeing all Z in first and last ALS can eliminate Z
 //
 // This extends ALS-XY-Wing to chains of arbitrary length.
-func detectALSXYChain(b *Board) *core.Move {
+func DetectALSXYChain(b BoardInterface) *core.Move {
 	allALS := FindAllALS(b, 4)
 
 	// Build adjacency: which ALS pairs have restricted commons
@@ -160,7 +160,7 @@ func detectALSXYChain(b *Board) *core.Move {
 }
 
 // searchALSChain performs DFS to find valid ALS chains
-func searchALSChain(b *Board, allALS []ALS, adjRC map[int]map[int][]int, startIdx int, maxLen int) *core.Move {
+func searchALSChain(b BoardInterface, allALS []ALS, adjRC map[int]map[int][]int, startIdx int, maxLen int) *core.Move {
 	type chainState struct {
 		path    []int // ALS indices in the chain
 		rcUsed  []int // RC digits used for each link
@@ -247,7 +247,7 @@ func searchALSChain(b *Board, allALS []ALS, adjRC map[int]map[int][]int, startId
 }
 
 // checkChainElimination checks if a chain produces eliminations
-func checkChainElimination(b *Board, allALS []ALS, path []int, rcUsed []int) *core.Move {
+func checkChainElimination(b BoardInterface, allALS []ALS, path []int, rcUsed []int) *core.Move {
 	firstALS := allALS[path[0]]
 	lastALS := allALS[path[len(path)-1]]
 
@@ -340,7 +340,7 @@ func isRestrictedCommon(a, b ALS, d int) bool {
 
 // findZEliminations finds cells that can eliminate digit z
 // These cells must see all z-cells in the given groups and not be part of excluded cells
-func findZEliminations(b *Board, z int, zCellsFirst, zCellsLast []int, excludedCellGroups ...[]int) []core.Candidate {
+func findZEliminations(b BoardInterface, z int, zCellsFirst, zCellsLast []int, excludedCellGroups ...[]int) []core.Candidate {
 	// Build exclusion slice
 	var exclude []int
 	for _, group := range excludedCellGroups {

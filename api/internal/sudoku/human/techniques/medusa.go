@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -18,12 +18,12 @@ func (cp candidatePair) key() int {
 	return cp.cell*10 + cp.digit
 }
 
-// detectMedusa3D implements 3D Medusa (Multi-Coloring) technique
+// DetectMedusa3D implements 3D Medusa (Multi-Coloring) technique
 // This extends simple coloring by coloring candidate-cell pairs rather than just cells.
 // Connections are made through:
 // 1. Same cell, different candidate -> opposite color (bivalue connection)
 // 2. Same candidate, conjugate pair in unit -> opposite color (strong link)
-func detectMedusa3D(b *Board) *core.Move {
+func DetectMedusa3D(b BoardInterface) *core.Move {
 	// Build the 3D Medusa graph
 	// For each bivalue cell and each strong link, we have connections
 
@@ -36,7 +36,7 @@ func detectMedusa3D(b *Board) *core.Move {
 	// Find all bivalue cells
 	var bivalueCells []int
 	for i := 0; i < 81; i++ {
-		if b.Candidates[i].Count() == 2 {
+		if b.GetCandidatesAt(i).Count() == 2 {
 			bivalueCells = append(bivalueCells, i)
 		}
 	}
@@ -47,7 +47,7 @@ func detectMedusa3D(b *Board) *core.Move {
 
 	// Add bivalue connections: same cell, different candidates
 	for _, cell := range bivalueCells {
-		cands := b.Candidates[cell].ToSlice()
+		cands := b.GetCandidatesAt(cell).ToSlice()
 		if len(cands) == 2 {
 			p1 := candidatePair{cell, cands[0]}
 			p2 := candidatePair{cell, cands[1]}
@@ -165,7 +165,7 @@ func detectMedusa3D(b *Board) *core.Move {
 }
 
 // findConjugatePairs finds all conjugate pairs (strong links) for a digit
-func findConjugatePairs(b *Board, digit int) [][2]int {
+func findConjugatePairs(b BoardInterface, digit int) [][2]int {
 	var pairs [][2]int
 	seen := make(map[[2]int]bool)
 
@@ -193,7 +193,7 @@ func findConjugatePairs(b *Board, digit int) [][2]int {
 
 // checkSameCellContradiction checks if two candidates of the same color are in the same cell
 // If so, that color is false and all candidates of that color can be eliminated
-func checkSameCellContradiction(b *Board, colorToCheck, otherColor []candidatePair, colorNum int) *core.Move {
+func checkSameCellContradiction(b BoardInterface, colorToCheck, otherColor []candidatePair, colorNum int) *core.Move {
 	// Group by cell
 	cellPairs := make(map[int][]candidatePair)
 	for _, cp := range colorToCheck {
@@ -206,7 +206,7 @@ func checkSameCellContradiction(b *Board, colorToCheck, otherColor []candidatePa
 			// This color is false, eliminate all candidates of this color
 			var eliminations []core.Candidate
 			for _, cp := range colorToCheck {
-				if b.Candidates[cp.cell].Has(cp.digit) {
+				if b.GetCandidatesAt(cp.cell).Has(cp.digit) {
 					eliminations = append(eliminations, core.Candidate{
 						Row: cp.cell / 9, Col: cp.cell % 9, Digit: cp.digit,
 					})
@@ -236,7 +236,7 @@ func checkSameCellContradiction(b *Board, colorToCheck, otherColor []candidatePa
 }
 
 // checkSameUnitContradiction checks if two same-digit candidates of the same color are in the same unit
-func checkSameUnitContradiction(b *Board, colorToCheck, otherColor []candidatePair, colorNum int) *core.Move {
+func checkSameUnitContradiction(b BoardInterface, colorToCheck, otherColor []candidatePair, colorNum int) *core.Move {
 	// Group by digit
 	digitPairs := make(map[int][]candidatePair)
 	for _, cp := range colorToCheck {
@@ -251,7 +251,7 @@ func checkSameUnitContradiction(b *Board, colorToCheck, otherColor []candidatePa
 					// Contradiction: two same-digit candidates of the same color in the same unit
 					var eliminations []core.Candidate
 					for _, cp := range colorToCheck {
-						if b.Candidates[cp.cell].Has(cp.digit) {
+						if b.GetCandidatesAt(cp.cell).Has(cp.digit) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: cp.cell / 9, Col: cp.cell % 9, Digit: cp.digit,
 							})
@@ -283,7 +283,7 @@ func checkSameUnitContradiction(b *Board, colorToCheck, otherColor []candidatePa
 }
 
 // checkUncoloredSeesBothColors finds uncolored candidates that see the same digit in both colors
-func checkUncoloredSeesBothColors(b *Board, color1, color2 []candidatePair, colors map[int]int) *core.Move {
+func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePair, colors map[int]int) *core.Move {
 	// Group each color by digit
 	color1ByDigit := make(map[int][]int) // digit -> cells
 	color2ByDigit := make(map[int][]int)
@@ -306,7 +306,7 @@ func checkUncoloredSeesBothColors(b *Board, color1, color2 []candidatePair, colo
 
 		// Check each uncolored cell with this digit
 		for cell := 0; cell < 81; cell++ {
-			if !b.Candidates[cell].Has(digit) {
+			if !b.GetCandidatesAt(cell).Has(digit) {
 				continue
 			}
 

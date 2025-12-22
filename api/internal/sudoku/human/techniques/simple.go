@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -6,11 +6,11 @@ import (
 	"sudoku-api/internal/core"
 )
 
-// detectNakedSingle finds a cell with only one candidate
-func detectNakedSingle(b *Board) *core.Move {
+// DetectNakedSingle finds a cell with only one candidate
+func DetectNakedSingle(b BoardInterface) *core.Move {
 	for i := 0; i < 81; i++ {
-		if b.Cells[i] == 0 && b.Candidates[i].Count() == 1 {
-			digit, _ := b.Candidates[i].Only()
+		if b.GetCell(i) == 0 && b.GetCandidatesAt(i).Count() == 1 {
+			digit, _ := b.GetCandidatesAt(i).Only()
 			row, col := i/9, i%9
 			return &core.Move{
 				Action:      "assign",
@@ -26,26 +26,26 @@ func detectNakedSingle(b *Board) *core.Move {
 	return nil
 }
 
-// detectHiddenSingle finds a digit that can only go in one cell within a unit
-func detectHiddenSingle(b *Board) *core.Move {
+// DetectHiddenSingle finds a digit that can only go in one cell within a unit
+func DetectHiddenSingle(b BoardInterface) *core.Move {
 	// Check rows
 	for row := 0; row < 9; row++ {
 		for digit := 1; digit <= 9; digit++ {
 			var positions []int
 			for col := 0; col < 9; col++ {
 				idx := row*9 + col
-				if b.Cells[idx] == digit {
+				if b.GetCell(idx) == digit {
 					positions = nil
 					break
 				}
-				if b.Candidates[idx].Has(digit) {
+				if b.GetCandidatesAt(idx).Has(digit) {
 					positions = append(positions, col)
 				}
 			}
 			if len(positions) == 1 {
 				col := positions[0]
 				idx := row*9 + col
-				if b.Candidates[idx].Count() > 1 {
+				if b.GetCandidatesAt(idx).Count() > 1 {
 					return &core.Move{
 						Action:      "assign",
 						Digit:       digit,
@@ -67,18 +67,18 @@ func detectHiddenSingle(b *Board) *core.Move {
 			var positions []int
 			for row := 0; row < 9; row++ {
 				idx := row*9 + col
-				if b.Cells[idx] == digit {
+				if b.GetCell(idx) == digit {
 					positions = nil
 					break
 				}
-				if b.Candidates[idx].Has(digit) {
+				if b.GetCandidatesAt(idx).Has(digit) {
 					positions = append(positions, row)
 				}
 			}
 			if len(positions) == 1 {
 				row := positions[0]
 				idx := row*9 + col
-				if b.Candidates[idx].Count() > 1 {
+				if b.GetCandidatesAt(idx).Count() > 1 {
 					return &core.Move{
 						Action:      "assign",
 						Digit:       digit,
@@ -103,11 +103,11 @@ func detectHiddenSingle(b *Board) *core.Move {
 			for r := boxRow; r < boxRow+3; r++ {
 				for c := boxCol; c < boxCol+3; c++ {
 					idx := r*9 + c
-					if b.Cells[idx] == digit {
+					if b.GetCell(idx) == digit {
 						found = true
 						break
 					}
-					if b.Candidates[idx].Has(digit) {
+					if b.GetCandidatesAt(idx).Has(digit) {
 						positions = append(positions, core.CellRef{Row: r, Col: c})
 					}
 				}
@@ -118,7 +118,7 @@ func detectHiddenSingle(b *Board) *core.Move {
 			if !found && len(positions) == 1 {
 				pos := positions[0]
 				idx := pos.Row*9 + pos.Col
-				if b.Candidates[idx].Count() > 1 {
+				if b.GetCandidatesAt(idx).Count() > 1 {
 					return &core.Move{
 						Action:      "assign",
 						Digit:       digit,
@@ -137,8 +137,8 @@ func detectHiddenSingle(b *Board) *core.Move {
 	return nil
 }
 
-// detectPointingPair finds candidates in a box that are confined to one row/column
-func detectPointingPair(b *Board) *core.Move {
+// DetectPointingPair finds candidates in a box that are confined to one row/column
+func DetectPointingPair(b BoardInterface) *core.Move {
 	for box := 0; box < 9; box++ {
 		boxRow, boxCol := (box/3)*3, (box%3)*3
 
@@ -146,7 +146,7 @@ func detectPointingPair(b *Board) *core.Move {
 			var positions []core.CellRef
 			for r := boxRow; r < boxRow+3; r++ {
 				for c := boxCol; c < boxCol+3; c++ {
-					if b.Candidates[r*9+c].Has(digit) {
+					if b.GetCandidatesAt(r*9 + c).Has(digit) {
 						positions = append(positions, core.CellRef{Row: r, Col: c})
 					}
 				}
@@ -172,7 +172,7 @@ func detectPointingPair(b *Board) *core.Move {
 					if c >= boxCol && c < boxCol+3 {
 						continue
 					}
-					if b.Candidates[row*9+c].Has(digit) {
+					if b.GetCandidatesAt(row*9 + c).Has(digit) {
 						eliminations = append(eliminations, core.Candidate{Row: row, Col: c, Digit: digit})
 					}
 				}
@@ -207,7 +207,7 @@ func detectPointingPair(b *Board) *core.Move {
 					if r >= boxRow && r < boxRow+3 {
 						continue
 					}
-					if b.Candidates[r*9+col].Has(digit) {
+					if b.GetCandidatesAt(r*9 + col).Has(digit) {
 						eliminations = append(eliminations, core.Candidate{Row: r, Col: col, Digit: digit})
 					}
 				}
@@ -230,14 +230,14 @@ func detectPointingPair(b *Board) *core.Move {
 	return nil
 }
 
-// detectBoxLineReduction finds candidates in a row/column confined to one box
-func detectBoxLineReduction(b *Board) *core.Move {
+// DetectBoxLineReduction finds candidates in a row/column confined to one box
+func DetectBoxLineReduction(b BoardInterface) *core.Move {
 	// Check rows
 	for row := 0; row < 9; row++ {
 		for digit := 1; digit <= 9; digit++ {
 			var positions []core.CellRef
 			for col := 0; col < 9; col++ {
-				if b.Candidates[row*9+col].Has(digit) {
+				if b.GetCandidatesAt(row*9 + col).Has(digit) {
 					positions = append(positions, core.CellRef{Row: row, Col: col})
 				}
 			}
@@ -264,7 +264,7 @@ func detectBoxLineReduction(b *Board) *core.Move {
 						continue
 					}
 					for c := boxCol; c < boxCol+3; c++ {
-						if b.Candidates[r*9+c].Has(digit) {
+						if b.GetCandidatesAt(r*9 + c).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: r, Col: c, Digit: digit})
 						}
 					}
@@ -291,7 +291,7 @@ func detectBoxLineReduction(b *Board) *core.Move {
 		for digit := 1; digit <= 9; digit++ {
 			var positions []core.CellRef
 			for row := 0; row < 9; row++ {
-				if b.Candidates[row*9+col].Has(digit) {
+				if b.GetCandidatesAt(row*9 + col).Has(digit) {
 					positions = append(positions, core.CellRef{Row: row, Col: col})
 				}
 			}
@@ -318,7 +318,7 @@ func detectBoxLineReduction(b *Board) *core.Move {
 						if c == col {
 							continue
 						}
-						if b.Candidates[r*9+c].Has(digit) {
+						if b.GetCandidatesAt(r*9 + c).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: r, Col: c, Digit: digit})
 						}
 					}

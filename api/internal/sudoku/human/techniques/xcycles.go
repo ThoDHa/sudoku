@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"sudoku-api/internal/core"
 )
 
-// detectGroupedXCycles finds Grouped X-Cycles eliminations or assignments.
+// DetectGroupedXCycles finds Grouped X-Cycles eliminations or assignments.
 //
 // X-Cycles are chains of strong and weak links for a single digit that form a loop.
 // - Strong link: exactly 2 candidates in a unit (if one is false, other must be true)
@@ -19,7 +19,7 @@ import (
 //     -> That node must be ON (the digit goes there)
 //   - Type 2 (discontinuous): two weak links meet at a node
 //     -> That node must be OFF (eliminate the digit)
-func detectGroupedXCycles(b *Board) *core.Move {
+func DetectGroupedXCycles(b BoardInterface) *core.Move {
 	for digit := 1; digit <= 9; digit++ {
 		if move := findGroupedXCycleForDigit(b, digit); move != nil {
 			return move
@@ -28,11 +28,11 @@ func detectGroupedXCycles(b *Board) *core.Move {
 	return nil
 }
 
-func findGroupedXCycleForDigit(b *Board, digit int) *core.Move {
+func findGroupedXCycleForDigit(b BoardInterface, digit int) *core.Move {
 	// Build list of cells with this candidate
 	var cells []int
 	for idx := 0; idx < 81; idx++ {
-		if b.Candidates[idx].Has(digit) {
+		if b.GetCandidatesAt(idx).Has(digit) {
 			cells = append(cells, idx)
 		}
 	}
@@ -48,14 +48,14 @@ func findGroupedXCycleForDigit(b *Board, digit int) *core.Move {
 	return findXCyclesDFS(b, digit, cells, strongLinks)
 }
 
-// strongLink represents a bidirectional strong link between two cells
-type strongLink struct {
+// strongLinkXC represents a bidirectional strong link between two cells
+type strongLinkXC struct {
 	cell1, cell2 int
 	unit         string // "row", "col", or "box"
 }
 
-func buildStrongLinksXC(b *Board, digit int, cells []int) []strongLink {
-	var links []strongLink
+func buildStrongLinksXC(b BoardInterface, digit int, cells []int) []strongLinkXC {
+	var links []strongLinkXC
 
 	// Check rows
 	for row := 0; row < 9; row++ {
@@ -66,7 +66,7 @@ func buildStrongLinksXC(b *Board, digit int, cells []int) []strongLink {
 			}
 		}
 		if len(rowCells) == 2 {
-			links = append(links, strongLink{rowCells[0], rowCells[1], "row"})
+			links = append(links, strongLinkXC{rowCells[0], rowCells[1], "row"})
 		}
 	}
 
@@ -79,7 +79,7 @@ func buildStrongLinksXC(b *Board, digit int, cells []int) []strongLink {
 			}
 		}
 		if len(colCells) == 2 {
-			links = append(links, strongLink{colCells[0], colCells[1], "col"})
+			links = append(links, strongLinkXC{colCells[0], colCells[1], "col"})
 		}
 	}
 
@@ -95,15 +95,15 @@ func buildStrongLinksXC(b *Board, digit int, cells []int) []strongLink {
 			}
 		}
 		if len(boxCells) == 2 {
-			links = append(links, strongLink{boxCells[0], boxCells[1], "box"})
+			links = append(links, strongLinkXC{boxCells[0], boxCells[1], "box"})
 		}
 	}
 
 	return links
 }
 
-// hasStrongLink checks if there's a strong link between two cells
-func hasStrongLink(strongLinks []strongLink, cell1, cell2 int) bool {
+// hasStrongLinkXC checks if there's a strong link between two cells
+func hasStrongLinkXC(strongLinks []strongLinkXC, cell1, cell2 int) bool {
 	for _, link := range strongLinks {
 		if (link.cell1 == cell1 && link.cell2 == cell2) ||
 			(link.cell1 == cell2 && link.cell2 == cell1) {
@@ -113,13 +113,13 @@ func hasStrongLink(strongLinks []strongLink, cell1, cell2 int) bool {
 	return false
 }
 
-// hasWeakLink checks if there's a weak link (cells see each other)
-func hasWeakLink(cell1, cell2 int) bool {
+// hasWeakLinkXC checks if there's a weak link (cells see each other)
+func hasWeakLinkXC(cell1, cell2 int) bool {
 	return cell1 != cell2 && ArePeers(cell1, cell2)
 }
 
 // findXCyclesDFS searches for X-Cycles using DFS
-func findXCyclesDFS(b *Board, digit int, cells []int, strongLinks []strongLink) *core.Move {
+func findXCyclesDFS(b BoardInterface, digit int, cells []int, strongLinks []strongLinkXC) *core.Move {
 	// Try starting from each cell
 	for _, startCell := range cells {
 		// Try both: starting with strong link out, or weak link out
@@ -132,7 +132,7 @@ func findXCyclesDFS(b *Board, digit int, cells []int, strongLinks []strongLink) 
 	return nil
 }
 
-func searchCycle(b *Board, digit int, cells []int, strongLinks []strongLink, startCell int, startWithStrong bool) *core.Move {
+func searchCycle(b BoardInterface, digit int, cells []int, strongLinks []strongLinkXC, startCell int, startWithStrong bool) *core.Move {
 	// DFS with proper alternation tracking
 	// path[i] connected to path[i+1] via linkStrong[i]
 	type dfsState struct {
@@ -172,7 +172,7 @@ func searchCycle(b *Board, digit int, cells []int, strongLinks []strongLink, sta
 
 		// Check for cycle back to start (need at least 4 nodes for a valid cycle)
 		if pathLen >= 4 {
-			if needStrong && hasStrongLink(strongLinks, currentCell, startCell) {
+			if needStrong && hasStrongLinkXC(strongLinks, currentCell, startCell) {
 				// Cycle closes with strong link
 				fullPath := state.path
 				fullLinks := append(state.linkStrong, true) // closing link is strong
@@ -181,7 +181,7 @@ func searchCycle(b *Board, digit int, cells []int, strongLinks []strongLink, sta
 					return move
 				}
 			}
-			if !needStrong && hasWeakLink(currentCell, startCell) {
+			if !needStrong && hasWeakLinkXC(currentCell, startCell) {
 				// Cycle closes with weak link
 				fullPath := state.path
 				fullLinks := append(state.linkStrong, false) // closing link is weak
@@ -209,9 +209,9 @@ func searchCycle(b *Board, digit int, cells []int, strongLinks []strongLink, sta
 			// Check if we have the required link type
 			hasLink := false
 			if needStrong {
-				hasLink = hasStrongLink(strongLinks, currentCell, nextCell)
+				hasLink = hasStrongLinkXC(strongLinks, currentCell, nextCell)
 			} else {
-				hasLink = hasWeakLink(currentCell, nextCell)
+				hasLink = hasWeakLinkXC(currentCell, nextCell)
 			}
 
 			if !hasLink {
@@ -239,7 +239,7 @@ func searchCycle(b *Board, digit int, cells []int, strongLinks []strongLink, sta
 
 // analyzeCycleFixed checks for discontinuities in the cycle
 // linkStrong[i] = type of link from path[i] to path[(i+1) % len(path)]
-func analyzeCycleFixed(b *Board, digit int, path []int, linkStrong []bool) *core.Move {
+func analyzeCycleFixed(b BoardInterface, digit int, path []int, linkStrong []bool) *core.Move {
 	n := len(path)
 	if n < 4 || len(linkStrong) != n {
 		return nil
@@ -271,7 +271,7 @@ func analyzeCycleFixed(b *Board, digit int, path []int, linkStrong []bool) *core
 
 		// Type 2: Two weak links meet -> cell must be OFF
 		if !linkIn && !linkOut {
-			if b.Candidates[cell].Has(digit) {
+			if b.GetCandidatesAt(cell).Has(digit) {
 				return &core.Move{
 					Action: "eliminate",
 					Digit:  digit,
@@ -294,7 +294,7 @@ func analyzeCycleFixed(b *Board, digit int, path []int, linkStrong []bool) *core
 	return findNiceLoopEliminationsFixed(b, digit, path, linkStrong)
 }
 
-func findNiceLoopEliminationsFixed(b *Board, digit int, path []int, linkStrong []bool) *core.Move {
+func findNiceLoopEliminationsFixed(b BoardInterface, digit int, path []int, linkStrong []bool) *core.Move {
 	n := len(path)
 
 	var eliminations []core.Candidate
@@ -307,7 +307,7 @@ func findNiceLoopEliminationsFixed(b *Board, digit int, path []int, linkStrong [
 
 			// Cells that see BOTH ends of this weak link can eliminate the digit
 			for idx := 0; idx < 81; idx++ {
-				if !b.Candidates[idx].Has(digit) {
+				if !b.GetCandidatesAt(idx).Has(digit) {
 					continue
 				}
 

@@ -1,4 +1,4 @@
-package human
+package techniques
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"sudoku-api/internal/core"
 )
 
-// detectXYZWing finds XYZ-Wing pattern:
+// DetectXYZWing finds XYZ-Wing pattern:
 // - Pivot cell with candidates {X, Y, Z}
 // - Wing1 with candidates {X, Z} that sees the pivot
 // - Wing2 with candidates {Y, Z} that sees the pivot
@@ -14,11 +14,11 @@ import (
 //
 // Logic: Either pivot is X (then wing1 is Z), pivot is Y (then wing2 is Z),
 // or pivot is Z. In all cases, Z is in one of the three cells.
-func detectXYZWing(b *Board) *core.Move {
+func DetectXYZWing(b BoardInterface) *core.Move {
 	// Find cells with exactly 3 candidates (potential pivots)
 	var trivalues []int
 	for i := 0; i < 81; i++ {
-		if b.Candidates[i].Count() == 3 {
+		if b.GetCandidatesAt(i).Count() == 3 {
 			trivalues = append(trivalues, i)
 		}
 	}
@@ -26,13 +26,13 @@ func detectXYZWing(b *Board) *core.Move {
 	// Find cells with exactly 2 candidates (potential wings)
 	var bivalues []int
 	for i := 0; i < 81; i++ {
-		if b.Candidates[i].Count() == 2 {
+		if b.GetCandidatesAt(i).Count() == 2 {
 			bivalues = append(bivalues, i)
 		}
 	}
 
 	for _, pivot := range trivalues {
-		pivotCands := b.Candidates[pivot].ToSlice()
+		pivotCands := b.GetCandidatesAt(pivot).ToSlice()
 		// pivotCands = [X, Y, Z] (sorted)
 		x, y, z := pivotCands[0], pivotCands[1], pivotCands[2]
 
@@ -58,7 +58,7 @@ func detectXYZWing(b *Board) *core.Move {
 					continue
 				}
 
-				wingCands := b.Candidates[wing].ToSlice()
+				wingCands := b.GetCandidatesAt(wing).ToSlice()
 				if len(wingCands) != 2 {
 					continue
 				}
@@ -90,7 +90,7 @@ func detectXYZWing(b *Board) *core.Move {
 						if i == pivot || i == xzWing || i == yzWing {
 							continue
 						}
-						if !b.Candidates[i].Has(zDigit) {
+						if !b.GetCandidatesAt(i).Has(zDigit) {
 							continue
 						}
 						if ArePeers(i, pivot) && ArePeers(i, xzWing) && ArePeers(i, yzWing) {
@@ -136,7 +136,7 @@ func detectXYZWing(b *Board) *core.Move {
 	return nil
 }
 
-// detectWXYZWing finds WXYZ-Wing pattern:
+// DetectWXYZWing finds WXYZ-Wing pattern:
 // A WXYZ-Wing is a group of 4 cells containing exactly 4 digits (W, X, Y, Z) total,
 // where exactly ONE digit is "non-restricted" (not all instances can see each other).
 // That non-restricted digit (Z) can be eliminated from any cell that sees ALL Z's in the pattern.
@@ -144,11 +144,11 @@ func detectXYZWing(b *Board) *core.Move {
 // Based on StrmCkr's definition from SudokuWiki:
 // "WXYZ-Wings can be considered as a group of 4 cells and 4 digits, restricted to exactly
 // two units, that has exactly one non-restricted common digit."
-func detectWXYZWing(b *Board) *core.Move {
+func DetectWXYZWing(b BoardInterface) *core.Move {
 	// Find all empty cells with 2-4 candidates
 	var cells []int
 	for i := 0; i < 81; i++ {
-		n := b.Candidates[i].Count()
+		n := b.GetCandidatesAt(i).Count()
 		if n >= 2 && n <= 4 {
 			cells = append(cells, i)
 		}
@@ -166,7 +166,7 @@ func detectWXYZWing(b *Board) *core.Move {
 					quad := [4]int{cells[i], cells[j], cells[k], cells[l]}
 
 					// Check if these 4 cells contain exactly 4 distinct digits total
-					combined := b.Candidates[quad[0]].Union(b.Candidates[quad[1]]).Union(b.Candidates[quad[2]]).Union(b.Candidates[quad[3]])
+					combined := b.GetCandidatesAt(quad[0]).Union(b.GetCandidatesAt(quad[1])).Union(b.GetCandidatesAt(quad[2])).Union(b.GetCandidatesAt(quad[3]))
 
 					if combined.Count() != 4 {
 						continue
@@ -201,7 +201,7 @@ func detectWXYZWing(b *Board) *core.Move {
 					// Find cells in the quad that contain Z
 					var zCells []int
 					for _, cell := range quad {
-						if b.Candidates[cell].Has(z) {
+						if b.GetCandidatesAt(cell).Has(z) {
 							zCells = append(zCells, cell)
 						}
 					}
@@ -220,7 +220,7 @@ func detectWXYZWing(b *Board) *core.Move {
 						// Find the hinge (cell with most candidates, or any with all 4)
 						hingeIdx := quad[0]
 						for _, cell := range quad {
-							if b.Candidates[cell].Count() > b.Candidates[hingeIdx].Count() {
+							if b.GetCandidatesAt(cell).Count() > b.GetCandidatesAt(hingeIdx).Count() {
 								hingeIdx = cell
 							}
 						}
@@ -228,7 +228,7 @@ func detectWXYZWing(b *Board) *core.Move {
 						// Primary = cells with Z (wing cells), Secondary = hinge
 						var primary, secondary []core.CellRef
 						for _, cell := range quad {
-							if b.Candidates[cell].Has(z) {
+							if b.GetCandidatesAt(cell).Has(z) {
 								primary = append(primary, core.CellRef{Row: cell / 9, Col: cell % 9})
 							} else {
 								secondary = append(secondary, core.CellRef{Row: cell / 9, Col: cell % 9})
@@ -277,11 +277,11 @@ func isConnectedQuad(quad [4]int) bool {
 }
 
 // isDigitRestricted checks if all instances of a digit in the quad can see each other
-func isDigitRestricted(b *Board, quad [4]int, digit int) bool {
+func isDigitRestricted(b BoardInterface, quad [4]int, digit int) bool {
 	// Find all cells in quad containing this digit
 	var digitCells []int
 	for _, cell := range quad {
-		if b.Candidates[cell].Has(digit) {
+		if b.GetCandidatesAt(cell).Has(digit) {
 			digitCells = append(digitCells, cell)
 		}
 	}
@@ -303,12 +303,12 @@ func isDigitRestricted(b *Board, quad [4]int, digit int) bool {
 	return true
 }
 
-// detectALSXZ finds ALS-XZ pattern:
+// DetectALSXZ finds ALS-XZ pattern:
 // - Two ALS (A and B) that share a "restricted common" digit X
 // - X appears in both ALS, and all cells containing X in A see all cells containing X in B
 // - Both ALS share another digit Z
 // - Eliminate Z from cells that see all Z-cells in both ALS
-func detectALSXZ(b *Board) *core.Move {
+func DetectALSXZ(b BoardInterface) *core.Move {
 	allALS := FindAllALS(b, 4)
 
 	// Try all pairs of ALS

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/internal/sudoku/human/techniques"
 )
 
 // makeTestBoard creates a board with specific cells and candidates for testing.
@@ -450,7 +451,7 @@ func TestDetectNakedSingle(t *testing.T) {
 				// Artificial test scenario
 				board = makeTestBoard(tt.cells, tt.candidates)
 			}
-			move := detectNakedSingle(board)
+			move := techniques.DetectNakedSingle(board)
 
 			if tt.expectFound {
 				if move == nil {
@@ -619,7 +620,7 @@ func TestDetectHiddenSingle(t *testing.T) {
 			} else {
 				board = makeTestBoard(tt.cells, tt.candidates)
 			}
-			move := detectHiddenSingle(board)
+			move := techniques.DetectHiddenSingle(board)
 
 			if tt.expectFound {
 				if move == nil {
@@ -790,7 +791,7 @@ func TestDetectNakedPair(t *testing.T) {
 			} else {
 				board = makeTestBoard(tt.cells, tt.candidates)
 			}
-			move := detectNakedPair(board)
+			move := techniques.DetectNakedPair(board)
 
 			if tt.expectFound {
 				if move == nil {
@@ -903,7 +904,7 @@ func TestDetectHiddenPair(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			board := makeTestBoard(tt.cells, tt.candidates)
-			move := detectHiddenPair(board)
+			move := techniques.DetectHiddenPair(board)
 
 			if tt.expectFound {
 				if move == nil {
@@ -1006,7 +1007,7 @@ func TestDetectPointingPair(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			board := makeTestBoard(tt.cells, tt.candidates)
-			move := detectPointingPair(board)
+			move := techniques.DetectPointingPair(board)
 
 			if tt.expectFound {
 				if move == nil {
@@ -1086,7 +1087,7 @@ func TestDetectBoxLineReduction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			board := makeTestBoard(tt.cells, tt.candidates)
-			move := detectBoxLineReduction(board)
+			move := techniques.DetectBoxLineReduction(board)
 
 			if tt.expectFound {
 				if move == nil {
@@ -1193,7 +1194,7 @@ func TestDetectGroupedXCycles(t *testing.T) {
 			} else {
 				board = makeTestBoard(tt.cells, tt.candidates)
 			}
-			move := detectGroupedXCycles(board)
+			move := techniques.DetectGroupedXCycles(board)
 
 			if tt.expectFound {
 				if move == nil {
@@ -1277,7 +1278,7 @@ func TestDetectMedusa3D(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			board := makeTestBoard(tt.cells, tt.candidates)
-			move := detectMedusa3D(board)
+			move := techniques.DetectMedusa3D(board)
 
 			if tt.expectFound {
 				if move == nil {
@@ -1335,7 +1336,7 @@ func TestDetectSueDeCoq(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			board := makeTestBoard(tt.cells, tt.candidates)
-			move := detectSueDeCoq(board)
+			move := techniques.DetectSueDeCoq(board)
 
 			if tt.expectFound {
 				if move == nil {
@@ -1408,7 +1409,7 @@ func TestDetectDeathBlossom(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			board := makeTestBoard(tt.cells, tt.candidates)
-			move := detectDeathBlossom(board)
+			move := techniques.DetectDeathBlossom(board)
 
 			if tt.expectFound {
 				if move == nil {
