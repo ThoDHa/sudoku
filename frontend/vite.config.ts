@@ -78,7 +78,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // Use 'prompt' instead of 'autoUpdate' to prevent background update checks
+      // This reduces battery usage by not waking the app to check for updates
+      // Users will be prompted to update when a new version is available
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         name: 'Sudoku',

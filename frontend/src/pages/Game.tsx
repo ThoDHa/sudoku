@@ -20,6 +20,7 @@ import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import { useHighlightState } from '../hooks/useHighlightState'
 import type { MoveHighlight } from '../hooks/useHighlightState'
 import { useVisibilityAwareTimeout } from '../hooks/useVisibilityAwareTimeout'
+import { useFrozenWhenHidden } from '../hooks/useFrozenWhenHidden'
 import type { Move } from '../hooks/useSudokuGame'
 import {
   TOAST_DURATION_SUCCESS,
@@ -179,6 +180,9 @@ export default function Game() {
   // Background manager for coordinating all background operations
   const backgroundManager = useBackgroundManagerContext()
 
+  // Frozen state hook - skips expensive operations when app is hidden
+  const { isCurrentlyFrozen, shouldSkipStateUpdate } = useFrozenWhenHidden()
+
   // Visibility-aware timeouts for toast messages - cancelled on background
   const { setTimeout: visibilityAwareTimeout } = useVisibilityAwareTimeout()
 
@@ -211,12 +215,12 @@ export default function Game() {
 
    // Throttle validation messages when hidden to reduce re-renders
    const throttledSetValidationMessage = useCallback((message: { type: 'success' | 'error'; message: string } | null) => {
-     if (backgroundManager.shouldPauseOperations && message?.type === 'success') {
+     if (shouldSkipStateUpdate() && message?.type === 'success') {
        // Skip non-critical success messages when hidden to reduce battery usage
        return
      }
      setValidationMessage(message)
-   }, [backgroundManager.shouldPauseOperations])
+   }, [shouldSkipStateUpdate])
 
    // Timer hook
    const timer = useGameTimer({ pauseOnHidden: true, backgroundManager })
@@ -339,12 +343,13 @@ export default function Game() {
     return () => clearTimeout(timeout)
   }, [backgroundManager.isHidden, autoSolve, timer])
 
-  // Unload WASM immediately when entering deep pause to save ~4MB memory
+  // Unload WASM immediately when page becomes hidden to save ~4MB memory
+  // This is more aggressive than waiting for deep pause - any visibility change triggers unload
   useEffect(() => {
-    if (backgroundManager.isInDeepPause) {
+    if (backgroundManager.isHidden || backgroundManager.isInDeepPause) {
       cleanupSolver()
     }
-  }, [backgroundManager.isInDeepPause])
+  }, [backgroundManager.isHidden, backgroundManager.isInDeepPause])
 
   // WASM is loaded on-demand when hints/solve are requested (see solver-service.ts getApi())
   // No need to eagerly preload - the solver functions handle initialization automatically
@@ -1530,6 +1535,17 @@ ${bugReportJson}
   // ============================================================
   // RENDER
   // ============================================================
+
+  // When app is hidden/frozen, render a minimal component to prevent battery drain
+  // This avoids React reconciliation on the complex component tree
+  if (isCurrentlyFrozen && !loading && !error) {
+    return (
+      <div className="flex h-full items-center justify-center bg-background">
+        {/* Minimal frozen state - no animations, no complex components */}
+        <div className="text-foreground-muted text-sm">Paused</div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (

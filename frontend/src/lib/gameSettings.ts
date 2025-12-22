@@ -25,7 +25,7 @@ export function setAutoSaveEnabled(enabled: boolean): void {
 // IN-PROGRESS GAME DETECTION
 // =============================================================================
 
-interface SavedGameInfo {
+export interface SavedGameInfo {
   seed: string
   difficulty: string
   savedAt: number

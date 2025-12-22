@@ -1,6 +1,6 @@
 # Battery & Memory Optimization Analysis Report
 
-**Date:** December 21, 2025  
+**Date:** December 22, 2025  
 **Scope:** Full codebase analysis for battery drain and memory optimization opportunities  
 **Platform Focus:** Android Chrome (mobile)
 
@@ -8,13 +8,16 @@
 
 ## Executive Summary
 
-The Sudoku application demonstrates **excellent awareness** of battery and memory concerns, with multiple dedicated systems already in place. The `useBackgroundManager` hook and visibility-aware patterns are well-designed. However, we identified several issues that could cause battery drain on Android, along with backend memory optimization opportunities.
+The Sudoku application demonstrates **excellent awareness** of battery and memory concerns, with multiple dedicated systems already in place. The `useBackgroundManager` hook and visibility-aware patterns are well-designed. 
 
-### Key Finding: Android Battery Drain
+### Latest Update (December 22, 2025)
 
-A safety gap was found in timer callbacks that could allow CPU work to continue when the app is backgrounded on Android, where visibility events may fire late or unreliably.
+Additional aggressive battery optimizations were implemented to minimize background usage:
 
-**Fix Applied:** Added direct `document.visibilityState` check inside timer callback as a safety net.
+1. **Immediate WASM Unload** - WASM now unloads immediately when page becomes hidden (not just deep pause)
+2. **Frozen UI State** - When hidden, renders minimal "Paused" component instead of full game UI
+3. **PWA Prompt Mode** - Changed from `autoUpdate` to `prompt` to prevent background update checks
+4. **useFrozenWhenHidden Hook** - New hook for skipping expensive operations when hidden
 
 ---
 
@@ -364,6 +367,69 @@ Modified `createMoveWithDiff()` and `applyExternalMove()` to no longer store `bo
 
 Added `wasmAbortController` to the WASM loader. The 3.3MB WASM download can now be cancelled if the user navigates away. Also added `abortWasmLoad()` export function and integrated abort into `unloadWasm()`.
 
+### 4.12 Immediate WASM Unload on Visibility Hide ✅ (Dec 22, 2025)
+
+**File:** `frontend/src/pages/Game.tsx`
+
+Changed WASM cleanup to trigger immediately when page becomes hidden, not just on "deep pause":
+
+```typescript
+// Now triggers on EITHER isHidden OR isInDeepPause
+useEffect(() => {
+  if (backgroundManager.isHidden || backgroundManager.isInDeepPause) {
+    cleanupSolver()
+  }
+}, [backgroundManager.isHidden, backgroundManager.isInDeepPause])
+```
+
+**Impact:** WASM module (~4MB) is unloaded immediately when user switches tabs or minimizes browser, rather than waiting for the 15-second deep pause threshold.
+
+### 4.13 useFrozenWhenHidden Hook ✅ (Dec 22, 2025)
+
+**File:** `frontend/src/hooks/useFrozenWhenHidden.ts` (NEW)
+
+Created a new hook that provides utilities for freezing UI when hidden:
+
+- `isCurrentlyFrozen` - boolean indicating if app is hidden
+- `shouldSkipStateUpdate()` - function to check if state updates should be skipped
+- `skipWhenFrozen()` - wrapper to skip callbacks when hidden
+
+**Impact:** Provides a clean, reusable pattern for components to skip expensive operations when the app is not visible.
+
+### 4.14 Frozen UI State When Hidden ✅ (Dec 22, 2025)
+
+**File:** `frontend/src/pages/Game.tsx`
+
+When the app is hidden, the Game page now renders a minimal "Paused" component instead of the full game UI:
+
+```typescript
+if (isCurrentlyFrozen && !loading && !error) {
+  return (
+    <div className="flex h-full items-center justify-center bg-background">
+      <div className="text-foreground-muted text-sm">Paused</div>
+    </div>
+  )
+}
+```
+
+**Impact:** Eliminates all React reconciliation and rendering work for the complex Game component tree (Board with 81 cells, Controls, Header, Modals, etc.) while the app is backgrounded.
+
+### 4.15 PWA Prompt Mode ✅ (Dec 22, 2025)
+
+**File:** `frontend/vite.config.ts`
+
+Changed PWA from `autoUpdate` to `prompt` mode:
+
+```typescript
+VitePWA({
+  // Use 'prompt' instead of 'autoUpdate' to prevent background update checks
+  registerType: 'prompt',
+  ...
+})
+```
+
+**Impact:** Prevents the service worker from performing background update checks while the app is not being actively used. Users will be prompted to update when a new version is available.
+
 ---
 
 ## 5. Recommended Improvements
@@ -527,6 +593,10 @@ For a complex puzzle with 2000 moves:
    ✅ React.memo Board  │
    ✅ WASM Streaming    │
    ✅ cellMap Memoize   │
+   ✅ Immediate WASM    │
+      Unload (Dec 22)   │
+   ✅ Frozen UI State   │
+      (Dec 22)          │
                         │
    LOW EFFORT ──────────┼────────── HIGH EFFORT
                         │
@@ -534,6 +604,10 @@ For a complex puzzle with 2000 moves:
    ✅ History Limits    │    ● Bitmask candidates
    ✅ BackgroundMgr     │    ● sync.Pool
    ✅ Remove Redundant  │
+   ✅ PWA Prompt Mode   │
+      (Dec 22)          │
+   ✅ useFrozenWhenHidden│
+      Hook (Dec 22)     │
                         │
                    LOW IMPACT
 ```
@@ -546,7 +620,7 @@ Note: All frontend optimizations (left side) have been completed! Only high-effo
 
 The Sudoku application has a **well-designed foundation** for battery and memory optimization. 
 
-### Fixes Applied (11 total)
+### Fixes Applied (15 total)
 
 All high-impact, low-effort frontend optimizations have been completed:
 
@@ -561,6 +635,10 @@ All high-impact, low-effort frontend optimizations have been completed:
 9. ✅ **History size limits** - Added MAX_MOVE_HISTORY = 500 to cap memory growth
 10. ✅ **Removed redundant move storage** - No longer stores boardBefore/candidatesBefore (~50% less history memory)
 11. ✅ **AbortController for WASM fetch** - Can cancel 3.3MB download if user navigates away
+12. ✅ **Immediate WASM unload on visibility hide** - Unloads ~4MB immediately when hidden (Dec 22, 2025)
+13. ✅ **useFrozenWhenHidden hook** - New hook for skipping operations when hidden (Dec 22, 2025)
+14. ✅ **Frozen UI state when hidden** - Renders minimal component instead of full game UI (Dec 22, 2025)
+15. ✅ **PWA prompt mode** - Prevents background update checks (Dec 22, 2025)
 
 ### Final Analysis Result
 
