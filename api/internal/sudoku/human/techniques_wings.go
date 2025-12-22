@@ -2,7 +2,6 @@ package human
 
 import (
 	"fmt"
-	"sort"
 
 	"sudoku-api/internal/core"
 )
@@ -304,87 +303,13 @@ func isDigitRestricted(b *Board, quad [4]int, digit int) bool {
 	return true
 }
 
-// Almost Locked Set (ALS) representation
-type ALS struct {
-	Cells   []int         // Cell indices in the ALS
-	Digits  []int         // Candidates in the ALS (N+1 digits for N cells)
-	ByDigit map[int][]int // For each digit, which cells contain it
-}
-
-// findAllALS finds all Almost Locked Sets in the board
-// An ALS is a set of N cells in a unit that together have exactly N+1 candidates
-func findAllALS(b *Board) []ALS {
-	var allALS []ALS
-
-	// Check each unit type
-	units := [][]int{}
-	for row := 0; row < 9; row++ {
-		units = append(units, RowIndices[row])
-	}
-	for col := 0; col < 9; col++ {
-		units = append(units, ColIndices[col])
-	}
-	for box := 0; box < 9; box++ {
-		units = append(units, BoxIndices[box])
-	}
-
-	for _, unit := range units {
-		// Get empty cells in this unit
-		var emptyCells []int
-		for _, idx := range unit {
-			if b.Candidates[idx].Count() > 0 {
-				emptyCells = append(emptyCells, idx)
-			}
-		}
-
-		// Find ALS of sizes 1 to 4 (larger ones are rare and expensive)
-		for size := 1; size <= 4 && size <= len(emptyCells); size++ {
-			// Generate all combinations of 'size' cells
-			combos := Combinations(emptyCells, size)
-			for _, combo := range combos {
-				// Count combined candidates
-				var combined Candidates
-				for _, cell := range combo {
-					combined = combined.Union(b.Candidates[cell])
-				}
-
-				// ALS: N cells with N+1 candidates
-				if combined.Count() == size+1 {
-					digits := combined.ToSlice()
-
-					// Build digit-to-cells map
-					byDigit := make(map[int][]int)
-					for _, cell := range combo {
-						for _, d := range b.Candidates[cell].ToSlice() {
-							byDigit[d] = append(byDigit[d], cell)
-						}
-					}
-
-					// Sort cells for consistency
-					sortedCells := make([]int, len(combo))
-					copy(sortedCells, combo)
-					sort.Ints(sortedCells)
-
-					allALS = append(allALS, ALS{
-						Cells:   sortedCells,
-						Digits:  digits,
-						ByDigit: byDigit,
-					})
-				}
-			}
-		}
-	}
-
-	return allALS
-}
-
 // detectALSXZ finds ALS-XZ pattern:
 // - Two ALS (A and B) that share a "restricted common" digit X
 // - X appears in both ALS, and all cells containing X in A see all cells containing X in B
 // - Both ALS share another digit Z
 // - Eliminate Z from cells that see all Z-cells in both ALS
 func detectALSXZ(b *Board) *core.Move {
-	allALS := findAllALS(b)
+	allALS := FindAllALS(b, 4)
 
 	// Try all pairs of ALS
 	for i := 0; i < len(allALS); i++ {

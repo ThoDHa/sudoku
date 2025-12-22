@@ -18,7 +18,7 @@ import (
 // A would be locked on its N digits). So either B has X locked out and contains Z,
 // or C has Y locked out and contains Z. Either way, Z appears in B or C.
 func detectALSXYWing(b *Board) *core.Move {
-	allALS := findAllALS(b)
+	allALS := FindAllALS(b, 4)
 
 	// Try all combinations of 3 ALS for A, B, C
 	n := len(allALS)
@@ -122,7 +122,7 @@ func detectALSXYWing(b *Board) *core.Move {
 //
 // This extends ALS-XY-Wing to chains of arbitrary length.
 func detectALSXYChain(b *Board) *core.Move {
-	allALS := findAllALS(b)
+	allALS := FindAllALS(b, 4)
 
 	// Build adjacency: which ALS pairs have restricted commons
 	n := len(allALS)

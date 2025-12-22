@@ -2,7 +2,6 @@ package human
 
 import (
 	"fmt"
-	"sort"
 
 	"sudoku-api/internal/core"
 )
@@ -21,8 +20,8 @@ import (
 //   - Since we don't know WHICH petal will lock, Z must appear in any position
 //     that all petals cover for Z
 func detectDeathBlossom(b *Board) *core.Move {
-	// Find all ALS with size 2-4 cells for efficiency
-	allALS := findBlossomALS(b)
+	// Find all ALS with size 1-4 cells
+	allALS := FindAllALS(b, 4)
 	if len(allALS) < 2 {
 		return nil
 	}
@@ -69,73 +68,6 @@ func detectDeathBlossom(b *Board) *core.Move {
 	}
 
 	return nil
-}
-
-// findBlossomALS finds ALS suitable for Death Blossom (size 2-4 cells)
-func findBlossomALS(b *Board) []ALS {
-	var allALS []ALS
-
-	// Iterate units in specific order: all rows, then all cols, then all boxes
-	// This order affects which ALS are found first, which can affect correctness
-	// of the Death Blossom detection (it returns the first valid pattern found)
-	units := make([][]int, 0, 27)
-	for i := 0; i < 9; i++ {
-		units = append(units, RowIndices[i])
-	}
-	for i := 0; i < 9; i++ {
-		units = append(units, ColIndices[i])
-	}
-	for i := 0; i < 9; i++ {
-		units = append(units, BoxIndices[i])
-	}
-
-	for _, unit := range units {
-		// Get empty cells in this unit
-		var emptyCells []int
-		for _, idx := range unit {
-			if b.Candidates[idx].Count() > 0 {
-				emptyCells = append(emptyCells, idx)
-			}
-		}
-
-		// Find ALS of sizes 1 to 4 (size 1 is a bivalue cell - crucial for Death Blossom)
-		for size := 1; size <= 4 && size <= len(emptyCells); size++ {
-			combos := Combinations(emptyCells, size)
-			for _, combo := range combos {
-				// Count combined candidates using bitmask union
-				var combined Candidates
-				for _, cell := range combo {
-					combined = combined.Union(b.Candidates[cell])
-				}
-
-				// ALS: N cells with N+1 candidates
-				if combined.Count() == size+1 {
-					digits := combined.ToSlice()
-
-					// Build digit-to-cells map
-					byDigit := make(map[int][]int)
-					for _, cell := range combo {
-						for _, d := range b.Candidates[cell].ToSlice() {
-							byDigit[d] = append(byDigit[d], cell)
-						}
-					}
-
-					// Create sorted copy of cells
-					sortedCells := make([]int, len(combo))
-					copy(sortedCells, combo)
-					sort.Ints(sortedCells)
-
-					allALS = append(allALS, ALS{
-						Cells:   sortedCells,
-						Digits:  digits,
-						ByDigit: byDigit,
-					})
-				}
-			}
-		}
-	}
-
-	return allALS
 }
 
 // findPetalsForCandidate finds ALS that can serve as petals for a given stem candidate

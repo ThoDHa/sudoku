@@ -2,6 +2,7 @@ package human
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"sudoku-api/internal/core"
@@ -734,6 +735,89 @@ func FindDigitPositionsInCols(b *Board, digit, minCount, maxCount int) []UnitPos
 		}
 	}
 	return result
+}
+
+// ============================================================================
+// Almost Locked Set (ALS) Support
+// ============================================================================
+
+// ALS represents an Almost Locked Set: N cells with N+1 candidates
+type ALS struct {
+	Cells   []int         // Cell indices in the ALS
+	Digits  []int         // Candidates in the ALS (N+1 digits for N cells)
+	ByDigit map[int][]int // For each digit, which cells contain it
+}
+
+// FindAllALS finds all Almost Locked Sets in all units.
+// An ALS is a set of N cells containing exactly N+1 different candidates.
+// maxSize limits the ALS size (default 4 if <= 0).
+func FindAllALS(b *Board, maxSize int) []ALS {
+	if maxSize <= 0 {
+		maxSize = 4
+	}
+
+	var allALS []ALS
+
+	// Build unit list in specific order: all rows, then all cols, then all boxes.
+	// This order affects which ALS are found first and can impact technique results.
+	units := make([][]int, 0, 27)
+	for i := 0; i < 9; i++ {
+		units = append(units, RowIndices[i])
+	}
+	for i := 0; i < 9; i++ {
+		units = append(units, ColIndices[i])
+	}
+	for i := 0; i < 9; i++ {
+		units = append(units, BoxIndices[i])
+	}
+
+	for _, unit := range units {
+		// Get empty cells in this unit
+		var emptyCells []int
+		for _, idx := range unit {
+			if b.Candidates[idx].Count() > 0 {
+				emptyCells = append(emptyCells, idx)
+			}
+		}
+
+		// Find ALS of sizes 1 to maxSize
+		for size := 1; size <= maxSize && size <= len(emptyCells); size++ {
+			combos := Combinations(emptyCells, size)
+			for _, combo := range combos {
+				// Count combined candidates
+				var combined Candidates
+				for _, cell := range combo {
+					combined = combined.Union(b.Candidates[cell])
+				}
+
+				// ALS: N cells with N+1 candidates
+				if combined.Count() == size+1 {
+					digits := combined.ToSlice()
+
+					// Build digit-to-cells map
+					byDigit := make(map[int][]int)
+					for _, cell := range combo {
+						for _, d := range b.Candidates[cell].ToSlice() {
+							byDigit[d] = append(byDigit[d], cell)
+						}
+					}
+
+					// Sort cells for consistency
+					sortedCells := make([]int, len(combo))
+					copy(sortedCells, combo)
+					sort.Ints(sortedCells)
+
+					allALS = append(allALS, ALS{
+						Cells:   sortedCells,
+						Digits:  digits,
+						ByDigit: byDigit,
+					})
+				}
+			}
+		}
+	}
+
+	return allALS
 }
 
 // ============================================================================
