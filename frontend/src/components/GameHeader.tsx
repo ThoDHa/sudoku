@@ -408,7 +408,7 @@ export default function GameHeader({
     <>
     <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-board-border-light">
       {/* Main header row */}
-      <div className="mx-auto max-w-4xl px-2 sm:px-4 h-16 flex items-center justify-between gap-2">
+      <div className="mx-auto max-w-4xl px-2 sm:px-4 h-12 flex items-center justify-between gap-2">
         {/* Left: Logo + Difficulty */}
         <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <Link to="/" className="flex items-center gap-1 sm:gap-2 font-semibold text-foreground">

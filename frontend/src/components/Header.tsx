@@ -205,7 +205,7 @@ ${debugJson}
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-b border-board-border-light h-16">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-b border-board-border-light h-12">
         <div className="mx-auto max-w-4xl px-4 h-full">
           <div className="flex h-full items-center justify-between">
             {/* Left: Logo */}

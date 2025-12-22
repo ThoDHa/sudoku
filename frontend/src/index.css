@@ -54,8 +54,8 @@
      LAYOUT CONSTANTS
      Fixed values for structural elements
      ============================================================ */
-  --header-height: 4rem;
-  --game-header-height: 4rem;
+  --header-height: 3rem;
+  --game-header-height: 3rem;
   --page-padding: clamp(0.5rem, 2dvw, 1.5rem);
   
   /* ============================================================
@@ -167,6 +167,8 @@ html, body {
   container-type: inline-size;
   container-name: game;
   width: 100%;
+  /* Gap between board and controls - matches page-padding for visual consistency */
+  gap: var(--page-padding);
   /* Constrain by available height to prevent overflow */
   /* Also cap at 40rem (640px) to prevent ultrawide sprawl */
   max-width: min(var(--board-max-by-height, 100%), 40rem);
@@ -303,8 +305,7 @@ html, body {
 .controls-grid {
   /* Gap between digit grid and action row */
   gap: 1.5cqi;
-  /* Top margin to separate from board - half of page padding */
-  margin-top: calc(var(--page-padding) / 2);
+  /* No top margin - spacing handled by parent .game-container gap */
 }
 
 .digit-grid {
