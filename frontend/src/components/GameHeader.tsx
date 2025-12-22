@@ -265,9 +265,9 @@ function ThemeModeDropdown({ mode, modePreference, isOpen, onToggle, onSetModePr
       <button
         onClick={onToggle}
         className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
-        title={`Theme: ${modePreference}`}
+        title={`Theme: ${modePreference === 'system' ? `System (${mode})` : modePreference}`}
       >
-        {modePreference === 'system' ? <ComputerIcon /> : mode === 'dark' ? <SunIcon /> : <MoonIcon />}
+        {mode === 'dark' ? <MoonIcon /> : <SunIcon />}
       </button>
       {isOpen && (
         <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-background-secondary border border-board-border-light shadow-lg overflow-hidden z-50">
