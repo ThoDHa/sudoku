@@ -212,46 +212,11 @@ func detectWXYZWing(b *Board) *core.Move {
 					}
 
 					// Eliminate Z from cells that see ALL Z-containing cells in the quad
-					var eliminations []core.Candidate
-					for idx := 0; idx < 81; idx++ {
-						// Skip cells in the quad
-						isInQuad := false
-						for _, qc := range quad {
-							if idx == qc {
-								isInQuad = true
-								break
-							}
-						}
-						if isInQuad {
-							continue
-						}
-
-						if !b.Candidates[idx].Has(z) {
-							continue
-						}
-
-						// Must see ALL z-containing cells
-						seesAll := true
-						for _, zc := range zCells {
-							if !ArePeers(idx, zc) {
-								seesAll = false
-								break
-							}
-						}
-
-						if seesAll {
-							eliminations = append(eliminations, core.Candidate{
-								Row: idx / 9, Col: idx % 9, Digit: z,
-							})
-						}
-					}
+					eliminations := FindEliminationsSeeing(b, z, quad[:], zCells...)
 
 					if len(eliminations) > 0 {
 						// Build targets (all 4 cells)
-						var targets []core.CellRef
-						for _, cell := range quad {
-							targets = append(targets, core.CellRef{Row: cell / 9, Col: cell % 9})
-						}
+						targets := CellRefsFromIndices(quad[:]...)
 
 						// Find the hinge (cell with most candidates, or any with all 4)
 						hingeIdx := quad[0]
@@ -458,51 +423,17 @@ func detectALSXZ(b *Board) *core.Move {
 					zCellsA := alsA.ByDigit[z]
 					zCellsB := alsB.ByDigit[z]
 
+					// Build exclusion set (all cells in either ALS)
+					exclude := append(alsA.Cells, alsB.Cells...)
+					// Combine Z cells from both ALS
+					allZCells := append(zCellsA, zCellsB...)
+
 					// Find cells that see ALL Z-cells in both ALS
-					var eliminations []core.Candidate
-					for idx := 0; idx < 81; idx++ {
-						// Skip cells in either ALS
-						if ContainsInt(alsA.Cells, idx) || ContainsInt(alsB.Cells, idx) {
-							continue
-						}
-
-						if !b.Candidates[idx].Has(z) {
-							continue
-						}
-
-						// Must see all Z cells in both ALS
-						seesAllZ := true
-						for _, zCell := range zCellsA {
-							if !ArePeers(idx, zCell) {
-								seesAllZ = false
-								break
-							}
-						}
-						if seesAllZ {
-							for _, zCell := range zCellsB {
-								if !ArePeers(idx, zCell) {
-									seesAllZ = false
-									break
-								}
-							}
-						}
-
-						if seesAllZ {
-							eliminations = append(eliminations, core.Candidate{
-								Row: idx / 9, Col: idx % 9, Digit: z,
-							})
-						}
-					}
+					eliminations := FindEliminationsSeeing(b, z, exclude, allZCells...)
 
 					if len(eliminations) > 0 {
 						// Build targets from both ALS cells
-						var targets []core.CellRef
-						for _, cell := range alsA.Cells {
-							targets = append(targets, core.CellRef{Row: cell / 9, Col: cell % 9})
-						}
-						for _, cell := range alsB.Cells {
-							targets = append(targets, core.CellRef{Row: cell / 9, Col: cell % 9})
-						}
+						targets := CellRefsFromIndices(append(alsA.Cells, alsB.Cells...)...)
 
 						return &core.Move{
 							Action:       "eliminate",

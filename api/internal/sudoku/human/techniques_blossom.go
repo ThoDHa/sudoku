@@ -283,59 +283,30 @@ func findBlossomEliminations(b *Board, stem int, petals []ALS, z int, stemCands 
 		return nil
 	}
 
-	// Collect all cells in all petals (for exclusion)
-	allPetalCells := make(map[int]bool)
+	// Collect all cells to exclude (stem + all petal cells)
+	exclude := []int{stem}
 	for _, petal := range petals {
-		for _, cell := range petal.Cells {
-			allPetalCells[cell] = true
-		}
+		exclude = append(exclude, petal.Cells...)
 	}
 
 	// Find cells that see ALL zCells and have z as candidate
-	var eliminations []core.Candidate
-	for idx := 0; idx < 81; idx++ {
-		// Skip stem and petal cells
-		if idx == stem || allPetalCells[idx] {
-			continue
-		}
-
-		if !b.Candidates[idx].Has(z) {
-			continue
-		}
-
-		// Must see ALL z cells in ALL petals
-		seesAll := true
-		for _, zCell := range allZCells {
-			if !ArePeers(idx, zCell) {
-				seesAll = false
-				break
-			}
-		}
-
-		if seesAll {
-			eliminations = append(eliminations, core.Candidate{
-				Row: idx / 9, Col: idx % 9, Digit: z,
-			})
-		}
-	}
+	eliminations := FindEliminationsSeeing(b, z, exclude, allZCells...)
 
 	if len(eliminations) == 0 {
 		return nil
 	}
 
 	// Build targets and highlights
-	targets := []core.CellRef{{Row: stem / 9, Col: stem % 9}}
-	var primary []core.CellRef
-	primary = append(primary, core.CellRef{Row: stem / 9, Col: stem % 9})
+	stemRef := CellRefsFromIndices(stem)[0]
+	targets := []core.CellRef{stemRef}
+	primary := []core.CellRef{stemRef}
 
-	var secondary []core.CellRef
+	var petalCells []int
 	for _, petal := range petals {
-		for _, cell := range petal.Cells {
-			cellRef := core.CellRef{Row: cell / 9, Col: cell % 9}
-			targets = append(targets, cellRef)
-			secondary = append(secondary, cellRef)
-		}
+		petalCells = append(petalCells, petal.Cells...)
 	}
+	secondary := CellRefsFromIndices(petalCells...)
+	targets = append(targets, secondary...)
 
 	// Build explanation
 	stemRow, stemCol := stem/9, stem%9

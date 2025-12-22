@@ -693,6 +693,107 @@ func AllSeeAll(cellsA, cellsB []int) bool {
 }
 
 // ============================================================================
+// Unit Position Helpers
+// ============================================================================
+
+// UnitPositions tracks where a digit appears in a unit (row or column)
+type UnitPositions struct {
+	UnitIndex int   // row/col index (0-8)
+	Positions []int // positions within unit where digit appears
+}
+
+// FindDigitPositionsInRows returns rows where digit appears in minCount-maxCount columns
+func FindDigitPositionsInRows(b *Board, digit, minCount, maxCount int) []UnitPositions {
+	var result []UnitPositions
+	for row := 0; row < 9; row++ {
+		var cols []int
+		for col := 0; col < 9; col++ {
+			if b.Candidates[row*9+col].Has(digit) {
+				cols = append(cols, col)
+			}
+		}
+		if len(cols) >= minCount && len(cols) <= maxCount {
+			result = append(result, UnitPositions{row, cols})
+		}
+	}
+	return result
+}
+
+// FindDigitPositionsInCols returns cols where digit appears in minCount-maxCount rows
+func FindDigitPositionsInCols(b *Board, digit, minCount, maxCount int) []UnitPositions {
+	var result []UnitPositions
+	for col := 0; col < 9; col++ {
+		var rows []int
+		for row := 0; row < 9; row++ {
+			if b.Candidates[row*9+col].Has(digit) {
+				rows = append(rows, row)
+			}
+		}
+		if len(rows) >= minCount && len(rows) <= maxCount {
+			result = append(result, UnitPositions{col, rows})
+		}
+	}
+	return result
+}
+
+// ============================================================================
+// Cell Reference Helpers
+// ============================================================================
+
+// CellRefsFromIndices converts cell indices to CellRef slice
+func CellRefsFromIndices(indices ...int) []core.CellRef {
+	result := make([]core.CellRef, len(indices))
+	for i, idx := range indices {
+		result[i] = core.CellRef{Row: idx / 9, Col: idx % 9}
+	}
+	return result
+}
+
+// ============================================================================
+// Elimination Helpers
+// ============================================================================
+
+// FindEliminationsSeeing finds cells with digit that see ALL specified mustSee cells.
+// Cells in the exclude set are skipped. If exclude is nil, mustSee cells are excluded.
+func FindEliminationsSeeing(b *Board, digit int, exclude []int, mustSee ...int) []core.Candidate {
+	// Build exclusion set
+	excludeSet := make(map[int]bool)
+	if exclude != nil {
+		for _, idx := range exclude {
+			excludeSet[idx] = true
+		}
+	} else {
+		// Default: exclude the mustSee cells themselves
+		for _, idx := range mustSee {
+			excludeSet[idx] = true
+		}
+	}
+
+	var eliminations []core.Candidate
+	for idx := 0; idx < 81; idx++ {
+		if excludeSet[idx] {
+			continue
+		}
+		if !b.Candidates[idx].Has(digit) {
+			continue
+		}
+		seesAll := true
+		for _, target := range mustSee {
+			if !ArePeers(idx, target) {
+				seesAll = false
+				break
+			}
+		}
+		if seesAll {
+			eliminations = append(eliminations, core.Candidate{
+				Row: idx / 9, Col: idx % 9, Digit: digit,
+			})
+		}
+	}
+	return eliminations
+}
+
+// ============================================================================
 // Legacy Helpers (for gradual migration)
 // ============================================================================
 

@@ -341,64 +341,23 @@ func isRestrictedCommon(a, b ALS, d int) bool {
 // findZEliminations finds cells that can eliminate digit z
 // These cells must see all z-cells in the given groups and not be part of excluded cells
 func findZEliminations(b *Board, z int, zCellsFirst, zCellsLast []int, excludedCellGroups ...[]int) []core.Candidate {
-	// Build set of excluded cells
-	excluded := make(map[int]bool)
+	// Build exclusion slice
+	var exclude []int
 	for _, group := range excludedCellGroups {
-		for _, cell := range group {
-			excluded[cell] = true
-		}
+		exclude = append(exclude, group...)
 	}
 
-	var eliminations []core.Candidate
-	for idx := 0; idx < 81; idx++ {
-		if excluded[idx] {
-			continue
-		}
-		if !b.Candidates[idx].Has(z) {
-			continue
-		}
+	// Combine all Z cells that must be seen
+	allZCells := append(zCellsFirst, zCellsLast...)
 
-		// Must see all Z cells in first group
-		seesAllFirst := true
-		for _, zCell := range zCellsFirst {
-			if !ArePeers(idx, zCell) {
-				seesAllFirst = false
-				break
-			}
-		}
-		if !seesAllFirst {
-			continue
-		}
-
-		// Must see all Z cells in last group
-		seesAllLast := true
-		for _, zCell := range zCellsLast {
-			if !ArePeers(idx, zCell) {
-				seesAllLast = false
-				break
-			}
-		}
-		if !seesAllLast {
-			continue
-		}
-
-		eliminations = append(eliminations, core.Candidate{
-			Row:   idx / 9,
-			Col:   idx % 9,
-			Digit: z,
-		})
-	}
-
-	return eliminations
+	return FindEliminationsSeeing(b, z, exclude, allZCells...)
 }
 
 // buildTargets creates CellRef slice from multiple cell groups
 func buildTargets(cellGroups ...[]int) []core.CellRef {
-	var targets []core.CellRef
+	var allCells []int
 	for _, group := range cellGroups {
-		for _, cell := range group {
-			targets = append(targets, core.CellRef{Row: cell / 9, Col: cell % 9})
-		}
+		allCells = append(allCells, group...)
 	}
-	return targets
+	return CellRefsFromIndices(allCells...)
 }
