@@ -62,6 +62,8 @@ interface UseAutoSolveReturn {
   currentIndex: number
   /** Total number of moves */
   totalMoves: number
+  /** Steps completed in last autosolve session (preserved after stop) */
+  lastCompletedSteps: number
 }
 
 interface MoveResult {
@@ -111,6 +113,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const [manualPaused, setManualPaused] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [totalMoves, setTotalMoves] = useState(0)
+  const [lastCompletedSteps, setLastCompletedSteps] = useState(0)
 
   const autoSolveRef = useRef(false)
   const pausedRef = useRef(false)
@@ -185,6 +188,10 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const stopAutoSolve = useCallback(() => {
     // Clear all active timers first to prevent battery drain
     clearActiveTimers()
+    
+    // Save the final step count BEFORE resetting (for history display)
+    const finalSteps = currentIndexRef.current > 0 ? currentIndexRef.current : 0
+    setLastCompletedSteps(finalSteps)
     
     autoSolveRef.current = false
     pausedRef.current = false
@@ -638,5 +645,6 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     canStepForward: isAutoSolving && currentIndex < totalMoves,
     currentIndex,
     totalMoves,
+    lastCompletedSteps,
   }
 }

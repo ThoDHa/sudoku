@@ -1220,13 +1220,13 @@ ${bugReportJson}
 
   // Track auto-solve steps and errors fixed when auto-solve stops
   useEffect(() => {
-    if (!autoSolve.isAutoSolving && autoSolve.currentIndex > 0) {
-      setAutoSolveStepsUsed(prev => prev + autoSolve.currentIndex)
+    if (!autoSolve.isAutoSolving && autoSolve.lastCompletedSteps > 0) {
+      setAutoSolveStepsUsed(prev => prev + autoSolve.lastCompletedSteps)
       // Count fix-error moves in history (these are errors that were fixed during autosolve)
       const errorsFixed = game.history.filter(move => move.action === 'fix-error').length
       setAutoSolveErrorsFixed(errorsFixed)
     }
-  }, [autoSolve.isAutoSolving, autoSolve.currentIndex, game.history])
+  }, [autoSolve.isAutoSolving, autoSolve.lastCompletedSteps, game.history])
 
   // Fetch puzzle
   useEffect(() => {
