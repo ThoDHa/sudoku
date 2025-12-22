@@ -67,7 +67,7 @@ export default function Header() {
 
   // Hide header on game pages - they have their own UI
   // Game routes: /c/* for custom, or /:seed (anything not a known route)
-  const knownRoutes = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard']
+  const knownRoutes = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard', '/about']
   const isKnownRoute = knownRoutes.some(route => 
     location.pathname === route || location.pathname.startsWith(route + '/')
   )
@@ -246,6 +246,16 @@ ${debugJson}
               >
                 Scores
               </Link>
+              <Link
+                to="/about"
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                  location.pathname === '/about'
+                    ? 'text-accent'
+                    : 'text-foreground-muted hover:text-foreground'
+                }`}
+              >
+                About
+              </Link>
             </nav>
 
             {/* Right: Actions */}
@@ -255,9 +265,9 @@ ${debugJson}
                 <button
                   onClick={() => setModeDropdownOpen(!modeDropdownOpen)}
                   className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
-                  title={`Theme: ${modePreference}`}
+                  title={`Theme: ${modePreference === 'system' ? `System (${mode})` : modePreference}`}
                 >
-                  {modePreference === 'system' ? <ComputerIcon /> : mode === 'dark' ? <SunIcon /> : <MoonIcon />}
+                  {mode === 'dark' ? <MoonIcon /> : <SunIcon />}
                 </button>
                 {modeDropdownOpen && (
                   <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-background-secondary border border-board-border-light shadow-lg overflow-hidden z-50">
