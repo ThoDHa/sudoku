@@ -113,7 +113,7 @@ export function generateShareText(score: Score, puzzleUrl: string, streak?: numb
   } else if (score.difficulty === 'custom') {
     text += `Sudoku (Custom)\n`
   } else {
-    text += `Sudoku (Practice)\n`
+    text += `Sudoku\n`
   }
   
   text += `${difficulty} ⏱️ ${time}`

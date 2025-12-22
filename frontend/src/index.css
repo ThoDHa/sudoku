@@ -303,8 +303,8 @@ html, body {
 .controls-grid {
   /* Gap between digit grid and action row */
   gap: 1.5cqi;
-  /* Top margin to separate from board */
-  margin-top: 1.5cqi;
+  /* Top margin to separate from board - half of page padding */
+  margin-top: calc(var(--page-padding) / 2);
 }
 
 .digit-grid {

@@ -94,7 +94,8 @@ describe('scores', () => {
       const score = { ...baseScore, seed: 'abc123' }
       const text = generateShareText(score, 'https://example.com')
       
-      expect(text).toContain('Sudoku (Practice)')
+      expect(text).toContain('Sudoku')
+      expect(text).not.toContain('(Practice)')
       expect(text).not.toContain('2024')
     })
 

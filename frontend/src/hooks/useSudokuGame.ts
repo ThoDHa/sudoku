@@ -698,8 +698,15 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     updateCandidates(savedCandidates)
     setHistory(savedHistory)
     setHistoryIndex(savedHistory.length - 1)
-    setIsComplete(false)
-  }, [updateCandidates])
+    
+    // Check if restored board is already complete
+    const allFilled = savedBoard.every((v: number) => v !== 0)
+    if (allFilled && isValidSolution(savedBoard)) {
+      setIsComplete(true)
+    } else {
+      setIsComplete(false)
+    }
+  }, [updateCandidates, isValidSolution])
 
   // Set board state without modifying history (for auto-solve rewind)
   const setBoardState = useCallback((

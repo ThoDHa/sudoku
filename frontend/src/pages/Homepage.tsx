@@ -63,6 +63,8 @@ export default function Homepage() {
       setInProgressGame(null)
     }
     if (pendingNavigation) {
+      // Signal to Game component that we've already handled in-progress game check
+      sessionStorage.setItem('from_homepage', 'true')
       navigate(pendingNavigation)
     }
     setShowNewGameConfirm(false)
@@ -178,6 +180,8 @@ export default function Homepage() {
                     setShowNewGameConfirm(true)
                     return false
                   }
+                  // Signal to Game component that we've already handled in-progress game check
+                  sessionStorage.setItem('from_homepage', 'true')
                   return true
                 }}
               />
@@ -204,6 +208,8 @@ export default function Homepage() {
                     setShowNewGameConfirm(true)
                     return false
                   }
+                  // Signal to Game component that we've already handled in-progress game check
+                  sessionStorage.setItem('from_homepage', 'true')
                   return true
                 }}
               />

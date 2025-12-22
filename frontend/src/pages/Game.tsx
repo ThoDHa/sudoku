@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams, useSearchParams, useLocation } from 'react-router-dom'
+import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import Board from '../components/Board'
 import Controls from '../components/Controls'
 import History from '../components/History'
@@ -31,7 +31,7 @@ import {
   STORAGE_KEYS,
 } from '../lib/constants'
 import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
-import { getAutoSaveEnabled } from '../lib/gameSettings'
+import { getAutoSaveEnabled, getMostRecentGame, clearInProgressGame, type SavedGameInfo } from '../lib/gameSettings'
 import { validateBoard, validateCustomPuzzle, solveAll, getPuzzle, cleanupSolver } from '../lib/solver-service'
 
 import { saveScore, markDailyCompleted, isTodayCompleted, getTodayUTC, getScores, type Score } from '../lib/scores'
@@ -61,6 +61,7 @@ export default function Game() {
   const { seed, encoded } = useParams<{ seed?: string; encoded?: string }>()
   const [searchParams] = useSearchParams()
   const location = useLocation()
+  const navigate = useNavigate()
   
   // Determine if this is an encoded custom puzzle (from /c/:encoded route)
   const isEncodedCustom = location.pathname.startsWith('/c/') && encoded
@@ -134,6 +135,8 @@ export default function Game() {
   const [solveConfirmOpen, setSolveConfirmOpen] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showSolutionConfirm, setShowSolutionConfirm] = useState(false)
+  const [showInProgressConfirm, setShowInProgressConfirm] = useState(false)
+  const [existingInProgressGame, setExistingInProgressGame] = useState<SavedGameInfo | null>(null)
   const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] = useState<{ message: string; count: number } | null>(null)
   const [bugReportCopied, setBugReportCopied] = useState(false)
   const [autoFillUsed, setAutoFillUsed] = useState(false)
@@ -152,6 +155,8 @@ export default function Game() {
   
   // Track whether we've restored saved state (to prevent overwriting on initial load)
   const hasRestoredSavedState = useRef(false)
+  // Track isComplete at execution time (to prevent race condition with debounced saves)
+  const isCompleteRef = useRef(false)
   // Guard to prevent concurrent hint requests (ref is more reliable than state for this)
   const hintInProgress = useRef(false)
   // Cached solution moves - invalidated when user makes manual changes
@@ -352,6 +357,49 @@ export default function Game() {
     }
   }, [solveConfirmOpen, autoSolve.isFetching, autoSolve.isAutoSolving])
 
+  // Keep isCompleteRef in sync with game.isComplete for use in debounced callbacks
+  useEffect(() => {
+    isCompleteRef.current = game.isComplete
+  }, [game.isComplete])
+
+  // Check for existing in-progress game when navigating to a different puzzle
+  useEffect(() => {
+    // Skip if navigating from Homepage (it handles this already)
+    if (sessionStorage.getItem('from_homepage')) {
+      sessionStorage.removeItem('from_homepage')
+      return
+    }
+    
+    const savedGame = getMostRecentGame()
+    // Show prompt if:
+    // - There's a saved game
+    // - It's for a DIFFERENT seed than what we're trying to load
+    // - It's not complete (progress < 100%)
+    if (savedGame && 
+        savedGame.seed !== seed && 
+        savedGame.seed !== encoded &&
+        savedGame.progress < 100) {
+      setExistingInProgressGame(savedGame)
+      setShowInProgressConfirm(true)
+    }
+  }, [seed, encoded])
+
+  // Handlers for in-progress game confirmation modal
+  const handleResumeExistingGame = useCallback(() => {
+    if (existingInProgressGame) {
+      navigate(`/${existingInProgressGame.seed}?d=${existingInProgressGame.difficulty}`)
+    }
+    setShowInProgressConfirm(false)
+  }, [existingInProgressGame, navigate])
+
+  const handleStartNewGame = useCallback(() => {
+    if (existingInProgressGame) {
+      clearInProgressGame(existingInProgressGame.seed)
+    }
+    setShowInProgressConfirm(false)
+    setExistingInProgressGame(null)
+  }, [existingInProgressGame])
+
   // ============================================================
   // HELPER FUNCTIONS
   // ============================================================
@@ -363,7 +411,9 @@ export default function Game() {
 
   // Save game state to localStorage
   const saveGameState = useCallback(() => {
-    if (!puzzle || game.isComplete || !hasRestoredSavedState.current) return
+    // Use ref to check isComplete at execution time (not closure time)
+    // This prevents race condition where debounced save fires after completion
+    if (!puzzle || isCompleteRef.current || !hasRestoredSavedState.current) return
     
     const storageKey = getStorageKey(puzzle.seed)
     const savedState: SavedGameState = {
@@ -381,7 +431,9 @@ export default function Game() {
     } catch (e) {
       console.warn('Failed to save game state:', e)
     }
-  }, [puzzle, game.board, game.candidates, game.history, game.isComplete, timer.elapsedMs, autoFillUsed, getStorageKey])
+  // Note: We use isCompleteRef instead of game.isComplete to avoid stale closure issues
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [puzzle, game.board, game.candidates, game.history, timer.elapsedMs, autoFillUsed, getStorageKey])
 
   // Clear saved game state from localStorage
   const clearSavedGameState = useCallback(() => {
@@ -777,10 +829,13 @@ export default function Game() {
     // Cell click handler
     const handleCellClick = useCallback((idx: number) => {
       resumeFromExtendedPause()
-     // If a digit is already highlighted, don't allow selecting given cells
-     // (they can't be modified anyway, and changing highlight would be confusing)
+     // If a digit is already highlighted and we're clicking a given cell,
+     // only block if we're NOT coming from another given cell (allow given-to-given navigation)
      if (highlightedDigit !== null && game.isGivenCell(idx)) {
-       return
+       if (selectedCell === null || !game.isGivenCell(selectedCell)) {
+         return
+       }
+       // Fall through to handle given cell click normally (switch between given cells)
      }
      
      // Given cells: highlight the digit AND select the cell for peer highlighting
@@ -915,10 +970,11 @@ export default function Game() {
     } else {
       game.undo()
       invalidateCachedSolution()
-      // Clear selection and highlights after undo
-      clearAllAndDeselect()
+      // Clear selection and move highlights, but preserve highlightedDigit for multi-fill mode
+      deselectCell()
+      clearMoveHighlight()
     }
-  }, [game, autoSolve, invalidateCachedSolution, clearAllAndDeselect])
+  }, [game, autoSolve, invalidateCachedSolution, deselectCell, clearMoveHighlight])
 
   // Redo handler - during auto-solve, this steps forward
   const handleRedo = useCallback(() => {
@@ -1691,6 +1747,34 @@ ${bugReportJson}
 
       {/* Onboarding Modal - shown for first-time users */}
       <AboutModal isOpen={showAbout} onClose={closeAboutModal} isOnboarding={isOnboarding} />
+
+      {/* In-Progress Game Confirmation Modal */}
+      {showInProgressConfirm && existingInProgressGame && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme">
+            <h2 className="mb-2 text-lg font-semibold text-foreground">Game In Progress</h2>
+            <p className="mb-6 text-sm text-foreground-muted">
+              You have a <span className="capitalize font-medium">{existingInProgressGame.difficulty}</span> game 
+              in progress ({existingInProgressGame.progress}% complete). 
+              Do you want to continue that game or start a new one?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleStartNewGame}
+                className="flex-1 rounded-lg border border-board-border-light px-4 py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
+              >
+                Start New
+              </button>
+              <button
+                onClick={handleResumeExistingGame}
+                className="flex-1 rounded-lg bg-accent px-4 py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
+              >
+                Resume
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Difficulty Chooser Modal - shown when opening shared link without difficulty */}
       {showDifficultyChooser && (
