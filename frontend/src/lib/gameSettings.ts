@@ -1,6 +1,7 @@
 // Game-specific settings (separate from theme preferences)
 
 import { STORAGE_KEYS } from './constants'
+import { HomepageMode } from './preferences'
 
 const AUTO_SAVE_KEY = 'sudoku_autosave_enabled'
 
@@ -80,6 +81,23 @@ export function getInProgressGames(): SavedGameInfo[] {
 export function getMostRecentGame(): SavedGameInfo | null {
   const games = getInProgressGames()
   return games[0] ?? null
+}
+
+/**
+ * Get the most recent in-progress game for a specific mode
+ * @param mode 'daily' for daily puzzles, 'game' for practice puzzles
+ * @returns The most recent game matching the mode, or null if none
+ */
+export function getMostRecentGameForMode(mode: HomepageMode): SavedGameInfo | null {
+  const games = getInProgressGames()
+  const filteredGames = games.filter(game => {
+    if (mode === 'daily') {
+      return game.seed.startsWith('daily-')
+    } else {
+      return !game.seed.startsWith('daily-')
+    }
+  })
+  return filteredGames[0] ?? null
 }
 
 /**

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useDailySeed, useLastDailyDifficulty, Difficulty } from '../lib/hooks'
 import { isTodayCompleted, getDailyStreak } from '../lib/scores'
 import { getHomepageMode, setHomepageMode, onHomepageModeChange, HomepageMode } from '../lib/preferences'
-import { getMostRecentGame, clearInProgressGame } from '../lib/gameSettings'
+import { getMostRecentGameForMode, clearInProgressGame } from '../lib/gameSettings'
 import { useTheme } from '../lib/ThemeContext'
 import DifficultyGrid from '../components/DifficultyGrid'
 
@@ -29,7 +29,7 @@ export default function Homepage() {
   
   const [mode, setMode] = useState<HomepageMode>(getHomepageMode())
   const [gameSeed, setGameSeed] = useState(() => `P${Date.now()}`)
-  const [inProgressGame, setInProgressGame] = useState(() => getMostRecentGame())
+  const [inProgressGame, setInProgressGame] = useState(() => getMostRecentGameForMode(mode))
   const [showNewGameConfirm, setShowNewGameConfirm] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
   
@@ -38,10 +38,10 @@ export default function Homepage() {
     return onHomepageModeChange(setMode)
   }, [])
   
-  // Refresh in-progress game status when returning to homepage
+  // Refresh in-progress game status when returning to homepage or mode changes
   useEffect(() => {
-    setInProgressGame(getMostRecentGame())
-  }, [])
+    setInProgressGame(getMostRecentGameForMode(mode))
+  }, [mode])
   
   const completed = isTodayCompleted()
   const streak = getDailyStreak()
