@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { encodePuzzle, decodePuzzle } from './puzzleEncoding'
+import { encodePuzzle, decodePuzzle, encodePuzzleWithState, decodePuzzleWithState } from './puzzleEncoding'
 
 describe('puzzleEncoding', () => {
   describe('encodePuzzle', () => {
@@ -94,6 +94,113 @@ describe('puzzleEncoding', () => {
     })
   })
 
+  describe('encodePuzzleWithState', () => {
+    it('should throw error for invalid board length', () => {
+      const board = Array(80).fill(0)
+      const givens = Array(81).fill(0)
+      expect(() => encodePuzzleWithState(board, givens)).toThrow('Board and givens must have 81 cells')
+    })
+
+    it('should throw error for invalid givens length', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(80).fill(0)
+      expect(() => encodePuzzleWithState(board, givens)).toThrow('Board and givens must have 81 cells')
+    })
+
+    it('should encode board with givens marker', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(81).fill(0)
+      board[0] = 5
+      givens[0] = 5
+      board[10] = 3
+
+      const encoded = encodePuzzleWithState(board, givens)
+      expect(encoded.startsWith('e')).toBe(true)
+      expect(encoded.length).toBeGreaterThan(14)
+    })
+
+    it('should produce URLs within browser limits', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(81).fill(0)
+      for (let i = 0; i < 50; i++) {
+        board[i] = (i % 9) + 1
+        givens[i] = (i % 9) + 1
+      }
+
+      const encoded = encodePuzzleWithState(board, givens)
+      // Browser URL limits are typically 2000-8000 characters
+      expect(encoded.length).toBeLessThan(100)
+    })
+  })
+
+  describe('decodePuzzleWithState', () => {
+    it('should return null for non-enhanced encoding', () => {
+      const result = decodePuzzleWithState('sABC')
+      expect(result).toBe(null)
+    })
+
+    it('should return null for invalid enhanced encoding', () => {
+      const result = decodePuzzleWithState('eABC')
+      expect(result).toBe(null)
+    })
+
+    it('should decode board and givens correctly', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(81).fill(0)
+      board[0] = 5
+      givens[0] = 5
+      board[10] = 3
+
+      const encoded = encodePuzzleWithState(board, givens)
+      const decoded = decodePuzzleWithState(encoded)
+
+      expect(decoded).not.toBe(null)
+      expect(decoded?.board).toEqual(board)
+      expect(decoded?.givens).toEqual(givens)
+    })
+  })
+
+  describe('enhanced encoding round-trip', () => {
+    it('should preserve full state through encode/decode cycle', () => {
+      const board = [
+        5, 3, 4, 6, 7, 8, 9, 1, 2,
+        6, 7, 2, 1, 9, 5, 3, 4, 8,
+        1, 9, 8, 3, 4, 2, 5, 6, 7,
+        8, 5, 9, 7, 6, 1, 4, 2, 3,
+        4, 2, 6, 8, 5, 3, 7, 9, 1,
+        7, 1, 3, 9, 2, 4, 8, 5, 6,
+        9, 6, 1, 5, 3, 7, 2, 8, 4,
+        2, 8, 7, 4, 1, 9, 6, 3, 5,
+        3, 4, 5, 2, 8, 6, 1, 7, 9
+      ]
+      const givens = Array(81).fill(0)
+      givens[0] = 5
+      givens[10] = 3
+      givens[20] = 7
+
+      const encoded = encodePuzzleWithState(board, givens)
+      const decoded = decodePuzzleWithState(encoded)
+
+      expect(decoded).not.toBe(null)
+      expect(decoded?.board).toEqual(board)
+      expect(decoded?.givens).toEqual(givens)
+    })
+
+    it('should handle empty board with givens', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(81).fill(0)
+      givens[0] = 5
+      givens[10] = 3
+
+      const encoded = encodePuzzleWithState(board, givens)
+      const decoded = decodePuzzleWithState(encoded)
+
+      expect(decoded).not.toBe(null)
+      expect(decoded?.board).toEqual(board)
+      expect(decoded?.givens).toEqual(givens)
+    })
+  })
+
   describe('encode/decode round-trip', () => {
     it('should preserve puzzle data through encode/decode cycle', () => {
       // Create a realistic sudoku puzzle
@@ -143,10 +250,10 @@ describe('puzzleEncoding', () => {
         2, 8, 7, 4, 1, 9, 6, 3, 5,
         3, 4, 5, 2, 8, 6, 1, 7, 9
       ]
-      
+
       const encoded = encodePuzzle(cells)
       const decoded = decodePuzzle(encoded)
-      
+
       expect(decoded).toEqual(cells)
     })
   })

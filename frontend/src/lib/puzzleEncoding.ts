@@ -233,6 +233,93 @@ function decodeSparse(encoded: string): number[] {
   return cells
 }
 
+/**
+ * Encode puzzle with full state - includes both givens and user-filled cells
+ * Format: 'e' + (givens mask) + (all values)
+ * - Uses bitmask to identify which cells are givens
+ * - Encodes all 81 cell values (including user entries)
+ * - Allows sharing puzzle at any point in solving progress
+ */
+export function encodePuzzleWithState(board: number[], givens: number[]): string {
+  if (board.length !== 81 || givens.length !== 81) {
+    throw new Error('Board and givens must have 81 cells')
+  }
+
+  // Create bitmask for givens (81 bits)
+  let givensMask = BigInt(0)
+  for (let i = 0; i < 81; i++) {
+    if (givens[i] !== 0) {
+      givensMask |= BigInt(1) << BigInt(80 - i)
+    }
+  }
+
+  // Encode givens mask as base64url (14 chars for 81 bits)
+  let maskStr = ''
+  for (let i = 0; i < 14; i++) {
+    const idx = Number((givensMask >> BigInt((13 - i) * 6)) & BigInt(0x3F))
+    maskStr += ALPHABET[idx]
+  }
+
+  // Encode all 81 cell values using dense encoding (4 bits per cell)
+  const bytes: number[] = []
+  for (let i = 0; i < 81; i += 2) {
+    const high = (board[i] ?? 0) & 0x0F
+    const low = (board[i + 1] ?? 0) & 0x0F
+    bytes.push((high << 4) | low)
+  }
+
+  const uint8 = new Uint8Array(bytes)
+  const binary = String.fromCharCode(...uint8)
+  const boardStr = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+
+  return 'e' + maskStr + boardStr
+}
+
+/**
+ * Decode puzzle with full state
+ * Returns both the complete board and the givens mask
+ * Allows restoring puzzle at any point in solving progress
+ */
+export function decodePuzzleWithState(encoded: string): { board: number[]; givens: number[] } | null {
+  if (!encoded.startsWith('e')) {
+    return null
+  }
+
+  const data = encoded.slice(1)
+
+  // Need at least 14 chars for mask + some board data
+  if (data.length < 14 + 20) {
+    return null
+  }
+
+  // Decode givens mask (first 14 chars)
+  const maskStr = data.slice(0, 14)
+  let mask = BigInt(0)
+  for (let i = 0; i < 14; i++) {
+    const char = maskStr[i]
+    if (!char) return null
+    const idx = ALPHABET.indexOf(char)
+    if (idx === -1) return null
+    mask = (mask << BigInt(6)) | BigInt(idx)
+  }
+
+  // Decode board state (remaining chars - dense format)
+  const boardStr = data.slice(14)
+  const board = decodeDense(boardStr)
+  if (board.length !== 81) return null
+
+  // Extract givens from mask
+  const givens = Array(81).fill(0) as number[]
+  for (let i = 0; i < 81; i++) {
+    const bit = (mask >> BigInt(80 - i)) & BigInt(1)
+    if (bit === BigInt(1)) {
+      givens[i] = board[i] ?? 0
+    }
+  }
+
+  return { board, givens }
+}
+
 function decodeDense(encoded: string): number[] {
   return decodeDenseLegacy(encoded)
 }
