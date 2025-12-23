@@ -406,7 +406,8 @@ func TestTechniqueIsolated_HiddenTriple(t *testing.T) {
 // =============================================================================
 
 func TestTechniqueIsolated_Bug(t *testing.T) {
-	runIsolatedTechniqueTest(t, "bug")
+	// Disable xy-wing which now runs before BUG in pedagogical order and can solve first
+	runEarlyStopWithDisabledTechniques(t, "bug", []string{"xy-wing"})
 }
 
 func TestTechniqueIsolated_XWing(t *testing.T) {
@@ -467,15 +468,19 @@ func TestTechniqueIsolated_Jellyfish(t *testing.T) {
 }
 
 func TestTechniqueIsolated_UniqueRectangleType2(t *testing.T) {
-	// Disable chain-based techniques that often solve before UR Type 2 fires
-	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-2", []string{"aic", "medusa-3d", "x-chain", "xy-chain", "grouped-x-cycles", "simple-coloring"})
+	// Disable chain-based techniques and wings that often solve before UR Type 2 fires
+	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-2", []string{
+		"aic", "medusa-3d", "x-chain", "xy-chain", "grouped-x-cycles", "simple-coloring",
+		"w-wing", "wxyz-wing", "skyscraper", "empty-rectangle",
+	})
 }
 
 func TestTechniqueIsolated_UniqueRectangleType3(t *testing.T) {
-	// Disable chain-based and fish techniques that often solve before UR Type 3 fires
+	// Disable chain-based, wing, and fish techniques that often solve before UR Type 3 fires
 	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-3", []string{
 		"aic", "medusa-3d", "x-chain", "xy-chain", "grouped-x-cycles", "simple-coloring",
-		"skyscraper", "empty-rectangle", "w-wing", "finned-x-wing", "finned-swordfish",
+		"skyscraper", "empty-rectangle", "w-wing", "wxyz-wing", "finned-x-wing", "finned-swordfish",
+		"jellyfish",
 	})
 }
 
@@ -545,15 +550,19 @@ func TestTechniqueIsolated_SueDeCoq(t *testing.T) {
 }
 
 func TestTechniqueIsolated_DigitForcingChain(t *testing.T) {
-	// Disable AIC and ALS techniques that would fire before digit-forcing-chain
+	// Disable AIC, ALS, and other techniques that would fire before digit-forcing-chain
 	// This allows testing digit-forcing-chain detection in isolation
-	runEarlyStopWithDisabledTechniques(t, "digit-forcing-chain", []string{"aic", "als-xz", "als-xy-wing", "als-xy-chain"})
+	runEarlyStopWithDisabledTechniques(t, "digit-forcing-chain", []string{
+		"aic", "als-xz", "als-xy-wing", "als-xy-chain", "sue-de-coq", "death-blossom",
+	})
 }
 
 func TestTechniqueIsolated_ForcingChain(t *testing.T) {
 	// Disable AIC and other forcing/ALS techniques that would fire before forcing-chain
 	// This allows testing forcing-chain detection in isolation without waiting for slower techniques
-	runEarlyStopWithDisabledTechniques(t, "forcing-chain", []string{"aic", "als-xz", "als-xy-wing", "als-xy-chain", "digit-forcing-chain"})
+	runEarlyStopWithDisabledTechniques(t, "forcing-chain", []string{
+		"aic", "als-xz", "als-xy-wing", "als-xy-chain", "sue-de-coq", "death-blossom", "digit-forcing-chain",
+	})
 }
 
 func TestTechniqueIsolated_DeathBlossom(t *testing.T) {

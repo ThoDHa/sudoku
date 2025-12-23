@@ -116,32 +116,30 @@ func NewTechniqueRegistry() *TechniqueRegistry {
 }
 
 // registerTechniques defines all available techniques with metadata
-// Order is based on SudokuWiki's authoritative technique ordering:
-// https://www.sudokuwiki.org/sudoku.htm
+// Order is based on PEDAGOGICAL LEARNING PROGRESSION - the natural order
+// a student would learn techniques, from most intuitive to most advanced.
+//
+// This differs from efficiency ordering (which solves puzzles faster) by
+// prioritizing conceptual building blocks:
+// 1. Singles first (most intuitive)
+// 2. Subset techniques grouped together (pairs → triples → quads)
+// 3. Fish techniques grouped together (X-Wing → Swordfish → Jellyfish)
+// 4. Wing techniques grouped together (XY → XYZ → WXYZ)
+// 5. Coloring and uniqueness after pattern recognition is established
+// 6. Chains and ALS techniques last (most abstract)
 //
 // Tier classification follows SudokuWiki's grading system:
 // - Simple (Basic): Singles, Pairs, Intersection Removal, Triples
-// - Medium (Tough): Quads, X-Wing, Wings, Simple Coloring, Swordfish, BUG, UR Type 1
-// - Hard (Diabolical): Chains, Medusa, Jellyfish, Advanced URs, WXYZ-Wing
+// - Medium (Tough): Quads, Fish, Wings, Coloring, BUG, UR Type 1
+// - Hard (Diabolical): Advanced Fish, Chains, Medusa, Advanced URs
 // - Extreme: Finned Fish, AICs, ALS techniques, Forcing Chains
 func (r *TechniqueRegistry) registerTechniques() {
 	// ==========================================================================
 	// SIMPLE TIER (Basic) - Singles, Pairs, Intersection Removal, Triples
-	// SudokuWiki tests 1-5
+	// Learning progression: Start with the most intuitive techniques
 	// ==========================================================================
 
-	// Note: Naked/Hidden Singles are detected during candidate filling in solver.go
-	// These detectors catch any that slip through after eliminations
-	r.register(TechniqueDescriptor{
-		Name:        "Hidden Single",
-		Slug:        "hidden-single",
-		Tier:        "simple",
-		Description: "A digit that can only go in one cell in a row, column, or box",
-		Detector:    techniques.DetectHiddenSingle,
-		Enabled:     true,
-		Order:       1,
-	})
-
+	// Naked Single first - most intuitive: "only one number can go here!"
 	r.register(TechniqueDescriptor{
 		Name:        "Naked Single",
 		Slug:        "naked-single",
@@ -149,9 +147,21 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "A cell with only one possible candidate",
 		Detector:    techniques.DetectNakedSingle,
 		Enabled:     true,
+		Order:       1,
+	})
+
+	// Hidden Single second - "only one place for this number!"
+	r.register(TechniqueDescriptor{
+		Name:        "Hidden Single",
+		Slug:        "hidden-single",
+		Tier:        "simple",
+		Description: "A digit that can only go in one cell in a row, column, or box",
+		Detector:    techniques.DetectHiddenSingle,
+		Enabled:     true,
 		Order:       2,
 	})
 
+	// Pairs - first subset technique, easy to visualize
 	r.register(TechniqueDescriptor{
 		Name:        "Naked Pair",
 		Slug:        "naked-pair",
@@ -172,6 +182,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Order:       4,
 	})
 
+	// Intersection techniques - still visual, box/line relationships
 	r.register(TechniqueDescriptor{
 		Name:        "Pointing Pair",
 		Slug:        "pointing-pair",
@@ -192,7 +203,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Order:       6,
 	})
 
-	// Triples are Basic in SudokuWiki (test 5)
+	// Triples - natural extension of pairs
 	r.register(TechniqueDescriptor{
 		Name:        "Naked Triple",
 		Slug:        "naked-triple",
@@ -214,21 +225,32 @@ func (r *TechniqueRegistry) registerTechniques() {
 	})
 
 	// ==========================================================================
-	// MEDIUM TIER (Tough) - Quads, Basic Fish, Wings, Coloring, BUG, UR Type 1
-	// SudokuWiki tests 6-15
+	// MEDIUM TIER (Tough) - Quads, Fish, Wings, Coloring, BUG, UR Type 1
+	// Learning progression: Complete subsets, then introduce fish and wings
 	// ==========================================================================
 
-	// BUG is early in SudokuWiki (test 6)
+	// Quads first - complete the subset progression (pairs → triples → quads)
 	r.register(TechniqueDescriptor{
-		Name:        "BUG",
-		Slug:        "bug",
+		Name:        "Naked Quad",
+		Slug:        "naked-quad",
 		Tier:        "medium",
-		Description: "Bivalue Universal Grave - avoid patterns with multiple solutions",
-		Detector:    techniques.DetectBUG,
+		Description: "Four cells with the same four candidates eliminate those digits from their peers",
+		Detector:    techniques.DetectNakedQuad,
+		Enabled:     true,
+		Order:       9,
+	})
+
+	r.register(TechniqueDescriptor{
+		Name:        "Hidden Quad",
+		Slug:        "hidden-quad",
+		Tier:        "medium",
+		Description: "Four digits that can only be in four cells eliminate other candidates from those cells",
+		Detector:    techniques.DetectHiddenQuad,
 		Enabled:     true,
 		Order:       10,
 	})
 
+	// Fish techniques - visual pattern recognition
 	r.register(TechniqueDescriptor{
 		Name:        "X-Wing",
 		Slug:        "x-wing",
@@ -239,17 +261,17 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Order:       11,
 	})
 
-	// Unique Rectangle Type 1 is Tough in SudokuWiki (test 8)
 	r.register(TechniqueDescriptor{
-		Name:        "Unique Rectangle",
-		Slug:        "unique-rectangle",
+		Name:        "Swordfish",
+		Slug:        "swordfish",
 		Tier:        "medium",
-		Description: "Avoid deadly rectangles that would make puzzle have multiple solutions",
-		Detector:    techniques.DetectUniqueRectangle,
+		Description: "A 3x3 fish pattern for eliminations",
+		Detector:    techniques.DetectSwordfish,
 		Enabled:     true,
 		Order:       12,
 	})
 
+	// Wing techniques - introduce chained logic
 	r.register(TechniqueDescriptor{
 		Name:        "XY-Wing",
 		Slug:        "xy-wing",
@@ -261,65 +283,64 @@ func (r *TechniqueRegistry) registerTechniques() {
 	})
 
 	r.register(TechniqueDescriptor{
-		Name:        "Simple Coloring",
-		Slug:        "simple-coloring",
-		Tier:        "medium",
-		Description: "Color chains of strong links to find eliminations",
-		Detector:    techniques.DetectSimpleColoring,
-		Enabled:     true,
-		Order:       14,
-	})
-
-	r.register(TechniqueDescriptor{
-		Name:        "Naked Quad",
-		Slug:        "naked-quad",
-		Tier:        "medium",
-		Description: "Four cells with the same four candidates eliminate those digits from their peers",
-		Detector:    techniques.DetectNakedQuad,
-		Enabled:     true,
-		Order:       15,
-	})
-
-	r.register(TechniqueDescriptor{
-		Name:        "Hidden Quad",
-		Slug:        "hidden-quad",
-		Tier:        "medium",
-		Description: "Four digits that can only be in four cells eliminate other candidates from those cells",
-		Detector:    techniques.DetectHiddenQuad,
-		Enabled:     true,
-		Order:       16,
-	})
-
-	// Swordfish is Tough in SudokuWiki (test 14)
-	r.register(TechniqueDescriptor{
-		Name:        "Swordfish",
-		Slug:        "swordfish",
-		Tier:        "medium",
-		Description: "A 3x3 fish pattern for eliminations",
-		Detector:    techniques.DetectSwordfish,
-		Enabled:     true,
-		Order:       17,
-	})
-
-	// XYZ-Wing is Tough in SudokuWiki (test 15)
-	r.register(TechniqueDescriptor{
 		Name:        "XYZ-Wing",
 		Slug:        "xyz-wing",
 		Tier:        "medium",
 		Description: "A trivalue hinge with bivalue pincers",
 		Detector:    techniques.DetectXYZWing,
 		Enabled:     true,
-		Order:       18,
+		Order:       14,
+	})
+
+	// Simple Coloring - introduces color chain concepts
+	r.register(TechniqueDescriptor{
+		Name:        "Simple Coloring",
+		Slug:        "simple-coloring",
+		Tier:        "medium",
+		Description: "Color chains of strong links to find eliminations",
+		Detector:    techniques.DetectSimpleColoring,
+		Enabled:     true,
+		Order:       15,
+	})
+
+	// BUG and Unique Rectangle - require understanding of uniqueness
+	r.register(TechniqueDescriptor{
+		Name:        "BUG",
+		Slug:        "bug",
+		Tier:        "medium",
+		Description: "Bivalue Universal Grave - avoid patterns with multiple solutions",
+		Detector:    techniques.DetectBUG,
+		Enabled:     true,
+		Order:       16,
+	})
+
+	r.register(TechniqueDescriptor{
+		Name:        "Unique Rectangle",
+		Slug:        "unique-rectangle",
+		Tier:        "medium",
+		Description: "Avoid deadly rectangles that would make puzzle have multiple solutions",
+		Detector:    techniques.DetectUniqueRectangle,
+		Enabled:     true,
+		Order:       17,
 	})
 
 	// ==========================================================================
-	// HARD TIER (Diabolical) - Chains, Medusa, Jellyfish, Advanced URs, WXYZ
-	// SudokuWiki tests 16-25
+	// HARD TIER (Diabolical) - Advanced Fish, Chains, Medusa, Advanced URs
+	// Learning progression: Complete fish family, then chains, then advanced patterns
 	// ==========================================================================
 
-	// Skyscraper is a simple turbot fish variant - should come BEFORE x-chain
-	// since it's a specific case of length-4 x-chain. It's one of the simplest
-	// single-digit chain techniques.
+	// Jellyfish - complete the fish family (X-Wing → Swordfish → Jellyfish)
+	r.register(TechniqueDescriptor{
+		Name:        "Jellyfish",
+		Slug:        "jellyfish",
+		Tier:        "hard",
+		Description: "A 4x4 fish pattern for eliminations",
+		Detector:    techniques.DetectJellyfish,
+		Enabled:     true,
+		Order:       18,
+	})
+
+	// Skyscraper - simple single-digit chain, intro to chain concepts
 	r.register(TechniqueDescriptor{
 		Name:        "Skyscraper",
 		Slug:        "skyscraper",
@@ -330,6 +351,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Order:       19,
 	})
 
+	// X-Chain - general single-digit chains
 	r.register(TechniqueDescriptor{
 		Name:        "X-Chain",
 		Slug:        "x-chain",
@@ -340,6 +362,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Order:       20,
 	})
 
+	// XY-Chain - multi-digit chains through bivalue cells
 	r.register(TechniqueDescriptor{
 		Name:        "XY-Chain",
 		Slug:        "xy-chain",
@@ -350,7 +373,40 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Order:       21,
 	})
 
-	// 3D Medusa is Diabolical in SudokuWiki (test 18)
+	// W-Wing - connected bivalue cells
+	r.register(TechniqueDescriptor{
+		Name:        "W-Wing",
+		Slug:        "w-wing",
+		Tier:        "hard",
+		Description: "Two bivalue cells connected by strong link",
+		Detector:    techniques.DetectWWing,
+		Enabled:     true,
+		Order:       22,
+	})
+
+	// WXYZ-Wing - complete the wing family
+	r.register(TechniqueDescriptor{
+		Name:        "WXYZ-Wing",
+		Slug:        "wxyz-wing",
+		Tier:        "hard",
+		Description: "A four-candidate wing pattern",
+		Detector:    techniques.DetectWXYZWing,
+		Enabled:     true,
+		Order:       23,
+	})
+
+	// Empty Rectangle - box-based chain technique
+	r.register(TechniqueDescriptor{
+		Name:        "Empty Rectangle",
+		Slug:        "empty-rectangle",
+		Tier:        "hard",
+		Description: "Use empty rectangles to create eliminations",
+		Detector:    techniques.DetectEmptyRectangle,
+		Enabled:     true,
+		Order:       24,
+	})
+
+	// 3D Medusa - advanced multi-digit coloring
 	r.register(TechniqueDescriptor{
 		Name:        "3D Medusa",
 		Slug:        "medusa-3d",
@@ -358,20 +414,10 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "Multi-digit coloring with strong/weak link chains",
 		Detector:    techniques.DetectMedusa3D,
 		Enabled:     true,
-		Order:       22,
+		Order:       25,
 	})
 
-	r.register(TechniqueDescriptor{
-		Name:        "Jellyfish",
-		Slug:        "jellyfish",
-		Tier:        "hard",
-		Description: "A 4x4 fish pattern for eliminations",
-		Detector:    techniques.DetectJellyfish,
-		Enabled:     true,
-		Order:       23,
-	})
-
-	// Advanced Unique Rectangles are Diabolical (test 20)
+	// Advanced Unique Rectangles - after basic UR is understood
 	r.register(TechniqueDescriptor{
 		Name:        "Unique Rectangle Type 2",
 		Slug:        "unique-rectangle-type-2",
@@ -379,7 +425,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "Unique rectangle with extra candidates in one corner",
 		Detector:    techniques.DetectUniqueRectangleType2,
 		Enabled:     true,
-		Order:       24,
+		Order:       26,
 	})
 
 	r.register(TechniqueDescriptor{
@@ -389,7 +435,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "Unique rectangle with naked pair/triple",
 		Detector:    techniques.DetectUniqueRectangleType3,
 		Enabled:     true,
-		Order:       25,
+		Order:       27,
 	})
 
 	r.register(TechniqueDescriptor{
@@ -399,56 +445,15 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "Unique rectangle with hidden pair",
 		Detector:    techniques.DetectUniqueRectangleType4,
 		Enabled:     true,
-		Order:       26,
-	})
-
-	// WXYZ-Wing is Diabolical in SudokuWiki (test 24)
-	r.register(TechniqueDescriptor{
-		Name:        "WXYZ-Wing",
-		Slug:        "wxyz-wing",
-		Tier:        "hard",
-		Description: "A four-candidate wing pattern",
-		Detector:    techniques.DetectWXYZWing,
-		Enabled:     true,
-		Order:       27,
-	})
-
-	r.register(TechniqueDescriptor{
-		Name:        "W-Wing",
-		Slug:        "w-wing",
-		Tier:        "hard",
-		Description: "Two bivalue cells connected by strong link",
-		Detector:    techniques.DetectWWing,
-		Enabled:     true,
-		Order:       29,
-	})
-
-	r.register(TechniqueDescriptor{
-		Name:        "Empty Rectangle",
-		Slug:        "empty-rectangle",
-		Tier:        "hard",
-		Description: "Use empty rectangles to create eliminations",
-		Detector:    techniques.DetectEmptyRectangle,
-		Enabled:     true,
-		Order:       30,
+		Order:       28,
 	})
 
 	// ==========================================================================
 	// EXTREME TIER - Finned Fish, AICs, ALS, Forcing Chains
-	// SudokuWiki tests 26-40
+	// Learning progression: Finned fish extend basic fish, then AICs, then ALS
 	// ==========================================================================
 
-	r.register(TechniqueDescriptor{
-		Name:        "Grouped X-Cycles",
-		Slug:        "grouped-x-cycles",
-		Tier:        "extreme",
-		Description: "X-Cycles using group strong links",
-		Detector:    techniques.DetectGroupedXCycles,
-		Enabled:     true,
-		Order:       40,
-	})
-
-	// Finned Fish are Extreme in SudokuWiki (tests 28-29)
+	// Finned Fish - extensions of basic fish patterns
 	r.register(TechniqueDescriptor{
 		Name:        "Finned X-Wing",
 		Slug:        "finned-x-wing",
@@ -456,7 +461,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "An X-Wing with extra candidates (fins)",
 		Detector:    techniques.DetectFinnedXWing,
 		Enabled:     true,
-		Order:       41,
+		Order:       29,
 	})
 
 	r.register(TechniqueDescriptor{
@@ -466,9 +471,21 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "A Swordfish with extra candidates (fins)",
 		Detector:    techniques.DetectFinnedSwordfish,
 		Enabled:     true,
-		Order:       42,
+		Order:       30,
 	})
 
+	// Grouped X-Cycles - advanced single-digit cycles
+	r.register(TechniqueDescriptor{
+		Name:        "Grouped X-Cycles",
+		Slug:        "grouped-x-cycles",
+		Tier:        "extreme",
+		Description: "X-Cycles using group strong links",
+		Detector:    techniques.DetectGroupedXCycles,
+		Enabled:     true,
+		Order:       31,
+	})
+
+	// AIC - general alternating inference chains
 	r.register(TechniqueDescriptor{
 		Name:        "AIC",
 		Slug:        "aic",
@@ -476,10 +493,10 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "Alternating Inference Chains",
 		Detector:    techniques.DetectAIC,
 		Enabled:     true,
-		Order:       43,
+		Order:       32,
 	})
 
-	// ALS techniques are Extreme in SudokuWiki (test 31)
+	// ALS techniques - Almost Locked Sets family
 	r.register(TechniqueDescriptor{
 		Name:        "ALS-XZ",
 		Slug:        "als-xz",
@@ -487,7 +504,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "Almost Locked Set with XZ rule",
 		Detector:    techniques.DetectALSXZ,
 		Enabled:     true,
-		Order:       44,
+		Order:       33,
 	})
 
 	r.register(TechniqueDescriptor{
@@ -497,7 +514,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "Almost Locked Set XY-Wing pattern",
 		Detector:    techniques.DetectALSXYWing,
 		Enabled:     true,
-		Order:       45,
+		Order:       34,
 	})
 
 	r.register(TechniqueDescriptor{
@@ -507,9 +524,10 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "Chain of Almost Locked Sets",
 		Detector:    techniques.DetectALSXYChain,
 		Enabled:     true,
-		Order:       46,
+		Order:       35,
 	})
 
+	// Sue de Coq - intersecting ALS
 	r.register(TechniqueDescriptor{
 		Name:        "Sue de Coq",
 		Slug:        "sue-de-coq",
@@ -517,9 +535,21 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "Two intersecting almost locked sets",
 		Detector:    techniques.DetectSueDeCoq,
 		Enabled:     true,
-		Order:       47,
+		Order:       36,
 	})
 
+	// Death Blossom - advanced ALS pattern
+	r.register(TechniqueDescriptor{
+		Name:        "Death Blossom",
+		Slug:        "death-blossom",
+		Tier:        "extreme",
+		Description: "Advanced ALS pattern with stem and petals",
+		Detector:    techniques.DetectDeathBlossom,
+		Enabled:     true,
+		Order:       37,
+	})
+
+	// Forcing Chains - most general forcing techniques (last resort)
 	r.register(TechniqueDescriptor{
 		Name:        "Digit Forcing Chain",
 		Slug:        "digit-forcing-chain",
@@ -527,7 +557,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "Forcing chain focused on single digit",
 		Detector:    techniques.DetectDigitForcingChain,
 		Enabled:     true,
-		Order:       48,
+		Order:       38,
 	})
 
 	r.register(TechniqueDescriptor{
@@ -537,17 +567,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 		Description: "Chain of implications from candidate assumptions",
 		Detector:    techniques.DetectForcingChain,
 		Enabled:     true,
-		Order:       49,
-	})
-
-	r.register(TechniqueDescriptor{
-		Name:        "Death Blossom",
-		Slug:        "death-blossom",
-		Tier:        "extreme",
-		Description: "Advanced ALS pattern with stem and petals",
-		Detector:    techniques.DetectDeathBlossom,
-		Enabled:     true,
-		Order:       50,
+		Order:       39,
 	})
 }
 
