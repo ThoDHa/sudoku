@@ -116,16 +116,6 @@ func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int)
 	return result
 }
 
-// hasDigitInUnit checks if digit is already placed in the given unit
-func hasDigitInUnit(b BoardInterface, unit Unit, digit int) bool {
-	for _, idx := range unit.Cells {
-		if b.GetCell(idx) == digit {
-			return true
-		}
-	}
-	return false
-}
-
 // recordEliminationsForPeers records eliminations for all cells that see the given cell
 func recordEliminationsForPeers(b BoardInterface, cellIdx, digit int, eliminations map[int]map[int]bool) {
 	for _, unit := range getUnitsForCell(cellIdx) {

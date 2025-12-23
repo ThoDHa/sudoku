@@ -4,7 +4,7 @@ import { ColorTheme, FontSize } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed, HomepageMode } from '../lib/preferences'
 import { clearAllCaches, CACHE_VERSION } from '../lib/cache-version'
 import { getAutoSaveEnabled, setAutoSaveEnabled } from '../lib/gameSettings'
-import { createGameRoute, SPEED_OPTIONS, COLOR_THEMES } from '../lib/constants'
+import { createGameRoute, SPEED_OPTIONS, COLOR_THEMES, TOAST_DURATION_INFO } from '../lib/constants'
 
 // Game actions (for game page)
 interface GameActions {
@@ -488,7 +488,7 @@ export default function Menu({
     try {
       await clearAllCaches()
       setCacheCleared(true)
-      setTimeout(() => setCacheCleared(false), 3000)
+      setTimeout(() => setCacheCleared(false), TOAST_DURATION_INFO)
       // Reload page to get fresh content
       window.location.reload()
     } catch (error) {

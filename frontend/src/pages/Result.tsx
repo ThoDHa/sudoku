@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { generateShareText, generatePuzzleUrl } from '../lib/scores'
+import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 import ResultSummary from '../components/ResultSummary'
 import { ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline'
 
@@ -55,19 +56,13 @@ export default function Result() {
       }
       
       // Fallback to clipboard
-      await navigator.clipboard.writeText(shareText)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      const success = await copyToClipboard(shareText)
+      if (success) {
+        setCopied(true)
+        setTimeout(() => setCopied(false), COPY_TOAST_DURATION)
+      }
     } catch {
-      // Fallback for older browsers
-      const textarea = document.createElement('textarea')
-      textarea.value = shareText
-      document.body.appendChild(textarea)
-      textarea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textarea)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      // Native share was cancelled or failed, no action needed
     }
   }
 

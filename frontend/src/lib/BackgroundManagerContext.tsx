@@ -25,6 +25,7 @@ export function BackgroundManagerProvider({ children }: { children: ReactNode })
  * Hook to access the shared BackgroundManager instance.
  * Must be used within a BackgroundManagerProvider.
  */
+// eslint-disable-next-line react-refresh/only-export-components -- Context files conventionally export both Provider and hook
 export function useBackgroundManagerContext(): BackgroundManagerReturn {
   const context = useContext(BackgroundManagerContext)
   

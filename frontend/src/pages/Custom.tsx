@@ -14,12 +14,18 @@ export default function Custom() {
 
   // Generate device ID for validation
   const getDeviceId = useCallback(() => {
-    let deviceId = localStorage.getItem(STORAGE_KEYS.DEVICE_ID)
-    if (!deviceId) {
-      deviceId = crypto.randomUUID()
-      localStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId)
+    try {
+      let deviceId = localStorage.getItem(STORAGE_KEYS.DEVICE_ID)
+      if (!deviceId) {
+        deviceId = crypto.randomUUID()
+        localStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId)
+      }
+      return deviceId
+    } catch {
+      // localStorage not available (private mode, storage full, etc.)
+      // Return a session-only ID
+      return crypto.randomUUID()
     }
-    return deviceId
   }, [])
 
   const handleCellClick = (idx: number) => {

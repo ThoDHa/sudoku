@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import type { AnimatedTechniqueDiagram, DiagramCell } from '../lib/techniques'
+import { ANIMATION_STEP_INTERVAL } from '../lib/constants'
 
 interface AnimatedDiagramViewProps {
   diagram: AnimatedTechniqueDiagram
@@ -28,7 +29,7 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
 
     const timer = setInterval(() => {
       setCurrentStep(prev => (prev + 1) % stepCount)
-    }, 2500) // 2.5 seconds per step
+    }, ANIMATION_STEP_INTERVAL)
 
     return () => { clearInterval(timer) }
   }, [isPlaying, stepCount, backgroundManager.shouldPauseOperations])
@@ -47,20 +48,22 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
     setIsPlaying(prev => !prev)
   }, [])
 
+  // Create a map for quick cell lookup
+  // Must be before any early returns to satisfy Rules of Hooks
+  const cellMap = useMemo(() => {
+    const map = new Map<string, DiagramCell>()
+    if (currentStepData) {
+      currentStepData.cells.forEach((cell: DiagramCell) => {
+        map.set(`${cell.row}-${cell.col}`, cell)
+      })
+    }
+    return map
+  }, [currentStepData])
+
   // Early return if no step data (shouldn't happen in practice but satisfies type checker)
-  // Must be after all hooks
   if (!currentStepData) {
     return null
   }
-  
-  // Create a map for quick cell lookup
-  const cellMap = useMemo(() => {
-    const map = new Map<string, DiagramCell>()
-    currentStepData.cells.forEach((cell: DiagramCell) => {
-      map.set(`${cell.row}-${cell.col}`, cell)
-    })
-    return map
-  }, [currentStepData])
   
   const getCellFill = (row: number, col: number) => {
     const cell = cellMap.get(`${row}-${col}`)

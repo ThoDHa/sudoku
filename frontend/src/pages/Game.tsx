@@ -23,7 +23,6 @@ import { useVisibilityAwareTimeout } from '../hooks/useVisibilityAwareTimeout'
 import { useFrozenWhenHidden } from '../hooks/useFrozenWhenHidden'
 import type { Move } from '../hooks/useSudokuGame'
 import {
-  TOAST_DURATION_SUCCESS,
   TOAST_DURATION_INFO,
   TOAST_DURATION_ERROR,
   TOAST_DURATION_FIX_ERROR,
@@ -34,6 +33,7 @@ import {
 import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
 import { getAutoSaveEnabled, getMostRecentGame, clearInProgressGame, type SavedGameInfo } from '../lib/gameSettings'
 import { validateBoard, validateCustomPuzzle, solveAll, getPuzzle, cleanupSolver } from '../lib/solver-service'
+import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
 import { saveScore, markDailyCompleted, isTodayCompleted, getTodayUTC, getScores, type Score } from '../lib/scores'
 import { decodePuzzle, encodePuzzle } from '../lib/puzzleEncoding'
@@ -437,7 +437,6 @@ export default function Game() {
       console.warn('Failed to save game state:', e)
     }
   // Note: We use isCompleteRef instead of game.isComplete to avoid stale closure issues
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [puzzle, game.board, game.candidates, game.history, timer.elapsedMs, autoFillUsed, getStorageKey])
 
   // Clear saved game state from localStorage
@@ -1109,20 +1108,11 @@ ${bugReportJson}
 `
 
     // Also copy to clipboard as backup
-    try {
-      await navigator.clipboard.writeText(bugReportJson)
-    } catch {
-      // Fallback for older browsers
-      const textarea = document.createElement('textarea')
-      textarea.value = bugReportJson
-      document.body.appendChild(textarea)
-      textarea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textarea)
+    const success = await copyToClipboard(bugReportJson)
+    if (success) {
+      setBugReportCopied(true)
+      visibilityAwareTimeout(() => setBugReportCopied(false), COPY_TOAST_DURATION)
     }
-    
-    setBugReportCopied(true)
-    visibilityAwareTimeout(() => setBugReportCopied(false), TOAST_DURATION_SUCCESS)
     
     // Open GitHub issue with pre-filled content
     const issueUrl = new URL('https://github.com/ThoDHa/sudoku/issues/new')

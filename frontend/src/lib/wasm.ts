@@ -363,18 +363,6 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
 
       // Wait for the WASM to signal it's ready
       await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('WASM initialization timeout'));
-        }, 5000);
-
-        // Check if already ready
-        if (window.SudokuWasm) {
-          debugLog('[WASM] SudokuWasm already available')
-          clearTimeout(timeout);
-          resolve();
-          return;
-        }
-
         // Wait for the wasmReady event
         const handler = () => {
           debugLog('[WASM] wasmReady event received')
@@ -382,6 +370,21 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
           window.removeEventListener('wasmReady', handler);
           resolve();
         };
+
+        const timeout = setTimeout(() => {
+          window.removeEventListener('wasmReady', handler);
+          reject(new Error('WASM initialization timeout'));
+        }, 5000);
+
+        // Check if already ready
+        if (window.SudokuWasm) {
+          debugLog('[WASM] SudokuWasm already available')
+          clearTimeout(timeout);
+          window.removeEventListener('wasmReady', handler);
+          resolve();
+          return;
+        }
+
         window.addEventListener('wasmReady', handler);
       });
 

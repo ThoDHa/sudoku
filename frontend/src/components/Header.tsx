@@ -1,38 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/ThemeContext'
+import { useClickOutside } from '../hooks/useClickOutside'
+import { SunIcon, MoonIcon, ComputerIcon } from './ui'
 import { getHomepageMode, setHomepageMode, HomepageMode } from '../lib/preferences'
 import { getScores, getDailyStreak, getDailyCompletions } from '../lib/scores'
 import Menu from './Menu'
+import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
 function MenuIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  )
-}
-
-function SunIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-    </svg>
-  )
-}
-
-function MoonIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-    </svg>
-  )
-}
-
-function ComputerIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
     </svg>
   )
 }
@@ -48,17 +27,7 @@ export default function Header() {
   const navigate = useNavigate()
 
   // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (modeDropdownRef.current && !modeDropdownRef.current.contains(event.target as Node)) {
-        setModeDropdownOpen(false)
-      }
-    }
-    if (modeDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [modeDropdownOpen])
+  useClickOutside(modeDropdownRef, modeDropdownOpen, () => setModeDropdownOpen(false))
 
   // Load homepage preference on mount
   useEffect(() => {
@@ -148,19 +117,11 @@ ${debugJson}
 `
 
     // Copy debug info to clipboard
-    try {
-      await navigator.clipboard.writeText(debugJson)
-    } catch {
-      const textarea = document.createElement('textarea')
-      textarea.value = debugJson
-      document.body.appendChild(textarea)
-      textarea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textarea)
+    const success = await copyToClipboard(debugJson)
+    if (success) {
+      setToastMessage('Debug info copied!')
+      setTimeout(() => setToastMessage(null), COPY_TOAST_DURATION)
     }
-    
-    setToastMessage('Debug info copied!')
-    setTimeout(() => setToastMessage(null), 2000)
     
     // Open GitHub issue
     const issueUrl = new URL('https://github.com/ThoDHa/sudoku/issues/new')

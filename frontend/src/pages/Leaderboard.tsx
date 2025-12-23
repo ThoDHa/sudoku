@@ -1,18 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getBestScoresPure, getBestScoresAssisted, Score } from '../lib/scores'
-
-function formatTime(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000)
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-  }
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`
-}
+import { getBestScoresPure, getBestScoresAssisted, Score, formatTime } from '../lib/scores'
 
 const difficultyColors: Record<string, { bg: string; border: string; text: string }> = {
   easy: {

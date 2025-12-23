@@ -1,61 +1,91 @@
-/**
- * Debug logging utility
- * 
- * Provides a centralized way to control console.log output.
- * - In production: logs are disabled by default
- * - In development: logs are enabled by default
- * - Can be toggled at runtime via localStorage or window.DEBUG
- */
+// Type augmentation for DEBUG flag on window
+declare global {
+  interface Window {
+    DEBUG?: boolean
+  }
+}
 
-// Check if debug mode is enabled
-function isDebugEnabled(): boolean {
-  // Allow runtime override via window.DEBUG
-  if (typeof window !== 'undefined' && 'DEBUG' in window) {
-    return Boolean((window as unknown as { DEBUG: boolean }).DEBUG)
+// Cached debug mode state to avoid repeated localStorage access
+let cachedDebugMode: boolean | null = null
+
+/**
+ * Check if debug mode is enabled.
+ * Debug mode can be enabled via:
+ * 1. window.DEBUG = true
+ * 2. localStorage.setItem('debug', 'true')
+ * 3. URL contains ?debug or #debug
+ */
+export function isDebugMode(): boolean {
+  // Check cached value first
+  if (cachedDebugMode !== null) {
+    return cachedDebugMode
   }
   
-  // Check localStorage for debug preference
-  if (typeof localStorage !== 'undefined') {
-    const stored = localStorage.getItem('debug')
-    if (stored !== null) {
-      return stored === 'true'
+  // Check window.DEBUG flag (set programmatically)
+  if (typeof window !== 'undefined' && window.DEBUG === true) {
+    cachedDebugMode = true
+    return true
+  }
+  
+  // Check localStorage
+  try {
+    if (localStorage.getItem('debug') === 'true') {
+      cachedDebugMode = true
+      return true
+    }
+  } catch {
+    // localStorage not available
+  }
+  
+  // Check URL parameters
+  if (typeof window !== 'undefined') {
+    const url = window.location.href
+    if (url.includes('?debug') || url.includes('#debug')) {
+      cachedDebugMode = true
+      return true
     }
   }
   
-  // Default: enabled in development, disabled in production
-  return import.meta.env.DEV
+  cachedDebugMode = false
+  return false
 }
 
 /**
- * Debug log - only outputs when debug mode is enabled
- * Use this for development/debugging logs that should not appear in production
- */
-export function debugLog(...args: unknown[]): void {
-  if (isDebugEnabled()) {
-    console.debug(...args)
-  }
-}
-
-/**
- * Enable debug mode at runtime
+ * Enable debug mode programmatically
  */
 export function enableDebug(): void {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('debug', 'true')
-  }
   if (typeof window !== 'undefined') {
-    (window as unknown as { DEBUG: boolean }).DEBUG = true
+    window.DEBUG = true
+  }
+  cachedDebugMode = true
+  try {
+    localStorage.setItem('debug', 'true')
+  } catch {
+    // localStorage not available
   }
 }
 
 /**
- * Disable debug mode at runtime
+ * Disable debug mode programmatically
  */
 export function disableDebug(): void {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('debug', 'false')
-  }
   if (typeof window !== 'undefined') {
-    (window as unknown as { DEBUG: boolean }).DEBUG = false
+    window.DEBUG = false
+  }
+  cachedDebugMode = false
+  try {
+    localStorage.removeItem('debug')
+  } catch {
+    // localStorage not available
+  }
+}
+
+/**
+ * Log a debug message if debug mode is enabled.
+ * Uses console.debug for proper log level.
+ */
+export function debugLog(...args: unknown[]): void {
+  if (isDebugMode()) {
+    console.debug(...args)
   }
 }

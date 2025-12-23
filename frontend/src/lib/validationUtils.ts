@@ -82,10 +82,12 @@ export function findDuplicates(board: number[]): Set<number> {
     for (const idx of cells) {
       const val = board[idx] ?? 0
       if (val !== 0) {
-        if (!seen.has(val)) {
-          seen.set(val, [])
+        const existing = seen.get(val)
+        if (existing) {
+          existing.push(idx)
+        } else {
+          seen.set(val, [idx])
         }
-        seen.get(val)!.push(idx)
       }
     }
     

@@ -4,6 +4,7 @@ import { formatTime, generateShareText, generatePuzzleUrl, getDailyStreak, isDai
 import { DIFFICULTIES, createGameRoute } from '../lib/constants'
 import { CloseIcon } from './ui'
 import DifficultyBadge from './DifficultyBadge'
+import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
 interface ResultModalProps {
   isOpen: boolean
@@ -82,20 +83,10 @@ export default function ResultModal({
   const shareText = generateShareText(score, puzzleUrl, streak?.currentStreak)
 
   const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(shareText)
+    const success = await copyToClipboard(shareText)
+    if (success) {
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea')
-      textArea.value = shareText
-      document.body.appendChild(textArea)
-      textArea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textArea)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => setCopied(false), COPY_TOAST_DURATION)
     }
   }
 
