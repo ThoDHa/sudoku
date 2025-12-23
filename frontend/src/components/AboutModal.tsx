@@ -36,7 +36,7 @@ const ABOUT_SECTIONS = [
             <div>
               <h4 className="font-medium text-foreground text-sm">Technique Hints</h4>
               <p className="text-sm text-foreground-muted">
-                Stuck? We'll tell you <em>which technique</em> to look for — learn to recognize patterns yourself.
+                Stuck? We'll analyze your <strong className="text-foreground">current game state</strong> to find the next logical step using advanced Sudoku techniques.
               </p>
             </div>
           </div>
@@ -77,10 +77,13 @@ const ABOUT_SECTIONS = [
     content: (
       <>
         <p className="text-center text-foreground-muted mb-4">
-          Watch the solver work through the puzzle step-by-step using real techniques.
+          Watch the solver analyze your <strong className="text-foreground">current board and candidates</strong> step-by-step using real solving techniques.
         </p>
         <p className="text-center text-foreground-muted mb-4">
-          <strong className="text-foreground">Made a mistake?</strong> The solver can fix your errors and get you back on track.
+          The solver works from your current position — not from the beginning.
+        </p>
+        <p className="text-center text-foreground-muted mb-4">
+          <strong className="text-foreground">Made a mistake?</strong> The solver can fix errors from your current position.
         </p>
         <div className="bg-accent-light rounded-lg p-3 mb-4">
           <p className="text-sm text-center text-accent font-medium">
