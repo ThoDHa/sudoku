@@ -149,16 +149,12 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 
 		// Rule 4: Cell with all candidates in one color
 		// -> that color is false, eliminate all of that color
-		// NOTE: Disabled due to incorrect eliminations. The rule requires that ALL
-		// candidates in the cell are colored AND all are the same color, but the
-		// current implementation may be incorrectly identifying this case.
-		// TODO: Debug and fix this rule.
-		// if move := checkAllCandidatesSameColor(b, color1, color2, colors, 1); move != nil {
-		// 	return move
-		// }
-		// if move := checkAllCandidatesSameColor(b, color2, color1, colors, 2); move != nil {
-		// 	return move
-		// }
+		if move := checkAllCandidatesSameColor(b, color1, color2, colors, 1); move != nil {
+			return move
+		}
+		if move := checkAllCandidatesSameColor(b, color2, color1, colors, 2); move != nil {
+			return move
+		}
 	}
 
 	return nil
@@ -372,4 +368,62 @@ func pairsToTargets(pairs []candidatePair) []core.CellRef {
 	}
 
 	return targets
+}
+
+// checkAllCandidatesSameColor checks if a cell has all candidates in one color
+// If so, that color is false, eliminate all of that color
+func checkAllCandidatesSameColor(b BoardInterface, color1, color2 []candidatePair, colors map[int]int, colorNum int) *core.Move {
+	// Check each cell
+	for cell := 0; cell < 81; cell++ {
+		cands := b.GetCandidatesAt(cell)
+
+		// Skip cells with less than 2 candidates (can't have "all" colored if fewer)
+		if cands.Count() < 2 {
+			continue
+		}
+
+		// Find all candidate digits for this cell
+		digitList := cands.ToSlice()
+
+		// Check if ALL candidates are in color1
+		allColor1 := true
+		for _, digit := range digitList {
+			cp := candidatePair{cell, digit}
+			if colors[cp.key()] != colorNum {
+				allColor1 = false
+				break
+			}
+		}
+
+		if allColor1 {
+			// This cell has ALL candidates in color1
+			// Color1 is false, eliminate all color1 candidates
+			var eliminations []core.Candidate
+			for _, cp := range color1 {
+				if b.GetCandidatesAt(cp.cell).Has(cp.digit) {
+					eliminations = append(eliminations, core.Candidate{
+						Row: cp.cell / 9, Col: cp.cell % 9, Digit: cp.digit,
+					})
+				}
+			}
+
+			if len(eliminations) > 0 {
+				allPairs := append(color1, color2...)
+				return &core.Move{
+					Action:       "eliminate",
+					Digit:        0,
+					Targets:      pairsToTargets(allPairs),
+					Eliminations: eliminations,
+					Explanation: fmt.Sprintf("3D Medusa: R%dC%d has all candidates in color %d; eliminate all color %d",
+						cell/9+1, cell%9+1, colorNum, colorNum),
+					Highlights: core.Highlights{
+						Primary:   []core.CellRef{{Row: cell / 9, Col: cell % 9}},
+						Secondary: pairsToTargets(allPairs),
+					},
+				}
+			}
+		}
+	}
+
+	return nil
 }
