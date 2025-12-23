@@ -89,22 +89,29 @@ func findPetalsForCandidate(b BoardInterface, stem int, cand int, allALS []ALS) 
 			continue
 		}
 
-		// Find cells in the ALS that contain this candidate AND see the stem
-		candCellsThatSeeStem := []int{}
-		for _, cell := range als.ByDigit[cand] {
-			if ArePeers(cell, stem) {
-				candCellsThatSeeStem = append(candCellsThatSeeStem, cell)
-			}
-		}
-
-		// At least one cell with this candidate must see the stem
-		// This ensures the ALS is connected to the stem through this candidate
-		if len(candCellsThatSeeStem) == 0 {
+		// Find cells in the ALS that contain this candidate
+		candCells := als.ByDigit[cand]
+		if len(candCells) == 0 {
 			continue
 		}
 
-		// Note: Other cells in the ALS may also see the stem - that's fine.
-		// What matters is that this candidate provides a connection.
+		// ALL cells in the ALS that contain this candidate must see the stem.
+		// This is critical for Death Blossom correctness:
+		// When the stem candidate is placed, it eliminates that candidate from
+		// all peer cells. For the petal ALS to "lock" (become a naked set),
+		// ALL instances of the linking candidate in the petal must be eliminated.
+		// If any cell with the candidate doesn't see the stem, it won't be
+		// eliminated, and the ALS won't lock properly.
+		allCandCellsSeeStem := true
+		for _, cell := range candCells {
+			if !ArePeers(cell, stem) {
+				allCandCellsSeeStem = false
+				break
+			}
+		}
+		if !allCandCellsSeeStem {
+			continue
+		}
 
 		validPetals = append(validPetals, als)
 	}
@@ -257,3 +264,6 @@ func findBlossomEliminations(b BoardInterface, stem int, petals []ALS, z int, st
 		},
 	}
 }
+
+// DEBUG: Add tracing to understand petal selection
+var DebugDeathBlossom = false

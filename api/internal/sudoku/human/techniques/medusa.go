@@ -294,6 +294,17 @@ func checkSameUnitContradiction(b BoardInterface, colorToCheck, otherColor []can
 // checkUncoloredSeesBothColors finds uncolored candidates that see the same digit in both colors (Rule 4)
 // If an uncolored candidate sees the same digit in both Color 1 and Color 2 in its units, eliminate it
 func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePair, colors map[int]int) *core.Move {
+	// Build sets for the current component's colors
+	// This is crucial: we only consider candidates from THIS component
+	color1Set := make(map[int]bool)
+	color2Set := make(map[int]bool)
+	for _, cp := range color1 {
+		color1Set[cp.key()] = true
+	}
+	for _, cp := range color2 {
+		color2Set[cp.key()] = true
+	}
+
 	// Group each color by digit
 	color1ByDigit := make(map[int][]int) // digit -> cells
 	color2ByDigit := make(map[int][]int)
@@ -320,9 +331,9 @@ func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePa
 				continue
 			}
 
-			// Skip if this cell-digit is colored
+			// Skip if this cell-digit is colored in THIS component
 			cp := candidatePair{cell, digit}
-			if colors[cp.key()] != 0 {
+			if color1Set[cp.key()] || color2Set[cp.key()] {
 				continue
 			}
 
@@ -389,7 +400,18 @@ func pairsToTargets(pairs []candidatePair) []core.CellRef {
 // If a cell contains candidates from both colors, any uncolored candidate
 // in that cell can be eliminated (one of the colored candidates MUST be true)
 func checkUncoloredInBicoloredCell(b BoardInterface, color1, color2 []candidatePair, colors map[int]int) *core.Move {
-	// Find cells that have candidates in BOTH colors
+	// Build sets for the current component's colors
+	// This is crucial: we only consider candidates from THIS component
+	color1Set := make(map[int]bool)
+	color2Set := make(map[int]bool)
+	for _, cp := range color1 {
+		color1Set[cp.key()] = true
+	}
+	for _, cp := range color2 {
+		color2Set[cp.key()] = true
+	}
+
+	// Find cells that have candidates in BOTH colors (from this component)
 	color1Cells := make(map[int]bool)
 	color2Cells := make(map[int]bool)
 
@@ -407,10 +429,11 @@ func checkUncoloredInBicoloredCell(b BoardInterface, color1, color2 []candidateP
 		}
 
 		// This cell has both colors - find uncolored candidates to eliminate
+		// A candidate is "uncolored" in this component if it's not in color1Set OR color2Set
 		cands := b.GetCandidatesAt(cell)
 		for _, digit := range cands.ToSlice() {
 			cp := candidatePair{cell, digit}
-			if colors[cp.key()] == 0 {
+			if !color1Set[cp.key()] && !color2Set[cp.key()] {
 				// Found an uncolored candidate in a bicolored cell - eliminate it
 				allPairs := append(color1, color2...)
 				return &core.Move{
@@ -440,6 +463,17 @@ func checkUncoloredInBicoloredCell(b BoardInterface, color1, color2 []candidateP
 // see one color in a unit AND have the opposite color in the same cell (Rule 5)
 // This hybrid rule catches candidates that Rules 3 and 4 miss individually
 func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 []candidatePair, colors map[int]int) *core.Move {
+	// Build sets for the current component's colors
+	// This is crucial: we only consider candidates from THIS component
+	color1Set := make(map[int]bool)
+	color2Set := make(map[int]bool)
+	for _, cp := range color1 {
+		color1Set[cp.key()] = true
+	}
+	for _, cp := range color2 {
+		color2Set[cp.key()] = true
+	}
+
 	// Group each color by digit for unit visibility checks
 	color1ByDigit := make(map[int][]int) // digit -> cells
 	color2ByDigit := make(map[int][]int)
@@ -451,7 +485,7 @@ func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 [
 		color2ByDigit[cp.digit] = append(color2ByDigit[cp.digit], cp.cell)
 	}
 
-	// Find cells that have at least one colored candidate
+	// Find cells that have at least one colored candidate (from this component)
 	cellHasColor1 := make(map[int]bool)
 	cellHasColor2 := make(map[int]bool)
 
@@ -467,7 +501,8 @@ func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 [
 		cands := b.GetCandidatesAt(cell)
 		for _, digit := range cands.ToSlice() {
 			cp := candidatePair{cell, digit}
-			if colors[cp.key()] != 0 {
+			// A candidate is "uncolored" in this component if not in color1Set or color2Set
+			if color1Set[cp.key()] || color2Set[cp.key()] {
 				continue // Skip colored candidates
 			}
 
@@ -532,7 +567,15 @@ func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 [
 
 // checkAllCandidatesSameColor checks if a cell has all candidates in one color (Rule 6)
 // If so, that color is false (cell would be empty), eliminate all of that color
-func checkAllCandidatesSameColor(b BoardInterface, color1, color2 []candidatePair, colors map[int]int, colorNum int) *core.Move {
+func checkAllCandidatesSameColor(b BoardInterface, colorToCheck, otherColor []candidatePair, colors map[int]int, colorNum int) *core.Move {
+	// Build a set of candidate pairs that are in the current component's colorToCheck
+	// This is crucial: we must only consider candidates from THIS component, not
+	// candidates that happen to have the same color number from OTHER components
+	colorToCheckSet := make(map[int]bool)
+	for _, cp := range colorToCheck {
+		colorToCheckSet[cp.key()] = true
+	}
+
 	// Check each cell
 	for cell := 0; cell < 81; cell++ {
 		cands := b.GetCandidatesAt(cell)
@@ -545,21 +588,21 @@ func checkAllCandidatesSameColor(b BoardInterface, color1, color2 []candidatePai
 		// Find all candidate digits for this cell
 		digitList := cands.ToSlice()
 
-		// Check if ALL candidates are in color1
-		allColor1 := true
+		// Check if ALL candidates are in colorToCheck (from THIS component)
+		allInColor := true
 		for _, digit := range digitList {
 			cp := candidatePair{cell, digit}
-			if colors[cp.key()] != colorNum {
-				allColor1 = false
+			if !colorToCheckSet[cp.key()] {
+				allInColor = false
 				break
 			}
 		}
 
-		if allColor1 {
-			// This cell has ALL candidates in color1
-			// Color1 is false, eliminate all color1 candidates
+		if allInColor {
+			// This cell has ALL candidates in colorToCheck
+			// That color is false, eliminate all colorToCheck candidates
 			var eliminations []core.Candidate
-			for _, cp := range color1 {
+			for _, cp := range colorToCheck {
 				if b.GetCandidatesAt(cp.cell).Has(cp.digit) {
 					eliminations = append(eliminations, core.Candidate{
 						Row: cp.cell / 9, Col: cp.cell % 9, Digit: cp.digit,
@@ -568,7 +611,7 @@ func checkAllCandidatesSameColor(b BoardInterface, color1, color2 []candidatePai
 			}
 
 			if len(eliminations) > 0 {
-				allPairs := append(color1, color2...)
+				allPairs := append(colorToCheck, otherColor...)
 				return &core.Move{
 					Action:       "eliminate",
 					Digit:        0,
