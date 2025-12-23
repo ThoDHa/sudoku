@@ -462,8 +462,8 @@ func TestTechniqueIsolated_Medusa3D(t *testing.T) {
 }
 
 func TestTechniqueIsolated_Jellyfish(t *testing.T) {
-	// Uses a partial solve state where jellyfish fires immediately
-	runIsolatedTechniqueTest(t, "jellyfish")
+	// Disable medusa-3d which can find the same eliminations before jellyfish fires
+	runEarlyStopWithDisabledTechniques(t, "jellyfish", []string{"medusa-3d"})
 }
 
 func TestTechniqueIsolated_UniqueRectangleType2(t *testing.T) {
@@ -535,8 +535,8 @@ func TestTechniqueIsolated_ALSXYWing(t *testing.T) {
 }
 
 func TestTechniqueIsolated_ALSXYChain(t *testing.T) {
-	// AIC is disabled to prevent it from preempting ALS techniques
-	runEarlyStopWithDisabledTechniques(t, "als-xy-chain", []string{"aic"})
+	// AIC and medusa-3d are disabled to prevent them from preempting ALS techniques
+	runEarlyStopWithDisabledTechniques(t, "als-xy-chain", []string{"aic", "medusa-3d"})
 }
 
 func TestTechniqueIsolated_SueDeCoq(t *testing.T) {
@@ -557,8 +557,8 @@ func TestTechniqueIsolated_ForcingChain(t *testing.T) {
 }
 
 func TestTechniqueIsolated_DeathBlossom(t *testing.T) {
-	// AIC and ALS chain techniques are disabled to prevent them from preempting Death Blossom
-	runEarlyStopWithDisabledTechniques(t, "death-blossom", []string{"aic", "als-xz", "als-xy-wing", "als-xy-chain", "digit-forcing-chain", "forcing-chain"})
+	// AIC, ALS chain techniques, and medusa-3d are disabled to prevent them from preempting Death Blossom
+	runEarlyStopWithDisabledTechniques(t, "death-blossom", []string{"aic", "als-xz", "als-xy-wing", "als-xy-chain", "digit-forcing-chain", "forcing-chain", "medusa-3d"})
 }
 
 // =============================================================================
