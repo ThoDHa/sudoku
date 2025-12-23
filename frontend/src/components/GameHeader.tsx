@@ -58,6 +58,7 @@ interface AutoSolveControlsProps {
   autoSolveSpeed: AutoSolveSpeed
   onTogglePause: () => void
   onStopAutoSolve: () => void
+  onRestartAutoSolve: () => void
   onSpeedChange: (speed: AutoSolveSpeed) => void
   variant: 'desktop' | 'mobile'
 }
@@ -68,6 +69,7 @@ function AutoSolveControls({
   autoSolveSpeed,
   onTogglePause,
   onStopAutoSolve,
+  onRestartAutoSolve,
   onSpeedChange,
   variant,
 }: AutoSolveControlsProps) {
@@ -122,6 +124,16 @@ function AutoSolveControls({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
           <span>Stop</span>
+        </button>
+        <button
+          onClick={onRestartAutoSolve}
+          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm bg-btn-bg text-foreground hover:bg-btn-hover border border-board-border-light transition-colors"
+          title="Restart solver from current board"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span className="hidden sm:inline">Restart</span>
         </button>
       </div>
     )
@@ -178,6 +190,16 @@ function AutoSolveControls({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
         Stop
+      </button>
+      <button
+        onClick={onRestartAutoSolve}
+        className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium bg-btn-bg text-foreground hover:bg-btn-hover border border-board-border-light transition-colors"
+        title="Restart solver from current board"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Restart
       </button>
     </div>
   )
@@ -282,6 +304,7 @@ interface GameHeaderProps {
   autoSolveSpeed: AutoSolveSpeed
   onTogglePause: () => void
   onStopAutoSolve: () => void
+  onRestartAutoSolve: () => void
   onSetAutoSolveSpeed: (speed: AutoSolveSpeed) => void
   // Actions
   onTechniqueHint: () => void
@@ -291,6 +314,7 @@ interface GameHeaderProps {
   hintLoading: boolean
   onHistoryOpen: () => void
   onShowResult: () => void
+  onShare: () => void
   onAutoFillNotes: () => void
   onCheckNotes: () => void
   onClearNotes: () => void
@@ -329,6 +353,7 @@ export default function GameHeader({
   autoSolveSpeed,
   onTogglePause,
   onStopAutoSolve,
+  onRestartAutoSolve,
   onSetAutoSolveSpeed,
   onTechniqueHint,
   techniqueHintDisabled,
@@ -336,7 +361,7 @@ export default function GameHeader({
   onHint,
   hintLoading,
   onHistoryOpen,
-  onShowResult,
+  onShare,
   onAutoFillNotes,
   onCheckNotes,
   onClearNotes,
@@ -414,6 +439,7 @@ export default function GameHeader({
               autoSolveSpeed={autoSolveSpeed}
               onTogglePause={onTogglePause}
               onStopAutoSolve={onStopAutoSolve}
+              onRestartAutoSolve={onRestartAutoSolve}
               onSpeedChange={handleSpeedChange}
               variant="desktop"
             />
@@ -447,18 +473,17 @@ export default function GameHeader({
             )}
           </button>
 
-          {/* Share button - shown when puzzle is complete */}
-          {isComplete && (
-            <button
-              onClick={onShowResult}
-              className="flex items-center gap-1 rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-btn-active-text transition-opacity hover:opacity-90"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-              </svg>
-              Share
-            </button>
-          )}
+          {/* Share button - always visible to share current progress */}
+          <button
+            onClick={onShare}
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
+            title="Share puzzle with current progress"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+            <span className="hidden sm:inline">Share</span>
+          </button>
 
           {/* Theme mode dropdown */}
           <ThemeModeDropdown
@@ -492,6 +517,7 @@ export default function GameHeader({
             autoSolveSpeed={autoSolveSpeed}
             onTogglePause={onTogglePause}
             onStopAutoSolve={onStopAutoSolve}
+            onRestartAutoSolve={onRestartAutoSolve}
             onSpeedChange={handleSpeedChange}
             variant="mobile"
           />

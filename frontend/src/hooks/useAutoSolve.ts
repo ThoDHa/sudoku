@@ -48,6 +48,8 @@ interface UseAutoSolveReturn {
   stopAutoSolve: () => void
   /** Toggle pause/resume */
   togglePause: () => void
+  /** Restart auto-solve from current board state */
+  restartAutoSolve: (startPaused?: boolean) => Promise<void>
   /** Solve from givens only (show solution) */
   solveFromGivens: () => Promise<void>
   /** Step backward one move (rewind) */
@@ -223,6 +225,209 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       return !prev
     })
   }, [isAutoSolving])
+
+  const restartAutoSolve = useCallback(async (startPaused: boolean = false) => {
+    const currentBoard = getBoard()
+    const currentCandidates = getCandidates()
+    const candidatesArray = currentCandidates.map(set => Array.from(set))
+    const givens = getGivens()
+
+    setIsAutoSolving(true)
+    autoSolveRef.current = true
+
+    if (startPaused) {
+      manualPausedRef.current = true
+      setManualPaused(true)
+    } else {
+      manualPausedRef.current = false
+      setManualPaused(false)
+    }
+
+    stateHistoryRef.current = [{
+      board: [...currentBoard],
+      candidates: candidatesArray.map(arr => [...arr]),
+      move: null,
+    }]
+    currentIndexRef.current = 0
+    setCurrentIndex(0)
+
+    setIsFetching(true)
+    try {
+      const data = await solveAll(currentBoard, candidatesArray, givens)
+      setIsFetching(false)
+
+      if (!data.moves || data.moves.length === 0) {
+        if (!data.solved) {
+          onError?.('This puzzle requires advanced techniques beyond our solver.')
+        }
+        stopAutoSolve()
+        return
+      }
+
+      allMovesRef.current = data.moves
+      movesQueueRef.current = [...data.moves]
+      setTotalMoves(data.moves.length)
+
+      const playNextMove = async () => {
+        if (!autoSolveRef.current) {
+          stopAutoSolve()
+          return
+        }
+
+        if (pausedRef.current) {
+          return
+        }
+
+        if (movesQueueRef.current.length === 0) {
+          stopAutoSolve()
+          return
+        }
+
+        const moveResult = movesQueueRef.current.shift()
+        if (!moveResult) return
+        const newIndex = allMovesRef.current.length - movesQueueRef.current.length
+        currentIndexRef.current = newIndex
+        setCurrentIndex(newIndex)
+
+        if (moveResult.move.action === 'contradiction') {
+          if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
+            scheduleNextMove(playNextMove, stepDelayRef.current)
+          } else {
+            onError?.('Puzzle has a contradiction that could not be resolved.')
+            stopAutoSolve()
+          }
+          return
+        }
+
+        if (moveResult.move.action === 'error') {
+          const userEntryCount = moveResult.move.userEntryCount || 0
+          onUnpinpointableError?.(
+            moveResult.move.explanation || 'Too many incorrect entries to fix automatically.',
+            userEntryCount
+          )
+          stopAutoSolve()
+          return
+        }
+
+        if (moveResult.move.action === 'diagnostic') {
+          onStatus?.(moveResult.move.explanation || 'Taking another look...')
+          if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
+            scheduleNextMove(playNextMove, stepDelayRef.current)
+          } else {
+            stopAutoSolve()
+          }
+          return
+        }
+
+        if (moveResult.move.action === 'unpinpointable-error' || moveResult.move.action === 'stalled') {
+          const userEntryCount = moveResult.move.userEntryCount || 0
+          onUnpinpointableError?.(
+            moveResult.move.explanation || `Couldn't pinpoint the error. Check your ${userEntryCount} entries.`,
+            userEntryCount
+          )
+          stopAutoSolve()
+          return
+        }
+
+        if (moveResult.move.action === 'clear-candidates') {
+          const newCandidates = moveResult.candidates
+            ? moveResult.candidates.map((cellCands: number[] | null) =>
+                new Set<number>(cellCands || [])
+              )
+            : currentCandidates.map(() => new Set<number>())
+
+          applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
+
+          stateHistoryRef.current.push({
+            board: [...moveResult.board],
+            candidates: moveResult.candidates
+              ? moveResult.candidates.map(arr => arr ? [...arr] : [])
+              : [],
+            move: moveResult.move,
+          })
+
+          if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
+            scheduleNextMove(playNextMove, stepDelayRef.current)
+          } else {
+            stopAutoSolve()
+          }
+          return
+        }
+
+        if (moveResult.move.action === 'fix-error') {
+          const newCandidates = moveResult.candidates
+            ? moveResult.candidates.map((cellCands: number[] | null) =>
+                new Set<number>(cellCands || [])
+              )
+            : getCandidates()
+
+          applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
+
+          stateHistoryRef.current.push({
+            board: [...moveResult.board],
+            candidates: moveResult.candidates
+              ? moveResult.candidates.map(arr => arr ? [...arr] : [])
+              : getCandidates().map(set => Array.from(set)),
+            move: moveResult.move,
+          })
+
+          if (onErrorFixed) {
+            onErrorFixed(
+              moveResult.move.explanation || 'Found and fixed an error in your entries.',
+              () => {
+                if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
+                  playNextMove()
+                } else {
+                  stopAutoSolve()
+                }
+              }
+            )
+          } else {
+            if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
+              scheduleNextMove(playNextMove, stepDelayRef.current)
+            } else {
+              stopAutoSolve()
+            }
+          }
+          return
+        }
+
+        const newCandidates = moveResult.candidates
+          ? moveResult.candidates.map((cellCands: number[] | null) =>
+              new Set<number>(cellCands || [])
+            )
+          : currentCandidates
+
+        applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
+
+        stateHistoryRef.current.push({
+          board: [...moveResult.board],
+          candidates: moveResult.candidates
+            ? moveResult.candidates.map(arr => arr ? [...arr] : [])
+            : currentCandidates.map(set => Array.from(set)),
+          move: moveResult.move,
+        })
+
+        if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
+          scheduleNextMove(playNextMove, stepDelayRef.current)
+        } else {
+          stopAutoSolve()
+        }
+      }
+
+      playNextMoveRef.current = playNextMove
+
+      if (!startPaused) {
+        playNextMove()
+      }
+
+    } catch (err) {
+      setIsFetching(false)
+      console.error('Auto-solve error:', err)
+      onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
+      stopAutoSolve()
+    }
+  }, [getBoard, getCandidates, getGivens, applyMove, onError, onUnpinpointableError, onStatus, onErrorFixed, stopAutoSolve, scheduleNextMove])
 
   // Step backward one move
   const stepBack = useCallback(() => {
@@ -638,6 +843,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     startAutoSolve,
     stopAutoSolve,
     togglePause,
+    restartAutoSolve,
     solveFromGivens,
     stepBack,
     stepForward,

@@ -30,13 +30,13 @@ import {
   EXTENDED_PAUSE_DELAY,
   STORAGE_KEYS,
 } from '../lib/constants'
-import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
+import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer, getStepByStepMode } from '../lib/preferences'
 import { getAutoSaveEnabled, getMostRecentGame, clearInProgressGame, type SavedGameInfo } from '../lib/gameSettings'
 import { validateBoard, validateCustomPuzzle, solveAll, getPuzzle, cleanupSolver } from '../lib/solver-service'
 import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
 import { saveScore, markDailyCompleted, isTodayCompleted, getTodayUTC, getScores, type Score } from '../lib/scores'
-import { decodePuzzle, encodePuzzle } from '../lib/puzzleEncoding'
+import { decodePuzzle, encodePuzzle, decodePuzzleWithState, encodePuzzleWithState } from '../lib/puzzleEncoding'
 import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/candidatesUtils'
 
 // Type for saved game state in localStorage
@@ -153,7 +153,7 @@ export default function Game() {
   const [validationMessage, setValidationMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [autoSolveSpeedState, setAutoSolveSpeedState] = useState<AutoSolveSpeed>(getAutoSolveSpeed())
   const [hideTimerState, setHideTimerState] = useState(getHideTimer())
-  
+
   // Track whether we've restored saved state (to prevent overwriting on initial load)
   const hasRestoredSavedState = useRef(false)
   // Track isComplete at execution time (to prevent race condition with debounced saves)
@@ -1022,9 +1022,16 @@ export default function Game() {
   // Auto-solve handler
   const handleSolve = useCallback(async () => {
     clearAllAndDeselect()
-    setAutoSolveUsed(true) // Mark that auto-solve was used
+    setAutoSolveUsed(true)
     autoSolveUsedRef.current = true
-    await autoSolve.startAutoSolve()
+    // Use restartAutoSolve to respect step-by-step preference
+    await autoSolve.restartAutoSolve(getStepByStepMode())
+  }, [autoSolve, clearAllAndDeselect])
+
+  // Auto-solve restart handler
+  const handleRestartAutoSolve = useCallback(async () => {
+    clearAllAndDeselect()
+    await autoSolve.restartAutoSolve(getStepByStepMode())
   }, [autoSolve, clearAllAndDeselect])
 
   // Bug report handler - opens GitHub issue with state
@@ -1126,13 +1133,13 @@ ${bugReportJson}
   // Feature request handler - opens GitHub issue for new features
   const handleFeatureRequest = useCallback(() => {
     const issueBody = `## Feature Description
-<!-- Please describe the feature you'd like to see -->
+ <!-- Please describe the feature you'd like to see -->
 
 ## Use Case
-<!-- Why would this feature be useful? -->
+ <!-- Why would this feature be useful? -->
 
 ## Possible Implementation (optional)
-<!-- Any ideas on how this could work? -->
+ <!-- Any ideas on how this could work? -->
 `
 
     const issueUrl = new URL('https://github.com/ThoDHa/sudoku/issues/new')
@@ -1142,6 +1149,29 @@ ${bugReportJson}
     
     window.open(issueUrl.toString(), '_blank')
   }, [])
+
+  // Share puzzle handler - copies URL with current progress to clipboard
+  const handleShare = useCallback(async () => {
+    try {
+      // Encode full board state with givens marker
+      const encoded = encodePuzzleWithState(game.board, initialBoard)
+      const url = `${window.location.origin}/c/${encoded}`
+
+      // Copy to clipboard
+      const success = await copyToClipboard(url)
+      if (success) {
+        setValidationMessage({ type: 'success', message: 'Puzzle link copied to clipboard!' })
+        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      } else {
+        setValidationMessage({ type: 'error', message: 'Failed to copy link' })
+        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+      }
+    } catch (err) {
+      console.error('Share error:', err)
+      setValidationMessage({ type: 'error', message: 'Failed to create share link' })
+      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+    }
+  }, [game.board, initialBoard, visibilityAwareTimeout])
 
   // ============================================================
   // EFFECTS
@@ -1313,38 +1343,76 @@ ${bugReportJson}
         let givens: number[]
         let puzzleSolution: number[]
         let puzzleData: PuzzleData
+        let initialState: number[] | null = null
 
         if (isEncodedCustom && encoded) {
-          try {
-            givens = decodePuzzle(encoded)
-            if (givens.length !== 81) {
-              throw new Error('Invalid puzzle encoding')
+          // Check if this is a full-state sharing link (starts with 'e')
+          if (encoded.startsWith('e')) {
+            const decoded = decodePuzzleWithState(encoded)
+            if (!decoded) {
+              throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
             }
-          } catch {
-            throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
-          }
-          
-          // Validate the encoded puzzle before playing
-          const validation = await validateCustomPuzzle(givens, '')
-          if (!validation.valid) {
-            throw new Error(`Invalid puzzle: ${validation.reason || 'unknown error'}`)
-          }
-          if (!validation.unique) {
-            throw new Error('Invalid puzzle: has multiple solutions')
-          }
-          if (!validation.solution) {
-            throw new Error('Invalid puzzle: could not compute solution')
-          }
-          puzzleSolution = validation.solution
-          
-          setEncodedPuzzle(encoded)
-          
-          puzzleData = {
-            puzzle_id: `encoded-${encoded.substring(0, 8)}`,
-            seed: `encoded-${encoded.substring(0, 8)}`,
-            difficulty: 'custom',
-            givens: givens,
-            solution: puzzleSolution,
+            
+            // decoded.board is the full state (including user entries)
+            // decoded.givens are the original givens (editable cells will have 0)
+            givens = decoded.givens
+            initialState = decoded.board
+            
+            // Validate the puzzle
+            const validation = await validateCustomPuzzle(givens, '')
+            if (!validation.valid) {
+              throw new Error(`Invalid puzzle: ${validation.reason || 'unknown error'}`)
+            }
+            if (!validation.unique) {
+              throw new Error('Invalid puzzle: has multiple solutions')
+            }
+            if (!validation.solution) {
+              throw new Error('Invalid puzzle: could not compute solution')
+            }
+            puzzleSolution = validation.solution
+            
+            setEncodedPuzzle(encoded)
+            
+            puzzleData = {
+              puzzle_id: `encoded-${encoded.substring(0, 8)}`,
+              seed: `encoded-${encoded.substring(0, 8)}`,
+              difficulty: 'custom',
+              givens: givens,
+              solution: puzzleSolution,
+            }
+          } else {
+            // Legacy encoding - just givens
+            try {
+              givens = decodePuzzle(encoded)
+              if (givens.length !== 81) {
+                throw new Error('Invalid puzzle encoding')
+              }
+            } catch {
+              throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
+            }
+            
+            // Validate the encoded puzzle before playing
+            const validation = await validateCustomPuzzle(givens, '')
+            if (!validation.valid) {
+              throw new Error(`Invalid puzzle: ${validation.reason || 'unknown error'}`)
+            }
+            if (!validation.unique) {
+              throw new Error('Invalid puzzle: has multiple solutions')
+            }
+            if (!validation.solution) {
+              throw new Error('Invalid puzzle: could not compute solution')
+            }
+            puzzleSolution = validation.solution
+            
+            setEncodedPuzzle(encoded)
+            
+            puzzleData = {
+              puzzle_id: `encoded-${encoded.substring(0, 8)}`,
+              seed: `encoded-${encoded.substring(0, 8)}`,
+              difficulty: 'custom',
+              givens: givens,
+              solution: puzzleSolution,
+            }
           }
         } else if (difficulty === 'custom' && seed?.startsWith('custom-')) {
           const storedGivens = localStorage.getItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${seed}`)
@@ -1409,9 +1477,12 @@ ${bugReportJson}
         }
 
         setPuzzle(puzzleData)
-        // For completed daily puzzles, show the solved board (solution)
-        // Otherwise show the initial givens
-        if (alreadyCompletedToday) {
+        // For shared state, use the provided full board
+        // For completed daily puzzles, show solved board (solution)
+        // Otherwise show initial givens
+        if (initialState) {
+          setInitialBoard([...givens]) // Givens for marking non-editable cells
+        } else if (alreadyCompletedToday) {
           setInitialBoard([...puzzleData.solution])
         } else {
           setInitialBoard([...givens])
@@ -1424,6 +1495,12 @@ ${bugReportJson}
           timer.startTimer()
         }
         setLoading(false)
+
+        // Restore shared state if available
+        if (initialState) {
+          const uint16Candidates = arraysToCandidates(Array(81).fill(null).map(() => []))
+          game.restoreState(initialState, uint16Candidates, [])
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error')
         setLoading(false)
@@ -1570,6 +1647,7 @@ ${bugReportJson}
         autoSolveSpeed={autoSolveSpeedState}
         onTogglePause={autoSolve.togglePause}
         onStopAutoSolve={autoSolve.stopAutoSolve}
+        onRestartAutoSolve={handleRestartAutoSolve}
         onSetAutoSolveSpeed={setAutoSolveSpeedState}
         onTechniqueHint={handleTechniqueHint}
         techniqueHintDisabled={techniqueHintPending}
@@ -1578,6 +1656,7 @@ ${bugReportJson}
         hintLoading={hintLoading}
         onHistoryOpen={() => setHistoryOpen(true)}
         onShowResult={() => setShowResultModal(true)}
+        onShare={handleShare}
         onAutoFillNotes={autoFillNotes}
         onCheckNotes={handleCheckNotes}
         onClearNotes={() => {
