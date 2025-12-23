@@ -68,6 +68,23 @@ func toJSValue(v interface{}) js.Value {
 	return js.Global().Get("JSON").Call("parse", string(jsonBytes))
 }
 
+// ==================== Shared Types ====================
+
+// MoveResult represents a single move result with board state
+type MoveResult struct {
+	Board      []int       `json:"board"`
+	Candidates [][]int     `json:"candidates"`
+	Move       interface{} `json:"move"`
+}
+
+// solveResult is the internal result from solveAllInternal
+type solveResult struct {
+	moves           []MoveResult
+	solved          bool
+	finalBoard      []int
+	finalCandidates [][]int
+}
+
 // ==================== Human Solver Functions ====================
 
 // createBoard creates a new board from givens
@@ -111,12 +128,13 @@ func createBoardWithCandidates(this js.Value, args []js.Value) interface{} {
 	})
 }
 
-// findNextMove finds the next solving step
-// Input: cells (number[81]), candidates (number[81][])
-// Output: { move: Move | null, board: { cells, candidates } }
+// findNextMove finds the next solving step with full error detection
+// Input: cells (number[81]), candidates (number[81][]), givens (number[81])
+// Output: { move: Move | null, board: { cells, candidates }, solved: boolean }
+// This is equivalent to solveAll with maxMoves=1, returning the first move only
 func findNextMove(this js.Value, args []js.Value) interface{} {
-	if len(args) < 2 {
-		return toJSValue(map[string]interface{}{"error": "cells and candidates required"})
+	if len(args) < 3 {
+		return toJSValue(map[string]interface{}{"error": "cells, candidates, and givens required"})
 	}
 
 	cells := jsArrayToIntSlice(args[0])
@@ -125,28 +143,36 @@ func findNextMove(this js.Value, args []js.Value) interface{} {
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
-	board := human.NewBoardWithCandidates(cells, candidates)
-
-	move := solver.FindNextMove(board)
-	if move == nil {
-		return toJSValue(map[string]interface{}{
-			"move": nil,
-			"board": map[string]interface{}{
-				"cells":      board.GetCells(),
-				"candidates": board.GetCandidates(),
-			},
-		})
+	givens := jsArrayToIntSlice(args[2])
+	if len(givens) != 81 {
+		return toJSValue(map[string]interface{}{"error": "givens must have 81 elements"})
 	}
 
-	// Apply the move to get the updated board state
-	solver.ApplyMove(board, move)
+	// Call the internal solver with maxMoves=1
+	result := solveAllInternal(cells, candidates, givens, 1)
+
+	// Return first move only (or nil if no moves)
+	var move interface{}
+	var boardCells []int
+	var boardCandidates [][]int
+
+	if len(result.moves) > 0 {
+		move = result.moves[0].Move
+		boardCells = result.moves[0].Board
+		boardCandidates = result.moves[0].Candidates
+	} else {
+		move = nil
+		boardCells = result.finalBoard
+		boardCandidates = result.finalCandidates
+	}
 
 	return toJSValue(map[string]interface{}{
 		"move": move,
 		"board": map[string]interface{}{
-			"cells":      board.GetCells(),
-			"candidates": board.GetCandidates(),
+			"cells":      boardCells,
+			"candidates": boardCandidates,
 		},
+		"solved": result.solved,
 	})
 }
 
@@ -352,20 +378,29 @@ func solveAll(this js.Value, args []js.Value) interface{} {
 		return toJSValue(map[string]interface{}{"error": "givens must have 81 elements"})
 	}
 
+	// Call internal implementation with default maxMoves
+	result := solveAllInternal(cells, candidates, givens, 2000)
+
+	return toJSValue(map[string]interface{}{
+		"moves":           result.moves,
+		"solved":          result.solved,
+		"finalBoard":      result.finalBoard,
+		"finalCandidates": result.finalCandidates,
+	})
+}
+
+// solveAllInternal is the internal implementation of solveAll
+// It accepts a maxMoves parameter to limit the number of moves returned
+// When maxMoves=1, this enables efficient single-move hints
+func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLimit int) solveResult {
 	board := human.NewBoardWithCandidates(cells, candidates)
 
 	// Keep original user board for error detection
 	originalUserBoard := make([]int, 81)
 	copy(originalUserBoard, cells)
 
-	type MoveResult struct {
-		Board      []int       `json:"board"`
-		Candidates [][]int     `json:"candidates"`
-		Move       interface{} `json:"move"`
-	}
-
 	var moves []MoveResult
-	maxMoves := 2000
+	maxMoves := maxMovesLimit
 	maxFixes := 5
 	fixCount := 0
 
@@ -689,11 +724,12 @@ func solveAll(this js.Value, args []js.Value) interface{} {
 		}
 	}
 
-	return toJSValue(map[string]interface{}{
-		"moves":      moves,
-		"solved":     board.IsSolved() && dp.IsValid(finalCells),
-		"finalBoard": finalCells,
-	})
+	return solveResult{
+		moves:           moves,
+		solved:          board.IsSolved() && dp.IsValid(finalCells),
+		finalBoard:      finalCells,
+		finalCandidates: board.GetCandidates(),
+	}
 }
 
 // findBlockingUserCell finds which user-entered cell is blocking candidates

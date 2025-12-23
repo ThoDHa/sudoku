@@ -31,7 +31,7 @@ interface UseWasmSolverReturn {
   load: () => Promise<boolean>
   
   // Solver functions (return null if WASM not available)
-  findNextMove: (cells: number[], candidates: number[][]) => FindNextMoveResult | null
+  findNextMove: (cells: number[], candidates: number[][], givens: number[]) => FindNextMoveResult | null
   solveAll: (cells: number[], candidates: number[][], givens: number[]) => SolveAllResult | null
   validateBoard: (board: number[], solution: number[]) => ValidateBoardResult | null
   validateCustom: (givens: number[]) => ValidateCustomResult | null
@@ -108,10 +108,10 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
   }, [isReady])
   
   // Synchronous solver functions (return null if not ready)
-  const findNextMove = useCallback((cells: number[], candidates: number[][]): FindNextMoveResult | null => {
+  const findNextMove = useCallback((cells: number[], candidates: number[][], givens: number[]): FindNextMoveResult | null => {
     if (!api) return null
     try {
-      return api.findNextMove(cells, candidates)
+      return api.findNextMove(cells, candidates, givens)
     } catch (err) {
       console.error('WASM findNextMove error:', err)
       return null

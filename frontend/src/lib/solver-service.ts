@@ -152,6 +152,33 @@ export async function solveAll(
   }
 }
 
+export interface FindNextMoveResult {
+  move: Move | null
+  board: number[]
+  candidates: number[][]
+  solved: boolean
+}
+
+/**
+ * Find the next move for the current board state.
+ * This is more efficient than solveAll when only one move is needed (e.g., hints).
+ * It uses the same error detection logic as solveAll but returns after the first move.
+ */
+export async function findNextMove(
+  board: number[],
+  candidates: number[][],
+  givens: number[]
+): Promise<FindNextMoveResult> {
+  const api = await getApi()
+  const result = api.findNextMove(board, candidates, givens)
+  return {
+    move: result.move as Move | null,
+    board: result.board.cells,
+    candidates: result.board.candidates,
+    solved: result.solved,
+  }
+}
+
 export function validateBoard(board: number[], solution: number[]): ValidateBoardResult {
   // Use pure TypeScript - no WASM needed!
   // The solution is already known at puzzle load time
@@ -236,6 +263,7 @@ function hashGivens(givens: number[]): string {
 // Default export for backward compatibility
 export default {
   solveAll,
+  findNextMove,
   validateBoard,
   validateCustomPuzzle,
   getPuzzle,

@@ -108,6 +108,7 @@ export interface PuzzleForSeedResult {
 export interface FindNextMoveResult {
   move: Move | null;
   board: BoardState;
+  solved: boolean;
 }
 
 // The WASM API interface
@@ -115,7 +116,7 @@ export interface SudokuWasmAPI {
   // Human solver
   createBoard(givens: number[]): BoardState;
   createBoardWithCandidates(cells: number[], candidates: number[][]): BoardState;
-  findNextMove(cells: number[], candidates: number[][]): FindNextMoveResult;
+  findNextMove(cells: number[], candidates: number[][], givens: number[]): FindNextMoveResult;
   solveWithSteps(givens: number[], maxSteps?: number): SolveWithStepsResult;
   analyzePuzzle(givens: number[]): AnalyzePuzzleResult;
   solveAll(cells: number[], candidates: number[][], givens: number[]): SolveAllResult;
@@ -438,11 +439,12 @@ export function preloadWasm(): void {
  */
 export async function wasmFindNextMove(
   cells: number[],
-  candidates: number[][]
+  candidates: number[][],
+  givens: number[]
 ): Promise<FindNextMoveResult | null> {
   try {
     const api = await loadWasm();
-    return api.findNextMove(cells, candidates);
+    return api.findNextMove(cells, candidates, givens);
   } catch {
     return null;
   }
