@@ -122,6 +122,7 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 		}
 
 		// Check for contradictions and eliminations
+		// Rules are numbered according to SudokuWiki.org's 3D Medusa conventions
 
 		// Rule 1: Two same-colored candidates in the same cell
 		// -> that color is false, eliminate all of that color
@@ -141,14 +142,26 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 			return move
 		}
 
-		// Rule 3: Uncolored candidate sees same digit in both colors
+		// Rule 3: Uncolored candidate in cell with both colors
+		// -> eliminate the uncolored candidate (one of the colors must be true)
+		if move := checkUncoloredInBicoloredCell(b, color1, color2, colors); move != nil {
+			return move
+		}
+
+		// Rule 4: Uncolored candidate sees same digit in both colors (in units)
 		// -> eliminate the uncolored candidate
 		if move := checkUncoloredSeesBothColors(b, color1, color2, colors); move != nil {
 			return move
 		}
 
-		// Rule 4: Cell with all candidates in one color
-		// -> that color is false, eliminate all of that color
+		// Rule 5: Uncolored candidate sees one color in unit AND has opposite color in same cell
+		// -> eliminate the uncolored candidate
+		if move := checkUncoloredSeesColorAndOppositeInCell(b, color1, color2, colors); move != nil {
+			return move
+		}
+
+		// Rule 6: Cell with all candidates in one color
+		// -> that color is false (cell would be empty), eliminate all of that color
 		if move := checkAllCandidatesSameColor(b, color1, color2, colors, 1); move != nil {
 			return move
 		}
@@ -278,7 +291,8 @@ func checkSameUnitContradiction(b BoardInterface, colorToCheck, otherColor []can
 	return nil
 }
 
-// checkUncoloredSeesBothColors finds uncolored candidates that see the same digit in both colors
+// checkUncoloredSeesBothColors finds uncolored candidates that see the same digit in both colors (Rule 4)
+// If an uncolored candidate sees the same digit in both Color 1 and Color 2 in its units, eliminate it
 func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePair, colors map[int]int) *core.Move {
 	// Group each color by digit
 	color1ByDigit := make(map[int][]int) // digit -> cells
@@ -370,8 +384,154 @@ func pairsToTargets(pairs []candidatePair) []core.CellRef {
 	return targets
 }
 
-// checkAllCandidatesSameColor checks if a cell has all candidates in one color
-// If so, that color is false, eliminate all of that color
+// checkUncoloredInBicoloredCell checks for uncolored candidates in cells that
+// already have candidates from BOTH colors (Rule 3: Two colours in a cell)
+// If a cell contains candidates from both colors, any uncolored candidate
+// in that cell can be eliminated (one of the colored candidates MUST be true)
+func checkUncoloredInBicoloredCell(b BoardInterface, color1, color2 []candidatePair, colors map[int]int) *core.Move {
+	// Find cells that have candidates in BOTH colors
+	color1Cells := make(map[int]bool)
+	color2Cells := make(map[int]bool)
+
+	for _, cp := range color1 {
+		color1Cells[cp.cell] = true
+	}
+	for _, cp := range color2 {
+		color2Cells[cp.cell] = true
+	}
+
+	// Check each cell that has both colors
+	for cell := range color1Cells {
+		if !color2Cells[cell] {
+			continue
+		}
+
+		// This cell has both colors - find uncolored candidates to eliminate
+		cands := b.GetCandidatesAt(cell)
+		for _, digit := range cands.ToSlice() {
+			cp := candidatePair{cell, digit}
+			if colors[cp.key()] == 0 {
+				// Found an uncolored candidate in a bicolored cell - eliminate it
+				allPairs := append(color1, color2...)
+				return &core.Move{
+					Action: "eliminate",
+					Digit:  digit,
+					Targets: []core.CellRef{
+						{Row: cell / 9, Col: cell % 9},
+					},
+					Eliminations: []core.Candidate{
+						{Row: cell / 9, Col: cell % 9, Digit: digit},
+					},
+					Explanation: fmt.Sprintf("3D Medusa: R%dC%d has candidates in both colors; eliminate uncolored %d",
+						cell/9+1, cell%9+1, digit),
+					Highlights: core.Highlights{
+						Primary:   []core.CellRef{{Row: cell / 9, Col: cell % 9}},
+						Secondary: pairsToTargets(allPairs),
+					},
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// checkUncoloredSeesColorAndOppositeInCell checks for uncolored candidates that
+// see one color in a unit AND have the opposite color in the same cell (Rule 5)
+// This hybrid rule catches candidates that Rules 3 and 4 miss individually
+func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 []candidatePair, colors map[int]int) *core.Move {
+	// Group each color by digit for unit visibility checks
+	color1ByDigit := make(map[int][]int) // digit -> cells
+	color2ByDigit := make(map[int][]int)
+
+	for _, cp := range color1 {
+		color1ByDigit[cp.digit] = append(color1ByDigit[cp.digit], cp.cell)
+	}
+	for _, cp := range color2 {
+		color2ByDigit[cp.digit] = append(color2ByDigit[cp.digit], cp.cell)
+	}
+
+	// Find cells that have at least one colored candidate
+	cellHasColor1 := make(map[int]bool)
+	cellHasColor2 := make(map[int]bool)
+
+	for _, cp := range color1 {
+		cellHasColor1[cp.cell] = true
+	}
+	for _, cp := range color2 {
+		cellHasColor2[cp.cell] = true
+	}
+
+	// Check each uncolored candidate
+	for cell := 0; cell < 81; cell++ {
+		cands := b.GetCandidatesAt(cell)
+		for _, digit := range cands.ToSlice() {
+			cp := candidatePair{cell, digit}
+			if colors[cp.key()] != 0 {
+				continue // Skip colored candidates
+			}
+
+			// Check: sees Color1 in unit AND has Color2 in same cell?
+			if cellHasColor2[cell] {
+				// Cell has Color2 - check if this candidate sees Color1 of same digit in a unit
+				for _, c1 := range color1ByDigit[digit] {
+					if ArePeers(cell, c1) {
+						// Elimination: sees Color1 in unit, has Color2 in cell
+						allPairs := append(color1, color2...)
+						return &core.Move{
+							Action: "eliminate",
+							Digit:  digit,
+							Targets: []core.CellRef{
+								{Row: cell / 9, Col: cell % 9},
+							},
+							Eliminations: []core.Candidate{
+								{Row: cell / 9, Col: cell % 9, Digit: digit},
+							},
+							Explanation: fmt.Sprintf("3D Medusa: R%dC%d has color 2 and sees %d in color 1; eliminate %d",
+								cell/9+1, cell%9+1, digit, digit),
+							Highlights: core.Highlights{
+								Primary:   []core.CellRef{{Row: cell / 9, Col: cell % 9}},
+								Secondary: pairsToTargets(allPairs),
+							},
+						}
+					}
+				}
+			}
+
+			// Check: sees Color2 in unit AND has Color1 in same cell?
+			if cellHasColor1[cell] {
+				// Cell has Color1 - check if this candidate sees Color2 of same digit in a unit
+				for _, c2 := range color2ByDigit[digit] {
+					if ArePeers(cell, c2) {
+						// Elimination: sees Color2 in unit, has Color1 in cell
+						allPairs := append(color1, color2...)
+						return &core.Move{
+							Action: "eliminate",
+							Digit:  digit,
+							Targets: []core.CellRef{
+								{Row: cell / 9, Col: cell % 9},
+							},
+							Eliminations: []core.Candidate{
+								{Row: cell / 9, Col: cell % 9, Digit: digit},
+							},
+							Explanation: fmt.Sprintf("3D Medusa: R%dC%d has color 1 and sees %d in color 2; eliminate %d",
+								cell/9+1, cell%9+1, digit, digit),
+							Highlights: core.Highlights{
+								Primary:   []core.CellRef{{Row: cell / 9, Col: cell % 9}},
+								Secondary: pairsToTargets(allPairs),
+							},
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// checkAllCandidatesSameColor checks if a cell has all candidates in one color (Rule 6)
+// If so, that color is false (cell would be empty), eliminate all of that color
 func checkAllCandidatesSameColor(b BoardInterface, color1, color2 []candidatePair, colors map[int]int, colorNum int) *core.Move {
 	// Check each cell
 	for cell := 0; cell < 81; cell++ {

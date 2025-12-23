@@ -480,8 +480,10 @@ func TestTechniqueIsolated_UniqueRectangleType3(t *testing.T) {
 }
 
 func TestTechniqueIsolated_UniqueRectangleType4(t *testing.T) {
-	// Uses early stop for faster execution - full solver until technique fires
-	runEarlyStopTechniqueTest(t, "unique-rectangle-type-4")
+	// Uses early stop with disabled techniques - medusa-3d can find same eliminations first
+	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-4", []string{
+		"medusa-3d",
+	})
 }
 
 func TestTechniqueIsolated_WXYZWing(t *testing.T) {
