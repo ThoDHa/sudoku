@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useParams } from 'react-router-dom'
 import { getTechniqueBySlug, getTechniquesByTier, TechniqueInfo, getPreviousTechnique, getNextTechnique } from '../lib/techniques'
 import { TIERS } from '../lib/constants'
-import { TierBadge, HowToPlayContent, ChevronRightIcon } from '../components/ui'
+import { TierBadge, HowToPlayContent, HowSolverWorksContent, ChevronRightIcon } from '../components/ui'
 import TechniqueDetailView from '../components/TechniqueDetailView'
 
 function TechniqueCard({ technique }: { technique: TechniqueInfo }) {
@@ -54,6 +54,17 @@ export default function Technique() {
               <p className="text-sm text-accent/80">New to Sudoku? Start here to learn the basics.</p>
             </div>
             <ChevronRightIcon className="h-5 w-5 text-accent" />
+          </Link>
+          
+          <Link
+            to="/techniques/how-solver-works"
+            className="flex w-full items-center justify-between rounded-lg border border-board-border-light bg-background-secondary p-4 text-left transition-colors hover:shadow-md"
+          >
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">🤖 How the Solver Works</h2>
+              <p className="text-sm text-foreground-muted">Learn about the techniques, error correction, and philosophy behind our solver.</p>
+            </div>
+            <ChevronRightIcon className="h-5 w-5 text-foreground-muted" />
           </Link>
         </section>
 
@@ -136,6 +147,43 @@ export default function Technique() {
               className="inline-flex items-center gap-1 rounded-full bg-background-secondary px-4 py-2 text-sm text-accent hover:bg-btn-hover"
             >
               Start with Naked Single
+              <ChevronRightIcon className="h-4 w-4" />
+            </Link>
+            <Link 
+              to="/" 
+              className="inline-flex items-center gap-1 rounded-full bg-accent px-4 py-2 text-sm text-btn-active-text hover:opacity-90"
+            >
+              Try a puzzle
+              <ChevronRightIcon className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Special case: How the Solver Works page
+  if (slug === 'how-solver-works') {
+    return (
+      <div className="page-container max-w-3xl">
+        <div className="mb-8">
+          <Link to="/techniques" className="text-sm text-accent hover:underline">
+            &larr; All techniques
+          </Link>
+        </div>
+
+        <h1 className="mb-6 text-3xl font-bold text-foreground">How the Solver Works</h1>
+        
+        <HowSolverWorksContent />
+
+        <div className="mt-8 border-t border-board-border-light pt-6">
+          <p className="mb-4 text-sm text-foreground-muted">Ready to see these techniques in action?</p>
+          <div className="flex flex-wrap gap-3">
+            <Link 
+              to="/techniques" 
+              className="inline-flex items-center gap-1 rounded-full bg-background-secondary px-4 py-2 text-sm text-accent hover:bg-btn-hover"
+            >
+              Browse all techniques
               <ChevronRightIcon className="h-4 w-4" />
             </Link>
             <Link 

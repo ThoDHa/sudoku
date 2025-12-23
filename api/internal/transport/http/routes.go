@@ -469,6 +469,93 @@ func solveNextHandler(c *gin.Context) {
 		}
 	}
 
+	// STEP 1: Check for direct conflicts FIRST (before running solver)
+	// These are immediate rule violations: same digit twice in a row/column/box
+	conflicts := dp.FindConflicts(req.Board)
+	if len(conflicts) > 0 {
+		// Find the first conflict involving a user-entered cell (not a given)
+		for _, conflict := range conflicts {
+			// Determine which cell to remove (prefer removing user entry, not given)
+			var badCell int
+			var otherCell int
+
+			cell1IsGiven := givens[conflict.Cell1] != 0
+			cell2IsGiven := givens[conflict.Cell2] != 0
+
+			if cell1IsGiven && cell2IsGiven {
+				// Both are givens - this shouldn't happen in a valid puzzle, skip
+				continue
+			} else if cell1IsGiven {
+				// Cell1 is given, remove Cell2
+				badCell = conflict.Cell2
+				otherCell = conflict.Cell1
+			} else if cell2IsGiven {
+				// Cell2 is given, remove Cell1
+				badCell = conflict.Cell1
+				otherCell = conflict.Cell2
+			} else {
+				// Both are user entries - remove the one with higher index (more recently placed, typically)
+				badCell = conflict.Cell2
+				otherCell = conflict.Cell1
+			}
+
+			badRow, badCol := badCell/9, badCell%9
+			otherRow, otherCol := otherCell/9, otherCell%9
+			badDigit := req.Board[badCell]
+
+			// Create a new board without the bad cell
+			fixedBoard := make([]int, len(req.Board))
+			copy(fixedBoard, req.Board)
+			fixedBoard[badCell] = 0
+
+			// Preserve user's candidates but clear the fixed cell's candidates
+			fixedCandidates := make([][]int, constants.TotalCells)
+			for i := 0; i < constants.TotalCells; i++ {
+				if i == badCell {
+					fixedCandidates[i] = nil // Clear candidates for the fixed cell
+				} else if i < len(req.Candidates) && req.Candidates[i] != nil {
+					fixedCandidates[i] = make([]int, len(req.Candidates[i]))
+					copy(fixedCandidates[i], req.Candidates[i])
+				}
+			}
+
+			// Create explanation based on conflict type
+			var explanation string
+			switch conflict.Type {
+			case "row":
+				explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same row. Removing the %d from R%dC%d.",
+					badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
+			case "column":
+				explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same column. Removing the %d from R%dC%d.",
+					badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
+			case "box":
+				explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same box. Removing the %d from R%dC%d.",
+					badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
+			}
+
+			// Reset the board to the fixed state
+			newBoard := human.NewBoardWithCandidates(fixedBoard, fixedCandidates)
+
+			c.JSON(http.StatusOK, gin.H{
+				"board":      newBoard.GetCells(),
+				"candidates": newBoard.GetCandidates(),
+				"move": map[string]interface{}{
+					"technique":   "fix-conflict",
+					"action":      "fix-conflict",
+					"digit":       badDigit,
+					"explanation": explanation,
+					"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+					"highlights": map[string]interface{}{
+						"primary":   []map[string]int{{"row": badRow, "col": badCol}},
+						"secondary": []map[string]int{{"row": otherRow, "col": otherCol}},
+					},
+				},
+			})
+			return
+		}
+	}
+
+	// STEP 2: No direct conflicts - proceed with normal solver
 	// Use provided candidates (may be empty/incomplete - solver will fill one at a time)
 	board := human.NewBoardWithCandidates(req.Board, req.Candidates)
 	solver := human.NewSolver()
@@ -479,7 +566,7 @@ func solveNextHandler(c *gin.Context) {
 		return
 	}
 
-	// Handle contradiction - try to find and fix user error (like solveAllHandler)
+	// STEP 3: Handle contradiction - try to find and fix user error
 	if move.Action == "contradiction" {
 		// Find the contradiction cell (first target in the move)
 		if len(move.Targets) > 0 {
@@ -804,6 +891,100 @@ func solveAllHandler(c *gin.Context) {
 		}
 	}
 
+	// STEP 1: Check for direct conflicts FIRST (before running solver)
+	// These are immediate rule violations: same digit twice in a row/column/box
+	// For solveAll, we return the fix-conflict move as a single-move result
+	conflicts := dp.FindConflicts(req.Board)
+	if len(conflicts) > 0 {
+		// Find the first conflict involving a user-entered cell (not a given)
+		for _, conflict := range conflicts {
+			// Determine which cell to remove (prefer removing user entry, not given)
+			var badCell int
+			var otherCell int
+
+			cell1IsGiven := givens[conflict.Cell1] != 0
+			cell2IsGiven := givens[conflict.Cell2] != 0
+
+			if cell1IsGiven && cell2IsGiven {
+				// Both are givens - this shouldn't happen in a valid puzzle, skip
+				continue
+			} else if cell1IsGiven {
+				// Cell1 is given, remove Cell2
+				badCell = conflict.Cell2
+				otherCell = conflict.Cell1
+			} else if cell2IsGiven {
+				// Cell2 is given, remove Cell1
+				badCell = conflict.Cell1
+				otherCell = conflict.Cell2
+			} else {
+				// Both are user entries - remove the one with higher index (more recently placed, typically)
+				badCell = conflict.Cell2
+				otherCell = conflict.Cell1
+			}
+
+			badRow, badCol := badCell/9, badCell%9
+			otherRow, otherCol := otherCell/9, otherCell%9
+			badDigit := req.Board[badCell]
+
+			// Create a new board without the bad cell
+			fixedBoard := make([]int, len(req.Board))
+			copy(fixedBoard, req.Board)
+			fixedBoard[badCell] = 0
+
+			// Preserve user's candidates but clear the fixed cell's candidates
+			fixedCandidates := make([][]int, constants.TotalCells)
+			for i := 0; i < constants.TotalCells; i++ {
+				if i == badCell {
+					fixedCandidates[i] = nil // Clear candidates for the fixed cell
+				} else if i < len(req.Candidates) && req.Candidates[i] != nil {
+					fixedCandidates[i] = make([]int, len(req.Candidates[i]))
+					copy(fixedCandidates[i], req.Candidates[i])
+				}
+			}
+
+			// Create explanation based on conflict type
+			var explanation string
+			switch conflict.Type {
+			case "row":
+				explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same row. Removing the %d from R%dC%d.",
+					badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
+			case "column":
+				explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same column. Removing the %d from R%dC%d.",
+					badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
+			case "box":
+				explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same box. Removing the %d from R%dC%d.",
+					badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
+			}
+
+			// Reset the board to the fixed state
+			newBoard := human.NewBoardWithCandidates(fixedBoard, fixedCandidates)
+
+			// For solveAll, return as a single move in the moves array
+			c.JSON(http.StatusOK, gin.H{
+				"moves": []map[string]interface{}{
+					{
+						"board":      newBoard.GetCells(),
+						"candidates": newBoard.GetCandidates(),
+						"move": map[string]interface{}{
+							"technique":   "fix-conflict",
+							"action":      "fix-conflict",
+							"digit":       badDigit,
+							"explanation": explanation,
+							"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+							"highlights": map[string]interface{}{
+								"primary":   []map[string]int{{"row": badRow, "col": badCol}},
+								"secondary": []map[string]int{{"row": otherRow, "col": otherCol}},
+							},
+						},
+					},
+				},
+				"status": "conflict_found",
+			})
+			return
+		}
+	}
+
+	// STEP 2: No direct conflicts - proceed with normal solving
 	// Use provided candidates (may be empty/incomplete - solver will fill one at a time)
 	board := human.NewBoardWithCandidates(req.Board, req.Candidates)
 

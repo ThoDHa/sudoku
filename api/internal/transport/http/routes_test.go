@@ -651,6 +651,164 @@ func boolPtr(b bool) *bool {
 	return &b
 }
 
+// Test that solve/next detects direct conflicts before running solver
+func TestSolveNextDetectsDirectConflicts(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	// Create a board with a direct conflict - two 5s in the same row
+	// First, get the actual givens for this puzzle so we know which cells are user-entered
+	boardWithConflict := make([]int, 81)
+	boardWithConflict[0] = 5
+	boardWithConflict[1] = 3
+	boardWithConflict[4] = 7
+	boardWithConflict[8] = 5 // Conflict! 5 already at position 0 in same row
+
+	body := map[string]interface{}{
+		"token": token,
+		"board": boardWithConflict,
+	}
+	bodyBytes, _ := json.Marshal(body)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/solve/next", bytes.NewBuffer(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
+		return
+	}
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	if err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	// Check that we got a fix-conflict move
+	move, ok := response["move"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected move in response, got: %v", response)
+	}
+
+	technique := move["technique"].(string)
+	if technique != "fix-conflict" {
+		t.Errorf("Expected technique 'fix-conflict', got %q", technique)
+	}
+
+	action := move["action"].(string)
+	if action != "fix-conflict" {
+		t.Errorf("Expected action 'fix-conflict', got %q", action)
+	}
+
+	explanation := move["explanation"].(string)
+	if !strings.Contains(explanation, "Conflict") {
+		t.Errorf("Expected explanation to mention 'Conflict', got: %s", explanation)
+	}
+
+	if !strings.Contains(explanation, "row") {
+		t.Errorf("Expected explanation to mention 'row' (conflict type), got: %s", explanation)
+	}
+
+	t.Logf("Conflict correctly detected: %s", explanation)
+}
+
+// Test that solve/next detects column conflicts
+func TestSolveNextDetectsColumnConflicts(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	// Create a board with a column conflict - two 5s in the same column
+	boardWithConflict := make([]int, 81)
+	boardWithConflict[0] = 5 // R1C1
+	boardWithConflict[9] = 5 // R2C1 - conflict with R1C1 (same column)
+	boardWithConflict[1] = 3
+	boardWithConflict[4] = 7
+
+	body := map[string]interface{}{
+		"token": token,
+		"board": boardWithConflict,
+	}
+	bodyBytes, _ := json.Marshal(body)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/solve/next", bytes.NewBuffer(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+		return
+	}
+
+	var response map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &response)
+
+	move, ok := response["move"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected move in response")
+	}
+
+	technique := move["technique"].(string)
+	if technique != "fix-conflict" {
+		t.Errorf("Expected technique 'fix-conflict', got %q", technique)
+	}
+
+	explanation := move["explanation"].(string)
+	if !strings.Contains(explanation, "column") {
+		t.Errorf("Expected explanation to mention 'column', got: %s", explanation)
+	}
+
+	t.Logf("Column conflict correctly detected: %s", explanation)
+}
+
+// Test that solve/next detects box conflicts
+func TestSolveNextDetectsBoxConflicts(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	// Create a board with a box conflict - two 5s in the same 3x3 box
+	boardWithConflict := make([]int, 81)
+	boardWithConflict[0] = 5  // R1C1
+	boardWithConflict[11] = 5 // R2C3 - conflict with R1C1 (same box, top-left)
+	boardWithConflict[1] = 3
+	boardWithConflict[4] = 7
+
+	body := map[string]interface{}{
+		"token": token,
+		"board": boardWithConflict,
+	}
+	bodyBytes, _ := json.Marshal(body)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/solve/next", bytes.NewBuffer(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+		return
+	}
+
+	var response map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &response)
+
+	move, ok := response["move"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected move in response")
+	}
+
+	technique := move["technique"].(string)
+	if technique != "fix-conflict" {
+		t.Errorf("Expected technique 'fix-conflict', got %q", technique)
+	}
+
+	explanation := move["explanation"].(string)
+	if !strings.Contains(explanation, "box") {
+		t.Errorf("Expected explanation to mention 'box', got: %s", explanation)
+	}
+
+	t.Logf("Box conflict correctly detected: %s", explanation)
+}
+
 // Test endpoint returns proper error for unsolvable board
 func TestUnsolvableBoardValidation(t *testing.T) {
 	router := setupRouter()

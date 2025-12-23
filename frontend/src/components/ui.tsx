@@ -272,3 +272,167 @@ export function HowToPlayContent() {
     </div>
   )
 }
+
+// ============ How the Solver Works Content ============
+// Documentation explaining the solver architecture and error correction approach
+
+export function HowSolverWorksContent() {
+  return (
+    <div className="space-y-6">
+      {/* Overview */}
+      <div>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">Overview</h2>
+        <p className="text-sm leading-relaxed text-foreground-muted">
+          Our solver uses <strong>pure logical deduction</strong> — the same techniques human experts use. 
+          It never guesses, never backtracks, and never peeks at the solution. Every move can be explained 
+          with a specific technique, making it an ideal learning tool.
+        </p>
+      </div>
+
+      {/* Technique Tiers */}
+      <div>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">🎯 Technique Tiers</h2>
+        <p className="mb-3 text-sm text-foreground-muted">
+          The solver organizes 39+ techniques into tiers based on complexity. It always tries simpler 
+          techniques first, escalating only when needed:
+        </p>
+        <div className="space-y-2">
+          <div className="rounded-lg bg-background-secondary p-3">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-diff-easy font-medium">🌱 Simple</span>
+            </div>
+            <p className="text-xs text-foreground-muted">
+              <strong>Naked Singles, Hidden Singles</strong> — The fundamentals. Most easy puzzles 
+              need only these. A naked single is a cell with one candidate; a hidden single is a 
+              digit that can only go in one place within a house.
+            </p>
+          </div>
+          
+          <div className="rounded-lg bg-background-secondary p-3">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-diff-medium font-medium">🌿 Medium</span>
+            </div>
+            <p className="text-xs text-foreground-muted">
+              <strong>Pairs, Triples, Pointing, Claiming</strong> — Pattern recognition within houses. 
+              These techniques eliminate candidates by finding groups of cells that must contain 
+              specific digits.
+            </p>
+          </div>
+          
+          <div className="rounded-lg bg-background-secondary p-3">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-diff-extreme font-medium">🌳 Hard</span>
+            </div>
+            <p className="text-xs text-foreground-muted">
+              <strong>X-Wing, Swordfish, XY-Wing, Chains</strong> — Advanced patterns spanning 
+              multiple houses. These require tracking relationships between candidates across 
+              the entire grid.
+            </p>
+          </div>
+          
+          <div className="rounded-lg bg-background-secondary p-3">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="text-foreground-muted font-medium">🔬 Extreme</span>
+            </div>
+            <p className="text-xs text-foreground-muted">
+              <strong>Unique Rectangles, ALS Chains, Forcing Chains</strong> — Expert-level 
+              techniques for the hardest puzzles. These exploit advanced logical constraints 
+              and require deep chain reasoning.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* How Hints Work */}
+      <div>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">💡 How Hints Work</h2>
+        <p className="mb-3 text-sm text-foreground-muted">
+          When you request a hint, the solver follows this process:
+        </p>
+        <ol className="list-inside list-decimal space-y-2 text-sm text-foreground-muted">
+          <li>
+            <strong>Fill candidates</strong> — If your notes are incomplete, it first ensures 
+            all valid candidates are marked
+          </li>
+          <li>
+            <strong>Detect singles</strong> — Instantly fills any cell with only one possible digit
+          </li>
+          <li>
+            <strong>Apply techniques</strong> — Starting from Simple tier, tries each technique 
+            until one finds a move
+          </li>
+          <li>
+            <strong>Explain the move</strong> — Returns a detailed explanation with highlighted cells
+          </li>
+        </ol>
+      </div>
+
+      {/* Error Correction */}
+      <div>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">🔧 Error Correction</h2>
+        <p className="mb-3 text-sm text-foreground-muted">
+          Made mistakes? The solver can handle corrupted boards — even ones with many wrong entries. 
+          It corrects errors <strong>one at a time</strong>, explaining why each cell is wrong:
+        </p>
+        
+        <div className="space-y-3">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+            <h4 className="mb-1 text-sm font-medium text-foreground">🚨 Direct Conflicts</h4>
+            <p className="text-xs text-foreground-muted">
+              <strong>Detected first.</strong> If you placed a 5 in a row that already has a 5, 
+              that's an immediate conflict. The solver spots these instantly and explains: 
+              "This cell conflicts with the 5 in R3C7."
+            </p>
+          </div>
+          
+          <div className="rounded-lg border border-orange-500/30 bg-orange-500/10 p-3">
+            <h4 className="mb-1 text-sm font-medium text-foreground">🚫 Blocking Cells</h4>
+            <p className="text-xs text-foreground-muted">
+              <strong>Detected second.</strong> Your entry might not conflict directly, but it 
+              blocks all possibilities for another cell. The solver traces the logical chain: 
+              "This 7 eliminates all candidates from R4C2."
+            </p>
+          </div>
+          
+          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3">
+            <h4 className="mb-1 text-sm font-medium text-foreground">🔍 Technique Violations</h4>
+            <p className="text-xs text-foreground-muted">
+              <strong>Detected last.</strong> Some errors only reveal themselves through advanced 
+              logic. The solver uses the same techniques it uses for solving to detect these, 
+              providing technique-level explanations.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Philosophy */}
+      <div className="rounded-lg border border-board-border-light p-4">
+        <h2 className="mb-2 text-lg font-semibold text-foreground">🧘 The "No Guessing" Philosophy</h2>
+        <p className="text-sm text-foreground-muted">
+          Unlike brute-force solvers that try possibilities until something works, our solver 
+          proves each move is correct <em>before</em> making it. This means:
+        </p>
+        <ul className="mt-2 space-y-1 text-sm text-foreground-muted">
+          <li>✅ Every move comes with a logical explanation</li>
+          <li>✅ You learn real techniques, not trial-and-error</li>
+          <li>✅ The solver can detect when a puzzle requires guessing (and won't do it)</li>
+          <li>✅ If the solver can't proceed, the puzzle may be too hard or have no solution</li>
+        </ul>
+      </div>
+
+      {/* Technical Note */}
+      <div className="rounded-lg bg-background-secondary p-4">
+        <h2 className="mb-2 text-lg font-semibold text-foreground">⚙️ Under the Hood</h2>
+        <p className="text-sm text-foreground-muted">
+          The solver is written in Go and compiled to WebAssembly for fast, offline-capable 
+          operation. It runs entirely in your browser — your puzzles never leave your device.
+        </p>
+        <p className="mt-2 text-sm text-foreground-muted">
+          For the technically curious: the solver uses constraint propagation with a 
+          technique-based inference engine. Each technique is a pattern matcher that identifies 
+          specific logical structures in the candidate grid.
+        </p>
+      </div>
+    </div>
+  )
+}
