@@ -28,12 +28,15 @@ export interface UserPreferences {
   autoSolveSpeed: AutoSolveSpeed
   // Whether to hide the timer during gameplay
   hideTimer: boolean
+  // Whether to start auto-solve in paused (step-by-step) mode
+  stepByStepMode: boolean
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   homepageMode: 'daily',
   autoSolveSpeed: 'fast',
   hideTimer: false,
+  stepByStepMode: false,
 }
 
 export function getPreferences(): UserPreferences {
@@ -89,4 +92,12 @@ export function getHideTimer(): boolean {
 
 export function setHideTimer(hide: boolean): void {
   setPreferences({ hideTimer: hide })
+}
+
+export function getStepByStepMode(): boolean {
+  return getPreferences().stepByStepMode
+}
+
+export function setStepByStepMode(enabled: boolean): void {
+  setPreferences({ stepByStepMode: enabled })
 }

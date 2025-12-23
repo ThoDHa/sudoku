@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ColorTheme, FontSize } from '../lib/ThemeContext'
-import { AutoSolveSpeed, setAutoSolveSpeed, HomepageMode } from '../lib/preferences'
+import { AutoSolveSpeed, setAutoSolveSpeed, HomepageMode, getStepByStepMode, setStepByStepMode } from '../lib/preferences'
 import { clearAllCaches, CACHE_VERSION } from '../lib/cache-version'
 import { getAutoSaveEnabled, setAutoSaveEnabled } from '../lib/gameSettings'
 import { createGameRoute, SPEED_OPTIONS, COLOR_THEMES, TOAST_DURATION_INFO } from '../lib/constants'
@@ -310,6 +310,8 @@ interface SettingsSectionProps {
   gameActions: GameActions | undefined
   autoSaveEnabled: boolean
   handleAutoSaveToggle: () => void
+  stepByStepMode: boolean
+  handleStepByStepToggle: () => void
 }
 
 function SettingsSection({
@@ -321,6 +323,8 @@ function SettingsSection({
   gameActions,
   autoSaveEnabled,
   handleAutoSaveToggle,
+  stepByStepMode,
+  handleStepByStepToggle,
 }: SettingsSectionProps) {
   return (
     <div className="rounded-lg overflow-hidden">
@@ -363,7 +367,7 @@ function SettingsSection({
             </div>
           </div>
 
-          {/* Timer + Auto-save toggles (game only) */}
+          {/* Timer + Auto-save + Step-by-step toggles (game only) */}
           {gameActions && (
             <div className="space-y-1">
               {/* Show Timer toggle */}
@@ -389,12 +393,28 @@ function SettingsSection({
               >
                 <span className="flex items-center gap-3">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                   Auto-Save Progress
                 </span>
                 <div className={`w-9 h-5 rounded-full transition-colors ${autoSaveEnabled ? 'bg-accent' : 'bg-board-border-light'}`}>
                   <div className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${autoSaveEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                </div>
+              </button>
+              
+              {/* Step-by-step Mode toggle */}
+              <button
+                onClick={handleStepByStepToggle}
+                className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-btn-hover rounded-lg"
+              >
+                <span className="flex items-center gap-3">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  Step-by-step Mode
+                </span>
+                <div className={`w-9 h-5 rounded-full transition-colors ${stepByStepMode ? 'bg-accent' : 'bg-board-border-light'}`}>
+                  <div className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${stepByStepMode ? 'translate-x-4' : 'translate-x-0'}`} />
                 </div>
               </button>
             </div>
@@ -435,7 +455,8 @@ export default function Menu({
   const [settingsExpanded, setSettingsExpanded] = useState(!gameActions) // Collapsed on game page
   const [cacheCleared, setCacheCleared] = useState(false)
   const [autoSaveEnabled, setAutoSaveEnabledState] = useState(getAutoSaveEnabled)
-  const [confirmNewPuzzle, setConfirmNewPuzzle] = useState<string | null>(null) // Difficulty to confirm
+  const [confirmNewPuzzle, setConfirmNewPuzzle] = useState<string | null>(null)
+  const [stepByStepMode, setStepByStepModeState] = useState(getStepByStepMode()) // Difficulty to confirm
 
   // Close submenu when menu closes
   useEffect(() => {
@@ -456,6 +477,12 @@ export default function Menu({
     const newValue = !autoSaveEnabled
     setAutoSaveEnabledState(newValue)
     setAutoSaveEnabled(newValue)
+  }
+  
+  const handleStepByStepToggle = () => {
+    const newValue = !stepByStepMode
+    setStepByStepModeState(newValue)
+    setStepByStepMode(newValue)
   }
 
   // Handle starting a new puzzle - show confirmation if game in progress
@@ -556,6 +583,8 @@ export default function Menu({
               gameActions={gameActions}
               autoSaveEnabled={autoSaveEnabled}
               handleAutoSaveToggle={handleAutoSaveToggle}
+              stepByStepMode={stepByStepMode}
+              handleStepByStepToggle={handleStepByStepToggle}
             />
 
             {/* Homepage mode toggle (homepage only) */}
