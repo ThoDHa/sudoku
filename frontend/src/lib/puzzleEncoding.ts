@@ -240,7 +240,7 @@ function decodeSparse(encoded: string): number[] {
  * - Encodes all 81 cell values (including user entries)
  * - Allows sharing puzzle at any point in solving progress
  */
-export function encodePuzzleWithState(board: number[], givens: number[]): string {
+export function encodePuzzleWithState(board: number[], givens: number[], candidates?: number[][]): string {
   if (board.length !== 81 || givens.length !== 81) {
     throw new Error('Board and givens must have 81 cells')
   }
@@ -272,7 +272,92 @@ export function encodePuzzleWithState(board: number[], givens: number[]): string
   const binary = String.fromCharCode(...uint8)
   const boardStr = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 
-  return 'e' + maskStr + boardStr
+  // If no candidates provided, return without candidates
+  if (!candidates || candidates.length !== 81) {
+    return 'e' + maskStr + boardStr
+  }
+
+  // Check if there are any candidates to encode
+  const hasCandidates = candidates.some(c => c && c.length > 0)
+  if (!hasCandidates) {
+    return 'e' + maskStr + boardStr
+  }
+
+  // Encode candidates with 'c' prefix to indicate candidates are included
+  const candidatesStr = encodeCandidates(candidates)
+  return 'c' + maskStr + boardStr + candidatesStr
+}
+
+/**
+ * Encode candidates compactly
+ * Strategy: 
+ * 1. Bitmask for which cells have candidates (81 bits = 14 chars)
+ * 2. For each cell with candidates, 9 bits for digits 1-9
+ * Pack efficiently into base64
+ */
+function encodeCandidates(candidates: number[][]): string {
+  // Create bitmask for cells that have candidates
+  let hasCandMask = BigInt(0)
+  for (let i = 0; i < 81; i++) {
+    const cands = candidates[i]
+    if (cands && cands.length > 0) {
+      hasCandMask |= BigInt(1) << BigInt(80 - i)
+    }
+  }
+
+  // Encode hasCandMask as 14 base64 chars
+  let maskStr = ''
+  for (let i = 0; i < 14; i++) {
+    const idx = Number((hasCandMask >> BigInt((13 - i) * 6)) & BigInt(0x3F))
+    maskStr += ALPHABET[idx]
+  }
+
+  // Collect all candidate bits for cells that have candidates
+  // Each cell's candidates are 9 bits (bit 0 = digit 1, bit 8 = digit 9)
+  const candBits: number[] = []
+  for (let i = 0; i < 81; i++) {
+    const cands = candidates[i]
+    if (cands && cands.length > 0) {
+      let bits = 0
+      for (const d of cands) {
+        if (d >= 1 && d <= 9) {
+          bits |= (1 << (d - 1))
+        }
+      }
+      candBits.push(bits)
+    }
+  }
+
+  // Pack 9-bit values into bytes
+  // We'll use a simple approach: pack bits sequentially and convert to base64
+  let allBits = BigInt(0)
+  let bitCount = 0
+  for (const bits of candBits) {
+    allBits = (allBits << BigInt(9)) | BigInt(bits)
+    bitCount += 9
+  }
+
+  // Pad to byte boundary (add zeros on the right/LSB side)
+  const paddingBits = (8 - (bitCount % 8)) % 8
+  allBits = allBits << BigInt(paddingBits)
+  const totalBits = bitCount + paddingBits
+
+  // Convert to bytes (MSB first)
+  const byteCount = totalBits / 8
+  const candBytes: number[] = []
+  for (let i = byteCount - 1; i >= 0; i--) {
+    candBytes.push(Number((allBits >> BigInt(i * 8)) & BigInt(0xFF)))
+  }
+
+  // Convert to base64url
+  if (candBytes.length === 0) {
+    return maskStr
+  }
+  const candUint8 = new Uint8Array(candBytes)
+  const candBinary = String.fromCharCode(...candUint8)
+  const candBase64 = btoa(candBinary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+
+  return maskStr + candBase64
 }
 
 /**
@@ -280,14 +365,16 @@ export function encodePuzzleWithState(board: number[], givens: number[]): string
  * Returns both the complete board and the givens mask
  * Allows restoring puzzle at any point in solving progress
  */
-export function decodePuzzleWithState(encoded: string): { board: number[]; givens: number[] } | null {
-  if (!encoded.startsWith('e')) {
+export function decodePuzzleWithState(encoded: string): { board: number[]; givens: number[]; candidates?: number[][] } | null {
+  // Handle 'c' prefix (with candidates) or 'e' prefix (board only)
+  if (!encoded.startsWith('e') && !encoded.startsWith('c')) {
     return null
   }
 
+  const hasCandidates = encoded.startsWith('c')
   const data = encoded.slice(1)
 
-  // Need at least 14 chars for mask + some board data
+  // Need at least 14 chars for givens mask + ~28 chars for board data
   if (data.length < 14 + 20) {
     return null
   }
@@ -303,8 +390,13 @@ export function decodePuzzleWithState(encoded: string): { board: number[]; given
     mask = (mask << BigInt(6)) | BigInt(idx)
   }
 
-  // Decode board state (remaining chars - dense format)
-  const boardStr = data.slice(14)
+  // Board data is 41 bytes = 55 base64 chars (approximately, without padding)
+  // Dense encoding: 81 cells at 4 bits each = 324 bits = 40.5 bytes = 41 bytes
+  const boardEndIdx = 14 + 55 // After mask (14) + board (~55 chars)
+  
+  // Find where the board ends by trying to decode it
+  // The board is exactly 41 bytes = 328 bits, which encodes to ceil(41*8/6) = 55 base64 chars
+  const boardStr = data.slice(14, boardEndIdx)
   const board = decodeDense(boardStr)
   if (board.length !== 81) return null
 
@@ -317,7 +409,118 @@ export function decodePuzzleWithState(encoded: string): { board: number[]; given
     }
   }
 
-  return { board, givens }
+  // If no candidates, return just board and givens
+  if (!hasCandidates) {
+    return { board, givens }
+  }
+
+  // Decode candidates
+  const candidatesData = data.slice(boardEndIdx)
+  const candidates = decodeCandidates(candidatesData)
+  
+  return { board, givens, candidates }
+}
+
+/**
+ * Decode candidates from encoded string
+ */
+function decodeCandidates(data: string): number[][] {
+  const candidates: number[][] = Array(81).fill(null).map(() => [])
+  
+  if (data.length < 14) {
+    return candidates
+  }
+
+  // First 14 chars are the bitmask for which cells have candidates
+  const maskStr = data.slice(0, 14)
+  let mask = BigInt(0)
+  for (let i = 0; i < 14; i++) {
+    const char = maskStr[i]
+    if (!char) return candidates
+    const idx = ALPHABET.indexOf(char)
+    if (idx === -1) return candidates
+    mask = (mask << BigInt(6)) | BigInt(idx)
+  }
+
+  // Count how many cells have candidates
+  let cellsWithCands = 0
+  for (let i = 0; i < 81; i++) {
+    const bit = (mask >> BigInt(80 - i)) & BigInt(1)
+    if (bit === BigInt(1)) {
+      cellsWithCands++
+    }
+  }
+
+  if (cellsWithCands === 0) {
+    return candidates
+  }
+
+  // Decode the candidate bits from base64
+  const candBase64 = data.slice(14)
+  if (candBase64.length === 0) {
+    return candidates
+  }
+
+  // Convert from base64url to standard base64
+  let base64 = candBase64.replace(/-/g, '+').replace(/_/g, '/')
+  while (base64.length % 4) {
+    base64 += '='
+  }
+
+  let binary: string
+  try {
+    binary = atob(base64)
+  } catch {
+    return candidates
+  }
+
+  // Convert to bytes
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+
+  // Reconstruct all bits
+  let allBits = BigInt(0)
+  for (let i = 0; i < bytes.length; i++) {
+    allBits = (allBits << BigInt(8)) | BigInt(bytes[i] ?? 0)
+  }
+
+  // Extract 9-bit values for each cell with candidates
+  // Encoding packs MSB-first with padding on the right (LSB side)
+  // So we extract from MSB to LSB
+  const candBits: number[] = []
+  const dataBits = cellsWithCands * 9
+  const totalBitsInBytes = bytes.length * 8
+  const paddingBits = totalBitsInBytes - dataBits
+  
+  // Extract 9-bit values from MSB (left side), skipping right-side padding
+  for (let i = 0; i < cellsWithCands; i++) {
+    // Shift amount: how many bits from the RIGHT to this 9-bit chunk
+    // First chunk starts at (totalBitsInBytes - 9), second at (totalBitsInBytes - 18), etc.
+    // But we also need to account for padding which is at the RIGHT
+    const shiftAmount = paddingBits + (cellsWithCands - 1 - i) * 9
+    candBits.push(Number((allBits >> BigInt(shiftAmount)) & BigInt(0x1FF)))
+  }
+
+  // Apply candidates to cells
+  let candIdx = 0
+  for (let i = 0; i < 81; i++) {
+    const bit = (mask >> BigInt(80 - i)) & BigInt(1)
+    if (bit === BigInt(1) && candIdx < candBits.length) {
+      const bits = candBits[candIdx]
+      const cellCands: number[] = []
+      for (let d = 1; d <= 9; d++) {
+        if (bits !== undefined && (bits & (1 << (d - 1))) !== 0) {
+          cellCands.push(d)
+        }
+      }
+      candidates[i] = cellCands
+      candIdx++
+    }
+  }
+
+  return candidates
 }
 
 function decodeDense(encoded: string): number[] {

@@ -117,3 +117,25 @@ export function clearInProgressGame(seed: string): void {
     console.warn('Failed to clear in-progress game:', e)
   }
 }
+
+/**
+ * Clear all in-progress games for a specific mode, except the one being saved
+ * This ensures only ONE game per mode is saved at a time
+ * @param currentSeed The seed of the game currently being saved (will not be cleared)
+ */
+export function clearOtherGamesForMode(currentSeed: string): void {
+  const isDaily = currentSeed.startsWith('daily-')
+  const games = getInProgressGames()
+  
+  for (const game of games) {
+    // Skip the current game being saved
+    if (game.seed === currentSeed) continue
+    
+    // Check if this game is in the same mode
+    const gameIsDaily = game.seed.startsWith('daily-')
+    if (isDaily === gameIsDaily) {
+      // Same mode, different seed — clear it
+      clearInProgressGame(game.seed)
+    }
+  }
+}

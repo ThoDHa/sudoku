@@ -58,7 +58,6 @@ interface AutoSolveControlsProps {
   autoSolveSpeed: AutoSolveSpeed
   onTogglePause: () => void
   onStopAutoSolve: () => void
-  onRestartAutoSolve: () => void
   onSpeedChange: (speed: AutoSolveSpeed) => void
   variant: 'desktop' | 'mobile'
 }
@@ -69,7 +68,6 @@ function AutoSolveControls({
   autoSolveSpeed,
   onTogglePause,
   onStopAutoSolve,
-  onRestartAutoSolve,
   onSpeedChange,
   variant,
 }: AutoSolveControlsProps) {
@@ -124,16 +122,6 @@ function AutoSolveControls({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
           <span>Stop</span>
-        </button>
-        <button
-          onClick={onRestartAutoSolve}
-          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm bg-btn-bg text-foreground hover:bg-btn-hover border border-board-border-light transition-colors"
-          title="Restart solver from current board"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          <span className="hidden sm:inline">Restart</span>
         </button>
       </div>
     )
@@ -190,16 +178,6 @@ function AutoSolveControls({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
         Stop
-      </button>
-      <button
-        onClick={onRestartAutoSolve}
-        className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium bg-btn-bg text-foreground hover:bg-btn-hover border border-board-border-light transition-colors"
-        title="Restart solver from current board"
-      >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        Restart
       </button>
     </div>
   )
@@ -304,7 +282,6 @@ interface GameHeaderProps {
   autoSolveSpeed: AutoSolveSpeed
   onTogglePause: () => void
   onStopAutoSolve: () => void
-  onRestartAutoSolve: () => void
   onSetAutoSolveSpeed: (speed: AutoSolveSpeed) => void
   // Actions
   onTechniqueHint: () => void
@@ -353,7 +330,6 @@ export default function GameHeader({
   autoSolveSpeed,
   onTogglePause,
   onStopAutoSolve,
-  onRestartAutoSolve,
   onSetAutoSolveSpeed,
   onTechniqueHint,
   techniqueHintDisabled,
@@ -439,7 +415,6 @@ export default function GameHeader({
               autoSolveSpeed={autoSolveSpeed}
               onTogglePause={onTogglePause}
               onStopAutoSolve={onStopAutoSolve}
-              onRestartAutoSolve={onRestartAutoSolve}
               onSpeedChange={handleSpeedChange}
               variant="desktop"
             />
@@ -517,7 +492,6 @@ export default function GameHeader({
             autoSolveSpeed={autoSolveSpeed}
             onTogglePause={onTogglePause}
             onStopAutoSolve={onStopAutoSolve}
-            onRestartAutoSolve={onRestartAutoSolve}
             onSpeedChange={handleSpeedChange}
             variant="mobile"
           />

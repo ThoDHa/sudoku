@@ -119,6 +119,41 @@ describe('puzzleEncoding', () => {
       expect(encoded.length).toBeGreaterThan(14)
     })
 
+    it('should encode board with candidates using c prefix', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(81).fill(0)
+      board[0] = 5
+      givens[0] = 5
+      const candidates: number[][] = Array(81).fill(null).map(() => [])
+      candidates[1] = [1, 2, 3]
+      candidates[10] = [4, 5]
+
+      const encoded = encodePuzzleWithState(board, givens, candidates)
+      expect(encoded.startsWith('c')).toBe(true)
+      expect(encoded.length).toBeGreaterThan(14)
+    })
+
+    it('should use e prefix when no candidates provided', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(81).fill(0)
+      board[0] = 5
+      givens[0] = 5
+
+      const encoded = encodePuzzleWithState(board, givens)
+      expect(encoded.startsWith('e')).toBe(true)
+    })
+
+    it('should use e prefix when candidates are all empty', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(81).fill(0)
+      board[0] = 5
+      givens[0] = 5
+      const candidates: number[][] = Array(81).fill(null).map(() => [])
+
+      const encoded = encodePuzzleWithState(board, givens, candidates)
+      expect(encoded.startsWith('e')).toBe(true)
+    })
+
     it('should produce URLs within browser limits', () => {
       const board = Array(81).fill(0)
       const givens = Array(81).fill(0)
@@ -130,6 +165,23 @@ describe('puzzleEncoding', () => {
       const encoded = encodePuzzleWithState(board, givens)
       // Browser URL limits are typically 2000-8000 characters
       expect(encoded.length).toBeLessThan(100)
+    })
+
+    it('should produce compact encoding even with many candidates', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(81).fill(0)
+      givens[0] = 5
+      board[0] = 5
+      // Add candidates to every empty cell
+      const candidates: number[][] = Array(81).fill(null).map((_, i) => {
+        if (givens[i] !== 0) return []
+        return [1, 2, 3, 4, 5, 6, 7, 8, 9] // All possible candidates
+      })
+
+      const encoded = encodePuzzleWithState(board, givens, candidates)
+      // Even with all candidates, should be reasonable length
+      // 81 cells * 9 bits / 6 bits per char + overhead = ~170 chars max
+      expect(encoded.length).toBeLessThan(250)
     })
   })
 
@@ -158,6 +210,43 @@ describe('puzzleEncoding', () => {
       expect(decoded?.board).toEqual(board)
       expect(decoded?.givens).toEqual(givens)
     })
+
+    it('should decode candidates correctly', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(81).fill(0)
+      board[0] = 5
+      givens[0] = 5
+      // Note: don't set board[1] or board[10] since those cells have candidates (empty cells)
+      const candidates: number[][] = Array(81).fill(null).map(() => [])
+      candidates[1] = [1, 2, 3]
+      candidates[10] = [4, 5]
+
+      const encoded = encodePuzzleWithState(board, givens, candidates)
+      const decoded = decodePuzzleWithState(encoded)
+
+      expect(decoded).not.toBe(null)
+      expect(decoded?.board).toEqual(board)
+      expect(decoded?.givens).toEqual(givens)
+      expect(decoded?.candidates).toBeDefined()
+      expect(decoded?.candidates?.[1]).toEqual([1, 2, 3])
+      expect(decoded?.candidates?.[10]).toEqual([4, 5])
+    })
+
+    it('should handle encoding without candidates', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(81).fill(0)
+      board[0] = 5
+      givens[0] = 5
+
+      const encoded = encodePuzzleWithState(board, givens)
+      const decoded = decodePuzzleWithState(encoded)
+
+      expect(decoded).not.toBe(null)
+      expect(decoded?.board).toEqual(board)
+      expect(decoded?.givens).toEqual(givens)
+      // candidates should be undefined when not encoded
+      expect(decoded?.candidates).toBeUndefined()
+    })
   })
 
   describe('enhanced encoding round-trip', () => {
@@ -173,10 +262,11 @@ describe('puzzleEncoding', () => {
         2, 8, 7, 4, 1, 9, 6, 3, 5,
         3, 4, 5, 2, 8, 6, 1, 7, 9
       ]
+      // Givens must match the board values at those positions!
       const givens = Array(81).fill(0)
-      givens[0] = 5
-      givens[10] = 3
-      givens[20] = 7
+      givens[0] = 5  // board[0] = 5 ✓
+      givens[10] = 7 // board[10] = 7 ✓
+      givens[20] = 8 // board[20] = 8 ✓
 
       const encoded = encodePuzzleWithState(board, givens)
       const decoded = decodePuzzleWithState(encoded)
@@ -189,7 +279,10 @@ describe('puzzleEncoding', () => {
     it('should handle empty board with givens', () => {
       const board = Array(81).fill(0)
       const givens = Array(81).fill(0)
+      // Set givens AND matching board values
+      board[0] = 5
       givens[0] = 5
+      board[10] = 3
       givens[10] = 3
 
       const encoded = encodePuzzleWithState(board, givens)
@@ -198,6 +291,51 @@ describe('puzzleEncoding', () => {
       expect(decoded).not.toBe(null)
       expect(decoded?.board).toEqual(board)
       expect(decoded?.givens).toEqual(givens)
+    })
+
+    it('should preserve candidates through encode/decode cycle', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(81).fill(0)
+      board[0] = 5
+      givens[0] = 5
+      
+      const candidates: number[][] = Array(81).fill(null).map(() => [])
+      candidates[1] = [1, 2, 3]
+      candidates[2] = [7, 8, 9]
+      candidates[10] = [4, 5]
+      candidates[40] = [1, 5, 9]
+
+      const encoded = encodePuzzleWithState(board, givens, candidates)
+      const decoded = decodePuzzleWithState(encoded)
+
+      expect(decoded).not.toBe(null)
+      expect(decoded?.board).toEqual(board)
+      expect(decoded?.givens).toEqual(givens)
+      expect(decoded?.candidates?.[1]).toEqual([1, 2, 3])
+      expect(decoded?.candidates?.[2]).toEqual([7, 8, 9])
+      expect(decoded?.candidates?.[10]).toEqual([4, 5])
+      expect(decoded?.candidates?.[40]).toEqual([1, 5, 9])
+    })
+
+    it('should handle all candidates in every cell', () => {
+      const board = Array(81).fill(0)
+      const givens = Array(81).fill(0)
+      board[0] = 5
+      givens[0] = 5
+      
+      const candidates: number[][] = Array(81).fill(null).map((_, i) => {
+        if (i === 0) return [] // Given cell has no candidates
+        return [1, 2, 3, 4, 5, 6, 7, 8, 9]
+      })
+
+      const encoded = encodePuzzleWithState(board, givens, candidates)
+      const decoded = decodePuzzleWithState(encoded)
+
+      expect(decoded).not.toBe(null)
+      expect(decoded?.candidates).toBeDefined()
+      for (let i = 1; i < 81; i++) {
+        expect(decoded?.candidates?.[i]).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
+      }
     })
   })
 

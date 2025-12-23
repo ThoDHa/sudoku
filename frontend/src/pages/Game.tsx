@@ -30,8 +30,8 @@ import {
   EXTENDED_PAUSE_DELAY,
   STORAGE_KEYS,
 } from '../lib/constants'
-import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer, getStepByStepMode } from '../lib/preferences'
-import { getAutoSaveEnabled, getMostRecentGame, clearInProgressGame, type SavedGameInfo } from '../lib/gameSettings'
+import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
+import { getAutoSaveEnabled, getMostRecentGame, clearInProgressGame, clearOtherGamesForMode, type SavedGameInfo } from '../lib/gameSettings'
 import { validateBoard, validateCustomPuzzle, solveAll, getPuzzle, cleanupSolver } from '../lib/solver-service'
 import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
@@ -156,6 +156,8 @@ export default function Game() {
 
   // Track whether we've restored saved state (to prevent overwriting on initial load)
   const hasRestoredSavedState = useRef(false)
+  // Track whether we loaded from a shared URL (to prevent resetGame from wiping shared state)
+  const loadedFromSharedUrl = useRef(false)
   // Track isComplete at execution time (to prevent race condition with debounced saves)
   const isCompleteRef = useRef(false)
   // Guard to prevent concurrent hint requests (ref is more reliable than state for this)
@@ -419,6 +421,9 @@ export default function Game() {
     // Use ref to check isComplete at execution time (not closure time)
     // This prevents race condition where debounced save fires after completion
     if (!puzzle || isCompleteRef.current || !hasRestoredSavedState.current) return
+    
+    // Clear other games in the same mode (daily or practice) to ensure only ONE save per mode
+    clearOtherGamesForMode(puzzle.seed)
     
     const storageKey = getStorageKey(puzzle.seed)
     const savedState: SavedGameState = {
@@ -1024,14 +1029,9 @@ export default function Game() {
     clearAllAndDeselect()
     setAutoSolveUsed(true)
     autoSolveUsedRef.current = true
-    // Use restartAutoSolve to respect step-by-step preference
-    await autoSolve.restartAutoSolve(getStepByStepMode())
-  }, [autoSolve, clearAllAndDeselect])
-
-  // Auto-solve restart handler
-  const handleRestartAutoSolve = useCallback(async () => {
-    clearAllAndDeselect()
-    await autoSolve.restartAutoSolve(getStepByStepMode())
+    // Start paused if speed is 'step'
+    const startPaused = getAutoSolveSpeed() === 'step'
+    await autoSolve.restartAutoSolve(startPaused)
   }, [autoSolve, clearAllAndDeselect])
 
   // Bug report handler - opens GitHub issue with state
@@ -1153,8 +1153,10 @@ ${bugReportJson}
   // Share puzzle handler - copies URL with current progress to clipboard
   const handleShare = useCallback(async () => {
     try {
-      // Encode full board state with givens marker
-      const encoded = encodePuzzleWithState(game.board, initialBoard)
+      // Convert candidates from Uint16Array to number[][] for encoding
+      const candidatesArray = candidatesToArrays(game.candidates)
+      // Encode full board state with givens marker and candidates
+      const encoded = encodePuzzleWithState(game.board, initialBoard, candidatesArray)
       const url = `${window.location.origin}/c/${encoded}`
 
       // Copy to clipboard
@@ -1171,7 +1173,7 @@ ${bugReportJson}
       setValidationMessage({ type: 'error', message: 'Failed to create share link' })
       visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
     }
-  }, [game.board, initialBoard, visibilityAwareTimeout])
+  }, [game.board, game.candidates, initialBoard, visibilityAwareTimeout])
 
   // ============================================================
   // EFFECTS
@@ -1344,10 +1346,11 @@ ${bugReportJson}
         let puzzleSolution: number[]
         let puzzleData: PuzzleData
         let initialState: number[] | null = null
+        let initialCandidates: number[][] | null = null
 
         if (isEncodedCustom && encoded) {
-          // Check if this is a full-state sharing link (starts with 'e')
-          if (encoded.startsWith('e')) {
+          // Check if this is a full-state sharing link (starts with 'e' or 'c')
+          if (encoded.startsWith('e') || encoded.startsWith('c')) {
             const decoded = decodePuzzleWithState(encoded)
             if (!decoded) {
               throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
@@ -1355,8 +1358,12 @@ ${bugReportJson}
             
             // decoded.board is the full state (including user entries)
             // decoded.givens are the original givens (editable cells will have 0)
+            // decoded.candidates (optional) are the notes/candidates
             givens = decoded.givens
             initialState = decoded.board
+            if (decoded.candidates) {
+              initialCandidates = decoded.candidates
+            }
             
             // Validate the puzzle
             const validation = await validateCustomPuzzle(givens, '')
@@ -1498,7 +1505,9 @@ ${bugReportJson}
 
         // Restore shared state if available
         if (initialState) {
-          const uint16Candidates = arraysToCandidates(Array(81).fill(null).map(() => []))
+          loadedFromSharedUrl.current = true
+          const candidatesArray = initialCandidates || Array(81).fill(null).map(() => [])
+          const uint16Candidates = arraysToCandidates(candidatesArray)
           game.restoreState(initialState, uint16Candidates, [])
         }
       } catch (err) {
@@ -1514,6 +1523,13 @@ ${bugReportJson}
   // Reset game state when initialBoard changes (new puzzle loaded) and restore saved state if available
   useEffect(() => {
     if (initialBoard.length === 81 && puzzle) {
+      // Skip if we already loaded from a shared URL (state is already restored)
+      if (loadedFromSharedUrl.current) {
+        loadedFromSharedUrl.current = false
+        hasRestoredSavedState.current = true
+        return
+      }
+      
       // Check for saved state for this puzzle
       const savedState = loadSavedGameState(puzzle.seed)
       
@@ -1647,7 +1663,6 @@ ${bugReportJson}
         autoSolveSpeed={autoSolveSpeedState}
         onTogglePause={autoSolve.togglePause}
         onStopAutoSolve={autoSolve.stopAutoSolve}
-        onRestartAutoSolve={handleRestartAutoSolve}
         onSetAutoSolveSpeed={setAutoSolveSpeedState}
         onTechniqueHint={handleTechniqueHint}
         techniqueHintDisabled={techniqueHintPending}

@@ -133,6 +133,7 @@ import type { AutoSolveSpeed } from './preferences'
 
 // Auto-solve speed options with SVG icon paths
 export const SPEED_OPTIONS: { speed: AutoSolveSpeed; iconPaths: string[]; hasRect?: boolean; label: string }[] = [
+  { speed: 'step', iconPaths: ['M6 4h4v16H6zM14 4h4v16h-4z'], label: 'Step' },
   { speed: 'slow', iconPaths: ['M8 5v14l11-7z'], label: '1x' },
   { speed: 'normal', iconPaths: ['M4 5v14l8-7z', 'M12 5v14l8-7z'], label: '2x' },
   { speed: 'fast', iconPaths: ['M2 5v14l6-7z', 'M9 5v14l6-7z', 'M16 5v14l6-7z'], label: '3x' },

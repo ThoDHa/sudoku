@@ -4,10 +4,12 @@ const PREFERENCES_KEY = 'sudoku_preferences'
 const HOMEPAGE_MODE_CHANGE_EVENT = 'homepageModeChange'
 
 export type HomepageMode = 'daily' | 'game'
-export type AutoSolveSpeed = 'slow' | 'normal' | 'fast' | 'instant'
+export type AutoSolveSpeed = 'step' | 'slow' | 'normal' | 'fast' | 'instant'
 
 // Auto-solve speed delays in milliseconds
+// 'step' uses slow speed but starts paused
 export const AUTO_SOLVE_SPEEDS: Record<AutoSolveSpeed, number> = {
+  step: 500,    // Same as slow, but starts paused
   slow: 500,
   normal: 150,
   fast: 25,
@@ -15,6 +17,7 @@ export const AUTO_SOLVE_SPEEDS: Record<AutoSolveSpeed, number> = {
 }
 
 export const AUTO_SOLVE_SPEED_LABELS: Record<AutoSolveSpeed, string> = {
+  step: 'Step',
   slow: 'Slow',
   normal: 'Normal',
   fast: 'Fast',
@@ -28,15 +31,12 @@ export interface UserPreferences {
   autoSolveSpeed: AutoSolveSpeed
   // Whether to hide the timer during gameplay
   hideTimer: boolean
-  // Whether to start auto-solve in paused (step-by-step) mode
-  stepByStepMode: boolean
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   homepageMode: 'daily',
   autoSolveSpeed: 'fast',
   hideTimer: false,
-  stepByStepMode: false,
 }
 
 export function getPreferences(): UserPreferences {
@@ -92,12 +92,4 @@ export function getHideTimer(): boolean {
 
 export function setHideTimer(hide: boolean): void {
   setPreferences({ hideTimer: hide })
-}
-
-export function getStepByStepMode(): boolean {
-  return getPreferences().stepByStepMode
-}
-
-export function setStepByStepMode(enabled: boolean): void {
-  setPreferences({ stepByStepMode: enabled })
 }

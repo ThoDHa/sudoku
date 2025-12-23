@@ -127,6 +127,9 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const playNextMoveRef = useRef<(() => Promise<void>) | null>(null)
   const stepDelayRef = useRef(stepDelay)
   
+  // Snapshot of board state when manually paused - used to detect board changes
+  const pausedBoardSnapshotRef = useRef<number[] | null>(null)
+  
   // Track active timers for cleanup - prevents battery drain from orphaned timers
   const activeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeIdleCallbackRef = useRef<number | null>(null)
@@ -170,23 +173,6 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     }, delay)
   }, [clearActiveTimers])
 
-  // Sync gamePaused prop and background manager with our internal pause state
-  useEffect(() => {
-    const shouldPause = gamePaused || manualPaused || backgroundManager.shouldPauseOperations
-    if (shouldPause) {
-      pausedRef.current = true
-      setIsPaused(true)
-    } else {
-      const wasPaused = pausedRef.current
-      pausedRef.current = false
-      setIsPaused(false)
-      // Resume playback if we were auto-solving and just unpaused
-      if (wasPaused && autoSolveRef.current && playNextMoveRef.current) {
-        playNextMoveRef.current()
-      }
-    }
-  }, [gamePaused, manualPaused, backgroundManager.shouldPauseOperations])
-
   const stopAutoSolve = useCallback(() => {
     // Clear all active timers first to prevent battery drain
     clearActiveTimers()
@@ -198,6 +184,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     autoSolveRef.current = false
     pausedRef.current = false
     manualPausedRef.current = false
+    pausedBoardSnapshotRef.current = null
     movesQueueRef.current = []
     allMovesRef.current = []
     stateHistoryRef.current = []
@@ -218,13 +205,49 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     }
   }, [clearActiveTimers])
 
+  // Sync gamePaused prop and background manager with our internal pause state
+  useEffect(() => {
+    const shouldPause = gamePaused || manualPaused || backgroundManager.shouldPauseOperations
+    if (shouldPause) {
+      pausedRef.current = true
+      setIsPaused(true)
+    } else {
+      const wasPaused = pausedRef.current
+      pausedRef.current = false
+      setIsPaused(false)
+      // Resume playback if we were auto-solving and just unpaused
+      if (wasPaused && autoSolveRef.current && playNextMoveRef.current) {
+        // Check if board changed while paused (user made edits)
+        if (pausedBoardSnapshotRef.current !== null) {
+          const currentBoard = getBoard()
+          const boardChanged = pausedBoardSnapshotRef.current.some(
+            (val, idx) => val !== currentBoard[idx]
+          )
+          if (boardChanged) {
+            // Board was modified - stop auto-solve instead of resuming
+            stopAutoSolve()
+            pausedBoardSnapshotRef.current = null
+            return
+          }
+        }
+        pausedBoardSnapshotRef.current = null
+        playNextMoveRef.current()
+      }
+    }
+  }, [gamePaused, manualPaused, backgroundManager.shouldPauseOperations, getBoard, stopAutoSolve])
+
   const togglePause = useCallback(() => {
     if (!isAutoSolving) return
     setManualPaused(prev => {
-      manualPausedRef.current = !prev
-      return !prev
+      const newPaused = !prev
+      manualPausedRef.current = newPaused
+      // Snapshot board state when pausing so we can detect changes on resume
+      if (newPaused) {
+        pausedBoardSnapshotRef.current = [...getBoard()]
+      }
+      return newPaused
     })
-  }, [isAutoSolving])
+  }, [isAutoSolving, getBoard])
 
   const restartAutoSolve = useCallback(async (startPaused: boolean = false) => {
     const currentBoard = getBoard()
