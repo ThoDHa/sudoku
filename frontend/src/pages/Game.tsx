@@ -699,13 +699,10 @@ export default function Game() {
     setMoveHighlight(move as MoveHighlight, game.history.length)
 
     if (showNotification) {
-      const firstTarget = move.targets?.[0]
-      const techniqueName = move.technique === 'fill-candidate' && firstTarget
-        ? `Added ${move.digit} to R${firstTarget.row + 1}C${firstTarget.col + 1}`
-        : (move.technique || 'Hint')
+      // Show the same format as autosolve: "Technique: what was done"
       setValidationMessage({ 
         type: 'success', 
-        message: techniqueName
+        message: move.explanation || move.technique || 'Hint'
       })
       visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
     }
