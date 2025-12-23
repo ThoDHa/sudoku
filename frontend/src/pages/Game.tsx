@@ -1302,8 +1302,10 @@ ${bugReportJson}
   useEffect(() => {
     if (!autoSolve.isAutoSolving && autoSolve.lastCompletedSteps > 0) {
       setAutoSolveStepsUsed(prev => prev + autoSolve.lastCompletedSteps)
-      // Count fix-error moves in history (these are errors that were fixed during autosolve)
-      const errorsFixed = game.history.filter(move => move.action === 'fix-error').length
+      // Count fix-error and fix-conflict moves in history (errors fixed during autosolve)
+      const errorsFixed = game.history.filter(move => 
+        move.action === 'fix-error' || move.action === 'fix-conflict'
+      ).length
       setAutoSolveErrorsFixed(errorsFixed)
     }
   }, [autoSolve.isAutoSolving, autoSolve.lastCompletedSteps, game.history])

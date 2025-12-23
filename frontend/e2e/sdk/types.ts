@@ -123,8 +123,11 @@ export interface Move {
    * - 'eliminate': Remove candidates
    * - 'contradiction': Detected impossible state (user made wrong move)
    * - 'clear-candidates': Too many contradictions, clearing candidates to retry
+   * - 'fix-conflict': Direct conflict detected (same digit in row/col/box)
+   * - 'fix-error': Blocking cell detected (user entry blocks all candidates in another cell)
+   * - 'unpinpointable-error': Complex error that can't be traced to a single cell
    */
-  action: 'assign' | 'candidate' | 'eliminate' | 'contradiction' | 'clear-candidates';
+  action: 'assign' | 'candidate' | 'eliminate' | 'contradiction' | 'clear-candidates' | 'fix-conflict' | 'fix-error' | 'unpinpointable-error';
   digit: number;
   targets: CellRef[];
   eliminations?: CandidateRef[];

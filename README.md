@@ -2,15 +2,16 @@
 
 An advanced educational Sudoku web application that teaches solving techniques through human-like hints and intelligent assistance features.
 
-**[Play Now](https://thodha.github.io/sudoku/)** - Lightning-fast PWA (~170KB), fully offline-capable
+**[Play Now](https://thodha.github.io/sudoku/)**
 
 ## 🎯 What Makes This Different
 
-This isn't just another Sudoku app - it's a comprehensive learning platform that:
+This isn't just another Sudoku app. It's a comprehensive learning platform that:
 
-- **Teaches Real Techniques**: Learn 30+ solving methods from basic Singles to advanced Forcing Chains
+- **Teaches Real Techniques**: Learn 39+ solving methods from basic Singles to advanced Forcing Chains
 - **Thinks Like You Do**: Human-like solver explains each step with detailed reasoning
-- **Works Everywhere**: PWA with aggressive offline caching - play anywhere, anytime
+- **Fixes Your Mistakes**: Intelligent error detection and correction with clear explanations
+- **Works Everywhere**: Fully offline-capable PWA with aggressive caching
 - **Optimized Performance**: Code-split architecture with battery-efficient background handling
 - **Educational Focus**: Practice specific techniques with curated puzzle sets
 
@@ -26,6 +27,7 @@ This isn't just another Sudoku app - it's a comprehensive learning platform that
 - **Educational Hints (💡)**: Step-by-step guidance with technique explanations
 - **Auto-Solve (🤖)**: Watch the solver work through puzzles with battery optimization
 - **Auto-fill Candidates (📝)**: Smart candidate placement with visual feedback
+- **Error Correction (🔧)**: Intelligent detection and fixing of user mistakes
 - **Validation**: Real-time error detection and board state checking
 
 ### 🎨 **User Experience**
@@ -46,16 +48,16 @@ This isn't just another Sudoku app - it's a comprehensive learning platform that
 
 ### Basic Controls
 - **Place Numbers**: Click cell + click digit, or select cell + press 1-9
-- **Notes Mode**: Toggle with 'N' key or notes button - add/remove candidate digits
+- **Notes Mode**: Toggle with 'N' key or notes button to add/remove candidate digits
 - **Erase**: Select erase mode or press Delete/Backspace on selected cell
 - **Navigation**: Arrow keys, Tab, or click to move between cells
 - **Undo/Redo**: Ctrl+Z/Ctrl+Y or use toolbar buttons
 
 ### Getting Assistance
 - **Hints (💡)**: Click hint button for step-by-step guidance with technique explanations
-- **Auto-fill (📝)**: Fill all valid candidates automatically - great starting point
+- **Auto-fill (📝)**: Fill all valid candidates automatically for a great starting point
 - **Auto-solve (🤖)**: Watch the AI solve with educational explanations
-- **Validation**: Check your progress - highlights errors and incomplete regions
+- **Validation**: Check your progress with highlighted errors and incomplete regions
 
 ### Learning Features
 - **Technique Practice**: Focus on specific solving methods with curated puzzles
@@ -65,7 +67,7 @@ This isn't just another Sudoku app - it's a comprehensive learning platform that
 
 ## ⚙️ How It Works
 
-The entire application runs locally in your browser - no server required after initial load!
+The entire application runs locally in your browser with no server required after initial load!
 
 ### 🧱 **Architecture Overview**
 - **WASM Solver**: Go-based constraint solver compiled to WebAssembly (~3.5MB, cached)
@@ -105,11 +107,20 @@ The entire application runs locally in your browser - no server required after i
 ## Recent Improvements
 
 ### ✅ **Latest Updates (December 2024)**
+- **🔧 Intelligent Error Correction**: Three-tier error detection system that finds and fixes mistakes
+  - Direct conflicts (duplicate digits in row/column/box)
+  - Blocking cells (entries that eliminate all candidates from another cell)
+  - Complex errors with guided recovery suggestions
+- **🧪 Comprehensive Test Suite**: 50+ backend tests for conflict detection across all scenarios
+- **📡 E2E API Tests**: Playwright tests verify error correction through the full stack
+- **🔄 WASM Parity**: Synchronized error handling between HTTP API and WASM solver
+- **📚 Enhanced Documentation**: Detailed solver documentation with API response formats
+
+### 🏗️ **Architecture Improvements**
 - **🐛 Highlighting Bug Fix**: Fixed persistent digit highlights after candidate removal operations
-- **🏗️ Architecture Enhancement**: Introduced centralized `useHighlightManager` for consistent UI behavior
-- **🎯 UX Improvement**: Highlights now clear appropriately across all interaction methods (click, keyboard, touch)
-- **📱 Mobile Polish**: Enhanced touch interactions and gesture consistency
-- **🔧 Code Quality**: Semantic highlight management methods for improved maintainability
+- **🏗️ Centralized Highlight Manager**: `useHighlightManager` for consistent UI behavior
+- **🎯 UX Polish**: Highlights clear appropriately across all interaction methods
+- **📱 Mobile Enhancement**: Improved touch interactions and gesture consistency
 
 ### 🚀 **Performance Optimizations (2024)**
 - **Bundle Size Reduction**: Cut initial load from 770KB → 170KB via intelligent code splitting
@@ -117,35 +128,29 @@ The entire application runs locally in your browser - no server required after i
 - **Memory Management**: Smart WASM lifecycle management with proper cleanup
 - **Caching Strategy**: Aggressive service worker caching for instant offline access
 
-### 🎨 **User Experience Enhancements**
-- **Auto-fill Feedback**: Clear messaging for candidate operations ("Auto-filled X cells")
-- **Auto-solve Intelligence**: Battery-aware step timing with visual progress indicators
-- **Accessibility**: Improved keyboard navigation and screen reader support
-- **Visual Polish**: Consistent highlighting behavior across all game interactions
-
 ## 🤖 Assistance Features Explained
 
 The app provides three distinct types of help, each serving different learning goals:
 
-### 💡 **Hints - Learn Step by Step**
+### 💡 **Hints: Learn Step by Step**
 - **Purpose**: Educational guidance that teaches real solving techniques
 - **How it Works**: Analyzes current board state and suggests the next logical move
 - **What You Get**: Detailed explanation of why the move works and what technique applies
-- **Learning Value**: High - builds your solving skills progressively
+- **Learning Value**: High, builds your solving skills progressively
 - **Usage**: Perfect for learning new techniques or when stuck on a specific step
 
-### 🤖 **Auto-Solve - Watch and Learn** 
+### 🤖 **Auto-Solve: Watch and Learn**
 - **Purpose**: Demonstration of complete solving process with educational value
 - **How it Works**: AI solver completes puzzle step-by-step with real-time explanations
 - **What You Get**: Full solution path with technique annotations and timing control
-- **Learning Value**: Medium - great for seeing advanced techniques in action
+- **Learning Value**: Medium, great for seeing advanced techniques in action
 - **Usage**: Study complex puzzles, verify your approach, or just enjoy the show
 
-### 📝 **Auto-fill - Smart Starting Point**
+### 📝 **Auto-fill: Smart Starting Point**
 - **Purpose**: Automatically populate valid candidates to reduce manual work  
 - **How it Works**: Analyzes empty cells and fills all mathematically valid candidate digits
 - **What You Get**: Complete candidate notation without the tedious manual entry
-- **Learning Value**: Low - convenience feature that saves time
+- **Learning Value**: Low, a convenience feature that saves time
 - **Usage**: Start puzzles faster, recover from mistakes, or focus on logic over notation
 
 ### 📈 **Progress Tracking**
@@ -155,11 +160,20 @@ The app separately tracks usage of each assistance type, so you can:
 - Build confidence by gradually reducing assistance dependency
 - Track your learning progress over time
 
+### 🔧 **Error Correction: Fix Your Mistakes**
+Made errors while solving? The solver intelligently detects and fixes them:
+
+- **Direct Conflicts**: Detects when you place the same digit twice in a row, column, or box. Explains exactly which cells conflict.
+- **Blocking Cells**: Finds when your entry eliminates all possibilities for another cell. Traces the logical chain to identify the problem.
+- **Complex Errors**: When errors can't be traced to a single cell, provides guidance based on the number of user entries.
+
+Errors are corrected **one at a time** with clear explanations, so you learn from each mistake.
+
 ## Quick Start
 
 ### GitHub Pages (Live)
 
-Visit **https://thodha.github.io/sudoku/** - Fast loading (~170KB initial), offline-capable PWA
+Visit **https://thodha.github.io/sudoku/**
 
 ### Docker
 
@@ -199,10 +213,17 @@ sudoku/
 │   │   ├── wasm/           # WASM build target
 │   │   └── generate_practice/  # Practice puzzle generator
 │   └── internal/
-│       └── sudoku/human/   # Human-like solver with 30+ techniques
+│       ├── sudoku/
+│       │   ├── dp/         # Dancing Links constraint solver
+│       │   └── human/      # Human-like solver with 39+ techniques
+│       └── transport/http/ # API routes with error correction
 ├── frontend/               # React + Vite + TypeScript + Tailwind
 │   ├── public/
 │   │   └── sudoku.wasm     # Compiled WASM solver (~3.5MB cached)
+│   ├── e2e/                # Playwright E2E tests
+│   │   ├── api/            # API endpoint tests
+│   │   ├── integration/    # UI integration tests
+│   │   └── sdk/            # Type-safe test SDK
 │   └── src/
 │       ├── components/     # UI components (code-split)
 │       ├── hooks/          # React hooks (game-logic chunk)
@@ -211,8 +232,7 @@ sudoku/
 │       │   ├── solver-service.ts  # Solver interface (solver chunk)
 │       │   └── puzzles-data.ts    # Static puzzle data
 │       └── pages/          # Route pages (lazy-loaded)
-├── puzzles.json            # Pre-generated puzzle database
-└── practice_puzzles.json   # Technique -> puzzle mappings
+└── tools/                  # Development utilities
 ```
 
 **Build Output** (optimized chunks):
@@ -227,7 +247,7 @@ sudoku/
 
 ## Solving Techniques
 
-The solver implements techniques across 4 tiers:
+The solver implements 39+ techniques across 4 tiers:
 
 **Simple (Easy puzzles)**
 - Naked Single, Hidden Single
@@ -284,7 +304,7 @@ make test-go
 # Run Frontend tests only (TypeScript check + unit tests + build)
 make test-frontend
 
-# Run E2E tests (Playwright in Docker - use after big changes)
+# Run E2E tests (Playwright in Docker, use after big changes)
 make test-e2e
 ```
 
@@ -299,8 +319,8 @@ cd api && make wasm
 
 ```bash
 cd api && go run ./cmd/generate_practice \
-  -puzzles ../puzzles.json \
-  -o ../practice_puzzles.json \
+  -puzzles ../frontend/puzzles.json \
+  -o ../frontend/practice_puzzles.json \
   -max 5
 ```
 

@@ -36,7 +36,7 @@ export interface Highlights {
 export interface Move {
   step_index: number;
   technique: string;
-  action: string; // "assign" | "eliminate" | "candidate" | "fix-error" | "contradiction"
+  action: string; // "assign" | "eliminate" | "candidate" | "fix-error" | "fix-conflict" | "contradiction" | "unpinpointable-error"
   digit: number;
   targets: CellRef[];
   eliminations?: Candidate[];

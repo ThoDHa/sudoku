@@ -380,26 +380,39 @@ export function HowSolverWorksContent() {
             <h4 className="mb-1 text-sm font-medium text-foreground">🚨 Direct Conflicts</h4>
             <p className="text-xs text-foreground-muted">
               <strong>Detected first.</strong> If you placed a 5 in a row that already has a 5, 
-              that's an immediate conflict. The solver spots these instantly and explains: 
-              "This cell conflicts with the 5 in R3C7."
+              that's an immediate conflict. The solver spots these instantly before any technique 
+              runs. Returns a <code className="rounded bg-background-secondary px-1">fix-conflict</code> action 
+              with an explanation like: "Conflict! R3C5 and R3C7 both have 5 in the same row."
+            </p>
+            <p className="mt-1 text-xs text-foreground-muted">
+              The solver highlights both cells — the one being removed (primary) and the one it 
+              conflicts with (secondary) — so you can see exactly what went wrong.
             </p>
           </div>
           
           <div className="rounded-lg border border-orange-500/30 bg-orange-500/10 p-3">
-            <h4 className="mb-1 text-sm font-medium text-foreground">🚫 Blocking Cells</h4>
+            <h4 className="mb-1 text-sm font-medium text-foreground">🚫 Blocking Cells (Contradictions)</h4>
             <p className="text-xs text-foreground-muted">
               <strong>Detected second.</strong> Your entry might not conflict directly, but it 
-              blocks all possibilities for another cell. The solver traces the logical chain: 
-              "This 7 eliminates all candidates from R4C2."
+              blocks all possibilities for another cell. When the solver finds an empty cell with 
+              zero valid candidates, it traces back to find which user entry caused it.
+            </p>
+            <p className="mt-1 text-xs text-foreground-muted">
+              Returns a <code className="rounded bg-background-secondary px-1">fix-error</code> action 
+              explaining: "R4C2 has no valid candidates. The 7 at R4C8 was causing the problem."
             </p>
           </div>
           
           <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3">
-            <h4 className="mb-1 text-sm font-medium text-foreground">🔍 Technique Violations</h4>
+            <h4 className="mb-1 text-sm font-medium text-foreground">🔍 Complex Errors</h4>
             <p className="text-xs text-foreground-muted">
-              <strong>Detected last.</strong> Some errors only reveal themselves through advanced 
-              logic. The solver uses the same techniques it uses for solving to detect these, 
-              providing technique-level explanations.
+              <strong>Fallback detection.</strong> Some errors can't be traced to a single cell — 
+              for example, when multiple wrong entries combine to create an unsolvable state. 
+              In these cases, the solver suggests undoing recent moves or starting fresh.
+            </p>
+            <p className="mt-1 text-xs text-foreground-muted">
+              Returns an <code className="rounded bg-background-secondary px-1">unpinpointable-error</code> with 
+              guidance based on how many user entries exist on the board.
             </p>
           </div>
         </div>

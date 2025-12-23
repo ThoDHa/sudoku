@@ -409,3 +409,230 @@ test.describe('Error Handling', () => {
     expect(response.status).toBe(400);
   });
 });
+
+// ============================================
+// Conflict Detection Tests
+// ============================================
+
+test.describe('POST /solve/next - Direct Conflict Detection', () => {
+  test('detects row conflict and returns fix-conflict action', async () => {
+    const puzzleResult = await sdk.getPuzzle(TEST_SEED, 'medium');
+    expect(puzzleResult.ok).toBe(true);
+    const puzzle = puzzleResult.data!;
+
+    const token = await getSessionToken(TEST_SEED, 'medium');
+
+    // Create a board with a row conflict by adding same digit twice in a row
+    const board = [...puzzle.givens];
+    // Find two empty cells in the same row
+    const row = 0;
+    const emptyCells: number[] = [];
+    for (let col = 0; col < 9 && emptyCells.length < 2; col++) {
+      const idx = row * 9 + col;
+      if (board[idx] === 0) {
+        emptyCells.push(idx);
+      }
+    }
+    
+    // If we found 2 empty cells, create a conflict
+    if (emptyCells.length >= 2) {
+      board[emptyCells[0]] = 7;
+      board[emptyCells[1]] = 7; // Same digit = conflict!
+
+      const solveResult = await sdk.solveNext({ token, board });
+
+      expect(solveResult.ok).toBe(true);
+      const move = solveResult.data!.move!;
+      expect(move.action).toBe('fix-conflict');
+      expect(move.technique).toBe('fix-conflict');
+      expect(move.digit).toBe(7);
+      expect(move.explanation).toContain('Conflict');
+      expect(move.explanation).toContain('row');
+      expect(move.highlights).toBeDefined();
+      expect(move.highlights!.primary).toHaveLength(1);
+      expect(move.highlights!.secondary).toHaveLength(1);
+    }
+  });
+
+  test('detects column conflict and returns fix-conflict action', async () => {
+    const puzzleResult = await sdk.getPuzzle(TEST_SEED, 'medium');
+    expect(puzzleResult.ok).toBe(true);
+    const puzzle = puzzleResult.data!;
+
+    const token = await getSessionToken(TEST_SEED, 'medium');
+
+    // Create a board with a column conflict
+    const board = [...puzzle.givens];
+    const col = 0;
+    const emptyCells: number[] = [];
+    for (let row = 0; row < 9 && emptyCells.length < 2; row++) {
+      const idx = row * 9 + col;
+      if (board[idx] === 0) {
+        emptyCells.push(idx);
+      }
+    }
+    
+    if (emptyCells.length >= 2) {
+      board[emptyCells[0]] = 3;
+      board[emptyCells[1]] = 3;
+
+      const solveResult = await sdk.solveNext({ token, board });
+
+      expect(solveResult.ok).toBe(true);
+      const move = solveResult.data!.move!;
+      expect(move.action).toBe('fix-conflict');
+      expect(move.explanation).toContain('Conflict');
+      expect(move.explanation).toContain('column');
+    }
+  });
+
+  test('detects box conflict and returns fix-conflict action', async () => {
+    const puzzleResult = await sdk.getPuzzle(TEST_SEED, 'medium');
+    expect(puzzleResult.ok).toBe(true);
+    const puzzle = puzzleResult.data!;
+
+    const token = await getSessionToken(TEST_SEED, 'medium');
+
+    // Create a board with a box conflict (different row AND column, same box)
+    const board = [...puzzle.givens];
+    // Box 0 contains cells at rows 0-2, cols 0-2
+    const boxCells: number[] = [];
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        const idx = r * 9 + c;
+        if (board[idx] === 0) {
+          boxCells.push(idx);
+        }
+      }
+    }
+    
+    // Find two cells that are NOT in the same row or column
+    if (boxCells.length >= 2) {
+      const cell1 = boxCells[0];
+      let cell2 = -1;
+      for (let i = 1; i < boxCells.length; i++) {
+        const row1 = Math.floor(cell1 / 9);
+        const col1 = cell1 % 9;
+        const row2 = Math.floor(boxCells[i] / 9);
+        const col2 = boxCells[i] % 9;
+        if (row1 !== row2 && col1 !== col2) {
+          cell2 = boxCells[i];
+          break;
+        }
+      }
+      
+      if (cell2 >= 0) {
+        board[cell1] = 9;
+        board[cell2] = 9;
+
+        const solveResult = await sdk.solveNext({ token, board });
+
+        expect(solveResult.ok).toBe(true);
+        const move = solveResult.data!.move!;
+        expect(move.action).toBe('fix-conflict');
+        expect(move.explanation).toContain('Conflict');
+        expect(move.explanation).toContain('box');
+      }
+    }
+  });
+
+  test('fix-conflict removes user entry, not given', async () => {
+    const puzzleResult = await sdk.getPuzzle(TEST_SEED, 'easy');
+    expect(puzzleResult.ok).toBe(true);
+    const puzzle = puzzleResult.data!;
+
+    const token = await getSessionToken(TEST_SEED, 'easy');
+
+    // Find a given digit and an empty cell in the same row
+    const board = [...puzzle.givens];
+    for (let row = 0; row < 9; row++) {
+      let givenCell = -1;
+      let givenDigit = 0;
+      let emptyCell = -1;
+
+      for (let col = 0; col < 9; col++) {
+        const idx = row * 9 + col;
+        if (puzzle.givens[idx] !== 0 && givenCell < 0) {
+          givenCell = idx;
+          givenDigit = puzzle.givens[idx];
+        } else if (puzzle.givens[idx] === 0 && emptyCell < 0) {
+          emptyCell = idx;
+        }
+      }
+
+      if (givenCell >= 0 && emptyCell >= 0) {
+        // Place the same digit as the given in the empty cell
+        board[emptyCell] = givenDigit;
+
+        const solveResult = await sdk.solveNext({ token, board });
+
+        expect(solveResult.ok).toBe(true);
+        const move = solveResult.data!.move!;
+        expect(move.action).toBe('fix-conflict');
+        
+        // The primary highlight should be the USER entry (emptyCell), not the given
+        const primaryRow = move.highlights!.primary![0].row;
+        const primaryCol = move.highlights!.primary![0].col;
+        const primaryIdx = primaryRow * 9 + primaryCol;
+        expect(primaryIdx).toBe(emptyCell);
+        
+        // The returned board should have removed the user entry
+        expect(solveResult.data!.board[emptyCell]).toBe(0);
+        expect(solveResult.data!.board[givenCell]).toBe(givenDigit);
+        break;
+      }
+    }
+  });
+
+  test('valid board proceeds without conflict', async () => {
+    const puzzleResult = await sdk.getPuzzle(TEST_SEED, 'easy');
+    expect(puzzleResult.ok).toBe(true);
+    const puzzle = puzzleResult.data!;
+
+    const token = await getSessionToken(TEST_SEED, 'easy');
+
+    // Use the puzzle as-is (no conflicts)
+    const solveResult = await sdk.solveNext({ token, board: puzzle.givens });
+
+    expect(solveResult.ok).toBe(true);
+    const move = solveResult.data!.move!;
+    // Should be a normal solving action, not a conflict fix
+    expect(move.action).not.toBe('fix-conflict');
+    expect(['assign', 'candidate', 'eliminate']).toContain(move.action);
+  });
+});
+
+test.describe('POST /solve/all - Conflict Detection', () => {
+  test('solve/all detects conflict and stops', async () => {
+    const puzzleResult = await sdk.getPuzzle(TEST_SEED, 'medium');
+    expect(puzzleResult.ok).toBe(true);
+    const puzzle = puzzleResult.data!;
+
+    const token = await getSessionToken(TEST_SEED, 'medium');
+
+    // Create a row conflict
+    const board = [...puzzle.givens];
+    const emptyCells: number[] = [];
+    for (let i = 0; i < 9 && emptyCells.length < 2; i++) {
+      if (board[i] === 0) emptyCells.push(i);
+    }
+    
+    if (emptyCells.length >= 2) {
+      board[emptyCells[0]] = 5;
+      board[emptyCells[1]] = 5;
+
+      const solveResult = await sdk.solveAll({ token, board });
+
+      expect(solveResult.ok).toBe(true);
+      // When conflict is detected, solve/all returns status: "conflict_found"
+      // and includes the fix-conflict move
+      const response = solveResult.data as unknown as { status?: string; move?: { action: string } };
+      if (response.status) {
+        expect(response.status).toBe('conflict_found');
+      }
+      if (response.move) {
+        expect(response.move.action).toBe('fix-conflict');
+      }
+    }
+  });
+});

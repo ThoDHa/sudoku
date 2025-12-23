@@ -252,6 +252,7 @@ export function dispatchMoveAction(
       return handleClearCandidates(ctx)
     
     case 'fix-error':
+    case 'fix-conflict':
       return handleFixError(ctx)
     
     default:

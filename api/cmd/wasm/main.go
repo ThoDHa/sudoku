@@ -559,7 +559,37 @@ func solveAll(this js.Value, args []js.Value) interface{} {
 				}
 			}
 
-			// Couldn't find the error
+			// Couldn't find the error with primary method - try fallback
+			badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(originalUserBoard, givens)
+			if badCell >= 0 {
+				badRow, badCol := badCell/9, badCell%9
+				zeroCandRow, zeroCandCol := zeroCandCell/9, zeroCandCell%9
+				fixCount++
+				originalUserBoard[badCell] = 0
+
+				// Reset board without the bad cell
+				board = human.NewBoardWithCandidates(originalUserBoard, nil)
+				board.InitCandidates()
+
+				moves = append(moves, MoveResult{
+					Board:      board.GetCells(),
+					Candidates: board.GetCandidates(),
+					Move: map[string]interface{}{
+						"technique":   "fix-error",
+						"action":      "fix-error",
+						"digit":       badDigit,
+						"explanation": formatExplanation("Found it! R%dC%d has no valid candidates. The %d at R%dC%d was causing the problem.", zeroCandRow+1, zeroCandCol+1, badDigit, badRow+1, badCol+1),
+						"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+						"highlights": map[string]interface{}{
+							"primary":   []map[string]int{{"row": badRow, "col": badCol}},
+							"secondary": []map[string]int{{"row": zeroCandRow, "col": zeroCandCol}},
+						},
+					},
+				})
+				continue
+			}
+
+			// Both methods failed - couldn't find the error
 			moves = append(moves, MoveResult{
 				Board:      board.GetCells(),
 				Candidates: board.GetCandidates(),
@@ -733,6 +763,67 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 		return maxCell, cellDigit[maxCell]
 	}
 	return -1, 0
+}
+
+// findErrorByCandidateRefill clears all candidates, refills them, and looks for cells with zero candidates.
+// This is the "human-like" approach: when stuck, clear your pencil marks and start fresh.
+// If a cell has zero candidates, trace back to find which user-entered cell is blocking it.
+// Returns the cell index, digit, and the zero-candidate cell index, or -1 if no error found.
+func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int, int) {
+	// Create a fresh board with candidates properly initialized
+	freshBoard := human.NewBoard(originalUserBoard)
+
+	// Find any cell with zero candidates
+	for idx := 0; idx < 81; idx++ {
+		if originalUserBoard[idx] != 0 {
+			continue // Skip filled cells
+		}
+
+		candidates := freshBoard.Candidates[idx]
+		if candidates.IsEmpty() {
+			// Found a cell with no candidates - this points to an error
+			row, col := idx/9, idx%9
+			boxRow, boxCol := (row/3)*3, (col/3)*3
+
+			type blocker struct {
+				cellIdx int
+				digit   int
+			}
+			var userBlockers []blocker
+
+			for digit := 1; digit <= 9; digit++ {
+				// Check row
+				for c := 0; c < 9; c++ {
+					cellIdx := row*9 + c
+					if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
+						userBlockers = append(userBlockers, blocker{cellIdx, digit})
+					}
+				}
+				// Check column
+				for r := 0; r < 9; r++ {
+					cellIdx := r*9 + col
+					if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
+						userBlockers = append(userBlockers, blocker{cellIdx, digit})
+					}
+				}
+				// Check box
+				for r := boxRow; r < boxRow+3; r++ {
+					for c := boxCol; c < boxCol+3; c++ {
+						cellIdx := r*9 + c
+						if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
+							userBlockers = append(userBlockers, blocker{cellIdx, digit})
+						}
+					}
+				}
+			}
+
+			if len(userBlockers) > 0 {
+				return userBlockers[0].cellIdx, userBlockers[0].digit, idx
+			}
+		}
+	}
+
+	return -1, 0, -1
 }
 
 // formatExplanation is a simple sprintf helper
