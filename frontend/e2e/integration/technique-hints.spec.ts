@@ -410,12 +410,10 @@ test.describe('@integration Technique Hints - Mobile', () => {
   });
 
   test('technique hint click works on mobile viewport', async ({ page }) => {
-    // Prep board with candidates first (use regular hint on mobile)
+    // Use hint once to prep board (hint button disables until user makes a move)
     const hintBtn = page.locator('button:has-text("💡"), button:has-text("Hint")').first();
-    for (let i = 0; i < 3; i++) {
-      await hintBtn.click();
-      await page.waitForTimeout(300);
-    }
+    await hintBtn.click();
+    await page.waitForTimeout(500);
     
     // Count empty cells before
     const emptyCellsBefore = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
@@ -440,12 +438,10 @@ test.describe('@integration Technique Hints - Mobile', () => {
   });
 
   test('technique modal fits within mobile viewport', async ({ page }) => {
-    // Prep board with candidates first (use regular hint on mobile)
+    // Use hint once to prep board (hint button disables until user makes a move)
     const hintBtn = page.locator('button:has-text("💡"), button:has-text("Hint")').first();
-    for (let i = 0; i < 3; i++) {
-      await hintBtn.click();
-      await page.waitForTimeout(300);
-    }
+    await hintBtn.click();
+    await page.waitForTimeout(500);
     
     const techniqueButton = page.locator('button:has-text("Technique"), button:has-text("?")').first();
     await techniqueButton.click();

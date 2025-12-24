@@ -15,6 +15,14 @@ import {
   unloadWasm,
   type SudokuWasmAPI,
 } from './wasm'
+import {
+  initializeWorker,
+  terminateWorker,
+  isWorkerSupported,
+  isWorkerReady,
+  findNextMove as workerFindNextMove,
+  solveAll as workerSolveAll,
+} from './worker-client'
 
 import { getPuzzleForSeed as getStaticPuzzle } from './puzzles-data'
 import { debugLog } from './debug'
@@ -91,6 +99,29 @@ export interface PuzzleResult {
   puzzle_index?: number
 }
 
+// ==================== Solver Mode Configuration ====================
+
+/**
+ * Whether to use the Web Worker for WASM operations.
+ * Falls back to main thread if workers are not supported.
+ */
+let useWorkerMode = true
+
+/**
+ * Set whether to use Web Worker mode for solving.
+ * If disabled, solving happens on the main thread (may cause UI blocking).
+ */
+export function setWorkerMode(enabled: boolean): void {
+  useWorkerMode = enabled
+}
+
+/**
+ * Check if we're currently using worker mode
+ */
+export function isUsingWorkerMode(): boolean {
+  return useWorkerMode && isWorkerSupported()
+}
+
 // ==================== WASM Solver ====================
 
 let wasmApi: SudokuWasmAPI | null = null
@@ -112,9 +143,23 @@ async function getApi(): Promise<SudokuWasmAPI> {
 
 /**
  * Initialize the solver (loads WASM if not already loaded)
+ * Uses Web Worker if supported, otherwise falls back to main thread
  */
 export async function initializeSolver(): Promise<void> {
+  if (isUsingWorkerMode()) {
+    try {
+      await initializeWorker()
+      debugLog('[SolverService] Worker mode initialized')
+      return
+    } catch (error) {
+      console.warn('[SolverService] Worker initialization failed, falling back to main thread:', error)
+      useWorkerMode = false
+    }
+  }
+  
+  // Fallback to main thread WASM
   await getApi()
+  debugLog('[SolverService] Main thread mode initialized')
 }
 
 /**
@@ -124,6 +169,13 @@ export async function initializeSolver(): Promise<void> {
  */
 export function cleanupSolver(): void {
   try {
+    // Terminate worker if using worker mode
+    if (isWorkerReady()) {
+      terminateWorker()
+      debugLog('[SolverService] Worker terminated')
+    }
+    
+    // Also clean up main thread WASM if it was loaded
     wasmApi = null
     unloadWasm()
     debugLog('[SolverService] Solver cleaned up successfully')
@@ -139,6 +191,26 @@ export async function solveAll(
   candidates: number[][],
   givens: number[]
 ): Promise<SolveAllResult> {
+  // Use worker if available
+  if (isUsingWorkerMode()) {
+    try {
+      const result = await workerSolveAll(board, candidates, givens)
+      return {
+        moves: result.moves.map((m) => ({
+          board: m.board,
+          candidates: m.candidates,
+          move: m.move as Move,
+        })),
+        solved: result.solved,
+        finalBoard: result.finalBoard,
+      }
+    } catch (error) {
+      console.warn('[SolverService] Worker solveAll failed, falling back:', error)
+      // Fall through to main thread
+    }
+  }
+  
+  // Fallback to main thread WASM
   const api = await getApi()
   const result = api.solveAll(board, candidates, givens)
   return {
@@ -169,6 +241,23 @@ export async function findNextMove(
   candidates: number[][],
   givens: number[]
 ): Promise<FindNextMoveResult> {
+  // Use worker if available
+  if (isUsingWorkerMode()) {
+    try {
+      const result = await workerFindNextMove(board, candidates, givens)
+      return {
+        move: result.move as Move | null,
+        board: result.board,
+        candidates: result.candidates,
+        solved: result.solved,
+      }
+    } catch (error) {
+      console.warn('[SolverService] Worker findNextMove failed, falling back:', error)
+      // Fall through to main thread
+    }
+  }
+  
+  // Fallback to main thread WASM
   const api = await getApi()
   const result = api.findNextMove(board, candidates, givens)
   return {

@@ -110,12 +110,26 @@ test.describe('@integration Hints - Hint Counter', () => {
     const initialMatch = initialText?.match(/\d+/);
     const initialCount = initialMatch ? parseInt(initialMatch[0]) : 3; // Default assumption
     
-    // Use 2 hints
+    // Use first hint
     await hintButton.click();
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(500);
     
+    // After HINT-5 changes, hint button is disabled until user makes a move
+    // Find an empty cell and make a move to re-enable hints
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
+    if (await emptyCell.count() > 0) {
+      await emptyCell.click();
+      // Enter a digit to make a move
+      await page.keyboard.press('1');
+      await page.waitForTimeout(300);
+    }
+    
+    // Wait for hint button to be enabled again
+    await expect(hintButton).toBeEnabled({ timeout: 5000 });
+    
+    // Use second hint
     await hintButton.click();
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(500);
     
     // Verify count decreased by 2
     const afterText = await hintButton.textContent();

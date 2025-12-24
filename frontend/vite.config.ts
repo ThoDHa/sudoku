@@ -22,6 +22,9 @@ export default defineConfig({
   define: {
     __COMMIT_HASH__: JSON.stringify(getCommitHash()),
   },
+  worker: {
+    format: 'es',
+  },
   build: {
     rollupOptions: {
       output: {
