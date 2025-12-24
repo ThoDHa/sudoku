@@ -56,6 +56,9 @@ export interface ThemePalette {
   errorBg: string      // Error background
   errorText: string    // Error text
 
+  // Hint states
+  hintText: string     // Hint text (green, for additions)
+
   // Button states
   btnBg: string        // Button background
   btnHover: string     // Button hover
@@ -122,6 +125,9 @@ export interface SemanticColors {
   // Error states
   errorBg: string
   errorText: string
+
+  // Hint states
+  hintText: string
 
   // Shadows
   shadow: string
@@ -211,6 +217,9 @@ function createSemanticColors(p: ThemePalette, isDark: boolean): SemanticColors 
     errorBg: p.errorBg,
     errorText: p.errorText,
 
+    // Hints
+    hintText: p.hintText,
+
     // Shadows
     shadow: p.shadow,
     shadowLight: p.shadowLight,
@@ -253,6 +262,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#e8f0fc',
       errorBg: '#fecaca',
       errorText: '#f52a65',
+      hintText: '#22863a',
       btnBg: '#ffffff',
       btnHover: '#c8c9cf',
       shadow: '0 4px 12px rgba(55, 96, 191, 0.15)',
@@ -279,6 +289,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#252a3f',
       errorBg: '#4a2040',
       errorText: '#f7768e',
+      hintText: '#9ece6a',
       btnBg: '#1f2335',
       btnHover: '#292e42',
       shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
@@ -312,6 +323,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#f5f0fc',
       errorBg: '#fecaca',
       errorText: '#ff5555',
+      hintText: '#2e7d32',
       btnBg: '#ebebeb',
       btnHover: '#dededb',
       shadow: '0 4px 12px rgba(40, 42, 54, 0.15)',
@@ -338,6 +350,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#2a2835',
       errorBg: '#4a2020',
       errorText: '#ff5555',
+      hintText: '#50fa7b',
       btnBg: '#343746',
       btnHover: '#44475a',
       shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
@@ -371,6 +384,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#e8eef5',
       errorBg: '#e8c5c8',
       errorText: '#bf616a',
+      hintText: '#4c8c4a',
       btnBg: '#e5e9f0',
       btnHover: '#d8dee9',
       shadow: '0 4px 12px rgba(46, 52, 64, 0.12)',
@@ -397,6 +411,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#3d4657',
       errorBg: '#59363a',
       errorText: '#bf616a',
+      hintText: '#a3be8c',
       btnBg: '#434c5e',
       btnHover: '#4c566a',
       shadow: '0 4px 12px rgba(0, 0, 0, 0.35)',
@@ -430,6 +445,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#f3eefa',
       errorBg: '#f5c6ce',
       errorText: '#d20f39',
+      hintText: '#40a02b',
       btnBg: '#e6e9ef',
       btnHover: '#dce0e8',
       shadow: '0 4px 12px rgba(76, 79, 105, 0.12)',
@@ -456,6 +472,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#2c2a42',
       errorBg: '#5c3a4a',
       errorText: '#f38ba8',
+      hintText: '#a6e3a1',
       btnBg: '#313244',
       btnHover: '#45475a',
       shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
@@ -489,6 +506,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#f7eed8',
       errorBg: '#f5c6c6',
       errorText: '#cc241d',
+      hintText: '#79740e',
       btnBg: '#f2e5bc',
       btnHover: '#ebdbb2',
       shadow: '0 4px 12px rgba(40, 40, 40, 0.12)',
@@ -515,6 +533,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#302e28',
       errorBg: '#5a2a2a',
       errorText: '#fb4934',
+      hintText: '#b8bb26',
       btnBg: '#32302f',
       btnHover: '#3c3836',
       shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
@@ -548,6 +567,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#fcf0ee',
       errorBg: '#f5c6ce',
       errorText: '#b4637a',
+      hintText: '#286983',
       btnBg: '#f2e9e1',
       btnHover: '#dfdad9',
       shadow: '0 4px 12px rgba(87, 82, 121, 0.12)',
@@ -574,6 +594,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#241f32',
       errorBg: '#5a3040',
       errorText: '#eb6f92',
+      hintText: '#9ccfd8',
       btnBg: '#26233a',
       btnHover: '#524f67',
       shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
@@ -607,6 +628,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#f5efe0',
       errorBg: '#f5c6c6',
       errorText: '#dc322f',
+      hintText: '#859900',
       btnBg: '#eee8d5',
       btnHover: '#dfd9c6',
       shadow: '0 4px 12px rgba(88, 110, 117, 0.12)',
@@ -633,6 +655,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#084350',
       errorBg: '#4a2020',
       errorText: '#dc322f',
+      hintText: '#859900',
       btnBg: '#0a4a5a',
       btnHover: '#0d5c6e',
       shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
@@ -666,6 +689,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#eef2fc',
       errorBg: '#f5c6c6',
       errorText: '#e45649',
+      hintText: '#50a14f',
       btnBg: '#e5e5e6',
       btnHover: '#d8d8d9',
       shadow: '0 4px 12px rgba(56, 58, 66, 0.12)',
@@ -692,6 +716,7 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       cellPeer: '#323842',
       errorBg: '#4a2a2a',
       errorText: '#e06c75',
+      hintText: '#98c379',
       btnBg: '#3a404c',
       btnHover: '#4d5566',
       shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
@@ -776,6 +801,7 @@ export function themeToCssVars(colors: SemanticColors): Record<string, string> {
     '--accent-light': colors.accentLight,
     '--error-bg': colors.errorBg,
     '--error-text': colors.errorText,
+    '--hint-text': colors.hintText,
     '--shadow': colors.shadow,
     '--shadow-light': colors.shadowLight,
     '--diff-easy': colors.diffEasy,

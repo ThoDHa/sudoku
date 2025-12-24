@@ -59,6 +59,11 @@ export default {
           text: 'var(--error-text)',
         },
         
+        // Hint colors - theme-aware success tones
+        hint: {
+          text: 'var(--hint-text)',
+        },
+        
         // Difficulty colors - theme-aware
         diff: {
           easy: 'var(--diff-easy)',

@@ -112,6 +112,9 @@
   /* Error colors - now set by ThemeContext, these are fallbacks */
   --error-bg: #fecaca;
   --error-text: #dc2626;
+  
+  /* Hint colors - now set by ThemeContext, these are fallbacks */
+  --hint-text: #22c55e;
 }
 
 html, body {

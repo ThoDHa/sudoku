@@ -161,9 +161,18 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
 
   if (value !== 0) {
     // Filled cell
-    const isHighlighted = highlightedDigit === value
+    const isOnHighlightedBackground = isPrimary || isSecondary
+    const isHighlightedDigit = highlightedDigit === value
+    
+    // Priority: background highlight needs contrast text, then digit highlighting
+    const textClass = isOnHighlightedBackground
+      ? 'text-cell-text-on-highlight font-bold'
+      : isHighlightedDigit
+        ? 'text-accent font-bold'
+        : ''
+    
     content = (
-      <span className={isHighlighted ? 'text-accent font-bold' : ''}>
+      <span className={textClass}>
         {value}
       </span>
     )
@@ -191,9 +200,8 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
           if (hasCandidate_ && isEliminated) {
             digitClass += "text-error-text line-through font-bold"
           } else if (hasCandidate_ && isRelevantDigit && isTarget) {
-            digitClass += isHighlightedCell
-              ? "text-cell-text-on-highlight font-bold"
-              : "text-accent font-bold"
+                            // Target cells show the digit to ADD in green (hint color)
+                            digitClass += "text-hint-text font-bold"
           } else if (isHighlightedCell) {
             digitClass += "text-cell-text-on-highlight"
           } else {
@@ -284,6 +292,10 @@ const Board = memo(function Board({
   // This ensures React properly tracks changes to candidates and triggers re-renders
   // candidatesVersion ensures this recomputes even when Uint16Array reference comparison fails
   const cellsWithHighlightedDigit = React.useMemo(() => {
+    // Use candidatesVersion to force recomputation when candidates change
+    // (Uint16Array mutations may not trigger re-renders on mobile without this)
+    void candidatesVersion
+    
     const result = new Set<number>()
     if (highlightedDigit === null) return result
     
@@ -300,7 +312,8 @@ const Board = memo(function Board({
       }
     }
     return result
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Note: candidatesVersion is intentionally included to force recomputation when Uint16Array mutates
+    // (mutation is not detected by reference comparison on mobile devices)
   }, [board, candidates, highlightedDigit, candidatesVersion])
 
   // Find next non-given cell in a direction, returns null if none found
@@ -586,8 +599,7 @@ const Board = memo(function Board({
       })
     }
     return result
-    // Dependencies: everything that affects cell appearance
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Helper functions (getCellClass, etc.) read from state vars already in deps; adding them would cause unnecessary recreations
   }, [
     board,
     candidates,

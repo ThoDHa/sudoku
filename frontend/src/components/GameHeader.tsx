@@ -193,9 +193,10 @@ interface HintButtonsProps {
   techniqueHintLoading: boolean
   onHint: () => void
   hintLoading: boolean
+  hintDisabled: boolean
 }
 
-function HintButtons({ onTechniqueHint, techniqueHintDisabled, techniqueHintLoading, onHint, hintLoading }: HintButtonsProps) {
+function HintButtons({ onTechniqueHint, techniqueHintDisabled, techniqueHintLoading, onHint, hintLoading, hintDisabled }: HintButtonsProps) {
   return (
     <>
       <button
@@ -213,11 +214,11 @@ function HintButtons({ onTechniqueHint, techniqueHintDisabled, techniqueHintLoad
       </button>
       <button
         onClick={onHint}
-        disabled={hintLoading}
+        disabled={hintLoading || hintDisabled}
         className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-          hintLoading ? 'text-foreground-muted/50 cursor-not-allowed' : 'text-foreground-muted hover:text-accent hover:bg-btn-hover'
+          hintLoading || hintDisabled ? 'text-foreground-muted/50 cursor-not-allowed' : 'text-foreground-muted hover:text-accent hover:bg-btn-hover'
         }`}
-        title={hintLoading ? "Loading..." : "Get a hint"}
+        title={hintLoading ? "Loading..." : hintDisabled ? "Make a move to use again" : "Get a hint"}
       >
         {hintLoading ? <ButtonSpinner className="h-4 w-4" /> : <span className="text-base">💡</span>}
         <span className="hidden sm:inline">Hint</span>
@@ -288,6 +289,7 @@ interface GameHeaderProps {
   techniqueHintLoading: boolean
   onHint: () => void
   hintLoading: boolean
+  hintDisabled: boolean
   onHistoryOpen: () => void
   onShowResult: () => void
   onShare: () => void
@@ -333,6 +335,7 @@ export default memo(function GameHeader({
   techniqueHintLoading,
   onHint,
   hintLoading,
+  hintDisabled,
   onHistoryOpen,
   onShare,
   onAutoFillNotes,
@@ -409,6 +412,7 @@ export default memo(function GameHeader({
               techniqueHintLoading={techniqueHintLoading}
               onHint={onHint}
               hintLoading={hintLoading}
+              hintDisabled={hintDisabled}
             />
           )}
 

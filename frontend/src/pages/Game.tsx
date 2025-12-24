@@ -153,6 +153,7 @@ function GameContent() {
   const [hintsUsed, setHintsUsed] = useState(0)
   const [techniqueHintsUsed, setTechniqueHintsUsed] = useState(0)
   const [techniqueHintPending, setTechniqueHintPending] = useState(false) // Disables technique hint button until user makes a move
+  const [hintPending, setHintPending] = useState(false) // Disables hint button until user makes a move
   const [hintLoading, setHintLoading] = useState(false) // Loading spinner for hint button
   const [techniqueHintLoading, setTechniqueHintLoading] = useState(false) // Loading spinner for technique hint button
   const [validationMessage, setValidationMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -580,6 +581,7 @@ function GameContent() {
     clearAllAndDeselect()
     setNotesMode(false)
     setHintsUsed(0)
+    setTechniqueHintsUsed(0)
     setAutoFillUsed(false)
     setAutoSolveUsed(false)
     autoSolveUsedRef.current = false
@@ -730,14 +732,8 @@ function GameContent() {
         }
       }
 
-      // Apply the move
-      const newBoard = data.board
-      const newCandidates = data.candidates
-        ? arraysToCandidates(data.candidates.map(cellCands => cellCands || []))
-        : new Uint16Array(81)
-
-      game.applyExternalMove(newBoard, newCandidates, move)
-      
+      // Show the hint highlight WITHOUT applying the move
+      // User must manually apply the changes shown in red (eliminations) and green (additions)
       setMoveHighlight(move as MoveHighlight, game.history.length)
 
       if (showNotification) {
@@ -750,7 +746,8 @@ function GameContent() {
       }
 
       // Check if more moves available (puzzle not complete)
-      return !data.solved && newBoard.some(v => v === 0)
+      // Use the current game board since we're no longer applying moves
+      return !data.solved && game.board.some(v => v === 0)
     } catch (err) {
       console.error('Hint error:', err)
       if (showNotification) {
@@ -759,8 +756,7 @@ function GameContent() {
       }
       return false
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- clearAllAndDeselect and setMoveHighlight are stable callbacks
-  }, [game, initialBoard, visibilityAwareTimeout])
+  }, [game, initialBoard, visibilityAwareTimeout, clearAllAndDeselect, setMoveHighlight, clearMoveHighlight])
 
   // Handle hint button - calls executeHintStep with notifications and increments counter
   const handleNext = useCallback(async () => {
@@ -773,6 +769,7 @@ function GameContent() {
       if (result !== false) {
         // Only count as hint if it was successful (not an error)
         setHintsUsed(prev => prev + 1)
+        setHintPending(true)
         // Also re-enable technique hint button since we applied a move
         setTechniqueHintPending(false)
       }
@@ -840,6 +837,7 @@ function GameContent() {
 
       // Open the technique modal
       setTechniqueModal({ title: techniqueName, slug: techniqueSlug })
+      setMoveHighlight(move as MoveHighlight, game.history.length)
 
       // Increment counter and disable button until user makes a move
       setTechniqueHintsUsed(prev => prev + 1)
@@ -852,7 +850,7 @@ function GameContent() {
       hintInProgress.current = false
       setTechniqueHintLoading(false)
     }
-  }, [techniqueHintPending, game.board, game.candidates, initialBoard, clearAllAndDeselect, visibilityAwareTimeout])
+  }, [techniqueHintPending, game.board, game.candidates, game.history.length, initialBoard, clearAllAndDeselect, visibilityAwareTimeout, setMoveHighlight])
 
     // Resume from extended pause on user interaction
     const resumeFromExtendedPause = useCallback(() => {
@@ -899,6 +897,7 @@ function GameContent() {
         game.eraseCell(idx)
         clearAfterErase()
         setTechniqueHintPending(false) // Re-enable technique hint button
+        setHintPending(false) // Re-enable hint button
         // Keep erase mode active so user can erase multiple cells
         return
       }
@@ -908,15 +907,17 @@ function GameContent() {
          if (notesMode) {
            game.setCell(idx, highlightedDigit, notesMode)
            
-           // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
-           clearAfterUserCandidateOp()
-           setTechniqueHintPending(false) // Re-enable technique hint button
-         } else {
-           // For digit placement, clear move highlights but preserve digit highlight for multi-fill
-           game.setCell(idx, highlightedDigit, notesMode)
-           clearAfterDigitPlacement()
-           setTechniqueHintPending(false) // Re-enable technique hint button
-         }
+// Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
+            clearAfterUserCandidateOp()
+            setTechniqueHintPending(false) // Re-enable technique hint button
+            setHintPending(false) // Re-enable hint button
+          } else {
+            // For digit placement, clear move highlights but preserve digit highlight for multi-fill
+            game.setCell(idx, highlightedDigit, notesMode)
+            clearAfterDigitPlacement()
+            setTechniqueHintPending(false) // Re-enable technique hint button
+            setHintPending(false) // Re-enable hint button
+          }
          return
        }
 
@@ -956,6 +957,7 @@ function GameContent() {
         currentGame.eraseCell(currentSelectedCell)
         clearAfterDigitToggle()
         setTechniqueHintPending(false) // Re-enable technique hint button
+        setHintPending(false) // Re-enable hint button
         return
       }
 
@@ -969,6 +971,7 @@ function GameContent() {
         clearAfterDigitPlacement()
       }
       setTechniqueHintPending(false) // Re-enable technique hint button
+      setHintPending(false) // Re-enable hint button
 
       // Keep cell selected so user can erase or change immediately
       // Keep digit highlighted for adding candidates (multi-fill)
@@ -979,10 +982,11 @@ function GameContent() {
     const handleCellChange = useCallback((idx: number, value: number) => {
       resumeFromExtendedPause()
       if (game.isGivenCell(idx)) return
-     if (value === 0) {
-       game.eraseCell(idx)
-       clearAfterErase()
-       setTechniqueHintPending(false) // Re-enable technique hint button
+if (value === 0) {
+        game.eraseCell(idx)
+        clearAfterErase()
+        setTechniqueHintPending(false) // Re-enable technique hint button
+        setHintPending(false) // Re-enable hint button
         } else {
           if (notesMode) {
             game.setCell(idx, value, notesMode)
@@ -994,8 +998,9 @@ function GameContent() {
             clearAfterDigitPlacement()
           }
           setTechniqueHintPending(false) // Re-enable technique hint button
+          setHintPending(false) // Re-enable hint button
         }
-     // eslint-disable-next-line react-hooks/exhaustive-deps -- resumeFromExtendedPause is a stable callback
+     // eslint-disable-next-line react-hooks/exhaustive-deps -- resumeFromExtendedPause depends on isExtendedPaused; adding it would recreate this callback on every pause state change, causing unnecessary re-renders of Board (which receives this as a prop)
      }, [game, notesMode, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement])
 
   // Toggle notes mode handler
@@ -1297,9 +1302,8 @@ ${bugReportJson}
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- clearAllAndDeselect is a stable callback
   }, [
-    handleUndo, handleRedo, handleNext, handleValidate,
+    handleUndo, handleRedo, handleNext, handleValidate, clearAllAndDeselect,
     showResultModal, historyOpen, techniqueModal, techniquesListOpen,
     solveConfirmOpen, showClearConfirm
   ])
@@ -1549,8 +1553,8 @@ ${bugReportJson}
     }
 
     loadPuzzle()
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- timer and clearAllAndDeselect are stable callbacks
-  }, [seed, encoded, isEncodedCustom, difficulty, alreadyCompletedToday, showDifficultyChooser, showOnboarding])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl excluded: adding it would re-fetch puzzle when timer running/paused state changes. We only want to fetch when the actual puzzle params change.
+  }, [seed, encoded, isEncodedCustom, difficulty, alreadyCompletedToday, showDifficultyChooser, showOnboarding, clearAllAndDeselect])
 
   // Reset game state when initialBoard changes (new puzzle loaded) and restore saved state if available
   useEffect(() => {
@@ -1578,9 +1582,7 @@ ${bugReportJson}
       
       hasRestoredSavedState.current = true
     }
-  // Note: We intentionally only trigger this when initialBoard or puzzle changes
-  // game.restoreState and game.resetGame are stable callbacks
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- game.restoreState, game.resetGame, and timerControl.setElapsedMs are stable callbacks. We intentionally only trigger this when initialBoard or puzzle changes to prevent re-initialization loops.
   }, [initialBoard, puzzle, loadSavedGameState])
 
   // Auto-save game state when board or candidates change (but not when hidden)
@@ -1699,6 +1701,7 @@ ${bugReportJson}
         techniqueHintLoading={techniqueHintLoading}
         onHint={handleNext}
         hintLoading={hintLoading}
+        hintDisabled={hintPending}
         onHistoryOpen={() => setHistoryOpen(true)}
         onShowResult={() => setShowResultModal(true)}
         onShare={handleShare}
@@ -1851,7 +1854,10 @@ ${bugReportJson}
 
       <TechniqueModal
         isOpen={techniqueModal !== null}
-        onClose={() => setTechniqueModal(null)}
+        onClose={() => {
+          setTechniqueModal(null)
+          clearMoveHighlight()
+        }}
         technique={techniqueModal}
       />
 
