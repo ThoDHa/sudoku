@@ -1,5 +1,8 @@
 # Sudoku
 
+[![CI/CD Pipeline](https://github.com/thodha/sudoku/actions/workflows/deploy.yml/badge.svg)](https://github.com/thodha/sudoku/actions/workflows/deploy.yml)
+[![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)](./frontend/coverage/index.html)
+
 An advanced educational Sudoku web application that teaches solving techniques through human-like hints and intelligent assistance features.
 
 **[Play Now](https://thodha.github.io/sudoku/)**
@@ -349,7 +352,7 @@ npm run build
 # Deploy dist/ to GitHub Pages
 ```
 
-**Note**: CI testing runs locally via pre-push git hooks (not in GitHub Actions). Run `make install-hooks` to set up.
+**Note**: CI runs linting, unit tests with coverage, and build verification on every push and PR. Deploy only happens on push to main. Coverage threshold is 70% for critical paths.
 
 ### Docker
 
