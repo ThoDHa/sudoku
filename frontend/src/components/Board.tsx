@@ -551,11 +551,13 @@ const Board = memo(function Board({
       classes.push('bg-cell-bg')
     }
 
-    // Text color - incorrect and duplicates get error text
+    // Text color - priority: incorrect > duplicate > highlighted > given > entered
     if (isIncorrect) {
       classes.push('text-error-text')
     } else if (isDuplicate) {
       classes.push('text-error-text')
+    } else if (isPrimary || isSecondary) {
+      classes.push('text-cell-text-on-highlight')
     } else if (isGiven) {
       classes.push('text-cell-text-given')
     } else {
