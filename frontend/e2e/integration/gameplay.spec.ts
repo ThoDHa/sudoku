@@ -30,7 +30,7 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/gameplay-test?d=easy');
+    await page.goto('/gameplay-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -78,7 +78,7 @@ test.describe('@integration Gameplay - Digit Entry', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/digit-entry-test?d=easy');
+    await page.goto('/digit-entry-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -158,7 +158,7 @@ test.describe('@integration Gameplay - Clear Cell', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/clear-test?d=easy');
+    await page.goto('/clear-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -251,7 +251,7 @@ test.describe('@integration Gameplay - Undo/Redo', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/undo-redo-test?d=easy');
+    await page.goto('/undo-redo-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -356,7 +356,7 @@ test.describe('@integration Gameplay - Mobile Touch', () => {
     });
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/game/mobile-touch-test?d=easy');
+    await page.goto('/mobile-touch-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 

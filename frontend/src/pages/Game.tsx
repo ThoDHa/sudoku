@@ -10,10 +10,11 @@ import GameHeader from '../components/GameHeader'
 import GameModals from '../components/GameModals'
 import AboutModal, { useAboutModal } from '../components/AboutModal'
 import DifficultyGrid from '../components/DifficultyGrid'
+import { PauseOverlayTimer } from '../components/TimerDisplay'
 import { Difficulty } from '../lib/hooks'
 import { useTheme } from '../lib/ThemeContext'
 import { useGameContext } from '../lib/GameContext'
-import { useGameTimer } from '../hooks/useGameTimer'
+import { TimerProvider, useTimerControl } from '../lib/TimerContext'
 import { useSudokuGame } from '../hooks/useSudokuGame'
 import { useAutoSolve } from '../hooks/useAutoSolve'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
@@ -58,7 +59,11 @@ interface PuzzleData {
   solution: number[]
 }
 
-export default function Game() {
+/**
+ * Inner component that contains all game logic.
+ * Must be wrapped by TimerProvider (see Game component below).
+ */
+function GameContent() {
   const { seed, encoded } = useParams<{ seed?: string; encoded?: string }>()
   const [searchParams] = useSearchParams()
   const location = useLocation()
@@ -166,6 +171,31 @@ export default function Game() {
   const hasUnsavedChanges = useRef(false)
   // Track the last time we were hidden
   const wasHiddenRef = useRef(false)
+  
+  // Refs for click-outside detection (deselect cell when clicking outside board/controls)
+  const boardContainerRef = useRef<HTMLDivElement>(null)
+  const controlsContainerRef = useRef<HTMLDivElement>(null)
+  
+  // ============================================================
+  // REFS FOR STABLE CALLBACKS (Performance Optimization)
+  // ============================================================
+  // These refs allow callbacks to access current state without being recreated
+  // when that state changes, which prevents unnecessary re-renders of memoized children.
+  const selectedCellRef = useRef<number | null>(null)
+  const notesModeRef = useRef(false)
+  const eraseModeRef = useRef(false)
+  const highlightedDigitRef = useRef<number | null>(null)
+  
+  // Refs for hook return values that change frequently
+  // These allow callbacks to access current values without dependency array changes
+  const autoSolveRef = useRef<ReturnType<typeof useAutoSolve> | null>(null)
+  const gameRef = useRef<ReturnType<typeof useSudokuGame> | null>(null)
+  
+  // Refs for values needed by stable callbacks passed to hooks
+  // These break the circular dependency: handleSubmit needs game, but game.onComplete needs handleSubmit
+  const initialBoardRef = useRef<number[]>([])
+  const timerControlRef = useRef<typeof timerControl | null>(null)
+  const handleSubmitRef = useRef<(() => void) | null>(null)
 
   // ============================================================
   // CUSTOM HOOKS
@@ -204,6 +234,17 @@ export default function Game() {
     clickGivenCell,
   } = useHighlightState()
 
+  // ============================================================
+  // SYNC REFS WITH STATE (for stable callbacks)
+  // ============================================================
+  // These effects keep refs in sync with state, allowing callbacks to read
+  // current values without having those values in their dependency arrays.
+  useEffect(() => { selectedCellRef.current = selectedCell }, [selectedCell])
+  useEffect(() => { notesModeRef.current = notesMode }, [notesMode])
+  useEffect(() => { eraseModeRef.current = eraseMode }, [eraseMode])
+  useEffect(() => { highlightedDigitRef.current = highlightedDigit }, [highlightedDigit])
+  useEffect(() => { initialBoardRef.current = initialBoard }, [initialBoard])
+
     // Extended background pause - completely suspend operations after 30 seconds hidden
     const [isExtendedPaused, setIsExtendedPaused] = useState(false)
 
@@ -216,104 +257,154 @@ export default function Game() {
      setValidationMessage(message)
    }, [shouldSkipStateUpdate])
 
-   // Timer hook
-   const timer = useGameTimer({ pauseOnHidden: true, backgroundManager })
+   // Timer control hook - gets controls without subscribing to elapsedMs updates
+   // The actual timer is created by TimerProvider wrapping this component
+   const timerControl = useTimerControl()
+   
+   // Keep timerControl ref updated for stable callbacks
+   timerControlRef.current = timerControl
+
+   // ============================================================
+   // STABLE CALLBACKS FOR HOOKS (Performance Optimization)
+   // ============================================================
+   // These callbacks use refs to access current values, so they don't need
+   // to be recreated when those values change. This prevents the hooks'
+   // internal useMemo from recalculating on every render.
+
+   // Stable onComplete callback for useSudokuGame
+   // Uses refs to break circular dependency: handleSubmit needs game, but onComplete is passed to game
+   const handleGameComplete = useCallback(() => {
+     timerControlRef.current?.pauseTimer()
+     handleSubmitRef.current?.()
+   }, [])
+
+   // Stable callbacks for useAutoSolve
+   const getBoard = useCallback(() => gameRef.current?.board ?? [], [])
+   
+   const getCandidates = useCallback(() => {
+     const game = gameRef.current
+     if (!game) return []
+     // Convert Uint16Array to Set<number>[] for legacy API compatibility
+     const arrays = candidatesToArrays(game.candidates)
+     return arrays.map(arr => new Set(arr))
+   }, [])
+   
+   const getGivens = useCallback(() => initialBoardRef.current, [])
+   
+   const handleApplyMove = useCallback((newBoard: number[], newCandidates: Set<number>[], move: Move, index: number) => {
+     const game = gameRef.current
+     if (!game) return
+     // Convert Set<number>[] back to Uint16Array
+     const candidatesArray = newCandidates.map(set => Array.from(set))
+     const uint16Candidates = arraysToCandidates(candidatesArray)
+     game.applyExternalMove(newBoard, uint16Candidates, move)
+     setMoveHighlight(move as MoveHighlight, index)
+     
+     // Highlight the digit being placed/modified
+     if (move.digit && move.digit > 0) {
+       setDigitHighlight(move.digit)
+     }
+     
+     // Show notes mode if it's a candidate operation
+     if (move.action === 'eliminate' || move.action === 'candidate') {
+       setNotesMode(true)
+     } else if (move.action === 'assign' || move.action === 'place') {
+       setNotesMode(false)
+     }
+   }, [setMoveHighlight, setDigitHighlight])
+   
+   const handleApplyState = useCallback((board: number[], candidates: Set<number>[], move: Move | null, index: number) => {
+     const game = gameRef.current
+     if (!game) return
+     // Convert Set<number>[] back to Uint16Array
+     const candidatesArray = candidates.map(set => Array.from(set))
+     const uint16Candidates = arraysToCandidates(candidatesArray)
+     game.setBoardState(board, uint16Candidates)
+     setMoveHighlight(move as MoveHighlight, index)
+     
+     // Update digit highlight based on move
+     if (move && move.digit && move.digit > 0) {
+       setDigitHighlight(move.digit)
+     } else {
+       clearDigitHighlight()
+     }
+     
+     // Update notes mode based on move action
+     if (move) {
+       if (move.action === 'eliminate' || move.action === 'candidate') {
+         setNotesMode(true)
+       } else if (move.action === 'assign' || move.action === 'place') {
+         setNotesMode(false)
+       }
+     }
+   }, [setMoveHighlight, setDigitHighlight, clearDigitHighlight])
+   
+   const handleIsComplete = useCallback(() => gameRef.current?.isComplete ?? false, [])
+   
+   const handleAutoSolveError = useCallback((message: string) => {
+     setValidationMessage({ type: 'error', message })
+     visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+   }, [visibilityAwareTimeout])
+   
+   const handleUnpinpointableError = useCallback((message: string, count: number) => {
+     setUnpinpointableErrorInfo({ message, count })
+     setShowSolutionConfirm(true)
+   }, [])
+   
+   const handleAutoSolveStatus = useCallback((message: string) => {
+     throttledSetValidationMessage({ type: 'success', message })
+     visibilityAwareTimeout(() => setValidationMessage(null), 2000)
+   }, [throttledSetValidationMessage, visibilityAwareTimeout])
+   
+   const handleErrorFixed = useCallback((message: string, resumeCallback: () => void) => {
+     // Show toast for fix-error (longer duration than normal hints)
+     setValidationMessage({ type: 'error', message: `Fixed: ${message}` })
+     // Clear toast after full duration
+     visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_FIX_ERROR)
+     // But resume solving sooner for better UX
+     visibilityAwareTimeout(resumeCallback, ERROR_FIX_RESUME_DELAY)
+   }, [visibilityAwareTimeout])
+   
+   const handleStepNavigate = useCallback((move: Move | null) => {
+     // Show toast with move explanation when stepping through autosolve
+     // Toast persists until next step or autosolve stops (no timeout)
+     if (move) {
+       setValidationMessage({ type: 'success', message: move.explanation })
+     } else {
+       // Stepped back to initial state
+       setValidationMessage({ type: 'success', message: 'Initial state' })
+     }
+   }, [])
 
    // Game state hook - only initialize after we have the initial board
    const game = useSudokuGame({
      initialBoard: initialBoard.length === 81 ? initialBoard : Array(81).fill(0),
-     onComplete: () => {
-       timer.pauseTimer()
-       handleSubmit()
-     },
+     onComplete: handleGameComplete,
     })
+   
+   // Keep game ref updated for stable callbacks
+   gameRef.current = game
 
    // Auto-solve hook - fetches all moves at once and plays them back
   const autoSolve = useAutoSolve({
     stepDelay: AUTO_SOLVE_SPEEDS[autoSolveSpeedState],
-    gamePaused: timer.isPausedDueToVisibility || isExtendedPaused,
+    gamePaused: timerControl.isPausedDueToVisibility || isExtendedPaused,
     backgroundManager,
-    getBoard: () => game.board,
-    getCandidates: () => {
-      // Convert Uint16Array to Set<number>[] for legacy API compatibility
-      const arrays = candidatesToArrays(game.candidates)
-      return arrays.map(arr => new Set(arr))
-    },
-    getGivens: () => initialBoard,
-    applyMove: (newBoard, newCandidates, move, index) => {
-      // Convert Set<number>[] back to Uint16Array
-      const candidatesArray = newCandidates.map(set => Array.from(set))
-      const uint16Candidates = arraysToCandidates(candidatesArray)
-      game.applyExternalMove(newBoard, uint16Candidates, move)
-      setMoveHighlight(move as MoveHighlight, index)
-      
-      // Highlight the digit being placed/modified
-      if (move.digit && move.digit > 0) {
-        setDigitHighlight(move.digit)
-      }
-      
-      // Show notes mode if it's a candidate operation
-      if (move.action === 'eliminate' || move.action === 'candidate') {
-        setNotesMode(true)
-      } else if (move.action === 'assign' || move.action === 'place') {
-        setNotesMode(false)
-      }
-    },
-    applyState: (board, candidates, move, index) => {
-      // Convert Set<number>[] back to Uint16Array
-      const candidatesArray = candidates.map(set => Array.from(set))
-      const uint16Candidates = arraysToCandidates(candidatesArray)
-      game.setBoardState(board, uint16Candidates)
-      setMoveHighlight(move as MoveHighlight, index)
-      
-      // Update digit highlight based on move
-      if (move && move.digit && move.digit > 0) {
-        setDigitHighlight(move.digit)
-      } else {
-        clearDigitHighlight()
-      }
-      
-      // Update notes mode based on move action
-      if (move) {
-        if (move.action === 'eliminate' || move.action === 'candidate') {
-          setNotesMode(true)
-        } else if (move.action === 'assign' || move.action === 'place') {
-          setNotesMode(false)
-        }
-      }
-    },
-    isComplete: () => game.isComplete,
-    onError: (message) => {
-      setValidationMessage({ type: 'error', message })
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
-    },
-    onUnpinpointableError: (message, count) => {
-      setUnpinpointableErrorInfo({ message, count })
-      setShowSolutionConfirm(true)
-    },
-    onStatus: (message) => {
-      throttledSetValidationMessage({ type: 'success', message })
-      visibilityAwareTimeout(() => setValidationMessage(null), 2000)
-    },
-    onErrorFixed: (message, resumeCallback) => {
-      // Show toast for fix-error (longer duration than normal hints)
-      setValidationMessage({ type: 'error', message: `Fixed: ${message}` })
-      // Clear toast after full duration
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_FIX_ERROR)
-      // But resume solving sooner for better UX
-      visibilityAwareTimeout(resumeCallback, ERROR_FIX_RESUME_DELAY)
-    },
-    onStepNavigate: (move) => {
-      // Show toast with move explanation when stepping through autosolve
-      // Toast persists until next step or autosolve stops (no timeout)
-      if (move) {
-        setValidationMessage({ type: 'success', message: move.explanation })
-      } else {
-        // Stepped back to initial state
-        setValidationMessage({ type: 'success', message: 'Initial state' })
-      }
-    },
+    getBoard,
+    getCandidates,
+    getGivens,
+    applyMove: handleApplyMove,
+    applyState: handleApplyState,
+    isComplete: handleIsComplete,
+    onError: handleAutoSolveError,
+    onUnpinpointableError: handleUnpinpointableError,
+    onStatus: handleAutoSolveStatus,
+    onErrorFixed: handleErrorFixed,
+    onStepNavigate: handleStepNavigate,
   })
+  
+  // Keep autoSolve ref updated for stable callbacks
+  autoSolveRef.current = autoSolve
 
   // Extended background pause logic - suspend all operations after EXTENDED_PAUSE_DELAY hidden
   useEffect(() => {
@@ -331,11 +422,11 @@ export default function Game() {
         autoSolve.stopAutoSolve()
       }
       // Pause timer
-      timer.pauseTimer()
+      timerControl.pauseTimer()
     }, EXTENDED_PAUSE_DELAY)
 
     return () => clearTimeout(timeout)
-  }, [backgroundManager.isHidden, autoSolve, timer])
+  }, [backgroundManager.isHidden, autoSolve, timerControl])
 
   // Unload WASM immediately when page becomes hidden to save ~4MB memory
   // This is more aggressive than waiting for deep pause - any visibility change triggers unload
@@ -421,7 +512,7 @@ export default function Game() {
     const savedState: SavedGameState = {
       board: game.board,
       candidates: candidatesToArrays(game.candidates),
-      elapsedMs: timer.elapsedMs,
+      elapsedMs: timerControl.getElapsedMs(),
       history: game.history,
       autoFillUsed,
       savedAt: Date.now(),
@@ -434,7 +525,8 @@ export default function Game() {
       console.warn('Failed to save game state:', e)
     }
   // Note: We use isCompleteRef instead of game.isComplete to avoid stale closure issues
-  }, [puzzle, game.board, game.candidates, game.history, timer.elapsedMs, autoFillUsed, getStorageKey])
+  // Note: timerControl.getElapsedMs is a stable callback that reads from a ref, so no need to include in deps
+  }, [puzzle, game.board, game.candidates, game.history, autoFillUsed, getStorageKey])
 
   // Clear saved game state from localStorage
   const clearSavedGameState = useCallback(() => {
@@ -483,8 +575,8 @@ export default function Game() {
   const handleRestart = useCallback(() => {
     game.resetGame()
     clearSavedGameState()
-    timer.resetTimer()
-    timer.startTimer()
+    timerControl.resetTimer()
+    timerControl.startTimer()
     clearAllAndDeselect()
     setNotesMode(false)
     setHintsUsed(0)
@@ -494,7 +586,7 @@ export default function Game() {
     setAutoSolveStepsUsed(0)
     setAutoSolveErrorsFixed(0)
     setShowResultModal(false)
-  }, [game, timer, clearSavedGameState, clearAllAndDeselect])
+  }, [game, timerControl, clearSavedGameState, clearAllAndDeselect])
 
   // Auto-fill notes based on current board state
   const autoFillNotes = useCallback(() => {
@@ -834,48 +926,54 @@ export default function Game() {
      setEraseMode(false)
    }, [game, highlightedDigit, eraseMode, notesMode, selectedCell, selectCell, clearAllAndDeselect, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement, clickGivenCell, resumeFromExtendedPause])
 
-    // Digit input handler
+    // Digit input handler - STABLE: reads from refs to avoid recreating on state changes
     const handleDigitInput = useCallback((digit: number) => {
       resumeFromExtendedPause()
       // Clear erase mode when selecting a digit
-     setEraseMode(false)
+      setEraseMode(false)
 
-     // If no cell selected, toggle digit highlight for multi-fill mode
-     if (selectedCell === null) {
-       toggleDigitHighlight(digit)
-       return
-     }
+      const currentSelectedCell = selectedCellRef.current
+      const currentNotesMode = notesModeRef.current
+      const currentGame = gameRef.current
+      
+      if (!currentGame) return
 
-     // If a given cell is selected, deselect it and toggle digit highlight for multi-fill mode
-     if (game.isGivenCell(selectedCell)) {
-       deselectCell()
-       toggleDigitHighlight(digit)
-       return
-     }
+      // If no cell selected, toggle digit highlight for multi-fill mode
+      if (currentSelectedCell === null) {
+        toggleDigitHighlight(digit)
+        return
+      }
 
-     // If cell already has this digit, erase it
-      if (game.board[selectedCell] === digit) {
-        game.eraseCell(selectedCell)
+      // If a given cell is selected, deselect it and toggle digit highlight for multi-fill mode
+      if (currentGame.isGivenCell(currentSelectedCell)) {
+        deselectCell()
+        toggleDigitHighlight(digit)
+        return
+      }
+
+      // If cell already has this digit, erase it
+      if (currentGame.board[currentSelectedCell] === digit) {
+        currentGame.eraseCell(currentSelectedCell)
         clearAfterDigitToggle()
         setTechniqueHintPending(false) // Re-enable technique hint button
         return
       }
 
-       game.setCell(selectedCell, digit, notesMode)
+      currentGame.setCell(currentSelectedCell, digit, currentNotesMode)
 
-       if (notesMode) {
-         // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
-         clearAfterUserCandidateOp()
-       } else {
-         // For digit placement, clear move highlights but preserve digit highlight for multi-fill
-         clearAfterDigitPlacement()
-       }
-       setTechniqueHintPending(false) // Re-enable technique hint button
+      if (currentNotesMode) {
+        // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
+        clearAfterUserCandidateOp()
+      } else {
+        // For digit placement, clear move highlights but preserve digit highlight for multi-fill
+        clearAfterDigitPlacement()
+      }
+      setTechniqueHintPending(false) // Re-enable technique hint button
 
-       // Keep cell selected so user can erase or change immediately
-       // Keep digit highlighted for adding candidates (multi-fill)
-     // eslint-disable-next-line react-hooks/exhaustive-deps -- resumeFromExtendedPause is a stable callback
-     }, [game, selectedCell, notesMode, toggleDigitHighlight, clearAfterDigitToggle, clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell])
+      // Keep cell selected so user can erase or change immediately
+      // Keep digit highlighted for adding candidates (multi-fill)
+    // All deps are now stable callbacks - game accessed via ref
+    }, [toggleDigitHighlight, clearAfterDigitToggle, clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell, resumeFromExtendedPause])
 
     // Keyboard cell change handler (from Board component)
     const handleCellChange = useCallback((idx: number, value: number) => {
@@ -900,34 +998,43 @@ export default function Game() {
      // eslint-disable-next-line react-hooks/exhaustive-deps -- resumeFromExtendedPause is a stable callback
      }, [game, notesMode, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement])
 
+  // Toggle notes mode handler
+  const handleNotesToggle = useCallback(() => {
+    setNotesMode(prev => !prev)
+  }, [])
+
   // Toggle erase mode handler
   const handleEraseMode = useCallback(() => {
     setEraseMode(prev => !prev)
     clearOnModeChange()
   }, [clearOnModeChange])
 
-  // Undo handler - during auto-solve, this steps backward
+  // Undo handler - STABLE: reads from refs to avoid recreation on state changes
   const handleUndo = useCallback(() => {
-    if (autoSolve.isAutoSolving) {
-      autoSolve.stepBack()
-    } else {
-      game.undo()
+    const currentAutoSolve = autoSolveRef.current
+    const currentGame = gameRef.current
+    if (currentAutoSolve?.isAutoSolving) {
+      currentAutoSolve.stepBack()
+    } else if (currentGame) {
+      currentGame.undo()
       // Clear selection and move highlights, but preserve highlightedDigit for multi-fill mode
       deselectCell()
       clearMoveHighlight()
     }
-  }, [game, autoSolve, deselectCell, clearMoveHighlight])
+  }, [deselectCell, clearMoveHighlight])
 
-  // Redo handler - during auto-solve, this steps forward
+  // Redo handler - STABLE: reads from refs to avoid recreation on state changes
   const handleRedo = useCallback(() => {
-    if (autoSolve.isAutoSolving) {
-      autoSolve.stepForward()
-    } else {
-      game.redo()
+    const currentAutoSolve = autoSolveRef.current
+    const currentGame = gameRef.current
+    if (currentAutoSolve?.isAutoSolving) {
+      currentAutoSolve.stepForward()
+    } else if (currentGame) {
+      currentGame.redo()
       // Clear selection and highlights after redo
       clearAllAndDeselect()
     }
-  }, [game, autoSolve, clearAllAndDeselect])
+  }, [clearAllAndDeselect])
 
   // Submit handler
   const handleSubmit = useCallback(async () => {
@@ -936,7 +1043,7 @@ export default function Game() {
     const score: Score = {
       seed: puzzle.seed,
       difficulty: puzzle.difficulty,
-      timeMs: timer.elapsedMs,
+      timeMs: timerControl.getElapsedMs(),
       hintsUsed: hintsUsed,
       techniqueHintsUsed: techniqueHintsUsed,
       mistakes: 0,
@@ -954,7 +1061,11 @@ export default function Game() {
     }
     
     setShowResultModal(true)
-  }, [puzzle, hintsUsed, techniqueHintsUsed, timer.elapsedMs, encodedPuzzle, autoFillUsed])
+  // Note: timerControl.getElapsedMs is a stable callback, no need to include in deps
+  }, [puzzle, hintsUsed, techniqueHintsUsed, encodedPuzzle, autoFillUsed])
+  
+  // Keep handleSubmit ref updated so onComplete can call it
+  handleSubmitRef.current = handleSubmit
 
   // Auto-solve handler
   const handleSolve = useCallback(async () => {
@@ -980,7 +1091,7 @@ export default function Game() {
         initialBoard: initialBoard,
         currentBoard: game.board,
       candidates: candidatesToArrays(game.candidates),
-        elapsedMs: timer.elapsedMs,
+        elapsedMs: timerControl.getElapsedMs(),
         isComplete: game.isComplete,
       },
       history: game.history.map(move => ({
@@ -1029,7 +1140,7 @@ export default function Game() {
 - **Version:** ${__COMMIT_HASH__}
 - **Seed:** ${puzzle?.seed || 'Unknown'}
 - **Difficulty:** ${puzzle?.difficulty || 'Unknown'}
-- **Time:** ${Math.floor(timer.elapsedMs / 1000)}s
+- **Time:** ${Math.floor(timerControl.getElapsedMs() / 1000)}s
 
 ### Current Board
 \`\`\`
@@ -1060,7 +1171,8 @@ ${bugReportJson}
     issueUrl.searchParams.set('labels', 'bug')
     
     window.open(issueUrl.toString(), '_blank')
-  }, [puzzle, initialBoard, game, timer.elapsedMs, colorTheme, mode, visibilityAwareTimeout])
+  // Note: timerControl.getElapsedMs is a stable callback, no need to include in deps
+  }, [puzzle, initialBoard, game, colorTheme, mode, visibilityAwareTimeout])
 
   // Feature request handler - opens GitHub issue for new features
   const handleFeatureRequest = useCallback(() => {
@@ -1110,20 +1222,6 @@ ${bugReportJson}
   // ============================================================
   // EFFECTS
   // ============================================================
-
-  // Clear selection when clicking on background (only deselect cell, keep digit highlight)
-  useEffect(() => {
-    const handleBackgroundClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      if (target.classList.contains('game-background')) {
-        deselectCell()
-        // Don't clear highlightedDigit - user may want to keep filling cells
-        clearMoveHighlight()
-      }
-    }
-    document.addEventListener('click', handleBackgroundClick)
-    return () => document.removeEventListener('click', handleBackgroundClick)
-  }, [deselectCell, clearMoveHighlight])
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -1212,7 +1310,7 @@ ${bugReportJson}
       setGameState({
         isPlaying: true,
         difficulty,
-        elapsedMs: timer.elapsedMs, // Static snapshot, not updated every second
+        elapsedMs: timerControl.getElapsedMs(), // Static snapshot, not updated every second
         historyCount: game.history.length,
         isComplete: game.isComplete,
         onHint: null,
@@ -1221,7 +1319,7 @@ ${bugReportJson}
       })
     }
     return () => setGameState(null)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- timer.elapsedMs is intentionally not included to avoid constant re-renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback; we only want a static snapshot at mount
   }, [loading, puzzle, difficulty, game.history.length, game.isComplete, autoFillNotes, setGameState])
 
   // Clear highlights and toast when auto-solve stops so History shows the summary, not last move
@@ -1432,8 +1530,8 @@ ${bugReportJson}
 
         // Don't start timer for completed daily puzzles or when choosing difficulty
         if (!alreadyCompletedToday && !showDifficultyChooser) {
-          timer.resetTimer()
-          timer.startTimer()
+          timerControl.resetTimer()
+          timerControl.startTimer()
         }
         setLoading(false)
 
@@ -1471,7 +1569,7 @@ ${bugReportJson}
         // Restore saved state
         const restoredCandidates = arraysToCandidates(savedState.candidates)
         game.restoreState(savedState.board, restoredCandidates, savedState.history)
-        timer.setElapsedMs(savedState.elapsedMs)
+        timerControl.setElapsedMs(savedState.elapsedMs)
         setAutoFillUsed(savedState.autoFillUsed)
       } else {
         // Start fresh
@@ -1545,9 +1643,9 @@ ${bugReportJson}
   // Pause timer when game is complete
   useEffect(() => {
     if (game.isComplete) {
-      timer.pauseTimer()
+      timerControl.pauseTimer()
     }
-  }, [game.isComplete, timer])
+  }, [game.isComplete, timerControl])
 
   // ============================================================
   // RENDER
@@ -1585,8 +1683,6 @@ ${bugReportJson}
       {/* Game Header */}
       <GameHeader
         difficulty={difficulty}
-        formatTime={timer.formatTime}
-        isPausedDueToVisibility={timer.isPausedDueToVisibility}
         hideTimer={hideTimerState}
         isComplete={game.isComplete}
         historyCount={game.history.length}
@@ -1650,9 +1746,13 @@ ${bugReportJson}
       <div 
         className="game-background game-area flex-1"
         onClick={(e) => {
-          // Deselect cell when clicking on the background (not on board or controls)
+          // Deselect cell when clicking outside board and controls
           // Keep highlightedDigit for multi-fill workflow
-          if (e.target === e.currentTarget) {
+          const target = e.target as HTMLElement
+          const isInsideBoard = boardContainerRef.current?.contains(target)
+          const isInsideControls = controlsContainerRef.current?.contains(target)
+          
+          if (!isInsideBoard && !isInsideControls) {
             deselectCell()
             setEraseMode(false)
             clearMoveHighlight()
@@ -1663,7 +1763,7 @@ ${bugReportJson}
         {/* Game container - sizes based on available height and width */}
         <div className="game-container flex flex-col items-center">
           {/* Board container with pause overlay */}
-          <div className="relative aspect-square w-full">
+          <div ref={boardContainerRef} className="relative aspect-square w-full">
           <Board
             board={game.board}
             initialBoard={initialBoard}
@@ -1678,7 +1778,7 @@ ${bugReportJson}
           />
           
           {/* Pause overlay - shown when timer is paused due to tab/window losing focus */}
-          {timer.isPausedDueToVisibility && !game.isComplete && (
+          {timerControl.isPausedDueToVisibility && !game.isComplete && (
             <div 
               className="absolute inset-0 flex flex-col items-center justify-center bg-background/95 backdrop-blur-md rounded-xl z-20"
               onClick={() => {
@@ -1695,18 +1795,16 @@ ${bugReportJson}
               <p className="text-sm text-foreground-muted text-center px-4">
                 Click anywhere or return to this tab to continue
               </p>
-              <div className="mt-4 text-2xl font-mono text-accent">
-                {timer.formatTime()}
-              </div>
+              <PauseOverlayTimer />
             </div>
           )}
           </div>
 
           {/* Controls - same width as board, scales with container */}
-          <div className="w-full flex-shrink-0">
+          <div ref={controlsContainerRef} className="w-full flex-shrink-0">
             <Controls
               notesMode={notesMode}
-              onNotesToggle={() => setNotesMode(!notesMode)}
+              onNotesToggle={handleNotesToggle}
               onDigit={handleDigitInput}
               onEraseMode={handleEraseMode}
               onUndo={handleUndo}
@@ -1743,7 +1841,7 @@ ${bugReportJson}
         onClose={() => setShowResultModal(false)}
         seed={completedDailyScore?.seed || puzzle?.seed || ''}
         difficulty={completedDailyScore?.difficulty as Difficulty || difficulty}
-        timeMs={completedDailyScore?.timeMs || timer.elapsedMs}
+        timeMs={completedDailyScore?.timeMs || timerControl.getElapsedMs()}
         hintsUsed={completedDailyScore?.hintsUsed || hintsUsed}
         techniqueHintsUsed={completedDailyScore?.techniqueHintsUsed || techniqueHintsUsed}
         autoFillUsed={completedDailyScore?.autoFillUsed || autoFillUsed}
@@ -1843,5 +1941,22 @@ ${bugReportJson}
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Main Game component - wraps GameContent with TimerProvider.
+ * 
+ * This separation is required because:
+ * 1. GameContent uses useTimerControl() which requires TimerProvider as an ancestor
+ * 2. TimerProvider creates the actual timer instance and splits it into two contexts
+ * 3. Only TimerDisplay subscribes to the rapidly-updating display context
+ * 4. Game/GameContent subscribe only to the stable control context (no re-renders on tick)
+ */
+export default function Game() {
+  return (
+    <TimerProvider pauseOnHidden={true}>
+      <GameContent />
+    </TimerProvider>
   )
 }

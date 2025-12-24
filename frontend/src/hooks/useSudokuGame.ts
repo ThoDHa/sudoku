@@ -767,7 +767,10 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     }
   }, [board, candidates, calculateCandidatesForCell])
 
-  return {
+  // CRITICAL: Memoize return object to prevent cascading re-renders.
+  // Without this, every render creates a new object reference, causing all
+  // consumers to re-render unnecessarily.
+  return useMemo(() => ({
     // State
     board,
     candidates,
@@ -803,5 +806,11 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     fillAllCandidates,
     areCandidatesFilled,
     checkNotes,
-  }
+  }), [
+    board, candidates, candidatesVersion, history, historyIndex, isComplete,
+    digitCounts, setCell, eraseCell, toggleCandidate, undo, redo, resetGame,
+    clearAll, clearCandidates, applyExternalMove, setIsComplete, restoreState,
+    setBoardState, isGivenCell, calculateCandidatesForCell, fillAllCandidates,
+    areCandidatesFilled, checkNotes
+  ])
 }

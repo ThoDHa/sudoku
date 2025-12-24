@@ -16,7 +16,7 @@ test.describe('@integration Technique Hints - Basic Functionality', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/technique-test?d=easy');
+    await page.goto('/technique-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -104,7 +104,7 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/technique-disable-test?d=easy');
+    await page.goto('/technique-disable-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -226,7 +226,7 @@ test.describe('@integration Technique Hints - Counter', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/technique-counter-test?d=easy');
+    await page.goto('/technique-counter-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -276,7 +276,7 @@ test.describe('@integration Technique Hints - Mobile', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/game/technique-mobile-test?d=easy');
+    await page.goto('/technique-mobile-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -344,7 +344,7 @@ test.describe('@integration Technique Hints - Edge Cases', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/technique-nearly-done-test?d=easy');
+    await page.goto('/technique-nearly-done-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     // Use a few regular hints to get closer to solution
@@ -378,7 +378,7 @@ test.describe('@integration Technique Hints - Edge Cases', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/technique-no-selection-test?d=easy');
+    await page.goto('/technique-no-selection-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     // Click technique hint without selecting a cell first

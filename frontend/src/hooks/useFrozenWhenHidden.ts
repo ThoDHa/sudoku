@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useMemo } from 'react'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 
 /**
@@ -47,10 +47,12 @@ export function useFrozenWhenHidden() {
     return isFrozenRef.current
   }, [])
   
-  return {
+  // CRITICAL: Memoize return object to prevent cascading re-renders.
+  // Without this, every render creates a new object reference.
+  return useMemo(() => ({
     isFrozen,
     skipWhenFrozen,
     shouldSkipStateUpdate,
     isCurrentlyFrozen: backgroundManager.isHidden || backgroundManager.isInDeepPause,
-  }
+  }), [isFrozen, skipWhenFrozen, shouldSkipStateUpdate, backgroundManager.isHidden, backgroundManager.isInDeepPause])
 }

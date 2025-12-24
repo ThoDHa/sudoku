@@ -14,7 +14,7 @@ test.describe('@integration Notes Mode - Toggle', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/notes-test?d=easy');
+    await page.goto('/notes-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
   });
 
@@ -67,7 +67,7 @@ test.describe('@integration Notes Mode - Adding Candidates', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/notes-add-test?d=easy');
+    await page.goto('/notes-add-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Enable notes mode
@@ -144,7 +144,7 @@ test.describe('@integration Notes Mode - Removing Candidates', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     // Use a unique seed to avoid any caching/interference issues
-    await page.goto('/game/notes-remove-unique-seed?d=easy', { waitUntil: 'networkidle' });
+    await page.goto('/notes-remove-unique-seed?d=easy', { waitUntil: 'networkidle' });
     // Wait for the grid AND for at least one cell to have a value (puzzle loaded)
     await page.waitForSelector('[role="grid"]', { timeout: 30000 });
     await page.waitForSelector('[role="gridcell"][aria-label*="value"]', { timeout: 30000 });
@@ -216,7 +216,7 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/highlight-persist-test?d=easy');
+    await page.goto('/highlight-persist-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
   });
 
@@ -329,7 +329,7 @@ test.describe('@integration Notes Mode - Persistence', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/notes-persist-test?d=easy');
+    await page.goto('/notes-persist-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Enable notes mode
@@ -371,7 +371,7 @@ test.describe('@integration Notes Mode - Persistence', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/notes-mode-persist-test?d=easy');
+    await page.goto('/notes-mode-persist-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     const notesButton = page.locator('button[title="Notes mode"]');
@@ -407,7 +407,7 @@ test.describe('@integration Notes Mode - Persistence', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/notes-digit-clear-test?d=easy');
+    await page.goto('/notes-digit-clear-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     const notesButton = page.locator('button[title="Notes mode"]');

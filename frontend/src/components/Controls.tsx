@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 interface ControlsProps {
   notesMode: boolean
   onNotesToggle: () => void
@@ -14,7 +16,7 @@ interface ControlsProps {
   isSolving?: boolean // Whether auto-solve is running
 }
 
-export default function Controls({
+function Controls({
   notesMode,
   onNotesToggle,
   onDigit,
@@ -149,3 +151,43 @@ export default function Controls({
     </div>
   )
 }
+
+/**
+ * Memoized Controls component - only re-renders when props actually change.
+ * Custom comparison handles digitCounts array properly.
+ */
+export default memo(Controls, (prevProps, nextProps) => {
+  // Compare primitive props
+  if (
+    prevProps.notesMode !== nextProps.notesMode ||
+    prevProps.eraseMode !== nextProps.eraseMode ||
+    prevProps.canUndo !== nextProps.canUndo ||
+    prevProps.canRedo !== nextProps.canRedo ||
+    prevProps.highlightedDigit !== nextProps.highlightedDigit ||
+    prevProps.isComplete !== nextProps.isComplete ||
+    prevProps.isSolving !== nextProps.isSolving
+  ) {
+    return false // Props changed, re-render
+  }
+
+  // Compare digitCounts array element-by-element
+  const prevCounts = prevProps.digitCounts
+  const nextCounts = nextProps.digitCounts
+  if (prevCounts.length !== nextCounts.length) return false
+  for (let i = 0; i < prevCounts.length; i++) {
+    if (prevCounts[i] !== nextCounts[i]) return false
+  }
+
+  // Compare callback references - they may change when parent state changes
+  if (
+    prevProps.onNotesToggle !== nextProps.onNotesToggle ||
+    prevProps.onDigit !== nextProps.onDigit ||
+    prevProps.onEraseMode !== nextProps.onEraseMode ||
+    prevProps.onUndo !== nextProps.onUndo ||
+    prevProps.onRedo !== nextProps.onRedo
+  ) {
+    return false // Callbacks changed, re-render
+  }
+
+  return true // Props are equal, skip re-render
+})

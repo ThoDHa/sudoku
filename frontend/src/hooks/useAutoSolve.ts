@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { PLAY_DELAY } from '../lib/constants'
 import { solveAll } from '../lib/solver-service'
 import { useBackgroundManager } from './useBackgroundManager'
@@ -859,7 +859,9 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     }
   }, [isAutoSolving, getGivens, getCandidates, applyMove, onError, stopAutoSolve, scheduleNextMove])
 
-  return {
+  // CRITICAL: Memoize return object to prevent cascading re-renders.
+  // Without this, every render creates a new object reference.
+  return useMemo(() => ({
     isAutoSolving,
     isPaused,
     isFetching,
@@ -875,5 +877,9 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     currentIndex,
     totalMoves,
     lastCompletedSteps,
-  }
+  }), [
+    isAutoSolving, isPaused, isFetching, startAutoSolve, stopAutoSolve,
+    togglePause, restartAutoSolve, solveFromGivens, stepBack, stepForward,
+    currentIndex, totalMoves, lastCompletedSteps
+  ])
 }

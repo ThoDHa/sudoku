@@ -306,7 +306,10 @@ export function useHighlightState() {
   const selectedMoveIndex = state.selectedMoveIndex
   const version = state.version
 
-  return {
+  // CRITICAL: Memoize return object to prevent cascading re-renders.
+  // Without this, every render creates a new object reference, causing all
+  // consumers to re-render unnecessarily.
+  return useMemo(() => ({
     // State values
     state,
     selectedCell,
@@ -315,10 +318,26 @@ export function useHighlightState() {
     selectedMoveIndex,
     version,
     
-    // Actions
-    ...actions,
+    // Actions (already memoized, but we need stable wrapper object)
+    selectCell: actions.selectCell,
+    deselectCell: actions.deselectCell,
+    setDigitHighlight: actions.setDigitHighlight,
+    clearDigitHighlight: actions.clearDigitHighlight,
+    toggleDigitHighlight: actions.toggleDigitHighlight,
+    setMoveHighlight: actions.setMoveHighlight,
+    clearMoveHighlight: actions.clearMoveHighlight,
+    clearAll: actions.clearAll,
+    clearAllAndDeselect: actions.clearAllAndDeselect,
+    clearAfterUserCandidateOp: actions.clearAfterUserCandidateOp,
+    clearAfterDigitPlacement: actions.clearAfterDigitPlacement,
+    clearAfterCellSelection: actions.clearAfterCellSelection,
+    clearAfterErase: actions.clearAfterErase,
+    clearOnModeChange: actions.clearOnModeChange,
+    clearAfterDigitToggle: actions.clearAfterDigitToggle,
+    clearHighlightsKeepSelection: actions.clearHighlightsKeepSelection,
+    clickGivenCell: actions.clickGivenCell,
     dispatch,
-  }
+  }), [state, selectedCell, highlightedDigit, currentHighlight, selectedMoveIndex, version, actions, dispatch])
 }
 
 export type UseHighlightStateReturn = ReturnType<typeof useHighlightState>

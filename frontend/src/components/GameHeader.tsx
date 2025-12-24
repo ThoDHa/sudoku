@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, memo } from 'react'
 import { Link } from 'react-router-dom'
 import DifficultyBadge from './DifficultyBadge'
 import Menu from './Menu'
+import { TimerDisplay } from './TimerDisplay'
 import { SunIcon, MoonIcon, ComputerIcon } from './ui'
 import { Difficulty } from '../lib/hooks'
 import { ColorTheme, FontSize, ModePreference } from '../lib/ThemeContext'
@@ -267,9 +268,7 @@ function ThemeModeDropdown({ mode, modePreference, isOpen, onToggle, onSetModePr
 
 interface GameHeaderProps {
   difficulty: Difficulty
-  // Timer state
-  formatTime: () => string
-  isPausedDueToVisibility: boolean
+  // Timer state - hideTimer prop controls visibility
   hideTimer: boolean
   // Game state
   isComplete: boolean
@@ -316,10 +315,8 @@ interface GameHeaderProps {
   onToggleHideTimer: () => void
 }
 
-export default function GameHeader({
+export default memo(function GameHeader({
   difficulty,
-  formatTime,
-  isPausedDueToVisibility,
   hideTimer,
   isComplete,
   historyCount,
@@ -386,24 +383,8 @@ export default function GameHeader({
           <DifficultyBadge difficulty={difficulty} size="sm" />
         </div>
 
-        {/* Center: Timer (hidden when hideTimer is true) */}
-        {!hideTimer && (
-          <div className={`flex items-center gap-1 sm:gap-2 ${isPausedDueToVisibility ? 'text-accent' : 'text-foreground-muted'}`}>
-            {isPausedDueToVisibility ? (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            ) : (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
-            <span className="font-mono text-sm">{formatTime()}</span>
-            {isPausedDueToVisibility && (
-              <span className="text-xs font-medium">PAUSED</span>
-            )}
-          </div>
-        )}
+        {/* Center: Timer - uses TimerDisplay component to isolate re-renders */}
+        <TimerDisplay hideTimer={hideTimer} />
 
         {/* Right: Actions */}
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
@@ -531,4 +512,4 @@ export default function GameHeader({
       />
     </>
   )
-}
+})

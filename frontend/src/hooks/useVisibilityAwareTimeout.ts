@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect, useMemo } from 'react'
 
 interface VisibilityAwareTimeoutReturn {
   /** 
@@ -102,8 +102,10 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
     activeTimeoutsRef.current.clear()
   }, [])
 
-  return {
+  // CRITICAL: Memoize return object to prevent cascading re-renders.
+  // Without this, every render creates a new object reference.
+  return useMemo(() => ({
     setTimeout: setVisibilityAwareTimeout,
     cancelAll,
-  }
+  }), [setVisibilityAwareTimeout, cancelAll])
 }

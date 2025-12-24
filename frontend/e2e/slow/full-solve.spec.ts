@@ -15,7 +15,7 @@ test.describe('@slow Full Puzzle Solve', () => {
   test.slow();
 
   test('complete an easy puzzle using hints only', async ({ page }) => {
-    await page.goto('/game/full-solve-easy?d=easy');
+    await page.goto('/full-solve-easy?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     const sdk = new PlaywrightUISDK({ page });
@@ -56,7 +56,7 @@ test.describe('@slow Full Puzzle Solve', () => {
   });
 
   test('complete a medium puzzle using hints only', async ({ page }) => {
-    await page.goto('/game/full-solve-medium?d=medium');
+    await page.goto('/full-solve-medium?d=medium');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     const sdk = new PlaywrightUISDK({ page });
@@ -94,7 +94,7 @@ test.describe('@slow Full Puzzle Solve', () => {
 
   test.skip('complete a hard puzzle using hints only', async ({ page }) => {
     // Skip by default as this can take a very long time
-    await page.goto('/game/full-solve-hard?d=hard');
+    await page.goto('/full-solve-hard?d=hard');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     const sdk = new PlaywrightUISDK({ page });
@@ -134,7 +134,7 @@ test.describe('@slow Full Solve - Victory Condition', () => {
   test.slow();
 
   test('victory modal appears when puzzle is completed', async ({ page }) => {
-    await page.goto('/game/victory-test?d=easy');
+    await page.goto('/victory-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     const sdk = new PlaywrightUISDK({ page });
@@ -176,7 +176,7 @@ test.describe('@slow Full Solve - Victory Condition', () => {
   });
 
   test('timer stops when puzzle is completed', async ({ page }) => {
-    await page.goto('/game/timer-stop-test?d=easy');
+    await page.goto('/timer-stop-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     const sdk = new PlaywrightUISDK({ page });
@@ -216,7 +216,7 @@ test.describe('@slow Full Solve - Progress Tracking', () => {
   test.slow();
 
   test('cell count decreases as puzzle is solved', async ({ page }) => {
-    await page.goto('/game/progress-test?d=easy');
+    await page.goto('/progress-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     const sdk = new PlaywrightUISDK({ page });
@@ -243,7 +243,7 @@ test.describe('@slow Full Solve - Progress Tracking', () => {
   });
 
   test('all 81 cells filled when puzzle is complete', async ({ page }) => {
-    await page.goto('/game/all-cells-test?d=easy');
+    await page.goto('/all-cells-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     const sdk = new PlaywrightUISDK({ page });
@@ -277,7 +277,7 @@ test.describe('@slow Full Solve - Mobile', () => {
 
   test('can complete puzzle on mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/game/mobile-solve-test?d=easy');
+    await page.goto('/mobile-solve-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     const sdk = new PlaywrightUISDK({ page });

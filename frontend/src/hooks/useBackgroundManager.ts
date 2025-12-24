@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 
 interface BackgroundManagerOptions {
   /** Whether to enable background pause functionality */
@@ -161,12 +161,15 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
     }
   }, [enabled])
 
-  return {
+  // CRITICAL: Memoize return object to prevent cascading re-renders.
+  // Without this, every render creates a new object reference, causing all
+  // context consumers to re-render (~746 renders/second instead of ~1/second).
+  return useMemo(() => ({
     isHidden,
     shouldPauseOperations,
     isInDeepPause,
     visibilityState,
     forceResume,
     forcePause,
-  }
+  }), [isHidden, shouldPauseOperations, isInDeepPause, visibilityState, forceResume, forcePause])
 }

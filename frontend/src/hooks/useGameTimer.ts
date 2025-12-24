@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { TIMER_UPDATE_INTERVAL, MS_PER_SECOND } from '../lib/constants'
 import type { useBackgroundManager } from './useBackgroundManager'
 
@@ -50,6 +50,9 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
   const accumulatedRef = useRef(0)
   // Track if timer was running before visibility pause
   const wasRunningBeforePauseRef = useRef(false)
+  // Track elapsedMs for stable formatTime callback (no re-creation on every tick)
+  const elapsedMsRef = useRef(elapsedMs)
+  elapsedMsRef.current = elapsedMs
 
   // Use the provided background manager (from shared context)
 
@@ -86,13 +89,16 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     }
   }, [isRunning])
 
+  // STABLE formatTime - reads from ref instead of closure to avoid recreation every tick
+  // This is critical: if formatTime changes every second, TimerControlContext updates,
+  // which causes Game.tsx to re-render, which re-renders 81 cells!
   const formatTime = useCallback((ms?: number): string => {
-    const time = ms ?? elapsedMs
+    const time = ms ?? elapsedMsRef.current
     const totalSeconds = Math.floor(time / MS_PER_SECOND)
     const minutes = Math.floor(totalSeconds / 60)
     const seconds = totalSeconds % 60
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
-  }, [elapsedMs])
+  }, []) // No dependencies - stable forever!
 
   // Main timer interval - completely stopped when hidden for battery savings
   useEffect(() => {
@@ -153,7 +159,9 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
 
   }, [backgroundManager.shouldPauseOperations, backgroundManager.isHidden, isRunning, pauseOnHidden])
 
-  return {
+  // CRITICAL: Memoize return object to prevent cascading re-renders.
+  // Without this, every render creates a new object reference.
+  return useMemo(() => ({
     elapsedMs,
     isRunning,
     isPausedDueToVisibility,
@@ -162,5 +170,5 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     resetTimer,
     setElapsedMs: setElapsedMsValue,
     formatTime,
-  }
+  }), [elapsedMs, isRunning, isPausedDueToVisibility, startTimer, pauseTimer, resetTimer, setElapsedMsValue, formatTime])
 }

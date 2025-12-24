@@ -144,7 +144,7 @@ test.describe('@integration Autosolve Error Handling', () => {
   });
 
   test('autosolve handles invalid cell in row gracefully', async ({ page }) => {
-    await page.goto('/game/autosolve-error-row?d=easy');
+    await page.goto('/autosolve-error-row?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const sdk = new PlaywrightUISDK({ page });
@@ -182,7 +182,7 @@ test.describe('@integration Autosolve Error Handling', () => {
   });
 
   test('autosolve handles invalid cell in column gracefully', async ({ page }) => {
-    await page.goto('/game/autosolve-error-col?d=easy');
+    await page.goto('/autosolve-error-col?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const sdk = new PlaywrightUISDK({ page });
@@ -215,7 +215,7 @@ test.describe('@integration Autosolve Error Handling', () => {
   });
 
   test('autosolve handles invalid cell in box gracefully', async ({ page }) => {
-    await page.goto('/game/autosolve-error-box?d=easy');
+    await page.goto('/autosolve-error-box?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const sdk = new PlaywrightUISDK({ page });
@@ -248,7 +248,7 @@ test.describe('@integration Autosolve Error Handling', () => {
   });
 
   test('autosolve handles duplicate in row gracefully', async ({ page }) => {
-    await page.goto('/game/autosolve-dup-row?d=easy');
+    await page.goto('/autosolve-dup-row?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const sdk = new PlaywrightUISDK({ page });
@@ -288,7 +288,7 @@ test.describe('@integration Autosolve Error Handling', () => {
   });
 
   test('autosolve handles duplicate in column gracefully', async ({ page }) => {
-    await page.goto('/game/autosolve-dup-col?d=easy');
+    await page.goto('/autosolve-dup-col?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const sdk = new PlaywrightUISDK({ page });
@@ -327,7 +327,7 @@ test.describe('@integration Autosolve Error Handling', () => {
   });
 
   test('autosolve handles duplicate in box gracefully', async ({ page }) => {
-    await page.goto('/game/autosolve-dup-box?d=easy');
+    await page.goto('/autosolve-dup-box?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const sdk = new PlaywrightUISDK({ page });
@@ -369,7 +369,7 @@ test.describe('@integration Autosolve Error Handling', () => {
   });
 
   test('autosolve works with manually entered candidates', async ({ page }) => {
-    await page.goto('/game/autosolve-candidates?d=easy');
+    await page.goto('/autosolve-candidates?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const sdk = new PlaywrightUISDK({ page });
@@ -419,7 +419,7 @@ test.describe('@integration Autosolve Error Recovery', () => {
   });
 
   test('undo can fix invalid state before continuing with hints', async ({ page }) => {
-    await page.goto('/game/autosolve-undo-fix?d=easy');
+    await page.goto('/autosolve-undo-fix?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const sdk = new PlaywrightUISDK({ page });
@@ -453,7 +453,7 @@ test.describe('@integration Autosolve Error Recovery', () => {
   });
 
   test('clear cell can fix invalid state before continuing with hints', async ({ page }) => {
-    await page.goto('/game/autosolve-clear-fix?d=easy');
+    await page.goto('/autosolve-clear-fix?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const sdk = new PlaywrightUISDK({ page });
@@ -496,7 +496,7 @@ test.describe('@integration Autosolve Error - Mobile', () => {
   });
 
   test('autosolve handles errors on mobile viewport', async ({ page }) => {
-    await page.goto('/game/autosolve-mobile-error?d=easy');
+    await page.goto('/autosolve-mobile-error?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const sdk = new PlaywrightUISDK({ page });

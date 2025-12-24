@@ -1,4 +1,4 @@
-import React, { memo } from 'react'
+import React, { memo, useCallback, useMemo } from 'react'
 import { hasCandidate, countCandidates } from '../lib/candidatesUtils'
 
 interface Move {
@@ -102,6 +102,159 @@ function findDuplicates(board: number[]): Set<number> {
 
   return duplicates
 }
+
+// ============================================================
+// CELL COMPONENT - Memoized for performance
+// ============================================================
+
+/** Pre-computed data for a single cell - passed to Cell component */
+interface CellData {
+  idx: number
+  value: number
+  cellCandidates: number
+  isGiven: boolean
+  isSelected: boolean
+  className: string
+  ariaLabel: string
+  // For renderCell logic
+  highlightedDigit: number | null
+  isPrimary: boolean
+  isSecondary: boolean
+  isTarget: boolean
+  highlightDigit: number | null  // The technique's digit (0 for multi-digit techniques)
+  eliminations: { row: number; col: number; digit: number }[] | undefined
+}
+
+interface CellProps {
+  data: CellData
+  onCellClick: (idx: number) => void
+  onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>, idx: number) => void
+  cellRef: (el: HTMLDivElement | null) => void
+}
+
+/**
+ * Memoized Cell component - only re-renders when its specific data changes.
+ * This prevents 80 cells from re-rendering when only 1 cell changes.
+ */
+const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellProps) {
+  const {
+    idx,
+    value,
+    cellCandidates,
+    isGiven,
+    isSelected,
+    className,
+    ariaLabel,
+    highlightedDigit,
+    isPrimary,
+    isSecondary,
+    isTarget,
+    highlightDigit,
+    eliminations,
+  } = data
+
+  const row = Math.floor(idx / 9)
+  const col = idx % 9
+
+  // Render cell content
+  let content: React.ReactNode = null
+
+  if (value !== 0) {
+    // Filled cell
+    const isHighlighted = highlightedDigit === value
+    content = (
+      <span className={isHighlighted ? 'text-accent font-bold' : ''}>
+        {value}
+      </span>
+    )
+  } else if (cellCandidates && countCandidates(cellCandidates) > 0) {
+    // Cell with candidates
+    const isHighlightedCell = isPrimary || isSecondary
+    const singleDigit = highlightDigit && highlightDigit > 0 ? highlightDigit : null
+
+    content = (
+      <div className="candidate-grid">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => {
+          const hasCandidate_ = hasCandidate(cellCandidates, d)
+          
+          // Check if this specific digit in this cell is being eliminated
+          const isEliminated = eliminations?.some(
+            (e) => e.row === row && e.col === col && e.digit === d
+          )
+          
+          // Check if this digit is the relevant one for highlighting
+          const isRelevantDigit = singleDigit ? d === singleDigit : isTarget
+          
+          // Determine styling for this specific candidate
+          let digitClass = "candidate-digit "
+          
+          if (hasCandidate_ && isEliminated) {
+            digitClass += "text-error-text line-through font-bold"
+          } else if (hasCandidate_ && isRelevantDigit && isTarget) {
+            digitClass += isHighlightedCell
+              ? "text-cell-text-on-highlight font-bold"
+              : "text-accent font-bold"
+          } else if (isHighlightedCell) {
+            digitClass += "text-cell-text-on-highlight"
+          } else {
+            digitClass += "text-cell-text-candidate"
+          }
+          
+          return (
+            <span key={d} className={digitClass}>
+              {hasCandidate_ ? d : ''}
+            </span>
+          )
+        })}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      ref={cellRef}
+      role="gridcell"
+      tabIndex={isSelected ? 0 : -1}
+      aria-label={ariaLabel}
+      className={className}
+      onClick={() => onCellClick(idx)}
+      onKeyDown={(e) => onKeyDown(e, idx)}
+      style={isGiven ? { cursor: 'default' } : undefined}
+    >
+      {content}
+    </div>
+  )
+}, (prevProps, nextProps) => {
+  // Custom comparison - only re-render if this cell's data actually changed
+  // This is critical for performance - we compare the CellData object deeply
+  const prevData = prevProps.data
+  const nextData = nextProps.data
+
+  // Quick reference checks first
+  if (prevData === nextData) return true
+
+  // Compare all fields that affect rendering
+  return (
+    prevData.idx === nextData.idx &&
+    prevData.value === nextData.value &&
+    prevData.cellCandidates === nextData.cellCandidates &&
+    prevData.isGiven === nextData.isGiven &&
+    prevData.isSelected === nextData.isSelected &&
+    prevData.className === nextData.className &&
+    prevData.ariaLabel === nextData.ariaLabel &&
+    prevData.highlightedDigit === nextData.highlightedDigit &&
+    prevData.isPrimary === nextData.isPrimary &&
+    prevData.isSecondary === nextData.isSecondary &&
+    prevData.isTarget === nextData.isTarget &&
+    prevData.highlightDigit === nextData.highlightDigit &&
+    prevData.eliminations === nextData.eliminations
+    // Note: onCellClick and onKeyDown are stable callbacks, no need to compare
+  )
+})
+
+// ============================================================
+// BOARD COMPONENT
+// ============================================================
 
 const Board = memo(function Board({
   board,
@@ -399,83 +552,75 @@ const Board = memo(function Board({
     return classes.join(' ')
   }
 
-  const renderCell = (idx: number) => {
-    const row = Math.floor(idx / 9)
-    const col = idx % 9
-    const value = board[idx]
-    const cellCandidates = candidates[idx] || 0
+  // REMOVED: renderCell function - now handled inside Cell component
 
-    // Filled cell
-    if (value !== 0) {
-      const isHighlighted = highlightedDigit === value
-      return (
-        <span className={isHighlighted ? 'text-accent font-bold' : ''}>
-          {value}
-        </span>
-      )
-    }
-
-    if (cellCandidates && countCandidates(cellCandidates) > 0) {
-      // Check if this cell is highlighted (primary or secondary)
+  // Pre-compute all 81 cell data objects for memoization
+  // This runs once per Board render (not per cell), and each cell only
+  // re-renders if its specific CellData object changes
+  const cellDataArray = useMemo((): CellData[] => {
+    const result: CellData[] = []
+    for (let idx = 0; idx < 81; idx++) {
+      const row = Math.floor(idx / 9)
+      const col = idx % 9
+      const isGiven = initialBoard[idx] !== 0
       const isPrimary = isHighlightedPrimary(row, col)
       const isSecondary = isHighlightedSecondary(row, col)
-      const isHighlightedCell = isPrimary || isSecondary
-      
-      // Check if this cell is a target
       const isTarget = highlight?.targets?.some(
         (t) => t.row === row && t.col === col
-      )
-      
-      // For single-digit techniques, highlight.digit tells us which digit
-      // For multi-digit techniques (pairs, triples), digit is 0 and we check eliminations
-      const singleDigit = highlight?.digit && highlight.digit > 0 ? highlight.digit : null
+      ) ?? false
 
-      return (
-        <div className="candidate-grid">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => {
-            const hasCandidate_ = hasCandidate(cellCandidates, d)
-            
-            // Check if this specific digit in this cell is being eliminated
-            const isEliminated = highlight?.eliminations?.some(
-              (e) => e.row === row && e.col === col && e.digit === d
-            )
-            
-            // Check if this digit is the relevant one for highlighting
-            // For single-digit techniques: only highlight if d matches the technique's digit
-            // For multi-digit techniques: highlight all candidates in target cells
-            const isRelevantDigit = singleDigit ? d === singleDigit : isTarget
-            
-            // Determine styling for this specific candidate
-            let digitClass = "candidate-digit "
-            
-            if (hasCandidate_ && isEliminated) {
-              // This candidate is being eliminated - show with error color and strikethrough
-              digitClass += "text-error-text line-through font-bold"
-            } else if (hasCandidate_ && isRelevantDigit && isTarget) {
-              // This candidate is relevant to the technique - use contrasting color on highlighted bg
-              digitClass += isHighlightedCell
-                ? "text-cell-text-on-highlight font-bold"
-                : "text-accent font-bold"
-            } else if (isHighlightedCell) {
-              // Normal candidate on highlighted background - use contrasting color
-              digitClass += "text-cell-text-on-highlight"
-            } else {
-              // Normal candidate - always the same color regardless of digit selection
-              digitClass += "text-cell-text-candidate"
-            }
-            
-            return (
-              <span key={d} className={digitClass}>
-                {hasCandidate_ ? d : ''}
-              </span>
-            )
-          })}
-        </div>
-      )
+      result.push({
+        idx,
+        value: board[idx] ?? 0,
+        cellCandidates: candidates[idx] || 0,
+        isGiven,
+        isSelected: selectedCell === idx,
+        className: getCellClass(idx),
+        ariaLabel: getCellAriaLabel(idx),
+        highlightedDigit,
+        isPrimary,
+        isSecondary,
+        isTarget,
+        highlightDigit: highlight?.digit ?? null,
+        eliminations: highlight?.eliminations,
+      })
     }
+    return result
+    // Dependencies: everything that affects cell appearance
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    board,
+    candidates,
+    candidatesVersion,
+    initialBoard,
+    selectedCell,
+    highlightedDigit,
+    highlight,
+    duplicates,
+    incorrectCellsSet,
+    cellsWithHighlightedDigit,
+  ])
 
-    return null
-  }
+  // Stable callback for cell clicks - doesn't change between renders
+  const handleCellClick = useCallback((idx: number) => {
+    onCellClick(idx)
+  }, [onCellClick])
+
+  // Stable callback for keyboard events
+  const handleCellKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
+    handleKeyDown(e, idx)
+  }, [handleKeyDown])
+
+  // Stable ref callback factory - returns the same function for each cell index
+  const cellRefCallbacks = useMemo(() => {
+    const callbacks: ((el: HTMLDivElement | null) => void)[] = []
+    for (let i = 0; i < 81; i++) {
+      callbacks.push((el: HTMLDivElement | null) => {
+        cellRefs.current[i] = el
+      })
+    }
+    return callbacks
+  }, []) // Empty deps - callbacks never change
 
   return (
     <div className="sudoku-board aspect-square w-full max-h-full" role="grid" aria-label="Sudoku puzzle">
@@ -483,21 +628,18 @@ const Board = memo(function Board({
         <div key={rowIdx} role="row" className="contents">
           {Array.from({ length: 9 }, (_, colIdx) => {
             const idx = rowIdx * 9 + colIdx
-            const isGiven = initialBoard[idx] !== 0
+            const cellData = cellDataArray[idx]
+            const cellRef = cellRefCallbacks[idx]
+            // These are guaranteed to exist for idx 0-80
+            if (!cellData || !cellRef) return null
             return (
-              <div
+              <Cell
                 key={idx}
-                ref={(el) => { cellRefs.current[idx] = el }}
-                role="gridcell"
-                tabIndex={selectedCell === idx ? 0 : -1}
-                aria-label={getCellAriaLabel(idx)}
-                className={getCellClass(idx)}
-                onClick={() => onCellClick(idx)}
-                onKeyDown={(e) => handleKeyDown(e, idx)}
-                style={isGiven ? { cursor: 'default' } : undefined}
-              >
-                {renderCell(idx)}
-              </div>
+                data={cellData}
+                onCellClick={handleCellClick}
+                onKeyDown={handleCellKeyDown}
+                cellRef={cellRef}
+              />
             )
           })}
         </div>

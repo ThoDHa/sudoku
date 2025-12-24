@@ -106,7 +106,7 @@ test.describe('@smoke Game Page Elements', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/game/smoke-test-seed?d=easy');
+    await page.goto('/smoke-test-seed?d=easy');
     await page.waitForSelector('.game-background', { timeout: 15000 });
   });
 
@@ -162,7 +162,7 @@ test.describe('@smoke Responsive Design', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/game/mobile-test?d=easy');
+    await page.goto('/mobile-test?d=easy');
     await page.waitForSelector('.game-background', { timeout: 15000 });
     await expect(page.locator('.sudoku-board')).toBeVisible();
   });
