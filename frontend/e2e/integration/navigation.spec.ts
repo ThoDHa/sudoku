@@ -71,32 +71,34 @@ test.describe('@smoke Difficulty Selection', () => {
     // Find the Easy card and click its Play button
     const easyCard = page.locator('button:has-text("easy")').first();
     await easyCard.click();
-    await page.waitForURL(/\/(p|game)\//, { timeout: 10000 });
+    // Wait for game board to appear (route can be /daily-YYYY-MM-DD or /P{timestamp})
     await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
+    // Verify URL changed to game route with easy difficulty
+    expect(page.url()).toMatch(/\/(daily-\d{4}-\d{2}-\d{2}|P\d+)\?d=easy/);
   });
 
   test('clicking Medium starts a medium game', async ({ page }) => {
     await page.goto('/');
     const mediumCard = page.locator('button:has-text("medium")').first();
     await mediumCard.click();
-    await page.waitForURL(/\/(p|game)\//, { timeout: 10000 });
     await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
+    expect(page.url()).toMatch(/\/(daily-\d{4}-\d{2}-\d{2}|P\d+)\?d=medium/);
   });
 
   test('clicking Hard starts a hard game', async ({ page }) => {
     await page.goto('/');
     const hardCard = page.locator('button:has-text("hard")').first();
     await hardCard.click();
-    await page.waitForURL(/\/(p|game)\//, { timeout: 10000 });
     await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
+    expect(page.url()).toMatch(/\/(daily-\d{4}-\d{2}-\d{2}|P\d+)\?d=hard/);
   });
 
   test('clicking Extreme starts an extreme game', async ({ page }) => {
     await page.goto('/');
     const extremeCard = page.locator('button:has-text("extreme")').first();
     await extremeCard.click();
-    await page.waitForURL(/\/(p|game)\//, { timeout: 10000 });
     await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
+    expect(page.url()).toMatch(/\/(daily-\d{4}-\d{2}-\d{2}|P\d+)\?d=extreme/);
   });
 });
 

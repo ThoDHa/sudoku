@@ -58,16 +58,24 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
     
-    // Mobile Android (Pixel 5)
+    // Mobile Android (Pixel 5) - extended timeouts for WASM loading
     {
       name: 'pixel-5',
-      use: { ...devices['Pixel 5'] },
+      use: { 
+        ...devices['Pixel 5'],
+        actionTimeout: 20000, // Extended from 15s for mobile WASM
+      },
+      timeout: 90000, // 90s for mobile (vs 60s desktop)
     },
     
-    // Mobile iOS (iPhone 12)
+    // Mobile iOS (iPhone 12) - extended timeouts for WASM loading
     {
       name: 'iphone-12',
-      use: { ...devices['iPhone 12'] },
+      use: { 
+        ...devices['iPhone 12'],
+        actionTimeout: 20000, // Extended from 15s for mobile WASM
+      },
+      timeout: 90000, // 90s for mobile (vs 60s desktop)
     },
   ],
   

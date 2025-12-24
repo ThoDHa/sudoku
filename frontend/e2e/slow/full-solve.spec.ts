@@ -11,8 +11,8 @@ import { PlaywrightUISDK } from '../sdk';
  */
 
 test.describe('@slow Full Puzzle Solve', () => {
-  // Extend timeout for slow tests - 5 minutes
-  test.slow();
+  // Extend timeout for slow tests - 5 minutes per test
+  test.setTimeout(300_000);
 
   test('complete an easy puzzle using hints only', async ({ page }) => {
     await page.goto('/full-solve-easy?d=easy');
@@ -131,7 +131,7 @@ test.describe('@slow Full Puzzle Solve', () => {
 });
 
 test.describe('@slow Full Solve - Victory Condition', () => {
-  test.slow();
+  test.setTimeout(300_000);
 
   test('victory modal appears when puzzle is completed', async ({ page }) => {
     await page.goto('/victory-test?d=easy');
@@ -213,7 +213,7 @@ test.describe('@slow Full Solve - Victory Condition', () => {
 });
 
 test.describe('@slow Full Solve - Progress Tracking', () => {
-  test.slow();
+  test.setTimeout(300_000);
 
   test('cell count decreases as puzzle is solved', async ({ page }) => {
     await page.goto('/progress-test?d=easy');
@@ -273,7 +273,7 @@ test.describe('@slow Full Solve - Progress Tracking', () => {
 });
 
 test.describe('@slow Full Solve - Mobile', () => {
-  test.slow();
+  test.setTimeout(300_000);
 
   test('can complete puzzle on mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
