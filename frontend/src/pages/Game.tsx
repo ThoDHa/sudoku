@@ -525,7 +525,7 @@ function GameContent() {
       console.warn('Failed to save game state:', e)
     }
   // Note: We use isCompleteRef instead of game.isComplete to avoid stale closure issues
-  // Note: timerControl.getElapsedMs is a stable callback that reads from a ref, so no need to include in deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
   }, [puzzle, game.board, game.candidates, game.history, autoFillUsed, getStorageKey])
 
   // Clear saved game state from localStorage
@@ -1061,7 +1061,7 @@ function GameContent() {
     }
     
     setShowResultModal(true)
-  // Note: timerControl.getElapsedMs is a stable callback, no need to include in deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
   }, [puzzle, hintsUsed, techniqueHintsUsed, encodedPuzzle, autoFillUsed])
   
   // Keep handleSubmit ref updated so onComplete can call it
@@ -1171,7 +1171,7 @@ ${bugReportJson}
     issueUrl.searchParams.set('labels', 'bug')
     
     window.open(issueUrl.toString(), '_blank')
-  // Note: timerControl.getElapsedMs is a stable callback, no need to include in deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
   }, [puzzle, initialBoard, game, colorTheme, mode, visibilityAwareTimeout])
 
   // Feature request handler - opens GitHub issue for new features

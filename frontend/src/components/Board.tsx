@@ -304,7 +304,7 @@ const Board = memo(function Board({
   }, [board, candidates, highlightedDigit, candidatesVersion])
 
   // Find next non-given cell in a direction, returns null if none found
-  const findNextNonGivenCell = (startIdx: number, direction: 'up' | 'down' | 'left' | 'right'): number | null => {
+  const findNextNonGivenCell = useCallback((startIdx: number, direction: 'up' | 'down' | 'left' | 'right'): number | null => {
     let row = Math.floor(startIdx / 9)
     let col = startIdx % 9
     
@@ -328,9 +328,9 @@ const Board = memo(function Board({
       move()
     }
     return null
-  }
+  }, [initialBoard])
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
     const isGiven = initialBoard[idx] !== 0
 
     // Arrow key navigation - skip over givens
@@ -381,7 +381,7 @@ const Board = memo(function Board({
         }
         break
     }
-  }
+  }, [initialBoard, findNextNonGivenCell, onCellClick, onCellChange])
 
   const getCellAriaLabel = (idx: number): string => {
     const row = Math.floor(idx / 9)
