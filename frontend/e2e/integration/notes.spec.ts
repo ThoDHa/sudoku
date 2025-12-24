@@ -93,47 +93,117 @@ test.describe('@integration Notes Mode - Adding Candidates', () => {
       expect(cellContent).toContain('3');
     }
   });
+});
 
-  test('multiple candidates can be added to same cell', async ({ page }) => {
-    // Find an empty cell in lower rows
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
-    
-    if (await emptyCell.count() > 0) {
-      await emptyCell.scrollIntoViewIfNeeded();
-      await emptyCell.click();
-      
-      // Add multiple candidates
-      await page.keyboard.press('1');
-      await page.waitForTimeout(150);
-      await page.keyboard.press('5');
-      await page.waitForTimeout(150);
-      await page.keyboard.press('9');
-      await page.waitForTimeout(300);
-      
-      // Verify all three candidates are present
-      const cellContent = await emptyCell.textContent();
-      expect(cellContent).toContain('1');
-      expect(cellContent).toContain('5');
-      expect(cellContent).toContain('9');
-    }
+test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
+  /**
+   * These tests verify the multi-fill workflow where user:
+   * 1. Enables notes mode
+   * 2. Clicks a digit button to select it (without selecting a cell first)
+   * 3. Clicks on cells to add/remove that candidate
+   * 
+   * This is distinct from the flow where user selects a cell first, then types digits.
+   */
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
+    await page.goto('/notes-multifill-test?d=easy', { waitUntil: 'networkidle' });
+    await page.waitForSelector('[role="grid"]', { timeout: 30000 });
+    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', { timeout: 30000 });
   });
 
-  test('number buttons add candidates in notes mode', async ({ page }) => {
-    // Find an empty cell in lower rows
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 7"][aria-label*="empty"]').first();
+  test('multi-fill adds candidate to cell by clicking digit then cell', async ({ page }) => {
+    // Enable notes mode
+    const notesButton = page.locator('button[title="Notes mode"]');
+    await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+    
+    // Click digit 4 first (no cell selected)
+    const digit4Button = page.locator('button[aria-label^="Enter 4,"]');
+    await digit4Button.click();
+    await page.waitForTimeout(100);
+    
+    // Find an empty cell
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
     if (await emptyCell.count() > 0) {
       await emptyCell.scrollIntoViewIfNeeded();
-      await emptyCell.click();
       
-      // Click number button for 7 (use the digit button with aria-label)
-      const numberButton = page.locator('button[aria-label^="Enter 7"]');
-      await numberButton.click();
+      // Click the cell - should add candidate 4
+      await emptyCell.click();
       await page.waitForTimeout(300);
       
       // Verify candidate was added
       const cellContent = await emptyCell.textContent();
-      expect(cellContent).toContain('7');
+      expect(cellContent).toContain('4');
+    }
+  });
+
+  test('multi-fill clicking same cell twice toggles candidate off', async ({ page }) => {
+    // Enable notes mode
+    const notesButton = page.locator('button[title="Notes mode"]');
+    await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+    
+    // Click digit 4 first (no cell selected)
+    const digit4Button = page.locator('button[aria-label^="Enter 4,"]');
+    await digit4Button.click();
+    await page.waitForTimeout(100);
+    
+    // Find an empty cell
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    
+    if (await emptyCell.count() > 0) {
+      await emptyCell.scrollIntoViewIfNeeded();
+      
+      // Click once - should add candidate 4
+      await emptyCell.click();
+      await page.waitForTimeout(300);
+      
+      let cellContent = await emptyCell.textContent();
+      expect(cellContent).toContain('4');
+      
+      // Click again - should REMOVE candidate 4
+      await emptyCell.click();
+      await page.waitForTimeout(300);
+      
+      cellContent = await emptyCell.textContent();
+      expect(cellContent).not.toContain('4');
+    }
+  });
+
+  test('multi-fill adds candidate to multiple cells', async ({ page }) => {
+    // Enable notes mode
+    const notesButton = page.locator('button[title="Notes mode"]');
+    await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+    
+    // Click digit 7 first (no cell selected)
+    const digit7Button = page.locator('button[aria-label^="Enter 7,"]');
+    await digit7Button.click();
+    await page.waitForTimeout(100);
+    
+    // Find multiple empty cells
+    const emptyCell1 = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    const emptyCell2 = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
+    
+    if (await emptyCell1.count() > 0 && await emptyCell2.count() > 0) {
+      // Click first cell
+      await emptyCell1.scrollIntoViewIfNeeded();
+      await emptyCell1.click();
+      await page.waitForTimeout(200);
+      
+      // Click second cell
+      await emptyCell2.scrollIntoViewIfNeeded();
+      await emptyCell2.click();
+      await page.waitForTimeout(300);
+      
+      // Verify both cells have the candidate
+      const cell1Content = await emptyCell1.textContent();
+      const cell2Content = await emptyCell2.textContent();
+      expect(cell1Content).toContain('7');
+      expect(cell2Content).toContain('7');
     }
   });
 });

@@ -901,7 +901,16 @@ function GameContent() {
      }
 
      // Toggle selection: clicking the same cell again deselects it (highest priority for user-fillable cells)
+     // EXCEPT: In notes mode with a digit highlighted, clicking the same cell should toggle the candidate
      if (selectedCell === idx) {
+       if (notesMode && highlightedDigit !== null && game.board[idx] === 0) {
+         // Toggle the candidate on this cell
+         game.setCell(idx, highlightedDigit, notesMode)
+         clearAfterUserCandidateOp()
+         lastTechniqueHintRef.current = null
+         lastRegularHintRef.current = null
+         return
+       }
        clearAllAndDeselect()
        return
      }

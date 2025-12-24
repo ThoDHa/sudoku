@@ -156,6 +156,24 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   // Guard against rapid double-calls (e.g., from click + focus events)
   const lastNoteToggle = useRef<{ idx: number; digit: number; time: number } | null>(null)
 
+  // ============================================================
+  // REFS FOR STABLE CALLBACKS
+  // ============================================================
+  // These refs always hold the latest state values, allowing callbacks to read
+  // current state without having those values in their dependency arrays.
+  // This prevents stale closure issues when multiple rapid calls happen before
+  // React has time to re-render and recreate the callbacks.
+  const candidatesRef = useRef(candidates)
+  const boardRef = useRef(board)
+  const historyRef = useRef(history)
+  const historyIndexRef = useRef(historyIndex)
+
+  // Keep refs in sync with state
+  React.useEffect(() => { candidatesRef.current = candidates }, [candidates])
+  React.useEffect(() => { boardRef.current = board }, [board])
+  React.useEffect(() => { historyRef.current = history }, [history])
+  React.useEffect(() => { historyIndexRef.current = historyIndex }, [historyIndex])
+
   // Update givenCells when initialBoard prop changes (new puzzle loaded)
   React.useEffect(() => {
     if (initialBoard.length === 81 && initialBoard.some(v => v !== 0)) {
@@ -345,9 +363,16 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   const setCell = useCallback((idx: number, digit: number, isNotesMode: boolean) => {
     if (isGivenCell(idx)) return
 
+    // Read from refs to get the latest state values
+    // This prevents stale closure issues when multiple rapid calls happen
+    const currentBoard = boardRef.current
+    const currentCandidates = candidatesRef.current
+    const currentHistory = historyRef.current
+    const currentHistoryIndex = historyIndexRef.current
+
     if (isNotesMode) {
       // Notes can only be added to empty cells
-      if (board[idx] !== 0) return
+      if (currentBoard[idx] !== 0) return
       
       // Guard against rapid double-calls that would toggle the note twice
       const now = Date.now()
@@ -360,15 +385,15 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       lastNoteToggle.current = { idx, digit, time: now }
       
       // Truncate history if we're in the middle
-      const truncatedHistory = history.slice(0, historyIndex + 1)
+      const truncatedHistory = currentHistory.slice(0, currentHistoryIndex + 1)
       
       const row = Math.floor(idx / 9)
       const col = idx % 9
-      const existingCellCandidates = candidates[idx] || 0
+      const existingCellCandidates = currentCandidates[idx] || 0
       const hadCandidate = hasCandidate(existingCellCandidates, digit)
       
       // Toggle candidate
-      const newCandidates = new Uint16Array(candidates)
+      const newCandidates = new Uint16Array(currentCandidates)
       newCandidates[idx] = toggleCandidateBit(newCandidates[idx] || 0, digit)
       
        // Add note toggle move to history with compact diff
@@ -384,25 +409,31 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
          refs: { title: '', slug: '', url: '' },
          highlights: { primary: [] }, // No highlights for user moves
          isUserMove: true,
-       }, board, newCandidates)
+       }, currentBoard, newCandidates)
       const newHistory = [...truncatedHistory, noteMove]
       const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
        setHistory(limitedHistory)
       setHistoryIndex(limitedIndex)
       updateCandidates(newCandidates)
+      
+      // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
+      // This prevents stale closure issues when multiple clicks happen before React re-renders
+      candidatesRef.current = newCandidates
+      historyRef.current = limitedHistory
+      historyIndexRef.current = limitedIndex
     } else {
       const row = Math.floor(idx / 9)
       const col = idx % 9
 
       // Truncate history if we're in the middle
-      const truncatedHistory = history.slice(0, historyIndex + 1)
+      const truncatedHistory = currentHistory.slice(0, currentHistoryIndex + 1)
 
       // Calculate new state first
-      const newBoard = [...board]
+      const newBoard = [...currentBoard]
       newBoard[idx] = digit
       
       // Eliminate candidates from peers
-      const newCandidates = new Uint16Array(candidates)
+      const newCandidates = new Uint16Array(currentCandidates)
       eliminateFromPeers(newCandidates, idx, digit)
 
       // Add user move to history with compact diff
@@ -426,25 +457,36 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       setBoard(newBoard)
       updateCandidates(newCandidates)
 
+      // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
+      boardRef.current = newBoard
+      candidatesRef.current = newCandidates
+      historyRef.current = limitedHistory
+      historyIndexRef.current = limitedIndex
+
       checkCompletion(newBoard)
     }
   }, [
-    board, candidates, history, historyIndex, isGivenCell,
-    eliminateFromPeers, checkCompletion, createMoveWithDiff, updateCandidates, limitHistory
+    isGivenCell, eliminateFromPeers, checkCompletion, createMoveWithDiff, updateCandidates, limitHistory
   ])
 
   const toggleCandidate = useCallback((idx: number, digit: number) => {
-    if (isGivenCell(idx) || board[idx] !== 0) return
+    // Read from refs for fresh values (prevents stale closure issues with rapid calls)
+    const currentBoard = boardRef.current
+    const currentCandidates = candidatesRef.current
+    const currentHistory = historyRef.current
+    const currentHistoryIndex = historyIndexRef.current
+    
+    if (isGivenCell(idx) || currentBoard[idx] !== 0) return
 
     const row = Math.floor(idx / 9)
     const col = idx % 9
-    const cellCandidates = candidates[idx] || 0
+    const cellCandidates = currentCandidates[idx] || 0
     const hadCandidate = hasCandidate(cellCandidates, digit)
     
     // Truncate history if we're in the middle
-    const truncatedHistory = history.slice(0, historyIndex + 1)
+    const truncatedHistory = currentHistory.slice(0, currentHistoryIndex + 1)
     
-    const newCandidates = new Uint16Array(candidates)
+    const newCandidates = new Uint16Array(currentCandidates)
     newCandidates[idx] = toggleCandidateBit(newCandidates[idx] || 0, digit)
     
     // Add toggle move to history with compact diff
@@ -460,20 +502,31 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       refs: { title: '', slug: '', url: '' },
       highlights: { primary: [{ row, col }] },
       isUserMove: true,
-    }, board, newCandidates)
+    }, currentBoard, newCandidates)
     
     const newHistory = [...truncatedHistory, toggleMove]
     const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
     setHistory(limitedHistory)
     setHistoryIndex(limitedIndex)
     updateCandidates(newCandidates)
-  }, [board, candidates, history, historyIndex, isGivenCell, updateCandidates, createMoveWithDiff, limitHistory])
+    
+    // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
+    candidatesRef.current = newCandidates
+    historyRef.current = limitedHistory
+    historyIndexRef.current = limitedIndex
+  }, [isGivenCell, updateCandidates, createMoveWithDiff, limitHistory])
 
   const eraseCell = useCallback((idx: number) => {
+    // Read from refs for fresh values (prevents stale closure issues with rapid calls)
+    const currentBoard = boardRef.current
+    const currentCandidates = candidatesRef.current
+    const currentHistory = historyRef.current
+    const currentHistoryIndex = historyIndexRef.current
+    
     if (isGivenCell(idx)) return
     // Nothing to erase if cell is empty and has no candidates
-    const cellCandidates = candidates[idx] || 0
-    const cellValue = board[idx] ?? 0
+    const cellCandidates = currentCandidates[idx] || 0
+    const cellValue = currentBoard[idx] ?? 0
     if (cellValue === 0 && countCandidates(cellCandidates) === 0) return
 
     const row = Math.floor(idx / 9)
@@ -481,15 +534,15 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const erasedDigit = cellValue
     
     // Truncate history if we're in the middle
-    const truncatedHistory = history.slice(0, historyIndex + 1)
+    const truncatedHistory = currentHistory.slice(0, currentHistoryIndex + 1)
     
     // Calculate new state first
-    const newBoard = [...board]
+    const newBoard = [...currentBoard]
     newBoard[idx] = 0
     
     // Clear candidates for the erased cell - don't auto-populate
     // Candidates should only appear when user manually adds them or clicks "Fill Candidates"
-    const newCandidates = new Uint16Array(candidates)
+    const newCandidates = new Uint16Array(currentCandidates)
     newCandidates[idx] = 0
     
      // Add erase move to history with compact diff
@@ -514,35 +567,63 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
     setBoard(newBoard)
     updateCandidates(newCandidates)
-  }, [board, candidates, history, historyIndex, isGivenCell, updateCandidates, createMoveWithDiff, limitHistory])
+    
+    // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
+    boardRef.current = newBoard
+    candidatesRef.current = newCandidates
+    historyRef.current = limitedHistory
+    historyIndexRef.current = limitedIndex
+  }, [isGivenCell, updateCandidates, createMoveWithDiff, limitHistory])
 
   const undo = useCallback(() => {
-    // Can't undo if no moves in history or at the beginning
-    if (historyIndex < 0) return
+    // Read from refs for fresh values (prevents stale closure issues with rapid calls)
+    const currentBoard = boardRef.current
+    const currentCandidates = candidatesRef.current
+    const currentHistory = historyRef.current
+    const currentHistoryIndex = historyIndexRef.current
     
-    const currentMove = history[historyIndex]
+    // Can't undo if no moves in history or at the beginning
+    if (currentHistoryIndex < 0) return
+    
+    const currentMove = currentHistory[currentHistoryIndex]
     if (!currentMove) return
+    
+    let prevBoard: number[]
+    let prevCandidates: Uint16Array
     
     // Use diff-based undo if available, fallback to legacy approach
     if (currentMove.stateDiff) {
-      const { board: prevBoard, candidates: prevCandidates } = 
-        unapplyStateDiff(board, candidates, currentMove.stateDiff)
+      const result = unapplyStateDiff(currentBoard, currentCandidates, currentMove.stateDiff)
+      prevBoard = result.board
+      prevCandidates = result.candidates
       setBoard(prevBoard)
       updateCandidates(prevCandidates)
     } else if (currentMove.boardBefore && currentMove.candidatesBefore) {
       // Legacy fallback
-      setBoard(currentMove.boardBefore)
-      updateCandidates(arraysToCandidates(currentMove.candidatesBefore))
+      prevBoard = currentMove.boardBefore
+      prevCandidates = arraysToCandidates(currentMove.candidatesBefore)
+      setBoard(prevBoard)
+      updateCandidates(prevCandidates)
+    } else {
+      // No state to restore
+      prevBoard = currentBoard
+      prevCandidates = currentCandidates
     }
     
     // Move back in history
-    setHistoryIndex(historyIndex - 1)
+    const newHistoryIndex = currentHistoryIndex - 1
+    setHistoryIndex(newHistoryIndex)
     
     // If puzzle was complete, mark as incomplete
     if (isComplete) {
       setIsComplete(false)
     }
-  }, [history, historyIndex, isComplete, board, candidates, updateCandidates])
+    
+    // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
+    boardRef.current = prevBoard
+    candidatesRef.current = prevCandidates
+    historyIndexRef.current = newHistoryIndex
+  }, [isComplete, updateCandidates])
 
   // Helper to replay a move's effects (defined before redo which uses it)
   const replayMove = useCallback((move: Move) => {
@@ -593,25 +674,45 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   }, [eliminateFromPeers, calculateCandidatesForCell, fillAllCandidates, updateCandidates])
 
   const redo = useCallback(() => {
-    // Can't redo if at the end of history
-    if (historyIndex >= history.length - 1) return
+    // Read from refs for fresh values (prevents stale closure issues with rapid calls)
+    const currentBoard = boardRef.current
+    const currentCandidates = candidatesRef.current
+    const currentHistory = historyRef.current
+    const currentHistoryIndex = historyIndexRef.current
     
-    const nextMove = history[historyIndex + 1]
+    // Can't redo if at the end of history
+    if (currentHistoryIndex >= currentHistory.length - 1) return
+    
+    const nextMove = currentHistory[currentHistoryIndex + 1]
     if (!nextMove) return
+    
+    let newBoard: number[]
+    let newCandidates: Uint16Array
     
     // Use diff-based redo if available, fallback to legacy approach
     if (nextMove.stateDiff) {
-      const { board: nextBoard, candidates: nextCandidates } = 
-        applyStateDiff(board, candidates, nextMove.stateDiff)
-      setBoard(nextBoard)
-      updateCandidates(nextCandidates)
+      const result = applyStateDiff(currentBoard, currentCandidates, nextMove.stateDiff)
+      newBoard = result.board
+      newCandidates = result.candidates
+      setBoard(newBoard)
+      updateCandidates(newCandidates)
     } else {
       // Legacy fallback - replay the move
+      // Note: replayMove updates board/candidates internally
       replayMove(nextMove)
+      // We need to get the new values from refs after replayMove updates them
+      newBoard = boardRef.current
+      newCandidates = candidatesRef.current
     }
     
-    setHistoryIndex(historyIndex + 1)
-  }, [board, candidates, history, historyIndex, updateCandidates, replayMove])
+    const newHistoryIndex = currentHistoryIndex + 1
+    setHistoryIndex(newHistoryIndex)
+    
+    // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
+    boardRef.current = newBoard
+    candidatesRef.current = newCandidates
+    historyIndexRef.current = newHistoryIndex
+  }, [updateCandidates, replayMove])
 
   const resetGame = useCallback(() => {
     setGivenCells([...initialBoard])
@@ -630,8 +731,13 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   }, [givenCells, updateCandidates])
 
   const clearCandidates = useCallback(() => {
+    // Read from refs for fresh values (prevents stale closure issues with rapid calls)
+    const currentBoard = boardRef.current
+    const currentHistory = historyRef.current
+    const currentHistoryIndex = historyIndexRef.current
+    
     // Truncate history if we're in the middle
-    const truncatedHistory = history.slice(0, historyIndex + 1)
+    const truncatedHistory = currentHistory.slice(0, currentHistoryIndex + 1)
     
     // Calculate new state (cleared candidates)
     const newCandidates = new Uint16Array(81)
@@ -647,7 +753,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
        refs: { title: '', slug: '', url: '' },
        highlights: { primary: [] }, // Already no highlights
        isUserMove: true,
-     }, board, newCandidates)
+     }, currentBoard, newCandidates)
      
     const newHistory = [...truncatedHistory, clearMove]
     const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
@@ -655,7 +761,12 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     setHistoryIndex(limitedIndex)
     
     updateCandidates(newCandidates)
-  }, [board, history, historyIndex, updateCandidates, createMoveWithDiff, limitHistory])
+    
+    // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
+    candidatesRef.current = newCandidates
+    historyRef.current = limitedHistory
+    historyIndexRef.current = limitedIndex
+  }, [updateCandidates, createMoveWithDiff, limitHistory])
 
   // For external updates (hints, auto-solve)
   const applyExternalMove = useCallback((
@@ -663,15 +774,21 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     newCandidates: Uint16Array,
     move: Move
   ) => {
+    // Read from refs for fresh values (prevents stale closure issues with rapid calls)
+    const currentBoard = boardRef.current
+    const currentCandidates = candidatesRef.current
+    const currentHistory = historyRef.current
+    const currentHistoryIndex = historyIndexRef.current
+    
     // Create move with compact diff only (no legacy fields for new moves)
-    const stateDiff = createStateDiff(board, newBoard, candidates, newCandidates)
+    const stateDiff = createStateDiff(currentBoard, newBoard, currentCandidates, newCandidates)
     const moveWithState: Move = {
       ...move,
       stateDiff,
       // No longer storing legacy fields - stateDiff is sufficient
     }
     
-    const truncatedHistory = history.slice(0, historyIndex + 1)
+    const truncatedHistory = currentHistory.slice(0, currentHistoryIndex + 1)
     const newHistory = [...truncatedHistory, moveWithState]
     const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
     setHistory(limitedHistory)
@@ -681,7 +798,13 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     updateCandidates(newCandidates)
     
     checkCompletion(newBoard)
-  }, [board, candidates, history, historyIndex, checkCompletion, updateCandidates, limitHistory])
+    
+    // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
+    boardRef.current = newBoard
+    candidatesRef.current = newCandidates
+    historyRef.current = limitedHistory
+    historyIndexRef.current = limitedIndex
+  }, [checkCompletion, updateCandidates, limitHistory])
 
   // Restore saved game state (for auto-save/resume functionality)
   const restoreState = useCallback((
