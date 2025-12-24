@@ -3,8 +3,6 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"syscall/js"
 
 	"sudoku-api/internal/core"
@@ -19,6 +17,8 @@ var solver *human.Solver
 func init() {
 	solver = human.NewSolver()
 }
+
+// ==================== JS Input Converters ====================
 
 // jsArrayToIntSlice converts a JavaScript array to a Go []int
 func jsArrayToIntSlice(arr js.Value) []int {
@@ -50,6 +50,10 @@ func jsArrayTo2DIntSlice(arr js.Value) [][]int {
 	return result
 }
 
+// ==================== JS Output Converters (TinyGo Compatible) ====================
+
+// Tier 1: Primitive converters
+
 // intSliceToJSArray converts a Go []int to a JavaScript array
 func intSliceToJSArray(slice []int) js.Value {
 	arr := js.Global().Get("Array").New(len(slice))
@@ -59,22 +63,316 @@ func intSliceToJSArray(slice []int) js.Value {
 	return arr
 }
 
-// toJSValue converts a Go value to a JavaScript value via JSON
-func toJSValue(v interface{}) js.Value {
-	jsonBytes, err := json.Marshal(v)
-	if err != nil {
-		return js.ValueOf(nil)
+// int2DSliceToJSArray converts a Go [][]int to a JavaScript 2D array
+func int2DSliceToJSArray(slice [][]int) js.Value {
+	arr := js.Global().Get("Array").New(len(slice))
+	for i, inner := range slice {
+		if inner == nil {
+			arr.SetIndex(i, js.Global().Get("Array").New(0))
+		} else {
+			arr.SetIndex(i, intSliceToJSArray(inner))
+		}
 	}
-	return js.Global().Get("JSON").Call("parse", string(jsonBytes))
+	return arr
+}
+
+// errorToJS creates a JS object with an error field
+func errorToJS(msg string) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("error", msg)
+	return obj
+}
+
+// stringIntMapToJS converts map[string]int to JS object
+func stringIntMapToJS(m map[string]int) js.Value {
+	obj := js.Global().Get("Object").New()
+	for k, v := range m {
+		obj.Set(k, v)
+	}
+	return obj
+}
+
+// stringIntSliceMapToJS converts map[string][]int to JS object
+func stringIntSliceMapToJS(m map[string][]int) js.Value {
+	obj := js.Global().Get("Object").New()
+	for k, v := range m {
+		obj.Set(k, intSliceToJSArray(v))
+	}
+	return obj
+}
+
+// Tier 2: Struct converters
+
+// cellRefToJS converts core.CellRef to JS object
+func cellRefToJS(c core.CellRef) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("row", c.Row)
+	obj.Set("col", c.Col)
+	return obj
+}
+
+// cellRefSliceToJS converts []core.CellRef to JS array
+func cellRefSliceToJS(cells []core.CellRef) js.Value {
+	arr := js.Global().Get("Array").New(len(cells))
+	for i, c := range cells {
+		arr.SetIndex(i, cellRefToJS(c))
+	}
+	return arr
+}
+
+// candidateToJS converts core.Candidate to JS object
+func candidateToJS(c core.Candidate) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("row", c.Row)
+	obj.Set("col", c.Col)
+	obj.Set("digit", c.Digit)
+	return obj
+}
+
+// candidateSliceToJS converts []core.Candidate to JS array
+func candidateSliceToJS(candidates []core.Candidate) js.Value {
+	arr := js.Global().Get("Array").New(len(candidates))
+	for i, c := range candidates {
+		arr.SetIndex(i, candidateToJS(c))
+	}
+	return arr
+}
+
+// techniqueRefToJS converts core.TechniqueRef to JS object
+func techniqueRefToJS(t core.TechniqueRef) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("title", t.Title)
+	obj.Set("slug", t.Slug)
+	obj.Set("url", t.URL)
+	return obj
+}
+
+// highlightsToJS converts core.Highlights to JS object
+func highlightsToJS(h core.Highlights) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("primary", cellRefSliceToJS(h.Primary))
+	if len(h.Secondary) > 0 {
+		obj.Set("secondary", cellRefSliceToJS(h.Secondary))
+	}
+	return obj
+}
+
+// conflictToJS converts dp.Conflict to JS object
+func conflictToJS(c dp.Conflict) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("cell1", c.Cell1)
+	obj.Set("cell2", c.Cell2)
+	obj.Set("value", c.Value)
+	obj.Set("type", c.Type)
+	return obj
+}
+
+// conflictSliceToJS converts []dp.Conflict to JS array
+func conflictSliceToJS(conflicts []dp.Conflict) js.Value {
+	arr := js.Global().Get("Array").New(len(conflicts))
+	for i, c := range conflicts {
+		arr.SetIndex(i, conflictToJS(c))
+	}
+	return arr
+}
+
+// Tier 3: Complex struct converters
+
+// moveToJS converts core.Move to JS object
+func moveToJS(m *core.Move) js.Value {
+	if m == nil {
+		return js.Null()
+	}
+	obj := js.Global().Get("Object").New()
+	obj.Set("step_index", m.StepIndex)
+	obj.Set("technique", m.Technique)
+	obj.Set("action", m.Action)
+	obj.Set("digit", m.Digit)
+	obj.Set("targets", cellRefSliceToJS(m.Targets))
+	if len(m.Eliminations) > 0 {
+		obj.Set("eliminations", candidateSliceToJS(m.Eliminations))
+	}
+	obj.Set("explanation", m.Explanation)
+	obj.Set("refs", techniqueRefToJS(m.Refs))
+	obj.Set("highlights", highlightsToJS(m.Highlights))
+	return obj
+}
+
+// moveValueToJS converts core.Move (value type) to JS object
+func moveValueToJS(m core.Move) js.Value {
+	return moveToJS(&m)
+}
+
+// moveSliceToJS converts []core.Move to JS array
+func moveSliceToJS(moves []core.Move) js.Value {
+	arr := js.Global().Get("Array").New(len(moves))
+	for i := range moves {
+		arr.SetIndex(i, moveToJS(&moves[i]))
+	}
+	return arr
+}
+
+// inlineMoveToJS creates a move-like JS object from inline map data
+// Used for error moves and fix-error moves that don't use core.Move struct
+func inlineMoveToJS(technique, action string, digit int, explanation string, targets []map[string]int, highlights map[string]interface{}) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("technique", technique)
+	obj.Set("action", action)
+	if digit > 0 {
+		obj.Set("digit", digit)
+	}
+	obj.Set("explanation", explanation)
+
+	if targets != nil {
+		targetsArr := js.Global().Get("Array").New(len(targets))
+		for i, t := range targets {
+			tObj := js.Global().Get("Object").New()
+			tObj.Set("row", t["row"])
+			tObj.Set("col", t["col"])
+			targetsArr.SetIndex(i, tObj)
+		}
+		obj.Set("targets", targetsArr)
+	}
+
+	if highlights != nil {
+		hObj := js.Global().Get("Object").New()
+		if primary, ok := highlights["primary"].([]map[string]int); ok {
+			pArr := js.Global().Get("Array").New(len(primary))
+			for i, p := range primary {
+				pObj := js.Global().Get("Object").New()
+				pObj.Set("row", p["row"])
+				pObj.Set("col", p["col"])
+				pArr.SetIndex(i, pObj)
+			}
+			hObj.Set("primary", pArr)
+		}
+		if secondary, ok := highlights["secondary"].([]map[string]int); ok {
+			sArr := js.Global().Get("Array").New(len(secondary))
+			for i, s := range secondary {
+				sObj := js.Global().Get("Object").New()
+				sObj.Set("row", s["row"])
+				sObj.Set("col", s["col"])
+				sArr.SetIndex(i, sObj)
+			}
+			hObj.Set("secondary", sArr)
+		}
+		obj.Set("highlights", hObj)
+	}
+
+	return obj
+}
+
+// inlineMoveWithCountToJS creates a move-like JS object with userEntryCount field
+func inlineMoveWithCountToJS(technique, action string, digit int, explanation string, targets []map[string]int, highlights map[string]interface{}, userEntryCount int) js.Value {
+	obj := inlineMoveToJS(technique, action, digit, explanation, targets, highlights)
+	if userEntryCount > 0 {
+		obj.Set("userEntryCount", userEntryCount)
+	}
+	return obj
+}
+
+// Tier 4: Result object converters
+
+// moveResultToJS converts MoveResult to JS object
+func moveResultToJS(mr MoveResult) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("board", intSliceToJSArray(mr.Board))
+	obj.Set("candidates", int2DSliceToJSArray(mr.Candidates))
+	obj.Set("move", mr.Move)
+	return obj
+}
+
+// moveResultSliceToJS converts []MoveResult to JS array
+func moveResultSliceToJS(results []MoveResult) js.Value {
+	arr := js.Global().Get("Array").New(len(results))
+	for i, r := range results {
+		arr.SetIndex(i, moveResultToJS(r))
+	}
+	return arr
+}
+
+// errorMoveToJS creates an error move JS object
+func errorMoveToJS(explanation string) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("technique", "error")
+	obj.Set("action", "error")
+	obj.Set("explanation", explanation)
+	return obj
+}
+
+// errorMoveWithCountToJS creates an error move JS object with userEntryCount
+func errorMoveWithCountToJS(explanation string, userEntryCount int) js.Value {
+	obj := errorMoveToJS(explanation)
+	obj.Set("userEntryCount", userEntryCount)
+	return obj
+}
+
+// unpinpointableErrorMoveToJS creates an unpinpointable-error move JS object
+func unpinpointableErrorMoveToJS(explanation string) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("technique", "unpinpointable-error")
+	obj.Set("action", "unpinpointable-error")
+	obj.Set("explanation", explanation)
+	return obj
+}
+
+// fixErrorMoveToJS creates a fix-error move JS object
+func fixErrorMoveToJS(digit int, explanation string, targetRow, targetCol int, primaryCells [][]int, secondaryCells [][]int) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("technique", "fix-error")
+	obj.Set("action", "fix-error")
+	obj.Set("digit", digit)
+	obj.Set("explanation", explanation)
+
+	// targets
+	targetsArr := js.Global().Get("Array").New(1)
+	tObj := js.Global().Get("Object").New()
+	tObj.Set("row", targetRow)
+	tObj.Set("col", targetCol)
+	targetsArr.SetIndex(0, tObj)
+	obj.Set("targets", targetsArr)
+
+	// highlights
+	hObj := js.Global().Get("Object").New()
+	if len(primaryCells) > 0 {
+		pArr := js.Global().Get("Array").New(len(primaryCells))
+		for i, cell := range primaryCells {
+			pObj := js.Global().Get("Object").New()
+			pObj.Set("row", cell[0])
+			pObj.Set("col", cell[1])
+			pArr.SetIndex(i, pObj)
+		}
+		hObj.Set("primary", pArr)
+	}
+	if len(secondaryCells) > 0 {
+		sArr := js.Global().Get("Array").New(len(secondaryCells))
+		for i, cell := range secondaryCells {
+			sObj := js.Global().Get("Object").New()
+			sObj.Set("row", cell[0])
+			sObj.Set("col", cell[1])
+			sArr.SetIndex(i, sObj)
+		}
+		hObj.Set("secondary", sArr)
+	}
+	obj.Set("highlights", hObj)
+
+	return obj
+}
+
+// fixErrorMoveWithCountToJS creates a fix-error move JS object with userEntryCount
+func fixErrorMoveWithCountToJS(digit int, explanation string, targetRow, targetCol int, primaryCells [][]int, secondaryCells [][]int, userEntryCount int) js.Value {
+	obj := fixErrorMoveToJS(digit, explanation, targetRow, targetCol, primaryCells, secondaryCells)
+	obj.Set("userEntryCount", userEntryCount)
+	return obj
 }
 
 // ==================== Shared Types ====================
 
 // MoveResult represents a single move result with board state
 type MoveResult struct {
-	Board      []int       `json:"board"`
-	Candidates [][]int     `json:"candidates"`
-	Move       interface{} `json:"move"`
+	Board      []int
+	Candidates [][]int
+	Move       js.Value // JS object representing the move
 }
 
 // solveResult is the internal result from solveAllInternal
@@ -92,19 +390,19 @@ type solveResult struct {
 // Output: { cells: number[81], candidates: number[81][] }
 func createBoard(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
-		return toJSValue(map[string]interface{}{"error": "givens required"})
+		return errorToJS("givens required")
 	}
 
 	givens := jsArrayToIntSlice(args[0])
 	if len(givens) != 81 {
-		return toJSValue(map[string]interface{}{"error": "givens must have 81 elements"})
+		return errorToJS("givens must have 81 elements")
 	}
 
 	board := human.NewBoard(givens)
-	return toJSValue(map[string]interface{}{
-		"cells":      board.GetCells(),
-		"candidates": board.GetCandidates(),
-	})
+	obj := js.Global().Get("Object").New()
+	obj.Set("cells", intSliceToJSArray(board.GetCells()))
+	obj.Set("candidates", int2DSliceToJSArray(board.GetCandidates()))
+	return obj
 }
 
 // createBoardWithCandidates creates a board with pre-set candidates
@@ -112,20 +410,20 @@ func createBoard(this js.Value, args []js.Value) interface{} {
 // Output: { cells: number[81], candidates: number[81][] }
 func createBoardWithCandidates(this js.Value, args []js.Value) interface{} {
 	if len(args) < 2 {
-		return toJSValue(map[string]interface{}{"error": "cells and candidates required"})
+		return errorToJS("cells and candidates required")
 	}
 
 	cells := jsArrayToIntSlice(args[0])
 	if len(cells) != 81 {
-		return toJSValue(map[string]interface{}{"error": "cells must have 81 elements"})
+		return errorToJS("cells must have 81 elements")
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
 	board := human.NewBoardWithCandidates(cells, candidates)
-	return toJSValue(map[string]interface{}{
-		"cells":      board.GetCells(),
-		"candidates": board.GetCandidates(),
-	})
+	obj := js.Global().Get("Object").New()
+	obj.Set("cells", intSliceToJSArray(board.GetCells()))
+	obj.Set("candidates", int2DSliceToJSArray(board.GetCandidates()))
+	return obj
 }
 
 // findNextMove finds the next solving step with full error detection
@@ -134,25 +432,25 @@ func createBoardWithCandidates(this js.Value, args []js.Value) interface{} {
 // This is equivalent to solveAll with maxMoves=1, returning the first move only
 func findNextMove(this js.Value, args []js.Value) interface{} {
 	if len(args) < 3 {
-		return toJSValue(map[string]interface{}{"error": "cells, candidates, and givens required"})
+		return errorToJS("cells, candidates, and givens required")
 	}
 
 	cells := jsArrayToIntSlice(args[0])
 	if len(cells) != 81 {
-		return toJSValue(map[string]interface{}{"error": "cells must have 81 elements"})
+		return errorToJS("cells must have 81 elements")
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
 	givens := jsArrayToIntSlice(args[2])
 	if len(givens) != 81 {
-		return toJSValue(map[string]interface{}{"error": "givens must have 81 elements"})
+		return errorToJS("givens must have 81 elements")
 	}
 
 	// Call the internal solver with maxMoves=1
 	result := solveAllInternal(cells, candidates, givens, 1)
 
 	// Return first move only (or nil if no moves)
-	var move interface{}
+	var move js.Value
 	var boardCells []int
 	var boardCandidates [][]int
 
@@ -161,19 +459,20 @@ func findNextMove(this js.Value, args []js.Value) interface{} {
 		boardCells = result.moves[0].Board
 		boardCandidates = result.moves[0].Candidates
 	} else {
-		move = nil
+		move = js.Null()
 		boardCells = result.finalBoard
 		boardCandidates = result.finalCandidates
 	}
 
-	return toJSValue(map[string]interface{}{
-		"move": move,
-		"board": map[string]interface{}{
-			"cells":      boardCells,
-			"candidates": boardCandidates,
-		},
-		"solved": result.solved,
-	})
+	boardObj := js.Global().Get("Object").New()
+	boardObj.Set("cells", intSliceToJSArray(boardCells))
+	boardObj.Set("candidates", int2DSliceToJSArray(boardCandidates))
+
+	obj := js.Global().Get("Object").New()
+	obj.Set("move", move)
+	obj.Set("board", boardObj)
+	obj.Set("solved", result.solved)
+	return obj
 }
 
 // solveWithSteps solves the puzzle returning all steps
@@ -181,12 +480,12 @@ func findNextMove(this js.Value, args []js.Value) interface{} {
 // Output: { moves: Move[], status: string, finalBoard: number[81] }
 func solveWithSteps(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
-		return toJSValue(map[string]interface{}{"error": "givens required"})
+		return errorToJS("givens required")
 	}
 
 	givens := jsArrayToIntSlice(args[0])
 	if len(givens) != 81 {
-		return toJSValue(map[string]interface{}{"error": "givens must have 81 elements"})
+		return errorToJS("givens must have 81 elements")
 	}
 
 	maxSteps := 2000
@@ -197,12 +496,12 @@ func solveWithSteps(this js.Value, args []js.Value) interface{} {
 	board := human.NewBoard(givens)
 	moves, status := solver.SolveWithSteps(board, maxSteps)
 
-	return toJSValue(map[string]interface{}{
-		"moves":      moves,
-		"status":     status,
-		"finalBoard": board.GetCells(),
-		"solved":     board.IsSolved(),
-	})
+	obj := js.Global().Get("Object").New()
+	obj.Set("moves", moveSliceToJS(moves))
+	obj.Set("status", status)
+	obj.Set("finalBoard", intSliceToJSArray(board.GetCells()))
+	obj.Set("solved", board.IsSolved())
+	return obj
 }
 
 // analyzePuzzle analyzes a puzzle and returns difficulty and technique counts
@@ -210,21 +509,21 @@ func solveWithSteps(this js.Value, args []js.Value) interface{} {
 // Output: { difficulty: string, techniques: { [name]: count }, status: string }
 func analyzePuzzle(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
-		return toJSValue(map[string]interface{}{"error": "givens required"})
+		return errorToJS("givens required")
 	}
 
 	givens := jsArrayToIntSlice(args[0])
 	if len(givens) != 81 {
-		return toJSValue(map[string]interface{}{"error": "givens must have 81 elements"})
+		return errorToJS("givens must have 81 elements")
 	}
 
 	difficulty, techniques, status := solver.AnalyzePuzzleDifficulty(givens)
 
-	return toJSValue(map[string]interface{}{
-		"difficulty": difficulty,
-		"techniques": techniques,
-		"status":     status,
-	})
+	obj := js.Global().Get("Object").New()
+	obj.Set("difficulty", difficulty)
+	obj.Set("techniques", stringIntMapToJS(techniques))
+	obj.Set("status", status)
+	return obj
 }
 
 // ==================== DP Solver Functions ====================
@@ -287,16 +586,16 @@ func isValid(this js.Value, args []js.Value) interface{} {
 // Output: Conflict[]
 func findConflicts(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
-		return toJSValue([]interface{}{})
+		return js.Global().Get("Array").New(0)
 	}
 
 	grid := jsArrayToIntSlice(args[0])
 	if len(grid) != 81 {
-		return toJSValue([]interface{}{})
+		return js.Global().Get("Array").New(0)
 	}
 
 	conflicts := dp.FindConflicts(grid)
-	return toJSValue(conflicts)
+	return conflictSliceToJS(conflicts)
 }
 
 // generateFullGrid generates a complete valid sudoku grid
@@ -349,12 +648,12 @@ func carveGivensWithSubset(this js.Value, args []js.Value) interface{} {
 
 	puzzles := dp.CarveGivensWithSubset(fullGrid, seed)
 
-	result := make(map[string][]int)
+	// Build JS object explicitly
+	obj := js.Global().Get("Object").New()
 	for diff, givens := range puzzles {
-		result[diff] = givens
+		obj.Set(diff, intSliceToJSArray(givens))
 	}
-
-	return toJSValue(result)
+	return obj
 }
 
 // ==================== Combined Solve Functions ====================
@@ -364,29 +663,30 @@ func carveGivensWithSubset(this js.Value, args []js.Value) interface{} {
 // Output: { moves: MoveResult[], solved: boolean, finalBoard: number[81] }
 func solveAll(this js.Value, args []js.Value) interface{} {
 	if len(args) < 3 {
-		return toJSValue(map[string]interface{}{"error": "cells, candidates, and givens required"})
+		return errorToJS("cells, candidates, and givens required")
 	}
 
 	cells := jsArrayToIntSlice(args[0])
 	if len(cells) != 81 {
-		return toJSValue(map[string]interface{}{"error": "cells must have 81 elements"})
+		return errorToJS("cells must have 81 elements")
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
 	givens := jsArrayToIntSlice(args[2])
 	if len(givens) != 81 {
-		return toJSValue(map[string]interface{}{"error": "givens must have 81 elements"})
+		return errorToJS("givens must have 81 elements")
 	}
 
 	// Call internal implementation with default maxMoves
 	result := solveAllInternal(cells, candidates, givens, 2000)
 
-	return toJSValue(map[string]interface{}{
-		"moves":           result.moves,
-		"solved":          result.solved,
-		"finalBoard":      result.finalBoard,
-		"finalCandidates": result.finalCandidates,
-	})
+	// Build result object explicitly
+	obj := js.Global().Get("Object").New()
+	obj.Set("moves", moveResultSliceToJS(result.moves))
+	obj.Set("solved", result.solved)
+	obj.Set("finalBoard", intSliceToJSArray(result.finalBoard))
+	obj.Set("finalCandidates", int2DSliceToJSArray(result.finalCandidates))
+	return obj
 }
 
 // solveAllInternal is the internal implementation of solveAll
@@ -417,11 +717,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 					moves = append(moves, MoveResult{
 						Board:      currentCells,
 						Candidates: board.GetCandidates(),
-						Move: map[string]interface{}{
-							"technique":   "error",
-							"action":      "error",
-							"explanation": "Too many incorrect entries to fix automatically.",
-						},
+						Move:       errorMoveToJS("Too many incorrect entries to fix automatically."),
 					})
 					break
 				}
@@ -452,16 +748,13 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 					moves = append(moves, MoveResult{
 						Board:      board.GetCells(),
 						Candidates: board.GetCandidates(),
-						Move: map[string]interface{}{
-							"technique":   "fix-error",
-							"action":      "fix-error",
-							"digit":       badDigit,
-							"explanation": formatExplanation("R%dC%d and R%dC%d both have %d in the same %s. Removing %d from R%dC%d.", cell1Row+1, cell1Col+1, cell2Row+1, cell2Col+1, badDigit, conflict.Type, badDigit, badRow+1, badCol+1),
-							"targets":     []map[string]int{{"row": badRow, "col": badCol}},
-							"highlights": map[string]interface{}{
-								"primary": []map[string]int{{"row": cell1Row, "col": cell1Col}, {"row": cell2Row, "col": cell2Col}},
-							},
-						},
+						Move: fixErrorMoveToJS(
+							badDigit,
+							formatExplanation("R%dC%d and R%dC%d both have %d in the same %s. Removing %d from R%dC%d.", cell1Row+1, cell1Col+1, cell2Row+1, cell2Col+1, badDigit, conflict.Type, badDigit, badRow+1, badCol+1),
+							badRow, badCol,
+							[][]int{{cell1Row, cell1Col}, {cell2Row, cell2Col}},
+							nil,
+						),
 					})
 					continue // Continue solving after fixing
 				} else {
@@ -469,11 +762,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 					moves = append(moves, MoveResult{
 						Board:      currentCells,
 						Candidates: board.GetCandidates(),
-						Move: map[string]interface{}{
-							"technique":   "error",
-							"action":      "error",
-							"explanation": "The puzzle has conflicting givens and cannot be solved.",
-						},
+						Move:       errorMoveToJS("The puzzle has conflicting givens and cannot be solved."),
 					})
 					break
 				}
@@ -494,12 +783,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 						moves = append(moves, MoveResult{
 							Board:      currentCells,
 							Candidates: board.GetCandidates(),
-							Move: map[string]interface{}{
-								"technique":      "error",
-								"action":         "error",
-								"explanation":    "Too many incorrect entries to fix automatically.",
-								"userEntryCount": len(wrongCells),
-							},
+							Move:       errorMoveWithCountToJS("Too many incorrect entries to fix automatically.", len(wrongCells)),
 						})
 						break
 					}
@@ -519,17 +803,14 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 					moves = append(moves, MoveResult{
 						Board:      board.GetCells(),
 						Candidates: board.GetCandidates(),
-						Move: map[string]interface{}{
-							"technique":   "fix-error",
-							"action":      "fix-error",
-							"digit":       wrongDigit,
-							"explanation": formatExplanation("R%dC%d has %d but should be %d. Removing the incorrect value.", badRow+1, badCol+1, wrongDigit, correctDigit),
-							"targets":     []map[string]int{{"row": badRow, "col": badCol}},
-							"highlights": map[string]interface{}{
-								"primary": []map[string]int{{"row": badRow, "col": badCol}},
-							},
-							"userEntryCount": len(wrongCells),
-						},
+						Move: fixErrorMoveWithCountToJS(
+							wrongDigit,
+							formatExplanation("R%dC%d has %d but should be %d. Removing the incorrect value.", badRow+1, badCol+1, wrongDigit, correctDigit),
+							badRow, badCol,
+							[][]int{{badRow, badCol}},
+							nil,
+							len(wrongCells),
+						),
 					})
 					continue // Continue solving after fixing
 				}
@@ -552,11 +833,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 				moves = append(moves, MoveResult{
 					Board:      board.GetCells(),
 					Candidates: board.GetCandidates(),
-					Move: map[string]interface{}{
-						"technique":   "error",
-						"action":      "error",
-						"explanation": "Too many incorrect entries to fix automatically.",
-					},
+					Move:       errorMoveToJS("Too many incorrect entries to fix automatically."),
 				})
 				break
 			}
@@ -578,17 +855,13 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 					moves = append(moves, MoveResult{
 						Board:      board.GetCells(),
 						Candidates: board.GetCandidates(),
-						Move: map[string]interface{}{
-							"technique":   "fix-error",
-							"action":      "fix-error",
-							"digit":       badDigit,
-							"explanation": formatExplanation("Removing incorrect %d from R%dC%d.", badDigit, badRow+1, badCol+1),
-							"targets":     []map[string]int{{"row": badRow, "col": badCol}},
-							"highlights": map[string]interface{}{
-								"primary":   []map[string]int{{"row": badRow, "col": badCol}},
-								"secondary": []map[string]int{{"row": move.Targets[0].Row, "col": move.Targets[0].Col}},
-							},
-						},
+						Move: fixErrorMoveToJS(
+							badDigit,
+							formatExplanation("Removing incorrect %d from R%dC%d.", badDigit, badRow+1, badCol+1),
+							badRow, badCol,
+							[][]int{{badRow, badCol}},
+							[][]int{{move.Targets[0].Row, move.Targets[0].Col}},
+						),
 					})
 					continue
 				}
@@ -609,17 +882,13 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 				moves = append(moves, MoveResult{
 					Board:      board.GetCells(),
 					Candidates: board.GetCandidates(),
-					Move: map[string]interface{}{
-						"technique":   "fix-error",
-						"action":      "fix-error",
-						"digit":       badDigit,
-						"explanation": formatExplanation("Found it! R%dC%d has no valid candidates. The %d at R%dC%d was causing the problem.", zeroCandRow+1, zeroCandCol+1, badDigit, badRow+1, badCol+1),
-						"targets":     []map[string]int{{"row": badRow, "col": badCol}},
-						"highlights": map[string]interface{}{
-							"primary":   []map[string]int{{"row": badRow, "col": badCol}},
-							"secondary": []map[string]int{{"row": zeroCandRow, "col": zeroCandCol}},
-						},
-					},
+					Move: fixErrorMoveToJS(
+						badDigit,
+						formatExplanation("Found it! R%dC%d has no valid candidates. The %d at R%dC%d was causing the problem.", zeroCandRow+1, zeroCandCol+1, badDigit, badRow+1, badCol+1),
+						badRow, badCol,
+						[][]int{{badRow, badCol}},
+						[][]int{{zeroCandRow, zeroCandCol}},
+					),
 				})
 				continue
 			}
@@ -628,11 +897,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 			moves = append(moves, MoveResult{
 				Board:      board.GetCells(),
 				Candidates: board.GetCandidates(),
-				Move: map[string]interface{}{
-					"technique":   "unpinpointable-error",
-					"action":      "unpinpointable-error",
-					"explanation": "Could not pinpoint the error. Check your entries.",
-				},
+				Move:       unpinpointableErrorMoveToJS("Could not pinpoint the error. Check your entries."),
 			})
 			break
 		}
@@ -642,7 +907,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 		moves = append(moves, MoveResult{
 			Board:      board.GetCells(),
 			Candidates: board.GetCandidates(),
-			Move:       move,
+			Move:       moveToJS(move),
 		})
 	}
 
@@ -675,16 +940,13 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 			moves = append(moves, MoveResult{
 				Board:      finalCells,
 				Candidates: board.GetCandidates(),
-				Move: map[string]interface{}{
-					"technique":   "fix-error",
-					"action":      "fix-error",
-					"digit":       conflict.Value,
-					"explanation": formatExplanation("R%dC%d and R%dC%d both have %d in the same %s.", cell1Row+1, cell1Col+1, cell2Row+1, cell2Col+1, conflict.Value, conflict.Type),
-					"targets":     []map[string]int{{"row": badRow, "col": badCol}},
-					"highlights": map[string]interface{}{
-						"primary": []map[string]int{{"row": cell1Row, "col": cell1Col}, {"row": cell2Row, "col": cell2Col}},
-					},
-				},
+				Move: fixErrorMoveToJS(
+					conflict.Value,
+					formatExplanation("R%dC%d and R%dC%d both have %d in the same %s.", cell1Row+1, cell1Col+1, cell2Row+1, cell2Col+1, conflict.Value, conflict.Type),
+					badRow, badCol,
+					[][]int{{cell1Row, cell1Col}, {cell2Row, cell2Col}},
+					nil,
+				),
 			})
 		} else {
 			// No conflicts, but check against correct solution
@@ -707,17 +969,14 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 					moves = append(moves, MoveResult{
 						Board:      finalCells,
 						Candidates: board.GetCandidates(),
-						Move: map[string]interface{}{
-							"technique":   "fix-error",
-							"action":      "fix-error",
-							"digit":       wrongDigit,
-							"explanation": formatExplanation("R%dC%d has %d but should be %d.", badRow+1, badCol+1, wrongDigit, correctDigit),
-							"targets":     []map[string]int{{"row": badRow, "col": badCol}},
-							"highlights": map[string]interface{}{
-								"primary": []map[string]int{{"row": badRow, "col": badCol}},
-							},
-							"userEntryCount": len(wrongCells),
-						},
+						Move: fixErrorMoveWithCountToJS(
+							wrongDigit,
+							formatExplanation("R%dC%d has %d but should be %d.", badRow+1, badCol+1, wrongDigit, correctDigit),
+							badRow, badCol,
+							[][]int{{badRow, badCol}},
+							nil,
+							len(wrongCells),
+						),
 					})
 				}
 			}
@@ -906,23 +1165,47 @@ func intToString(n int) string {
 
 // ==================== Validation Functions ====================
 
+// validationResultToJS creates a validation result JS object
+func validationResultToJS(valid bool, reason string) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("valid", valid)
+	if reason != "" {
+		obj.Set("reason", reason)
+	}
+	return obj
+}
+
+// validationResultWithUniqueToJS creates a validation result with unique field
+func validationResultWithUniqueToJS(valid bool, unique bool, reason string) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("valid", valid)
+	obj.Set("unique", unique)
+	if reason != "" {
+		obj.Set("reason", reason)
+	}
+	return obj
+}
+
+// validationResultWithSolutionToJS creates a validation result with solution
+func validationResultWithSolutionToJS(valid bool, unique bool, solution []int) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("valid", valid)
+	obj.Set("unique", unique)
+	obj.Set("solution", intSliceToJSArray(solution))
+	return obj
+}
+
 // validateCustomPuzzle validates a custom puzzle
 // Input: givens (number[81])
 // Output: { valid: boolean, unique?: boolean, reason?: string, puzzleId?: string }
 func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
-		return toJSValue(map[string]interface{}{
-			"valid":  false,
-			"reason": "givens required",
-		})
+		return validationResultToJS(false, "givens required")
 	}
 
 	givens := jsArrayToIntSlice(args[0])
 	if len(givens) != 81 {
-		return toJSValue(map[string]interface{}{
-			"valid":  false,
-			"reason": "givens must have 81 elements",
-		})
+		return validationResultToJS(false, "givens must have 81 elements")
 	}
 
 	// Count givens
@@ -934,46 +1217,29 @@ func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 	}
 
 	if givenCount < 17 {
-		return toJSValue(map[string]interface{}{
-			"valid":  false,
-			"reason": "need at least 17 givens",
-		})
+		return validationResultToJS(false, "need at least 17 givens")
 	}
 
 	// Check for conflicts
 	if !dp.IsValid(givens) {
-		return toJSValue(map[string]interface{}{
-			"valid":  false,
-			"reason": "puzzle contains conflicts",
-		})
+		return validationResultToJS(false, "puzzle contains conflicts")
 	}
 
 	// Check solvability
 	solutions := dp.CountSolutions(givens, 2)
 
 	if solutions == 0 {
-		return toJSValue(map[string]interface{}{
-			"valid":  false,
-			"reason": "puzzle has no solution",
-		})
+		return validationResultToJS(false, "puzzle has no solution")
 	}
 
 	if solutions > 1 {
-		return toJSValue(map[string]interface{}{
-			"valid":  true,
-			"unique": false,
-			"reason": "puzzle has multiple solutions",
-		})
+		return validationResultWithUniqueToJS(true, false, "puzzle has multiple solutions")
 	}
 
 	// Solve to get the solution
 	solution := dp.Solve(givens)
 
-	return toJSValue(map[string]interface{}{
-		"valid":    true,
-		"unique":   true,
-		"solution": solution,
-	})
+	return validationResultWithSolutionToJS(true, true, solution)
 }
 
 // validateBoard validates current board state during gameplay by comparing against solution
@@ -981,27 +1247,18 @@ func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 // Output: { valid: boolean, reason?: string, message?: string, incorrectCells?: number[] }
 func validateBoard(this js.Value, args []js.Value) interface{} {
 	if len(args) < 2 {
-		return toJSValue(map[string]interface{}{
-			"valid":  false,
-			"reason": "board and solution required",
-		})
+		return validationResultToJS(false, "board and solution required")
 	}
 
 	board := jsArrayToIntSlice(args[0])
 	solution := jsArrayToIntSlice(args[1])
 
 	if len(board) != 81 {
-		return toJSValue(map[string]interface{}{
-			"valid":  false,
-			"reason": "board must have 81 elements",
-		})
+		return validationResultToJS(false, "board must have 81 elements")
 	}
 
 	if len(solution) != 81 {
-		return toJSValue(map[string]interface{}{
-			"valid":  false,
-			"reason": "solution must have 81 elements",
-		})
+		return validationResultToJS(false, "solution must have 81 elements")
 	}
 
 	// Find incorrect cells (where user entry doesn't match solution)
@@ -1013,22 +1270,23 @@ func validateBoard(this js.Value, args []js.Value) interface{} {
 	}
 
 	if len(incorrectCells) > 0 {
-		msg := fmt.Sprintf("Found %d incorrect cell", len(incorrectCells))
+		// Build message without fmt.Sprintf (reflection)
+		msg := "Found " + intToString(len(incorrectCells)) + " incorrect cell"
 		if len(incorrectCells) > 1 {
 			msg += "s"
 		}
-		return toJSValue(map[string]interface{}{
-			"valid":          false,
-			"reason":         "incorrect_entries",
-			"message":        msg,
-			"incorrectCells": incorrectCells,
-		})
+		obj := js.Global().Get("Object").New()
+		obj.Set("valid", false)
+		obj.Set("reason", "incorrect_entries")
+		obj.Set("message", msg)
+		obj.Set("incorrectCells", intSliceToJSArray(incorrectCells))
+		return obj
 	}
 
-	return toJSValue(map[string]interface{}{
-		"valid":   true,
-		"message": "All entries are correct so far!",
-	})
+	obj := js.Global().Get("Object").New()
+	obj.Set("valid", true)
+	obj.Set("message", "All entries are correct so far!")
+	return obj
 }
 
 // ==================== Utility Functions ====================
@@ -1038,7 +1296,7 @@ func validateBoard(this js.Value, args []js.Value) interface{} {
 // Output: { givens: number[81], solution: number[81], puzzleId: string, seed: string, difficulty: string }
 func getPuzzleForSeed(this js.Value, args []js.Value) interface{} {
 	if len(args) < 2 {
-		return toJSValue(map[string]interface{}{"error": "seed and difficulty required"})
+		return errorToJS("seed and difficulty required")
 	}
 
 	seed := args[0].String()
@@ -1049,7 +1307,7 @@ func getPuzzleForSeed(this js.Value, args []js.Value) interface{} {
 		"easy": true, "medium": true, "hard": true, "extreme": true, "impossible": true,
 	}
 	if !validDifficulties[difficulty] {
-		return toJSValue(map[string]interface{}{"error": "invalid difficulty"})
+		return errorToJS("invalid difficulty")
 	}
 
 	// Generate deterministic seed hash
@@ -1060,13 +1318,13 @@ func getPuzzleForSeed(this js.Value, args []js.Value) interface{} {
 
 	puzzleID := seed + "-" + difficulty
 
-	return toJSValue(map[string]interface{}{
-		"givens":     givens,
-		"solution":   fullGrid,
-		"puzzleId":   puzzleID,
-		"seed":       seed,
-		"difficulty": difficulty,
-	})
+	obj := js.Global().Get("Object").New()
+	obj.Set("givens", intSliceToJSArray(givens))
+	obj.Set("solution", intSliceToJSArray(fullGrid))
+	obj.Set("puzzleId", puzzleID)
+	obj.Set("seed", seed)
+	obj.Set("difficulty", difficulty)
+	return obj
 }
 
 // hashSeed converts a string seed to int64
