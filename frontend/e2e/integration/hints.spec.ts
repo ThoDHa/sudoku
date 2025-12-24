@@ -44,21 +44,47 @@ test.describe('@integration Hints - Basic Functionality', () => {
   });
 
   test('hint shows explanation or technique info', async ({ page }) => {
+    // Count empty cells before hint to verify hint was applied
+    const emptyCellsBefore = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
+    
     // Click hint button
     const hintButton = page.getByRole('button', { name: /Hint/i });
     await hintButton.click();
     
-    // Wait for any modal/tooltip/explanation to appear
+    // Wait for hint to be processed
     await page.waitForTimeout(500);
     
-    // Look for hint explanation elements (could be modal, toast, or inline)
-    const explanation = page.locator('[class*="technique"], [class*="hint"], [class*="explanation"], [role="dialog"], .toast');
+    // Look for hint explanation elements - these could be:
+    // 1. A modal dialog with technique explanation
+    // 2. A toast notification
+    // 3. Inline explanation text
+    // 4. Technique badge/label
+    const explanationSelectors = [
+      '[role="dialog"]',
+      '[class*="technique"]',
+      '[class*="hint-explanation"]',
+      '[class*="toast"]',
+      '[class*="modal"]',
+      'text=/Naked Single|Hidden Single|Pointing|Box-Line|Pair|Triple|X-Wing/i'
+    ];
     
-    // Check if any explanation is visible
-    const hasExplanation = await explanation.first().isVisible().catch(() => false);
+    let hasExplanation = false;
+    for (const selector of explanationSelectors) {
+      const element = page.locator(selector).first();
+      if (await element.isVisible().catch(() => false)) {
+        hasExplanation = true;
+        break;
+      }
+    }
     
-    // This might not always show depending on UI design, so we just verify the action worked
-    expect(true).toBeTruthy();
+    // Also verify the hint actually did something (cell was filled or candidates updated)
+    const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
+    const hintApplied = emptyCellsAfter < emptyCellsBefore;
+    
+    // Test passes if EITHER:
+    // 1. An explanation UI element is visible, OR
+    // 2. The hint was applied (fewer empty cells), proving the hint mechanism works
+    expect(hasExplanation || hintApplied).toBeTruthy();
   });
 });
 

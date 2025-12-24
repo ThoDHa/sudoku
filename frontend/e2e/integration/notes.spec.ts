@@ -77,21 +77,29 @@ test.describe('@integration Notes Mode - Adding Candidates', () => {
   });
 
   test('entering digit in notes mode adds candidate', async ({ page }) => {
-    // Find an empty cell in lower rows (avoid header overlap)
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    // Find an empty cell and capture its position
+    const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
-    if (await emptyCell.count() > 0) {
-      await emptyCell.scrollIntoViewIfNeeded();
-      await emptyCell.click();
-      
-      // Enter a candidate
-      await page.keyboard.press('3');
-      await page.waitForTimeout(300);
-      
-      // Check for candidate display - the cell should contain '3' now
-      const cellContent = await emptyCell.textContent();
-      expect(cellContent).toContain('3');
-    }
+    // Fail explicitly if no cell found
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
+    
+    // Capture stable position identifier
+    const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
+    const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+    expect(match).toBeTruthy();
+    const [, row, col] = match!;
+    
+    // Use position-based locator
+    const cellByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
+    
+    await cellByPosition.scrollIntoViewIfNeeded();
+    await cellByPosition.click();
+    
+    // Enter a candidate
+    await page.keyboard.press('3');
+    
+    // Wait for state change with explicit condition
+    await expect(cellByPosition).toContainText('3');
   });
 });
 
@@ -122,22 +130,32 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     // Click digit 4 first (no cell selected)
     const digit4Button = page.locator('button[aria-label^="Enter 4,"]');
     await digit4Button.click();
-    await page.waitForTimeout(100);
     
-    // Find an empty cell
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    // Wait for digit selection to register
+    await expect(digit4Button).toHaveClass(/ring-2/);
     
-    if (await emptyCell.count() > 0) {
-      await emptyCell.scrollIntoViewIfNeeded();
-      
-      // Click the cell - should add candidate 4
-      await emptyCell.click();
-      await page.waitForTimeout(300);
-      
-      // Verify candidate was added
-      const cellContent = await emptyCell.textContent();
-      expect(cellContent).toContain('4');
-    }
+    // Find an empty cell and capture its position
+    const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    
+    // Fail explicitly if no cell found
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
+    
+    // Capture stable position identifier
+    const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
+    const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+    expect(match).toBeTruthy();
+    const [, row, col] = match!;
+    
+    // Use position-based locator
+    const cellByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
+    
+    await cellByPosition.scrollIntoViewIfNeeded();
+    
+    // Click the cell - should add candidate 4
+    await cellByPosition.click();
+    
+    // Verify candidate was added with explicit wait
+    await expect(cellByPosition).toContainText('4');
   });
 
   test('multi-fill clicking same cell twice toggles candidate off', async ({ page }) => {
@@ -149,28 +167,38 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     // Click digit 4 first (no cell selected)
     const digit4Button = page.locator('button[aria-label^="Enter 4,"]');
     await digit4Button.click();
-    await page.waitForTimeout(100);
     
-    // Find an empty cell
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    // Wait for digit selection to register (check for ring-2 highlight)
+    await expect(digit4Button).toHaveClass(/ring-2/);
     
-    if (await emptyCell.count() > 0) {
-      await emptyCell.scrollIntoViewIfNeeded();
-      
-      // Click once - should add candidate 4
-      await emptyCell.click();
-      await page.waitForTimeout(300);
-      
-      let cellContent = await emptyCell.textContent();
-      expect(cellContent).toContain('4');
-      
-      // Click again - should REMOVE candidate 4
-      await emptyCell.click();
-      await page.waitForTimeout(300);
-      
-      cellContent = await emptyCell.textContent();
-      expect(cellContent).not.toContain('4');
-    }
+    // Find an empty cell and capture its position for stable re-querying
+    const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    
+    // Fail explicitly if no cell found (don't silently pass)
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
+    
+    // Capture stable position identifier
+    const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
+    const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+    expect(match).toBeTruthy();
+    const [, row, col] = match!;
+    
+    // Use position-based locator that won't change with state
+    const cellByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
+    
+    await cellByPosition.scrollIntoViewIfNeeded();
+    
+    // Click once - should add candidate 4
+    await cellByPosition.click();
+    
+    // Wait for state change with explicit condition (not arbitrary timeout)
+    await expect(cellByPosition).toContainText('4');
+    
+    // Click again - should REMOVE candidate 4
+    await cellByPosition.click();
+    
+    // Wait for state change with explicit condition
+    await expect(cellByPosition).not.toContainText('4');
   });
 
   test('multi-fill adds candidate to multiple cells', async ({ page }) => {
@@ -182,29 +210,43 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     // Click digit 7 first (no cell selected)
     const digit7Button = page.locator('button[aria-label^="Enter 7,"]');
     await digit7Button.click();
-    await page.waitForTimeout(100);
     
-    // Find multiple empty cells
-    const emptyCell1 = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
-    const emptyCell2 = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
+    // Wait for digit selection to register
+    await expect(digit7Button).toHaveClass(/ring-2/);
     
-    if (await emptyCell1.count() > 0 && await emptyCell2.count() > 0) {
-      // Click first cell
-      await emptyCell1.scrollIntoViewIfNeeded();
-      await emptyCell1.click();
-      await page.waitForTimeout(200);
-      
-      // Click second cell
-      await emptyCell2.scrollIntoViewIfNeeded();
-      await emptyCell2.click();
-      await page.waitForTimeout(300);
-      
-      // Verify both cells have the candidate
-      const cell1Content = await emptyCell1.textContent();
-      const cell2Content = await emptyCell2.textContent();
-      expect(cell1Content).toContain('7');
-      expect(cell2Content).toContain('7');
-    }
+    // Find first empty cell and capture position
+    const emptyCellLocator1 = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    await expect(emptyCellLocator1).toBeVisible({ timeout: 5000 });
+    
+    const ariaLabel1 = await emptyCellLocator1.getAttribute('aria-label');
+    const match1 = ariaLabel1?.match(/Row (\d+), Column (\d+)/);
+    expect(match1).toBeTruthy();
+    const [, row1, col1] = match1!;
+    const cell1ByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row1}, Column ${col1}"]`);
+    
+    // Find second empty cell and capture position
+    const emptyCellLocator2 = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
+    await expect(emptyCellLocator2).toBeVisible({ timeout: 5000 });
+    
+    const ariaLabel2 = await emptyCellLocator2.getAttribute('aria-label');
+    const match2 = ariaLabel2?.match(/Row (\d+), Column (\d+)/);
+    expect(match2).toBeTruthy();
+    const [, row2, col2] = match2!;
+    const cell2ByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row2}, Column ${col2}"]`);
+    
+    // Click first cell
+    await cell1ByPosition.scrollIntoViewIfNeeded();
+    await cell1ByPosition.click();
+    await expect(cell1ByPosition).toContainText('7');
+    
+    // Click second cell
+    await cell2ByPosition.scrollIntoViewIfNeeded();
+    await cell2ByPosition.click();
+    await expect(cell2ByPosition).toContainText('7');
+    
+    // Verify both cells still have the candidate
+    await expect(cell1ByPosition).toContainText('7');
+    await expect(cell2ByPosition).toContainText('7');
   });
 });
 
@@ -226,51 +268,65 @@ test.describe('@integration Notes Mode - Removing Candidates', () => {
   });
 
   test('pressing same digit removes candidate', async ({ page }) => {
-    // Find an empty cell in lower rows
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    // Find an empty cell and capture its position
+    const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
-    if (await emptyCell.count() > 0) {
-      await emptyCell.scrollIntoViewIfNeeded();
-      await emptyCell.click();
-      
-      // Add candidate
-      await page.keyboard.press('4');
-      await page.waitForTimeout(200);
-      
-      let cellContent = await emptyCell.textContent();
-      expect(cellContent).toContain('4');
-      
-      // Remove by pressing same digit
-      await page.keyboard.press('4');
-      await page.waitForTimeout(300);
-      
-      cellContent = await emptyCell.textContent();
-      expect(cellContent).not.toContain('4');
-    }
+    // Fail explicitly if no cell found
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
+    
+    // Capture stable position identifier
+    const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
+    const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+    expect(match).toBeTruthy();
+    const [, row, col] = match!;
+    
+    // Use position-based locator
+    const cellByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
+    
+    await cellByPosition.scrollIntoViewIfNeeded();
+    await cellByPosition.click();
+    
+    // Add candidate
+    await page.keyboard.press('4');
+    await expect(cellByPosition).toContainText('4');
+    
+    // Remove by pressing same digit
+    await page.keyboard.press('4');
+    await expect(cellByPosition).not.toContainText('4');
   });
 
   test('erase clears all candidates from cell', async ({ page }) => {
-    // Find an empty cell in lower rows
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
+    // Find an empty cell and capture its position
+    const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
     
-    if (await emptyCell.count() > 0) {
-      await emptyCell.scrollIntoViewIfNeeded();
-      await emptyCell.click();
-      
-      // Add multiple candidates
-      await page.keyboard.press('2');
-      await page.keyboard.press('5');
-      await page.keyboard.press('8');
-      await page.waitForTimeout(300);
-      
-      // Erase all using keyboard (Backspace or Delete)
-      await page.keyboard.press('Backspace');
-      await page.waitForTimeout(300);
-      
-      // Verify cell is empty
-      const cellContent = await emptyCell.textContent();
-      expect(cellContent?.trim()).toBeFalsy();
-    }
+    // Fail explicitly if no cell found
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
+    
+    // Capture stable position identifier
+    const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
+    const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+    expect(match).toBeTruthy();
+    const [, row, col] = match!;
+    
+    // Use position-based locator
+    const cellByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
+    
+    await cellByPosition.scrollIntoViewIfNeeded();
+    await cellByPosition.click();
+    
+    // Add multiple candidates
+    await page.keyboard.press('2');
+    await expect(cellByPosition).toContainText('2');
+    await page.keyboard.press('5');
+    await expect(cellByPosition).toContainText('5');
+    await page.keyboard.press('8');
+    await expect(cellByPosition).toContainText('8');
+    
+    // Erase all using keyboard (Backspace or Delete)
+    await page.keyboard.press('Backspace');
+    
+    // Verify cell is empty - wait for text to be cleared
+    await expect(cellByPosition).toHaveText('');
   });
 });
 
@@ -299,24 +355,35 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     // Find the digit "1" button and click to highlight
     const digitButton = page.locator('button[aria-label^="Enter 1,"]');
     await digitButton.click();
-    await page.waitForTimeout(200);
 
     // Verify digit button is highlighted (has ring-2 class indicating selection)
     await expect(digitButton).toHaveClass(/ring-2/);
 
-    // Find an empty cell in lower rows
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    // Find an empty cell and capture its position
+    const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    
+    // Fail explicitly if no cell found
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
+    
+    // Capture stable position identifier
+    const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
+    const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+    expect(match).toBeTruthy();
+    const [, row, col] = match!;
+    
+    // Use position-based locator
+    const cellByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
 
-    if (await emptyCell.count() > 0) {
-      // Click the empty cell to toggle the candidate
-      await emptyCell.scrollIntoViewIfNeeded();
-      await emptyCell.click();
-      await page.waitForTimeout(300);
+    // Click the cell to toggle the candidate
+    await cellByPosition.scrollIntoViewIfNeeded();
+    await cellByPosition.click();
+    
+    // Wait for candidate to be added
+    await expect(cellByPosition).toContainText('1');
 
-      // CRITICAL: Verify the digit button is STILL highlighted
-      // This was the regression - highlight would disappear after candidate operation
-      await expect(digitButton).toHaveClass(/ring-2/);
-    }
+    // CRITICAL: Verify the digit button is STILL highlighted
+    // This was the regression - highlight would disappear after candidate operation
+    await expect(digitButton).toHaveClass(/ring-2/);
   });
 
   test('digit highlight persists after adding multiple candidates', async ({ page }) => {
@@ -327,22 +394,35 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     // Highlight digit "5"
     const digit5Button = page.locator('button[aria-label^="Enter 5,"]');
     await digit5Button.click();
-    await page.waitForTimeout(200);
 
     // Verify initial highlight
     await expect(digit5Button).toHaveClass(/ring-2/);
 
-    // Find empty cells in lower rows
-    const emptyCells = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]');
-
-    // Click multiple empty cells to add candidates
-    for (let i = 0; i < 3; i++) {
-      const cell = emptyCells.nth(i);
-      if (await cell.count() > 0) {
-        await cell.scrollIntoViewIfNeeded();
-        await cell.click();
-        await page.waitForTimeout(150);
+    // Find empty cells and capture their positions
+    const emptyCellsLocator = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]');
+    
+    // Collect positions of up to 3 empty cells
+    const cellPositions: Array<{row: string, col: string}> = [];
+    const count = Math.min(await emptyCellsLocator.count(), 3);
+    
+    for (let i = 0; i < count; i++) {
+      const cell = emptyCellsLocator.nth(i);
+      await expect(cell).toBeVisible({ timeout: 5000 });
+      const ariaLabel = await cell.getAttribute('aria-label');
+      const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+      if (match) {
+        cellPositions.push({ row: match[1], col: match[2] });
       }
+    }
+    
+    expect(cellPositions.length).toBeGreaterThan(0);
+
+    // Click cells to add candidates using position-based locators
+    for (const pos of cellPositions) {
+      const cellByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${pos.row}, Column ${pos.col}"]`);
+      await cellByPosition.scrollIntoViewIfNeeded();
+      await cellByPosition.click();
+      await expect(cellByPosition).toContainText('5');
     }
 
     // CRITICAL: Digit highlight should still be active after all operations
@@ -357,40 +437,44 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     // First, highlight digit 3 (before selecting a cell)
     const digit3Button = page.locator('button[aria-label^="Enter 3,"]');
     await digit3Button.click();
-    await page.waitForTimeout(200);
 
     // Verify digit is highlighted
     await expect(digit3Button).toHaveClass(/ring-2/);
 
-    // Find an empty cell in lower rows
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 7"][aria-label*="empty"]').first();
+    // Find an empty cell and capture its position
+    const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 7"][aria-label*="empty"]').first();
+    
+    // Fail explicitly if no cell found
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
+    
+    // Capture stable position identifier
+    const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
+    const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+    expect(match).toBeTruthy();
+    const [, row, col] = match!;
+    
+    // Use position-based locator
+    const cellByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
 
-    if (await emptyCell.count() > 0) {
-      // Click the cell to ADD the candidate (since digit 3 is highlighted)
-      await emptyCell.scrollIntoViewIfNeeded();
-      await emptyCell.click();
-      await page.waitForTimeout(200);
+    // Click the cell to ADD the candidate (since digit 3 is highlighted)
+    await cellByPosition.scrollIntoViewIfNeeded();
+    await cellByPosition.click();
 
-      // Verify candidate was added
-      let cellContent = await emptyCell.textContent();
-      expect(cellContent).toContain('3');
+    // Wait for candidate to be added
+    await expect(cellByPosition).toContainText('3');
 
-      // Verify digit highlight still active after adding
-      await expect(digit3Button).toHaveClass(/ring-2/);
+    // Verify digit highlight still active after adding
+    await expect(digit3Button).toHaveClass(/ring-2/);
 
-      // Click the same cell to REMOVE the candidate (toggle off)
-      await emptyCell.scrollIntoViewIfNeeded();
-      await emptyCell.click();
-      await page.waitForTimeout(300);
+    // Click the same cell to REMOVE the candidate (toggle off)
+    await cellByPosition.click();
 
-      // Verify candidate was removed
-      cellContent = await emptyCell.textContent();
-      expect(cellContent).not.toContain('3');
+    // Wait for candidate to be removed
+    await expect(cellByPosition).not.toContainText('3');
 
-      // CRITICAL: Digit highlight should STILL be active after removing candidate
-      // This was the specific regression case
-      await expect(digit3Button).toHaveClass(/ring-2/);
-    }
+    // CRITICAL: Digit highlight should STILL be active after removing candidate
+    // This was the specific regression case
+    await expect(digit3Button).toHaveClass(/ring-2/);
   });
 });
 
@@ -407,34 +491,48 @@ test.describe('@integration Notes Mode - Persistence', () => {
     await notesButton.click();
     await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
     
-    // Find two empty cells in lower rows
-    const cell1 = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
-    const cell2 = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
+    // Find first empty cell and capture position
+    const cell1Locator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    await expect(cell1Locator).toBeVisible({ timeout: 5000 });
     
-    if (await cell1.count() > 0 && await cell2.count() > 0) {
-      // Add notes to first cell
-      await cell1.scrollIntoViewIfNeeded();
-      await cell1.click();
-      await page.keyboard.press('1');
-      await page.keyboard.press('2');
-      await page.waitForTimeout(200);
-      
-      // Switch to second cell
-      await cell2.scrollIntoViewIfNeeded();
-      await cell2.click();
-      await page.keyboard.press('8');
-      await page.keyboard.press('9');
-      await page.waitForTimeout(200);
-      
-      // Go back to first cell and verify notes are still there
-      await cell1.scrollIntoViewIfNeeded();
-      await cell1.click();
-      await page.waitForTimeout(200);
-      
-      const cell1Content = await cell1.textContent();
-      expect(cell1Content).toContain('1');
-      expect(cell1Content).toContain('2');
-    }
+    const ariaLabel1 = await cell1Locator.getAttribute('aria-label');
+    const match1 = ariaLabel1?.match(/Row (\d+), Column (\d+)/);
+    expect(match1).toBeTruthy();
+    const [, row1, col1] = match1!;
+    const cell1ByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row1}, Column ${col1}"]`);
+    
+    // Find second empty cell and capture position
+    const cell2Locator = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
+    await expect(cell2Locator).toBeVisible({ timeout: 5000 });
+    
+    const ariaLabel2 = await cell2Locator.getAttribute('aria-label');
+    const match2 = ariaLabel2?.match(/Row (\d+), Column (\d+)/);
+    expect(match2).toBeTruthy();
+    const [, row2, col2] = match2!;
+    const cell2ByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row2}, Column ${col2}"]`);
+    
+    // Add notes to first cell
+    await cell1ByPosition.scrollIntoViewIfNeeded();
+    await cell1ByPosition.click();
+    await page.keyboard.press('1');
+    await expect(cell1ByPosition).toContainText('1');
+    await page.keyboard.press('2');
+    await expect(cell1ByPosition).toContainText('2');
+    
+    // Switch to second cell
+    await cell2ByPosition.scrollIntoViewIfNeeded();
+    await cell2ByPosition.click();
+    await page.keyboard.press('8');
+    await expect(cell2ByPosition).toContainText('8');
+    await page.keyboard.press('9');
+    await expect(cell2ByPosition).toContainText('9');
+    
+    // Go back to first cell and verify notes are still there
+    await cell1ByPosition.scrollIntoViewIfNeeded();
+    await cell1ByPosition.click();
+    
+    await expect(cell1ByPosition).toContainText('1');
+    await expect(cell1ByPosition).toContainText('2');
   });
 
   test('notes persist when toggling notes mode off and on', async ({ page }) => {
@@ -445,32 +543,39 @@ test.describe('@integration Notes Mode - Persistence', () => {
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     const notesButton = page.locator('button[title="Notes mode"]');
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
-    if (await emptyCell.count() > 0) {
-      // Enable notes and add candidates
-      await notesButton.click();
-      await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
-      
-      await emptyCell.scrollIntoViewIfNeeded();
-      await emptyCell.click();
-      await page.keyboard.press('3');
-      await page.keyboard.press('6');
-      await page.waitForTimeout(300);
-      
-      // Toggle notes mode off
-      await notesButton.click();
-      await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
-      
-      // Toggle notes mode back on
-      await notesButton.click();
-      await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
-      
-      // Verify candidates still exist
-      const cellContent = await emptyCell.textContent();
-      expect(cellContent).toContain('3');
-      expect(cellContent).toContain('6');
-    }
+    // Find an empty cell and capture position
+    const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
+    
+    const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
+    const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+    expect(match).toBeTruthy();
+    const [, row, col] = match!;
+    const cellByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
+    
+    // Enable notes and add candidates
+    await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+    
+    await cellByPosition.scrollIntoViewIfNeeded();
+    await cellByPosition.click();
+    await page.keyboard.press('3');
+    await expect(cellByPosition).toContainText('3');
+    await page.keyboard.press('6');
+    await expect(cellByPosition).toContainText('6');
+    
+    // Toggle notes mode off
+    await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
+    
+    // Toggle notes mode back on
+    await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+    
+    // Verify candidates still exist
+    await expect(cellByPosition).toContainText('3');
+    await expect(cellByPosition).toContainText('6');
   });
 
   test('placing a digit clears notes from that cell', async ({ page }) => {
@@ -481,49 +586,43 @@ test.describe('@integration Notes Mode - Persistence', () => {
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     const notesButton = page.locator('button[title="Notes mode"]');
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
-    if (await emptyCell.count() > 0) {
-      // Capture the cell position before any changes
-      const ariaLabel = await emptyCell.getAttribute('aria-label');
-      const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
-      const row = match ? parseInt(match[1]) : 5;
-      const col = match ? parseInt(match[2]) : 1;
-      
-      // Add notes
-      await notesButton.click();
-      await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
-      
-      await emptyCell.scrollIntoViewIfNeeded();
-      await emptyCell.click();
-      await page.keyboard.press('4');
-      await page.keyboard.press('7');
-      await page.waitForTimeout(200);
-      
-      // Verify candidates were added
-      let cellContent = await emptyCell.textContent();
-      expect(cellContent).toContain('4');
-      expect(cellContent).toContain('7');
-      
-      // Switch to digit mode and place a digit using multi-fill workflow
-      await notesButton.click();
-      await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
-      
-      // Use multi-fill: first click digit button, then click cell
-      const digit5Button = page.locator('button[aria-label^="Enter 5,"]');
-      await digit5Button.click();
-      await emptyCell.scrollIntoViewIfNeeded();
-      await emptyCell.click();
-      await page.waitForTimeout(300);
-      
-      // Use position-based locator to find the same cell (now has value 5)
-      const cellAfter = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
-      const cellContentAfter = await cellAfter.textContent();
-      expect(cellContentAfter).toContain('5');
-      // The digit should be the main content, not candidates
-      // In digit mode, a placed digit should replace candidates
-      expect(cellContentAfter).not.toContain('4');
-      expect(cellContentAfter).not.toContain('7');
-    }
+    // Find an empty cell and capture position
+    const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
+    
+    const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
+    const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+    expect(match).toBeTruthy();
+    const [, row, col] = match!;
+    const cellByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
+    
+    // Add notes
+    await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+    
+    await cellByPosition.scrollIntoViewIfNeeded();
+    await cellByPosition.click();
+    await page.keyboard.press('4');
+    await expect(cellByPosition).toContainText('4');
+    await page.keyboard.press('7');
+    await expect(cellByPosition).toContainText('7');
+    
+    // Switch to digit mode and place a digit using multi-fill workflow
+    await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
+    
+    // Use multi-fill: first click digit button, then click cell
+    const digit5Button = page.locator('button[aria-label^="Enter 5,"]');
+    await digit5Button.click();
+    await cellByPosition.scrollIntoViewIfNeeded();
+    await cellByPosition.click();
+    
+    // Wait for digit to be placed and verify
+    await expect(cellByPosition).toContainText('5');
+    // The digit should be the main content, not candidates
+    // In digit mode, a placed digit should replace candidates
+    await expect(cellByPosition).not.toContainText('4');
+    await expect(cellByPosition).not.toContainText('7');
   });
 });
