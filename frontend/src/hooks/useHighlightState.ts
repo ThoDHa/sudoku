@@ -17,6 +17,8 @@ export interface MoveHighlight {
     secondary?: { row: number; col: number }[]
   }
   isUserMove?: boolean
+  /** When false, hides eliminations and target additions (technique hint mode) */
+  showAnswer?: boolean
 }
 
 /**

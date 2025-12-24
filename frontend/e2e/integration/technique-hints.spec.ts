@@ -422,16 +422,19 @@ test.describe('@integration Technique Hints - Mobile', () => {
     const techniqueButton = page.locator('button:has-text("Technique"), button:has-text("?")').first();
     await techniqueButton.click();
     
-    // Modal should appear (or toast if still no technique available)
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
-    const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+    // Toast should appear with technique name (new behavior: shows "Try: {Technique}" with "Learn more" link)
+    // OR modal with 'Got it' button, OR fill candidates message
+    // Use first() to handle case where both toast text and Learn more button are visible
+    const toastOrModal = page.locator('text=/Try:.*|Fill in some candidates|use 💡 Hint|Learn more/').first()
+      .or(page.getByRole('button', { name: /Got it/i }));
+    await expect(toastOrModal).toBeVisible({ timeout: 5000 });
     
     // Board should NOT have changed
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
     expect(emptyCellsAfter).toBeLessThanOrEqual(emptyCellsBefore);
     
     // Close modal if visible
+    const gotItButton = page.getByRole('button', { name: /Got it/i });
     if (await gotItButton.isVisible()) {
       await gotItButton.click();
     }
@@ -446,10 +449,19 @@ test.describe('@integration Technique Hints - Mobile', () => {
     const techniqueButton = page.locator('button:has-text("Technique"), button:has-text("?")').first();
     await techniqueButton.click();
     
-    // Modal should be visible
+    // Toast or modal should be visible
+    // New behavior: shows "Try: {Technique}" with "Learn more" link instead of auto-opening modal
+    const toastOrModal = page.locator('text=/Try:.*|Fill in some candidates|use 💡 Hint|Learn more/').first()
+      .or(page.getByRole('button', { name: /Got it/i }));
+    await expect(toastOrModal).toBeVisible({ timeout: 5000 });
+    
+    // If "Learn more" is visible, click it to open the modal
+    const learnMoreButton = page.locator('text=Learn more');
     const gotItButton = page.getByRole('button', { name: /Got it/i });
-    const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+    if (await learnMoreButton.isVisible()) {
+      await learnMoreButton.click();
+      await expect(gotItButton).toBeVisible({ timeout: 3000 });
+    }
     
     // If modal is visible, verify the button is accessible (within reasonable bounds)
     if (await gotItButton.isVisible()) {
@@ -520,11 +532,13 @@ test.describe('@integration Technique Hints - Edge Cases', () => {
     const techniqueButton = page.getByRole('button', { name: /Technique/i });
     await techniqueButton.click();
     
-    // Should show modal or toast
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
-    const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+    // Should show toast with "Try: {Technique}" and "Learn more" link (new behavior)
+    // OR modal with 'Got it', OR fill candidates message
+    const toastOrModal = page.locator('text=/Try:.*|Fill in some candidates|use 💡 Hint|Learn more/').first()
+      .or(page.getByRole('button', { name: /Got it/i }));
+    await expect(toastOrModal).toBeVisible({ timeout: 5000 });
     
+    const gotItButton = page.getByRole('button', { name: /Got it/i });
     if (await gotItButton.isVisible()) {
       await gotItButton.click();
     }

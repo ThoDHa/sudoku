@@ -15,6 +15,8 @@ interface Move {
     secondary?: { row: number; col: number }[]
   }
   isUserMove?: boolean
+  /** When false, hides eliminations and target additions (technique hint mode) */
+  showAnswer?: boolean
 }
 
 interface BoardProps {
@@ -123,6 +125,8 @@ interface CellData {
   isTarget: boolean
   highlightDigit: number | null  // The technique's digit (0 for multi-digit techniques)
   eliminations: { row: number; col: number; digit: number }[] | undefined
+  /** When false, hides eliminations and target additions (technique hint mode) */
+  showAnswer: boolean
 }
 
 interface CellProps {
@@ -151,6 +155,7 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
     isTarget,
     highlightDigit,
     eliminations,
+    showAnswer,
   } = data
 
   const row = Math.floor(idx / 9)
@@ -187,7 +192,8 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
           const hasCandidate_ = hasCandidate(cellCandidates, d)
           
           // Check if this specific digit in this cell is being eliminated
-          const isEliminated = eliminations?.some(
+          // Only show eliminations if showAnswer is true (regular hint mode)
+          const isEliminated = showAnswer && eliminations?.some(
             (e) => e.row === row && e.col === col && e.digit === d
           )
           
@@ -199,9 +205,10 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
           
           if (hasCandidate_ && isEliminated) {
             digitClass += "text-error-text line-through font-bold"
-          } else if (hasCandidate_ && isRelevantDigit && isTarget) {
-                            // Target cells show the digit to ADD in green (hint color)
-                            digitClass += "text-hint-text font-bold"
+          } else if (hasCandidate_ && isRelevantDigit && isTarget && showAnswer) {
+            // Target cells show the digit to ADD in green (hint color)
+            // Only show if showAnswer is true (regular hint mode)
+            digitClass += "text-hint-text font-bold"
           } else if (isHighlightedCell) {
             digitClass += "text-cell-text-on-highlight"
           } else {
@@ -255,7 +262,8 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
     prevData.isSecondary === nextData.isSecondary &&
     prevData.isTarget === nextData.isTarget &&
     prevData.highlightDigit === nextData.highlightDigit &&
-    prevData.eliminations === nextData.eliminations
+    prevData.eliminations === nextData.eliminations &&
+    prevData.showAnswer === nextData.showAnswer
     // Note: onCellClick and onKeyDown are stable callbacks, no need to compare
   )
 })
@@ -598,6 +606,7 @@ const Board = memo(function Board({
         isTarget,
         highlightDigit: highlight?.digit ?? null,
         eliminations: highlight?.eliminations,
+        showAnswer: highlight?.showAnswer !== false, // Default to true for backward compatibility
       })
     }
     return result

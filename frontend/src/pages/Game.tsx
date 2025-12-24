@@ -60,6 +60,23 @@ interface PuzzleData {
 }
 
 /**
+ * Generate a unique signature for a hint move to detect duplicates.
+ * Used to avoid counting the same hint multiple times.
+ */
+function getHintSignature(move: { technique: string; action: string; digit: number; targets: { row: number; col: number }[] }): string {
+  return `${move.technique}-${move.action}-${move.digit}-${JSON.stringify(move.targets)}`
+}
+
+/**
+ * Format technique name for display (convert slug to title case)
+ */
+function formatTechniqueName(technique: string): string {
+  return technique
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+}
+
+/**
  * Inner component that contains all game logic.
  * Must be wrapped by TimerProvider (see Game component below).
  */
@@ -152,11 +169,13 @@ function GameContent() {
   const [autoSolveErrorsFixed, setAutoSolveErrorsFixed] = useState(0)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [techniqueHintsUsed, setTechniqueHintsUsed] = useState(0)
-  const [techniqueHintPending, setTechniqueHintPending] = useState(false) // Disables technique hint button until user makes a move
-  const [hintPending, setHintPending] = useState(false) // Disables hint button until user makes a move
   const [hintLoading, setHintLoading] = useState(false) // Loading spinner for hint button
   const [techniqueHintLoading, setTechniqueHintLoading] = useState(false) // Loading spinner for technique hint button
-  const [validationMessage, setValidationMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [validationMessage, setValidationMessage] = useState<{ 
+    type: 'success' | 'error' | 'info'
+    message: string
+    action?: { label: string; onClick: () => void }
+  } | null>(null)
   const [autoSolveSpeedState, setAutoSolveSpeedState] = useState<AutoSolveSpeed>(getAutoSolveSpeed())
   const [hideTimerState, setHideTimerState] = useState(getHideTimer())
 
@@ -168,6 +187,9 @@ function GameContent() {
   const isCompleteRef = useRef(false)
   // Guard to prevent concurrent hint requests (ref is more reliable than state for this)
   const hintInProgress = useRef(false)
+  // Track last hint shown to avoid counting duplicate hints
+  const lastTechniqueHintRef = useRef<string | null>(null)
+  const lastRegularHintRef = useRef<string | null>(null)
   // Track if there are unsaved changes when backgrounded
   const hasUnsavedChanges = useRef(false)
   // Track the last time we were hidden
@@ -670,30 +692,32 @@ function GameContent() {
     }, TOAST_DURATION_INFO)
   }, [game.board, solution, visibilityAwareTimeout])
 
-  // Core hint step logic - calls findNextMove for a single efficient move
-  // Returns true if more steps available, false otherwise
-  const executeHintStep = useCallback(async (showNotification: boolean = true): Promise<boolean> => {
-    // Deselect any highlighted digit when using hint
-    clearAllAndDeselect()
-
-    // Get the next move from current state (efficient single-move call)
-    const boardSnapshot = [...game.board]
-    const candidatesArray = candidatesToArrays(game.candidates)
+  // Handle hint button - shows the next move with full answer (eliminations + additions visible)
+  const handleNext = useCallback(async () => {
+    // Prevent concurrent hint requests (spam protection)
+    if (hintInProgress.current) return
+    hintInProgress.current = true
+    setHintLoading(true)
 
     try {
+      // Deselect any highlighted digit when using hint
+      clearAllAndDeselect()
+
+      // Get the next move from current state
+      const boardSnapshot = [...game.board]
+      const candidatesArray = candidatesToArrays(game.candidates)
+
       const data = await findNextMove(boardSnapshot, candidatesArray, initialBoard)
       
       if (!data.move) {
-        if (showNotification) {
-          setValidationMessage({ 
-            type: 'error', 
-            message: data.solved 
-              ? 'Puzzle is already complete!' 
-              : 'This puzzle requires advanced techniques beyond our hint system.' 
-          })
-          visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
-        }
-        return false
+        setValidationMessage({ 
+          type: 'error', 
+          message: data.solved 
+            ? 'Puzzle is already complete!' 
+            : 'This puzzle requires advanced techniques beyond our hint system.' 
+        })
+        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+        return
       }
 
       const move = data.move
@@ -705,84 +729,59 @@ function GameContent() {
           count: (move as unknown as { userEntryCount?: number }).userEntryCount || 0 
         })
         setShowSolutionConfirm(true)
-        return false
+        return
       }
 
       if (move.action === 'contradiction' || move.action === 'error') {
         if (game.canUndo) {
           game.undo()
           clearMoveHighlight()
-          if (showNotification) {
-            setValidationMessage({ 
-              type: 'error', 
-              message: move.explanation || 'Contradiction found - undoing last move'
-            })
-            visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
-          }
-          return true // More steps available after backtrack
+          setValidationMessage({ 
+            type: 'error', 
+            message: move.explanation || 'Contradiction found - undoing last move'
+          })
+          visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+          return
         } else {
-          if (showNotification) {
-            setValidationMessage({ 
-              type: 'error', 
-              message: 'The puzzle cannot be solved - initial state has errors.'
-            })
-            visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
-          }
-          return false
+          setValidationMessage({ 
+            type: 'error', 
+            message: 'The puzzle cannot be solved - initial state has errors.'
+          })
+          visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+          return
         }
       }
 
-      // Show the hint highlight WITHOUT applying the move
-      // User must manually apply the changes shown in red (eliminations) and green (additions)
+      // Show the hint highlight WITH the answer (showAnswer defaults to true)
+      // User sees red eliminations and green additions
       setMoveHighlight(move as MoveHighlight, game.history.length)
 
-      if (showNotification) {
-        // Show the same format as autosolve: "Technique: what was done"
-        setValidationMessage({ 
-          type: 'success', 
-          message: move.explanation || move.technique || 'Hint'
-        })
-        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
-      }
+      // Show toast with technique explanation
+      setValidationMessage({ 
+        type: 'success', 
+        message: move.explanation || move.technique || 'Hint'
+      })
+      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
 
-      // Check if more moves available (puzzle not complete)
-      // Use the current game board since we're no longer applying moves
-      return !data.solved && game.board.some(v => v === 0)
+      // Only increment counter if this is a NEW hint (different from last shown)
+      const signature = getHintSignature(move)
+      if (signature !== lastRegularHintRef.current) {
+        setHintsUsed(prev => prev + 1)
+        lastRegularHintRef.current = signature
+      }
+      // Note: Button stays enabled - no setHintPending(true)
     } catch (err) {
       console.error('Hint error:', err)
-      if (showNotification) {
-        setValidationMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to get hint' })
-        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
-      }
-      return false
-    }
-  }, [game, initialBoard, visibilityAwareTimeout, clearAllAndDeselect, setMoveHighlight, clearMoveHighlight])
-
-  // Handle hint button - calls executeHintStep with notifications and increments counter
-  const handleNext = useCallback(async () => {
-    // Prevent concurrent hint requests (spam protection)
-    if (hintInProgress.current) return
-    hintInProgress.current = true
-    setHintLoading(true)
-    try {
-      const result = await executeHintStep(true)
-      if (result !== false) {
-        // Only count as hint if it was successful (not an error)
-        setHintsUsed(prev => prev + 1)
-        setHintPending(true)
-        // Also re-enable technique hint button since we applied a move
-        setTechniqueHintPending(false)
-      }
+      setValidationMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to get hint' })
+      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
     } finally {
       hintInProgress.current = false
       setHintLoading(false)
     }
-  }, [executeHintStep])
+  }, [game.board, game.candidates, game.canUndo, game.undo, game.history.length, initialBoard, clearAllAndDeselect, visibilityAwareTimeout, setMoveHighlight, clearMoveHighlight])
 
-  // Handle technique hint button - shows technique modal without applying the move
+  // Handle technique hint button - shows technique name and highlights cells without revealing the answer
   const handleTechniqueHint = useCallback(async () => {
-    // If already shown a technique, wait for user to make a move
-    if (techniqueHintPending) return
     // Prevent concurrent requests
     if (hintInProgress.current) return
     hintInProgress.current = true
@@ -811,10 +810,10 @@ function GameContent() {
 
       const move = data.move
 
-      // If the next move is just filling candidates, show a helpful message instead of the modal
+      // If the next move is just filling candidates, show a helpful message
       if (move.technique === 'fill-candidate') {
         setValidationMessage({ 
-          type: 'error', 
+          type: 'info', 
           message: 'Fill in some candidates first, or use 💡 Hint to get started'
         })
         visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
@@ -825,23 +824,38 @@ function GameContent() {
       if (move.action === 'unpinpointable-error' || move.action === 'contradiction' || move.action === 'error') {
         setValidationMessage({ 
           type: 'error', 
-          message: 'There seems to be an error in the puzzle. Try using the full hint to fix it.'
+          message: 'There seems to be an error in the puzzle. Try using 💡 Hint to fix it.'
         })
         visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
         return
       }
 
       // Get the technique info
-      const techniqueName = move.technique || 'Unknown Technique'
+      const techniqueName = formatTechniqueName(move.technique || 'Unknown Technique')
       const techniqueSlug = move.technique?.toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-') || 'unknown'
 
-      // Open the technique modal
-      setTechniqueModal({ title: techniqueName, slug: techniqueSlug })
-      setMoveHighlight(move as MoveHighlight, game.history.length)
+      // Show highlight WITHOUT the answer (showAnswer: false)
+      // This shows primary/secondary cell highlighting but hides eliminations and target additions
+      setMoveHighlight({ ...move, showAnswer: false } as MoveHighlight, game.history.length)
 
-      // Increment counter and disable button until user makes a move
-      setTechniqueHintsUsed(prev => prev + 1)
-      setTechniqueHintPending(true)
+      // Show toast with technique name and "Learn more" action
+      setValidationMessage({ 
+        type: 'info', 
+        message: `Try: ${techniqueName}`,
+        action: {
+          label: 'Learn more',
+          onClick: () => setTechniqueModal({ title: techniqueName, slug: techniqueSlug })
+        }
+      })
+      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+
+      // Only increment counter if this is a NEW hint (different from last shown)
+      const signature = getHintSignature(move)
+      if (signature !== lastTechniqueHintRef.current) {
+        setTechniqueHintsUsed(prev => prev + 1)
+        lastTechniqueHintRef.current = signature
+      }
+      // Note: Button stays enabled - no setTechniqueHintPending(true)
     } catch (err) {
       console.error('Technique hint error:', err)
       setValidationMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to get technique' })
@@ -850,7 +864,7 @@ function GameContent() {
       hintInProgress.current = false
       setTechniqueHintLoading(false)
     }
-  }, [techniqueHintPending, game.board, game.candidates, game.history.length, initialBoard, clearAllAndDeselect, visibilityAwareTimeout, setMoveHighlight])
+  }, [game.board, game.candidates, game.history.length, initialBoard, clearAllAndDeselect, visibilityAwareTimeout, setMoveHighlight])
 
     // Resume from extended pause on user interaction
     const resumeFromExtendedPause = useCallback(() => {
@@ -896,8 +910,9 @@ function GameContent() {
       if (eraseMode && game.board[idx] !== 0) {
         game.eraseCell(idx)
         clearAfterErase()
-        setTechniqueHintPending(false) // Re-enable technique hint button
-        setHintPending(false) // Re-enable hint button
+        // Reset last hint tracking so next hint counts as new
+        lastTechniqueHintRef.current = null
+        lastRegularHintRef.current = null
         // Keep erase mode active so user can erase multiple cells
         return
       }
@@ -909,14 +924,16 @@ function GameContent() {
            
 // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
             clearAfterUserCandidateOp()
-            setTechniqueHintPending(false) // Re-enable technique hint button
-            setHintPending(false) // Re-enable hint button
+            // Reset last hint tracking so next hint counts as new
+            lastTechniqueHintRef.current = null
+            lastRegularHintRef.current = null
           } else {
             // For digit placement, clear move highlights but preserve digit highlight for multi-fill
             game.setCell(idx, highlightedDigit, notesMode)
             clearAfterDigitPlacement()
-            setTechniqueHintPending(false) // Re-enable technique hint button
-            setHintPending(false) // Re-enable hint button
+            // Reset last hint tracking so next hint counts as new
+            lastTechniqueHintRef.current = null
+            lastRegularHintRef.current = null
           }
          return
        }
@@ -956,8 +973,9 @@ function GameContent() {
       if (currentGame.board[currentSelectedCell] === digit) {
         currentGame.eraseCell(currentSelectedCell)
         clearAfterDigitToggle()
-        setTechniqueHintPending(false) // Re-enable technique hint button
-        setHintPending(false) // Re-enable hint button
+        // Reset last hint tracking so next hint counts as new
+        lastTechniqueHintRef.current = null
+        lastRegularHintRef.current = null
         return
       }
 
@@ -970,8 +988,9 @@ function GameContent() {
         // For digit placement, clear move highlights but preserve digit highlight for multi-fill
         clearAfterDigitPlacement()
       }
-      setTechniqueHintPending(false) // Re-enable technique hint button
-      setHintPending(false) // Re-enable hint button
+      // Reset last hint tracking so next hint counts as new
+      lastTechniqueHintRef.current = null
+      lastRegularHintRef.current = null
 
       // Keep cell selected so user can erase or change immediately
       // Keep digit highlighted for adding candidates (multi-fill)
@@ -985,8 +1004,9 @@ function GameContent() {
 if (value === 0) {
         game.eraseCell(idx)
         clearAfterErase()
-        setTechniqueHintPending(false) // Re-enable technique hint button
-        setHintPending(false) // Re-enable hint button
+        // Reset last hint tracking so next hint counts as new
+        lastTechniqueHintRef.current = null
+        lastRegularHintRef.current = null
         } else {
           if (notesMode) {
             game.setCell(idx, value, notesMode)
@@ -997,8 +1017,9 @@ if (value === 0) {
             game.setCell(idx, value, notesMode)
             clearAfterDigitPlacement()
           }
-          setTechniqueHintPending(false) // Re-enable technique hint button
-          setHintPending(false) // Re-enable hint button
+          // Reset last hint tracking so next hint counts as new
+          lastTechniqueHintRef.current = null
+          lastRegularHintRef.current = null
         }
      // eslint-disable-next-line react-hooks/exhaustive-deps -- resumeFromExtendedPause depends on isExtendedPaused; adding it would recreate this callback on every pause state change, causing unnecessary re-renders of Board (which receives this as a prop)
      }, [game, notesMode, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement])
@@ -1574,6 +1595,8 @@ ${bugReportJson}
         const restoredCandidates = arraysToCandidates(savedState.candidates)
         game.restoreState(savedState.board, restoredCandidates, savedState.history)
         timerControl.setElapsedMs(savedState.elapsedMs)
+        // Ensure timer is running after restore (it may have been reset by loadPuzzle)
+        timerControl.startTimer()
         setAutoFillUsed(savedState.autoFillUsed)
       } else {
         // Start fresh
@@ -1634,6 +1657,34 @@ ${bugReportJson}
       hasUnsavedChanges.current = false
     }
   }, [backgroundManager.isHidden, saveGameState])
+
+  // Save game state before page unloads (browser close, refresh, navigate away)
+  // This ensures timer accuracy even if the user closes the browser suddenly
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (puzzle && !game.isComplete && hasRestoredSavedState.current && getAutoSaveEnabled()) {
+        // Synchronous save - must complete before page unloads
+        const storageKey = `${STORAGE_KEYS.GAME_STATE_PREFIX}${puzzle.seed}`
+        const savedState: SavedGameState = {
+          board: game.board,
+          candidates: candidatesToArrays(game.candidates),
+          elapsedMs: timerControl.getElapsedMs(),
+          history: game.history,
+          autoFillUsed,
+          savedAt: Date.now(),
+          difficulty: puzzle.difficulty,
+        }
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(savedState))
+        } catch (e) {
+          // Can't do much here - page is closing
+        }
+      }
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [puzzle, game.isComplete, game.board, game.candidates, game.history, autoFillUsed, timerControl])
 
   // Clear saved state when puzzle is completed
   useEffect(() => {
@@ -1697,11 +1748,11 @@ ${bugReportJson}
         onStopAutoSolve={autoSolve.stopAutoSolve}
         onSetAutoSolveSpeed={setAutoSolveSpeedState}
         onTechniqueHint={handleTechniqueHint}
-        techniqueHintDisabled={techniqueHintPending}
+        techniqueHintDisabled={false}
         techniqueHintLoading={techniqueHintLoading}
         onHint={handleNext}
         hintLoading={hintLoading}
-        hintDisabled={hintPending}
+        hintDisabled={false}
         onHistoryOpen={() => setHistoryOpen(true)}
         onShowResult={() => setShowResultModal(true)}
         onShare={handleShare}
@@ -1737,25 +1788,34 @@ ${bugReportJson}
 
       {/* Validation message toast */}
       {validationMessage && (
-        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg ${
+        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg flex items-center gap-3 ${
           validationMessage.type === 'success' 
             ? 'bg-accent text-btn-active-text' 
-            : 'bg-error-text text-white'
+            : validationMessage.type === 'info'
+              ? 'bg-accent text-btn-active-text'
+              : 'bg-error-text text-white'
         }`}>
-          {validationMessage.message}
+          <span>{validationMessage.message}</span>
+          {validationMessage.action && (
+            <button
+              onClick={() => {
+                validationMessage.action?.onClick()
+                setValidationMessage(null)
+              }}
+              className="underline font-medium hover:opacity-80 transition-opacity"
+            >
+              {validationMessage.action.label}
+            </button>
+          )}
         </div>
       )}
 
       <div 
         className="game-background game-area flex-1"
         onClick={(e) => {
-          // Deselect cell when clicking outside board and controls
-          // Keep highlightedDigit for multi-fill workflow
-          const target = e.target as HTMLElement
-          const isInsideBoard = boardContainerRef.current?.contains(target)
-          const isInsideControls = controlsContainerRef.current?.contains(target)
-          
-          if (!isInsideBoard && !isInsideControls) {
+          // Deselect cell when clicking on game-area background (outside game-container)
+          // The event target will be the game-area div itself when clicking the outer edges
+          if (e.target === e.currentTarget) {
             deselectCell()
             setEraseMode(false)
             clearMoveHighlight()
@@ -1764,7 +1824,23 @@ ${bugReportJson}
       >
 
         {/* Game container - sizes based on available height and width */}
-        <div className="game-container flex flex-col items-center">
+        {/* onClick deselects when tapping the gap between board and controls */}
+        <div 
+          className="game-container flex flex-col items-center"
+          onClick={(e) => {
+            // Deselect when clicking on the gap between board and controls
+            // or any area inside game-container but outside board/controls
+            const target = e.target as HTMLElement
+            const isInsideBoard = boardContainerRef.current?.contains(target)
+            const isInsideControls = controlsContainerRef.current?.contains(target)
+            
+            if (!isInsideBoard && !isInsideControls) {
+              deselectCell()
+              setEraseMode(false)
+              clearMoveHighlight()
+            }
+          }}
+        >
           {/* Board container with pause overlay */}
           <div ref={boardContainerRef} className="relative aspect-square w-full">
           <Board

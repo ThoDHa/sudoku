@@ -6,8 +6,10 @@ interface BackgroundManagerOptions {
 }
 
 interface BackgroundManagerReturn {
-  /** Whether the page is currently hidden from user */
+  /** Whether the page is currently hidden from user (tab not visible) */
   isHidden: boolean
+  /** Whether the window has lost focus (app switched, but tab may still be visible) */
+  isWindowBlurred: boolean
   /** Whether background operations should be paused */
   shouldPauseOperations: boolean
   /** Whether in deep pause mode (immediate on hide for battery saving) */
@@ -33,14 +35,15 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
   const { enabled = true } = options
 
   const [isHidden, setIsHidden] = useState(false)
+  const [isWindowBlurred, setIsWindowBlurred] = useState(false)
   const [visibilityState, setVisibilityState] = useState<'visible' | 'hidden'>('visible')
   const [forcePaused, setForcePaused] = useState(false)
   const [forceResumed, setForceResumed] = useState(false)
   const [isInDeepPause, setIsInDeepPause] = useState(false)
 
-  // Determine if operations should be paused
+  // Determine if operations should be paused (includes both visibility hidden AND window blur)
   const shouldPauseOperations = enabled && (
-    isHidden || forcePaused || isInDeepPause || (visibilityState === 'hidden' && !forceResumed)
+    isHidden || isWindowBlurred || forcePaused || isInDeepPause || (visibilityState === 'hidden' && !forceResumed)
   )
 
   const handleVisibilityChange = useCallback(() => {
@@ -57,6 +60,16 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
       setForcePaused(false)
       setIsInDeepPause(false)
     }
+  }, [])
+
+  // Separate handlers for window blur/focus (app switching on desktop)
+  // These set isWindowBlurred but NOT isHidden - so timer pauses but frozen state doesn't trigger
+  const handleWindowBlur = useCallback(() => {
+    setIsWindowBlurred(true)
+  }, [])
+
+  const handleWindowFocus = useCallback(() => {
+    setIsWindowBlurred(false)
   }, [])
 
   const forceResume = useCallback(() => {
@@ -84,15 +97,15 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
 
     // Add event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('blur', handleVisibilityChange)
-    window.addEventListener('focus', handleVisibilityChange)
+    window.addEventListener('blur', handleWindowBlur)
+    window.addEventListener('focus', handleWindowFocus)
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('blur', handleVisibilityChange)
-      window.removeEventListener('focus', handleVisibilityChange)
+      window.removeEventListener('blur', handleWindowBlur)
+      window.removeEventListener('focus', handleWindowFocus)
     }
-  }, [enabled, handleVisibilityChange])
+  }, [enabled, handleVisibilityChange, handleWindowBlur, handleWindowFocus])
 
   // Handle pagehide event for better mobile support
   useEffect(() => {
@@ -166,10 +179,11 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
   // context consumers to re-render (~746 renders/second instead of ~1/second).
   return useMemo(() => ({
     isHidden,
+    isWindowBlurred,
     shouldPauseOperations,
     isInDeepPause,
     visibilityState,
     forceResume,
     forcePause,
-  }), [isHidden, shouldPauseOperations, isInDeepPause, visibilityState, forceResume, forcePause])
+  }), [isHidden, isWindowBlurred, shouldPauseOperations, isInDeepPause, visibilityState, forceResume, forcePause])
 }
