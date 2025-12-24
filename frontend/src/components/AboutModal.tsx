@@ -80,7 +80,7 @@ const ABOUT_SECTIONS = [
           Watch the solver analyze your <strong className="text-foreground">current board and candidates</strong> step-by-step using real solving techniques.
         </p>
         <p className="text-center text-foreground-muted mb-4">
-          The solver works from your current position — not from the beginning.
+          The solver runs in a <strong className="text-foreground">background thread</strong>, keeping the interface smooth and responsive.
         </p>
         <p className="text-center text-foreground-muted mb-4">
           <strong className="text-foreground">Made a mistake?</strong> The solver can fix errors from your current position.

@@ -100,9 +100,11 @@ export default function About() {
         <div className="rounded-lg border border-board-border-light bg-background-secondary p-5">
           <p className="mb-4 text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
             Our solver uses the same human-like techniques to solve puzzles step by step. 
-            But it has a superpower: <strong className="text-foreground">it can fix your mistakes</strong>.
+            It runs in a <strong className="text-foreground">dedicated background thread</strong>, 
+            so the interface stays smooth and responsive even during complex solving operations.
           </p>
           <p className="mb-4 text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
+            But it has a superpower: <strong className="text-foreground">it can fix your mistakes</strong>. 
             Made a wrong move somewhere? The auto-solve feature will attempt to solve the 
             puzzle from its current state — even if you've made errors. It backtracks, 
             corrects, and finds a path to the solution.

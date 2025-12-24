@@ -41,7 +41,7 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 - **Fast Loading**: Initial bundle ~170KB (reduced from 770KB)
 - **Battery Efficient**: Automatic pause when backgrounded, extended suspension after 30s
 - **Offline-First**: Complete functionality without internet after first load
-- **WASM Solver**: Go-based solver running locally at native speeds (~3.5MB cached)
+- **WASM Solver**: Go-based solver running in a dedicated Web Worker for non-blocking UI (~600KB cached)
 - **Progressive Enhancement**: Works with JavaScript disabled (basic functionality)
 
 ## 🎮 How to Play
@@ -71,6 +71,7 @@ The entire application runs locally in your browser with no server required afte
 
 ### 🧱 **Architecture Overview**
 - **WASM Solver**: Go-based constraint solver compiled with TinyGo to WebAssembly (~600KB, cached)
+- **Web Worker Isolation**: Solver runs in a dedicated Web Worker thread for non-blocking UI
 - **Static Puzzles**: 1000+ pre-generated puzzles embedded for instant access
 - **Practice Database**: Pre-analyzed puzzles categorized by required techniques
 - **Daily Determinism**: UTC date-based seeding ensures same daily puzzle globally
@@ -80,7 +81,7 @@ The entire application runs locally in your browser with no server required afte
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, PWA
 - **WASM Solver**: Go 1.23, TinyGo, WebAssembly, constraint propagation + backtracking
 - **State Management**: React hooks, Context API, localStorage persistence
-- **Performance**: Route-based code splitting, lazy loading, WASM worker threads
+- **Performance**: Route-based code splitting, lazy loading, WASM in dedicated Web Worker
 - **Testing**: Vitest unit tests, Playwright E2E, Go test suite (all via Docker)
 
 ## 📊 Performance & Mobile Optimization
@@ -118,6 +119,7 @@ The entire application runs locally in your browser with no server required afte
 - **📚 Enhanced Documentation**: Detailed solver documentation with API response formats
 
 ### 🏗️ **Architecture Improvements**
+- **🧵 Web Worker Isolation**: WASM solver now runs in a dedicated Web Worker thread, preventing UI blocking during hint and auto-solve operations
 - **🐛 Highlighting Bug Fix**: Fixed persistent digit highlights after candidate removal operations
 - **🏗️ Centralized Highlight Manager**: `useHighlightManager` for consistent UI behavior
 - **🎯 UX Polish**: Highlights clear appropriately across all interaction methods
@@ -229,9 +231,10 @@ sudoku/
 │       ├── components/     # UI components (code-split)
 │       ├── hooks/          # React hooks (game-logic chunk)
 │       ├── lib/
-│       │   ├── wasm.ts     # WASM loader
-│       │   ├── solver-service.ts  # Solver interface (solver chunk)
-│       │   └── puzzles-data.ts    # Static puzzle data
+│       │   ├── wasm.worker.ts    # Web Worker for WASM isolation
+│       │   ├── worker-client.ts  # Type-safe worker communication
+│       │   ├── solver-service.ts # Solver interface (solver chunk)
+│       │   └── puzzles-data.ts   # Static puzzle data
 │       └── pages/          # Route pages (lazy-loaded)
 └── tools/                  # Development utilities
 ```
