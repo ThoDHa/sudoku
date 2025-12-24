@@ -226,5 +226,40 @@ export default defineConfig({
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     fileParallelism: false,
     setupFiles: ['./src/test-setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov', 'json-summary'],
+      reportsDirectory: './coverage',
+      // Critical paths requiring high coverage
+      include: [
+        'src/lib/**/*.ts',
+        'src/hooks/**/*.ts',
+      ],
+      // Exclude non-critical files
+      exclude: [
+        'src/**/*.test.ts',
+        'src/**/*.test.tsx',
+        'src/test-setup.ts',
+        'src/vite-env.d.ts',
+        'src/main.tsx',
+        // Re-exports and constants (trivial)
+        'src/lib/constants.ts',
+        'src/lib/hooks.ts',
+        'src/lib/cache-version.ts',
+        // Context providers (tested via integration)
+        'src/lib/GameContext.tsx',
+        'src/lib/BackgroundManagerContext.tsx',
+        // Data-only files (lookup tables, no logic to test)
+        'src/lib/techniques.ts',
+        'src/lib/themes.ts',
+      ],
+      // Coverage thresholds for critical paths
+      thresholds: {
+        statements: 70,
+        branches: 60,
+        functions: 70,
+        lines: 70,
+      },
+    },
   },
 })
