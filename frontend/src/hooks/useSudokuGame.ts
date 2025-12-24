@@ -428,10 +428,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
       checkCompletion(newBoard)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- createMoveWithDiff and updateCandidates are stable callbacks
   }, [
     board, candidates, history, historyIndex, isGivenCell,
-    eliminateFromPeers, checkCompletion
+    eliminateFromPeers, checkCompletion, createMoveWithDiff, updateCandidates, limitHistory
   ])
 
   const toggleCandidate = useCallback((idx: number, digit: number) => {
@@ -468,8 +467,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     setHistory(limitedHistory)
     setHistoryIndex(limitedIndex)
     updateCandidates(newCandidates)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- createMoveWithDiff is a stable callback
-  }, [board, candidates, history, historyIndex, isGivenCell, updateCandidates])
+  }, [board, candidates, history, historyIndex, isGivenCell, updateCandidates, createMoveWithDiff, limitHistory])
 
   const eraseCell = useCallback((idx: number) => {
     if (isGivenCell(idx)) return
@@ -516,8 +514,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
     setBoard(newBoard)
     updateCandidates(newCandidates)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- createMoveWithDiff is a stable callback
-  }, [board, candidates, history, historyIndex, isGivenCell, calculateCandidatesForCell, updateCandidates])
+  }, [board, candidates, history, historyIndex, isGivenCell, updateCandidates, createMoveWithDiff, limitHistory])
 
   const undo = useCallback(() => {
     // Can't undo if no moves in history or at the beginning
@@ -547,29 +544,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     }
   }, [history, historyIndex, isComplete, board, candidates, updateCandidates])
 
-  const redo = useCallback(() => {
-    // Can't redo if at the end of history
-    if (historyIndex >= history.length - 1) return
-    
-    const nextMove = history[historyIndex + 1]
-    if (!nextMove) return
-    
-    // Use diff-based redo if available, fallback to legacy approach
-    if (nextMove.stateDiff) {
-      const { board: nextBoard, candidates: nextCandidates } = 
-        applyStateDiff(board, candidates, nextMove.stateDiff)
-      setBoard(nextBoard)
-      updateCandidates(nextCandidates)
-    } else {
-      // Legacy fallback - replay the move
-      replayMove(nextMove)
-    }
-    
-    setHistoryIndex(historyIndex + 1)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- replayMove is a stable callback
-  }, [board, candidates, history, historyIndex, updateCandidates])
-  
-  // Helper to replay a move's effects
+  // Helper to replay a move's effects (defined before redo which uses it)
   const replayMove = useCallback((move: Move) => {
     if (!move.boardBefore || !move.candidatesBefore) return
     
@@ -617,6 +592,27 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     updateCandidates(newCandidates)
   }, [eliminateFromPeers, calculateCandidatesForCell, fillAllCandidates, updateCandidates])
 
+  const redo = useCallback(() => {
+    // Can't redo if at the end of history
+    if (historyIndex >= history.length - 1) return
+    
+    const nextMove = history[historyIndex + 1]
+    if (!nextMove) return
+    
+    // Use diff-based redo if available, fallback to legacy approach
+    if (nextMove.stateDiff) {
+      const { board: nextBoard, candidates: nextCandidates } = 
+        applyStateDiff(board, candidates, nextMove.stateDiff)
+      setBoard(nextBoard)
+      updateCandidates(nextCandidates)
+    } else {
+      // Legacy fallback - replay the move
+      replayMove(nextMove)
+    }
+    
+    setHistoryIndex(historyIndex + 1)
+  }, [board, candidates, history, historyIndex, updateCandidates, replayMove])
+
   const resetGame = useCallback(() => {
     setGivenCells([...initialBoard])
     setBoard([...initialBoard])
@@ -659,8 +655,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     setHistoryIndex(limitedIndex)
     
     updateCandidates(newCandidates)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- createMoveWithDiff is a stable callback
-  }, [board, candidates, history, historyIndex, updateCandidates])
+  }, [board, history, historyIndex, updateCandidates, createMoveWithDiff, limitHistory])
 
   // For external updates (hints, auto-solve)
   const applyExternalMove = useCallback((

@@ -70,7 +70,7 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 The entire application runs locally in your browser with no server required after initial load!
 
 ### 🧱 **Architecture Overview**
-- **WASM Solver**: Go-based constraint solver compiled to WebAssembly (~3.5MB, cached)
+- **WASM Solver**: Go-based constraint solver compiled with TinyGo to WebAssembly (~600KB, cached)
 - **Static Puzzles**: 1000+ pre-generated puzzles embedded for instant access
 - **Practice Database**: Pre-analyzed puzzles categorized by required techniques
 - **Daily Determinism**: UTC date-based seeding ensures same daily puzzle globally
@@ -78,7 +78,7 @@ The entire application runs locally in your browser with no server required afte
 
 ### 🔧 **Technical Stack**
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, PWA
-- **Solver**: Go 1.23, WebAssembly, constraint propagation + backtracking
+- **WASM Solver**: Go 1.23, TinyGo, WebAssembly, constraint propagation + backtracking
 - **State Management**: React hooks, Context API, localStorage persistence
 - **Performance**: Route-based code splitting, lazy loading, WASM worker threads
 - **Testing**: Vitest unit tests, Playwright E2E, Go test suite (all via Docker)
@@ -87,6 +87,7 @@ The entire application runs locally in your browser with no server required afte
 
 ### ⚡ **Loading Performance**
 - **Lightning Fast**: Initial bundle ~170KB (down from 770KB)
+- **Tiny WASM**: Solver compiled with TinyGo (~600KB, down from 3.3MB)
 - **Smart Chunking**: Route-based code splitting for optimal loading
 - **Aggressive Caching**: Service Worker caches everything for instant offline access
 - **Progressive Loading**: Core game loads first, features load as needed
@@ -219,7 +220,7 @@ sudoku/
 │       └── transport/http/ # API routes with error correction
 ├── frontend/               # React + Vite + TypeScript + Tailwind
 │   ├── public/
-│   │   └── sudoku.wasm     # Compiled WASM solver (~3.5MB cached)
+│   │   └── sudoku.wasm     # Compiled WASM solver (~600KB with TinyGo)
 │   ├── e2e/                # Playwright E2E tests
 │   │   ├── api/            # API endpoint tests
 │   │   ├── integration/    # UI integration tests
@@ -277,6 +278,7 @@ The solver implements 39+ techniques across 4 tiers:
 ### Prerequisites
 
 - Go 1.22+
+- TinyGo 0.32+ (for WASM builds only)
 - Node.js 20+
 - Docker (for E2E tests only)
 
@@ -310,9 +312,17 @@ make test-e2e
 
 ### Rebuild WASM Solver
 
+The WASM solver is built with TinyGo for a smaller bundle size (~600KB vs 3.3MB with standard Go).
+
 ```bash
+# Install TinyGo: https://tinygo.org/getting-started/install/
+
+# Build WASM with TinyGo (default)
 cd api && make wasm
 # Outputs to frontend/public/sudoku.wasm
+
+# Or build with standard Go (fallback, larger output)
+cd api && make wasm-go
 ```
 
 ### Regenerate Practice Puzzles

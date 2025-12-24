@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './lib/ThemeContext'
 import { GameProvider } from './lib/GameContext'
 import { BackgroundManagerProvider } from './lib/BackgroundManagerContext'
+import { useWasmLifecycle } from './hooks/useWasmLifecycle'
 import Header from './components/Header'
 
 // Lazy load all pages for code splitting
@@ -23,6 +24,9 @@ const PageLoading = () => (
 
 function AppContent() {
   const location = useLocation()
+  
+  // Manage WASM lifecycle based on route - loads on game routes, unloads after leaving
+  useWasmLifecycle({ enableLogging: false })
   
   // Game pages need less padding (slim header)
   // Game routes: /c/* for custom, or /:seed for daily/practice (anything not a known route)
