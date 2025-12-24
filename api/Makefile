@@ -58,6 +58,34 @@ wasm-all-go: wasm-go wasm-copy-go
 test:
 	$(GO) test ./...
 
+# Run tests with coverage report
+test-coverage:
+	$(GO) test -coverprofile=coverage.out -covermode=atomic ./...
+	$(GO) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+	@$(GO) tool cover -func=coverage.out | tail -1
+
+# Run tests with verbose coverage per package
+test-coverage-verbose:
+	$(GO) test -v -coverprofile=coverage.out -covermode=atomic ./...
+	$(GO) tool cover -func=coverage.out
+
+# Memory profiling tests
+test-memory:
+	$(GO) test -memprofile=mem.out -run=. ./internal/sudoku/...
+	@echo "Memory profile generated: mem.out"
+	@echo "View with: go tool pprof mem.out"
+
+# CPU profiling tests  
+test-cpu:
+	$(GO) test -cpuprofile=cpu.out -run=. ./internal/sudoku/...
+	@echo "CPU profile generated: cpu.out"
+	@echo "View with: go tool pprof cpu.out"
+
+# Run benchmarks
+bench:
+	$(GO) test -bench=. -benchmem ./internal/sudoku/...
+
 # Clean build artifacts
 clean:
 	rm -f bin/server
