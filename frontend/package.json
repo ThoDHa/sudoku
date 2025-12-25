@@ -17,7 +17,11 @@
     "test:e2e": "playwright test e2e/integration/",
     "test:e2e:slow": "playwright test e2e/slow/",
     "test:coverage": "vitest run --coverage",
-    "test:memory": "playwright test e2e/profiling/"
+    "test:memory": "playwright test e2e/profiling/",
+    "allure:generate": "allure generate allure-results -o allure-report --clean",
+    "allure:serve": "allure serve allure-results",
+    "allure:open": "allure open allure-report",
+    "allure:clean": "rm -rf allure-results allure-report"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",
@@ -36,6 +40,7 @@
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "^2.1.9",
+    "allure-commandline": "^2.36.0",
     "autoprefixer": "^10.4.17",
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^7.0.1",

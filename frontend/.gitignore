@@ -1,2 +1,4 @@
 e2e/.auth/
 e2e/profiling/results/
+allure-results/
+allure-report/

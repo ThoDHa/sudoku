@@ -58,6 +58,11 @@ wasm-all-go: wasm-go wasm-copy-go
 test:
 	$(GO) test ./...
 
+# Run tests with Allure-compatible JUnit XML output (requires gotestsum)
+test-allure:
+	@mkdir -p allure-results
+	gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./...
+
 # Run tests with coverage report
 test-coverage:
 	$(GO) test -coverprofile=coverage.out -covermode=atomic ./...

@@ -18,6 +18,10 @@ playwright-report/
 test-results/
 .playwright/
 
+# Allure test reports
+allure-results/
+allure-report/
+
 # Environment files
 .env
 .env.local

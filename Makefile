@@ -1,7 +1,7 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-.PHONY: install-hooks test test-e2e test-go test-frontend lint lint-go lint-frontend help generate-icons dev prod
+.PHONY: install-hooks test test-e2e test-go test-frontend lint lint-go lint-frontend help generate-icons dev prod test-allure allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Git Hooks
@@ -115,4 +115,57 @@ help:
 	@echo "  test-go         - Run Go tests only"
 	@echo "  test-frontend   - Run Frontend tests only"
 	@echo "  test-e2e        - Run full E2E tests in Docker (slow)"
+	@echo "  test-allure     - Run all tests with Allure output"
+	@echo "  allure-report   - Generate combined Allure report"
+	@echo "  allure-serve    - Serve Allure report locally"
+	@echo "  allure-clean    - Clean all Allure artifacts"
 	@echo "  generate-icons  - Generate PWA icons from SVG"
+
+#-----------------------------------------------------------------------
+# Allure Test Reporting
+#-----------------------------------------------------------------------
+
+# Run all tests with Allure output
+test-allure: allure-clean
+	@echo ""
+	@echo "========================================"
+	@echo "  Running All Tests with Allure Output"
+	@echo "========================================"
+	@echo ""
+	@echo "[Go] Running tests with Allure output..."
+	@cd api && mkdir -p allure-results && $(shell go env GOPATH)/bin/gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./... || true
+	@echo ""
+	@echo "[Frontend] Running unit tests with Allure output..."
+	@cd frontend && npm run test:unit || true
+	@echo ""
+	@echo "[E2E] Running Playwright tests with Allure output..."
+	@cd frontend && npm run test:e2e || true
+	@echo ""
+	@echo "========================================"
+	@echo "  All tests complete! Run 'make allure-report' to generate report"
+	@echo "========================================"
+
+# Generate combined Allure report from all test results
+allure-report:
+	@echo "Generating combined Allure report..."
+	@mkdir -p allure-results
+	@cp -r frontend/allure-results/* allure-results/ 2>/dev/null || true
+	@cp -r api/allure-results/* allure-results/ 2>/dev/null || true
+	@cd frontend && npx allure generate ../allure-results -o allure-report --clean
+	@echo "Report generated at frontend/allure-report/"
+
+# Serve Allure report locally (opens in browser)
+allure-serve:
+	@echo "Serving Allure report..."
+	@mkdir -p allure-results
+	@cp -r frontend/allure-results/* allure-results/ 2>/dev/null || true
+	@cp -r api/allure-results/* allure-results/ 2>/dev/null || true
+	@cd frontend && npx allure serve ../allure-results
+
+# Clean all Allure artifacts
+allure-clean:
+	@echo "Cleaning Allure artifacts..."
+	@rm -rf allure-results
+	@rm -rf frontend/allure-results frontend/allure-report
+	@rm -rf api/allure-results
+	@echo "Allure artifacts cleaned!"

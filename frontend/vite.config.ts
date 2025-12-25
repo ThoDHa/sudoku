@@ -226,6 +226,10 @@ export default defineConfig({
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     fileParallelism: false,
     setupFiles: ['./src/test-setup.ts'],
+    reporters: ['default', 'junit'],
+    outputFile: {
+      junit: './allure-results/vitest-results.xml',
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov', 'json-summary'],

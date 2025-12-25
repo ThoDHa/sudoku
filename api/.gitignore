@@ -1,0 +1,13 @@
+# Build artifacts
+bin/
+
+# Coverage reports
+coverage.out
+coverage.html
+
+# Profiling
+mem.out
+cpu.out
+
+# Allure test results
+allure-results/
