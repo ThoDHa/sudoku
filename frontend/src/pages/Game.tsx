@@ -873,24 +873,35 @@ function GameContent() {
       }
     }, [isExtendedPaused])
 
-    // Cell click handler
+    // Cell click handler - STABLE: reads from refs to avoid recreating on state changes
+    // This is critical because Cell memo doesn't compare callback props for performance
     const handleCellClick = useCallback((idx: number) => {
       resumeFromExtendedPause()
+      
+      // Read current state from refs for stable callback
+      const currentHighlightedDigit = highlightedDigitRef.current
+      const currentSelectedCell = selectedCellRef.current
+      const currentNotesMode = notesModeRef.current
+      const currentEraseMode = eraseModeRef.current
+      const currentGame = gameRef.current
+      
+      if (!currentGame) return
+
      // If a digit is already highlighted and we're clicking a given cell,
      // only block if we're NOT coming from another given cell (allow given-to-given navigation)
-     if (highlightedDigit !== null && game.isGivenCell(idx)) {
-       if (selectedCell === null || !game.isGivenCell(selectedCell)) {
+     if (currentHighlightedDigit !== null && currentGame.isGivenCell(idx)) {
+       if (currentSelectedCell === null || !currentGame.isGivenCell(currentSelectedCell)) {
          return
        }
        // Fall through to handle given cell click normally (switch between given cells)
      }
      
      // Given cells: highlight the digit AND select the cell for peer highlighting
-     if (game.isGivenCell(idx)) {
-       const cellDigit = game.board[idx]
+     if (currentGame.isGivenCell(idx)) {
+       const cellDigit = currentGame.board[idx]
        if (cellDigit && cellDigit > 0) {
          // Toggle: if same given cell is clicked again, deselect
-         if (selectedCell === idx) {
+         if (currentSelectedCell === idx) {
            clearAllAndDeselect()
          } else {
            clickGivenCell(cellDigit, idx)
@@ -902,10 +913,10 @@ function GameContent() {
 
      // Toggle selection: clicking the same cell again deselects it (highest priority for user-fillable cells)
      // EXCEPT: In notes mode with a digit highlighted, clicking the same cell should toggle the candidate
-     if (selectedCell === idx) {
-       if (notesMode && highlightedDigit !== null && game.board[idx] === 0) {
+     if (currentSelectedCell === idx) {
+       if (currentNotesMode && currentHighlightedDigit !== null && currentGame.board[idx] === 0) {
          // Toggle the candidate on this cell
-         game.setCell(idx, highlightedDigit, notesMode)
+         currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
          clearAfterUserCandidateOp()
          lastTechniqueHintRef.current = null
          lastRegularHintRef.current = null
@@ -916,8 +927,8 @@ function GameContent() {
      }
 
      // If erase mode is active and cell has a value, erase it
-      if (eraseMode && game.board[idx] !== 0) {
-        game.eraseCell(idx)
+      if (currentEraseMode && currentGame.board[idx] !== 0) {
+        currentGame.eraseCell(idx)
         clearAfterErase()
         // Reset last hint tracking so next hint counts as new
         lastTechniqueHintRef.current = null
@@ -927,18 +938,17 @@ function GameContent() {
       }
 
        // If a digit is highlighted, fill the cell (overwriting any existing value)
-       if (highlightedDigit !== null) {
-         if (notesMode) {
-           game.setCell(idx, highlightedDigit, notesMode)
-           
-// Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
+       if (currentHighlightedDigit !== null) {
+         if (currentNotesMode) {
+           currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
+           // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
             clearAfterUserCandidateOp()
             // Reset last hint tracking so next hint counts as new
             lastTechniqueHintRef.current = null
             lastRegularHintRef.current = null
           } else {
             // For digit placement, clear move highlights but preserve digit highlight for multi-fill
-            game.setCell(idx, highlightedDigit, notesMode)
+            currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
             clearAfterDigitPlacement()
             // Reset last hint tracking so next hint counts as new
             lastTechniqueHintRef.current = null
@@ -951,7 +961,8 @@ function GameContent() {
      // selectCell atomically selects and clears highlights
      selectCell(idx)
      setEraseMode(false)
-   }, [game, highlightedDigit, eraseMode, notesMode, selectedCell, selectCell, clearAllAndDeselect, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement, clickGivenCell, resumeFromExtendedPause])
+   // All deps are now stable callbacks - state accessed via refs
+   }, [selectCell, clearAllAndDeselect, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement, clickGivenCell, resumeFromExtendedPause])
 
     // Digit input handler - STABLE: reads from refs to avoid recreating on state changes
     const handleDigitInput = useCallback((digit: number) => {

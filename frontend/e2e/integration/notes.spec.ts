@@ -158,6 +158,54 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     await expect(cellByPosition).toContainText('4');
   });
 
+  test('multi-fill works when selecting digit BEFORE enabling notes mode (regression test)', async ({ page }) => {
+    // This is a critical regression test: the user selects a digit FIRST,
+    // THEN enables notes mode, THEN clicks cells. The candidate should be
+    // added (not a digit placed). This tests for stale closure bugs in handleCellClick.
+    
+    // 1. First select a digit WHILE NOTES MODE IS OFF
+    const digit5Button = page.locator('button[aria-label^="Enter 5,"]');
+    await digit5Button.click();
+    await expect(digit5Button).toHaveClass(/ring-2/);
+    
+    // 2. THEN enable notes mode (this is the critical order)
+    const notesButton = page.locator('button[title="Notes mode"]');
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
+    await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+    
+    // Verify digit is still highlighted after toggling notes mode
+    await expect(digit5Button).toHaveClass(/ring-2/);
+    
+    // 3. Find an empty cell
+    const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
+    
+    // Capture stable position identifier
+    const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
+    const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+    expect(match).toBeTruthy();
+    const [, row, col] = match!;
+    
+    // Use position-based locator for stability
+    const cellByPosition = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
+    await cellByPosition.scrollIntoViewIfNeeded();
+    
+    // 4. Click the cell - should add candidate 5 (NOT place digit 5)
+    await cellByPosition.click();
+    
+    // Verify: cell should contain candidate "5" as small text, not as main digit
+    // The cell should still be described as "empty" in aria-label (candidates don't fill the cell)
+    await expect(cellByPosition).toContainText('5');
+    
+    // Additional verification: the aria-label should still say "empty" or contain "candidates"
+    // because a candidate was added, not a digit placed
+    const newAriaLabel = await cellByPosition.getAttribute('aria-label');
+    // If it was a digit placement, the cell would no longer be "empty"
+    // With candidates, it should either still say "empty" or mention "candidates"
+    expect(newAriaLabel).toMatch(/empty|candidates/i);
+  });
+
   test('multi-fill clicking same cell twice toggles candidate off', async ({ page }) => {
     // Enable notes mode
     const notesButton = page.locator('button[title="Notes mode"]');
