@@ -79,7 +79,7 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
   });
 
   test('entering a digit auto-saves to localStorage', async ({ page }) => {
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Find an empty cell
@@ -105,7 +105,7 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
   });
 
   test('entering multiple digits saves all to localStorage', async ({ page }) => {
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Find first empty cell and enter digit
@@ -137,7 +137,7 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
   });
 
   test('clearing a digit updates saved state', async ({ page }) => {
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Enter and then clear a digit
@@ -176,7 +176,7 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
   });
 
   test('digits persist after page reload', async ({ page }) => {
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Enter a digit
@@ -195,7 +195,7 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
   });
 
   test('notes persist after page reload', async ({ page }) => {
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Enable notes mode
@@ -232,7 +232,7 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
   });
 
   test('partial game state restores exactly on reload', async ({ page }) => {
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make multiple moves
@@ -268,7 +268,7 @@ test.describe('@integration Persistence - Timer Persistence', () => {
   });
 
   test('timer continues from saved time after reload', async ({ page }) => {
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make a move to trigger auto-save (and start tracking time)
@@ -312,7 +312,7 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
   });
 
   test('starting a new game clears the board', async ({ page }) => {
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make some moves
@@ -342,7 +342,7 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
   });
 
   test('reset clears saved state from localStorage', async ({ page }) => {
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make a move to trigger save
@@ -383,7 +383,7 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
 
 test.describe('@integration Persistence - Preferences', () => {
   test('preferences persist after page reload', async ({ page }) => {
-    await page.goto('/game/pref-test-123?d=easy');
+    await page.goto('/pref-test-123?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Open settings/menu and toggle a preference (e.g., hide timer)
@@ -414,7 +414,7 @@ test.describe('@integration Persistence - Preferences', () => {
   });
 
   test('auto-solve speed preference persists', async ({ page }) => {
-    await page.goto('/game/speed-test-456?d=easy');
+    await page.goto('/speed-test-456?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Set a speed preference via the menu
@@ -481,7 +481,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
 
   test('different difficulty games have separate save states', async ({ page }) => {
     // Play easy game
-    await page.goto(`/game/${EASY_SEED}?d=easy`);
+    await page.goto(`/${EASY_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const { cell: easyCell, row: easyRow, col: easyCol } = await findEmptyCell(page, 5);
@@ -491,7 +491,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await page.waitForTimeout(1500);
 
     // Navigate to medium game
-    await page.goto(`/game/${MEDIUM_SEED}?d=medium`);
+    await page.goto(`/${MEDIUM_SEED}?d=medium`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const { cell: mediumCell, row: mediumRow, col: mediumCol } = await findEmptyCell(page, 6);
@@ -501,7 +501,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await page.waitForTimeout(1500);
 
     // Return to easy game
-    await page.goto(`/game/${EASY_SEED}?d=easy`);
+    await page.goto(`/${EASY_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Easy game should have its own state preserved
@@ -523,7 +523,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
 
   test('navigating between games preserves each state independently', async ({ page }) => {
     // Setup easy game with moves
-    await page.goto(`/game/${EASY_SEED}?d=easy`);
+    await page.goto(`/${EASY_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const { cell: cell1 } = await findEmptyCell(page, 5);
@@ -533,7 +533,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await page.waitForTimeout(1500);
 
     // Setup medium game with different moves
-    await page.goto(`/game/${MEDIUM_SEED}?d=medium`);
+    await page.goto(`/${MEDIUM_SEED}?d=medium`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const { cell: cell2, row: row2, col: col2 } = await findEmptyCell(page, 7);
@@ -543,7 +543,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await page.waitForTimeout(1500);
 
     // Go back to easy, make another move
-    await page.goto(`/game/${EASY_SEED}?d=easy`);
+    await page.goto(`/${EASY_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const { cell: cell3, row: row3, col: col3 } = await findEmptyCell(page, 8);
@@ -553,7 +553,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await page.waitForTimeout(1500);
 
     // Return to medium - should still have only one move (7)
-    await page.goto(`/game/${MEDIUM_SEED}?d=medium`);
+    await page.goto(`/${MEDIUM_SEED}?d=medium`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     await expectCellValue(page, row2, col2, 7);
@@ -575,7 +575,7 @@ test.describe('@integration Persistence - Edge Cases', () => {
     }, CORRUPT_SEED);
 
     // App should load without crashing
-    await page.goto(`/game/${CORRUPT_SEED}?d=easy`);
+    await page.goto(`/${CORRUPT_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Board should be visible and functional
@@ -601,7 +601,7 @@ test.describe('@integration Persistence - Edge Cases', () => {
       localStorage.removeItem(`sudoku_game_${seed}`);
     }, FRESH_SEED);
 
-    await page.goto(`/game/${FRESH_SEED}?d=easy`);
+    await page.goto(`/${FRESH_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Board should be at initial state (no localStorage item yet)
@@ -636,7 +636,7 @@ test.describe('@integration Persistence - Edge Cases', () => {
     }, INVALID_SEED);
 
     // App should load without crashing
-    await page.goto(`/game/${INVALID_SEED}?d=easy`);
+    await page.goto(`/${INVALID_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Board should be visible
@@ -661,7 +661,7 @@ test.describe('@integration Persistence - Edge Cases', () => {
       localStorage.removeItem(`sudoku_game_${seed}`);
     }, COMPLETE_SEED);
 
-    await page.goto(`/game/${COMPLETE_SEED}?d=easy`);
+    await page.goto(`/${COMPLETE_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make a move to create save state
@@ -695,7 +695,7 @@ test.describe('@integration Persistence - Auto-save Toggle', () => {
       localStorage.removeItem(`sudoku_game_${seed}`);
     }, TEST_SEED);
 
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make a move
@@ -725,7 +725,7 @@ test.describe('@integration Persistence - Auto-save Toggle', () => {
       localStorage.removeItem(`sudoku_game_${seed}`);
     }, TEST_SEED);
 
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make a move
@@ -756,7 +756,7 @@ test.describe('@integration Persistence - History Persistence', () => {
   });
 
   test('move history is saved and restored', async ({ page }) => {
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make multiple moves
@@ -783,7 +783,7 @@ test.describe('@integration Persistence - History Persistence', () => {
   });
 
   test('undo works after page reload using saved history', async ({ page }) => {
-    await page.goto(`/game/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make a move

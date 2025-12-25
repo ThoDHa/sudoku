@@ -56,7 +56,7 @@ test.describe('@integration Hints - Basic Functionality', () => {
     
     // Look for hint explanation elements - these could be:
     // 1. A modal dialog with technique explanation
-    // 2. A toast notification
+    // 2. A toast notification (fixed position div with hint message)
     // 3. Inline explanation text
     // 4. Technique badge/label
     const explanationSelectors = [
@@ -65,7 +65,10 @@ test.describe('@integration Hints - Basic Functionality', () => {
       '[class*="hint-explanation"]',
       '[class*="toast"]',
       '[class*="modal"]',
-      'text=/Naked Single|Hidden Single|Pointing|Box-Line|Pair|Triple|X-Wing/i'
+      // The toast notification is a fixed div with shadow-lg containing hint text
+      '.fixed.z-50',
+      // Look for common hint-related text patterns
+      'text=/Added.*candidate|Naked Single|Hidden Single|Pointing|Box-Line|Pair|Triple|X-Wing|placed|eliminated/i'
     ];
     
     let hasExplanation = false;
@@ -79,12 +82,13 @@ test.describe('@integration Hints - Basic Functionality', () => {
     
     // Also verify the hint actually did something (cell was filled or candidates updated)
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
-    const hintApplied = emptyCellsAfter < emptyCellsBefore;
+    const cellFilled = emptyCellsAfter < emptyCellsBefore;
     
     // Test passes if EITHER:
-    // 1. An explanation UI element is visible, OR
-    // 2. The hint was applied (fewer empty cells), proving the hint mechanism works
-    expect(hasExplanation || hintApplied).toBeTruthy();
+    // 1. An explanation UI element is visible (toast, modal, or technique text), OR
+    // 2. A cell was filled (fewer empty cells), proving the hint mechanism works
+    // Note: Hints can also add candidates without filling cells - detected via toast message
+    expect(hasExplanation || cellFilled).toBeTruthy();
   });
 });
 
@@ -93,7 +97,7 @@ test.describe('@integration Hints - Hint Counter', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/hints-counter-test?d=easy');
+    await page.goto('/hints-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
   });
 
@@ -173,7 +177,7 @@ test.describe('@integration Hints - Edge Cases', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/hints-empty-cell-test?d=easy');
+    await page.goto('/hints-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Select an empty cell first (use lower rows to avoid header)
@@ -203,7 +207,7 @@ test.describe('@integration Hints - Edge Cases', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/hints-no-selection-test?d=easy');
+    await page.goto('/hints-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Count empty cells before hint
@@ -226,7 +230,7 @@ test.describe('@integration Hints - Edge Cases', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     // Start an easy puzzle that should be mostly solvable quickly
-    await page.goto('/hints-nearly-done-test?d=easy');
+    await page.goto('/hints-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Use a few hints to get closer to solution
@@ -253,7 +257,7 @@ test.describe('@integration Hints - Mobile', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/hints-mobile-test?d=easy');
+    await page.goto('/hints-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
   });
 

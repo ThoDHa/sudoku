@@ -34,7 +34,7 @@ function parseTimerToSeconds(timerText: string): number {
 
 test.describe('@integration Timer - Display Format', () => {
   test('timer is visible on game page', async ({ page }) => {
-    await page.goto('/game?d=easy&seed=timer-visible');
+    await page.goto('/timer-visible?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -42,7 +42,7 @@ test.describe('@integration Timer - Display Format', () => {
   });
 
   test('timer displays in M:SS format initially', async ({ page }) => {
-    await page.goto('/game?d=easy&seed=timer-format');
+    await page.goto('/timer-format?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -53,7 +53,7 @@ test.describe('@integration Timer - Display Format', () => {
   });
 
   test('timer shows clock icon when visible', async ({ page }) => {
-    await page.goto('/game?d=easy&seed=timer-icon');
+    await page.goto('/timer-icon?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Timer section should contain an SVG clock icon
@@ -65,7 +65,7 @@ test.describe('@integration Timer - Display Format', () => {
 
 test.describe('@integration Timer - Counting', () => {
   test('timer starts from 0:00 on new game', async ({ page }) => {
-    await page.goto('/game?d=easy&seed=timer-start-' + Date.now());
+    await page.goto('/timer-start-' + Date.now() + '?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -77,7 +77,7 @@ test.describe('@integration Timer - Counting', () => {
   });
 
   test('timer increments over time', async ({ page }) => {
-    await page.goto('/game?d=easy&seed=timer-increment');
+    await page.goto('/timer-increment?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -98,7 +98,7 @@ test.describe('@integration Timer - Counting', () => {
   });
 
   test('timer counts correctly after delay', async ({ page }) => {
-    await page.goto('/game?d=easy&seed=timer-count-' + Date.now());
+    await page.goto('/timer-count-' + Date.now() + '?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -116,7 +116,7 @@ test.describe('@integration Timer - Counting', () => {
 
 test.describe('@integration Timer - Pause Behavior', () => {
   test('timer shows paused state when page loses visibility', async ({ page }) => {
-    await page.goto('/game?d=easy&seed=timer-pause-vis');
+    await page.goto('/timer-pause-vis?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -143,7 +143,7 @@ test.describe('@integration Timer - Pause Behavior', () => {
   });
 
   test('timer resumes when page regains visibility', async ({ page }) => {
-    await page.goto('/game?d=easy&seed=timer-resume');
+    await page.goto('/timer-resume?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -185,7 +185,7 @@ test.describe('@integration Timer - Pause Behavior', () => {
   });
 
   test('pause overlay appears when timer is paused', async ({ page }) => {
-    await page.goto('/game?d=easy&seed=timer-overlay');
+    await page.goto('/timer-overlay?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Pause the timer via visibility change
@@ -207,7 +207,7 @@ test.describe('@integration Timer - Pause Behavior', () => {
 
 test.describe('@integration Timer - Hide Timer Preference', () => {
   test('can hide timer via menu toggle', async ({ page }) => {
-    await page.goto('/game?d=easy&seed=timer-hide');
+    await page.goto('/timer-hide?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -238,7 +238,7 @@ test.describe('@integration Timer - Hide Timer Preference', () => {
       localStorage.setItem('sudoku_preferences', JSON.stringify(prefs));
     });
 
-    await page.goto('/game?d=easy&seed=timer-persist');
+    await page.goto('/timer-persist?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -255,7 +255,7 @@ test.describe('@integration Timer - Hide Timer Preference', () => {
       localStorage.setItem('sudoku_preferences', JSON.stringify(prefs));
     });
 
-    await page.goto('/game?d=easy&seed=timer-show-again');
+    await page.goto('/timer-show-again?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -267,12 +267,17 @@ test.describe('@integration Timer - Hide Timer Preference', () => {
     const menuButton = page.locator('button[aria-label="Menu"]');
     await menuButton.click();
 
+    // Expand Settings section (Show Timer is inside Settings)
+    const settingsButton = page.locator('button').filter({ hasText: 'Settings' });
+    await settingsButton.click();
+
     // Click the "Show Timer" toggle to enable timer
     const timerToggle = page.locator('button').filter({ hasText: 'Show Timer' });
     await timerToggle.click();
 
-    // Close menu
-    await menuButton.click();
+    // Close menu using the X button in the menu header (menu button is blocked by overlay)
+    const closeButton = page.locator('.fixed.inset-0').locator('button').first();
+    await closeButton.click();
 
     // Timer should now be visible
     await expect(timer).toBeVisible();
@@ -282,7 +287,7 @@ test.describe('@integration Timer - Hide Timer Preference', () => {
 test.describe('@integration Timer - Persistence', () => {
   test('timer value persists across page reload', async ({ page }) => {
     const seed = 'timer-reload-' + Date.now();
-    await page.goto(`/game?d=easy&seed=${seed}`);
+    await page.goto(`/${seed}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -312,19 +317,36 @@ test.describe('@integration Timer - Persistence', () => {
 
   test('timer continues from saved time (not reset to 0)', async ({ page }) => {
     // Pre-populate saved game state with elapsed time
+    // Storage key is `sudoku_game_${seed}` - note: the test navigates to /?d=easy&seed=timer-continue-test
+    // so the puzzle seed will be 'timer-continue-test'
     await page.addInitScript(() => {
       const savedState = {
-        puzzle: 'timer-continue-test',
+        board: Array(81).fill(0), // Valid 81-cell board
+        candidates: Array(81).fill([]), // Valid 81-cell candidates
         elapsedMs: 65000, // 1 minute 5 seconds
-        board: [], // Will be overwritten by actual puzzle
-        candidates: [],
         history: [],
+        autoFillUsed: false,
+        savedAt: Date.now(),
+        difficulty: 'easy',
       };
-      localStorage.setItem('sudoku_saved_game', JSON.stringify(savedState));
+      localStorage.setItem('sudoku_game_timer-continue-test', JSON.stringify(savedState));
     });
 
-    await page.goto('/game?d=easy&seed=timer-continue-test');
+    await page.goto('/timer-continue-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+
+    // Wait for the timer to be restored from saved state
+    // The app first resets the timer, then a second effect restores the saved elapsed time
+    // We need to wait for this restoration to complete before reading the timer
+    await page.waitForFunction(() => {
+      const timer = document.querySelector('.font-mono');
+      if (!timer) return false;
+      const text = timer.textContent || '';
+      const match = text.match(/^(\d+):(\d{2})$/);
+      if (!match) return false;
+      const seconds = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+      return seconds >= 60;
+    }, { timeout: 5000 });
 
     const timer = getTimerLocator(page);
     const timerText = await timer.textContent();
@@ -338,7 +360,7 @@ test.describe('@integration Timer - Persistence', () => {
 test.describe('@integration Timer - Completion', () => {
   test('timer stops when puzzle is completed', async ({ page }) => {
     // Use a puzzle that we can quickly complete or simulate completion
-    await page.goto('/game?d=easy&seed=timer-complete');
+    await page.goto('/timer-complete?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -396,18 +418,21 @@ test.describe('@integration Timer - Completion', () => {
 test.describe('@integration Timer - Edge Cases', () => {
   test('timer handles very long games gracefully', async ({ page }) => {
     // Pre-set a long elapsed time
+    // Storage key is `sudoku_game_${seed}`
     await page.addInitScript(() => {
       const savedState = {
-        puzzle: 'timer-long-test',
+        board: Array(81).fill(0), // Valid 81-cell board
+        candidates: Array(81).fill([]), // Valid 81-cell candidates
         elapsedMs: 3661000, // 1 hour, 1 minute, 1 second
-        board: [],
-        candidates: [],
         history: [],
+        autoFillUsed: false,
+        savedAt: Date.now(),
+        difficulty: 'easy',
       };
-      localStorage.setItem('sudoku_saved_game', JSON.stringify(savedState));
+      localStorage.setItem('sudoku_game_timer-long-test', JSON.stringify(savedState));
     });
 
-    await page.goto('/game?d=easy&seed=timer-long-test');
+    await page.goto('/timer-long-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);
@@ -422,7 +447,7 @@ test.describe('@integration Timer - Edge Cases', () => {
   });
 
   test('timer does not go negative', async ({ page }) => {
-    await page.goto('/game?d=easy&seed=timer-negative');
+    await page.goto('/timer-negative?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);

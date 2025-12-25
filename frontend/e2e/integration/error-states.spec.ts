@@ -126,7 +126,7 @@ test.describe('@integration Error States - WASM Load Failure', () => {
     // Block WASM file to simulate failure
     await page.route('**/*.wasm', (route) => route.abort());
 
-    await page.goto('/game?d=easy');
+    await page.goto('/error-test?d=easy');
 
     // App should still load - either with degraded functionality or error message
     // Give it more time since WASM loading can be slow
@@ -145,7 +145,7 @@ test.describe('@integration Error States - WASM Load Failure', () => {
     // Block WASM file
     await page.route('**/*.wasm', (route) => route.abort());
 
-    await page.goto('/game?d=easy');
+    await page.goto('/error-test?d=easy');
     await page.waitForTimeout(3000);
 
     // Wait for grid to potentially load
@@ -183,7 +183,7 @@ test.describe('@integration Error States - WASM Load Failure', () => {
       }
     });
 
-    await page.goto('/game?d=easy');
+    await page.goto('/error-test?d=easy');
     await page.waitForTimeout(2000);
 
     // Now allow WASM to load
@@ -310,7 +310,7 @@ test.describe('@integration Error States - Graceful Degradation', () => {
     await page.goto('/custom');
     await page.waitForTimeout(500);
 
-    await page.goto('/game?d=easy');
+    await page.goto('/error-test?d=easy');
     await page.waitForTimeout(1000);
 
     // Filter out expected/acceptable errors
@@ -325,16 +325,25 @@ test.describe('@integration Error States - Graceful Degradation', () => {
   });
 
   test('error boundary catches React errors without crashing app', async ({ page }) => {
-    // Try to trigger an error by navigating to an invalid route
+    // Try to navigate to a random route - in this app, any route becomes a puzzle seed
+    // This tests that the app handles arbitrary seeds gracefully without crashing
     await page.goto('/this-route-definitely-does-not-exist-12345');
     await page.waitForTimeout(1000);
 
-    // Should show 404 page or redirect, not crash
+    // The app should handle this gracefully - either by:
+    // 1. Showing a valid game page (treating the route as a puzzle seed)
+    // 2. Showing a 404/error page
+    // 3. Redirecting to home
+    // The key is that the app doesn't crash - body should be visible
     const hasBody = await page.locator('body').isVisible();
+    
+    // Check for any of the valid outcomes
+    const hasGameGrid = await page.locator('[role="grid"]').isVisible().catch(() => false);
     const hasErrorPage = await page.locator('text=/not found|404|error|go back|home/i').isVisible().catch(() => false);
     const redirectedHome = page.url().endsWith('/') || page.url().includes('?');
 
-    expect(hasBody && (hasErrorPage || redirectedHome)).toBeTruthy();
+    // App should render something valid - not crash
+    expect(hasBody && (hasGameGrid || hasErrorPage || redirectedHome)).toBeTruthy();
   });
 });
 
@@ -376,7 +385,7 @@ test.describe('@integration Error States - Error Message Display', () => {
     // Block WASM and try to use solver features to trigger an error
     await page.route('**/*.wasm', (route) => route.abort());
 
-    await page.goto('/game?d=easy');
+    await page.goto('/error-test?d=easy');
     await page.waitForTimeout(3000);
 
     // If there's an error displayed, check for recovery options
@@ -412,9 +421,9 @@ test.describe('@integration Error States - Edge Cases', () => {
     // Rapid navigation between pages
     await page.goto('/');
     await page.goto('/custom');
-    await page.goto('/game?d=easy');
+    await page.goto('/error-test?d=easy');
     await page.goto('/');
-    await page.goto('/game?d=hard');
+    await page.goto('/error-test-hard?d=hard');
 
     await page.waitForTimeout(2000);
 
@@ -426,7 +435,7 @@ test.describe('@integration Error States - Edge Cases', () => {
     await page.goto('/');
     await page.waitForTimeout(500);
 
-    await page.goto('/game?d=easy');
+    await page.goto('/error-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Start using hints (which might have pending WASM operations)
@@ -451,7 +460,7 @@ test.describe('@integration Error States - Edge Cases', () => {
   });
 
   test('handles double-click on action buttons without errors', async ({ page }) => {
-    await page.goto('/game?d=easy');
+    await page.goto('/error-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     const hintButton = page.getByRole('button', { name: /Hint/i });

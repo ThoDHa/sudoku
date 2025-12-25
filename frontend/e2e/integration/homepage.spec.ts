@@ -494,13 +494,24 @@ test.describe('Homepage - Daily Mode Features', () => {
 
   test('daily complete mode shows streak and play button when daily is completed', async ({ page }) => {
     // Simulate a completed daily puzzle
-    const today = new Date().toISOString().split('T')[0];
-    await page.addInitScript((dateStr) => {
+    await page.addInitScript(() => {
+      // Get today in UTC format (matching getTodayUTC() in scores.ts)
+      const now = new Date();
+      const year = now.getUTCFullYear();
+      const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(now.getUTCDate()).padStart(2, '0');
+      const todayUTC = `${year}-${month}-${day}`;
+      
       localStorage.setItem('sudoku_preferences', JSON.stringify({ homepageMode: 'daily' }));
-      // Mark today as completed
-      const scores = { [dateStr]: { easy: 300 } };
-      localStorage.setItem('sudoku_daily_scores', JSON.stringify(scores));
-    }, today);
+      // Use the correct key: sudoku_daily_completions (an array of dates)
+      localStorage.setItem('sudoku_daily_completions', JSON.stringify([todayUTC]));
+      // Also set streak data for tests that check streak display
+      localStorage.setItem('sudoku_daily_streak', JSON.stringify({
+        currentStreak: 1,
+        longestStreak: 1,
+        lastCompletedDate: todayUTC
+      }));
+    });
     
     await page.goto('/');
     
@@ -512,12 +523,24 @@ test.describe('Homepage - Daily Mode Features', () => {
   });
 
   test('clicking Play on complete screen switches to game mode', async ({ page }) => {
-    const today = new Date().toISOString().split('T')[0];
-    await page.addInitScript((dateStr) => {
+    await page.addInitScript(() => {
+      // Get today in UTC format (matching getTodayUTC() in scores.ts)
+      const now = new Date();
+      const year = now.getUTCFullYear();
+      const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(now.getUTCDate()).padStart(2, '0');
+      const todayUTC = `${year}-${month}-${day}`;
+      
       localStorage.setItem('sudoku_preferences', JSON.stringify({ homepageMode: 'daily' }));
-      const scores = { [dateStr]: { easy: 300 } };
-      localStorage.setItem('sudoku_daily_scores', JSON.stringify(scores));
-    }, today);
+      // Use the correct key: sudoku_daily_completions (an array of dates)
+      localStorage.setItem('sudoku_daily_completions', JSON.stringify([todayUTC]));
+      // Also set streak data for tests that check streak display
+      localStorage.setItem('sudoku_daily_streak', JSON.stringify({
+        currentStreak: 1,
+        longestStreak: 1,
+        lastCompletedDate: todayUTC
+      }));
+    });
     
     await page.goto('/');
     await expect(page.locator('h1:has-text("Daily Complete")')).toBeVisible();
@@ -530,12 +553,24 @@ test.describe('Homepage - Daily Mode Features', () => {
   });
 
   test('daily complete screen shows current and best streak', async ({ page }) => {
-    const today = new Date().toISOString().split('T')[0];
-    await page.addInitScript((dateStr) => {
+    await page.addInitScript(() => {
+      // Get today in UTC format (matching getTodayUTC() in scores.ts)
+      const now = new Date();
+      const year = now.getUTCFullYear();
+      const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(now.getUTCDate()).padStart(2, '0');
+      const todayUTC = `${year}-${month}-${day}`;
+      
       localStorage.setItem('sudoku_preferences', JSON.stringify({ homepageMode: 'daily' }));
-      const scores = { [dateStr]: { easy: 300 } };
-      localStorage.setItem('sudoku_daily_scores', JSON.stringify(scores));
-    }, today);
+      // Use the correct key: sudoku_daily_completions (an array of dates)
+      localStorage.setItem('sudoku_daily_completions', JSON.stringify([todayUTC]));
+      // Also set streak data for tests that check streak display
+      localStorage.setItem('sudoku_daily_streak', JSON.stringify({
+        currentStreak: 1,
+        longestStreak: 1,
+        lastCompletedDate: todayUTC
+      }));
+    });
     
     await page.goto('/');
     
@@ -545,12 +580,24 @@ test.describe('Homepage - Daily Mode Features', () => {
   });
 
   test('daily complete screen shows footer navigation links', async ({ page }) => {
-    const today = new Date().toISOString().split('T')[0];
-    await page.addInitScript((dateStr) => {
+    await page.addInitScript(() => {
+      // Get today in UTC format (matching getTodayUTC() in scores.ts)
+      const now = new Date();
+      const year = now.getUTCFullYear();
+      const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(now.getUTCDate()).padStart(2, '0');
+      const todayUTC = `${year}-${month}-${day}`;
+      
       localStorage.setItem('sudoku_preferences', JSON.stringify({ homepageMode: 'daily' }));
-      const scores = { [dateStr]: { easy: 300 } };
-      localStorage.setItem('sudoku_daily_scores', JSON.stringify(scores));
-    }, today);
+      // Use the correct key: sudoku_daily_completions (an array of dates)
+      localStorage.setItem('sudoku_daily_completions', JSON.stringify([todayUTC]));
+      // Also set streak data for tests that check streak display
+      localStorage.setItem('sudoku_daily_streak', JSON.stringify({
+        currentStreak: 1,
+        longestStreak: 1,
+        lastCompletedDate: todayUTC
+      }));
+    });
     
     await page.goto('/');
     
@@ -562,15 +609,25 @@ test.describe('Homepage - Daily Mode Features', () => {
 
   test('daily mode shows streak indicator when user has active streak', async ({ page }) => {
     // Set up a streak by having completed yesterday
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    
-    await page.addInitScript((dateStr) => {
+    await page.addInitScript(() => {
+      // Get yesterday in UTC format (matching getTodayUTC() in scores.ts)
+      const now = new Date();
+      now.setUTCDate(now.getUTCDate() - 1);
+      const year = now.getUTCFullYear();
+      const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(now.getUTCDate()).padStart(2, '0');
+      const yesterdayUTC = `${year}-${month}-${day}`;
+      
       localStorage.setItem('sudoku_preferences', JSON.stringify({ homepageMode: 'daily' }));
-      const scores = { [dateStr]: { easy: 300 } };
-      localStorage.setItem('sudoku_daily_scores', JSON.stringify(scores));
-    }, yesterdayStr);
+      // Use the correct key: sudoku_daily_completions (an array of dates)
+      localStorage.setItem('sudoku_daily_completions', JSON.stringify([yesterdayUTC]));
+      // Set streak data for yesterday
+      localStorage.setItem('sudoku_daily_streak', JSON.stringify({
+        currentStreak: 1,
+        longestStreak: 1,
+        lastCompletedDate: yesterdayUTC
+      }));
+    });
     
     await page.goto('/');
     
