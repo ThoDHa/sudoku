@@ -461,6 +461,7 @@ export default memo(function GameHeader({
             onClick={() => setMenuOpen(true)}
             className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
             title="Menu"
+            aria-label="Menu"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
