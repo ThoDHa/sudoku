@@ -211,8 +211,7 @@ func main() {
 			fmt.Printf("  - %s\n", t)
 		}
 		os.Exit(1)
-	} else {
-		fmt.Println("SUCCESS: All techniques passed (no contradictions)")
-		os.Exit(0)
 	}
+	fmt.Println("SUCCESS: All techniques passed (no contradictions)")
+	os.Exit(0)
 }

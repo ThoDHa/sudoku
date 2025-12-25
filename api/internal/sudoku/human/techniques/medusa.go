@@ -396,7 +396,7 @@ func pairsToTargets(pairs []candidatePair) []core.CellRef {
 }
 
 // checkUncoloredInBicoloredCell checks for uncolored candidates in cells that
-// already have candidates from BOTH colors (Rule 3: Two colours in a cell)
+// already have candidates from BOTH colors (Rule 3: Two colors in a cell)
 // If a cell contains candidates from both colors, any uncolored candidate
 // in that cell can be eliminated (one of the colored candidates MUST be true)
 func checkUncoloredInBicoloredCell(b BoardInterface, color1, color2 []candidatePair, colors map[int]int) *core.Move {

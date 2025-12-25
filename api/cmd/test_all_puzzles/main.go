@@ -243,13 +243,13 @@ func main() {
 	if passing == *numPuzzles {
 		fmt.Println("SUCCESS: All puzzles solved correctly!")
 		os.Exit(0)
-	} else if contradictions > 0 {
+	}
+	if contradictions > 0 {
 		fmt.Printf("FAILED: %d puzzles hit contradictions (buggy techniques)\n", contradictions)
 		os.Exit(1)
-	} else {
-		fmt.Printf("WARNING: %d puzzles stalled (may need more techniques)\n", stalled)
-		os.Exit(0)
 	}
+	fmt.Printf("WARNING: %d puzzles stalled (may need more techniques)\n", stalled)
+	os.Exit(0)
 }
 
 func min(a, b int) int {

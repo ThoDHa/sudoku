@@ -89,7 +89,8 @@ var boxConflictGrid = []int{
 	0, 0, 0, 0, 8, 0, 0, 7, 9,
 }
 
-// A puzzle with multiple solutions (very sparse)
+// multipleSolutionsPuzzle is a puzzle with multiple solutions (very sparse)
+// Used by TestHasUniqueSolution to verify multiple solution detection
 var multipleSolutionsPuzzle = []int{
 	0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -101,6 +102,8 @@ var multipleSolutionsPuzzle = []int{
 	0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0,
 }
+
+var _ = multipleSolutionsPuzzle // silence unused warning - kept for documentation
 
 // An unsolvable grid - partially filled puzzle with impossible constraints
 // This is a valid-looking puzzle but has no solution due to constraint conflicts
