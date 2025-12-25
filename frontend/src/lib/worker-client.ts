@@ -204,6 +204,8 @@ async function sendRequest(type: WorkerRequest['type'], payload: unknown): Promi
     throw new Error('Worker not initialized')
   }
   
+  // Capture worker reference after null check for use in Promise callback
+  const workerRef = worker
   const id = generateRequestId()
   
   return new Promise((resolve, reject) => {
@@ -215,7 +217,7 @@ async function sendRequest(type: WorkerRequest['type'], payload: unknown): Promi
     pendingRequests.set(id, { resolve, reject, timeoutId })
     
     const request: WorkerRequest = { type, id, payload }
-    worker!.postMessage(request)
+    workerRef.postMessage(request)
   })
 }
 

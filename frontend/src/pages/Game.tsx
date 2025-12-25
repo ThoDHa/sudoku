@@ -733,8 +733,9 @@ function GameContent() {
       }
 
       if (move.action === 'contradiction' || move.action === 'error') {
-        if (game.canUndo) {
-          game.undo()
+        const currentGame = gameRef.current
+        if (currentGame?.canUndo) {
+          currentGame.undo()
           clearMoveHighlight()
           setValidationMessage({ 
             type: 'error', 
@@ -778,7 +779,7 @@ function GameContent() {
       hintInProgress.current = false
       setHintLoading(false)
     }
-  }, [game.board, game.candidates, game.canUndo, game.undo, game.history.length, initialBoard, clearAllAndDeselect, visibilityAwareTimeout, setMoveHighlight, clearMoveHighlight])
+  }, [game.board, game.candidates, game.history.length, initialBoard, clearAllAndDeselect, visibilityAwareTimeout, setMoveHighlight, clearMoveHighlight])
 
   // Handle technique hint button - shows technique name and highlights cells without revealing the answer
   const handleTechniqueHint = useCallback(async () => {

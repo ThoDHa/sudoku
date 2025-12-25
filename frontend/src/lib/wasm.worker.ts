@@ -16,9 +16,7 @@ interface GoInstance {
 
 // Extend the worker global scope
 declare global {
-  // eslint-disable-next-line no-var
   var Go: new () => GoInstance
-  // eslint-disable-next-line no-var
   var SudokuWasm: SudokuWasmAPI | undefined
 }
 
@@ -197,7 +195,11 @@ async function initializeWasm(): Promise<void> {
         }, 100)
       })
       
-      wasmApi = SudokuWasm!
+      // SudokuWasm is guaranteed to be defined after the Promise resolves
+      if (!SudokuWasm) {
+        throw new Error('SudokuWasm not available after initialization')
+      }
+      wasmApi = SudokuWasm
       isInitializing = false
       
     } catch (error) {
@@ -230,8 +232,13 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
           await initializeWasm()
         }
         
+        // wasmApi is guaranteed after initializeWasm()
+        if (!wasmApi) {
+          throw new Error('WASM API not available after initialization')
+        }
+        
         const { cells, candidates, givens } = payload as FindNextMovePayload
-        const result = wasmApi!.findNextMove(cells, candidates, givens)
+        const result = wasmApi.findNextMove(cells, candidates, givens)
         
         const response: WorkerResponse = {
           type: 'result',
@@ -254,8 +261,13 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
           await initializeWasm()
         }
         
+        // wasmApi is guaranteed after initializeWasm()
+        if (!wasmApi) {
+          throw new Error('WASM API not available after initialization')
+        }
+        
         const { cells, candidates, givens } = payload as SolveAllPayload
-        const result = wasmApi!.solveAll(cells, candidates, givens)
+        const result = wasmApi.solveAll(cells, candidates, givens)
         
         const response: WorkerResponse = {
           type: 'result',
