@@ -293,17 +293,12 @@ The solver implements 39+ techniques across 4 tiers:
 ```bash
 # Install dependencies
 cd frontend && npm install && cd ..
-
-# Install git hooks (one-time setup)
-make install-hooks
 ```
 
-This installs a pre-push hook that runs Go and Frontend tests before each push.
-
-### Run Tests
+### Run Tests Locally
 
 ```bash
-# Run all tests (same as pre-push hook)
+# Run all tests (lint + unit tests)
 make test
 
 # Run Go tests only
@@ -312,9 +307,44 @@ make test-go
 # Run Frontend tests only (TypeScript check + unit tests + build)
 make test-frontend
 
-# Run E2E tests (Playwright in Docker, use after big changes)
+# Run E2E tests (Playwright in Docker)
 make test-e2e
 ```
+
+### Test Reporting with Allure
+
+Generate beautiful HTML test reports locally:
+
+```bash
+# Run all tests with Allure output
+make test-allure
+
+# Generate combined report from all test results
+make allure-report
+
+# Serve report locally (opens in browser)
+make allure-serve
+
+# Clean all Allure artifacts
+make allure-clean
+```
+
+### CI/CD Pipeline
+
+Tests run automatically on every push and PR via GitHub Actions:
+
+- **Frontend Unit Tests**: Vitest with coverage
+- **Go Tests**: Full test suite with linting
+- **E2E Tests**: Playwright integration tests
+
+**View Test Results**: After tests complete, the Allure report is published to:
+**[https://thodha.github.io/sudoku/test-report/](https://thodha.github.io/sudoku/test-report/)**
+
+The report includes:
+- Test results from all suites (unit, Go, E2E)
+- Historical trends across runs
+- Detailed failure analysis
+- Test duration metrics
 
 ### Rebuild WASM Solver
 
@@ -342,17 +372,24 @@ cd api && go run ./cmd/generate_practice \
 
 ## Deployment
 
-### GitHub Pages
+### GitHub Pages (Automatic)
 
-Build and deploy manually, or set up your own CI pipeline:
+Pushing to `main` triggers the full CI/CD pipeline:
+
+1. **Test Workflow** (`test.yml`): Runs all tests, generates Allure report
+2. **Deploy Workflow** (`deploy.yml`): Builds and deploys the app
+
+Both the app and test report are deployed:
+- **App**: [https://thodha.github.io/sudoku/](https://thodha.github.io/sudoku/)
+- **Test Report**: [https://thodha.github.io/sudoku/test-report/](https://thodha.github.io/sudoku/test-report/)
+
+### Manual Build
 
 ```bash
 cd frontend
 npm run build
-# Deploy dist/ to GitHub Pages
+# Deploy dist/ to any static host
 ```
-
-**Note**: CI runs linting, unit tests with coverage, and build verification on every push and PR. Deploy only happens on push to main. Coverage threshold is 70% for critical paths.
 
 ### Docker
 
