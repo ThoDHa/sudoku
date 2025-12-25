@@ -1685,7 +1685,7 @@ ${bugReportJson}
         }
         try {
           localStorage.setItem(storageKey, JSON.stringify(savedState))
-        } catch (e) {
+        } catch {
           // Can't do much here - page is closing
         }
       }
