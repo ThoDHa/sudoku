@@ -123,6 +123,22 @@ help:
 # Allure Test Reporting
 #-----------------------------------------------------------------------
 
+# Auto-detect server URL for E2E tests
+# Priority: PLAYWRIGHT_BASE_URL env var > localhost:80 (Docker) > localhost:5173 (npm dev)
+define detect_server_url
+$(shell \
+	if [ -n "$$PLAYWRIGHT_BASE_URL" ]; then \
+		echo "$$PLAYWRIGHT_BASE_URL"; \
+	elif curl -s --connect-timeout 1 http://localhost:80 > /dev/null 2>&1; then \
+		echo "http://localhost"; \
+	elif curl -s --connect-timeout 1 http://localhost:5173 > /dev/null 2>&1; then \
+		echo "http://localhost:5173"; \
+	else \
+		echo ""; \
+	fi \
+)
+endef
+
 # Run all tests with Allure output
 test-allure: allure-clean
 	@echo ""
@@ -136,8 +152,14 @@ test-allure: allure-clean
 	@echo "[Frontend] Running unit tests with Allure output..."
 	@cd frontend && npm run test:unit || true
 	@echo ""
-	@echo "[E2E] Running Playwright tests with Allure output..."
-	@cd frontend && npm run test:e2e || true
+	@SERVER_URL=$(detect_server_url); \
+	if [ -z "$$SERVER_URL" ]; then \
+		echo "[E2E] Skipping - no server detected at localhost:80 or localhost:5173"; \
+		echo "      Start server with 'make dev' or 'cd frontend && npm run dev'"; \
+	else \
+		echo "[E2E] Running Playwright tests against $$SERVER_URL..."; \
+		cd frontend && PLAYWRIGHT_BASE_URL="$$SERVER_URL" npm run test:e2e || true; \
+	fi
 	@echo ""
 	@echo "========================================"
 	@echo "  All tests complete! Run 'make allure-report' to generate report"
