@@ -793,16 +793,18 @@ describe('worker-client advanced scenarios', () => {
       
       const initPromise = initializeWorker()
       
+      // Attach rejection handler BEFORE advancing time to prevent unhandled rejection
+      // This catches the rejection when it happens during timer advancement
+      let error: Error | null = null
+      const catchPromise = initPromise.catch((e) => {
+        error = e as Error
+      })
+      
       // Advance past worker creation timeout (10 seconds)
       await vi.advanceTimersByTimeAsync(10001)
       
-      // Properly catch the rejection
-      let error: Error | null = null
-      try {
-        await initPromise
-      } catch (e) {
-        error = e as Error
-      }
+      // Wait for the rejection to be handled
+      await catchPromise
       
       expect(error).not.toBeNull()
       expect(error?.message).toBe('Worker creation timeout')

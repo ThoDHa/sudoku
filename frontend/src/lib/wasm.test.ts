@@ -395,10 +395,21 @@ describe('wasm module', () => {
         
         const loadPromise = loadWasm()
         
+        // Attach rejection handler BEFORE advancing time to prevent unhandled rejection
+        // This catches the rejection when it happens during timer advancement
+        let error: Error | null = null
+        const catchPromise = loadPromise.catch((e) => {
+          error = e as Error
+        })
+        
         // Fast-forward past the 5 second timeout
         await vi.advanceTimersByTimeAsync(5100)
         
-        await expect(loadPromise).rejects.toThrow('WASM initialization timeout')
+        // Wait for the rejection to be handled
+        await catchPromise
+        
+        expect(error).not.toBeNull()
+        expect(error?.message).toBe('WASM initialization timeout')
       } finally {
         // Ensure timers are restored even if test fails
         vi.useRealTimers()
