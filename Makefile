@@ -53,18 +53,22 @@ test: lint-go lint-frontend test-go test-frontend
 	@echo "  All checks passed!"
 	@echo "========================================"
 
-# Run Go checks only
+# Run Go checks in Docker
 test-go:
 	@echo ""
-	@echo "[Go] Running tests..."
-	@cd api && go vet ./... && go test -short -v -timeout=5m ./...
+	@echo "========================================"
+	@echo "  Running Go Tests"
+	@echo "========================================"
+	@docker compose -f docker-compose.test.yml run --rm go-tests
 	@echo "[Go] Tests passed!"
 
-# Run Frontend checks only
+# Run Frontend checks in Docker
 test-frontend:
 	@echo ""
-	@echo "[Frontend] Running checks..."
-	@cd frontend && npx tsc --noEmit && npm run test:unit && npm run build
+	@echo "========================================"
+	@echo "  Running Frontend Tests"
+	@echo "========================================"
+	@docker compose -f docker-compose.test.yml run --rm frontend-tests
 	@echo "[Frontend] Checks passed!"
 
 # Run full E2E tests in Docker (use after big changes)
@@ -73,9 +77,9 @@ test-e2e:
 	@echo "========================================"
 	@echo "  Running E2E Tests"
 	@echo "========================================"
-	@docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from playwright
+	@docker compose -f docker-compose.test.yml up sudoku -d --build
+	@docker compose -f docker-compose.test.yml run --rm playwright
 	@docker compose -f docker-compose.test.yml down
-
 #-----------------------------------------------------------------------
 # Asset Generation
 #-----------------------------------------------------------------------
