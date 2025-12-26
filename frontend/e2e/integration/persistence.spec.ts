@@ -49,6 +49,14 @@ async function setLocalStorageItem(page: any, key: string, value: string): Promi
   await page.evaluate(([k, v]: [string, string]) => localStorage.setItem(k, v), [key, value]);
 }
 
+// Helper to prevent "Game In Progress" modal from appearing
+// This sets a sessionStorage flag that the app checks to skip the modal
+async function preventInProgressModal(page: any): Promise<void> {
+  await page.evaluate(() => {
+    sessionStorage.setItem('from_homepage', 'true');
+  });
+}
+
 // Helper to remove localStorage item via page.evaluate
 async function removeLocalStorageItem(page: any, key: string): Promise<void> {
   await page.evaluate((k: string) => localStorage.removeItem(k), key);
@@ -168,16 +176,15 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
 test.describe('@integration Persistence - Restore Game on Reload', () => {
   const TEST_SEED = 'restore-test-456';
 
-  test.beforeEach(async ({ page }) => {
-    // Clear any existing game state for this seed
-    await page.addInitScript((seed: string) => {
-      localStorage.removeItem(`sudoku_game_${seed}`);
-    }, TEST_SEED);
-  });
+  // Note: We don't use addInitScript here because it runs on EVERY navigation including reload,
+  // which would clear the saved state before we can test restoration.
 
   test('digits persist after page reload', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    
+    // Clear any existing game state AFTER initial load (not via addInitScript which runs on reload too)
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
 
     // Enter a digit
     const { cell, row, col } = await findEmptyCell(page);
@@ -197,14 +204,17 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
   test('notes persist after page reload', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    
+    // Clear any existing game state AFTER initial load
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
 
     // Enable notes mode
     const notesButton = page.locator('button[title="Notes mode"]');
     await notesButton.click();
     await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
 
-    // Add notes to a cell
-    const { cell } = await findEmptyCell(page);
+    // Add notes to a cell - capture the row/col so we can find the same cell after reload
+    const { cell, row, col } = await findEmptyCell(page);
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
     await page.keyboard.press('1');
@@ -222,8 +232,8 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
     await page.reload();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
-    // Find the same cell (notes should be restored)
-    const cellAfterReload = page.locator(`[role="gridcell"][aria-label*="empty"]`).first();
+    // Find the SAME cell by row/col (notes should be restored)
+    const cellAfterReload = getCellLocator(page, row, col);
     cellContent = await cellAfterReload.textContent();
     // Notes should persist
     expect(cellContent).toContain('1');
@@ -234,6 +244,9 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
   test('partial game state restores exactly on reload', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    
+    // Clear any existing game state AFTER initial load
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
 
     // Make multiple moves
     const { cell: cell1, row: row1, col: col1 } = await findEmptyCell(page, 5);
@@ -261,15 +274,15 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
 test.describe('@integration Persistence - Timer Persistence', () => {
   const TEST_SEED = 'timer-test-789';
 
-  test.beforeEach(async ({ page }) => {
-    await page.addInitScript((seed: string) => {
-      localStorage.removeItem(`sudoku_game_${seed}`);
-    }, TEST_SEED);
-  });
+  // Note: We don't use addInitScript here because it runs on EVERY navigation including reload,
+  // which would clear the saved state before we can test restoration.
 
   test('timer continues from saved time after reload', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    
+    // Clear any existing game state AFTER initial load (not via addInitScript which runs on reload too)
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
 
     // Make a move to trigger auto-save (and start tracking time)
     const { cell } = await findEmptyCell(page);
@@ -305,14 +318,12 @@ test.describe('@integration Persistence - Timer Persistence', () => {
 test.describe('@integration Persistence - Clear Game Functionality', () => {
   const TEST_SEED = 'clear-test-101';
 
-  test.beforeEach(async ({ page }) => {
-    await page.addInitScript((seed: string) => {
-      localStorage.removeItem(`sudoku_game_${seed}`);
-    }, TEST_SEED);
-  });
-
   test('starting a new game clears the board', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
+    // Clear storage AFTER initial load to avoid addInitScript running on every navigation
+    await page.evaluate((seed: string) => {
+      localStorage.removeItem(`sudoku_game_${seed}`);
+    }, TEST_SEED);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make some moves
@@ -325,59 +336,79 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
     // Verify the move was made
     await expectCellValue(page, row, col, 6);
 
-    // Click the menu button and find reset/new game option
-    const menuButton = page.locator('header button[aria-label*="Menu"], header button:has(svg)').last();
+    // Click the menu button and find the Clear All button
+    const menuButton = page.locator('button[aria-label="Menu"]');
     await menuButton.click();
     await page.waitForTimeout(200);
 
-    // Look for reset or new game button
-    const resetButton = page.locator('button:has-text("Reset"), button:has-text("New Game"), button:has-text("Restart")').first();
-    if (await resetButton.isVisible()) {
-      await resetButton.click();
-      await page.waitForTimeout(500);
+    // Click "Clear All" to clear user entries (menu auto-closes on click)
+    const clearAllButton = page.locator('button').filter({ hasText: 'Clear All' });
+    await clearAllButton.click();
+    
+    // A confirmation modal appears - click Confirm
+    const confirmButton = page.locator('button').filter({ hasText: 'Confirm' });
+    await confirmButton.click();
+    
+    // Wait for the board to update
+    await page.waitForTimeout(500);
 
-      // The cell should now be empty again
-      await expectCellValue(page, row, col, 'empty');
-    }
+    // The cell should now be empty again
+    await expectCellValue(page, row, col, 'empty');
   });
 
-  test('reset clears saved state from localStorage', async ({ page }) => {
+  test('reset clears user moves from saved state', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
+    // Clear storage AFTER initial load
+    await page.evaluate((seed: string) => {
+      localStorage.removeItem(`sudoku_game_${seed}`);
+    }, TEST_SEED);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make a move to trigger save
-    const { cell } = await findEmptyCell(page);
+    const { cell, row, col } = await findEmptyCell(page);
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
     await page.keyboard.press('5');
     await page.waitForTimeout(1500);
 
-    // Verify save exists
+    // Convert 1-indexed row/col to 0-indexed array position
+    const cellIndex = (row - 1) * 9 + (col - 1);
+
+    // Verify save exists with our move in history
     const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
     let savedState = await getLocalStorageItem(page, storageKey);
     expect(savedState).toBeTruthy();
+    let parsed = JSON.parse(savedState!);
+    expect(parsed.history.length).toBeGreaterThan(0);
+    expect(parsed.board[cellIndex]).toBe(5);
 
-    // Click menu and reset
-    const menuButton = page.locator('header button[aria-label*="Menu"], header button:has(svg)').last();
+    // Click menu and use Clear All
+    const menuButton = page.locator('button[aria-label="Menu"]');
     await menuButton.click();
     await page.waitForTimeout(200);
 
-    const resetButton = page.locator('button:has-text("Reset"), button:has-text("New Game"), button:has-text("Restart")').first();
-    if (await resetButton.isVisible()) {
-      await resetButton.click();
-      await page.waitForTimeout(1000);
+    const clearAllButton = page.locator('button').filter({ hasText: 'Clear All' });
+    await clearAllButton.click();
+    
+    // A confirmation modal appears - click Confirm
+    const confirmButton = page.locator('button').filter({ hasText: 'Confirm' });
+    await confirmButton.click();
+    
+    // Wait for the UI to show the cell is cleared (the digit we entered should be gone)
+    const clearedCell = getCellLocator(page, row, col);
+    await expect(clearedCell).toHaveAttribute('aria-label', /empty/, { timeout: 5000 });
+    
+    // The UI is cleared - verify the cell on screen is empty
+    await expectCellValue(page, row, col, 'empty');
 
-      // Saved state should be cleared (or empty board state)
-      savedState = await getLocalStorageItem(page, storageKey);
-      if (savedState) {
-        const parsed = JSON.parse(savedState);
-        // Either null or all user entries are cleared
-        const userEntries = parsed.board.filter((v: number, i: number) => v !== 0);
-        // After reset, there should only be givens (original puzzle values)
-        // We can't easily distinguish, but history should be empty
-        expect(parsed.history?.length || 0).toBe(0);
-      }
-    }
+    // Poll localStorage until the cleared state is saved (auto-save has debounce + idle callback)
+    await expect(async () => {
+      const state = await getLocalStorageItem(page, storageKey);
+      expect(state).toBeTruthy();
+      const data = JSON.parse(state!);
+      expect(data.history.length).toBe(0);
+      expect(data.board[cellIndex]).toBe(0);
+    }).toPass({ timeout: 5000 });
   });
 });
 
@@ -469,61 +500,79 @@ test.describe('@integration Persistence - Preferences', () => {
 });
 
 test.describe('@integration Persistence - Multiple Games Tracked', () => {
-  const EASY_SEED = 'multi-easy-111';
-  const MEDIUM_SEED = 'multi-medium-222';
+  // NOTE: The app only keeps ONE saved game per mode (daily vs practice)
+  // So we test with one daily game and one practice game to verify both modes work
+  const DAILY_SEED = 'daily-2024-12-25';  // Daily mode (starts with 'daily-')
+  const PRACTICE_SEED = 'game-test-222';  // Practice mode (any seed NOT starting with 'daily-' or 'practice-')
 
+  // Use addInitScript to always prevent the "Game In Progress" modal
+  // by setting the from_homepage flag before ANY navigation
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(([seed1, seed2]: [string, string]) => {
-      localStorage.removeItem(`sudoku_game_${seed1}`);
-      localStorage.removeItem(`sudoku_game_${seed2}`);
-    }, [EASY_SEED, MEDIUM_SEED]);
+    await page.addInitScript(() => {
+      // Override sessionStorage.getItem to always return 'true' for from_homepage
+      const originalGetItem = sessionStorage.getItem.bind(sessionStorage);
+      sessionStorage.getItem = (key: string) => {
+        if (key === 'from_homepage') return 'true';
+        return originalGetItem(key);
+      };
+    });
   });
 
-  test('different difficulty games have separate save states', async ({ page }) => {
-    // Play easy game
-    await page.goto(`/${EASY_SEED}?d=easy`);
+  test('different mode games have separate save states', async ({ page }) => {
+    // Play daily game
+    await page.goto(`/${DAILY_SEED}?d=easy`);
+    // Clear storage AFTER initial load to avoid addInitScript running on every navigation
+    await page.evaluate(([seed1, seed2]: [string, string]) => {
+      localStorage.removeItem(`sudoku_game_${seed1}`);
+      localStorage.removeItem(`sudoku_game_${seed2}`);
+    }, [DAILY_SEED, PRACTICE_SEED]);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
-    const { cell: easyCell, row: easyRow, col: easyCol } = await findEmptyCell(page, 5);
-    await easyCell.scrollIntoViewIfNeeded();
-    await easyCell.click();
+    const { cell: dailyCell, row: dailyRow, col: dailyCol } = await findEmptyCell(page, 5);
+    await dailyCell.scrollIntoViewIfNeeded();
+    await dailyCell.click();
     await page.keyboard.press('1');
     await page.waitForTimeout(1500);
 
-    // Navigate to medium game
-    await page.goto(`/${MEDIUM_SEED}?d=medium`);
+    // Navigate to practice game (different mode, so daily state should persist)
+    await page.goto(`/${PRACTICE_SEED}?d=medium`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
-    const { cell: mediumCell, row: mediumRow, col: mediumCol } = await findEmptyCell(page, 6);
-    await mediumCell.scrollIntoViewIfNeeded();
-    await mediumCell.click();
+    const { cell: practiceCell, row: practiceRow, col: practiceCol } = await findEmptyCell(page, 6);
+    await practiceCell.scrollIntoViewIfNeeded();
+    await practiceCell.click();
     await page.keyboard.press('9');
     await page.waitForTimeout(1500);
 
-    // Return to easy game
-    await page.goto(`/${EASY_SEED}?d=easy`);
+    // Return to daily game
+    await page.goto(`/${DAILY_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
-    // Easy game should have its own state preserved
-    await expectCellValue(page, easyRow, easyCol, 1);
+    // Daily game should have its own state preserved
+    await expectCellValue(page, dailyRow, dailyCol, 1);
 
     // Verify both save states exist
-    const easyState = await getLocalStorageItem(page, `${GAME_STATE_PREFIX}${EASY_SEED}`);
-    const mediumState = await getLocalStorageItem(page, `${GAME_STATE_PREFIX}${MEDIUM_SEED}`);
+    const dailyState = await getLocalStorageItem(page, `${GAME_STATE_PREFIX}${DAILY_SEED}`);
+    const practiceState = await getLocalStorageItem(page, `${GAME_STATE_PREFIX}${PRACTICE_SEED}`);
 
-    expect(easyState).toBeTruthy();
-    expect(mediumState).toBeTruthy();
+    expect(dailyState).toBeTruthy();
+    expect(practiceState).toBeTruthy();
 
-    const easyParsed = JSON.parse(easyState!);
-    const mediumParsed = JSON.parse(mediumState!);
+    const dailyParsed = JSON.parse(dailyState!);
+    const practiceParsed = JSON.parse(practiceState!);
 
-    expect(easyParsed.difficulty).toBe('easy');
-    expect(mediumParsed.difficulty).toBe('medium');
+    expect(dailyParsed.difficulty).toBe('easy');
+    expect(practiceParsed.difficulty).toBe('medium');
   });
 
-  test('navigating between games preserves each state independently', async ({ page }) => {
-    // Setup easy game with moves
-    await page.goto(`/${EASY_SEED}?d=easy`);
+  test('navigating between modes preserves each state independently', async ({ page }) => {
+    // Setup daily game with moves
+    await page.goto(`/${DAILY_SEED}?d=easy`);
+    // Clear storage AFTER initial load
+    await page.evaluate(([seed1, seed2]: [string, string]) => {
+      localStorage.removeItem(`sudoku_game_${seed1}`);
+      localStorage.removeItem(`sudoku_game_${seed2}`);
+    }, [DAILY_SEED, PRACTICE_SEED]);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const { cell: cell1 } = await findEmptyCell(page, 5);
@@ -532,8 +581,8 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await page.keyboard.press('3');
     await page.waitForTimeout(1500);
 
-    // Setup medium game with different moves
-    await page.goto(`/${MEDIUM_SEED}?d=medium`);
+    // Setup practice game with different moves (different mode)
+    await page.goto(`/${PRACTICE_SEED}?d=medium`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const { cell: cell2, row: row2, col: col2 } = await findEmptyCell(page, 7);
@@ -542,8 +591,8 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await page.keyboard.press('7');
     await page.waitForTimeout(1500);
 
-    // Go back to easy, make another move
-    await page.goto(`/${EASY_SEED}?d=easy`);
+    // Go back to daily, make another move
+    await page.goto(`/${DAILY_SEED}?d=easy`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const { cell: cell3, row: row3, col: col3 } = await findEmptyCell(page, 8);
@@ -552,15 +601,15 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await page.keyboard.press('5');
     await page.waitForTimeout(1500);
 
-    // Return to medium - should still have only one move (7)
-    await page.goto(`/${MEDIUM_SEED}?d=medium`);
+    // Return to practice - should still have only one move (7)
+    await page.goto(`/${PRACTICE_SEED}?d=medium`);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     await expectCellValue(page, row2, col2, 7);
 
-    // The cell where we put 5 in easy should not have 5 here
-    const mediumCell = getCellLocator(page, row3, col3);
-    const ariaLabel = await mediumCell.getAttribute('aria-label');
+    // The cell where we put 5 in daily should not have 5 here
+    const practiceCell = getCellLocator(page, row3, col3);
+    const ariaLabel = await practiceCell.getAttribute('aria-label');
     expect(ariaLabel).not.toContain('value 5');
   });
 });
@@ -749,14 +798,12 @@ test.describe('@integration Persistence - Auto-save Toggle', () => {
 test.describe('@integration Persistence - History Persistence', () => {
   const TEST_SEED = 'history-test-444';
 
-  test.beforeEach(async ({ page }) => {
-    await page.addInitScript((seed: string) => {
-      localStorage.removeItem(`sudoku_game_${seed}`);
-    }, TEST_SEED);
-  });
-
   test('move history is saved and restored', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
+    // Clear storage AFTER initial load to avoid addInitScript running on every navigation
+    await page.evaluate((seed: string) => {
+      localStorage.removeItem(`sudoku_game_${seed}`);
+    }, TEST_SEED);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make multiple moves
@@ -784,6 +831,10 @@ test.describe('@integration Persistence - History Persistence', () => {
 
   test('undo works after page reload using saved history', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
+    // Clear storage AFTER initial load
+    await page.evaluate((seed: string) => {
+      localStorage.removeItem(`sudoku_game_${seed}`);
+    }, TEST_SEED);
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Make a move
