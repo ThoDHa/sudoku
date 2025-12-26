@@ -126,19 +126,19 @@ export default function Homepage() {
           <div className="mt-4 flex w-full gap-2">
             <Link
               to="/custom"
-              className="flex-1 rounded-lg border border-board-border-light px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
+              className="flex-1 rounded-lg border border-board-border-light px-3 py-3 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
             >
               Custom
             </Link>
             <Link
               to="/techniques"
-              className="flex-1 rounded-lg border border-board-border-light px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
+              className="flex-1 rounded-lg border border-board-border-light px-3 py-3 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
             >
               Techniques
             </Link>
             <Link
               to="/leaderboard"
-              className="flex-1 rounded-lg border border-board-border-light px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
+              className="flex-1 rounded-lg border border-board-border-light px-3 py-3 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
             >
               Stats
             </Link>
@@ -220,19 +220,19 @@ export default function Homepage() {
         <div className="mt-6 flex w-full gap-2">
           <Link
             to="/custom"
-            className="flex-1 rounded-lg border border-board-border-light px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
+            className="flex-1 rounded-lg border border-board-border-light px-3 py-3 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
           >
             Custom
           </Link>
           <Link
             to="/techniques"
-            className="flex-1 rounded-lg border border-board-border-light px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
+            className="flex-1 rounded-lg border border-board-border-light px-3 py-3 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
           >
             Techniques
           </Link>
           <Link
             to="/leaderboard"
-            className="flex-1 rounded-lg border border-board-border-light px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
+            className="flex-1 rounded-lg border border-board-border-light px-3 py-3 text-center text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
           >
             Stats
           </Link>

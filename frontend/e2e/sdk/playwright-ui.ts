@@ -533,43 +533,55 @@ export class PlaywrightUISDK extends SudokuSDK {
   /**
    * Read the current board state from DOM
    * Returns 81-element array where 0 = empty, 1-9 = digit
+   * 
+   * Uses a single page.evaluate() call for performance - this prevents
+   * browser crashes during long hint loops by reducing 81+ async calls to 1.
    */
   async readBoardFromDOM(): Promise<Board> {
-    const board: Board = [];
-    const cells = await this.page.locator('.sudoku-cell').all();
-    
-    for (const cell of cells) {
-      const text = await cell.textContent();
-      // Get the main digit (not candidates)
-      const digitMatch = text?.match(/^(\d)$/);
+    const board = await this.page.evaluate(() => {
+      const cells = document.querySelectorAll('.sudoku-cell');
+      const result: number[] = [];
       
-      if (digitMatch) {
-        board.push(parseInt(digitMatch[1]));
-      } else {
-        // Check for digit in a specific element (not candidates)
-        const digitElement = cell.locator(':not(.candidate-grid) > :text-matches("^[1-9]$")').first();
-        const digitText = await digitElement.textContent().catch(() => null);
-        
-        if (digitText && /^[1-9]$/.test(digitText)) {
-          board.push(parseInt(digitText));
-        } else {
-          // Check if cell has a value attribute or data attribute
-          const value = await cell.getAttribute('data-value').catch(() => null);
-          if (value && /^[1-9]$/.test(value)) {
-            board.push(parseInt(value));
-          } else {
-            board.push(0);
-          }
+      cells.forEach((cell) => {
+        // First check for data-value attribute
+        const dataValue = cell.getAttribute('data-value');
+        if (dataValue && /^[1-9]$/.test(dataValue)) {
+          result.push(parseInt(dataValue));
+          return;
         }
+        
+        // Get text content, excluding candidate grid content
+        const candidateGrid = cell.querySelector('.candidate-grid');
+        let text = '';
+        
+        if (candidateGrid) {
+          // Clone the cell and remove candidate grid to get main digit only
+          const clone = cell.cloneNode(true) as HTMLElement;
+          const candidateClone = clone.querySelector('.candidate-grid');
+          if (candidateClone) candidateClone.remove();
+          text = clone.textContent?.trim() || '';
+        } else {
+          text = cell.textContent?.trim() || '';
+        }
+        
+        // Check for single digit
+        const digitMatch = text.match(/^[1-9]$/);
+        if (digitMatch) {
+          result.push(parseInt(digitMatch[0]));
+        } else {
+          result.push(0);
+        }
+      });
+      
+      // Ensure exactly 81 cells
+      while (result.length < 81) {
+        result.push(0);
       }
-    }
+      
+      return result.slice(0, 81);
+    });
     
-    // Ensure we have exactly 81 cells
-    while (board.length < 81) {
-      board.push(0);
-    }
-    
-    return board.slice(0, 81);
+    return board as Board;
   }
 
   /**

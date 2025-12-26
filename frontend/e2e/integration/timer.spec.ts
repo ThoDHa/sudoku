@@ -57,8 +57,11 @@ test.describe('@integration Timer - Display Format', () => {
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Timer section should contain an SVG clock icon
-    const timerSection = page.locator('div').filter({ has: getTimerLocator(page) }).first();
-    const clockIcon = timerSection.locator('svg');
+    // The timer display is a flex container with an SVG followed by span.font-mono
+    // Find the parent div that contains the timer span, then get the sibling SVG
+    const timer = getTimerLocator(page);
+    const timerParent = timer.locator('xpath=..');
+    const clockIcon = timerParent.locator('svg').first();
     await expect(clockIcon).toBeVisible();
   });
 });
@@ -168,8 +171,8 @@ test.describe('@integration Timer - Pause Behavior', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    // PAUSED text should disappear
-    const pausedIndicator = page.locator('text=PAUSED');
+    // PAUSED text should disappear (use specific class to avoid matching "Game Paused" heading)
+    const pausedIndicator = page.locator('span.text-xs:has-text("PAUSED")');
     await expect(pausedIndicator).not.toBeVisible();
 
     // Timer should continue running - get initial time then verify it increments
@@ -188,6 +191,15 @@ test.describe('@integration Timer - Pause Behavior', () => {
     await page.goto('/timer-overlay?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
+    // Wait for timer to actually start counting (not just 0:00)
+    const timer = getTimerLocator(page);
+    await page.waitForTimeout(1500); // Allow timer to start and tick
+    
+    const timerText = await timer.textContent();
+    const seconds = parseTimerToSeconds(timerText || '0:00');
+    // Verify timer is running
+    expect(seconds).toBeGreaterThanOrEqual(0);
+
     // Pause the timer via visibility change
     await page.evaluate(() => {
       Object.defineProperty(document, 'visibilityState', {
@@ -197,11 +209,14 @@ test.describe('@integration Timer - Pause Behavior', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
+    // Wait for state to propagate
     await page.waitForTimeout(500);
 
-    // Check for pause overlay elements
-    const pauseOverlay = page.locator('text=Game Paused');
-    await expect(pauseOverlay).toBeVisible();
+    // When app is hidden, it shows a minimal "Paused" state for battery optimization
+    // (The full "Game Paused" overlay is not shown because the entire game UI is replaced
+    // with a minimal frozen component when hidden)
+    const pausedText = page.locator('text=Paused');
+    await expect(pausedText).toBeVisible({ timeout: 5000 });
   });
 });
 
@@ -219,12 +234,16 @@ test.describe('@integration Timer - Hide Timer Preference', () => {
     const menuButton = page.locator('button[aria-label="Menu"]');
     await menuButton.click();
 
+    // Expand Settings section (Show Timer is inside Settings)
+    const settingsButton = page.locator('button').filter({ hasText: 'Settings' });
+    await settingsButton.click();
+
     // Find and click the "Show Timer" toggle
     const timerToggle = page.locator('button').filter({ hasText: 'Show Timer' });
     await timerToggle.click();
 
-    // Close menu
-    await menuButton.click();
+    // Close menu by pressing Escape (the modal overlay intercepts direct clicks)
+    await page.keyboard.press('Escape');
 
     // Timer should now be hidden
     await expect(timer).not.toBeVisible();
@@ -405,7 +424,11 @@ test.describe('@integration Timer - Completion', () => {
 
   test('final time is passed to result page on completion', async ({ page }) => {
     // Navigate to result page with time parameter to verify it displays correctly
-    await page.goto('/result?s=timer-result-test&d=easy&t=125000&h=0');
+    // Note: Result page route is /r, not /result
+    await page.goto('/r?s=timer-result-test&d=easy&t=125000&h=0');
+
+    // Wait for the result page to load (lazy loaded)
+    await page.waitForSelector('text=Puzzle Complete!', { timeout: 10000 });
 
     // Result page should display the time (125000ms = 2:05)
     const resultContent = await page.textContent('body');

@@ -250,10 +250,10 @@ test.describe('Homepage - Continue Game', () => {
     const gameState = {
       seed: gameSeed,
       difficulty: 'easy',
-      timestamp: Date.now(),
+      savedAt: Date.now(),
       board: Array(81).fill(0),
       solution: Array(81).fill(1),
-      elapsed: 60,
+      elapsedMs: 60000,
     };
     
     await page.addInitScript((state) => {
@@ -275,10 +275,10 @@ test.describe('Homepage - Continue Game', () => {
     const gameState = {
       seed: gameSeed,
       difficulty: 'medium',
-      timestamp: Date.now(),
+      savedAt: Date.now(),
       board: Array(81).fill(0),
       solution: Array(81).fill(1),
-      elapsed: 120,
+      elapsedMs: 120000,
     };
     
     await page.addInitScript((state) => {
@@ -298,10 +298,10 @@ test.describe('Homepage - Continue Game', () => {
     const gameState = {
       seed: gameSeed,
       difficulty: 'easy',
-      timestamp: Date.now(),
+      savedAt: Date.now(),
       board: Array(81).fill(0),
       solution: Array(81).fill(1),
-      elapsed: 60,
+      elapsedMs: 60000,
     };
     
     await page.addInitScript((state) => {
@@ -325,10 +325,10 @@ test.describe('Homepage - Continue Game', () => {
     const gameState = {
       seed: gameSeed,
       difficulty: 'easy',
-      timestamp: Date.now(),
+      savedAt: Date.now(),
       board: Array(81).fill(0),
       solution: Array(81).fill(1),
-      elapsed: 60,
+      elapsedMs: 60000,
     };
     
     await page.addInitScript((state) => {
@@ -354,10 +354,10 @@ test.describe('Homepage - Continue Game', () => {
     const gameState = {
       seed: gameSeed,
       difficulty: 'easy',
-      timestamp: Date.now(),
+      savedAt: Date.now(),
       board: Array(81).fill(0),
       solution: Array(81).fill(1),
-      elapsed: 60,
+      elapsedMs: 60000,
     };
     
     await page.addInitScript((state) => {
@@ -383,10 +383,10 @@ test.describe('Homepage - Continue Game', () => {
     const gameState = {
       seed: gameSeed,
       difficulty: 'easy',
-      timestamp: Date.now(),
+      savedAt: Date.now(),
       board: Array(81).fill(0),
       solution: Array(81).fill(1),
-      elapsed: 60,
+      elapsedMs: 60000,
     };
     
     await page.addInitScript((state) => {
