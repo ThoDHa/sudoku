@@ -61,6 +61,10 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
       startTimeRef.current = Date.now()
       setIsRunning(true)
       setIsPausedDueToVisibility(false)
+    } else if (startTimeRef.current === null) {
+      // Edge case: isRunning is true but no start time reference
+      // This could happen from stale closures - recover gracefully
+      startTimeRef.current = Date.now()
     }
   }, [isRunning])
 
@@ -81,8 +85,10 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
   }, [isRunning])
 
   const setElapsedMsValue = useCallback((ms: number) => {
-    setElapsedMs(ms)
-    accumulatedRef.current = ms
+    // Validate input to prevent NaN or negative values
+    const validMs = Math.max(0, Number.isFinite(ms) ? ms : 0)
+    setElapsedMs(validMs)
+    accumulatedRef.current = validMs
     // If timer is running, reset the start time reference
     if (isRunning) {
       startTimeRef.current = Date.now()

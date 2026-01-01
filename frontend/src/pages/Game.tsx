@@ -1574,10 +1574,9 @@ ${bugReportJson}
         }
         setSolution([...puzzleData.solution])
 
-        // Don't start timer for completed daily puzzles or when choosing difficulty
+        // Reset timer for non-completed puzzles (timer will be started later by initialBoard effect)
         if (!alreadyCompletedToday && !showDifficultyChooser) {
           timerControl.resetTimer()
-          timerControl.startTimer()
         }
         setLoading(false)
 
@@ -1616,12 +1615,18 @@ ${bugReportJson}
         const restoredCandidates = arraysToCandidates(savedState.candidates)
         game.restoreState(savedState.board, restoredCandidates, savedState.history)
         timerControl.setElapsedMs(savedState.elapsedMs)
-        // Ensure timer is running after restore (it may have been reset by loadPuzzle)
-        timerControl.startTimer()
+        // Start timer (resume from saved time) - only if puzzle is playable
+        if (!alreadyCompletedToday && !showDifficultyChooser) {
+          timerControl.startTimer()
+        }
         setAutoFillUsed(savedState.autoFillUsed)
       } else {
         // Start fresh
         game.resetGame()
+        // Start timer for new game - only if puzzle is playable
+        if (!alreadyCompletedToday && !showDifficultyChooser) {
+          timerControl.startTimer()
+        }
       }
       
       hasRestoredSavedState.current = true

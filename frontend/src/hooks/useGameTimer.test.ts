@@ -524,4 +524,111 @@ describe('useGameTimer', () => {
       expect(typeof result.current.formatTime).toBe('function')
     })
   })
+
+  // ===========================================================================
+  // EDGE CASE TESTS (Added for TIMER-004)
+  // ===========================================================================
+  describe('Edge Cases', () => {
+    it('handles setElapsedMs with NaN value', () => {
+      const backgroundManager = createMockBackgroundManager()
+      const { result } = renderHook(() => 
+        useGameTimer({ backgroundManager })
+      )
+
+      act(() => {
+        result.current.setElapsedMs(NaN)
+      })
+
+      // Should default to 0 instead of NaN
+      expect(result.current.elapsedMs).toBe(0)
+      expect(Number.isFinite(result.current.elapsedMs)).toBe(true)
+    })
+
+    it('handles setElapsedMs with negative value', () => {
+      const backgroundManager = createMockBackgroundManager()
+      const { result } = renderHook(() => 
+        useGameTimer({ backgroundManager })
+      )
+
+      act(() => {
+        result.current.setElapsedMs(-5000)
+      })
+
+      // Should clamp to 0 instead of allowing negative
+      expect(result.current.elapsedMs).toBe(0)
+    })
+
+    it('handles setElapsedMs with Infinity', () => {
+      const backgroundManager = createMockBackgroundManager()
+      const { result } = renderHook(() => 
+        useGameTimer({ backgroundManager })
+      )
+
+      act(() => {
+        result.current.setElapsedMs(Infinity)
+      })
+
+      // Should default to 0 for non-finite values
+      expect(result.current.elapsedMs).toBe(0)
+      expect(Number.isFinite(result.current.elapsedMs)).toBe(true)
+    })
+
+    it('handles multiple rapid startTimer calls gracefully', () => {
+      const backgroundManager = createMockBackgroundManager()
+      const { result } = renderHook(() => 
+        useGameTimer({ backgroundManager })
+      )
+
+      // Start timer multiple times rapidly
+      act(() => {
+        result.current.startTimer()
+        result.current.startTimer()
+        result.current.startTimer()
+      })
+
+      expect(result.current.isRunning).toBe(true)
+      
+      // Advance time and verify timer is ticking normally
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      expect(result.current.elapsedMs).toBeGreaterThanOrEqual(2000)
+    })
+
+    it('handles resetTimer followed immediately by setElapsedMs', () => {
+      const backgroundManager = createMockBackgroundManager()
+      const { result } = renderHook(() => 
+        useGameTimer({ backgroundManager })
+      )
+
+      // Start timer
+      act(() => {
+        result.current.startTimer()
+      })
+
+      // Let it run
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
+
+      expect(result.current.elapsedMs).toBeGreaterThanOrEqual(5000)
+
+      // Reset and immediately set to a saved value
+      act(() => {
+        result.current.resetTimer()
+        result.current.setElapsedMs(10000)
+      })
+
+      expect(result.current.elapsedMs).toBe(10000)
+      expect(result.current.isRunning).toBe(true)
+
+      // Verify timer continues from new value
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      expect(result.current.elapsedMs).toBeGreaterThanOrEqual(11000)
+    })
+  })
 })
