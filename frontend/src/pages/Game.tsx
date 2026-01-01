@@ -1787,6 +1787,7 @@ ${bugReportJson}
       {/* Game Header */}
       <GameHeader
         difficulty={difficulty}
+        seed={seed}
         hideTimer={hideTimerState}
         isComplete={game.isComplete}
         historyCount={game.history.length}

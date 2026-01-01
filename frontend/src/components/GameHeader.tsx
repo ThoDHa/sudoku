@@ -269,6 +269,7 @@ function ThemeModeDropdown({ mode, modePreference, isOpen, onToggle, onSetModePr
 
 interface GameHeaderProps {
   difficulty: Difficulty
+  seed?: string | undefined // Puzzle seed for mode detection (optional, may be undefined)
   // Timer state - hideTimer prop controls visibility
   hideTimer: boolean
   // Game state
@@ -319,6 +320,7 @@ interface GameHeaderProps {
 
 export default memo(function GameHeader({
   difficulty,
+  seed,
   hideTimer,
   isComplete,
   historyCount,
@@ -490,6 +492,7 @@ export default memo(function GameHeader({
     <Menu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
+        currentSeed={seed}
         mode={mode}
         colorTheme={colorTheme}
         fontSize={fontSize}

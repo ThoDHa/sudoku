@@ -4,6 +4,7 @@ import { useDailySeed, useLastDailyDifficulty, Difficulty } from '../lib/hooks'
 import { isTodayCompleted, getDailyStreak } from '../lib/scores'
 import { getHomepageMode, setHomepageMode, onHomepageModeChange, HomepageMode } from '../lib/preferences'
 import { getMostRecentGameForMode, clearInProgressGame } from '../lib/gameSettings'
+import { getDailySeed } from '../lib/solver-service'
 import { useTheme } from '../lib/ThemeContext'
 import DifficultyGrid from '../components/DifficultyGrid'
 
@@ -46,6 +47,26 @@ export default function Homepage() {
   const completed = isTodayCompleted()
   const streak = getDailyStreak()
   
+  // Quick-switch handlers
+  const handleSwitchToDaily = () => {
+    const { seed } = getDailySeed()
+    navigate(`/game?seed=${seed}`)
+  }
+  
+  const handleSwitchToPractice = () => {
+    // Check if there's an in-progress practice game
+    const practiceGame = getMostRecentGameForMode('game')
+    
+    if (practiceGame) {
+      // Resume existing practice game
+      sessionStorage.setItem('from_homepage', 'true')
+      navigate(`/game?seed=${practiceGame.seed}&d=${practiceGame.difficulty}`)
+    } else {
+      // Switch to game mode to let user select difficulty
+      setHomepageMode('game')
+      setMode('game')
+    }
+  }
 
 
   // Generate a new game seed when switching to game mode
@@ -167,6 +188,18 @@ export default function Homepage() {
               </div>
             )}
             
+            {/* Quick switch to Practice */}
+            <button
+              onClick={handleSwitchToPractice}
+              className="mb-3 w-full flex items-center justify-center gap-2 rounded-lg border border-board-border-light px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Go to Practice
+            </button>
+            
             <div className="w-full">
               <DifficultyGrid
                 seed={data.seed}
@@ -193,6 +226,17 @@ export default function Homepage() {
             <EnsoLogo />
             <h1 className="homepage-title">Game Mode</h1>
             <p className="homepage-subtitle text-foreground-muted">Choose your difficulty</p>
+
+            {/* Quick switch to Daily */}
+            <button
+              onClick={handleSwitchToDaily}
+              className="mb-3 w-full flex items-center justify-center gap-2 rounded-lg border border-board-border-light px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Go to Daily
+            </button>
 
             <div className="w-full">
               <DifficultyGrid
