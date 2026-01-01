@@ -31,12 +31,15 @@ export interface UserPreferences {
   autoSolveSpeed: AutoSolveSpeed
   // Whether to hide the timer during gameplay
   hideTimer: boolean
+  // Whether to show daily puzzle reminder when playing practice mode
+  showDailyReminder: boolean
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   homepageMode: 'daily',
   autoSolveSpeed: 'fast',
   hideTimer: false,
+  showDailyReminder: true,
 }
 
 export function getPreferences(): UserPreferences {
@@ -92,4 +95,12 @@ export function getHideTimer(): boolean {
 
 export function setHideTimer(hide: boolean): void {
   setPreferences({ hideTimer: hide })
+}
+
+export function getShowDailyReminder(): boolean {
+  return getPreferences().showDailyReminder
+}
+
+export function setShowDailyReminder(show: boolean): void {
+  setPreferences({ showDailyReminder: show })
 }

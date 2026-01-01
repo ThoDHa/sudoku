@@ -9,6 +9,7 @@ import TechniquesListModal from '../components/TechniquesListModal'
 import GameHeader from '../components/GameHeader'
 import GameModals from '../components/GameModals'
 import AboutModal, { useAboutModal } from '../components/AboutModal'
+import DailyPromptModal from '../components/DailyPromptModal'
 import DifficultyGrid from '../components/DifficultyGrid'
 import { PauseOverlayTimer } from '../components/TimerDisplay'
 import { Difficulty } from '../lib/hooks'
@@ -37,6 +38,9 @@ import { validateBoard, validateCustomPuzzle, findNextMove, getPuzzle, cleanupSo
 import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
 import { saveScore, markDailyCompleted, isTodayCompleted, getTodayUTC, getScores, type Score } from '../lib/scores'
+import { shouldShowDailyPrompt, markDailyPromptShown } from '../lib/dailyPrompt'
+import { getGameMode } from '../lib/gameSettings'
+import { setShowDailyReminder } from '../lib/preferences'
 import { decodePuzzle, encodePuzzle, decodePuzzleWithState, encodePuzzleWithState } from '../lib/puzzleEncoding'
 import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/candidatesUtils'
 
@@ -160,6 +164,7 @@ function GameContent() {
   const [showSolutionConfirm, setShowSolutionConfirm] = useState(false)
   const [showInProgressConfirm, setShowInProgressConfirm] = useState(false)
   const [existingInProgressGame, setExistingInProgressGame] = useState<SavedGameInfo | null>(null)
+  const [showDailyPrompt, setShowDailyPrompt] = useState(false)
   const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] = useState<{ message: string; count: number } | null>(null)
   const [bugReportCopied, setBugReportCopied] = useState(false)
   const [autoFillUsed, setAutoFillUsed] = useState(false)
@@ -512,6 +517,20 @@ function GameContent() {
     setShowInProgressConfirm(false)
     setExistingInProgressGame(null)
   }, [existingInProgressGame])
+
+  // Handlers for daily prompt modal
+  const handleGoToDaily = useCallback(() => {
+    setShowDailyPrompt(false)
+    navigate(`/daily-${getTodayUTC()}?d=medium`)
+  }, [navigate])
+
+  const handleContinuePractice = useCallback(() => {
+    setShowDailyPrompt(false)
+  }, [])
+
+  const handleDontShowDailyPromptAgain = useCallback(() => {
+    setShowDailyReminder(false)
+  }, [])
 
   // ============================================================
   // HELPER FUNCTIONS
@@ -1580,6 +1599,12 @@ ${bugReportJson}
         }
         setLoading(false)
 
+        // Check if we should show daily prompt (for practice games only)
+        if (getGameMode(puzzleData.seed) === 'practice' && shouldShowDailyPrompt()) {
+          setShowDailyPrompt(true)
+          markDailyPromptShown()
+        }
+
         // Restore shared state if available
         if (initialState) {
           loadedFromSharedUrl.current = true
@@ -1987,6 +2012,14 @@ ${bugReportJson}
 
       {/* Onboarding Modal - shown for first-time users */}
       <AboutModal isOpen={showAbout} onClose={closeAboutModal} isOnboarding={isOnboarding} />
+
+      {/* Daily Prompt Modal - encourages users to try daily puzzle when playing practice mode */}
+      <DailyPromptModal
+        open={showDailyPrompt}
+        onGoToDaily={handleGoToDaily}
+        onContinuePractice={handleContinuePractice}
+        onDontShowAgain={handleDontShowDailyPromptAgain}
+      />
 
       {/* In-Progress Game Confirmation Modal */}
       {showInProgressConfirm && existingInProgressGame && (

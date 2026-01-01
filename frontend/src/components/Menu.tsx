@@ -4,6 +4,7 @@ import { ColorTheme, FontSize } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed, HomepageMode } from '../lib/preferences'
 import { clearAllCaches, CACHE_VERSION } from '../lib/cache-version'
 import { getAutoSaveEnabled, setAutoSaveEnabled } from '../lib/gameSettings'
+import { getShowDailyReminder, setShowDailyReminder } from '../lib/preferences'
 import { createGameRoute, SPEED_OPTIONS, COLOR_THEMES, TOAST_DURATION_INFO } from '../lib/constants'
 
 // Game actions (for game page)
@@ -310,6 +311,8 @@ interface SettingsSectionProps {
   gameActions: GameActions | undefined
   autoSaveEnabled: boolean
   handleAutoSaveToggle: () => void
+  showDailyReminder: boolean
+  handleDailyReminderToggle: () => void
 }
 
 function SettingsSection({
@@ -321,6 +324,8 @@ function SettingsSection({
   gameActions,
   autoSaveEnabled,
   handleAutoSaveToggle,
+  showDailyReminder,
+  handleDailyReminderToggle,
 }: SettingsSectionProps) {
   return (
     <div className="rounded-lg overflow-hidden">
@@ -362,6 +367,22 @@ function SettingsSection({
               ))}
             </div>
           </div>
+
+          {/* Daily Puzzle Reminder toggle (available everywhere) */}
+          <button
+            onClick={handleDailyReminderToggle}
+            className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-btn-hover rounded-lg"
+          >
+            <span className="flex items-center gap-3">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Show Daily Puzzle Reminder
+            </span>
+            <div className={`w-9 h-5 rounded-full transition-colors ${showDailyReminder ? 'bg-accent' : 'bg-board-border-light'}`}>
+              <div className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${showDailyReminder ? 'translate-x-4' : 'translate-x-0'}`} />
+            </div>
+          </button>
 
           {/* Timer + Auto-save + Step-by-step toggles (game only) */}
           {gameActions && (
@@ -435,6 +456,7 @@ export default function Menu({
   const [settingsExpanded, setSettingsExpanded] = useState(!gameActions) // Collapsed on game page
   const [cacheCleared, setCacheCleared] = useState(false)
   const [autoSaveEnabled, setAutoSaveEnabledState] = useState(getAutoSaveEnabled)
+  const [showDailyReminder, setShowDailyReminderState] = useState(getShowDailyReminder)
   const [confirmNewPuzzle, setConfirmNewPuzzle] = useState<string | null>(null)
 
   // Close submenu when menu closes
@@ -456,6 +478,12 @@ export default function Menu({
     const newValue = !autoSaveEnabled
     setAutoSaveEnabledState(newValue)
     setAutoSaveEnabled(newValue)
+  }
+
+  const handleDailyReminderToggle = () => {
+    const newValue = !showDailyReminder
+    setShowDailyReminderState(newValue)
+    setShowDailyReminder(newValue)
   }
 
   // Handle starting a new puzzle - show confirmation if game in progress
@@ -559,6 +587,8 @@ export default function Menu({
               gameActions={gameActions}
               autoSaveEnabled={autoSaveEnabled}
               handleAutoSaveToggle={handleAutoSaveToggle}
+              showDailyReminder={showDailyReminder}
+              handleDailyReminderToggle={handleDailyReminderToggle}
             />
 
             {/* Homepage mode toggle (homepage only) */}
