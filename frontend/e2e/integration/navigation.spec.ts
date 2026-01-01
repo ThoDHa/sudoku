@@ -169,3 +169,87 @@ test.describe('@smoke Responsive Design', () => {
     await expect(page.locator('.sudoku-board')).toBeVisible();
   });
 });
+
+test.describe('@smoke In-Game Menu Navigation', () => {
+  test.beforeEach(async ({ page }) => {
+    // Skip onboarding modal
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
+  });
+
+  test('New Game from menu shows single confirmation when in-progress game exists', async ({ page }) => {
+    // Start a game and make some progress
+    await page.goto('/menu-test-seed?d=easy');
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    
+    // Make a move to create an in-progress game
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
+    await emptyCell.click();
+    await page.keyboard.press('5');
+    
+    // Wait for auto-save
+    await page.waitForTimeout(1000);
+    
+    // Open the menu (hamburger button in header)
+    const menuButton = page.locator('header button').first();
+    await menuButton.click();
+    
+    // Wait for menu to be visible
+    await expect(page.locator('text=Menu')).toBeVisible();
+    
+    // Click New Game to expand submenu
+    await page.locator('button:has-text("New Game")').click();
+    
+    // Select a difficulty
+    await page.locator('button:has-text("medium")').click();
+    
+    // Should show SINGLE confirmation modal from Menu.tsx
+    await expect(page.locator('text=Start New Game?')).toBeVisible();
+    
+    // Count confirmation modals - should only be 1
+    const modalCount = await page.locator('text=Start New Game?').count();
+    expect(modalCount).toBe(1);
+    
+    // Confirm and navigate
+    await page.locator('button:has-text("Start New")').click();
+    
+    // Should navigate to new game without additional prompts
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
+    expect(page.url()).toContain('d=medium');
+    
+    // Verify no additional confirmation modal appeared
+    await expect(page.locator('text=Start New Game?')).not.toBeVisible();
+  });
+
+  test('New Game from menu cancels correctly', async ({ page }) => {
+    // Start a game and make some progress
+    await page.goto('/menu-cancel-test?d=easy');
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    
+    // Make a move
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
+    await emptyCell.click();
+    await page.keyboard.press('3');
+    
+    // Wait for auto-save
+    await page.waitForTimeout(1000);
+    
+    // Open menu and try New Game
+    const menuButton = page.locator('header button').first();
+    await menuButton.click();
+    await page.locator('button:has-text("New Game")').click();
+    await page.locator('button:has-text("hard")').click();
+    
+    // Confirmation modal appears
+    await expect(page.locator('text=Start New Game?')).toBeVisible();
+    
+    // Cancel
+    await page.locator('button:has-text("Cancel")').click();
+    
+    // Modal closes, still on original game
+    await expect(page.locator('text=Start New Game?')).not.toBeVisible();
+    expect(page.url()).toContain('menu-cancel-test');
+    expect(page.url()).toContain('d=easy');
+  });
+});

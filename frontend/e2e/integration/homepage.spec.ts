@@ -405,6 +405,111 @@ test.describe('Homepage - Continue Game', () => {
   });
 });
 
+test.describe('Homepage - Daily Mode Continue Game', () => {
+  test('shows Resume text on daily card with in-progress game', async ({ page }) => {
+    // Use a fixed daily seed format
+    const dailySeed = 'daily-2024-12-25';
+    const gameState = {
+      seed: dailySeed,
+      difficulty: 'medium',
+      savedAt: Date.now(),
+      board: Array(81).fill(0),
+      solution: Array(81).fill(1),
+      elapsedMs: 120000,
+    };
+    
+    await page.addInitScript((state) => {
+      localStorage.setItem('sudoku_preferences', JSON.stringify({ homepageMode: 'daily' }));
+      localStorage.setItem(`sudoku_game_${state.seed}`, JSON.stringify(state));
+    }, gameState);
+    
+    await page.goto('/');
+    
+    // Wait for daily mode heading (or complete if already done today)
+    const dailyHeading = page.locator('h1:has-text("Daily Sudoku")');
+    const completeHeading = page.locator('h1:has-text("Daily Complete")');
+    await expect(dailyHeading.or(completeHeading)).toBeVisible();
+    
+    // If in daily mode (not complete), the medium card should show Resume
+    if (await dailyHeading.isVisible()) {
+      const mediumCard = page.locator('button:has-text("medium")').first();
+      await expect(mediumCard.locator('text=Resume')).toBeVisible();
+    }
+  });
+
+  test('clicking Resume on daily puzzle navigates with saved seed', async ({ page }) => {
+    // Use a fixed daily seed format
+    const dailySeed = 'daily-2024-12-25';
+    const gameState = {
+      seed: dailySeed,
+      difficulty: 'easy',
+      savedAt: Date.now(),
+      board: Array(81).fill(0),
+      solution: Array(81).fill(1),
+      elapsedMs: 60000,
+    };
+    
+    await page.addInitScript((state) => {
+      localStorage.setItem('sudoku_preferences', JSON.stringify({ homepageMode: 'daily' }));
+      localStorage.setItem(`sudoku_game_${state.seed}`, JSON.stringify(state));
+    }, gameState);
+    
+    await page.goto('/');
+    
+    // Wait for daily mode heading
+    const dailyHeading = page.locator('h1:has-text("Daily Sudoku")');
+    const completeHeading = page.locator('h1:has-text("Daily Complete")');
+    await expect(dailyHeading.or(completeHeading)).toBeVisible();
+    
+    // If in daily mode (not complete), click the easy card to resume
+    if (await dailyHeading.isVisible()) {
+      await page.locator('button:has-text("easy")').first().click();
+      
+      // Should NOT show confirmation modal since we're resuming the same difficulty
+      await expect(page.locator('text=Start New Game?')).not.toBeVisible();
+      
+      // Should navigate to game page with the saved seed
+      await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
+      expect(page.url()).toContain(dailySeed);
+      expect(page.url()).toContain('d=easy');
+    }
+  });
+
+  test('daily mode confirmation modal appears when switching difficulties with in-progress game', async ({ page }) => {
+    const dailySeed = 'daily-2024-12-25';
+    const gameState = {
+      seed: dailySeed,
+      difficulty: 'easy',
+      savedAt: Date.now(),
+      board: Array(81).fill(0),
+      solution: Array(81).fill(1),
+      elapsedMs: 60000,
+    };
+    
+    await page.addInitScript((state) => {
+      localStorage.setItem('sudoku_preferences', JSON.stringify({ homepageMode: 'daily' }));
+      localStorage.setItem(`sudoku_game_${state.seed}`, JSON.stringify(state));
+    }, gameState);
+    
+    await page.goto('/');
+    
+    // Wait for daily mode heading
+    const dailyHeading = page.locator('h1:has-text("Daily Sudoku")');
+    const completeHeading = page.locator('h1:has-text("Daily Complete")');
+    await expect(dailyHeading.or(completeHeading)).toBeVisible();
+    
+    // If in daily mode (not complete), click a different difficulty
+    if (await dailyHeading.isVisible()) {
+      await page.locator('button:has-text("medium")').first().click();
+      
+      // Should show confirmation modal when switching difficulties
+      await expect(page.locator('text=Start New Game?')).toBeVisible();
+      await expect(page.locator('button:has-text("Cancel")')).toBeVisible();
+      await expect(page.locator('button:has-text("Start New")')).toBeVisible();
+    }
+  });
+});
+
 test.describe('Homepage - Responsive Design', () => {
   test('mobile viewport displays all elements correctly', async ({ page, mobileViewport }) => {
     // mobileViewport fixture sets 375x667

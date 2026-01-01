@@ -475,6 +475,9 @@ export default function Menu({
   // Confirm and navigate to new puzzle
   const confirmAndNavigate = () => {
     if (confirmNewPuzzle) {
+      // Set flag so Game.tsx knows we're coming from a trusted navigation
+      // and won't show its own in-progress check prompt
+      sessionStorage.setItem('from_homepage', 'true')
       if (confirmNewPuzzle === 'custom') {
         navigate('/custom')
       } else {

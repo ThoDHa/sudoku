@@ -173,6 +173,7 @@ export default function Homepage() {
                 lastSelected={difficulty}
                 onSelect={handleDailySelect}
                 resumeDifficulty={inProgressGame?.difficulty}
+                resumeSeed={inProgressGame?.seed}
                 onBeforeNavigate={(path) => {
                   // Only show confirmation if clicking a DIFFERENT difficulty than the resumable one
                   if (inProgressGame && !path.includes(`d=${inProgressGame.difficulty}`)) {
