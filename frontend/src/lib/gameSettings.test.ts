@@ -8,6 +8,9 @@ import {
   hasInProgressGame,
   clearInProgressGame,
   clearOtherGamesForMode,
+  getGameMode,
+  isDailyPuzzle,
+  isPracticePuzzle,
   type SavedGameInfo,
 } from './gameSettings'
 import { STORAGE_KEYS } from './constants'
@@ -138,6 +141,78 @@ describe('gameSettings', () => {
         'Failed to save auto-save preference:',
         expect.any(Error)
       )
+    })
+  })
+
+  // ===========================================================================
+  // getGameMode
+  // ===========================================================================
+  describe('getGameMode', () => {
+    it('should return "daily" for seeds starting with "daily-"', () => {
+      expect(getGameMode('daily-2025-01-01')).toBe('daily')
+      expect(getGameMode('daily-2024-12-31')).toBe('daily')
+    })
+
+    it('should return "daily" for edge case "daily-" with no date', () => {
+      expect(getGameMode('daily-')).toBe('daily')
+    })
+
+    it('should return "practice" for seeds starting with "P"', () => {
+      expect(getGameMode('P1735689600000')).toBe('practice')
+      expect(getGameMode('P123456789')).toBe('practice')
+    })
+
+    it('should return "practice" for edge case single "P"', () => {
+      expect(getGameMode('P')).toBe('practice')
+    })
+
+    it('should return null for empty string', () => {
+      expect(getGameMode('')).toBeNull()
+    })
+
+    it('should return null for unknown/unrecognized patterns', () => {
+      expect(getGameMode('custom-seed')).toBeNull()
+      expect(getGameMode('test-123')).toBeNull()
+      expect(getGameMode('random')).toBeNull()
+      expect(getGameMode('practice-123')).toBeNull() // Note: practice- is NOT valid
+    })
+  })
+
+  // ===========================================================================
+  // isDailyPuzzle
+  // ===========================================================================
+  describe('isDailyPuzzle', () => {
+    it('should return true for daily seeds', () => {
+      expect(isDailyPuzzle('daily-2025-01-01')).toBe(true)
+      expect(isDailyPuzzle('daily-')).toBe(true)
+    })
+
+    it('should return false for practice seeds', () => {
+      expect(isDailyPuzzle('P1735689600000')).toBe(false)
+    })
+
+    it('should return false for unknown seeds', () => {
+      expect(isDailyPuzzle('custom-123')).toBe(false)
+      expect(isDailyPuzzle('')).toBe(false)
+    })
+  })
+
+  // ===========================================================================
+  // isPracticePuzzle
+  // ===========================================================================
+  describe('isPracticePuzzle', () => {
+    it('should return true for practice seeds', () => {
+      expect(isPracticePuzzle('P1735689600000')).toBe(true)
+      expect(isPracticePuzzle('P')).toBe(true)
+    })
+
+    it('should return false for daily seeds', () => {
+      expect(isPracticePuzzle('daily-2025-01-01')).toBe(false)
+    })
+
+    it('should return false for unknown seeds', () => {
+      expect(isPracticePuzzle('custom-123')).toBe(false)
+      expect(isPracticePuzzle('')).toBe(false)
     })
   })
 

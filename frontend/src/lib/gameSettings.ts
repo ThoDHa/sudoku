@@ -3,6 +3,42 @@
 import { STORAGE_KEYS } from './constants'
 import { HomepageMode } from './preferences'
 
+// =============================================================================
+// GAME MODE DETECTION
+// =============================================================================
+
+export type GameMode = 'daily' | 'practice' | null
+
+/**
+ * Detect game mode from puzzle seed
+ * @param seed The puzzle seed string
+ * @returns 'daily' for daily puzzles, 'practice' for practice puzzles, null for unknown
+ */
+export function getGameMode(seed: string): GameMode {
+  if (!seed) return null
+  if (seed.startsWith('daily-')) return 'daily'
+  if (seed.startsWith('P')) return 'practice'
+  return null
+}
+
+/**
+ * Check if a seed is a daily puzzle
+ */
+export function isDailyPuzzle(seed: string): boolean {
+  return getGameMode(seed) === 'daily'
+}
+
+/**
+ * Check if a seed is a practice puzzle
+ */
+export function isPracticePuzzle(seed: string): boolean {
+  return getGameMode(seed) === 'practice'
+}
+
+// =============================================================================
+// AUTO-SAVE SETTINGS
+// =============================================================================
+
 const AUTO_SAVE_KEY = 'sudoku_autosave_enabled'
 
 export function getAutoSaveEnabled(): boolean {
@@ -91,10 +127,11 @@ export function getMostRecentGame(): SavedGameInfo | null {
 export function getMostRecentGameForMode(mode: HomepageMode): SavedGameInfo | null {
   const games = getInProgressGames()
   const filteredGames = games.filter(game => {
+    const gameMode = getGameMode(game.seed)
     if (mode === 'daily') {
-      return game.seed.startsWith('daily-')
+      return gameMode === 'daily'
     } else {
-      return !game.seed.startsWith('daily-')
+      return gameMode === 'practice'
     }
   })
   return filteredGames[0] ?? null
@@ -124,7 +161,7 @@ export function clearInProgressGame(seed: string): void {
  * @param currentSeed The seed of the game currently being saved (will not be cleared)
  */
 export function clearOtherGamesForMode(currentSeed: string): void {
-  const isDaily = currentSeed.startsWith('daily-')
+  const currentMode = getGameMode(currentSeed)
   const games = getInProgressGames()
   
   for (const game of games) {
@@ -132,8 +169,8 @@ export function clearOtherGamesForMode(currentSeed: string): void {
     if (game.seed === currentSeed) continue
     
     // Check if this game is in the same mode
-    const gameIsDaily = game.seed.startsWith('daily-')
-    if (isDaily === gameIsDaily) {
+    const gameMode = getGameMode(game.seed)
+    if (currentMode === gameMode) {
       // Same mode, different seed — clear it
       clearInProgressGame(game.seed)
     }
