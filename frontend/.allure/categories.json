@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Product Defects",
+    "description": "Actual bugs in the application code or business logic",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(?:AssertionError|Expected|expected|should|toBe|toEqual|toMatch|toContain|toHave).*"
+  },
+  {
+    "name": "Test Infrastructure",
+    "description": "Test setup, teardown, or infrastructure issues",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*(?:timeout|ETIMEDOUT|ECONNREFUSED|network|connection|ENOTFOUND|socket).*"
+  },
+  {
+    "name": "Known Issues",
+    "description": "Known flaky tests or expected failures awaiting fixes",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*(?:flaky|skip|pending|known issue|TODO).*"
+  },
+  {
+    "name": "Data Issues",
+    "description": "Problems with test data, fixtures, or external data sources",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(?:fixture|seed|puzzle|data|undefined|null|cannot read).*"
+  },
+  {
+    "name": "UI/Rendering Issues",
+    "description": "Visual rendering, element visibility, or selector problems",
+    "matchedStatuses": ["failed"],
+    "messageRegex": ".*(?:not visible|not found|selector|element|locator|waiting for).*"
+  }
+]

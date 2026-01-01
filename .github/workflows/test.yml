@@ -61,6 +61,17 @@ jobs:
         run: npm run test:unit
         continue-on-error: true
 
+      - name: Generate environment properties
+        working-directory: frontend
+        run: |
+          echo "node.version=$(node --version)" >> allure-results/environment.properties
+          echo "npm.version=$(npm --version)" >> allure-results/environment.properties
+          echo "os=$(uname -s)" >> allure-results/environment.properties
+          echo "arch=$(uname -m)" >> allure-results/environment.properties
+          echo "commit=${{ github.sha }}" >> allure-results/environment.properties
+          echo "branch=${{ github.ref_name }}" >> allure-results/environment.properties
+          echo "test.type=unit" >> allure-results/environment.properties
+
       - name: Upload Allure results
         uses: actions/upload-artifact@v4
         if: always()
@@ -100,6 +111,16 @@ jobs:
           mkdir -p allure-results
           gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./...
         continue-on-error: true
+
+      - name: Generate environment properties
+        working-directory: api
+        run: |
+          echo "go.version=$(go version | awk '{print $3}')" >> allure-results/environment.properties
+          echo "os=$(uname -s)" >> allure-results/environment.properties
+          echo "arch=$(uname -m)" >> allure-results/environment.properties
+          echo "commit=${{ github.sha }}" >> allure-results/environment.properties
+          echo "branch=${{ github.ref_name }}" >> allure-results/environment.properties
+          echo "run.url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> allure-results/environment.properties
 
       - name: Upload Allure results
         uses: actions/upload-artifact@v4
@@ -151,6 +172,18 @@ jobs:
           CI: true
         continue-on-error: true
 
+      - name: Generate environment properties
+        working-directory: frontend
+        run: |
+          echo "node.version=$(node --version)" >> allure-results/environment.properties
+          echo "npm.version=$(npm --version)" >> allure-results/environment.properties
+          echo "playwright.version=$(npx playwright --version | awk '{print $2}')" >> allure-results/environment.properties
+          echo "os=$(uname -s)" >> allure-results/environment.properties
+          echo "arch=$(uname -m)" >> allure-results/environment.properties
+          echo "commit=${{ github.sha }}" >> allure-results/environment.properties
+          echo "branch=${{ github.ref_name }}" >> allure-results/environment.properties
+          echo "test.type=e2e" >> allure-results/environment.properties
+
       - name: Upload Allure results
         uses: actions/upload-artifact@v4
         if: always()
@@ -200,7 +233,12 @@ jobs:
         run: |
           mkdir -p allure-results
           # Copy all results into single directory
-          find allure-results-all -type f \( -name "*.json" -o -name "*.xml" -o -name "*.txt" -o -name "*.png" -o -name "*.attach" \) -exec cp {} allure-results/ \; 2>/dev/null || true
+          find allure-results-all -type f \( -name "*.json" -o -name "*.xml" -o -name "*.txt" -o -name "*.png" -o -name "*.attach" -o -name "*.properties" \) -exec cp {} allure-results/ \; 2>/dev/null || true
+          # Copy categories.json from frontend for failure classification
+          if [ -f "frontend/.allure/categories.json" ]; then
+            cp frontend/.allure/categories.json allure-results/
+            echo "Copied categories.json for failure classification"
+          fi
           ls -la allure-results/ || echo "No results found"
 
       - name: Download previous Allure history

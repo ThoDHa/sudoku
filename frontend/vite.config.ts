@@ -225,11 +225,18 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     fileParallelism: false,
-    setupFiles: ['./src/test-setup.ts'],
-    reporters: ['default', 'junit'],
-    outputFile: {
-      junit: './allure-results/vitest-results.xml',
-    },
+    setupFiles: ['allure-vitest/setup', './src/test-setup.ts'],
+    reporters: [
+      'default',
+      ['allure-vitest/reporter', { 
+        resultsDir: './allure-results',
+        links: {
+          issue: {
+            urlTemplate: 'https://github.com/allure-framework/allure-js/issues/%s'
+          }
+        }
+      }]
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov', 'json-summary'],

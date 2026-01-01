@@ -34,10 +34,10 @@ export default defineConfig({
     timeout: 10000, // 10s for expect assertions
   },
   
-  // Reporting - JUnit XML for Allure consumption, plus HTML and list for local dev
+  // Reporting - Native Allure reporter for rich test metadata, plus HTML for artifact viewing
   reporter: process.env.CI 
-    ? [['html'], ['github'], ['junit', { outputFile: './allure-results/playwright-results.xml' }]] 
-    : [['html'], ['list'], ['junit', { outputFile: './allure-results/playwright-results.xml' }]],
+    ? [['html'], ['github'], ['allure-playwright', { resultsDir: './allure-results' }]] 
+    : [['html'], ['list'], ['allure-playwright', { resultsDir: './allure-results' }]],
   
   // Shared settings
   use: {

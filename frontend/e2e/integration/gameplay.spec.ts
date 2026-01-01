@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { allure } from 'allure-playwright';
+import { EPICS, FEATURES, STORIES } from '../sdk/allure-utils';
 
 /**
  * Gameplay Integration Tests
@@ -7,6 +9,9 @@ import { test, expect } from '@playwright/test';
  * Includes mobile touch interaction tests.
  * 
  * Tag: @integration @gameplay
+ * 
+ * NOTE: This file demonstrates Allure annotation usage with the allure-utils constants.
+ * Use this as a template for annotating other test files.
  */
 
 // Helper to get a cell by row and column (1-indexed)
@@ -35,6 +40,11 @@ test.describe('@integration Gameplay - Cell Selection', () => {
   });
 
   test('clicking an empty cell selects it', async ({ page }) => {
+    // Allure annotations for test categorization
+    await allure.epic(EPICS.GAMEPLAY);
+    await allure.feature(FEATURES.GAMEPLAY.CELL_SELECTION);
+    await allure.story(STORIES.GAMEPLAY.SELECT_EMPTY_CELL);
+    
     // Find first empty cell in Row 5
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     await emptyCell.scrollIntoViewIfNeeded();
@@ -45,6 +55,11 @@ test.describe('@integration Gameplay - Cell Selection', () => {
   });
 
   test('clicking a given cell highlights the digit', async ({ page }) => {
+    // Allure annotations
+    await allure.epic(EPICS.GAMEPLAY);
+    await allure.feature(FEATURES.GAMEPLAY.CELL_SELECTION);
+    await allure.story(STORIES.GAMEPLAY.SELECT_GIVEN_CELL);
+    
     // Find a given cell in Row 5 or later (to avoid sticky header)
     const givenCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="given"]').first();
     
@@ -83,6 +98,11 @@ test.describe('@integration Gameplay - Digit Entry', () => {
   });
 
   test('multi-fill mode places digits in cells', async ({ page }) => {
+    // Allure annotations
+    await allure.epic(EPICS.GAMEPLAY);
+    await allure.feature(FEATURES.GAMEPLAY.DIGIT_ENTRY);
+    await allure.story(STORIES.GAMEPLAY.ENTER_DIGIT_MOUSE);
+    
     // Find an empty cell first to get its exact position
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     const ariaLabel = await emptyCell.getAttribute('aria-label');
