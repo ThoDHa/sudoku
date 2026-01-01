@@ -191,12 +191,13 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     // Wait for auto-save
     await page.waitForTimeout(1000);
     
-    // Open the menu (hamburger button in header)
-    const menuButton = page.locator('header button').first();
+    // Open the menu (hamburger button in header) - wait for it to be visible and clickable
+    const menuButton = page.locator('header button[title="Menu"]');
+    await expect(menuButton).toBeVisible();
     await menuButton.click();
     
     // Wait for menu to be visible
-    await expect(page.locator('text=Menu')).toBeVisible();
+    await expect(page.locator('text=Menu')).toBeVisible({ timeout: 10000 });
     
     // Click New Game to expand submenu
     await page.locator('button:has-text("New Game")').click();
@@ -235,9 +236,13 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     // Wait for auto-save
     await page.waitForTimeout(1000);
     
-    // Open menu and try New Game
-    const menuButton = page.locator('header button').first();
+    // Open menu and try New Game - wait for button to be visible first
+    const menuButton = page.locator('header button[title="Menu"]');
+    await expect(menuButton).toBeVisible();
     await menuButton.click();
+    
+    // Wait for menu to open before interacting
+    await expect(page.locator('text=Menu')).toBeVisible({ timeout: 10000 });
     await page.locator('button:has-text("New Game")').click();
     await page.locator('button:has-text("hard")').click();
     
