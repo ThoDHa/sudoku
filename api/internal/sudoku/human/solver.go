@@ -75,8 +75,194 @@ func NewSolverWithRegistry(registry *TechniqueRegistry) *Solver {
 // Move Finding
 // ============================================================================
 
+// checkConstraintViolations detects logical constraint violations in the board
+// Returns a constraint violation move if any violations are found, nil otherwise
+func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
+	// Check for duplicate values in rows, columns, and boxes
+	for i := 0; i < 81; i++ {
+		if b.Cells[i] == 0 {
+			continue
+		}
+
+		digit := b.Cells[i]
+		row, col := i/9, i%9
+
+		// Check for duplicates in row
+		duplicateCol := -1
+		for c := 0; c < 9; c++ {
+			if c != col && b.Cells[row*9+c] == digit {
+				duplicateCol = c
+				break
+			}
+		}
+		if duplicateCol >= 0 {
+			return &core.Move{
+				Technique: "constraint-violation-duplicate-row",
+				Action:    "contradiction",
+				Digit:     digit,
+				Targets: []core.CellRef{
+					{Row: row, Col: col},
+					{Row: row, Col: duplicateCol},
+				},
+				Explanation: fmt.Sprintf("Constraint violation: %d appears twice in row %d at R%dC%d and R%dC%d",
+					digit, row+1, row+1, col+1, row+1, duplicateCol+1),
+				Highlights: core.Highlights{
+					Primary:   []core.CellRef{{Row: row, Col: col}, {Row: row, Col: duplicateCol}},
+					Secondary: getRowCellRefs(row),
+				},
+				Refs: core.TechniqueRef{
+					Title: "Constraint Violation",
+					Slug:  "constraint-violation",
+					URL:   "",
+				},
+			}
+		}
+
+		// Check for duplicates in column
+		duplicateRow := -1
+		for r := 0; r < 9; r++ {
+			if r != row && b.Cells[r*9+col] == digit {
+				duplicateRow = r
+				break
+			}
+		}
+		if duplicateRow >= 0 {
+			return &core.Move{
+				Technique: "constraint-violation-duplicate-col",
+				Action:    "contradiction",
+				Digit:     digit,
+				Targets: []core.CellRef{
+					{Row: row, Col: col},
+					{Row: duplicateRow, Col: col},
+				},
+				Explanation: fmt.Sprintf("Constraint violation: %d appears twice in column %d at R%dC%d and R%dC%d",
+					digit, col+1, row+1, col+1, duplicateRow+1, col+1),
+				Highlights: core.Highlights{
+					Primary:   []core.CellRef{{Row: row, Col: col}, {Row: duplicateRow, Col: col}},
+					Secondary: getColCellRefs(col),
+				},
+				Refs: core.TechniqueRef{
+					Title: "Constraint Violation",
+					Slug:  "constraint-violation",
+					URL:   "",
+				},
+			}
+		}
+
+		// Check for duplicates in box
+		boxRow, boxCol := (row/3)*3, (col/3)*3
+		boxNum := (row/3)*3 + col/3
+		var duplicateBoxRow, duplicateBoxCol int = -1, -1
+		for r := boxRow; r < boxRow+3; r++ {
+			for c := boxCol; c < boxCol+3; c++ {
+				if (r != row || c != col) && b.Cells[r*9+c] == digit {
+					duplicateBoxRow, duplicateBoxCol = r, c
+					break
+				}
+			}
+			if duplicateBoxRow >= 0 {
+				break
+			}
+		}
+		if duplicateBoxRow >= 0 {
+			return &core.Move{
+				Technique: "constraint-violation-duplicate-box",
+				Action:    "contradiction",
+				Digit:     digit,
+				Targets: []core.CellRef{
+					{Row: row, Col: col},
+					{Row: duplicateBoxRow, Col: duplicateBoxCol},
+				},
+				Explanation: fmt.Sprintf("Constraint violation: %d appears twice in box %d at R%dC%d and R%dC%d",
+					digit, boxNum+1, row+1, col+1, duplicateBoxRow+1, duplicateBoxCol+1),
+				Highlights: core.Highlights{
+					Primary:   []core.CellRef{{Row: row, Col: col}, {Row: duplicateBoxRow, Col: duplicateBoxCol}},
+					Secondary: getBoxCellRefs(boxNum),
+				},
+				Refs: core.TechniqueRef{
+					Title: "Constraint Violation",
+					Slug:  "constraint-violation",
+					URL:   "",
+				},
+			}
+		}
+	}
+
+	// Check for invalid candidates (candidates that conflict with existing values)
+	for i := 0; i < 81; i++ {
+		if b.Cells[i] != 0 || b.Candidates[i].IsEmpty() {
+			continue
+		}
+
+		row, col := i/9, i%9
+
+		// Check each candidate against the board state
+		for d := 1; d <= 9; d++ {
+			if !b.Candidates[i].Has(d) {
+				continue
+			}
+
+			// This candidate should not exist if there's already that digit in row/col/box
+			if !b.canPlace(i, d) {
+				// Find where the conflicting digit is
+				var conflictCells []core.CellRef
+
+				// Check row
+				for c := 0; c < 9; c++ {
+					if b.Cells[row*9+c] == d {
+						conflictCells = append(conflictCells, core.CellRef{Row: row, Col: c})
+					}
+				}
+
+				// Check column
+				for r := 0; r < 9; r++ {
+					if b.Cells[r*9+col] == d {
+						conflictCells = append(conflictCells, core.CellRef{Row: r, Col: col})
+					}
+				}
+
+				// Check box
+				boxRow, boxCol := (row/3)*3, (col/3)*3
+				for r := boxRow; r < boxRow+3; r++ {
+					for c := boxCol; c < boxCol+3; c++ {
+						if b.Cells[r*9+c] == d {
+							conflictCells = append(conflictCells, core.CellRef{Row: r, Col: c})
+						}
+					}
+				}
+
+				return &core.Move{
+					Technique:    "constraint-violation-invalid-candidate",
+					Action:       "eliminate",
+					Digit:        d,
+					Targets:      []core.CellRef{{Row: row, Col: col}},
+					Eliminations: []core.Candidate{{Row: row, Col: col, Digit: d}},
+					Explanation: fmt.Sprintf("Invalid candidate: R%dC%d has candidate %d, but %d already exists in this cell's row, column, or box",
+						row+1, col+1, d, d),
+					Highlights: core.Highlights{
+						Primary:   []core.CellRef{{Row: row, Col: col}},
+						Secondary: conflictCells,
+					},
+					Refs: core.TechniqueRef{
+						Title: "Invalid Candidate",
+						Slug:  "constraint-violation",
+						URL:   "",
+					},
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // FindNextMove finds the next applicable move using simple-first strategy
 func (s *Solver) FindNextMove(b *Board) *core.Move {
+	// FIRST: Check for constraint violations before attempting any other moves
+	if violation := s.checkConstraintViolations(b); violation != nil {
+		return violation
+	}
+
 	// First, check if any empty cell is missing a valid candidate
 	// Add candidates one at a time, scanning by DIGIT first (human-like behavior)
 	// A human thinks: "Where can 1 go? Where can 2 go?" etc.
