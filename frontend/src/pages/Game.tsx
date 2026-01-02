@@ -840,11 +840,25 @@ function GameContent() {
         return
       }
 
-      // Handle special moves - for these, just show a message
-      if (move.action === 'unpinpointable-error' || move.action === 'contradiction' || move.action === 'error') {
+      // Handle unpinpointable errors separately - no highlighting to show
+      if (move.action === 'unpinpointable-error') {
         setValidationMessage({ 
           type: 'error', 
           message: 'There seems to be an error in the puzzle. Try using 💡 Hint to fix it.'
+        })
+        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+        return
+      }
+
+      // Handle constraint violations and errors - show WITH highlighting
+      if (move.action === 'contradiction' || move.action === 'error') {
+        // Show the constraint violation highlights (shows which cells conflict)
+        setMoveHighlight({ ...move, showAnswer: false } as MoveHighlight, game.history.length)
+        
+        // Show the error message
+        setValidationMessage({ 
+          type: 'error', 
+          message: move.explanation || 'Constraint violation detected'
         })
         visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
         return
