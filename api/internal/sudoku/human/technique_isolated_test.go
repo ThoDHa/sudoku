@@ -24,6 +24,31 @@ import (
 // - Eliminations do not remove the solution digit from any cell
 // =============================================================================
 
+// techniqueIsolationConfig maps technique slug -> list of techniques to disable
+// This ensures rare/advanced techniques can fire without being preempted by
+// more common techniques that solve the puzzle first.
+var techniqueIsolationConfig = map[string][]string{
+	"bug":       {"xy-wing"},
+	"jellyfish": {"medusa-3d"},
+	"unique-rectangle-type-2": {
+		"aic", "medusa-3d", "x-chain", "xy-chain", "grouped-x-cycles", "simple-coloring",
+		"w-wing", "wxyz-wing", "skyscraper", "empty-rectangle",
+	},
+	"unique-rectangle-type-3": {
+		"aic", "medusa-3d", "x-chain", "xy-chain", "grouped-x-cycles", "simple-coloring",
+		"skyscraper", "empty-rectangle", "w-wing", "wxyz-wing", "finned-x-wing", "finned-swordfish",
+		"jellyfish",
+	},
+	"unique-rectangle-type-4": {"medusa-3d"},
+	"als-xz":                  {"aic"},
+	"als-xy-wing":             {"aic"},
+	"als-xy-chain":            {"aic", "medusa-3d"},
+	"sue-de-coq":              {"aic", "als-xz", "als-xy-wing", "als-xy-chain", "digit-forcing-chain", "forcing-chain"},
+	"digit-forcing-chain":     {"aic", "als-xz", "als-xy-wing", "als-xy-chain", "sue-de-coq", "death-blossom"},
+	"forcing-chain":           {"aic", "als-xz", "als-xy-wing", "als-xy-chain", "sue-de-coq", "death-blossom", "digit-forcing-chain"},
+	"death-blossom":           {"aic", "als-xz", "als-xy-wing", "als-xy-chain", "digit-forcing-chain", "forcing-chain", "medusa-3d"},
+}
+
 // loadTestPuzzle loads a puzzle for testing, either from puzzles.json or from a string
 func loadTestPuzzle(t *testing.T, data TechniquePuzzleData) ([]int, []int) {
 	t.Helper()
@@ -406,8 +431,7 @@ func TestTechniqueIsolated_HiddenTriple(t *testing.T) {
 // =============================================================================
 
 func TestTechniqueIsolated_Bug(t *testing.T) {
-	// Disable xy-wing which now runs before BUG in pedagogical order and can solve first
-	runEarlyStopWithDisabledTechniques(t, "bug", []string{"xy-wing"})
+	runEarlyStopWithDisabledTechniques(t, "bug", techniqueIsolationConfig["bug"])
 }
 
 func TestTechniqueIsolated_XWing(t *testing.T) {
@@ -463,32 +487,19 @@ func TestTechniqueIsolated_Medusa3D(t *testing.T) {
 }
 
 func TestTechniqueIsolated_Jellyfish(t *testing.T) {
-	// Disable medusa-3d which can find the same eliminations before jellyfish fires
-	runEarlyStopWithDisabledTechniques(t, "jellyfish", []string{"medusa-3d"})
+	runEarlyStopWithDisabledTechniques(t, "jellyfish", techniqueIsolationConfig["jellyfish"])
 }
 
 func TestTechniqueIsolated_UniqueRectangleType2(t *testing.T) {
-	// Disable chain-based techniques and wings that often solve before UR Type 2 fires
-	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-2", []string{
-		"aic", "medusa-3d", "x-chain", "xy-chain", "grouped-x-cycles", "simple-coloring",
-		"w-wing", "wxyz-wing", "skyscraper", "empty-rectangle",
-	})
+	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-2", techniqueIsolationConfig["unique-rectangle-type-2"])
 }
 
 func TestTechniqueIsolated_UniqueRectangleType3(t *testing.T) {
-	// Disable chain-based, wing, and fish techniques that often solve before UR Type 3 fires
-	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-3", []string{
-		"aic", "medusa-3d", "x-chain", "xy-chain", "grouped-x-cycles", "simple-coloring",
-		"skyscraper", "empty-rectangle", "w-wing", "wxyz-wing", "finned-x-wing", "finned-swordfish",
-		"jellyfish",
-	})
+	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-3", techniqueIsolationConfig["unique-rectangle-type-3"])
 }
 
 func TestTechniqueIsolated_UniqueRectangleType4(t *testing.T) {
-	// Uses early stop with disabled techniques - medusa-3d can find same eliminations first
-	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-4", []string{
-		"medusa-3d",
-	})
+	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-4", techniqueIsolationConfig["unique-rectangle-type-4"])
 }
 
 func TestTechniqueIsolated_WXYZWing(t *testing.T) {
@@ -530,44 +541,31 @@ func TestTechniqueIsolated_AIC(t *testing.T) {
 }
 
 func TestTechniqueIsolated_ALSXZ(t *testing.T) {
-	// AIC is disabled to prevent it from preempting ALS techniques
-	runEarlyStopWithDisabledTechniques(t, "als-xz", []string{"aic"})
+	runEarlyStopWithDisabledTechniques(t, "als-xz", techniqueIsolationConfig["als-xz"])
 }
 
 func TestTechniqueIsolated_ALSXYWing(t *testing.T) {
-	// AIC is disabled to prevent it from preempting ALS techniques
-	runEarlyStopWithDisabledTechniques(t, "als-xy-wing", []string{"aic"})
+	runEarlyStopWithDisabledTechniques(t, "als-xy-wing", techniqueIsolationConfig["als-xy-wing"])
 }
 
 func TestTechniqueIsolated_ALSXYChain(t *testing.T) {
-	// AIC and medusa-3d are disabled to prevent them from preempting ALS techniques
-	runEarlyStopWithDisabledTechniques(t, "als-xy-chain", []string{"aic", "medusa-3d"})
+	runEarlyStopWithDisabledTechniques(t, "als-xy-chain", techniqueIsolationConfig["als-xy-chain"])
 }
 
 func TestTechniqueIsolated_SueDeCoq(t *testing.T) {
-	// AIC and ALS techniques are disabled to prevent them from preempting Sue-de-Coq
-	runEarlyStopWithDisabledTechniques(t, "sue-de-coq", []string{"aic", "als-xz", "als-xy-wing", "als-xy-chain", "digit-forcing-chain", "forcing-chain"})
+	runEarlyStopWithDisabledTechniques(t, "sue-de-coq", techniqueIsolationConfig["sue-de-coq"])
 }
 
 func TestTechniqueIsolated_DigitForcingChain(t *testing.T) {
-	// Disable AIC, ALS, and other techniques that would fire before digit-forcing-chain
-	// This allows testing digit-forcing-chain detection in isolation
-	runEarlyStopWithDisabledTechniques(t, "digit-forcing-chain", []string{
-		"aic", "als-xz", "als-xy-wing", "als-xy-chain", "sue-de-coq", "death-blossom",
-	})
+	runEarlyStopWithDisabledTechniques(t, "digit-forcing-chain", techniqueIsolationConfig["digit-forcing-chain"])
 }
 
 func TestTechniqueIsolated_ForcingChain(t *testing.T) {
-	// Disable AIC and other forcing/ALS techniques that would fire before forcing-chain
-	// This allows testing forcing-chain detection in isolation without waiting for slower techniques
-	runEarlyStopWithDisabledTechniques(t, "forcing-chain", []string{
-		"aic", "als-xz", "als-xy-wing", "als-xy-chain", "sue-de-coq", "death-blossom", "digit-forcing-chain",
-	})
+	runEarlyStopWithDisabledTechniques(t, "forcing-chain", techniqueIsolationConfig["forcing-chain"])
 }
 
 func TestTechniqueIsolated_DeathBlossom(t *testing.T) {
-	// AIC, ALS chain techniques, and medusa-3d are disabled to prevent them from preempting Death Blossom
-	runEarlyStopWithDisabledTechniques(t, "death-blossom", []string{"aic", "als-xz", "als-xy-wing", "als-xy-chain", "digit-forcing-chain", "forcing-chain", "medusa-3d"})
+	runEarlyStopWithDisabledTechniques(t, "death-blossom", techniqueIsolationConfig["death-blossom"])
 }
 
 // =============================================================================
@@ -690,8 +688,6 @@ func TestDiagnosticTechniqueUsage(t *testing.T) {
 		t.Fatalf("Failed to load puzzles.json: %v", err)
 	}
 
-	solver := NewSolver()
-
 	type result struct {
 		Slug           string
 		UsedTarget     bool
@@ -721,14 +717,65 @@ func TestDiagnosticTechniqueUsage(t *testing.T) {
 		}
 
 		board := NewBoard(givens)
-		moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
 
-		techCounts := make(map[string]int)
-		targetCount := 0
-		for _, move := range moves {
-			techCounts[move.Technique]++
-			if move.Technique == data.Slug {
-				targetCount++
+		// Check if this technique requires isolation
+		disabledTechs, needsIsolation := techniqueIsolationConfig[data.Slug]
+
+		var techCounts map[string]int
+		var targetCount int
+		var status string
+
+		if needsIsolation {
+			// Use isolated solver with disabled techniques (early stop when target fires)
+			solver := CreateSolverWithDisabledTechniques(disabledTechs)
+			techCounts = make(map[string]int)
+			targetCount = 0
+
+			// Run step-by-step until target technique fires or puzzle completes
+			for step := 0; step < constants.MaxSolverSteps; step++ {
+				move := solver.FindNextMove(board)
+				if move == nil {
+					status = "stalled"
+					break
+				}
+
+				solver.ApplyMove(board, move)
+				techCounts[move.Technique]++
+				if move.Technique == data.Slug {
+					targetCount++
+				}
+
+				// Stop early if target technique fired
+				if move.Technique == data.Slug {
+					status = "completed"
+					break
+				}
+
+				if board.IsSolved() {
+					status = "completed"
+					break
+				}
+			}
+
+			if status == "" && len(techCounts) >= constants.MaxSolverSteps {
+				status = "max-steps"
+			}
+			if status == "" {
+				status = "completed"
+			}
+		} else {
+			// Use natural solving (no isolation needed)
+			solver := NewSolver()
+			moves, solveStatus := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+			status = solveStatus
+
+			techCounts = make(map[string]int)
+			targetCount = 0
+			for _, move := range moves {
+				techCounts[move.Technique]++
+				if move.Technique == data.Slug {
+					targetCount++
+				}
 			}
 		}
 
