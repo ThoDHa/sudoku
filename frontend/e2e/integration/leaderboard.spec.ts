@@ -58,8 +58,8 @@ test.describe('Leaderboard Page', () => {
     test('can navigate to leaderboard from homepage', async ({ page }) => {
       await page.goto('/');
 
-      // Find and click the leaderboard/stats link in header
-      const statsLink = page.locator('a[href="/leaderboard"]');
+      // Find and click the leaderboard/stats link in header (not the homepage card)
+      const statsLink = page.locator('header a[href="/leaderboard"]');
       await statsLink.click();
 
       // Should be on leaderboard page
