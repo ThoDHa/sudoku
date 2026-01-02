@@ -90,20 +90,24 @@ function GameContent() {
   const location = useLocation()
   const navigate = useNavigate()
   
+  // For E2E test routes, generate a practice seed if none provided
+  const isTestRoute = ['/hints-test', '/gameplay-test', '/digit-entry-test', '/clear-test'].includes(location.pathname)
+  const difficultyParam = searchParams.get('d')
+  const effectiveSeed = seed || (isTestRoute && difficultyParam ? `practice-test-${difficultyParam}` : undefined)
+  
   // Determine if this is an encoded custom puzzle (from /c/:encoded route)
   const isEncodedCustom = location.pathname.startsWith('/c/') && encoded
   
   // Check if difficulty was provided in URL - if not, we need to show chooser
-  const difficultyParam = searchParams.get('d')
-  const needsDifficultyChoice = !difficultyParam && !isEncodedCustom && !seed?.startsWith('custom-') && !seed?.startsWith('practice-')
+  const needsDifficultyChoice = !difficultyParam && !isEncodedCustom && !effectiveSeed?.startsWith('custom-') && !effectiveSeed?.startsWith('practice-')
   
   // Check if this is today's daily puzzle and user already completed it
-  const isTodaysDailyPuzzle = seed === `daily-${getTodayUTC()}`
+  const isTodaysDailyPuzzle = effectiveSeed === `daily-${getTodayUTC()}`
   const alreadyCompletedToday = isTodaysDailyPuzzle && isTodayCompleted()
   
   // Get the completed score for today's daily if already completed
   const completedDailyScore = alreadyCompletedToday 
-    ? getScores().find(s => s.seed === seed)
+    ? getScores().find(s => s.seed === effectiveSeed)
     : null
   
   // Track if onboarding is complete (as state so it updates when onboarding is dismissed)
@@ -123,7 +127,7 @@ function GameContent() {
   // The effective difficulty - either from URL, user selection, or default
   const difficulty = (
     isEncodedCustom ? 'custom' :
-    selectedDifficulty || difficultyParam || (seed?.startsWith('custom-') ? 'custom' : 'medium')
+    selectedDifficulty || difficultyParam || (effectiveSeed?.startsWith('custom-') ? 'custom' : 'medium')
   ) as Difficulty
   
   
@@ -1440,7 +1444,7 @@ ${bugReportJson}
       setLoading(false)
       return
     }
-    if (!seed && !isEncodedCustom) return
+    if (!effectiveSeed && !isEncodedCustom) return
 
     const loadPuzzle = async () => {
       try {
@@ -1532,8 +1536,8 @@ ${bugReportJson}
               solution: puzzleSolution,
             }
           }
-        } else if (difficulty === 'custom' && seed?.startsWith('custom-')) {
-          const storedGivens = localStorage.getItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${seed}`)
+        } else if (difficulty === 'custom' && effectiveSeed?.startsWith('custom-')) {
+          const storedGivens = localStorage.getItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${effectiveSeed}`)
           if (!storedGivens) {
             throw new Error('Custom puzzle not found. Please re-enter the puzzle.')
           }
@@ -1549,15 +1553,16 @@ ${bugReportJson}
           setEncodedPuzzle(encodePuzzle(givens))
           
           puzzleData = {
-            puzzle_id: seed,
-            seed: seed,
+            puzzle_id: effectiveSeed,
+            seed: effectiveSeed,
             difficulty: 'custom',
             givens: givens,
             solution: puzzleSolution,
           }
-        } else if (seed?.startsWith('practice-')) {
+        } else if (effectiveSeed?.startsWith('practice-') && !isTestRoute) {
           // Practice puzzles are stored in localStorage by TechniqueDetailView
-          const storedGivens = localStorage.getItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${seed}`)
+          // Skip this branch for test routes (which use practice-test-* seeds)
+          const storedGivens = localStorage.getItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${effectiveSeed}`)
           if (!storedGivens) {
             throw new Error('Practice puzzle not found. Please try again from the technique page.')
           }
@@ -1573,15 +1578,15 @@ ${bugReportJson}
           setEncodedPuzzle(null)
           
           puzzleData = {
-            puzzle_id: seed,
-            seed: seed,
+            puzzle_id: effectiveSeed,
+            seed: effectiveSeed,
             difficulty: difficulty,
             givens: givens,
             solution: puzzleSolution,
           }
         } else {
           // Fetch puzzle from static pool (synchronous, no WASM needed)
-          const fetchedPuzzle = getPuzzle(seed ?? '', difficulty)
+          const fetchedPuzzle = getPuzzle(effectiveSeed ?? '', difficulty)
           puzzleData = {
             puzzle_id: fetchedPuzzle.puzzle_id,
             seed: fetchedPuzzle.seed,
@@ -1634,7 +1639,7 @@ ${bugReportJson}
 
     loadPuzzle()
   // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl excluded: adding it would re-fetch puzzle when timer running/paused state changes. We only want to fetch when the actual puzzle params change.
-  }, [seed, encoded, isEncodedCustom, difficulty, alreadyCompletedToday, showDifficultyChooser, showOnboarding, clearAllAndDeselect])
+  }, [effectiveSeed, encoded, isEncodedCustom, difficulty, alreadyCompletedToday, showDifficultyChooser, showOnboarding, clearAllAndDeselect, isTestRoute])
 
   // Reset game state when initialBoard changes (new puzzle loaded) and restore saved state if available
   useEffect(() => {

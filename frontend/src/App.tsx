@@ -31,10 +31,13 @@ function AppContent() {
   // Game pages need less padding (slim header)
   // Game routes: /c/* for custom, or /:seed for daily/practice (anything not a known route)
   const knownRoutes = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard', '/about']
+  const testRoutes = ['/hints-test', '/gameplay-test', '/digit-entry-test', '/clear-test']
   const isKnownRoute = knownRoutes.some(route => 
     location.pathname === route || location.pathname.startsWith(route + '/')
   )
+  const isTestRoute = testRoutes.some(route => location.pathname === route)
   const isGamePage = location.pathname.startsWith('/c/') ||
+                     isTestRoute ||
                      (!isKnownRoute && location.pathname !== '/')
 
   return (
@@ -52,6 +55,11 @@ function AppContent() {
             <Route path="/custom" element={<Custom />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/about" element={<About />} />
+            {/* Test routes for E2E tests - all load Game component with query params */}
+            <Route path="/hints-test" element={<Game />} />
+            <Route path="/gameplay-test" element={<Game />} />
+            <Route path="/digit-entry-test" element={<Game />} />
+            <Route path="/clear-test" element={<Game />} />
             {/* Catch-all for puzzles: /:seed (daily if YYYYMMDD format, otherwise practice) */}
             <Route path="/:seed" element={<Game />} />
           </Routes>
