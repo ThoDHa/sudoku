@@ -9,7 +9,7 @@ import { useEffect, RefObject } from 'react'
  * @param onClickOutside - Callback to invoke when a click outside is detected
  */
 export function useClickOutside<T extends HTMLElement>(
-  ref: RefObject<T>,
+  ref: RefObject<T | null>,
   isActive: boolean,
   onClickOutside: () => void
 ): void {

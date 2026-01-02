@@ -72,12 +72,13 @@ describe('worker-client', () => {
   beforeEach(() => {
     createdWorkers = []
     
-    // Mock Worker constructor
-    globalThis.Worker = vi.fn().mockImplementation((url: URL | string, options?: WorkerOptions) => {
-      const worker = new MockWorker(url, options)
-      createdWorkers.push(worker)
-      return worker
-    }) as unknown as typeof Worker
+    // Mock Worker constructor - Vitest 4 compatible approach
+    globalThis.Worker = class extends MockWorker {
+      constructor(url: URL | string, options?: WorkerOptions) {
+        super(url, options)
+        createdWorkers.push(this)
+      }
+    } as unknown as typeof Worker
   })
   
   afterEach(() => {
@@ -133,12 +134,13 @@ describe('worker-client', () => {
       
       // Track if Worker constructor was called
       let workerCreated = false
-      globalThis.Worker = vi.fn().mockImplementation(() => {
-        workerCreated = true
-        const worker = new MockWorker('', {})
-        createdWorkers.push(worker)
-        return worker
-      }) as unknown as typeof Worker
+      globalThis.Worker = class extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          workerCreated = true
+          createdWorkers.push(this)
+        }
+      } as unknown as typeof Worker
       
       const { initializeWorker, terminateWorker } = await import('./worker-client')
       
@@ -327,11 +329,13 @@ describe('worker-client advanced scenarios', () => {
     createdWorkers = []
     vi.resetModules()
     
-    globalThis.Worker = vi.fn().mockImplementation((url: URL | string, options?: WorkerOptions) => {
-      const worker = new MockWorker(url, options)
-      createdWorkers.push(worker)
-      return worker
-    }) as unknown as typeof Worker
+    // Vitest 4 compatible Worker mock
+    globalThis.Worker = class extends MockWorker {
+      constructor(url: URL | string, options?: WorkerOptions) {
+        super(url, options)
+        createdWorkers.push(this)
+      }
+    } as unknown as typeof Worker
   })
   
   afterEach(() => {
@@ -383,12 +387,13 @@ describe('worker-client advanced scenarios', () => {
       vi.resetModules()
       
       // Create a worker that fails on init
-      globalThis.Worker = vi.fn().mockImplementation(() => {
-        const worker = new MockWorker('', {})
-        worker.setInitShouldFail(true)
-        createdWorkers.push(worker)
-        return worker
-      }) as unknown as typeof Worker
+      globalThis.Worker = class extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          this.setInitShouldFail(true)
+          createdWorkers.push(this)
+        }
+      } as unknown as typeof Worker
       
       const { initializeWorker, isWorkerReady } = await import('./worker-client')
       
@@ -448,23 +453,24 @@ describe('worker-client advanced scenarios', () => {
       
       let capturedRequestId: string | null = null
       
-      globalThis.Worker = vi.fn().mockImplementation(() => {
-        const worker = new MockWorker('', {})
-        const originalPostMessage = worker.postMessage.bind(worker)
-        worker.postMessage = (data: { type: string; id: string; payload?: unknown }) => {
-          if (data.type === 'findNextMove') {
-            capturedRequestId = data.id
-            // Respond with error type
-            setTimeout(() => {
-              worker.simulateMessage({ type: 'error', id: data.id, success: false, error: 'Custom error message' })
-            }, 5)
-            return
+      globalThis.Worker = class extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          const originalPostMessage = this.postMessage.bind(this)
+          this.postMessage = (data: { type: string; id: string; payload?: unknown }) => {
+            if (data.type === 'findNextMove') {
+              capturedRequestId = data.id
+              // Respond with error type
+              setTimeout(() => {
+                this.simulateMessage({ type: 'error', id: data.id, success: false, error: 'Custom error message' })
+              }, 5)
+              return
+            }
+            originalPostMessage(data)
           }
-          originalPostMessage(data)
+          createdWorkers.push(this)
         }
-        createdWorkers.push(worker)
-        return worker
-      }) as unknown as typeof Worker
+      } as unknown as typeof Worker
       
       const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
       
@@ -486,23 +492,24 @@ describe('worker-client advanced scenarios', () => {
       
       let capturedId: string | null = null
       
-      globalThis.Worker = vi.fn().mockImplementation(() => {
-        const worker = new MockWorker('', {})
-        const originalPostMessage = worker.postMessage.bind(worker)
-        worker.postMessage = (data: { type: string; id: string; payload?: unknown }) => {
-          if (data.type === 'findNextMove') {
-            capturedId = data.id
-            // Respond with success: false
-            setTimeout(() => {
-              worker.simulateMessage({ type: 'result', id: data.id, success: false, error: 'Operation failed' })
-            }, 5)
-            return
+      globalThis.Worker = class extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          const originalPostMessage = this.postMessage.bind(this)
+          this.postMessage = (data: { type: string; id: string; payload?: unknown }) => {
+            if (data.type === 'findNextMove') {
+              capturedId = data.id
+              // Respond with success: false
+              setTimeout(() => {
+                this.simulateMessage({ type: 'result', id: data.id, success: false, error: 'Operation failed' })
+              }, 5)
+              return
+            }
+            originalPostMessage(data)
           }
-          originalPostMessage(data)
+          createdWorkers.push(this)
         }
-        createdWorkers.push(worker)
-        return worker
-      }) as unknown as typeof Worker
+      } as unknown as typeof Worker
       
       const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
       
@@ -524,12 +531,13 @@ describe('worker-client advanced scenarios', () => {
     it('should reject all pending requests when worker errors', async () => {
       vi.resetModules()
       
-      globalThis.Worker = vi.fn().mockImplementation(() => {
-        const worker = new MockWorker('', {})
-        worker.setAutoRespond(false)
-        createdWorkers.push(worker)
-        return worker
-      }) as unknown as typeof Worker
+      globalThis.Worker = class extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          this.setAutoRespond(false)
+          createdWorkers.push(this)
+        }
+      } as unknown as typeof Worker
       
       const { initializeWorker, terminateWorker } = await import('./worker-client')
       
@@ -561,12 +569,13 @@ describe('worker-client advanced scenarios', () => {
     it('should reject all pending requests when terminated', async () => {
       vi.resetModules()
       
-      globalThis.Worker = vi.fn().mockImplementation(() => {
-        const worker = new MockWorker('', {})
-        worker.setAutoRespond(false) // Don't auto-respond so we can terminate mid-request
-        createdWorkers.push(worker)
-        return worker
-      }) as unknown as typeof Worker
+      globalThis.Worker = class extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          this.setAutoRespond(false) // Don't auto-respond so we can terminate mid-request
+          createdWorkers.push(this)
+        }
+      } as unknown as typeof Worker
       
       const { initializeWorker, findNextMove, terminateWorker, isWorkerReady } = await import('./worker-client')
       
@@ -629,17 +638,18 @@ describe('worker-client advanced scenarios', () => {
         solved: true
       }
       
-      globalThis.Worker = vi.fn().mockImplementation(() => {
-        const worker = new MockWorker('', {})
-        worker.setResponseOverride((req) => {
-          if (req.type === 'findNextMove') {
-            return expectedResult
-          }
-          return null
-        })
-        createdWorkers.push(worker)
-        return worker
-      }) as unknown as typeof Worker
+      globalThis.Worker = class extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          this.setResponseOverride((req) => {
+            if (req.type === 'findNextMove') {
+              return expectedResult
+            }
+            return null
+          })
+          createdWorkers.push(this)
+        }
+      } as unknown as typeof Worker
       
       const { findNextMove, terminateWorker } = await import('./worker-client')
       
@@ -686,17 +696,18 @@ describe('worker-client advanced scenarios', () => {
         finalBoard: new Array(81).fill(9)
       }
       
-      globalThis.Worker = vi.fn().mockImplementation(() => {
-        const worker = new MockWorker('', {})
-        worker.setResponseOverride((req) => {
-          if (req.type === 'solveAll') {
-            return expectedResult
-          }
-          return null
-        })
-        createdWorkers.push(worker)
-        return worker
-      }) as unknown as typeof Worker
+      globalThis.Worker = class extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          this.setResponseOverride((req) => {
+            if (req.type === 'solveAll') {
+              return expectedResult
+            }
+            return null
+          })
+          createdWorkers.push(this)
+        }
+      } as unknown as typeof Worker
       
       const { solveAll, terminateWorker } = await import('./worker-client')
       
@@ -719,20 +730,21 @@ describe('worker-client advanced scenarios', () => {
       // We'll use a custom worker that responds to init but not to findNextMove
       let capturedFindMoveId: string | null = null
       
-      globalThis.Worker = vi.fn().mockImplementation(() => {
-        const worker = new MockWorker('', {})
-        const originalPostMessage = worker.postMessage.bind(worker)
-        worker.postMessage = (data: { type: string; id: string; payload?: unknown }) => {
-          if (data.type === 'findNextMove') {
-            // Don't respond - capture the id for later
-            capturedFindMoveId = data.id
-            return
+      globalThis.Worker = class extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          const originalPostMessage = this.postMessage.bind(this)
+          this.postMessage = (data: { type: string; id: string; payload?: unknown }) => {
+            if (data.type === 'findNextMove') {
+              // Don't respond - capture the id for later
+              capturedFindMoveId = data.id
+              return
+            }
+            originalPostMessage(data)
           }
-          originalPostMessage(data)
+          createdWorkers.push(this)
         }
-        createdWorkers.push(worker)
-        return worker
-      }) as unknown as typeof Worker
+      } as unknown as typeof Worker
       
       const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
       
@@ -763,8 +775,7 @@ describe('worker-client advanced scenarios', () => {
       vi.resetModules()
       vi.useFakeTimers()
       
-      // Create a worker that never sends 'loaded'
-      class SlowWorker {
+      globalThis.Worker = class SlowWorker {
         onmessage: ((event: MessageEvent) => void) | null = null
         onerror: ((event: ErrorEvent) => void) | null = null
         private eventListeners: Map<string, ((event: Event) => void)[]> = new Map()
@@ -783,11 +794,7 @@ describe('worker-client advanced scenarios', () => {
         }
         
         removeEventListener(): void {}
-      }
-      
-      globalThis.Worker = vi.fn().mockImplementation(() => {
-        return new SlowWorker()
-      }) as unknown as typeof Worker
+      } as unknown as typeof Worker
       
       const { initializeWorker, terminateWorker } = await import('./worker-client')
       
@@ -820,7 +827,7 @@ describe('worker-client advanced scenarios', () => {
     it('should handle worker error during creation', async () => {
       vi.resetModules()
       
-      class ErrorWorker {
+      globalThis.Worker = class ErrorWorker {
         onmessage: ((event: MessageEvent) => void) | null = null
         onerror: ((event: ErrorEvent) => void) | null = null
         private eventListeners: Map<string, ((event: Event) => void)[]> = new Map()
@@ -846,11 +853,7 @@ describe('worker-client advanced scenarios', () => {
         }
         
         removeEventListener(): void {}
-      }
-      
-      globalThis.Worker = vi.fn().mockImplementation(() => {
-        return new ErrorWorker()
-      }) as unknown as typeof Worker
+      } as unknown as typeof Worker
       
       const { initializeWorker } = await import('./worker-client')
       

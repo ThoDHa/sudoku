@@ -1,6 +1,64 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Tailwind v4: Register custom theme colors and variables */
+@theme {
+  /* Semantic colors - reference CSS variables set by ThemeContext */
+  --color-background: var(--bg);
+  --color-background-secondary: var(--bg-secondary);
+  --color-foreground: var(--text);
+  --color-foreground-muted: var(--text-muted);
+  
+  /* Board colors */
+  --color-board-bg: var(--board-bg);
+  --color-board-border: var(--border-strong);
+  --color-board-border-light: var(--border-light);
+  
+  /* Cell colors */
+  --color-cell-bg: var(--cell-bg);
+  --color-cell-given: var(--cell-given);
+  --color-cell-hover: var(--cell-hover);
+  --color-cell-selected: var(--cell-selected);
+  --color-cell-peer: var(--cell-peer);
+  --color-cell-primary: var(--cell-primary);
+  --color-cell-secondary: var(--cell-secondary);
+  
+  /* Text colors for cells */
+  --color-cell-text-given: var(--text-given);
+  --color-cell-text-entered: var(--text-entered);
+  --color-cell-text-candidate: var(--text-candidate);
+  --color-cell-text-on-highlight: var(--text-on-highlight);
+  
+  /* Button colors */
+  --color-btn-bg: var(--btn-bg);
+  --color-btn-hover: var(--btn-hover);
+  --color-btn-active: var(--btn-active);
+  --color-btn-active-text: var(--btn-active-text);
+  
+  /* Accent colors */
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  
+  /* Error/duplicate colors */
+  --color-error-bg: var(--error-bg);
+  --color-error-text: var(--error-text);
+  
+  /* Hint colors */
+  --color-hint-text: var(--hint-text);
+  
+  /* Difficulty colors */
+  --color-diff-easy: var(--diff-easy);
+  --color-diff-medium: var(--diff-medium);
+  --color-diff-hard: var(--diff-hard);
+  --color-diff-extreme: var(--diff-extreme);
+  --color-diff-impossible: var(--diff-impossible);
+  
+  /* Shadows */
+  --shadow-theme: var(--shadow);
+  --shadow-theme-light: var(--shadow-light);
+  
+  /* Border radius */
+  --radius-board: var(--board-radius);
+}
 
 :root {
   /* Default theme (blue light) - will be overridden by ThemeContext */

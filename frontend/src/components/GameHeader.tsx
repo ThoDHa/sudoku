@@ -236,7 +236,7 @@ interface ThemeModeDropdownProps {
   isOpen: boolean
   onToggle: () => void
   onSetModePreference: (mode: ModePreference) => void
-  dropdownRef: React.RefObject<HTMLDivElement>
+  dropdownRef: React.RefObject<HTMLDivElement | null>
 }
 
 function ThemeModeDropdown({ mode, modePreference, isOpen, onToggle, onSetModePreference, dropdownRef }: ThemeModeDropdownProps) {
