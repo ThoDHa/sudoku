@@ -1,4 +1,4 @@
-name: Full Test Suite
+name: Test & Deploy
 
 on:
   push:
@@ -27,7 +27,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: "test-${{ github.ref }}"
+  group: "deploy-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:
