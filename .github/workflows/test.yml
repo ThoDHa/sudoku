@@ -140,6 +140,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: api/go.sum
+
+      - name: Install TinyGo
+        run: |
+          wget https://github.com/tinygo-org/tinygo/releases/download/v0.33.0/tinygo_0.33.0_amd64.deb
+          sudo dpkg -i tinygo_0.33.0_amd64.deb
+
+      - name: Build WASM
+        working-directory: api
+        run: make wasm
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -285,6 +300,23 @@ jobs:
       - name: Setup Pages
         if: github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v4
+
+      - name: Setup Go for WASM build
+        if: github.ref == 'refs/heads/main'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install TinyGo for WASM build
+        if: github.ref == 'refs/heads/main'
+        run: |
+          wget https://github.com/tinygo-org/tinygo/releases/download/v0.33.0/tinygo_0.33.0_amd64.deb
+          sudo dpkg -i tinygo_0.33.0_amd64.deb
+
+      - name: Build WASM for deployment
+        if: github.ref == 'refs/heads/main'
+        working-directory: api
+        run: make wasm
 
       - name: Build frontend for deployment
         if: github.ref == 'refs/heads/main'

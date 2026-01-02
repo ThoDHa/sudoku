@@ -11,6 +11,9 @@ api/server
 *.so
 *.dylib
 
+# WASM binaries (built by CI/CD)
+frontend/public/sudoku.wasm
+
 # Test outputs
 coverage.out
 *.coverprofile
