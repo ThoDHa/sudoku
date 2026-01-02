@@ -341,13 +341,13 @@ jobs:
           path: pages-artifact
 
   # ============================================
-  # Deploy to GitHub Pages
+  # Deploy to GitHub Pages (Game + Test Report)
   # ============================================
-  deploy-report:
+  deploy:
     if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}test-report/
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: allure-report
     steps:
