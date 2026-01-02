@@ -1895,12 +1895,19 @@ ${bugReportJson}
           className="game-container flex flex-col items-center"
           onClick={(e) => {
             // Deselect when clicking on the gap between board and controls
-            // or any area inside game-container but outside board/controls
+            // This includes: clicking the game-container itself, clicking empty space
+            // in the controls container (e.g., to the right of centered buttons on mobile)
             const target = e.target as HTMLElement
             const isInsideBoard = boardContainerRef.current?.contains(target)
             const isInsideControls = controlsContainerRef.current?.contains(target)
             
-            if (!isInsideBoard && !isInsideControls) {
+            // Allow deselection if:
+            // 1. Click is outside both board and controls, OR
+            // 2. Click is directly on the controls container (not a button inside it)
+            const shouldDeselect = !isInsideBoard && !isInsideControls ||
+                                   target === controlsContainerRef.current
+            
+            if (shouldDeselect) {
               deselectCell()
               setEraseMode(false)
               clearMoveHighlight()

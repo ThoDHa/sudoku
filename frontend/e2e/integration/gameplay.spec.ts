@@ -85,6 +85,161 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     await cell2.click();
     await expect(cell2).toHaveClass(/ring/);
   });
+
+  test('clicking gap between board and controls deselects cell', async ({ page }) => {
+    // Allure annotations
+    await allure.epic(EPICS.GAMEPLAY);
+    await allure.feature(FEATURES.GAMEPLAY.CELL_SELECTION);
+    await allure.story('Deselect cell by clicking gap');
+    
+    // Find and select an empty cell
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    await emptyCell.scrollIntoViewIfNeeded();
+    await emptyCell.click();
+    
+    // Verify cell is selected (has ring class)
+    await expect(emptyCell).toHaveClass(/ring/);
+    
+    // Click the game-container gap (area between board and controls)
+    const gameContainer = page.locator('.game-container').first();
+    // Click at bottom of container where there's gap between board and controls
+    await gameContainer.click({ position: { x: 10, y: 10 } });
+    
+    // Verify cell is no longer selected (ring class removed)
+    await expect(emptyCell).not.toHaveClass(/ring/);
+  });
+
+  test('clicking undo button deselects cell', async ({ page }) => {
+    // Allure annotations
+    await allure.epic(EPICS.GAMEPLAY);
+    await allure.feature(FEATURES.GAMEPLAY.CELL_SELECTION);
+    await allure.story('Deselect cell when clicking undo');
+    
+    // First, make a move so undo is enabled
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    await emptyCell.scrollIntoViewIfNeeded();
+    await emptyCell.click();
+    await page.keyboard.press('5');
+    await page.waitForTimeout(100);
+    
+    // Now select the cell again (it may have been deselected after digit entry)
+    await emptyCell.scrollIntoViewIfNeeded();
+    const ariaLabel = await emptyCell.getAttribute('aria-label');
+    const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+    const row = match ? parseInt(match[1]) : 5;
+    const col = match ? parseInt(match[2]) : 1;
+    const cellWithValue = getCellLocator(page, row, col);
+    await cellWithValue.click();
+    
+    // Verify cell is selected
+    await expect(cellWithValue).toHaveClass(/ring/);
+    
+    // Click undo button
+    const undoButton = page.locator('button[title="Undo"]');
+    await undoButton.click();
+    
+    // Verify cell is no longer selected
+    await expect(emptyCell).not.toHaveClass(/ring/);
+  });
+
+  test('clicking redo button deselects cell', async ({ page }) => {
+    // Allure annotations
+    await allure.epic(EPICS.GAMEPLAY);
+    await allure.feature(FEATURES.GAMEPLAY.CELL_SELECTION);
+    await allure.story('Deselect cell when clicking redo');
+    
+    // First, make a move that we can undo/redo
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    await emptyCell.scrollIntoViewIfNeeded();
+    await emptyCell.click();
+    await page.keyboard.press('5');
+    await page.waitForTimeout(100);
+    
+    // Undo the move
+    const undoButton = page.locator('button[title="Undo"]');
+    await undoButton.click();
+    await page.waitForTimeout(100);
+    
+    // Select the cell again
+    await emptyCell.click();
+    await expect(emptyCell).toHaveClass(/ring/);
+    
+    // Click redo button
+    const redoButton = page.locator('button[title="Redo"]');
+    await redoButton.click();
+    
+    // Verify cell is no longer selected
+    await expect(emptyCell).not.toHaveClass(/ring/);
+  });
+
+  test('clicking notes button keeps cell selected', async ({ page }) => {
+    // Allure annotations
+    await allure.epic(EPICS.GAMEPLAY);
+    await allure.feature(FEATURES.GAMEPLAY.CELL_SELECTION);
+    await allure.story('Cell remains selected when toggling notes mode');
+    
+    // Find and select an empty cell
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    await emptyCell.scrollIntoViewIfNeeded();
+    await emptyCell.click();
+    
+    // Verify cell is selected
+    await expect(emptyCell).toHaveClass(/ring/);
+    
+    // Click notes button
+    const notesButton = page.locator('button[aria-label*="Notes mode"]');
+    await notesButton.click();
+    
+    // Verify cell is STILL selected
+    await expect(emptyCell).toHaveClass(/ring/);
+  });
+
+  test('clicking erase button deselects cell', async ({ page }) => {
+    // Allure annotations
+    await allure.epic(EPICS.GAMEPLAY);
+    await allure.feature(FEATURES.GAMEPLAY.CELL_SELECTION);
+    await allure.story('Cell is deselected when toggling erase mode');
+    
+    // Find and select an empty cell
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
+    await emptyCell.scrollIntoViewIfNeeded();
+    await emptyCell.click();
+    
+    // Verify cell is selected
+    await expect(emptyCell).toHaveClass(/ring/);
+    
+    // Click erase mode button
+    const eraseButton = page.locator('button[aria-label="Erase mode"]');
+    await eraseButton.click();
+    
+    // Verify cell is DESELECTED (clearOnModeChange behavior)
+    await expect(emptyCell).not.toHaveClass(/ring/);
+  });
+
+  test('clicking digit button with given cell selected deselects cell', async ({ page }) => {
+    // Allure annotations
+    await allure.epic(EPICS.GAMEPLAY);
+    await allure.feature(FEATURES.GAMEPLAY.CELL_SELECTION);
+    await allure.story('Deselect given cell when clicking digit button (enters multi-fill mode)');
+    
+    // Find a given cell
+    const givenCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="given"]').first();
+    
+    if (await givenCell.count() > 0) {
+      await givenCell.scrollIntoViewIfNeeded();
+      await givenCell.click();
+      
+      // Verify given cell is selected
+      await expect(givenCell).toHaveClass(/ring/);
+      
+      // Click a digit button
+      const digitButton = page.locator('button[aria-label^="Enter 3,"]');
+      await digitButton.click();
+      
+      // Verify cell is no longer selected (enters multi-fill mode instead)
+      await expect(givenCell).not.toHaveClass(/ring/);
+    }
+  });
 });
 
 test.describe('@integration Gameplay - Digit Entry', () => {
