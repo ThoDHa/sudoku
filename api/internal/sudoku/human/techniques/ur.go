@@ -165,7 +165,7 @@ func DetectUniqueRectangle(b BoardInterface) *core.Move {
 						Digit:        0,
 						Targets:      targets,
 						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("Unique Rectangle Type 1: %d/%d would form deadly pattern; eliminate from R%dC%d", d1, d2, row+1, col+1),
+						Explanation:  fmt.Sprintf("Unique Rectangle Type 1: %d/%d would form deadly pattern: eliminate from R%dC%d.", d1, d2, row+1, col+1),
 						Highlights: core.Highlights{
 							Primary:   targets[:3], // The 3 bivalue corners
 							Secondary: []core.CellRef{{Row: row, Col: col}},
@@ -242,7 +242,7 @@ func DetectUniqueRectangleType2(b BoardInterface) *core.Move {
 							Digit:        extraDigit,
 							Targets:      targets,
 							Eliminations: eliminations,
-							Explanation: fmt.Sprintf("Unique Rectangle Type 2: %d/%d with extra %d; eliminate %d from cells seeing both R%dC%d and R%dC%d",
+							Explanation: fmt.Sprintf("Unique Rectangle Type 2: %d/%d with extra %d: eliminate %d from cells seeing both R%dC%d and R%dC%d.",
 								d1, d2, extraDigit, extraDigit, roofCorner0/9+1, roofCorner0%9+1, roofCorner1/9+1, roofCorner1%9+1),
 							Highlights: core.Highlights{
 								Primary:   CellRefsFromIndices(corners[floorPair[0]], corners[floorPair[1]]),
@@ -366,7 +366,7 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 											Digit:        0,
 											Targets:      targets,
 											Eliminations: eliminations,
-											Explanation: fmt.Sprintf("Unique Rectangle Type 3: %d/%d; pseudo-cell with %v forms naked pair with R%dC%d in %s",
+											Explanation: fmt.Sprintf("Unique Rectangle Type 3: %d/%d: pseudo-cell with %v forms naked pair with R%dC%d in %s.",
 												d1, d2, extraSlice, idx/9+1, idx%9+1, unit.unitType),
 											Highlights: core.Highlights{
 												Primary:   CellRefsFromIndices(corners[floorPair[0]], corners[floorPair[1]]),
@@ -447,7 +447,7 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 												Digit:        0,
 												Targets:      targets,
 												Eliminations: eliminations,
-												Explanation: fmt.Sprintf("Unique Rectangle Type 3: %d/%d; pseudo-cell forms naked triple with R%dC%d and R%dC%d in %s",
+												Explanation: fmt.Sprintf("Unique Rectangle Type 3: %d/%d: pseudo-cell forms naked triple with R%dC%d and R%dC%d in %s.",
 													d1, d2, idx1/9+1, idx1%9+1, idx2/9+1, idx2%9+1, unit.unitType),
 												Highlights: core.Highlights{
 													Primary:   CellRefsFromIndices(corners[floorPair[0]], corners[floorPair[1]]),
@@ -537,7 +537,7 @@ func DetectUniqueRectangleType4(b BoardInterface) *core.Move {
 									Digit:        d2,
 									Targets:      targets,
 									Eliminations: eliminations,
-									Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d; %d confined to UR in row %d, eliminate %d",
+									Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d: %d confined to UR in row %d: eliminate %d.",
 										d1, d2, d1, row+1, d2),
 									Highlights: core.Highlights{
 										Primary:   CellRefsFromIndices(bv0, bv1),
@@ -565,7 +565,7 @@ func DetectUniqueRectangleType4(b BoardInterface) *core.Move {
 									Digit:        d1,
 									Targets:      targets,
 									Eliminations: eliminations,
-									Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d; %d confined to UR in row %d, eliminate %d",
+									Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d: %d confined to UR in row %d: eliminate %d.",
 										d1, d2, d2, row+1, d1),
 									Highlights: core.Highlights{
 										Primary:   CellRefsFromIndices(bv0, bv1),
@@ -613,7 +613,7 @@ func DetectUniqueRectangleType4(b BoardInterface) *core.Move {
 									Digit:        d2,
 									Targets:      targets,
 									Eliminations: eliminations,
-									Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d; %d confined to UR in column %d, eliminate %d",
+									Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d: %d confined to UR in column %d: eliminate %d.",
 										d1, d2, d1, col+1, d2),
 									Highlights: core.Highlights{
 										Primary:   CellRefsFromIndices(bv0, bv1),
@@ -641,7 +641,7 @@ func DetectUniqueRectangleType4(b BoardInterface) *core.Move {
 									Digit:        d1,
 									Targets:      targets,
 									Eliminations: eliminations,
-									Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d; %d confined to UR in column %d, eliminate %d",
+									Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d: %d confined to UR in column %d: eliminate %d.",
 										d1, d2, d2, col+1, d1),
 									Highlights: core.Highlights{
 										Primary:   CellRefsFromIndices(bv0, bv1),

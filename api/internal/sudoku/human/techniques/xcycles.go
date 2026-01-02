@@ -340,7 +340,7 @@ func findNiceLoopEliminationsFixed(b BoardInterface, digit int, path []int, link
 			Action:       "eliminate",
 			Digit:        digit,
 			Eliminations: eliminations,
-			Explanation: fmt.Sprintf("X-Cycle Nice Loop: eliminate %d from cells seeing both ends of weak links",
+			Explanation: fmt.Sprintf("X-Cycle Nice Loop: eliminate %d from cells seeing both ends of weak links.",
 				digit),
 			Highlights: core.Highlights{
 				Primary: pathToCellRefsSimple(path),

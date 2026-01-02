@@ -467,7 +467,7 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 					Eliminations: []core.Candidate{
 						{Row: targetRow, Col: targetCol, Digit: elimDigit},
 					},
-					Explanation: fmt.Sprintf("Unit Forcing Chain: Wherever %d goes in %s, %d is eliminated from R%dC%d",
+					Explanation: fmt.Sprintf("Unit Forcing Chain: Wherever %d goes in %s: eliminate %d from R%dC%d.",
 						digit, unitDesc, elimDigit, targetRow+1, targetCol+1),
 					Highlights: core.Highlights{
 						Primary:   highlights,

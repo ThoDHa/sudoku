@@ -262,7 +262,7 @@ func findXChainFrom(b BoardInterface, digit int, start int, conjugates map[int][
 						Eliminations: []core.Candidate{
 							{Row: i / 9, Col: i % 9, Digit: digit},
 						},
-						Explanation: fmt.Sprintf("X-Chain: %d eliminated from R%dC%d (sees both ends of chain)", digit, i/9+1, i%9+1),
+						Explanation: fmt.Sprintf("X-Chain: sees both ends of chain: eliminate %d from R%dC%d.", digit, i/9+1, i%9+1),
 						Highlights: core.Highlights{
 							Primary:   targets,
 							Secondary: []core.CellRef{{Row: i / 9, Col: i % 9}},
@@ -407,7 +407,7 @@ func findXYChainFrom(b BoardInterface, start int, adj map[int][]struct {
 							Eliminations: []core.Candidate{
 								{Row: i / 9, Col: i % 9, Digit: startCand},
 							},
-							Explanation: fmt.Sprintf("XY-Chain: %d eliminated from R%dC%d", startCand, i/9+1, i%9+1),
+							Explanation: fmt.Sprintf("XY-Chain: eliminate %d from R%dC%d.", startCand, i/9+1, i%9+1),
 							Highlights: core.Highlights{
 								Primary:   targets,
 								Secondary: []core.CellRef{{Row: i / 9, Col: i % 9}},
@@ -687,7 +687,7 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 								Eliminations: []core.Candidate{
 									{Row: linkRow, Col: erCol, Digit: digit},
 								},
-								Explanation: fmt.Sprintf("Empty Rectangle: %d in box %d with conjugate pair in C%d eliminates R%dC%d",
+								Explanation: fmt.Sprintf("Empty Rectangle: %d in box %d with conjugate pair in C%d: eliminate from R%dC%d.",
 									digit, box+1, linkCol+1, linkRow+1, erCol+1),
 								Highlights: core.Highlights{
 									Primary:   targets,
@@ -756,7 +756,7 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 								Eliminations: []core.Candidate{
 									{Row: erRow, Col: linkCol, Digit: digit},
 								},
-								Explanation: fmt.Sprintf("Empty Rectangle: %d in box %d with conjugate pair in R%d eliminates R%dC%d",
+								Explanation: fmt.Sprintf("Empty Rectangle: %d in box %d with conjugate pair in R%d: eliminate from R%dC%d.",
 									digit, box+1, linkRow+1, erRow+1, linkCol+1),
 								Highlights: core.Highlights{
 									Primary:   targets,

@@ -236,7 +236,7 @@ func DetectXYWing(b BoardInterface) *core.Move {
 							{Row: yzWing / 9, Col: yzWing % 9},
 						},
 						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("XY-Wing: pivot at R%dC%d with wings, eliminates %d", pivot/9+1, pivot%9+1, z),
+						Explanation:  fmt.Sprintf("XY-Wing: pivot at R%dC%d with wings: eliminate %d.", pivot/9+1, pivot%9+1, z),
 						Highlights: core.Highlights{
 							Primary: []core.CellRef{
 								{Row: pivot / 9, Col: pivot % 9},

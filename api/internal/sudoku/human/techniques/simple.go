@@ -182,7 +182,7 @@ func DetectPointingPair(b BoardInterface) *core.Move {
 						Digit:        digit,
 						Targets:      positions,
 						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("In box %d, %d is confined to row %d; eliminate from rest of row", box+1, digit, row+1),
+						Explanation:  fmt.Sprintf("In box %d, %d is confined to row %d: eliminate %d from rest of row %d.", box+1, digit, row+1, digit, row+1),
 						Highlights: core.Highlights{
 							Primary:   positions,
 							Secondary: ToCellRefs(RowIndices[row]),
@@ -217,7 +217,7 @@ func DetectPointingPair(b BoardInterface) *core.Move {
 						Digit:        digit,
 						Targets:      positions,
 						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("In box %d, %d is confined to column %d; eliminate from rest of column", box+1, digit, col+1),
+						Explanation:  fmt.Sprintf("In box %d, %d is confined to column %d: eliminate %d from rest of column %d.", box+1, digit, col+1, digit, col+1),
 						Highlights: core.Highlights{
 							Primary:   positions,
 							Secondary: ToCellRefs(ColIndices[col]),
@@ -275,7 +275,7 @@ func DetectBoxLineReduction(b BoardInterface) *core.Move {
 						Digit:        digit,
 						Targets:      positions,
 						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("In row %d, %d is confined to one box; eliminate from rest of box", row+1, digit),
+						Explanation:  fmt.Sprintf("In row %d, %d is confined to one box: eliminate %d from rest of box.", row+1, digit, digit),
 						Highlights: core.Highlights{
 							Primary:   positions,
 							Secondary: ToCellRefs(BoxIndices[(row/3)*3+boxCol/3]),
@@ -329,7 +329,7 @@ func DetectBoxLineReduction(b BoardInterface) *core.Move {
 						Digit:        digit,
 						Targets:      positions,
 						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("In column %d, %d is confined to one box; eliminate from rest of box", col+1, digit),
+						Explanation:  fmt.Sprintf("In column %d, %d is confined to one box: eliminate %d from rest of box.", col+1, digit, digit),
 						Highlights: core.Highlights{
 							Primary:   positions,
 							Secondary: ToCellRefs(BoxIndices[boxRow/3*3+col/3]),
