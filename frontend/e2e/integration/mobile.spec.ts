@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures';
+import { test, expect, Page } from '../fixtures';
 import { PlaywrightUISDK } from '../sdk';
 
 /**
@@ -22,6 +22,20 @@ const ACCEPTABLE_MIN_TOUCH_TARGET = 24; // Minimum acceptable for dense UIs
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+/**
+ * Helper to wait for WASM to be ready.
+ * In production builds, WASM initialization may take longer than board rendering.
+ */
+async function waitForWasmReady(page: Page, timeout = 30000) {
+  await page.waitForFunction(
+    () => {
+      // Check if SudokuWasm API is available on window
+      return typeof (window as any).SudokuWasm !== 'undefined';
+    },
+    { timeout }
+  );
+}
 
 /**
  * Verify element has adequate touch target size
@@ -204,6 +218,8 @@ test.describe('@mobile Game Features - Mobile', () => {
     void mobileViewport;
     await page.goto('/mobile-technique-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    // Wait for WASM to be ready
+    await waitForWasmReady(page);
 
     // Use hint once to prep board
     const hintBtn = page.locator('button:has-text("💡"), button:has-text("Hint")').first();
@@ -231,6 +247,8 @@ test.describe('@mobile Game Features - Mobile', () => {
     void mobileViewport;
     await page.goto('/mobile-technique-test?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    // Wait for WASM to be ready
+    await waitForWasmReady(page);
 
     // Use hint once to prep board
     const hintBtn = page.locator('button:has-text("💡"), button:has-text("Hint")').first();

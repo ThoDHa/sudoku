@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 /**
  * Hints Integration Tests
@@ -9,6 +9,20 @@ import { test, expect } from '@playwright/test';
  * Tag: @integration @hints
  */
 
+/**
+ * Helper to wait for WASM to be ready.
+ * In production builds, WASM initialization may take longer than board rendering.
+ */
+async function waitForWasmReady(page: Page, timeout = 30000) {
+  await page.waitForFunction(
+    () => {
+      // Check if SudokuWasm API is available on window
+      return typeof (window as any).SudokuWasm !== 'undefined';
+    },
+    { timeout }
+  );
+}
+
 test.describe('@integration Hints - Basic Functionality', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
@@ -16,6 +30,8 @@ test.describe('@integration Hints - Basic Functionality', () => {
     });
     await page.goto('/hints-test?d=easy');
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
+    // Wait for WASM to be ready
+    await waitForWasmReady(page);
   });
 
   test('hint button is visible and clickable', async ({ page }) => {
