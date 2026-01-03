@@ -510,6 +510,8 @@ function GameContent() {
   // Handlers for in-progress game confirmation modal
   const handleResumeExistingGame = useCallback(() => {
     if (existingInProgressGame) {
+      // Set flag so we don't show the modal again when navigating to the resumed game
+      sessionStorage.setItem('skip_in_progress_check', 'true')
       navigate(`/${existingInProgressGame.seed}?d=${existingInProgressGame.difficulty}`)
     }
     setShowInProgressConfirm(false)
@@ -519,6 +521,8 @@ function GameContent() {
     if (existingInProgressGame) {
       clearInProgressGame(existingInProgressGame.seed)
     }
+    // Set flag so we don't check for in-progress games again after user explicitly chose "Start New"
+    sessionStorage.setItem('skip_in_progress_check', 'true')
     setShowInProgressConfirm(false)
     setExistingInProgressGame(null)
   }, [existingInProgressGame])
@@ -639,7 +643,7 @@ function GameContent() {
   // Auto-fill notes based on current board state
   const autoFillNotes = useCallback(() => {
     if (game.board.length !== 81) return
-    const newCandidates = game.fillAllCandidates(game.board)
+    const newCandidates = game.fillAllCandidates()
     let cellsWithCandidates = 0
     for (let i = 0; i < 81; i++) {
       if (countCandidates(newCandidates[i] || 0) > 0) {

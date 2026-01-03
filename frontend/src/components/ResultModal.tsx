@@ -235,7 +235,12 @@ export default function ResultModal({
           </div>
           
           <button
-            onClick={() => navigate(createGameRoute(selectedDifficulty))}
+            onClick={() => {
+              // Set flag so Game.tsx knows user is intentionally starting a new game
+              // and won't show its own in-progress check prompt
+              sessionStorage.setItem('skip_in_progress_check', 'true')
+              navigate(createGameRoute(selectedDifficulty))
+            }}
             className="w-full rounded-lg border-2 border-accent py-2.5 font-medium text-accent transition-colors hover:bg-accent hover:text-btn-active-text"
           >
             Play {selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)}
