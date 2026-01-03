@@ -404,6 +404,47 @@ describe('gameSettings', () => {
       const games = getInProgressGames()
       expect(games).toEqual([])
     })
+
+    it('should exclude completed games from in-progress list', () => {
+      const inProgressGame = createGameState({ savedAt: 1000, filledCells: 45 })
+      const completedGame = { ...createGameState({ savedAt: 2000, filledCells: 81 }), isComplete: true }
+
+      localStorageMock._setStore({
+        [`${prefix}in-progress`]: JSON.stringify(inProgressGame),
+        [`${prefix}completed`]: JSON.stringify(completedGame),
+      })
+
+      const games = getInProgressGames()
+      expect(games).toHaveLength(1)
+      expect(games[0].seed).toBe('in-progress')
+    })
+
+    it('should exclude completed games even if not fully filled', () => {
+      // A game marked complete but with fewer cells (e.g., after auto-solve)
+      const inProgressGame = createGameState({ savedAt: 1000, filledCells: 30 })
+      const completedPartial = { ...createGameState({ savedAt: 2000, filledCells: 50 }), isComplete: true }
+
+      localStorageMock._setStore({
+        [`${prefix}in-progress`]: JSON.stringify(inProgressGame),
+        [`${prefix}completed-partial`]: JSON.stringify(completedPartial),
+      })
+
+      const games = getInProgressGames()
+      expect(games).toHaveLength(1)
+      expect(games[0].seed).toBe('in-progress')
+    })
+
+    it('should include games with isComplete: false', () => {
+      const gameExplicitlyNotComplete = { ...createGameState({ savedAt: 1000, filledCells: 45 }), isComplete: false }
+
+      localStorageMock._setStore({
+        [`${prefix}not-complete`]: JSON.stringify(gameExplicitlyNotComplete),
+      })
+
+      const games = getInProgressGames()
+      expect(games).toHaveLength(1)
+      expect(games[0].seed).toBe('not-complete')
+    })
   })
 
   // ===========================================================================
@@ -685,6 +726,52 @@ describe('gameSettings', () => {
       expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(
         `${prefix}P333`
       )
+      expect(localStorageMock.removeItem).toHaveBeenCalledTimes(2)
+    })
+
+    it('should clear completed games in same mode', () => {
+      const currentGame = createGameState({ savedAt: 3000, filledCells: 40 })
+      const completedDaily = { ...createGameState({ savedAt: 2000, filledCells: 81 }), isComplete: true }
+      const inProgressPractice = createGameState({ savedAt: 1000, filledCells: 30 })
+
+      localStorageMock._setStore({
+        [`${prefix}daily-2024-01-15`]: JSON.stringify(currentGame),
+        [`${prefix}daily-2024-01-14`]: JSON.stringify(completedDaily),
+        [`${prefix}P123`]: JSON.stringify(inProgressPractice),
+      })
+
+      clearOtherGamesForMode('daily-2024-01-15')
+
+      // Should clear the completed daily game (even though it's complete)
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith(`${prefix}daily-2024-01-14`)
+      // Should not clear the practice game (different mode)
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(`${prefix}P123`)
+      // Should not clear the current game
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(`${prefix}daily-2024-01-15`)
+    })
+
+    it('should clear both completed and in-progress games in same mode', () => {
+      const currentPractice = createGameState({ savedAt: 4000, filledCells: 20 })
+      const completedPractice = { ...createGameState({ savedAt: 3000, filledCells: 81 }), isComplete: true }
+      const inProgressPractice = createGameState({ savedAt: 2000, filledCells: 50 })
+      const dailyGame = createGameState({ savedAt: 1000, filledCells: 60 })
+
+      localStorageMock._setStore({
+        [`${prefix}P999`]: JSON.stringify(currentPractice),
+        [`${prefix}P888`]: JSON.stringify(completedPractice),
+        [`${prefix}P777`]: JSON.stringify(inProgressPractice),
+        [`${prefix}daily-2024-01-15`]: JSON.stringify(dailyGame),
+      })
+
+      clearOtherGamesForMode('P999')
+
+      // Should clear both completed and in-progress practice games
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith(`${prefix}P888`)
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith(`${prefix}P777`)
+      // Should not clear the current practice game
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(`${prefix}P999`)
+      // Should not clear the daily game (different mode)
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(`${prefix}daily-2024-01-15`)
       expect(localStorageMock.removeItem).toHaveBeenCalledTimes(2)
     })
   })
