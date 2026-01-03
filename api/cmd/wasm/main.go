@@ -316,6 +316,44 @@ func unpinpointableErrorMoveToJS(explanation string) js.Value {
 	return obj
 }
 
+// stalledMoveToJS creates a stalled move JS object (solver stuck, no progress possible)
+func stalledMoveToJS(explanation string) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("technique", "stalled")
+	obj.Set("action", "stalled")
+	obj.Set("explanation", explanation)
+	return obj
+}
+
+// fixCandidateMoveToJS creates a fix-candidate move JS object (restoring an incorrectly removed candidate)
+func fixCandidateMoveToJS(digit int, explanation string, targetRow, targetCol int) js.Value {
+	obj := js.Global().Get("Object").New()
+	obj.Set("technique", "fix-candidate")
+	obj.Set("action", "fix-candidate")
+	obj.Set("digit", digit)
+	obj.Set("explanation", explanation)
+
+	// targets
+	targetsArr := js.Global().Get("Array").New(1)
+	tObj := js.Global().Get("Object").New()
+	tObj.Set("row", targetRow)
+	tObj.Set("col", targetCol)
+	targetsArr.SetIndex(0, tObj)
+	obj.Set("targets", targetsArr)
+
+	// highlights - just the target cell
+	hObj := js.Global().Get("Object").New()
+	pArr := js.Global().Get("Array").New(1)
+	pObj := js.Global().Get("Object").New()
+	pObj.Set("row", targetRow)
+	pObj.Set("col", targetCol)
+	pArr.SetIndex(0, pObj)
+	hObj.Set("primary", pArr)
+	obj.Set("highlights", hObj)
+
+	return obj
+}
+
 // fixErrorMoveToJS creates a fix-error move JS object
 func fixErrorMoveToJS(digit int, explanation string, targetRow, targetCol int, primaryCells [][]int, secondaryCells [][]int) js.Value {
 	obj := js.Global().Get("Object").New()
@@ -768,62 +806,109 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 				}
 			}
 
-			// No conflicts - board is truly solved, but verify against solution
-			correctSolution := dp.Solve(givens)
-			if correctSolution != nil {
-				var wrongCells []int
-				for idx := 0; idx < 81; idx++ {
-					if currentCells[idx] != correctSolution[idx] && givens[idx] == 0 {
-						wrongCells = append(wrongCells, idx)
-					}
-				}
-
-				if len(wrongCells) > 0 {
-					if fixCount >= maxFixes {
-						moves = append(moves, MoveResult{
-							Board:      currentCells,
-							Candidates: board.GetCandidates(),
-							Move:       errorMoveWithCountToJS("Too many incorrect entries to fix automatically.", len(wrongCells)),
-						})
-						break
-					}
-
-					// Fix the first wrong cell
-					badIdx := wrongCells[0]
-					badRow, badCol := badIdx/9, badIdx%9
-					wrongDigit := currentCells[badIdx]
-					correctDigit := correctSolution[badIdx]
-					fixCount++
-					originalUserBoard[badIdx] = 0
-
-					// Reset board without the bad cell
-					board = human.NewBoardWithCandidates(originalUserBoard, nil)
-					board.InitCandidates()
-
-					moves = append(moves, MoveResult{
-						Board:      board.GetCells(),
-						Candidates: board.GetCandidates(),
-						Move: fixErrorMoveWithCountToJS(
-							wrongDigit,
-							formatExplanation("R%dC%d has %d but should be %d. Removing the incorrect value.", badRow+1, badCol+1, wrongDigit, correctDigit),
-							badRow, badCol,
-							[][]int{{badRow, badCol}},
-							nil,
-							len(wrongCells),
-						),
-					})
-					continue // Continue solving after fixing
-				}
-			}
-
-			// Board is truly complete and correct
+			// No conflicts on a filled board = correctly solved!
+			// A valid Sudoku has exactly one solution. If all cells are filled
+			// and there are no conflicts (no duplicate digits in any row/col/box),
+			// then by definition this IS the unique correct solution.
 			break
 		}
 
 		move := solver.FindNextMove(board)
 		if move == nil {
-			// Solver returned nil but board isn't solved - shouldn't happen normally
-			// This could mean the puzzle is unsolvable or in an unexpected state
+			// Solver stalled - no technique works and no contradiction detected yet.
+			// This often means user has incorrect entries that prevent progress.
+			// Try to find the error using our detection methods.
+
+			if fixCount >= maxFixes {
+				moves = append(moves, MoveResult{
+					Board:      board.GetCells(),
+					Candidates: board.GetCandidates(),
+					Move:       stalledMoveToJS("Solver is stuck. Too many incorrect entries to fix automatically."),
+				})
+				break
+			}
+
+			// Method 1: Check for cells with zero candidates (indicates error)
+			badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(originalUserBoard, givens)
+			if badCell >= 0 {
+				badRow, badCol := badCell/9, badCell%9
+				zeroCandRow, zeroCandCol := zeroCandCell/9, zeroCandCell%9
+				fixCount++
+				originalUserBoard[badCell] = 0
+
+				board = human.NewBoardWithCandidates(originalUserBoard, nil)
+				board.InitCandidates()
+
+				moves = append(moves, MoveResult{
+					Board:      board.GetCells(),
+					Candidates: board.GetCandidates(),
+					Move: fixErrorMoveToJS(
+						badDigit,
+						formatExplanation("Solver stuck! R%dC%d has no valid candidates. The %d at R%dC%d was causing the problem.", zeroCandRow+1, zeroCandCol+1, badDigit, badRow+1, badCol+1),
+						badRow, badCol,
+						[][]int{{badRow, badCol}},
+						[][]int{{zeroCandRow, zeroCandCol}},
+					),
+				})
+				continue
+			}
+
+			// Method 2: Trial removal - try removing each user digit to see if solver can progress
+			badCell, badDigit = findErrorByTrialRemoval(originalUserBoard, givens, solver)
+			if badCell >= 0 {
+				badRow, badCol := badCell/9, badCell%9
+				fixCount++
+				originalUserBoard[badCell] = 0
+
+				board = human.NewBoardWithCandidates(originalUserBoard, nil)
+				board.InitCandidates()
+
+				moves = append(moves, MoveResult{
+					Board:      board.GetCells(),
+					Candidates: board.GetCandidates(),
+					Move: fixErrorMoveToJS(
+						badDigit,
+						formatExplanation("Solver stuck! Removing %d from R%dC%d allows progress.", badDigit, badRow+1, badCol+1),
+						badRow, badCol,
+						[][]int{{badRow, badCol}},
+						nil,
+					),
+				})
+				continue
+			}
+
+			// Method 3: Check if user removed valid candidates that are blocking progress
+			if candidates != nil {
+				missingCell, missingDigit, found := findMissingCandidates(originalUserBoard, candidates, solver)
+				if found {
+					row, col := missingCell/9, missingCell%9
+					// Don't increment fixCount - we're restoring a candidate, not removing a digit
+					// Update the candidates array to include the missing candidate
+					if missingCell < len(candidates) {
+						candidates[missingCell] = append(candidates[missingCell], missingDigit)
+					}
+
+					board = human.NewBoardWithCandidates(originalUserBoard, candidates)
+
+					moves = append(moves, MoveResult{
+						Board:      board.GetCells(),
+						Candidates: board.GetCandidates(),
+						Move: fixCandidateMoveToJS(
+							missingDigit,
+							formatExplanation("Solver stuck! The candidate %d was incorrectly removed from R%dC%d. Restoring it.", missingDigit, row+1, col+1),
+							row, col,
+						),
+					})
+					continue
+				}
+			}
+
+			// All methods failed - give up
+			moves = append(moves, MoveResult{
+				Board:      board.GetCells(),
+				Candidates: board.GetCandidates(),
+				Move:       stalledMoveToJS("Solver is stuck and couldn't identify the problem. Check your entries."),
+			})
 			break
 		}
 
@@ -893,7 +978,31 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 				continue
 			}
 
-			// Both methods failed - couldn't find the error
+			// Method 3: Trial removal - try removing each user digit to see if solver can progress
+			badCell, badDigit = findErrorByTrialRemoval(originalUserBoard, givens, solver)
+			if badCell >= 0 {
+				badRow, badCol := badCell/9, badCell%9
+				fixCount++
+				originalUserBoard[badCell] = 0
+
+				board = human.NewBoardWithCandidates(originalUserBoard, nil)
+				board.InitCandidates()
+
+				moves = append(moves, MoveResult{
+					Board:      board.GetCells(),
+					Candidates: board.GetCandidates(),
+					Move: fixErrorMoveToJS(
+						badDigit,
+						formatExplanation("Contradiction detected! Removing %d from R%dC%d allows progress.", badDigit, badRow+1, badCol+1),
+						badRow, badCol,
+						[][]int{{badRow, badCol}},
+						nil,
+					),
+				})
+				continue
+			}
+
+			// All methods failed - couldn't find the error
 			moves = append(moves, MoveResult{
 				Board:      board.GetCells(),
 				Candidates: board.GetCandidates(),
@@ -949,37 +1058,10 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 				),
 			})
 		} else {
-			// No conflicts, but check against correct solution
-			correctSolution := dp.Solve(givens)
-			if correctSolution != nil {
-				// Find cells that don't match
-				var wrongCells []int
-				for i := 0; i < 81; i++ {
-					if finalCells[i] != correctSolution[i] && givens[i] == 0 {
-						wrongCells = append(wrongCells, i)
-					}
-				}
-				if len(wrongCells) > 0 {
-					// Report the first wrong cell
-					badIdx := wrongCells[0]
-					badRow, badCol := badIdx/9, badIdx%9
-					wrongDigit := finalCells[badIdx]
-					correctDigit := correctSolution[badIdx]
-
-					moves = append(moves, MoveResult{
-						Board:      finalCells,
-						Candidates: board.GetCandidates(),
-						Move: fixErrorMoveWithCountToJS(
-							wrongDigit,
-							formatExplanation("R%dC%d has %d but should be %d.", badRow+1, badCol+1, wrongDigit, correctDigit),
-							badRow, badCol,
-							[][]int{{badRow, badCol}},
-							nil,
-							len(wrongCells),
-						),
-					})
-				}
-			}
+			// No conflicts on a filled board = correctly solved!
+			// A valid Sudoku has exactly one solution. If all cells are filled
+			// and there are no conflicts, this IS the unique correct solution.
+			// No need to compare against dp.Solve() - pure logic is sufficient.
 		}
 	}
 
@@ -1119,6 +1201,87 @@ func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int
 	}
 
 	return -1, 0, -1
+}
+
+// findErrorByTrialRemoval tries removing each user-entered digit to see if the solver can progress.
+// This is a brute-force approach when other methods fail: temporarily remove each user digit,
+// reinitialize the board, and check if the solver can now find a move.
+// Returns the cell index and digit of the first entry whose removal allows progress, or -1 if none found.
+func findErrorByTrialRemoval(originalUserBoard []int, givens []int, solver *human.Solver) (int, int) {
+	// Collect all user-entered cells (non-zero, non-given)
+	var userCells []int
+	for idx := 0; idx < 81; idx++ {
+		if originalUserBoard[idx] != 0 && givens[idx] == 0 {
+			userCells = append(userCells, idx)
+		}
+	}
+
+	// Try removing each user entry and see if solver can progress
+	for _, cellIdx := range userCells {
+		digit := originalUserBoard[cellIdx]
+
+		// Create a test board without this cell's value
+		testBoard := make([]int, 81)
+		copy(testBoard, originalUserBoard)
+		testBoard[cellIdx] = 0
+
+		// Initialize a fresh board with candidates
+		board := human.NewBoard(testBoard)
+
+		// Check if solver can now find a move
+		move := solver.FindNextMove(board)
+		if move != nil && move.Action != "contradiction" {
+			// Removing this cell allowed progress!
+			return cellIdx, digit
+		}
+	}
+
+	return -1, 0
+}
+
+// findMissingCandidates checks if the user has incorrectly removed candidates that are logically valid.
+// When solver stalls, it might be because the correct digit was eliminated from a cell.
+// This function compares user candidates against what SHOULD be valid based on Sudoku rules.
+// Returns: cell index, the missing digit that should be restored, and whether any were found.
+func findMissingCandidates(cells []int, userCandidates [][]int, solver *human.Solver) (int, int, bool) {
+	// Create a fresh board to get "correct" candidates based on current filled cells
+	freshBoard := human.NewBoard(cells)
+
+	// Compare each cell's candidates
+	for idx := 0; idx < 81; idx++ {
+		if cells[idx] != 0 {
+			continue // Skip filled cells
+		}
+
+		// Get the logically correct candidates for this cell
+		correctCandidates := freshBoard.Candidates[idx]
+
+		// Get user's candidates for this cell (if provided)
+		userCands := make(map[int]bool)
+		if idx < len(userCandidates) {
+			for _, d := range userCandidates[idx] {
+				userCands[d] = true
+			}
+		}
+
+		// Find candidates that are logically valid but user removed
+		for digit := 1; digit <= 9; digit++ {
+			if correctCandidates.Has(digit) && !userCands[digit] {
+				// User removed a valid candidate! This might be blocking progress.
+				// Test if restoring this candidate allows the solver to progress
+				testBoard := human.NewBoardWithCandidates(cells, userCandidates)
+				testBoard.Candidates[idx] = testBoard.Candidates[idx].Set(digit)
+
+				move := solver.FindNextMove(testBoard)
+				if move != nil && move.Action != "contradiction" {
+					// Restoring this candidate allowed progress!
+					return idx, digit, true
+				}
+			}
+		}
+	}
+
+	return -1, 0, false
 }
 
 // formatExplanation is a simple sprintf helper

@@ -121,11 +121,16 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     () => new Uint16Array(81)
   )
   
-  // Version counter for candidates - ensures React detects Uint16Array changes
-  // This is critical for mobile where typed array reference changes may not trigger re-renders
+  // VERSION COUNTER: Force React to detect Uint16Array mutations
+  // Problem: Uint16Array is a typed array. Even when we create a new instance,
+  // React's shallow comparison might not detect the change on all platforms
+  // (particularly mobile Safari). Components wouldn't re-render to show updated notes.
+  // Solution: Increment a version counter alongside every candidates update.
+  // Components that depend on candidates also depend on candidatesVersion,
+  // guaranteeing a re-render when candidates change.
   const [candidatesVersion, setCandidatesVersion] = useState(0)
   
-  // Helper to update candidates with version bump
+  // Helper to update candidates with version bump - always use this, never setCandidates directly
   const updateCandidates = useCallback((newCandidates: Uint16Array) => {
     setCandidates(newCandidates)
     setCandidatesVersion(v => v + 1)
@@ -157,18 +162,33 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   const lastNoteToggle = useRef<{ idx: number; digit: number; time: number } | null>(null)
 
   // ============================================================
-  // REFS FOR STABLE CALLBACKS
+  // REFS FOR STABLE CALLBACKS (RACE CONDITION PREVENTION)
   // ============================================================
-  // These refs always hold the latest state values, allowing callbacks to read
-  // current state without having those values in their dependency arrays.
-  // This prevents stale closure issues when multiple rapid calls happen before
-  // React has time to re-render and recreate the callbacks.
+  // PATTERN: Ref-based state access for race condition prevention
+  //
+  // Problem: React's setState is async. When user clicks rapidly (e.g., toggle
+  // candidate twice within 50ms), the second click's callback may still see
+  // the OLD state value from its closure, causing the toggle to appear to "skip".
+  //
+  // Solution: All state-mutating callbacks read from refs instead of closure values.
+  // After each setState, we ALSO update the ref synchronously. This ensures:
+  //   1. The next rapid call sees the updated value immediately
+  //   2. Callbacks don't need state in deps (stable references, no recreation)
+  //   3. No stale closure bugs even under rapid user input
+  //
+  // Example flow for rapid toggleCandidate(idx, 5) calls:
+  //   Call 1: reads candidatesRef → has candidate → removes it → updates ref
+  //   Call 2: reads candidatesRef → no candidate (ref updated!) → adds it → updates ref
+  //   Result: Correct toggle behavior even if React hasn't re-rendered yet
+  //
+  // This pattern is critical for mobile where touch events can fire rapidly.
   const candidatesRef = useRef(candidates)
   const boardRef = useRef(board)
   const historyRef = useRef(history)
   const historyIndexRef = useRef(historyIndex)
 
-  // Keep refs in sync with state
+  // Keep refs in sync with state after React processes the update
+  // (Effects run after render, but refs are also updated synchronously in callbacks)
   React.useEffect(() => { candidatesRef.current = candidates }, [candidates])
   React.useEffect(() => { boardRef.current = board }, [board])
   React.useEffect(() => { historyRef.current = history }, [history])
@@ -383,7 +403,12 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       // Notes can only be added to empty cells
       if (currentBoard[idx] !== 0) return
       
-      // Guard against rapid double-calls that would toggle the note twice
+      // DEBOUNCE GUARD: Prevent double-toggles from rapid events
+      // On mobile especially, a single tap can trigger multiple events (touchstart,
+      // click, focus) that all call this function. Without this guard, the note
+      // would toggle ON then immediately OFF, appearing to do nothing.
+      // 100ms window is enough to catch duplicate events but short enough to allow
+      // intentional rapid sequential inputs on different cells/digits.
       const now = Date.now()
       if (lastNoteToggle.current && 
           lastNoteToggle.current.idx === idx && 
