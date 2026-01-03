@@ -486,9 +486,10 @@ function GameContent() {
 
   // Check for existing in-progress game when navigating to a different puzzle
   useEffect(() => {
-    // Skip if navigating from Homepage (it handles this already)
-    if (sessionStorage.getItem('from_homepage')) {
-      sessionStorage.removeItem('from_homepage')
+    // Skip if user already confirmed navigation (from Homepage or Menu)
+    // Both Homepage and Menu handle their own in-progress confirmations
+    if (sessionStorage.getItem('skip_in_progress_check')) {
+      sessionStorage.removeItem('skip_in_progress_check')
       return
     }
     

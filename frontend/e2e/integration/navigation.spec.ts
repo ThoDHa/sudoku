@@ -257,4 +257,42 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     expect(page.url()).toContain('menu-cancel-test');
     expect(page.url()).toContain('d=easy');
   });
+
+  test('New Game from menu does not show duplicate in-progress prompt', async ({ page }) => {
+    // Regression test for bug: "Game in Progress" modal should NOT appear when
+    // starting new game from menu, because Menu already handled the confirmation
+    
+    // Start a game and make some progress to create an in-progress save
+    await page.goto('/new-game-modal-test?d=easy');
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    
+    // Make a move to ensure game is saved
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
+    await emptyCell.click();
+    await page.keyboard.press('7');
+    
+    // Wait for auto-save
+    await page.waitForTimeout(1500);
+    
+    // Open menu and start a new game WITHOUT in-progress confirmation
+    // (because we have no unsaved progress in the current view)
+    const menuButton = page.locator('header button[title="Menu"]');
+    await expect(menuButton).toBeVisible();
+    await menuButton.click();
+    
+    // Wait for menu to open
+    await expect(page.locator('text=Menu')).toBeVisible({ timeout: 10000 });
+    await page.locator('button:has-text("New Game")').click();
+    
+    // Select different difficulty - this should navigate directly
+    await page.locator('button:has-text("medium")').click();
+    
+    // Should navigate to new game WITHOUT showing "Game in Progress" modal
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
+    expect(page.url()).toContain('d=medium');
+    
+    // CRITICAL: "Game in Progress" modal should NOT appear
+    await expect(page.locator('text=Game In Progress')).not.toBeVisible();
+    await expect(page.locator('button:has-text("Resume")')).not.toBeVisible();
+  });
 });

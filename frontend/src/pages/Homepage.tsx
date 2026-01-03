@@ -59,7 +59,7 @@ export default function Homepage() {
     
     if (practiceGame) {
       // Resume existing practice game
-      sessionStorage.setItem('from_homepage', 'true')
+      sessionStorage.setItem('skip_in_progress_check', 'true')
       navigate(`/game?seed=${practiceGame.seed}&d=${practiceGame.difficulty}`)
     } else {
       // Switch to game mode to let user select difficulty
@@ -85,7 +85,7 @@ export default function Homepage() {
     }
     if (pendingNavigation) {
       // Signal to Game component that we've already handled in-progress game check
-      sessionStorage.setItem('from_homepage', 'true')
+      sessionStorage.setItem('skip_in_progress_check', 'true')
       navigate(pendingNavigation)
     }
     setShowNewGameConfirm(false)
@@ -215,7 +215,7 @@ export default function Homepage() {
                     return false
                   }
                   // Signal to Game component that we've already handled in-progress game check
-                  sessionStorage.setItem('from_homepage', 'true')
+                  sessionStorage.setItem('skip_in_progress_check', 'true')
                   return true
                 }}
               />
@@ -254,7 +254,7 @@ export default function Homepage() {
                     return false
                   }
                   // Signal to Game component that we've already handled in-progress game check
-                  sessionStorage.setItem('from_homepage', 'true')
+                  sessionStorage.setItem('skip_in_progress_check', 'true')
                   return true
                 }}
               />
