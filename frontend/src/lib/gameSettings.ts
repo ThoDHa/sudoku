@@ -86,8 +86,9 @@ export function getInProgressGames(): SavedGameInfo[] {
         if (data) {
           try {
             const parsed = JSON.parse(data)
-            // Validate it's a game state
-            if (parsed.board?.length === 81 && parsed.savedAt) {
+            // Validate it's a game state AND it's not complete
+            // Completed games stay in storage but don't count as "in progress"
+            if (parsed.board?.length === 81 && parsed.savedAt && !parsed.isComplete) {
               const filledCells = parsed.board.filter((v: number) => v !== 0).length
               games.push({
                 seed,
@@ -156,13 +157,55 @@ export function clearInProgressGame(seed: string): void {
 }
 
 /**
+ * Get ALL saved games (including completed ones) from localStorage
+ * Used for cleanup operations that need to clear both in-progress and completed games
+ */
+function getAllSavedGames(): SavedGameInfo[] {
+  const games: SavedGameInfo[] = []
+  const prefix = STORAGE_KEYS.GAME_STATE_PREFIX
+  
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key?.startsWith(prefix)) {
+        const seed = key.slice(prefix.length)
+        const data = localStorage.getItem(key)
+        if (data) {
+          try {
+            const parsed = JSON.parse(data)
+            // Validate it's a game state (don't filter by isComplete - we want ALL games)
+            if (parsed.board?.length === 81 && parsed.savedAt) {
+              const filledCells = parsed.board.filter((v: number) => v !== 0).length
+              games.push({
+                seed,
+                difficulty: parsed.difficulty || 'unknown',
+                savedAt: parsed.savedAt,
+                elapsedMs: parsed.elapsedMs || 0,
+                progress: Math.round((filledCells / 81) * 100),
+              })
+            }
+          } catch {
+            // Skip invalid entries
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to scan for saved games:', e)
+  }
+  
+  return games.sort((a, b) => b.savedAt - a.savedAt)
+}
+
+/**
  * Clear all in-progress games for a specific mode, except the one being saved
  * This ensures only ONE game per mode is saved at a time
  * @param currentSeed The seed of the game currently being saved (will not be cleared)
  */
 export function clearOtherGamesForMode(currentSeed: string): void {
   const currentMode = getGameMode(currentSeed)
-  const games = getInProgressGames()
+  // Use getAllSavedGames to include completed games in cleanup
+  const games = getAllSavedGames()
   
   for (const game of games) {
     // Skip the current game being saved
@@ -171,7 +214,7 @@ export function clearOtherGamesForMode(currentSeed: string): void {
     // Check if this game is in the same mode
     const gameMode = getGameMode(game.seed)
     if (currentMode === gameMode) {
-      // Same mode, different seed — clear it
+      // Same mode, different seed — clear it (whether in-progress or completed)
       clearInProgressGame(game.seed)
     }
   }
