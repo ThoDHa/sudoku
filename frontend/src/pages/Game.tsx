@@ -624,14 +624,9 @@ function GameContent() {
     setAutoSolveErrorsFixed(0)
   }, [game, clearSavedGameState, clearAllAndDeselect])
 
-  // Restart puzzle (clears all AND resets timer)
-  const handleRestart = useCallback(() => {
+  // Reset all game state (board, candidates, history, and tracking variables)
+  const resetAllGameState = useCallback(() => {
     game.resetGame()
-    clearSavedGameState()
-    timerControl.resetTimer()
-    timerControl.startTimer()
-    clearAllAndDeselect()
-    setNotesMode(false)
     setHintsUsed(0)
     setTechniqueHintsUsed(0)
     setAutoFillUsed(false)
@@ -639,8 +634,18 @@ function GameContent() {
     autoSolveUsedRef.current = false
     setAutoSolveStepsUsed(0)
     setAutoSolveErrorsFixed(0)
+  }, [game])
+
+  // Restart puzzle (clears all AND resets timer)
+  const handleRestart = useCallback(() => {
+    resetAllGameState()
+    clearSavedGameState()
+    timerControl.resetTimer()
+    timerControl.startTimer()
+    clearAllAndDeselect()
+    setNotesMode(false)
     setShowResultModal(false)
-  }, [game, timerControl, clearSavedGameState, clearAllAndDeselect])
+  }, [resetAllGameState, timerControl, clearSavedGameState, clearAllAndDeselect])
 
   // Auto-fill notes based on current board state
   const autoFillNotes = useCallback(() => {
@@ -1424,7 +1429,7 @@ ${bugReportJson}
   // Track auto-solve steps and errors fixed when auto-solve stops
   useEffect(() => {
     if (!autoSolve.isAutoSolving && autoSolve.lastCompletedSteps > 0) {
-      setAutoSolveStepsUsed(prev => prev + autoSolve.lastCompletedSteps)
+      setAutoSolveStepsUsed(autoSolve.lastCompletedSteps)
       // Count fix-error and fix-conflict moves in history (errors fixed during autosolve)
       const errorsFixed = game.history.filter(move => 
         move.action === 'fix-error' || move.action === 'fix-conflict'
@@ -1672,8 +1677,8 @@ ${bugReportJson}
         }
         setAutoFillUsed(savedState.autoFillUsed)
       } else {
-        // Start fresh
-        game.resetGame()
+        // Start fresh - reset game and all tracking state
+        resetAllGameState()
         // Start timer for new game - only if puzzle is playable
         if (!alreadyCompletedToday && !showDifficultyChooser) {
           timerControl.startTimer()
@@ -1682,7 +1687,7 @@ ${bugReportJson}
       
       hasRestoredSavedState.current = true
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- game.restoreState, game.resetGame, and timerControl.setElapsedMs are stable callbacks. We intentionally only trigger this when initialBoard or puzzle changes to prevent re-initialization loops.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- game.restoreState, resetAllGameState, and timerControl.setElapsedMs are stable callbacks. We intentionally only trigger this when initialBoard or puzzle changes to prevent re-initialization loops.
   }, [initialBoard, puzzle, loadSavedGameState])
 
   // Auto-save game state when board or candidates change (but not when hidden)
