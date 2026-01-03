@@ -94,7 +94,7 @@ interface UseSudokuGameReturn {
   // Helpers
   isGivenCell: (idx: number) => boolean
   calculateCandidatesForCell: (idx: number, currentBoard: number[]) => CandidateMask
-  fillAllCandidates: (currentBoard: number[]) => Uint16Array
+  fillAllCandidates: () => Uint16Array
   areCandidatesFilled: () => boolean
   checkNotes: () => {
     valid: boolean
@@ -231,7 +231,10 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     return validCandidates
   }, [])
 
-  const fillAllCandidates = useCallback((currentBoard: number[]): Uint16Array => {
+  const fillAllCandidates = useCallback((): Uint16Array => {
+    // CRITICAL: Read from ref to get fresh board state, preventing race conditions
+    // when called rapidly after setCell (e.g., place digit then immediately fill candidates)
+    const currentBoard = boardRef.current
     const newCandidates = new Uint16Array(81)
     
     for (let idx = 0; idx < 81; idx++) {
