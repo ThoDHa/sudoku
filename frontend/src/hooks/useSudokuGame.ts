@@ -231,21 +231,27 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     return validCandidates
   }, [])
 
+  // Pure helper: Calculate all candidates for a given board state
+  // Used by legacy replay code that works with local board copies
+  const calculateAllCandidatesForBoard = useCallback((board: number[]): Uint16Array => {
+    const newCandidates = new Uint16Array(81)
+    
+    for (let idx = 0; idx < 81; idx++) {
+      if (board[idx] !== 0) {
+        newCandidates[idx] = 0 // clearAll()
+        continue
+      }
+      newCandidates[idx] = calculateCandidatesForCell(idx, board)
+    }
+    return newCandidates
+  }, [calculateCandidatesForCell])
+
   const fillAllCandidates = useCallback((): Uint16Array => {
     // CRITICAL: Read from ref to get fresh board state, preventing race conditions
     // when called rapidly after setCell (e.g., place digit then immediately fill candidates)
     const currentBoard = boardRef.current
-    const newCandidates = new Uint16Array(81)
-    
-    for (let idx = 0; idx < 81; idx++) {
-      if (currentBoard[idx] !== 0) {
-        newCandidates[idx] = 0 // clearAll()
-        continue
-      }
-      newCandidates[idx] = calculateCandidatesForCell(idx, currentBoard)
-    }
-    return newCandidates
-  }, [calculateCandidatesForCell])
+    return calculateAllCandidatesForBoard(currentBoard)
+  }, [calculateAllCandidatesForBoard])
 
   const areCandidatesFilled = useCallback((): boolean => {
     // Check if candidates have been filled by seeing if any empty cell has candidates
@@ -665,7 +671,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       // Fill candidates - this is handled by just setting the candidates
       // The move should have the resulting state in the next move's boardBefore
       // or we need to recalculate
-      const filled = fillAllCandidates(newBoard)
+      // Use pure helper since we're working with local newBoard state
+      const filled = calculateAllCandidatesForBoard(newBoard)
       // Copy filled candidates to newCandidates
       for (let i = 0; i < 81; i++) {
         newCandidates[i] = filled[i] || 0
@@ -674,7 +681,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     
     setBoard(newBoard)
     updateCandidates(newCandidates)
-  }, [eliminateFromPeers, calculateCandidatesForCell, fillAllCandidates, updateCandidates])
+  }, [eliminateFromPeers, calculateCandidatesForCell, calculateAllCandidatesForBoard, updateCandidates])
 
   const redo = useCallback(() => {
     // Read from refs for fresh values (prevents stale closure issues with rapid calls)
