@@ -725,8 +725,8 @@ test.describe('@integration Persistence - Edge Cases', () => {
     const savedState = await getLocalStorageItem(page, storageKey);
     expect(savedState).toBeTruthy();
 
-    // Note: Full completion test would require a solvable puzzle state
-    // The useAutoSave hook clears state when isComplete becomes true
+    // Note: Completed games now persist in localStorage with isComplete: true
+    // They are no longer auto-cleared on completion (behavior changed)
   });
 });
 
@@ -861,5 +861,111 @@ test.describe('@integration Persistence - History Persistence', () => {
 
     // Cell should be empty after undo
     await expectCellValue(page, row, col, 'empty');
+  });
+});
+
+test.describe('@integration Persistence - Completed Game State', () => {
+  const COMPLETE_TEST_SEED = 'complete-persist-999';
+
+  test('completed game persists isComplete flag in localStorage', async ({ page }) => {
+    // Regression test for feature: completed games now persist with isComplete flag
+    // instead of being cleared, allowing users to return to completed games
+    
+    // Pre-populate localStorage with a completed game state
+    await page.addInitScript(({ seed, prefix }: { seed: string; prefix: string }) => {
+      const completedGameState = {
+        board: [
+          5, 3, 4, 6, 7, 8, 9, 1, 2,
+          6, 7, 2, 1, 9, 5, 3, 4, 8,
+          1, 9, 8, 3, 4, 2, 5, 6, 7,
+          8, 5, 9, 7, 6, 1, 4, 2, 3,
+          4, 2, 6, 8, 5, 3, 7, 9, 1,
+          7, 1, 3, 9, 2, 4, 8, 5, 6,
+          9, 6, 1, 5, 3, 7, 2, 8, 4,
+          2, 8, 7, 4, 1, 9, 6, 3, 5,
+          3, 4, 5, 2, 8, 6, 1, 7, 9
+        ],
+        candidates: new Array(81).fill(0),
+        history: [],
+        elapsedMs: 120000,
+        autoFillUsed: false,
+        savedAt: Date.now(),
+        difficulty: 'easy',
+        isComplete: true
+      };
+      localStorage.setItem(`${prefix}${seed}`, JSON.stringify(completedGameState));
+    }, { seed: COMPLETE_TEST_SEED, prefix: GAME_STATE_PREFIX });
+
+    // Navigate to the completed game
+    await page.goto(`/${COMPLETE_TEST_SEED}?d=easy`);
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+
+    // Verify the saved state still exists and has isComplete flag
+    const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_TEST_SEED}`;
+    const savedState = await getLocalStorageItem(page, storageKey);
+    expect(savedState).toBeTruthy();
+    
+    const parsed = JSON.parse(savedState!);
+    expect(parsed.isComplete).toBe(true);
+    expect(parsed.board.every((val: number) => val !== 0)).toBe(true); // All cells filled
+
+    // Wait a bit to let any auto-save operations run
+    await page.waitForTimeout(2000);
+
+    // Verify the state is STILL there (not cleared on completion)
+    const savedStateAfter = await getLocalStorageItem(page, storageKey);
+    expect(savedStateAfter).toBeTruthy();
+    
+    const parsedAfter = JSON.parse(savedStateAfter!);
+    expect(parsedAfter.isComplete).toBe(true);
+  });
+
+  test('completed game state persists across page reload', async ({ page }) => {
+    // Verify that completed games remain accessible after refresh
+    
+    // Pre-populate localStorage with a completed game state
+    await page.addInitScript(({ seed, prefix }: { seed: string; prefix: string }) => {
+      const completedGameState = {
+        board: [
+          5, 3, 4, 6, 7, 8, 9, 1, 2,
+          6, 7, 2, 1, 9, 5, 3, 4, 8,
+          1, 9, 8, 3, 4, 2, 5, 6, 7,
+          8, 5, 9, 7, 6, 1, 4, 2, 3,
+          4, 2, 6, 8, 5, 3, 7, 9, 1,
+          7, 1, 3, 9, 2, 4, 8, 5, 6,
+          9, 6, 1, 5, 3, 7, 2, 8, 4,
+          2, 8, 7, 4, 1, 9, 6, 3, 5,
+          3, 4, 5, 2, 8, 6, 1, 7, 9
+        ],
+        candidates: new Array(81).fill(0),
+        history: [],
+        elapsedMs: 180000,
+        autoFillUsed: false,
+        savedAt: Date.now(),
+        difficulty: 'medium',
+        isComplete: true
+      };
+      localStorage.setItem(`${prefix}${seed}`, JSON.stringify(completedGameState));
+    }, { seed: COMPLETE_TEST_SEED, prefix: GAME_STATE_PREFIX });
+
+    // Navigate to the completed game
+    await page.goto(`/${COMPLETE_TEST_SEED}?d=medium`);
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+
+    // Reload the page
+    await page.reload();
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+
+    // Verify the saved state persists after reload
+    const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_TEST_SEED}`;
+    const savedState = await getLocalStorageItem(page, storageKey);
+    expect(savedState).toBeTruthy();
+    
+    const parsed = JSON.parse(savedState!);
+    expect(parsed.isComplete).toBe(true);
+    expect(parsed.difficulty).toBe('medium');
+    
+    // Verify board is still fully filled
+    expect(parsed.board.every((val: number) => val !== 0)).toBe(true);
   });
 });

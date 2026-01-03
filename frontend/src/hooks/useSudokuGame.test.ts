@@ -199,7 +199,7 @@ describe('useSudokuGame', () => {
       
       // First fill candidates
       act(() => {
-        const filled = result.current.fillAllCandidates(puzzle)
+        const filled = result.current.fillAllCandidates()
         // Manually set candidates for a cell in same row
         result.current.restoreState(puzzle, filled, [])
       })
@@ -796,7 +796,7 @@ describe('useSudokuGame', () => {
         
         let filledCandidates: Uint16Array | undefined
         act(() => {
-          filledCandidates = result.current.fillAllCandidates(puzzle)
+          filledCandidates = result.current.fillAllCandidates()
         })
         
         // Cell 2 is empty - should have some candidates
@@ -810,12 +810,48 @@ describe('useSudokuGame', () => {
         
         let filledCandidates: Uint16Array | undefined
         act(() => {
-          filledCandidates = result.current.fillAllCandidates(puzzle)
+          filledCandidates = result.current.fillAllCandidates()
         })
         
         // Cell 0 has value 5 - should have no candidates
         expect(filledCandidates).toBeDefined()
         expect(filledCandidates![0]).toBe(0)
+      })
+
+      it('reads fresh board state via boardRef, preventing race conditions', () => {
+        // Regression test for race condition bug where fillAllCandidates used stale
+        // board state when called rapidly after setCell (e.g., place digit then immediately
+        // fill candidates). The fix uses boardRef to get fresh state instead of closure.
+        const puzzle = createTestPuzzle()
+        const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+        
+        // Place digit 5 in cell 2 (row 0, col 2)
+        act(() => {
+          result.current.setCell(2, 5, false)
+        })
+        expect(result.current.board[2]).toBe(5)
+        
+        // Immediately call fillAllCandidates - it should see the newly placed digit
+        // via boardRef (not stale closure state)
+        let candidates: Uint16Array | undefined
+        act(() => {
+          candidates = result.current.fillAllCandidates()
+        })
+        
+        expect(candidates).toBeDefined()
+        
+        // Cell 1 is in the same row as cell 2
+        // Since cell 2 now has value 5, cell 1 should NOT have candidate 5
+        // (it should be eliminated by the peer)
+        expect(hasCandidate(candidates![1], 5)).toBe(false)
+        
+        // Cell 2 itself should have no candidates (it's filled)
+        expect(candidates![2]).toBe(0)
+        
+        // Verify cell in different row/col/box still has candidate 5
+        // Cell 20 (row 2, col 2) - different row, same column
+        // Column 2 now has 5, so cell 20 should also not have candidate 5
+        expect(hasCandidate(candidates![20], 5)).toBe(false)
       })
     })
 
