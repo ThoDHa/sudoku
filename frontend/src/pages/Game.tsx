@@ -53,6 +53,7 @@ interface SavedGameState {
   autoFillUsed: boolean
   savedAt: number // timestamp
   difficulty: string // difficulty level for resume display
+  isComplete?: boolean // Whether the game was completed
 }
 
 interface PuzzleData {
@@ -553,8 +554,8 @@ function GameContent() {
   // Save game state to localStorage
   const saveGameState = useCallback(() => {
     // Use ref to check isComplete at execution time (not closure time)
-    // This prevents race condition where debounced save fires after completion
-    if (!puzzle || isCompleteRef.current || !hasRestoredSavedState.current) return
+    // Skip if puzzle not loaded yet or we haven't restored saved state yet
+    if (!puzzle || !hasRestoredSavedState.current) return
     
     // Clear other games in the same mode (daily or practice) to ensure only ONE save per mode
     clearOtherGamesForMode(puzzle.seed)
@@ -568,6 +569,7 @@ function GameContent() {
       autoFillUsed,
       savedAt: Date.now(),
       difficulty: puzzle.difficulty,
+      isComplete: isCompleteRef.current,
     }
     
     try {
@@ -1761,12 +1763,10 @@ ${bugReportJson}
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [puzzle, game.isComplete, game.board, game.candidates, game.history, autoFillUsed, timerControl])
 
-  // Clear saved state when puzzle is completed
-  useEffect(() => {
-    if (game.isComplete && puzzle) {
-      clearSavedGameState()
-    }
-  }, [game.isComplete, puzzle, clearSavedGameState])
+  // NOTE: We do NOT auto-clear saved games on completion anymore!
+  // - Daily games: Keep saved state until next day (cleared by date change logic)
+  // - Practice games: Keep saved state until user starts a new practice game
+  // This allows users to return to completed games and see their final state
 
   // Pause timer when game is complete
   useEffect(() => {
