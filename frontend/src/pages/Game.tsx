@@ -278,6 +278,33 @@ function GameContent() {
   useEffect(() => { highlightedDigitRef.current = highlightedDigit }, [highlightedDigit])
   useEffect(() => { initialBoardRef.current = initialBoard }, [initialBoard])
 
+  // ============================================================
+  // CLICK OUTSIDE TO DESELECT (UX Enhancement)
+  // ============================================================
+  // When user clicks/taps outside the board and controls, deselect the current cell
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      // Only process if a cell is selected
+      if (selectedCellRef.current === null) return
+      
+      const target = event.target as Node
+      const clickedInsideBoard = boardContainerRef.current?.contains(target)
+      const clickedInsideControls = controlsContainerRef.current?.contains(target)
+      
+      if (!clickedInsideBoard && !clickedInsideControls) {
+        deselectCell()
+      }
+    }
+    
+    // Listen to both mouse and touch events for cross-device support
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [deselectCell])
+
     // Extended background pause - completely suspend operations after 30 seconds hidden
     const [isExtendedPaused, setIsExtendedPaused] = useState(false)
 
