@@ -60,7 +60,7 @@ export default function Homepage() {
     if (practiceGame) {
       // Resume existing practice game
       sessionStorage.setItem('skip_in_progress_check', 'true')
-      navigate(`/game?seed=${practiceGame.seed}&d=${practiceGame.difficulty}`)
+      navigate(`/${practiceGame.seed}?d=${practiceGame.difficulty}`)
     } else {
       // Switch to game mode to let user select difficulty
       setHomepageMode('game')

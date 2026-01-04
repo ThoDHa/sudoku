@@ -162,7 +162,7 @@ function ModeSwitchSection({ onClose, currentSeed }: ModeSwitchSectionProps) {
     
     if (inProgressGame) {
       // Resume existing practice game
-      navigate(`/game?seed=${inProgressGame.seed}&d=${inProgressGame.difficulty}`)
+      navigate(`/${inProgressGame.seed}?d=${inProgressGame.difficulty}`)
     } else {
       // Generate new practice seed and navigate to homepage in game mode
       // User will select difficulty from homepage
