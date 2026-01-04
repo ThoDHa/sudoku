@@ -31,7 +31,12 @@ function AppContent() {
   // Game pages need less padding (slim header)
   // Game routes: /c/* for custom, or /:seed for daily/practice (anything not a known route)
   const knownRoutes = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard', '/about']
-  const testRoutes = ['/hints-test', '/gameplay-test', '/digit-entry-test', '/clear-test']
+  const testRoutes = ['/hints-test', '/gameplay-test', '/digit-entry-test', '/clear-test', 
+                      '/technique-test', '/technique-disable-test', '/technique-counter-test', 
+                      '/technique-mobile-test', '/mobile-technique-test', '/mobile-test', 
+                      '/mobile-hints-test', '/mobile-error-test', '/mobile-touch-test',
+                      '/mobile-orientation-test', '/mobile-solve-test', '/mobile-progress-test',
+                      '/mobile-keyboard-test']
   const isKnownRoute = knownRoutes.some(route => 
     location.pathname === route || location.pathname.startsWith(route + '/')
   )
@@ -60,6 +65,19 @@ function AppContent() {
             <Route path="/gameplay-test" element={<Game />} />
             <Route path="/digit-entry-test" element={<Game />} />
             <Route path="/clear-test" element={<Game />} />
+            <Route path="/technique-test" element={<Game />} />
+            <Route path="/technique-disable-test" element={<Game />} />
+            <Route path="/technique-counter-test" element={<Game />} />
+            <Route path="/technique-mobile-test" element={<Game />} />
+            <Route path="/mobile-technique-test" element={<Game />} />
+            <Route path="/mobile-test" element={<Game />} />
+            <Route path="/mobile-hints-test" element={<Game />} />
+            <Route path="/mobile-error-test" element={<Game />} />
+            <Route path="/mobile-touch-test" element={<Game />} />
+            <Route path="/mobile-orientation-test" element={<Game />} />
+            <Route path="/mobile-solve-test" element={<Game />} />
+            <Route path="/mobile-progress-test" element={<Game />} />
+            <Route path="/mobile-keyboard-test" element={<Game />} />
             {/* Catch-all for puzzles: /:seed (daily if YYYYMMDD format, otherwise practice) */}
             <Route path="/:seed" element={<Game />} />
           </Routes>
