@@ -573,7 +573,6 @@ function GameContent() {
   // HELPER FUNCTIONS
   // ============================================================
 
-  // Get storage key for the current puzzle
   const getStorageKey = useCallback((puzzleSeed: string) => {
     return `${STORAGE_KEYS.GAME_STATE_PREFIX}${puzzleSeed}`
   }, [])
@@ -1003,8 +1002,7 @@ function GameContent() {
        return
      }
 
-     // If erase mode is active and cell has a value, erase it
-      if (currentEraseMode && currentGame.board[idx] !== 0) {
+       if (currentEraseMode && currentGame.board[idx] !== 0) {
         currentGame.eraseCell(idx)
         clearAfterErase()
         // Reset last hint tracking so next hint counts as new
@@ -1014,8 +1012,7 @@ function GameContent() {
         return
       }
 
-       // If a digit is highlighted, fill the cell (overwriting any existing value)
-       if (currentHighlightedDigit !== null) {
+        if (currentHighlightedDigit !== null) {
          if (currentNotesMode) {
            currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
            // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
@@ -1053,7 +1050,6 @@ function GameContent() {
       
       if (!currentGame) return
 
-      // If no cell selected, toggle digit highlight for multi-fill mode
       if (currentSelectedCell === null) {
         toggleDigitHighlight(digit)
         return

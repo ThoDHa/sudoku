@@ -26,7 +26,7 @@ func newPropagationResult() *propagationResult {
 }
 
 // propagateSingles propagates naked and hidden singles from a starting assumption
-// This is NOT backtracking - it only follows deterministic implications
+// This is NOT backtracking, it only follows deterministic implications
 func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int) *propagationResult {
 	result := newPropagationResult()
 
@@ -176,7 +176,7 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 				}
 			}
 
-			// If any branch leads to contradiction, we can place the other value
+			// Check if any branch leads to contradiction, we can place the other value
 			if !allValid && numCands == 2 {
 				for i, res := range results {
 					if !res.valid {

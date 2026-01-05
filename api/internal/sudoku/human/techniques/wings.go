@@ -7,10 +7,10 @@ import (
 )
 
 // DetectXYZWing finds XYZ-Wing pattern:
-// - Pivot cell with candidates {X, Y, Z}
-// - Wing1 with candidates {X, Z} that sees the pivot
-// - Wing2 with candidates {Y, Z} that sees the pivot
-// - Eliminate Z from cells that see all three (pivot and both wings)
+// : Pivot cell with candidates {X, Y, Z}
+// : Wing1 with candidates {X, Z} that sees the pivot
+// : Wing2 with candidates {Y, Z} that sees the pivot
+// : Eliminate Z from cells that see all three (pivot and both wings)
 //
 // Logic: Either pivot is X (then wing1 is Z), pivot is Y (then wing2 is Z),
 // or pivot is Z. In all cases, Z is in one of the three cells.

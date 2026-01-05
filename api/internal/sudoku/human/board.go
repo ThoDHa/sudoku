@@ -5,9 +5,9 @@ package human
 // ============================================================================
 //
 // Board represents the current state of a Sudoku puzzle, including:
-// - Cell values (0 = empty, 1-9 = filled)
-// - Candidate digits for each cell (as bitmask)
-// - Eliminated candidates (to prevent re-adding)
+// : Cell values (0 = empty, 1-9 = filled)
+// : Candidate digits for each cell (as bitmask)
+// : Eliminated candidates (to prevent re-adding)
 //
 // For grid utilities (coordinates, peers, units), see grid.go
 // For solving logic, see solver.go
@@ -82,14 +82,12 @@ func (b *Board) InitCandidates() {
 func (b *Board) canPlace(idx, digit int) bool {
 	row, col := idx/9, idx%9
 
-	// Check row
 	for c := 0; c < 9; c++ {
 		if b.Cells[row*9+c] == digit {
 			return false
 		}
 	}
 
-	// Check column
 	for r := 0; r < 9; r++ {
 		if b.Cells[r*9+col] == digit {
 			return false
@@ -121,7 +119,6 @@ func (b *Board) SetCell(idx, digit int) {
 
 	row, col := idx/9, idx%9
 
-	// Remove from row and mark as eliminated
 	for c := 0; c < 9; c++ {
 		peerIdx := row*9 + c
 		if b.Candidates[peerIdx].Has(digit) {
@@ -130,7 +127,6 @@ func (b *Board) SetCell(idx, digit int) {
 		}
 	}
 
-	// Remove from column and mark as eliminated
 	for r := 0; r < 9; r++ {
 		peerIdx := r*9 + col
 		if b.Candidates[peerIdx].Has(digit) {
@@ -202,7 +198,6 @@ func (b *Board) IsSolved() bool {
 
 // IsValid checks if the current board state has no conflicts (duplicates in row/col/box)
 func (b *Board) IsValid() bool {
-	// Check each row for duplicates
 	for row := 0; row < 9; row++ {
 		seen := make(map[int]bool)
 		for col := 0; col < 9; col++ {
@@ -216,7 +211,6 @@ func (b *Board) IsValid() bool {
 		}
 	}
 
-	// Check each column for duplicates
 	for col := 0; col < 9; col++ {
 		seen := make(map[int]bool)
 		for row := 0; row < 9; row++ {
@@ -230,7 +224,6 @@ func (b *Board) IsValid() bool {
 		}
 	}
 
-	// Check each 3x3 box for duplicates
 	for boxRow := 0; boxRow < 3; boxRow++ {
 		for boxCol := 0; boxCol < 3; boxCol++ {
 			seen := make(map[int]bool)

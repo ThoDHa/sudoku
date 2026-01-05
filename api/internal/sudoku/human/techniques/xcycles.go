@@ -9,8 +9,8 @@ import (
 // DetectGroupedXCycles finds Grouped X-Cycles eliminations or assignments.
 //
 // X-Cycles are chains of strong and weak links for a single digit that form a loop.
-// - Strong link: exactly 2 candidates in a unit (if one is false, other must be true)
-// - Weak link: candidates see each other (if one is true, other must be false)
+// Strong link: exactly 2 candidates in a unit (if one is false, other must be true)
+// Weak link: candidates see each other (if one is true, other must be false)
 //
 // Types of X-Cycles:
 //   - Nice Loop (continuous): alternates strong-weak-strong-weak..., even length

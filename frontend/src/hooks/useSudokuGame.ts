@@ -194,7 +194,6 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   React.useEffect(() => { historyRef.current = history }, [history])
   React.useEffect(() => { historyIndexRef.current = historyIndex }, [historyIndex])
 
-  // Update givenCells when initialBoard prop changes (new puzzle loaded)
   React.useEffect(() => {
     if (initialBoard.length === 81 && initialBoard.some(v => v !== 0)) {
       setGivenCells([...initialBoard])
@@ -861,7 +860,6 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     }
   }, [updateCandidates, isValidSolution])
 
-  // Set board state without modifying history (for auto-solve rewind)
   const setBoardState = useCallback((
     newBoard: number[],
     newCandidates: Uint16Array

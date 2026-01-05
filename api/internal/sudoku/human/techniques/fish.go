@@ -10,7 +10,6 @@ import (
 // DetectXWing finds X-Wing pattern: a digit in exactly 2 positions in 2 rows,
 // and those positions share the same columns
 func DetectXWing(b BoardInterface) *core.Move {
-	// Check rows for X-Wing
 	for digit := 1; digit <= 9; digit++ {
 		// Find rows where digit appears in exactly 2 columns
 		rowPositions := make(map[int][]int)

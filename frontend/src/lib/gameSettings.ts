@@ -214,7 +214,7 @@ export function clearOtherGamesForMode(currentSeed: string): void {
     // Check if this game is in the same mode
     const gameMode = getGameMode(game.seed)
     if (currentMode === gameMode) {
-      // Same mode, different seed — clear it (whether in-progress or completed)
+      // Same mode, different seed: clear it (whether in-progress or completed)
       clearInProgressGame(game.seed)
     }
   }

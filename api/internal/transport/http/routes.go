@@ -228,7 +228,7 @@ func practiceHandler(c *gin.Context) {
 	// Map technique to appropriate difficulty levels to search
 	// Simple techniques are in all puzzles, medium in medium+, etc.
 	techniqueToDifficulties := map[string][]string{
-		// Simple techniques - found in all difficulties, but easier puzzles have more obvious examples
+		// Simple techniques: found in all difficulties, but easier puzzles have more obvious examples
 		"naked-single":       {"easy", "medium"},
 		"hidden-single":      {"easy", "medium"},
 		"pointing-pair":      {"easy", "medium", "hard"},
@@ -402,7 +402,6 @@ func sessionStartHandler(c *gin.Context) {
 	// Generate deterministic puzzle ID
 	puzzleID := req.Seed + "-" + req.Difficulty
 
-	// Create session token
 	now := time.Now()
 	session := SessionToken{
 		DeviceID:   req.DeviceID,
@@ -483,7 +482,7 @@ func solveNextHandler(c *gin.Context) {
 			cell2IsGiven := givens[conflict.Cell2] != 0
 
 			if cell1IsGiven && cell2IsGiven {
-				// Both are givens - this shouldn't happen in a valid puzzle, skip
+				// Both are givens, this shouldn't happen in a valid puzzle, skip
 				continue
 			} else if cell1IsGiven {
 				// Cell1 is given, remove Cell2
@@ -578,7 +577,6 @@ func solveNextHandler(c *gin.Context) {
 			if badCell >= 0 {
 				badRow, badCol := badCell/9, badCell%9
 
-				// Create a new board without the bad cell
 				fixedBoard := make([]int, len(req.Board))
 				copy(fixedBoard, req.Board)
 				fixedBoard[badCell] = 0

@@ -76,7 +76,7 @@ The entire application runs locally in your browser with no server required afte
 - **WASM Solver**: Go-based constraint solver compiled with TinyGo to WebAssembly (~600KB, cached)
 - **Web Worker Isolation**: Solver runs in a dedicated Web Worker thread for non-blocking UI
 - **Static Puzzles**: 1000+ pre-generated puzzles embedded for instant access
-- **Practice Database**: Pre-analyzed puzzles categorized by required techniques
+- **Practice Database**: Pre-sorted puzzles categorized by required techniques
 - **Daily Determinism**: UTC date-based seeding ensures same daily puzzle globally
 - **Offline-First**: Service Worker + PWA manifest for complete offline functionality
 
@@ -112,7 +112,7 @@ The entire application runs locally in your browser with no server required afte
 ## Recent Improvements
 
 ### ✅ **Latest Updates (December 2024)**
-- **🔧 Intelligent Error Correction**: Three-tier error detection system that finds and fixes mistakes
+- **🔧 Intelligent Error Correction**: Smart error detection system that finds and fixes mistakes
   - Direct conflicts (duplicate digits in row/column/box)
   - Blocking cells (entries that eliminate all candidates from another cell)
   - Complex errors with guided recovery suggestions
@@ -153,7 +153,7 @@ The app provides three distinct types of help, each serving different learning g
 - **Usage**: Study complex puzzles, verify your approach, or just enjoy the show
 
 ### 📝 **Auto-fill: Smart Starting Point**
-- **Purpose**: Automatically populate valid candidates to reduce manual work  
+- **Purpose**: Automatically fill in valid candidates to reduce manual work  
 - **How it Works**: Analyzes empty cells and fills all mathematically valid candidate digits
 - **What You Get**: Complete candidate notation without the tedious manual entry
 - **Learning Value**: Low, a convenience feature that saves time
@@ -313,13 +313,13 @@ make test-e2e
 
 ### Test Reporting with Allure
 
-Generate beautiful HTML test reports locally:
+Create beautiful HTML test reports locally:
 
 ```bash
 # Run all tests with Allure output
 make test-allure
 
-# Generate combined report from all test results
+# Create combined report from all test results
 make allure-report
 
 # Serve report locally (opens in browser)

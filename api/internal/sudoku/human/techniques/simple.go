@@ -28,7 +28,6 @@ func DetectNakedSingle(b BoardInterface) *core.Move {
 
 // DetectHiddenSingle finds a digit that can only go in one cell within a unit
 func DetectHiddenSingle(b BoardInterface) *core.Move {
-	// Check rows
 	for row := 0; row < 9; row++ {
 		for digit := 1; digit <= 9; digit++ {
 			var positions []int
@@ -94,7 +93,6 @@ func DetectHiddenSingle(b BoardInterface) *core.Move {
 		}
 	}
 
-	// Check boxes
 	for box := 0; box < 9; box++ {
 		boxRow, boxCol := (box/3)*3, (box%3)*3
 		for digit := 1; digit <= 9; digit++ {
@@ -232,7 +230,6 @@ func DetectPointingPair(b BoardInterface) *core.Move {
 
 // DetectBoxLineReduction finds candidates in a row/column confined to one box
 func DetectBoxLineReduction(b BoardInterface) *core.Move {
-	// Check rows
 	for row := 0; row < 9; row++ {
 		for digit := 1; digit <= 9; digit++ {
 			var positions []core.CellRef

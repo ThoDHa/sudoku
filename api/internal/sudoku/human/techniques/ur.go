@@ -23,12 +23,12 @@ type urRectangle struct {
 	d1, d2  int    // The two digits forming the UR
 	corners [4]int // Cell indices: [0]=(r1,c1), [1]=(r1,c2), [2]=(r3,c1), [3]=(r3,c2)
 	// Corners are ordered so that:
-	// - [0] and [3] are diagonal (different row and column)
-	// - [1] and [2] are diagonal (different row and column)
-	// - [0] and [1] share a row
-	// - [2] and [3] share a row
-	// - [0] and [2] share a column
-	// - [1] and [3] share a column
+	// : [0] and [3] are diagonal (different row and column)
+	// : [1] and [2] are diagonal (different row and column)
+	// : [0] and [1] share a row
+	// : [2] and [3] share a row
+	// : [0] and [2] share a column
+	// : [1] and [3] share a column
 }
 
 // urFloorRoofPairs defines row/column pair configurations for UR floor/roof detection:

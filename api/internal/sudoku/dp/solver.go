@@ -43,7 +43,6 @@ func FindConflicts(grid []int) []Conflict {
 	var conflicts []Conflict
 	seen := make(map[string]bool) // Track already-reported conflicts to avoid duplicates
 
-	// Check rows
 	for row := 0; row < 9; row++ {
 		positions := make(map[int][]int) // value -> list of column positions
 		for col := 0; col < 9; col++ {
@@ -69,7 +68,6 @@ func FindConflicts(grid []int) []Conflict {
 		}
 	}
 
-	// Check columns
 	for col := 0; col < 9; col++ {
 		positions := make(map[int][]int) // value -> list of row positions
 		for row := 0; row < 9; row++ {
@@ -95,7 +93,6 @@ func FindConflicts(grid []int) []Conflict {
 		}
 	}
 
-	// Check boxes
 	for box := 0; box < 9; box++ {
 		positions := make(map[int][]int) // value -> list of cell indices
 		boxRow, boxCol := (box/3)*3, (box%3)*3
@@ -207,14 +204,12 @@ func solve(board []int) bool {
 }
 
 func isValid(board []int, row, col, digit int) bool {
-	// Check row
 	for c := 0; c < 9; c++ {
 		if board[row*9+c] == digit {
 			return false
 		}
 	}
 
-	// Check column
 	for r := 0; r < 9; r++ {
 		if board[r*9+col] == digit {
 			return false

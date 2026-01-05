@@ -12,10 +12,10 @@ import (
 // ============================================================================
 //
 // Solver orchestrates the solving process by:
-// - Managing the technique registry
-// - Finding the next applicable move
-// - Applying moves to the board
-// - Tracking difficulty based on techniques used
+// : Managing the technique registry
+// : Finding the next applicable move
+// : Applying moves to the board
+// : Tracking difficulty based on techniques used
 //
 // For board state, see board.go
 // For grid utilities, see grid.go

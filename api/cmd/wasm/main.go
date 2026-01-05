@@ -815,7 +815,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 
 		move := solver.FindNextMove(board)
 		if move == nil {
-			// Solver stalled - no technique works and no contradiction detected yet.
+			// Solver stalled: no technique works and no contradiction detected yet.
 			// This often means user has incorrect entries that prevent progress.
 			// Try to find the error using our detection methods.
 
@@ -853,7 +853,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 				continue
 			}
 
-			// Method 2: Trial removal - try removing each user digit to see if solver can progress
+			// Method 2: Trial removal, try removing each user digit to see if solver can progress
 			badCell, badDigit = findErrorByTrialRemoval(originalUserBoard, givens, solver)
 			if badCell >= 0 {
 				badRow, badCol := badCell/9, badCell%9

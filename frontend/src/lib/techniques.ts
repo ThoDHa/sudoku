@@ -1172,7 +1172,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'W-Wing',
     slug: 'w-wing',
     tier: 'Hard',
-    description: 'Two bivalue cells with identical candidates {X,Y}, connected by a strong link on one candidate (say X). If cell A is Y, it forces the strong link to make cell B also Y - impossible since they see each other! So one must be X, the other Y. Cells seeing both can eliminate Y.',
+    description: 'Two bivalue cells with identical candidates {X,Y}, connected by a strong link on one candidate (say X). If cell A is Y, it forces the strong link to make cell B also Y - impossible since they see each other! So one will be X, the other Y. Cells seeing both can eliminate Y.',
     example: 'Two cells both have {3,7}. A strong link on 3 connects them via intermediate cells. If both were 7, the strong link forces a contradiction. So cells seeing both bivalue cells can eliminate 7.',
     relatedTechniques: ['xy-wing', 'xy-chain'],
     diagram: {
@@ -1276,7 +1276,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
     title: 'X-Chain',
     slug: 'x-chain',
     tier: 'Hard',
-    description: 'A chain of conjugate pairs for a single digit, alternating between strong links. In an even-length chain, the endpoints have opposite polarity - one must be true, one false. Any cell seeing both endpoints can eliminate that digit. X-Chains extend Simple Coloring with a focus on specific elimination targets.',
+    description: 'A chain of conjugate pairs for a single digit, alternating between strong links. In an even-length chain, the endpoints have opposite polarity - one will be true, one false. Any cell seeing both endpoints can eliminate that digit. X-Chains extend Simple Coloring with a focus on specific elimination targets.',
     example: 'Chain of digit 6: A→B→C→D (4 cells, even length). A and D have opposite truth values. Any cell that sees both A and D cannot be 6.',
     relatedTechniques: ['simple-coloring', 'xy-chain', 'aic'],
     diagram: {
@@ -1501,7 +1501,7 @@ export const TECHNIQUES: TechniqueInfo[] = [
         title: 'Type 5 (Not Implemented)',
         slug: 'unique-rectangle-type-5',
         description: 'The extra candidate appears in exactly one diagonal pair of corners, allowing eliminations based on the UR rule.',
-        example: 'Rectangle with {3,7} and corners R1C1,R2C4 having extra 9. If R1C1≠9 and R2C4≠9, deadly pattern forms, so one must be 9.',
+        example: 'Rectangle with {3,7} and corners R1C1,R2C4 having extra 9. If R1C1≠9 and R2C4≠9, deadly pattern forms, so one will be 9.',
         diagram: {
           cells: [
             // Context cells
