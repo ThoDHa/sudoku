@@ -32,6 +32,8 @@ interface BoardProps {
   onCellChange?: (idx: number, value: number) => void
   /** Cells that contain incorrect values (compared to the solution) */
   incorrectCells?: number[]
+  /** Additional CSS classes to apply to the board container */
+  className?: string
 }
 
 // Find all cells that have duplicate values in their row, column, or box
@@ -283,13 +285,20 @@ const Board = memo(function Board({
   onCellClick,
   onCellChange,
   incorrectCells = [],
+  className = '',
 }: BoardProps) {
   const cellRefs = React.useRef<(HTMLDivElement | null)[]>([])
 
-  // Focus the selected cell when it changes
+  // Focus the selected cell when it changes, blur when deselected
   React.useEffect(() => {
     if (selectedCell !== null && cellRefs.current[selectedCell]) {
       cellRefs.current[selectedCell]?.focus()
+    } else if (selectedCell === null) {
+      // When cell is deselected, blur any focused cell
+      const activeElement = document.activeElement
+      if (activeElement && 'blur' in activeElement) {
+        (activeElement as HTMLElement).blur()
+      }
     }
   }, [selectedCell])
 
@@ -646,7 +655,7 @@ const Board = memo(function Board({
   }, []) // Empty deps - callbacks never change
 
   return (
-    <div className="sudoku-board aspect-square w-full max-h-full" role="grid" aria-label="Sudoku puzzle">
+    <div className={`sudoku-board aspect-square w-full max-h-full ${className}`} role="grid" aria-label="Sudoku puzzle">
       {Array.from({ length: 9 }, (_, rowIdx) => (
         <div key={rowIdx} role="row" className="contents">
           {Array.from({ length: 9 }, (_, colIdx) => {

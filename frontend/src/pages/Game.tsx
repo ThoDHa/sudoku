@@ -205,9 +205,11 @@ function GameContent() {
   // Track the last time we were hidden
   const wasHiddenRef = useRef(false)
   
-  // Refs for click-outside detection (deselect cell when clicking outside board/controls)
+  // Refs for click-outside detection (deselect cell when clicking outside game interface)
   const boardContainerRef = useRef<HTMLDivElement>(null)
   const controlsContainerRef = useRef<HTMLDivElement>(null)
+  const gameInterfaceRef = useRef<HTMLDivElement>(null) // Entire page container (too wide)
+  const gameContentRef = useRef<HTMLDivElement>(null) // Just the actual game content (board + controls)
   
   // ============================================================
   // REFS FOR STABLE CALLBACKS (Performance Optimization)
@@ -281,18 +283,48 @@ function GameContent() {
   // ============================================================
   // CLICK OUTSIDE TO DESELECT (UX Enhancement)
   // ============================================================
-  // When user clicks/taps outside the board and controls, deselect the current cell
+  // When user clicks/taps outside the game interface, deselect the current cell
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       // Only process if a cell is selected
       if (selectedCellRef.current === null) return
       
-      const target = event.target as Node
+      const target = event.target as Element
+      
+      // Instead of checking if outside gameContent, check if inside specific interactive elements
       const clickedInsideBoard = boardContainerRef.current?.contains(target)
       const clickedInsideControls = controlsContainerRef.current?.contains(target)
+      const clickedInsideHeader = target.closest('header, .game-header, [data-game-header]')
+      const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal], .fixed')
       
-      if (!clickedInsideBoard && !clickedInsideControls) {
+      // Check if clicking on actual interactive elements (not just whitespace)
+      const clickedOnButton = target.closest('button')
+      const clickedOnInput = target.closest('input, select, textarea')
+      const clickedOnInteractive = target.closest('[role="button"], [tabindex], a[href]')
+      
+      const isInteractiveClick = clickedOnButton || clickedOnInput || clickedOnInteractive
+      
+      // DEBUG: Log click detection info
+      console.log('Click Debug:', {
+        target: target.tagName + (target.className ? '.' + target.className.split(' ').join('.') : ''),
+        clickedInsideBoard: !!clickedInsideBoard,
+        clickedInsideControls: !!clickedInsideControls, 
+        clickedInsideHeader: !!clickedInsideHeader,
+        clickedInsideModal: !!clickedInsideModal,
+        isInteractiveClick,
+        selectedCell: selectedCellRef.current
+      })
+      
+      // Deselect if clicking outside interactive areas
+      const shouldDeselect = !clickedInsideBoard && 
+                            !clickedInsideModal && 
+                            !clickedInsideHeader &&
+                            (!clickedInsideControls || !isInteractiveClick)
+      
+      if (shouldDeselect) {
         deselectCell()
+        setEraseMode(false)
+        clearMoveHighlight()
       }
     }
     
@@ -1080,12 +1112,13 @@ function GameContent() {
       } else {
         // For digit placement, clear move highlights but preserve digit highlight for multi-fill
         clearAfterDigitPlacement()
+        deselectCell()
       }
       // Reset last hint tracking so next hint counts as new
       lastTechniqueHintRef.current = null
       lastRegularHintRef.current = null
 
-      // Keep cell selected so user can erase or change immediately
+      // Cell deselects after digit entry (per requirements)
       // Keep digit highlighted for adding candidates (multi-fill)
     // All deps are now stable callbacks - game accessed via ref
     }, [toggleDigitHighlight, clearAfterDigitToggle, clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell, resumeFromExtendedPause])
@@ -1109,6 +1142,7 @@ if (value === 0) {
           } else {
             game.setCell(idx, value, notesMode)
             clearAfterDigitPlacement()
+            deselectCell()
           }
           // Reset last hint tracking so next hint counts as new
           lastTechniqueHintRef.current = null
@@ -1835,7 +1869,7 @@ ${bugReportJson}
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-background text-foreground">
+    <div ref={gameInterfaceRef} className="flex h-full flex-col overflow-hidden bg-background text-foreground">
       {/* Game Header */}
       <GameHeader
         difficulty={difficulty}
@@ -1928,30 +1962,8 @@ ${bugReportJson}
       >
 
         {/* Game container - sizes based on available height and width */}
-        {/* onClick deselects when tapping the gap between board and controls */}
-        <div 
-          className="game-container flex flex-col items-center"
-          onClick={(e) => {
-            // Deselect when clicking on the gap between board and controls
-            // This includes: clicking the game-container itself, clicking empty space
-            // in the controls container (e.g., to the right of centered buttons on mobile)
-            const target = e.target as HTMLElement
-            const isInsideBoard = boardContainerRef.current?.contains(target)
-            const isInsideControls = controlsContainerRef.current?.contains(target)
-            
-            // Allow deselection if:
-            // 1. Click is outside both board and controls, OR
-            // 2. Click is directly on the controls container (not a button inside it)
-            const shouldDeselect = !isInsideBoard && !isInsideControls ||
-                                   target === controlsContainerRef.current
-            
-            if (shouldDeselect) {
-              deselectCell()
-              setEraseMode(false)
-              clearMoveHighlight()
-            }
-          }}
-        >
+        {/* Deselection now handled by global document listener for consistency */}
+        <div ref={gameContentRef} className="game-container flex flex-col items-center">
           {/* Board container with pause overlay */}
           <div ref={boardContainerRef} className="relative aspect-square w-full">
           <Board
@@ -1965,27 +1977,32 @@ ${bugReportJson}
             onCellClick={handleCellClick}
             onCellChange={handleCellChange}
             incorrectCells={incorrectCells}
+            className={timerControl.isPausedDueToVisibility && !game.isComplete ? 'blur-md' : ''}
           />
           
-          {/* Pause overlay - shown when timer is paused due to tab/window losing focus */}
+          {/* Pause overlay - minimal overlay when board is blurred */}
           {timerControl.isPausedDueToVisibility && !game.isComplete && (
             <div 
-              className="absolute inset-0 flex flex-col items-center justify-center bg-background/95 backdrop-blur-md rounded-xl z-20"
+              className="absolute inset-0 flex flex-col items-center justify-center rounded-xl z-20"
               onClick={() => {
                 // Clicking the overlay brings focus back, which auto-resumes the timer
                 window.focus()
               }}
             >
-              <div className="text-6xl mb-4">
-                <svg className="w-16 h-16 text-foreground-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className="bg-background/80 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-lg border border-border-light">
+                <div className="flex flex-col items-center text-center">
+                  <div className="text-4xl mb-3">
+                    <svg className="w-12 h-12 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-1">Game Paused</h3>
+                  <p className="text-sm text-foreground-muted mb-3">
+                    Click anywhere to continue
+                  </p>
+                  <PauseOverlayTimer />
+                </div>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">Game Paused</h3>
-              <p className="text-sm text-foreground-muted text-center px-4">
-                Click anywhere or return to this tab to continue
-              </p>
-              <PauseOverlayTimer />
             </div>
           )}
           </div>
