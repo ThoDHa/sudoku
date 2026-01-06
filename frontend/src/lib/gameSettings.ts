@@ -18,6 +18,7 @@ export function getGameMode(seed: string): GameMode {
   if (!seed) return null
   if (seed.startsWith('daily-')) return 'daily'
   if (seed.startsWith('P')) return 'practice'
+  if (seed.startsWith('practice-')) return 'practice'
   return null
 }
 

@@ -6,6 +6,7 @@ import { clearAllCaches, CACHE_VERSION } from '../lib/cache-version'
 import { getAutoSaveEnabled, setAutoSaveEnabled, getGameMode, getMostRecentGameForMode } from '../lib/gameSettings'
 import { getShowDailyReminder, setShowDailyReminder } from '../lib/preferences'
 import { getDailySeed } from '../lib/solver-service'
+import { getLastDailyDifficulty } from '../lib/hooks'
 import { createGameRoute, SPEED_OPTIONS, COLOR_THEMES, TOAST_DURATION_INFO } from '../lib/constants'
 
 // Game actions (for game page)
@@ -152,13 +153,19 @@ function ModeSwitchSection({ onClose, currentSeed }: ModeSwitchSectionProps) {
   
   const handleSwitchToDaily = () => {
     const { seed } = getDailySeed()
-    navigate(`/game?seed=${seed}`)
+    const difficulty = getLastDailyDifficulty()
+    // Skip in-progress check: user explicitly chose to switch modes
+    sessionStorage.setItem('skip_in_progress_check', 'true')
+    // Navigate to daily puzzle with difficulty if available, otherwise Game will show chooser
+    navigate(difficulty ? `/${seed}?d=${difficulty}` : `/${seed}`)
     onClose()
   }
   
   const handleSwitchToPractice = () => {
     // Check if there's an in-progress practice game
     const inProgressGame = getMostRecentGameForMode('game')
+    // Skip in-progress check: user explicitly chose to switch modes
+    sessionStorage.setItem('skip_in_progress_check', 'true')
     
     if (inProgressGame) {
       // Resume existing practice game

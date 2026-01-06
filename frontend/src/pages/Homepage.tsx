@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useDailySeed, useLastDailyDifficulty, Difficulty } from '../lib/hooks'
+import { useDailySeed, useLastDailyDifficulty, getLastDailyDifficulty, Difficulty } from '../lib/hooks'
 import { isTodayCompleted, getDailyStreak } from '../lib/scores'
 import { getHomepageMode, setHomepageMode, onHomepageModeChange, HomepageMode } from '../lib/preferences'
 import { getMostRecentGameForMode, clearInProgressGame } from '../lib/gameSettings'
@@ -50,7 +50,9 @@ export default function Homepage() {
   // Quick-switch handlers
   const handleSwitchToDaily = () => {
     const { seed } = getDailySeed()
-    navigate(`/game?seed=${seed}`)
+    const lastDifficulty = getLastDailyDifficulty()
+    // Navigate to daily puzzle with difficulty if available, otherwise Game will show chooser
+    navigate(lastDifficulty ? `/${seed}?d=${lastDifficulty}` : `/${seed}`)
   }
   
   const handleSwitchToPractice = () => {

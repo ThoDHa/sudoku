@@ -174,7 +174,11 @@ describe('gameSettings', () => {
       expect(getGameMode('custom-seed')).toBeNull()
       expect(getGameMode('test-123')).toBeNull()
       expect(getGameMode('random')).toBeNull()
-      expect(getGameMode('practice-123')).toBeNull() // Note: practice- is NOT valid
+    })
+
+    it('should return "practice" for seeds starting with "practice-"', () => {
+      expect(getGameMode('practice-123')).toBe('practice')
+      expect(getGameMode('practice-naked-singles')).toBe('practice')
     })
   })
 
@@ -204,6 +208,8 @@ describe('gameSettings', () => {
     it('should return true for practice seeds', () => {
       expect(isPracticePuzzle('P1735689600000')).toBe(true)
       expect(isPracticePuzzle('P')).toBe(true)
+      expect(isPracticePuzzle('practice-123')).toBe(true)
+      expect(isPracticePuzzle('practice-naked-singles')).toBe(true)
     })
 
     it('should return false for daily seeds', () => {

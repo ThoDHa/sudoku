@@ -22,6 +22,19 @@ const STORAGE_KEY = 'lastDailyDifficulty'
 
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'extreme' | 'impossible' | 'custom'
 
+/**
+ * Get the last selected daily difficulty from localStorage (non-hook version)
+ * Returns null if no difficulty has been selected before
+ */
+export function getLastDailyDifficulty(): Difficulty | null {
+  if (typeof window === 'undefined') return null
+  const stored = localStorage.getItem(STORAGE_KEY)
+  if (stored && ['easy', 'medium', 'hard', 'extreme', 'impossible'].includes(stored)) {
+    return stored as Difficulty
+  }
+  return null
+}
+
 export function useLastDailyDifficulty() {
   const [difficulty, setDifficultyState] = useState<Difficulty | null>(() => {
     if (typeof window === 'undefined') return null
