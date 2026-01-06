@@ -35,6 +35,12 @@ async function expectCellSelected(cell: any) {
   await expect(cell).toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/);
 }
 
+// Helper to verify cell is NOT selected (no focus ring)
+// Regression test helper to ensure proper deselection
+async function expectCellNotSelected(cell: any) {
+  await expect(cell).not.toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/);
+}
+
 // Helper to find an empty cell at a specific position
 async function findEmptyCellPosition(page: any, preferredRow: number): Promise<{ row: number; col: number }> {
   const emptyCell = page.locator(`[role="gridcell"][aria-label*="Row ${preferredRow}"][aria-label*="empty"]`).first();
@@ -231,7 +237,10 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     expect(selectedCells).toBe(1);
   });
 
-  test('arrow keys work after digit entry', async ({ page }) => {
+  test('cell deselects after digit entry (regression test)', async ({ page }) => {
+    // REGRESSION TEST: Ensure digit entry properly deselects the cell
+    // This prevents the selection state demon from returning
+    
     // Find an empty cell that has an adjacent empty cell to the right
     const cells = await findCellWithAdjacentEmpty(page, 'right');
     test.skip(!cells, 'No adjacent empty cells found for this test');
@@ -240,14 +249,33 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     await emptyCell.scrollIntoViewIfNeeded();
     await emptyCell.click();
 
+    // Verify cell is selected before digit entry
+    await expectCellSelected(emptyCell);
+
     // Enter a digit
     await page.keyboard.press('5');
     await page.waitForTimeout(100);
 
-    // Arrow right should move to adjacent empty cell
-    await page.keyboard.press('ArrowRight');
+    // CRITICAL: After digit entry, the cell should be DESELECTED
+    // This is the correct behavior that prevents navigation confusion
+    await expectCellNotSelected(emptyCell);
 
-    // The adjacent empty cell should now be selected
+    // To test arrow navigation now, we need to first select a cell again
+    // Arrow keys without selection should not move focus (correct behavior)
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(100);
+    
+    // No cell should be selected after arrow key without prior selection
+    const selectedCells = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
+    expect(selectedCells).toBe(0);
+    
+    // Now test that arrow navigation works when we DO have a selection
+    await emptyCell.click(); // Re-select the cell
+    await expectCellSelected(emptyCell);
+    
+    await page.keyboard.press('ArrowRight');
+    
+    // NOW the adjacent cell should be selected
     const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol);
     await expectCellSelected(nextCell);
   });
