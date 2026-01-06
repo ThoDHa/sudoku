@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // DetectDeathBlossom finds Death Blossom pattern:
@@ -28,7 +29,7 @@ func DetectDeathBlossom(b BoardInterface) *core.Move {
 
 	// Find potential stem cells (2-3 candidates)
 	var stems []int
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		n := b.GetCandidatesAt(i).Count()
 		if n >= 2 && n <= 3 {
 			stems = append(stems, i)
@@ -248,7 +249,7 @@ func findBlossomEliminations(b BoardInterface, stem int, petals []ALS, z int, st
 	targets = append(targets, secondary...)
 
 	// Build explanation
-	stemRow, stemCol := stem/9, stem%9
+	stemRow, stemCol := stem/constants.GridSize, stem%constants.GridSize
 	explanation := fmt.Sprintf("Death Blossom: stem R%dC%d {%v} with %d petals; eliminate %d",
 		stemRow+1, stemCol+1, FormatDigits(stemCands), len(petals), z)
 

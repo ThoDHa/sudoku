@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // ============================================================================
@@ -17,7 +18,7 @@ import (
 
 // DetectSwordfish finds Swordfish patterns
 func DetectSwordfish(b BoardInterface) *core.Move {
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		if move := detectSwordfishInRows(b, digit); move != nil {
 			return move
 		}
@@ -31,10 +32,10 @@ func DetectSwordfish(b BoardInterface) *core.Move {
 func detectSwordfishInRows(b BoardInterface, digit int) *core.Move {
 	// Find rows where digit appears in 2-3 columns
 	rowPositions := make(map[int][]int)
-	for row := 0; row < 9; row++ {
+	for row := 0; row < constants.GridSize; row++ {
 		var cols []int
-		for col := 0; col < 9; col++ {
-			if b.GetCandidatesAt(row*9 + col).Has(digit) {
+		for col := 0; col < constants.GridSize; col++ {
+			if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 				cols = append(cols, col)
 			}
 		}
@@ -82,11 +83,11 @@ func detectSwordfishInRows(b BoardInterface, digit int) *core.Move {
 				// Find eliminations in these columns
 				var eliminations []core.Candidate
 				for _, col := range cols {
-					for row := 0; row < 9; row++ {
+					for row := 0; row < constants.GridSize; row++ {
 						if row == r1 || row == r2 || row == r3 {
 							continue
 						}
-						if b.GetCandidatesAt(row*9 + col).Has(digit) {
+						if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: row, Col: col, Digit: digit,
 							})
@@ -123,10 +124,10 @@ func detectSwordfishInRows(b BoardInterface, digit int) *core.Move {
 func detectSwordfishInCols(b BoardInterface, digit int) *core.Move {
 	// Find columns where digit appears in 2-3 rows
 	colPositions := make(map[int][]int)
-	for col := 0; col < 9; col++ {
+	for col := 0; col < constants.GridSize; col++ {
 		var rows []int
-		for row := 0; row < 9; row++ {
-			if b.GetCandidatesAt(row*9 + col).Has(digit) {
+		for row := 0; row < constants.GridSize; row++ {
+			if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 				rows = append(rows, row)
 			}
 		}
@@ -174,11 +175,11 @@ func detectSwordfishInCols(b BoardInterface, digit int) *core.Move {
 				// Find eliminations in these rows
 				var eliminations []core.Candidate
 				for _, row := range rows {
-					for col := 0; col < 9; col++ {
+					for col := 0; col < constants.GridSize; col++ {
 						if col == c1 || col == c2 || col == c3 {
 							continue
 						}
-						if b.GetCandidatesAt(row*9 + col).Has(digit) {
+						if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{
 								Row: row, Col: col, Digit: digit,
 							})
@@ -223,7 +224,7 @@ func detectSwordfishInCols(b BoardInterface, digit int) *core.Move {
 // - Eliminate the digit from cells that are in one of the 3 columns AND see the fin cell
 
 func DetectFinnedSwordfish(b BoardInterface) *core.Move {
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		if move := detectFinnedSwordfishInRows(b, digit); move != nil {
 			return move
 		}
@@ -242,10 +243,10 @@ func detectFinnedSwordfishInRows(b BoardInterface, digit int) *core.Move {
 	}
 	var rows []rowInfo
 
-	for row := 0; row < 9; row++ {
+	for row := 0; row < constants.GridSize; row++ {
 		var cols []int
-		for col := 0; col < 9; col++ {
-			if b.GetCandidatesAt(row*9 + col).Has(digit) {
+		for col := 0; col < constants.GridSize; col++ {
+			if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 				cols = append(cols, col)
 			}
 		}
@@ -311,10 +312,10 @@ func detectFinnedSwordfishInRows(b BoardInterface, digit int) *core.Move {
 
 					// All fins must be in the same box
 					if len(finCols) > 1 {
-						finBox := finCols[0] / 3
+						finBox := finCols[0] / constants.BoxSize
 						sameBox := true
 						for _, fc := range finCols[1:] {
-							if fc/3 != finBox {
+							if fc/constants.BoxSize != finBox {
 								sameBox = false
 								break
 							}
@@ -325,12 +326,12 @@ func detectFinnedSwordfishInRows(b BoardInterface, digit int) *core.Move {
 					}
 
 					// The fin(s) must share a box with at least one main column position in the finned row
-					finRowInBox := finnedRow.row / 3
+					finRowInBox := finnedRow.row / constants.BoxSize
 
 					// Find which main columns are in the same box as the fin
 					var targetCols []int
 					for _, mc := range mainCols {
-						if mc/3 == finCols[0]/3 {
+						if mc/constants.BoxSize == finCols[0]/constants.BoxSize {
 							targetCols = append(targetCols, mc)
 						}
 					}
@@ -352,18 +353,18 @@ func detectFinnedSwordfishInRows(b BoardInterface, digit int) *core.Move {
 
 					// Eliminations can only occur in the target columns (columns in same box as fin)
 					// and only in rows within the fin's box (but not the swordfish rows)
-					boxRowStart := finRowInBox * 3
+					boxRowStart := finRowInBox * constants.BoxSize
 					for _, tc := range targetCols {
-						for row := boxRowStart; row < boxRowStart+3; row++ {
+						for row := boxRowStart; row < boxRowStart+constants.BoxSize; row++ {
 							if swordfishRows[row] {
 								continue
 							}
-							idx := row*9 + tc
+							idx := row*constants.GridSize + tc
 							if b.GetCandidatesAt(idx).Has(digit) {
 								// Verify this cell sees the fin (it will if in same box)
 								seesAllFins := true
 								for _, fc := range finCols {
-									finIdx := finnedRow.row*9 + fc
+									finIdx := finnedRow.row*constants.GridSize + fc
 									if !ArePeers(idx, finIdx) {
 										seesAllFins = false
 										break
@@ -429,10 +430,10 @@ func detectFinnedSwordfishInCols(b BoardInterface, digit int) *core.Move {
 	}
 	var cols []colInfo
 
-	for col := 0; col < 9; col++ {
+	for col := 0; col < constants.GridSize; col++ {
 		var rows []int
-		for row := 0; row < 9; row++ {
-			if b.GetCandidatesAt(row*9 + col).Has(digit) {
+		for row := 0; row < constants.GridSize; row++ {
+			if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 				rows = append(rows, row)
 			}
 		}
@@ -498,10 +499,10 @@ func detectFinnedSwordfishInCols(b BoardInterface, digit int) *core.Move {
 
 					// All fins must be in the same box
 					if len(finRows) > 1 {
-						finBox := finRows[0] / 3
+						finBox := finRows[0] / constants.BoxSize
 						sameBox := true
 						for _, fr := range finRows[1:] {
-							if fr/3 != finBox {
+							if fr/constants.BoxSize != finBox {
 								sameBox = false
 								break
 							}
@@ -512,12 +513,12 @@ func detectFinnedSwordfishInCols(b BoardInterface, digit int) *core.Move {
 					}
 
 					// The fin(s) must share a box with at least one main row position in the finned column
-					finColInBox := finnedCol.col / 3
+					finColInBox := finnedCol.col / constants.BoxSize
 
 					// Find which main rows are in the same box as the fin
 					var targetRows []int
 					for _, mr := range mainRows {
-						if mr/3 == finRows[0]/3 {
+						if mr/constants.BoxSize == finRows[0]/constants.BoxSize {
 							targetRows = append(targetRows, mr)
 						}
 					}
@@ -539,18 +540,18 @@ func detectFinnedSwordfishInCols(b BoardInterface, digit int) *core.Move {
 
 					// Eliminations can only occur in the target rows (rows in same box as fin)
 					// and only in columns within the fin's box (but not the swordfish columns)
-					boxColStart := finColInBox * 3
+					boxColStart := finColInBox * constants.BoxSize
 					for _, tr := range targetRows {
-						for col := boxColStart; col < boxColStart+3; col++ {
+						for col := boxColStart; col < boxColStart+constants.BoxSize; col++ {
 							if swordfishCols[col] {
 								continue
 							}
-							idx := tr*9 + col
+							idx := tr*constants.GridSize + col
 							if b.GetCandidatesAt(idx).Has(digit) {
 								// Verify this cell sees the fin (it will if in same box)
 								seesAllFins := true
 								for _, fr := range finRows {
-									finIdx := fr*9 + finnedCol.col
+									finIdx := fr*constants.GridSize + finnedCol.col
 									if !ArePeers(idx, finIdx) {
 										seesAllFins = false
 										break

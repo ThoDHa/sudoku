@@ -6,6 +6,7 @@ import (
 
 	"sudoku-api/internal/core"
 	"sudoku-api/internal/sudoku/human/techniques"
+	"sudoku-api/pkg/constants"
 )
 
 // ============================================================================
@@ -52,7 +53,7 @@ func NewCandidates(digits []int) Candidates {
 	return techniques.NewCandidates(digits)
 }
 
-// AllCandidates returns a Candidates with all digits 1-9 set
+// AllCandidates returns a Candidates with all digits 1-16 set
 func AllCandidates() Candidates {
 	return techniques.AllCandidates()
 }
@@ -63,25 +64,25 @@ func AllCandidates() Candidates {
 
 var (
 	// Peers contains all peer indices for each cell (row + col + box peers, excluding self)
-	Peers [81][]int
+	Peers [constants.TotalCells][]int
 
 	// RowPeers contains peer indices within the same row for each cell
-	RowPeers [81][]int
+	RowPeers [constants.TotalCells][]int
 
 	// ColPeers contains peer indices within the same column for each cell
-	ColPeers [81][]int
+	ColPeers [constants.TotalCells][]int
 
 	// BoxPeers contains peer indices within the same box for each cell
-	BoxPeers [81][]int
+	BoxPeers [constants.TotalCells][]int
 
 	// RowIndices maps row number to all cell indices in that row
-	RowIndices [9][]int
+	RowIndices [constants.GridSize][]int
 
 	// ColIndices maps column number to all cell indices in that column
-	ColIndices [9][]int
+	ColIndices [constants.GridSize][]int
 
 	// BoxIndices maps box number to all cell indices in that box
-	BoxIndices [9][]int
+	BoxIndices [constants.GridSize][]int
 )
 
 func init() {
@@ -91,21 +92,21 @@ func init() {
 // initializePeers precomputes all peer relationships
 func initializePeers() {
 	// Initialize row/col/box indices first
-	for r := 0; r < 9; r++ {
-		for c := 0; c < 9; c++ {
-			idx := r*9 + c
+	for r := 0; r < constants.GridSize; r++ {
+		for c := 0; c < constants.GridSize; c++ {
+			idx := r*constants.GridSize + c
 			RowIndices[r] = append(RowIndices[r], idx)
 			ColIndices[c] = append(ColIndices[c], idx)
 
-			boxNum := (r/3)*3 + c/3
+			boxNum := (r/constants.BoxSize)*constants.BoxSize + c/constants.BoxSize
 			BoxIndices[boxNum] = append(BoxIndices[boxNum], idx)
 		}
 	}
 
 	// For each cell, compute its peers
-	for i := 0; i < 81; i++ {
-		row, col := i/9, i%9
-		boxNum := (row/3)*3 + col/3
+	for i := 0; i < constants.TotalCells; i++ {
+		row, col := i/constants.GridSize, i%constants.GridSize
+		boxNum := (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize
 
 		// Collect unique peers (avoiding duplicates)
 		peerSet := make(map[int]bool)
@@ -145,25 +146,25 @@ func initializePeers() {
 // Coordinate Helpers
 // ============================================================================
 
-// RowOf returns the row number (0-8) for a cell index
+// RowOf returns the row number (0-15) for a cell index
 func RowOf(idx int) int {
-	return idx / 9
+	return idx / constants.GridSize
 }
 
-// ColOf returns the column number (0-8) for a cell index
+// ColOf returns the column number (0-15) for a cell index
 func ColOf(idx int) int {
-	return idx % 9
+	return idx % constants.GridSize
 }
 
-// BoxOf returns the box number (0-8) for a cell index
+// BoxOf returns the box number (0-15) for a cell index
 func BoxOf(idx int) int {
-	row, col := idx/9, idx%9
-	return (row/3)*3 + col/3
+	row, col := idx/constants.GridSize, idx%constants.GridSize
+	return (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize
 }
 
 // IndexOf returns the cell index for given row and column
 func IndexOf(row, col int) int {
-	return row*9 + col
+	return row*constants.GridSize + col
 }
 
 // ToCellRef converts a cell index to a CellRef
@@ -217,10 +218,10 @@ func ArePeers(idx1, idx2 int) bool {
 // Unit Helpers
 // ============================================================================
 
-// AllUnits returns all 27 units (9 rows + 9 cols + 9 boxes)
+// AllUnits returns all 48 units (16 rows + 16 cols + 16 boxes)
 func AllUnits() []Unit {
-	units := make([]Unit, 0, 27)
-	for i := 0; i < 9; i++ {
+	units := make([]Unit, 0, constants.GridSize*3)
+	for i := 0; i < constants.GridSize; i++ {
 		units = append(units, Unit{Type: UnitRow, Index: i, Cells: RowIndices[i]})
 		units = append(units, Unit{Type: UnitCol, Index: i, Cells: ColIndices[i]})
 		units = append(units, Unit{Type: UnitBox, Index: i, Cells: BoxIndices[i]})

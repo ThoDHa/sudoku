@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // candidatePair represents a cell-candidate pair for 3D Medusa coloring
@@ -15,7 +16,7 @@ type candidatePair struct {
 
 // pairKey returns a unique key for a candidate pair
 func (cp candidatePair) key() int {
-	return cp.cell*10 + cp.digit
+	return cp.cell*100 + cp.digit
 }
 
 // DetectMedusa3D implements 3D Medusa (Multi-Coloring) technique
@@ -29,13 +30,13 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 
 	// First, find all conjugate pairs for each digit (strong links)
 	conjugatePairs := make(map[int][][2]int) // digit -> list of cell pairs
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		conjugatePairs[digit] = findConjugatePairs(b, digit)
 	}
 
 	// Find all bivalue cells
 	var bivalueCells []int
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.GetCandidatesAt(i).Count() == 2 {
 			bivalueCells = append(bivalueCells, i)
 		}
@@ -89,7 +90,7 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 			continue
 		}
 
-		startPair := candidatePair{startKey / 10, startKey % 10}
+		startPair := candidatePair{startKey / 100, startKey % 100}
 
 		// BFS to color this component
 		var color1, color2 []candidatePair
@@ -231,7 +232,7 @@ func checkSameCellContradiction(b BoardInterface, colorToCheck, otherColor []can
 					Targets:      pairsToTargets(allPairs),
 					Eliminations: eliminations,
 					Explanation: fmt.Sprintf("3D Medusa: Color %d has two candidates in R%dC%d: eliminate all color %d.",
-						colorNum, cell/9+1, cell%9+1, colorNum),
+						colorNum, cell/constants.GridSize+1, cell%constants.GridSize+1, colorNum),
 					Highlights: core.Highlights{
 						Primary:   pairsToTargets(colorToCheck),
 						Secondary: pairsToTargets(otherColor),
@@ -262,7 +263,7 @@ func checkSameUnitContradiction(b BoardInterface, colorToCheck, otherColor []can
 					for _, cp := range colorToCheck {
 						if b.GetCandidatesAt(cp.cell).Has(cp.digit) {
 							eliminations = append(eliminations, core.Candidate{
-								Row: cp.cell / 9, Col: cp.cell % 9, Digit: cp.digit,
+								Row: cp.cell / constants.GridSize, Col: cp.cell % constants.GridSize, Digit: cp.digit,
 							})
 						}
 					}
@@ -275,8 +276,8 @@ func checkSameUnitContradiction(b BoardInterface, colorToCheck, otherColor []can
 							Targets:      pairsToTargets(allPairs),
 							Eliminations: eliminations,
 							Explanation: fmt.Sprintf("3D Medusa: Color %d has %d twice in same unit (R%dC%d, R%dC%d): eliminate all color %d.",
-								colorNum, digit, pairs[i].cell/9+1, pairs[i].cell%9+1,
-								pairs[j].cell/9+1, pairs[j].cell%9+1, colorNum),
+								colorNum, digit, pairs[i].cell/constants.GridSize+1, pairs[i].cell%constants.GridSize+1,
+								pairs[j].cell/constants.GridSize+1, pairs[j].cell%constants.GridSize+1, colorNum),
 							Highlights: core.Highlights{
 								Primary:   pairsToTargets(colorToCheck),
 								Secondary: pairsToTargets(otherColor),
@@ -317,7 +318,7 @@ func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePa
 	}
 
 	// Find uncolored candidates that see the same digit in both colors
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		cells1, ok1 := color1ByDigit[digit]
 		cells2, ok2 := color2ByDigit[digit]
 
@@ -326,7 +327,7 @@ func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePa
 		}
 
 		// Check each uncolored cell with this digit
-		for cell := 0; cell < 81; cell++ {
+		for cell := 0; cell < constants.TotalCells; cell++ {
 			if !b.GetCandidatesAt(cell).Has(digit) {
 				continue
 			}
@@ -361,15 +362,15 @@ func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePa
 					Action: "eliminate",
 					Digit:  digit,
 					Targets: []core.CellRef{
-						{Row: cell / 9, Col: cell % 9},
+						{Row: cell / constants.GridSize, Col: cell % constants.GridSize},
 					},
 					Eliminations: []core.Candidate{
-						{Row: cell / 9, Col: cell % 9, Digit: digit},
+						{Row: cell / constants.GridSize, Col: cell % constants.GridSize, Digit: digit},
 					},
 					Explanation: fmt.Sprintf("3D Medusa: R%dC%d sees %d in both colors: eliminate %d.",
-						cell/9+1, cell%9+1, digit, digit),
+						cell/constants.GridSize+1, cell%constants.GridSize+1, digit, digit),
 					Highlights: core.Highlights{
-						Primary:   []core.CellRef{{Row: cell / 9, Col: cell % 9}},
+						Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
 						Secondary: pairsToTargets(allPairs),
 					},
 				}
@@ -388,7 +389,7 @@ func pairsToTargets(pairs []candidatePair) []core.CellRef {
 	for _, cp := range pairs {
 		if !seen[cp.cell] {
 			seen[cp.cell] = true
-			targets = append(targets, core.CellRef{Row: cp.cell / 9, Col: cp.cell % 9})
+			targets = append(targets, core.CellRef{Row: cp.cell / constants.GridSize, Col: cp.cell % constants.GridSize})
 		}
 	}
 
@@ -440,15 +441,15 @@ func checkUncoloredInBicoloredCell(b BoardInterface, color1, color2 []candidateP
 					Action: "eliminate",
 					Digit:  digit,
 					Targets: []core.CellRef{
-						{Row: cell / 9, Col: cell % 9},
+						{Row: cell / constants.GridSize, Col: cell % constants.GridSize},
 					},
 					Eliminations: []core.Candidate{
-						{Row: cell / 9, Col: cell % 9, Digit: digit},
+						{Row: cell / constants.GridSize, Col: cell % constants.GridSize, Digit: digit},
 					},
 					Explanation: fmt.Sprintf("3D Medusa: R%dC%d has candidates in both colors: eliminate uncolored %d.",
-						cell/9+1, cell%9+1, digit),
+						cell/constants.GridSize+1, cell%constants.GridSize+1, digit),
 					Highlights: core.Highlights{
-						Primary:   []core.CellRef{{Row: cell / 9, Col: cell % 9}},
+						Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
 						Secondary: pairsToTargets(allPairs),
 					},
 				}
@@ -497,7 +498,7 @@ func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 [
 	}
 
 	// Check each uncolored candidate
-	for cell := 0; cell < 81; cell++ {
+	for cell := 0; cell < constants.TotalCells; cell++ {
 		cands := b.GetCandidatesAt(cell)
 		for _, digit := range cands.ToSlice() {
 			cp := candidatePair{cell, digit}
@@ -517,15 +518,15 @@ func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 [
 							Action: "eliminate",
 							Digit:  digit,
 							Targets: []core.CellRef{
-								{Row: cell / 9, Col: cell % 9},
+								{Row: cell / constants.GridSize, Col: cell % constants.GridSize},
 							},
 							Eliminations: []core.Candidate{
-								{Row: cell / 9, Col: cell % 9, Digit: digit},
+								{Row: cell / constants.GridSize, Col: cell % constants.GridSize, Digit: digit},
 							},
 							Explanation: fmt.Sprintf("3D Medusa: R%dC%d has color 2 and sees %d in color 1: eliminate %d.",
-								cell/9+1, cell%9+1, digit, digit),
+								cell/constants.GridSize+1, cell%constants.GridSize+1, digit, digit),
 							Highlights: core.Highlights{
-								Primary:   []core.CellRef{{Row: cell / 9, Col: cell % 9}},
+								Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
 								Secondary: pairsToTargets(allPairs),
 							},
 						}
@@ -544,15 +545,15 @@ func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 [
 							Action: "eliminate",
 							Digit:  digit,
 							Targets: []core.CellRef{
-								{Row: cell / 9, Col: cell % 9},
+								{Row: cell / constants.GridSize, Col: cell % constants.GridSize},
 							},
 							Eliminations: []core.Candidate{
-								{Row: cell / 9, Col: cell % 9, Digit: digit},
+								{Row: cell / constants.GridSize, Col: cell % constants.GridSize, Digit: digit},
 							},
 							Explanation: fmt.Sprintf("3D Medusa: R%dC%d has color 1 and sees %d in color 2: eliminate %d.",
-								cell/9+1, cell%9+1, digit, digit),
+								cell/constants.GridSize+1, cell%constants.GridSize+1, digit, digit),
 							Highlights: core.Highlights{
-								Primary:   []core.CellRef{{Row: cell / 9, Col: cell % 9}},
+								Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
 								Secondary: pairsToTargets(allPairs),
 							},
 						}
@@ -577,7 +578,7 @@ func checkAllCandidatesSameColor(b BoardInterface, colorToCheck, otherColor []ca
 	}
 
 	// Check each cell
-	for cell := 0; cell < 81; cell++ {
+	for cell := 0; cell < constants.TotalCells; cell++ {
 		cands := b.GetCandidatesAt(cell)
 
 		// Skip cells with less than 2 candidates (can't have "all" colored if fewer)
@@ -618,9 +619,9 @@ func checkAllCandidatesSameColor(b BoardInterface, colorToCheck, otherColor []ca
 					Targets:      pairsToTargets(allPairs),
 					Eliminations: eliminations,
 					Explanation: fmt.Sprintf("3D Medusa: R%dC%d has all candidates in color %d: eliminate all color %d.",
-						cell/9+1, cell%9+1, colorNum, colorNum),
+						cell/constants.GridSize+1, cell%constants.GridSize+1, colorNum, colorNum),
 					Highlights: core.Highlights{
-						Primary:   []core.CellRef{{Row: cell / 9, Col: cell % 9}},
+						Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
 						Secondary: pairsToTargets(allPairs),
 					},
 				}

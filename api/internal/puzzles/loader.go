@@ -7,11 +7,13 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"sudoku-api/pkg/constants"
 )
 
 // CompactPuzzle stores a puzzle in minimal format
 type CompactPuzzle struct {
-	S string           `json:"s"` // solution as 81-char string
+	S string           `json:"s"` // solution as TotalCells-char string
 	G map[string][]int `json:"g"` // givens: difficulty key -> cell indices
 }
 
@@ -109,7 +111,7 @@ func (l *Loader) GetPuzzle(index int, difficulty string) (givens []int, solution
 	puzzle := l.puzzles[index]
 
 	// Parse solution
-	solution = make([]int, 81)
+	solution = make([]int, constants.TotalCells)
 	for i, c := range puzzle.S {
 		solution[i] = int(c - '0')
 	}
@@ -127,7 +129,7 @@ func (l *Loader) GetPuzzle(index int, difficulty string) (givens []int, solution
 	}
 
 	// Build givens array (0 for empty cells)
-	givens = make([]int, 81)
+	givens = make([]int, constants.TotalCells)
 	for _, idx := range indices {
 		givens[idx] = solution[idx]
 	}

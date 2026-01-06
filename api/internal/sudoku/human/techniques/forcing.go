@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // Maximum propagation depth to prevent excessive computation
@@ -38,7 +39,7 @@ func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int)
 	result.placements[startCell] = startDigit
 
 	// Track which eliminations were caused by this chain
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if i != startCell && b.GetCandidatesAt(i).Has(startDigit) && !sim.GetCandidatesAt(i).Has(startDigit) {
 			if result.eliminations[i] == nil {
 				result.eliminations[i] = make(map[int]bool)
@@ -52,7 +53,7 @@ func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int)
 		progress := false
 
 		// Check for naked singles
-		for i := 0; i < 81; i++ {
+		for i := 0; i < constants.TotalCells; i++ {
 			if sim.GetCell(i) != 0 {
 				continue
 			}
@@ -78,7 +79,7 @@ func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int)
 
 		// Check for hidden singles in each unit
 		for _, unit := range AllUnits() {
-			for digit := 1; digit <= 9; digit++ {
+			for digit := 1; digit <= constants.GridSize; digit++ {
 				var positions []int
 				found := false
 				for _, idx := range unit.Cells {
@@ -132,8 +133,8 @@ func recordEliminationsForPeers(b BoardInterface, cellIdx, digit int, eliminatio
 
 // getUnitsForCell returns the three units (row, col, box) that contain the given cell
 func getUnitsForCell(cellIdx int) []Unit {
-	row, col := cellIdx/9, cellIdx%9
-	box := (row/3)*3 + col/3
+	row, col := cellIdx/constants.GridSize, cellIdx%constants.GridSize
+	box := (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize
 	return []Unit{
 		{Type: UnitRow, Index: row, Cells: RowIndices[row]},
 		{Type: UnitCol, Index: col, Cells: ColIndices[col]},
@@ -159,7 +160,7 @@ func DetectForcingChain(b BoardInterface) *core.Move {
 func detectCellForcingChain(b BoardInterface) *core.Move {
 	// Find bivalue cells first (most likely to yield results), then trivalue
 	for numCands := 2; numCands <= 3; numCands++ {
-		for cell := 0; cell < 81; cell++ {
+		for cell := 0; cell < constants.TotalCells; cell++ {
 			if b.GetCell(cell) != 0 || b.GetCandidatesAt(cell).Count() != numCands {
 				continue
 			}
@@ -182,7 +183,7 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 					if !res.valid {
 						// The other candidate must be correct
 						otherDigit := cands[1-i]
-						row, col := cell/9, cell%9
+						row, col := cell/constants.GridSize, cell%constants.GridSize
 						return &core.Move{
 							Action:  "assign",
 							Digit:   otherDigit,
@@ -209,7 +210,7 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 			}
 
 			// Find common placements across all branches
-			for targetCell := 0; targetCell < 81; targetCell++ {
+			for targetCell := 0; targetCell < constants.TotalCells; targetCell++ {
 				if targetCell == cell || b.GetCell(targetCell) != 0 {
 					continue
 				}
@@ -231,8 +232,8 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 				}
 
 				if commonDigit > 0 {
-					row, col := cell/9, cell%9
-					targetRow, targetCol := targetCell/9, targetCell%9
+					row, col := cell/constants.GridSize, cell%constants.GridSize
+					targetRow, targetCol := targetCell/constants.GridSize, targetCell%constants.GridSize
 					return &core.Move{
 						Action:  "assign",
 						Digit:   commonDigit,
@@ -248,12 +249,12 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 			}
 
 			// Find common eliminations across all branches
-			for targetCell := 0; targetCell < 81; targetCell++ {
+			for targetCell := 0; targetCell < constants.TotalCells; targetCell++ {
 				if targetCell == cell || b.GetCell(targetCell) != 0 {
 					continue
 				}
 
-				for digit := 1; digit <= 9; digit++ {
+				for digit := 1; digit <= constants.GridSize; digit++ {
 					if !b.GetCandidatesAt(targetCell).Has(digit) {
 						continue
 					}
@@ -272,8 +273,8 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 					}
 
 					if allEliminate {
-						row, col := cell/9, cell%9
-						targetRow, targetCol := targetCell/9, targetCell%9
+						row, col := cell/constants.GridSize, cell%constants.GridSize
+						targetRow, targetCol := targetCell/constants.GridSize, targetCell%constants.GridSize
 						return &core.Move{
 							Action:  "eliminate",
 							Digit:   digit,
@@ -301,7 +302,7 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 // For each possible placement, propagate and find common conclusions
 func detectUnitForcingChain(b BoardInterface) *core.Move {
 	// Check each unit (rows, columns, boxes)
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		for _, unit := range AllUnits() {
 			var positions []int
 			for _, idx := range unit.Cells {
@@ -344,7 +345,7 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 		for i, res := range results {
 			if res.valid {
 				cell := positions[i]
-				row, col := cell/9, cell%9
+				row, col := cell/constants.GridSize, cell%constants.GridSize
 				return &core.Move{
 					Action:  "assign",
 					Digit:   digit,
@@ -364,7 +365,7 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 	}
 
 	// Find common placements
-	for targetCell := 0; targetCell < 81; targetCell++ {
+	for targetCell := 0; targetCell < constants.TotalCells; targetCell++ {
 		if b.GetCell(targetCell) != 0 {
 			continue
 		}
@@ -398,10 +399,10 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 		}
 
 		if commonDigit > 0 {
-			targetRow, targetCol := targetCell/9, targetCell%9
+			targetRow, targetCol := targetCell/constants.GridSize, targetCell%constants.GridSize
 			var highlights []core.CellRef
 			for _, pos := range positions {
-				highlights = append(highlights, core.CellRef{Row: pos / 9, Col: pos % 9})
+				highlights = append(highlights, core.CellRef{Row: pos / constants.GridSize, Col: pos % constants.GridSize})
 			}
 			return &core.Move{
 				Action:  "assign",
@@ -418,7 +419,7 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 	}
 
 	// Find common eliminations
-	for targetCell := 0; targetCell < 81; targetCell++ {
+	for targetCell := 0; targetCell < constants.TotalCells; targetCell++ {
 		if b.GetCell(targetCell) != 0 {
 			continue
 		}
@@ -434,7 +435,7 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 			continue
 		}
 
-		for elimDigit := 1; elimDigit <= 9; elimDigit++ {
+		for elimDigit := 1; elimDigit <= constants.GridSize; elimDigit++ {
 			if !b.GetCandidatesAt(targetCell).Has(elimDigit) {
 				continue
 			}
@@ -455,10 +456,10 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 			}
 
 			if allEliminate {
-				targetRow, targetCol := targetCell/9, targetCell%9
+				targetRow, targetCol := targetCell/constants.GridSize, targetCell%constants.GridSize
 				var highlights []core.CellRef
 				for _, pos := range positions {
-					highlights = append(highlights, core.CellRef{Row: pos / 9, Col: pos % 9})
+					highlights = append(highlights, core.CellRef{Row: pos / constants.GridSize, Col: pos % constants.GridSize})
 				}
 				return &core.Move{
 					Action:  "eliminate",

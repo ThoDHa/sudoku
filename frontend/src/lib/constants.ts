@@ -3,7 +3,13 @@
 // =============================================================================
 // GRID CONSTANTS
 // =============================================================================
-export const MIN_GIVENS = 17
+export const BOARD_SIZE = 9  // Standard 9x9 Sudoku
+export const SUBGRID_SIZE = 3  // 3x3 subgrids for 9x9 board
+export const TOTAL_CELLS = BOARD_SIZE * BOARD_SIZE  // 81 cells total
+export const MIN_DIGIT = 1
+export const MAX_DIGIT = BOARD_SIZE  // Digits 1-9 for 9x9 board
+
+export const MIN_GIVENS = 17  // Minimum givens for valid 9x9 puzzle
 
 // =============================================================================
 // TIMING CONSTANTS (milliseconds)

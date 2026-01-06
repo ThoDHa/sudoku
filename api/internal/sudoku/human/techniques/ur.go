@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // ============================================================================
@@ -46,7 +47,7 @@ var urFloorRoofPairs = [][2][2]int{
 func findURRectangles(b BoardInterface, d1, d2 int) []urRectangle {
 	// Find all cells that have both d1 and d2 as candidates
 	var cells []int
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.GetCandidatesAt(i).Has(d1) && b.GetCandidatesAt(i).Has(d2) {
 			cells = append(cells, i)
 		}
@@ -61,8 +62,8 @@ func findURRectangles(b BoardInterface, d1, d2 int) []urRectangle {
 	// Try all combinations of 4 cells that form a rectangle spanning exactly 2 boxes
 	for i := 0; i < len(cells); i++ {
 		for j := i + 1; j < len(cells); j++ {
-			r1, c1 := cells[i]/9, cells[i]%9
-			r2, c2 := cells[j]/9, cells[j]%9
+			r1, c1 := cells[i]/constants.GridSize, cells[i]%constants.GridSize
+			r2, c2 := cells[j]/constants.GridSize, cells[j]%constants.GridSize
 
 			// Must be in same row
 			if r1 != r2 {
@@ -76,8 +77,8 @@ func findURRectangles(b BoardInterface, d1, d2 int) []urRectangle {
 			// Look for matching cells in a different row
 			for k := j + 1; k < len(cells); k++ {
 				for l := k + 1; l < len(cells); l++ {
-					r3, c3 := cells[k]/9, cells[k]%9
-					r4, c4 := cells[l]/9, cells[l]%9
+					r3, c3 := cells[k]/constants.GridSize, cells[k]%constants.GridSize
+					r4, c4 := cells[l]/constants.GridSize, cells[l]%constants.GridSize
 
 					// These two must be in the same row
 					if r3 != r4 {
@@ -93,10 +94,10 @@ func findURRectangles(b BoardInterface, d1, d2 int) []urRectangle {
 					}
 
 					// Check that the rectangle spans exactly 2 boxes
-					box1 := (r1/3)*3 + c1/3
-					box2 := (r1/3)*3 + c2/3
-					box3 := (r3/3)*3 + c3/3
-					box4 := (r3/3)*3 + c4/3
+					box1 := (r1/constants.BoxSize)*constants.BoxSize + c1/constants.BoxSize
+					box2 := (r1/constants.BoxSize)*constants.BoxSize + c2/constants.BoxSize
+					box3 := (r3/constants.BoxSize)*constants.BoxSize + c3/constants.BoxSize
+					box4 := (r3/constants.BoxSize)*constants.BoxSize + c4/constants.BoxSize
 					boxes := make(map[int]bool)
 					boxes[box1] = true
 					boxes[box2] = true
@@ -136,8 +137,8 @@ func findURRectangles(b BoardInterface, d1, d2 int) []urRectangle {
 // are bivalue with the same 2 digits. The 4th corner must have extra candidates
 // to avoid a deadly pattern (multiple solutions).
 func DetectUniqueRectangle(b BoardInterface) *core.Move {
-	for d1 := 1; d1 <= 8; d1++ {
-		for d2 := d1 + 1; d2 <= 9; d2++ {
+	for d1 := 1; d1 <= constants.GridSize-1; d1++ {
+		for d2 := d1 + 1; d2 <= constants.GridSize; d2++ {
 			for _, rect := range findURRectangles(b, d1, d2) {
 				// Count how many corners are bivalue (exactly d1 and d2)
 				bivalueCount := 0
@@ -152,7 +153,7 @@ func DetectUniqueRectangle(b BoardInterface) *core.Move {
 
 				// Type 1 UR: exactly 3 bivalue corners, 1 with extra candidates
 				if bivalueCount == 3 && nonBivalueIdx != -1 {
-					row, col := nonBivalueIdx/9, nonBivalueIdx%9
+					row, col := nonBivalueIdx/constants.GridSize, nonBivalueIdx%constants.GridSize
 					eliminations := []core.Candidate{
 						{Row: row, Col: col, Digit: d1},
 						{Row: row, Col: col, Digit: d2},
@@ -185,8 +186,8 @@ func DetectUniqueRectangle(b BoardInterface) *core.Move {
 // Other 2 corners have {A,B} plus one extra candidate X (same extra in both)
 // Eliminate X from cells that see BOTH corners with extra candidates
 func DetectUniqueRectangleType2(b BoardInterface) *core.Move {
-	for d1 := 1; d1 <= 8; d1++ {
-		for d2 := d1 + 1; d2 <= 9; d2++ {
+	for d1 := 1; d1 <= constants.GridSize-1; d1++ {
+		for d2 := d1 + 1; d2 <= constants.GridSize; d2++ {
 			for _, rect := range findURRectangles(b, d1, d2) {
 				corners := rect.corners
 
@@ -243,7 +244,7 @@ func DetectUniqueRectangleType2(b BoardInterface) *core.Move {
 							Targets:      targets,
 							Eliminations: eliminations,
 							Explanation: fmt.Sprintf("Unique Rectangle Type 2: %d/%d with extra %d: eliminate %d from cells seeing both R%dC%d and R%dC%d.",
-								d1, d2, extraDigit, extraDigit, roofCorner0/9+1, roofCorner0%9+1, roofCorner1/9+1, roofCorner1%9+1),
+								d1, d2, extraDigit, extraDigit, roofCorner0/constants.GridSize+1, roofCorner0%constants.GridSize+1, roofCorner1/constants.GridSize+1, roofCorner1%constants.GridSize+1),
 							Highlights: core.Highlights{
 								Primary:   CellRefsFromIndices(corners[floorPair[0]], corners[floorPair[1]]),
 								Secondary: CellRefsFromIndices(roofCorner0, roofCorner1),
@@ -262,8 +263,8 @@ func DetectUniqueRectangleType2(b BoardInterface) *core.Move {
 // Similar setup to Type 2 but the two corners with extras form a "pseudo-cell"
 // If their combined extras would form a naked pair/triple with other cells in the unit, make that elimination
 func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
-	for d1 := 1; d1 <= 8; d1++ {
-		for d2 := d1 + 1; d2 <= 9; d2++ {
+	for d1 := 1; d1 <= constants.GridSize-1; d1++ {
+		for d2 := d1 + 1; d2 <= constants.GridSize; d2++ {
 			for _, rect := range findURRectangles(b, d1, d2) {
 				corners := rect.corners
 
@@ -298,10 +299,10 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 
 					// The two roof corners must share a unit (row, col, or box) to form a pseudo-cell
 					// Check which units they share
-					row0, col0 := roofCorner0/9, roofCorner0%9
-					row1, col1 := roofCorner1/9, roofCorner1%9
-					box0 := (row0/3)*3 + col0/3
-					box1 := (row1/3)*3 + col1/3
+					row0, col0 := roofCorner0/constants.GridSize, roofCorner0%constants.GridSize
+					row1, col1 := roofCorner1/constants.GridSize, roofCorner1%constants.GridSize
+					box0 := (row0/constants.BoxSize)*constants.BoxSize + col0/constants.BoxSize
+					box1 := (row1/constants.BoxSize)*constants.BoxSize + col1/constants.BoxSize
 
 					type unitInfo struct {
 						unitType string
@@ -352,7 +353,7 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 										for _, d := range extraSlice {
 											if b.GetCandidatesAt(elimIdx).Has(d) {
 												eliminations = append(eliminations, core.Candidate{
-													Row: elimIdx / 9, Col: elimIdx % 9, Digit: d,
+													Row: elimIdx / constants.GridSize, Col: elimIdx % constants.GridSize, Digit: d,
 												})
 											}
 										}
@@ -367,7 +368,7 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 											Targets:      targets,
 											Eliminations: eliminations,
 											Explanation: fmt.Sprintf("Unique Rectangle Type 3: %d/%d: pseudo-cell with %v forms naked pair with R%dC%d in %s.",
-												d1, d2, extraSlice, idx/9+1, idx%9+1, unit.unitType),
+												d1, d2, extraSlice, idx/constants.GridSize+1, idx%constants.GridSize+1, unit.unitType),
 											Highlights: core.Highlights{
 												Primary:   CellRefsFromIndices(corners[floorPair[0]], corners[floorPair[1]]),
 												Secondary: CellRefsFromIndices(roofCorner0, roofCorner1, idx),
@@ -433,7 +434,7 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 											for _, d := range tripleDigits {
 												if b.GetCandidatesAt(elimIdx).Has(d) {
 													eliminations = append(eliminations, core.Candidate{
-														Row: elimIdx / 9, Col: elimIdx % 9, Digit: d,
+														Row: elimIdx / constants.GridSize, Col: elimIdx % constants.GridSize, Digit: d,
 													})
 												}
 											}
@@ -448,7 +449,7 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 												Targets:      targets,
 												Eliminations: eliminations,
 												Explanation: fmt.Sprintf("Unique Rectangle Type 3: %d/%d: pseudo-cell forms naked triple with R%dC%d and R%dC%d in %s.",
-													d1, d2, idx1/9+1, idx1%9+1, idx2/9+1, idx2%9+1, unit.unitType),
+													d1, d2, idx1/constants.GridSize+1, idx1%constants.GridSize+1, idx2/constants.GridSize+1, idx2%constants.GridSize+1, unit.unitType),
 												Highlights: core.Highlights{
 													Primary:   CellRefsFromIndices(corners[floorPair[0]], corners[floorPair[1]]),
 													Secondary: CellRefsFromIndices(roofCorner0, roofCorner1, idx1, idx2),
@@ -473,8 +474,8 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 // If one of A or B is confined to the UR cells within a row/column,
 // the other can be eliminated from the extra corners
 func DetectUniqueRectangleType4(b BoardInterface) *core.Move {
-	for d1 := 1; d1 <= 8; d1++ {
-		for d2 := d1 + 1; d2 <= 9; d2++ {
+	for d1 := 1; d1 <= constants.GridSize-1; d1++ {
+		for d2 := d1 + 1; d2 <= constants.GridSize; d2++ {
 			for _, rect := range findURRectangles(b, d1, d2) {
 				corners := rect.corners
 
@@ -496,8 +497,8 @@ func DetectUniqueRectangleType4(b BoardInterface) *core.Move {
 					}
 
 					// The extra corners must share a row or column
-					exRow0, exCol0 := ex0/9, ex0%9
-					exRow1, exCol1 := ex1/9, ex1%9
+					exRow0, exCol0 := ex0/constants.GridSize, ex0%constants.GridSize
+					exRow1, exCol1 := ex1/constants.GridSize, ex1%constants.GridSize
 
 					// Check if d1 or d2 is confined to UR cells in the shared row/column
 					// For the row containing extra corners
@@ -506,8 +507,8 @@ func DetectUniqueRectangleType4(b BoardInterface) *core.Move {
 						// Check if d1 appears only in UR cells in this row
 						d1OnlyInUR := true
 						d2OnlyInUR := true
-						for c := 0; c < 9; c++ {
-							idx := row*9 + c
+						for c := 0; c < constants.GridSize; c++ {
+							idx := row*constants.GridSize + c
 							if idx == ex0 || idx == ex1 {
 								continue
 							}
@@ -582,8 +583,8 @@ func DetectUniqueRectangleType4(b BoardInterface) *core.Move {
 						// Check if d1 appears only in UR cells in this column
 						d1OnlyInUR := true
 						d2OnlyInUR := true
-						for r := 0; r < 9; r++ {
-							idx := r*9 + col
+						for r := 0; r < constants.GridSize; r++ {
+							idx := r*constants.GridSize + col
 							if idx == ex0 || idx == ex1 {
 								continue
 							}

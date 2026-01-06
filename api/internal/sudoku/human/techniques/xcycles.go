@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // DetectGroupedXCycles finds Grouped X-Cycles eliminations or assignments.
@@ -20,7 +21,7 @@ import (
 //   - Type 2 (discontinuous): two weak links meet at a node
 //     -> That node must be OFF (eliminate the digit)
 func DetectGroupedXCycles(b BoardInterface) *core.Move {
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		if move := findGroupedXCycleForDigit(b, digit); move != nil {
 			return move
 		}
@@ -31,7 +32,7 @@ func DetectGroupedXCycles(b BoardInterface) *core.Move {
 func findGroupedXCycleForDigit(b BoardInterface, digit int) *core.Move {
 	// Build list of cells with this candidate
 	var cells []int
-	for idx := 0; idx < 81; idx++ {
+	for idx := 0; idx < constants.TotalCells; idx++ {
 		if b.GetCandidatesAt(idx).Has(digit) {
 			cells = append(cells, idx)
 		}
@@ -58,10 +59,10 @@ func buildStrongLinksXC(b BoardInterface, digit int, cells []int) []strongLinkXC
 	var links []strongLinkXC
 
 	// Check rows
-	for row := 0; row < 9; row++ {
+	for row := 0; row < constants.GridSize; row++ {
 		var rowCells []int
 		for _, idx := range cells {
-			if idx/9 == row {
+			if idx/constants.GridSize == row {
 				rowCells = append(rowCells, idx)
 			}
 		}
@@ -71,10 +72,10 @@ func buildStrongLinksXC(b BoardInterface, digit int, cells []int) []strongLinkXC
 	}
 
 	// Check columns
-	for col := 0; col < 9; col++ {
+	for col := 0; col < constants.GridSize; col++ {
 		var colCells []int
 		for _, idx := range cells {
-			if idx%9 == col {
+			if idx%constants.GridSize == col {
 				colCells = append(colCells, idx)
 			}
 		}
@@ -84,13 +85,13 @@ func buildStrongLinksXC(b BoardInterface, digit int, cells []int) []strongLinkXC
 	}
 
 	// Check boxes
-	for box := 0; box < 9; box++ {
-		boxRowStart := (box / 3) * 3
-		boxColStart := (box % 3) * 3
+	for box := 0; box < constants.GridSize; box++ {
+		boxRowStart := (box / constants.BoxSize) * constants.BoxSize
+		boxColStart := (box % constants.BoxSize) * constants.BoxSize
 		var boxCells []int
 		for _, idx := range cells {
-			r, c := idx/9, idx%9
-			if r >= boxRowStart && r < boxRowStart+3 && c >= boxColStart && c < boxColStart+3 {
+			r, c := idx/constants.GridSize, idx%constants.GridSize
+			if r >= boxRowStart && r < boxRowStart+constants.BoxSize && c >= boxColStart && c < boxColStart+constants.BoxSize {
 				boxCells = append(boxCells, idx)
 			}
 		}
@@ -260,9 +261,9 @@ func analyzeCycleFixed(b BoardInterface, digit int, path []int, linkStrong []boo
 			return &core.Move{
 				Action:  "assign",
 				Digit:   digit,
-				Targets: []core.CellRef{{Row: cell / 9, Col: cell % 9}},
+				Targets: []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
 				Explanation: fmt.Sprintf("X-Cycle Type 1: two strong links meet at R%dC%d, so it must be %d",
-					cell/9+1, cell%9+1, digit),
+					cell/constants.GridSize+1, cell%constants.GridSize+1, digit),
 				Highlights: core.Highlights{
 					Primary: pathToCellRefsSimple(path),
 				},
@@ -276,13 +277,13 @@ func analyzeCycleFixed(b BoardInterface, digit int, path []int, linkStrong []boo
 					Action: "eliminate",
 					Digit:  digit,
 					Eliminations: []core.Candidate{
-						{Row: cell / 9, Col: cell % 9, Digit: digit},
+						{Row: cell / constants.GridSize, Col: cell % constants.GridSize, Digit: digit},
 					},
 					Explanation: fmt.Sprintf("X-Cycle Type 2: two weak links meet at R%dC%d, eliminating %d",
-						cell/9+1, cell%9+1, digit),
+						cell/constants.GridSize+1, cell%constants.GridSize+1, digit),
 					Highlights: core.Highlights{
 						Primary:   pathToCellRefsSimple(path),
-						Secondary: []core.CellRef{{Row: cell / 9, Col: cell % 9}},
+						Secondary: []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
 					},
 				}
 			}
@@ -306,7 +307,7 @@ func findNiceLoopEliminationsFixed(b BoardInterface, digit int, path []int, link
 			cell2 := path[(i+1)%n]
 
 			// Cells that see BOTH ends of this weak link can eliminate the digit
-			for idx := 0; idx < 81; idx++ {
+			for idx := 0; idx < constants.TotalCells; idx++ {
 				if !b.GetCandidatesAt(idx).Has(digit) {
 					continue
 				}
@@ -325,7 +326,7 @@ func findNiceLoopEliminationsFixed(b BoardInterface, digit int, path []int, link
 
 				if ArePeers(idx, cell1) && ArePeers(idx, cell2) {
 					eliminations = append(eliminations, core.Candidate{
-						Row: idx / 9, Col: idx % 9, Digit: digit,
+						Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: digit,
 					})
 				}
 			}
@@ -354,7 +355,7 @@ func findNiceLoopEliminationsFixed(b BoardInterface, digit int, path []int, link
 func pathToCellRefsSimple(path []int) []core.CellRef {
 	refs := make([]core.CellRef, len(path))
 	for i, cell := range path {
-		refs[i] = core.CellRef{Row: cell / 9, Col: cell % 9}
+		refs[i] = core.CellRef{Row: cell / constants.GridSize, Col: cell % constants.GridSize}
 	}
 	return refs
 }

@@ -1,15 +1,22 @@
 /**
  * Utilities for managing Sudoku candidates using bitmask representation.
  * 
- * Bit Layout:
- * - Bit 0: unused (always 0)
- * - Bits 1-9: represent digits 1-9
+ * Bit Layout (configurable for different board sizes):
+ * - Bit 0: unused (always 0)  
+ * - Bits 1-N: represent digits 1-N where N is MAX_DIGIT
  * 
- * Examples:
+ * Examples for 9x9:
  * - 0b0000000010 = digit 1 only
  * - 0b0000001110 = digits {1, 2, 3}
  * - 0b1111111110 = digits {1, 2, 3, 4, 5, 6, 7, 8, 9} (all candidates)
+ * 
+ * Examples for 16x16:
+ * - 0b00000000000000010 = digit 1 only
+ * - 0b00000000000001110 = digits {1, 2, 3}
+ * - 0b11111111111111110 = digits {1, 2, 3, ..., 16} (all candidates)
  */
+
+import { MIN_DIGIT, MAX_DIGIT } from './constants'
 
 // Type alias for clarity
 export type CandidateMask = number
@@ -18,7 +25,7 @@ export type CandidateMask = number
  * Check if a candidate digit is present in the mask
  */
 export const hasCandidate = (mask: CandidateMask, digit: number): boolean => {
-  if (digit < 1 || digit > 9) return false
+  if (digit < MIN_DIGIT || digit > MAX_DIGIT) return false
   return (mask & (1 << digit)) !== 0
 }
 
@@ -26,7 +33,7 @@ export const hasCandidate = (mask: CandidateMask, digit: number): boolean => {
  * Add a candidate digit to the mask
  */
 export const addCandidate = (mask: CandidateMask, digit: number): CandidateMask => {
-  if (digit < 1 || digit > 9) return mask
+  if (digit < MIN_DIGIT || digit > MAX_DIGIT) return mask
   return mask | (1 << digit)
 }
 
@@ -34,7 +41,7 @@ export const addCandidate = (mask: CandidateMask, digit: number): CandidateMask 
  * Remove a candidate digit from the mask
  */
 export const removeCandidate = (mask: CandidateMask, digit: number): CandidateMask => {
-  if (digit < 1 || digit > 9) return mask
+  if (digit < MIN_DIGIT || digit > MAX_DIGIT) return mask
   return mask & ~(1 << digit)
 }
 
@@ -42,7 +49,7 @@ export const removeCandidate = (mask: CandidateMask, digit: number): CandidateMa
  * Toggle a candidate digit in the mask
  */
 export const toggleCandidate = (mask: CandidateMask, digit: number): CandidateMask => {
-  if (digit < 1 || digit > 9) return mask
+  if (digit < MIN_DIGIT || digit > MAX_DIGIT) return mask
   return mask ^ (1 << digit)
 }
 
@@ -51,7 +58,7 @@ export const toggleCandidate = (mask: CandidateMask, digit: number): CandidateMa
  */
 export const countCandidates = (mask: CandidateMask): number => {
   let count = 0
-  for (let d = 1; d <= 9; d++) {
+  for (let d = MIN_DIGIT; d <= MAX_DIGIT; d++) {
     if (mask & (1 << d)) count++
   }
   return count
@@ -62,7 +69,7 @@ export const countCandidates = (mask: CandidateMask): number => {
  */
 export const getCandidatesArray = (mask: CandidateMask): number[] => {
   const candidates: number[] = []
-  for (let d = 1; d <= 9; d++) {
+  for (let d = MIN_DIGIT; d <= MAX_DIGIT; d++) {
     if (mask & (1 << d)) {
       candidates.push(d)
     }
@@ -76,7 +83,7 @@ export const getCandidatesArray = (mask: CandidateMask): number[] => {
 export const createCandidateMask = (digits: number[]): CandidateMask => {
   let mask = 0
   for (const digit of digits) {
-    if (digit >= 1 && digit <= 9) {
+    if (digit >= MIN_DIGIT && digit <= MAX_DIGIT) {
       mask |= (1 << digit)
     }
   }
@@ -91,10 +98,15 @@ export const isEmpty = (mask: CandidateMask): boolean => {
 }
 
 /**
- * Check if the mask contains all possible candidates (1-9)
+ * Check if the mask contains all possible candidates
  */
 export const isFull = (mask: CandidateMask): boolean => {
-  return mask === 0b1111111110 // All bits 1-9 set
+  // Create a mask with all valid digits set (bits MIN_DIGIT to MAX_DIGIT)
+  let fullMask = 0
+  for (let d = MIN_DIGIT; d <= MAX_DIGIT; d++) {
+    fullMask |= (1 << d)
+  }
+  return mask === fullMask
 }
 
 /**
@@ -105,10 +117,14 @@ export const clearAll = (): CandidateMask => {
 }
 
 /**
- * Set all candidates (1-9)
+ * Set all candidates (MIN_DIGIT to MAX_DIGIT)
  */
 export const setAll = (): CandidateMask => {
-  return 0b1111111110 // Bits 1-9 set, bit 0 clear
+  let fullMask = 0
+  for (let d = MIN_DIGIT; d <= MAX_DIGIT; d++) {
+    fullMask |= (1 << d)
+  }
+  return fullMask
 }
 
 /**

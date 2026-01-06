@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // candidateNode represents a candidate-cell pair in the AIC
@@ -25,7 +26,7 @@ func DetectAIC(b BoardInterface) *core.Move {
 	weakLinks := buildWeakLinks(b)
 
 	// Try starting from each candidate in each cell
-	for cell := 0; cell < 81; cell++ {
+	for cell := 0; cell < constants.TotalCells; cell++ {
 		if b.GetCell(cell) != 0 {
 			continue
 		}
@@ -48,7 +49,7 @@ func buildStrongLinks(b BoardInterface) map[candidateNode][]candidateNode {
 	links := make(map[candidateNode][]candidateNode)
 
 	// Strong links from conjugate pairs (only 2 places for digit in a unit)
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		for _, unit := range AllUnits() {
 			cells := b.CellsWithDigitInUnit(unit, digit)
 			if len(cells) == 2 {
@@ -64,7 +65,7 @@ func buildStrongLinks(b BoardInterface) map[candidateNode][]candidateNode {
 	}
 
 	// Strong links from bivalue cells (cells with exactly 2 candidates)
-	for cell := 0; cell < 81; cell++ {
+	for cell := 0; cell < constants.TotalCells; cell++ {
 		if b.GetCell(cell) != 0 {
 			continue
 		}
@@ -85,9 +86,9 @@ func buildWeakLinks(b BoardInterface) map[candidateNode][]candidateNode {
 	links := make(map[candidateNode][]candidateNode)
 
 	// Weak links: same digit in cells that see each other
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		cells := []int{}
-		for cell := 0; cell < 81; cell++ {
+		for cell := 0; cell < constants.TotalCells; cell++ {
 			if b.GetCell(cell) == 0 && b.GetCandidatesAt(cell).Has(digit) {
 				cells = append(cells, cell)
 			}
@@ -105,7 +106,7 @@ func buildWeakLinks(b BoardInterface) map[candidateNode][]candidateNode {
 	}
 
 	// Weak links: different digits in the same cell
-	for cell := 0; cell < 81; cell++ {
+	for cell := 0; cell < constants.TotalCells; cell++ {
 		if b.GetCell(cell) != 0 {
 			continue
 		}
@@ -219,8 +220,8 @@ func checkChainConclusion(b BoardInterface, chain []chainLink, start candidateNo
 				Technique:   "aic",
 				Action:      "assign",
 				Digit:       start.digit,
-				Targets:     []core.CellRef{{Row: start.cell / 9, Col: start.cell % 9}},
-				Explanation: fmt.Sprintf("AIC: Chain proves r%dc%d must be %d", start.cell/9+1, start.cell%9+1, start.digit),
+				Targets:     []core.CellRef{{Row: start.cell / constants.GridSize, Col: start.cell % constants.GridSize}},
+				Explanation: fmt.Sprintf("AIC: Chain proves r%dc%d must be %d", start.cell/constants.GridSize+1, start.cell%constants.GridSize+1, start.digit),
 				Highlights:  buildAICHighlights(chain),
 			}
 		}
@@ -240,9 +241,9 @@ func checkChainConclusion(b BoardInterface, chain []chainLink, start candidateNo
 				Action:       "eliminate",
 				Digit:        start.digit,
 				Targets:      getChainCellRefs(chain),
-				Eliminations: []core.Candidate{{Row: start.cell / 9, Col: start.cell % 9, Digit: start.digit}},
+				Eliminations: []core.Candidate{{Row: start.cell / constants.GridSize, Col: start.cell % constants.GridSize, Digit: start.digit}},
 				Explanation: fmt.Sprintf("AIC: Chain proves r%dc%d=%d leads to r%dc%d=%d, but they see each other - contradiction",
-					start.cell/9+1, start.cell%9+1, start.digit, end.cell/9+1, end.cell%9+1, end.digit),
+					start.cell/constants.GridSize+1, start.cell%constants.GridSize+1, start.digit, end.cell/constants.GridSize+1, end.cell%constants.GridSize+1, end.digit),
 				Highlights: buildAICHighlights(chain),
 			}
 		}
@@ -260,7 +261,7 @@ func checkChainConclusion(b BoardInterface, chain []chainLink, start candidateNo
 func getChainCellRefs(chain []chainLink) []core.CellRef {
 	refs := make([]core.CellRef, len(chain))
 	for i, link := range chain {
-		refs[i] = core.CellRef{Row: link.node.cell / 9, Col: link.node.cell % 9}
+		refs[i] = core.CellRef{Row: link.node.cell / constants.GridSize, Col: link.node.cell % constants.GridSize}
 	}
 	return refs
 }
@@ -273,7 +274,7 @@ func buildAICHighlights(chain []chainLink) core.Highlights {
 	}
 
 	for _, link := range chain {
-		cellRef := core.CellRef{Row: link.node.cell / 9, Col: link.node.cell % 9}
+		cellRef := core.CellRef{Row: link.node.cell / constants.GridSize, Col: link.node.cell % constants.GridSize}
 		highlights.Primary = append(highlights.Primary, cellRef)
 	}
 

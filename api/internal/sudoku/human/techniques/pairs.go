@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // DetectNakedPair finds two cells in a unit with the same two candidates
@@ -41,15 +42,15 @@ func findNakedPairInUnit(b BoardInterface, indices []int, unitType string, unitN
 					for _, d := range digits {
 						if b.GetCandidatesAt(idx).Has(d) {
 							eliminations = append(eliminations, core.Candidate{
-								Row: idx / 9, Col: idx % 9, Digit: d,
+								Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: d,
 							})
 						}
 					}
 				}
 
 				if len(eliminations) > 0 {
-					r1, c1 := idx1/9, idx1%9
-					r2, c2 := idx2/9, idx2%9
+					r1, c1 := idx1/constants.GridSize, idx1%constants.GridSize
+					r2, c2 := idx2/constants.GridSize, idx2%constants.GridSize
 					return &core.Move{
 						Action: "eliminate",
 						Digit:  0,
@@ -87,7 +88,7 @@ func DetectHiddenPair(b BoardInterface) *core.Move {
 func findHiddenPairInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
 	// Find positions for each digit
 	digitPositions := make(map[int][]int)
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		for _, idx := range indices {
 			if b.GetCandidatesAt(idx).Has(digit) {
 				digitPositions[digit] = append(digitPositions[digit], idx)
@@ -120,15 +121,15 @@ func findHiddenPairInUnit(b BoardInterface, indices []int, unitType string, unit
 					for _, d := range b.GetCandidatesAt(idx).ToSlice() {
 						if d != d1 && d != d2 {
 							eliminations = append(eliminations, core.Candidate{
-								Row: idx / 9, Col: idx % 9, Digit: d,
+								Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: d,
 							})
 						}
 					}
 				}
 
 				if len(eliminations) > 0 {
-					r1, c1 := idx1/9, idx1%9
-					r2, c2 := idx2/9, idx2%9
+					r1, c1 := idx1/constants.GridSize, idx1%constants.GridSize
+					r2, c2 := idx2/constants.GridSize, idx2%constants.GridSize
 					return &core.Move{
 						Action: "eliminate",
 						Digit:  0,

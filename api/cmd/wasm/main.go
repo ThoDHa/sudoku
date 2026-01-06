@@ -424,16 +424,16 @@ type solveResult struct {
 // ==================== Human Solver Functions ====================
 
 // createBoard creates a new board from givens
-// Input: givens (number[81])
-// Output: { cells: number[81], candidates: number[81][] }
+// Input: givens (number[%d])
+// Output: { cells: number[%d], candidates: number[%d][] }
 func createBoard(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
 		return errorToJS("givens required")
 	}
 
 	givens := jsArrayToIntSlice(args[0])
-	if len(givens) != 81 {
-		return errorToJS("givens must have 81 elements")
+	if len(givens) != constants.TotalCells {
+		return errorToJS("givens must have %d elements", constants.TotalCells")
 	}
 
 	board := human.NewBoard(givens)
@@ -444,24 +444,24 @@ func createBoard(this js.Value, args []js.Value) interface{} {
 }
 
 // createBoardWithCandidates creates a board with pre-set candidates
-// Input: cells (number[81]), candidates (number[81][])
-// Output: { cells: number[81], candidates: number[81][] }
+// Input: cells (number[%d]), candidates (number[%d][])
+// Output: { cells: number[%d], candidates: number[%d][] }
 func createBoardWithCandidates(this js.Value, args []js.Value) interface{} {
 	if len(args) < 2 {
 		return errorToJS("cells and candidates required")
 	}
 
 	cells := jsArrayToIntSlice(args[0])
-	if len(cells) != 81 {
-		return errorToJS("cells must have 81 elements")
+	if len(cells) != constants.TotalCells {
+		return errorToJS("cells must have %d elements", constants.TotalCells")
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
 	// Note: candidates parameter accepted for API consistency but not used in solution comparison
 	_ = candidates // Suppress unused variable warning
 	givens := jsArrayToIntSlice(args[2])
-	if len(givens) != 81 {
-		return errorToJS("givens must have 81 elements")
+	if len(givens) != constants.TotalCells {
+		return errorToJS("givens must have %d elements", constants.TotalCells")
 	}
 
 	// Call the internal solver with maxMoves=1
@@ -494,16 +494,16 @@ func createBoardWithCandidates(this js.Value, args []js.Value) interface{} {
 }
 
 // solveWithSteps solves the puzzle returning all steps
-// Input: givens (number[81]), maxSteps (number)
-// Output: { moves: Move[], status: string, finalBoard: number[81] }
+// Input: givens (number[%d]), maxSteps (number)
+// Output: { moves: Move[], status: string, finalBoard: number[%d] }
 func solveWithSteps(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
 		return errorToJS("givens required")
 	}
 
 	givens := jsArrayToIntSlice(args[0])
-	if len(givens) != 81 {
-		return errorToJS("givens must have 81 elements")
+	if len(givens) != constants.TotalCells {
+		return errorToJS("givens must have %d elements", constants.TotalCells")
 	}
 
 	maxSteps := 2000
@@ -523,7 +523,7 @@ func solveWithSteps(this js.Value, args []js.Value) interface{} {
 }
 
 // analyzePuzzle analyzes a puzzle and returns difficulty and technique counts
-// Input: givens (number[81])
+// Input: givens (number[%d])
 // Output: { difficulty: string, techniques: { [name]: count }, status: string }
 func analyzePuzzle(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
@@ -531,8 +531,8 @@ func analyzePuzzle(this js.Value, args []js.Value) interface{} {
 	}
 
 	givens := jsArrayToIntSlice(args[0])
-	if len(givens) != 81 {
-		return errorToJS("givens must have 81 elements")
+	if len(givens) != constants.TotalCells {
+		return errorToJS("givens must have %d elements", constants.TotalCells")
 	}
 
 	difficulty, techniques, status := solver.AnalyzePuzzleDifficulty(givens)
@@ -547,15 +547,15 @@ func analyzePuzzle(this js.Value, args []js.Value) interface{} {
 // ==================== DP Solver Functions ====================
 
 // solve finds a solution using fast backtracking
-// Input: grid (number[81])
-// Output: number[81] | null
+// Input: grid (number[%d])
+// Output: number[%d] | null
 func solve(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
 		return js.Null()
 	}
 
 	grid := jsArrayToIntSlice(args[0])
-	if len(grid) != 81 {
+	if len(grid) != constants.TotalCells {
 		return js.Null()
 	}
 
@@ -568,7 +568,7 @@ func solve(this js.Value, args []js.Value) interface{} {
 }
 
 // hasUniqueSolution checks if puzzle has exactly one solution
-// Input: grid (number[81])
+// Input: grid (number[%d])
 // Output: boolean
 func hasUniqueSolution(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
@@ -576,7 +576,7 @@ func hasUniqueSolution(this js.Value, args []js.Value) interface{} {
 	}
 
 	grid := jsArrayToIntSlice(args[0])
-	if len(grid) != 81 {
+	if len(grid) != constants.TotalCells {
 		return js.ValueOf(false)
 	}
 
@@ -584,7 +584,7 @@ func hasUniqueSolution(this js.Value, args []js.Value) interface{} {
 }
 
 // isValid checks if the grid has no conflicts
-// Input: grid (number[81])
+// Input: grid (number[%d])
 // Output: boolean
 func isValid(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
@@ -592,7 +592,7 @@ func isValid(this js.Value, args []js.Value) interface{} {
 	}
 
 	grid := jsArrayToIntSlice(args[0])
-	if len(grid) != 81 {
+	if len(grid) != constants.TotalCells {
 		return js.ValueOf(false)
 	}
 
@@ -600,7 +600,7 @@ func isValid(this js.Value, args []js.Value) interface{} {
 }
 
 // findConflicts returns all conflicting cell pairs
-// Input: grid (number[81])
+// Input: grid (number[%d])
 // Output: Conflict[]
 func findConflicts(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
@@ -608,7 +608,7 @@ func findConflicts(this js.Value, args []js.Value) interface{} {
 	}
 
 	grid := jsArrayToIntSlice(args[0])
-	if len(grid) != 81 {
+	if len(grid) != constants.TotalCells {
 		return js.Global().Get("Array").New(0)
 	}
 
@@ -618,7 +618,7 @@ func findConflicts(this js.Value, args []js.Value) interface{} {
 
 // generateFullGrid generates a complete valid sudoku grid
 // Input: seed (number)
-// Output: number[81]
+// Output: number[%d]
 func generateFullGrid(this js.Value, args []js.Value) interface{} {
 	seed := int64(0)
 	if len(args) >= 1 {
@@ -630,15 +630,15 @@ func generateFullGrid(this js.Value, args []js.Value) interface{} {
 }
 
 // carveGivens creates a puzzle from a full grid
-// Input: fullGrid (number[81]), targetGivens (number), seed (number)
-// Output: number[81]
+// Input: fullGrid (number[%d]), targetGivens (number), seed (number)
+// Output: number[%d]
 func carveGivens(this js.Value, args []js.Value) interface{} {
 	if len(args) < 3 {
 		return js.Null()
 	}
 
 	fullGrid := jsArrayToIntSlice(args[0])
-	if len(fullGrid) != 81 {
+	if len(fullGrid) != constants.TotalCells {
 		return js.Null()
 	}
 
@@ -650,15 +650,15 @@ func carveGivens(this js.Value, args []js.Value) interface{} {
 }
 
 // carveGivensWithSubset generates puzzles for all difficulty levels
-// Input: fullGrid (number[81]), seed (number)
-// Output: { easy: number[81], medium: number[81], hard: number[81], extreme: number[81], impossible: number[81] }
+// Input: fullGrid (number[%d]), seed (number)
+// Output: { easy: number[%d], medium: number[%d], hard: number[%d], extreme: number[%d], impossible: number[%d] }
 func carveGivensWithSubset(this js.Value, args []js.Value) interface{} {
 	if len(args) < 2 {
 		return js.Null()
 	}
 
 	fullGrid := jsArrayToIntSlice(args[0])
-	if len(fullGrid) != 81 {
+	if len(fullGrid) != constants.TotalCells {
 		return js.Null()
 	}
 
@@ -677,22 +677,22 @@ func carveGivensWithSubset(this js.Value, args []js.Value) interface{} {
 // ==================== Combined Solve Functions ====================
 
 // solveAll solves from current state, returning all moves (like /api/solve/all)
-// Input: cells (number[81]), candidates (number[81][]), givens (number[81])
-// Output: { moves: MoveResult[], solved: boolean, finalBoard: number[81] }
+// Input: cells (number[%d]), candidates (number[%d][]), givens (number[%d])
+// Output: { moves: MoveResult[], solved: boolean, finalBoard: number[%d] }
 func solveAll(this js.Value, args []js.Value) interface{} {
 	if len(args) < 3 {
 		return errorToJS("cells, candidates, and givens required")
 	}
 
 	cells := jsArrayToIntSlice(args[0])
-	if len(cells) != 81 {
-		return errorToJS("cells must have 81 elements")
+	if len(cells) != constants.TotalCells {
+		return errorToJS("cells must have %d elements", constants.TotalCells")
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
 	givens := jsArrayToIntSlice(args[2])
-	if len(givens) != 81 {
-		return errorToJS("givens must have 81 elements")
+	if len(givens) != constants.TotalCells {
+		return errorToJS("givens must have %d elements", constants.TotalCells")
 	}
 
 	// Call internal implementation with default maxMoves
@@ -714,7 +714,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 	board := human.NewBoardWithCandidates(cells, candidates)
 
 	// Keep original user board for error detection
-	originalUserBoard := make([]int, 81)
+	originalUserBoard := make([]int, constants.TotalCells)
 	copy(originalUserBoard, cells)
 
 	var moves []MoveResult
@@ -742,8 +742,8 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 
 				// Find the first conflict and report it
 				conflict := conflicts[0]
-				cell1Row, cell1Col := conflict.Cell1/9, conflict.Cell1%9
-				cell2Row, cell2Col := conflict.Cell2/9, conflict.Cell2%9
+				cell1Row, cell1Col := conflict.Cell1/constants.GridSize, conflict.Cell1%constants.GridSize
+				cell2Row, cell2Col := conflict.Cell2/constants.GridSize, conflict.Cell2%constants.GridSize
 
 				// Find which cell is a user entry (not a given)
 				badCell := -1
@@ -755,7 +755,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 				}
 
 				if badCell >= 0 {
-					badRow, badCol := badCell/9, badCell%9
+					badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
 					fixCount++
 					originalUserBoard[badCell] = 0
 
@@ -811,8 +811,8 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 			// Method 1: Check for cells with zero candidates (indicates error)
 			badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(originalUserBoard, givens)
 			if badCell >= 0 {
-				badRow, badCol := badCell/9, badCell%9
-				zeroCandRow, zeroCandCol := zeroCandCell/9, zeroCandCell%9
+				badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
+				zeroCandRow, zeroCandCol := zeroCandCell/constants.GridSize, zeroCandCell%constants.GridSize
 				fixCount++
 				originalUserBoard[badCell] = 0
 
@@ -836,7 +836,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 			// Method 2: Trial removal, try removing each user digit to see if solver can progress
 			badCell, badDigit = findErrorByTrialRemoval(originalUserBoard, givens, solver)
 			if badCell >= 0 {
-				badRow, badCol := badCell/9, badCell%9
+				badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
 				fixCount++
 				originalUserBoard[badCell] = 0
 
@@ -861,7 +861,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 			if candidates != nil {
 				missingCell, missingDigit, found := findMissingCandidates(originalUserBoard, candidates, solver)
 				if found {
-					row, col := missingCell/9, missingCell%9
+					row, col := missingCell/constants.GridSize, missingCell%constants.GridSize
 					// Don't increment fixCount - we're restoring a candidate, not removing a digit
 					// Update the candidates array to include the missing candidate
 					if missingCell < len(candidates) {
@@ -905,11 +905,11 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 
 			// Try to find the blocking user cell
 			if len(move.Targets) > 0 {
-				contradictionCell := move.Targets[0].Row*9 + move.Targets[0].Col
+				contradictionCell := move.Targets[0].Row*constants.GridSize + move.Targets[0].Col
 				badCell, badDigit := findBlockingUserCell(board, contradictionCell, originalUserBoard, givens)
 
 				if badCell >= 0 {
-					badRow, badCol := badCell/9, badCell%9
+					badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
 					fixCount++
 					originalUserBoard[badCell] = 0
 
@@ -935,8 +935,8 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 			// Couldn't find the error with primary method - try fallback
 			badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(originalUserBoard, givens)
 			if badCell >= 0 {
-				badRow, badCol := badCell/9, badCell%9
-				zeroCandRow, zeroCandCol := zeroCandCell/9, zeroCandCell%9
+				badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
+				zeroCandRow, zeroCandCol := zeroCandCell/constants.GridSize, zeroCandCell%constants.GridSize
 				fixCount++
 				originalUserBoard[badCell] = 0
 
@@ -961,7 +961,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 			// Method 3: Trial removal - try removing each user digit to see if solver can progress
 			badCell, badDigit = findErrorByTrialRemoval(originalUserBoard, givens, solver)
 			if badCell >= 0 {
-				badRow, badCol := badCell/9, badCell%9
+				badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
 				fixCount++
 				originalUserBoard[badCell] = 0
 
@@ -1017,8 +1017,8 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 		conflicts := dp.FindConflicts(finalCells)
 		if len(conflicts) > 0 {
 			conflict := conflicts[0]
-			cell1Row, cell1Col := conflict.Cell1/9, conflict.Cell1%9
-			cell2Row, cell2Col := conflict.Cell2/9, conflict.Cell2%9
+			cell1Row, cell1Col := conflict.Cell1/constants.GridSize, conflict.Cell1%constants.GridSize
+			cell2Row, cell2Col := conflict.Cell2/constants.GridSize, conflict.Cell2%constants.GridSize
 
 			// Find which cell is a user entry
 			badRow, badCol := cell1Row, cell1Col
@@ -1055,7 +1055,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 
 // findBlockingUserCell finds which user-entered cell is blocking candidates
 func findBlockingUserCell(board *human.Board, contradictionCell int, originalUserBoard []int, givens []int) (int, int) {
-	row, col := contradictionCell/9, contradictionCell%9
+	row, col := contradictionCell/constants.GridSize, contradictionCell%constants.GridSize
 	boxRow, boxCol := (row/3)*3, (col/3)*3
 
 	type blockingCell struct {
@@ -1067,7 +1067,7 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 	for digit := 1; digit <= 9; digit++ {
 		// Check row
 		for c := 0; c < 9; c++ {
-			idx := row*9 + c
+			idx := row*constants.GridSize + c
 			if board.Cells[idx] == digit && originalUserBoard[idx] != 0 && givens[idx] == 0 {
 				userBlockers = append(userBlockers, blockingCell{idx, digit})
 				break
@@ -1076,7 +1076,7 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 
 		// Check column
 		for r := 0; r < 9; r++ {
-			idx := r*9 + col
+			idx := r*constants.GridSize + col
 			if board.Cells[idx] == digit && originalUserBoard[idx] != 0 && givens[idx] == 0 {
 				userBlockers = append(userBlockers, blockingCell{idx, digit})
 				break
@@ -1086,7 +1086,7 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 		// Check box
 		for r := boxRow; r < boxRow+3; r++ {
 			for c := boxCol; c < boxCol+3; c++ {
-				idx := r*9 + c
+				idx := r*constants.GridSize + c
 				if board.Cells[idx] == digit && originalUserBoard[idx] != 0 && givens[idx] == 0 {
 					userBlockers = append(userBlockers, blockingCell{idx, digit})
 					break
@@ -1131,7 +1131,7 @@ func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int
 	freshBoard := human.NewBoard(originalUserBoard)
 
 	// Find any cell with zero candidates
-	for idx := 0; idx < 81; idx++ {
+	for idx := 0; idx < constants.TotalCells; idx++ {
 		if originalUserBoard[idx] != 0 {
 			continue // Skip filled cells
 		}
@@ -1139,7 +1139,7 @@ func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int
 		candidates := freshBoard.Candidates[idx]
 		if candidates.IsEmpty() {
 			// Found a cell with no candidates - this points to an error
-			row, col := idx/9, idx%9
+			row, col := idx/constants.GridSize, idx%constants.GridSize
 			boxRow, boxCol := (row/3)*3, (col/3)*3
 
 			type blocker struct {
@@ -1151,14 +1151,14 @@ func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int
 			for digit := 1; digit <= 9; digit++ {
 				// Check row
 				for c := 0; c < 9; c++ {
-					cellIdx := row*9 + c
+					cellIdx := row*constants.GridSize + c
 					if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
 						userBlockers = append(userBlockers, blocker{cellIdx, digit})
 					}
 				}
 				// Check column
 				for r := 0; r < 9; r++ {
-					cellIdx := r*9 + col
+					cellIdx := r*constants.GridSize + col
 					if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
 						userBlockers = append(userBlockers, blocker{cellIdx, digit})
 					}
@@ -1166,7 +1166,7 @@ func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int
 				// Check box
 				for r := boxRow; r < boxRow+3; r++ {
 					for c := boxCol; c < boxCol+3; c++ {
-						cellIdx := r*9 + c
+						cellIdx := r*constants.GridSize + c
 						if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
 							userBlockers = append(userBlockers, blocker{cellIdx, digit})
 						}
@@ -1190,7 +1190,7 @@ func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int
 func findErrorByTrialRemoval(originalUserBoard []int, givens []int, solver *human.Solver) (int, int) {
 	// Collect all user-entered cells (non-zero, non-given)
 	var userCells []int
-	for idx := 0; idx < 81; idx++ {
+	for idx := 0; idx < constants.TotalCells; idx++ {
 		if originalUserBoard[idx] != 0 && givens[idx] == 0 {
 			userCells = append(userCells, idx)
 		}
@@ -1201,7 +1201,7 @@ func findErrorByTrialRemoval(originalUserBoard []int, givens []int, solver *huma
 		digit := originalUserBoard[cellIdx]
 
 		// Create a test board without this cell's value
-		testBoard := make([]int, 81)
+		testBoard := make([]int, constants.TotalCells)
 		copy(testBoard, originalUserBoard)
 		testBoard[cellIdx] = 0
 
@@ -1228,7 +1228,7 @@ func findMissingCandidates(cells []int, userCandidates [][]int, solver *human.So
 	freshBoard := human.NewBoard(cells)
 
 	// Compare each cell's candidates
-	for idx := 0; idx < 81; idx++ {
+	for idx := 0; idx < constants.TotalCells; idx++ {
 		if cells[idx] != 0 {
 			continue // Skip filled cells
 		}
@@ -1339,7 +1339,7 @@ func validationResultWithSolutionToJS(valid bool, unique bool, solution []int) j
 }
 
 // validateCustomPuzzle validates a custom puzzle
-// Input: givens (number[81])
+// Input: givens (number[%d])
 // Output: { valid: boolean, unique?: boolean, reason?: string, puzzleId?: string }
 func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
@@ -1347,8 +1347,8 @@ func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 	}
 
 	givens := jsArrayToIntSlice(args[0])
-	if len(givens) != 81 {
-		return validationResultToJS(false, "givens must have 81 elements")
+	if len(givens) != constants.TotalCells {
+		return validationResultToJS(false, "givens must have %d elements", constants.TotalCells")
 	}
 
 	// Count givens
@@ -1386,7 +1386,7 @@ func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 }
 
 // validateBoard validates current board state during gameplay by comparing against solution
-// Input: board (number[81]), solution (number[81])
+// Input: board (number[%d]), solution (number[%d])
 // Output: { valid: boolean, reason?: string, message?: string, incorrectCells?: number[] }
 func validateBoard(this js.Value, args []js.Value) interface{} {
 	if len(args) < 2 {
@@ -1396,17 +1396,17 @@ func validateBoard(this js.Value, args []js.Value) interface{} {
 	board := jsArrayToIntSlice(args[0])
 	solution := jsArrayToIntSlice(args[1])
 
-	if len(board) != 81 {
-		return validationResultToJS(false, "board must have 81 elements")
+	if len(board) != constants.TotalCells {
+		return validationResultToJS(false, "board must have %d elements", constants.TotalCells")
 	}
 
-	if len(solution) != 81 {
-		return validationResultToJS(false, "solution must have 81 elements")
+	if len(solution) != constants.TotalCells {
+		return validationResultToJS(false, "solution must have %d elements", constants.TotalCells")
 	}
 
 	// Find incorrect cells (where user entry doesn't match solution)
 	incorrectCells := []int{}
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if board[i] != 0 && board[i] != solution[i] {
 			incorrectCells = append(incorrectCells, i)
 		}
@@ -1436,7 +1436,7 @@ func validateBoard(this js.Value, args []js.Value) interface{} {
 
 // getPuzzleForSeed generates or retrieves a puzzle for a given seed
 // Input: seed (string), difficulty (string)
-// Output: { givens: number[81], solution: number[81], puzzleId: string, seed: string, difficulty: string }
+// Output: { givens: number[%d], solution: number[%d], puzzleId: string, seed: string, difficulty: string }
 func getPuzzleForSeed(this js.Value, args []js.Value) interface{} {
 	if len(args) < 2 {
 		return errorToJS("seed and difficulty required")
@@ -1495,7 +1495,7 @@ func getVersion(this js.Value, args []js.Value) interface{} {
 }
 
 // findNextMove finds the next solving step with full error detection
-// Input: cells (number[81]), candidates (number[81][]), givens (number[81])
+// Input: cells (number[%d]), candidates (number[%d][]), givens (number[%d])
 // Output: { move: Move | null, board: { cells, candidates }, solved: boolean }
 // This is equivalent to solveAll with maxMoves=1, returning the first move only
 func findNextMove(this js.Value, args []js.Value) interface{} {
@@ -1504,14 +1504,14 @@ func findNextMove(this js.Value, args []js.Value) interface{} {
 	}
 
 	cells := jsArrayToIntSlice(args[0])
-	if len(cells) != 81 {
-		return errorToJS("cells must have 81 elements")
+	if len(cells) != constants.TotalCells {
+		return errorToJS("cells must have %d elements", constants.TotalCells")
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
 	givens := jsArrayToIntSlice(args[2])
-	if len(givens) != 81 {
-		return errorToJS("givens must have 81 elements")
+	if len(givens) != constants.TotalCells {
+		return errorToJS("givens must have %d elements", constants.TotalCells")
 	}
 
 	// Call internal implementation with maxMoves=1 for single move
@@ -1549,31 +1549,31 @@ func findNextMove(this js.Value, args []js.Value) interface{} {
 // checkAndFixWithSolution compares the current board against the known solution,
 // removes any incorrect user entries, then continues solving using techniques.
 // Input: cells (current board), candidates, givens, solution (correct answer)
-// Output: { moves: MoveResult[], solved: boolean, finalBoard: number[81] }
+// Output: { moves: MoveResult[], solved: boolean, finalBoard: number[%d] }
 func checkAndFixWithSolution(this js.Value, args []js.Value) interface{} {
 	if len(args) < 4 {
 		return errorToJS("cells, candidates, givens, and solution required")
 	}
 
 	cells := jsArrayToIntSlice(args[0])
-	if len(cells) != 81 {
-		return errorToJS("cells must have 81 elements")
+	if len(cells) != constants.TotalCells {
+		return errorToJS("cells must have %d elements", constants.TotalCells")
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
 	_ = candidates // Accept for API consistency but not needed for solution comparison
 	givens := jsArrayToIntSlice(args[2])
-	if len(givens) != 81 {
-		return errorToJS("givens must have 81 elements")
+	if len(givens) != constants.TotalCells {
+		return errorToJS("givens must have %d elements", constants.TotalCells")
 	}
 
 	solution := jsArrayToIntSlice(args[3])
-	if len(solution) != 81 {
-		return errorToJS("solution must have 81 elements")
+	if len(solution) != constants.TotalCells {
+		return errorToJS("solution must have %d elements", constants.TotalCells")
 	}
 
 	// Create a copy of the current board to modify
-	correctedBoard := make([]int, 81)
+	correctedBoard := make([]int, constants.TotalCells)
 	copy(correctedBoard, cells)
 
 	// Track what we fix for reporting
@@ -1582,7 +1582,7 @@ func checkAndFixWithSolution(this js.Value, args []js.Value) interface{} {
 	maxFixes := 10 // Allow more fixes than normal solving since we're comparing to solution
 
 	// Compare current board against solution and remove mismatches
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		// Skip empty cells and givens
 		if correctedBoard[i] == 0 || givens[i] != 0 {
 			continue
@@ -1594,7 +1594,7 @@ func checkAndFixWithSolution(this js.Value, args []js.Value) interface{} {
 			correctedBoard[i] = 0
 			fixCount++
 
-			row, col := i/9, i%9
+			row, col := i/constants.GridSize, i%constants.GridSize
 			fixedCells = append(fixedCells, MoveResult{
 				Board:      append([]int(nil), correctedBoard...), // Copy current state
 				Candidates: nil,                                   // Will be recalculated

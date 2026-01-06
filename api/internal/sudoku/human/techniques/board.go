@@ -4,29 +4,35 @@
 // This allows for better testability and flexibility.
 package techniques
 
-// Candidates represents a bitmask of possible digits (1-9) for a Sudoku cell.
-// Bit positions 1-9 correspond to digits 1-9. Bit 0 is unused.
+import "sudoku-api/pkg/constants"
+
+// Candidates represents a bitmask of possible digits (1-N) for a Sudoku cell.
+// Bit positions 1-N correspond to digits 1-N. Bit 0 is unused.
 type Candidates uint16
 
 // NewCandidates creates a Candidates bitmask from a slice of digits
 func NewCandidates(digits []int) Candidates {
 	var c Candidates
 	for _, d := range digits {
-		if d >= 1 && d <= 9 {
+		if d >= 1 && d <= constants.GridSize {
 			c = c.Set(d)
 		}
 	}
 	return c
 }
 
-// AllCandidates returns a Candidates with all digits 1-9 set
+// AllCandidates returns a Candidates with all digits 1-N set
 func AllCandidates() Candidates {
-	return Candidates(0b1111111110) // bits 1-9 set
+	var c Candidates
+	for i := 1; i <= constants.GridSize; i++ {
+		c = c.Set(i)
+	}
+	return c
 }
 
 // Has returns true if the digit is a candidate
 func (c Candidates) Has(digit int) bool {
-	if digit < 1 || digit > 9 {
+	if digit < 1 || digit > constants.GridSize {
 		return false
 	}
 	return c&(1<<digit) != 0
@@ -34,7 +40,7 @@ func (c Candidates) Has(digit int) bool {
 
 // Set adds a digit as a candidate and returns the new bitmask
 func (c Candidates) Set(digit int) Candidates {
-	if digit < 1 || digit > 9 {
+	if digit < 1 || digit > constants.GridSize {
 		return c
 	}
 	return c | (1 << digit)
@@ -42,7 +48,7 @@ func (c Candidates) Set(digit int) Candidates {
 
 // Clear removes a digit from candidates and returns the new bitmask
 func (c Candidates) Clear(digit int) Candidates {
-	if digit < 1 || digit > 9 {
+	if digit < 1 || digit > constants.GridSize {
 		return c
 	}
 	return c &^ (1 << digit)
@@ -51,7 +57,7 @@ func (c Candidates) Clear(digit int) Candidates {
 // Count returns the number of candidate digits
 func (c Candidates) Count() int {
 	count := 0
-	for i := 1; i <= 9; i++ {
+	for i := 1; i <= constants.GridSize; i++ {
 		if c&(1<<i) != 0 {
 			count++
 		}
@@ -65,7 +71,7 @@ func (c Candidates) Only() (int, bool) {
 	if c.Count() != 1 {
 		return 0, false
 	}
-	for i := 1; i <= 9; i++ {
+	for i := 1; i <= constants.GridSize; i++ {
 		if c&(1<<i) != 0 {
 			return i, true
 		}
@@ -76,7 +82,7 @@ func (c Candidates) Only() (int, bool) {
 // ToSlice returns the candidate digits as a sorted slice
 func (c Candidates) ToSlice() []int {
 	var result []int
-	for i := 1; i <= 9; i++ {
+	for i := 1; i <= constants.GridSize; i++ {
 		if c&(1<<i) != 0 {
 			result = append(result, i)
 		}
@@ -154,8 +160,8 @@ func (u UnitType) String() string {
 // Unit represents a single row, column, or box
 type Unit struct {
 	Type  UnitType
-	Index int   // 0-8, which row/col/box
-	Cells []int // The 9 cell indices
+	Index int   // 0-15, which row/col/box
+	Cells []int // The GridSize cell indices
 }
 
 // ============================================================================
@@ -165,7 +171,7 @@ type Unit struct {
 // BoardInterface defines the board operations needed by solving techniques
 type BoardInterface interface {
 	// Cell state queries
-	GetCell(idx int) int                // Returns 0 for empty, 1-9 for filled
+	GetCell(idx int) int                // Returns 0 for empty, 1-16 for filled
 	GetCandidatesAt(idx int) Candidates // Returns candidate bitmask for cell
 
 	// Unit queries

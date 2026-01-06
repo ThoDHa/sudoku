@@ -447,7 +447,7 @@ func solveNextHandler(c *gin.Context) {
 	}
 
 	if len(req.Board) != constants.TotalCells {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "board must have 81 cells"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("board must have %d cells", constants.TotalCells)})
 		return
 	}
 
@@ -498,8 +498,8 @@ func solveNextHandler(c *gin.Context) {
 				otherCell = conflict.Cell1
 			}
 
-			badRow, badCol := badCell/9, badCell%9
-			otherRow, otherCol := otherCell/9, otherCell%9
+			badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
+			otherRow, otherCol := otherCell/constants.GridSize, otherCell%constants.GridSize
 			badDigit := req.Board[badCell]
 
 			// Create a new board without the bad cell
@@ -569,20 +569,20 @@ func solveNextHandler(c *gin.Context) {
 	if move.Action == "contradiction" {
 		// Find the contradiction cell (first target in the move)
 		if len(move.Targets) > 0 {
-			contradictionCell := move.Targets[0].Row*9 + move.Targets[0].Col
+			contradictionCell := move.Targets[0].Row*constants.GridSize + move.Targets[0].Col
 
 			// Analyze which user-entered cell is causing this
 			badCell, badDigit := findBlockingUserCell(board, contradictionCell, req.Board, givens)
 
 			if badCell >= 0 {
-				badRow, badCol := badCell/9, badCell%9
+				badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
 
 				fixedBoard := make([]int, len(req.Board))
 				copy(fixedBoard, req.Board)
 				fixedBoard[badCell] = 0
 
 				// Preserve user's candidates but clear the fixed cell's candidates
-				// Always allocate 81 slots even if req.Candidates is shorter/empty
+				// Always allocate full grid slots even if req.Candidates is shorter/empty
 				fixedCandidates := make([][]int, constants.TotalCells)
 				for i := 0; i < constants.TotalCells; i++ {
 					if i == badCell {
@@ -619,8 +619,8 @@ func solveNextHandler(c *gin.Context) {
 		badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(req.Board, givens)
 
 		if badCell >= 0 {
-			badRow, badCol := badCell/9, badCell%9
-			zeroCandRow, zeroCandCol := zeroCandCell/9, zeroCandCell%9
+			badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
+			zeroCandRow, zeroCandCol := zeroCandCell/constants.GridSize, zeroCandCell%constants.GridSize
 
 			// Create a new board without the bad cell
 			fixedBoard := make([]int, len(req.Board))
@@ -628,7 +628,7 @@ func solveNextHandler(c *gin.Context) {
 			fixedBoard[badCell] = 0
 
 			// Preserve user's candidates but clear the fixed cell's candidates
-			// Always allocate 81 slots even if req.Candidates is shorter/empty
+			// Always allocate full grid slots even if req.Candidates is shorter/empty
 			fixedCandidates := make([][]int, constants.TotalCells)
 			for i := 0; i < constants.TotalCells; i++ {
 				if i == badCell {
@@ -698,10 +698,10 @@ type SolveAllRequest struct {
 // givens is the original puzzle (to distinguish user entries from given clues)
 // Returns the cell index and the blocking digit, or -1 if no user error found.
 func findBlockingUserCell(board *human.Board, contradictionCell int, originalUserBoard []int, givens []int) (int, int) {
-	row, col := contradictionCell/9, contradictionCell%9
-	boxRow, boxCol := (row/3)*3, (col/3)*3
+	row, col := contradictionCell/constants.GridSize, contradictionCell%constants.GridSize
+	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
 
-	// For each digit 1-9, find what's blocking it from this cell
+	// For each digit, find what's blocking it from this cell
 	// Only consider cells that were user-entered BEFORE solve was called (not solver placements)
 	type blockingCell struct {
 		idx   int
@@ -709,10 +709,10 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 	}
 	var userBlockers []blockingCell
 
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		// Check row for this digit
-		for c := 0; c < 9; c++ {
-			idx := row*9 + c
+		for c := 0; c < constants.GridSize; c++ {
+			idx := row*constants.GridSize + c
 			if board.Cells[idx] == digit {
 				// This cell blocks 'digit' from contradiction cell
 				// Only consider if: was in original user board AND not a given
@@ -724,8 +724,8 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 		}
 
 		// Check column for this digit
-		for r := 0; r < 9; r++ {
-			idx := r*9 + col
+		for r := 0; r < constants.GridSize; r++ {
+			idx := r*constants.GridSize + col
 			if board.Cells[idx] == digit {
 				if originalUserBoard[idx] != 0 && givens[idx] == 0 {
 					userBlockers = append(userBlockers, blockingCell{idx, digit})
@@ -735,9 +735,9 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 		}
 
 		// Check box for this digit
-		for r := boxRow; r < boxRow+3; r++ {
-			for c := boxCol; c < boxCol+3; c++ {
-				idx := r*9 + c
+		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+			for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+				idx := r*constants.GridSize + c
 				if board.Cells[idx] == digit {
 					if originalUserBoard[idx] != 0 && givens[idx] == 0 {
 						userBlockers = append(userBlockers, blockingCell{idx, digit})
@@ -796,35 +796,35 @@ func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int
 		if candidates.IsEmpty() {
 			// Found a cell with no candidates - this points to an error
 			// Find which user-entered cell is blocking all candidates
-			row, col := idx/9, idx%9
-			boxRow, boxCol := (row/3)*3, (col/3)*3
+			row, col := idx/constants.GridSize, idx%constants.GridSize
+			boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
 
-			// For each digit 1-9, find what's blocking it
+			// For each digit, find what's blocking it
 			type blocker struct {
 				cellIdx int
 				digit   int
 			}
 			var userBlockers []blocker
 
-			for digit := 1; digit <= 9; digit++ {
+			for digit := 1; digit <= constants.GridSize; digit++ {
 				// Check row
-				for c := 0; c < 9; c++ {
-					cellIdx := row*9 + c
+				for c := 0; c < constants.GridSize; c++ {
+					cellIdx := row*constants.GridSize + c
 					if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
 						userBlockers = append(userBlockers, blocker{cellIdx, digit})
 					}
 				}
 				// Check column
-				for r := 0; r < 9; r++ {
-					cellIdx := r*9 + col
+				for r := 0; r < constants.GridSize; r++ {
+					cellIdx := r*constants.GridSize + col
 					if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
 						userBlockers = append(userBlockers, blocker{cellIdx, digit})
 					}
 				}
 				// Check box
-				for r := boxRow; r < boxRow+3; r++ {
-					for c := boxCol; c < boxCol+3; c++ {
-						cellIdx := r*9 + c
+				for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+					for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+						cellIdx := r*constants.GridSize + c
 						if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
 							userBlockers = append(userBlockers, blocker{cellIdx, digit})
 						}
@@ -868,7 +868,7 @@ func solveAllHandler(c *gin.Context) {
 	}
 
 	if len(req.Board) != constants.TotalCells {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "board must have 81 cells"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("board must have %d cells", constants.TotalCells)})
 		return
 	}
 
@@ -920,8 +920,8 @@ func solveAllHandler(c *gin.Context) {
 				otherCell = conflict.Cell1
 			}
 
-			badRow, badCol := badCell/9, badCell%9
-			otherRow, otherCol := otherCell/9, otherCell%9
+			badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
+			otherRow, otherCol := otherCell/constants.GridSize, otherCell%constants.GridSize
 			badDigit := req.Board[badCell]
 
 			// Create a new board without the bad cell
@@ -991,7 +991,7 @@ func solveAllHandler(c *gin.Context) {
 	copy(originalUserBoard, req.Board)
 
 	// Keep a copy of the original user candidates to preserve them when fixing errors
-	// Always allocate 81 slots even if req.Candidates is shorter/empty
+	// Always allocate full grid slots even if req.Candidates is shorter/empty
 	originalUserCandidates := make([][]int, constants.TotalCells)
 	for i := 0; i < len(req.Candidates) && i < constants.TotalCells; i++ {
 		if req.Candidates[i] != nil {
@@ -1062,13 +1062,13 @@ func solveAllHandler(c *gin.Context) {
 
 			// Find the contradiction cell (first target in the move)
 			if len(move.Targets) > 0 {
-				contradictionCell := move.Targets[0].Row*9 + move.Targets[0].Col
+				contradictionCell := move.Targets[0].Row*constants.GridSize + move.Targets[0].Col
 
 				// Analyze which user-entered cell is causing this
 				badCell, badDigit := findBlockingUserCell(board, contradictionCell, originalUserBoard, givens)
 
 				if badCell >= 0 {
-					badRow, badCol := badCell/9, badCell%9
+					badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
 					fixCount++
 
 					// Update originalUserBoard to remove the bad cell
@@ -1116,8 +1116,8 @@ func solveAllHandler(c *gin.Context) {
 			badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(originalUserBoard, givens)
 
 			if badCell >= 0 {
-				badRow, badCol := badCell/9, badCell%9
-				zeroCandRow, zeroCandCol := zeroCandCell/9, zeroCandCell%9
+				badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
+				zeroCandRow, zeroCandCol := zeroCandCell/constants.GridSize, zeroCandCell%constants.GridSize
 				fixCount++
 
 				// Update originalUserBoard to remove the bad cell (for future reference)
@@ -1200,7 +1200,7 @@ func solveFullHandler(c *gin.Context) {
 	}
 
 	if len(req.Board) != constants.TotalCells {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "board must have 81 cells"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("board must have %d cells", constants.TotalCells)})
 		return
 	}
 
@@ -1252,7 +1252,7 @@ func validateBoardHandler(c *gin.Context) {
 	}
 
 	if len(req.Board) != constants.TotalCells {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "board must have 81 cells"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("board must have %d cells", constants.TotalCells)})
 		return
 	}
 
@@ -1311,7 +1311,7 @@ func customValidateHandler(c *gin.Context) {
 	}
 
 	if len(req.Givens) != constants.TotalCells {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "givens must have 81 cells"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("givens must have %d cells", constants.TotalCells)})
 		return
 	}
 

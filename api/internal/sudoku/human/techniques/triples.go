@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // DetectNakedTriple finds three cells in a unit with candidates that are a subset of three digits
@@ -54,7 +55,7 @@ func findNakedTripleInUnit(b BoardInterface, indices []int, unitType string, uni
 					for _, d := range digits {
 						if b.GetCandidatesAt(idx).Has(d) {
 							eliminations = append(eliminations, core.Candidate{
-								Row: idx / 9, Col: idx % 9, Digit: d,
+								Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: d,
 							})
 						}
 					}
@@ -64,17 +65,17 @@ func findNakedTripleInUnit(b BoardInterface, indices []int, unitType string, uni
 					return &core.Move{
 						Action: "eliminate",
 						Targets: []core.CellRef{
-							{Row: idx1 / 9, Col: idx1 % 9},
-							{Row: idx2 / 9, Col: idx2 % 9},
-							{Row: idx3 / 9, Col: idx3 % 9},
+							{Row: idx1 / constants.GridSize, Col: idx1 % constants.GridSize},
+							{Row: idx2 / constants.GridSize, Col: idx2 % constants.GridSize},
+							{Row: idx3 / constants.GridSize, Col: idx3 % constants.GridSize},
 						},
 						Eliminations: eliminations,
 						Explanation:  fmt.Sprintf("Naked Triple {%d,%d,%d} in %s %d", digits[0], digits[1], digits[2], unitType, unitNum),
 						Highlights: core.Highlights{
 							Primary: []core.CellRef{
-								{Row: idx1 / 9, Col: idx1 % 9},
-								{Row: idx2 / 9, Col: idx2 % 9},
-								{Row: idx3 / 9, Col: idx3 % 9},
+								{Row: idx1 / constants.GridSize, Col: idx1 % constants.GridSize},
+								{Row: idx2 / constants.GridSize, Col: idx2 % constants.GridSize},
+								{Row: idx3 / constants.GridSize, Col: idx3 % constants.GridSize},
 							},
 						},
 					}
@@ -98,7 +99,7 @@ func DetectHiddenTriple(b BoardInterface) *core.Move {
 
 func findHiddenTripleInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
 	digitPositions := make(map[int][]int)
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		for _, idx := range indices {
 			if b.GetCandidatesAt(idx).Has(digit) {
 				digitPositions[digit] = append(digitPositions[digit], idx)
@@ -151,7 +152,7 @@ func findHiddenTripleInUnit(b BoardInterface, indices []int, unitType string, un
 					for _, d := range b.GetCandidatesAt(idx).ToSlice() {
 						if d != d1 && d != d2 && d != d3 {
 							eliminations = append(eliminations, core.Candidate{
-								Row: idx / 9, Col: idx % 9, Digit: d,
+								Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: d,
 							})
 						}
 					}
@@ -161,17 +162,17 @@ func findHiddenTripleInUnit(b BoardInterface, indices []int, unitType string, un
 					return &core.Move{
 						Action: "eliminate",
 						Targets: []core.CellRef{
-							{Row: cells[0] / 9, Col: cells[0] % 9},
-							{Row: cells[1] / 9, Col: cells[1] % 9},
-							{Row: cells[2] / 9, Col: cells[2] % 9},
+							{Row: cells[0] / constants.GridSize, Col: cells[0] % constants.GridSize},
+							{Row: cells[1] / constants.GridSize, Col: cells[1] % constants.GridSize},
+							{Row: cells[2] / constants.GridSize, Col: cells[2] % constants.GridSize},
 						},
 						Eliminations: eliminations,
 						Explanation:  fmt.Sprintf("Hidden Triple {%d,%d,%d} in %s %d", d1, d2, d3, unitType, unitNum),
 						Highlights: core.Highlights{
 							Primary: []core.CellRef{
-								{Row: cells[0] / 9, Col: cells[0] % 9},
-								{Row: cells[1] / 9, Col: cells[1] % 9},
-								{Row: cells[2] / 9, Col: cells[2] % 9},
+								{Row: cells[0] / constants.GridSize, Col: cells[0] % constants.GridSize},
+								{Row: cells[1] / constants.GridSize, Col: cells[1] % constants.GridSize},
+								{Row: cells[2] / constants.GridSize, Col: cells[2] % constants.GridSize},
 							},
 						},
 					}
@@ -235,7 +236,7 @@ func findNakedQuadInUnit(b BoardInterface, indices []int, unitType string, unitN
 						for _, d := range digits {
 							if b.GetCandidatesAt(idx).Has(d) {
 								eliminations = append(eliminations, core.Candidate{
-									Row: idx / 9, Col: idx % 9, Digit: d,
+									Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: d,
 								})
 							}
 						}
@@ -245,19 +246,19 @@ func findNakedQuadInUnit(b BoardInterface, indices []int, unitType string, unitN
 						return &core.Move{
 							Action: "eliminate",
 							Targets: []core.CellRef{
-								{Row: idxs[0] / 9, Col: idxs[0] % 9},
-								{Row: idxs[1] / 9, Col: idxs[1] % 9},
-								{Row: idxs[2] / 9, Col: idxs[2] % 9},
-								{Row: idxs[3] / 9, Col: idxs[3] % 9},
+								{Row: idxs[0] / constants.GridSize, Col: idxs[0] % constants.GridSize},
+								{Row: idxs[1] / constants.GridSize, Col: idxs[1] % constants.GridSize},
+								{Row: idxs[2] / constants.GridSize, Col: idxs[2] % constants.GridSize},
+								{Row: idxs[3] / constants.GridSize, Col: idxs[3] % constants.GridSize},
 							},
 							Eliminations: eliminations,
 							Explanation:  fmt.Sprintf("Naked Quad {%d,%d,%d,%d} in %s %d", digits[0], digits[1], digits[2], digits[3], unitType, unitNum),
 							Highlights: core.Highlights{
 								Primary: []core.CellRef{
-									{Row: idxs[0] / 9, Col: idxs[0] % 9},
-									{Row: idxs[1] / 9, Col: idxs[1] % 9},
-									{Row: idxs[2] / 9, Col: idxs[2] % 9},
-									{Row: idxs[3] / 9, Col: idxs[3] % 9},
+									{Row: idxs[0] / constants.GridSize, Col: idxs[0] % constants.GridSize},
+									{Row: idxs[1] / constants.GridSize, Col: idxs[1] % constants.GridSize},
+									{Row: idxs[2] / constants.GridSize, Col: idxs[2] % constants.GridSize},
+									{Row: idxs[3] / constants.GridSize, Col: idxs[3] % constants.GridSize},
 								},
 							},
 						}
@@ -282,7 +283,7 @@ func DetectHiddenQuad(b BoardInterface) *core.Move {
 
 func findHiddenQuadInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
 	digitPositions := make(map[int][]int)
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		for _, idx := range indices {
 			if b.GetCandidatesAt(idx).Has(digit) {
 				digitPositions[digit] = append(digitPositions[digit], idx)
@@ -339,7 +340,7 @@ func findHiddenQuadInUnit(b BoardInterface, indices []int, unitType string, unit
 						for _, d := range b.GetCandidatesAt(idx).ToSlice() {
 							if d != d1 && d != d2 && d != d3 && d != d4 {
 								eliminations = append(eliminations, core.Candidate{
-									Row: idx / 9, Col: idx % 9, Digit: d,
+									Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: d,
 								})
 							}
 						}
@@ -349,19 +350,19 @@ func findHiddenQuadInUnit(b BoardInterface, indices []int, unitType string, unit
 						return &core.Move{
 							Action: "eliminate",
 							Targets: []core.CellRef{
-								{Row: cells[0] / 9, Col: cells[0] % 9},
-								{Row: cells[1] / 9, Col: cells[1] % 9},
-								{Row: cells[2] / 9, Col: cells[2] % 9},
-								{Row: cells[3] / 9, Col: cells[3] % 9},
+								{Row: cells[0] / constants.GridSize, Col: cells[0] % constants.GridSize},
+								{Row: cells[1] / constants.GridSize, Col: cells[1] % constants.GridSize},
+								{Row: cells[2] / constants.GridSize, Col: cells[2] % constants.GridSize},
+								{Row: cells[3] / constants.GridSize, Col: cells[3] % constants.GridSize},
 							},
 							Eliminations: eliminations,
 							Explanation:  fmt.Sprintf("Hidden Quad {%d,%d,%d,%d} in %s %d", d1, d2, d3, d4, unitType, unitNum),
 							Highlights: core.Highlights{
 								Primary: []core.CellRef{
-									{Row: cells[0] / 9, Col: cells[0] % 9},
-									{Row: cells[1] / 9, Col: cells[1] % 9},
-									{Row: cells[2] / 9, Col: cells[2] % 9},
-									{Row: cells[3] / 9, Col: cells[3] % 9},
+									{Row: cells[0] / constants.GridSize, Col: cells[0] % constants.GridSize},
+									{Row: cells[1] / constants.GridSize, Col: cells[1] % constants.GridSize},
+									{Row: cells[2] / constants.GridSize, Col: cells[2] % constants.GridSize},
+									{Row: cells[3] / constants.GridSize, Col: cells[3] % constants.GridSize},
 								},
 							},
 						}

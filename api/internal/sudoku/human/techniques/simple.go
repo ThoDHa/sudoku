@@ -4,14 +4,15 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // DetectNakedSingle finds a cell with only one candidate
 func DetectNakedSingle(b BoardInterface) *core.Move {
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.GridSize*constants.GridSize; i++ {
 		if b.GetCell(i) == 0 && b.GetCandidatesAt(i).Count() == 1 {
 			digit, _ := b.GetCandidatesAt(i).Only()
-			row, col := i/9, i%9
+			row, col := i/constants.GridSize, i%constants.GridSize
 			return &core.Move{
 				Action:      "assign",
 				Digit:       digit,
@@ -28,11 +29,11 @@ func DetectNakedSingle(b BoardInterface) *core.Move {
 
 // DetectHiddenSingle finds a digit that can only go in one cell within a unit
 func DetectHiddenSingle(b BoardInterface) *core.Move {
-	for row := 0; row < 9; row++ {
-		for digit := 1; digit <= 9; digit++ {
+	for row := 0; row < constants.GridSize; row++ {
+		for digit := 1; digit <= constants.GridSize; digit++ {
 			var positions []int
-			for col := 0; col < 9; col++ {
-				idx := row*9 + col
+			for col := 0; col < constants.GridSize; col++ {
+				idx := row*constants.GridSize + col
 				if b.GetCell(idx) == digit {
 					positions = nil
 					break
@@ -43,7 +44,7 @@ func DetectHiddenSingle(b BoardInterface) *core.Move {
 			}
 			if len(positions) == 1 {
 				col := positions[0]
-				idx := row*9 + col
+				idx := row*constants.GridSize + col
 				if b.GetCandidatesAt(idx).Count() > 1 {
 					return &core.Move{
 						Action:      "assign",
@@ -61,11 +62,11 @@ func DetectHiddenSingle(b BoardInterface) *core.Move {
 	}
 
 	// Check columns
-	for col := 0; col < 9; col++ {
-		for digit := 1; digit <= 9; digit++ {
+	for col := 0; col < constants.GridSize; col++ {
+		for digit := 1; digit <= constants.GridSize; digit++ {
 			var positions []int
-			for row := 0; row < 9; row++ {
-				idx := row*9 + col
+			for row := 0; row < constants.GridSize; row++ {
+				idx := row*constants.GridSize + col
 				if b.GetCell(idx) == digit {
 					positions = nil
 					break
@@ -76,7 +77,7 @@ func DetectHiddenSingle(b BoardInterface) *core.Move {
 			}
 			if len(positions) == 1 {
 				row := positions[0]
-				idx := row*9 + col
+				idx := row*constants.GridSize + col
 				if b.GetCandidatesAt(idx).Count() > 1 {
 					return &core.Move{
 						Action:      "assign",
@@ -93,14 +94,14 @@ func DetectHiddenSingle(b BoardInterface) *core.Move {
 		}
 	}
 
-	for box := 0; box < 9; box++ {
+	for box := 0; box < constants.GridSize; box++ {
 		boxRow, boxCol := (box/3)*3, (box%3)*3
-		for digit := 1; digit <= 9; digit++ {
+		for digit := 1; digit <= constants.GridSize; digit++ {
 			var positions []core.CellRef
 			found := false
 			for r := boxRow; r < boxRow+3; r++ {
 				for c := boxCol; c < boxCol+3; c++ {
-					idx := r*9 + c
+					idx := r*constants.GridSize + c
 					if b.GetCell(idx) == digit {
 						found = true
 						break
@@ -115,7 +116,7 @@ func DetectHiddenSingle(b BoardInterface) *core.Move {
 			}
 			if !found && len(positions) == 1 {
 				pos := positions[0]
-				idx := pos.Row*9 + pos.Col
+				idx := pos.Row*constants.GridSize + pos.Col
 				if b.GetCandidatesAt(idx).Count() > 1 {
 					return &core.Move{
 						Action:      "assign",
@@ -137,14 +138,14 @@ func DetectHiddenSingle(b BoardInterface) *core.Move {
 
 // DetectPointingPair finds candidates in a box that are confined to one row/column
 func DetectPointingPair(b BoardInterface) *core.Move {
-	for box := 0; box < 9; box++ {
+	for box := 0; box < constants.GridSize; box++ {
 		boxRow, boxCol := (box/3)*3, (box%3)*3
 
-		for digit := 1; digit <= 9; digit++ {
+		for digit := 1; digit <= constants.GridSize; digit++ {
 			var positions []core.CellRef
 			for r := boxRow; r < boxRow+3; r++ {
 				for c := boxCol; c < boxCol+3; c++ {
-					if b.GetCandidatesAt(r*9 + c).Has(digit) {
+					if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
 						positions = append(positions, core.CellRef{Row: r, Col: c})
 					}
 				}
@@ -166,11 +167,11 @@ func DetectPointingPair(b BoardInterface) *core.Move {
 
 			if sameRow {
 				var eliminations []core.Candidate
-				for c := 0; c < 9; c++ {
+				for c := 0; c < constants.GridSize; c++ {
 					if c >= boxCol && c < boxCol+3 {
 						continue
 					}
-					if b.GetCandidatesAt(row*9 + c).Has(digit) {
+					if b.GetCandidatesAt(row*constants.GridSize + c).Has(digit) {
 						eliminations = append(eliminations, core.Candidate{Row: row, Col: c, Digit: digit})
 					}
 				}
@@ -201,11 +202,11 @@ func DetectPointingPair(b BoardInterface) *core.Move {
 
 			if sameCol {
 				var eliminations []core.Candidate
-				for r := 0; r < 9; r++ {
+				for r := 0; r < constants.GridSize; r++ {
 					if r >= boxRow && r < boxRow+3 {
 						continue
 					}
-					if b.GetCandidatesAt(r*9 + col).Has(digit) {
+					if b.GetCandidatesAt(r*constants.GridSize + col).Has(digit) {
 						eliminations = append(eliminations, core.Candidate{Row: r, Col: col, Digit: digit})
 					}
 				}
@@ -230,11 +231,11 @@ func DetectPointingPair(b BoardInterface) *core.Move {
 
 // DetectBoxLineReduction finds candidates in a row/column confined to one box
 func DetectBoxLineReduction(b BoardInterface) *core.Move {
-	for row := 0; row < 9; row++ {
-		for digit := 1; digit <= 9; digit++ {
+	for row := 0; row < constants.GridSize; row++ {
+		for digit := 1; digit <= constants.GridSize; digit++ {
 			var positions []core.CellRef
-			for col := 0; col < 9; col++ {
-				if b.GetCandidatesAt(row*9 + col).Has(digit) {
+			for col := 0; col < constants.GridSize; col++ {
+				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 					positions = append(positions, core.CellRef{Row: row, Col: col})
 				}
 			}
@@ -261,7 +262,7 @@ func DetectBoxLineReduction(b BoardInterface) *core.Move {
 						continue
 					}
 					for c := boxCol; c < boxCol+3; c++ {
-						if b.GetCandidatesAt(r*9 + c).Has(digit) {
+						if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: r, Col: c, Digit: digit})
 						}
 					}
@@ -284,11 +285,11 @@ func DetectBoxLineReduction(b BoardInterface) *core.Move {
 	}
 
 	// Check columns
-	for col := 0; col < 9; col++ {
-		for digit := 1; digit <= 9; digit++ {
+	for col := 0; col < constants.GridSize; col++ {
+		for digit := 1; digit <= constants.GridSize; digit++ {
 			var positions []core.CellRef
-			for row := 0; row < 9; row++ {
-				if b.GetCandidatesAt(row*9 + col).Has(digit) {
+			for row := 0; row < constants.GridSize; row++ {
+				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 					positions = append(positions, core.CellRef{Row: row, Col: col})
 				}
 			}
@@ -315,7 +316,7 @@ func DetectBoxLineReduction(b BoardInterface) *core.Move {
 						if c == col {
 							continue
 						}
-						if b.GetCandidatesAt(r*9 + c).Has(digit) {
+						if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: r, Col: c, Digit: digit})
 						}
 					}

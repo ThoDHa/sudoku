@@ -1,11 +1,13 @@
 package human
 
+import "sudoku-api/pkg/constants"
+
 // ============================================================================
 // Board - Sudoku Puzzle State
 // ============================================================================
 //
 // Board represents the current state of a Sudoku puzzle, including:
-// : Cell values (0 = empty, 1-9 = filled)
+// : Cell values (0 = empty, 1-16 = filled)
 // : Candidate digits for each cell (as bitmask)
 // : Eliminated candidates (to prevent re-adding)
 //
@@ -16,9 +18,9 @@ package human
 
 // Board represents the Sudoku board state with candidates
 type Board struct {
-	Cells      [81]int        // 0 for empty, 1-9 for filled
-	Candidates [81]Candidates // possible values for each cell (bitmask)
-	Eliminated [81]Candidates // candidates that have been eliminated (don't re-add)
+	Cells      [constants.TotalCells]int        // 0 for empty, 1-16 for filled
+	Candidates [constants.TotalCells]Candidates // possible values for each cell (bitmask)
+	Eliminated [constants.TotalCells]Candidates // candidates that have been eliminated (don't re-add)
 }
 
 // ============================================================================
@@ -28,7 +30,7 @@ type Board struct {
 // NewBoard creates a board from givens and initializes candidates
 func NewBoard(givens []int) *Board {
 	b := &Board{}
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		b.Cells[i] = givens[i]
 	}
 	b.InitCandidates()
@@ -39,7 +41,7 @@ func NewBoard(givens []int) *Board {
 // Does NOT auto-fill candidates - let FindNextMove handle that one at a time
 func NewBoardWithCandidates(cells []int, candidates [][]int) *Board {
 	b := &Board{}
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		b.Cells[i] = cells[i]
 		if candidates != nil && i < len(candidates) && candidates[i] != nil {
 			b.Candidates[i] = NewCandidates(candidates[i])
@@ -47,7 +49,7 @@ func NewBoardWithCandidates(cells []int, candidates [][]int) *Board {
 		// Mark candidates that could be valid but aren't present as eliminated
 		// This preserves eliminations from previous moves
 		if cells[i] == 0 && candidates != nil && i < len(candidates) && candidates[i] != nil && len(candidates[i]) > 0 {
-			for d := 1; d <= 9; d++ {
+			for d := 1; d <= constants.GridSize; d++ {
 				if b.canPlace(i, d) && !b.Candidates[i].Has(d) {
 					b.Eliminated[i] = b.Eliminated[i].Set(d)
 				}
@@ -63,10 +65,10 @@ func NewBoardWithCandidates(cells []int, candidates [][]int) *Board {
 
 // InitCandidates populates candidates for empty cells based on current board state
 func (b *Board) InitCandidates() {
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.Cells[i] == 0 {
 			var cands Candidates
-			for d := 1; d <= 9; d++ {
+			for d := 1; d <= constants.GridSize; d++ {
 				if b.canPlace(i, d) {
 					cands = cands.Set(d)
 				}
@@ -80,25 +82,25 @@ func (b *Board) InitCandidates() {
 
 // canPlace checks if a digit can be placed at idx (no conflicts in row/col/box)
 func (b *Board) canPlace(idx, digit int) bool {
-	row, col := idx/9, idx%9
+	row, col := idx/constants.GridSize, idx%constants.GridSize
 
-	for c := 0; c < 9; c++ {
-		if b.Cells[row*9+c] == digit {
+	for c := 0; c < constants.GridSize; c++ {
+		if b.Cells[row*constants.GridSize+c] == digit {
 			return false
 		}
 	}
 
-	for r := 0; r < 9; r++ {
-		if b.Cells[r*9+col] == digit {
+	for r := 0; r < constants.GridSize; r++ {
+		if b.Cells[r*constants.GridSize+col] == digit {
 			return false
 		}
 	}
 
 	// Check box
-	boxRow, boxCol := (row/3)*3, (col/3)*3
-	for r := boxRow; r < boxRow+3; r++ {
-		for c := boxCol; c < boxCol+3; c++ {
-			if b.Cells[r*9+c] == digit {
+	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
+	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			if b.Cells[r*constants.GridSize+c] == digit {
 				return false
 			}
 		}
@@ -117,18 +119,18 @@ func (b *Board) SetCell(idx, digit int) {
 	b.Candidates[idx] = 0 // Clear candidates for filled cell
 	b.Eliminated[idx] = 0 // Clear eliminated for filled cell
 
-	row, col := idx/9, idx%9
+	row, col := idx/constants.GridSize, idx%constants.GridSize
 
-	for c := 0; c < 9; c++ {
-		peerIdx := row*9 + c
+	for c := 0; c < constants.GridSize; c++ {
+		peerIdx := row*constants.GridSize + c
 		if b.Candidates[peerIdx].Has(digit) {
 			b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
 			b.Eliminated[peerIdx] = b.Eliminated[peerIdx].Set(digit)
 		}
 	}
 
-	for r := 0; r < 9; r++ {
-		peerIdx := r*9 + col
+	for r := 0; r < constants.GridSize; r++ {
+		peerIdx := r*constants.GridSize + col
 		if b.Candidates[peerIdx].Has(digit) {
 			b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
 			b.Eliminated[peerIdx] = b.Eliminated[peerIdx].Set(digit)
@@ -136,10 +138,10 @@ func (b *Board) SetCell(idx, digit int) {
 	}
 
 	// Remove from box and mark as eliminated
-	boxRow, boxCol := (row/3)*3, (col/3)*3
-	for r := boxRow; r < boxRow+3; r++ {
-		for c := boxCol; c < boxCol+3; c++ {
-			peerIdx := r*9 + c
+	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
+	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			peerIdx := r*constants.GridSize + c
 			if b.Candidates[peerIdx].Has(digit) {
 				b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
 				b.Eliminated[peerIdx] = b.Eliminated[peerIdx].Set(digit)
@@ -151,7 +153,7 @@ func (b *Board) SetCell(idx, digit int) {
 // ClearCell removes a digit from a cell and recalculates candidates for that cell
 // This is used when fixing user errors
 func (b *Board) ClearCell(idx int) {
-	if idx < 0 || idx >= 81 {
+	if idx < 0 || idx >= constants.TotalCells {
 		return
 	}
 
@@ -159,7 +161,7 @@ func (b *Board) ClearCell(idx int) {
 	b.Eliminated[idx] = 0
 
 	var cands Candidates
-	for d := 1; d <= 9; d++ {
+	for d := 1; d <= constants.GridSize; d++ {
 		if b.canPlace(idx, d) {
 			cands = cands.Set(d)
 		}
@@ -188,7 +190,7 @@ func (b *Board) AddCandidate(idx, digit int) {
 
 // IsSolved returns true if all cells are filled AND the solution is valid
 func (b *Board) IsSolved() bool {
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.Cells[i] == 0 {
 			return false
 		}
@@ -198,10 +200,10 @@ func (b *Board) IsSolved() bool {
 
 // IsValid checks if the current board state has no conflicts (duplicates in row/col/box)
 func (b *Board) IsValid() bool {
-	for row := 0; row < 9; row++ {
+	for row := 0; row < constants.GridSize; row++ {
 		seen := make(map[int]bool)
-		for col := 0; col < 9; col++ {
-			digit := b.Cells[row*9+col]
+		for col := 0; col < constants.GridSize; col++ {
+			digit := b.Cells[row*constants.GridSize+col]
 			if digit != 0 {
 				if seen[digit] {
 					return false
@@ -211,10 +213,10 @@ func (b *Board) IsValid() bool {
 		}
 	}
 
-	for col := 0; col < 9; col++ {
+	for col := 0; col < constants.GridSize; col++ {
 		seen := make(map[int]bool)
-		for row := 0; row < 9; row++ {
-			digit := b.Cells[row*9+col]
+		for row := 0; row < constants.GridSize; row++ {
+			digit := b.Cells[row*constants.GridSize+col]
 			if digit != 0 {
 				if seen[digit] {
 					return false
@@ -224,12 +226,12 @@ func (b *Board) IsValid() bool {
 		}
 	}
 
-	for boxRow := 0; boxRow < 3; boxRow++ {
-		for boxCol := 0; boxCol < 3; boxCol++ {
+	for boxRow := 0; boxRow < constants.BoxSize; boxRow++ {
+		for boxCol := 0; boxCol < constants.BoxSize; boxCol++ {
 			seen := make(map[int]bool)
-			for r := boxRow * 3; r < boxRow*3+3; r++ {
-				for c := boxCol * 3; c < boxCol*3+3; c++ {
-					digit := b.Cells[r*9+c]
+			for r := boxRow * constants.BoxSize; r < boxRow*constants.BoxSize+constants.BoxSize; r++ {
+				for c := boxCol * constants.BoxSize; c < boxCol*constants.BoxSize+constants.BoxSize; c++ {
+					digit := b.Cells[r*constants.GridSize+c]
 					if digit != 0 {
 						if seen[digit] {
 							return false
@@ -259,15 +261,15 @@ func (b *Board) Clone() *Board {
 
 // GetCells returns cells as a slice (for API responses)
 func (b *Board) GetCells() []int {
-	result := make([]int, 81)
+	result := make([]int, constants.TotalCells)
 	copy(result, b.Cells[:])
 	return result
 }
 
 // GetCandidates returns candidates as a 2D slice (for API responses)
 func (b *Board) GetCandidates() [][]int {
-	result := make([][]int, 81)
-	for i := 0; i < 81; i++ {
+	result := make([][]int, constants.TotalCells)
+	for i := 0; i < constants.TotalCells; i++ {
 		result[i] = b.Candidates[i].ToSlice()
 	}
 	return result
@@ -280,7 +282,7 @@ func (b *Board) GetCandidates() [][]int {
 // CellsWithNCandidates returns all cells with exactly n candidates
 func (b *Board) CellsWithNCandidates(n int) []int {
 	var cells []int
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.Candidates[i].Count() == n {
 			cells = append(cells, i)
 		}
@@ -291,7 +293,7 @@ func (b *Board) CellsWithNCandidates(n int) []int {
 // CellsWithCandidateRange returns all cells with min to max candidates (inclusive)
 func (b *Board) CellsWithCandidateRange(min, max int) []int {
 	var cells []int
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		count := b.Candidates[i].Count()
 		if count >= min && count <= max {
 			cells = append(cells, i)
@@ -315,7 +317,7 @@ func (b *Board) CellsWithDigitInUnit(unit Unit, digit int) []int {
 // BoardInterface Implementation
 // ============================================================================
 
-// GetCell returns the digit at the given cell index (0 = empty, 1-9 = filled)
+// GetCell returns the digit at the given cell index (0 = empty, 1-16 = filled)
 func (b *Board) GetCell(idx int) int {
 	return b.Cells[idx]
 }

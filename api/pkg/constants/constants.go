@@ -2,12 +2,12 @@ package constants
 
 import "time"
 
-// Grid constants
+// Grid constants - configurable for different Sudoku sizes
 const (
-	GridSize   = 9
-	BoxSize    = 3
-	TotalCells = 81
-	MinGivens  = 17
+	GridSize   = 9  // Board size: 9x9
+	BoxSize    = 3  // Subgrid size: 3x3
+	TotalCells = 81 // Total cells: 9*9 = 81
+	MinGivens  = 17 // Minimum givens for valid 9x9 puzzle
 )
 
 // Solver limits
@@ -39,13 +39,13 @@ var DifficultyKeys = map[string]string{
 	DifficultyImpossible: "i",
 }
 
-// Target givens by difficulty
+// Target givens by difficulty (for 9x9 puzzles)
 var TargetGivens = map[string]int{
-	DifficultyEasy:       40,
-	DifficultyMedium:     34,
-	DifficultyHard:       28,
-	DifficultyExtreme:    24,
-	DifficultyImpossible: 20,
+	DifficultyEasy:       35,
+	DifficultyMedium:     30,
+	DifficultyHard:       25,
+	DifficultyExtreme:    22,
+	DifficultyImpossible: 17,
 }
 
 // Technique tiers

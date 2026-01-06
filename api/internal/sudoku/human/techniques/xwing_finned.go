@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // ============================================================================
@@ -16,7 +17,7 @@ import (
 
 // DetectFinnedXWing finds Finned X-Wing patterns
 func DetectFinnedXWing(b BoardInterface) *core.Move {
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		// Check row-based finned X-wing
 		if move := detectFinnedXWingInRows(b, digit); move != nil {
 			return move
@@ -37,10 +38,10 @@ func detectFinnedXWingInRows(b BoardInterface, digit int) *core.Move {
 	}
 	var rows []rowInfo
 
-	for row := 0; row < 9; row++ {
+	for row := 0; row < constants.GridSize; row++ {
 		var cols []int
-		for col := 0; col < 9; col++ {
-			if b.GetCandidatesAt(row*9 + col).Has(digit) {
+		for col := 0; col < constants.GridSize; col++ {
+			if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 				cols = append(cols, col)
 			}
 		}
@@ -89,14 +90,14 @@ func detectFinnedXWingInRows(b BoardInterface, digit int) *core.Move {
 			}
 
 			// The fin must be in the same box as one of the base columns in the fin row
-			finRowBox := finRow.row / 3
-			finColBox := finCol / 3
+			finRowBox := finRow.row / constants.BoxSize
+			finColBox := finCol / constants.BoxSize
 
 			// Find which base column the fin shares a box with
 			targetCol := -1
-			if c1/3 == finColBox {
+			if c1/constants.BoxSize == finColBox {
 				targetCol = c1
-			} else if c2/3 == finColBox {
+			} else if c2/constants.BoxSize == finColBox {
 				targetCol = c2
 			}
 
@@ -107,12 +108,12 @@ func detectFinnedXWingInRows(b BoardInterface, digit int) *core.Move {
 			// Eliminations: cells in targetCol that are in the same box-row as the fin
 			// and see the base row's targetCol cell
 			var eliminations []core.Candidate
-			boxRowStart := finRowBox * 3
-			for r := boxRowStart; r < boxRowStart+3; r++ {
+			boxRowStart := finRowBox * constants.BoxSize
+			for r := boxRowStart; r < boxRowStart+constants.BoxSize; r++ {
 				if r == finRow.row || r == baseRow.row {
 					continue
 				}
-				idx := r*9 + targetCol
+				idx := r*constants.GridSize + targetCol
 				if b.GetCandidatesAt(idx).Has(digit) {
 					eliminations = append(eliminations, core.Candidate{Row: r, Col: targetCol, Digit: digit})
 				}
@@ -152,10 +153,10 @@ func detectFinnedXWingInCols(b BoardInterface, digit int) *core.Move {
 	}
 	var cols []colInfo
 
-	for col := 0; col < 9; col++ {
+	for col := 0; col < constants.GridSize; col++ {
 		var rows []int
-		for row := 0; row < 9; row++ {
-			if b.GetCandidatesAt(row*9 + col).Has(digit) {
+		for row := 0; row < constants.GridSize; row++ {
+			if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 				rows = append(rows, row)
 			}
 		}
@@ -202,14 +203,14 @@ func detectFinnedXWingInCols(b BoardInterface, digit int) *core.Move {
 			}
 
 			// The fin must be in the same box as one of the base rows in the fin column
-			finColBox := finCol.col / 3
-			finRowBox := finRow / 3
+			finColBox := finCol.col / constants.BoxSize
+			finRowBox := finRow / constants.BoxSize
 
 			// Find which base row the fin shares a box with
 			targetRow := -1
-			if r1/3 == finRowBox {
+			if r1/constants.BoxSize == finRowBox {
 				targetRow = r1
-			} else if r2/3 == finRowBox {
+			} else if r2/constants.BoxSize == finRowBox {
 				targetRow = r2
 			}
 
@@ -219,12 +220,12 @@ func detectFinnedXWingInCols(b BoardInterface, digit int) *core.Move {
 
 			// Eliminations: cells in targetRow that are in the same box-column as the fin
 			var eliminations []core.Candidate
-			boxColStart := finColBox * 3
-			for c := boxColStart; c < boxColStart+3; c++ {
+			boxColStart := finColBox * constants.BoxSize
+			for c := boxColStart; c < boxColStart+constants.BoxSize; c++ {
 				if c == finCol.col || c == baseCol.col {
 					continue
 				}
-				idx := targetRow*9 + c
+				idx := targetRow*constants.GridSize + c
 				if b.GetCandidatesAt(idx).Has(digit) {
 					eliminations = append(eliminations, core.Candidate{Row: targetRow, Col: c, Digit: digit})
 				}

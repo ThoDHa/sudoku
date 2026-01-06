@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // DetectSueDeCoq finds Sue de Coq (Two-Sector Disjoint Subset) patterns.
@@ -18,18 +19,18 @@ import (
 //   - Eliminate ALS-B candidates from rest of line
 func DetectSueDeCoq(b BoardInterface) *core.Move {
 	// Try each box
-	for box := 0; box < 9; box++ {
-		boxRow, boxCol := (box/3)*3, (box%3)*3
+	for box := 0; box < constants.GridSize; box++ {
+		boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
 
 		// Try rows intersecting this box
-		for r := boxRow; r < boxRow+3; r++ {
+		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
 			if move := detectSueDeCoqIntersection(b, box, r, true); move != nil {
 				return move
 			}
 		}
 
 		// Try columns intersecting this box
-		for c := boxCol; c < boxCol+3; c++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
 			if move := detectSueDeCoqIntersection(b, box, c, false); move != nil {
 				return move
 			}
@@ -42,20 +43,20 @@ func DetectSueDeCoq(b BoardInterface) *core.Move {
 // detectSueDeCoqIntersection checks for Sue de Coq at a box/line intersection
 // isRow indicates whether lineIdx is a row (true) or column (false)
 func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bool) *core.Move {
-	boxRow, boxCol := (box/3)*3, (box%3)*3
+	boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
 
 	// Get intersection cells (cells that are in both box and line)
 	var intersectionCells []int
 	if isRow {
-		for c := boxCol; c < boxCol+3; c++ {
-			idx := lineIdx*9 + c
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			idx := lineIdx*constants.GridSize + c
 			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
 				intersectionCells = append(intersectionCells, idx)
 			}
 		}
 	} else {
-		for r := boxRow; r < boxRow+3; r++ {
-			idx := r*9 + lineIdx
+		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+			idx := r*constants.GridSize + lineIdx
 			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
 				intersectionCells = append(intersectionCells, idx)
 			}
@@ -83,9 +84,9 @@ func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bo
 
 	// Get box remainder cells (in box but not in intersection)
 	var boxRemainderCells []int
-	for r := boxRow; r < boxRow+3; r++ {
-		for c := boxCol; c < boxCol+3; c++ {
-			idx := r*9 + c
+	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			idx := r*constants.GridSize + c
 			if b.GetCell(idx) != 0 || b.GetCandidatesAt(idx).Count() == 0 {
 				continue
 			}
@@ -106,23 +107,23 @@ func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bo
 	// Get line remainder cells (in line but not in intersection)
 	var lineRemainderCells []int
 	if isRow {
-		for c := 0; c < 9; c++ {
+		for c := 0; c < constants.GridSize; c++ {
 			// Skip cells in the box
-			if c >= boxCol && c < boxCol+3 {
+			if c >= boxCol && c < boxCol+constants.BoxSize {
 				continue
 			}
-			idx := lineIdx*9 + c
+			idx := lineIdx*constants.GridSize + c
 			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
 				lineRemainderCells = append(lineRemainderCells, idx)
 			}
 		}
 	} else {
-		for r := 0; r < 9; r++ {
+		for r := 0; r < constants.GridSize; r++ {
 			// Skip cells in the box
-			if r >= boxRow && r < boxRow+3 {
+			if r >= boxRow && r < boxRow+constants.BoxSize {
 				continue
 			}
-			idx := r*9 + lineIdx
+			idx := r*constants.GridSize + lineIdx
 			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
 				lineRemainderCells = append(lineRemainderCells, idx)
 			}
@@ -157,7 +158,7 @@ func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bo
 			// Eliminate boxALS digits from rest of box (excluding intersection and boxALS cells)
 			for r := boxRow; r < boxRow+3; r++ {
 				for c := boxCol; c < boxCol+3; c++ {
-					idx := r*9 + c
+					idx := r*constants.GridSize + c
 					if b.GetCell(idx) != 0 {
 						continue
 					}
@@ -199,8 +200,8 @@ func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bo
 
 			// Eliminate lineALS digits from rest of line (excluding intersection and lineALS cells)
 			if isRow {
-				for c := 0; c < 9; c++ {
-					idx := lineIdx*9 + c
+				for c := 0; c < constants.GridSize; c++ {
+					idx := lineIdx*constants.GridSize + c
 
 					// Skip cells in box
 					if c >= boxCol && c < boxCol+3 {
@@ -233,8 +234,8 @@ func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bo
 					}
 				}
 			} else {
-				for r := 0; r < 9; r++ {
-					idx := r*9 + lineIdx
+				for r := 0; r < constants.GridSize; r++ {
+					idx := r*constants.GridSize + lineIdx
 
 					// Skip cells in box
 					if r >= boxRow && r < boxRow+3 {
@@ -275,17 +276,17 @@ func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bo
 				var secondary []core.CellRef
 
 				for _, idx := range intersectionCells {
-					ref := core.CellRef{Row: idx / 9, Col: idx % 9}
+					ref := core.CellRef{Row: idx / constants.GridSize, Col: idx % constants.GridSize}
 					targets = append(targets, ref)
 					primary = append(primary, ref)
 				}
 				for _, idx := range boxALS.Cells {
-					ref := core.CellRef{Row: idx / 9, Col: idx % 9}
+					ref := core.CellRef{Row: idx / constants.GridSize, Col: idx % constants.GridSize}
 					targets = append(targets, ref)
 					secondary = append(secondary, ref)
 				}
 				for _, idx := range lineALS.Cells {
-					ref := core.CellRef{Row: idx / 9, Col: idx % 9}
+					ref := core.CellRef{Row: idx / constants.GridSize, Col: idx % constants.GridSize}
 					targets = append(targets, ref)
 					secondary = append(secondary, ref)
 				}

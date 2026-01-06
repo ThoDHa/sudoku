@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // maxDigitForcingPropagation is the maximum number of propagation steps per branch
@@ -39,7 +40,7 @@ func (r *digitForcingResult) addElimination(idx, digit int) {
 // 2. Propagate forced implications (naked singles, hidden singles)
 // 3. Find conclusions common to ALL branches
 func DetectDigitForcingChain(b BoardInterface) *core.Move {
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		for _, unit := range AllUnits() {
 			positions := b.CellsWithDigitInUnit(unit, digit)
 			if len(positions) >= 2 && len(positions) <= 3 {
@@ -90,24 +91,24 @@ func propagateFromPlacement(b BoardInterface, idx, digit int) *digitForcingResul
 	result.addPlacement(idx, digit)
 
 	// Track eliminated candidates from the initial placement
-	row, col := idx/9, idx%9
-	boxRow, boxCol := (row/3)*3, (col/3)*3
+	row, col := idx/constants.GridSize, idx%constants.GridSize
+	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
 
 	// Record eliminations in row, column, and box
-	for c := 0; c < 9; c++ {
-		if c != col && b.GetCandidatesAt(row*9+c).Has(digit) {
-			result.addElimination(row*9+c, digit)
+	for c := 0; c < constants.GridSize; c++ {
+		if c != col && b.GetCandidatesAt(row*constants.GridSize+c).Has(digit) {
+			result.addElimination(row*constants.GridSize+c, digit)
 		}
 	}
-	for r := 0; r < 9; r++ {
-		if r != row && b.GetCandidatesAt(r*9+col).Has(digit) {
-			result.addElimination(r*9+col, digit)
+	for r := 0; r < constants.GridSize; r++ {
+		if r != row && b.GetCandidatesAt(r*constants.GridSize+col).Has(digit) {
+			result.addElimination(r*constants.GridSize+col, digit)
 		}
 	}
-	for r := boxRow; r < boxRow+3; r++ {
-		for c := boxCol; c < boxCol+3; c++ {
-			if (r != row || c != col) && b.GetCandidatesAt(r*9+c).Has(digit) {
-				result.addElimination(r*9+c, digit)
+	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			if (r != row || c != col) && b.GetCandidatesAt(r*constants.GridSize+c).Has(digit) {
+				result.addElimination(r*constants.GridSize+c, digit)
 			}
 		}
 	}
@@ -117,29 +118,29 @@ func propagateFromPlacement(b BoardInterface, idx, digit int) *digitForcingResul
 		found := false
 
 		// Look for naked singles
-		for i := 0; i < 81; i++ {
+		for i := 0; i < constants.TotalCells; i++ {
 			if simBoard.GetCell(i) == 0 && simBoard.GetCandidatesAt(i).Count() == 1 {
 				d, _ := simBoard.GetCandidatesAt(i).Only()
 				simBoard.SetCell(i, d)
 				result.addPlacement(i, d)
 
 				// Record eliminations
-				r, c := i/9, i%9
-				br, bc := (r/3)*3, (c/3)*3
-				for cc := 0; cc < 9; cc++ {
-					if cc != c && b.GetCandidatesAt(r*9+cc).Has(d) && !simBoard.GetCandidatesAt(r*9+cc).Has(d) {
-						result.addElimination(r*9+cc, d)
+				r, c := i/constants.GridSize, i%constants.GridSize
+				br, bc := (r/constants.BoxSize)*constants.BoxSize, (c/constants.BoxSize)*constants.BoxSize
+				for cc := 0; cc < constants.GridSize; cc++ {
+					if cc != c && b.GetCandidatesAt(r*constants.GridSize+cc).Has(d) && !simBoard.GetCandidatesAt(r*constants.GridSize+cc).Has(d) {
+						result.addElimination(r*constants.GridSize+cc, d)
 					}
 				}
-				for rr := 0; rr < 9; rr++ {
-					if rr != r && b.GetCandidatesAt(rr*9+c).Has(d) && !simBoard.GetCandidatesAt(rr*9+c).Has(d) {
-						result.addElimination(rr*9+c, d)
+				for rr := 0; rr < constants.GridSize; rr++ {
+					if rr != r && b.GetCandidatesAt(rr*constants.GridSize+c).Has(d) && !simBoard.GetCandidatesAt(rr*constants.GridSize+c).Has(d) {
+						result.addElimination(rr*constants.GridSize+c, d)
 					}
 				}
-				for rr := br; rr < br+3; rr++ {
-					for cc := bc; cc < bc+3; cc++ {
-						if (rr != r || cc != c) && b.GetCandidatesAt(rr*9+cc).Has(d) && !simBoard.GetCandidatesAt(rr*9+cc).Has(d) {
-							result.addElimination(rr*9+cc, d)
+				for rr := br; rr < br+constants.BoxSize; rr++ {
+					for cc := bc; cc < bc+constants.BoxSize; cc++ {
+						if (rr != r || cc != c) && b.GetCandidatesAt(rr*constants.GridSize+cc).Has(d) && !simBoard.GetCandidatesAt(rr*constants.GridSize+cc).Has(d) {
+							result.addElimination(rr*constants.GridSize+cc, d)
 						}
 					}
 				}
@@ -154,11 +155,11 @@ func propagateFromPlacement(b BoardInterface, idx, digit int) *digitForcingResul
 		}
 
 		// Look for hidden singles in rows
-		for r := 0; r < 9; r++ {
-			for d := 1; d <= 9; d++ {
+		for r := 0; r < constants.GridSize; r++ {
+			for d := 1; d <= constants.GridSize; d++ {
 				var possibleCells []int
-				for c := 0; c < 9; c++ {
-					i := r*9 + c
+				for c := 0; c < constants.GridSize; c++ {
+					i := r*constants.GridSize + c
 					if simBoard.GetCell(i) == 0 && simBoard.GetCandidatesAt(i).Has(d) {
 						possibleCells = append(possibleCells, i)
 					}
@@ -170,22 +171,22 @@ func propagateFromPlacement(b BoardInterface, idx, digit int) *digitForcingResul
 						result.addPlacement(i, d)
 
 						// Record eliminations from this placement
-						rr, cc := i/9, i%9
-						br, bc := (rr/3)*3, (cc/3)*3
-						for ccc := 0; ccc < 9; ccc++ {
-							if ccc != cc && b.GetCandidatesAt(rr*9+ccc).Has(d) {
-								result.addElimination(rr*9+ccc, d)
+						rr, cc := i/constants.GridSize, i%constants.GridSize
+						br, bc := (rr/constants.BoxSize)*constants.BoxSize, (cc/constants.BoxSize)*constants.BoxSize
+						for ccc := 0; ccc < constants.GridSize; ccc++ {
+							if ccc != cc && b.GetCandidatesAt(rr*constants.GridSize+ccc).Has(d) {
+								result.addElimination(rr*constants.GridSize+ccc, d)
 							}
 						}
-						for rrr := 0; rrr < 9; rrr++ {
-							if rrr != rr && b.GetCandidatesAt(rrr*9+cc).Has(d) {
-								result.addElimination(rrr*9+cc, d)
+						for rrr := 0; rrr < constants.GridSize; rrr++ {
+							if rrr != rr && b.GetCandidatesAt(rrr*constants.GridSize+cc).Has(d) {
+								result.addElimination(rrr*constants.GridSize+cc, d)
 							}
 						}
-						for rrr := br; rrr < br+3; rrr++ {
-							for ccc := bc; ccc < bc+3; ccc++ {
-								if (rrr != rr || ccc != cc) && b.GetCandidatesAt(rrr*9+ccc).Has(d) {
-									result.addElimination(rrr*9+ccc, d)
+						for rrr := br; rrr < br+constants.BoxSize; rrr++ {
+							for ccc := bc; ccc < bc+constants.BoxSize; ccc++ {
+								if (rrr != rr || ccc != cc) && b.GetCandidatesAt(rrr*constants.GridSize+ccc).Has(d) {
+									result.addElimination(rrr*constants.GridSize+ccc, d)
 								}
 							}
 						}
@@ -205,11 +206,11 @@ func propagateFromPlacement(b BoardInterface, idx, digit int) *digitForcingResul
 		}
 
 		// Look for hidden singles in columns
-		for c := 0; c < 9; c++ {
-			for d := 1; d <= 9; d++ {
+		for c := 0; c < constants.GridSize; c++ {
+			for d := 1; d <= constants.GridSize; d++ {
 				var possibleCells []int
-				for r := 0; r < 9; r++ {
-					i := r*9 + c
+				for r := 0; r < constants.GridSize; r++ {
+					i := r*constants.GridSize + c
 					if simBoard.GetCell(i) == 0 && simBoard.GetCandidatesAt(i).Has(d) {
 						possibleCells = append(possibleCells, i)
 					}
@@ -220,22 +221,22 @@ func propagateFromPlacement(b BoardInterface, idx, digit int) *digitForcingResul
 						simBoard.SetCell(i, d)
 						result.addPlacement(i, d)
 
-						rr, cc := i/9, i%9
-						br, bc := (rr/3)*3, (cc/3)*3
-						for ccc := 0; ccc < 9; ccc++ {
-							if ccc != cc && b.GetCandidatesAt(rr*9+ccc).Has(d) {
-								result.addElimination(rr*9+ccc, d)
+						rr, cc := i/constants.GridSize, i%constants.GridSize
+						br, bc := (rr/constants.BoxSize)*constants.BoxSize, (cc/constants.BoxSize)*constants.BoxSize
+						for ccc := 0; ccc < constants.GridSize; ccc++ {
+							if ccc != cc && b.GetCandidatesAt(rr*constants.GridSize+ccc).Has(d) {
+								result.addElimination(rr*constants.GridSize+ccc, d)
 							}
 						}
-						for rrr := 0; rrr < 9; rrr++ {
-							if rrr != rr && b.GetCandidatesAt(rrr*9+cc).Has(d) {
-								result.addElimination(rrr*9+cc, d)
+						for rrr := 0; rrr < constants.GridSize; rrr++ {
+							if rrr != rr && b.GetCandidatesAt(rrr*constants.GridSize+cc).Has(d) {
+								result.addElimination(rrr*constants.GridSize+cc, d)
 							}
 						}
-						for rrr := br; rrr < br+3; rrr++ {
-							for ccc := bc; ccc < bc+3; ccc++ {
-								if (rrr != rr || ccc != cc) && b.GetCandidatesAt(rrr*9+ccc).Has(d) {
-									result.addElimination(rrr*9+ccc, d)
+						for rrr := br; rrr < br+constants.BoxSize; rrr++ {
+							for ccc := bc; ccc < bc+constants.BoxSize; ccc++ {
+								if (rrr != rr || ccc != cc) && b.GetCandidatesAt(rrr*constants.GridSize+ccc).Has(d) {
+									result.addElimination(rrr*constants.GridSize+ccc, d)
 								}
 							}
 						}
@@ -255,13 +256,13 @@ func propagateFromPlacement(b BoardInterface, idx, digit int) *digitForcingResul
 		}
 
 		// Look for hidden singles in boxes
-		for box := 0; box < 9; box++ {
-			br, bc := (box/3)*3, (box%3)*3
-			for d := 1; d <= 9; d++ {
+		for box := 0; box < constants.GridSize; box++ {
+			br, bc := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
+			for d := 1; d <= constants.GridSize; d++ {
 				var possibleCells []int
-				for rr := br; rr < br+3; rr++ {
-					for cc := bc; cc < bc+3; cc++ {
-						i := rr*9 + cc
+				for rr := br; rr < br+constants.BoxSize; rr++ {
+					for cc := bc; cc < bc+constants.BoxSize; cc++ {
+						i := rr*constants.GridSize + cc
 						if simBoard.GetCell(i) == 0 && simBoard.GetCandidatesAt(i).Has(d) {
 							possibleCells = append(possibleCells, i)
 						}
@@ -273,22 +274,22 @@ func propagateFromPlacement(b BoardInterface, idx, digit int) *digitForcingResul
 						simBoard.SetCell(i, d)
 						result.addPlacement(i, d)
 
-						rr, cc := i/9, i%9
-						boxR, boxC := (rr/3)*3, (cc/3)*3
-						for ccc := 0; ccc < 9; ccc++ {
-							if ccc != cc && b.GetCandidatesAt(rr*9+ccc).Has(d) {
-								result.addElimination(rr*9+ccc, d)
+						rr, cc := i/constants.GridSize, i%constants.GridSize
+						boxR, boxC := (rr/constants.BoxSize)*constants.BoxSize, (cc/constants.BoxSize)*constants.BoxSize
+						for ccc := 0; ccc < constants.GridSize; ccc++ {
+							if ccc != cc && b.GetCandidatesAt(rr*constants.GridSize+ccc).Has(d) {
+								result.addElimination(rr*constants.GridSize+ccc, d)
 							}
 						}
-						for rrr := 0; rrr < 9; rrr++ {
-							if rrr != rr && b.GetCandidatesAt(rrr*9+cc).Has(d) {
-								result.addElimination(rrr*9+cc, d)
+						for rrr := 0; rrr < constants.GridSize; rrr++ {
+							if rrr != rr && b.GetCandidatesAt(rrr*constants.GridSize+cc).Has(d) {
+								result.addElimination(rrr*constants.GridSize+cc, d)
 							}
 						}
-						for rrr := boxR; rrr < boxR+3; rrr++ {
-							for ccc := boxC; ccc < boxC+3; ccc++ {
-								if (rrr != rr || ccc != cc) && b.GetCandidatesAt(rrr*9+ccc).Has(d) {
-									result.addElimination(rrr*9+ccc, d)
+						for rrr := boxR; rrr < boxR+constants.BoxSize; rrr++ {
+							for ccc := boxC; ccc < boxC+constants.BoxSize; ccc++ {
+								if (rrr != rr || ccc != cc) && b.GetCandidatesAt(rrr*constants.GridSize+ccc).Has(d) {
+									result.addElimination(rrr*constants.GridSize+ccc, d)
 								}
 							}
 						}
@@ -347,12 +348,12 @@ func findCommonPlacement(b BoardInterface, digit int, positions []int, results [
 		}
 
 		if common {
-			row, col := idx/9, idx%9
+			row, col := idx/constants.GridSize, idx%constants.GridSize
 
 			// Build targets (the starting positions we're choosing between)
 			var targets []core.CellRef
 			for _, pos := range positions {
-				targets = append(targets, core.CellRef{Row: pos / 9, Col: pos % 9})
+				targets = append(targets, core.CellRef{Row: pos / constants.GridSize, Col: pos % constants.GridSize})
 			}
 
 			return &core.Move{
@@ -414,12 +415,12 @@ func findCommonElimination(b BoardInterface, digit int, positions []int, results
 			}
 
 			if common {
-				row, col := idx/9, idx%9
+				row, col := idx/constants.GridSize, idx%constants.GridSize
 
 				// Build targets (the starting positions we're choosing between)
 				var targets []core.CellRef
 				for _, pos := range positions {
-					targets = append(targets, core.CellRef{Row: pos / 9, Col: pos % 9})
+					targets = append(targets, core.CellRef{Row: pos / constants.GridSize, Col: pos % constants.GridSize})
 				}
 
 				return &core.Move{

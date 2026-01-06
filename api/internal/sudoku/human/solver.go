@@ -79,18 +79,18 @@ func NewSolverWithRegistry(registry *TechniqueRegistry) *Solver {
 // Returns a constraint violation move if any violations are found, nil otherwise
 func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 	// Check for duplicate values in rows, columns, and boxes
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.Cells[i] == 0 {
 			continue
 		}
 
 		digit := b.Cells[i]
-		row, col := i/9, i%9
+		row, col := i/constants.GridSize, i%constants.GridSize
 
 		// Check for duplicates in row
 		duplicateCol := -1
-		for c := 0; c < 9; c++ {
-			if c != col && b.Cells[row*9+c] == digit {
+		for c := 0; c < constants.GridSize; c++ {
+			if c != col && b.Cells[row*constants.GridSize+c] == digit {
 				duplicateCol = c
 				break
 			}
@@ -120,8 +120,8 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 
 		// Check for duplicates in column
 		duplicateRow := -1
-		for r := 0; r < 9; r++ {
-			if r != row && b.Cells[r*9+col] == digit {
+		for r := 0; r < constants.GridSize; r++ {
+			if r != row && b.Cells[r*constants.GridSize+col] == digit {
 				duplicateRow = r
 				break
 			}
@@ -150,12 +150,12 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 		}
 
 		// Check for duplicates in box
-		boxRow, boxCol := (row/3)*3, (col/3)*3
-		boxNum := (row/3)*3 + col/3
+		boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
+		boxNum := (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize
 		var duplicateBoxRow, duplicateBoxCol int = -1, -1
-		for r := boxRow; r < boxRow+3; r++ {
-			for c := boxCol; c < boxCol+3; c++ {
-				if (r != row || c != col) && b.Cells[r*9+c] == digit {
+		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+			for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+				if (r != row || c != col) && b.Cells[r*constants.GridSize+c] == digit {
 					duplicateBoxRow, duplicateBoxCol = r, c
 					break
 				}
@@ -189,15 +189,15 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 	}
 
 	// Check for invalid candidates (candidates that conflict with existing values)
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.Cells[i] != 0 || b.Candidates[i].IsEmpty() {
 			continue
 		}
 
-		row, col := i/9, i%9
+		row, col := i/constants.GridSize, i%constants.GridSize
 
 		// Check each candidate against the board state
-		for d := 1; d <= 9; d++ {
+		for d := 1; d <= constants.GridSize; d++ {
 			if !b.Candidates[i].Has(d) {
 				continue
 			}
@@ -208,24 +208,24 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 				var conflictCells []core.CellRef
 
 				// Check row
-				for c := 0; c < 9; c++ {
-					if b.Cells[row*9+c] == d {
+				for c := 0; c < constants.GridSize; c++ {
+					if b.Cells[row*constants.GridSize+c] == d {
 						conflictCells = append(conflictCells, core.CellRef{Row: row, Col: c})
 					}
 				}
 
 				// Check column
-				for r := 0; r < 9; r++ {
-					if b.Cells[r*9+col] == d {
+				for r := 0; r < constants.GridSize; r++ {
+					if b.Cells[r*constants.GridSize+col] == d {
 						conflictCells = append(conflictCells, core.CellRef{Row: r, Col: col})
 					}
 				}
 
 				// Check box
-				boxRow, boxCol := (row/3)*3, (col/3)*3
-				for r := boxRow; r < boxRow+3; r++ {
-					for c := boxCol; c < boxCol+3; c++ {
-						if b.Cells[r*9+c] == d {
+				boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
+				for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+					for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+						if b.Cells[r*constants.GridSize+c] == d {
 							conflictCells = append(conflictCells, core.CellRef{Row: r, Col: c})
 						}
 					}
@@ -267,13 +267,13 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 	// Add candidates one at a time, scanning by DIGIT first (human-like behavior)
 	// A human thinks: "Where can 1 go? Where can 2 go?" etc.
 	// But don't re-add candidates that were previously eliminated
-	for d := 1; d <= 9; d++ {
-		for i := 0; i < 81; i++ {
+	for d := 1; d <= constants.GridSize; d++ {
+		for i := 0; i < constants.TotalCells; i++ {
 			if b.Cells[i] != 0 {
 				continue
 			}
 
-			row, col := i/9, i%9
+			row, col := i/constants.GridSize, i%constants.GridSize
 
 			// Only add if: can place AND not already a candidate AND not eliminated
 			if b.canPlace(i, d) && !b.Candidates[i].Has(d) && !b.Eliminated[i].Has(d) {
@@ -283,7 +283,7 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 				// (including ones we haven't added yet but excluding eliminated ones)
 				validCount := 0
 				var onlyValidDigit int
-				for digit := 1; digit <= 9; digit++ {
+				for digit := 1; digit <= constants.GridSize; digit++ {
 					if b.canPlace(i, digit) && !b.Eliminated[i].Has(digit) {
 						validCount++
 						onlyValidDigit = digit
@@ -335,9 +335,9 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 	}
 
 	// Check for contradictions (cells with no candidates)
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.Cells[i] == 0 && b.Candidates[i].IsEmpty() {
-			row, col := i/9, i%9
+			row, col := i/constants.GridSize, i%constants.GridSize
 			return &core.Move{
 				Technique:   "contradiction",
 				Action:      "contradiction",
@@ -377,7 +377,7 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 // checkHiddenSingleForDigitImmediate checks if digit d at cell idx is a hidden single
 // by looking at all POTENTIAL placements (not just current candidates)
 func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.Move {
-	row, col := idx/9, idx%9
+	row, col := idx/constants.GridSize, idx%constants.GridSize
 
 	// Helper to check if digit d can potentially go in a cell
 	canPlaceDigit := func(cellIdx, digit int) bool {
@@ -392,8 +392,8 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 
 	// Check row
 	rowCount := 0
-	for c := 0; c < 9; c++ {
-		cellIdx := row*9 + c
+	for c := 0; c < constants.GridSize; c++ {
+		cellIdx := row*constants.GridSize + c
 		if b.Cells[cellIdx] == d {
 			rowCount = 99
 			break
@@ -423,8 +423,8 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 
 	// Check column
 	colCount := 0
-	for r := 0; r < 9; r++ {
-		cellIdx := r*9 + col
+	for r := 0; r < constants.GridSize; r++ {
+		cellIdx := r*constants.GridSize + col
 		if b.Cells[cellIdx] == d {
 			colCount = 99
 			break
@@ -453,12 +453,12 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 	}
 
 	// Check box
-	boxRow, boxCol := (row/3)*3, (col/3)*3
-	boxNum := (row/3)*3 + col/3
+	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
+	boxNum := (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize
 	boxCount := 0
-	for r := boxRow; r < boxRow+3; r++ {
-		for c := boxCol; c < boxCol+3; c++ {
-			cellIdx := r*9 + c
+	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			cellIdx := r*constants.GridSize + c
 			if b.Cells[cellIdx] == d {
 				boxCount = 99
 				break
@@ -495,26 +495,26 @@ func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.
 
 // Helper functions for generating CellRef slices
 func getRowCellRefs(row int) []core.CellRef {
-	cells := make([]core.CellRef, 9)
-	for c := 0; c < 9; c++ {
+	cells := make([]core.CellRef, constants.GridSize)
+	for c := 0; c < constants.GridSize; c++ {
 		cells[c] = core.CellRef{Row: row, Col: c}
 	}
 	return cells
 }
 
 func getColCellRefs(col int) []core.CellRef {
-	cells := make([]core.CellRef, 9)
-	for r := 0; r < 9; r++ {
+	cells := make([]core.CellRef, constants.GridSize)
+	for r := 0; r < constants.GridSize; r++ {
 		cells[r] = core.CellRef{Row: r, Col: col}
 	}
 	return cells
 }
 
 func getBoxCellRefs(box int) []core.CellRef {
-	cells := make([]core.CellRef, 0, 9)
-	boxRow, boxCol := (box/3)*3, (box%3)*3
-	for r := boxRow; r < boxRow+3; r++ {
-		for c := boxCol; c < boxCol+3; c++ {
+	cells := make([]core.CellRef, 0, constants.GridSize)
+	boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
+	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
 			cells = append(cells, core.CellRef{Row: r, Col: c})
 		}
 	}
@@ -530,15 +530,15 @@ func (s *Solver) ApplyMove(b *Board, move *core.Move) {
 	switch move.Action {
 	case constants.ActionAssign:
 		for _, target := range move.Targets {
-			b.SetCell(target.Row*9+target.Col, move.Digit)
+			b.SetCell(target.Row*constants.GridSize+target.Col, move.Digit)
 		}
 	case constants.ActionEliminate:
 		for _, elim := range move.Eliminations {
-			b.RemoveCandidate(elim.Row*9+elim.Col, elim.Digit)
+			b.RemoveCandidate(elim.Row*constants.GridSize+elim.Col, elim.Digit)
 		}
 	case "candidate":
 		for _, target := range move.Targets {
-			idx := target.Row*9 + target.Col
+			idx := target.Row*constants.GridSize + target.Col
 			b.AddCandidate(idx, move.Digit)
 		}
 	}

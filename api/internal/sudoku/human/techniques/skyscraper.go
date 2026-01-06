@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // ============================================================================
@@ -17,17 +18,17 @@ import (
 
 // DetectSkyscraper finds Skyscraper pattern: two conjugate pairs sharing one end
 func DetectSkyscraper(b BoardInterface) *core.Move {
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		// Find rows with exactly 2 candidates for this digit
 		var rowPairs []struct {
 			row  int
 			cols [2]int
 		}
 
-		for row := 0; row < 9; row++ {
+		for row := 0; row < constants.GridSize; row++ {
 			var cols []int
-			for col := 0; col < 9; col++ {
-				if b.GetCandidatesAt(row*9 + col).Has(digit) {
+			for col := 0; col < constants.GridSize; col++ {
+				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 					cols = append(cols, col)
 				}
 			}
@@ -68,26 +69,26 @@ func DetectSkyscraper(b BoardInterface) *core.Move {
 				}
 
 				// The unshared ends must be in different boxes for a proper skyscraper
-				box1 := (r1.row/3)*3 + unshared1/3
-				box2 := (r2.row/3)*3 + unshared2/3
+				box1 := (r1.row/constants.BoxSize)*constants.BoxSize + unshared1/constants.BoxSize
+				box2 := (r2.row/constants.BoxSize)*constants.BoxSize + unshared2/constants.BoxSize
 				if box1 == box2 {
 					continue
 				}
 
 				// Find eliminations: cells that see both unshared ends
 				var eliminations []core.Candidate
-				for idx := 0; idx < 81; idx++ {
+				for idx := 0; idx < constants.TotalCells; idx++ {
 					if !b.GetCandidatesAt(idx).Has(digit) {
 						continue
 					}
-					row, col := idx/9, idx%9
+					row, col := idx/constants.GridSize, idx%constants.GridSize
 					if (row == r1.row && col == unshared1) || (row == r2.row && col == unshared2) {
 						continue
 					}
 
 					// Check if sees both unshared ends
-					seesEnd1 := ArePeers(idx, r1.row*9+unshared1)
-					seesEnd2 := ArePeers(idx, r2.row*9+unshared2)
+					seesEnd1 := ArePeers(idx, r1.row*constants.GridSize+unshared1)
+					seesEnd2 := ArePeers(idx, r2.row*constants.GridSize+unshared2)
 
 					if seesEnd1 && seesEnd2 {
 						eliminations = append(eliminations, core.Candidate{

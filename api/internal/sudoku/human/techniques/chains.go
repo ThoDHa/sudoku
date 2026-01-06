@@ -4,12 +4,13 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // DetectJellyfish finds Jellyfish pattern: 4 rows where a digit appears in 2-4 positions,
 // and those positions share exactly 4 columns (or vice versa)
 func DetectJellyfish(b BoardInterface) *core.Move {
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		if move := detectJellyfishInDirection(b, digit, UnitRow); move != nil {
 			return move
 		}
@@ -24,9 +25,9 @@ func DetectJellyfish(b BoardInterface) *core.Move {
 func detectJellyfishInDirection(b BoardInterface, digit int, dir UnitType) *core.Move {
 	// Build map of primary unit -> secondary positions where digit appears
 	unitPositions := make(map[int][]int)
-	for primary := 0; primary < 9; primary++ {
+	for primary := 0; primary < constants.GridSize; primary++ {
 		var secondaries []int
-		for secondary := 0; secondary < 9; secondary++ {
+		for secondary := 0; secondary < constants.GridSize; secondary++ {
 			idx := cellIndexForDirection(dir, primary, secondary)
 			if b.GetCandidatesAt(idx).Has(digit) {
 				secondaries = append(secondaries, secondary)
@@ -80,7 +81,7 @@ func detectJellyfishInDirection(b BoardInterface, digit int, dir UnitType) *core
 					// Find eliminations in secondary lines outside the 4 primary units
 					var eliminations []core.Candidate
 					for _, sec := range secondaries {
-						for pri := 0; pri < 9; pri++ {
+						for pri := 0; pri < constants.GridSize; pri++ {
 							if pri == u1 || pri == u2 || pri == u3 || pri == u4 {
 								continue
 							}
@@ -123,13 +124,13 @@ func detectJellyfishInDirection(b BoardInterface, digit int, dir UnitType) *core
 }
 
 // cellIndexForDirection returns the cell index given primary and secondary coordinates
-// For UnitRow: primary=row, secondary=col -> row*9+col
-// For UnitCol: primary=col, secondary=row -> row*9+col (note: secondary is row)
+// For UnitRow: primary=row, secondary=col -> row*GridSize+col
+// For UnitCol: primary=col, secondary=row -> row*GridSize+col (note: secondary is row)
 func cellIndexForDirection(dir UnitType, primary, secondary int) int {
 	if dir == UnitRow {
-		return primary*9 + secondary
+		return primary*constants.GridSize + secondary
 	}
-	return secondary*9 + primary
+	return secondary*constants.GridSize + primary
 }
 
 // cellCoordsForDirection returns (row, col) given primary and secondary coordinates
@@ -150,7 +151,7 @@ func directionNamePlural(dir UnitType) string {
 
 // DetectXChain finds X-Chain pattern: a chain of conjugate pairs for a single digit
 func DetectXChain(b BoardInterface) *core.Move {
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		// Build conjugate pair graph
 		conjugates := buildConjugateGraph(b, digit)
 		if len(conjugates) == 0 {
@@ -172,9 +173,9 @@ func buildConjugateGraph(b BoardInterface, digit int) map[int][]int {
 
 	// Check rows and columns using UnitType abstraction
 	for _, dir := range []UnitType{UnitRow, UnitCol} {
-		for primary := 0; primary < 9; primary++ {
+		for primary := 0; primary < constants.GridSize; primary++ {
 			var cells []int
-			for secondary := 0; secondary < 9; secondary++ {
+			for secondary := 0; secondary < constants.GridSize; secondary++ {
 				idx := cellIndexForDirection(dir, primary, secondary)
 				if b.GetCandidatesAt(idx).Has(digit) {
 					cells = append(cells, idx)
@@ -188,13 +189,13 @@ func buildConjugateGraph(b BoardInterface, digit int) map[int][]int {
 	}
 
 	// Check boxes
-	for box := 0; box < 9; box++ {
+	for box := 0; box < constants.GridSize; box++ {
 		var cells []int
-		boxRow, boxCol := (box/3)*3, (box%3)*3
-		for r := boxRow; r < boxRow+3; r++ {
-			for c := boxCol; c < boxCol+3; c++ {
-				if b.GetCandidatesAt(r*9 + c).Has(digit) {
-					cells = append(cells, r*9+c)
+		boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
+		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+			for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+				if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
+					cells = append(cells, r*constants.GridSize+c)
 				}
 			}
 		}
@@ -232,7 +233,7 @@ func findXChainFrom(b BoardInterface, digit int, start int, conjugates map[int][
 			chainStart := node.path[0]
 			chainEnd := node.cell
 
-			for i := 0; i < 81; i++ {
+			for i := 0; i < constants.TotalCells; i++ {
 				if !b.GetCandidatesAt(i).Has(digit) {
 					continue
 				}
@@ -252,7 +253,7 @@ func findXChainFrom(b BoardInterface, digit int, start int, conjugates map[int][
 				if ArePeers(i, chainStart) && ArePeers(i, chainEnd) {
 					var targets []core.CellRef
 					for _, c := range node.path {
-						targets = append(targets, core.CellRef{Row: c / 9, Col: c % 9})
+						targets = append(targets, core.CellRef{Row: c / constants.GridSize, Col: c % constants.GridSize})
 					}
 
 					return &core.Move{
@@ -260,12 +261,12 @@ func findXChainFrom(b BoardInterface, digit int, start int, conjugates map[int][
 						Digit:   digit,
 						Targets: targets,
 						Eliminations: []core.Candidate{
-							{Row: i / 9, Col: i % 9, Digit: digit},
+							{Row: i / constants.GridSize, Col: i % constants.GridSize, Digit: digit},
 						},
-						Explanation: fmt.Sprintf("X-Chain: sees both ends of chain: eliminate %d from R%dC%d.", digit, i/9+1, i%9+1),
+						Explanation: fmt.Sprintf("X-Chain: sees both ends of chain: eliminate %d from R%dC%d.", digit, i/constants.GridSize+1, i%constants.GridSize+1),
 						Highlights: core.Highlights{
 							Primary:   targets,
-							Secondary: []core.CellRef{{Row: i / 9, Col: i % 9}},
+							Secondary: []core.CellRef{{Row: i / constants.GridSize, Col: i % constants.GridSize}},
 						},
 					}
 				}
@@ -290,7 +291,7 @@ func findXChainFrom(b BoardInterface, digit int, start int, conjugates map[int][
 func DetectXYChain(b BoardInterface) *core.Move {
 	// Find all bivalue cells
 	var bivalue []int
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.GetCandidatesAt(i).Count() == 2 {
 			bivalue = append(bivalue, i)
 		}
@@ -379,7 +380,7 @@ func findXYChainFrom(b BoardInterface, start int, adj map[int][]struct {
 				chainStart := n.path[0]
 				chainEnd := n.cell
 
-				for i := 0; i < 81; i++ {
+				for i := 0; i < constants.TotalCells; i++ {
 					if !b.GetCandidatesAt(i).Has(startCand) {
 						continue
 					}
@@ -397,7 +398,7 @@ func findXYChainFrom(b BoardInterface, start int, adj map[int][]struct {
 					if ArePeers(i, chainStart) && ArePeers(i, chainEnd) {
 						var targets []core.CellRef
 						for _, c := range n.path {
-							targets = append(targets, core.CellRef{Row: c / 9, Col: c % 9})
+							targets = append(targets, core.CellRef{Row: c / constants.GridSize, Col: c % constants.GridSize})
 						}
 
 						return &core.Move{
@@ -405,12 +406,12 @@ func findXYChainFrom(b BoardInterface, start int, adj map[int][]struct {
 							Digit:   startCand,
 							Targets: targets,
 							Eliminations: []core.Candidate{
-								{Row: i / 9, Col: i % 9, Digit: startCand},
+								{Row: i / constants.GridSize, Col: i % constants.GridSize, Digit: startCand},
 							},
-							Explanation: fmt.Sprintf("XY-Chain: eliminate %d from R%dC%d.", startCand, i/9+1, i%9+1),
+							Explanation: fmt.Sprintf("XY-Chain: eliminate %d from R%dC%d.", startCand, i/constants.GridSize+1, i%constants.GridSize+1),
 							Highlights: core.Highlights{
 								Primary:   targets,
-								Secondary: []core.CellRef{{Row: i / 9, Col: i % 9}},
+								Secondary: []core.CellRef{{Row: i / constants.GridSize, Col: i % constants.GridSize}},
 							},
 						}
 					}
@@ -457,7 +458,7 @@ func DetectWWing(b BoardInterface) *core.Move {
 		digits [2]int
 	}
 
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.GetCandidatesAt(i).Count() == 2 {
 			cands := b.GetCandidatesAt(i).ToSlice()
 			bivalue = append(bivalue, struct {
@@ -489,9 +490,9 @@ func DetectWWing(b BoardInterface) *core.Move {
 
 				// Check rows and columns for strong links using UnitType abstraction
 				for _, dir := range []UnitType{UnitRow, UnitCol} {
-					for primary := 0; primary < 9; primary++ {
+					for primary := 0; primary < constants.GridSize; primary++ {
 						var cells []int
-						for secondary := 0; secondary < 9; secondary++ {
+						for secondary := 0; secondary < constants.GridSize; secondary++ {
 							idx := cellIndexForDirection(dir, primary, secondary)
 							if b.GetCandidatesAt(idx).Has(linkDigit) {
 								cells = append(cells, idx)
@@ -512,7 +513,7 @@ func DetectWWing(b BoardInterface) *core.Move {
 						if link1 != -1 {
 							// W-Wing found! Eliminate elimDigit from cells seeing both bv1 and bv2
 							var eliminations []core.Candidate
-							for idx := 0; idx < 81; idx++ {
+							for idx := 0; idx < constants.TotalCells; idx++ {
 								if !b.GetCandidatesAt(idx).Has(elimDigit) {
 									continue
 								}
@@ -521,7 +522,7 @@ func DetectWWing(b BoardInterface) *core.Move {
 								}
 								if ArePeers(idx, bv1.idx) && ArePeers(idx, bv2.idx) {
 									eliminations = append(eliminations, core.Candidate{
-										Row: idx / 9, Col: idx % 9, Digit: elimDigit,
+										Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: elimDigit,
 									})
 								}
 							}
@@ -531,21 +532,21 @@ func DetectWWing(b BoardInterface) *core.Move {
 									Action: "eliminate",
 									Digit:  elimDigit,
 									Targets: []core.CellRef{
-										{Row: bv1.idx / 9, Col: bv1.idx % 9},
-										{Row: bv2.idx / 9, Col: bv2.idx % 9},
-										{Row: link1 / 9, Col: link1 % 9},
-										{Row: link2 / 9, Col: link2 % 9},
+										{Row: bv1.idx / constants.GridSize, Col: bv1.idx % constants.GridSize},
+										{Row: bv2.idx / constants.GridSize, Col: bv2.idx % constants.GridSize},
+										{Row: link1 / constants.GridSize, Col: link1 % constants.GridSize},
+										{Row: link2 / constants.GridSize, Col: link2 % constants.GridSize},
 									},
 									Eliminations: eliminations,
 									Explanation:  fmt.Sprintf("W-Wing: {%d,%d} cells connected by strong link on %d", d1, d2, linkDigit),
 									Highlights: core.Highlights{
 										Primary: []core.CellRef{
-											{Row: bv1.idx / 9, Col: bv1.idx % 9},
-											{Row: bv2.idx / 9, Col: bv2.idx % 9},
+											{Row: bv1.idx / constants.GridSize, Col: bv1.idx % constants.GridSize},
+											{Row: bv2.idx / constants.GridSize, Col: bv2.idx % constants.GridSize},
 										},
 										Secondary: []core.CellRef{
-											{Row: link1 / 9, Col: link1 % 9},
-											{Row: link2 / 9, Col: link2 % 9},
+											{Row: link1 / constants.GridSize, Col: link1 % constants.GridSize},
+											{Row: link2 / constants.GridSize, Col: link2 % constants.GridSize},
 										},
 									},
 								}
@@ -565,16 +566,16 @@ func DetectWWing(b BoardInterface) *core.Move {
 // (all in one row + one column within the box). Combined with a strong link (conjugate pair)
 // in a line outside the box, this can eliminate candidates.
 func DetectEmptyRectangle(b BoardInterface) *core.Move {
-	for digit := 1; digit <= 9; digit++ {
-		for box := 0; box < 9; box++ {
-			boxRowStart, boxColStart := (box/3)*3, (box%3)*3
+	for digit := 1; digit <= constants.GridSize; digit++ {
+		for box := 0; box < constants.GridSize; box++ {
+			boxRowStart, boxColStart := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
 
 			// Find positions of digit in this box
 			var positions []int
-			for r := boxRowStart; r < boxRowStart+3; r++ {
-				for c := boxColStart; c < boxColStart+3; c++ {
-					if b.GetCandidatesAt(r*9 + c).Has(digit) {
-						positions = append(positions, r*9+c)
+			for r := boxRowStart; r < boxRowStart+constants.BoxSize; r++ {
+				for c := boxColStart; c < boxColStart+constants.BoxSize; c++ {
+					if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
+						positions = append(positions, r*constants.GridSize+c)
 					}
 				}
 			}
@@ -594,12 +595,12 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 
 			// For ER, we need positions that can be covered by one row + one column
 			// Try each combination of pivot row and column within the box
-			for erRow := boxRowStart; erRow < boxRowStart+3; erRow++ {
-				for erCol := boxColStart; erCol < boxColStart+3; erCol++ {
+			for erRow := boxRowStart; erRow < boxRowStart+constants.BoxSize; erRow++ {
+				for erCol := boxColStart; erCol < boxColStart+constants.BoxSize; erCol++ {
 					// Check if all positions are in erRow or erCol
 					validER := true
 					for _, pos := range positions {
-						r, c := pos/9, pos%9
+						r, c := pos/constants.GridSize, pos%constants.GridSize
 						if r != erRow && c != erCol {
 							validER = false
 							break
@@ -614,7 +615,7 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 					hasRowArm := false
 					hasColArm := false
 					for _, pos := range positions {
-						r, c := pos/9, pos%9
+						r, c := pos/constants.GridSize, pos%constants.GridSize
 						if r == erRow && c != erCol {
 							hasRowArm = true
 						}
@@ -632,15 +633,15 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 					// Strategy 1: Find a conjugate pair in a COLUMN outside the box
 					// where one end is in erRow, and eliminate from the other end's row
 					// intersecting with erCol
-					for linkCol := 0; linkCol < 9; linkCol++ {
-						if linkCol >= boxColStart && linkCol < boxColStart+3 {
+					for linkCol := 0; linkCol < constants.GridSize; linkCol++ {
+						if linkCol >= boxColStart && linkCol < boxColStart+constants.BoxSize {
 							continue // Skip columns in the ER box
 						}
 
 						// Find all candidates in this column
 						var colPositions []int
-						for r := 0; r < 9; r++ {
-							if b.GetCandidatesAt(r*9 + linkCol).Has(digit) {
+						for r := 0; r < constants.GridSize; r++ {
+							if b.GetCandidatesAt(r*constants.GridSize + linkCol).Has(digit) {
 								colPositions = append(colPositions, r)
 							}
 						}
@@ -670,14 +671,14 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 
 						// Now we can eliminate from (linkRow, erCol) if it has the digit
 						// AND the target is outside the ER box
-						if linkRow >= boxRowStart && linkRow < boxRowStart+3 {
+						if linkRow >= boxRowStart && linkRow < boxRowStart+constants.BoxSize {
 							continue // Target would be inside the ER box
 						}
-						targetIdx := linkRow*9 + erCol
+						targetIdx := linkRow*constants.GridSize + erCol
 						if b.GetCandidatesAt(targetIdx).Has(digit) {
 							var targets []core.CellRef
 							for _, p := range positions {
-								targets = append(targets, core.CellRef{Row: p / 9, Col: p % 9})
+								targets = append(targets, core.CellRef{Row: p / constants.GridSize, Col: p % constants.GridSize})
 							}
 
 							return &core.Move{
@@ -700,15 +701,15 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 					// Strategy 2: Find a conjugate pair in a ROW outside the box
 					// where one end is in erCol, and eliminate from the other end's column
 					// intersecting with erRow
-					for linkRow := 0; linkRow < 9; linkRow++ {
-						if linkRow >= boxRowStart && linkRow < boxRowStart+3 {
+					for linkRow := 0; linkRow < constants.GridSize; linkRow++ {
+						if linkRow >= boxRowStart && linkRow < boxRowStart+constants.BoxSize {
 							continue // Skip rows in the ER box
 						}
 
 						// Find all candidates in this row
 						var rowPositions []int
-						for c := 0; c < 9; c++ {
-							if b.GetCandidatesAt(linkRow*9 + c).Has(digit) {
+						for c := 0; c < constants.GridSize; c++ {
+							if b.GetCandidatesAt(linkRow*constants.GridSize + c).Has(digit) {
 								rowPositions = append(rowPositions, c)
 							}
 						}
@@ -737,16 +738,16 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 						}
 
 						// The elimination target must be outside the ER box
-						if linkCol >= boxColStart && linkCol < boxColStart+3 {
+						if linkCol >= boxColStart && linkCol < boxColStart+constants.BoxSize {
 							continue // Target would be inside the ER box
 						}
 
 						// Now we can eliminate from (erRow, linkCol) if it has the digit
-						targetIdx := erRow*9 + linkCol
+						targetIdx := erRow*constants.GridSize + linkCol
 						if b.GetCandidatesAt(targetIdx).Has(digit) {
 							var targets []core.CellRef
 							for _, p := range positions {
-								targets = append(targets, core.CellRef{Row: p / 9, Col: p % 9})
+								targets = append(targets, core.CellRef{Row: p / constants.GridSize, Col: p % constants.GridSize})
 							}
 
 							return &core.Move{

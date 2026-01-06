@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // ============================================================================
@@ -23,7 +24,7 @@ import (
 func DetectBUG(b BoardInterface) *core.Move {
 	// Count cells with !=2 candidates
 	var extraCells []int
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.GetCell(i) != 0 {
 			continue
 		}
@@ -47,32 +48,32 @@ func DetectBUG(b BoardInterface) *core.Move {
 	// and each candidate appears exactly twice in every row, column, and box
 
 	// Find the "extra" digit that appears 3 times in its row/col/box
-	row, col := bugCell/9, bugCell%9
-	box := (row/3)*3 + col/3
+	row, col := bugCell/constants.GridSize, bugCell%constants.GridSize
+	box := (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize
 
 	for _, digit := range b.GetCandidatesAt(bugCell).ToSlice() {
 		// Count occurrences in row
 		rowCount := 0
-		for c := 0; c < 9; c++ {
-			if b.GetCandidatesAt(row*9 + c).Has(digit) {
+		for c := 0; c < constants.GridSize; c++ {
+			if b.GetCandidatesAt(row*constants.GridSize + c).Has(digit) {
 				rowCount++
 			}
 		}
 
 		// Count occurrences in column
 		colCount := 0
-		for r := 0; r < 9; r++ {
-			if b.GetCandidatesAt(r*9 + col).Has(digit) {
+		for r := 0; r < constants.GridSize; r++ {
+			if b.GetCandidatesAt(r*constants.GridSize + col).Has(digit) {
 				colCount++
 			}
 		}
 
 		// Count occurrences in box
 		boxCount := 0
-		boxRow, boxCol := (box/3)*3, (box%3)*3
-		for r := boxRow; r < boxRow+3; r++ {
-			for c := boxCol; c < boxCol+3; c++ {
-				if b.GetCandidatesAt(r*9 + c).Has(digit) {
+		boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
+		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+			for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+				if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
 					boxCount++
 				}
 			}

@@ -2,6 +2,7 @@ package dp
 
 import (
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // Solver provides DP/backtracking based Sudoku solving for verification
@@ -9,7 +10,7 @@ import (
 
 // Solve finds a solution using backtracking. Returns the solved grid or nil if unsolvable.
 func Solve(grid []int) []int {
-	board := make([]int, 81)
+	board := make([]int, constants.TotalCells)
 	copy(board, grid)
 	if solve(board) {
 		return board
@@ -43,10 +44,10 @@ func FindConflicts(grid []int) []Conflict {
 	var conflicts []Conflict
 	seen := make(map[string]bool) // Track already-reported conflicts to avoid duplicates
 
-	for row := 0; row < 9; row++ {
+	for row := 0; row < constants.GridSize; row++ {
 		positions := make(map[int][]int) // value -> list of column positions
-		for col := 0; col < 9; col++ {
-			val := grid[row*9+col]
+		for col := 0; col < constants.GridSize; col++ {
+			val := grid[row*constants.GridSize+col]
 			if val == 0 {
 				continue
 			}
@@ -56,7 +57,7 @@ func FindConflicts(grid []int) []Conflict {
 			if len(cols) > 1 {
 				for i := 0; i < len(cols); i++ {
 					for j := i + 1; j < len(cols); j++ {
-						cell1, cell2 := row*9+cols[i], row*9+cols[j]
+						cell1, cell2 := row*constants.GridSize+cols[i], row*constants.GridSize+cols[j]
 						key := conflictKey(cell1, cell2, val)
 						if !seen[key] {
 							seen[key] = true
@@ -68,10 +69,10 @@ func FindConflicts(grid []int) []Conflict {
 		}
 	}
 
-	for col := 0; col < 9; col++ {
+	for col := 0; col < constants.GridSize; col++ {
 		positions := make(map[int][]int) // value -> list of row positions
-		for row := 0; row < 9; row++ {
-			val := grid[row*9+col]
+		for row := 0; row < constants.GridSize; row++ {
+			val := grid[row*constants.GridSize+col]
 			if val == 0 {
 				continue
 			}
@@ -81,7 +82,7 @@ func FindConflicts(grid []int) []Conflict {
 			if len(rows) > 1 {
 				for i := 0; i < len(rows); i++ {
 					for j := i + 1; j < len(rows); j++ {
-						cell1, cell2 := rows[i]*9+col, rows[j]*9+col
+						cell1, cell2 := rows[i]*constants.GridSize+col, rows[j]*constants.GridSize+col
 						key := conflictKey(cell1, cell2, val)
 						if !seen[key] {
 							seen[key] = true
@@ -93,16 +94,16 @@ func FindConflicts(grid []int) []Conflict {
 		}
 	}
 
-	for box := 0; box < 9; box++ {
+	for box := 0; box < constants.GridSize; box++ {
 		positions := make(map[int][]int) // value -> list of cell indices
-		boxRow, boxCol := (box/3)*3, (box%3)*3
-		for r := boxRow; r < boxRow+3; r++ {
-			for c := boxCol; c < boxCol+3; c++ {
-				val := grid[r*9+c]
+		boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
+		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+			for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+				val := grid[r*constants.GridSize+c]
 				if val == 0 {
 					continue
 				}
-				positions[val] = append(positions[val], r*9+c)
+				positions[val] = append(positions[val], r*constants.GridSize+c)
 			}
 		}
 		for val, cells := range positions {
@@ -132,7 +133,7 @@ func conflictKey(cell1, cell2, val int) string {
 
 // CountSolutions counts solutions up to maxCount. Exported for custom puzzle validation.
 func CountSolutions(grid []int, maxCount int) int {
-	board := make([]int, 81)
+	board := make([]int, constants.TotalCells)
 	copy(board, grid)
 	count := 0
 	countSolutionsHelper(board, &count, maxCount)
@@ -146,7 +147,7 @@ func countSolutionsHelper(board []int, count *int, maxCount int) {
 
 	// Find next empty cell
 	idx := -1
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if board[i] == 0 {
 			idx = i
 			break
@@ -159,9 +160,9 @@ func countSolutionsHelper(board []int, count *int, maxCount int) {
 		return
 	}
 
-	row, col := idx/9, idx%9
+	row, col := idx/constants.GridSize, idx%constants.GridSize
 
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		if isValid(board, row, col, digit) {
 			board[idx] = digit
 			countSolutionsHelper(board, count, maxCount)
@@ -176,7 +177,7 @@ func countSolutionsHelper(board []int, count *int, maxCount int) {
 func solve(board []int) bool {
 	// Find next empty cell
 	idx := -1
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if board[i] == 0 {
 			idx = i
 			break
@@ -188,9 +189,9 @@ func solve(board []int) bool {
 		return true
 	}
 
-	row, col := idx/9, idx%9
+	row, col := idx/constants.GridSize, idx%constants.GridSize
 
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		if isValid(board, row, col, digit) {
 			board[idx] = digit
 			if solve(board) {
@@ -204,23 +205,23 @@ func solve(board []int) bool {
 }
 
 func isValid(board []int, row, col, digit int) bool {
-	for c := 0; c < 9; c++ {
-		if board[row*9+c] == digit {
+	for c := 0; c < constants.GridSize; c++ {
+		if board[row*constants.GridSize+c] == digit {
 			return false
 		}
 	}
 
-	for r := 0; r < 9; r++ {
-		if board[r*9+col] == digit {
+	for r := 0; r < constants.GridSize; r++ {
+		if board[r*constants.GridSize+col] == digit {
 			return false
 		}
 	}
 
 	// Check 3x3 box
-	boxRow, boxCol := (row/3)*3, (col/3)*3
-	for r := boxRow; r < boxRow+3; r++ {
-		for c := boxCol; c < boxCol+3; c++ {
-			if board[r*9+c] == digit {
+	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
+	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			if board[r*constants.GridSize+c] == digit {
 				return false
 			}
 		}
@@ -231,7 +232,7 @@ func isValid(board []int, row, col, digit int) bool {
 
 // GenerateFullGrid generates a complete valid Sudoku grid using the given seed.
 func GenerateFullGrid(seed int64) []int {
-	board := make([]int, 81)
+	board := make([]int, constants.TotalCells)
 	rng := newRNG(seed)
 	fillGrid(board, rng)
 	return board
@@ -261,7 +262,7 @@ func (r *rng) shuffle(arr []int) {
 func fillGrid(board []int, rng *rng) bool {
 	// Find next empty cell
 	idx := -1
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if board[i] == 0 {
 			idx = i
 			break
@@ -272,10 +273,13 @@ func fillGrid(board []int, rng *rng) bool {
 		return true
 	}
 
-	row, col := idx/9, idx%9
+	row, col := idx/constants.GridSize, idx%constants.GridSize
 
 	// Try digits in random order
-	digits := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	digits := make([]int, constants.GridSize)
+	for i := 0; i < constants.GridSize; i++ {
+		digits[i] = i + 1
+	}
 	rng.shuffle(digits)
 
 	for _, digit := range digits {
@@ -295,20 +299,20 @@ func fillGrid(board []int, rng *rng) bool {
 // targetGivens is the desired number of clues to remain.
 // Returns the puzzle grid with zeros for empty cells.
 func CarveGivens(fullGrid []int, targetGivens int, seed int64) []int {
-	puzzle := make([]int, 81)
+	puzzle := make([]int, constants.TotalCells)
 	copy(puzzle, fullGrid)
 
 	rng := newRNG(seed + 1) // offset seed for carving
 
 	// Create list of filled positions
-	positions := make([]int, 81)
-	for i := 0; i < 81; i++ {
+	positions := make([]int, constants.TotalCells)
+	for i := 0; i < constants.TotalCells; i++ {
 		positions[i] = i
 	}
 	rng.shuffle(positions)
 
 	removed := 0
-	target := 81 - targetGivens
+	target := constants.TotalCells - targetGivens
 
 	for _, pos := range positions {
 		if removed >= target {
@@ -342,14 +346,14 @@ func CarveGivensWithSubset(fullGrid []int, seed int64) map[string][]int {
 		"impossible": 20,
 	}
 
-	puzzle := make([]int, 81)
+	puzzle := make([]int, constants.TotalCells)
 	copy(puzzle, fullGrid)
 
 	rng := newRNG(seed + 1) // offset seed for carving
 
 	// Create list of filled positions in deterministic random order
-	positions := make([]int, 81)
-	for i := 0; i < 81; i++ {
+	positions := make([]int, constants.TotalCells)
+	for i := 0; i < constants.TotalCells; i++ {
 		positions[i] = i
 	}
 	rng.shuffle(positions)
@@ -358,7 +362,7 @@ func CarveGivensWithSubset(fullGrid []int, seed int64) map[string][]int {
 	var removalOrder []int
 
 	// Carve down to impossible level (minimum givens)
-	targetRemoved := 81 - targets["impossible"]
+	targetRemoved := constants.TotalCells - targets["impossible"]
 
 	for _, pos := range positions {
 		if len(removalOrder) >= targetRemoved {
@@ -381,7 +385,7 @@ func CarveGivensWithSubset(fullGrid []int, seed int64) map[string][]int {
 	result := make(map[string][]int)
 
 	// Impossible is the base (most cells removed)
-	impossiblePuzzle := make([]int, 81)
+	impossiblePuzzle := make([]int, constants.TotalCells)
 	copy(impossiblePuzzle, puzzle)
 	result["impossible"] = impossiblePuzzle
 
@@ -390,10 +394,10 @@ func CarveGivensWithSubset(fullGrid []int, seed int64) map[string][]int {
 
 	for _, diff := range difficulties {
 		targetGivens := targets[diff]
-		currentGivens := 81 - len(removalOrder)
+		currentGivens := constants.TotalCells - len(removalOrder)
 		cellsToRestore := targetGivens - currentGivens
 
-		diffPuzzle := make([]int, 81)
+		diffPuzzle := make([]int, constants.TotalCells)
 		copy(diffPuzzle, puzzle)
 
 		// Restore cells in reverse removal order (last removed = first restored)

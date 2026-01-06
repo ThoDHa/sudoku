@@ -5,18 +5,19 @@ import (
 	"sort"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // DetectXWing finds X-Wing pattern: a digit in exactly 2 positions in 2 rows,
 // and those positions share the same columns
 func DetectXWing(b BoardInterface) *core.Move {
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		// Find rows where digit appears in exactly 2 columns
 		rowPositions := make(map[int][]int)
-		for row := 0; row < 9; row++ {
+		for row := 0; row < constants.GridSize; row++ {
 			var cols []int
-			for col := 0; col < 9; col++ {
-				if b.GetCandidatesAt(row*9 + col).Has(digit) {
+			for col := 0; col < constants.GridSize; col++ {
+				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 					cols = append(cols, col)
 				}
 			}
@@ -41,14 +42,14 @@ func DetectXWing(b BoardInterface) *core.Move {
 
 					// Find eliminations in the columns
 					var eliminations []core.Candidate
-					for row := 0; row < 9; row++ {
+					for row := 0; row < constants.GridSize; row++ {
 						if row == r1 || row == r2 {
 							continue
 						}
-						if b.GetCandidatesAt(row*9 + c1).Has(digit) {
+						if b.GetCandidatesAt(row*constants.GridSize + c1).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: row, Col: c1, Digit: digit})
 						}
-						if b.GetCandidatesAt(row*9 + c2).Has(digit) {
+						if b.GetCandidatesAt(row*constants.GridSize + c2).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: row, Col: c2, Digit: digit})
 						}
 					}
@@ -77,10 +78,10 @@ func DetectXWing(b BoardInterface) *core.Move {
 
 		// Check columns for X-Wing
 		colPositions := make(map[int][]int)
-		for col := 0; col < 9; col++ {
+		for col := 0; col < constants.GridSize; col++ {
 			var rows []int
-			for row := 0; row < 9; row++ {
-				if b.GetCandidatesAt(row*9 + col).Has(digit) {
+			for row := 0; row < constants.GridSize; row++ {
+				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 					rows = append(rows, row)
 				}
 			}
@@ -103,14 +104,14 @@ func DetectXWing(b BoardInterface) *core.Move {
 					r1, r2 := rows1[0], rows1[1]
 
 					var eliminations []core.Candidate
-					for col := 0; col < 9; col++ {
+					for col := 0; col < constants.GridSize; col++ {
 						if col == c1 || col == c2 {
 							continue
 						}
-						if b.GetCandidatesAt(r1*9 + col).Has(digit) {
+						if b.GetCandidatesAt(r1*constants.GridSize + col).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: r1, Col: col, Digit: digit})
 						}
-						if b.GetCandidatesAt(r2*9 + col).Has(digit) {
+						if b.GetCandidatesAt(r2*constants.GridSize + col).Has(digit) {
 							eliminations = append(eliminations, core.Candidate{Row: r2, Col: col, Digit: digit})
 						}
 					}
@@ -146,7 +147,7 @@ func DetectXWing(b BoardInterface) *core.Move {
 func DetectXYWing(b BoardInterface) *core.Move {
 	// Find cells with exactly 2 candidates (potential pivots or wings)
 	var bivalues []int
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.GetCandidatesAt(i).Count() == 2 {
 			bivalues = append(bivalues, i)
 		}
@@ -211,7 +212,7 @@ func DetectXYWing(b BoardInterface) *core.Move {
 
 				// Find cells that see both wings and have z as candidate
 				var eliminations []core.Candidate
-				for i := 0; i < 81; i++ {
+				for i := 0; i < constants.TotalCells; i++ {
 					if i == pivot || i == xzWing || i == yzWing {
 						continue
 					}
@@ -220,7 +221,7 @@ func DetectXYWing(b BoardInterface) *core.Move {
 					}
 					if ArePeers(i, xzWing) && ArePeers(i, yzWing) {
 						eliminations = append(eliminations, core.Candidate{
-							Row: i / 9, Col: i % 9, Digit: z,
+							Row: i / constants.GridSize, Col: i % constants.GridSize, Digit: z,
 						})
 					}
 				}
@@ -230,17 +231,17 @@ func DetectXYWing(b BoardInterface) *core.Move {
 						Action: "eliminate",
 						Digit:  z,
 						Targets: []core.CellRef{
-							{Row: pivot / 9, Col: pivot % 9},
-							{Row: xzWing / 9, Col: xzWing % 9},
-							{Row: yzWing / 9, Col: yzWing % 9},
+							{Row: pivot / constants.GridSize, Col: pivot % constants.GridSize},
+							{Row: xzWing / constants.GridSize, Col: xzWing % constants.GridSize},
+							{Row: yzWing / constants.GridSize, Col: yzWing % constants.GridSize},
 						},
 						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("XY-Wing: pivot at R%dC%d with wings: eliminate %d.", pivot/9+1, pivot%9+1, z),
+						Explanation:  fmt.Sprintf("XY-Wing: pivot at R%dC%d with wings: eliminate %d.", pivot/constants.GridSize+1, pivot%constants.GridSize+1, z),
 						Highlights: core.Highlights{
 							Primary: []core.CellRef{
-								{Row: pivot / 9, Col: pivot % 9},
-								{Row: xzWing / 9, Col: xzWing % 9},
-								{Row: yzWing / 9, Col: yzWing % 9},
+								{Row: pivot / constants.GridSize, Col: pivot % constants.GridSize},
+								{Row: xzWing / constants.GridSize, Col: xzWing % constants.GridSize},
+								{Row: yzWing / constants.GridSize, Col: yzWing % constants.GridSize},
 							},
 						},
 					}
@@ -254,16 +255,16 @@ func DetectXYWing(b BoardInterface) *core.Move {
 
 // DetectSimpleColoring uses single-digit coloring to find eliminations
 func DetectSimpleColoring(b BoardInterface) *core.Move {
-	for digit := 1; digit <= 9; digit++ {
+	for digit := 1; digit <= constants.GridSize; digit++ {
 		// Find conjugate pairs (cells where digit appears exactly twice in a unit)
 		conjugates := make(map[int][]int) // cell -> connected cells
 
 		// Check rows
-		for row := 0; row < 9; row++ {
+		for row := 0; row < constants.GridSize; row++ {
 			var cells []int
-			for col := 0; col < 9; col++ {
-				if b.GetCandidatesAt(row*9 + col).Has(digit) {
-					cells = append(cells, row*9+col)
+			for col := 0; col < constants.GridSize; col++ {
+				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
+					cells = append(cells, row*constants.GridSize+col)
 				}
 			}
 			if len(cells) == 2 {
@@ -273,11 +274,11 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 		}
 
 		// Check columns
-		for col := 0; col < 9; col++ {
+		for col := 0; col < constants.GridSize; col++ {
 			var cells []int
-			for row := 0; row < 9; row++ {
-				if b.GetCandidatesAt(row*9 + col).Has(digit) {
-					cells = append(cells, row*9+col)
+			for row := 0; row < constants.GridSize; row++ {
+				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
+					cells = append(cells, row*constants.GridSize+col)
 				}
 			}
 			if len(cells) == 2 {
@@ -287,13 +288,13 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 		}
 
 		// Check boxes
-		for box := 0; box < 9; box++ {
+		for box := 0; box < constants.GridSize; box++ {
 			var cells []int
-			boxRow, boxCol := (box/3)*3, (box%3)*3
-			for r := boxRow; r < boxRow+3; r++ {
-				for c := boxCol; c < boxCol+3; c++ {
-					if b.GetCandidatesAt(r*9 + c).Has(digit) {
-						cells = append(cells, r*9+c)
+			boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
+			for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+				for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+					if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
+						cells = append(cells, r*constants.GridSize+c)
 					}
 				}
 			}
@@ -353,7 +354,7 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 			}
 
 			// Check for eliminations: cells that see both colors OF THIS COMPONENT
-			for i := 0; i < 81; i++ {
+			for i := 0; i < constants.TotalCells; i++ {
 				if !b.GetCandidatesAt(i).Has(digit) || colors[i] != 0 {
 					continue
 				}
@@ -378,14 +379,14 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 						Action: "eliminate",
 						Digit:  digit,
 						Targets: []core.CellRef{
-							{Row: i / 9, Col: i % 9},
+							{Row: i / constants.GridSize, Col: i % constants.GridSize},
 						},
 						Eliminations: []core.Candidate{
-							{Row: i / 9, Col: i % 9, Digit: digit},
+							{Row: i / constants.GridSize, Col: i % constants.GridSize, Digit: digit},
 						},
-						Explanation: fmt.Sprintf("Simple Coloring: cell R%dC%d sees both colors for %d", i/9+1, i%9+1, digit),
+						Explanation: fmt.Sprintf("Simple Coloring: cell R%dC%d sees both colors for %d", i/constants.GridSize+1, i%constants.GridSize+1, digit),
 						Highlights: core.Highlights{
-							Primary:   []core.CellRef{{Row: i / 9, Col: i % 9}},
+							Primary:   []core.CellRef{{Row: i / constants.GridSize, Col: i % constants.GridSize}},
 							Secondary: CellRefsFromIndices(append(color1, color2...)...),
 						},
 					}

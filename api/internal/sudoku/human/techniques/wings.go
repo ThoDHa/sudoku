@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // DetectXYZWing finds XYZ-Wing pattern:
@@ -17,7 +18,7 @@ import (
 func DetectXYZWing(b BoardInterface) *core.Move {
 	// Find cells with exactly 3 candidates (potential pivots)
 	var trivalues []int
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.GetCandidatesAt(i).Count() == 3 {
 			trivalues = append(trivalues, i)
 		}
@@ -25,7 +26,7 @@ func DetectXYZWing(b BoardInterface) *core.Move {
 
 	// Find cells with exactly 2 candidates (potential wings)
 	var bivalues []int
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		if b.GetCandidatesAt(i).Count() == 2 {
 			bivalues = append(bivalues, i)
 		}
@@ -86,7 +87,7 @@ func DetectXYZWing(b BoardInterface) *core.Move {
 					// Find cells that see ALL THREE cells (pivot, xzWing, yzWing)
 					// and have zDigit as a candidate
 					var eliminations []core.Candidate
-					for i := 0; i < 81; i++ {
+					for i := 0; i < constants.TotalCells; i++ {
 						if i == pivot || i == xzWing || i == yzWing {
 							continue
 						}
@@ -95,15 +96,15 @@ func DetectXYZWing(b BoardInterface) *core.Move {
 						}
 						if ArePeers(i, pivot) && ArePeers(i, xzWing) && ArePeers(i, yzWing) {
 							eliminations = append(eliminations, core.Candidate{
-								Row: i / 9, Col: i % 9, Digit: zDigit,
+								Row: i / constants.GridSize, Col: i % constants.GridSize, Digit: zDigit,
 							})
 						}
 					}
 
 					if len(eliminations) > 0 {
-						pr, pc := pivot/9, pivot%9
-						xr, xc := xzWing/9, xzWing%9
-						yr, yc := yzWing/9, yzWing%9
+						pr, pc := pivot/constants.GridSize, pivot%constants.GridSize
+						xr, xc := xzWing/constants.GridSize, xzWing%constants.GridSize
+						yr, yc := yzWing/constants.GridSize, yzWing%constants.GridSize
 
 						return &core.Move{
 							Action: "eliminate",
@@ -147,7 +148,7 @@ func DetectXYZWing(b BoardInterface) *core.Move {
 func DetectWXYZWing(b BoardInterface) *core.Move {
 	// Find all empty cells with 2-4 candidates
 	var cells []int
-	for i := 0; i < 81; i++ {
+	for i := 0; i < constants.TotalCells; i++ {
 		n := b.GetCandidatesAt(i).Count()
 		if n >= 2 && n <= 4 {
 			cells = append(cells, i)
@@ -229,9 +230,9 @@ func DetectWXYZWing(b BoardInterface) *core.Move {
 						var primary, secondary []core.CellRef
 						for _, cell := range quad {
 							if b.GetCandidatesAt(cell).Has(z) {
-								primary = append(primary, core.CellRef{Row: cell / 9, Col: cell % 9})
+								primary = append(primary, core.CellRef{Row: cell / constants.GridSize, Col: cell % constants.GridSize})
 							} else {
-								secondary = append(secondary, core.CellRef{Row: cell / 9, Col: cell % 9})
+								secondary = append(secondary, core.CellRef{Row: cell / constants.GridSize, Col: cell % constants.GridSize})
 							}
 						}
 
@@ -241,8 +242,8 @@ func DetectWXYZWing(b BoardInterface) *core.Move {
 							Targets:      targets,
 							Eliminations: eliminations,
 							Explanation: fmt.Sprintf("WXYZ-Wing: cells {R%dC%d,R%dC%d,R%dC%d,R%dC%d} contain %v: eliminate non-restricted %d.",
-								quad[0]/9+1, quad[0]%9+1, quad[1]/9+1, quad[1]%9+1,
-								quad[2]/9+1, quad[2]%9+1, quad[3]/9+1, quad[3]%9+1,
+								quad[0]/constants.GridSize+1, quad[0]%constants.GridSize+1, quad[1]/constants.GridSize+1, quad[1]%constants.GridSize+1,
+								quad[2]/constants.GridSize+1, quad[2]%constants.GridSize+1, quad[3]/constants.GridSize+1, quad[3]%constants.GridSize+1,
 								digits, z),
 							Highlights: core.Highlights{
 								Primary:   primary,

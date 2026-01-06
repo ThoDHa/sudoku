@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 // DetectALSXYWing finds ALS-XY-Wing pattern:
@@ -287,7 +288,7 @@ func checkChainElimination(b BoardInterface, allALS []ALS, path []int, rcUsed []
 		if len(eliminations) > 0 {
 			targets := make([]core.CellRef, 0, len(allChainCells))
 			for _, cell := range allChainCells {
-				targets = append(targets, core.CellRef{Row: cell / 9, Col: cell % 9})
+				targets = append(targets, core.CellRef{Row: cell / constants.GridSize, Col: cell % constants.GridSize})
 			}
 
 			return &core.Move{
