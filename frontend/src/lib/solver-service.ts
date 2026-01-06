@@ -349,10 +349,47 @@ function hashGivens(givens: number[]): string {
   return Math.abs(hash).toString(16).padStart(8, '0')
 }
 
+/**
+ * Check and fix incorrect user entries by comparing against the known solution.
+ * Removes any user entries that don't match the solution, then continues solving.
+ * Used when the modal "Too Many Conflicts" appears and user clicks "Check & Fix".
+ */
+export async function checkAndFixWithSolution(
+  board: number[],
+  candidates: number[][],
+  givens: number[],
+  solution: number[]
+): Promise<SolveAllResult> {
+  // Use worker if available
+  if (isUsingWorkerMode()) {
+    try {
+      // Note: Worker client will need to be updated to support this new function
+      // For now, fall back to main thread
+      console.warn('[SolverService] checkAndFixWithSolution not yet implemented in worker, using main thread')
+    } catch (error) {
+      console.warn('[SolverService] Worker checkAndFixWithSolution failed, falling back:', error)
+    }
+  }
+  
+  // Fallback to main thread WASM
+  const api = await getApi()
+  const result = api.checkAndFixWithSolution(board, candidates, givens, solution)
+  return {
+    moves: result.moves.map((m) => ({
+      board: m.board,
+      candidates: m.candidates,
+      move: m.move as Move,
+    })),
+    solved: result.solved,
+    finalBoard: result.finalBoard,
+  }
+}
+
 // Default export for backward compatibility
 export default {
   solveAll,
   findNextMove,
+  checkAndFixWithSolution,
   validateBoard,
   validateCustomPuzzle,
   getPuzzle,

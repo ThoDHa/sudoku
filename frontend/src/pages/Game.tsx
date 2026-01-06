@@ -34,7 +34,7 @@ import {
 } from '../lib/constants'
 import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
 import { getAutoSaveEnabled, getMostRecentGame, clearInProgressGame, clearOtherGamesForMode, type SavedGameInfo } from '../lib/gameSettings'
-import { validateBoard, validateCustomPuzzle, findNextMove, getPuzzle, cleanupSolver } from '../lib/solver-service'
+import { validateBoard, validateCustomPuzzle, findNextMove, getPuzzle, cleanupSolver, checkAndFixWithSolution } from '../lib/solver-service'
 import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
 import { saveScore, markDailyCompleted, isTodayCompleted, getTodayUTC, getScores, type Score } from '../lib/scores'
@@ -1230,6 +1230,56 @@ if (value === 0) {
     await autoSolve.restartAutoSolve(startPaused)
   }, [autoSolve, clearAllAndDeselect])
 
+  // Check & Fix handler - compares current board vs solution, removes mismatches, continues solving
+  const handleCheckAndFix = useCallback(async () => {
+    if (!solution || solution.length !== 81) {
+      console.error('Cannot check and fix: solution not available')
+      return
+    }
+
+    try {
+      // Get current state
+      const currentBoard = game.board
+      const currentCandidates = candidatesToArrays(game.candidates)
+      const givens = puzzle?.givens || []
+
+      if (givens.length !== 81) {
+        console.error('Cannot check and fix: givens not available')
+        return
+      }
+
+      // Call WASM to compare and fix
+      const result = await checkAndFixWithSolution(currentBoard, currentCandidates, givens, solution)
+      
+      if (result.moves && result.moves.length > 0) {
+        // Apply the fix moves and any subsequent solving moves
+        for (let i = 0; i < result.moves.length; i++) {
+          const moveData = result.moves[i]
+          if (!moveData) continue
+          
+          // Convert candidates: WASM returns number[][], need Set<number>[] for handleApplyMove
+          const candidateArrays = moveData.candidates || []
+          const newCandidates = candidateArrays.map(arr => new Set(arr || []))
+          
+          // Apply this move
+          handleApplyMove(moveData.board, newCandidates, moveData.move, i + 1)
+          
+          // For fix-error moves, show a brief pause to let user see what was removed
+          if (moveData.move?.action === 'fix-error') {
+            await new Promise(resolve => setTimeout(resolve, 1000))
+          }
+        }
+        
+        console.warn(`Check & Fix completed: ${result.moves.length} moves applied`)
+      } else {
+        console.warn('Check & Fix: no changes needed')
+      }
+    } catch (error) {
+      console.error('Check & Fix failed:', error)
+      handleAutoSolveError('Failed to check and fix entries')
+    }
+  }, [solution, game.board, game.candidates, puzzle?.givens, handleApplyMove, handleAutoSolveError])
+
   // Bug report handler - opens GitHub issue with state
   const handleReportBug = useCallback(async () => {
     const bugReport = {
@@ -2084,7 +2134,7 @@ ${bugReportJson}
         showSolutionConfirm={showSolutionConfirm}
         setShowSolutionConfirm={setShowSolutionConfirm}
         unpinpointableErrorMessage={unpinpointableErrorInfo?.message || null}
-        onShowSolution={autoSolve.solveFromGivens}
+        onCheckAndFix={handleCheckAndFix}
       />
 
       {/* Onboarding Modal - shown for first-time users */}

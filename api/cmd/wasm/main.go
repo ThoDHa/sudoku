@@ -457,28 +457,8 @@ func createBoardWithCandidates(this js.Value, args []js.Value) interface{} {
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
-	board := human.NewBoardWithCandidates(cells, candidates)
-	obj := js.Global().Get("Object").New()
-	obj.Set("cells", intSliceToJSArray(board.GetCells()))
-	obj.Set("candidates", int2DSliceToJSArray(board.GetCandidates()))
-	return obj
-}
-
-// findNextMove finds the next solving step with full error detection
-// Input: cells (number[81]), candidates (number[81][]), givens (number[81])
-// Output: { move: Move | null, board: { cells, candidates }, solved: boolean }
-// This is equivalent to solveAll with maxMoves=1, returning the first move only
-func findNextMove(this js.Value, args []js.Value) interface{} {
-	if len(args) < 3 {
-		return errorToJS("cells, candidates, and givens required")
-	}
-
-	cells := jsArrayToIntSlice(args[0])
-	if len(cells) != 81 {
-		return errorToJS("cells must have 81 elements")
-	}
-
-	candidates := jsArrayTo2DIntSlice(args[1])
+	// Note: candidates parameter accepted for API consistency but not used in solution comparison
+	_ = candidates // Suppress unused variable warning
 	givens := jsArrayToIntSlice(args[2])
 	if len(givens) != 81 {
 		return errorToJS("givens must have 81 elements")
@@ -1514,6 +1494,148 @@ func getVersion(this js.Value, args []js.Value) interface{} {
 	return js.ValueOf(constants.SolverVersion)
 }
 
+// findNextMove finds the next solving step with full error detection
+// Input: cells (number[81]), candidates (number[81][]), givens (number[81])
+// Output: { move: Move | null, board: { cells, candidates }, solved: boolean }
+// This is equivalent to solveAll with maxMoves=1, returning the first move only
+func findNextMove(this js.Value, args []js.Value) interface{} {
+	if len(args) < 3 {
+		return errorToJS("cells, candidates, and givens required")
+	}
+
+	cells := jsArrayToIntSlice(args[0])
+	if len(cells) != 81 {
+		return errorToJS("cells must have 81 elements")
+	}
+
+	candidates := jsArrayTo2DIntSlice(args[1])
+	givens := jsArrayToIntSlice(args[2])
+	if len(givens) != 81 {
+		return errorToJS("givens must have 81 elements")
+	}
+
+	// Call internal implementation with maxMoves=1 for single move
+	result := solveAllInternal(cells, candidates, givens, 1)
+
+	// Extract first move if available
+	var move interface{}
+	var newBoard []int
+	var newCandidates [][]int
+
+	if len(result.moves) > 0 {
+		firstMove := result.moves[0]
+		move = firstMove.Move
+		newBoard = firstMove.Board
+		newCandidates = firstMove.Candidates
+	} else {
+		move = nil
+		newBoard = cells
+		newCandidates = candidates
+	}
+
+	// Build result object
+	obj := js.Global().Get("Object").New()
+	obj.Set("move", move)
+
+	boardObj := js.Global().Get("Object").New()
+	boardObj.Set("cells", intSliceToJSArray(newBoard))
+	boardObj.Set("candidates", int2DSliceToJSArray(newCandidates))
+	obj.Set("board", boardObj)
+	obj.Set("solved", result.solved)
+
+	return obj
+}
+
+// checkAndFixWithSolution compares the current board against the known solution,
+// removes any incorrect user entries, then continues solving using techniques.
+// Input: cells (current board), candidates, givens, solution (correct answer)
+// Output: { moves: MoveResult[], solved: boolean, finalBoard: number[81] }
+func checkAndFixWithSolution(this js.Value, args []js.Value) interface{} {
+	if len(args) < 4 {
+		return errorToJS("cells, candidates, givens, and solution required")
+	}
+
+	cells := jsArrayToIntSlice(args[0])
+	if len(cells) != 81 {
+		return errorToJS("cells must have 81 elements")
+	}
+
+	candidates := jsArrayTo2DIntSlice(args[1])
+	_ = candidates // Accept for API consistency but not needed for solution comparison
+	givens := jsArrayToIntSlice(args[2])
+	if len(givens) != 81 {
+		return errorToJS("givens must have 81 elements")
+	}
+
+	solution := jsArrayToIntSlice(args[3])
+	if len(solution) != 81 {
+		return errorToJS("solution must have 81 elements")
+	}
+
+	// Create a copy of the current board to modify
+	correctedBoard := make([]int, 81)
+	copy(correctedBoard, cells)
+
+	// Track what we fix for reporting
+	var fixedCells []MoveResult
+	fixCount := 0
+	maxFixes := 10 // Allow more fixes than normal solving since we're comparing to solution
+
+	// Compare current board against solution and remove mismatches
+	for i := 0; i < 81; i++ {
+		// Skip empty cells and givens
+		if correctedBoard[i] == 0 || givens[i] != 0 {
+			continue
+		}
+
+		// If user entry doesn't match solution, remove it
+		if correctedBoard[i] != solution[i] {
+			badDigit := correctedBoard[i]
+			correctedBoard[i] = 0
+			fixCount++
+
+			row, col := i/9, i%9
+			fixedCells = append(fixedCells, MoveResult{
+				Board:      append([]int(nil), correctedBoard...), // Copy current state
+				Candidates: nil,                                   // Will be recalculated
+				Move: fixErrorMoveToJS(
+					badDigit,
+					formatExplanation("Removed incorrect %d from R%dC%d (should be %d)", badDigit, row+1, col+1, solution[i]),
+					row, col,
+					[][]int{{row, col}},
+					nil,
+				),
+			})
+
+			if fixCount >= maxFixes {
+				break // Don't fix too many at once
+			}
+		}
+	}
+
+	// If we made fixes, recalculate candidates for the corrected board
+	if len(fixedCells) > 0 {
+		board := human.NewBoard(correctedBoard)
+		for i := range fixedCells {
+			fixedCells[i].Candidates = board.GetCandidates()
+		}
+	}
+
+	// Now continue solving from the corrected state using normal techniques
+	result := solveAllInternal(correctedBoard, nil, givens, 2000)
+
+	// Prepend the fix moves to the solution moves
+	allMoves := append(fixedCells, result.moves...)
+
+	// Build result object
+	obj := js.Global().Get("Object").New()
+	obj.Set("moves", moveResultSliceToJS(allMoves))
+	obj.Set("solved", result.solved)
+	obj.Set("finalBoard", intSliceToJSArray(result.finalBoard))
+	obj.Set("finalCandidates", int2DSliceToJSArray(result.finalCandidates))
+	return obj
+}
+
 func main() {
 	// Create the SudokuWasm global object with all exported functions
 	exports := map[string]interface{}{
@@ -1524,6 +1646,7 @@ func main() {
 		"solveWithSteps":            js.FuncOf(solveWithSteps),
 		"analyzePuzzle":             js.FuncOf(analyzePuzzle),
 		"solveAll":                  js.FuncOf(solveAll),
+		"checkAndFixWithSolution":   js.FuncOf(checkAndFixWithSolution),
 
 		// DP solver
 		"solve":                 js.FuncOf(solve),

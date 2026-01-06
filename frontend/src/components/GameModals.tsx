@@ -4,7 +4,7 @@
  * This component contains three modal dialogs:
  * 1. Solve Confirmation - Confirms auto-solve of the entire puzzle
  * 2. Clear/Restart Confirmation - Confirms clearing entries or restarting
- * 3. Show Solution Confirmation - Offers to show solution when error can't be pinpointed
+ * 3. Check Progress Confirmation - Offers to scan entries and fix errors when solver gets stuck
  */
 
 interface GameModalsProps {
@@ -21,11 +21,11 @@ interface GameModalsProps {
   onRestart: () => void
   onClearAll: () => void
   
-  // Show solution confirmation modal
+  // Check progress confirmation modal
   showSolutionConfirm: boolean
   setShowSolutionConfirm: (open: boolean) => void
   unpinpointableErrorMessage: string | null
-  onShowSolution: () => void
+  onCheckAndFix: () => void
 }
 
 export default function GameModals({
@@ -41,7 +41,7 @@ export default function GameModals({
   showSolutionConfirm,
   setShowSolutionConfirm,
   unpinpointableErrorMessage,
-  onShowSolution,
+  onCheckAndFix,
 }: GameModalsProps) {
   return (
     <>
@@ -131,13 +131,13 @@ export default function GameModals({
         </div>
       )}
 
-      {/* Show Solution Confirmation Dialog */}
+      {/* Check Progress Confirmation Dialog */}
       {showSolutionConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="relative z-10 w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl">
-            <h2 className="mb-2 text-lg font-bold text-foreground">Show Solution?</h2>
+            <h2 className="mb-2 text-lg font-bold text-foreground">Too Many Conflicts</h2>
             <p className="mb-6 text-sm text-foreground-muted">
-              {unpinpointableErrorMessage || "Hmm, I couldn't pinpoint the error. One of your entries might need checking."}
+              {unpinpointableErrorMessage || "I found too many conflicting numbers to continue. Let me scan your entries and remove any that are causing problems."}
             </p>
             <div className="flex gap-3">
               <button
@@ -149,11 +149,11 @@ export default function GameModals({
               <button
                 onClick={() => {
                   setShowSolutionConfirm(false)
-                  onShowSolution()
+                  onCheckAndFix()
                 }}
                 className="flex-1 rounded-lg bg-accent py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
               >
-                Show Solution
+                Check & Fix
               </button>
             </div>
           </div>
