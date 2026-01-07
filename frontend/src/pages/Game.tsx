@@ -1897,6 +1897,21 @@ ${bugReportJson}
     }
   }, [game.isComplete, timerControl])
 
+  // Immediate save when puzzle is completed (vanquish delay demon!)
+  // Saves game result instantly for correct tracking of completions
+  const hasSavedOnCompleteRef = useRef(false)
+  useEffect(() => {
+    if (game.isComplete && hasRestoredSavedState.current && !hasSavedOnCompleteRef.current) {
+      saveGameState()
+      hasSavedOnCompleteRef.current = true
+    }
+    // Reset if a new game starts
+    if (!game.isComplete) {
+      hasSavedOnCompleteRef.current = false
+    }
+  }, [game.isComplete, saveGameState, hasRestoredSavedState.current])
+
+
   // ============================================================
   // RENDER
   // ============================================================
