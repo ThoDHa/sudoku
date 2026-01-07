@@ -374,6 +374,13 @@ export async function checkAndFixWithSolution(
   // Fallback to main thread WASM
   const api = await getApi()
   const result = api.checkAndFixWithSolution(board, candidates, givens, solution)
+  try {
+    console.debug('[Check&Fix] wasm result', {
+      solved: result?.solved,
+      movesCount: Array.isArray(result?.moves) ? result.moves.length : 0,
+      hasFinalBoard: !!result?.finalBoard,
+    })
+  } catch {}
   return {
     moves: result.moves.map((m) => ({
       board: m.board,

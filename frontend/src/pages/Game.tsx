@@ -1252,25 +1252,35 @@ if (value === 0) {
       const result = await checkAndFixWithSolution(currentBoard, currentCandidates, givens, solution)
       
       if (result.moves && result.moves.length > 0) {
-        // Apply the fix moves and any subsequent solving moves
+        // Apply only fix-error moves for Check & Fix; ignore solver moves
+        let applied = 0
+        let ignored = 0
         for (let i = 0; i < result.moves.length; i++) {
           const moveData = result.moves[i]
           if (!moveData) continue
+          const isFix = moveData.move?.action === 'fix-error'
+          if (!isFix) { ignored++; continue }
           
           // Convert candidates: WASM returns number[][], need Set<number>[] for handleApplyMove
           const candidateArrays = moveData.candidates || []
           const newCandidates = candidateArrays.map(arr => new Set(arr || []))
           
-          // Apply this move
-          handleApplyMove(moveData.board, newCandidates, moveData.move, i + 1)
+          // Apply only the fix move
+          handleApplyMove(moveData.board, newCandidates, moveData.move, applied + 1)
+          applied++
           
-          // For fix-error moves, show a brief pause to let user see what was removed
-          if (moveData.move?.action === 'fix-error') {
-            await new Promise(resolve => setTimeout(resolve, 1000))
-          }
+          // Brief pause so the user can see removals
+          await new Promise(resolve => setTimeout(resolve, 500))
         }
-        
-        console.warn(`Check & Fix completed: ${result.moves.length} moves applied`)
+        try { console.warn(`[Check & Fix] Applied fix moves: ${applied}, ignored non-fix moves: ${ignored}`) } catch {}
+        if (ignored > 0) {
+          try { console.debug('[Check & Fix] Ignored non-fix moves to prevent unintended auto-solve') } catch {}
+        }
+        if (applied > 0) {
+          const startPaused = getAutoSolveSpeed() === 'step'
+          try { console.debug('[Check & Fix] Restarting solver after fixes', { startPaused }) } catch {}
+          await autoSolve.restartAutoSolve(startPaused)
+        }
       } else {
         console.warn('Check & Fix: no changes needed')
       }
