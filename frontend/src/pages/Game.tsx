@@ -1045,11 +1045,23 @@ function GameContent() {
       }
 
         if (currentHighlightedDigit !== null) {
-         if (currentNotesMode) {
-           currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
-           // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
+        if (currentNotesMode) {
+          // Only allow notes toggle on empty cells (follows current game logic)
+          if (currentGame.board[idx] === 0) {
+            currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
+            // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
             clearAfterUserCandidateOp()
             // Reset last hint tracking so next hint counts as new
+            lastTechniqueHintRef.current = null
+            lastRegularHintRef.current = null
+          } else {
+            // If not empty, do nothing (notes not allowed)
+          }
+        } else {
+          // If cell already contains the highlighted digit, erase it.
+          if (currentGame.board[idx] === currentHighlightedDigit) {
+            currentGame.eraseCell(idx)
+            clearAfterErase()
             lastTechniqueHintRef.current = null
             lastRegularHintRef.current = null
           } else {
@@ -1060,6 +1072,7 @@ function GameContent() {
             lastTechniqueHintRef.current = null
             lastRegularHintRef.current = null
           }
+        }
          return
        }
 

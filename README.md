@@ -112,6 +112,7 @@ The entire application runs locally in your browser with no server required afte
 ## Recent Improvements
 
 ### ✅ **Latest Updates (December 2024)**
+- **🖱️ Click-to-Unset Digit**: Clicking a cell that already contains the highlighted digit will now erase/unset it, in both normal and candidate/notes modes (mobile-style single-tap to unset). Makes undoing entries faster and mirrors modern Sudoku app UX. Fully tested (unit and E2E).
 - **🔧 Intelligent Error Correction**: Smart error detection system that finds and fixes mistakes
   - Direct conflicts (duplicate digits in row/column/box)
   - Blocking cells (entries that eliminate all candidates from another cell)
