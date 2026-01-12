@@ -1252,35 +1252,21 @@ if (value === 0) {
       const result = await checkAndFixWithSolution(currentBoard, currentCandidates, givens, solution)
       
       if (result.moves && result.moves.length > 0) {
-        // Apply only fix-error moves for Check & Fix; ignore solver moves
-        let applied = 0
-        let ignored = 0
-        for (let i = 0; i < result.moves.length; i++) {
-          const moveData = result.moves[i]
-          if (!moveData) continue
-          const isFix = moveData.move?.action === 'fix-error'
-          if (!isFix) { ignored++; continue }
-          
-          // Convert candidates: WASM returns number[][], need Set<number>[] for handleApplyMove
-          const candidateArrays = moveData.candidates || []
-          const newCandidates = candidateArrays.map(arr => new Set(arr || []))
-          
-          // Apply only the fix move
-          handleApplyMove(moveData.board, newCandidates, moveData.move, applied + 1)
-          applied++
-          
-          // Brief pause so the user can see removals
-          await new Promise(resolve => setTimeout(resolve, 500))
+        // Play all WASM moves (both fix-error and solve moves) in sequence as a single autosolver replay session
+        if (result.moves && result.moves.length > 0) {
+          for (let i = 0; i < result.moves.length; i++) {
+            const moveData = result.moves[i]
+            if (!moveData || !moveData.move) continue
+            // Convert candidates: WASM returns number[][], need Set<number>[] for handleApplyMove
+            const candidateArrays = moveData.candidates || []
+            const newCandidates = candidateArrays.map(arr => new Set(arr || []))
+            // Apply the move (removal or solver step)
+            handleApplyMove(moveData.board, newCandidates, moveData.move, i + 1)
+            await new Promise(resolve => setTimeout(resolve, 500))
+          }
+          // No need to separately restart autosolver: all moves are already applied and logged in a replayable session
         }
-        try { console.warn(`[Check & Fix] Applied fix moves: ${applied}, ignored non-fix moves: ${ignored}`) } catch {}
-        if (ignored > 0) {
-          try { console.debug('[Check & Fix] Ignored non-fix moves to prevent unintended auto-solve') } catch {}
-        }
-        if (applied > 0) {
-          const startPaused = getAutoSolveSpeed() === 'step'
-          try { console.debug('[Check & Fix] Restarting solver after fixes', { startPaused }) } catch {}
-          await autoSolve.restartAutoSolve(startPaused)
-        }
+
       } else {
         console.warn('Check & Fix: no changes needed')
       }
