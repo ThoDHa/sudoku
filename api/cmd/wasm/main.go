@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"syscall/js"
 
 	"sudoku-api/internal/core"
@@ -433,7 +434,7 @@ func createBoard(this js.Value, args []js.Value) interface{} {
 
 	givens := jsArrayToIntSlice(args[0])
 	if len(givens) != constants.TotalCells {
-		return errorToJS("givens must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("givens must have %d elements", constants.TotalCells))
 	}
 
 	board := human.NewBoard(givens)
@@ -453,7 +454,7 @@ func createBoardWithCandidates(this js.Value, args []js.Value) interface{} {
 
 	cells := jsArrayToIntSlice(args[0])
 	if len(cells) != constants.TotalCells {
-		return errorToJS("cells must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("cells must have %d elements", constants.TotalCells))
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
@@ -461,7 +462,7 @@ func createBoardWithCandidates(this js.Value, args []js.Value) interface{} {
 	_ = candidates // Suppress unused variable warning
 	givens := jsArrayToIntSlice(args[2])
 	if len(givens) != constants.TotalCells {
-		return errorToJS("givens must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("givens must have %d elements", constants.TotalCells))
 	}
 
 	// Call the internal solver with maxMoves=1
@@ -503,7 +504,7 @@ func solveWithSteps(this js.Value, args []js.Value) interface{} {
 
 	givens := jsArrayToIntSlice(args[0])
 	if len(givens) != constants.TotalCells {
-		return errorToJS("givens must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("givens must have %d elements", constants.TotalCells))
 	}
 
 	maxSteps := 2000
@@ -532,7 +533,7 @@ func analyzePuzzle(this js.Value, args []js.Value) interface{} {
 
 	givens := jsArrayToIntSlice(args[0])
 	if len(givens) != constants.TotalCells {
-		return errorToJS("givens must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("givens must have %d elements", constants.TotalCells))
 	}
 
 	difficulty, techniques, status := solver.AnalyzePuzzleDifficulty(givens)
@@ -686,13 +687,13 @@ func solveAll(this js.Value, args []js.Value) interface{} {
 
 	cells := jsArrayToIntSlice(args[0])
 	if len(cells) != constants.TotalCells {
-		return errorToJS("cells must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("cells must have %d elements", constants.TotalCells))
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
 	givens := jsArrayToIntSlice(args[2])
 	if len(givens) != constants.TotalCells {
-		return errorToJS("givens must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("givens must have %d elements", constants.TotalCells))
 	}
 
 	// Call internal implementation with default maxMoves
@@ -1348,7 +1349,7 @@ func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 
 	givens := jsArrayToIntSlice(args[0])
 	if len(givens) != constants.TotalCells {
-		return validationResultToJS(false, "givens must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("givens must have %d elements", constants.TotalCells))
 	}
 
 	// Count givens
@@ -1397,11 +1398,11 @@ func validateBoard(this js.Value, args []js.Value) interface{} {
 	solution := jsArrayToIntSlice(args[1])
 
 	if len(board) != constants.TotalCells {
-		return validationResultToJS(false, "board must have %d elements", constants.TotalCells")
+		return validationResultToJS(false, fmt.Sprintf("board must have %d elements", constants.TotalCells))
 	}
 
 	if len(solution) != constants.TotalCells {
-		return validationResultToJS(false, "solution must have %d elements", constants.TotalCells")
+		return validationResultToJS(false, fmt.Sprintf("solution must have %d elements", constants.TotalCells))
 	}
 
 	// Find incorrect cells (where user entry doesn't match solution)
@@ -1505,13 +1506,13 @@ func findNextMove(this js.Value, args []js.Value) interface{} {
 
 	cells := jsArrayToIntSlice(args[0])
 	if len(cells) != constants.TotalCells {
-		return errorToJS("cells must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("cells must have %d elements", constants.TotalCells))
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
 	givens := jsArrayToIntSlice(args[2])
 	if len(givens) != constants.TotalCells {
-		return errorToJS("givens must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("givens must have %d elements", constants.TotalCells))
 	}
 
 	// Call internal implementation with maxMoves=1 for single move
@@ -1557,19 +1558,19 @@ func checkAndFixWithSolution(this js.Value, args []js.Value) interface{} {
 
 	cells := jsArrayToIntSlice(args[0])
 	if len(cells) != constants.TotalCells {
-		return errorToJS("cells must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("cells must have %d elements", constants.TotalCells))
 	}
 
 	candidates := jsArrayTo2DIntSlice(args[1])
 	_ = candidates // Accept for API consistency but not needed for solution comparison
 	givens := jsArrayToIntSlice(args[2])
 	if len(givens) != constants.TotalCells {
-		return errorToJS("givens must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("givens must have %d elements", constants.TotalCells))
 	}
 
 	solution := jsArrayToIntSlice(args[3])
 	if len(solution) != constants.TotalCells {
-		return errorToJS("solution must have %d elements", constants.TotalCells")
+		return errorToJS(fmt.Sprintf("solution must have %d elements", constants.TotalCells))
 	}
 
 	// Create a copy of the current board to modify
@@ -1616,6 +1617,7 @@ func checkAndFixWithSolution(this js.Value, args []js.Value) interface{} {
 	// If we made fixes, recalculate candidates for the corrected board
 	if len(fixedCells) > 0 {
 		board := human.NewBoard(correctedBoard)
+		board.InitCandidates() // <-- Ensures all candidates are freshly regenerated after fixes
 		for i := range fixedCells {
 			fixedCells[i].Candidates = board.GetCandidates()
 		}

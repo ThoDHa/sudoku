@@ -1232,6 +1232,8 @@ if (value === 0) {
 
   // Check & Fix handler - compares current board vs solution, removes mismatches, continues solving
   const handleCheckAndFix = useCallback(async () => {
+    // DEBUG: Log the result.moves list from WASM
+    console.log('Check & Fix invoked');
     if (!solution || solution.length !== 81) {
       console.error('Cannot check and fix: solution not available')
       return
@@ -1250,22 +1252,14 @@ if (value === 0) {
 
       // Call WASM to compare and fix
       const result = await checkAndFixWithSolution(currentBoard, currentCandidates, givens, solution)
+        if (result && result.moves) {
+          console.log('Check & Fix moves:', result.moves.map((m, idx) => ({idx, move: m && m.move, board: m && m.board})));
+        }
       
       if (result.moves && result.moves.length > 0) {
-        // Play all WASM moves (both fix-error and solve moves) in sequence as a single autosolver replay session
-        if (result.moves && result.moves.length > 0) {
-          for (let i = 0; i < result.moves.length; i++) {
-            const moveData = result.moves[i]
-            if (!moveData || !moveData.move) continue
-            // Convert candidates: WASM returns number[][], need Set<number>[] for handleApplyMove
-            const candidateArrays = moveData.candidates || []
-            const newCandidates = candidateArrays.map(arr => new Set(arr || []))
-            // Apply the move (removal or solver step)
-            handleApplyMove(moveData.board, newCandidates, moveData.move, i + 1)
-            await new Promise(resolve => setTimeout(resolve, 500))
-          }
-          // No need to separately restart autosolver: all moves are already applied and logged in a replayable session
-        }
+        // Use new autosolver infrastructure to animate the replayed moves step-by-step, with UX feedback.
+        autoSolve.playMoves(result.moves, false)
+      
 
       } else {
         console.warn('Check & Fix: no changes needed')

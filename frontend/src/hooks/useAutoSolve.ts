@@ -52,6 +52,8 @@ interface UseAutoSolveReturn {
   restartAutoSolve: (startPaused?: boolean) => Promise<void>
   /** Solve from givens only (show solution) */
   solveFromGivens: () => Promise<void>
+  /** Play a custom provided move sequence (Check & Fix, etc) with the full autosolver UX */
+  playMoves: (moves: MoveResult[], startPaused?: boolean) => void
   /** Step backward one move (rewind) */
   stepBack: () => void
   /** Step forward one move (fast-forward) */
@@ -759,6 +761,74 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     }
   }, [isAutoSolving, getBoard, getCandidates, getGivens, applyMove, isComplete, onError, onUnpinpointableError, onStatus, onErrorFixed, stopAutoSolve, scheduleNextMove])
 
+    // Play a custom move sequence (for Check & Fix, etc)
+  const playMoves = useCallback((moves: MoveResult[], startPaused = false) => {
+    let steps = 0; // Added: debug safeguard
+    setIsAutoSolving(true)
+    autoSolveRef.current = true
+
+    if (startPaused) {
+      manualPausedRef.current = true
+      setManualPaused(true)
+    } else {
+      manualPausedRef.current = false
+      setManualPaused(false)
+    }
+
+    stateHistoryRef.current = [{
+      board: moves[0]?.board || getBoard(),
+      candidates: moves[0]?.candidates?.map(arr => arr ? [...arr] : []) || getCandidates().map(set => Array.from(set)),
+      move: null,
+    }]
+    allMovesRef.current = moves
+    movesQueueRef.current = [...moves]
+    setTotalMoves(moves.length)
+    setCurrentIndex(0)
+    currentIndexRef.current = 0
+
+    const playNextMove = async () => {
+      if (!autoSolveRef.current) {
+        stopAutoSolve()
+        return
+      }
+      if (pausedRef.current) {
+        return
+      }
+      if (movesQueueRef.current.length === 0) {
+        stopAutoSolve()
+        return
+      }
+      const moveResult = movesQueueRef.current.shift()
+      if (!moveResult) return
+      const newIndex = allMovesRef.current.length - movesQueueRef.current.length
+      currentIndexRef.current = newIndex
+      setCurrentIndex(newIndex)
+      // Generalized move application code below (mimics normal autosolver replay)
+      const newCandidates = moveResult.candidates
+        ? moveResult.candidates.map((cellCands: number[] | null) => new Set<number>(cellCands || []))
+        : getCandidates()
+      // ADDED DEBUG LOGGING FOR EACH MOVE APPLIED
+      console.log(`[AutoSolve:playMoves] Step ${steps}/${moves.length} Action: ${moveResult.move && moveResult.move.action} | Index: ${newIndex}`)
+      applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
+      stateHistoryRef.current.push({
+        board: [...moveResult.board],
+        candidates: moveResult.candidates
+          ? moveResult.candidates.map(arr => arr ? [...arr] : [])
+          : getCandidates().map(set => Array.from(set)),
+        move: moveResult.move,
+      })
+      if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
+        scheduleNextMove(playNextMove, stepDelayRef.current)
+      } else {
+        stopAutoSolve()
+      }
+    }
+    playNextMoveRef.current = playNextMove
+    if (!startPaused) {
+      playNextMove()
+    }
+  }, [getBoard, getCandidates, applyMove, stopAutoSolve, scheduleNextMove])
+
   // Solve from givens only - used when user clicks "Show Solution"
   const solveFromGivens = useCallback(async () => {
     if (isAutoSolving) return
@@ -870,6 +940,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     togglePause,
     restartAutoSolve,
     solveFromGivens,
+    playMoves, // <- ADDED so Game.tsx can drive UI/UX animated playback for custom move sequences (Check & Fix)
     stepBack,
     stepForward,
     canStepBack: isAutoSolving && currentIndex > 0,
@@ -879,7 +950,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     lastCompletedSteps,
   }), [
     isAutoSolving, isPaused, isFetching, startAutoSolve, stopAutoSolve,
-    togglePause, restartAutoSolve, solveFromGivens, stepBack, stepForward,
+    togglePause, restartAutoSolve, solveFromGivens, playMoves, stepBack, stepForward,
     currentIndex, totalMoves, lastCompletedSteps
   ])
 }
