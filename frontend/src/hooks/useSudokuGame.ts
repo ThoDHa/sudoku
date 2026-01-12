@@ -732,7 +732,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     
     // Use diff-based redo if available, fallback to legacy approach
     if (nextMove.stateDiff) {
-      try { console.debug('[Replay] Using stateDiff path', { idx: currentHistoryIndex + 1 }) } catch {}
+      try { console.debug('[Replay] Using stateDiff path', { idx: currentHistoryIndex + 1 }) } catch {/* no-op */}
       const result = applyStateDiff(currentBoard, currentCandidates, nextMove.stateDiff)
       newBoard = result.board
       newCandidates = result.candidates
@@ -740,7 +740,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       updateCandidates(newCandidates)
     } else {
       // Legacy fallback - replay the move
-      try { console.debug('[Replay] Using legacy path', { idx: currentHistoryIndex + 1, action: nextMove.action }) } catch {}
+      try { console.debug('[Replay] Using legacy path', { idx: currentHistoryIndex + 1, action: nextMove.action }) } catch {/* no-op */}
       // Note: replayMove updates board/candidates internally
       replayMove(nextMove)
       // We need to get the new values from refs after replayMove updates them

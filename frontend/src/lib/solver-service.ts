@@ -380,7 +380,7 @@ export async function checkAndFixWithSolution(
       movesCount: Array.isArray(result?.moves) ? result.moves.length : 0,
       hasFinalBoard: !!result?.finalBoard,
     })
-  } catch {}
+  } catch { /* no-op */ }
   return {
     moves: result.moves.map((m) => ({
       board: m.board,

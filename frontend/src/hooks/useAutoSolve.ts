@@ -763,7 +763,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
     // Play a custom move sequence (for Check & Fix, etc)
   const playMoves = useCallback((moves: MoveResult[], startPaused = false) => {
-    let steps = 0; // Added: debug safeguard
+    const steps = 0; // Added: debug safeguard
     setIsAutoSolving(true)
     autoSolveRef.current = true
 
