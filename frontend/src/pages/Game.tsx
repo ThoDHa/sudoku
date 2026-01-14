@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { commitCellAction } from '../lib/commitCellAction'
 import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import Board from '../components/Board'
 import Controls from '../components/Controls'
@@ -674,12 +675,14 @@ function GameContent() {
 
   // Clear all user entries (keeps timer running)
   const handleClearAll = useCallback(() => {
-    game.clearAll()
     clearSavedGameState()
-    clearAllAndDeselect()
-    setNotesMode(false)
-    setAutoSolveStepsUsed(0)
-    setAutoSolveErrorsFixed(0)
+    commitCellAction('clearAll', {
+      game,
+      clearAllAndDeselect,
+      setNotesMode,
+      setAutoSolveStepsUsed,
+      setAutoSolveErrorsFixed
+    });
   }, [game, clearSavedGameState, clearAllAndDeselect])
 
   // Reset all game state (board, candidates, history, and tracking variables)
@@ -828,8 +831,7 @@ function GameContent() {
       if (move.action === 'contradiction' || move.action === 'error') {
         const currentGame = gameRef.current
         if (currentGame?.canUndo) {
-          currentGame.undo()
-          clearMoveHighlight()
+          commitCellAction('undo', { game: currentGame, clearMoveHighlight });
           setValidationMessage({ 
             type: 'error', 
             message: move.explanation || 'Contradiction found - undoing last move'
@@ -1034,15 +1036,21 @@ function GameContent() {
        return
      }
 
-       if (currentEraseMode && currentGame.board[idx] !== 0) {
-        currentGame.eraseCell(idx)
-        clearAfterErase()
-        // Reset last hint tracking so next hint counts as new
-        lastTechniqueHintRef.current = null
-        lastRegularHintRef.current = null
-        // Keep erase mode active so user can erase multiple cells
-        return
-      }
+if (currentEraseMode && currentGame.board[idx] !== 0) {
+         commitCellAction('erase', {
+           idx,
+           game: currentGame,
+           clearAfterErase,
+           setEraseMode,
+           setAutoSolveStepsUsed,
+           setAutoSolveErrorsFixed
+         });
+         // Reset last hint tracking so next hint counts as new
+         lastTechniqueHintRef.current = null;
+         lastRegularHintRef.current = null;
+         // Keep erase mode active so user can erase multiple cells
+         return;
+       }
 
         if (currentHighlightedDigit !== null) {
         if (currentNotesMode) {
@@ -1059,12 +1067,18 @@ function GameContent() {
           }
         } else {
           // If cell already contains the highlighted digit, erase it.
-          if (currentGame.board[idx] === currentHighlightedDigit) {
-            currentGame.eraseCell(idx)
-            clearAfterErase()
-            lastTechniqueHintRef.current = null
-            lastRegularHintRef.current = null
-          } else {
+if (currentGame.board[idx] === currentHighlightedDigit) {
+             commitCellAction('erase', {
+               idx,
+               game: currentGame,
+               clearAfterErase,
+               setEraseMode,
+               setAutoSolveStepsUsed,
+               setAutoSolveErrorsFixed
+             });
+             lastTechniqueHintRef.current = null;
+             lastRegularHintRef.current = null;
+           } else {
             // For digit placement, clear move highlights but preserve digit highlight for multi-fill
             currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
             clearAfterDigitPlacement()
@@ -1108,14 +1122,19 @@ function GameContent() {
       }
 
       // If cell already has this digit, erase it
-      if (currentGame.board[currentSelectedCell] === digit) {
-        currentGame.eraseCell(currentSelectedCell)
-        clearAfterDigitToggle()
-        // Reset last hint tracking so next hint counts as new
-        lastTechniqueHintRef.current = null
-        lastRegularHintRef.current = null
-        return
-      }
+if (currentGame.board[currentSelectedCell] === digit) {
+            commitCellAction('erase', {
+              idx: currentSelectedCell,
+              game: currentGame,
+              clearAfterErase: clearAfterDigitToggle,
+              setEraseMode,
+              setAutoSolveStepsUsed,
+              setAutoSolveErrorsFixed
+            })
+            lastTechniqueHintRef.current = null
+            lastRegularHintRef.current = null
+            return
+          }
 
       currentGame.setCell(currentSelectedCell, digit, currentNotesMode)
 
@@ -1141,12 +1160,17 @@ function GameContent() {
       resumeFromExtendedPause()
       if (game.isGivenCell(idx)) return
 if (value === 0) {
-        game.eraseCell(idx)
-        clearAfterErase()
-        // Reset last hint tracking so next hint counts as new
-        lastTechniqueHintRef.current = null
-        lastRegularHintRef.current = null
-        } else {
+         commitCellAction('erase', {
+           idx,
+           game,
+           clearAfterErase,
+           setEraseMode,
+           setAutoSolveStepsUsed,
+           setAutoSolveErrorsFixed
+         });
+         lastTechniqueHintRef.current = null;
+         lastRegularHintRef.current = null;
+       } else {
           if (notesMode) {
             game.setCell(idx, value, notesMode)
             
@@ -1182,10 +1206,11 @@ if (value === 0) {
     if (currentAutoSolve?.isAutoSolving) {
       currentAutoSolve.stepBack()
     } else if (currentGame) {
-      currentGame.undo()
-      // Clear selection and move highlights, but preserve highlightedDigit for multi-fill mode
-      deselectCell()
-      clearMoveHighlight()
+      commitCellAction('undo', {
+        game: currentGame,
+        deselectCell,
+        clearMoveHighlight
+      });
     }
   }, [deselectCell, clearMoveHighlight])
 
@@ -1196,9 +1221,10 @@ if (value === 0) {
     if (currentAutoSolve?.isAutoSolving) {
       currentAutoSolve.stepForward()
     } else if (currentGame) {
-      currentGame.redo()
-      // Clear selection and highlights after redo
-      clearAllAndDeselect()
+      commitCellAction('redo', {
+        game: currentGame,
+        clearAllAndDeselect
+      });
     }
   }, [clearAllAndDeselect])
 

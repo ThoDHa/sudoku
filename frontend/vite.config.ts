@@ -225,7 +225,7 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     fileParallelism: false,
-    setupFiles: ['allure-vitest/setup', './src/test-setup.ts'],
+    setupFiles: ['allure-vitest/setup', './test/test-setup.ts'],
     reporters: [
       'default',
       ['allure-vitest/reporter', { 
