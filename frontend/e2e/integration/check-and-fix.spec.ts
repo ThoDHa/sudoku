@@ -8,9 +8,21 @@ import { test, expect } from '../fixtures';
  */
 
 test.describe('@integration Check & Fix', () => {
+  test.beforeEach(async ({ page }) => {
+    // Guarantee onboardingComplete state in both localStorage and React
+    await page.addInitScript(() => {
+      window.localStorage.setItem('onboardingComplete', 'true');
+    });
+  });
   test('applies only fix moves and does not auto-complete', async ({ page, skipOnboarding }) => {
     // Start on a known practice puzzle
     await page.goto('/?d=easy');
+
+    // If onboarding modal exists, close it with real user flow
+    const onboardingCloseButton = page.locator('button', { hasText: /Close|Got it|Continue|Skip/i });
+    if (await onboardingCloseButton.isVisible().catch(() => false)) {
+      await onboardingCloseButton.click();
+    }
 
     // Wait for board
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });

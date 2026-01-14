@@ -1623,18 +1623,24 @@ func checkAndFixWithSolution(this js.Value, args []js.Value) interface{} {
 		}
 	}
 
-	// Now continue solving from the corrected state using normal techniques
-	result := solveAllInternal(correctedBoard, nil, givens, 2000)
+	// Do NOT continue solving after fixing errors. Only apply and return fix-error moves.
+	// This ensures 'Check & Fix' only corrects user entries and does not auto-solve the puzzle.
 
-	// Prepend the fix moves to the solution moves
-	allMoves := append(fixedCells, result.moves...)
+	finalBoard := correctedBoard
+	finalCandidates := [][]int{}
+	if len(fixedCells) > 0 {
+		board := human.NewBoard(correctedBoard)
+		board.InitCandidates()
+		finalCandidates = board.GetCandidates()
+	} else {
+		finalCandidates = nil
+	}
 
-	// Build result object
 	obj := js.Global().Get("Object").New()
-	obj.Set("moves", moveResultSliceToJS(allMoves))
-	obj.Set("solved", result.solved)
-	obj.Set("finalBoard", intSliceToJSArray(result.finalBoard))
-	obj.Set("finalCandidates", int2DSliceToJSArray(result.finalCandidates))
+	obj.Set("moves", moveResultSliceToJS(fixedCells))
+	obj.Set("solved", false) // Puzzle may not be solved after fixes.
+	obj.Set("finalBoard", intSliceToJSArray(finalBoard))
+	obj.Set("finalCandidates", int2DSliceToJSArray(finalCandidates))
 	return obj
 }
 
