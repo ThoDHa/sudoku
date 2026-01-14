@@ -312,6 +312,42 @@ make test-frontend
 make test-e2e
 ```
 
+---
+
+### 🐳 Docker-Based Cross-Platform Frontend Testing
+
+**Why use it?**  
+If Playwright E2E or unit/integration tests ever fail locally due to missing browser/system deps—or you want to guarantee your tests run exactly as in CI—use the new Docker-based Makefile scripts!
+
+With `frontend/Dockerfile.test`, all required browsers, system libraries, and config are bundled. The recipes below run your tests identically across Mac, Linux, Windows, and CI, no manual setup required.
+
+**Makefile Targets:**  
+- `make test-docker` — Run **all** frontend tests (unit, integration, and E2E Playwright) in Docker  
+- `make test-e2e-docker` — Playwright E2E tests only in Docker  
+- `make test-unit-docker` — Just the unit/integration Vitest suite in Docker
+
+**Usage:**
+```bash
+# All frontend tests in Docker (fast, universal, zero host config)
+make test-docker
+
+# Only Playwright E2E tests (Docker)
+make test-e2e-docker
+
+# Only unit/integration tests (Docker + Vitest)
+make test-unit-docker
+```
+
+**Troubleshooting / FAQ**
+- If you get any system or browser errors running Playwright or Vitest locally, try the Docker recipes above first.
+- These targets mount/copy all project code and test results/output, no files are lost.
+- You still need Docker installed.  
+- Works everywhere (M1/M2 Macs, Windows, Linux, CI).
+
+*The container will build (if needed) and run tests. Results print directly to your current terminal.*
+
+---
+
 ### Test Reporting with Allure
 
 Create beautiful HTML test reports locally:

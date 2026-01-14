@@ -1,6 +1,25 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
+# Dockerized Playwright/Vitest for full local/CI runner
+.PHONY: test-docker test-e2e-docker test-unit-docker
+
+test-docker:
+	@echo "Running ALL frontend tests (unit & E2E) in Docker via Dockerfile.test..."
+	@docker build -t sudoku-frontend-test -f frontend/Dockerfile.test frontend
+	@docker run --rm sudoku-frontend-test
+
+test-e2e-docker:
+	@echo "Running Playwright E2E frontend tests in Docker via Dockerfile.test..."
+	@docker build -t sudoku-frontend-test -f frontend/Dockerfile.test frontend
+	@docker run --rm sudoku-frontend-test npm run test:e2e
+
+test-unit-docker:
+	@echo "Running unit/integration tests in Docker via Dockerfile.test..."
+	@docker build -t sudoku-frontend-test -f frontend/Dockerfile.test frontend
+	@docker run --rm sudoku-frontend-test npm run test:unit
+
+
 .PHONY: test test-e2e test-go test-frontend lint lint-go lint-frontend help generate-icons dev prod test-allure allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
