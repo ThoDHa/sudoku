@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures';
+import { selectCell } from '../utils/selectCell';
 
 /**
  * Persistence Integration Tests
@@ -163,6 +164,8 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
     expect(parsed.board[cellIndex]).toBe(9);
 
     // Clear the digit
+    // Use shared helper to select and focus the cell before sending keys
+    const focusedCell = await selectCell(page, row, col);
     await page.keyboard.press('Backspace');
     await page.waitForTimeout(1500);
 
