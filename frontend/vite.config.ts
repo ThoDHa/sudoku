@@ -17,12 +17,17 @@ const getCommitHash = () => {
   }
 }
 
-// Conditional PWA plugin: skip when SKIP_PWA=1 to avoid writing service worker in restricted environments
-const pwaPlugins = process.env.SKIP_PWA === '1' ? [] : [VitePWA({
+  // PWA plugin: enabled in dev only when explicitly requested via env
+const pwaPlugins = [VitePWA({
   // Use 'prompt' instead of 'autoUpdate' to prevent background update checks
   // This reduces battery usage by not waking the app to check for updates
   // Users will be prompted to update when a new version is available
   registerType: 'prompt',
+  // Enable dev service worker only when ENABLE_PWA_IN_DEV is truthy
+  devOptions: {
+    enabled: !!process.env.ENABLE_PWA_IN_DEV,
+    type: 'module'
+  },
   includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
   manifest: {
     name: 'Sudoku',

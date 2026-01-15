@@ -227,20 +227,21 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
     )
   }
 
-  return (
-    <div
-      ref={cellRef}
-      role="gridcell"
-      tabIndex={isSelected ? 0 : -1}
-      aria-label={ariaLabel}
-      className={className}
-      onClick={() => onCellClick(idx)}
-      onKeyDown={(e) => onKeyDown(e, idx)}
-      style={isGiven ? { cursor: 'default' } : undefined}
-    >
-      {content}
-    </div>
-  )
+    return (
+      <div
+        ref={cellRef}
+        role="gridcell"
+        tabIndex={isSelected ? 0 : -1}
+        aria-label={ariaLabel}
+        className={className}
+        onClick={() => onCellClick(idx)}
+        onKeyDown={(e) => onKeyDown(e, idx)}
+        style={isGiven ? { cursor: 'default' } : undefined}
+      >
+        {content}
+      </div>
+    )
+
 }, (prevProps, nextProps) => {
   // Custom comparison - only re-render if this cell's data actually changed
   // This is critical for performance - we compare the CellData object deeply
@@ -404,12 +405,14 @@ const Board = memo(function Board({
         }
         break
       case 'Backspace':
-      case 'Delete':
+      case 'Delete': {
+
         e.preventDefault()
         if (!isGiven && onCellChange) {
           onCellChange(idx, 0)
         }
         break
+      }
     }
   }, [initialBoard, findNextNonGivenCell, onCellClick, onCellChange])
 

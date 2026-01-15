@@ -79,12 +79,16 @@ export default defineConfig({
     },
   ],
   
-  // Web server configuration (optional)
-  // Uncomment to auto-start the dev server before tests
+  // Web server configuration: start the dev server before tests so the PWA is available in dev
+  // Note: vite.config.ts enables the PWA dev service worker when npm lifecycle event is 'test'
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
+    url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
+    // Ensure the dev server enables the PWA when started by Playwright
+    env: {
+      ENABLE_PWA_IN_DEV: '1'
+    }
   },
 });

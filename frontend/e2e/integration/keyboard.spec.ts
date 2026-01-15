@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures';
+import { selectCell } from '../utils/selectCell';
 
 /**
  * Keyboard Navigation E2E Tests
@@ -354,7 +355,8 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
     await expectCellValue(page, pos.row, pos.col, 4);
 
     // Clear with Backspace
-    await cell.focus();
+    // Ensure the cell is focused/selected via shared helper before sending keys
+    await selectCell(page, pos.row, pos.col);
     await page.keyboard.press('Backspace');
     await page.waitForTimeout(100);
 
@@ -374,7 +376,8 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
     await expectCellValue(page, pos.row, pos.col, 9);
 
     // Clear with Delete
-    await cell.focus();
+    // Ensure the cell is focused/selected via shared helper before sending keys
+    await selectCell(page, pos.row, pos.col);
     await page.keyboard.press('Delete');
     await page.waitForTimeout(100);
 
