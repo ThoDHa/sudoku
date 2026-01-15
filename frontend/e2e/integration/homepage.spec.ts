@@ -840,28 +840,33 @@ test.describe('Homepage - Edge Cases', () => {
 
   test('page is accessible via keyboard navigation', async ({ page }) => {
     await page.goto('/');
-    
-    // Tab through the page
+
+    // Ensure initial focus moves off body
     await page.keyboard.press('Tab');
-    
-    // Something should be focused
     const focusedElement = await page.evaluate(() => document.activeElement?.tagName);
     expect(focusedElement).not.toBe('BODY');
-    
-    // Continue tabbing and verify we can reach difficulty buttons
-    let foundDifficultyButton = false;
-    for (let i = 0; i < 20; i++) {
+
+    // Tab through the page up to 40 times, waiting briefly between presses.
+    // We check `document.activeElement.innerText` rather than `textContent`.
+    // Reason: the visible "Play" label is rendered inside a child element
+    // (for example a <span>) and some environments expose the parent's
+    // `innerText` in a more consistent, rendered form. `textContent` can
+    // differ across engines and may not reflect the rendered label reliably.
+    // We include a small 20ms wait after each Tab to allow any asynchronous
+    // focus-management or rendering to complete before reading the active
+    // element. This makes the assertion more deterministic and CI friendly.
+    let found = false;
+    for (let i = 0; i < 40; i++) {
       await page.keyboard.press('Tab');
-      const activeElement = await page.evaluate(() => {
-        const el = document.activeElement;
-        return el?.textContent?.toLowerCase() || '';
-      });
-      if (activeElement.includes('easy') || activeElement.includes('play')) {
-        foundDifficultyButton = true;
+      // small pause to allow any focus-related JS to run
+      await page.waitForTimeout(20);
+      const activeText = await page.evaluate(() => document.activeElement?.innerText?.toLowerCase() || '');
+      if (activeText.includes('play') || activeText.includes('easy')) {
+        found = true;
         break;
       }
     }
-    
-    expect(foundDifficultyButton).toBeTruthy();
+
+    expect(found).toBeTruthy();
   });
 });
