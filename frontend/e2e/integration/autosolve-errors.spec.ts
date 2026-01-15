@@ -86,7 +86,8 @@ test.describe('@integration Autosolve Error Handling', () => {
   });
 
   test('autosolve handles invalid cell in row gracefully', async ({ page }) => {
-    await page.goto('/error-row-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Find an empty cell in row 5
@@ -115,7 +116,8 @@ test.describe('@integration Autosolve Error Handling', () => {
   });
 
   test('autosolve handles invalid cell in column gracefully', async ({ page }) => {
-    await page.goto('/error-col-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Find an empty cell
@@ -138,7 +140,8 @@ test.describe('@integration Autosolve Error Handling', () => {
   });
 
   test('autosolve handles duplicate in row gracefully', async ({ page }) => {
-    await page.goto('/dup-row-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Find two empty cells in the same row - capture positions BEFORE modifying
@@ -182,7 +185,8 @@ test.describe('@integration Autosolve Error Handling', () => {
   });
 
   test('autosolve handles duplicate in column gracefully', async ({ page }) => {
-    await page.goto('/dup-col-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Try different columns to find one with 2+ empty cells
@@ -225,7 +229,8 @@ test.describe('@integration Autosolve Error Handling', () => {
   });
 
   test('hint button remains functional after error state', async ({ page }) => {
-    await page.goto('/error-recovery-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     const hintButton = page.getByRole('button', { name: /Hint/i });
@@ -251,7 +256,8 @@ test.describe('@integration Autosolve Error Recovery', () => {
   });
 
   test('undo can fix invalid state before continuing', async ({ page }) => {
-    await page.goto('/undo-fix-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Find an empty cell
@@ -277,7 +283,8 @@ test.describe('@integration Autosolve Error Recovery', () => {
   });
 
   test('clear cell can fix invalid state', async ({ page }) => {
-    await page.goto('/clear-fix-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Find an empty cell
@@ -311,7 +318,8 @@ test.describe('@integration Autosolve Error - Mobile', () => {
   });
 
   test('autosolve handles errors on mobile viewport', async ({ page }) => {
-    await page.goto('/mobile-error-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Use a few hints on mobile

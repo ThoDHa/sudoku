@@ -351,7 +351,7 @@ test.describe('@integration Timer - Persistence', () => {
       localStorage.setItem('sudoku_game_timer-continue-test', JSON.stringify(savedState));
     });
 
-    await page.goto('/timer-continue-test?d=easy');
+    await page.goto('/?d=easy&seed=timer-continue-test');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Wait for the timer to be restored from saved state
@@ -455,7 +455,7 @@ test.describe('@integration Timer - Edge Cases', () => {
       localStorage.setItem('sudoku_game_timer-long-test', JSON.stringify(savedState));
     });
 
-    await page.goto('/timer-long-test?d=easy');
+    await page.goto('/?d=easy&seed=timer-long-test');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     const timer = getTimerLocator(page);

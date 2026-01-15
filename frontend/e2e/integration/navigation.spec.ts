@@ -108,7 +108,8 @@ test.describe('@smoke Game Page Elements', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/smoke-test-seed?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.game-background', { timeout: 15000 });
   });
 
@@ -164,7 +165,8 @@ test.describe('@smoke Responsive Design', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/mobile-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.game-background', { timeout: 15000 });
     await expect(page.locator('.sudoku-board')).toBeVisible();
   });
@@ -180,7 +182,8 @@ test.describe('@smoke In-Game Menu Navigation', () => {
 
   test('New Game from menu shows single confirmation when in-progress game exists', async ({ page }) => {
     // Start a game and make some progress
-    await page.goto('/menu-test-seed?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     // Make a move to create an in-progress game
@@ -225,7 +228,8 @@ test.describe('@smoke In-Game Menu Navigation', () => {
 
   test('New Game from menu cancels correctly', async ({ page }) => {
     // Start a game and make some progress
-    await page.goto('/menu-cancel-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     // Make a move
@@ -235,6 +239,9 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     
     // Wait for auto-save
     await page.waitForTimeout(1000);
+
+    // Capture initial URL so we can assert it remains after cancel
+    const initialGameUrl = page.url();
     
     // Open menu and try New Game - wait for button to be visible first
     const menuButton = page.locator('header button[title="Menu"]');
@@ -254,7 +261,8 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     
     // Modal closes, still on original game
     await expect(page.locator('text=Start New Game?')).not.toBeVisible();
-    expect(page.url()).toContain('menu-cancel-test');
+    // Ensure URL did not change from the original game
+    expect(page.url()).toBe(initialGameUrl);
     expect(page.url()).toContain('d=easy');
   });
 
@@ -263,7 +271,8 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     // starting new game from menu, because Menu already handled the confirmation
     
     // Start a game and make some progress to create an in-progress save
-    await page.goto('/new-game-modal-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     // Make a move to ensure game is saved
@@ -274,8 +283,11 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     // Wait for auto-save
     await page.waitForTimeout(1500);
     
+    // Capture initial URL so we can ensure navigation happened to a new route
+    const initialGameUrl = page.url();
+    
     // Open menu and start a new game WITHOUT in-progress confirmation
-    // (because we have no unsaved progress in the current view)
+    // (because the Menu should handle the confirmation and set skip flag)
     const menuButton = page.locator('header button[title="Menu"]');
     await expect(menuButton).toBeVisible();
     await menuButton.click();
@@ -284,14 +296,20 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     await expect(page.locator('text=Menu')).toBeVisible({ timeout: 10000 });
     await page.locator('button:has-text("New Game")').click();
     
-    // Select different difficulty - this should navigate directly
+    // Select different difficulty - this should open the Menu confirmation
     await page.locator('button:has-text("medium")').click();
     
-    // Should navigate to new game WITHOUT showing "Game in Progress" modal
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
-    expect(page.url()).toContain('d=medium');
+    // Menu should show single confirmation modal; click Start New to proceed
+    await expect(page.locator('text=Start New Game?')).toBeVisible({ timeout: 5000 });
+    await page.locator('button:has-text("Start New")').click();
     
-    // CRITICAL: "Game in Progress" modal should NOT appear
+    // Wait for navigation to complete to a new game route
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
+    const newUrl = page.url();
+    expect(newUrl).not.toBe(initialGameUrl);
+    expect(newUrl).toContain('d=medium');
+    
+    // CRITICAL: "Game in Progress" modal should NOT appear (no duplicate)
     await expect(page.locator('text=Game In Progress')).not.toBeVisible();
     await expect(page.locator('button:has-text("Resume")')).not.toBeVisible();
   });

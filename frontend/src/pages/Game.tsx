@@ -92,10 +92,8 @@ function GameContent() {
   const location = useLocation()
   const navigate = useNavigate()
   
-  // For E2E test routes, generate a practice seed if none provided
-  const isTestRoute = ['/hints-test', '/gameplay-test', '/digit-entry-test', '/clear-test'].includes(location.pathname)
   const difficultyParam = searchParams.get('d')
-  const effectiveSeed = seed || (isTestRoute && difficultyParam ? `practice-test-${difficultyParam}` : undefined)
+  const effectiveSeed = seed || undefined
   
   // Determine if this is an encoded custom puzzle (from /c/:encoded route)
   const isEncodedCustom = location.pathname.startsWith('/c/') && encoded
@@ -1707,9 +1705,8 @@ ${bugReportJson}
             givens: givens,
             solution: puzzleSolution,
           }
-        } else if (effectiveSeed?.startsWith('practice-') && !isTestRoute) {
+        } else if (effectiveSeed?.startsWith('practice-')) {
           // Practice puzzles are stored in localStorage by TechniqueDetailView
-          // Skip this branch for test routes (which use practice-test-* seeds)
           const storedGivens = localStorage.getItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${effectiveSeed}`)
           if (!storedGivens) {
             throw new Error('Practice puzzle not found. Please try again from the technique page.')
@@ -1787,7 +1784,7 @@ ${bugReportJson}
 
     loadPuzzle()
   // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl excluded: adding it would re-fetch puzzle when timer running/paused state changes. We only want to fetch when the actual puzzle params change.
-  }, [effectiveSeed, encoded, isEncodedCustom, difficulty, alreadyCompletedToday, showDifficultyChooser, showOnboarding, clearAllAndDeselect, isTestRoute])
+  }, [effectiveSeed, encoded, isEncodedCustom, difficulty, alreadyCompletedToday, showDifficultyChooser, showOnboarding, clearAllAndDeselect])
 
   // Reset game state when initialBoard changes (new puzzle loaded) and restore saved state if available
   useEffect(() => {

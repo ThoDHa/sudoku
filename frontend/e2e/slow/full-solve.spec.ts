@@ -144,7 +144,8 @@ test.describe('@slow Hint System Stability', () => {
   test.setTimeout(120_000);
 
   test('hint button remains functional during extended use', async ({ page }) => {
-    await page.goto('/victory-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     await waitForWasmReady(page);
     
@@ -176,7 +177,8 @@ test.describe('@slow Hint System Stability', () => {
   });
 
   test('hint button works alongside timer', async ({ page }) => {
-    await page.goto('/timer-stop-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     await waitForWasmReady(page);
     
@@ -213,7 +215,8 @@ test.describe('@slow Hint System Consistency', () => {
   test.setTimeout(60_000);
 
   test('hint button provides consistent visual feedback', async ({ page }) => {
-    await page.goto('/progress-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     await waitForWasmReady(page);
     
@@ -246,7 +249,8 @@ test.describe('@slow Hint System Consistency', () => {
   });
 
   test('hint system handles multiple interactions gracefully', async ({ page }) => {
-    await page.goto('/all-cells-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     await waitForWasmReady(page);
     
@@ -283,7 +287,8 @@ test.describe('@slow Hint System - Mobile Viewport', () => {
 
   test('hint button provides visual guidance on mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/mobile-solve-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     await waitForWasmReady(page);
     

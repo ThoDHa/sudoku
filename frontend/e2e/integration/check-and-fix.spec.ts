@@ -28,7 +28,8 @@ test.describe('@integration Check & Fix', () => {
     });
 
     // Start on a known practice puzzle; some environments ignore the query and show homepage
-    await page.goto('/gameplay-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
 
     // If onboarding modal exists, close it with real user flow
     const onboardingCloseButton = page.locator('button', { hasText: /Close|Got it|Continue|Skip/i });

@@ -447,7 +447,7 @@ async function runDeviceProfiling(
   // === SCENARIO B: WASM LOADED BUT IDLE ===
   console.log('\n📊 Scenario B: WASM Idle');
   const wasmIdleResult = await profileScenario(page, client, 'wasm-idle', deviceName, async () => {
-    await page.goto(`${BASE_URL}/cpu-profile-test?d=easy`, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.goto(`${BASE_URL}/?d=easy&seed=cpu-profile-seed`, { waitUntil: 'networkidle', timeout: 60000 });
     // Wait for the grid to appear (game loaded)
     await page.waitForSelector('[role="grid"]', { timeout: 30000 });
     // Extra wait for WASM to fully initialize

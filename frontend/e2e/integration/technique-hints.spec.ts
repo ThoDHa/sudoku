@@ -65,7 +65,8 @@ test.describe('@integration Technique Hints - Basic Functionality', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/technique-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     
     // Wait for WASM to be ready - critical for hint functionality
@@ -199,7 +200,8 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/technique-disable-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     // Wait for WASM to be ready
     await waitForWasmReady(page);
@@ -375,7 +377,8 @@ test.describe('@integration Technique Hints - Counter', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/technique-counter-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     // Wait for WASM to be ready
     await waitForWasmReady(page);
@@ -438,7 +441,8 @@ test.describe('@integration Technique Hints - Mobile', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/technique-mobile-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     // Wait for WASM to be ready
     await waitForWasmReady(page);
@@ -537,7 +541,8 @@ test.describe('@integration Technique Hints - Edge Cases', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/technique-nearly-done-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     // Wait for WASM to be ready
     await waitForWasmReady(page);
@@ -573,7 +578,8 @@ test.describe('@integration Technique Hints - Edge Cases', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/technique-no-selection-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     // Wait for WASM to be ready
     await waitForWasmReady(page);

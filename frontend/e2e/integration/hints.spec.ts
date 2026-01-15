@@ -28,7 +28,8 @@ test.describe('@integration Hints - Basic Functionality', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/hints-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     // Wait for WASM to be ready
     await waitForWasmReady(page);
@@ -113,7 +114,8 @@ test.describe('@integration Hints - Hint Counter', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/hints-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
   });
 
@@ -193,7 +195,8 @@ test.describe('@integration Hints - Edge Cases', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/hints-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Select an empty cell first (use lower rows to avoid header)
@@ -223,7 +226,8 @@ test.describe('@integration Hints - Edge Cases', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/hints-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Count empty cells before hint
@@ -246,7 +250,8 @@ test.describe('@integration Hints - Edge Cases', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     // Start an easy puzzle that should be mostly solvable quickly
-    await page.goto('/hints-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Use a few hints to get closer to solution
@@ -273,7 +278,8 @@ test.describe('@integration Hints - Mobile', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/hints-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
   });
 
