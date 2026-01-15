@@ -138,9 +138,31 @@ async function initializeWasm(): Promise<void> {
   
   initPromise = (async () => {
     try {
-      // Load wasm_exec.js using importScripts (worker-compatible)
-      // In production, this will be at the root. In dev, it's served from public/
+  // Load wasm_exec.js for Go runtime. Prefer importScripts if available (classic worker).
+  // For module workers, importScripts is not available, so fetch and evaluate the script instead.
+  // Try to use importScripts if it works, but guard against environments
+  // where importScripts exists but is disallowed (module workers) by catching errors.
+  let loadedWasmExec = false
+  if (typeof importScripts === 'function') {
+    try {
       importScripts('/wasm_exec.js')
+      loadedWasmExec = true
+    } catch (e) {
+      // importScripts threw, likely because this is a module worker where importScripts is not allowed
+      loadedWasmExec = false
+    }
+  }
+
+  if (!loadedWasmExec) {
+    // Fetch and evaluate the wasm_exec.js script so it defines `Go` in the worker scope
+    const resp = await fetch('/wasm_exec.js')
+    if (!resp.ok) {
+      throw new Error(`Failed to fetch wasm_exec.js: ${resp.status}`)
+    }
+    const wasmExecText = await resp.text()
+    // Execute the script in global scope so it attaches `Go` to the worker global
+    new Function(wasmExecText)()
+  }
       
       if (typeof Go === 'undefined') {
         throw new Error('Go runtime not available after loading wasm_exec.js')

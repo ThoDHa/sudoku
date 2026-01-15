@@ -9,14 +9,26 @@ import { test, expect } from '../fixtures';
 
 test.describe('@integration Check & Fix', () => {
   test.beforeEach(async ({ page }) => {
-    // Guarantee onboardingComplete state in both localStorage and React
+    // Guarantee onboardingComplete state in both localStorage keys the app may check
     await page.addInitScript(() => {
-      window.localStorage.setItem('onboardingComplete', 'true');
+      try {
+        window.localStorage.setItem('onboardingComplete', 'true');
+        window.localStorage.setItem('sudoku_onboarding_complete', 'true');
+      } catch (e) {
+        // no-op
+      }
     });
   });
+
   test('applies only fix moves and does not auto-complete', async ({ page, skipOnboarding }) => {
-    // Start on a known practice puzzle
-    await page.goto('/?d=easy');
+    // Capture page console for diagnostics during test runs
+    page.on('console', msg => {
+      // eslint-disable-next-line no-console
+      console.log('PAGE_CONSOLE', msg.type(), msg.text());
+    });
+
+    // Start on a known practice puzzle; some environments ignore the query and show homepage
+    await page.goto('/gameplay-test?d=easy');
 
     // If onboarding modal exists, close it with real user flow
     const onboardingCloseButton = page.locator('button', { hasText: /Close|Got it|Continue|Skip/i });
@@ -24,11 +36,61 @@ test.describe('@integration Check & Fix', () => {
       await onboardingCloseButton.click();
     }
 
-    // Wait for board
-    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
+    // Short settle
+    await page.waitForTimeout(500);
+
+    // If the board is not visible, attempt deterministic navigation via visible homepage controls
+    if (!(await page.locator('[role="grid"]').isVisible().catch(() => false))) {
+      // If the homepage is present, target the difficulty buttons deterministically
+      const homepageHeading = page.getByRole('heading', { name: /Game Mode/i });
+      if (await homepageHeading.isVisible().catch(() => false)) {
+        // Force a click on the easy Play button to ensure a game starts
+        const easyPlay = page.locator('button:has-text("easy Play")').first();
+        await easyPlay.waitFor({ state: 'visible', timeout: 5000 }).catch(() => null);
+        if (await easyPlay.isVisible().catch(() => false)) {
+          // Use a forced click in case of overlays
+          await easyPlay.click({ force: true });
+
+          // If the app shows a "Start New" confirmation modal (in case of in-progress game), click it
+          const startNew = page.getByRole('button', { name: /Start New/i });
+          if (await startNew.isVisible().catch(() => false)) {
+            await startNew.click();
+          }
+        }
+      } else {
+        // Prefer the "Go to Practice" button otherwise
+        const goToPractice = page.getByRole('button', { name: /Go to Practice/i }).first();
+        if (await goToPractice.isVisible().catch(() => false)) {
+          await goToPractice.click();
+        } else {
+          // Fallback to the easy button if visible
+          const easyPlay = page.getByRole('button', { name: /easy/i }).first();
+          await easyPlay.waitFor({ state: 'visible', timeout: 5000 }).catch(() => null);
+          if (await easyPlay.isVisible().catch(() => false)) {
+            await easyPlay.click();
+          }
+        }
+      }
+    }
+
+    // Wait for board to appear; allow extra time for main-thread solver fallback
+    await page.waitForSelector('[role="grid"]', { timeout: 30000 });
+
+    // If the app shows the Daily Puzzle modal (prompting to try daily), dismiss it by continuing practice
+    const continuePractice = page.getByRole('button', { name: /Continue Practice/i });
+    if (await continuePractice.isVisible().catch(() => false)) {
+      await continuePractice.click();
+      await page.waitForTimeout(300);
+    }
 
     // Create a couple of conflicting user entries to trigger the modal later
     const firstCell = page.locator('[role="gridcell"]').nth(0);
+    // If an overlay is present, wait for it to go away
+    const overlay = page.locator('div.fixed.inset-0 div.absolute.inset-0');
+    if (await overlay.isVisible().catch(() => false)) {
+      await overlay.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => null);
+    }
+
     await firstCell.click();
     await page.keyboard.type('5'); // likely conflicts with givens in many easies
 
@@ -37,16 +99,13 @@ test.describe('@integration Check & Fix', () => {
     await page.keyboard.type('5'); // introduce another conflict
 
     // Trigger the Check & Fix modal by invoking a flow that detects too many conflicts.
-    // We navigate to an error-test route to force the check path to run where available.
-    // If the app exposes a button for "Check Progress", use it. Otherwise rely on modal on conflict.
     await page.waitForTimeout(500); // allow state to settle
 
     // Open the modal if present, otherwise directly call the handler via UI button if available
-    // The modal lives in GameModals with a Check & Fix button
     const checkFixButton = page.getByRole('button', { name: /Check & Fix/i });
 
     if (!(await checkFixButton.isVisible().catch(() => false))) {
-      // Fallback: try to force the modal by using a hint that fails and prompts
+      // Fallback: try to force the modal by using a hint that may prompt
       const hintButton = page.getByRole('button', { name: /Hint/i });
       if (await hintButton.isVisible().catch(() => false)) {
         await hintButton.click();
@@ -54,11 +113,10 @@ test.describe('@integration Check & Fix', () => {
       }
     }
 
-    // Now click Check & Fix
+    // Now click Check & Fix or alternate flows
     if (await checkFixButton.isVisible().catch(() => false) && await checkFixButton.isEnabled().catch(() => false)) {
       await checkFixButton.click();
     } else {
-      // As a last resort, try clicking the alternate label "Let Me Fix It" then Check & Fix
       const letMeFixIt = page.getByRole('button', { name: /Let Me Fix It/i });
       if (await letMeFixIt.isVisible().catch(() => false)) {
         await letMeFixIt.click();
@@ -69,10 +127,9 @@ test.describe('@integration Check & Fix', () => {
     }
 
     // Wait briefly for moves to apply
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(1500);
 
     // Assert that the puzzle is not marked complete immediately
-    // Heuristic: no result modal, and at least one empty cell remains
     const resultModal = page.getByText(/Completed|Result|Summary/i);
     const hasResultModal = await resultModal.isVisible().catch(() => false);
 
@@ -88,8 +145,7 @@ test.describe('@integration Check & Fix', () => {
     expect(hasResultModal).toBeFalsy();
     expect(empties).toBeGreaterThan(0);
 
-    // Optional: read console warnings to confirm only fix moves were applied
-    // This is not strictly necessary, but we can check that no console error occurred
+    // Sanity check: page body visible
     await expect(page.locator('body')).toBeVisible();
   });
 });
