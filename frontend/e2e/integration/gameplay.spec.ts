@@ -35,7 +35,8 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/gameplay-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -248,7 +249,8 @@ test.describe('@integration Gameplay - Digit Entry', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/digit-entry-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -333,7 +335,8 @@ test.describe('@integration Gameplay - Clear Cell', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/clear-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -387,6 +390,9 @@ test.describe('@integration Gameplay - Clear Cell', () => {
     await expectCellValue(page, row, col, 8);
     
     // Use backspace to clear
+    const cellToClear = getCellLocator(page, row, col);
+    await cellToClear.focus();
+    await page.waitForTimeout(50);
     await page.keyboard.press('Backspace');
     
     // Wait and verify cell is now empty
@@ -412,6 +418,9 @@ test.describe('@integration Gameplay - Clear Cell', () => {
     await expectCellValue(page, row, col, 2);
     
     // Use delete to clear
+    const cellToClear = getCellLocator(page, row, col);
+    await cellToClear.focus();
+    await page.waitForTimeout(50);
     await page.keyboard.press('Delete');
     
     // Wait and verify cell is now empty
@@ -426,7 +435,8 @@ test.describe('@integration Gameplay - Undo/Redo', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/undo-redo-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -531,7 +541,8 @@ test.describe('@integration Gameplay - Mobile Touch', () => {
     });
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/mobile-touch-test?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 

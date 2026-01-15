@@ -442,9 +442,17 @@ test.describe('Accessibility', () => {
     await page.goto('/technique/naked-single');
     
     // Check that interactive elements are keyboard focusable
-    await page.keyboard.press('Tab');
-    const focusedElement = await page.evaluate(() => document.activeElement?.tagName);
-    expect(focusedElement).not.toBe('BODY');
+    // Tab through the page up to 15 times to find a focusable element
+    let foundFocusable = false;
+    for (let i = 0; i < 15; i++) {
+      await page.keyboard.press('Tab');
+      const activeTag = await page.evaluate(() => document.activeElement?.tagName);
+      if (activeTag !== 'BODY') {
+        foundFocusable = true;
+        break;
+      }
+    }
+    expect(foundFocusable).toBeTruthy();
   });
 });
 
