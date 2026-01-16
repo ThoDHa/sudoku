@@ -61,7 +61,7 @@ services:
       sh -c "
         npm ci &&
         npx playwright install chromium &&
-        npx playwright test
+        npx playwright test --project=chrome-desktop
       "
 
 volumes: {}
