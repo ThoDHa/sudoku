@@ -52,7 +52,7 @@ interface UseSudokuGameOptions {
   onComplete?: () => void
 }
 
-interface UseSudokuGameReturn {
+export interface UseSudokuGameReturn {
   // State
   board: number[]
   candidates: Uint16Array

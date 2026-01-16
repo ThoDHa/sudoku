@@ -304,7 +304,7 @@ function GameContent() {
       const isInteractiveClick = clickedOnButton || clickedOnInput || clickedOnInteractive
       
       // DEBUG: Log click detection info
-      console.log('Click Debug:', {
+      console.debug('Click Debug:', {
         target: target.tagName + (target.className ? '.' + target.className.split(' ').join('.') : ''),
         clickedInsideBoard: !!clickedInsideBoard,
         clickedInsideControls: !!clickedInsideControls, 
@@ -334,7 +334,7 @@ function GameContent() {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('touchstart', handleClickOutside)
     }
-  }, [deselectCell])
+  }, [deselectCell, clearMoveHighlight])
 
     // Extended background pause - completely suspend operations after 30 seconds hidden
     const [isExtendedPaused, setIsExtendedPaused] = useState(false)
@@ -1270,7 +1270,7 @@ if (value === 0) {
   // Check & Fix handler - compares current board vs solution, removes mismatches, continues solving
   const handleCheckAndFix = useCallback(async () => {
     // DEBUG: Log the result.moves list from WASM
-    console.log('Check & Fix invoked');
+    console.debug('Check & Fix invoked');
     if (!solution || solution.length !== 81) {
       console.error('Cannot check and fix: solution not available')
       return
@@ -1290,7 +1290,7 @@ if (value === 0) {
       // Call WASM to compare and fix
       const result = await checkAndFixWithSolution(currentBoard, currentCandidates, givens, solution)
         if (result && result.moves) {
-          console.log('Check & Fix moves:', result.moves.map((m, idx) => ({idx, move: m && m.move, board: m && m.board})));
+          console.debug('Check & Fix moves:', result.moves.map((m, idx) => ({idx, move: m && m.move, board: m && m.board})));
         }
       
       if (result.moves && result.moves.length > 0) {
@@ -1305,7 +1305,7 @@ if (value === 0) {
       console.error('Check & Fix failed:', error)
       handleAutoSolveError('Failed to check and fix entries')
     }
-  }, [solution, game.board, game.candidates, puzzle?.givens, handleApplyMove, handleAutoSolveError])
+  }, [solution, game.board, game.candidates, puzzle?.givens, handleAutoSolveError, autoSolve])
 
   // Bug report handler - opens GitHub issue with state
   const handleReportBug = useCallback(async () => {
@@ -1925,7 +1925,7 @@ ${bugReportJson}
     if (!game.isComplete) {
       hasSavedOnCompleteRef.current = false
     }
-  }, [game.isComplete, saveGameState, hasRestoredSavedState.current])
+  }, [game.isComplete, saveGameState])
 
 
   // ============================================================

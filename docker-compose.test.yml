@@ -56,12 +56,20 @@ services:
         condition: service_healthy
     environment:
       - PLAYWRIGHT_BASE_URL=http://sudoku:80
-      - CI=true
+      # CI is set by CI environment; leave unset here to allow local reuseExistingServer behavior
     command: >
       sh -c "
         npm ci &&
         npx playwright install chromium &&
-        npx playwright test --project=chrome-desktop --reporter=list
+        npx playwright test --project=chrome-desktop &&
+        if [ -d /app/allure-results ]; then
+          echo 'node.version='\\$(node --version)' >> /app/allure-results/environment.properties
+          echo 'npm.version='\\$(npm --version)' >> /app/allure-results/environment.properties
+          echo 'playwright.version='\\$(npx playwright --version | awk '{print \\$2}')' >> /app/allure-results/environment.properties
+          echo 'os='\\$(uname -s)' >> /app/allure-results/environment.properties
+          echo 'arch='\\$(uname -m)' >> /app/allure-results/environment.properties
+          echo 'test.type=e2e' >> /app/allure-results/environment.properties
+        fi
       "
 
 volumes: {}

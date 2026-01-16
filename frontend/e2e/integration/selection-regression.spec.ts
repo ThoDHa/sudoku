@@ -33,7 +33,16 @@ async function expectCellSelected(cell: any) {
 
 // Helper to verify cell is NOT selected (no focus ring)
 async function expectCellNotSelected(cell: any) {
-  await expect(cell).not.toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/);
+  // Allow UI focus/selection management to settle in slower environments (CI containers etc.)
+  // Use a slightly larger timeout to tolerate slower CI and worker fallback scenarios
+  // Check both focus and selection class with a modest timeout to reduce flakes while keeping assertions meaningful
+  // Prefer semantic focus check, fall back to class check for visual verification
+  await expect(cell).not.toBeFocused({ timeout: 1000 });
+  // Also ensure the cell is not tabbable (no tabindex=0)
+  const tabindex = await cell.getAttribute('tabindex');
+  expect(tabindex).not.toBe('0');
+  // Also ensure the visual selection ring class is gone
+  await expect(cell).not.toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/, { timeout: 1000 });
 }
 
 // Helper to find any empty cell on the board

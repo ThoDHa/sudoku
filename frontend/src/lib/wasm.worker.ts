@@ -147,7 +147,7 @@ async function initializeWasm(): Promise<void> {
     try {
       importScripts('/wasm_exec.js')
       loadedWasmExec = true
-    } catch (e) {
+    } catch {
       // importScripts threw, likely because this is a module worker where importScripts is not allowed
       loadedWasmExec = false
     }

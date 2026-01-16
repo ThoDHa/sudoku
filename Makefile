@@ -51,7 +51,7 @@ lint: lint-go lint-frontend
 lint-go:
 	@echo ""
 	@echo "[Go] Running linter..."
-	@cd api && golangci-lint run ./...
+	@cd api && $(shell go env GOPATH)/bin/golangci-lint run ./...
 	@echo "[Go] Linting passed!"
 
 # Run Frontend linter

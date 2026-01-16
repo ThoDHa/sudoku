@@ -763,7 +763,6 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
     // Play a custom move sequence (for Check & Fix, etc)
   const playMoves = useCallback((moves: MoveResult[], startPaused = false) => {
-    const steps = 0; // Added: debug safeguard
     setIsAutoSolving(true)
     autoSolveRef.current = true
 
@@ -808,7 +807,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         ? moveResult.candidates.map((cellCands: number[] | null) => new Set<number>(cellCands || []))
         : getCandidates()
       // ADDED DEBUG LOGGING FOR EACH MOVE APPLIED
-      console.log(`[AutoSolve:playMoves] Step ${steps}/${moves.length} Action: ${moveResult.move && moveResult.move.action} | Index: ${newIndex}`)
+      console.debug(`[AutoSolve:playMoves] Action: ${moveResult.move && moveResult.move.action} | Index: ${newIndex}`)
       applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
       stateHistoryRef.current.push({
         board: [...moveResult.board],

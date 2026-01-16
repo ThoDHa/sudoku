@@ -8,13 +8,9 @@ export interface CommitCellActionOptions {
   // Index of the cell for per-cell actions
   idx?: number
   // The game model (must provide eraseCell, clearAll, undo, redo)
-  game: {
-    eraseCell: (idx: number) => void
-    clearAll: () => void
-    undo: () => void
-    redo: () => void
-    [key: string]: any
-  }
+  // Prefer the canonical game hook return type to keep typings consistent
+  // Importing the type avoids widening with index signatures that break assignment
+  game: import('../hooks/useSudokuGame').UseSudokuGameReturn
   // UI and state handler functions (all optional, pass any that matter)
   clearAfterErase?: () => void
   clearAfterUserCandidateOp?: () => void
