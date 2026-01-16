@@ -203,6 +203,7 @@ jobs:
 
       - name: Download all Allure results
         uses: actions/download-artifact@v4
+        continue-on-error: false
         with:
           pattern: allure-results-*
           path: allure-results-all
@@ -218,10 +219,12 @@ jobs:
             cp frontend/.allure/categories.json allure-results/
             echo "Copied categories.json for failure classification"
           fi
-          ls -la allure-results/ || echo "No results found"
+          echo "Results found:"
+          ls -la allure-results/ | grep -E '\.(json|xml|properties)$' || echo "No results found!"
 
       - name: Download previous Allure history
         uses: actions/download-artifact@v4
+        continue-on-error: false
         with:
           name: allure-history
           path: allure-history
