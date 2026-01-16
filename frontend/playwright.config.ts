@@ -25,7 +25,7 @@ export default defineConfig({
   // Test execution - parallel for speed
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ?2 : 0,
   workers: undefined, // Use all available CPUs
   
   // Timeouts
@@ -33,6 +33,24 @@ export default defineConfig({
   expect: {
     timeout: 10000, // 10s for expect assertions
   },
+  
+  // Define projects
+  projects: [
+    {
+      name: 'chrome-desktop',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'pixel-5',
+      use: { ...devices['Pixel 5'] },
+      timeout: 90000, // 90s for mobile (vs 60s desktop)
+    },
+    {
+      name: 'iphone-12',
+      use: { ...devices['iPhone 12'] },
+      timeout: 90000, // 90s for mobile (vs 60s desktop)
+    },
+  ],
   
   // Reporting - Native Allure reporter for rich test metadata, plus HTML for artifact viewing
   reporter: process.env.CI 
