@@ -61,15 +61,7 @@ services:
       sh -c "
         npm ci &&
         npx playwright install chromium &&
-        npx playwright test --project=chrome-desktop &&
-        if [ -d /app/allure-results ]; then
-          echo 'node.version='\\$(node --version)' >> /app/allure-results/environment.properties
-          echo 'npm.version='\\$(npm --version)' >> /app/allure-results/environment.properties
-          echo 'playwright.version='\\$(npx playwright --version | awk '{print \\$2}')' >> /app/allure-results/environment.properties
-          echo 'os='\\$(uname -s)' >> /app/allure-results/environment.properties
-          echo 'arch='\\$(uname -m)' >> /app/allure-results/environment.properties
-          echo 'test.type=e2e' >> /app/allure-results/environment.properties
-        fi
+        npx playwright test
       "
 
 volumes: {}
