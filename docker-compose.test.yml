@@ -46,7 +46,7 @@ services:
 
   # Playwright E2E test runner
   playwright:
-    image: mcr.microsoft.com/playwright:v1.48.0-jammy
+    image: mcr.microsoft.com/playwright:v1.57.0-jammy
     working_dir: /app
     volumes:
       - ./frontend:/app
@@ -56,12 +56,12 @@ services:
         condition: service_healthy
     environment:
       - PLAYWRIGHT_BASE_URL=http://sudoku:80
-      # CI is set by CI environment; leave unset here to allow local reuseExistingServer behavior
+      - CI=true
     command: >
       sh -c "
         npm ci &&
         npx playwright install chromium &&
-        npx playwright test --project=chrome-desktop
+        npx playwright test
       "
 
 volumes: {}

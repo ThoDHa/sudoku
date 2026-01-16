@@ -34,24 +34,6 @@ export default defineConfig({
     timeout: 10000, // 10s for expect assertions
   },
   
-  // Define projects
-  projects: [
-    {
-      name: 'chrome-desktop',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'pixel-5',
-      use: { ...devices['Pixel 5'] },
-      timeout: 90000, // 90s for mobile (vs 60s desktop)
-    },
-    {
-      name: 'iphone-12',
-      use: { ...devices['iPhone 12'] },
-      timeout: 90000, // 90s for mobile (vs 60s desktop)
-    },
-  ],
-  
   // Reporting - Native Allure reporter for rich test metadata, plus HTML for artifact viewing
   reporter: process.env.CI 
     ? [['html'], ['github'], ['allure-playwright', { resultsDir: './allure-results' }]] 
@@ -97,14 +79,14 @@ export default defineConfig({
     },
   ],
   
-  // Web server configuration: start the dev server before tests so the PWA is available in dev
-  // Note: vite.config.ts enables the PWA dev service worker when npm lifecycle event is 'test'
-  webServer: {
+  // Web server configuration: start dev server before tests so that PWA is available in dev
+  // Note: vite.config.ts enables to PWA dev service worker when npm lifecycle event is 'test'
+  // Only start webServer if PLAYWRIGHT_BASE_URL is NOT set (running against external server)
+  webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
     command: 'npm run dev',
-    url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    url: 'http://localhost:5173',
     timeout: 120000,
-    // Ensure the dev server enables the PWA when started by Playwright
+    // Ensure that dev server enables to PWA when started by Playwright
     env: {
       ENABLE_PWA_IN_DEV: '1'
     }
