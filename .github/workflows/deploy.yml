@@ -215,12 +215,6 @@ jobs:
           ls -la allure-results/ || echo "Directory empty"
           find allure-results/ -type f | head -20 || echo "No files found"
 
-      - name: Verify results downloaded
-        run: |
-          echo "Allure-results directory contents:"
-          ls -la allure-results/ || echo "Directory empty"
-          find allure-results/ -type f | head -20 || echo "No files found"
-
       - name: Merge Allure results
         run: |
           mkdir -p allure-results
@@ -236,7 +230,6 @@ jobs:
 
       - name: Download previous Allure history
         uses: actions/download-artifact@v4
-        continue-on-error: false
         with:
           name: allure-history
           path: allure-history
