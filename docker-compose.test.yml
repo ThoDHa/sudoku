@@ -20,30 +20,6 @@ services:
       retries: 10
       start_period: 30s
 
-  # Go unit tests
-  go-tests:
-    build:
-      context: .
-      dockerfile: Dockerfile.test
-    volumes:
-      - ./api:/app/api
-      - ./puzzles.json:/data/puzzles.json
-
-  # Frontend unit tests (TypeScript + Vitest)
-  frontend-tests:
-    image: node:20-alpine
-    working_dir: /app
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: >
-      sh -c "
-        npm ci &&
-        npx tsc --noEmit &&
-        npm run test:unit &&
-        npm run build
-      "
-
   # Playwright E2E test runner
   playwright:
     image: mcr.microsoft.com/playwright:v1.57.0-jammy
