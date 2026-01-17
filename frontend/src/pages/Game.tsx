@@ -1786,6 +1786,15 @@ ${bugReportJson}
   // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl excluded: adding it would re-fetch puzzle when timer running/paused state changes. We only want to fetch when the actual puzzle params change.
   }, [effectiveSeed, encoded, isEncodedCustom, difficulty, alreadyCompletedToday, showDifficultyChooser, showOnboarding, clearAllAndDeselect])
 
+  // Reset restoration flags when puzzle seed changes
+  // This ensures clean state for new games when switching difficulties/modes
+  useEffect(() => {
+    if (puzzle?.seed) {
+      hasRestoredSavedState.current = false
+      loadedFromSharedUrl.current = false
+    }
+  }, [puzzle?.seed])
+
   // Reset game state when initialBoard changes (new puzzle loaded) and restore saved state if available
   useEffect(() => {
     if (initialBoard.length === 81 && puzzle) {
@@ -2263,9 +2272,10 @@ ${bugReportJson}
  * 4. Game/GameContent subscribe only to the stable control context (no re-renders on tick)
  */
 export default function Game() {
+  const { seed } = useParams()
   return (
     <TimerProvider pauseOnHidden={true}>
-      <GameContent />
+      <GameContent key={seed} />
     </TimerProvider>
   )
 }
