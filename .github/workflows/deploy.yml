@@ -278,6 +278,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
+          cache-dependency-path: api/go.sum
 
       # IMPORTANT: TinyGo version must match local development environment (0.40.1)
       # Different TinyGo versions produce incompatible WASM binaries
