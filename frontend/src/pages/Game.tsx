@@ -1858,7 +1858,12 @@ ${bugReportJson}
         console.log('✅ [RESTORATION] Successfully restored saved state for seed:', puzzle.seed)
       } else {
         // Start fresh - reset game and all tracking state
-        resetAllGameState()
+        // Note: Don't call resetAllGameState() here because game.restoreState() already
+        // resets the game hook. Calling it would cause tracking variables to conflict
+        // with the restored game state (e.g., autosolve flags would reset to
+        // default but the fresh game might not have used autosolve yet).
+        //
+        // resetAllGameState() is already called in the effect when starting fresh.
         // Start timer for new game - only if puzzle is playable
         if (!alreadyCompletedToday && !showDifficultyChooser) {
           timerControl.startTimer()

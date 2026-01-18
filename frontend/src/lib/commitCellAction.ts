@@ -39,16 +39,11 @@ export function commitCellAction(
       opts.clearAfterErase?.();
       // Any shared highlight/deselect/clear logic that should always follow erasure
       opts.setEraseMode?.(false);
-      // Reset hint counters if present
-      opts.setAutoSolveStepsUsed?.(0);
-      opts.setAutoSolveErrorsFixed?.(0);
       break;
     case 'clearAll':
       game.clearAll();
       opts.clearAllAndDeselect?.();
       opts.setNotesMode?.(false);
-      opts.setAutoSolveStepsUsed?.(0);
-      opts.setAutoSolveErrorsFixed?.(0);
       break;
     case 'undo':
       game.undo();
