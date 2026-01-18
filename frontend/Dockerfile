@@ -35,10 +35,7 @@ RUN npm run build
 FROM nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
-
-# Add gzip compression for WASM files
-RUN echo 'gzip_types application/wasm;' >> /etc/nginx/conf.d/gzip.conf
+  COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
