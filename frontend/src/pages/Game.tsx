@@ -28,6 +28,17 @@ import type { Move } from '../hooks/useSudokuGame'
 import {
   TOAST_DURATION_INFO,
   TOAST_DURATION_ERROR,
+} from '../lib/toasts'
+import {
+  STORAGE_KEYS,
+} from '../lib/constants'
+import {
+  validateSeed,
+  extractSeedFromStorageKey,
+  createStorageKey,
+  getGameMode,
+  seedMatchesMode,
+} from '../lib/seedValidation'
   TOAST_DURATION_FIX_ERROR,
   ERROR_FIX_RESUME_DELAY,
   EXTENDED_PAUSE_DELAY,
@@ -228,10 +239,12 @@ function GameContent() {
   // Refs for values needed by stable callbacks passed to hooks
   // These break the circular dependency: handleSubmit needs game, but game.onComplete needs handleSubmit
   const initialBoardRef = useRef<number[]>([])
-  const timerControlRef = useRef<typeof timerControl | null>(null)
-  const handleSubmitRef = useRef<(() => void) | null>(null)
-
-  // ============================================================
+   const timerControlRef = useRef<typeof timerControl | null>(null)
+   const handleSubmitRef = useRef<(() => void) | null>(null)
+ 
+   // ============================================================
+   // SYNC REFS WITH STATE (for stable callbacks)
+   // ============================================================
   // CUSTOM HOOKS
   // ============================================================
 
@@ -610,10 +623,15 @@ function GameContent() {
   // ============================================================
   // HELPER FUNCTIONS
   // ============================================================
-
+ 
   const getStorageKey = useCallback((puzzleSeed: string) => {
-    return `${STORAGE_KEYS.GAME_STATE_PREFIX}${puzzleSeed}`
-  }, [])
+    const validation = validateSeed(puzzleSeed)
+    if (!validation.valid) {
+      console.error(`[SEED VALIDATION] Invalid seed: ${puzzleSeed}`, validation.error)
+      throw new Error(`Cannot create storage key for invalid seed: ${validation.error}`)
+    }
+    return `${STORAGE_KEYS.GAME_STATE_PREFIX}${validation.seed}`
+  }, [validateSeed])
 
   // Save game state to localStorage
   const saveGameState = useCallback(() => {
@@ -664,14 +682,23 @@ function GameContent() {
       if (!saved) return null
       
       const parsed = JSON.parse(saved) as SavedGameState
-      // Validate the saved state
+      const extractedSeed = extractSeedFromStorageKey(storageKey)
+      
+      if (!extractedSeed.valid) {
+        console.error(`[STORAGE ERROR] Cannot load game with invalid seed: ${puzzleSeed} (stored seed: ${extractedSeed.seed}, error: ${extractedSeed.error})`)
+        return null
+      }
+      
       if (parsed.board?.length === 81 && parsed.candidates?.length === 81) {
         return parsed
+      } else {
+        console.warn(`[STORAGE ERROR] Corrupted saved state for seed: ${extractedSeed.seed} - board: ${parsed.board?.length}, candidates: ${parsed.candidates?.length}`)
+        return null
       }
     } catch (e) {
-      console.warn('Failed to load saved game state:', e)
+      console.error(`[STORAGE ERROR] Failed to load saved game for seed: ${puzzleSeed}`, e)
+      return null
     }
-    return null
   }, [getStorageKey])
 
   // ============================================================
