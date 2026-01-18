@@ -28,17 +28,6 @@ import type { Move } from '../hooks/useSudokuGame'
 import {
   TOAST_DURATION_INFO,
   TOAST_DURATION_ERROR,
-} from '../lib/toasts'
-import {
-  STORAGE_KEYS,
-} from '../lib/constants'
-import {
-  validateSeed,
-  extractSeedFromStorageKey,
-  createStorageKey,
-  getGameMode,
-  seedMatchesMode,
-} from '../lib/seedValidation'
   TOAST_DURATION_FIX_ERROR,
   ERROR_FIX_RESUME_DELAY,
   EXTENDED_PAUSE_DELAY,
@@ -55,6 +44,10 @@ import { getGameMode } from '../lib/gameSettings'
 import { setShowDailyReminder } from '../lib/preferences'
 import { decodePuzzle, encodePuzzle, decodePuzzleWithState, encodePuzzleWithState } from '../lib/puzzleEncoding'
 import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/candidatesUtils'
+import {
+  validateSeed,
+  extractSeedFromStorageKey,
+} from '../lib/seedValidation'
 
 // Type for saved game state in localStorage
 interface SavedGameState {
