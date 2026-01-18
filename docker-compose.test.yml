@@ -22,7 +22,7 @@ services:
 
   # Playwright E2E test runner
   playwright:
-    image: mcr.microsoft.com/playwright:v1.57.0-jammy
+    image: mcr.microsoft.com/playwright:v1.57.0-noble
     working_dir: /app
     volumes:
       - ./frontend:/app
