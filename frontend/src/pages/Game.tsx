@@ -549,10 +549,12 @@ function GameContent() {
     // Both Homepage and Menu handle their own in-progress confirmations
     if (sessionStorage.getItem('skip_in_progress_check')) {
       sessionStorage.removeItem('skip_in_progress_check')
+      console.log('⏭️ [NAVIGATION] Skipping in-progress check (user confirmed navigation)')
       return
     }
     
     const savedGame = getMostRecentGame()
+    console.log('🔍 [IN-PROGRESS CHECK] Current URL seed:', seed, 'Saved game found:', savedGame ? savedGame.seed : 'none')
     // Show prompt if:
     // - There's a saved game
     // - It's for a DIFFERENT seed than what we're trying to load
@@ -561,17 +563,22 @@ function GameContent() {
         savedGame.seed !== seed && 
         savedGame.seed !== encoded &&
         savedGame.progress < 100) {
+      console.log('⚠️ [IN-PROGRESS CHECK] Showing modal: Existing game found', savedGame.seed, 'vs current:', seed)
       setExistingInProgressGame(savedGame)
       setShowInProgressConfirm(true)
+    } else {
+      console.log('✅ [IN-PROGRESS CHECK] No modal needed (no existing game or same seed)')
     }
   }, [seed, encoded])
 
   // Handlers for in-progress game confirmation modal
   const handleResumeExistingGame = useCallback(() => {
     if (existingInProgressGame) {
-      // Set flag so we don't show the modal again when navigating to the resumed game
+      // Set flag so we don't show modal again when navigating to resumed game
       sessionStorage.setItem('skip_in_progress_check', 'true')
-      navigate(`/${existingInProgressGame.seed}?d=${existingInProgressGame.difficulty}`)
+      const targetUrl = `/${existingInProgressGame.seed}?d=${existingInProgressGame.difficulty}`
+      console.log('🎮 [RESUME] Clicking Resume, navigating to:', targetUrl, 'Game info:', existingInProgressGame)
+      navigate(targetUrl)
     }
     setShowInProgressConfirm(false)
   }, [existingInProgressGame, navigate])
@@ -1792,6 +1799,7 @@ ${bugReportJson}
     if (puzzle?.seed) {
       hasRestoredSavedState.current = false
       loadedFromSharedUrl.current = false
+      console.log('🔄 [RESTORATION FLAG RESET] Seed changed to:', puzzle.seed, 'Flag reset to false')
     }
   }, [puzzle?.seed])
 
@@ -1808,6 +1816,8 @@ ${bugReportJson}
       // Check for saved state for this puzzle
       const savedState = loadSavedGameState(puzzle.seed)
       
+      console.log('📥 [RESTORATION] Attempting to load saved state for seed:', puzzle.seed, 'Result:', savedState ? 'FOUND' : 'NOT FOUND')
+      
       if (savedState) {
         // Restore saved state
         const restoredCandidates = arraysToCandidates(savedState.candidates)
@@ -1818,6 +1828,7 @@ ${bugReportJson}
           timerControl.startTimer()
         }
         setAutoFillUsed(savedState.autoFillUsed)
+        console.log('✅ [RESTORATION] Successfully restored saved state for seed:', puzzle.seed)
       } else {
         // Start fresh - reset game and all tracking state
         resetAllGameState()
@@ -1825,9 +1836,11 @@ ${bugReportJson}
         if (!alreadyCompletedToday && !showDifficultyChooser) {
           timerControl.startTimer()
         }
+        console.log('🆕 [RESTORATION] No saved state found, starting fresh game for seed:', puzzle.seed)
       }
       
       hasRestoredSavedState.current = true
+      console.log('🏁 [RESTORATION FLAG] Set to true (restoration complete)')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- game.restoreState, resetAllGameState, and timerControl.setElapsedMs are stable callbacks. We intentionally only trigger this when initialBoard or puzzle changes to prevent re-initialization loops.
   }, [initialBoard, puzzle, loadSavedGameState])

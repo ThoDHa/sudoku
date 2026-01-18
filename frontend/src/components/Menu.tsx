@@ -590,11 +590,9 @@ export default function Menu({
       // Set flag so Game.tsx knows user already confirmed navigation
       // and won't show its own in-progress check prompt
       sessionStorage.setItem('skip_in_progress_check', 'true')
-      if (confirmNewPuzzle === 'custom') {
-        navigate('/custom')
-      } else {
-        navigate(createGameRoute(confirmNewPuzzle))
-      }
+      const targetRoute = confirmNewPuzzle === 'custom' ? '/custom' : createGameRoute(confirmNewPuzzle)
+      console.log('🎮 [MENU] Starting new game, route:', targetRoute, 'Difficulty:', confirmNewPuzzle)
+      navigate(targetRoute)
       onClose()
     }
   }
