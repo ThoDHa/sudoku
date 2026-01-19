@@ -35,7 +35,7 @@ async function prepBoardForTechniqueHint(page: Page) {
   // Wait for WASM to be ready before clicking hint buttons
   await waitForWasmReady(page);
   
-  const hintButton = page.getByRole('button', { name: /Hint/i });
+  const hintButton = page.getByRole('button', { name: /Hint/i )
   // Use 6 hints to ensure we get past initial value placements and have candidates
   for (let i = 0; i < 6; i++) {
     if (await hintButton.isEnabled()) {
@@ -50,7 +50,7 @@ async function prepBoardForTechniqueHint(page: Page) {
  * The technique hint can result in multiple different outcomes.
  */
 function getTechniqueOutcomeLocator(page: Page) {
-  const gotItButton = page.getByRole('button', { name: /Got it/i });
+  const gotItButton = page.getByRole('button', { name: /Got it/i )
   const toastMessages = page.locator('text=Fill in some candidates')
     .or(page.locator('text=use 💡 Hint'))
     .or(page.locator('text=advanced techniques'))
@@ -64,43 +64,43 @@ test.describe('@integration Technique Hints - Basic Functionality', () => {
     // Set localStorage before navigation to skip onboarding modal
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    });
+    )
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
     
     // Wait for WASM to be ready - critical for hint functionality
     // Production builds may take longer to initialize WASM than to render the board
     await waitForWasmReady(page);
-  });
+  )
 
   test('technique hint button is visible and clickable', async ({ page }) => {
     // Look for the button with "Technique" text
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
     await expect(techniqueButton).toBeVisible();
     await expect(techniqueButton).toBeEnabled();
-  });
+  )
 
   test('clicking technique hint shows technique modal', async ({ page }) => {
     // Prep board with candidates first
     await prepBoardForTechniqueHint(page);
     
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
     await techniqueButton.click();
     
     // Should either show "Got it" modal OR show a toast message (fill candidates first)
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
+    const gotItButton = page.getByRole('button', { name: /Got it/i )
     const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
     
     // Accept either outcome as valid
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
-  });
+    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 )
+  )
 
   test('technique modal shows technique name', async ({ page }) => {
     // Prep board with candidates first
     await prepBoardForTechniqueHint(page);
     
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
     await techniqueButton.click();
     
     // Modal should contain technique name in heading
@@ -109,7 +109,7 @@ test.describe('@integration Technique Hints - Basic Functionality', () => {
     
     // Accept either modal or toast as valid
     const modalOrToast = modalHeading.or(toastMessage);
-    await expect(modalOrToast).toBeVisible({ timeout: 5000 });
+    await expect(modalOrToast).toBeVisible({ timeout: 5000 )
     
     // If modal is visible, verify it has content
     if (await modalHeading.isVisible()) {
@@ -117,7 +117,7 @@ test.describe('@integration Technique Hints - Basic Functionality', () => {
       expect(headingText).toBeTruthy();
       expect(headingText!.length).toBeGreaterThan(0);
     }
-  });
+  )
 
   test('technique hint does NOT apply the move to the board', async ({ page }) => {
     // Prep board with candidates first
@@ -127,16 +127,16 @@ test.describe('@integration Technique Hints - Basic Functionality', () => {
     const emptyCellsBefore = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
     
     // Click technique hint button
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
     await techniqueButton.click();
     
     // Wait for modal or any toast message (multiple possible outcomes)
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
+    const gotItButton = page.getByRole('button', { name: /Got it/i )
     const toastMessage = page.locator('text=Fill in some candidates')
       .or(page.locator('text=use 💡 Hint'))
       .or(page.locator('text=advanced techniques'))
       .or(page.locator('text=already complete'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 )
     
     // Count empty cells after - should be unchanged (technique doesn't apply the move)
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
@@ -146,72 +146,72 @@ test.describe('@integration Technique Hints - Basic Functionality', () => {
     if (await gotItButton.isVisible()) {
       await gotItButton.click();
     }
-  });
+  )
 
   test('can close technique modal with Got it button', async ({ page }) => {
     // Prep board with candidates first
     await prepBoardForTechniqueHint(page);
     
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
     await techniqueButton.click();
     
     // Close modal
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
+    const gotItButton = page.getByRole('button', { name: /Got it/i )
     const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
     
     // Wait for modal or toast
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 )
     
     // If modal is visible, test closing it
     if (await gotItButton.isVisible()) {
       await gotItButton.click();
       // Modal should be gone
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
+      await expect(gotItButton).not.toBeVisible({ timeout: 3000 )
     }
-  });
+  )
 
   test('can close technique modal by clicking backdrop', async ({ page }) => {
     // Prep board with candidates first
     await prepBoardForTechniqueHint(page);
     
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
     await techniqueButton.click();
     
     // Wait for modal or toast
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
+    const gotItButton = page.getByRole('button', { name: /Got it/i )
     const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 )
     
     // If modal is visible, test closing via backdrop
     if (await gotItButton.isVisible()) {
       // Click backdrop (the dark overlay)
       const backdrop = page.locator('.bg-black\\/50');
-      await backdrop.click({ position: { x: 10, y: 10 } });
+      await backdrop.click({ position: { x: 10, y: 10 } )
       
       // Modal should be gone
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
+      await expect(gotItButton).not.toBeVisible({ timeout: 3000 )
     }
-  });
-});
+  )
+)
 
 test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
   test.beforeEach(async ({ page }) => {
     // Set localStorage before navigation to skip onboarding modal
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    });
+    )
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
     // Wait for WASM to be ready
     await waitForWasmReady(page);
-  });
+  )
 
   test('technique hint button is disabled after use', async ({ page }) => {
     // Prep board with candidates first
     await prepBoardForTechniqueHint(page);
     
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
     
     // Should be enabled initially
     await expect(techniqueButton).toBeEnabled();
@@ -220,38 +220,38 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
     await techniqueButton.click();
     
     // Wait for modal or toast
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
+    const gotItButton = page.getByRole('button', { name: /Got it/i )
     const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 )
     
     // Only test disable behavior if modal appeared (toast means no technique was available)
     if (await gotItButton.isVisible()) {
       await gotItButton.click();
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
+      await expect(gotItButton).not.toBeVisible({ timeout: 3000 )
       
       // Button should now be disabled
       await expect(techniqueButton).toBeDisabled();
     }
-  });
+  )
 
   test('technique hint button re-enables after user makes a move', async ({ page }) => {
     // Prep board with candidates first
     await prepBoardForTechniqueHint(page);
     
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
     
     // Use technique hint
     await techniqueButton.click();
     
     // Wait for modal or toast
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
+    const gotItButton = page.getByRole('button', { name: /Got it/i )
     const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 )
     
     // Only test re-enable behavior if modal appeared
     if (await gotItButton.isVisible()) {
       await gotItButton.click();
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
+      await expect(gotItButton).not.toBeVisible({ timeout: 3000 )
       
       // Button should be disabled
       await expect(techniqueButton).toBeDisabled();
@@ -266,16 +266,16 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
       await emptyCell.click();
       
       // Button should be enabled again
-      await expect(techniqueButton).toBeEnabled({ timeout: 3000 });
+      await expect(techniqueButton).toBeEnabled({ timeout: 3000 )
     }
-  });
+  )
 
   test('technique hint button re-enables after user erases a cell', async ({ page }) => {
     // Wait for WASM to be ready
     await waitForWasmReady(page);
     
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
-    const hintButton = page.getByRole('button', { name: /Hint/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
+    const hintButton = page.getByRole('button', { name: /Hint/i )
     
     // Use 3-4 hints to ensure we have candidates filled
     // This gives us a better chance of having technique hints available
@@ -290,7 +290,7 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
     await techniqueButton.click();
     
     // Wait for EITHER technique modal OR toast message
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
+    const gotItButton = page.getByRole('button', { name: /Got it/i )
     const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
     
     // Try to wait for modal first (5 second timeout)
@@ -302,14 +302,14 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
       
       // Close the modal
       await gotItButton.click();
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
+      await expect(gotItButton).not.toBeVisible({ timeout: 3000 )
       
       // Button should still be disabled after closing modal
       await expect(techniqueButton).toBeDisabled();
     } else {
       // Toast path or no response: button stays enabled or re-enables quickly
       // Just verify the button is interactable
-      await expect(techniqueButton).toBeEnabled({ timeout: 2000 });
+      await expect(techniqueButton).toBeEnabled({ timeout: 2000 )
     }
     
     // Make a move by entering a digit
@@ -323,7 +323,7 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
     await page.waitForTimeout(200);
     
     // Button should be enabled after making a move
-    await expect(techniqueButton).toBeEnabled({ timeout: 3000 });
+    await expect(techniqueButton).toBeEnabled({ timeout: 3000 )
     
     // Now erase the cell we just filled
     const eraseButton = page.locator('button[aria-label="Erase mode"]');
@@ -335,28 +335,28 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
     await filledCell.click();
     
     // Button should still be enabled after erasing
-    await expect(techniqueButton).toBeEnabled({ timeout: 3000 });
-  });
+    await expect(techniqueButton).toBeEnabled({ timeout: 3000 )
+  )
 
   test('technique hint button re-enables after using regular hint', async ({ page }) => {
     // Prep board with candidates first
     await prepBoardForTechniqueHint(page);
     
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
     const hintButton = page.locator('button:has-text("Hint")');
     
     // Use technique hint first
     await techniqueButton.click();
     
     // Wait for modal or toast
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
+    const gotItButton = page.getByRole('button', { name: /Got it/i )
     const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 )
     
     // Only test re-enable behavior if modal appeared
     if (await gotItButton.isVisible()) {
       await gotItButton.click();
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
+      await expect(gotItButton).not.toBeVisible({ timeout: 3000 )
       
       // Button should be disabled
       await expect(techniqueButton).toBeDisabled();
@@ -366,41 +366,41 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
       await page.waitForTimeout(500);
       
       // Technique button should be enabled again
-      await expect(techniqueButton).toBeEnabled({ timeout: 3000 });
+      await expect(techniqueButton).toBeEnabled({ timeout: 3000 )
     }
-  });
-});
+  )
+)
 
 test.describe('@integration Technique Hints - Counter', () => {
   test.beforeEach(async ({ page }) => {
     // Set localStorage before navigation to skip onboarding modal
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    });
+    )
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
     // Wait for WASM to be ready
     await waitForWasmReady(page);
-  });
+  )
 
   test('can use technique hint multiple times with moves in between', async ({ page }) => {
     // Prep board with candidates first
     await prepBoardForTechniqueHint(page);
     
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
     const hintButton = page.locator('button:has-text("Hint")');
     
     // Use 1 technique hint
     await techniqueButton.click();
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
+    const gotItButton = page.getByRole('button', { name: /Got it/i )
     const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 )
     
     // Only test counter behavior if modal appeared
     if (await gotItButton.isVisible()) {
       await gotItButton.click();
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
+      await expect(gotItButton).not.toBeVisible({ timeout: 3000 )
       
       // Make a move to re-enable technique button using multi-fill mode
       // Click digit button first to enter multi-fill mode
@@ -413,15 +413,15 @@ test.describe('@integration Technique Hints - Counter', () => {
       await emptyCell.click();
       
       // Wait for button to re-enable
-      await expect(techniqueButton).toBeEnabled({ timeout: 3000 });
+      await expect(techniqueButton).toBeEnabled({ timeout: 3000 )
       
       // Use another technique hint
       await techniqueButton.click();
-      await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+      await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 )
       
       if (await gotItButton.isVisible()) {
         await gotItButton.click();
-        await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
+        await expect(gotItButton).not.toBeVisible({ timeout: 3000 )
       }
       
       // Use 1 regular hint (this also re-enables technique button)
@@ -429,24 +429,24 @@ test.describe('@integration Technique Hints - Counter', () => {
       await page.waitForTimeout(500);
       
       // Technique button should be enabled again
-      await expect(techniqueButton).toBeEnabled({ timeout: 3000 });
+      await expect(techniqueButton).toBeEnabled({ timeout: 3000 )
     }
-  });
-});
+  )
+)
 
 test.describe('@integration Technique Hints - Mobile', () => {
   test.beforeEach(async ({ page }) => {
     // Set localStorage before navigation to skip onboarding modal
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    });
-    await page.setViewportSize({ width: 375, height: 667 });
+    )
+    await page.setViewportSize({ width: 375, height: 667 )
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
     // Wait for WASM to be ready
     await waitForWasmReady(page);
-  });
+  )
 
   test('technique hint button accessible on mobile', async ({ page }) => {
     // On mobile, find the technique button (may show just emoji)
@@ -460,7 +460,7 @@ test.describe('@integration Technique Hints - Mobile', () => {
       expect(box.width).toBeGreaterThanOrEqual(24);
       expect(box.height).toBeGreaterThanOrEqual(24);
     }
-  });
+  )
 
   test('technique hint click works on mobile viewport', async ({ page }) => {
     // Use hint once to prep board (hint button disables until user makes a move)
@@ -480,18 +480,18 @@ test.describe('@integration Technique Hints - Mobile', () => {
     // Use first() to handle case where both toast text and Learn more button are visible
     const toastOrModal = page.locator('text=/Try:.*|Fill in some candidates|use 💡 Hint|Learn more/').first()
       .or(page.getByRole('button', { name: /Got it/i }));
-    await expect(toastOrModal).toBeVisible({ timeout: 5000 });
+    await expect(toastOrModal).toBeVisible({ timeout: 5000 )
     
     // Board should NOT have changed
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
     expect(emptyCellsAfter).toBeLessThanOrEqual(emptyCellsBefore);
     
     // Close modal if visible
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
+    const gotItButton = page.getByRole('button', { name: /Got it/i )
     if (await gotItButton.isVisible()) {
       await gotItButton.click();
     }
-  });
+  )
 
   test('technique modal fits within mobile viewport', async ({ page }) => {
     // Use hint once to prep board (hint button disables until user makes a move)
@@ -506,14 +506,14 @@ test.describe('@integration Technique Hints - Mobile', () => {
     // New behavior: shows "Try: {Technique}" with "Learn more" link instead of auto-opening modal
     const toastOrModal = page.locator('text=/Try:.*|Fill in some candidates|use 💡 Hint|Learn more/').first()
       .or(page.getByRole('button', { name: /Got it/i }));
-    await expect(toastOrModal).toBeVisible({ timeout: 5000 });
+    await expect(toastOrModal).toBeVisible({ timeout: 5000 )
     
     // If "Learn more" is visible, click it to open the modal
     const learnMoreButton = page.locator('text=Learn more');
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
+    const gotItButton = page.getByRole('button', { name: /Got it/i )
     if (await learnMoreButton.isVisible()) {
       await learnMoreButton.click();
-      await expect(gotItButton).toBeVisible({ timeout: 3000 });
+      await expect(gotItButton).toBeVisible({ timeout: 3000 )
     }
     
     // If modal is visible, verify the button is accessible (within reasonable bounds)
@@ -530,20 +530,20 @@ test.describe('@integration Technique Hints - Mobile', () => {
       
       // Close modal
       await gotItButton.click();
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
+      await expect(gotItButton).not.toBeVisible({ timeout: 3000 )
     }
-  });
-});
+  )
+)
 
 test.describe('@integration Technique Hints - Edge Cases', () => {
   test('technique hint on nearly solved puzzle still works', async ({ page }) => {
     // Set localStorage before navigation to skip onboarding modal
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    });
+    )
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
     // Wait for WASM to be ready
     await waitForWasmReady(page);
     
@@ -558,12 +558,12 @@ test.describe('@integration Technique Hints - Edge Cases', () => {
     }
     
     // Now try technique hint
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
     if (await techniqueButton.isVisible() && await techniqueButton.isEnabled()) {
       await techniqueButton.click();
       
       // Should either show modal or puzzle might be complete
-      const gotItButton = page.getByRole('button', { name: /Got it/i });
+      const gotItButton = page.getByRole('button', { name: /Got it/i )
       const isModalVisible = await gotItButton.isVisible().catch(() => false);
       
       if (isModalVisible) {
@@ -571,16 +571,16 @@ test.describe('@integration Technique Hints - Edge Cases', () => {
       }
       // Test passes if no errors occurred
     }
-  });
+  )
 
   test('technique hint works with no cell selected', async ({ page }) => {
     // Set localStorage before navigation to skip onboarding modal
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    });
+    )
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
     // Wait for WASM to be ready
     await waitForWasmReady(page);
     
@@ -588,18 +588,18 @@ test.describe('@integration Technique Hints - Edge Cases', () => {
     await prepBoardForTechniqueHint(page);
     
     // Click technique hint without selecting a cell first
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
+    const techniqueButton = page.getByRole('button', { name: /Technique/i )
     await techniqueButton.click();
     
     // Should show toast with "Try: {Technique}" and "Learn more" link (new behavior)
     // OR modal with 'Got it', OR fill candidates message
     const toastOrModal = page.locator('text=/Try:.*|Fill in some candidates|use 💡 Hint|Learn more/').first()
       .or(page.getByRole('button', { name: /Got it/i }));
-    await expect(toastOrModal).toBeVisible({ timeout: 5000 });
+    await expect(toastOrModal).toBeVisible({ timeout: 5000 )
     
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
+    const gotItButton = page.getByRole('button', { name: /Got it/i )
     if (await gotItButton.isVisible()) {
       await gotItButton.click();
     }
-  });
-});
+  )
+)

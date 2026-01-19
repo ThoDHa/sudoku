@@ -37,12 +37,12 @@ async function expectCellNotSelected(cell: any) {
   // Use a slightly larger timeout to tolerate slower CI and worker fallback scenarios
   // Check both focus and selection class with a modest timeout to reduce flakes while keeping assertions meaningful
   // Prefer semantic focus check, fall back to class check for visual verification
-  await expect(cell).not.toBeFocused({ timeout: 1000 });
+  await expect(cell).not.toBeFocused({ timeout: 1000 )
   // Also ensure the cell is not tabbable (no tabindex=0)
   const tabindex = await cell.getAttribute('tabindex');
   expect(tabindex).not.toBe('0');
   // Also ensure the visual selection ring class is gone
-  await expect(cell).not.toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/, { timeout: 1000 });
+  await expect(cell).not.toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/, { timeout: 1000 )
 }
 
 // Helper to find any empty cell on the board
@@ -66,7 +66,7 @@ async function countSelectedCells(page: any): Promise<number> {
 
 // Helper to get outside-click coordinates for each direction
 async function getOutsideClickCoordinates(page: any) {
-  const board = page.locator('.sudoku-board').first();
+  const board = page.getByRole("grid", { name: "Sudoku puzzle" })).first();
   const boardBox = await board.boundingBox();
   
   if (!boardBox) throw new Error('Could not find sudoku board');
@@ -94,8 +94,8 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
     test.describe(`${difficulty} Difficulty`, () => {
       test.beforeEach(async ({ page }) => {
         await page.goto(testUrl);
-        await page.waitForSelector('.sudoku-board', { timeout: 15000 });
-      });
+        await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
+      )
 
       test.describe('Digit Entry Deselection Behavior', () => {
         
@@ -118,7 +118,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           
           // Verify no cells are selected
           expect(await countSelectedCells(page)).toBe(0);
-        });
+        )
 
         test('cell deselects after each digit in sequence', async ({ page }) => {
           const emptyCells = await page.locator('[role="gridcell"][aria-label*="empty"]');
@@ -143,7 +143,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
             await expectCellNotSelected(cell);
             expect(await countSelectedCells(page)).toBe(0);
           }
-        });
+        )
 
         test('cell deselects when overwriting existing digit', async ({ page }) => {
           const emptyCell = await findEmptyCell(page);
@@ -164,7 +164,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           await expectCellNotSelected(cell);
           
           expect(await countSelectedCells(page)).toBe(0);
-        });
+        )
 
         test('cell deselects when clearing digit (backspace)', async ({ page }) => {
           const emptyCell = await findEmptyCell(page);
@@ -184,7 +184,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           await expectCellNotSelected(cell);
           
           expect(await countSelectedCells(page)).toBe(0);
-        });
+        )
 
         test('cell deselects when clearing digit (delete)', async ({ page }) => {
           const emptyCell = await findEmptyCell(page);
@@ -204,7 +204,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           await expectCellNotSelected(cell);
           
           expect(await countSelectedCells(page)).toBe(0);
-        });
+        )
 
         test('selection preserved during notes mode operations', async ({ page }) => {
           const emptyCell = await findEmptyCell(page);
@@ -235,8 +235,8 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           
           // Cell should still be selected
           await expectCellSelected(cell);
-        });
-      });
+        )
+      )
 
       test.describe('Outside-Click Deselection - All Directions', () => {
         
@@ -258,7 +258,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           // Should deselect
           await expectCellNotSelected(cell);
           expect(await countSelectedCells(page)).toBe(0);
-        });
+        )
 
         test('deselects when clicking below puzzle', async ({ page }) => {
           const emptyCell = await findEmptyCell(page);
@@ -275,7 +275,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           
           await expectCellNotSelected(cell);
           expect(await countSelectedCells(page)).toBe(0);
-        });
+        )
 
         test('deselects when clicking left of puzzle', async ({ page }) => {
           const emptyCell = await findEmptyCell(page);
@@ -292,7 +292,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           
           await expectCellNotSelected(cell);
           expect(await countSelectedCells(page)).toBe(0);
-        });
+        )
 
         test('deselects when clicking right of puzzle', async ({ page }) => {
           const emptyCell = await findEmptyCell(page);
@@ -309,7 +309,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           
           await expectCellNotSelected(cell);
           expect(await countSelectedCells(page)).toBe(0);
-        });
+        )
 
         test('deselects when clicking in all corner directions', async ({ page }) => {
           const emptyCell = await findEmptyCell(page);
@@ -338,8 +338,8 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
             await expectCellNotSelected(cell);
             expect(await countSelectedCells(page)).toBe(0);
           }
-        });
-      });
+        )
+      )
 
       test.describe('Game Controls Interaction', () => {
         
@@ -374,7 +374,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
               await expectCellSelected(cell);
             }
           }
-        });
+        )
 
         test('digit pad interaction preserves then deselects appropriately', async ({ page }) => {
           const emptyCell = await findEmptyCell(page);
@@ -397,8 +397,8 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
             await expectCellNotSelected(cell);
             expect(await countSelectedCells(page)).toBe(0);
           }
-        });
-      });
+        )
+      )
 
       test.describe('Arrow Navigation After Deselection', () => {
         
@@ -423,7 +423,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           
           // Should still have no selection
           expect(await countSelectedCells(page)).toBe(0);
-        });
+        )
 
         test('arrow navigation works after manual cell reselection', async ({ page }) => {
           const emptyCell = await findEmptyCell(page);
@@ -447,8 +447,8 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           // Some other cell should now be selected
           expect(await countSelectedCells(page)).toBe(1);
           await expectCellNotSelected(cell); // Original cell should not be selected
-        });
-      });
+        )
+      )
 
       test.describe('Rapid Interaction Stress Tests', () => {
         
@@ -471,7 +471,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
             await expectCellNotSelected(cell);
             expect(await countSelectedCells(page)).toBe(0);
           }
-        });
+        )
 
         test('handles rapid outside clicks in multiple directions', async ({ page }) => {
           const emptyCell = await findEmptyCell(page);
@@ -498,7 +498,7 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
             await expectCellNotSelected(cell);
             expect(await countSelectedCells(page)).toBe(0);
           }
-        });
+        )
 
         test('maintains correct state during mixed rapid interactions', async ({ page }) => {
           const emptyCell = await findEmptyCell(page);
@@ -549,8 +549,8 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
               expect(actualCount).toBe(expectedSelectionCount);
             }
           }
-        });
-      });
+        )
+      )
 
       test.describe('Cross-Browser Compatibility', () => {
         
@@ -581,8 +581,8 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           
           await expectCellNotSelected(cell);
           expect(await countSelectedCells(page)).toBe(0);
-        });
-      });
-    });
+        )
+      )
+    )
   }
-});
+)

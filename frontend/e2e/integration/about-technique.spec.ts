@@ -19,7 +19,7 @@ test.describe('Techniques Overview Page', () => {
     
     // Should show Learn Sudoku heading
     await expect(page.locator('h1:has-text("Learn Sudoku")')).toBeVisible();
-  });
+  )
 
   test('displays list of available techniques', async ({ page }) => {
     await page.goto('/techniques');
@@ -32,7 +32,7 @@ test.describe('Techniques Overview Page', () => {
     await expect(techniqueLinks.first()).toBeVisible();
     const count = await techniqueLinks.count();
     expect(count).toBeGreaterThan(5);
-  });
+  )
 
   test('techniques are organized by difficulty tier', async ({ page }) => {
     await page.goto('/techniques');
@@ -41,7 +41,7 @@ test.describe('Techniques Overview Page', () => {
     await expect(page.locator('text=Simple Techniques')).toBeVisible();
     await expect(page.locator('text=Medium Techniques')).toBeVisible();
     await expect(page.locator('text=Hard Techniques')).toBeVisible();
-  });
+  )
 
   test('displays How to Play link prominently', async ({ page }) => {
     await page.goto('/techniques');
@@ -50,7 +50,7 @@ test.describe('Techniques Overview Page', () => {
     const howToPlayLink = page.locator('a[href="/techniques/how-to-play"]');
     await expect(howToPlayLink).toBeVisible();
     await expect(howToPlayLink.locator('text=How to Play Sudoku')).toBeVisible();
-  });
+  )
 
   test('displays How the Solver Works link', async ({ page }) => {
     await page.goto('/techniques');
@@ -59,7 +59,7 @@ test.describe('Techniques Overview Page', () => {
     const solverLink = page.locator('a[href="/techniques/how-solver-works"]');
     await expect(solverLink).toBeVisible();
     await expect(solverLink.locator('text=How the Solver Works')).toBeVisible();
-  });
+  )
 
   test('back to puzzles link navigates to homepage', async ({ page }) => {
     await page.goto('/techniques');
@@ -69,8 +69,8 @@ test.describe('Techniques Overview Page', () => {
     
     await backLink.click();
     await expect(page).toHaveURL('/');
-  });
-});
+  )
+)
 
 test.describe('Individual Technique Pages', () => {
   test('can navigate to individual technique page from list', async ({ page }) => {
@@ -82,21 +82,21 @@ test.describe('Individual Technique Pages', () => {
     
     await nakedSingleLink.click();
     await expect(page).toHaveURL('/technique/naked-single');
-  });
+  )
 
   test('technique title is displayed on detail page', async ({ page }) => {
     await page.goto('/technique/naked-single');
     
     // Should show technique title
     await expect(page.locator('h1:has-text("Naked Single")')).toBeVisible();
-  });
+  )
 
   test('technique description is shown', async ({ page }) => {
     await page.goto('/technique/hidden-single');
     
     // Should show description text about the technique
     await expect(page.locator('text=A digit can only go in one cell')).toBeVisible();
-  });
+  )
 
   test('tier badge is displayed for technique', async ({ page }) => {
     await page.goto('/technique/naked-pair');
@@ -104,14 +104,14 @@ test.describe('Individual Technique Pages', () => {
     // Should show the tier badge (Simple, Medium, Hard, etc.)
     const tierBadge = page.locator('text=Simple');
     await expect(tierBadge.first()).toBeVisible();
-  });
+  )
 
   test('example section is displayed', async ({ page }) => {
     await page.goto('/technique/pointing-pair');
     
     // Should have an example section
     await expect(page.locator('h2:has-text("Example")')).toBeVisible();
-  });
+  )
 
   test('animated diagram renders on technique with animation', async ({ page }) => {
     await page.goto('/technique/naked-single');
@@ -123,7 +123,7 @@ test.describe('Individual Technique Pages', () => {
     // Animated diagram container should be visible (contains the diagram heading)
     const diagramContainer = page.locator('.rounded-lg.bg-background-secondary').first();
     await expect(diagramContainer).toBeVisible();
-  });
+  )
 
   test('static diagram renders on technique without animation', async ({ page }) => {
     await page.goto('/technique/hidden-triple');
@@ -131,7 +131,7 @@ test.describe('Individual Technique Pages', () => {
     // Should have diagram section
     const diagramSection = page.locator('text=Diagram');
     await expect(diagramSection.first()).toBeVisible();
-  });
+  )
 
   test('invalid technique slug shows not found message', async ({ page }) => {
     await page.goto('/technique/this-does-not-exist-at-all');
@@ -141,15 +141,15 @@ test.describe('Individual Technique Pages', () => {
     
     // Should have link back to all techniques
     await expect(page.locator('a:has-text("View all techniques")')).toBeVisible();
-  });
+  )
 
   test('practice button is visible for implemented techniques', async ({ page }) => {
     await page.goto('/technique/naked-single');
     
     // Should have a Practice This Technique button
     await expect(page.locator('button:has-text("Practice This Technique")')).toBeVisible();
-  });
-});
+  )
+)
 
 test.describe('Navigation Between Techniques', () => {
   test('previous technique link works', async ({ page }) => {
@@ -161,7 +161,7 @@ test.describe('Navigation Between Techniques', () => {
     
     await prevLink.click();
     await expect(page).toHaveURL('/technique/naked-single');
-  });
+  )
 
   test('next technique link works', async ({ page }) => {
     await page.goto('/technique/naked-single');
@@ -174,7 +174,7 @@ test.describe('Navigation Between Techniques', () => {
     // Should navigate to next technique
     expect(page.url()).toContain('/technique/');
     expect(page.url()).not.toContain('naked-single');
-  });
+  )
 
   test('back to all techniques link works', async ({ page }) => {
     await page.goto('/technique/x-wing');
@@ -184,7 +184,7 @@ test.describe('Navigation Between Techniques', () => {
     
     await backLink.click();
     await expect(page).toHaveURL('/techniques');
-  });
+  )
 
   test('try a puzzle link navigates to homepage', async ({ page }) => {
     await page.goto('/technique/naked-pair');
@@ -194,7 +194,7 @@ test.describe('Navigation Between Techniques', () => {
     
     await tryPuzzleLink.click();
     await expect(page).toHaveURL('/');
-  });
+  )
 
   test('related techniques links are clickable', async ({ page }) => {
     await page.goto('/technique/naked-pair');
@@ -206,21 +206,21 @@ test.describe('Navigation Between Techniques', () => {
     // Should have related technique links (e.g., naked-triple, hidden-pair)
     const relatedLinks = page.locator('a[href^="/technique/"]').filter({ 
       has: page.locator('text=/naked.*triple|hidden.*pair/i') 
-    });
+    )
     
     if (await relatedLinks.count() > 0) {
       await relatedLinks.first().click();
       expect(page.url()).toContain('/technique/');
     }
-  });
-});
+  )
+)
 
 test.describe('How to Play and How Solver Works', () => {
   test('How to Play page loads correctly', async ({ page }) => {
     await page.goto('/techniques/how-to-play');
     
     await expect(page.locator('h1:has-text("How to Play Sudoku")')).toBeVisible();
-  });
+  )
 
   test('How to Play page has navigation to first technique', async ({ page }) => {
     await page.goto('/techniques/how-to-play');
@@ -228,13 +228,13 @@ test.describe('How to Play and How Solver Works', () => {
     // Should have link to start with Naked Single
     const nakedSingleLink = page.locator('a:has-text("Start with Naked Single")');
     await expect(nakedSingleLink).toBeVisible();
-  });
+  )
 
   test('How Solver Works page loads correctly', async ({ page }) => {
     await page.goto('/techniques/how-solver-works');
     
     await expect(page.locator('h1:has-text("How the Solver Works")')).toBeVisible();
-  });
+  )
 
   test('How Solver Works has browse all techniques link', async ({ page }) => {
     await page.goto('/techniques/how-solver-works');
@@ -244,35 +244,35 @@ test.describe('How to Play and How Solver Works', () => {
     
     await browseLink.click();
     await expect(page).toHaveURL('/techniques');
-  });
-});
+  )
+)
 
 test.describe('Deep Links', () => {
   test('direct URL to technique page works', async ({ page }) => {
     await page.goto('/technique/x-wing');
     
     await expect(page.locator('h1:has-text("X-Wing")')).toBeVisible();
-  });
+  )
 
   test('direct URL to complex technique works', async ({ page }) => {
     await page.goto('/technique/unique-rectangle');
     
     await expect(page.locator('h1:has-text("Unique Rectangle")')).toBeVisible();
-  });
+  )
 
   test('direct URL to techniques list works', async ({ page }) => {
     await page.goto('/techniques');
     
     await expect(page.locator('h1:has-text("Learn Sudoku")')).toBeVisible();
-  });
-});
+  )
+)
 
 test.describe('About Page', () => {
   test('about page loads successfully', async ({ page }) => {
     await page.goto('/about');
     
     await expect(page.locator('h1:has-text("About Sudoku")')).toBeVisible();
-  });
+  )
 
   test('about page shows key features', async ({ page }) => {
     await page.goto('/about');
@@ -281,7 +281,7 @@ test.describe('About Page', () => {
     await expect(page.locator('text=Technique Hints')).toBeVisible();
     await expect(page.locator('text=Step-by-Step Hints')).toBeVisible();
     await expect(page.locator('text=Technique Library')).toBeVisible();
-  });
+  )
 
   test('about page shows key stats', async ({ page }) => {
     await page.goto('/about');
@@ -295,7 +295,7 @@ test.describe('About Page', () => {
     await expect(statsGrid.locator('text=Techniques')).toBeVisible();
     await expect(statsGrid.locator('text=100%')).toBeVisible();
     await expect(statsGrid.locator('text=Offline')).toBeVisible();
-  });
+  )
 
   test('about page has link to techniques', async ({ page }) => {
     await page.goto('/about');
@@ -305,14 +305,14 @@ test.describe('About Page', () => {
     
     await techniquesLink.click();
     await expect(page).toHaveURL('/techniques');
-  });
+  )
 
   test('about page has link to custom puzzle', async ({ page }) => {
     await page.goto('/about');
     
     const customLink = page.locator('a:has-text("Try custom puzzle")');
     await expect(customLink).toBeVisible();
-  });
+  )
 
   test('about page has back to puzzles link', async ({ page }) => {
     await page.goto('/about');
@@ -322,7 +322,7 @@ test.describe('About Page', () => {
     
     await backLink.click();
     await expect(page).toHaveURL('/');
-  });
+  )
 
   test('about page has GitHub link', async ({ page }) => {
     await page.goto('/about');
@@ -330,8 +330,8 @@ test.describe('About Page', () => {
     const githubLink = page.locator('a:has-text("Report an issue on GitHub")');
     await expect(githubLink).toBeVisible();
     await expect(githubLink).toHaveAttribute('href', 'https://github.com/ThoDHa/sudoku/issues');
-  });
-});
+  )
+)
 
 test.describe('Responsive Design', () => {
   test('techniques page works on mobile viewport', async ({ page, mobileViewport }) => {
@@ -344,7 +344,7 @@ test.describe('Responsive Design', () => {
     // Technique cards should be visible
     const techniqueLinks = page.locator('a[href^="/technique/"]');
     expect(await techniqueLinks.count()).toBeGreaterThan(0);
-  });
+  )
 
   test('technique detail page works on mobile viewport', async ({ page, mobileViewport }) => {
     await page.goto('/technique/naked-single');
@@ -354,7 +354,7 @@ test.describe('Responsive Design', () => {
     
     // Navigation should work
     await expect(page.locator('a:has-text("All techniques")')).toBeVisible();
-  });
+  )
 
   test('about page works on mobile viewport', async ({ page, mobileViewport }) => {
     await page.goto('/about');
@@ -365,7 +365,7 @@ test.describe('Responsive Design', () => {
     const statsGrid = page.locator('.grid.grid-cols-2');
     await expect(statsGrid).toBeVisible();
     await expect(statsGrid.locator('text=39+')).toBeVisible();
-  });
+  )
 
   test('diagrams scale appropriately on mobile', async ({ page, mobileViewport }) => {
     await page.goto('/technique/x-wing');
@@ -380,8 +380,8 @@ test.describe('Responsive Design', () => {
     if (box) {
       expect(box.width).toBeLessThanOrEqual(375); // Mobile viewport width
     }
-  });
-});
+  )
+)
 
 test.describe('Accessibility', () => {
   test('techniques page has proper heading structure', async ({ page }) => {
@@ -393,14 +393,14 @@ test.describe('Accessibility', () => {
     // Should have h2 for sections
     const h2s = page.locator('h2');
     expect(await h2s.count()).toBeGreaterThan(0);
-  });
+  )
 
   test('technique detail page has proper heading hierarchy', async ({ page }) => {
     await page.goto('/technique/naked-pair');
     
     // Should have exactly one h1
     await expect(page.locator('h1')).toHaveCount(1);
-  });
+  )
 
   test('all technique links are accessible', async ({ page }) => {
     await page.goto('/techniques');
@@ -414,7 +414,7 @@ test.describe('Accessibility', () => {
       const text = await link.textContent();
       expect(text?.trim().length).toBeGreaterThan(0);
     }
-  });
+  )
 
   test('about page links are keyboard accessible', async ({ page }) => {
     await page.goto('/about');
@@ -434,7 +434,7 @@ test.describe('Accessibility', () => {
     }
     
     expect(foundLink).toBeTruthy();
-  });
+  )
 
   test('close buttons have accessible labels', async ({ page }) => {
     // Note: Glossary modal is accessed from TechniquesListModal which is a game-page component
@@ -453,15 +453,15 @@ test.describe('Accessibility', () => {
       }
     }
     expect(foundFocusable).toBeTruthy();
-  });
-});
+  )
+)
 
 test.describe('Edge Cases', () => {
   test('pages load without JavaScript errors', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => {
       errors.push(error.message);
-    });
+    )
     
     await page.goto('/techniques');
     await expect(page.locator('h1:has-text("Learn Sudoku")')).toBeVisible();
@@ -473,7 +473,7 @@ test.describe('Edge Cases', () => {
     await expect(page.locator('h1:has-text("About Sudoku")')).toBeVisible();
     
     expect(errors).toHaveLength(0);
-  });
+  )
 
   test('technique page with subsections displays variations', async ({ page }) => {
     await page.goto('/technique/unique-rectangle');
@@ -488,7 +488,7 @@ test.describe('Edge Cases', () => {
     // Also verify that subsection links exist (Type 1, Type 2, etc.)
     const typeAnchors = page.locator('a[href^="#subsection"]');
     expect(await typeAnchors.count()).toBeGreaterThan(0);
-  });
+  )
 
   test('techniques page handles rapid navigation', async ({ page }) => {
     await page.goto('/techniques');
@@ -501,5 +501,5 @@ test.describe('Edge Cases', () => {
     // Should end up on hidden-single page
     await expect(page).toHaveURL('/technique/hidden-single');
     await expect(page.locator('h1:has-text("Hidden Single")')).toBeVisible();
-  });
-});
+  )
+)

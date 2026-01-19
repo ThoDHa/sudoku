@@ -43,7 +43,7 @@ test.describe('@integration Error States - Invalid Puzzle Strings', () => {
 
     // Page should NOT have crashed - verify body is still interactive
     await expect(page.locator('body')).toBeVisible();
-  });
+  )
 
   test('displays error for puzzle string that is too long', async ({ page }) => {
     // Navigate with 100-character puzzle (should be 81)
@@ -62,7 +62,7 @@ test.describe('@integration Error States - Invalid Puzzle Strings', () => {
 
     // Verify app didn't crash
     await expect(page.locator('body')).toBeVisible();
-  });
+  )
 
   test('displays error for puzzle with invalid characters', async ({ page }) => {
     // Puzzle with letters and special characters
@@ -81,7 +81,7 @@ test.describe('@integration Error States - Invalid Puzzle Strings', () => {
 
     // Verify no crash
     await expect(page.locator('body')).toBeVisible();
-  });
+  )
 
   test('displays error for puzzle with duplicate in row/col/box', async ({ page }) => {
     // Puzzle with obvious duplicate in first row (two 5s)
@@ -101,7 +101,7 @@ test.describe('@integration Error States - Invalid Puzzle Strings', () => {
 
     // Verify no crash
     await expect(page.locator('body')).toBeVisible();
-  });
+  )
 
   test('handles empty puzzle string gracefully', async ({ page }) => {
     await page.goto('/custom?puzzle=');
@@ -114,8 +114,8 @@ test.describe('@integration Error States - Invalid Puzzle Strings', () => {
 
     expect(hasBoard || hasCustomUI).toBeTruthy();
     await expect(page.locator('body')).toBeVisible();
-  });
-});
+  )
+)
 
 // ============================================================================
 // WASM Load Failure Recovery
@@ -133,14 +133,14 @@ test.describe('@integration Error States - WASM Load Failure', () => {
     // Give it more time since WASM loading can be slow
     await page.waitForTimeout(3000);
 
-    // Should show EITHER the board (with JS fallback) OR a meaningful error message
-    const hasBoard = await page.locator('[role="grid"], .sudoku-board').isVisible().catch(() => false);
+    // Should show EITHER the board OR a meaningful error message
+    const hasBoard = await page.getByRole('grid', { name: 'Sudoku puzzle' }).isVisible().catch(() => false);
     const hasError = await page.locator('text=/error|unavailable|failed to load|solver/i').isVisible().catch(() => false);
     const hasBody = await page.locator('body').isVisible();
 
     // App must remain functional in some form
     expect(hasBoard || hasError || hasBody).toBeTruthy();
-  });
+  )
 
   test('shows appropriate message when solver is unavailable', async ({ page }) => {
     // Block WASM file
@@ -155,7 +155,7 @@ test.describe('@integration Error States - WASM Load Failure', () => {
 
     if (hasGrid) {
       // If grid loaded, try to use hint (which requires solver)
-      const hintButton = page.getByRole('button', { name: /Hint/i });
+      const hintButton = page.getByRole('button', { name: /Hint/i )
 
       if (await hintButton.isVisible().catch(() => false)) {
         await hintButton.click();
@@ -171,7 +171,7 @@ test.describe('@integration Error States - WASM Load Failure', () => {
 
     // Page should not crash regardless
     await expect(page.locator('body')).toBeVisible();
-  });
+  )
 
   test('recovers when WASM eventually loads after initial failure', async ({ page }) => {
     let blockWasm = true;
@@ -183,7 +183,7 @@ test.describe('@integration Error States - WASM Load Failure', () => {
       } else {
         await route.continue();
       }
-    });
+    )
 
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
@@ -201,7 +201,7 @@ test.describe('@integration Error States - WASM Load Failure', () => {
 
     if (hasGrid) {
       // Try using hint to verify solver works
-      const hintButton = page.getByRole('button', { name: /Hint/i });
+      const hintButton = page.getByRole('button', { name: /Hint/i )
       if (await hintButton.isVisible().catch(() => false) && await hintButton.isEnabled().catch(() => false)) {
         await hintButton.click();
         await page.waitForTimeout(1000);
@@ -210,8 +210,8 @@ test.describe('@integration Error States - WASM Load Failure', () => {
 
     // App should be functional
     expect(hasGrid).toBeTruthy();
-  });
-});
+  )
+)
 
 // ============================================================================
 // Network/API Errors
@@ -226,7 +226,7 @@ test.describe('@integration Error States - Network/API Errors', () => {
       } else {
         route.continue();
       }
-    });
+    )
 
     await page.goto('/');
     await page.waitForTimeout(2000);
@@ -238,7 +238,7 @@ test.describe('@integration Error States - Network/API Errors', () => {
 
     // App should either show error or have fallback content
     expect(hasHomepage && (hasError || hasFallback)).toBeTruthy();
-  });
+  )
 
   test('handles failed leaderboard fetch gracefully', async ({ page }) => {
     // Block leaderboard API
@@ -254,8 +254,8 @@ test.describe('@integration Error States - Network/API Errors', () => {
     const hasLeaderboardUI = await page.locator('text=/leaderboard|scores|ranking/i').isVisible().catch(() => false);
 
     expect(hasPage && (hasError || hasLeaderboardUI)).toBeTruthy();
-  });
-});
+  )
+)
 
 // ============================================================================
 // Graceful Degradation
@@ -273,8 +273,8 @@ test.describe('@integration Error States - Graceful Degradation', () => {
           clear: () => { throw new Error('localStorage disabled'); },
         },
         writable: false,
-      });
-    });
+      )
+    )
 
     await page.goto('/');
     await page.waitForTimeout(2000);
@@ -285,7 +285,7 @@ test.describe('@integration Error States - Graceful Degradation', () => {
     // Should be able to navigate or see content
     const hasContent = await page.locator('button, a, [role="grid"]').first().isVisible().catch(() => false);
     expect(hasContent).toBeTruthy();
-  });
+  )
 
   test('no uncaught exceptions in console during normal navigation', async ({ page }) => {
     const consoleErrors: string[] = [];
@@ -299,12 +299,12 @@ test.describe('@integration Error States - Graceful Degradation', () => {
           consoleErrors.push(text);
         }
       }
-    });
+    )
 
     // Listen for uncaught exceptions
     page.on('pageerror', (error) => {
       consoleErrors.push(`Uncaught: ${error.message}`);
-    });
+    )
 
     // Navigate through various pages
     await page.goto('/');
@@ -326,7 +326,7 @@ test.describe('@integration Error States - Graceful Degradation', () => {
 
     // Should have no critical uncaught exceptions
     expect(criticalErrors.length).toBe(0);
-  });
+  )
 
   test('error boundary catches React errors without crashing app', async ({ page }) => {
     // Try to navigate to a random route - in this app, any route becomes a puzzle seed
@@ -348,8 +348,8 @@ test.describe('@integration Error States - Graceful Degradation', () => {
 
     // App should render something valid - not crash
     expect(hasBody && (hasGameGrid || hasErrorPage || redirectedHome)).toBeTruthy();
-  });
-});
+  )
+)
 
 // ============================================================================
 // Error Message Display
@@ -383,7 +383,7 @@ test.describe('@integration Error States - Error Message Display', () => {
 
     // Page should still be functional
     await expect(page.locator('body')).toBeVisible();
-  });
+  )
 
   test('errors have recovery action or are dismissible', async ({ page }) => {
     // Block WASM and try to use solver features to trigger an error
@@ -408,8 +408,8 @@ test.describe('@integration Error States - Error Message Display', () => {
 
     // Alternatively, if no error is shown (app degraded gracefully), that's also acceptable
     await expect(page.locator('body')).toBeVisible();
-  });
-});
+  )
+)
 
 // ============================================================================
 // Edge Cases and Regression Tests
@@ -421,7 +421,7 @@ test.describe('@integration Error States - Edge Cases', () => {
 
     page.on('pageerror', (error) => {
       consoleErrors.push(error.message);
-    });
+    )
 
     // Rapid navigation between pages
     await page.goto('/');
@@ -436,7 +436,7 @@ test.describe('@integration Error States - Edge Cases', () => {
 
     // Should not have any uncaught errors
     expect(consoleErrors.length).toBe(0);
-  });
+  )
 
   test('handles browser back/forward with pending operations', async ({ page }) => {
     await page.goto('/');
@@ -444,10 +444,10 @@ test.describe('@integration Error States - Edge Cases', () => {
 
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
+    await page.waitForSelector('[role="grid"]', { timeout: 15000 )
 
     // Start using hints (which might have pending WASM operations)
-    const hintButton = page.getByRole('button', { name: /Hint/i });
+    const hintButton = page.getByRole('button', { name: /Hint/i )
     if (await hintButton.isVisible().catch(() => false) && await hintButton.isEnabled().catch(() => false)) {
       await hintButton.click();
     }
@@ -465,14 +465,14 @@ test.describe('@integration Error States - Edge Cases', () => {
     const hasBody = await page.locator('body').isVisible();
 
     expect(hasBody).toBeTruthy();
-  });
+  )
 
   test('handles double-click on action buttons without errors', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
+    await page.waitForSelector('[role="grid"]', { timeout: 15000 )
 
-    const hintButton = page.getByRole('button', { name: /Hint/i });
+    const hintButton = page.getByRole('button', { name: /Hint/i )
 
     if (await hintButton.isVisible().catch(() => false) && await hintButton.isEnabled().catch(() => false)) {
       // Double-click the hint button rapidly
@@ -482,5 +482,5 @@ test.describe('@integration Error States - Edge Cases', () => {
       // App should handle gracefully - no crash, grid still visible
       await expect(page.locator('[role="grid"]')).toBeVisible();
     }
-  });
-});
+  )
+)

@@ -29,8 +29,8 @@ test.describe('@bug Resume Bug - Seed Mismatch', () => {
 
       // Clear session storage
       sessionStorage.clear();
-    });
-  });
+    )
+  )
 
   test('resume daily game shows correct seed in localStorage', async ({ page }) => {
     // Collect console messages
@@ -38,13 +38,13 @@ test.describe('@bug Resume Bug - Seed Mismatch', () => {
     page.on('console', msg => {
       consoleMessages.push(msg.text());
       console.log('[PLAYWRIGHT]', msg.text());
-    });
+    )
 
     // Navigate to daily game
     const today = new Date().toISOString().split('T')[0];
     const dailySeed = `daily-${today}`;
     await page.goto(`/${dailySeed}?d=medium`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     // Play one move to trigger auto-save
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
@@ -72,7 +72,7 @@ test.describe('@bug Resume Bug - Seed Mismatch', () => {
                 difficulty: parsed.difficulty,
                 savedAt: parsed.savedAt,
                 isComplete: parsed.isComplete,
-              });
+              )
             } catch (e) {
               console.error('Failed to parse:', e);
             }
@@ -80,7 +80,7 @@ test.describe('@bug Resume Bug - Seed Mismatch', () => {
         }
       }
       return games;
-    });
+    )
 
     console.log('[PLAYWRIGHT] Saved games:', savedGames);
 
@@ -118,5 +118,5 @@ test.describe('@bug Resume Bug - Seed Mismatch', () => {
     } else {
       console.log('[PLAYWRIGHT] ✅ No seed mismatch detected');
     }
-  });
-});
+  )
+)

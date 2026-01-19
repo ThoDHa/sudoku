@@ -17,7 +17,7 @@ import { test, expect } from '../fixtures';
 
 // Helper to locate the timer element
 function getTimerLocator(page: any) {
-  return page.locator('.font-mono').filter({ hasText: /^\d+:\d{2}$/ });
+  return page.locator('.font-mono').filter({ hasText: /^\d+:\d{2}$/ )
 }
 
 // Helper to parse timer text into seconds
@@ -62,7 +62,7 @@ test.describe('@integration Timer - Practice Mode', () => {
   test('timer starts from 0:00 on new practice game', async ({ page }) => {
     const testId = 'practice-start-' + Date.now();
     await page.goto(getTestUrl('practice', testId, 'easy'));
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     const timer = getTimerLocator(page);
     const initialTime = await timer.textContent();
@@ -70,12 +70,12 @@ test.describe('@integration Timer - Practice Mode', () => {
     // New practice game should start at 0:00 or very close to it
     const seconds = parseTimerToSeconds(initialTime || '0:00');
     expect(seconds).toBeLessThanOrEqual(2);
-  });
+  )
 
   test('timer increments correctly in practice mode', async ({ page }) => {
     const testId = 'practice-increment-' + Date.now();
     await page.goto(getTestUrl('practice', testId, 'easy'));
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     const timer = getTimerLocator(page);
 
@@ -92,12 +92,12 @@ test.describe('@integration Timer - Practice Mode', () => {
 
     // Timer should have incremented
     expect(newSeconds).toBeGreaterThan(initialSeconds);
-  });
+  )
 
   test('timer persists correctly across reload in practice mode', async ({ page }) => {
     const seed = 'practice-reload-' + Date.now();
     await page.goto(getTestUrl('practice', seed, 'easy'));
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     const timer = getTimerLocator(page);
 
@@ -113,7 +113,7 @@ test.describe('@integration Timer - Practice Mode', () => {
 
     // Reload page
     await page.reload();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     // Get timer value after reload
     const timeAfterReload = await timer.textContent();
@@ -121,12 +121,12 @@ test.describe('@integration Timer - Practice Mode', () => {
 
     // Timer should have preserved at least some of the elapsed time
     expect(secondsAfterReload).toBeGreaterThanOrEqual(secondsBeforeReload - 1);
-  });
+  )
 
   test('timer pauses/resumes correctly in practice mode', async ({ page }) => {
     const testId = 'practice-pause-resume-' + Date.now();
     await page.goto(getTestUrl('practice', testId, 'easy'));
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     const timer = getTimerLocator(page);
 
@@ -135,9 +135,9 @@ test.describe('@integration Timer - Practice Mode', () => {
       Object.defineProperty(document, 'visibilityState', {
         value: 'hidden',
         configurable: true,
-      });
+      )
       document.dispatchEvent(new Event('visibilitychange'));
-    });
+    )
 
     await page.waitForTimeout(500);
 
@@ -146,9 +146,9 @@ test.describe('@integration Timer - Practice Mode', () => {
       Object.defineProperty(document, 'visibilityState', {
         value: 'visible',
         configurable: true,
-      });
+      )
       document.dispatchEvent(new Event('visibilitychange'));
-    });
+    )
 
     // PAUSED text should disappear
     const pausedIndicator = page.locator('span.text-xs:has-text("PAUSED")');
@@ -164,13 +164,13 @@ test.describe('@integration Timer - Practice Mode', () => {
     const secondsLater = parseTimerToSeconds(timeLater || '0:00');
 
     expect(secondsLater).toBeGreaterThan(secondsAfterResume);
-  });
-});
+  )
+)
 
 test.describe('@integration Timer - Daily Mode', () => {
   test('timer starts from 0:00 on new daily game', async ({ page }) => {
     await page.goto(getTestUrl('daily', 'daily-start', 'easy'));
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     const timer = getTimerLocator(page);
     const initialTime = await timer.textContent();
@@ -178,11 +178,11 @@ test.describe('@integration Timer - Daily Mode', () => {
     // New daily game should start at 0:00 or very close to it
     const seconds = parseTimerToSeconds(initialTime || '0:00');
     expect(seconds).toBeLessThanOrEqual(2);
-  });
+  )
 
   test('timer increments correctly in daily mode', async ({ page }) => {
     await page.goto(getTestUrl('daily', 'daily-increment', 'medium'));
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     const timer = getTimerLocator(page);
 
@@ -199,12 +199,12 @@ test.describe('@integration Timer - Daily Mode', () => {
 
     // Timer should have incremented
     expect(newSeconds).toBeGreaterThan(initialSeconds);
-  });
+  )
 
   test('timer persists correctly across reload in daily mode', async ({ page }) => {
     const dailySeed = getTodayDailySeed();
     await page.goto(`/${dailySeed}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     const timer = getTimerLocator(page);
 
@@ -220,7 +220,7 @@ test.describe('@integration Timer - Daily Mode', () => {
 
     // Reload page
     await page.reload();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     // Get timer value after reload
     const timeAfterReload = await timer.textContent();
@@ -228,11 +228,11 @@ test.describe('@integration Timer - Daily Mode', () => {
 
     // Timer should have preserved at least some of the elapsed time
     expect(secondsAfterReload).toBeGreaterThanOrEqual(secondsBeforeReload - 1);
-  });
+  )
 
   test('timer pauses/resumes correctly in daily mode', async ({ page }) => {
     await page.goto(getTestUrl('daily', 'daily-pause-resume', 'hard'));
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     const timer = getTimerLocator(page);
 
@@ -241,9 +241,9 @@ test.describe('@integration Timer - Daily Mode', () => {
       Object.defineProperty(document, 'visibilityState', {
         value: 'hidden',
         configurable: true,
-      });
+      )
       document.dispatchEvent(new Event('visibilitychange'));
-    });
+    )
 
     await page.waitForTimeout(500);
 
@@ -252,9 +252,9 @@ test.describe('@integration Timer - Daily Mode', () => {
       Object.defineProperty(document, 'visibilityState', {
         value: 'visible',
         configurable: true,
-      });
+      )
       document.dispatchEvent(new Event('visibilitychange'));
-    });
+    )
 
     // PAUSED text should disappear
     const pausedIndicator = page.locator('span.text-xs:has-text("PAUSED")');
@@ -270,7 +270,7 @@ test.describe('@integration Timer - Daily Mode', () => {
     const secondsLater = parseTimerToSeconds(timeLater || '0:00');
 
     expect(secondsLater).toBeGreaterThan(secondsAfterResume);
-  });
+  )
 
   test('timer continues from saved time in daily mode', async ({ page }) => {
     const dailySeed = getTodayDailySeed();
@@ -288,7 +288,7 @@ test.describe('@integration Timer - Daily Mode', () => {
     }, dailySeed);
 
     await page.goto(`/${dailySeed}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     // Wait for timer to be restored from saved state
     await page.waitForFunction(() => {
@@ -299,7 +299,7 @@ test.describe('@integration Timer - Daily Mode', () => {
       if (!match) return false;
       const seconds = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
       return seconds >= 40;
-    }, { timeout: 5000 });
+    }, { timeout: 5000 )
 
     const timer = getTimerLocator(page);
     const timerText = await timer.textContent();
@@ -307,12 +307,12 @@ test.describe('@integration Timer - Daily Mode', () => {
 
     // Timer should start from approximately 45 seconds
     expect(seconds).toBeGreaterThanOrEqual(40);
-  });
+  )
 
   test('timer handles difficulty switching in daily mode', async ({ page }) => {
     // Load daily game with easy difficulty
     await page.goto(getTestUrl('daily', 'daily-difficulty-switch', 'easy'));
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     const timer = getTimerLocator(page);
 
@@ -325,12 +325,12 @@ test.describe('@integration Timer - Daily Mode', () => {
 
     // Switch to medium difficulty (should reset timer to 0)
     await page.goto(getTestUrl('daily', 'daily-difficulty-switch-medium', 'medium'));
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
 
     const newTime = await timer.textContent();
     const newSeconds = parseTimerToSeconds(newTime || '0:00');
 
     // Timer should have reset to 0 (or close to it) for new difficulty
     expect(newSeconds).toBeLessThan(3);
-  });
-});
+  )
+)

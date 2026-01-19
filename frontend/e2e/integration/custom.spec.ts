@@ -13,14 +13,14 @@ test.describe('@integration Custom Puzzle - Page Load', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    });
-  });
+    )
+  )
 
   test('custom puzzle page loads', async ({ page }) => {
     await page.goto('/custom');
     await expect(page.locator('body')).toBeVisible();
     await expect(page.locator('text=Custom')).toBeVisible();
-  });
+  )
 
   test('custom page has input area or empty board', async ({ page }) => {
     await page.goto('/custom');
@@ -31,7 +31,7 @@ test.describe('@integration Custom Puzzle - Page Load', () => {
     const hasBoard = await page.locator('[role="grid"], [role="gridcell"]').first().isVisible().catch(() => false);
     
     expect(hasInput || hasBoard).toBeTruthy();
-  });
+  )
 
   test('custom page has play/validate button', async ({ page }) => {
     await page.goto('/custom');
@@ -40,17 +40,17 @@ test.describe('@integration Custom Puzzle - Page Load', () => {
     // Look for action buttons
     const playButton = page.locator('button:has-text("Play"), button:has-text("Start"), button:has-text("Validate"), button:has-text("Submit")');
     await expect(playButton.first()).toBeVisible();
-  });
-});
+  )
+)
 
 test.describe('@integration Custom Puzzle - Input', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    });
+    )
     await page.goto('/custom');
     await page.waitForTimeout(500);
-  });
+  )
 
   test('can enter digits into custom puzzle board', async ({ page }) => {
     // If there's a sudoku board, try to enter digits
@@ -84,7 +84,7 @@ test.describe('@integration Custom Puzzle - Input', () => {
         expect(value).toBe(puzzleString);
       }
     }
-  });
+  )
 
   test('can paste puzzle string', async ({ page }) => {
     const input = page.locator('input, textarea').first();
@@ -98,7 +98,7 @@ test.describe('@integration Custom Puzzle - Input', () => {
       const value = await input.inputValue();
       expect(value).toBe(puzzleString);
     }
-  });
+  )
 
   test('clear button resets custom input', async ({ page }) => {
     const cells = page.locator('[role="gridcell"]');
@@ -134,17 +134,17 @@ test.describe('@integration Custom Puzzle - Input', () => {
         }
       }
     }
-  });
-});
+  )
+)
 
 test.describe('@integration Custom Puzzle - Validation', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    });
+    )
     await page.goto('/custom');
     await page.waitForTimeout(500);
-  });
+  )
 
   test('valid puzzle is accepted', async ({ page }) => {
     const input = page.locator('input, textarea').first();
@@ -167,7 +167,7 @@ test.describe('@integration Custom Puzzle - Validation', () => {
       
       expect(hasGame && !hasError).toBeTruthy();
     }
-  });
+  )
 
   test('invalid puzzle shows error - too short', async ({ page }) => {
     const input = page.locator('input, textarea').first();
@@ -189,7 +189,7 @@ test.describe('@integration Custom Puzzle - Validation', () => {
       // The form should show some indication of invalid input
       expect(hasError || !page.url().includes('/game/')).toBeTruthy();
     }
-  });
+  )
 
   test('invalid puzzle shows error - duplicate in row', async ({ page }) => {
     const input = page.locator('input, textarea').first();
@@ -210,7 +210,7 @@ test.describe('@integration Custom Puzzle - Validation', () => {
       
       expect(hasError || !page.url().includes('/game/')).toBeTruthy();
     }
-  });
+  )
 
   test('invalid puzzle shows error - invalid characters', async ({ page }) => {
     const input = page.locator('input, textarea').first();
@@ -231,7 +231,7 @@ test.describe('@integration Custom Puzzle - Validation', () => {
       
       expect(hasError || !page.url().includes('/game/')).toBeTruthy();
     }
-  });
+  )
 
   test('unsolvable puzzle shows error', async ({ page }) => {
     const input = page.locator('input, textarea').first();
@@ -253,14 +253,14 @@ test.describe('@integration Custom Puzzle - Validation', () => {
       // Either shows error or stays on custom page (doesn't start game)
       expect(hasError || page.url().includes('/custom')).toBeTruthy();
     }
-  });
-});
+  )
+)
 
 test.describe('@integration Custom Puzzle - Board Input Mode', () => {
   test('entering all cells manually works', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    });
+    )
     await page.goto('/custom');
     await page.waitForTimeout(500);
     
@@ -292,18 +292,18 @@ test.describe('@integration Custom Puzzle - Board Input Mode', () => {
         expect(text).toContain(digit);
       }
     }
-  });
-});
+  )
+)
 
 test.describe('@integration Custom Puzzle - Mobile', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    });
-    await page.setViewportSize({ width: 375, height: 667 });
+    )
+    await page.setViewportSize({ width: 375, height: 667 )
     await page.goto('/custom');
     await page.waitForTimeout(500);
-  });
+  )
 
   test('custom page is usable on mobile', async ({ page }) => {
     await expect(page.locator('text=Custom')).toBeVisible();
@@ -311,7 +311,7 @@ test.describe('@integration Custom Puzzle - Mobile', () => {
     // Action buttons should be visible
     const actionButton = page.locator('button:has-text("Play"), button:has-text("Start"), button:has-text("Validate")').first();
     await expect(actionButton).toBeVisible();
-  });
+  )
 
   test('can enter puzzle on mobile', async ({ page }) => {
     const input = page.locator('input, textarea').first();
@@ -339,5 +339,5 @@ test.describe('@integration Custom Puzzle - Mobile', () => {
       const text = await cell.textContent();
       expect(text).toContain('9');
     }
-  });
-});
+  )
+)
