@@ -268,49 +268,100 @@ test.describe('@smoke In-Game Menu Navigation', () => {
 
   test('New Game from menu does not show duplicate in-progress prompt', async ({ page }) => {
     // Regression test for bug: "Game in Progress" modal should NOT appear when
-    // starting new game from menu, because Menu already handled the confirmation
-    
+    // starting new game from menu, because Menu already handled confirmation
+    // Also tests that seed changes don't cause in-progress modal to reappear
+
     // Start a game and make some progress to create an in-progress save
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
-    
+
     // Make a move to ensure game is saved
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
     await emptyCell.click();
     await page.keyboard.press('7');
-    
+
     // Wait for auto-save
     await page.waitForTimeout(1500);
-    
+
     // Capture initial URL so we can ensure navigation happened to a new route
     const initialGameUrl = page.url();
-    
+
     // Open menu and start a new game WITHOUT in-progress confirmation
-    // (because the Menu should handle the confirmation and set skip flag)
+    // (because Menu should handle the confirmation and set skip flag)
     const menuButton = page.locator('header button[title="Menu"]');
     await expect(menuButton).toBeVisible();
     await menuButton.click();
-    
+
     // Wait for menu to open
     await expect(page.locator('text=Menu')).toBeVisible({ timeout: 10000 });
     await page.locator('button:has-text("New Game")').click();
-    
-    // Select different difficulty - this should open the Menu confirmation
+
+    // Select different difficulty - this should open to Menu confirmation
     await page.locator('button:has-text("medium")').click();
-    
+
     // Menu should show single confirmation modal; click Start New to proceed
     await expect(page.locator('text=Start New Game?')).toBeVisible({ timeout: 5000 });
     await page.locator('button:has-text("Start New")').click();
-    
+
     // Wait for navigation to complete to a new game route
     await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     const newUrl = page.url();
     expect(newUrl).not.toBe(initialGameUrl);
     expect(newUrl).toContain('d=medium');
-    
+
     // CRITICAL: "Game in Progress" modal should NOT appear (no duplicate)
     await expect(page.locator('text=Game In Progress')).not.toBeVisible();
     await expect(page.locator('button:has-text("Resume")')).not.toBeVisible();
+
+    // Additional: Starting another new game from menu should not show in-progress modal
+    // (because menu's "New Game" action sets skip flag before navigation)
+    await page.locator('button:has-text("New Game")').click();
+    await page.locator('button:has-text("hard")').click();
+
+    // Should navigate directly to new game without in-progress modal
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
+    const anotherUrl = page.url();
+    expect(anotherUrl).toContain('d=hard');
+
+    // Verify no in-progress modal appeared
+    await expect(page.locator('text=Game In Progress')).not.toBeVisible();
+  });
+
+  test('seed change does not show in-progress modal', async ({ page }) => {
+    // Test that changing puzzle seed directly doesn't trigger in-progress modal
+    // Start a game and save progress
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+
+    // Make a move to create saved progress
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
+    await emptyCell.click();
+    await page.keyboard.press('5');
+
+    // Wait for auto-save
+    await page.waitForTimeout(2000);
+
+    // Get current URL (has a seed)
+    const currentUrl = page.url();
+    const seedMatch = currentUrl.match(/[?&]d=([^&]+)/);
+    const currentSeed = seedMatch ? seedMatch[1] : '';
+
+    // Simulate seed change by navigating directly to same seed
+    if (currentSeed) {
+      // Reload same seed URL (simulates returning to same game)
+      await page.goto(`/?d=${currentSeed}`);
+    }
+
+    // Should navigate without in-progress modal (same seed)
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
+
+    // Now navigate to a different seed directly
+    await page.goto('/?d=medium');
+
+    // Should NOT show in-progress modal (new game from same page)
+    await expect(page.locator('text=Game In Progress')).not.toBeVisible();
+    await expect(page.locator('.sudoku-board')).toBeVisible({ timeout: 15000 });
   });
 });

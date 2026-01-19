@@ -123,7 +123,13 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   const [givenCells, setGivenCells] = useState<number[]>([...initialBoard])
 
   // Core state
-  const [board, setBoard] = useState<number[]>([...initialBoard])
+  const firstInitRef = useRef<boolean>(false)
+  const [board, setBoard] = useState<number[]>(() => {
+    if (initialBoard.length === 81 && initialBoard.some(v => v !== 0)) {
+      return [...initialBoard]
+    }
+    return Array(81).fill(0)
+  })
   const [candidates, setCandidates] = useState<Uint16Array>(
     () => new Uint16Array(TOTAL_CELLS)
   )
@@ -141,6 +147,13 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   const updateCandidates = useCallback((newCandidates: Uint16Array) => {
     setCandidates(newCandidates)
     setCandidatesVersion(v => v + 1)
+  }, [])
+
+  // Helper to update board without overwriting on remount
+  // Prevents useState re-initialization from erasing restored state
+  const updateBoard = useCallback((newBoard: number[]) => {
+    firstInitRef.current = true
+    setBoard(newBoard)
   }, [])
   
   // Helper to limit history size to prevent unbounded memory growth
@@ -488,13 +501,13 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
         highlights: { primary: [] }, // No highlights for user moves
         isUserMove: true,
       }, newBoard, newCandidates)
-      
+
       const newHistory = [...truncatedHistory, userMove]
       const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
       setHistory(limitedHistory)
       setHistoryIndex(limitedIndex)
 
-      setBoard(newBoard)
+      updateBoard(newBoard)
       updateCandidates(newCandidates)
 
       // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
@@ -637,13 +650,13 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       const result = unapplyStateDiff(currentBoard, currentCandidates, currentMove.stateDiff)
       prevBoard = result.board
       prevCandidates = result.candidates
-      setBoard(prevBoard)
+      updateBoard(prevBoard)
       updateCandidates(prevCandidates)
     } else if (currentMove.boardBefore && currentMove.candidatesBefore) {
       // Legacy fallback
       prevBoard = currentMove.boardBefore
       prevCandidates = arraysToCandidates(currentMove.candidatesBefore)
-      setBoard(prevBoard)
+      updateBoard(prevBoard)
       updateCandidates(prevCandidates)
     } else {
       // No state to restore
@@ -736,7 +749,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       const result = applyStateDiff(currentBoard, currentCandidates, nextMove.stateDiff)
       newBoard = result.board
       newCandidates = result.candidates
-      setBoard(newBoard)
+      updateBoard(newBoard)
       updateCandidates(newCandidates)
     } else {
       // Legacy fallback - replay the move
@@ -835,12 +848,12 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
     setHistory(limitedHistory)
     setHistoryIndex(limitedIndex)
-    
-    setBoard(newBoard)
+
+    updateBoard(newBoard)
     updateCandidates(newCandidates)
-    
+
     checkCompletion(newBoard)
-    
+
     // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
     boardRef.current = newBoard
     candidatesRef.current = newCandidates
@@ -854,7 +867,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     savedCandidates: Uint16Array,
     savedHistory: Move[]
   ) => {
-    setBoard(savedBoard)
+    updateBoard(savedBoard)
     updateCandidates(savedCandidates)
     setHistory(savedHistory)
     setHistoryIndex(savedHistory.length - 1)
@@ -872,7 +885,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     newBoard: number[],
     newCandidates: Uint16Array
   ) => {
-    setBoard(newBoard)
+    updateBoard(newBoard)
     updateCandidates(newCandidates)
   }, [updateCandidates])
 

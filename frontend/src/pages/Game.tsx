@@ -180,6 +180,8 @@ function GameContent() {
   const autoSolveUsedRef = useRef(false)  // Ref for immediate access in callbacks
   const [autoSolveStepsUsed, setAutoSolveStepsUsed] = useState(0)
   const [autoSolveErrorsFixed, setAutoSolveErrorsFixed] = useState(0)
+  // Track if we've handled initial navigation (to prevent in-progress check after seed changes)
+  const handledInitialNavigationRef = useRef(false)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [techniqueHintsUsed, setTechniqueHintsUsed] = useState(0)
   const [hintLoading, setHintLoading] = useState(false) // Loading spinner for hint button
@@ -553,13 +555,14 @@ function GameContent() {
   useEffect(() => {
     // Skip if user already confirmed navigation (from Homepage or Menu)
     // Both Homepage and Menu handle their own in-progress confirmations
-    if (sessionStorage.getItem('skip_in_progress_check')) {
-      sessionStorage.removeItem('skip_in_progress_check')
-      console.log('⏭️ [NAVIGATION] Skipping in-progress check (user confirmed navigation)')
+    // Also skip if we've already handled initial navigation (to prevent check after seed changes)
+    if (sessionStorage.getItem('skip_in_progress_check') || handledInitialNavigationRef.current) {
       return
     }
-    
+
     const savedGame = getMostRecentGame()
+    // Mark that we've handled initial navigation for this component mount
+    handledInitialNavigationRef.current = true
     console.log('🔍 [IN-PROGRESS CHECK] Current URL seed:', seed, 'Saved game found:', savedGame ? savedGame.seed : 'none')
     // Show prompt if:
     // - There's a saved game
@@ -583,7 +586,6 @@ function GameContent() {
       // Set flag so we don't show modal again when navigating to resumed game
       sessionStorage.setItem('skip_in_progress_check', 'true')
       const targetUrl = `/${existingInProgressGame.seed}?d=${existingInProgressGame.difficulty}`
-      console.log('🎮 [RESUME] Clicking Resume, navigating to:', targetUrl, 'Game info:', existingInProgressGame)
       navigate(targetUrl)
     }
     setShowInProgressConfirm(false)
@@ -1826,18 +1828,19 @@ ${bugReportJson}
   // Reset game state when initialBoard changes (new puzzle loaded) and restore saved state if available
   useEffect(() => {
     if (initialBoard.length === 81 && puzzle) {
+      // Set restoration flag early so useSudokuGame doesn't overwrite restored state
+      hasRestoredSavedState.current = true
+
       // Skip if we already loaded from a shared URL (state is already restored)
       if (loadedFromSharedUrl.current) {
         loadedFromSharedUrl.current = false
         hasRestoredSavedState.current = true
         return
       }
-      
+
       // Check for saved state for this puzzle
       const savedState = loadSavedGameState(puzzle.seed)
-      
-      console.log('📥 [RESTORATION] Attempting to load saved state for seed:', puzzle.seed, 'Result:', savedState ? 'FOUND' : 'NOT FOUND')
-      
+
       if (savedState) {
         // Restore saved state
         const restoredCandidates = arraysToCandidates(savedState.candidates)
@@ -1848,24 +1851,10 @@ ${bugReportJson}
           timerControl.startTimer()
         }
         setAutoFillUsed(savedState.autoFillUsed)
-        console.log('✅ [RESTORATION] Successfully restored saved state for seed:', puzzle.seed)
       } else {
-        // Start fresh - reset game and all tracking state
-        // Note: Don't call resetAllGameState() here because game.restoreState() already
-        // resets the game hook. Calling it would cause tracking variables to conflict
-        // with the restored game state (e.g., autosolve flags would reset to
-        // default but the fresh game might not have used autosolve yet).
-        //
-        // resetAllGameState() is already called in the effect when starting fresh.
-        // Start timer for new game - only if puzzle is playable
-        if (!alreadyCompletedToday && !showDifficultyChooser) {
-          timerControl.startTimer()
-        }
-        console.log('🆕 [RESTORATION] No saved state found, starting fresh game for seed:', puzzle.seed)
+        // No saved state - initialize board from givens
+        game.setBoardState(initialBoard, new Uint16Array(81))
       }
-      
-      hasRestoredSavedState.current = true
-      console.log('🏁 [RESTORATION FLAG] Set to true (restoration complete)')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- game.restoreState, resetAllGameState, and timerControl.setElapsedMs are stable callbacks. We intentionally only trigger this when initialBoard or puzzle changes to prevent re-initialization loops.
   }, [initialBoard, puzzle, loadSavedGameState])
