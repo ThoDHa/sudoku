@@ -110,17 +110,18 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
   useEffect(() => {
     if (!isRunning) return
 
-    // Don't run timer at all when page is hidden to save battery
     if (pauseOnHidden && backgroundManager.shouldPauseOperations) {
+      setIsPausedDueToVisibility(true)
       return // No interval when hidden
     }
 
+    // Start the interval
     const interval = setInterval(() => {
-      // Direct visibility check as safety net for Android/mobile
-      // React state may be stale if visibility events fire late
-      if (document.visibilityState === 'hidden') {
+      // Respect background manager's pause decision
+      if (backgroundManager.shouldPauseOperations) {
         return // Skip update when hidden
       }
+
       if (startTimeRef.current !== null) {
         setElapsedMs(accumulatedRef.current + (Date.now() - startTimeRef.current))
       }

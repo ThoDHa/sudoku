@@ -25,6 +25,7 @@ import type { MoveHighlight } from '../hooks/useHighlightState'
 import { useVisibilityAwareTimeout } from '../hooks/useVisibilityAwareTimeout'
 import { useFrozenWhenHidden } from '../hooks/useFrozenWhenHidden'
 import type { Move } from '../hooks/useSudokuGame'
+import { debugLog } from '../lib/debug'
 import {
   TOAST_DURATION_INFO,
   TOAST_DURATION_ERROR,
@@ -311,16 +312,16 @@ function GameContent() {
       
       const isInteractiveClick = clickedOnButton || clickedOnInput || clickedOnInteractive
       
-      // DEBUG: Log click detection info
-      console.debug('Click Debug:', {
-        target: target.tagName + (target.className ? '.' + target.className.split(' ').join('.') : ''),
-        clickedInsideBoard: !!clickedInsideBoard,
-        clickedInsideControls: !!clickedInsideControls, 
-        clickedInsideHeader: !!clickedInsideHeader,
-        clickedInsideModal: !!clickedInsideModal,
-        isInteractiveClick,
-        selectedCell: selectedCellRef.current
-      })
+       // DEBUG: Log click detection info
+       debugLog('Click Debug:', {
+         target: target.tagName + (target.className ? '.' + target.className.split(' ').join('.') : ''),
+         clickedInsideBoard: !!clickedInsideBoard,
+         clickedInsideControls: !!clickedInsideControls, 
+         clickedInsideHeader: !!clickedInsideHeader,
+         clickedInsideModal: !!clickedInsideModal,
+         isInteractiveClick,
+         selectedCell: selectedCellRef.current
+       })
       
       // Deselect if clicking outside interactive areas
       const shouldDeselect = !clickedInsideBoard && 
@@ -563,7 +564,7 @@ function GameContent() {
     const savedGame = getMostRecentGame()
     // Mark that we've handled initial navigation for this component mount
     handledInitialNavigationRef.current = true
-    console.log('🔍 [IN-PROGRESS CHECK] Current URL seed:', seed, 'Saved game found:', savedGame ? savedGame.seed : 'none')
+    debugLog('[IN-PROGRESS CHECK] Current URL seed:', seed, 'Saved game found:', savedGame ? savedGame.seed : 'none')
     // Show prompt if:
     // - There's a saved game
     // - It's for a DIFFERENT seed than what we're trying to load
@@ -572,11 +573,11 @@ function GameContent() {
         savedGame.seed !== seed && 
         savedGame.seed !== encoded &&
         savedGame.progress < 100) {
-      console.log('⚠️ [IN-PROGRESS CHECK] Showing modal: Existing game found', savedGame.seed, 'vs current:', seed)
+      debugLog('[IN-PROGRESS CHECK] Showing modal: Existing game found', savedGame.seed, 'vs current:', seed)
       setExistingInProgressGame(savedGame)
       setShowInProgressConfirm(true)
     } else {
-      console.log('✅ [IN-PROGRESS CHECK] No modal needed (no existing game or same seed)')
+      debugLog('[IN-PROGRESS CHECK] No modal needed (no existing game or same seed)')
     }
   }, [seed, encoded])
 
@@ -1781,9 +1782,10 @@ ${bugReportJson}
           setInitialBoard([...givens]) // Givens for marking non-editable cells
         } else if (alreadyCompletedToday) {
           setInitialBoard([...puzzleData.solution])
-        } else {
-          setInitialBoard([...givens])
-        }
+      } else {
+        setInitialBoard([...givens])
+        timerControl.startTimer()
+      }
         setSolution([...puzzleData.solution])
 
         // Reset timer for non-completed puzzles (timer will be started later by initialBoard effect)
@@ -1821,7 +1823,7 @@ ${bugReportJson}
     if (puzzle?.seed) {
       hasRestoredSavedState.current = false
       loadedFromSharedUrl.current = false
-      console.log('🔄 [RESTORATION FLAG RESET] Seed changed to:', puzzle.seed, 'Flag reset to false')
+      debugLog('[RESTORATION FLAG RESET] Seed changed to:', puzzle.seed, 'Flag reset to false')
     }
   }, [puzzle?.seed])
 
