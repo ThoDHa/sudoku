@@ -162,27 +162,25 @@ $(shell \
 )
 endef
 
-# Run all tests with Allure output
+# Run all tests with Allure output (fully Docker-consistent with CI/CD)
 test-allure: allure-clean
 	@echo ""
 	@echo "========================================"
-	@echo "  Running All Tests with Allure Output"
+	@echo "  Running All Tests with Allure Output (Docker)"
 	@echo "========================================"
 	@echo ""
 	@echo "[Go] Running tests with Allure output..."
 	@cd api && mkdir -p allure-results && $(shell go env GOPATH)/bin/gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./... || true
 	@echo ""
-	@echo "[Frontend] Running unit tests with Allure output..."
-	@cd frontend && npm run test:unit || true
+	@echo "[Frontend] Running unit tests with Allure output in Docker..."
+	@docker build -t sudoku-frontend-test -f frontend/Dockerfile.test frontend
+	@docker run --rm -v $(PWD)/allure-results:/app/allure-results sudoku-frontend-test npm run test:unit || true
 	@echo ""
-	@SERVER_URL=$(detect_server_url); \
-	if [ -z "$$SERVER_URL" ]; then \
-		echo "[E2E] Skipping - no server detected at localhost:80 or localhost:5173"; \
-		echo "      Start server with 'make dev' or 'cd frontend && npm run dev'"; \
-	else \
-		echo "[E2E] Running Playwright tests against $$SERVER_URL..."; \
-		cd frontend && PLAYWRIGHT_BASE_URL="$$SERVER_URL" npm run test:e2e || true; \
-	fi
+	@echo "[E2E] Running Playwright tests in Docker..."
+	@docker compose -f docker-compose.test.yml up sudoku -d --build
+	@sleep 15
+	@docker compose -f docker-compose.test.yml run --rm playwright || true
+	@docker compose -f docker-compose.test.yml down
 	@echo ""
 	@echo "========================================"
 	@echo "  All tests complete! Run 'make allure-report' to generate report"
