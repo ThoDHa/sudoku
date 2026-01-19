@@ -2075,8 +2075,9 @@ ${bugReportJson}
         </div>
       )}
 
-      <div 
+       <div
         className="game-background game-area flex-1"
+        data-testid="game-background"
         onClick={(e) => {
           // Deselect cell when clicking on game-area background (outside game-container)
           // The event target will be the game-area div itself when clicking the outer edges

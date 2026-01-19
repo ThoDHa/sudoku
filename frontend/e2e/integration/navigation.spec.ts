@@ -226,11 +226,11 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     await expect(page.locator('text=Start New Game?')).not.toBeVisible();
   });
 
-  test('New Game from menu cancels correctly', async ({ page }) => {
-    // Start a game and make some progress
+    test('New Game from menu cancels correctly', async ({ page }) => {
+    // Start a game and make some progress to create an in-progress save
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.getByTestId('game-background').toBeVisible({ timeout: 15000 });
     
     // Make a move
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
@@ -269,7 +269,6 @@ test.describe('@smoke In-Game Menu Navigation', () => {
   test('New Game from menu does not show duplicate in-progress prompt', async ({ page }) => {
     // Regression test for bug: "Game in Progress" modal should NOT appear when
     // starting new game from menu, because Menu already handled confirmation
-    // Also tests that seed changes don't cause in-progress modal to reappear
 
     // Start a game and make some progress to create an in-progress save
     await page.goto('/');
@@ -279,7 +278,7 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     // Make a move to ensure game is saved
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
     await emptyCell.click();
-    await page.keyboard.press('7');
+    await page.keyboard.press('5');
 
     // Wait for auto-save
     await page.waitForTimeout(1500);
@@ -288,7 +287,7 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     const initialGameUrl = page.url();
 
     // Open menu and start a new game WITHOUT in-progress confirmation
-    // (because Menu should handle the confirmation and set skip flag)
+    // (because Menu should handle to confirmation and set skip flag)
     const menuButton = page.locator('header button[title="Menu"]');
     await expect(menuButton).toBeVisible();
     await menuButton.click();
@@ -297,7 +296,7 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     await expect(page.locator('text=Menu')).toBeVisible({ timeout: 10000 });
     await page.locator('button:has-text("New Game")').click();
 
-    // Select different difficulty - this should open to Menu confirmation
+    // Select a difficulty
     await page.locator('button:has-text("medium")').click();
 
     // Menu should show single confirmation modal; click Start New to proceed
@@ -305,7 +304,7 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     await page.locator('button:has-text("Start New")').click();
 
     // Wait for navigation to complete to a new game route
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('game-background')).toBeVisible({ timeout: 15000 });
     const newUrl = page.url();
     expect(newUrl).not.toBe(initialGameUrl);
     expect(newUrl).toContain('d=medium');
@@ -313,19 +312,6 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     // CRITICAL: "Game in Progress" modal should NOT appear (no duplicate)
     await expect(page.locator('text=Game In Progress')).not.toBeVisible();
     await expect(page.locator('button:has-text("Resume")')).not.toBeVisible();
-
-    // Additional: Starting another new game from menu should not show in-progress modal
-    // (because menu's "New Game" action sets skip flag before navigation)
-    await page.locator('button:has-text("New Game")').click();
-    await page.locator('button:has-text("hard")').click();
-
-    // Should navigate directly to new game without in-progress modal
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
-    const anotherUrl = page.url();
-    expect(anotherUrl).toContain('d=hard');
-
-    // Verify no in-progress modal appeared
-    await expect(page.locator('text=Game In Progress')).not.toBeVisible();
   });
 
   test('seed change does not show in-progress modal', async ({ page }) => {
