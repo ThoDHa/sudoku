@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from './constants'
+import { debugLog } from './debug'
 
 /**
  * Seed Validation and Normalization
@@ -130,13 +131,13 @@ export function extractSeedFromStorageKey(storageKey: string): { seed: string; v
  */
 export function createStorageKey(seed: string): string {
   const validation = validateSeed(seed)
-  
+
   if (!validation.valid) {
     // If seed is invalid, don't create a key
-    console.error(`[SEED VALIDATION] Cannot create storage key for invalid seed: ${seed}`, validation.error)
+    debugLog(`[SEED VALIDATION] Cannot create storage key for invalid seed: ${seed}`, validation.error)
     throw new Error(`Invalid seed: ${validation.error}`)
   }
-  
+
   return `${STORAGE_KEYS.GAME_STATE_PREFIX}${seed}`
 }
 

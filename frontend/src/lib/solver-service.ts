@@ -152,7 +152,7 @@ export async function initializeSolver(): Promise<void> {
       debugLog('[SolverService] Worker mode initialized')
       return
     } catch (error) {
-      console.warn('[SolverService] Worker initialization failed, falling back to main thread:', error)
+      debugLog('[SolverService] Worker initialization failed, falling back to main thread:', error)
       useWorkerMode = false
     }
   }
@@ -174,13 +174,13 @@ export function cleanupSolver(): void {
       terminateWorker()
       debugLog('[SolverService] Worker terminated')
     }
-    
+
     // Also clean up main thread WASM if it was loaded
     wasmApi = null
     unloadWasm()
     debugLog('[SolverService] Solver cleaned up successfully')
   } catch (error) {
-    console.warn('[SolverService] Error during solver cleanup:', error)
+    debugLog('[SolverService] Error during solver cleanup:', error)
   }
 }
 
@@ -205,7 +205,7 @@ export async function solveAll(
         finalBoard: result.finalBoard,
       }
     } catch (error) {
-      console.warn('[SolverService] Worker solveAll failed, falling back:', error)
+      debugLog('[SolverService] Worker solveAll failed, falling back:', error)
       // Fall through to main thread
     }
   }
@@ -252,7 +252,7 @@ export async function findNextMove(
         solved: result.solved,
       }
     } catch (error) {
-      console.warn('[SolverService] Worker findNextMove failed, falling back:', error)
+      debugLog('[SolverService] Worker findNextMove failed, falling back:', error)
       // Fall through to main thread
     }
   }
@@ -365,9 +365,9 @@ export async function checkAndFixWithSolution(
     try {
       // Note: Worker client will need to be updated to support this new function
       // For now, fall back to main thread
-      console.warn('[SolverService] checkAndFixWithSolution not yet implemented in worker, using main thread')
+      debugLog('[SolverService] checkAndFixWithSolution not yet implemented in worker, using main thread')
     } catch (error) {
-      console.warn('[SolverService] Worker checkAndFixWithSolution failed, falling back:', error)
+      debugLog('[SolverService] Worker checkAndFixWithSolution failed, falling back:', error)
     }
   }
   

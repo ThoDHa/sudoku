@@ -8,8 +8,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
  */
 
 // Mock debugLog before importing the module
+let debugLogMock = vi.fn()
 vi.mock('./debug', () => ({
-  debugLog: vi.fn(),
+  debugLog: function(...args: unknown[]) {
+    return debugLogMock(...args)
+  },
 }))
 
 // Store original globals
@@ -62,7 +65,8 @@ describe('wasm module', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
-    
+    debugLogMock.mockClear()
+
     mockWasmApi = createMockWasmApi()
     MockGoClass = createMockGoClass()
     wasmReadyHandler = null
@@ -521,19 +525,16 @@ describe('wasm module', () => {
     })
     
     it('should catch and warn on preload failure', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       vi.mocked(globalThis.fetch).mockRejectedValue(new Error('Preload failed'))
-      
+
       const { preloadWasm } = await import('./wasm')
-      
+
       preloadWasm()
-      
+
       // Wait for the promise to settle
       await vi.waitFor(() => {
-        expect(consoleWarnSpy).toHaveBeenCalledWith('WASM preload failed:', 'Preload failed')
+        expect(debugLogMock).toHaveBeenCalledWith('WASM preload failed:', 'Preload failed')
       })
-      
-      consoleWarnSpy.mockRestore()
     })
   })
   

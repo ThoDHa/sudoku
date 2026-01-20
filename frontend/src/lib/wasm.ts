@@ -216,12 +216,12 @@ export function unloadWasm(): void {
   
   // Clear Go instance
   if (goInstance) {
-    // Try to exit the Go runtime cleanly if supported
+    // Try to exit Go runtime cleanly if supported
     if (goInstance.exit) {
       try {
         goInstance.exit(0);
       } catch (e) {
-        console.warn('[WASM] Error during Go exit:', e);
+        debugLog('[WASM] Error during Go exit:', e);
       }
     }
     goInstance = null;
@@ -423,7 +423,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
  */
 export function preloadWasm(): void {
   loadWasm().catch((error) => {
-    console.warn('WASM preload failed:', error.message);
+    debugLog('WASM preload failed:', error.message);
   });
 }
 

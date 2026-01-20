@@ -7,6 +7,7 @@
  */
 
 import type { Move } from './wasm'
+import { debugLog } from './debug'
 
 // ==================== Types ====================
 
