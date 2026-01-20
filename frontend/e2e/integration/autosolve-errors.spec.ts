@@ -62,7 +62,7 @@ async function enterDigitInCell(page: Page, row: number, col: number, digit: num
 
 // Helper to use a few hints and verify system doesn't crash
 async function useHintsAndVerifyStable(page: Page, hintCount: number = 3): Promise<boolean> {
-  const hintButton = page.getByRole('button', { name: /Hint/i )
+  const hintButton = page.getByRole('button', { name: /Hint/i });
   
   for (let i = 0; i < hintCount; i++) {
     if (await hintButton.isEnabled().catch(() => false)) {
@@ -82,13 +82,13 @@ test.describe('@integration Autosolve Error Handling', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
-  )
+    });
+  });
 
   test('autosolve handles invalid cell in row gracefully', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 15000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Find an empty cell in row 5
     const pos = await findEmptyCellInRow(page, 5);
@@ -113,12 +113,12 @@ test.describe('@integration Autosolve Error Handling', () => {
     
     // Verify grid is still visible
     await expect(page.locator('[role="grid"]')).toBeVisible();
-  )
+  });
 
   test('autosolve handles invalid cell in column gracefully', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 15000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Find an empty cell
     const pos = await findEmptyCellInRow(page, 6);
@@ -137,12 +137,12 @@ test.describe('@integration Autosolve Error Handling', () => {
     }
     
     await expect(page.locator('[role="grid"]')).toBeVisible();
-  )
+  });
 
   test('autosolve handles duplicate in row gracefully', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 15000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Find two empty cells in the same row - capture positions BEFORE modifying
     let foundDuplicate = false;
@@ -182,12 +182,12 @@ test.describe('@integration Autosolve Error Handling', () => {
     }
     
     await expect(page.locator('[role="grid"]')).toBeVisible();
-  )
+  });
 
   test('autosolve handles duplicate in column gracefully', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 15000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Try different columns to find one with 2+ empty cells
     let foundDuplicate = false;
@@ -226,14 +226,14 @@ test.describe('@integration Autosolve Error Handling', () => {
     }
     
     await expect(page.locator('[role="grid"]')).toBeVisible();
-  )
+  });
 
   test('hint button remains functional after error state', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 15000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
-    const hintButton = page.getByRole('button', { name: /Hint/i )
+    const hintButton = page.getByRole('button', { name: /Hint/i });
     
     // Click hint several times
     for (let i = 0; i < 5; i++) {
@@ -245,20 +245,20 @@ test.describe('@integration Autosolve Error Handling', () => {
     
     // Verify hint button is still there and functional
     await expect(hintButton).toBeVisible();
-  )
-)
+  });
+});
 
 test.describe('@integration Autosolve Error Recovery', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
-  )
+    });
+  });
 
   test('undo can fix invalid state before continuing', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 15000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Find an empty cell
     const pos = await findEmptyCellInRow(page, 5);
@@ -280,12 +280,12 @@ test.describe('@integration Autosolve Error Recovery', () => {
     // Use hints
     const isStable = await useHintsAndVerifyStable(page, 3);
     expect(isStable).toBeTruthy();
-  )
+  });
 
   test('clear cell can fix invalid state', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 15000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Find an empty cell
     const pos = await findEmptyCellInRow(page, 6);
@@ -306,26 +306,26 @@ test.describe('@integration Autosolve Error Recovery', () => {
     // Use hints
     const isStable = await useHintsAndVerifyStable(page, 3);
     expect(isStable).toBeTruthy();
-  )
-)
+  });
+});
 
 test.describe('@integration Autosolve Error - Mobile', () => {
   test.beforeEach(async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 667 )
+    await page.setViewportSize({ width: 375, height: 667 });
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
-  )
+    });
+  });
 
   test('autosolve handles errors on mobile viewport', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 15000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Use a few hints on mobile
     const isStable = await useHintsAndVerifyStable(page, 3);
     expect(isStable).toBeTruthy();
     
     await expect(page.locator('[role="grid"]')).toBeVisible();
-  )
-)
+  });
+});

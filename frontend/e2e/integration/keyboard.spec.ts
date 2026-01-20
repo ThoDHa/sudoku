@@ -89,8 +89,8 @@ async function findCellWithAdjacentEmpty(
 test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/keyboard123?d=easy');
-    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
-  )
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+  });
 
   test('Arrow Right moves selection to next column', async ({ page }) => {
     // Find an empty cell with an empty cell to its right
@@ -109,7 +109,7 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     // Verify the adjacent empty cell is now selected
     const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol);
     await expectCellSelected(nextCell);
-  )
+  });
 
   test('Arrow Left moves selection to previous column', async ({ page }) => {
     // Find an empty cell with an empty cell to its left
@@ -127,7 +127,7 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     // Verify the adjacent empty cell is now selected
     const prevCell = getCellLocator(page, cells!.endRow, cells!.endCol);
     await expectCellSelected(prevCell);
-  )
+  });
 
   test('Arrow Down moves selection to next row', async ({ page }) => {
     // Find an empty cell with an empty cell below it
@@ -145,7 +145,7 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     // Verify the cell below is now selected
     const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol);
     await expectCellSelected(nextCell);
-  )
+  });
 
   test('Arrow Up moves selection to previous row', async ({ page }) => {
     // Find an empty cell with an empty cell above it
@@ -163,7 +163,7 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     // Verify the cell above is now selected
     const prevCell = getCellLocator(page, cells!.endRow, cells!.endCol);
     await expectCellSelected(prevCell);
-  )
+  });
 
   test('Arrow Right from column 9 wraps or stops at edge', async ({ page }) => {
     // Find an empty cell in column 9
@@ -190,7 +190,7 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     // Just verify selection still exists somewhere (app didn't crash)
     const anySelected = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
     expect(anySelected).toBeGreaterThanOrEqual(0); // App handles edge gracefully
-  )
+  });
 
   test('Arrow Down from row 9 wraps or stops at edge', async ({ page }) => {
     // Find an empty cell in row 9
@@ -217,7 +217,7 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     // Just verify the app handles this gracefully
     const anySelected = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
     expect(anySelected).toBeGreaterThanOrEqual(0); // App handles edge gracefully
-  )
+  });
 
   test('rapid arrow key pressing navigates correctly', async ({ page }) => {
     // Find an empty cell to start from
@@ -236,7 +236,7 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     // Verify SOME cell is selected (navigation worked, app didn't crash)
     const selectedCells = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
     expect(selectedCells).toBe(1);
-  )
+  });
 
   test('cell deselects after digit entry (regression test)', async ({ page }) => {
     // REGRESSION TEST: Ensure digit entry properly deselects the cell
@@ -279,14 +279,14 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     // NOW the adjacent cell should be selected
     const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol);
     await expectCellSelected(nextCell);
-  )
-)
+  });
+});
 
 test.describe('@integration Keyboard Navigation - Digit Entry', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/keyboard456?d=easy');
-    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
-  )
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+  });
 
   test('keys 1-9 enter digits in selected empty cell', async ({ page }) => {
     const pos = await findEmptyCellPosition(page, 5);
@@ -300,7 +300,7 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
 
     // Verify digit was placed
     await expectCellValue(page, pos.row, pos.col, 7);
-  )
+  });
 
   test('cannot overwrite given (fixed) cells', async ({ page }) => {
     // Find a given cell
@@ -321,7 +321,7 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
 
     // Value should remain unchanged
     await expectCellValue(page, row, col, originalValue);
-  )
+  });
 
   test('digit replaces existing user digit', async ({ page }) => {
     const pos = await findEmptyCellPosition(page, 6);
@@ -341,7 +341,7 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
 
     // New digit should replace old one
     await expectCellValue(page, pos.row, pos.col, 8);
-  )
+  });
 
   test('key 0 or Backspace clears cell', async ({ page }) => {
     const pos = await findEmptyCellPosition(page, 5);
@@ -362,7 +362,7 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
 
     // Cell should be empty
     await expectCellValue(page, pos.row, pos.col, 'empty');
-  )
+  });
 
   test('Delete key clears cell', async ({ page }) => {
     const pos = await findEmptyCellPosition(page, 6);
@@ -383,14 +383,14 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
 
     // Cell should be empty
     await expectCellValue(page, pos.row, pos.col, 'empty');
-  )
-)
+  });
+});
 
 test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/keyboard789?d=easy');
-    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
-  )
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+  });
 
   test('Ctrl+Z undoes last move', async ({ page, browserName }) => {
     const pos = await findEmptyCellPosition(page, 5);
@@ -410,7 +410,7 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
 
     // Cell should be empty again
     await expectCellValue(page, pos.row, pos.col, 'empty');
-  )
+  });
 
   test('Ctrl+Y or Ctrl+Shift+Z redoes', async ({ page, browserName }) => {
     const pos = await findEmptyCellPosition(page, 5);
@@ -442,7 +442,7 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
 
     // Digit should be back
     await expectCellValue(page, pos.row, pos.col, 2);
-  )
+  });
 
   test('multiple undos work sequentially', async ({ page, browserName }) => {
     // Find two empty cells
@@ -474,7 +474,7 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
     await page.keyboard.press(`${modifier}+z`);
     await page.waitForTimeout(100);
     await expectCellValue(page, pos1.row, pos1.col, 'empty');
-  )
+  });
 
   test('undo after redo works correctly', async ({ page, browserName }) => {
     const pos = await findEmptyCellPosition(page, 5);
@@ -510,14 +510,14 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
     await page.keyboard.press(`${modifier}+z`);
     await page.waitForTimeout(100);
     await expectCellValue(page, pos.row, pos.col, 'empty');
-  )
-)
+  });
+});
 
 test.describe('@integration Keyboard Navigation - Notes Mode', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/keyboardNotes?d=easy');
-    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
-  )
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+  });
 
   test('N key toggles notes mode on', async ({ page }) => {
     // Verify notes mode is off initially
@@ -530,7 +530,7 @@ test.describe('@integration Keyboard Navigation - Notes Mode', () => {
 
     // Notes button should show active state
     await expect(notesButton).toHaveClass(/bg-amber|active|enabled/);
-  )
+  });
 
   test('in notes mode, digits toggle candidates', async ({ page }) => {
     const pos = await findEmptyCellPosition(page, 5);
@@ -555,7 +555,7 @@ test.describe('@integration Keyboard Navigation - Notes Mode', () => {
     );
 
     expect(hasCandidates || hasNotesClass).toBe(true);
-  )
+  });
 
   test('N key again exits notes mode', async ({ page }) => {
     const notesButton = page.locator('button[aria-label*="Notes"]');
@@ -571,18 +571,18 @@ test.describe('@integration Keyboard Navigation - Notes Mode', () => {
 
     // Notes button should not show active state
     await expect(notesButton).not.toHaveClass(/bg-amber|active|enabled/);
-  )
-)
+  });
+});
 
 test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/keyboardTab?d=easy');
-    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
-  )
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+  });
 
   test('Tab moves through interactive elements', async ({ page }) => {
     // Focus the board first
-    const board = page.getByRole("grid", { name: "Sudoku puzzle" }));
+    const board = page.locator('.sudoku-board');
     await board.click();
 
     // Press Tab multiple times
@@ -600,7 +600,7 @@ test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
     // A different element should now have focus
     const newFocusedElement = page.locator(':focus');
     await expect(newFocusedElement).toBeVisible();
-  )
+  });
 
   test('Shift+Tab moves backwards through elements', async ({ page }) => {
     // Focus a control button first
@@ -622,26 +622,26 @@ test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
     // Should have moved back
     const afterShiftTab = await page.evaluate(() => document.activeElement?.tagName);
     expect(afterShiftTab).toBeDefined();
-  )
-)
+  });
+});
 
 test.describe('@integration Keyboard Navigation - Focus Management', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/keyboardFocus?d=easy');
-    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
-  )
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+  });
 
   test('clicking board captures focus', async ({ page }) => {
-    const board = page.getByRole("grid", { name: "Sudoku puzzle" }));
+    const board = page.locator('.sudoku-board');
     await board.click();
 
     // Board or a cell within should have focus
     const isBoardFocused = await board.evaluate((el: Element) => {
       return el.contains(document.activeElement);
-    )
+    });
 
     expect(isBoardFocused).toBe(true);
-  )
+  });
 
   test('keyboard works after board click', async ({ page }) => {
     // Find an empty cell with an adjacent empty cell to the right
@@ -667,7 +667,7 @@ test.describe('@integration Keyboard Navigation - Focus Management', () => {
     await page.keyboard.press('4');
     await page.waitForTimeout(100);
     await expectCellValue(page, pos.row, pos.col, 4);
-  )
+  });
 
   test('focus visible indicator shows on selected cell', async ({ page }) => {
     // Find an empty cell with an adjacent empty cell below it
@@ -690,14 +690,14 @@ test.describe('@integration Keyboard Navigation - Focus Management', () => {
     // New cell should have focus ring
     const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol);
     await expect(nextCell).toHaveClass(/ring/);
-  )
-)
+  });
+});
 
 test.describe('@integration Keyboard Navigation - Edge Cases', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/keyboardEdge?d=easy');
-    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
-  )
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+  });
 
   test('Arrow Left from column 1 wraps or stops at edge', async ({ page }) => {
     // Find an empty cell in column 1
@@ -723,7 +723,7 @@ test.describe('@integration Keyboard Navigation - Edge Cases', () => {
     // With skip-given-cells behavior, verify app handles edge gracefully
     const anySelected = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
     expect(anySelected).toBeGreaterThanOrEqual(0);
-  )
+  });
 
   test('Arrow Up from row 1 wraps or stops at edge', async ({ page }) => {
     // Find an empty cell in row 1
@@ -749,7 +749,7 @@ test.describe('@integration Keyboard Navigation - Edge Cases', () => {
     // With skip-given-cells behavior, verify app handles edge gracefully
     const anySelected = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
     expect(anySelected).toBeGreaterThanOrEqual(0);
-  )
+  });
 
   test('keyboard navigation works with no cell selected initially', async ({ page }) => {
     // Without clicking, try pressing an arrow key
@@ -759,7 +759,7 @@ test.describe('@integration Keyboard Navigation - Edge Cases', () => {
     // This tests that the app handles keyboard input gracefully without crashes
     const anySelected = await page.locator('[role="gridcell"]').first().isVisible();
     expect(anySelected).toBe(true);
-  )
+  });
 
   test('invalid keys are ignored gracefully', async ({ page }) => {
     const pos = await findEmptyCellPosition(page, 5);
@@ -775,5 +775,5 @@ test.describe('@integration Keyboard Navigation - Edge Cases', () => {
 
     // Cell should still be empty (no crash, no unexpected value)
     await expectCellValue(page, pos.row, pos.col, 'empty');
-  )
-)
+  });
+});

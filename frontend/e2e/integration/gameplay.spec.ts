@@ -38,7 +38,7 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 });
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
   test('clicking an empty cell selects it', async ({ page }) => {
@@ -54,7 +54,7 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     
     // Check the cell has selected styling (ring class)
     await expect(emptyCell).toHaveClass(/ring/);
-  )
+  });
 
   test('clicking a given cell highlights the digit', async ({ page }) => {
     // Allure annotations
@@ -72,7 +72,7 @@ test.describe('@integration Gameplay - Cell Selection', () => {
       // Given cells should be clickable (test passes if no error)
       await expect(givenCell).toBeVisible();
     }
-  )
+  });
 
   test('clicking a different cell changes selection', async ({ page }) => {
     // Use cells in lower rows to avoid sticky header
@@ -98,7 +98,7 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     // Wait and verify digit is removed
     await page.waitForTimeout(100);
     await expectCellValue(page, row, col, 'empty');
-  )
+  });
 
   test('keyboard shortcut Ctrl+Z triggers undo', async ({ page, browserName }) => {
     // Find an empty cell first to get its exact position
@@ -124,7 +124,7 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     // Wait and verify digit is removed
     await page.waitForTimeout(100);
     await expectCellValue(page, row, col, 'empty');
-  )
+  });
 
   test('multiple undo operations work sequentially', async ({ page }) => {
     // Find two empty cells to get their exact positions
@@ -162,8 +162,8 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     await undoButton.click();
     await page.waitForTimeout(100);
     await expectCellValue(page, row1, col1, 'empty');
-  )
-)
+  });
+});
 
 test.describe('@integration Gameplay - Mobile Touch', () => {
   test.beforeEach(async ({ page }) => {
@@ -175,7 +175,7 @@ test.describe('@integration Gameplay - Mobile Touch', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 });
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
   test('clicking selects cell on mobile viewport', async ({ page }) => {
@@ -188,7 +188,7 @@ test.describe('@integration Gameplay - Mobile Touch', () => {
     
     // Cell should have selection styling
     await expect(cell).toHaveClass(/ring/);
-  )
+  });
 
   test('number pad buttons work on mobile viewport', async ({ page }) => {
     // Find an empty cell first to get its exact position
@@ -209,7 +209,7 @@ test.describe('@integration Gameplay - Mobile Touch', () => {
     // Wait and verify digit was placed
     await page.waitForTimeout(100);
     await expectCellValue(page, row, col, 5);
-  )
+  });
 
   test('control buttons accessible on mobile viewport', async ({ page }) => {
     // Verify all main control buttons are visible
@@ -219,10 +219,10 @@ test.describe('@integration Gameplay - Mobile Touch', () => {
     await expect(page.locator('button[aria-label="Erase mode"]')).toBeVisible();
     // Hint button shows 💡 emoji on mobile
     await expect(page.locator('button:has-text("💡")')).toBeVisible();
-  )
+  });
 
   test('board fits within mobile viewport', async ({ page }) => {
-    const board = page.getByRole("grid", { name: "Sudoku puzzle" };
+    const board = page.locator('.sudoku-board');
     const boardBox = await board.boundingBox();
     
     expect(boardBox).not.toBeNull();
@@ -231,5 +231,5 @@ test.describe('@integration Gameplay - Mobile Touch', () => {
       expect(boardBox.width).toBeLessThanOrEqual(375);
       expect(boardBox.x).toBeGreaterThanOrEqual(0);
     }
-  )
-)
+  });
+});

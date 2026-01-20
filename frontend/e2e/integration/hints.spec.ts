@@ -27,26 +27,26 @@ test.describe('@integration Hints - Basic Functionality', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 20000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     // Wait for WASM to be ready
     await waitForWasmReady(page);
-  )
+  });
 
   test('hint button is visible and clickable', async ({ page }) => {
-    const hintButton = page.getByRole('button', { name: /Hint/i )
+    const hintButton = page.getByRole('button', { name: /Hint/i });
     await expect(hintButton).toBeVisible();
     await expect(hintButton).toBeEnabled();
-  )
+  });
 
   test('clicking hint reveals or places a value', async ({ page }) => {
     // Count empty cells before hint
     const emptyCellsBefore = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
     
     // Click hint button
-    const hintButton = page.getByRole('button', { name: /Hint/i )
+    const hintButton = page.getByRole('button', { name: /Hint/i });
     await hintButton.click();
     
     // Wait for hint to be applied
@@ -58,14 +58,14 @@ test.describe('@integration Hints - Basic Functionality', () => {
     // Either a cell was filled (fewer empty cells) or candidates were updated
     // For easy puzzles, usually a cell is filled
     expect(emptyCellsAfter).toBeLessThanOrEqual(emptyCellsBefore);
-  )
+  });
 
   test('hint shows explanation or technique info', async ({ page }) => {
     // Count empty cells before hint to verify hint was applied
     const emptyCellsBefore = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
     
     // Click hint button
-    const hintButton = page.getByRole('button', { name: /Hint/i )
+    const hintButton = page.getByRole('button', { name: /Hint/i });
     await hintButton.click();
     
     // Wait for hint to be processed
@@ -106,29 +106,29 @@ test.describe('@integration Hints - Basic Functionality', () => {
     // 2. A cell was filled (fewer empty cells), proving the hint mechanism works
     // Note: Hints can also add candidates without filling cells - detected via toast message
     expect(hasExplanation || cellFilled).toBeTruthy();
-  )
-)
+  });
+});
 
 test.describe('@integration Hints - Hint Counter', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 20000 )
-  )
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
+  });
 
   test('hint count is displayed', async ({ page }) => {
-    const hintButton = page.getByRole('button', { name: /Hint/i )
+    const hintButton = page.getByRole('button', { name: /Hint/i });
     const hintText = await hintButton.textContent();
     
     // The hint button usually shows a count like "Hint (3)" or just "Hint"
     expect(hintText).toBeTruthy();
-  )
+  });
 
   test('hint count decrements after using hint', async ({ page }) => {
-    const hintButton = page.getByRole('button', { name: /Hint/i )
+    const hintButton = page.getByRole('button', { name: /Hint/i });
     
     // Get initial hint count from button text
     const initialText = await hintButton.textContent();
@@ -148,10 +148,10 @@ test.describe('@integration Hints - Hint Counter', () => {
       expect(afterCount).toBeLessThan(initialCount);
     }
     // If no count displayed, just verify hint was used (board changed)
-  )
+  });
 
   test('using multiple hints decrements count correctly', async ({ page }) => {
-    const hintButton = page.getByRole('button', { name: /Hint/i )
+    const hintButton = page.getByRole('button', { name: /Hint/i });
     
     // Get initial count
     const initialText = await hintButton.textContent();
@@ -173,7 +173,7 @@ test.describe('@integration Hints - Hint Counter', () => {
     }
     
     // Wait for hint button to be enabled again
-    await expect(hintButton).toBeEnabled({ timeout: 5000 )
+    await expect(hintButton).toBeEnabled({ timeout: 5000 });
     
     // Use second hint
     await hintButton.click();
@@ -187,17 +187,17 @@ test.describe('@integration Hints - Hint Counter', () => {
     if (initialCount && afterCount !== null) {
       expect(afterCount).toBeLessThanOrEqual(initialCount - 2);
     }
-  )
-)
+  });
+});
 
 test.describe('@integration Hints - Edge Cases', () => {
   test('hint works on empty selected cell', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 20000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Select an empty cell first (use lower rows to avoid header)
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
@@ -210,7 +210,7 @@ test.describe('@integration Hints - Edge Cases', () => {
       const emptyCellsBefore = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
       
       // Click hint
-      const hintButton = page.getByRole('button', { name: /Hint/i )
+      const hintButton = page.getByRole('button', { name: /Hint/i });
       await hintButton.click();
       await page.waitForTimeout(1000);
       
@@ -220,21 +220,21 @@ test.describe('@integration Hints - Edge Cases', () => {
       // Board should have changed (fewer empty cells)
       expect(emptyCellsAfter).toBeLessThanOrEqual(emptyCellsBefore);
     }
-  )
+  });
 
   test('hint works with no cell selected', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 20000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Count empty cells before hint
     const emptyCellsBefore = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
     
     // Click hint without selecting a cell
-    const hintButton = page.getByRole('button', { name: /Hint/i )
+    const hintButton = page.getByRole('button', { name: /Hint/i });
     await hintButton.click();
     await page.waitForTimeout(1000);
     
@@ -243,19 +243,19 @@ test.describe('@integration Hints - Edge Cases', () => {
     
     // Hint should still work and change the board
     expect(emptyCellsAfter).toBeLessThanOrEqual(emptyCellsBefore);
-  )
+  });
 
   test('hint on nearly solved puzzle still works', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     // Start an easy puzzle that should be mostly solvable quickly
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 20000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Use a few hints to get closer to solution
-    const hintButton = page.getByRole('button', { name: /Hint/i )
+    const hintButton = page.getByRole('button', { name: /Hint/i });
     
     for (let i = 0; i < 3; i++) {
       if (await hintButton.isEnabled()) {
@@ -269,19 +269,19 @@ test.describe('@integration Hints - Edge Cases', () => {
     
     // Should have made progress (at least 20 filled cells)
     expect(filledCells).toBeGreaterThan(20);
-  )
-)
+  });
+});
 
 test.describe('@integration Hints - Mobile', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
-    await page.setViewportSize({ width: 375, height: 667 )
+    });
+    await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 20000 )
-  )
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
+  });
 
   test('hint button accessible on mobile', async ({ page }) => {
     // Mobile shows emoji-only hint button
@@ -295,7 +295,7 @@ test.describe('@integration Hints - Mobile', () => {
       expect(box.width).toBeGreaterThanOrEqual(24);
       expect(box.height).toBeGreaterThanOrEqual(24);
     }
-  )
+  });
 
   test('hint click works on mobile', async ({ page }) => {
     // Count empty cells before hint
@@ -311,5 +311,5 @@ test.describe('@integration Hints - Mobile', () => {
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
     
     expect(emptyCellsAfter).toBeLessThanOrEqual(emptyCellsBefore);
-  )
-)
+  });
+});

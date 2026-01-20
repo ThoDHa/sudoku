@@ -26,20 +26,20 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
       }
       keysToRemove.forEach(key => localStorage.removeItem(key));
       sessionStorage.clear();
-    )
-  )
+    });
+  });
 
   test('resume bug: saved P-seed but resume shows daily seed', async ({ page }) => {
     // Console messages collection
     const consoleMessages: string[] = [];
     page.on('console', msg => {
       consoleMessages.push(msg.text());
-    )
+    });
 
     // Step 1: Create a saved game with random P-seed
     const randomSeed = `P${Date.now()}`;
     await page.goto(`/${randomSeed}?d=medium`);
-    await page.getByRole("grid", { name: "Sudoku puzzle" }).waitFor({ timeout: 15000 )
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
     // Play one move to trigger auto-save
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
@@ -63,12 +63,12 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
             games.push({
               seed: key.slice(prefix.length),
               savedAt: parsed.savedAt,
-            )
+            });
           }
         }
       }
       return games;
-    )
+    });
 
     expect(savedAfterFirst).toHaveLength(1);
     expect(savedAfterFirst[0].seed).toBe(randomSeed);
@@ -127,13 +127,13 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
               seed: key.slice(prefix.length),
               savedAt: parsed.savedAt,
               isComplete: parsed.isComplete,
-            )
+            });
           }
         }
       }
       return games;
-    )
+    });
 
     console.log('[TEST] Saved games after daily navigation:', savedAfterDailyNav);
-  )
-)
+  });
+});

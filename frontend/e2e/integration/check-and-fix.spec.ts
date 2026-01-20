@@ -17,22 +17,22 @@ test.describe('@integration Check & Fix', () => {
       } catch (e) {
         // no-op
       }
-    )
-  )
+    });
+  });
 
   test('applies only fix moves and does not auto-complete', async ({ page, skipOnboarding }) => {
     // Capture page console for diagnostics during test runs
     page.on('console', msg => {
       // eslint-disable-next-line no-console
       console.log('PAGE_CONSOLE', msg.type(), msg.text());
-    )
+    });
 
     // Start on a known practice puzzle; some environments ignore the query and show homepage
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
 
     // If onboarding modal exists, close it with real user flow
-    const onboardingCloseButton = page.locator('button', { hasText: /Close|Got it|Continue|Skip/i )
+    const onboardingCloseButton = page.locator('button', { hasText: /Close|Got it|Continue|Skip/i });
     if (await onboardingCloseButton.isVisible().catch(() => false)) {
       await onboardingCloseButton.click();
     }
@@ -43,17 +43,17 @@ test.describe('@integration Check & Fix', () => {
     // If the board is not visible, attempt deterministic navigation via visible homepage controls
     if (!(await page.locator('[role="grid"]').isVisible().catch(() => false))) {
       // If the homepage is present, target the difficulty buttons deterministically
-      const homepageHeading = page.getByRole('heading', { name: /Game Mode/i )
+      const homepageHeading = page.getByRole('heading', { name: /Game Mode/i });
       if (await homepageHeading.isVisible().catch(() => false)) {
         // Force a click on the easy Play button to ensure a game starts
         const easyPlay = page.locator('button:has-text("easy Play")').first();
         await easyPlay.waitFor({ state: 'visible', timeout: 5000 }).catch(() => null);
         if (await easyPlay.isVisible().catch(() => false)) {
           // Use a forced click in case of overlays
-          await easyPlay.click({ force: true )
+          await easyPlay.click({ force: true });
 
           // If the app shows a "Start New" confirmation modal (in case of in-progress game), click it
-          const startNew = page.getByRole('button', { name: /Start New/i )
+          const startNew = page.getByRole('button', { name: /Start New/i });
           if (await startNew.isVisible().catch(() => false)) {
             await startNew.click();
           }
@@ -75,10 +75,10 @@ test.describe('@integration Check & Fix', () => {
     }
 
     // Wait for board to appear; allow extra time for main-thread solver fallback
-    await page.waitForSelector('[role="grid"]', { timeout: 30000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 30000 });
 
     // If the app shows the Daily Puzzle modal (prompting to try daily), dismiss it by continuing practice
-    const continuePractice = page.getByRole('button', { name: /Continue Practice/i )
+    const continuePractice = page.getByRole('button', { name: /Continue Practice/i });
     if (await continuePractice.isVisible().catch(() => false)) {
       await continuePractice.click();
       await page.waitForTimeout(300);
@@ -103,11 +103,11 @@ test.describe('@integration Check & Fix', () => {
     await page.waitForTimeout(500); // allow state to settle
 
     // Open the modal if present, otherwise directly call the handler via UI button if available
-    const checkFixButton = page.getByRole('button', { name: /Check & Fix/i )
+    const checkFixButton = page.getByRole('button', { name: /Check & Fix/i });
 
     if (!(await checkFixButton.isVisible().catch(() => false))) {
       // Fallback: try to force the modal by using a hint that may prompt
-      const hintButton = page.getByRole('button', { name: /Hint/i )
+      const hintButton = page.getByRole('button', { name: /Hint/i });
       if (await hintButton.isVisible().catch(() => false)) {
         await hintButton.click();
         await page.waitForTimeout(1000);
@@ -118,7 +118,7 @@ test.describe('@integration Check & Fix', () => {
     if (await checkFixButton.isVisible().catch(() => false) && await checkFixButton.isEnabled().catch(() => false)) {
       await checkFixButton.click();
     } else {
-      const letMeFixIt = page.getByRole('button', { name: /Let Me Fix It/i )
+      const letMeFixIt = page.getByRole('button', { name: /Let Me Fix It/i });
       if (await letMeFixIt.isVisible().catch(() => false)) {
         await letMeFixIt.click();
       }
@@ -148,5 +148,5 @@ test.describe('@integration Check & Fix', () => {
 
     // Sanity check: page body visible
     await expect(page.locator('body')).toBeVisible();
-  )
-)
+  });
+});

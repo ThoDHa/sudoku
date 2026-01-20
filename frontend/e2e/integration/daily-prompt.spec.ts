@@ -25,17 +25,17 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
     await page.goto(`/${seed}?d=easy`);
     
     // Wait for game to load
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 )
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     
     // Modal should appear
-    const modal = page.locator('h2', { hasText: 'Daily Puzzle' )
-    await expect(modal).toBeVisible({ timeout: 5000 )
+    const modal = page.locator('h2', { hasText: 'Daily Puzzle' });
+    await expect(modal).toBeVisible({ timeout: 5000 });
     
     // Verify modal content
     await expect(page.locator('button', { hasText: 'Go to Daily' })).toBeVisible();
     await expect(page.locator('button', { hasText: 'Continue Practice' })).toBeVisible();
     await expect(page.locator('text=Don\'t show this again')).toBeVisible();
-  )
+  });
 
   test('does not show modal when daily puzzle is already completed', async ({ page }) => {
     await page.goto('/');
@@ -49,12 +49,12 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
     
     // Navigate to practice game
     const seed = `P${Date.now()}`; await page.goto(`/${seed}?d=easy`);
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 )
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     
     // Modal should NOT appear
-    const modal = page.locator('h2', { hasText: 'Daily Puzzle' )
+    const modal = page.locator('h2', { hasText: 'Daily Puzzle' });
     await expect(modal).not.toBeVisible();
-  )
+  });
 
   test('does not show modal if user disabled the preference', async ({ page }) => {
     await page.goto('/');
@@ -64,16 +64,16 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
     await page.evaluate(() => {
       const prefs = { showDailyReminder: false };
       localStorage.setItem('sudoku_preferences', JSON.stringify(prefs));
-    )
+    });
     
     // Navigate to practice game
     const seed = `P${Date.now()}`; await page.goto(`/${seed}?d=easy`);
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 )
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     
     // Modal should NOT appear
-    const modal = page.locator('h2', { hasText: 'Daily Puzzle' )
+    const modal = page.locator('h2', { hasText: 'Daily Puzzle' });
     await expect(modal).not.toBeVisible();
-  )
+  });
 
   test('does not show modal if already shown today', async ({ page }) => {
     await page.goto('/');
@@ -87,12 +87,12 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
     
     // Navigate to practice game
     const seed = `P${Date.now()}`; await page.goto(`/${seed}?d=easy`);
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 )
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     
     // Modal should NOT appear
-    const modal = page.locator('h2', { hasText: 'Daily Puzzle' )
+    const modal = page.locator('h2', { hasText: 'Daily Puzzle' });
     await expect(modal).not.toBeVisible();
-  )
+  });
 
   test('does not show modal when loading daily puzzle', async ({ page }) => {
     await page.goto('/');
@@ -100,13 +100,13 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
     
     // Navigate to daily puzzle
     await page.goto('/game?mode=daily');
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 )
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     
     // Modal should NOT appear
-    const modal = page.locator('h2', { hasText: 'Daily Puzzle' )
+    const modal = page.locator('h2', { hasText: 'Daily Puzzle' });
     await expect(modal).not.toBeVisible();
-  )
-)
+  });
+});
 
 test.describe('Daily Prompt Modal - Button Functionality', () => {
   test('"Go to Daily" button navigates to today\'s daily puzzle', async ({ page }) => {
@@ -115,22 +115,22 @@ test.describe('Daily Prompt Modal - Button Functionality', () => {
     
     // Navigate to practice game
     const seed = `P${Date.now()}`; await page.goto(`/${seed}?d=easy`);
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 )
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     
     // Wait for modal and click "Go to Daily"
-    const modal = page.locator('h2', { hasText: 'Daily Puzzle' )
-    await expect(modal).toBeVisible({ timeout: 5000 )
+    const modal = page.locator('h2', { hasText: 'Daily Puzzle' });
+    await expect(modal).toBeVisible({ timeout: 5000 });
     
-    const goToDailyButton = page.locator('button', { hasText: 'Go to Daily' )
+    const goToDailyButton = page.locator('button', { hasText: 'Go to Daily' });
     await goToDailyButton.click();
     
     // Should navigate to daily puzzle
-    await page.waitForURL('**/daily-*', { timeout: 10000 )
+    await page.waitForURL('**/daily-*', { timeout: 10000 });
     expect(page.url()).toMatch(/daily-\d{4}-\d{2}-\d{2}/);
     
     // Modal should be closed
     await expect(modal).not.toBeVisible();
-  )
+  });
 
   test('"Continue Practice" button closes modal and continues loading practice game', async ({ page }) => {
     await page.goto('/');
@@ -138,13 +138,13 @@ test.describe('Daily Prompt Modal - Button Functionality', () => {
     
     // Navigate to practice game
     const seed = `P${Date.now()}`; await page.goto(`/${seed}?d=easy`);
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 )
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     
     // Wait for modal and click "Continue Practice"
-    const modal = page.locator('h2', { hasText: 'Daily Puzzle' )
-    await expect(modal).toBeVisible({ timeout: 5000 )
+    const modal = page.locator('h2', { hasText: 'Daily Puzzle' });
+    await expect(modal).toBeVisible({ timeout: 5000 });
     
-    const continueButton = page.locator('button', { hasText: 'Continue Practice' )
+    const continueButton = page.locator('button', { hasText: 'Continue Practice' });
     await continueButton.click();
     
     // Modal should close
@@ -153,8 +153,8 @@ test.describe('Daily Prompt Modal - Button Functionality', () => {
     // Should remain on practice game
     expect(page.url()).toContain('d=easy');
     await expect(page.locator('.game-background')).toBeVisible();
-  )
-)
+  });
+});
 
 test.describe('Daily Prompt Modal - Checkbox Persistence', () => {
   test('"Don\'t show this again" checkbox disables future prompts', async ({ page }) => {
@@ -163,35 +163,35 @@ test.describe('Daily Prompt Modal - Checkbox Persistence', () => {
     
     // Navigate to practice game
     const seed = `P${Date.now()}`; await page.goto(`/${seed}?d=easy`);
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 )
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     
     // Wait for modal
-    const modal = page.locator('h2', { hasText: 'Daily Puzzle' )
-    await expect(modal).toBeVisible({ timeout: 5000 )
+    const modal = page.locator('h2', { hasText: 'Daily Puzzle' });
+    await expect(modal).toBeVisible({ timeout: 5000 });
     
     // Check the "Don't show again" checkbox
     const checkbox = page.locator('input[type="checkbox"]');
     await checkbox.check();
     
     // Click "Continue Practice"
-    const continueButton = page.locator('button', { hasText: 'Continue Practice' )
+    const continueButton = page.locator('button', { hasText: 'Continue Practice' });
     await continueButton.click();
     
     // Verify preference was saved
     const showDailyReminder = await page.evaluate(() => {
       const prefs = JSON.parse(localStorage.getItem('sudoku_preferences') || '{}');
       return prefs.showDailyReminder;
-    )
+    });
     expect(showDailyReminder).toBe(false);
     
     // Navigate to another practice game
     const seed2 = `P${Date.now()}`; await page.goto(`/${seed2}?d=medium`);
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 )
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     
     // Modal should NOT appear this time
     await expect(modal).not.toBeVisible();
-  )
-)
+  });
+});
 
 test.describe('Daily Prompt Modal - Menu Preference Toggle', () => {
   test('menu toggle correctly enables/disables future prompts', async ({ page }) => {
@@ -200,16 +200,16 @@ test.describe('Daily Prompt Modal - Menu Preference Toggle', () => {
     await page.evaluate(() => localStorage.clear());
     
     // Wait for page to fully load
-    await expect(page.locator('.enso-logo')).toBeVisible({ timeout: 10000 )
+    await expect(page.locator('.enso-logo')).toBeVisible({ timeout: 10000 });
     
     // Find and click menu button (hamburger icon button)
     const menuButton = page.locator('button[title="Menu"]');
-    await expect(menuButton).toBeVisible({ timeout: 5000 )
+    await expect(menuButton).toBeVisible({ timeout: 5000 });
     await menuButton.click();
     
     // Wait for menu to open
     const menu = page.locator('text=Settings').first();
-    await expect(menu).toBeVisible({ timeout: 5000 )
+    await expect(menu).toBeVisible({ timeout: 5000 });
     
     // Expand settings if collapsed
     const settingsButton = page.locator('button:has-text("Settings")').first();
@@ -228,7 +228,7 @@ test.describe('Daily Prompt Modal - Menu Preference Toggle', () => {
     const dailyReminderToggle = page.locator('button:has-text("Show Daily Puzzle Reminder")');
     
     // Verify it's visible
-    await expect(dailyReminderToggle).toBeVisible({ timeout: 10000 )
+    await expect(dailyReminderToggle).toBeVisible({ timeout: 10000 });
     
     // Check initial state by looking at the toggle indicator class
     const toggleIndicator = dailyReminderToggle.locator('div').first();
@@ -248,23 +248,23 @@ test.describe('Daily Prompt Modal - Menu Preference Toggle', () => {
     
     // Navigate to practice game
     const seed = `P${Date.now()}`; await page.goto(`/${seed}?d=easy`);
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 )
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     
     
     // Modal should NOT appear
-    const modal = page.locator('h2', { hasText: 'Daily Puzzle' )
+    const modal = page.locator('h2', { hasText: 'Daily Puzzle' });
     await expect(modal).not.toBeVisible();
     // Re-enable via menu
     await menuButton.click();
-    await expect(menu).toBeVisible({ timeout: 5000 )
+    await expect(menu).toBeVisible({ timeout: 5000 });
     await settingsButton.click();
     await dailyReminderToggle.click();
     
     // Verify it's enabled again (should have bg-accent)
     const finalBgColor = await toggleIndicator.getAttribute('class');
     expect(finalBgColor).toContain('bg-accent');
-  )
-)
+  });
+});
 
 test.describe('Daily Prompt Modal - Daily Reset', () => {
   test('prompt resets for new day', async ({ page }) => {
@@ -282,10 +282,10 @@ test.describe('Daily Prompt Modal - Daily Reset', () => {
     
     // Navigate to practice game
     const seed = `P${Date.now()}`; await page.goto(`/${seed}?d=easy`);
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 )
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     
     // Modal SHOULD appear (new day)
-    const modal = page.locator('h2', { hasText: 'Daily Puzzle' )
-    await expect(modal).toBeVisible({ timeout: 5000 )
-  )
-)
+    const modal = page.locator('h2', { hasText: 'Daily Puzzle' });
+    await expect(modal).toBeVisible({ timeout: 5000 });
+  });
+});

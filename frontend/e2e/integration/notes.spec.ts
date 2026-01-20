@@ -13,11 +13,11 @@ test.describe('@integration Notes Mode - Toggle', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 20000 )
-  )
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
+  });
 
   test('notes button toggles notes mode on', async ({ page }) => {
     const notesButton = page.locator('button[title="Notes mode"]');
@@ -31,7 +31,7 @@ test.describe('@integration Notes Mode - Toggle', () => {
     
     // Button should now indicate active state
     await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
-  )
+  });
 
   test('notes button toggles notes mode off', async ({ page }) => {
     const notesButton = page.locator('button[title="Notes mode"]');
@@ -45,7 +45,7 @@ test.describe('@integration Notes Mode - Toggle', () => {
     
     // Button should return to inactive state
     await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
-  )
+  });
 
   test('keyboard shortcut N toggles notes mode', async ({ page }) => {
     const notesButton = page.locator('button[title="Notes mode"]');
@@ -60,30 +60,30 @@ test.describe('@integration Notes Mode - Toggle', () => {
     // Press N to disable
     await page.keyboard.press('n');
     await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
-  )
-)
+  });
+});
 
 test.describe('@integration Notes Mode - Adding Candidates', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 20000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Enable notes mode
     const notesButton = page.locator('button[title="Notes mode"]');
     await notesButton.click();
     await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
-  )
+  });
 
   test('entering digit in notes mode adds candidate', async ({ page }) => {
     // Find an empty cell and capture its position
     const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
     // Fail explicitly if no cell found
-    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 )
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
     
     // Capture stable position identifier
     const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
@@ -102,8 +102,8 @@ test.describe('@integration Notes Mode - Adding Candidates', () => {
     
     // Wait for state change with explicit condition
     await expect(cellByPosition).toContainText('3');
-  )
-)
+  });
+});
 
 test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
   /**
@@ -117,12 +117,12 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 30000 )
-    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', { timeout: 30000 )
-  )
+    await page.waitForSelector('[role="grid"]', { timeout: 30000 });
+    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', { timeout: 30000 });
+  });
 
   test('multi-fill adds candidate to cell by clicking digit then cell', async ({ page }) => {
     // Enable notes mode
@@ -141,7 +141,7 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
     // Fail explicitly if no cell found
-    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 )
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
     
     // Capture stable position identifier
     const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
@@ -159,7 +159,7 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     
     // Verify candidate was added with explicit wait
     await expect(cellByPosition).toContainText('4');
-  )
+  });
 
   test('multi-fill works when selecting digit BEFORE enabling notes mode (regression test)', async ({ page }) => {
     // This is a critical regression test: the user selects a digit FIRST,
@@ -182,7 +182,7 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     
     // 3. Find an empty cell
     const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
-    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 )
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
     
     // Capture stable position identifier
     const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
@@ -207,7 +207,7 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     // If it was a digit placement, the cell would no longer be "empty"
     // With candidates, it should either still say "empty" or mention "candidates"
     expect(newAriaLabel).toMatch(/empty|candidates/i);
-  )
+  });
 
   test('multi-fill clicking same cell twice toggles candidate off', async ({ page }) => {
     // Enable notes mode
@@ -226,7 +226,7 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
     // Fail explicitly if no cell found (don't silently pass)
-    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 )
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
     
     // Capture stable position identifier
     const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
@@ -251,7 +251,7 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     
     // Wait for state change with explicit condition
     await expect(cellByPosition).not.toContainText('4');
-  )
+  });
 
   test('multi-fill adds candidate to multiple cells', async ({ page }) => {
     // Enable notes mode
@@ -268,7 +268,7 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     
     // Find first empty cell and capture position
     const emptyCellLocator1 = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
-    await expect(emptyCellLocator1).toBeVisible({ timeout: 5000 )
+    await expect(emptyCellLocator1).toBeVisible({ timeout: 5000 });
     
     const ariaLabel1 = await emptyCellLocator1.getAttribute('aria-label');
     const match1 = ariaLabel1?.match(/Row (\d+), Column (\d+)/);
@@ -278,7 +278,7 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     
     // Find second empty cell and capture position
     const emptyCellLocator2 = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
-    await expect(emptyCellLocator2).toBeVisible({ timeout: 5000 )
+    await expect(emptyCellLocator2).toBeVisible({ timeout: 5000 });
     
     const ariaLabel2 = await emptyCellLocator2.getAttribute('aria-label');
     const match2 = ariaLabel2?.match(/Row (\d+), Column (\d+)/);
@@ -299,33 +299,33 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     // Verify both cells still have the candidate
     await expect(cell1ByPosition).toContainText('7');
     await expect(cell2ByPosition).toContainText('7');
-  )
-)
+  });
+});
 
 test.describe('@integration Notes Mode - Removing Candidates', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     // Use a unique seed to avoid any caching/interference issues
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
     // Wait for the grid AND for at least one cell to have a value (puzzle loaded)
-    await page.waitForSelector('[role="grid"]', { timeout: 30000 )
-    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', { timeout: 30000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 30000 });
+    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', { timeout: 30000 });
     
     // Enable notes mode
     const notesButton = page.locator('button[title="Notes mode"]');
     await notesButton.click();
     await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
-  )
+  });
 
   test('pressing same digit removes candidate', async ({ page }) => {
     // Find an empty cell and capture its position
     const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
     // Fail explicitly if no cell found
-    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 )
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
     
     // Capture stable position identifier
     const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
@@ -347,14 +347,14 @@ test.describe('@integration Notes Mode - Removing Candidates', () => {
     await page.waitForTimeout(150); // Wait for debounce guard to expire
     await page.keyboard.press('4');
     await expect(cellByPosition).not.toContainText('4');
-  )
+  });
 
   test('erase clears all candidates from cell', async ({ page }) => {
     // Find an empty cell and capture its position
     const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
     
     // Fail explicitly if no cell found
-    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 )
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
     
     // Capture stable position identifier
     const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
@@ -381,8 +381,8 @@ test.describe('@integration Notes Mode - Removing Candidates', () => {
     
     // Verify cell is empty - wait for text to be cleared
     await expect(cellByPosition).toHaveText('');
-  )
-)
+  });
+});
 
 test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
   /**
@@ -395,11 +395,11 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 20000 )
-  )
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
+  });
 
   test('digit highlight persists after toggling candidate in notes mode', async ({ page }) => {
     // Enable notes mode
@@ -418,7 +418,7 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     
     // Fail explicitly if no cell found
-    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 )
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
     
     // Capture stable position identifier
     const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
@@ -439,7 +439,7 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     // CRITICAL: Verify the digit button is STILL highlighted
     // This was the regression - highlight would disappear after candidate operation
     await expect(digitButton).toHaveClass(/ring-2/);
-  )
+  });
 
   test('digit highlight persists after adding multiple candidates', async ({ page }) => {
     // Enable notes mode
@@ -462,11 +462,11 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     
     for (let i = 0; i < count; i++) {
       const cell = emptyCellsLocator.nth(i);
-      await expect(cell).toBeVisible({ timeout: 5000 )
+      await expect(cell).toBeVisible({ timeout: 5000 });
       const ariaLabel = await cell.getAttribute('aria-label');
       const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
       if (match) {
-        cellPositions.push({ row: match[1], col: match[2] )
+        cellPositions.push({ row: match[1], col: match[2] });
       }
     }
     
@@ -482,7 +482,7 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
 
     // CRITICAL: Digit highlight should still be active after all operations
     await expect(digit5Button).toHaveClass(/ring-2/);
-  )
+  });
 
   test('digit highlight persists when removing candidate', async ({ page }) => {
     // Enable notes mode
@@ -500,7 +500,7 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 7"][aria-label*="empty"]').first();
     
     // Fail explicitly if no cell found
-    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 )
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
     
     // Capture stable position identifier
     const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
@@ -531,17 +531,17 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     // CRITICAL: Digit highlight should STILL be active after removing candidate
     // This was the specific regression case
     await expect(digit3Button).toHaveClass(/ring-2/);
-  )
-)
+  });
+});
 
 test.describe('@integration Notes Mode - Persistence', () => {
   test('notes persist when switching between cells', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 20000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     // Enable notes mode
     const notesButton = page.locator('button[title="Notes mode"]');
@@ -550,7 +550,7 @@ test.describe('@integration Notes Mode - Persistence', () => {
     
     // Find first empty cell and capture position
     const cell1Locator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
-    await expect(cell1Locator).toBeVisible({ timeout: 5000 )
+    await expect(cell1Locator).toBeVisible({ timeout: 5000 });
     
     const ariaLabel1 = await cell1Locator.getAttribute('aria-label');
     const match1 = ariaLabel1?.match(/Row (\d+), Column (\d+)/);
@@ -560,7 +560,7 @@ test.describe('@integration Notes Mode - Persistence', () => {
     
     // Find second empty cell and capture position
     const cell2Locator = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
-    await expect(cell2Locator).toBeVisible({ timeout: 5000 )
+    await expect(cell2Locator).toBeVisible({ timeout: 5000 });
     
     const ariaLabel2 = await cell2Locator.getAttribute('aria-label');
     const match2 = ariaLabel2?.match(/Row (\d+), Column (\d+)/);
@@ -590,21 +590,21 @@ test.describe('@integration Notes Mode - Persistence', () => {
     
     await expect(cell1ByPosition).toContainText('1');
     await expect(cell1ByPosition).toContainText('2');
-  )
+  });
 
   test('notes persist when toggling notes mode off and on', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 20000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     const notesButton = page.locator('button[title="Notes mode"]');
     
     // Find an empty cell and capture position
     const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
-    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 )
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
     
     const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
     const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
@@ -634,21 +634,21 @@ test.describe('@integration Notes Mode - Persistence', () => {
     // Verify candidates still exist
     await expect(cellByPosition).toContainText('3');
     await expect(cellByPosition).toContainText('6');
-  )
+  });
 
   test('placing a digit clears notes from that cell', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
-    )
+    });
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('[role="grid"]', { timeout: 20000 )
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
     
     const notesButton = page.locator('button[title="Notes mode"]');
     
     // Find an empty cell and capture position
     const emptyCellLocator = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
-    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 )
+    await expect(emptyCellLocator).toBeVisible({ timeout: 5000 });
     
     const ariaLabel = await emptyCellLocator.getAttribute('aria-label');
     const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
@@ -683,5 +683,5 @@ test.describe('@integration Notes Mode - Persistence', () => {
     // In digit mode, a placed digit should replace candidates
     await expect(cellByPosition).not.toContainText('4');
     await expect(cellByPosition).not.toContainText('7');
-  )
-)
+  });
+});
