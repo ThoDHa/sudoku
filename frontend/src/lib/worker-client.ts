@@ -83,13 +83,12 @@ function generateRequestId(): string {
 }
 
 /**
- * Create and initialize the worker
+ * Create and initialize worker
  */
 async function createWorker(): Promise<Worker> {
-  // Use Vite's worker import syntax for proper bundling
+  // Use classic worker (not module) to support importScripts for wasm_exec.js
   const newWorker = new Worker(
-    new URL('./wasm.worker.ts', import.meta.url),
-    { type: 'module' }
+    new URL('./wasm.worker.ts', import.meta.url)
   )
   
   return new Promise((resolve, reject) => {
@@ -167,7 +166,7 @@ export async function initializeWorker(): Promise<void> {
       }
       
       worker.onerror = (error) => {
-        console.error('[WorkerClient] Worker error:', error)
+        debugLog('[WorkerClient] Worker error:', error)
         // Reject all pending requests
         for (const [id, pending] of pendingRequests) {
           clearTimeout(pending.timeoutId)
