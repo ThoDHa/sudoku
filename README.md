@@ -288,7 +288,57 @@ make test-e2e
 
 ---
 
-### 🐳 Docker-Based E2E CI Pipeline (Playwright Sidecar)
+## Code Quality
+
+### Pre-Commit Hook
+
+The project uses a pre-commit git hook that enforces zero warning policy for all linters. This prevents introducing code quality issues before they reach the repository.
+
+**What it does:**
+
+- Automatically runs when you commit changes
+- Detects which file types are staged (frontend .ts/.tsx or Go .go)
+- Runs ESLint on frontend files if any were changed
+- Runs golangci-lint on Go files if any were changed
+- **Blocks commit** if any linter reports warnings or errors
+
+**Zero Warning Policy:**
+
+All linting issues must be fixed before committing. The hook uses:
+- ESLint with `--max-warnings 0` flag
+- golangci-lint with strict configuration (.golangci.yml)
+
+**Usage:**
+
+```bash
+# Normal commit - hook runs automatically
+git add frontend/src/App.tsx
+git commit -m "fix: update component"
+
+# Hook runs linters, blocks if issues found
+# If successful: commit proceeds normally
+# If issues found: commit blocked with error message
+```
+
+**Bypassing the Hook (Emergency Only):**
+
+If you absolutely need to bypass the hook (not recommended):
+
+```bash
+git commit --no-verify -m "emergency: bypass pre-commit"
+```
+
+**Warning:** Using `--no-verify` should be rare. Fix the linting issues instead to maintain code quality.
+
+**Common Issues and Fixes:**
+
+| Issue | Fix Command |
+|--------|-------------|
+| ESLint warnings | `cd frontend && npm run lint:fix` |
+| Go linting issues | Run `golangci-lint run --fix` or fix manually |
+| Unknown linter error | Read the error output and address the specific issue |
+
+---### 🐳 Docker-Based E2E CI Pipeline (Playwright Sidecar)
 
 **Why use containerized E2E?**
 
