@@ -1,6 +1,4 @@
 #!/bin/sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Pre-commit hook that enforces zero warning linter policy
 # Blocks commit if any linter reports warnings or errors
 
