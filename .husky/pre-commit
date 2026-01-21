@@ -42,7 +42,7 @@ if [ -n "$GO_FILES" ]; then
 
   # Run golangci-lint only on staged files
   # golangci-lint will exit with non-zero if any issues are found
-  if ! cd api && $(go env GOPATH)/bin/golangci-lint run $(echo "$GO_FILES" | sed 's|^api/||'); then
+  if ! (cd api && $(go env GOPATH)/bin/golangci-lint run $(echo "$GO_FILES" | sed 's|^api/||')); then
     echo ""
     echo "❌ golangci-lint found issues in staged files!"
     echo ""

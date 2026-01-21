@@ -3,7 +3,6 @@ package main
 import "fmt"
 
 func main() {
-	// unused variable
-	y := 456
-	fmt.Println("test")
+	x := 789
+	fmt.Printf("test: %d\n", x)
 }
