@@ -1,14 +1,16 @@
 /**
  * Pure TypeScript Sudoku Solver using Backtracking/DP
- * 
+ *
  * This provides fast validation and solving without loading WASM.
  * Used for custom puzzle validation where we only need to:
- * 1. Check if the puzzle is valid (no conflicts)
+ * 1. Check if puzzle is valid (no conflicts)
  * 2. Find a solution
- * 3. Check if the solution is unique
- * 
+ * 3. Check if solution is unique
+ *
  * For hints and human-style solving, WASM is still required.
  */
+
+import { SUBGRID_SIZE } from './constants'
 
 // ==================== Types ====================
 
@@ -133,10 +135,10 @@ export function findConflicts(grid: number[]): Conflict[] {
   // Check boxes
   for (let box = 0; box < 9; box++) {
     const positions = new Map<number, number[]>()
-    const boxRow = Math.floor(box / 3) * 3
-    const boxCol = (box % 3) * 3
-    for (let r = boxRow; r < boxRow + 3; r++) {
-      for (let c = boxCol; c < boxCol + 3; c++) {
+    const boxRow = Math.floor(box / SUBGRID_SIZE) * SUBGRID_SIZE
+    const boxCol = (box % SUBGRID_SIZE) * SUBGRID_SIZE
+    for (let r = boxRow; r < boxRow + SUBGRID_SIZE; r++) {
+      for (let c = boxCol; c < boxCol + SUBGRID_SIZE; c++) {
         const val = getCell(r * 9 + c)
         if (val === 0) continue
         let arr = positions.get(val)
@@ -310,11 +312,11 @@ function canPlace(board: number[], row: number, col: number, digit: number): boo
     if (board[r * 9 + col] === digit) return false
   }
 
-  // Check 3x3 box
-  const boxRow = Math.floor(row / 3) * 3
-  const boxCol = Math.floor(col / 3) * 3
-  for (let r = boxRow; r < boxRow + 3; r++) {
-    for (let c = boxCol; c < boxCol + 3; c++) {
+  // Check SUBGRID_SIZE x SUBGRID_SIZE box
+  const boxRow = Math.floor(row / SUBGRID_SIZE) * SUBGRID_SIZE
+  const boxCol = Math.floor(col / SUBGRID_SIZE) * SUBGRID_SIZE
+  for (let r = boxRow; r < boxRow + SUBGRID_SIZE; r++) {
+    for (let c = boxCol; c < boxCol + SUBGRID_SIZE; c++) {
       if (board[r * 9 + c] === digit) return false
     }
   }

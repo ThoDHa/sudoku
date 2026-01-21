@@ -87,6 +87,45 @@ The entire application runs locally in your browser with no server required afte
 - **Performance**: Route-based code splitting, lazy loading, WASM in dedicated Web Worker
 - **Testing**: Vitest unit tests, Playwright E2E, Go test suite (all via Docker)
 
+### 🎯 **Extensibility**
+
+The game architecture supports different board sizes through constant changes. Current implementation is 9x9, but 16x16 Sudoku variants are possible with minimal modifications.
+
+**Current 9x9 Implementation:**
+
+Frontend constants (in `frontend/src/lib/constants.ts`):
+- `BOARD_SIZE = 9`
+- `SUBGRID_SIZE = 3`
+- `TOTAL_CELLS = BOARD_SIZE * BOARD_SIZE` (81)
+- `MAX_DIGIT = BOARD_SIZE` (9)
+
+Go constants (in `api/pkg/constants/constants.go`):
+- `GridSize = 9`
+- `BoxSize = 3`
+- `TotalCells = 81`
+
+**For 16x16 Sudoku:**
+
+Update the following constants:
+
+Frontend:
+- `BOARD_SIZE = 16`
+- `SUBGRID_SIZE = 4` (since √16 = 4)
+- `MAX_DIGIT = 16` (hexadecimal digits: 0-9, A-F)
+
+Go:
+- `GridSize = 16`
+- `BoxSize = 4`
+
+**Additional Considerations for 16x16:**
+
+- **Digit Notation**: 16x16 Sudoku uses hexadecimal digits (0-9, A-F) instead of decimal (1-9). UI would need to support digit selection beyond 9.
+- **Candidate Bitmasks**: Current bitmask implementation assumes 9 digits. For 16x16, `Uint16Array` would need to become `Uint32Array` (or larger) to accommodate 16 bits.
+- **Solver Logic**: The Go-based solver's constraint propagation and backtracking algorithms already handle variable board sizes via constants.
+- **UI Layout**: Cell grid spacing and digit display would need adjustment for 16x16 board.
+
+The architecture is designed for extensibility: all production code uses centralized constants rather than hardcoded values, making board size variants straightforward to implement.
+
 ## 📊 Performance & Mobile Optimization
 
 ### ⚡ **Loading Performance**

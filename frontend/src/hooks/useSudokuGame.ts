@@ -531,8 +531,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     
     if (isGivenCell(idx) || currentBoard[idx] !== 0) return
 
-    const row = Math.floor(idx / 9)
-    const col = idx % 9
+    const row = Math.floor(idx / BOARD_SIZE)
+    const col = idx % BOARD_SIZE
     const cellCandidates = currentCandidates[idx] || 0
     const hadCandidate = hasCandidate(cellCandidates, digit)
     
