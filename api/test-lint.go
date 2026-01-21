@@ -4,6 +4,6 @@ import "fmt"
 
 func main() {
 	// unused variable
-	x := 123
+	y := 456
 	fmt.Println("test")
 }
