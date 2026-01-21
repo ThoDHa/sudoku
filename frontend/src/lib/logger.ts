@@ -28,10 +28,9 @@ export function enableDebug(): void {
   logger.setLevel('debug')
   try {
     localStorage.setItem(DEBUG_STORAGE_KEY, 'true')
-  } catch {
-  }
-  if (typeof window !== 'undefined') {
     window.DEBUG = true
+  } catch {
+    return
   }
 }
 
@@ -39,10 +38,9 @@ export function disableDebug(): void {
   logger.setLevel('error')
   try {
     localStorage.removeItem(DEBUG_STORAGE_KEY)
-  } catch {
-  }
-  if (typeof window !== 'undefined') {
     window.DEBUG = false
+  } catch {
+    return
   }
 }
 
