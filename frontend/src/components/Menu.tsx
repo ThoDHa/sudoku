@@ -591,7 +591,7 @@ export default function Menu({
       // and won't show its own in-progress check prompt
       sessionStorage.setItem('skip_in_progress_check', 'true')
       const targetRoute = confirmNewPuzzle === 'custom' ? '/custom' : createGameRoute(confirmNewPuzzle)
-      console.log('🎮 [MENU] Starting new game, route:', targetRoute, 'Difficulty:', confirmNewPuzzle)
+      console.warn('🎮 [MENU] Starting new game, route:', targetRoute, 'Difficulty:', confirmNewPuzzle)
       navigate(targetRoute)
       onClose()
     }

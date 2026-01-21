@@ -627,7 +627,7 @@ function GameContent() {
       throw new Error(`Cannot create storage key for invalid seed: ${validation.error}`)
     }
     return `${STORAGE_KEYS.GAME_STATE_PREFIX}${validation.seed}`
-  }, [validateSeed])
+  }, [])
 
   // Save game state to localStorage
   const saveGameState = useCallback(() => {

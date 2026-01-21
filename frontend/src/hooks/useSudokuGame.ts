@@ -519,7 +519,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       checkCompletion(newBoard)
     }
   }, [
-    isGivenCell, eliminateFromPeers, checkCompletion, createMoveWithDiff, updateCandidates, limitHistory
+    isGivenCell, eliminateFromPeers, checkCompletion, createMoveWithDiff, updateBoard, updateCandidates, limitHistory
   ])
 
   const toggleCandidate = useCallback((idx: number, digit: number) => {
@@ -677,7 +677,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     boardRef.current = prevBoard
     candidatesRef.current = prevCandidates
     historyIndexRef.current = newHistoryIndex
-  }, [isComplete, updateCandidates])
+  }, [isComplete, updateBoard, updateCandidates])
 
   // Helper to replay a move's effects (defined before redo which uses it)
   const replayMove = useCallback((move: Move) => {
@@ -767,7 +767,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     boardRef.current = newBoard
     candidatesRef.current = newCandidates
     historyIndexRef.current = newHistoryIndex
-  }, [updateCandidates, replayMove])
+  }, [updateBoard, updateCandidates, replayMove])
 
   const resetGame = useCallback(() => {
     setGivenCells([...initialBoard])
@@ -859,7 +859,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     candidatesRef.current = newCandidates
     historyRef.current = limitedHistory
     historyIndexRef.current = limitedIndex
-  }, [checkCompletion, updateCandidates, limitHistory])
+  }, [checkCompletion, updateBoard, updateCandidates, limitHistory])
 
   // Restore saved game state (for auto-save/resume functionality)
   const restoreState = useCallback((
@@ -879,7 +879,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     } else {
       setIsComplete(false)
     }
-  }, [updateCandidates, isValidSolution])
+  }, [updateBoard, updateCandidates, isValidSolution])
 
   const setBoardState = useCallback((
     newBoard: number[],
@@ -887,7 +887,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   ) => {
     updateBoard(newBoard)
     updateCandidates(newCandidates)
-  }, [updateCandidates])
+  }, [updateBoard, updateCandidates])
 
   // Check notes for errors
   // Returns: { valid: true } if all notes are correct
