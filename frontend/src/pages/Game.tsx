@@ -1782,10 +1782,9 @@ ${bugReportJson}
           setInitialBoard([...givens]) // Givens for marking non-editable cells
         } else if (alreadyCompletedToday) {
           setInitialBoard([...puzzleData.solution])
-      } else {
-        setInitialBoard([...givens])
-        timerControl.startTimer()
-      }
+        } else {
+          setInitialBoard([...givens])
+        }
         setSolution([...puzzleData.solution])
 
         // Reset timer for non-completed puzzles (timer will be started later by initialBoard effect)
@@ -1856,6 +1855,10 @@ ${bugReportJson}
       } else {
         // No saved state - initialize board from givens
         game.setBoardState(initialBoard, new Uint16Array(81))
+        // Start timer for new game - only if puzzle is playable
+        if (!alreadyCompletedToday && !showDifficultyChooser) {
+          timerControl.startTimer()
+        }
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- game.restoreState, resetAllGameState, and timerControl.setElapsedMs are stable callbacks. We intentionally only trigger this when initialBoard or puzzle changes to prevent re-initialization loops.
