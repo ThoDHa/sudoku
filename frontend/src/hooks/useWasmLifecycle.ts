@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { logger } from '../lib/logger'
+import { initializeSolver, cleanupSolver } from '../lib/solver-service'
 
 interface UseWasmLifecycleOptions {
   /** Delay before unloading WASM when leaving routes (default: 2000ms) */
@@ -46,7 +47,6 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
 
   const loadWasm = useCallback(async () => {
     try {
-      const { initializeSolver } = await import('../lib/solver-service')
       await initializeSolver()
       log('WASM loaded successfully')
     } catch (error) {
@@ -56,7 +56,6 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
 
   const unloadWasm = useCallback(async () => {
     try {
-      const { cleanupSolver } = await import('../lib/solver-service')
       cleanupSolver()
       log('WASM unloaded - freed ~4MB memory')
     } catch (error) {
