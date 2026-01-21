@@ -23,7 +23,8 @@
     "allure:generate": "allure generate allure-results -o allure-report --clean",
     "allure:serve": "allure serve allure-results",
     "allure:open": "allure open allure-report",
-    "allure:clean": "rm -rf allure-results allure-report"
+    "allure:clean": "rm -rf allure-results allure-report",
+    "prepare": "husky install .husky"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
@@ -50,6 +51,7 @@
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.26",
+    "husky": "^9.1.7",
     "jsdom": "^27.4.0",
     "playwright": "^1.57.0",
     "postcss": "^8.4.33",

@@ -1,0 +1,66 @@
+#!/bin/sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Pre-commit hook that enforces zero warning linter policy
+# Blocks commit if any linter reports warnings or errors
+
+echo "Running pre-commit linters..."
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+# Check for frontend files (.ts, .tsx, .js, .jsx)
+FRONTEND_FILES=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|js|jsx)$' || true)
+
+# Check for Go files (.go)
+GO_FILES=$(echo "$STAGED_FILES" | grep -E '\.go$' || true)
+
+# Run ESLint if frontend files are staged
+if [ -n "$FRONTEND_FILES" ]; then
+  echo ""
+  echo "Running ESLint on staged frontend files..."
+  cd frontend
+
+  # Run ESLint with zero warnings (max-warnings=0) and only on staged files
+  # ESLint will exit with non-zero if any warnings or errors are found
+  if ! npx eslint $(echo "$FRONTEND_FILES" | sed 's|^frontend/||') --max-warnings 0; then
+    echo ""
+    echo "❌ ESLint found warnings or errors in staged files!"
+    echo ""
+    echo "Fix the issues above, or use 'git commit --no-verify' to bypass (not recommended)."
+    echo ""
+    echo "You can run 'cd frontend && npm run lint:fix' to auto-fix some issues."
+    exit 1
+  fi
+
+  cd ..
+  echo "✅ ESLint passed!"
+fi
+
+# Run golangci-lint if Go files are staged
+if [ -n "$GO_FILES" ]; then
+  echo ""
+  echo "Running golangci-lint on staged Go files..."
+
+  # Run golangci-lint only on staged files
+  # golangci-lint will exit with non-zero if any issues are found
+  if ! cd api && $(go env GOPATH)/bin/golangci-lint run $(echo "$GO_FILES" | sed 's|^api/||'); then
+    echo ""
+    echo "❌ golangci-lint found issues in staged files!"
+    echo ""
+    echo "Fix the issues above, or use 'git commit --no-verify' to bypass (not recommended)."
+    exit 1
+  fi
+
+  cd ..
+  echo "✅ golangci-lint passed!"
+fi
+
+# If no relevant files were staged, just pass
+if [ -z "$FRONTEND_FILES" ] && [ -z "$GO_FILES" ]; then
+  echo "No linterable files staged. Skipping linter checks."
+fi
+
+echo ""
+echo "✅ All linter checks passed!"
+exit 0
