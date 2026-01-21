@@ -181,42 +181,24 @@ export default defineConfig({
               return 'date-vendor'
             }
             // Separate utility libraries for better caching
-            if (id.includes('lodash') || id.includes('clsx') || id.includes('class-variance-authority')) {
+            if (id.includes('lodash') || id.includes('clsx') || id.includes('class-variance-authority') || id.includes('loglevel')) {
               return 'utils-vendor'
             }
           }
 
-          // Separate WASM-related modules for lazy loading
-          if (id.includes('src/lib/wasm.ts') || id.includes('src/lib/solver-service.ts')) {
-            return 'wasm-solver'
-          }
-          
-          // Separate large components into their own chunks
-          if (id.includes('src/hooks/useAutoSolve.ts')) {
-            return 'auto-solve'
-          }
-          if (id.includes('src/hooks/useSudokuGame.ts') || id.includes('src/hooks/useGameTimer.ts') || id.includes('src/hooks/useBackgroundManager.ts')) {
-            return 'game-logic'
-          }
-          if (id.includes('src/components/Board.tsx') || id.includes('src/components/History.tsx')) {
-            return 'game-components'
-          }
-          // Separate Game page from other pages for better loading
-          if (id.includes('src/pages/Game.tsx')) {
-            return 'game-page'
-          }
-          if (id.includes('src/pages/')) {
-            return 'pages'
-          }
-          if (id.includes('src/components/')) {
-            return 'ui-components'
+          // Consolidate all application code into single chunk
+          // This includes wasm-solver, pages, components, hooks, and all lib files
+          // Tradeoff: WASM solver is not lazy-loaded, but we eliminate all circular warnings
+          if (id.includes('src/') && !id.includes('node_modules')) {
+            return 'app'
           }
         }
       }
     },
-    // Adjusted chunk size warning limit - we have optimized chunking
-    // Largest chunk is now 634KB (UI components), down from 770KB main bundle
-    chunkSizeWarningLimit: 650
+    // Consolidated app chunk (game-domain + pages + ui-components)
+    // Eliminated circular chunk warnings from over-granular splitting
+    // Remaining 2 warnings are type-level cycles, unavoidable without duplication
+    chunkSizeWarningLimit: 950
   },
 
   plugins: [

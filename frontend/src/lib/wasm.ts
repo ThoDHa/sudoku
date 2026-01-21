@@ -1,6 +1,6 @@
 /**
  * WASM Module Loader for Sudoku Solver
- * 
+ *
  * This module provides a TypeScript interface to the Go-based Sudoku solver
  * compiled to WebAssembly. It enables offline solving capabilities.
  */
@@ -201,7 +201,7 @@ export function getWasmApi(): SudokuWasmAPI | null {
  * Call this when WASM is no longer needed to save ~4MB RAM
  */
 export function unloadWasm(): void {
-  logger.debug('[WASM] Unloading WASM module...')
+    logger.debug('[WASM] Unloading WASM module...')
   
   // Abort any in-progress fetch first
   if (wasmAbortController) {
@@ -249,8 +249,8 @@ export function unloadWasm(): void {
   if (typeof window !== 'undefined' && 'gc' in window && typeof window.gc === 'function') {
     window.gc();
   }
-  
-  logger.debug('[WASM] WASM module unloaded, memory freed')
+
+  console.debug('[WASM] WASM module unloaded, memory freed')
 }
 
 /**

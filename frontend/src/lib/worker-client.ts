@@ -6,7 +6,7 @@
  * and provides fallback to main thread WASM if workers are not supported.
  */
 
-import type { Move } from './wasm'
+import type { Move } from '../types/sudoku'
 import { logger } from './logger'
 
 // ==================== Types ====================

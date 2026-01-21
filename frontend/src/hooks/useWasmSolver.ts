@@ -5,12 +5,14 @@ import {
   getWasmApi,
   preloadWasm,
   type SudokuWasmAPI,
+} from '../lib/wasm'
+import {
   type Move,
   type FindNextMoveResult,
   type SolveAllResult,
   type ValidateBoardResult,
   type ValidateCustomResult,
-} from '../lib/wasm'
+} from '../types/sudoku'
 import { logger } from '../lib/logger'
 
 // Re-export types for convenience
