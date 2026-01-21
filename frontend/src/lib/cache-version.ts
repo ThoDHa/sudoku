@@ -4,8 +4,10 @@
 export const CACHE_VERSION = '1.0.2';
 export const CACHE_KEY = 'sudoku-app-version';
 
+import { logger } from './logger'
+
 /**
- * Check if the cache version has changed and clear caches if needed
+ * Check if cache version has changed and clear caches if needed
  * This helps ensure users get fresh content after updates
  */
 export async function checkCacheVersion(): Promise<boolean> {
@@ -13,13 +15,13 @@ export async function checkCacheVersion(): Promise<boolean> {
     const storedVersion = localStorage.getItem(CACHE_KEY);
     
     if (storedVersion !== CACHE_VERSION) {
-      console.warn(`Cache version changed: ${storedVersion} → ${CACHE_VERSION}`);
+      logger.warn(`Cache version changed: ${storedVersion} → ${CACHE_VERSION}`);
       
       // Clear all caches
       if ('caches' in window) {
         const cacheNames = await caches.keys();
         await Promise.all(cacheNames.map(name => caches.delete(name)));
-        console.warn('Cleared all caches due to version change');
+        logger.warn('Cleared all caches due to version change');
       }
       
       // Update stored version
@@ -30,7 +32,7 @@ export async function checkCacheVersion(): Promise<boolean> {
     
     return false; // No cache clearing needed
   } catch (error) {
-    console.warn('Cache version check failed:', error);
+    logger.warn('Cache version check failed:', error);
     return false;
   }
 }
@@ -56,9 +58,9 @@ export async function clearAllCaches(): Promise<void> {
     // Clear localStorage cache version
     localStorage.removeItem(CACHE_KEY);
     
-    console.warn('All caches cleared successfully');
+    logger.warn('All caches cleared successfully');
   } catch (error) {
-    console.error('Failed to clear caches:', error);
+    logger.error('Failed to clear caches:', error);
     throw error;
   }
 }

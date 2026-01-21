@@ -3,6 +3,7 @@ import { PLAY_DELAY } from '../lib/constants'
 import { solveAll } from '../lib/solver-service'
 import { useBackgroundManager } from './useBackgroundManager'
 import type { Move } from './useSudokuGame'
+import { logger } from '../lib/logger'
 
 interface UseAutoSolveOptions {
   /** Delay between steps in milliseconds (default: PLAY_DELAY) */
@@ -448,7 +449,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
     } catch (err) {
       setIsFetching(false)
-      console.error('Auto-solve error:', err)
+      logger.error('Auto-solve error:', err)
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
     }
@@ -755,7 +756,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
     } catch (err) {
       setIsFetching(false)
-      console.error('Auto-solve error:', err)
+      logger.error('Auto-solve error:', err)
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
     }
@@ -807,7 +808,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         ? moveResult.candidates.map((cellCands: number[] | null) => new Set<number>(cellCands || []))
         : getCandidates()
       // ADDED DEBUG LOGGING FOR EACH MOVE APPLIED
-      console.debug(`[AutoSolve:playMoves] Action: ${moveResult.move && moveResult.move.action} | Index: ${newIndex}`)
+      logger.debug(`[AutoSolve:playMoves] Action: ${moveResult.move && moveResult.move.action} | Index: ${newIndex}`)
       applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
       stateHistoryRef.current.push({
         board: [...moveResult.board],
@@ -922,7 +923,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
     } catch (err) {
       setIsFetching(false)
-      console.error('Solve from givens error:', err)
+      logger.error('Solve from givens error:', err)
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
     }

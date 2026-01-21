@@ -7,12 +7,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
  * WebAssembly loading for the Sudoku solver.
  */
 
-// Mock debugLog before importing the module
-let debugLogMock = vi.fn()
-vi.mock('./debug', () => ({
-  debugLog: function(...args: unknown[]) {
-    return debugLogMock(...args)
+// Mock logger before importing the module
+let loggerMock = vi.fn()
+vi.mock('./logger', () => ({
+  logger: {
+    debug: loggerMock,
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
   },
+  enableDebug: vi.fn(),
+  disableDebug: vi.fn(),
 }))
 
 // Store original globals
@@ -65,7 +70,7 @@ describe('wasm module', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
-    debugLogMock.mockClear()
+    loggerMock.mockClear()
 
     mockWasmApi = createMockWasmApi()
     MockGoClass = createMockGoClass()
@@ -533,7 +538,7 @@ describe('wasm module', () => {
 
       // Wait for the promise to settle
       await vi.waitFor(() => {
-        expect(debugLogMock).toHaveBeenCalledWith('WASM preload failed:', 'Preload failed')
+        expect(loggerMock).toHaveBeenCalledWith('WASM preload failed:', 'Preload failed')
       })
     })
   })

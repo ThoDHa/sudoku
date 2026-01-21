@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import { checkCacheVersion } from './lib/cache-version'
+import { logger } from './lib/logger'
 import './index.css'
 
 // Type declaration for recovery script in index.html
@@ -20,7 +21,7 @@ const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || ''
 // Check cache version before app starts
 checkCacheVersion().then(cacheCleared => {
   if (cacheCleared) {
-    console.warn('Cache was cleared due to version update - fresh content loaded')
+    logger.warn('Cache was cleared due to version update - fresh content loaded')
   }
 })
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
+import { logger } from '../lib/logger'
 
 interface UseWasmLifecycleOptions {
   /** Delay before unloading WASM when leaving routes (default: 2000ms) */
@@ -28,7 +29,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
 
   const log = useCallback((message: string) => {
     if (enableLogging) {
-      console.warn(`[WasmLifecycle] ${message}`)
+      logger.warn(`[WasmLifecycle] ${message}`)
     }
   }, [enableLogging])
 
@@ -49,7 +50,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
       await initializeSolver()
       log('WASM loaded successfully')
     } catch (error) {
-      console.error('[WasmLifecycle] Failed to initialize WASM solver:', error)
+      logger.error('[WasmLifecycle] Failed to initialize WASM solver:', error)
     }
   }, [log])
 
@@ -59,7 +60,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
       cleanupSolver()
       log('WASM unloaded - freed ~4MB memory')
     } catch (error) {
-      console.error('[WasmLifecycle] Error during WASM cleanup:', error)
+      logger.error('[WasmLifecycle] Error during WASM cleanup:', error)
     }
   }, [log])
 

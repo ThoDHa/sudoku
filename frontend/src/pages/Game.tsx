@@ -25,7 +25,7 @@ import type { MoveHighlight } from '../hooks/useHighlightState'
 import { useVisibilityAwareTimeout } from '../hooks/useVisibilityAwareTimeout'
 import { useFrozenWhenHidden } from '../hooks/useFrozenWhenHidden'
 import type { Move } from '../hooks/useSudokuGame'
-import { debugLog } from '../lib/debug'
+import { logger } from '../lib/logger'
 import {
   TOAST_DURATION_INFO,
   TOAST_DURATION_ERROR,
@@ -313,7 +313,7 @@ function GameContent() {
       const isInteractiveClick = clickedOnButton || clickedOnInput || clickedOnInteractive
       
        // DEBUG: Log click detection info
-       debugLog('Click Debug:', {
+       logger.debug('Click Debug:', {
          target: target.tagName + (target.className ? '.' + target.className.split(' ').join('.') : ''),
          clickedInsideBoard: !!clickedInsideBoard,
          clickedInsideControls: !!clickedInsideControls, 
@@ -564,7 +564,7 @@ function GameContent() {
     const savedGame = getMostRecentGame()
     // Mark that we've handled initial navigation for this component mount
     handledInitialNavigationRef.current = true
-    debugLog('[IN-PROGRESS CHECK] Current URL seed:', seed, 'Saved game found:', savedGame ? savedGame.seed : 'none')
+    logger.debug('[IN-PROGRESS CHECK] Current URL seed:', seed, 'Saved game found:', savedGame ? savedGame.seed : 'none')
     // Show prompt if:
     // - There's a saved game
     // - It's for a DIFFERENT seed than what we're trying to load
@@ -573,11 +573,11 @@ function GameContent() {
         savedGame.seed !== seed && 
         savedGame.seed !== encoded &&
         savedGame.progress < 100) {
-      debugLog('[IN-PROGRESS CHECK] Showing modal: Existing game found', savedGame.seed, 'vs current:', seed)
+      logger.debug('[IN-PROGRESS CHECK] Showing modal: Existing game found', savedGame.seed, 'vs current:', seed)
       setExistingInProgressGame(savedGame)
       setShowInProgressConfirm(true)
     } else {
-      debugLog('[IN-PROGRESS CHECK] No modal needed (no existing game or same seed)')
+      logger.debug('[IN-PROGRESS CHECK] No modal needed (no existing game or same seed)')
     }
   }, [seed, encoded])
 
@@ -623,7 +623,7 @@ function GameContent() {
   const getStorageKey = useCallback((puzzleSeed: string) => {
     const validation = validateSeed(puzzleSeed)
     if (!validation.valid) {
-      console.error(`[SEED VALIDATION] Invalid seed: ${puzzleSeed}`, validation.error)
+      logger.error(`[SEED VALIDATION] Invalid seed: ${puzzleSeed}`, validation.error)
       throw new Error(`Cannot create storage key for invalid seed: ${validation.error}`)
     }
     return `${STORAGE_KEYS.GAME_STATE_PREFIX}${validation.seed}`
@@ -653,7 +653,7 @@ function GameContent() {
     try {
       localStorage.setItem(storageKey, JSON.stringify(savedState))
     } catch (e) {
-      console.warn('Failed to save game state:', e)
+      logger.warn('Failed to save game state:', e)
     }
   // Note: We use isCompleteRef instead of game.isComplete to avoid stale closure issues
   // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
@@ -666,7 +666,7 @@ function GameContent() {
     try {
       localStorage.removeItem(storageKey)
     } catch (e) {
-      console.warn('Failed to clear saved game state:', e)
+      logger.warn('Failed to clear saved game state:', e)
     }
   }, [puzzle, getStorageKey])
 
@@ -681,18 +681,18 @@ function GameContent() {
       const extractedSeed = extractSeedFromStorageKey(storageKey)
       
       if (!extractedSeed.valid) {
-        console.error(`[STORAGE ERROR] Cannot load game with invalid seed: ${puzzleSeed} (stored seed: ${extractedSeed.seed}, error: ${extractedSeed.error})`)
+        logger.error(`[STORAGE ERROR] Cannot load game with invalid seed: ${puzzleSeed} (stored seed: ${extractedSeed.seed}, error: ${extractedSeed.error})`)
         return null
       }
       
       if (parsed.board?.length === 81 && parsed.candidates?.length === 81) {
         return parsed
       } else {
-        console.warn(`[STORAGE ERROR] Corrupted saved state for seed: ${extractedSeed.seed} - board: ${parsed.board?.length}, candidates: ${parsed.candidates?.length}`)
+        logger.warn(`[STORAGE ERROR] Corrupted saved state for seed: ${extractedSeed.seed} - board: ${parsed.board?.length}, candidates: ${parsed.candidates?.length}`)
         return null
       }
     } catch (e) {
-      console.error(`[STORAGE ERROR] Failed to load saved game for seed: ${puzzleSeed}`, e)
+      logger.error(`[STORAGE ERROR] Failed to load saved game for seed: ${puzzleSeed}`, e)
       return null
     }
   }, [getStorageKey])
@@ -895,7 +895,7 @@ function GameContent() {
       }
       // Note: Button stays enabled - no setHintPending(true)
     } catch (err) {
-      console.error('Hint error:', err)
+      logger.error('Hint error:', err)
       setValidationMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to get hint' })
       visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
     } finally {
@@ -995,7 +995,7 @@ function GameContent() {
       }
       // Note: Button stays enabled - no setTechniqueHintPending(true)
     } catch (err) {
-      console.error('Technique hint error:', err)
+      logger.error('Technique hint error:', err)
       setValidationMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to get technique' })
       visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
     } finally {
@@ -1300,9 +1300,9 @@ if (value === 0) {
   // Check & Fix handler - compares current board vs solution, removes mismatches, continues solving
   const handleCheckAndFix = useCallback(async () => {
     // DEBUG: Log the result.moves list from WASM
-    console.debug('Check & Fix invoked');
+    logger.debug('Check & Fix invoked');
     if (!solution || solution.length !== 81) {
-      console.error('Cannot check and fix: solution not available')
+      logger.error('Cannot check and fix: solution not available')
       return
     }
 
@@ -1313,14 +1313,14 @@ if (value === 0) {
       const givens = puzzle?.givens || []
 
       if (givens.length !== 81) {
-        console.error('Cannot check and fix: givens not available')
+        logger.error('Cannot check and fix: givens not available')
         return
       }
 
       // Call WASM to compare and fix
       const result = await checkAndFixWithSolution(currentBoard, currentCandidates, givens, solution)
         if (result && result.moves) {
-          console.debug('Check & Fix moves:', result.moves.map((m, idx) => ({idx, move: m && m.move, board: m && m.board})));
+          logger.debug('Check & Fix moves:', result.moves.map((m, idx) => ({idx, move: m && m.move, board: m && m.board})));
         }
       
       if (result.moves && result.moves.length > 0) {
@@ -1329,10 +1329,10 @@ if (value === 0) {
       
 
       } else {
-        console.warn('Check & Fix: no changes needed')
+        logger.warn('Check & Fix: no changes needed')
       }
     } catch (error) {
-      console.error('Check & Fix failed:', error)
+      logger.error('Check & Fix failed:', error)
       handleAutoSolveError('Failed to check and fix entries')
     }
   }, [solution, game.board, game.candidates, puzzle?.givens, handleAutoSolveError, autoSolve])
@@ -1473,7 +1473,7 @@ ${bugReportJson}
         visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
       }
     } catch (err) {
-      console.error('Share error:', err)
+      logger.error('Share error:', err)
       setValidationMessage({ type: 'error', message: 'Failed to create share link' })
       visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
     }
@@ -1823,7 +1823,7 @@ ${bugReportJson}
     if (puzzle?.seed) {
       hasRestoredSavedState.current = false
       loadedFromSharedUrl.current = false
-      debugLog('[RESTORATION FLAG RESET] Seed changed to:', puzzle.seed, 'Flag reset to false')
+      logger.debug('[RESTORATION FLAG RESET] Seed changed to:', puzzle.seed, 'Flag reset to false')
     }
   }, [puzzle?.seed])
 

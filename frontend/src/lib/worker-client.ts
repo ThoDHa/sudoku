@@ -7,7 +7,7 @@
  */
 
 import type { Move } from './wasm'
-import { debugLog } from './debug'
+import { logger } from './logger'
 
 // ==================== Types ====================
 
@@ -167,7 +167,7 @@ export async function initializeWorker(): Promise<void> {
       }
       
       worker.onerror = (error) => {
-        debugLog('[WorkerClient] Worker error:', error)
+        logger.debug('[WorkerClient] Worker error:', error)
         // Reject all pending requests
         for (const [id, pending] of pendingRequests) {
           clearTimeout(pending.timeoutId)

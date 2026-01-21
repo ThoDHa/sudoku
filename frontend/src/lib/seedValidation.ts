@@ -1,5 +1,5 @@
 import { STORAGE_KEYS } from './constants'
-import { debugLog } from './debug'
+import { logger } from './logger'
 
 /**
  * Seed Validation and Normalization
@@ -134,7 +134,7 @@ export function createStorageKey(seed: string): string {
 
   if (!validation.valid) {
     // If seed is invalid, don't create a key
-    debugLog(`[SEED VALIDATION] Cannot create storage key for invalid seed: ${seed}`, validation.error)
+    logger.debug(`[SEED VALIDATION] Cannot create storage key for invalid seed: ${seed}`, validation.error)
     throw new Error(`Invalid seed: ${validation.error}`)
   }
 

@@ -1,26 +1,17 @@
-import { renderHook, act, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach, Mock } from 'vitest'
-
-// =============================================================================
-// MOCKS
-// =============================================================================
-
-// Mock the wasm module
-const mockIsWasmReady = vi.fn(() => false)
-const mockGetWasmApi = vi.fn(() => null)
-const mockLoadWasm = vi.fn()
-const mockPreloadWasm = vi.fn()
-
-vi.mock('../lib/wasm', () => ({
-  isWasmReady: () => mockIsWasmReady(),
-  getWasmApi: () => mockGetWasmApi(),
-  loadWasm: () => mockLoadWasm(),
-  preloadWasm: () => mockPreloadWasm(),
+vi.mock('../lib/logger', () => ({
+  logger: {
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+  },
+  enableDebug: vi.fn(),
+  disableDebug: vi.fn(),
 }))
-
 // Import after mocks are set up
 import { useWasmSolver, isWasmReady, getWasmApi, loadWasm } from './useWasmSolver'
 import type { SudokuWasmAPI, FindNextMoveResult, SolveAllResult, ValidateBoardResult, ValidateCustomResult } from '../lib/wasm'
+import { logger } from '../lib/logger'
 
 // =============================================================================
 // MOCK API FACTORY
@@ -291,7 +282,7 @@ describe('useWasmSolver', () => {
     })
 
     it('sets error on load failure', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const loggerWarnSpy = logger, 'warn').mockImplementation(() => {})
       mockLoadWasm.mockRejectedValue(new Error('WASM load failed'))
 
       const { result } = renderHook(() => useWasmSolver())
@@ -302,11 +293,11 @@ describe('useWasmSolver', () => {
 
       expect(result.current.error).toBe('WASM load failed')
       expect(result.current.isReady).toBe(false)
-      consoleWarnSpy.mockRestore()
+      loggerWarnSpy.mockRestore()
     })
 
     it('returns false on load failure', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const loggerWarnSpy = logger, 'warn').mockImplementation(() => {})
       mockLoadWasm.mockRejectedValue(new Error('WASM load failed'))
 
       const { result } = renderHook(() => useWasmSolver())
@@ -317,11 +308,11 @@ describe('useWasmSolver', () => {
       })
 
       expect(loadResult).toBe(false)
-      consoleWarnSpy.mockRestore()
+      loggerWarnSpy.mockRestore()
     })
 
     it('handles non-Error exceptions', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const loggerWarnSpy = logger, 'warn').mockImplementation(() => {})
       mockLoadWasm.mockRejectedValue('string error')
 
       const { result } = renderHook(() => useWasmSolver())
@@ -331,7 +322,7 @@ describe('useWasmSolver', () => {
       })
 
       expect(result.current.error).toBe('Failed to load WASM')
-      consoleWarnSpy.mockRestore()
+      loggerWarnSpy.mockRestore()
     })
 
     it('prevents concurrent loads', async () => {
@@ -383,7 +374,7 @@ describe('useWasmSolver', () => {
     })
 
     it('clears error when wasmReady event fires', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const loggerWarnSpy = logger, 'warn').mockImplementation(() => {})
       mockLoadWasm.mockRejectedValue(new Error('Initial failure'))
 
       const { result } = renderHook(() => useWasmSolver())
@@ -404,7 +395,7 @@ describe('useWasmSolver', () => {
       })
 
       expect(result.current.error).toBeNull()
-      consoleWarnSpy.mockRestore()
+      loggerWarnSpy.mockRestore()
     })
 
     it('removes event listener on unmount', () => {
@@ -566,7 +557,7 @@ describe('useWasmSolver', () => {
     })
 
     it('findNextMove returns null and logs error on exception', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const loggerErrorSpy = logger, 'error').mockImplementation(() => {})
       ;(mockApi.findNextMove as Mock).mockImplementation(() => {
         throw new Error('WASM error')
       })
@@ -576,12 +567,12 @@ describe('useWasmSolver', () => {
       const moveResult = result.current.findNextMove([], [[]], [])
 
       expect(moveResult).toBeNull()
-      expect(consoleErrorSpy).toHaveBeenCalledWith('WASM findNextMove error:', expect.any(Error))
-      consoleErrorSpy.mockRestore()
+      expect(logger.error).toHaveBeenCalledWith('WASM findNextMove error:', expect.any(Error))
+      loggerErrorSpy.mockRestore()
     })
 
     it('solveAll returns null and logs error on exception', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const loggerErrorSpy = logger, 'error').mockImplementation(() => {})
       ;(mockApi.solveAll as Mock).mockImplementation(() => {
         throw new Error('WASM error')
       })
@@ -591,12 +582,12 @@ describe('useWasmSolver', () => {
       const solveResult = result.current.solveAll([], [[]], [])
 
       expect(solveResult).toBeNull()
-      expect(consoleErrorSpy).toHaveBeenCalledWith('WASM solveAll error:', expect.any(Error))
-      consoleErrorSpy.mockRestore()
+      expect(logger.error).toHaveBeenCalledWith('WASM solveAll error:', expect.any(Error))
+      loggerErrorSpy.mockRestore()
     })
 
     it('validateBoard returns null and logs error on exception', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const loggerErrorSpy = logger, 'error').mockImplementation(() => {})
       ;(mockApi.validateBoard as Mock).mockImplementation(() => {
         throw new Error('WASM error')
       })
@@ -606,12 +597,12 @@ describe('useWasmSolver', () => {
       const validateResult = result.current.validateBoard([], [])
 
       expect(validateResult).toBeNull()
-      expect(consoleErrorSpy).toHaveBeenCalledWith('WASM validateBoard error:', expect.any(Error))
-      consoleErrorSpy.mockRestore()
+      expect(logger.error).toHaveBeenCalledWith('WASM validateBoard error:', expect.any(Error))
+      loggerErrorSpy.mockRestore()
     })
 
     it('validateCustom returns null and logs error on exception', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const loggerErrorSpy = logger, 'error').mockImplementation(() => {})
       ;(mockApi.validateCustomPuzzle as Mock).mockImplementation(() => {
         throw new Error('WASM error')
       })
@@ -621,12 +612,12 @@ describe('useWasmSolver', () => {
       const validateResult = result.current.validateCustom([])
 
       expect(validateResult).toBeNull()
-      expect(consoleErrorSpy).toHaveBeenCalledWith('WASM validateCustom error:', expect.any(Error))
-      consoleErrorSpy.mockRestore()
+      expect(logger.error).toHaveBeenCalledWith('WASM validateCustom error:', expect.any(Error))
+      loggerErrorSpy.mockRestore()
     })
 
     it('getPuzzle returns null and logs error on exception', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const loggerErrorSpy = logger, 'error').mockImplementation(() => {})
       ;(mockApi.getPuzzleForSeed as Mock).mockImplementation(() => {
         throw new Error('WASM error')
       })
@@ -636,8 +627,8 @@ describe('useWasmSolver', () => {
       const puzzleResult = result.current.getPuzzle('seed', 'medium')
 
       expect(puzzleResult).toBeNull()
-      expect(consoleErrorSpy).toHaveBeenCalledWith('WASM getPuzzle error:', expect.any(Error))
-      consoleErrorSpy.mockRestore()
+      expect(logger.error).toHaveBeenCalledWith('WASM getPuzzle error:', expect.any(Error))
+      loggerErrorSpy.mockRestore()
     })
   })
 

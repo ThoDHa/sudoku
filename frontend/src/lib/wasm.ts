@@ -7,7 +7,7 @@
 
 /// <reference types="vite/client" />
 
-import { debugLog } from './debug'
+import { logger } from './logger'
 
 // ==================== Type Definitions ====================
 
@@ -201,7 +201,7 @@ export function getWasmApi(): SudokuWasmAPI | null {
  * Call this when WASM is no longer needed to save ~4MB RAM
  */
 export function unloadWasm(): void {
-  debugLog('[WASM] Unloading WASM module...')
+  logger.debug('[WASM] Unloading WASM module...')
   
   // Abort any in-progress fetch first
   if (wasmAbortController) {
@@ -221,7 +221,7 @@ export function unloadWasm(): void {
       try {
         goInstance.exit(0);
       } catch (e) {
-        debugLog('[WASM] Error during Go exit:', e);
+        logger.debug('[WASM] Error during Go exit:', e);
       }
     }
     goInstance = null;
@@ -250,7 +250,7 @@ export function unloadWasm(): void {
     window.gc();
   }
   
-  debugLog('[WASM] WASM module unloaded, memory freed')
+  logger.debug('[WASM] WASM module unloaded, memory freed')
 }
 
 /**
@@ -260,7 +260,7 @@ export function unloadWasm(): void {
  */
 export function abortWasmLoad(): void {
   if (wasmAbortController) {
-    debugLog('[WASM] Aborting WASM fetch...')
+    logger.debug('[WASM] Aborting WASM fetch...')
     wasmAbortController.abort();
     wasmAbortController = null;
     wasmLoadPromise = null;
@@ -319,9 +319,9 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
   wasmLoadPromise = (async () => {
     try {
       // Load wasm_exec.js first
-      debugLog('[WASM] Loading wasm_exec.js from:', `${getBaseUrl()}wasm_exec.js`)
+      logger.debug('[WASM] Loading wasm_exec.js from:', `${getBaseUrl()}wasm_exec.js`)
       await loadWasmExec();
-      debugLog('[WASM] wasm_exec.js loaded')
+      logger.debug('[WASM] wasm_exec.js loaded')
 
       // Ensure Go is available
       if (typeof window === 'undefined' || !window.Go) {
@@ -335,29 +335,29 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       wasmAbortController = new AbortController();
 
       // Fetch and instantiate the WASM module
-      debugLog('[WASM] Fetching WASM from:', `${getBaseUrl()}sudoku.wasm`)
+      logger.debug('[WASM] Fetching WASM from:', `${getBaseUrl()}sudoku.wasm`)
       const wasmResponse = await fetch(`${getBaseUrl()}sudoku.wasm`, {
         signal: wasmAbortController.signal
       });
       if (!wasmResponse.ok) {
         throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`);
       }
-      debugLog('[WASM] WASM fetched, instantiating...')
+      logger.debug('[WASM] WASM fetched, instantiating...')
       
       // Clear the abort controller since fetch completed
       wasmAbortController = null;
 
       let result: WebAssembly.WebAssemblyInstantiatedSource;
       if (WebAssembly.instantiateStreaming) {
-        debugLog('[WASM] Using streaming instantiation')
+        logger.debug('[WASM] Using streaming instantiation')
         result = await WebAssembly.instantiateStreaming(wasmResponse, go.importObject);
       } else {
         // Fallback for older browsers
-        debugLog('[WASM] Falling back to buffer instantiation')
+        logger.debug('[WASM] Falling back to buffer instantiation')
         const wasmBuffer = await wasmResponse.arrayBuffer();
         result = await WebAssembly.instantiate(wasmBuffer, go.importObject);
       }
-      debugLog('[WASM] WASM instantiated, running Go...')
+      logger.debug('[WASM] WASM instantiated, running Go...')
 
       // Run the Go program (this sets up window.SudokuWasm)
       // Don't await this - it blocks forever (intentionally)
@@ -367,7 +367,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       await new Promise<void>((resolve, reject) => {
         // Wait for the wasmReady event
         const handler = () => {
-          debugLog('[WASM] wasmReady event received')
+          logger.debug('[WASM] wasmReady event received')
           clearTimeout(timeout);
           window.removeEventListener('wasmReady', handler);
           resolve();
@@ -380,7 +380,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
 
         // Check if already ready
         if (window.SudokuWasm) {
-          debugLog('[WASM] SudokuWasm already available')
+          logger.debug('[WASM] SudokuWasm already available')
           clearTimeout(timeout);
           window.removeEventListener('wasmReady', handler);
           resolve();
@@ -403,7 +403,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       
       // Don't store abort as an error - it's intentional cancellation
       if (error instanceof Error && error.name === 'AbortError') {
-        debugLog('[WASM] WASM fetch was aborted')
+        logger.debug('[WASM] WASM fetch was aborted')
         wasmLoadPromise = null;
         throw error;
       }
@@ -423,7 +423,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
  */
 export function preloadWasm(): void {
   loadWasm().catch((error) => {
-    debugLog('WASM preload failed:', error.message);
+    logger.debug('WASM preload failed:', error.message);
   });
 }
 

@@ -2,6 +2,7 @@
 
 import { STORAGE_KEYS } from './constants'
 import { HomepageMode } from './preferences'
+import { logger } from './logger'
 
 // =============================================================================
 // GAME MODE DETECTION
@@ -55,7 +56,7 @@ export function setAutoSaveEnabled(enabled: boolean): void {
   try {
     localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(enabled))
   } catch (e) {
-    console.warn('Failed to save auto-save preference:', e)
+    logger.warn('Failed to save auto-save preference:', e)
   }
 }
 
@@ -106,7 +107,7 @@ export function getInProgressGames(): SavedGameInfo[] {
       }
     }
   } catch (e) {
-    console.warn('Failed to scan for in-progress games:', e)
+    logger.warn('Failed to scan for in-progress games:', e)
   }
   
   // Sort by most recently saved
@@ -153,7 +154,7 @@ export function clearInProgressGame(seed: string): void {
   try {
     localStorage.removeItem(`${STORAGE_KEYS.GAME_STATE_PREFIX}${seed}`)
   } catch (e) {
-    console.warn('Failed to clear in-progress game:', e)
+    logger.warn('Failed to clear in-progress game:', e)
   }
 }
 
@@ -192,7 +193,7 @@ function getAllSavedGames(): SavedGameInfo[] {
       }
     }
   } catch (e) {
-    console.warn('Failed to scan for saved games:', e)
+    logger.warn('Failed to scan for saved games:', e)
   }
   
   return games.sort((a, b) => b.savedAt - a.savedAt)

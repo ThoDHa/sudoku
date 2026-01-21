@@ -25,7 +25,7 @@ import {
 } from './worker-client'
 
 import { getPuzzleForSeed as getStaticPuzzle } from './puzzles-data'
-import { debugLog } from './debug'
+import { logger } from './logger'
 import { validatePuzzle as dpValidatePuzzle, validateBoard as dpValidateBoard } from './dp-solver'
 
 // ==================== Types ====================
@@ -149,17 +149,17 @@ export async function initializeSolver(): Promise<void> {
   if (isUsingWorkerMode()) {
     try {
       await initializeWorker()
-      debugLog('[SolverService] Worker mode initialized')
+      logger.debug('[SolverService] Worker mode initialized')
       return
     } catch (error) {
-      debugLog('[SolverService] Worker initialization failed, falling back to main thread:', error)
+      logger.debug('[SolverService] Worker initialization failed, falling back to main thread:', error)
       useWorkerMode = false
     }
   }
   
   // Fallback to main thread WASM
   await getApi()
-  debugLog('[SolverService] Main thread mode initialized')
+  logger.debug('[SolverService] Main thread mode initialized')
 }
 
 /**
@@ -172,15 +172,15 @@ export function cleanupSolver(): void {
     // Terminate worker if using worker mode
     if (isWorkerReady()) {
       terminateWorker()
-      debugLog('[SolverService] Worker terminated')
+      logger.debug('[SolverService] Worker terminated')
     }
 
     // Also clean up main thread WASM if it was loaded
     wasmApi = null
     unloadWasm()
-    debugLog('[SolverService] Solver cleaned up successfully')
+    logger.debug('[SolverService] Solver cleaned up successfully')
   } catch (error) {
-    debugLog('[SolverService] Error during solver cleanup:', error)
+    logger.debug('[SolverService] Error during solver cleanup:', error)
   }
 }
 
@@ -205,7 +205,7 @@ export async function solveAll(
         finalBoard: result.finalBoard,
       }
     } catch (error) {
-      debugLog('[SolverService] Worker solveAll failed, falling back:', error)
+      logger.debug('[SolverService] Worker solveAll failed, falling back:', error)
       // Fall through to main thread
     }
   }
@@ -252,7 +252,7 @@ export async function findNextMove(
         solved: result.solved,
       }
     } catch (error) {
-      debugLog('[SolverService] Worker findNextMove failed, falling back:', error)
+      logger.debug('[SolverService] Worker findNextMove failed, falling back:', error)
       // Fall through to main thread
     }
   }
@@ -365,9 +365,9 @@ export async function checkAndFixWithSolution(
     try {
       // Note: Worker client will need to be updated to support this new function
       // For now, fall back to main thread
-      debugLog('[SolverService] checkAndFixWithSolution not yet implemented in worker, using main thread')
+      logger.debug('[SolverService] checkAndFixWithSolution not yet implemented in worker, using main thread')
     } catch (error) {
-      debugLog('[SolverService] Worker checkAndFixWithSolution failed, falling back:', error)
+      logger.debug('[SolverService] Worker checkAndFixWithSolution failed, falling back:', error)
     }
   }
   
@@ -375,7 +375,7 @@ export async function checkAndFixWithSolution(
   const api = await getApi()
   const result = api.checkAndFixWithSolution(board, candidates, givens, solution)
   try {
-    console.debug('[Check&Fix] wasm result', {
+    logger.debug('[Check&Fix] wasm result', {
       solved: result?.solved,
       movesCount: Array.isArray(result?.moves) ? result.moves.length : 0,
       hasFinalBoard: !!result?.finalBoard,

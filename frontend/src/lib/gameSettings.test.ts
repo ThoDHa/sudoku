@@ -1,19 +1,5 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import {
-  getAutoSaveEnabled,
-  setAutoSaveEnabled,
-  getInProgressGames,
-  getMostRecentGame,
-  getMostRecentGameForMode,
-  hasInProgressGame,
-  clearInProgressGame,
-  clearOtherGamesForMode,
-  getGameMode,
-  isDailyPuzzle,
-  isPracticePuzzle,
-  type SavedGameInfo,
-} from './gameSettings'
 import { STORAGE_KEYS } from './constants'
+import { logger } from './logger'
 
 // Helper to create a valid game state
 function createGameState(options: {
@@ -63,7 +49,7 @@ const createLocalStorageMock = () => {
 }
 
 let localStorageMock: ReturnType<typeof createLocalStorageMock>
-let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+let loggerWarnSpy: ReturnType<typeof vi.spyOn>
 
 describe('gameSettings', () => {
   beforeEach(() => {
@@ -72,8 +58,8 @@ describe('gameSettings', () => {
       value: localStorageMock,
       writable: true,
     })
-    // Mock console.warn to avoid noise in tests and to verify error handling
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // Mock logger.warn to avoid noise in tests and to verify error handling
+    loggerWarnSpy = logger, 'warn').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -137,7 +123,7 @@ describe('gameSettings', () => {
       })
       // Should not throw
       expect(() => setAutoSaveEnabled(true)).not.toThrow()
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
         'Failed to save auto-save preference:',
         expect.any(Error)
       )
@@ -382,7 +368,7 @@ describe('gameSettings', () => {
 
       const games = getInProgressGames()
       expect(games).toEqual([])
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
         'Failed to scan for in-progress games:',
         expect.any(Error)
       )
@@ -621,7 +607,7 @@ describe('gameSettings', () => {
       })
 
       expect(() => clearInProgressGame('some-game')).not.toThrow()
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
         'Failed to clear in-progress game:',
         expect.any(Error)
       )

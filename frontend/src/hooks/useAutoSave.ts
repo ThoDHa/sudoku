@@ -3,6 +3,7 @@ import { STORAGE_KEYS } from '../lib/constants'
 import { getAutoSaveEnabled } from '../lib/gameSettings'
 import { candidatesToArrays } from '../lib/candidatesUtils'
 import type { Move } from './useSudokuGame'
+import { logger } from '../lib/logger'
 
 /**
  * Saved game state structure for localStorage
@@ -67,7 +68,7 @@ export function loadSavedGameState(puzzleSeed: string): SavedGameState | null {
       return parsed
     }
   } catch (e) {
-    console.warn('Failed to load saved game state:', e)
+    logger.warn('Failed to load saved game state:', e)
   }
   return null
 }
@@ -80,7 +81,7 @@ export function clearSavedGameState(puzzleSeed: string): void {
   try {
     localStorage.removeItem(storageKey)
   } catch (e) {
-    console.warn('Failed to clear saved game state:', e)
+    logger.warn('Failed to clear saved game state:', e)
   }
 }
 
@@ -136,7 +137,7 @@ export function useAutoSave(options: UseAutoSaveOptions) {
     try {
       localStorage.setItem(storageKey, JSON.stringify(savedState))
     } catch (e) {
-      console.warn('Failed to save game state:', e)
+      logger.warn('Failed to save game state:', e)
     }
   }, [puzzle, game.board, game.candidates, game.history, game.isComplete, elapsedMs, autoFillUsed])
 

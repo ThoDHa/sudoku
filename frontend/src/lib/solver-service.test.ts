@@ -33,8 +33,15 @@ vi.mock('./dp-solver', () => ({
   validateBoard: vi.fn(),
 }))
 
-vi.mock('./debug', () => ({
-  debugLog: vi.fn(),
+vi.mock('./logger', () => ({
+  logger: {
+    debug: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+  },
+  enableDebug: vi.fn(),
+  disableDebug: vi.fn(),
 }))
 
 describe('solver-service', () => {

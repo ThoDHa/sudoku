@@ -11,6 +11,7 @@ import {
   type ValidateBoardResult,
   type ValidateCustomResult,
 } from '../lib/wasm'
+import { logger } from '../lib/logger'
 
 // Re-export types for convenience
 export type { Move, FindNextMoveResult, SolveAllResult, ValidateBoardResult }
@@ -99,7 +100,7 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load WASM'
       setError(message)
-      console.warn('WASM load failed:', message)
+      logger.warn('WASM load failed:', message)
       return false
     } finally {
       loadingRef.current = false
@@ -113,7 +114,7 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
     try {
       return api.findNextMove(cells, candidates, givens)
     } catch (err) {
-      console.error('WASM findNextMove error:', err)
+      logger.error('WASM findNextMove error:', err)
       return null
     }
   }, [api])
@@ -123,7 +124,7 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
     try {
       return api.solveAll(cells, candidates, givens)
     } catch (err) {
-      console.error('WASM solveAll error:', err)
+      logger.error('WASM solveAll error:', err)
       return null
     }
   }, [api])
@@ -133,7 +134,7 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
     try {
       return api.validateBoard(board, solution)
     } catch (err) {
-      console.error('WASM validateBoard error:', err)
+      logger.error('WASM validateBoard error:', err)
       return null
     }
   }, [api])
@@ -143,7 +144,7 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
     try {
       return api.validateCustomPuzzle(givens)
     } catch (err) {
-      console.error('WASM validateCustom error:', err)
+      logger.error('WASM validateCustom error:', err)
       return null
     }
   }, [api])
@@ -155,7 +156,7 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
       if (result.error) return null
       return { givens: result.givens, solution: result.solution, puzzleId: result.puzzleId }
     } catch (err) {
-      console.error('WASM getPuzzle error:', err)
+      logger.error('WASM getPuzzle error:', err)
       return null
     }
   }, [api])

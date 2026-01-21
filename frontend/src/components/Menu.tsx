@@ -8,6 +8,7 @@ import { getShowDailyReminder, setShowDailyReminder } from '../lib/preferences'
 import { getDailySeed } from '../lib/solver-service'
 import { getLastDailyDifficulty } from '../lib/hooks'
 import { createGameRoute, SPEED_OPTIONS, COLOR_THEMES, TOAST_DURATION_INFO } from '../lib/constants'
+import { logger } from '../lib/logger'
 
 // Game actions (for game page)
 interface GameActions {
@@ -591,7 +592,7 @@ export default function Menu({
       // and won't show its own in-progress check prompt
       sessionStorage.setItem('skip_in_progress_check', 'true')
       const targetRoute = confirmNewPuzzle === 'custom' ? '/custom' : createGameRoute(confirmNewPuzzle)
-      console.warn('🎮 [MENU] Starting new game, route:', targetRoute, 'Difficulty:', confirmNewPuzzle)
+      logger.warn('🎮 [MENU] Starting new game, route:', targetRoute, 'Difficulty:', confirmNewPuzzle)
       navigate(targetRoute)
       onClose()
     }
@@ -605,7 +606,7 @@ export default function Menu({
       // Reload page to get fresh content
       window.location.reload()
     } catch (error) {
-      console.error('Failed to clear caches:', error)
+      logger.error('Failed to clear caches:', error)
     }
   }
 
