@@ -1,15 +1,37 @@
-  arraysToCandidates: vi.fn((arrays: number[][]) => {
+import { renderHook, act } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import {
+  getStorageKey,
+  loadSavedGameState,
+  clearSavedGameState,
+  useAutoSave,
+  type SavedGameState,
+  type UseAutoSaveOptions,
+} from './useAutoSave'
 
-vi.mock('../lib/logger', () => ({
-  logger: {
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-    info: vi.fn(),
-  },
-  enableDebug: vi.fn(),
-  disableDebug: vi.fn(),
+// =============================================================================
+// MOCKS
+// =============================================================================
+
+// Mock gameSettings module
+vi.mock('../lib/gameSettings', () => ({
+  getAutoSaveEnabled: vi.fn(() => true),
 }))
+
+// Mock candidatesUtils module
+vi.mock('../lib/candidatesUtils', () => ({
+  candidatesToArrays: vi.fn((candidates: Uint16Array) => {
+    // Simple mock: convert Uint16Array to number[][] where each mask becomes an array
+    return Array.from(candidates).map(mask => {
+      if (mask === 0) return []
+      const digits: number[] = []
+      for (let d = 1; d <= 9; d++) {
+        if ((mask & (1 << d)) !== 0) digits.push(d)
+      }
+      return digits
+    })
+  }),
+  arraysToCandidates: vi.fn((arrays: number[][]) => {
     // Simple mock: convert number[][] to Uint16Array
     const result = new Uint16Array(arrays.length)
     for (let i = 0; i < arrays.length; i++) {
@@ -23,12 +45,26 @@ vi.mock('../lib/logger', () => ({
   }),
 }))
 
+// Mock logger module
+vi.mock('../lib/logger', () => ({
+  logger: {
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+  },
+  enableDebug: vi.fn(),
+  disableDebug: vi.fn(),
+}))
+
 // Import the mocked functions for assertions
 import { getAutoSaveEnabled } from '../lib/gameSettings'
 import { candidatesToArrays } from '../lib/candidatesUtils'
+import { logger } from '../lib/logger'
 
 const mockGetAutoSaveEnabled = vi.mocked(getAutoSaveEnabled)
 const mockCandidatesToArrays = vi.mocked(candidatesToArrays)
+const mockLoggerWarn = vi.mocked(logger.warn)
 
 // =============================================================================
 // TEST UTILITIES
@@ -122,8 +158,8 @@ beforeEach(() => {
     configurable: true,
   })
 
-  // Setup logger.warn mock to suppress expected warnings
-  logger, 'warn').mockImplementation(() => {})
+  // Setup logger mock to track warnings
+  vi.spyOn(logger, 'warn').mockImplementation(() => {})
 
   // Reset getAutoSaveEnabled to return true by default
   mockGetAutoSaveEnabled.mockReturnValue(true)
@@ -221,7 +257,7 @@ describe('loadSavedGameState', () => {
     const result = loadSavedGameState('test-puzzle')
 
     expect(result).toBeNull()
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
       'Failed to load saved game state:',
       expect.any(Error)
     )
@@ -233,7 +269,7 @@ describe('loadSavedGameState', () => {
     const result = loadSavedGameState('test-puzzle')
 
     expect(result).toBeNull()
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
       'Failed to load saved game state:',
       expect.any(Error)
     )
@@ -259,7 +295,7 @@ describe('clearSavedGameState', () => {
     mockLocalStorage._setShouldThrow(true)
 
     expect(() => clearSavedGameState('test-puzzle')).not.toThrow()
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
       'Failed to clear saved game state:',
       expect.any(Error)
     )
@@ -467,7 +503,7 @@ describe('useAutoSave', () => {
         result.current.saveGameState()
       })
 
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
         'Failed to save game state:',
         expect.any(Error)
       )
