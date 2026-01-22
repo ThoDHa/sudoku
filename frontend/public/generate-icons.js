@@ -1,6 +1,10 @@
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
+// Use the project's logging library instead of bare console for consistency
+const log = require('loglevel');
+const logger = log;
+logger.setLevel('info');
 
 const svgPath = path.join(__dirname, 'sudoku-icon.svg');
 const svg = fs.readFileSync(svgPath);
@@ -17,8 +21,8 @@ async function generateIcons() {
       .resize(size, size)
       .png()
       .toFile(path.join(__dirname, name));
-    console.log(`Generated ${name}`);
+    logger.info(`Generated ${name}`);
   }
 }
 
-generateIcons().then(() => console.log('All icons generated!'));
+generateIcons().then(() => logger.info('All icons generated!'));
