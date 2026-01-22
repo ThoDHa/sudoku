@@ -55,8 +55,9 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-non-null-assertion': 'warn',
       
-      // General best practices
-      'no-console': ['warn', { allow: ['warn', 'error', 'debug'] }],
+      // General best practices - forbid console.* in runtime code (use logger instead)
+      // Test files are ignored at top level, so this only affects src/
+      'no-console': 'error',
       'eqeqeq': ['error', 'always'],
       'prefer-const': 'error',
     },

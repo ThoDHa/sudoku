@@ -7,12 +7,18 @@ import { checkCacheVersion } from './lib/cache-version'
 import { logger } from './lib/logger'
 import './index.css'
 
-// Type declaration for recovery script in index.html
+import log from 'loglevel'
+
+// Type declaration for recovery script in index.html and global logger
 declare global {
   interface Window {
     __markAppReady?: () => void;
+    logger?: typeof log;
   }
 }
+
+// Attach logger globally for wasm_exec.js and other runtime code
+window.logger = logger
 
 // Get base path from Vite's BASE_URL (set during build)
 // This handles GitHub Pages subpath (/sudoku/) vs root deployment (/)
