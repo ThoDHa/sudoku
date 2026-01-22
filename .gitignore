@@ -5,6 +5,7 @@ vendor/
 # Build outputs
 frontend/dist/
 frontend/dist_old/
+frontend/dev-dist/
 api/server
 *.exe
 *.dll
