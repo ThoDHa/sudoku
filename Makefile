@@ -1,26 +1,11 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-# Dockerized Playwright/Vitest for full local/CI runner
-.PHONY: test-docker test-e2e-docker test-unit-docker
-
-test-docker:
-	@echo "Running ALL frontend tests (unit & E2E) in Docker via Dockerfile.test..."
-	@docker build -t sudoku-frontend-test -f frontend/Dockerfile.test frontend
-	@docker run --rm sudoku-frontend-test
-
-test-e2e-docker:
-	@echo "Running Playwright E2E frontend tests in Docker via Dockerfile.test..."
-	@docker build -t sudoku-frontend-test -f frontend/Dockerfile.test frontend
-	@docker run --rm sudoku-frontend-test npm run test:e2e
-
-test-unit-docker:
-	@echo "Running unit/integration tests in Docker via Dockerfile.test..."
-	@docker build -t sudoku-frontend-test -f frontend/Dockerfile.test frontend
-	@docker run --rm sudoku-frontend-test npm run test:unit
+# Dockerized Playwright/Vitest for full local/CI runner with Allure reporting
+.PHONY: test-go test-unit test-e2e test-frontend test-allure allure-report allure-serve allure-clean
 
 
-.PHONY: test test-e2e test-go test-frontend lint lint-go lint-frontend help generate-icons dev prod test-allure allure-report allure-serve allure-clean
+.PHONY: check test test-go test-unit test-e2e test-frontend lint lint-go lint-frontend help generate-icons dev prod allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Development & Production
@@ -60,6 +45,67 @@ lint-frontend:
 	@echo "[Frontend] Running linter..."
 	@cd frontend && npm run lint
 	@echo "[Frontend] Linting passed!"
+
+#-----------------------------------------------------------------------
+# Testing (Allure-Enabled)
+#-----------------------------------------------------------------------
+
+# Run Go tests with Allure output
+test-go:
+	@echo ""
+	@echo "========================================"
+	@echo "  Running Go Tests with Allure"
+	@echo "========================================"
+	@cd api && mkdir -p allure-results && $(shell go env GOPATH)/bin/gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./... || true
+
+# Run Frontend unit tests with Allure output (Docker)
+test-unit:
+	@echo ""
+	@echo "========================================"
+	@echo "  Running Frontend Unit Tests with Allure (Docker)"
+	@echo "========================================"
+	@mkdir -p allure-results
+	@docker build -t sudoku-frontend-test -f frontend/Dockerfile.test frontend
+	@docker run --rm -v $(PWD)/allure-results:/app/allure-results sudoku-frontend-test npm run test:unit || true
+
+# Run E2E tests with Allure output (Docker Compose)
+test-e2e:
+	@echo ""
+	@echo "========================================"
+	@echo "  Running E2E Tests with Allure (Docker)"
+	@echo "========================================"
+	@docker compose -f docker-compose.test.yml up sudoku -d --build
+	@sleep 15
+	@docker compose -f docker-compose.test.yml run --rm playwright || true
+	@docker compose -f docker-compose.test.yml down
+
+# Run all Frontend tests (unit + E2E) with Allure output
+test-frontend: test-unit test-e2e
+	@echo ""
+	@echo "========================================"
+	@echo "  Frontend Tests Complete!"
+	@echo "========================================"
+
+# Run all tests (Go + Frontend unit + E2E) with Allure output
+test: allure-clean
+	@echo ""
+	@echo "========================================"
+	@echo "  Running All Tests with Allure Output"
+	@echo "========================================"
+	@$(MAKE) test-go
+	@$(MAKE) test-unit
+	@$(MAKE) test-e2e
+	@echo ""
+	@echo "========================================"
+	@echo "  All tests complete! Run 'make allure-report' to generate report"
+	@echo "========================================"
+
+# Run all checks (lint + all tests with Allure)
+check: lint-go lint-frontend test
+	@echo ""
+	@echo "========================================"
+	@echo "  All checks passed!"
+	@echo "========================================"
 
 #-----------------------------------------------------------------------
 # Testing (Local)
@@ -127,14 +173,15 @@ help:
 	@echo "  lint-go         - Run Go linter only"
 	@echo "  lint-frontend   - Run Frontend linter only"
 	@echo ""
-	@echo "Testing:"
-	@echo "  test            - Run all checks (lint + test)"
-	@echo "  test-go         - Run Go tests only"
-	@echo "  test-frontend   - Run Frontend tests only"
-	@echo "  test-e2e        - Run full E2E tests in Docker"
+	@echo "Testing (Allure-Enabled):"
+	@echo "  check           - Run all checks (lint + all tests)"
+	@echo "  test            - Run all tests with Allure output"
+	@echo "  test-go         - Run Go tests with Allure output"
+	@echo "  test-unit       - Run Frontend unit tests with Allure output (Docker)"
+	@echo "  test-e2e        - Run E2E tests with Allure output (Docker)"
+	@echo "  test-frontend   - Run all Frontend tests (unit + E2E) with Allure"
 	@echo ""
-	@echo "Test Reporting (Allure):"
-	@echo "  test-allure     - Run all tests with Allure output"
+	@echo "Allure Reporting:"
 	@echo "  allure-report   - Generate combined Allure report"
 	@echo "  allure-serve    - Serve Allure report locally (opens browser)"
 	@echo "  allure-clean    - Clean all Allure artifacts"
@@ -145,46 +192,6 @@ help:
 #-----------------------------------------------------------------------
 # Allure Test Reporting
 #-----------------------------------------------------------------------
-
-# Auto-detect server URL for E2E tests
-# Priority: PLAYWRIGHT_BASE_URL env var > localhost:80 (Docker) > localhost:5173 (npm dev)
-define detect_server_url
-$(shell \
-	if [ -n "$$PLAYWRIGHT_BASE_URL" ]; then \
-		echo "$$PLAYWRIGHT_BASE_URL"; \
-	elif curl -s --connect-timeout 1 http://localhost:80 > /dev/null 2>&1; then \
-		echo "http://localhost"; \
-	elif curl -s --connect-timeout 1 http://localhost:5173 > /dev/null 2>&1; then \
-		echo "http://localhost:5173"; \
-	else \
-		echo ""; \
-	fi \
-)
-endef
-
-# Run all tests with Allure output (fully Docker-consistent with CI/CD)
-test-allure: allure-clean
-	@echo ""
-	@echo "========================================"
-	@echo "  Running All Tests with Allure Output (Docker)"
-	@echo "========================================"
-	@echo ""
-	@echo "[Go] Running tests with Allure output..."
-	@cd api && mkdir -p allure-results && $(shell go env GOPATH)/bin/gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./... || true
-	@echo ""
-	@echo "[Frontend] Running unit tests with Allure output in Docker..."
-	@docker build -t sudoku-frontend-test -f frontend/Dockerfile.test frontend
-	@docker run --rm -v $(PWD)/allure-results:/app/allure-results sudoku-frontend-test npm run test:unit || true
-	@echo ""
-	@echo "[E2E] Running Playwright tests in Docker..."
-	@docker compose -f docker-compose.test.yml up sudoku -d --build
-	@sleep 15
-	@docker compose -f docker-compose.test.yml run --rm playwright || true
-	@docker compose -f docker-compose.test.yml down
-	@echo ""
-	@echo "========================================"
-	@echo "  All tests complete! Run 'make allure-report' to generate report"
-	@echo "========================================"
 
 # Generate combined Allure report from all test results
 allure-report:

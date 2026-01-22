@@ -250,7 +250,7 @@ export function unloadWasm(): void {
     window.gc();
   }
 
-  console.debug('[WASM] WASM module unloaded, memory freed')
+  logger.debug('[WASM] WASM module unloaded, memory freed')
 }
 
 /**
