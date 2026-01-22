@@ -65,7 +65,7 @@ export function validateSeed(seed: string): SeedValidationResult {
     }
   }
   
-  if (mode === 'practice' && !seed.startsWith('P')) {
+  if (mode === 'practice' && !seed.toLowerCase().startsWith('p')) {
     return {
       valid: false,
       seed,

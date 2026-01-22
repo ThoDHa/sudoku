@@ -576,7 +576,7 @@ test.describe('@integration Keyboard Navigation - Notes Mode', () => {
 
 test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/keyboardTab?d=easy');
+    await page.goto('/Pkeyboard-tab?d=easy');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 

@@ -50,6 +50,7 @@ export const test = base.extend<SudokuFixtures>({
     await page.addInitScript(() => {
       (window as any).__ENABLE_TEST_DEBUG__ = true;
       localStorage.setItem('sudoku_onboarding_complete', 'true');
+      localStorage.setItem('sudoku_preferences', JSON.stringify({ showDailyReminder: false }));
     });
     await use();
   }, { auto: true }],
