@@ -279,25 +279,26 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 			if b.canPlace(i, d) && !b.Candidates[i].Has(d) && !b.Eliminated[i].Has(d) {
 				// Before returning a fill-candidate move, check if this cell should be assigned immediately
 
-				// Check for naked single: count total valid candidates for this cell
-				// (including ones we haven't added yet but excluding eliminated ones)
-				validCount := 0
-				var onlyValidDigit int
+				// Check for naked single: count candidates CURRENTLY in the Candidates array
+				// Only consider digits that have already been added to Candidates via fill-candidate moves
+				// This prevents "looking ahead" and finding naked singles before all candidates are populated
+				candCount := 0
+				var onlyCandidateDigit int
 				for digit := 1; digit <= constants.GridSize; digit++ {
-					if b.canPlace(i, digit) && !b.Eliminated[i].Has(digit) {
-						validCount++
-						onlyValidDigit = digit
+					if b.Candidates[i].Has(digit) {
+						candCount++
+						onlyCandidateDigit = digit
 					}
 				}
 
-				if validCount == 1 {
-					// This cell can only have one digit - naked single!
+				if candCount == 1 {
+					// This cell has only one candidate in its Candidates array - naked single!
 					return &core.Move{
 						Technique:   "naked-single",
 						Action:      "assign",
-						Digit:       onlyValidDigit,
+						Digit:       onlyCandidateDigit,
 						Targets:     []core.CellRef{{Row: row, Col: col}},
-						Explanation: fmt.Sprintf("R%dC%d can only be %d (naked single)", row+1, col+1, onlyValidDigit),
+						Explanation: fmt.Sprintf("Cell R%dC%d has only one candidate: %d", row+1, col+1, onlyCandidateDigit),
 						Highlights: core.Highlights{
 							Primary: []core.CellRef{{Row: row, Col: col}},
 						},
