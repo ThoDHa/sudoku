@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import log from 'loglevel';
+const logger = log;
+logger.setLevel('info');
 
 /**
  * Resume Bug Reproduction Test
@@ -36,8 +39,8 @@ test.describe('@bug Resume Bug - Seed Mismatch', () => {
     // Collect console messages
     const consoleMessages: string[] = [];
     page.on('console', msg => {
+      logger.getLogger('e2e').info('[PLAYWRIGHT]', msg.text());
       consoleMessages.push(msg.text());
-      console.log('[PLAYWRIGHT]', msg.text());
     });
 
     // Navigate to daily game
@@ -82,12 +85,12 @@ test.describe('@bug Resume Bug - Seed Mismatch', () => {
       return games;
     });
 
-    console.log('[PLAYWRIGHT] Saved games:', savedGames);
+    logger.info('[PLAYWRIGHT] Saved games:', savedGames);
 
     // Check if game was saved with correct seed
     expect(savedGames).toHaveLength(1);
     expect(savedGames[0].seed).toBe(dailySeed);
-    console.log('[PLAYWRIGHT] ✅ Game saved with correct seed:', dailySeed);
+    logger.info('[PLAYWRIGHT] ✅ Game saved with correct seed:', dailySeed);
 
     // Navigate away from the game
     await page.goto('/');
@@ -101,22 +104,22 @@ test.describe('@bug Resume Bug - Seed Mismatch', () => {
     const inProgressLogs = consoleMessages.filter(msg =>
       msg.includes('IN-PROGRESS CHECK')
     );
-    console.log('[PLAYWRIGHT] In-progress check logs:', inProgressLogs);
+    logger.info('[PLAYWRIGHT] In-progress check logs:', inProgressLogs);
 
     // Check restoration logs
     const restorationLogs = consoleMessages.filter(msg =>
       msg.includes('RESTORATION')
     );
-    console.log('[PLAYWRIGHT] Restoration logs:', restorationLogs);
+    logger.info('[PLAYWRIGHT] Restoration logs:', restorationLogs);
 
     // Verify no seed mismatch in logs
     const seedMismatchFound = restorationLogs.some(log =>
       log.includes('daily-') && log.includes('P')
     );
     if (seedMismatchFound) {
-      console.error('[PLAYWRIGHT] ❌ BUG REPRODUCED: Seed mismatch detected!');
+      logger.error('[PLAYWRIGHT] ❌ BUG REPRODUCED: Seed mismatch detected!');
     } else {
-      console.log('[PLAYWRIGHT] ✅ No seed mismatch detected');
+      logger.info('[PLAYWRIGHT] ✅ No seed mismatch detected');
     }
   });
 });

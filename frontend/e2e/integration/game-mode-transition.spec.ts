@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test'
+import log from 'loglevel'
+const logger = log
+logger.setLevel('info')
 
 /**
  * Game Mode Transition E2E Tests
@@ -33,7 +36,7 @@ test.describe('Game Mode Transitions', () => {
     // Verify we're on impossible puzzle
     const impossibleUrl = page.url()
     expect(impossibleUrl).toContain('d=impossible')
-    console.log(`Starting URL: ${impossibleUrl}`)
+    logger.info(`Starting URL: ${impossibleUrl}`)
 
     // Step 2: Open menu and select "New Game" → "Easy"
     await page.click('button[aria-label="Menu"]')
@@ -51,7 +54,7 @@ test.describe('Game Mode Transitions', () => {
 
     // Step 4: Verify new game is on easy difficulty
     const easyUrl = page.url()
-    console.log(`After navigation URL: ${easyUrl}`)
+    logger.info(`After navigation URL: ${easyUrl}`)
     
     // Verify URL has easy difficulty parameter
     expect(easyUrl).toMatch(/\?d=easy$/)
@@ -68,7 +71,7 @@ test.describe('Game Mode Transitions', () => {
     // Verify we're on easy puzzle
     const easyUrl = page.url()
     expect(easyUrl).toContain('d=easy')
-    console.log(`Starting URL: ${easyUrl}`)
+    logger.info(`Starting URL: ${easyUrl}`)
 
     // Step 2: Open menu and select "New Game" → "Impossible"
     await page.click('button[aria-label="Menu"]')
@@ -84,7 +87,7 @@ test.describe('Game Mode Transitions', () => {
 
     // Step 3: Verify new game is on impossible difficulty
     const impossibleUrl = page.url()
-    console.log(`After navigation URL: ${impossibleUrl}`)
+    logger.info(`After navigation URL: ${impossibleUrl}`)
     
     // Verify URL has impossible difficulty parameter
     expect(impossibleUrl).toMatch(/\?d=impossible$/)
@@ -100,7 +103,7 @@ test.describe('Game Mode Transitions', () => {
 
     const mediumUrl = page.url()
     expect(mediumUrl).toMatch(/\?d=medium$/)
-    console.log(`Starting URL: ${mediumUrl}`)
+    logger.info(`Starting URL: ${mediumUrl}`)
 
     // Open menu and restart puzzle
     await page.click('button[aria-label="Menu"]')

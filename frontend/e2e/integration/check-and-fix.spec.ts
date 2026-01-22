@@ -23,8 +23,18 @@ test.describe('@integration Check & Fix', () => {
   test('applies only fix moves and does not auto-complete', async ({ page, skipOnboarding }) => {
     // Capture page console for diagnostics during test runs
     page.on('console', msg => {
-      // eslint-disable-next-line no-console
-      console.log('PAGE_CONSOLE', msg.type(), msg.text());
+      // Route page console through loglevel to centralize output while preserving original content
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const log = require('loglevel');
+        const logger = log;
+        logger.getLogger('e2e').info('PAGE_CONSOLE', msg.type(), msg.text());
+      } catch (e) {
+        const errorLogger = (global as any).logger;
+        if (errorLogger) {
+          errorLogger.getLogger('e2e').info('PAGE_CONSOLE', msg.type(), msg.text());
+        }
+      }
     });
 
     // Start on a known practice puzzle; some environments ignore the query and show homepage

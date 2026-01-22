@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import log from 'loglevel';
+const logger = log;
+logger.setLevel('info');
 
 /**
  * Resume Bug Direct Reproduction Test
@@ -30,9 +33,10 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
   });
 
   test('resume bug: saved P-seed but resume shows daily seed', async ({ page }) => {
-    // Console messages collection
+    // Console messages collection routed through loglevel for consistency
     const consoleMessages: string[] = [];
     page.on('console', msg => {
+      logger.getLogger('e2e').info('PAGE_CONSOLE', msg.type(), msg.text());
       consoleMessages.push(msg.text());
     });
 
@@ -72,7 +76,7 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
 
     expect(savedAfterFirst).toHaveLength(1);
     expect(savedAfterFirst[0].seed).toBe(randomSeed);
-    console.log('[TEST] Saved game with seed:', randomSeed);
+    logger.info('[TEST] Saved game with seed:', randomSeed);
 
     // Step 2: Navigate away from the game
     await page.goto('/');
@@ -89,7 +93,7 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
     const restorationLogs = consoleMessages.filter(msg =>
       msg.includes('RESTORATION') || msg.includes('RESTORATION FLAG RESET')
     );
-    console.log('[TEST] Restoration logs:', restorationLogs);
+    logger.info('[TEST] Restoration logs:', restorationLogs);
 
     // Check if restoration attempted with wrong seed
     const seedMismatch = restorationLogs.some(log =>
@@ -101,16 +105,16 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
       log.includes(dailySeed) && log.includes('Attempting to load saved state')
     );
 
-    console.log('[TEST] Daily seed:', dailySeed);
-    console.log('[TEST] Random seed saved:', randomSeed);
-    console.log('[TEST] Daily restoration attempted:', dailyRestorationAttempt);
-    console.log('[TEST] Seed mismatch in logs:', seedMismatch);
+    logger.info('[TEST] Daily seed:', dailySeed);
+    logger.info('[TEST] Random seed saved:', randomSeed);
+    logger.info('[TEST] Daily restoration attempted:', dailyRestorationAttempt);
+    logger.info('[TEST] Seed mismatch in logs:', seedMismatch);
 
     // The bug: Restoration should attempt to load daily seed, but saved game has random seed
     if (dailyRestorationAttempt && savedAfterFirst[0].seed !== dailySeed) {
-      console.log('[TEST] ✅ BUG REPRODUCED: Restoration attempted for daily seed, but saved game has different seed');
+      logger.info('[TEST] ✅ BUG REPRODUCED: Restoration attempted for daily seed, but saved game has different seed');
     } else {
-      console.log('[TEST] ❌ BUG NOT REPRODUCED: Check logic');
+      logger.info('[TEST] ❌ BUG NOT REPRODUCED: Check logic');
     }
 
     // Verify saved games after navigating to daily seed
@@ -134,6 +138,6 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
       return games;
     });
 
-    console.log('[TEST] Saved games after daily navigation:', savedAfterDailyNav);
+    logger.info('[TEST] Saved games after daily navigation:', savedAfterDailyNav);
   });
 });
