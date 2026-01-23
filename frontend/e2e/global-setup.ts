@@ -66,12 +66,14 @@ async function globalSetup(config: FullConfig) {
        }
      });
    
-   // Set onboarding complete so it doesn't block tests
-   await page.evaluate(() => {
-     localStorage.setItem('sudoku_onboarding_complete', 'true');
-   });
-   
-   // Save storage state
+    // Set onboarding complete so it doesn't block tests
+    await page.evaluate(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+      // Disable daily reminder modal to prevent blocking tests
+      localStorage.setItem('sudoku_showDailyReminder', 'false');
+    });
+    
+    // Save storage state
    await context.storageState({ path: 'e2e/.auth/storage-state.json' });
    
    await browser.close();

@@ -6,9 +6,9 @@ export interface Score {
   timeMs: number
   hintsUsed: number
   techniqueHintsUsed?: number // Technique-only hints (shows technique name, doesn't apply move)
-  mistakes: number
+  mistakes?: number
   completedAt: string // ISO date string
-  encodedPuzzle?: string // For custom puzzles - the encoded givens for sharing
+  encodedPuzzle?: string // For custom puzzles - encoded givens for sharing
   autoFillUsed?: boolean // Whether auto-fill notes was used
   autoSolveUsed?: boolean // Whether auto-solve was used (solves entire puzzle)
 }

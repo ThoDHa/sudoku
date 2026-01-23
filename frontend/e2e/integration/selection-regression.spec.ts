@@ -15,10 +15,15 @@
 import { test, expect } from '@playwright/test';
 
 // Test configuration for different game difficulties
+// Using custom game route - no seed validation, no daily prompt
+// For deterministic E2E navigation prefer a small encoded puzzle string
+// Format: /c/:encoded where :encoded is the compact puzzle encoding
+// Use a raw 81-character puzzle string (digits, no dots) which decodePuzzle accepts
+const ENCODED_PUZZLE = '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
 const TEST_URLS = [
-  '/keyboard456?d=easy',
-  '/keyboard456?d=medium', 
-  '/keyboard456?d=hard'
+  `/c/${ENCODED_PUZZLE}?d=easy`,
+  `/c/${ENCODED_PUZZLE}?d=medium`,
+  `/c/${ENCODED_PUZZLE}?d=hard`
 ];
 
 // Helper to get a cell by row and column (1-indexed)
@@ -173,11 +178,16 @@ test.describe('@regression Selection State - Comprehensive Demon Prevention', ()
           const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           
           // Place digit first
+          // Scroll cell into view and allow header to settle to avoid header intercepting clicks
+          await cell.scrollIntoViewIfNeeded();
+          await page.waitForTimeout(100);
           await cell.click();
           await page.keyboard.press('9');
           await expectCellNotSelected(cell);
           
           // Clear digit with backspace
+          await cell.scrollIntoViewIfNeeded();
+          await page.waitForTimeout(100);
           await cell.click();
           await expectCellSelected(cell);
           await page.keyboard.press('Backspace');

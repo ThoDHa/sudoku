@@ -1065,14 +1065,15 @@ function GameContent() {
      }
 
 if (currentEraseMode && currentGame.board[idx] !== 0) {
-         commitCellAction('erase', {
-           idx,
-           game: currentGame,
-           clearAfterErase,
-           setEraseMode,
-           setAutoSolveStepsUsed,
-           setAutoSolveErrorsFixed
-         });
+          commitCellAction('erase', {
+            idx,
+            game: currentGame,
+            clearAfterErase,
+            deselectCell,
+            setEraseMode,
+            setAutoSolveStepsUsed,
+            setAutoSolveErrorsFixed
+          });
          // Reset last hint tracking so next hint counts as new
          lastTechniqueHintRef.current = null;
          lastRegularHintRef.current = null;
@@ -1096,14 +1097,15 @@ if (currentEraseMode && currentGame.board[idx] !== 0) {
         } else {
           // If cell already contains the highlighted digit, erase it.
 if (currentGame.board[idx] === currentHighlightedDigit) {
-             commitCellAction('erase', {
-               idx,
-               game: currentGame,
-               clearAfterErase,
-               setEraseMode,
-               setAutoSolveStepsUsed,
-               setAutoSolveErrorsFixed
-             });
+              commitCellAction('erase', {
+                idx,
+                game: currentGame,
+                clearAfterErase,
+                deselectCell,
+                setEraseMode,
+                setAutoSolveStepsUsed,
+                setAutoSolveErrorsFixed
+              });
              lastTechniqueHintRef.current = null;
              lastRegularHintRef.current = null;
            } else {
@@ -1123,7 +1125,7 @@ if (currentGame.board[idx] === currentHighlightedDigit) {
      selectCell(idx)
      setEraseMode(false)
    // All deps are now stable callbacks - state accessed via refs
-   }, [selectCell, clearAllAndDeselect, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement, clickGivenCell, resumeFromExtendedPause])
+    }, [selectCell, clearAllAndDeselect, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement, clickGivenCell, resumeFromExtendedPause, deselectCell])
 
     // Digit input handler - STABLE: reads from refs to avoid recreating on state changes
     const handleDigitInput = useCallback((digit: number) => {
@@ -1155,6 +1157,7 @@ if (currentGame.board[currentSelectedCell] === digit) {
               idx: currentSelectedCell,
               game: currentGame,
               clearAfterErase: clearAfterDigitToggle,
+              deselectCell,
               setEraseMode,
               setAutoSolveStepsUsed,
               setAutoSolveErrorsFixed
@@ -1188,14 +1191,15 @@ if (currentGame.board[currentSelectedCell] === digit) {
       resumeFromExtendedPause()
       if (game.isGivenCell(idx)) return
 if (value === 0) {
-         commitCellAction('erase', {
-           idx,
-           game,
-           clearAfterErase,
-           setEraseMode,
-           setAutoSolveStepsUsed,
-           setAutoSolveErrorsFixed
-         });
+          commitCellAction('erase', {
+            idx,
+            game,
+            clearAfterErase,
+            deselectCell,
+            setEraseMode,
+            setAutoSolveStepsUsed,
+            setAutoSolveErrorsFixed
+          });
          lastTechniqueHintRef.current = null;
          lastRegularHintRef.current = null;
        } else {
@@ -1214,7 +1218,7 @@ if (value === 0) {
           lastRegularHintRef.current = null
         }
      // eslint-disable-next-line react-hooks/exhaustive-deps -- resumeFromExtendedPause depends on isExtendedPaused; adding it would recreate this callback on every pause state change, causing unnecessary re-renders of Board (which receives this as a prop)
-     }, [game, notesMode, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement])
+      }, [game, notesMode, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell])
 
   // Toggle notes mode handler
   const handleNotesToggle = useCallback(() => {
@@ -1672,8 +1676,8 @@ ${bugReportJson}
             setEncodedPuzzle(encoded)
             
             puzzleData = {
-              puzzle_id: `encoded-${encoded.substring(0, 8)}`,
-              seed: `encoded-${encoded.substring(0, 8)}`,
+              puzzle_id: `custom-${encoded.substring(0, 8)}`,
+              seed: `custom-${encoded.substring(0, 8)}`,
               difficulty: 'custom',
               givens: givens,
               solution: puzzleSolution,
@@ -1705,8 +1709,8 @@ ${bugReportJson}
             setEncodedPuzzle(encoded)
             
             puzzleData = {
-              puzzle_id: `encoded-${encoded.substring(0, 8)}`,
-              seed: `encoded-${encoded.substring(0, 8)}`,
+              puzzle_id: `custom-${encoded.substring(0, 8)}`,
+              seed: `custom-${encoded.substring(0, 8)}`,
               difficulty: 'custom',
               givens: givens,
               solution: puzzleSolution,

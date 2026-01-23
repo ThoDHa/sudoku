@@ -37,6 +37,10 @@ export function commitCellAction(
         game.eraseCell(idx);
       }
       opts.clearAfterErase?.();
+      // Ensure UI selection state is cleared after an erase so callers do not
+      // need to remember to call deselectCell everywhere. This aligns erase
+      // behavior with undo/clearAll which already clear selection.
+      opts.deselectCell?.();
       // Any shared highlight/deselect/clear logic that should always follow erasure
       opts.setEraseMode?.(false);
       break;
