@@ -55,6 +55,8 @@ interface UseAutoSolveReturn {
   solveFromGivens: () => Promise<void>
   /** Play a custom provided move sequence (Check & Fix, etc) with the full autosolver UX */
   playMoves: (moves: MoveResult[], startPaused?: boolean) => void
+  /** Apply check&fix moves and continue normal autosolving */
+  applyFixesAndContinueSolving: (fixMoves: MoveResult[]) => Promise<void>
   /** Step backward one move (rewind) */
   stepBack: () => void
   /** Step forward one move (fast-forward) */
@@ -929,6 +931,60 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     }
   }, [isAutoSolving, getGivens, getCandidates, applyMove, onError, stopAutoSolve, scheduleNextMove])
 
+  // Apply check&fix moves and then continue normal autosolving
+  const applyFixesAndContinueSolving = useCallback(async (fixMoves: MoveResult[]) => {
+    if (isAutoSolving) {
+      // If autosolving, stop it temporarily to apply fixes
+      stopAutoSolve()
+    }
+
+    // Play fixes immediately and wait for their playback to finish
+    await new Promise<void>((resolve) => {
+      // Start playback immediately so the moves are applied with the same animation logic
+      playMoves(fixMoves, false)
+
+      // Poll for completion of the fixes playback by watching the moves queue
+      const start = Date.now()
+      const POLL_INTERVAL = 100 // ms
+      const TIMEOUT = 15000 // ms - safety timeout
+
+      const checkDone = async () => {
+        // If queue empty, assume playback finished
+        if (movesQueueRef.current.length === 0) {
+          // Small delay to ensure final state applied, then resume autosolve
+          setTimeout(async () => {
+            try {
+              await restartAutoSolve(false)
+            } catch (error) {
+              logger.error('Failed to resume autosolving after check&fix:', error)
+              onError?.('Failed to resume autosolving after applying fixes')
+            }
+            resolve()
+          }, 50)
+          return
+        }
+
+        // Timeout guard
+        if (Date.now() - start > TIMEOUT) {
+          logger.error('applyFixesAndContinueSolving: playback did not finish within timeout')
+          // Try to restart anyway
+          try {
+            await restartAutoSolve(false)
+          } catch (error) {
+            logger.error('Failed to resume autosolving after timeout:', error)
+            onError?.('Failed to resume autosolving after applying fixes')
+          }
+          resolve()
+          return
+        }
+
+        setTimeout(checkDone, POLL_INTERVAL)
+      }
+
+      checkDone()
+    })
+  }, [isAutoSolving, playMoves, stopAutoSolve, restartAutoSolve, onError])
+
   // CRITICAL: Memoize return object to prevent cascading re-renders.
   // Without this, every render creates a new object reference.
   return useMemo(() => ({
@@ -941,6 +997,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     restartAutoSolve,
     solveFromGivens,
     playMoves, // <- ADDED so Game.tsx can drive UI/UX animated playback for custom move sequences (Check & Fix)
+    applyFixesAndContinueSolving, // NEW: Apply fixes and resume autosolving
     stepBack,
     stepForward,
     canStepBack: isAutoSolving && currentIndex > 0,
@@ -948,9 +1005,9 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     currentIndex,
     totalMoves,
     lastCompletedSteps,
-  }), [
+    }), [
     isAutoSolving, isPaused, isFetching, startAutoSolve, stopAutoSolve,
-    togglePause, restartAutoSolve, solveFromGivens, playMoves, stepBack, stepForward,
+    togglePause, restartAutoSolve, solveFromGivens, playMoves, applyFixesAndContinueSolving, stepBack, stepForward,
     currentIndex, totalMoves, lastCompletedSteps
   ])
 }
