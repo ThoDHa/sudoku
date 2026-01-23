@@ -1,9 +1,17 @@
-// Playwright E2E Regression Skeleton for Hint UI (Wukong 2026-01-13)
-// Covers all critical paths and edge cases cited by the Great Sage's campaign logs
+// Playwright E2E Hint UI Tests (Wukong 2026-01-13)
+// Covers hint usage, edge cases, and state management
 
-import { test, expect } from '@playwright/test';
+import { test, expect, allure } from '@playwright/test';
+import { EPICS, FEATURES, STORIES } from '../sdk/allure-utils';
 
-test.describe('Hints Regression', () => {
+/**
+ * Hint UI Tests
+ *
+ * Tests for hint usage, edge cases, and state management
+ *
+ * Tag: @integration @hints
+ */
+test.describe('Hints', () => {
   test('Hint usage works on desktop (happy path)', async ({ page }) => {
     // TODO: visit game, use hint, check output/counter/UI
   });

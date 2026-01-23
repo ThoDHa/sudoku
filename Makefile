@@ -5,7 +5,7 @@
 .PHONY: test-go test-unit test-e2e test-frontend test-allure allure-report allure-serve allure-clean
 
 
-.PHONY: check test test-go test-unit test-e2e test-frontend lint lint-go lint-frontend help generate-icons dev prod allure-report allure-serve allure-clean
+ .PHONY: check test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend help generate-icons dev prod allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Development & Production
@@ -79,6 +79,17 @@ test-e2e:
 	@docker compose -f docker-compose.test.yml run --rm playwright || true
 	@docker compose -f docker-compose.test.yml down
 
+# Run integration tests with Allure output (Docker Compose)
+test-integration:
+	@echo ""
+	@echo "========================================"
+	@echo "  Running Integration Tests with Allure (Docker)"
+	@echo "========================================"
+	@docker compose -f docker-compose.test.yml up sudoku -d --build
+	@sleep 15
+	@docker compose -f docker-compose.test.yml run --rm playwright npx playwright test --grep @integration || true
+	@docker compose -f docker-compose.test.yml down
+
 # Run all Frontend tests (unit + E2E) with Allure output
 test-frontend: test-unit test-e2e
 	@echo ""
@@ -145,6 +156,16 @@ test-e2e:
 	@docker compose -f docker-compose.test.yml up sudoku -d --build
 	@docker compose -f docker-compose.test.yml run --rm playwright
 	@docker compose -f docker-compose.test.yml down
+
+# Run integration tests in Docker
+test-integration:
+	@echo ""
+	@echo "========================================"
+	@echo "  Running Integration Tests"
+	@echo "========================================"
+	@docker compose -f docker-compose.test.yml up sudoku -d --build
+	@docker compose -f docker-compose.test.yml run --rm playwright npx playwright test --grep @integration
+	@docker compose -f docker-compose.test.yml down
 #-----------------------------------------------------------------------
 # Asset Generation
 #-----------------------------------------------------------------------
@@ -179,6 +200,7 @@ help:
 	@echo "  test-go         - Run Go tests with Allure output"
 	@echo "  test-unit       - Run Frontend unit tests with Allure output (Docker)"
 	@echo "  test-e2e        - Run E2E tests with Allure output (Docker)"
+	@echo "  test-integration - Run integration tests with Allure output (Docker)"
 	@echo "  test-frontend   - Run all Frontend tests (unit + E2E) with Allure"
 	@echo ""
 	@echo "Allure Reporting:"
