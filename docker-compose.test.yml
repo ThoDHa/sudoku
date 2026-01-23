@@ -26,7 +26,6 @@ services:
     working_dir: /app
     volumes:
       - ./frontend:/app
-      - /app/node_modules
     depends_on:
       sudoku:
         condition: service_healthy

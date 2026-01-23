@@ -1,11 +1,7 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-# Dockerized Playwright/Vitest for full local/CI runner with Allure reporting
-.PHONY: test-go test-unit test-e2e test-frontend test-allure allure-report allure-serve allure-clean
-
-
- .PHONY: check test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend help generate-icons dev prod allure-report allure-serve allure-clean
+.PHONY: check test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend help generate-icons dev prod allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Development & Production
@@ -118,54 +114,6 @@ check: lint-go lint-frontend test
 	@echo "  All checks passed!"
 	@echo "========================================"
 
-#-----------------------------------------------------------------------
-# Testing (Local)
-#-----------------------------------------------------------------------
-
-# Run all checks (same as pre-push hook, for manual use)
-test: lint-go lint-frontend test-go test-frontend
-	@echo ""
-	@echo "========================================"
-	@echo "  All checks passed!"
-	@echo "========================================"
-
-# Run Go checks in Docker
-test-go:
-	@echo ""
-	@echo "========================================"
-	@echo "  Running Go Tests"
-	@echo "========================================"
-	@docker compose -f docker-compose.test.yml run --rm go-tests
-	@echo "[Go] Tests passed!"
-
-# Run Frontend checks in Docker
-test-frontend:
-	@echo ""
-	@echo "========================================"
-	@echo "  Running Frontend Tests"
-	@echo "========================================"
-	@docker compose -f docker-compose.test.yml run --rm frontend-tests
-	@echo "[Frontend] Checks passed!"
-
-# Run full E2E tests in Docker (use after big changes)
-test-e2e:
-	@echo ""
-	@echo "========================================"
-	@echo "  Running E2E Tests"
-	@echo "========================================"
-	@docker compose -f docker-compose.test.yml up sudoku -d --build
-	@docker compose -f docker-compose.test.yml run --rm playwright
-	@docker compose -f docker-compose.test.yml down
-
-# Run integration tests in Docker
-test-integration:
-	@echo ""
-	@echo "========================================"
-	@echo "  Running Integration Tests"
-	@echo "========================================"
-	@docker compose -f docker-compose.test.yml up sudoku -d --build
-	@docker compose -f docker-compose.test.yml run --rm playwright npx playwright test --grep @integration
-	@docker compose -f docker-compose.test.yml down
 #-----------------------------------------------------------------------
 # Asset Generation
 #-----------------------------------------------------------------------
