@@ -722,6 +722,8 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 	maxMoves := maxMovesLimit
 	maxFixes := 5
 	fixCount := 0
+	restorationAttempts := make(map[string]int)
+	maxRestorationsPerCandidate := 3
 
 	for i := 0; i < maxMoves; i++ {
 		// Check if board appears complete
@@ -863,6 +865,17 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 				missingCell, missingDigit, found := findMissingCandidates(originalUserBoard, candidates, solver)
 				if found {
 					row, col := missingCell/constants.GridSize, missingCell%constants.GridSize
+					restorationKey := fmt.Sprintf("%d:%d", missingCell, missingDigit)
+					restorationAttempts[restorationKey]++
+
+					if restorationAttempts[restorationKey] > maxRestorationsPerCandidate {
+						moves = append(moves, MoveResult{
+							Board:      board.GetCells(),
+							Candidates: board.GetCandidates(),
+							Move:       stalledMoveToJS("Solver stuck. Candidate restoration not resolving issue. Check your entries."),
+						})
+						break
+					}
 					// Don't increment fixCount - we're restoring a candidate, not removing a digit
 					// Update the candidates array to include the missing candidate
 					if missingCell < len(candidates) {

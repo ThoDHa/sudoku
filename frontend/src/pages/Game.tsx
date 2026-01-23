@@ -1322,10 +1322,10 @@ if (value === 0) {
       }
 
       // Call WASM to compare and fix
-      const result = await checkAndFixWithSolution(currentBoard, currentCandidates, givens, solution)
-        if (result && result.moves) {
-          logger.debug('Check & Fix moves:', result.moves.map((m, idx) => ({idx, move: m && m.move, board: m && m.board})));
-        }
+      const result = await checkAndFixWithSolution(currentBoard, currentCandidates, givens, solution);
+      if (result && result.moves) {
+        logger.debug('Check & Fix moves:', result.moves.map((m, idx) => ({idx, move: m && m.move, board: m && m.board})));
+      }
       
       if (result.moves && result.moves.length > 0) {
         // Use new autosolver infrastructure to animate the replayed moves step-by-step, with UX feedback.
