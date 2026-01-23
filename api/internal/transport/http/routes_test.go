@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"sudoku-api/internal/puzzles"
+	"sudoku-api/internal/sudoku/dp"
 	"sudoku-api/pkg/config"
 
 	"github.com/gin-gonic/gin"
@@ -623,6 +624,327 @@ func TestHTTPRoutes(t *testing.T) {
 				}
 			})
 		}
+	})
+
+	t.Run("SolveEmptyBoardAutosolve", func(t *testing.T) {
+		// Verify the fast autosolve mode can solve a clean new (empty) board
+		router := setupRouter()
+		token := getValidToken(router)
+
+		// Empty board (all zeros)
+		board := make([]int, 81)
+
+		body := map[string]interface{}{
+			"token": token,
+			"board": board,
+		}
+		bodyBytes, _ := json.Marshal(body)
+		w := httptest.NewRecorder()
+		// Use fast mode to invoke the DP solver (deterministic, quick)
+		req, _ := http.NewRequest("POST", "/api/solve/full?mode=fast", bytes.NewBuffer(bodyBytes))
+		req.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200 from autosolve, got %d. Body: %s", w.Code, w.Body.String())
+		}
+
+		var response map[string]interface{}
+		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+			t.Fatalf("Failed to parse autosolve response: %v", err)
+		}
+
+		finalIface, ok := response["final_board"]
+		if !ok {
+			t.Fatalf("Expected final_board in response, got: %v", response)
+		}
+
+		finalArr, ok := finalIface.([]interface{})
+		if !ok {
+			t.Fatalf("final_board has unexpected type: %T", finalIface)
+		}
+
+		if len(finalArr) != 81 {
+			t.Fatalf("expected final_board length 81, got %d", len(finalArr))
+		}
+
+		finalInts := make([]int, 81)
+		for i, v := range finalArr {
+			// JSON numbers are float64
+			num, ok := v.(float64)
+			if !ok {
+				t.Fatalf("final_board element %d has non-number type %T", i, v)
+			}
+			finalInts[i] = int(num)
+			if finalInts[i] == 0 {
+				t.Fatalf("autosolve returned a board with empty cell at index %d", i)
+			}
+		}
+
+		// Validate the board is a legal completed solution
+		if !dp.IsValid(finalInts) {
+			t.Fatalf("autosolve returned an invalid completed board: %v", finalInts)
+		}
+
+		t.Logf("Autosolve solved empty board successfully: final_board hash ok")
+	})
+
+	t.Run("SolveImpossiblePuzzleAutosolve", func(t *testing.T) {
+		// Verify fast autosolve can solve a generated 'impossible' puzzle
+		router := setupRouter()
+
+		// Fetch an impossible puzzle via the puzzle endpoint
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/puzzle/impossible-test?d=impossible", nil)
+		router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200 from puzzle endpoint, got %d. Body: %s", w.Code, w.Body.String())
+		}
+
+		var puzzleResp map[string]interface{}
+		if err := json.Unmarshal(w.Body.Bytes(), &puzzleResp); err != nil {
+			t.Fatalf("Failed to parse puzzle response: %v", err)
+		}
+
+		givensIface, ok := puzzleResp["givens"]
+		if !ok {
+			t.Fatalf("puzzle response missing givens: %v", puzzleResp)
+		}
+
+		givensArr, ok := givensIface.([]interface{})
+		if !ok || len(givensArr) != 81 {
+			t.Fatalf("unexpected givens format/length: %T len=%d", givensIface, len(givensArr))
+		}
+
+		board := make([]int, 81)
+		for i, v := range givensArr {
+			num, ok := v.(float64)
+			if !ok {
+				t.Fatalf("givens element %d not a number: %T", i, v)
+			}
+			board[i] = int(num)
+		}
+
+		token := getValidToken(router)
+
+		body := map[string]interface{}{
+			"token": token,
+			"board": board,
+		}
+		bodyBytes, _ := json.Marshal(body)
+		w2 := httptest.NewRecorder()
+		req2, _ := http.NewRequest("POST", "/api/solve/full?mode=fast", bytes.NewBuffer(bodyBytes))
+		req2.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(w2, req2)
+
+		if w2.Code != http.StatusOK {
+			t.Fatalf("Expected status 200 from autosolve, got %d. Body: %s", w2.Code, w2.Body.String())
+		}
+
+		var resp map[string]interface{}
+		if err := json.Unmarshal(w2.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("Failed to parse autosolve response: %v", err)
+		}
+
+		finalIface, ok := resp["final_board"]
+		if !ok {
+			t.Fatalf("Expected final_board in response, got: %v", resp)
+		}
+
+		finalArr, ok := finalIface.([]interface{})
+		if !ok || len(finalArr) != 81 {
+			t.Fatalf("final_board has unexpected type/length: %T len=%d", finalIface, len(finalArr))
+		}
+
+		finalInts := make([]int, 81)
+		for i, v := range finalArr {
+			num, ok := v.(float64)
+			if !ok {
+				t.Fatalf("final_board element %d has non-number type %T", i, v)
+			}
+			finalInts[i] = int(num)
+			if finalInts[i] == 0 {
+				t.Fatalf("autosolve returned a board with empty cell at index %d", i)
+			}
+		}
+
+		if !dp.IsValid(finalInts) {
+			t.Fatalf("autosolve returned an invalid completed board for impossible puzzle: %v", finalInts)
+		}
+
+		t.Logf("Autosolve solved impossible puzzle successfully: final_board valid")
+	})
+
+	t.Run("SolveWithUserErrorAutosolve", func(t *testing.T) {
+		// Create a puzzle with givens, then add a single incorrect user entry
+		// that does not cause a direct conflict, and assert solve/all fixes it and completes.
+		router := setupRouter()
+
+		// Build a deterministic full grid and carved givens
+		seed := int64(424242)
+		fullGrid := dp.GenerateFullGrid(seed)
+		allPuzzles := dp.CarveGivensWithSubset(fullGrid, seed)
+		givens := allPuzzles["easy"]
+		if len(givens) != 81 {
+			t.Fatalf("expected givens length 81, got %d", len(givens))
+		}
+
+		// Find a cell index that is not a given where we can place an incorrect digit
+		// Prefer creating a direct conflict so the autosolver's conflict-fixing path is exercised
+		var idx int = -1
+		var wrongDigit int
+
+		// Try to create a direct conflict by copying an existing given into an empty cell
+		for j := 0; j < 81 && idx < 0; j++ {
+			if givens[j] == 0 {
+				continue
+			}
+			gDigit := givens[j]
+			row := j / 9
+			col := j % 9
+
+			// Try to find a non-given cell in the same row
+			for c := 0; c < 9; c++ {
+				p := row*9 + c
+				if givens[p] == 0 {
+					idx = p
+					wrongDigit = gDigit
+					break
+				}
+			}
+			if idx >= 0 {
+				break
+			}
+
+			// Try same column
+			for r := 0; r < 9; r++ {
+				p := r*9 + col
+				if givens[p] == 0 {
+					idx = p
+					wrongDigit = gDigit
+					break
+				}
+			}
+			if idx >= 0 {
+				break
+			}
+
+			// Try same box
+			br := (row / 3) * 3
+			bc := (col / 3) * 3
+			for r := br; r < br+3 && idx < 0; r++ {
+				for c := bc; c < bc+3; c++ {
+					p := r*9 + c
+					if givens[p] == 0 {
+						idx = p
+						wrongDigit = gDigit
+						break
+					}
+				}
+			}
+		}
+
+		// Fallback: if not found, pick first non-given and set wrong digit to any incorrect value
+		if idx < 0 {
+			for i := 0; i < 81; i++ {
+				if givens[i] == 0 {
+					idx = i
+					// pick a digit different from true solution
+					for d := 1; d <= 9; d++ {
+						if d != fullGrid[i] {
+							wrongDigit = d
+							break
+						}
+					}
+					break
+				}
+			}
+		}
+
+		if idx < 0 {
+			t.Skip("Could not find a non-given cell to place a non-conflicting wrong digit")
+		}
+
+		// Build board: start with givens, place one wrong user entry
+		board := make([]int, 81)
+		copy(board, givens)
+		board[idx] = wrongDigit
+
+		token := getValidToken(router)
+
+		body := map[string]interface{}{
+			"token":  token,
+			"board":  board,
+			"givens": givens,
+		}
+		bodyBytes, _ := json.Marshal(body)
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/api/solve/all", bytes.NewBuffer(bodyBytes))
+		req.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200 from autosolve, got %d. Body: %s", w.Code, w.Body.String())
+		}
+
+		var resp map[string]interface{}
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("Failed to parse autosolve response: %v", err)
+		}
+
+		solved, _ := resp["solved"].(bool)
+		finalIface := resp["finalBoard"]
+
+		// If finalBoard not returned, try inspecting last move's board
+		var finalArr []interface{}
+		if finalIface == nil {
+			// Try to extract last move board
+			movesIface, _ := resp["moves"].([]interface{})
+			if len(movesIface) > 0 {
+				last := movesIface[len(movesIface)-1].(map[string]interface{})
+				if b, ok := last["board"].([]interface{}); ok {
+					finalArr = b
+				}
+			}
+		} else {
+			if b, ok := finalIface.([]interface{}); ok {
+				finalArr = b
+			}
+		}
+
+		if finalArr == nil || len(finalArr) != 81 {
+			t.Fatalf("Could not obtain final board from response: %v", resp)
+		}
+
+		finalInts := make([]int, 81)
+		for i, v := range finalArr {
+			num, ok := v.(float64)
+			if !ok {
+				t.Fatalf("final board element %d has non-number type %T", i, v)
+			}
+			finalInts[i] = int(num)
+		}
+
+		if !solved {
+			// Sometimes the handler returns solved=false but final board is complete; check completeness
+			complete := true
+			for i := 0; i < 81; i++ {
+				if finalInts[i] == 0 {
+					complete = false
+					break
+				}
+			}
+			if !complete {
+				t.Fatalf("Autosolver did not report solved and final board incomplete. Response: %v", resp)
+			}
+		}
+
+		if !dp.IsValid(finalInts) {
+			t.Fatalf("Autosolve produced invalid final board after fixing user error: %v", finalInts)
+		}
+
+		t.Logf("Autosolve fixed the user error at idx %d and solved puzzle successfully", idx)
 	})
 
 	t.Run("PuzzleDeterminism", func(t *testing.T) {

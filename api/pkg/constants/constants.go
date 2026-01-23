@@ -58,8 +58,9 @@ const (
 
 // Move actions
 const (
-	ActionAssign    = "assign"
-	ActionEliminate = "eliminate"
+	ActionAssign        = "assign"
+	ActionEliminate     = "eliminate"
+	ActionContradiction = "contradiction"
 )
 
 // Solver status

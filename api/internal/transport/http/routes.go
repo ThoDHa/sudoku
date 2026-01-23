@@ -889,6 +889,13 @@ func solveAllHandler(c *gin.Context) {
 		}
 	}
 
+	// MoveResult represents a single move result snapshot returned to clients
+	type MoveResult struct {
+		Board      []int       `json:"board"`
+		Candidates [][]int     `json:"candidates"`
+		Move       interface{} `json:"move"`
+	}
+
 	// STEP 1: Check for direct conflicts FIRST (before running solver)
 	// These are immediate rule violations: same digit twice in a row/column/box
 	// For solveAll, we return the fix-conflict move as a single-move result
@@ -957,34 +964,185 @@ func solveAllHandler(c *gin.Context) {
 			// Reset the board to the fixed state
 			newBoard := human.NewBoardWithCandidates(fixedBoard, fixedCandidates)
 
-			// For solveAll, return as a single move in the moves array
-			c.JSON(http.StatusOK, gin.H{
-				"moves": []map[string]interface{}{
-					{
-						"board":      newBoard.GetCells(),
-						"candidates": newBoard.GetCandidates(),
-						"move": map[string]interface{}{
-							"technique":   "fix-conflict",
-							"action":      "fix-conflict",
-							"digit":       badDigit,
-							"explanation": explanation,
-							"targets":     []map[string]int{{"row": badRow, "col": badCol}},
-							"highlights": map[string]interface{}{
-								"primary":   []map[string]int{{"row": badRow, "col": badCol}},
-								"secondary": []map[string]int{{"row": otherRow, "col": otherCol}},
-							},
-						},
+			// Instead of returning immediately, append this fix as the first move
+			// and continue with autosolving from the fixed board
+			moves := make([]MoveResult, 0)
+			moves = append(moves, MoveResult{
+				Board:      newBoard.GetCells(),
+				Candidates: newBoard.GetCandidates(),
+				Move: map[string]interface{}{
+					"technique":   "fix-conflict",
+					"action":      "fix-conflict",
+					"digit":       badDigit,
+					"explanation": explanation,
+					"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+					"highlights": map[string]interface{}{
+						"primary":   []map[string]int{{"row": badRow, "col": badCol}},
+						"secondary": []map[string]int{{"row": otherRow, "col": otherCol}},
 					},
 				},
-				"status": "conflict_found",
+			})
+
+			// Proceed with solving from the corrected user board
+			originalUserBoard := make([]int, len(req.Board))
+			copy(originalUserBoard, fixedBoard)
+
+			// Prepare originalUserCandidates
+			originalUserCandidates := make([][]int, constants.TotalCells)
+			for i := 0; i < constants.TotalCells; i++ {
+				if i < len(fixedCandidates) && fixedCandidates[i] != nil {
+					originalUserCandidates[i] = make([]int, len(fixedCandidates[i]))
+					copy(originalUserCandidates[i], fixedCandidates[i])
+				}
+			}
+
+			board := human.NewBoardWithCandidates(originalUserBoard, nil)
+			board.InitCandidates()
+			solver := human.NewSolver()
+
+			// Run autosolve loop (similar to STEP 2 logic)
+			maxMoves := 2000
+			maxFixes := 5
+			fixCount := 1 // we already applied one fix
+
+			for i := 0; i < maxMoves; i++ {
+				if board.IsSolved() {
+					break
+				}
+				move := solver.FindNextMove(board)
+				if move == nil {
+					userEntryCount := countUserEntries(originalUserBoard, givens)
+					if userEntryCount > 0 {
+						moves = append(moves, MoveResult{
+							Board:      board.GetCells(),
+							Candidates: board.GetCandidates(),
+							Move: map[string]interface{}{
+								"technique":      "stalled",
+								"action":         "stalled",
+								"explanation":    "I'm stuck. There might be another error in your entries.",
+								"userEntryCount": userEntryCount,
+							},
+						})
+					}
+					break
+				}
+
+				if move.Action == "contradiction" {
+					if fixCount >= maxFixes {
+						userEntryCount := countUserEntries(originalUserBoard, givens)
+						moves = append(moves, MoveResult{
+							Board:      board.GetCells(),
+							Candidates: board.GetCandidates(),
+							Move: map[string]interface{}{
+								"technique":      "error",
+								"action":         "error",
+								"explanation":    "Too many incorrect entries to fix automatically.",
+								"userEntryCount": userEntryCount,
+							},
+						})
+						break
+					}
+
+					if len(move.Targets) > 0 {
+						contradictionCell := move.Targets[0].Row*constants.GridSize + move.Targets[0].Col
+						badCell, badDigit := findBlockingUserCell(board, contradictionCell, originalUserBoard, givens)
+						if badCell >= 0 {
+							badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
+							fixCount++
+							originalUserBoard[badCell] = 0
+							board = human.NewBoardWithCandidates(originalUserBoard, nil)
+							board.InitCandidates()
+							moves = append(moves, MoveResult{
+								Board:      board.GetCells(),
+								Candidates: board.GetCandidates(),
+								Move: map[string]interface{}{
+									"technique":   "fix-error",
+									"action":      "fix-error",
+									"digit":       badDigit,
+									"explanation": fmt.Sprintf("Removing incorrect %d from R%dC%d.", badDigit, badRow+1, badCol+1),
+									"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+									"highlights": map[string]interface{}{
+										"primary":   []map[string]int{{"row": badRow, "col": badCol}},
+										"secondary": []map[string]int{{"row": move.Targets[0].Row, "col": move.Targets[0].Col}},
+									},
+								},
+							})
+							continue
+						}
+					}
+
+					// Diagnostic candidate refill
+					moves = append(moves, MoveResult{
+						Board:      board.GetCells(),
+						Candidates: board.GetCandidates(),
+						Move: map[string]interface{}{
+							"technique":   "diagnostic",
+							"action":      "diagnostic",
+							"explanation": "Taking another look at the candidates...",
+						},
+					})
+
+					badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(originalUserBoard, givens)
+					if badCell >= 0 {
+						badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
+						zeroCandRow, zeroCandCol := zeroCandCell/constants.GridSize, zeroCandCell%constants.GridSize
+						fixCount++
+						originalUserBoard[badCell] = 0
+						board.ClearCell(badCell)
+						moves = append(moves, MoveResult{
+							Board:      board.GetCells(),
+							Candidates: board.GetCandidates(),
+							Move: map[string]interface{}{
+								"technique":   "fix-error",
+								"action":      "fix-error",
+								"digit":       badDigit,
+								"explanation": fmt.Sprintf("Removing incorrect %d from R%dC%d.", badDigit, badRow+1, badCol+1),
+								"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+								"highlights": map[string]interface{}{
+									"primary":   []map[string]int{{"row": badRow, "col": badCol}},
+									"secondary": []map[string]int{{"row": zeroCandRow, "col": zeroCandCol}},
+								},
+							},
+						})
+						continue
+					}
+
+					userEntryCount := countUserEntries(originalUserBoard, givens)
+					moves = append(moves, MoveResult{
+						Board:      board.GetCells(),
+						Candidates: board.GetCandidates(),
+						Move: map[string]interface{}{
+							"technique":      "unpinpointable-error",
+							"action":         "unpinpointable-error",
+							"explanation":    fmt.Sprintf("Hmm, I couldn't pinpoint the error. One of your %d entries might need checking.", userEntryCount),
+							"userEntryCount": userEntryCount,
+						},
+					})
+					break
+				}
+
+				solver.ApplyMove(board, move)
+				moves = append(moves, MoveResult{Board: board.GetCells(), Candidates: board.GetCandidates(), Move: move})
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"moves":      moves,
+				"solved":     board.IsSolved(),
+				"finalBoard": board.GetCells(),
 			})
 			return
 		}
 	}
 
 	// STEP 2: No direct conflicts - proceed with normal solving
-	// Use provided candidates (may be empty/incomplete - solver will fill one at a time)
-	board := human.NewBoardWithCandidates(req.Board, req.Candidates)
+	// Use provided candidates if present, otherwise initialize full candidates
+	var board *human.Board
+	if req.Candidates == nil || len(req.Candidates) == 0 {
+		// NewBoard initializes candidates for a fresh puzzle (frontend typically omits candidates)
+		board = human.NewBoard(req.Board)
+	} else {
+		board = human.NewBoardWithCandidates(req.Board, req.Candidates)
+	}
 
 	// Keep a copy of the original user board to distinguish user entries from solver placements
 	originalUserBoard := make([]int, len(req.Board))
@@ -1003,11 +1161,6 @@ func solveAllHandler(c *gin.Context) {
 	solver := human.NewSolver()
 
 	// Collect all moves
-	type MoveResult struct {
-		Board      []int       `json:"board"`
-		Candidates [][]int     `json:"candidates"`
-		Move       interface{} `json:"move"`
-	}
 
 	var moves []MoveResult
 	maxMoves := 2000
