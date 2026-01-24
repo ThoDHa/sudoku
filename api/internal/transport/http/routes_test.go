@@ -792,7 +792,7 @@ func TestHTTPRoutes(t *testing.T) {
 
 		// Find a cell index that is not a given where we can place an incorrect digit
 		// Prefer creating a direct conflict so the autosolver's conflict-fixing path is exercised
-		var idx int = -1
+		idx := -1
 		var wrongDigit int
 
 		// Try to create a direct conflict by copying an existing given into an empty cell

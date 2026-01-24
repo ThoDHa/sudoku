@@ -20,6 +20,8 @@ type SessionToken struct {
 	ExpiresAt  time.Time `json:"expires_at"`
 }
 
+// session token helpers are defined in this file
+
 func createToken(secret string, session SessionToken) (string, error) {
 	payload, err := json.Marshal(session)
 	if err != nil {

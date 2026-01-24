@@ -1137,7 +1137,7 @@ func solveAllHandler(c *gin.Context) {
 	// STEP 2: No direct conflicts - proceed with normal solving
 	// Use provided candidates if present, otherwise initialize full candidates
 	var board *human.Board
-	if req.Candidates == nil || len(req.Candidates) == 0 {
+	if len(req.Candidates) == 0 {
 		// NewBoard initializes candidates for a fresh puzzle (frontend typically omits candidates)
 		board = human.NewBoard(req.Board)
 	} else {
