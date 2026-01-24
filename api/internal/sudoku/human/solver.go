@@ -263,11 +263,15 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 		return violation
 	}
 
-	// First, check if any empty cell is missing a valid candidate
+	// Phase 1: Complete candidate filling for each digit first
 	// Add candidates one at a time, scanning by DIGIT first (human-like behavior)
 	// A human thinks: "Where can 1 go? Where can 2 go?" etc.
 	// But don't re-add candidates that were previously eliminated
+	// IMPORTANT: Complete ALL candidate filling for a digit before checking for singles
 	for d := 1; d <= constants.GridSize; d++ {
+		candidateMoves := make([]*core.Move, 0)
+
+		// First pass: Collect all fill-candidate moves for this digit
 		for i := 0; i < constants.TotalCells; i++ {
 			if b.Cells[i] != 0 {
 				continue
@@ -277,46 +281,7 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 
 			// Only add if: can place AND not already a candidate AND not eliminated
 			if b.canPlace(i, d) && !b.Candidates[i].Has(d) && !b.Eliminated[i].Has(d) {
-				// Before returning a fill-candidate move, check if this cell should be assigned immediately
-
-				// Check for naked single: count candidates CURRENTLY in the Candidates array
-				// Only consider digits that have already been added to Candidates via fill-candidate moves
-				// This prevents "looking ahead" and finding naked singles before all candidates are populated
-				candCount := 0
-				var onlyCandidateDigit int
-				for digit := 1; digit <= constants.GridSize; digit++ {
-					if b.Candidates[i].Has(digit) {
-						candCount++
-						onlyCandidateDigit = digit
-					}
-				}
-
-				if candCount == 1 {
-					// This cell has only one candidate in its Candidates array - naked single!
-					return &core.Move{
-						Technique:   "naked-single",
-						Action:      "assign",
-						Digit:       onlyCandidateDigit,
-						Targets:     []core.CellRef{{Row: row, Col: col}},
-						Explanation: fmt.Sprintf("Cell R%dC%d has only one candidate: %d", row+1, col+1, onlyCandidateDigit),
-						Highlights: core.Highlights{
-							Primary: []core.CellRef{{Row: row, Col: col}},
-						},
-						Refs: core.TechniqueRef{
-							Title: "Naked Single",
-							Slug:  "naked-single",
-							URL:   "/technique/naked-single",
-						},
-					}
-				}
-
-				// Check for hidden single: this digit can only go in one place in row/col/box
-				if move := s.checkHiddenSingleForDigitImmediate(b, i, d); move != nil {
-					return move
-				}
-
-				// No immediate assignment - return the fill-candidate move
-				return &core.Move{
+				candidateMoves = append(candidateMoves, &core.Move{
 					Technique:   "fill-candidate",
 					Action:      "candidate",
 					Digit:       d,
@@ -328,36 +293,27 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 					Refs: core.TechniqueRef{
 						Title: "Fill Candidate",
 						Slug:  "fill-candidate",
-						URL:   "",
+						URL:   "/technique/fill-candidate",
 					},
-				}
+				})
 			}
+		}
+
+		// Return first candidate move if we have any
+		if len(candidateMoves) > 0 {
+			return candidateMoves[0]
 		}
 	}
 
-	// Check for contradictions (cells with no candidates)
-	for i := 0; i < constants.TotalCells; i++ {
-		if b.Cells[i] == 0 && b.Candidates[i].IsEmpty() {
-			row, col := i/constants.GridSize, i%constants.GridSize
-			return &core.Move{
-				Technique:   "contradiction",
-				Action:      "contradiction",
-				Digit:       0,
-				Targets:     []core.CellRef{{Row: row, Col: col}},
-				Explanation: fmt.Sprintf("Contradiction: R%dC%d has no valid candidates. A previous move was incorrect.", row+1, col+1),
-				Highlights: core.Highlights{
-					Primary: []core.CellRef{{Row: row, Col: col}},
-				},
-				Refs: core.TechniqueRef{
-					Title: "Contradiction",
-					Slug:  "contradiction",
-					URL:   "",
-				},
-			}
-		}
-	}
+	// Phase 2: Check for singles ONLY after candidate filling is complete
+	// This ensures we have complete candidate information before making assignments
+	return s.checkForSingles(b)
+}
 
-	// Try techniques by tier
+// checkForSingles performs single detection AFTER all candidates are filled
+func (s *Solver) checkForSingles(b *Board) *core.Move {
+	// Use existing technique library to find singles with complete candidate information
+	// Try techniques by tier (this will find naked singles, hidden singles, etc.)
 	for _, tier := range []string{constants.TierSimple, constants.TierMedium, constants.TierHard, constants.TierExtreme} {
 		for _, t := range s.registry.GetByTier(tier) {
 			if move := t.Detector(b); move != nil {
@@ -371,8 +327,7 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 			}
 		}
 	}
-
-	return nil
+	return nil // No singles found
 }
 
 // checkHiddenSingleForDigitImmediate checks if digit d at cell idx is a hidden single
