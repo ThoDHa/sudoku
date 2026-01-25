@@ -213,6 +213,11 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   // Sync gamePaused prop and background manager with our internal pause state
   useEffect(() => {
     const shouldPause = gamePaused || manualPaused || backgroundManager.shouldPauseOperations
+    // Debug: log pause sources during tests when needed
+    // Always log pause-check details using our logger. Logger implementations can
+    // decide whether to emit output based on environment, so we don't need to
+    // guard with process.env here and avoid relying on Node typings in the bundle.
+    logger.debug('[useAutoSolve] pause check:', { gamePaused, manualPaused, shouldPauseOperations: backgroundManager.shouldPauseOperations })
     if (shouldPause) {
       pausedRef.current = true
       setIsPaused(true)
@@ -239,7 +244,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         playNextMoveRef.current()
       }
     }
-  }, [gamePaused, manualPaused, backgroundManager.shouldPauseOperations, getBoard, stopAutoSolve])
+  }, [gamePaused, manualPaused, backgroundManager, getBoard, stopAutoSolve])
 
   const togglePause = useCallback(() => {
     if (!isAutoSolving) return
