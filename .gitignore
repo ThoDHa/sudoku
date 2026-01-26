@@ -14,6 +14,8 @@ api/server
 
 # WASM binaries (built by CI/CD)
 frontend/public/sudoku.wasm
+api/sudoku.wasm
+frontend/public/sudoku.wasm.backup
 
 # Test outputs
 coverage.out
