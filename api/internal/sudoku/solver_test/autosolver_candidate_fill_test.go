@@ -119,15 +119,11 @@ func TestFindNextMoveTwoPhaseApproach(t *testing.T) {
 	assignmentMoves := 0
 
 	// Collect first 50 moves to analyze pattern (need more due to 9x9)
-	var firstMoves []core.Move
 	for i := 0; i < 50; i++ {
 		move := solver.FindNextMove(board)
 		if move == nil {
 			break
 		}
-
-		firstMoves = append(firstMoves, *move)
-
 		if move.Action == "candidate" {
 			candidateMoves++
 		} else if move.Action == "assign" {
@@ -203,6 +199,9 @@ func TestOnlyProperSinglesAfterCandidateFilling(t *testing.T) {
 	givens := createPuzzleWithClearSingles()
 	board := human.NewBoard(givens)
 
+	// Debug: snapshot candidates at start to verify test expectations
+	t.Logf("Initial candidate snapshot: %v", board.GetCandidates())
+
 	// Track proper singles found
 	properSinglesFound := 0
 
@@ -276,12 +275,20 @@ func createMediumPuzzle() []int {
 
 func createPuzzleWithClearSingles() []int {
 	givens := make([]int, constants.TotalCells)
-	// Create a puzzle with some obvious naked singles
-	givens[0] = 5  // R1C1 = 5
-	givens[1] = 3  // R1C2 = 3
-	givens[2] = 0  // R1C3 should have naked single after setup
-	givens[9] = 6  // R2C1 = 6
-	givens[10] = 0 // R2C2 should have naked single after setup
+	// Create a puzzle that guarantees a naked single in R1C3
+	// Top row (R1): [5,3,_,4,7,8,9,1,2] -> missing digit 6 at R1C3
+	givens[0] = 5 // R1C1 = 5
+	givens[1] = 3 // R1C2 = 3
+	givens[2] = 0 // R1C3 = empty, should be forced to 6 (naked single)
+	givens[3] = 4 // R1C4 = 4
+	givens[4] = 7 // R1C5 = 7
+	givens[5] = 8 // R1C6 = 8
+	givens[6] = 9 // R1C7 = 9
+	givens[7] = 1 // R1C8 = 1
+	givens[8] = 2 // R1C9 = 2
+
+	// Leave the rest of the board empty; the missing digit in R1C3
+	// will be determinable as a naked single when candidates are filled.
 	return givens
 }
 

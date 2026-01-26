@@ -13,6 +13,7 @@ func DetectNakedSingle(b BoardInterface) *core.Move {
 		if b.GetCell(i) == 0 && b.GetCandidatesAt(i).Count() == 1 {
 			digit, _ := b.GetCandidatesAt(i).Only()
 			row, col := i/constants.GridSize, i%constants.GridSize
+
 			return &core.Move{
 				Action:      "assign",
 				Digit:       digit,
