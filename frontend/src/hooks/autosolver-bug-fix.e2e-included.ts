@@ -1,12 +1,9 @@
 /**
  * Autosolver Bug Fix End-to-End Tests (e2e file)
  *
- * This file is named with an `.e2e.ts` suffix to avoid the project's
- * eslint ignore pattern for `*.test.ts` while keeping the test content
- * available for e2e runners. The pre-commit lint step runs ESLint on
- * staged frontend files and treats "file ignored" as a warning which
- * currently fails commits. Placing the file under a non-ignored name
- * allows lint to validate it correctly.
+ * This file mirrors autosolver-bug-fix.e2e.ts but uses a filename that is
+ * included by the TypeScript project so the linter's project service can
+ * analyze it without error.
  */
 
 import { renderHook, act } from '@testing-library/react'
@@ -20,28 +17,21 @@ import { validateBoard } from '../lib/dp-solver'
 // Re-export of test content from autosolver-bug-fix.e2e.test.ts
 // The actual test logic mirrors the original integration spec file.
 
-vi.mock('../lib/solver-service', () => ({
-  solveAll: vi.fn(),
-}))
+import {
+  createMockBackgroundManager,
+  createEvidencePuzzle,
+  createEvidenceSolution,
+  createBugScenarioMoves,
+  createFixedScenarioMoves,
+} from '../test-utils/mocks'
 
-vi.mock('../lib/puzzles-data', () => ({
-  getPuzzleForSeed: vi.fn(),
-}))
-
-vi.mock('../lib/dp-solver', () => ({
-  validateBoard: vi.fn(),
-}))
+vi.mock('../lib/solver-service', () => ({ solveAll: vi.fn() }))
+vi.mock('../lib/puzzles-data', () => ({ getPuzzleForSeed: vi.fn() }))
+vi.mock('../lib/dp-solver', () => ({ validateBoard: vi.fn() }))
 
 const mockSolveAll = vi.mocked(solveAll)
 const mockGetPuzzleForSeed = vi.mocked(getPuzzleForSeed)
 const mockValidateBoard = vi.mocked(validateBoard)
-
-const createMockBackgroundManager = () => ({
-  isHidden: false,
-  shouldPauseOperations: false,
-  registerCallback: vi.fn(),
-  unregisterCallback: vi.fn(),
-})
 
 const createEvidencePuzzle = () => {
   const board = Array(81).fill(0)
@@ -94,7 +84,7 @@ const createBugScenarioMoves = () => [
       targets: [{ row: 0, col: 1 }],
       explanation: 'Only candidate for this cell',
       refs: { title: 'Naked Single', slug: 'naked-single', url: '/techniques/naked-single' },
-      highlights: { primary: [1] },
+      highlights: { primary: [{ row: 0, col: 1 }] },
     },
   },
   {
@@ -112,7 +102,7 @@ const createBugScenarioMoves = () => [
       targets: [{ row: 0, col: 2 }],
       explanation: 'Only candidate for this cell',
       refs: { title: 'Hidden Single', slug: 'hidden-single', url: '/techniques/hidden-single' },
-      highlights: { primary: [2] },
+      highlights: { primary: [{ row: 0, col: 2 }] },
     },
   },
 ]
@@ -129,7 +119,7 @@ const createFixedScenarioMoves = () => [
       targets: [{ row: 0, col: 1 }],
       explanation: 'Only candidate for this cell',
       refs: { title: 'Naked Single', slug: 'naked-single', url: '/techniques/naked-single' },
-      highlights: { primary: [1] },
+      highlights: { primary: [{ row: 0, col: 1 }] },
     },
   },
   {
@@ -147,7 +137,7 @@ const createFixedScenarioMoves = () => [
       targets: [{ row: 0, col: 2 }],
       explanation: 'Only candidate for this cell',
       refs: { title: 'Hidden Single', slug: 'hidden-single', url: '/techniques/hidden-single' },
-      highlights: { primary: [2] },
+      highlights: { primary: [{ row: 0, col: 2 }] },
     },
   },
 ]
@@ -163,7 +153,6 @@ describe('Autosolver Bug Fix - End-to-End Tests', () => {
     })
     mockValidateBoard.mockReturnValue({
       valid: true,
-      reason: 'correct',
       message: 'Board is correct',
       incorrectCells: [],
     })
@@ -184,8 +173,12 @@ describe('Autosolver Bug Fix - End-to-End Tests', () => {
       const autosolveHook = renderHook(() =>
         useAutoSolve({
           getBoard: () => gameHook.result.current.board,
-          getCandidates: () => gameHook.result.current.candidates,
-          getGivens: () => gameHook.result.current.givens,
+          // Provide candidates as an array of Sets to match UseAutoSolve API
+          getCandidates: () => Array(81)
+            .fill(null)
+            .map(() => new Set<number>([1, 2, 3, 4, 5, 6, 7, 8, 9])),
+          // Supply givens directly from the scenario helper
+          getGivens: () => createEvidencePuzzle(),
           applyMove: vi.fn(),
           applyState: vi.fn(),
           isComplete: () => gameHook.result.current.isComplete,
@@ -221,8 +214,10 @@ describe('Autosolver Bug Fix - End-to-End Tests', () => {
       const autosolveHook = renderHook(() =>
         useAutoSolve({
           getBoard: () => gameHook.result.current.board,
-          getCandidates: () => gameHook.result.current.candidates,
-          getGivens: () => gameHook.result.current.givens,
+          getCandidates: () => Array(81)
+            .fill(null)
+            .map(() => new Set<number>([1, 2, 3, 4, 5, 6, 7, 8, 9])),
+          getGivens: () => createEvidencePuzzle(),
           applyMove,
           applyState: vi.fn(),
           isComplete: () => gameHook.result.current.isComplete,

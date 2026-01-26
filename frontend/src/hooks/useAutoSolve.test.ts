@@ -13,6 +13,7 @@ vi.mock('../lib/solver-service', () => ({
 
 // Import the mocked function for assertions
 import { solveAll } from '../lib/solver-service'
+import { createMockBackgroundManager } from '../test-utils/mocks'
 const mockSolveAll = vi.mocked(solveAll)
 
 // =============================================================================
@@ -22,15 +23,8 @@ const mockSolveAll = vi.mocked(solveAll)
 /**
  * Create a mock background manager for testing
  */
-const createMockBackgroundManager = (overrides?: {
-  isHidden?: boolean
-  shouldPauseOperations?: boolean
-}) => ({
-  isHidden: overrides?.isHidden ?? false,
-  shouldPauseOperations: overrides?.shouldPauseOperations ?? false,
-  registerCallback: vi.fn(),
-  unregisterCallback: vi.fn(),
-})
+// Use shared mock from test-utils/mocks
+// Local overrides in tests can wrap or extend this helper when needed
 
 /**
  * Create default options for useAutoSolve hook

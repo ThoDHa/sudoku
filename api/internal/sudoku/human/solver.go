@@ -55,21 +55,38 @@ var DifficultyAllowedTiers = map[core.Difficulty][]string{
 // Solver holds the technique registry and orchestrates solving
 type Solver struct {
 	registry *TechniqueRegistry
+	// generationState tracks the candidate-generation / technique-application phase.
+	// It is required because the autosolver runs in two phases: generate all
+	// candidates (digit-first) then apply techniques. Persisting the state
+	// across FindNextMove calls ensures deterministic phase transitions.
+	generationState GenerationState
 }
 
 // NewSolver creates a solver with the technique registry
 func NewSolver() *Solver {
 	return &Solver{
-		registry: NewTechniqueRegistry(),
+		registry:        NewTechniqueRegistry(),
+		generationState: StateNotStarted,
 	}
 }
 
 // NewSolverWithRegistry creates a solver with a specific registry (for testing)
 func NewSolverWithRegistry(registry *TechniqueRegistry) *Solver {
 	return &Solver{
-		registry: registry,
+		registry:        registry,
+		generationState: StateNotStarted,
 	}
 }
+
+// GenerationState represents the solver's candidate-generation lifecycle
+type GenerationState int
+
+const (
+	StateNotStarted GenerationState = iota
+	StateCollectingCandidates
+	StateCandidatesComplete
+	StateApplyingTechniques
+)
 
 // ============================================================================
 // Move Finding
@@ -190,8 +207,23 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 
 	// Check for invalid candidates (candidates that conflict with existing values)
 	for i := 0; i < constants.TotalCells; i++ {
-		if b.Cells[i] != 0 || b.Candidates[i].IsEmpty() {
+		// If the cell is already filled, skip.
+		if b.Cells[i] != 0 {
 			continue
+		}
+
+		// If an empty cell has no candidates at all, this is an immediate contradiction.
+		if b.Candidates[i].IsEmpty() {
+			row, col := i/constants.GridSize, i%constants.GridSize
+			return &core.Move{
+				Technique:   "contradiction",
+				Action:      "contradiction",
+				Digit:       0,
+				Targets:     []core.CellRef{{Row: row, Col: col}},
+				Explanation: fmt.Sprintf("No candidates available for R%dC%d: contradiction detected", row+1, col+1),
+				Highlights:  core.Highlights{Primary: []core.CellRef{{Row: row, Col: col}}},
+				Refs:        core.TechniqueRef{Title: "Contradiction", Slug: "contradiction"},
+			}
 		}
 
 		row, col := i/constants.GridSize, i%constants.GridSize
@@ -263,57 +295,103 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 		return violation
 	}
 
+	// Use solver's persistent generation state to prevent infinite loops
+	// (s.generationState is declared on the Solver struct)
+
 	// Phase 1: Complete candidate filling for each digit first
 	// Add candidates one at a time, scanning by DIGIT first (human-like behavior)
 	// A human thinks: "Where can 1 go? Where can 2 go?" etc.
 	// But don't re-add candidates that were previously eliminated
-	// IMPORTANT: Complete ALL candidate filling for a digit before checking for singles
-	for d := 1; d <= constants.GridSize; d++ {
-		candidateMoves := make([]*core.Move, 0)
+	// IMPORTANT: Complete ALL candidate generation before checking for singles
+	allCandidateMoves := make([]*core.Move, 0)
 
-		// First pass: Collect all fill-candidate moves for this digit
-		for i := 0; i < constants.TotalCells; i++ {
-			if b.Cells[i] != 0 {
-				continue
-			}
+	// Check if we're still in candidate generation phase
+	if s.generationState == StateNotStarted || s.generationState == StateCollectingCandidates {
+		for d := 1; d <= constants.GridSize; d++ {
+			// First pass: Collect all fill-candidate moves for this digit
+			for i := 0; i < constants.TotalCells; i++ {
+				if b.Cells[i] != 0 {
+					continue
+				}
 
-			row, col := i/constants.GridSize, i%constants.GridSize
+				row, col := i/constants.GridSize, i%constants.GridSize
 
-			// Only add if: can place AND not already a candidate AND not eliminated
-			if b.canPlace(i, d) && !b.Candidates[i].Has(d) && !b.Eliminated[i].Has(d) {
-				candidateMoves = append(candidateMoves, &core.Move{
-					Technique:   "fill-candidate",
-					Action:      "candidate",
-					Digit:       d,
-					Targets:     []core.CellRef{{Row: row, Col: col}},
-					Explanation: fmt.Sprintf("Added %d as a candidate to R%dC%d", d, row+1, col+1),
-					Highlights: core.Highlights{
-						Primary: []core.CellRef{{Row: row, Col: col}},
-					},
-					Refs: core.TechniqueRef{
-						Title: "Fill Candidate",
-						Slug:  "fill-candidate",
-						URL:   "/technique/fill-candidate",
-					},
-				})
+				// Only add if: can place AND not already a candidate AND not eliminated
+				if b.canPlace(i, d) && !b.Candidates[i].Has(d) && !b.Eliminated[i].Has(d) {
+					allCandidateMoves = append(allCandidateMoves, &core.Move{
+						Technique:   "fill-candidate",
+						Action:      "candidate",
+						Digit:       d,
+						Targets:     []core.CellRef{{Row: row, Col: col}},
+						Explanation: fmt.Sprintf("Added %d as a candidate to R%dC%d", d, row+1, col+1),
+						Highlights: core.Highlights{
+							Primary: []core.CellRef{{Row: row, Col: col}},
+						},
+						Refs: core.TechniqueRef{
+							Title: "Fill Candidate",
+							Slug:  "fill-candidate",
+							URL:   "/technique/fill-candidate",
+						},
+					})
+				}
 			}
 		}
 
-		// Return first candidate move if we have any
-		if len(candidateMoves) > 0 {
-			return candidateMoves[0]
+		// If we collected any candidate moves, enter collecting state and
+		// return them one by one so that ApplyMove updates the board.Candidates.
+		// Only when no new candidate moves are found do we mark generation
+		// as complete and proceed to technique application.
+		if len(allCandidateMoves) > 0 {
+			s.generationState = StateCollectingCandidates
+			// return the first candidate move (digit-first order preserved by collection)
+			return &core.Move{
+				Technique: "fill-candidate",
+				Action:    "candidate",
+				Digit:     allCandidateMoves[0].Digit,
+				Targets:   allCandidateMoves[0].Targets,
+				Explanation: fmt.Sprintf("Added %d as a candidate to R%dC%d", allCandidateMoves[0].Digit,
+					allCandidateMoves[0].Targets[0].Row+1, allCandidateMoves[0].Targets[0].Col+1),
+				StepIndex: 0,
+				Highlights: core.Highlights{
+					Primary: allCandidateMoves[0].Targets,
+				},
+				Refs: core.TechniqueRef{
+					Title: "Fill Candidate",
+					Slug:  "fill-candidate",
+					URL:   "/technique/fill-candidate",
+				},
+			}
 		}
+		// No candidate moves found: mark generation as complete
+		s.generationState = StateCandidatesComplete
 	}
 
-	// Phase 2: Check for singles ONLY after candidate filling is complete
-	// This ensures we have complete candidate information before making assignments
-	return s.checkForSingles(b)
+	// Phase 2: Check for singles ONLY after ALL candidate generation is complete
+	// Only check for singles if we've completed candidate generation for ALL digits
+	if s.generationState == StateCandidatesComplete {
+		s.generationState = StateApplyingTechniques
+		if singleMove := s.checkForSingles(b); singleMove != nil {
+			// reset state back to NotStarted after entering technique application
+			s.generationState = StateNotStarted
+			return singleMove
+		}
+		// No technique found. Reset generation state to allow normal solver flow
+		s.generationState = StateNotStarted
+	}
+
+	// If we get here and haven't returned a candidate move yet, there are
+	// no candidate moves to apply and no techniques found: solver is stuck
+	// or completed.
+
+	// Return nil when no moves available (solver stuck)
+	return nil
 }
 
 // checkForSingles performs single detection AFTER all candidates are filled
 func (s *Solver) checkForSingles(b *Board) *core.Move {
 	// Use existing technique library to find singles with complete candidate information
 	// Try techniques by tier (this will find naked singles, hidden singles, etc.)
+
 	for _, tier := range []string{constants.TierSimple, constants.TierMedium, constants.TierHard, constants.TierExtreme} {
 		for _, t := range s.registry.GetByTier(tier) {
 			if move := t.Detector(b); move != nil {
@@ -327,127 +405,15 @@ func (s *Solver) checkForSingles(b *Board) *core.Move {
 			}
 		}
 	}
+	// no technique returned a move
 	return nil // No singles found
 }
 
 // checkHiddenSingleForDigitImmediate checks if digit d at cell idx is a hidden single
 // by looking at all POTENTIAL placements (not just current candidates)
-func (s *Solver) checkHiddenSingleForDigitImmediate(b *Board, idx, d int) *core.Move {
-	row, col := idx/constants.GridSize, idx%constants.GridSize
-
-	// Helper to check if digit d can potentially go in a cell
-	canPlaceDigit := func(cellIdx, digit int) bool {
-		if b.Cells[cellIdx] != 0 {
-			return false
-		}
-		if b.Eliminated[cellIdx].Has(digit) {
-			return false
-		}
-		return b.canPlace(cellIdx, digit)
-	}
-
-	// Check row
-	rowCount := 0
-	for c := 0; c < constants.GridSize; c++ {
-		cellIdx := row*constants.GridSize + c
-		if b.Cells[cellIdx] == d {
-			rowCount = 99
-			break
-		}
-		if canPlaceDigit(cellIdx, d) {
-			rowCount++
-		}
-	}
-	if rowCount == 1 {
-		return &core.Move{
-			Technique:   "hidden-single",
-			Action:      "assign",
-			Digit:       d,
-			Targets:     []core.CellRef{{Row: row, Col: col}},
-			Explanation: fmt.Sprintf("In row %d, %d can only go in R%dC%d (hidden single)", row+1, d, row+1, col+1),
-			Highlights: core.Highlights{
-				Primary:   []core.CellRef{{Row: row, Col: col}},
-				Secondary: getRowCellRefs(row),
-			},
-			Refs: core.TechniqueRef{
-				Title: "Hidden Single",
-				Slug:  "hidden-single",
-				URL:   "/technique/hidden-single",
-			},
-		}
-	}
-
-	// Check column
-	colCount := 0
-	for r := 0; r < constants.GridSize; r++ {
-		cellIdx := r*constants.GridSize + col
-		if b.Cells[cellIdx] == d {
-			colCount = 99
-			break
-		}
-		if canPlaceDigit(cellIdx, d) {
-			colCount++
-		}
-	}
-	if colCount == 1 {
-		return &core.Move{
-			Technique:   "hidden-single",
-			Action:      "assign",
-			Digit:       d,
-			Targets:     []core.CellRef{{Row: row, Col: col}},
-			Explanation: fmt.Sprintf("In column %d, %d can only go in R%dC%d (hidden single)", col+1, d, row+1, col+1),
-			Highlights: core.Highlights{
-				Primary:   []core.CellRef{{Row: row, Col: col}},
-				Secondary: getColCellRefs(col),
-			},
-			Refs: core.TechniqueRef{
-				Title: "Hidden Single",
-				Slug:  "hidden-single",
-				URL:   "/technique/hidden-single",
-			},
-		}
-	}
-
-	// Check box
-	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
-	boxNum := (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize
-	boxCount := 0
-	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-			cellIdx := r*constants.GridSize + c
-			if b.Cells[cellIdx] == d {
-				boxCount = 99
-				break
-			}
-			if canPlaceDigit(cellIdx, d) {
-				boxCount++
-			}
-		}
-		if boxCount == 99 {
-			break
-		}
-	}
-	if boxCount == 1 {
-		return &core.Move{
-			Technique:   "hidden-single",
-			Action:      "assign",
-			Digit:       d,
-			Targets:     []core.CellRef{{Row: row, Col: col}},
-			Explanation: fmt.Sprintf("In box %d, %d can only go in R%dC%d (hidden single)", boxNum+1, d, row+1, col+1),
-			Highlights: core.Highlights{
-				Primary:   []core.CellRef{{Row: row, Col: col}},
-				Secondary: getBoxCellRefs(boxNum),
-			},
-			Refs: core.TechniqueRef{
-				Title: "Hidden Single",
-				Slug:  "hidden-single",
-				URL:   "/technique/hidden-single",
-			},
-		}
-	}
-
-	return nil
-}
+// Note: checkHiddenSingleForDigitImmediate was removed as it was unused.
+// If a future optimization requires immediate hidden-single checks without
+// relying on precomputed candidates, reintroduce a focused helper here.
 
 // Helper functions for generating CellRef slices
 func getRowCellRefs(row int) []core.CellRef {
