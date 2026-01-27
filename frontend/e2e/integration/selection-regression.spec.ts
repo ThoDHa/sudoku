@@ -90,7 +90,7 @@ async function getOutsideClickCoordinates(page: any) {
   };
 }
 
-test.describe('@regression Selection State - Comprehensive Demon Prevention', () => {
+test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
   
   // Test each difficulty level to ensure behavior is consistent
   for (const testUrl of TEST_URLS) {

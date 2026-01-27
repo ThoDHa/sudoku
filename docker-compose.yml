@@ -1,14 +1,15 @@
 services:
   sudoku:
     image: node:20-alpine
-    working_dir: /app
+    working_dir: /app/frontend
     ports:
       - "80:80"
     volumes:
-      # Mount source files - changes reflect immediately
-      - ./frontend:/app
+      # Mount entire project root so .git is accessible (as sibling to frontend/)
+      - .:/app
       # Anonymous volume to preserve node_modules inside container
-      - /app/node_modules
-    command: ["sh", "-c", "apk add --no-cache git && npm install && npm run dev -- --host 0.0.0.0 --port 80"]
+      - /app/frontend/node_modules
+    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0 --port 80"]
     environment:
       - NODE_ENV=development
+      - GIT_DISCOVERY_ACROSS_FILESYSTEM=true

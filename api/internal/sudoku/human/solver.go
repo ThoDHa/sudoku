@@ -60,6 +60,10 @@ type Solver struct {
 	// candidates (digit-first) then apply techniques. Persisting the state
 	// across FindNextMove calls ensures deterministic phase transitions.
 	generationState GenerationState
+	// candidateIndex tracks which candidate move to return next during generation.
+	// This prevents infinite loops by ensuring we don't return the same candidate
+	// move repeatedly across multiple FindNextMove calls.
+	candidateIndex int
 }
 
 // NewSolver creates a solver with the technique registry
@@ -67,6 +71,7 @@ func NewSolver() *Solver {
 	return &Solver{
 		registry:        NewTechniqueRegistry(),
 		generationState: StateNotStarted,
+		candidateIndex:  0,
 	}
 }
 
@@ -75,6 +80,7 @@ func NewSolverWithRegistry(registry *TechniqueRegistry) *Solver {
 	return &Solver{
 		registry:        registry,
 		generationState: StateNotStarted,
+		candidateIndex:  0,
 	}
 }
 
@@ -316,8 +322,12 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 
 				row, col := i/constants.GridSize, i%constants.GridSize
 
-				// Only add if: can place AND not already a candidate AND not eliminated
-				if b.canPlace(i, d) && !b.Candidates[i].Has(d) && !b.Eliminated[i].Has(d) {
+				// Only add if: digit not in cells AND not already a candidate AND not eliminated
+				// Use digitExistsInCells instead of canPlace() because:
+				// - canPlace() checks if digit can be ASSIGNED as a VALUE
+				// - For candidate generation, we just want to mark potential candidates
+				// - We should check digit conflicts with EXISTING VALUES (b.Cells[]), not canPlace()
+				if !digitExistsInCells(b, row, col, d) && !b.Candidates[i].Has(d) && !b.Eliminated[i].Has(d) {
 					allCandidateMoves = append(allCandidateMoves, &core.Move{
 						Technique:   "fill-candidate",
 						Action:      "candidate",
@@ -434,7 +444,7 @@ func getColCellRefs(col int) []core.CellRef {
 
 func getBoxCellRefs(box int) []core.CellRef {
 	cells := make([]core.CellRef, 0, constants.GridSize)
-	boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
+	boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box/constants.BoxSize)*constants.BoxSize
 	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
 		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
 			cells = append(cells, core.CellRef{Row: r, Col: c})
@@ -442,6 +452,32 @@ func getBoxCellRefs(box int) []core.CellRef {
 	}
 	return cells
 }
+
+func digitExistsInCells(b *Board, row, col, digit int) bool {
+	for c := 0; c < constants.GridSize; c++ {
+		if b.Cells[row*constants.GridSize+c] == digit {
+			return true
+		}
+	}
+	for r := 0; r < constants.GridSize; r++ {
+		if b.Cells[r*constants.GridSize+col] == digit {
+			return true
+		}
+	}
+	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
+	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			if b.Cells[r*constants.GridSize+c] == digit {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ============================================================================
+// Move Application
+// ============================================================================
 
 // ============================================================================
 // Move Application

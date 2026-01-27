@@ -15,7 +15,7 @@ logger.setLevel('info');
  * Tag: @bug @resume
  */
 
-test.describe('@bug Resume Bug - Seed Mismatch', () => {
+test.describe('@regression Resume Game State - Seed Mismatch Recovery', () => {
   test.beforeEach(async ({ page }) => {
     // Clear all game states and session storage
     await page.evaluate(() => {
