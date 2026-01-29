@@ -1,10 +1,11 @@
 import { test, expect } from '../fixtures';
+import { getDailySeed } from '../../src/lib/solver-service';
 
 /**
  * Daily Prompt E2E Tests
  *
  * Tests for the daily puzzle reminder modal that appears when users
- * start practice puzzles without completing the daily puzzle.
+ * start practice puzzles without completing their daily puzzle.
  *
  * Test Coverage:
  * - Modal appearance conditions (practice mode, daily not complete)
@@ -98,8 +99,9 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     
-    // Navigate to daily puzzle
-    await page.goto('/game?mode=daily');
+    // Navigate to daily puzzle via correct route
+    const { seed } = getDailySeed();
+    await page.goto(`/${seed}?d=easy`);
     await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     
     // Modal should NOT appear

@@ -416,9 +416,13 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
 });
 
 test.describe('@integration Persistence - Preferences', () => {
-  test('preferences persist after page reload', async ({ page }) => {
-    await page.goto('/pref-test-123?d=easy');
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+  });
+
+  test('preferences persist after page reload', async ({ page }) => {
 
     // Open settings/menu and toggle a preference (e.g., hide timer)
     const menuButton = page.locator('header button[aria-label*="Menu"], header button:has(svg)').last();

@@ -88,7 +88,8 @@ async function findCellWithAdjacentEmpty(
 
 test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/keyboard123?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -284,7 +285,8 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
 
 test.describe('@integration Keyboard Navigation - Digit Entry', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/keyboard456?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -388,7 +390,8 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
 
 test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/keyboard789?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -515,7 +518,8 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
 
 test.describe('@integration Keyboard Navigation - Notes Mode', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/keyboardNotes?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -576,7 +580,8 @@ test.describe('@integration Keyboard Navigation - Notes Mode', () => {
 
 test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/Pkeyboard-tab?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -627,7 +632,8 @@ test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
 
 test.describe('@integration Keyboard Navigation - Focus Management', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/keyboardFocus?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 
@@ -695,7 +701,8 @@ test.describe('@integration Keyboard Navigation - Focus Management', () => {
 
 test.describe('@integration Keyboard Navigation - Edge Cases', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/keyboardEdge?d=easy');
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
   });
 

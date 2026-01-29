@@ -26,6 +26,7 @@ services:
     working_dir: /app
     volumes:
       - ./frontend:/app
+      - playwright-cache:/root/.cache/ms-playwright
     depends_on:
       sudoku:
         condition: service_healthy
@@ -34,9 +35,11 @@ services:
       - CI=true
     command: >
       sh -c "
+        mkdir -p /app/allure-results &&
         npm ci &&
         npx playwright install chromium &&
         npx playwright test
       "
 
-volumes: {}
+volumes:
+  playwright-cache:

@@ -70,9 +70,7 @@ test-e2e:
 	@echo "========================================"
 	@echo "  Running E2E Tests with Allure (Docker)"
 	@echo "========================================"
-	@docker compose -f docker-compose.test.yml up sudoku -d --build
-	@sleep 15
-	@docker compose -f docker-compose.test.yml run --rm playwright || true
+	@docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from playwright || true
 	@docker compose -f docker-compose.test.yml down
 
 # Run integration tests with Allure output (Docker Compose)

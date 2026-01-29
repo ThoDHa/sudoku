@@ -35,8 +35,8 @@ export interface PracticePuzzleRef {
 }
 
 // Import the JSON data
-import puzzlesJson from '../../puzzles.json'
-import practiceJson from '../../practice_puzzles.json'
+import puzzlesJson from '../../puzzles.json' with { type: 'json' }
+import practiceJson from '../../practice_puzzles.json' with { type: 'json' }
 
 // Type the imported data
 const puzzlesData = puzzlesJson as { puzzles: CompactPuzzle[] }

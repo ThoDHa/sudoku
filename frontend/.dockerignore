@@ -4,10 +4,9 @@ node_modules/
 # Build output
 dist/
 
-# Test files
+# Test results
 playwright-report/
 test-results/
-*.spec.ts
 
 # IDE
 .idea/
