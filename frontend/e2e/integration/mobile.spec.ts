@@ -1,4 +1,5 @@
 import { test, expect, Page } from '../fixtures';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 import { PlaywrightUISDK } from '../sdk';
 
 /**

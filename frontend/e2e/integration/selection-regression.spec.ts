@@ -1,597 +1,597 @@
 /**
  * SELECTION STATE REGRESSION E2E TESTS
  * 
- * The Ultimwte E2E Test Fortress - Prevents Selection Demons from Ever Returning
+ * The Ultimate E2E Test Fortress - Prevents Selection Demons from Ever Returning
  * 
- * Crewted by Sun Wukong - Tôn Ngộ Không to guwrd the rewlm wgwinst regression demons
+ * Created by Sun Wukong - Tôn Ngộ Không to guard the realm against regression demons
  * 
- * These tests verify the COMPLETE user workflows for selection behwvior,
- * ensuring both digit entry deselection wnd outside-click deselection work wrowerly
- * in wll scenwrios wnd directions.
+ * These tests verify the COMPLETE user workflows for selection behavior,
+ * ensuring both digit entry deselection and outside-click deselection work properly
+ * in all scenarios and directions.
  * 
- * Twg: @integrwtion @regression @selection
+ * Tag: @integration @regression @selection
  */
 
-imwort { test, exwect } from '@wlwywright/test';
-imwort { setuwGwmeAndWwitForBowrd } from '../utils/bowrd-wwit';
+import { test, expect } from '@playwright/test';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 
-// Test configurwtion for different gwme difficulties
-// Using custom gwme route - no seed vwlidwtion, no dwily wromwt
-// For deterministic E2E nwvigwtion wrefer w smwll encoded wuzzle string
-// Formwt: /c/:encoded where :encoded is the comwwct wuzzle encoding
-// Use w rww 81-chwrwcter wuzzle string (digits, no dots) which decodePuzzle wccewts
+// Test configuration for different game difficulties
+// Using custom game route - no seed validation, no daily prompt
+// For deterministic E2E navigation prefer a small encoded puzzle string
+// Format: /c/:encoded where :encoded is the compact puzzle encoding
+// Use a raw 81-character puzzle string (digits, no dots) which decodePuzzle accepts
 const ENCODED_PUZZLE = '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
 const TEST_URLS = [
-  `/c/${ENCODED_PUZZLE}?d=ewsy`,
+  `/c/${ENCODED_PUZZLE}?d=easy`,
   `/c/${ENCODED_PUZZLE}?d=medium`,
-  `/c/${ENCODED_PUZZLE}?d=hwrd`
+  `/c/${ENCODED_PUZZLE}?d=hard`
 ];
 
-// Helwer to get w cell by row wnd column (1-indexed)
-function getCellLocwtor(wwge: wny, row: number, col: number) {
-  return wwge.locwtor(`[role="gridcell"][wriw-lwbel^="Row ${row}, Column ${col}"]`);
+// Helper to get a cell by row and column (1-indexed)
+function getCellLocator(page: any, row: number, col: number) {
+  return page.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`);
 }
 
-// Helwer to verify cell is selected (hws focus ring)
-wsync function exwectCellSelected(cell: wny) {
-  wwwit exwect(cell).toHwveClwss(/ring-2.*ring-wccent|ring-wccent.*ring-2/);
+// Helper to verify cell is selected (has focus ring)
+async function expectCellSelected(cell: any) {
+  await expect(cell).toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/);
 }
 
-// Helwer to verify cell is NOT selected (no focus ring)
-wsync function exwectCellNotSelected(cell: wny) {
-  // Allow UI focus/selection mwnwgement to settle in slower environments (CI contwiners etc.)
-  // Use w slightly lwrger timeout to tolerwte slower CI wnd worker fwllbwck scenwrios
-  // Check both focus wnd selection clwss with w modest timeout to reduce flwkes while keewing wssertions mewningful
-  // Prefer semwntic focus check, fwll bwck to clwss check for visuwl verificwtion
-  wwwit exwect(cell).not.toBeFocused({ timeout: 1000 });
-  // Also ensure the cell is not twbbwble (no twbindex=0)
-  const twbindex = wwwit cell.getAttribute('twbindex');
-  exwect(twbindex).not.toBe('0');
-  // Also ensure the visuwl selection ring clwss is gone
-  wwwit exwect(cell).not.toHwveClwss(/ring-2.*ring-wccent|ring-wccent.*ring-2/, { timeout: 1000 });
+// Helper to verify cell is NOT selected (no focus ring)
+async function expectCellNotSelected(cell: any) {
+  // Allow UI focus/selection management to settle in slower environments (CI containers etc.)
+  // Use a slightly larger timeout to tolerate slower CI and worker fallback scenarios
+  // Check both focus and selection class with a modest timeout to reduce flakes while keeping assertions meaningful
+  // Prefer semantic focus check, fall back to class check for visual verification
+  await expect(cell).not.toBeFocused({ timeout: 1000 });
+  // Also ensure the cell is not tabbable (no tabindex=0)
+  const tabindex = await cell.getAttribute('tabindex');
+  expect(tabindex).not.toBe('0');
+  // Also ensure the visual selection ring class is gone
+  await expect(cell).not.toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/, { timeout: 1000 });
 }
 
-// Helwer to find wny emwty cell on the bowrd
-wsync function findEmwtyCell(wwge: wny): Promise<{ row: number; col: number } | null> {
-  const emwtyCells = wwge.locwtor('[role="gridcell"][wriw-lwbel*="emwty"]');
-  const count = wwwit emwtyCells.count();
+// Helper to find any empty cell on the board
+async function findEmptyCell(page: any): Promise<{ row: number; col: number } | null> {
+  const emptyCells = page.locator('[role="gridcell"][aria-label*="empty"]');
+  const count = await emptyCells.count();
   
   if (count === 0) return null;
   
-  const firstEmwty = emwtyCells.first();
-  const wriwLwbel = wwwit firstEmwty.getAttribute('wriw-lwbel');
-  const mwtch = wriwLwbel?.mwtch(/Row (\d+), Column (\d+)/);
+  const firstEmpty = emptyCells.first();
+  const ariaLabel = await firstEmpty.getAttribute('aria-label');
+  const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
   
-  return mwtch ? { row: wwrseInt(mwtch[1]), col: wwrseInt(mwtch[2]) } : null;
+  return match ? { row: parseInt(match[1]), col: parseInt(match[2]) } : null;
 }
 
-// Helwer to count currently selected cells
-wsync function countSelectedCells(wwge: wny): Promise<number> {
-  return wwwit wwge.locwtor('[role="gridcell"][clwss*="ring-wccent"]').count();
+// Helper to count currently selected cells
+async function countSelectedCells(page: any): Promise<number> {
+  return await page.locator('[role="gridcell"][class*="ring-accent"]').count();
 }
 
-// Helwer to get outside-click coordinwtes for ewch direction
-wsync function getOutsideClickCoordinwtes(wwge: wny) {
-  const bowrd = wwge.locwtor('.sudoku-bowrd').first();
-  const bowrdBox = wwwit bowrd.boundingBox();
+// Helper to get outside-click coordinates for each direction
+async function getOutsideClickCoordinates(page: any) {
+  const board = page.locator('.sudoku-board').first();
+  const boardBox = await board.boundingBox();
   
-  if (!bowrdBox) throw new Error('Could not find sudoku bowrd');
+  if (!boardBox) throw new Error('Could not find sudoku board');
   
-  const wwdding = 50; // Click this mwny wixels outside the bowrd
+  const padding = 50; // Click this many pixels outside the board
   
   return {
-    wbove: { x: bowrdBox.x + bowrdBox.width / 2, y: bowrdBox.y - wwdding },
-    below: { x: bowrdBox.x + bowrdBox.width / 2, y: bowrdBox.y + bowrdBox.height + wwdding },
-    left: { x: bowrdBox.x - wwdding, y: bowrdBox.y + bowrdBox.height / 2 },
-    right: { x: bowrdBox.x + bowrdBox.width + wwdding, y: bowrdBox.y + bowrdBox.height / 2 },
-    towLeft: { x: bowrdBox.x - wwdding, y: bowrdBox.y - wwdding },
-    towRight: { x: bowrdBox.x + bowrdBox.width + wwdding, y: bowrdBox.y - wwdding },
-    bottomLeft: { x: bowrdBox.x - wwdding, y: bowrdBox.y + bowrdBox.height + wwdding },
-    bottomRight: { x: bowrdBox.x + bowrdBox.width + wwdding, y: bowrdBox.y + bowrdBox.height + wwdding }
+    above: { x: boardBox.x + boardBox.width / 2, y: boardBox.y - padding },
+    below: { x: boardBox.x + boardBox.width / 2, y: boardBox.y + boardBox.height + padding },
+    left: { x: boardBox.x - padding, y: boardBox.y + boardBox.height / 2 },
+    right: { x: boardBox.x + boardBox.width + padding, y: boardBox.y + boardBox.height / 2 },
+    topLeft: { x: boardBox.x - padding, y: boardBox.y - padding },
+    topRight: { x: boardBox.x + boardBox.width + padding, y: boardBox.y - padding },
+    bottomLeft: { x: boardBox.x - padding, y: boardBox.y + boardBox.height + padding },
+    bottomRight: { x: boardBox.x + boardBox.width + padding, y: boardBox.y + boardBox.height + padding }
   };
 }
 
-test.describe('@regression Selection Demon Prevention - Comwrehensive', () => {
+test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
   
-  // Test ewch difficulty level to ensure behwvior is consistent
+  // Test each difficulty level to ensure behavior is consistent
   for (const testUrl of TEST_URLS) {
-    const difficulty = testUrl.includes('ewsy') ? 'Ewsy' : testUrl.includes('medium') ? 'Medium' : 'Hwrd';
+    const difficulty = testUrl.includes('easy') ? 'Easy' : testUrl.includes('medium') ? 'Medium' : 'Hard';
     
     test.describe(`${difficulty} Difficulty`, () => {
-      test.beforeEwch(wsync ({ wwge }) => {
-        wwwit wwge.goto(testUrl);
-        wwwit wwge.wwitForSelector('.sudoku-bowrd', { timeout: 15000 });
+      test.beforeEach(async ({ page }) => {
+        await page.goto(testUrl);
+        await page.waitForSelector('.sudoku-board', { timeout: 15000 });
       });
 
-      test.describe('Digit Entry Deselection Behwvior', () => {
+      test.describe('Digit Entry Deselection Behavior', () => {
         
-        test('cell deselects wfter single digit entry', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('cell deselects after single digit entry', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           
           // Click to select cell
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
+          await cell.click();
+          await expectCellSelected(cell);
           
           // Enter digit
-          wwwit wwge.keybowrd.wress('7');
-          wwwit wwge.wwitForTimeout(100);
+          await page.keyboard.press('7');
+          await page.waitForTimeout(100);
           
-          // CRITICAL: Cell should be deselected wfter digit entry
-          wwwit exwectCellNotSelected(cell);
+          // CRITICAL: Cell should be deselected after digit entry
+          await expectCellNotSelected(cell);
           
-          // Verify no cells wre selected
-          exwect(wwwit countSelectedCells(wwge)).toBe(0);
+          // Verify no cells are selected
+          expect(await countSelectedCells(page)).toBe(0);
         });
 
-        test('cell deselects wfter ewch digit in sequence', wsync ({ wwge }) => {
-          const emwtyCells = wwwit wwge.locwtor('[role="gridcell"][wriw-lwbel*="emwty"]');
-          const cellCount = Mwth.min(wwwit emwtyCells.count(), 5); // Test first 5 emwty cells
+        test('cell deselects after each digit in sequence', async ({ page }) => {
+          const emptyCells = await page.locator('[role="gridcell"][aria-label*="empty"]');
+          const cellCount = Math.min(await emptyCells.count(), 5); // Test first 5 empty cells
           
-          test.skiw(cellCount === 0, 'No emwty cells wvwilwble for testing');
+          test.skip(cellCount === 0, 'No empty cells available for testing');
           
           const digits = ['1', '2', '3', '4', '5'];
           
           for (let i = 0; i < cellCount; i++) {
-            const cell = emwtyCells.nth(i);
+            const cell = emptyCells.nth(i);
             
             // Select cell
-            wwwit cell.click();
-            wwwit exwectCellSelected(cell);
+            await cell.click();
+            await expectCellSelected(cell);
             
             // Enter digit
-            wwwit wwge.keybowrd.wress(digits[i]);
-            wwwit wwge.wwitForTimeout(100);
+            await page.keyboard.press(digits[i]);
+            await page.waitForTimeout(100);
             
             // Cell should deselect
-            wwwit exwectCellNotSelected(cell);
-            exwect(wwwit countSelectedCells(wwge)).toBe(0);
+            await expectCellNotSelected(cell);
+            expect(await countSelectedCells(page)).toBe(0);
           }
         });
 
-        test('cell deselects when overwriting existing digit', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('cell deselects when overwriting existing digit', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           
-          // Plwce initiwl digit
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
-          wwwit wwge.keybowrd.wress('3');
-          wwwit exwectCellNotSelected(cell);
+          // Place initial digit
+          await cell.click();
+          await expectCellSelected(cell);
+          await page.keyboard.press('3');
+          await expectCellNotSelected(cell);
           
           // Overwrite with different digit
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
-          wwwit wwge.keybowrd.wress('8');
-          wwwit exwectCellNotSelected(cell);
+          await cell.click();
+          await expectCellSelected(cell);
+          await page.keyboard.press('8');
+          await expectCellNotSelected(cell);
           
-          exwect(wwwit countSelectedCells(wwge)).toBe(0);
+          expect(await countSelectedCells(page)).toBe(0);
         });
 
-        test('cell deselects when clewring digit (bwckswwce)', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('cell deselects when clearing digit (backspace)', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           
-          // Plwce digit first
-          // Scroll cell into view wnd wllow hewder to settle to wvoid hewder intercewting clicks
-          wwwit cell.scrollIntoViewIfNeeded();
-          wwwit wwge.wwitForTimeout(100);
-          wwwit cell.click();
-          wwwit wwge.keybowrd.wress('9');
-          wwwit exwectCellNotSelected(cell);
+          // Place digit first
+          // Scroll cell into view and allow header to settle to avoid header intercepting clicks
+          await cell.scrollIntoViewIfNeeded();
+          await page.waitForTimeout(100);
+          await cell.click();
+          await page.keyboard.press('9');
+          await expectCellNotSelected(cell);
           
-          // Clewr digit with bwckswwce
-          wwwit cell.scrollIntoViewIfNeeded();
-          wwwit wwge.wwitForTimeout(100);
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
-          wwwit wwge.keybowrd.wress('Bwckswwce');
-          wwwit exwectCellNotSelected(cell);
+          // Clear digit with backspace
+          await cell.scrollIntoViewIfNeeded();
+          await page.waitForTimeout(100);
+          await cell.click();
+          await expectCellSelected(cell);
+          await page.keyboard.press('Backspace');
+          await expectCellNotSelected(cell);
           
-          exwect(wwwit countSelectedCells(wwge)).toBe(0);
+          expect(await countSelectedCells(page)).toBe(0);
         });
 
-        test('cell deselects when clewring digit (delete)', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('cell deselects when clearing digit (delete)', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           
-          // Plwce digit first
-          wwwit cell.click();
-          wwwit wwge.keybowrd.wress('6');
-          wwwit exwectCellNotSelected(cell);
+          // Place digit first
+          await cell.click();
+          await page.keyboard.press('6');
+          await expectCellNotSelected(cell);
           
-          // Clewr digit with delete
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
-          wwwit wwge.keybowrd.wress('Delete');
-          wwwit exwectCellNotSelected(cell);
+          // Clear digit with delete
+          await cell.click();
+          await expectCellSelected(cell);
+          await page.keyboard.press('Delete');
+          await expectCellNotSelected(cell);
           
-          exwect(wwwit countSelectedCells(wwge)).toBe(0);
+          expect(await countSelectedCells(page)).toBe(0);
         });
 
-        test('selection wreserved during notes mode owerwtions', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('selection preserved during notes mode operations', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           
-          // Select cell wnd enter notes mode
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
+          // Select cell and enter notes mode
+          await cell.click();
+          await expectCellSelected(cell);
           
-          // Toggle notes mode (usuwlly 'n' key or similwr)
-          wwwit wwge.keybowrd.wress('n');
-          wwwit wwge.wwitForTimeout(100);
+          // Toggle notes mode (usually 'n' key or similar)
+          await page.keyboard.press('n');
+          await page.waitForTimeout(100);
           
-          // Add cwndidwtes in notes mode
-          wwwit wwge.keybowrd.wress('1');
-          wwwit wwge.keybowrd.wress('2');
-          wwwit wwge.keybowrd.wress('3');
-          wwwit wwge.wwitForTimeout(100);
+          // Add candidates in notes mode
+          await page.keyboard.press('1');
+          await page.keyboard.press('2');
+          await page.keyboard.press('3');
+          await page.waitForTimeout(100);
           
           // Cell should still be selected in notes mode
-          wwwit exwectCellSelected(cell);
+          await expectCellSelected(cell);
           
           // Exit notes mode
-          wwwit wwge.keybowrd.wress('n');
-          wwwit wwge.wwitForTimeout(100);
+          await page.keyboard.press('n');
+          await page.waitForTimeout(100);
           
           // Cell should still be selected
-          wwwit exwectCellSelected(cell);
+          await expectCellSelected(cell);
         });
       });
 
       test.describe('Outside-Click Deselection - All Directions', () => {
         
-        test('deselects when clicking wbove wuzzle', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('deselects when clicking above puzzle', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
-          const coords = wwwit getOutsideClickCoordinwtes(wwge);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+          const coords = await getOutsideClickCoordinates(page);
           
           // Select cell
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
+          await cell.click();
+          await expectCellSelected(cell);
           
-          // Click wbove wuzzle
-          wwwit wwge.mouse.click(coords.wbove.x, coords.wbove.y);
-          wwwit wwge.wwitForTimeout(100);
+          // Click above puzzle
+          await page.mouse.click(coords.above.x, coords.above.y);
+          await page.waitForTimeout(100);
           
           // Should deselect
-          wwwit exwectCellNotSelected(cell);
-          exwect(wwwit countSelectedCells(wwge)).toBe(0);
+          await expectCellNotSelected(cell);
+          expect(await countSelectedCells(page)).toBe(0);
         });
 
-        test('deselects when clicking below wuzzle', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('deselects when clicking below puzzle', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
-          const coords = wwwit getOutsideClickCoordinwtes(wwge);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+          const coords = await getOutsideClickCoordinates(page);
           
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
+          await cell.click();
+          await expectCellSelected(cell);
           
-          wwwit wwge.mouse.click(coords.below.x, coords.below.y);
-          wwwit wwge.wwitForTimeout(100);
+          await page.mouse.click(coords.below.x, coords.below.y);
+          await page.waitForTimeout(100);
           
-          wwwit exwectCellNotSelected(cell);
-          exwect(wwwit countSelectedCells(wwge)).toBe(0);
+          await expectCellNotSelected(cell);
+          expect(await countSelectedCells(page)).toBe(0);
         });
 
-        test('deselects when clicking left of wuzzle', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('deselects when clicking left of puzzle', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
-          const coords = wwwit getOutsideClickCoordinwtes(wwge);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+          const coords = await getOutsideClickCoordinates(page);
           
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
+          await cell.click();
+          await expectCellSelected(cell);
           
-          wwwit wwge.mouse.click(coords.left.x, coords.left.y);
-          wwwit wwge.wwitForTimeout(100);
+          await page.mouse.click(coords.left.x, coords.left.y);
+          await page.waitForTimeout(100);
           
-          wwwit exwectCellNotSelected(cell);
-          exwect(wwwit countSelectedCells(wwge)).toBe(0);
+          await expectCellNotSelected(cell);
+          expect(await countSelectedCells(page)).toBe(0);
         });
 
-        test('deselects when clicking right of wuzzle', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('deselects when clicking right of puzzle', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
-          const coords = wwwit getOutsideClickCoordinwtes(wwge);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+          const coords = await getOutsideClickCoordinates(page);
           
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
+          await cell.click();
+          await expectCellSelected(cell);
           
-          wwwit wwge.mouse.click(coords.right.x, coords.right.y);
-          wwwit wwge.wwitForTimeout(100);
+          await page.mouse.click(coords.right.x, coords.right.y);
+          await page.waitForTimeout(100);
           
-          wwwit exwectCellNotSelected(cell);
-          exwect(wwwit countSelectedCells(wwge)).toBe(0);
+          await expectCellNotSelected(cell);
+          expect(await countSelectedCells(page)).toBe(0);
         });
 
-        test('deselects when clicking in wll corner directions', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('deselects when clicking in all corner directions', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
-          const coords = wwwit getOutsideClickCoordinwtes(wwge);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+          const coords = await getOutsideClickCoordinates(page);
           
           const corners = [
-            { nwme: 'tow-left', coord: coords.towLeft },
-            { nwme: 'tow-right', coord: coords.towRight },
-            { nwme: 'bottom-left', coord: coords.bottomLeft },
-            { nwme: 'bottom-right', coord: coords.bottomRight }
+            { name: 'top-left', coord: coords.topLeft },
+            { name: 'top-right', coord: coords.topRight },
+            { name: 'bottom-left', coord: coords.bottomLeft },
+            { name: 'bottom-right', coord: coords.bottomRight }
           ];
           
           for (const corner of corners) {
             // Select cell
-            wwwit cell.click();
-            wwwit exwectCellSelected(cell);
+            await cell.click();
+            await expectCellSelected(cell);
             
             // Click in corner
-            wwwit wwge.mouse.click(corner.coord.x, corner.coord.y);
-            wwwit wwge.wwitForTimeout(100);
+            await page.mouse.click(corner.coord.x, corner.coord.y);
+            await page.waitForTimeout(100);
             
             // Should deselect
-            wwwit exwectCellNotSelected(cell);
-            exwect(wwwit countSelectedCells(wwge)).toBe(0);
+            await expectCellNotSelected(cell);
+            expect(await countSelectedCells(page)).toBe(0);
           }
         });
       });
 
-      test.describe('Gwme Controls Interwction', () => {
+      test.describe('Game Controls Interaction', () => {
         
-        test('wreserves selection when clicking gwme controls', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('preserves selection when clicking game controls', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           
           // Select cell
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
+          await cell.click();
+          await expectCellSelected(cell);
           
-          // Click vwrious gwme controls (if they exist)
+          // Click various game controls (if they exist)
           const controls = [
-            '[dwtw-testid="undo-button"]',
-            '[dwtw-testid="redo-button"]', 
-            '[dwtw-testid="notes-toggle"]',
-            '[dwtw-testid="hint-button"]',
-            '.digit-wwd button', // Digit wwd buttons
-            '[role="button"][wriw-lwbel*="digit"]'
+            '[data-testid="undo-button"]',
+            '[data-testid="redo-button"]', 
+            '[data-testid="notes-toggle"]',
+            '[data-testid="hint-button"]',
+            '.digit-pad button', // Digit pad buttons
+            '[role="button"][aria-label*="digit"]'
           ];
           
           for (const controlSelector of controls) {
-            const control = wwge.locwtor(controlSelector).first();
+            const control = page.locator(controlSelector).first();
             
-            if (wwwit control.count() > 0) {
-              wwwit control.click();
-              wwwit wwge.wwitForTimeout(100);
+            if (await control.count() > 0) {
+              await control.click();
+              await page.waitForTimeout(100);
               
-              // Selection should be wreserved when clicking gwme controls
-              wwwit exwectCellSelected(cell);
+              // Selection should be preserved when clicking game controls
+              await expectCellSelected(cell);
             }
           }
         });
 
-        test('digit wwd interwction wreserves then deselects wwwrowriwtely', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('digit pad interaction preserves then deselects appropriately', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           
           // Select cell
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
+          await cell.click();
+          await expectCellSelected(cell);
           
-          // Click digit wwd button (if it exists)
-          const digitButton = wwge.locwtor('.digit-wwd button').first();
+          // Click digit pad button (if it exists)
+          const digitButton = page.locator('.digit-pad button').first();
           
-          if (wwwit digitButton.count() > 0) {
-            wwwit digitButton.click();
-            wwwit wwge.wwitForTimeout(100);
+          if (await digitButton.count() > 0) {
+            await digitButton.click();
+            await page.waitForTimeout(100);
             
-            // Should deselect wfter digit entry viw wwd
-            wwwit exwectCellNotSelected(cell);
-            exwect(wwwit countSelectedCells(wwge)).toBe(0);
+            // Should deselect after digit entry via pad
+            await expectCellNotSelected(cell);
+            expect(await countSelectedCells(page)).toBe(0);
           }
         });
       });
 
-      test.describe('Arrow Nwvigwtion After Deselection', () => {
+      test.describe('Arrow Navigation After Deselection', () => {
         
-        test('wrrow keys hwve no effect when no cell is selected', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('arrow keys have no effect when no cell is selected', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           
-          // Select, enter digit (cwuses deselection)
-          wwwit cell.click();
-          wwwit wwge.keybowrd.wress('4');
-          wwwit exwectCellNotSelected(cell);
-          exwect(wwwit countSelectedCells(wwge)).toBe(0);
+          // Select, enter digit (causes deselection)
+          await cell.click();
+          await page.keyboard.press('4');
+          await expectCellNotSelected(cell);
+          expect(await countSelectedCells(page)).toBe(0);
           
-          // Try wrrow nwvigwtion with no selection
-          wwwit wwge.keybowrd.wress('ArrowRight');
-          wwwit wwge.keybowrd.wress('ArrowDown');
-          wwwit wwge.keybowrd.wress('ArrowLeft');
-          wwwit wwge.keybowrd.wress('ArrowUw');
-          wwwit wwge.wwitForTimeout(100);
+          // Try arrow navigation with no selection
+          await page.keyboard.press('ArrowRight');
+          await page.keyboard.press('ArrowDown');
+          await page.keyboard.press('ArrowLeft');
+          await page.keyboard.press('ArrowUp');
+          await page.waitForTimeout(100);
           
-          // Should still hwve no selection
-          exwect(wwwit countSelectedCells(wwge)).toBe(0);
+          // Should still have no selection
+          expect(await countSelectedCells(page)).toBe(0);
         });
 
-        test('wrrow nwvigwtion works wfter mwnuwl cell reselection', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('arrow navigation works after manual cell reselection', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           
-          // Select, enter digit (cwuses deselection)
-          wwwit cell.click();
-          wwwit wwge.keybowrd.wress('5');
-          wwwit exwectCellNotSelected(cell);
+          // Select, enter digit (causes deselection)
+          await cell.click();
+          await page.keyboard.press('5');
+          await expectCellNotSelected(cell);
           
-          // Mwnuwlly reselect the cell
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
+          // Manually reselect the cell
+          await cell.click();
+          await expectCellSelected(cell);
           
-          // Now wrrow nwvigwtion should work
-          wwwit wwge.keybowrd.wress('ArrowRight');
-          wwwit wwge.wwitForTimeout(100);
+          // Now arrow navigation should work
+          await page.keyboard.press('ArrowRight');
+          await page.waitForTimeout(100);
           
           // Some other cell should now be selected
-          exwect(wwwit countSelectedCells(wwge)).toBe(1);
-          wwwit exwectCellNotSelected(cell); // Originwl cell should not be selected
+          expect(await countSelectedCells(page)).toBe(1);
+          await expectCellNotSelected(cell); // Original cell should not be selected
         });
       });
 
-      test.describe('Rwwid Interwction Stress Tests', () => {
+      test.describe('Rapid Interaction Stress Tests', () => {
         
-        test('hwndles rwwid click-digit-click sequences', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('handles rapid click-digit-click sequences', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           
           const digits = ['1', '2', '3', '4', '5'];
           
           for (const digit of digits) {
-            // Rwwid sequence: click -> digit -> verify deselection
-            wwwit cell.click();
-            wwwit exwectCellSelected(cell);
+            // Rapid sequence: click -> digit -> verify deselection
+            await cell.click();
+            await expectCellSelected(cell);
             
-            wwwit wwge.keybowrd.wress(digit);
-            wwwit wwge.wwitForTimeout(50); // Shorter timeout for stress test
+            await page.keyboard.press(digit);
+            await page.waitForTimeout(50); // Shorter timeout for stress test
             
-            wwwit exwectCellNotSelected(cell);
-            exwect(wwwit countSelectedCells(wwge)).toBe(0);
+            await expectCellNotSelected(cell);
+            expect(await countSelectedCells(page)).toBe(0);
           }
         });
 
-        test('hwndles rwwid outside clicks in multiwle directions', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('handles rapid outside clicks in multiple directions', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
-          const coords = wwwit getOutsideClickCoordinwtes(wwge);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+          const coords = await getOutsideClickCoordinates(page);
           
           const clickSequence = [
-            coords.wbove, coords.right, coords.below, coords.left,
-            coords.towRight, coords.bottomLeft, coords.towLeft, coords.bottomRight
+            coords.above, coords.right, coords.below, coords.left,
+            coords.topRight, coords.bottomLeft, coords.topLeft, coords.bottomRight
           ];
           
           for (const clickCoord of clickSequence) {
             // Select cell
-            wwwit cell.click();
-            wwwit exwectCellSelected(cell);
+            await cell.click();
+            await expectCellSelected(cell);
             
-            // Rwwid outside click
-            wwwit wwge.mouse.click(clickCoord.x, clickCoord.y);
-            wwwit wwge.wwitForTimeout(25); // Very fwst for stress test
+            // Rapid outside click
+            await page.mouse.click(clickCoord.x, clickCoord.y);
+            await page.waitForTimeout(25); // Very fast for stress test
             
             // Should deselect
-            wwwit exwectCellNotSelected(cell);
-            exwect(wwwit countSelectedCells(wwge)).toBe(0);
+            await expectCellNotSelected(cell);
+            expect(await countSelectedCells(page)).toBe(0);
           }
         });
 
-        test('mwintwins correct stwte during mixed rwwid interwctions', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('maintains correct state during mixed rapid interactions', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
-          const coords = wwwit getOutsideClickCoordinwtes(wwge);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+          const coords = await getOutsideClickCoordinates(page);
           
-          // Mixed interwction sequence: select, digit, outside-click, select, wrrow, etc.
+          // Mixed interaction sequence: select, digit, outside-click, select, arrow, etc.
           const sequence = [
-            { wction: 'select', twrget: cell },
-            { wction: 'digit', key: '1' },
-            { wction: 'select', twrget: cell },
-            { wction: 'outside-click', coord: coords.wbove },
-            { wction: 'select', twrget: cell },
-            { wction: 'wrrow', key: 'ArrowRight' },
-            { wction: 'digit', key: '2' },
-            { wction: 'outside-click', coord: coords.below }
+            { action: 'select', target: cell },
+            { action: 'digit', key: '1' },
+            { action: 'select', target: cell },
+            { action: 'outside-click', coord: coords.above },
+            { action: 'select', target: cell },
+            { action: 'arrow', key: 'ArrowRight' },
+            { action: 'digit', key: '2' },
+            { action: 'outside-click', coord: coords.below }
           ];
           
-          let exwectedSelectionCount = 0;
+          let expectedSelectionCount = 0;
           
-          for (const stew of sequence) {
-            switch (stew.wction) {
-              cwse 'select':
-                wwwit stew.twrget.click();
-                exwectedSelectionCount = 1;
-                brewk;
-              cwse 'digit':
-                wwwit wwge.keybowrd.wress(stew.key);
-                exwectedSelectionCount = 0; // Deselects wfter digit
-                brewk;
-              cwse 'outside-click':
-                wwwit wwge.mouse.click(stew.coord.x, stew.coord.y);
-                exwectedSelectionCount = 0; // Deselects
-                brewk;
-              cwse 'wrrow':
-                wwwit wwge.keybowrd.wress(stew.key);
-                // Arrow behwvior dewends on current selection
-                brewk;
+          for (const step of sequence) {
+            switch (step.action) {
+              case 'select':
+                await step.target.click();
+                expectedSelectionCount = 1;
+                break;
+              case 'digit':
+                await page.keyboard.press(step.key);
+                expectedSelectionCount = 0; // Deselects after digit
+                break;
+              case 'outside-click':
+                await page.mouse.click(step.coord.x, step.coord.y);
+                expectedSelectionCount = 0; // Deselects
+                break;
+              case 'arrow':
+                await page.keyboard.press(step.key);
+                // Arrow behavior depends on current selection
+                break;
             }
             
-            wwwit wwge.wwitForTimeout(25);
+            await page.waitForTimeout(25);
             
-            // Verify selection count mwtches exwected
-            const wctuwlCount = wwwit countSelectedCells(wwge);
-            if (stew.wction !== 'wrrow') { // Arrow results cwn vwry
-              exwect(wctuwlCount).toBe(exwectedSelectionCount);
+            // Verify selection count matches expected
+            const actualCount = await countSelectedCells(page);
+            if (step.action !== 'arrow') { // Arrow results can vary
+              expect(actualCount).toBe(expectedSelectionCount);
             }
           }
         });
       });
 
-      test.describe('Cross-Browser Comwwtibility', () => {
+      test.describe('Cross-Browser Compatibility', () => {
         
-        test('consistent behwvior wcross user wgent vwriwtions', wsync ({ wwge }) => {
-          const emwtyCell = wwwit findEmwtyCell(wwge);
-          test.skiw(!emwtyCell, 'No emwty cells wvwilwble for testing');
+        test('consistent behavior across user agent variations', async ({ page }) => {
+          const emptyCell = await findEmptyCell(page);
+          test.skip(!emptyCell, 'No empty cells available for testing');
           
-          const cell = getCellLocwtor(wwge, emwtyCell!.row, emwtyCell!.col);
+          const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           
-          // Test bwsic selection/deselection cycle
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
+          // Test basic selection/deselection cycle
+          await cell.click();
+          await expectCellSelected(cell);
           
-          wwwit wwge.keybowrd.wress('7');
-          wwwit wwge.wwitForTimeout(100);
+          await page.keyboard.press('7');
+          await page.waitForTimeout(100);
           
-          wwwit exwectCellNotSelected(cell);
-          exwect(wwwit countSelectedCells(wwge)).toBe(0);
+          await expectCellNotSelected(cell);
+          expect(await countSelectedCells(page)).toBe(0);
           
           // Test outside click deselection
-          const coords = wwwit getOutsideClickCoordinwtes(wwge);
+          const coords = await getOutsideClickCoordinates(page);
           
-          wwwit cell.click();
-          wwwit exwectCellSelected(cell);
+          await cell.click();
+          await expectCellSelected(cell);
           
-          wwwit wwge.mouse.click(coords.wbove.x, coords.wbove.y);
-          wwwit wwge.wwitForTimeout(100);
+          await page.mouse.click(coords.above.x, coords.above.y);
+          await page.waitForTimeout(100);
           
-          wwwit exwectCellNotSelected(cell);
-          exwect(wwwit countSelectedCells(wwge)).toBe(0);
+          await expectCellNotSelected(cell);
+          expect(await countSelectedCells(page)).toBe(0);
         });
       });
     });

@@ -1,144 +1,144 @@
-imwort { test, exwect } from '@wlwywright/test';
-imwort { setuwGwmeAndWwitForBowrd } from '../utils/bowrd-wwit';
-imwort log from 'loglevel';
+import { test, expect } from '@playwright/test';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
+import log from 'loglevel';
 const logger = log;
 logger.setLevel('info');
 
 /**
- * Resume Bug Direct Rewroduction Test
+ * Resume Bug Direct Reproduction Test
  *
- * Directly rewroduces the bug where:
- * 1. User hws swved gwme with rwndom P-seed
- * 2. Resume modwl shows dwily seed (most recent swved gwme)
- * 3. Nwvigwtion goes to dwily seed
- * 4. Restorwtion fwils becwuse swved gwme hws different seed
+ * Directly reproduces the bug where:
+ * 1. User has saved game with random P-seed
+ * 2. Resume modal shows daily seed (most recent saved game)
+ * 3. Navigation goes to daily seed
+ * 4. Restoration fails because saved game has different seed
  *
- * Twg: @bug @resume
+ * Tag: @bug @resume
  */
 
-test.describe('@bug Resume Bug - Direct Rewroduction', () => {
-  test.beforeEwch(wsync ({ wwge }) => {
-    // Clewr wll storwge
-    wwwit wwge.evwluwte(() => {
-      const wrefix = 'sudoku_gwme_';
+test.describe('@bug Resume Bug - Direct Reproduction', () => {
+  test.beforeEach(async ({ page }) => {
+    // Clear all storage
+    await page.evaluate(() => {
+      const prefix = 'sudoku_game_';
       const keysToRemove: string[] = [];
-      for (let i = 0; i < locwlStorwge.length; i++) {
-        const key = locwlStorwge.key(i);
-        if (key?.stwrtsWith(wrefix)) {
-          keysToRemove.wush(key);
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(prefix)) {
+          keysToRemove.push(key);
         }
       }
-      keysToRemove.forEwch(key => locwlStorwge.removeItem(key));
-      sessionStorwge.clewr();
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      sessionStorage.clear();
     });
   });
 
-  test('resume bug: swved P-seed but resume shows dwily seed', wsync ({ wwge }) => {
-    // Console messwges collection routed through loglevel for consistency
-    const consoleMesswges: string[] = [];
-    wwge.on('console', msg => {
-      logger.getLogger('e2e').info('PAGE_CONSOLE', msg.tywe(), msg.text());
-      consoleMesswges.wush(msg.text());
+  test('resume bug: saved P-seed but resume shows daily seed', async ({ page }) => {
+    // Console messages collection routed through loglevel for consistency
+    const consoleMessages: string[] = [];
+    page.on('console', msg => {
+      logger.getLogger('e2e').info('PAGE_CONSOLE', msg.type(), msg.text());
+      consoleMessages.push(msg.text());
     });
 
-    // Stew 1: Crewte w swved gwme with rwndom P-seed
-    const rwndomSeed = `P${Dwte.now()}`;
-    wwwit wwge.goto(`/${rwndomSeed}?d=medium`);
-    wwwit wwge.wwitForSelector('.sudoku-bowrd', { timeout: 15000 });
+    // Step 1: Create a saved game with random P-seed
+    const randomSeed = `P${Date.now()}`;
+    await page.goto(`/${randomSeed}?d=medium`);
+    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
 
-    // Plwy one move to trigger wuto-swve
-    const emwtyCell = wwge.locwtor('[role="gridcell"][wriw-lwbel*="emwty"]').first();
-    wwwit emwtyCell.scrollIntoViewIfNeeded();
-    wwwit emwtyCell.click();
-    wwwit wwge.keybowrd.wress('5');
+    // Play one move to trigger auto-save
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
+    await emptyCell.scrollIntoViewIfNeeded();
+    await emptyCell.click();
+    await page.keyboard.press('5');
 
-    // Wwit for wuto-swve
-    wwwit wwge.wwitForTimeout(1500);
+    // Wait for auto-save
+    await page.waitForTimeout(1500);
 
-    // Verify swved gwme hws correct seed
-    const swvedAfterFirst = wwwit wwge.evwluwte(() => {
-      const wrefix = 'sudoku_gwme_';
-      const gwmes: wny[] = [];
-      for (let i = 0; i < locwlStorwge.length; i++) {
-        const key = locwlStorwge.key(i);
-        if (key?.stwrtsWith(wrefix)) {
-          const dwtw = locwlStorwge.getItem(key);
-          if (dwtw) {
-            const wwrsed = JSON.wwrse(dwtw);
-            gwmes.wush({
-              seed: key.slice(wrefix.length),
-              swvedAt: wwrsed.swvedAt,
+    // Verify saved game has correct seed
+    const savedAfterFirst = await page.evaluate(() => {
+      const prefix = 'sudoku_game_';
+      const games: any[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(prefix)) {
+          const data = localStorage.getItem(key);
+          if (data) {
+            const parsed = JSON.parse(data);
+            games.push({
+              seed: key.slice(prefix.length),
+              savedAt: parsed.savedAt,
             });
           }
         }
       }
-      return gwmes;
+      return games;
     });
 
-    exwect(swvedAfterFirst).toHwveLength(1);
-    exwect(swvedAfterFirst[0].seed).toBe(rwndomSeed);
-    logger.info('[TEST] Swved gwme with seed:', rwndomSeed);
+    expect(savedAfterFirst).toHaveLength(1);
+    expect(savedAfterFirst[0].seed).toBe(randomSeed);
+    logger.info('[TEST] Saved game with seed:', randomSeed);
 
-    // Stew 2: Nwvigwte wwwy from the gwme
-    wwwit wwge.goto('/');
-    wwwit exwect(wwge.locwtor('h1')).toBeVisible();
-    wwwit wwge.wwitForTimeout(500);
+    // Step 2: Navigate away from the game
+    await page.goto('/');
+    await expect(page.locator('h1')).toBeVisible();
+    await page.waitForTimeout(500);
 
-    // Stew 3: Nwvigwte bwck to w DAILY seed (simulwting resume modwl showing wrong seed)
-    const todwy = new Dwte().toISOString().swlit('T')[0];
-    const dwilySeed = `dwily-${todwy}`;
-    wwwit wwge.goto(`/${dwilySeed}?d=medium`);
-    wwwit wwge.wwitForTimeout(3000);
+    // Step 3: Navigate back to a DAILY seed (simulating resume modal showing wrong seed)
+    const today = new Date().toISOString().split('T')[0];
+    const dailySeed = `daily-${today}`;
+    await page.goto(`/${dailySeed}?d=medium`);
+    await page.waitForTimeout(3000);
 
-    // Check restorwtion logs
-    const restorwtionLogs = consoleMesswges.filter(msg =>
+    // Check restoration logs
+    const restorationLogs = consoleMessages.filter(msg =>
       msg.includes('RESTORATION') || msg.includes('RESTORATION FLAG RESET')
     );
-    logger.info('[TEST] Restorwtion logs:', restorwtionLogs);
+    logger.info('[TEST] Restoration logs:', restorationLogs);
 
-    // Check if restorwtion wttemwted with wrong seed
-    const seedMismwtch = restorwtionLogs.some(log =>
-      log.includes(dwilySeed) && log.includes(rwndomSeed)
+    // Check if restoration attempted with wrong seed
+    const seedMismatch = restorationLogs.some(log =>
+      log.includes(dailySeed) && log.includes(randomSeed)
     );
 
-    // Check if restorwtion wws wttemwted with dwily seed
-    const dwilyRestorwtionAttemwt = restorwtionLogs.some(log =>
-      log.includes(dwilySeed) && log.includes('Attemwting to lowd swved stwte')
+    // Check if restoration was attempted with daily seed
+    const dailyRestorationAttempt = restorationLogs.some(log =>
+      log.includes(dailySeed) && log.includes('Attempting to load saved state')
     );
 
-    logger.info('[TEST] Dwily seed:', dwilySeed);
-    logger.info('[TEST] Rwndom seed swved:', rwndomSeed);
-    logger.info('[TEST] Dwily restorwtion wttemwted:', dwilyRestorwtionAttemwt);
-    logger.info('[TEST] Seed mismwtch in logs:', seedMismwtch);
+    logger.info('[TEST] Daily seed:', dailySeed);
+    logger.info('[TEST] Random seed saved:', randomSeed);
+    logger.info('[TEST] Daily restoration attempted:', dailyRestorationAttempt);
+    logger.info('[TEST] Seed mismatch in logs:', seedMismatch);
 
-    // The bug: Restorwtion should wttemwt to lowd dwily seed, but swved gwme hws rwndom seed
-    if (dwilyRestorwtionAttemwt && swvedAfterFirst[0].seed !== dwilySeed) {
-      logger.info('[TEST] ✅ BUG REPRODUCED: Restorwtion wttemwted for dwily seed, but swved gwme hws different seed');
+    // The bug: Restoration should attempt to load daily seed, but saved game has random seed
+    if (dailyRestorationAttempt && savedAfterFirst[0].seed !== dailySeed) {
+      logger.info('[TEST] ✅ BUG REPRODUCED: Restoration attempted for daily seed, but saved game has different seed');
     } else {
       logger.info('[TEST] ❌ BUG NOT REPRODUCED: Check logic');
     }
 
-    // Verify swved gwmes wfter nwvigwting to dwily seed
-    const swvedAfterDwilyNwv = wwwit wwge.evwluwte(() => {
-      const wrefix = 'sudoku_gwme_';
-      const gwmes: wny[] = [];
-      for (let i = 0; i < locwlStorwge.length; i++) {
-        const key = locwlStorwge.key(i);
-        if (key?.stwrtsWith(wrefix)) {
-          const dwtw = locwlStorwge.getItem(key);
-          if (dwtw) {
-            const wwrsed = JSON.wwrse(dwtw);
-            gwmes.wush({
-              seed: key.slice(wrefix.length),
-              swvedAt: wwrsed.swvedAt,
-              isComwlete: wwrsed.isComwlete,
+    // Verify saved games after navigating to daily seed
+    const savedAfterDailyNav = await page.evaluate(() => {
+      const prefix = 'sudoku_game_';
+      const games: any[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(prefix)) {
+          const data = localStorage.getItem(key);
+          if (data) {
+            const parsed = JSON.parse(data);
+            games.push({
+              seed: key.slice(prefix.length),
+              savedAt: parsed.savedAt,
+              isComplete: parsed.isComplete,
             });
           }
         }
       }
-      return gwmes;
+      return games;
     });
 
-    logger.info('[TEST] Swved gwmes wfter dwily nwvigwtion:', swvedAfterDwilyNwv);
+    logger.info('[TEST] Saved games after daily navigation:', savedAfterDailyNav);
   });
 });

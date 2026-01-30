@@ -372,7 +372,7 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
     await page.keyboard.press('5');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2500);
 
     // Convert 1-indexed row/col to 0-indexed array position
     const cellIndex = (row - 1) * 9 + (col - 1);

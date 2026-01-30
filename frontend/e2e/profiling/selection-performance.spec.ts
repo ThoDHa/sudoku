@@ -12,6 +12,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 
 // Performance thresholds (in milliseconds)
 const PERFORMANCE_THRESHOLDS = {

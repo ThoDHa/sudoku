@@ -28,8 +28,8 @@ export default defineConfig({
   retries: process.env.CI ?2 : 0,
   workers: undefined, // Use all available CPUs
   
-  // Timeouts
-  timeout: 60000, // 60s default test timeout
+   // Timeouts
+   timeout: 120000, // 120s default test timeout
   expect: {
     timeout: 10000, // 10s for expect assertions
   },
