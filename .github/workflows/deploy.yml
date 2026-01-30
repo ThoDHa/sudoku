@@ -234,6 +234,7 @@ jobs:
           name: allure-history
           path: allure-history
         continue-on-error: true
+        if: always() && github.run_number > 1
 
       - name: Copy history to results
         run: |

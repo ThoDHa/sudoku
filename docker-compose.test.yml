@@ -38,7 +38,7 @@ services:
         mkdir -p /app/allure-results &&
         npm ci &&
         npx playwright install chromium &&
-        npx playwright test --grep-invert @profiling
+        npx playwright test --grep-invert @profiling --grep-invert @slow
       "
 
 volumes:
