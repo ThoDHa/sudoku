@@ -69,7 +69,7 @@ test.describe('@integration Timer - Counting', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
   });
 
   test('timer starts from 0:00 on new game', async ({ page }) => {
@@ -120,7 +120,7 @@ test.describe('@integration Timer - Pause Behavior', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
   });
 
   test('timer shows paused state when page loses visibility', async ({ page }) => {
@@ -190,7 +190,7 @@ test.describe('@integration Timer - Pause Behavior', () => {
 
   test('pause overlay appears when timer is paused', async ({ page }) => {
     // Fixed: route removed, beforeEach handles navigation
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Wait for timer to actually start counting (not just 0:00)
     const timer = getTimerLocator(page);
@@ -224,7 +224,7 @@ test.describe('@integration Timer - Pause Behavior', () => {
 test.describe('@integration Timer - Hide Timer Preference', () => {
   test('can hide timer via menu toggle', async ({ page }) => {
     // Fixed: route removed, beforeEach handles navigation
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     const timer = getTimerLocator(page);
 
@@ -259,7 +259,7 @@ test.describe('@integration Timer - Hide Timer Preference', () => {
     });
 
     // Fixed: route removed, beforeEach handles navigation
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     const timer = getTimerLocator(page);
 
@@ -276,7 +276,7 @@ test.describe('@integration Timer - Hide Timer Preference', () => {
     });
 
     // Fixed: route removed, beforeEach handles navigation
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     const timer = getTimerLocator(page);
 
@@ -312,7 +312,7 @@ test.describe('@integration Timer - Persistence', () => {
   test('timer value persists across page reload', async ({ page }) => {
     const seed = 'Ptimer-reload-' + Date.now();
     await page.goto(`/${seed}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     const timer = getTimerLocator(page);
 
@@ -328,7 +328,7 @@ test.describe('@integration Timer - Persistence', () => {
 
     // Reload the page
     await page.reload();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Get timer value after reload
     const timeAfterReload = await timer.textContent();
@@ -357,7 +357,7 @@ test.describe('@integration Timer - Persistence', () => {
     });
 
     await page.goto('/?d=easy&seed=Ptimer-continue-test');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Wait for the timer to be restored from saved state
     // The app first resets the timer, then a second effect restores the saved elapsed time
@@ -385,7 +385,7 @@ test.describe('@integration Timer - Completion', () => {
   test('timer stops when puzzle is completed', async ({ page }) => {
     // Use a puzzle that we can quickly complete or simulate completion
     // Fixed: route removed, beforeEach handles navigation
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     const timer = getTimerLocator(page);
 
@@ -461,7 +461,7 @@ test.describe('@integration Timer - Edge Cases', () => {
     });
 
     await page.goto('/?d=easy&seed=Ptimer-long-test');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     const timer = getTimerLocator(page);
     const timerText = await timer.textContent();
@@ -476,7 +476,7 @@ test.describe('@integration Timer - Edge Cases', () => {
 
   test('timer does not go negative', async ({ page }) => {
     // Fixed: route removed, beforeEach handles navigation
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     const timer = getTimerLocator(page);
     const timerText = await timer.textContent();

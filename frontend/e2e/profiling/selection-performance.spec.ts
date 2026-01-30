@@ -78,8 +78,7 @@ async function getOutsideClickCoordinates(page: any) {
 test.describe('@performance Selection Performance - No Regression', () => {
   
   test.beforeEach(async ({ page }) => {
-    await page.goto('/keyboard456?d=easy');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
   });
 
   test.describe('Cell Selection Performance', () => {

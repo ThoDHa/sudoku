@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 
 /**
  * Notes Mode Integration Tests

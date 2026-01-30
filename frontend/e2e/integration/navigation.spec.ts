@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 
 /**
  * Navigation & Smoke Tests
@@ -182,9 +183,7 @@ test.describe('@smoke In-Game Menu Navigation', () => {
 
   test('New Game from menu shows single confirmation when in-progress game exists', async ({ page }) => {
     // Start a game and make some progress
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     
     // Make a move to create an in-progress game
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
@@ -271,9 +270,7 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     // starting new game from menu, because Menu already handled confirmation
 
     // Start a game and make some progress to create an in-progress save
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Make a move to ensure game is saved
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
@@ -317,9 +314,7 @@ test.describe('@smoke In-Game Menu Navigation', () => {
   test('seed change does not show in-progress modal', async ({ page }) => {
     // Test that changing puzzle seed directly doesn't trigger in-progress modal
     // Start a game and save progress
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Make a move to create saved progress
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();

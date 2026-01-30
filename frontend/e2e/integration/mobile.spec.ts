@@ -134,9 +134,7 @@ test.describe('@mobile Core UI - Mobile Viewport', () => {
 
   test('board fits within viewport', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     const board = page.locator('.sudoku-board');
     const boardBox = await board.boundingBox();
@@ -151,9 +149,7 @@ test.describe('@mobile Core UI - Mobile Viewport', () => {
 
   test('control buttons are visible', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // On mobile, buttons show only emojis (no text)
     await expect(page.locator('button[title="Undo"]')).toBeVisible();
@@ -205,9 +201,7 @@ test.describe('@mobile Game Features - Mobile', () => {
 
   test('technique hint button is accessible', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     const techniqueButton = page.locator('button:has-text("Technique"), button:has-text("?")').first();
     await expect(techniqueButton).toBeVisible();
@@ -222,9 +216,7 @@ test.describe('@mobile Game Features - Mobile', () => {
 
   test('technique hint shows toast or modal', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     // Wait for WASM to be ready
     await waitForWasmReady(page);
 
@@ -252,9 +244,7 @@ test.describe('@mobile Game Features - Mobile', () => {
 
   test('technique modal fits within viewport', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     // Wait for WASM to be ready
     await waitForWasmReady(page);
 
@@ -314,9 +304,7 @@ test.describe('@mobile Game Features - Mobile', () => {
 test.describe('@mobile Touch Interactions', () => {
   test('clicking selects cell', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Use a cell in a lower row to avoid sticky header
     const cell = page.locator('[role="gridcell"][aria-label*="Row 5"]').first();
@@ -329,9 +317,7 @@ test.describe('@mobile Touch Interactions', () => {
 
   test('number pad buttons work', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Find an empty cell
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
@@ -360,9 +346,7 @@ test.describe('@mobile Touch Interactions', () => {
 
   test('undo button works after placing digit', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Find and select empty cell
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]').first();
@@ -395,9 +379,7 @@ test.describe('@mobile Touch Interactions', () => {
 
   test('erase button clears cell', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Find and select empty cell
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 7"][aria-label*="empty"]').first();
@@ -443,9 +425,7 @@ test.describe('@mobile Touch Target Compliance', () => {
 
   test('number pad buttons have adequate touch targets', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Check multiple number buttons
     for (const num of [1, 5, 9]) {
@@ -462,9 +442,7 @@ test.describe('@mobile Touch Target Compliance', () => {
 
   test('control buttons have adequate touch targets', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     const controlButtons = [
       page.locator('button[title="Undo"]'),
@@ -487,9 +465,7 @@ test.describe('@mobile Touch Target Compliance', () => {
 
   test('sudoku cells have adequate touch targets', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Check a few cells across the board
     const cells = page.locator('[role="gridcell"]');
@@ -538,9 +514,7 @@ test.describe('@mobile Orientation Handling', () => {
   test('portrait orientation displays correctly', async ({ page }) => {
     // Portrait: 375x667 (iPhone SE)
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     const board = page.locator('.sudoku-board');
     await expect(board).toBeVisible();
@@ -556,9 +530,7 @@ test.describe('@mobile Orientation Handling', () => {
   test('landscape orientation displays correctly', async ({ page }) => {
     // Landscape: 667x375 (iPhone SE rotated)
     await page.setViewportSize({ width: 667, height: 375 });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     const board = page.locator('.sudoku-board');
     await expect(board).toBeVisible();
@@ -571,9 +543,7 @@ test.describe('@mobile Orientation Handling', () => {
   test('orientation change preserves game state', async ({ page }) => {
     // Start in portrait
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Make a move
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
@@ -756,9 +726,7 @@ test.describe('@mobile Full Gameplay', () => {
 
   test('can complete puzzle using hints', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     
     // Wait for WASM to be ready before using hints
     await waitForWasmReady(page);
@@ -800,9 +768,7 @@ test.describe('@mobile Full Gameplay', () => {
 
   test('game progress is maintained across interactions', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     
     // Wait for WASM to be ready before using hints
     await waitForWasmReady(page);
@@ -837,9 +803,7 @@ test.describe('@mobile Full Gameplay', () => {
 test.describe('@mobile Mobile Keyboard Handling', () => {
   test('native virtual keyboard does not appear when tapping cells', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Select an empty cell
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 4"][aria-label*="empty"]').first();
@@ -861,9 +825,7 @@ test.describe('@mobile Mobile Keyboard Handling', () => {
 
   test('in-app number pad works for digit entry', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Select an empty cell and capture its coordinates
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 4"][aria-label*="empty"]').first();
@@ -892,9 +854,7 @@ test.describe('@mobile Mobile Keyboard Handling', () => {
 
   test('number pad remains visible when cell is selected', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Select a cell
     const cell = page.locator('[role="gridcell"][aria-label*="Row 3"]').first();
@@ -910,9 +870,7 @@ test.describe('@mobile Mobile Keyboard Handling', () => {
 
   test('physical keyboard input works when focused', async ({ page, mobileViewport }) => {
     void mobileViewport;
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
 
     // Select an empty cell
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 8"][aria-label*="empty"]').first();

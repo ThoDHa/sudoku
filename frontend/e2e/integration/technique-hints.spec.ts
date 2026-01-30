@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 
 /**
  * Technique Hints Integration Tests
@@ -65,9 +66,7 @@ test.describe('@integration Technique Hints - Basic Functionality', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     
     // Wait for WASM to be ready - critical for hint functionality
     // Production builds may take longer to initialize WASM than to render the board
@@ -200,9 +199,7 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     // Wait for WASM to be ready
     await waitForWasmReady(page);
   });
@@ -377,9 +374,7 @@ test.describe('@integration Technique Hints - Counter', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     // Wait for WASM to be ready
     await waitForWasmReady(page);
   });
@@ -441,9 +436,7 @@ test.describe('@integration Technique Hints - Mobile', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     // Wait for WASM to be ready
     await waitForWasmReady(page);
   });
@@ -541,9 +534,7 @@ test.describe('@integration Technique Hints - Edge Cases', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     // Wait for WASM to be ready
     await waitForWasmReady(page);
     
@@ -578,9 +569,7 @@ test.describe('@integration Technique Hints - Edge Cases', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     // Wait for WASM to be ready
     await waitForWasmReady(page);
     

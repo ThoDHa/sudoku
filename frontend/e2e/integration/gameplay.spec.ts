@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 import { selectCell } from '../utils/selectCell';
 import { allure } from 'allure-playwright';
 import { EPICS, FEATURES, STORIES } from '../sdk/allure-utils';
@@ -36,9 +37,7 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
   });
 
   test('clicking an empty cell selects it', async ({ page }) => {
@@ -173,9 +172,7 @@ test.describe('@integration Gameplay - Mobile Touch', () => {
     });
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
   });
 
   test('clicking selects cell on mobile viewport', async ({ page }) => {

@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 import { PlaywrightUISDK } from '../sdk';
 
 /**
@@ -144,9 +145,7 @@ test.describe('@slow Hint System Stability', () => {
   test.setTimeout(120_000);
 
   test('hint button remains functional during extended use', async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     await waitForWasmReady(page);
     
     const sdk = new PlaywrightUISDK({ page });
@@ -177,9 +176,7 @@ test.describe('@slow Hint System Stability', () => {
   });
 
   test('hint button works alongside timer', async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     await waitForWasmReady(page);
     
     const sdk = new PlaywrightUISDK({ page });
@@ -215,9 +212,7 @@ test.describe('@slow Hint System Consistency', () => {
   test.setTimeout(60_000);
 
   test('hint button provides consistent visual feedback', async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     await waitForWasmReady(page);
     
     const sdk = new PlaywrightUISDK({ page });
@@ -249,9 +244,7 @@ test.describe('@slow Hint System Consistency', () => {
   });
 
   test('hint system handles multiple interactions gracefully', async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     await waitForWasmReady(page);
     
     const sdk = new PlaywrightUISDK({ page });
@@ -287,9 +280,7 @@ test.describe('@slow Hint System - Mobile Viewport', () => {
 
   test('hint button provides visual guidance on mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
     await waitForWasmReady(page);
     
     const sdk = new PlaywrightUISDK({ page });

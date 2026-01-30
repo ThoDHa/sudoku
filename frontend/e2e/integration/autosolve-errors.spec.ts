@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 
 /**
  * Autosolve Error Handling Tests

@@ -13,6 +13,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 
 // Test configuration for different game difficulties
 // Using custom game route - no seed validation, no daily prompt

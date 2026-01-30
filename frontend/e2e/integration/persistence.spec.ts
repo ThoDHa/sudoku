@@ -115,7 +115,7 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
 
   test('entering multiple digits saves all to localStorage', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Find first empty cell and enter digit
     const { cell: cell1, row: row1, col: col1 } = await findEmptyCell(page, 5);
@@ -147,7 +147,7 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
 
   test('clearing a digit updates saved state', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Enter and then clear a digit
     const { cell, row, col } = await findEmptyCell(page);
@@ -184,7 +184,7 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
 
   test('digits persist after page reload', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
     
     // Clear any existing game state AFTER initial load (not via addInitScript which runs on reload too)
     await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
@@ -198,7 +198,7 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
 
     // Reload the page
     await page.reload();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Verify the digit is restored
     await expectCellValue(page, row, col, 4);
@@ -206,7 +206,7 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
 
   test('notes persist after page reload', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
     
     // Clear any existing game state AFTER initial load
     await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
@@ -233,7 +233,7 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
 
     // Reload the page
     await page.reload();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Find the SAME cell by row/col (notes should be restored)
     const cellAfterReload = getCellLocator(page, row, col);
@@ -246,7 +246,7 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
 
   test('partial game state restores exactly on reload', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
     
     // Clear any existing game state AFTER initial load
     await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
@@ -266,7 +266,7 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
 
     // Reload
     await page.reload();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Verify both digits are restored
     await expectCellValue(page, row1, col1, 8);
@@ -282,7 +282,7 @@ test.describe('@integration Persistence - Timer Persistence', () => {
 
   test('timer continues from saved time after reload', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
     
     // Clear any existing game state AFTER initial load (not via addInitScript which runs on reload too)
     await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
@@ -302,7 +302,7 @@ test.describe('@integration Persistence - Timer Persistence', () => {
 
     // Reload
     await page.reload();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Get timer value after reload
     const timerAfterReload = page.locator('[class*="timer"], [data-testid="timer"], header').filter({ hasText: /\d:\d\d/ }).first();
@@ -327,7 +327,7 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
     await page.evaluate((seed: string) => {
       localStorage.removeItem(`sudoku_game_${seed}`);
     }, TEST_SEED);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Make some moves
     const { cell, row, col } = await findEmptyCell(page);
@@ -365,7 +365,7 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
     await page.evaluate((seed: string) => {
       localStorage.removeItem(`sudoku_game_${seed}`);
     }, TEST_SEED);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Make a move to trigger save
     const { cell, row, col } = await findEmptyCell(page);
@@ -419,7 +419,7 @@ test.describe('@integration Persistence - Preferences', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
   });
 
   test('preferences persist after page reload', async ({ page }) => {
@@ -441,7 +441,7 @@ test.describe('@integration Persistence - Preferences', () => {
 
       // Reload
       await page.reload();
-      await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+      await await setupGameAndWaitForBoard(page);
 
       // Check preferences are saved
       const prefs = await getLocalStorageItem(page, PREFERENCES_KEY);
@@ -453,7 +453,7 @@ test.describe('@integration Persistence - Preferences', () => {
 
   test('auto-solve speed preference persists', async ({ page }) => {
     await page.goto('/speed-test-456?d=easy');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Set a speed preference via the menu
     const menuButton = page.locator('header button[aria-label*="Menu"], header button:has(svg)').last();
@@ -472,7 +472,7 @@ test.describe('@integration Persistence - Preferences', () => {
 
       // Reload and check preferences
       await page.reload();
-      await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+      await await setupGameAndWaitForBoard(page);
 
       const prefs = await getLocalStorageItem(page, PREFERENCES_KEY);
       expect(prefs).toBeTruthy();
@@ -533,7 +533,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
       localStorage.removeItem(`sudoku_game_${seed1}`);
       localStorage.removeItem(`sudoku_game_${seed2}`);
     }, [DAILY_SEED, PRACTICE_SEED]);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     const { cell: dailyCell, row: dailyRow, col: dailyCol } = await findEmptyCell(page, 5);
     await dailyCell.scrollIntoViewIfNeeded();
@@ -543,7 +543,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
 
     // Navigate to practice game (different mode, so daily state should persist)
     await page.goto(`/${PRACTICE_SEED}?d=medium`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     const { cell: practiceCell, row: practiceRow, col: practiceCol } = await findEmptyCell(page, 6);
     await practiceCell.scrollIntoViewIfNeeded();
@@ -553,7 +553,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
 
     // Return to daily game
     await page.goto(`/${DAILY_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Daily game should have its own state preserved
     await expectCellValue(page, dailyRow, dailyCol, 1);
@@ -580,7 +580,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
       localStorage.removeItem(`sudoku_game_${seed1}`);
       localStorage.removeItem(`sudoku_game_${seed2}`);
     }, [DAILY_SEED, PRACTICE_SEED]);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     const { cell: cell1 } = await findEmptyCell(page, 5);
     await cell1.scrollIntoViewIfNeeded();
@@ -590,7 +590,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
 
     // Setup practice game with different moves (different mode)
     await page.goto(`/${PRACTICE_SEED}?d=medium`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     const { cell: cell2, row: row2, col: col2 } = await findEmptyCell(page, 7);
     await cell2.scrollIntoViewIfNeeded();
@@ -600,7 +600,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
 
     // Go back to daily, make another move
     await page.goto(`/${DAILY_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     const { cell: cell3, row: row3, col: col3 } = await findEmptyCell(page, 8);
     await cell3.scrollIntoViewIfNeeded();
@@ -610,7 +610,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
 
     // Return to practice - should still have only one move (7)
     await page.goto(`/${PRACTICE_SEED}?d=medium`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     await expectCellValue(page, row2, col2, 7);
 
@@ -632,7 +632,7 @@ test.describe('@integration Persistence - Edge Cases', () => {
 
     // App should load without crashing
     await page.goto(`/${CORRUPT_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Board should be visible and functional
     const board = page.locator('.sudoku-board');
@@ -658,7 +658,7 @@ test.describe('@integration Persistence - Edge Cases', () => {
     }, FRESH_SEED);
 
     await page.goto(`/${FRESH_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Board should be at initial state (no localStorage item yet)
     const storageKey = `${GAME_STATE_PREFIX}${FRESH_SEED}`;
@@ -693,7 +693,7 @@ test.describe('@integration Persistence - Edge Cases', () => {
 
     // App should load without crashing
     await page.goto(`/${INVALID_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Board should be visible
     const board = page.locator('.sudoku-board');
@@ -718,7 +718,7 @@ test.describe('@integration Persistence - Edge Cases', () => {
     }, COMPLETE_SEED);
 
     await page.goto(`/${COMPLETE_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Make a move to create save state
     const { cell } = await findEmptyCell(page);
@@ -752,7 +752,7 @@ test.describe('@integration Persistence - Auto-save Toggle', () => {
     }, TEST_SEED);
 
     await page.goto(`/${TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Make a move
     const { cell } = await findEmptyCell(page);
@@ -782,7 +782,7 @@ test.describe('@integration Persistence - Auto-save Toggle', () => {
     }, TEST_SEED);
 
     await page.goto(`/${TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Make a move
     const { cell, row, col } = await findEmptyCell(page);
@@ -811,7 +811,7 @@ test.describe('@integration Persistence - History Persistence', () => {
     await page.evaluate((seed: string) => {
       localStorage.removeItem(`sudoku_game_${seed}`);
     }, TEST_SEED);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Make multiple moves
     const { cell: cell1, row: row1, col: col1 } = await findEmptyCell(page, 5);
@@ -842,7 +842,7 @@ test.describe('@integration Persistence - History Persistence', () => {
     await page.evaluate((seed: string) => {
       localStorage.removeItem(`sudoku_game_${seed}`);
     }, TEST_SEED);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Make a move
     const { cell, row, col } = await findEmptyCell(page);
@@ -856,7 +856,7 @@ test.describe('@integration Persistence - History Persistence', () => {
 
     // Reload
     await page.reload();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Value should be restored
     await expectCellValue(page, row, col, 7);
@@ -905,7 +905,7 @@ test.describe('@integration Persistence - Completed Game State', () => {
 
     // Navigate to the completed game
     await page.goto(`/${COMPLETE_TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Verify the saved state still exists and has isComplete flag
     const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_TEST_SEED}`;
@@ -957,11 +957,11 @@ test.describe('@integration Persistence - Completed Game State', () => {
 
     // Navigate to the completed game
     await page.goto(`/${COMPLETE_TEST_SEED}?d=medium`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Reload the page
     await page.reload();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
 
     // Verify the saved state persists after reload
     const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_TEST_SEED}`;

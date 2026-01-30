@@ -680,7 +680,7 @@ test.describe('@integration Keyboard Navigation - Edge Cases', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await await setupGameAndWaitForBoard(page);
   });
 
   test('Arrow Left from column 1 wraps or stops at edge', async ({ page }) => {
