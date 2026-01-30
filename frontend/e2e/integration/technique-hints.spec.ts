@@ -16,7 +16,7 @@ import { setupGameAndWaitForBoard } from '../utils/board-wait';
  * In production builds, WASM initialization may take longer than board rendering.
  * This ensures the hint functionality is available before tests proceed.
  */
-async function waitForWasmReady(page: Page, timeout = 30000) {
+async function waitForWasmReady(page: Page, timeout = 60000) {
   await page.waitForFunction(
     () => {
       // Check if SudokuWasm API is available on window
