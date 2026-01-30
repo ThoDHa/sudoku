@@ -45,7 +45,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    actionTimeout: 15000, // 15s action timeout
+    actionTimeout: 30000, // 30s action timeout (increased from 15s for WASM loading)
     // Use storage state from global setup (skips onboarding)
     storageState: 'e2e/.auth/storage-state.json',
   },

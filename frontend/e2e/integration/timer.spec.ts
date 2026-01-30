@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 
 /**
  * Timer E2E Tests
@@ -34,9 +35,7 @@ function parseTimerToSeconds(timerText: string): number {
 
 test.describe('@integration Timer - Display Format', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
   });
 
   test('timer is visible on game page', async ({ page }) => {

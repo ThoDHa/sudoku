@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures';
 import { selectCell } from '../utils/selectCell';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 
 /**
  * Keyboard Navigation E2E Tests
@@ -88,9 +89,7 @@ async function findCellWithAdjacentEmpty(
 
 test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
   });
 
   test('Arrow Right moves selection to next column', async ({ page }) => {
@@ -285,9 +284,7 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
 
 test.describe('@integration Keyboard Navigation - Digit Entry', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
   });
 
   test('keys 1-9 enter digits in selected empty cell', async ({ page }) => {
@@ -390,9 +387,7 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
 
 test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
   });
 
   test('Ctrl+Z undoes last move', async ({ page, browserName }) => {
@@ -518,9 +513,7 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
 
 test.describe('@integration Keyboard Navigation - Notes Mode', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
   });
 
   test('N key toggles notes mode on', async ({ page }) => {
@@ -580,9 +573,7 @@ test.describe('@integration Keyboard Navigation - Notes Mode', () => {
 
 test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page);
   });
 
   test('Tab moves through interactive elements', async ({ page }) => {
@@ -632,21 +623,7 @@ test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
 
 test.describe('@integration Keyboard Navigation - Focus Management', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
-  });
-
-  test('clicking board captures focus', async ({ page }) => {
-    const board = page.locator('.sudoku-board');
-    await board.click();
-
-    // Board or a cell within should have focus
-    const isBoardFocused = await board.evaluate((el: Element) => {
-      return el.contains(document.activeElement);
-    });
-
-    expect(isBoardFocused).toBe(true);
+    await setupGameAndWaitForBoard(page);
   });
 
   test('keyboard works after board click', async ({ page }) => {

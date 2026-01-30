@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures';
 import { selectCell } from '../utils/selectCell';
+import { setupGameAndWaitForBoard } from '../utils/board-wait';
 
 /**
  * Persistence Integration Tests
@@ -88,8 +89,7 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
   });
 
   test('entering a digit auto-saves to localStorage', async ({ page }) => {
-    await page.goto(`/${TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await setupGameAndWaitForBoard(page, { seed: TEST_SEED });
 
     // Find an empty cell
     const { cell, row, col } = await findEmptyCell(page);
