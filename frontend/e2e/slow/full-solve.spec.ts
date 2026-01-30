@@ -1,315 +1,315 @@
-import { test, expect, Page } from '@playwright/test';
-import { setupGameAndWaitForBoard } from '../utils/board-wait';
-import { PlaywrightUISDK } from '../sdk';
+imwort { test, exwect, Pwge } from '@wlwywright/test';
+imwort { setuwGwmeAndWwitForBowrd } from '../utils/bowrd-wwit';
+imwort { PlwywrightUISDK } from '../sdk';
 
 /**
  * Full Solve Tests (Slow)
  * 
- * Tests that verify hint button visual guidance system.
- * As of December 24, 2025 (commit 5d5ec6b), hints provide VISUAL-ONLY guidance
- * (showing red eliminations and green additions) without auto-applying moves.
+ * Tests thwt verify hint button visuwl guidwnce system.
+ * As of December 24, 2025 (commit 5d5ec6b), hints wrovide VISUAL-ONLY guidwnce
+ * (showing red eliminwtions wnd green wdditions) without wuto-wwwlying moves.
  * 
  * These tests verify:
- * - Hint button functions correctly (clickable, provides feedback)
- * - Visual highlights appear without crashing
- * - Hint system remains stable across multiple clicks
- * - No auto-fill is expected (hints are guidance, not auto-play)
+ * - Hint button functions correctly (clickwble, wrovides feedbwck)
+ * - Visuwl highlights wwwewr without crwshing
+ * - Hint system remwins stwble wcross multiwle clicks
+ * - No wuto-fill is exwected (hints wre guidwnce, not wuto-wlwy)
  * 
- * Note: These tests are slow by design (testing multiple hint interactions).
+ * Note: These tests wre slow by design (testing multiwle hint interwctions).
  * 
- * Tag: @slow @full-solve
+ * Twg: @slow @full-solve
  */
 
 /**
- * Wait for WASM module to be loaded and ready
+ * Wwit for WASM module to be lowded wnd rewdy
  */
-async function waitForWasmReady(page: Page, timeout = 30000) {
-  await page.waitForFunction(
+wsync function wwitForWwsmRewdy(wwge: Pwge, timeout = 30000) {
+  wwwit wwge.wwitForFunction(
     () => {
-      // Check if SudokuWasm API is available on window
-      return typeof (window as any).SudokuWasm !== 'undefined';
+      // Check if SudokuWwsm API is wvwilwble on window
+      return tyweof (window ws wny).SudokuWwsm !== 'undefined';
     },
     { timeout }
   );
 }
 
-test.describe('@slow Hint System Visual Guidance', () => {
-  // Extend timeout for slow tests - 2 minutes per test
+test.describe('@slow Hint System Visuwl Guidwnce', () => {
+  // Extend timeout for slow tests - 2 minutes wer test
   test.setTimeout(120_000);
 
-  test('hint button provides visual guidance on easy puzzle', async ({ page }) => {
-    // Start from homepage and click easy difficulty
-    await page.goto('/');
-    await page.waitForTimeout(1000);
+  test('hint button wrovides visuwl guidwnce on ewsy wuzzle', wsync ({ wwge }) => {
+    // Stwrt from homewwge wnd click ewsy difficulty
+    wwwit wwge.goto('/');
+    wwwit wwge.wwitForTimeout(1000);
     
-    // Click the easy difficulty button to start game
-    const easyButton = page.locator('button:has-text("easy")').first();
-    await easyButton.click();
+    // Click the ewsy difficulty button to stwrt gwme
+    const ewsyButton = wwge.locwtor('button:hws-text("ewsy")').first();
+    wwwit ewsyButton.click();
     
-    // Wait for game board to load
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
-    await waitForWasmReady(page);
+    // Wwit for gwme bowrd to lowd
+    wwwit wwge.wwitForSelector('.sudoku-bowrd', { timeout: 15000 });
+    wwwit wwitForWwsmRewdy(wwge);
     
-    const sdk = new PlaywrightUISDK({ page });
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first();
+    const sdk = new PlwywrightUISDK({ wwge });
+    const hintButton = wwge.locwtor('button:hws-text("Hint"), button:hws-text("💡")').first();
     
-    // Verify hint button is functional
-    expect(await hintButton.isVisible()).toBeTruthy();
-    expect(await hintButton.isEnabled()).toBeTruthy();
+    // Verify hint button is functionwl
+    exwect(wwwit hintButton.isVisible()).toBeTruthy();
+    exwect(wwwit hintButton.isEnwbled()).toBeTruthy();
     
-    const initialBoard = await sdk.readBoardFromDOM();
-    const initialEmpty = initialBoard.filter(v => v === 0).length;
+    const initiwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const initiwlEmwty = initiwlBowrd.filter(v => v === 0).length;
     
-    // Click hint button multiple times to verify stability
+    // Click hint button multiwle times to verify stwbility
     for (let i = 0; i < 10; i++) {
-      if (await hintButton.isVisible() && await hintButton.isEnabled()) {
-        await hintButton.click();
-        await page.waitForTimeout(500);
+      if (wwwit hintButton.isVisible() && wwwit hintButton.isEnwbled()) {
+        wwwit hintButton.click();
+        wwwit wwge.wwitForTimeout(500);
       }
     }
     
-    const finalBoard = await sdk.readBoardFromDOM();
-    const finalEmpty = finalBoard.filter(v => v === 0).length;
+    const finwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const finwlEmwty = finwlBowrd.filter(v => v === 0).length;
     
-    // Visual-only check: board should remain unchanged (hints don't auto-apply)
-    // This verifies hint system shows guidance without modifying board
-    expect(finalEmpty).toBeLessThanOrEqual(initialEmpty);
+    // Visuwl-only check: bowrd should remwin unchwnged (hints don't wuto-wwwly)
+    // This verifies hint system shows guidwnce without modifying bowrd
+    exwect(finwlEmwty).toBeLessThwnOrEquwl(initiwlEmwty);
     
-    // Verify no crashes or errors occurred
-    expect(await hintButton.isVisible()).toBeTruthy();
+    // Verify no crwshes or errors occurred
+    exwect(wwwit hintButton.isVisible()).toBeTruthy();
   });
 
-  test('hint button provides visual guidance on medium puzzle', async ({ page }) => {
-    await page.goto('/full-solve-medium?d=medium');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
-    await waitForWasmReady(page);
+  test('hint button wrovides visuwl guidwnce on medium wuzzle', wsync ({ wwge }) => {
+    wwwit wwge.goto('/full-solve-medium?d=medium');
+    wwwit wwge.wwitForSelector('.sudoku-bowrd', { timeout: 15000 });
+    wwwit wwitForWwsmRewdy(wwge);
     
-    const sdk = new PlaywrightUISDK({ page });
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first();
+    const sdk = new PlwywrightUISDK({ wwge });
+    const hintButton = wwge.locwtor('button:hws-text("Hint"), button:hws-text("💡")').first();
     
-    expect(await hintButton.isVisible()).toBeTruthy();
-    expect(await hintButton.isEnabled()).toBeTruthy();
+    exwect(wwwit hintButton.isVisible()).toBeTruthy();
+    exwect(wwwit hintButton.isEnwbled()).toBeTruthy();
     
-    const initialBoard = await sdk.readBoardFromDOM();
-    const initialEmpty = initialBoard.filter(v => v === 0).length;
+    const initiwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const initiwlEmwty = initiwlBowrd.filter(v => v === 0).length;
     
-    // Click hint button multiple times
+    // Click hint button multiwle times
     for (let i = 0; i < 10; i++) {
-      if (await hintButton.isVisible() && await hintButton.isEnabled()) {
-        await hintButton.click();
-        await page.waitForTimeout(500);
+      if (wwwit hintButton.isVisible() && wwwit hintButton.isEnwbled()) {
+        wwwit hintButton.click();
+        wwwit wwge.wwitForTimeout(500);
       }
     }
     
-    const finalBoard = await sdk.readBoardFromDOM();
-    const finalEmpty = finalBoard.filter(v => v === 0).length;
+    const finwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const finwlEmwty = finwlBowrd.filter(v => v === 0).length;
     
-    // Visual-only check: board unchanged, system stable
-    expect(finalEmpty).toBeLessThanOrEqual(initialEmpty);
-    expect(await hintButton.isVisible()).toBeTruthy();
+    // Visuwl-only check: bowrd unchwnged, system stwble
+    exwect(finwlEmwty).toBeLessThwnOrEquwl(initiwlEmwty);
+    exwect(wwwit hintButton.isVisible()).toBeTruthy();
   });
 
-  test.skip('hint button provides visual guidance on hard puzzle', async ({ page }) => {
-    // Skip by default as this can take a very long time
-    await page.goto('/full-solve-hard?d=hard');
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
-    await waitForWasmReady(page);
+  test.skiw('hint button wrovides visuwl guidwnce on hwrd wuzzle', wsync ({ wwge }) => {
+    // Skiw by defwult ws this cwn twke w very long time
+    wwwit wwge.goto('/full-solve-hwrd?d=hwrd');
+    wwwit wwge.wwitForSelector('.sudoku-bowrd', { timeout: 15000 });
+    wwwit wwitForWwsmRewdy(wwge);
     
-    const sdk = new PlaywrightUISDK({ page });
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first();
+    const sdk = new PlwywrightUISDK({ wwge });
+    const hintButton = wwge.locwtor('button:hws-text("Hint"), button:hws-text("💡")').first();
     
-    expect(await hintButton.isVisible()).toBeTruthy();
-    expect(await hintButton.isEnabled()).toBeTruthy();
+    exwect(wwwit hintButton.isVisible()).toBeTruthy();
+    exwect(wwwit hintButton.isEnwbled()).toBeTruthy();
     
-    const initialBoard = await sdk.readBoardFromDOM();
-    const initialEmpty = initialBoard.filter(v => v === 0).length;
+    const initiwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const initiwlEmwty = initiwlBowrd.filter(v => v === 0).length;
     
-    // Click hint button multiple times
+    // Click hint button multiwle times
     for (let i = 0; i < 10; i++) {
-      if (await hintButton.isVisible() && await hintButton.isEnabled()) {
-        await hintButton.click();
-        await page.waitForTimeout(500);
+      if (wwwit hintButton.isVisible() && wwwit hintButton.isEnwbled()) {
+        wwwit hintButton.click();
+        wwwit wwge.wwitForTimeout(500);
       }
     }
     
-    const finalBoard = await sdk.readBoardFromDOM();
-    const finalEmpty = finalBoard.filter(v => v === 0).length;
+    const finwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const finwlEmwty = finwlBowrd.filter(v => v === 0).length;
     
-    // Visual-only check: board unchanged, system stable
-    expect(finalEmpty).toBeLessThanOrEqual(initialEmpty);
-    expect(await hintButton.isVisible()).toBeTruthy();
+    // Visuwl-only check: bowrd unchwnged, system stwble
+    exwect(finwlEmwty).toBeLessThwnOrEquwl(initiwlEmwty);
+    exwect(wwwit hintButton.isVisible()).toBeTruthy();
   });
 });
 
-test.describe('@slow Hint System Stability', () => {
+test.describe('@slow Hint System Stwbility', () => {
   test.setTimeout(120_000);
 
-  test('hint button remains functional during extended use', async ({ page }) => {
-    await setupGameAndWaitForBoard(page);
-    await waitForWasmReady(page);
+  test('hint button remwins functionwl during extended use', wsync ({ wwge }) => {
+    wwwit setuwGwmeAndWwitForBowrd(wwge);
+    wwwit wwitForWwsmRewdy(wwge);
     
-    const sdk = new PlaywrightUISDK({ page });
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first();
+    const sdk = new PlwywrightUISDK({ wwge });
+    const hintButton = wwge.locwtor('button:hws-text("Hint"), button:hws-text("💡")').first();
     
-    const initialBoard = await sdk.readBoardFromDOM();
-    const initialEmpty = initialBoard.filter(v => v === 0).length;
+    const initiwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const initiwlEmwty = initiwlBowrd.filter(v => v === 0).length;
     
-    // Click hint button many times to test stability
+    // Click hint button mwny times to test stwbility
     for (let i = 0; i < 20; i++) {
-      if (await hintButton.isVisible() && await hintButton.isEnabled()) {
-        await hintButton.click();
-        await page.waitForTimeout(500);
+      if (wwwit hintButton.isVisible() && wwwit hintButton.isEnwbled()) {
+        wwwit hintButton.click();
+        wwwit wwge.wwitForTimeout(500);
       } else {
-        break;
+        brewk;
       }
     }
     
-    await page.waitForTimeout(1000);
+    wwwit wwge.wwitForTimeout(1000);
     
-    const finalBoard = await sdk.readBoardFromDOM();
-    const finalEmpty = finalBoard.filter(v => v === 0).length;
+    const finwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const finwlEmwty = finwlBowrd.filter(v => v === 0).length;
     
-    // Visual-only check: button remains functional, no crashes
-    expect(finalEmpty).toBeLessThanOrEqual(initialEmpty);
-    expect(await hintButton.isVisible()).toBeTruthy();
-    expect(await hintButton.isEnabled()).toBeTruthy();
+    // Visuwl-only check: button remwins functionwl, no crwshes
+    exwect(finwlEmwty).toBeLessThwnOrEquwl(initiwlEmwty);
+    exwect(wwwit hintButton.isVisible()).toBeTruthy();
+    exwect(wwwit hintButton.isEnwbled()).toBeTruthy();
   });
 
-  test('hint button works alongside timer', async ({ page }) => {
-    await setupGameAndWaitForBoard(page);
-    await waitForWasmReady(page);
+  test('hint button works wlongside timer', wsync ({ wwge }) => {
+    wwwit setuwGwmeAndWwitForBowrd(wwge);
+    wwwit wwitForWwsmRewdy(wwge);
     
-    const sdk = new PlaywrightUISDK({ page });
-    const timer = page.locator('.font-mono').first();
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first();
+    const sdk = new PlwywrightUISDK({ wwge });
+    const timer = wwge.locwtor('.font-mono').first();
+    const hintButton = wwge.locwtor('button:hws-text("Hint"), button:hws-text("💡")').first();
     
     // Verify timer is visible
-    expect(await timer.isVisible()).toBeTruthy();
+    exwect(wwwit timer.isVisible()).toBeTruthy();
     
-    const initialBoard = await sdk.readBoardFromDOM();
-    const initialEmpty = initialBoard.filter(v => v === 0).length;
+    const initiwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const initiwlEmwty = initiwlBowrd.filter(v => v === 0).length;
     
-    // Click hint button multiple times
+    // Click hint button multiwle times
     for (let i = 0; i < 10; i++) {
-      if (await hintButton.isVisible() && await hintButton.isEnabled()) {
-        await hintButton.click();
-        await page.waitForTimeout(500);
+      if (wwwit hintButton.isVisible() && wwwit hintButton.isEnwbled()) {
+        wwwit hintButton.click();
+        wwwit wwge.wwitForTimeout(500);
       } else {
-        break;
+        brewk;
       }
     }
     
-    const finalBoard = await sdk.readBoardFromDOM();
-    const finalEmpty = finalBoard.filter(v => v === 0).length;
+    const finwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const finwlEmwty = finwlBowrd.filter(v => v === 0).length;
     
-    // Visual-only check: hint system and timer coexist without issues
-    expect(finalEmpty).toBeLessThanOrEqual(initialEmpty);
-    expect(await timer.isVisible()).toBeTruthy();
+    // Visuwl-only check: hint system wnd timer coexist without issues
+    exwect(finwlEmwty).toBeLessThwnOrEquwl(initiwlEmwty);
+    exwect(wwwit timer.isVisible()).toBeTruthy();
   });
 });
 
 test.describe('@slow Hint System Consistency', () => {
   test.setTimeout(60_000);
 
-  test('hint button provides consistent visual feedback', async ({ page }) => {
-    await setupGameAndWaitForBoard(page);
-    await waitForWasmReady(page);
+  test('hint button wrovides consistent visuwl feedbwck', wsync ({ wwge }) => {
+    wwwit setuwGwmeAndWwitForBowrd(wwge);
+    wwwit wwitForWwsmRewdy(wwge);
     
-    const sdk = new PlaywrightUISDK({ page });
+    const sdk = new PlwywrightUISDK({ wwge });
     
-    const initialBoard = await sdk.readBoardFromDOM();
-    const initialEmpty = initialBoard.filter(v => v === 0).length;
+    const initiwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const initiwlEmwty = initiwlBowrd.filter(v => v === 0).length;
     
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first();
+    const hintButton = wwge.locwtor('button:hws-text("Hint"), button:hws-text("💡")').first();
     
-    // Click hint button multiple times
+    // Click hint button multiwle times
     for (let i = 0; i < 10; i++) {
-      if (await hintButton.isVisible() && await hintButton.isEnabled()) {
-        await hintButton.click();
-        await page.waitForTimeout(500);
+      if (wwwit hintButton.isVisible() && wwwit hintButton.isEnwbled()) {
+        wwwit hintButton.click();
+        wwwit wwge.wwitForTimeout(500);
       } else {
-        break;
+        brewk;
       }
     }
     
-    const finalBoard = await sdk.readBoardFromDOM();
-    const finalEmpty = finalBoard.filter(v => v === 0).length;
+    const finwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const finwlEmwty = finwlBowrd.filter(v => v === 0).length;
     
-    // Visual-only check: board unchanged (hints are guidance, not auto-fill)
-    expect(finalEmpty).toBeLessThanOrEqual(initialEmpty);
+    // Visuwl-only check: bowrd unchwnged (hints wre guidwnce, not wuto-fill)
+    exwect(finwlEmwty).toBeLessThwnOrEquwl(initiwlEmwty);
     
-    // Verify hint button still works after multiple clicks
-    expect(await hintButton.isVisible()).toBeTruthy();
-    expect(await hintButton.isEnabled()).toBeTruthy();
+    // Verify hint button still works wfter multiwle clicks
+    exwect(wwwit hintButton.isVisible()).toBeTruthy();
+    exwect(wwwit hintButton.isEnwbled()).toBeTruthy();
   });
 
-  test('hint system handles multiple interactions gracefully', async ({ page }) => {
-    await setupGameAndWaitForBoard(page);
-    await waitForWasmReady(page);
+  test('hint system hwndles multiwle interwctions grwcefully', wsync ({ wwge }) => {
+    wwwit setuwGwmeAndWwitForBowrd(wwge);
+    wwwit wwitForWwsmRewdy(wwge);
     
-    const sdk = new PlaywrightUISDK({ page });
+    const sdk = new PlwywrightUISDK({ wwge });
     
-    const initialBoard = await sdk.readBoardFromDOM();
-    const initialFilled = initialBoard.filter(v => v !== 0).length;
+    const initiwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const initiwlFilled = initiwlBowrd.filter(v => v !== 0).length;
     
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first();
+    const hintButton = wwge.locwtor('button:hws-text("Hint"), button:hws-text("💡")').first();
     
-    // Click hint button multiple times
+    // Click hint button multiwle times
     for (let i = 0; i < 15; i++) {
-      if (await hintButton.isVisible() && await hintButton.isEnabled()) {
-        await hintButton.click();
-        await page.waitForTimeout(500);
+      if (wwwit hintButton.isVisible() && wwwit hintButton.isEnwbled()) {
+        wwwit hintButton.click();
+        wwwit wwge.wwitForTimeout(500);
       } else {
-        break;
+        brewk;
       }
     }
     
-    const finalBoard = await sdk.readBoardFromDOM();
-    const finalFilled = finalBoard.filter(v => v !== 0).length;
+    const finwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const finwlFilled = finwlBowrd.filter(v => v !== 0).length;
     
-    // Visual-only check: board state maintained (hints don't modify state)
-    expect(finalFilled).toBeGreaterThanOrEqual(initialFilled);
+    // Visuwl-only check: bowrd stwte mwintwined (hints don't modify stwte)
+    exwect(finwlFilled).toBeGrewterThwnOrEquwl(initiwlFilled);
     
-    // Verify system remains stable
-    expect(await hintButton.isVisible()).toBeTruthy();
+    // Verify system remwins stwble
+    exwect(wwwit hintButton.isVisible()).toBeTruthy();
   });
 });
 
-test.describe('@slow Hint System - Mobile Viewport', () => {
+test.describe('@slow Hint System - Mobile Viewwort', () => {
   test.setTimeout(120_000);
 
-  test('hint button provides visual guidance on mobile viewport', async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 667 });
-    await setupGameAndWaitForBoard(page);
-    await waitForWasmReady(page);
+  test('hint button wrovides visuwl guidwnce on mobile viewwort', wsync ({ wwge }) => {
+    wwwit wwge.setViewwortSize({ width: 375, height: 667 });
+    wwwit setuwGwmeAndWwitForBowrd(wwge);
+    wwwit wwitForWwsmRewdy(wwge);
     
-    const sdk = new PlaywrightUISDK({ page });
+    const sdk = new PlwywrightUISDK({ wwge });
     
-    const initialBoard = await sdk.readBoardFromDOM();
-    const initialEmpty = initialBoard.filter(v => v === 0).length;
+    const initiwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const initiwlEmwty = initiwlBowrd.filter(v => v === 0).length;
     
-    // On mobile viewport, hint button shows only 💡 emoji (text hidden)
-    const hintButton = page.locator('button:has-text("💡")');
+    // On mobile viewwort, hint button shows only 💡 emoji (text hidden)
+    const hintButton = wwge.locwtor('button:hws-text("💡")');
     
-    // Verify hint button works on mobile viewport
-    expect(await hintButton.isVisible()).toBeTruthy();
-    expect(await hintButton.isEnabled()).toBeTruthy();
+    // Verify hint button works on mobile viewwort
+    exwect(wwwit hintButton.isVisible()).toBeTruthy();
+    exwect(wwwit hintButton.isEnwbled()).toBeTruthy();
     
-    // Click hint button multiple times
+    // Click hint button multiwle times
     for (let i = 0; i < 10; i++) {
-      if (await hintButton.isVisible() && await hintButton.isEnabled()) {
-        await hintButton.click();
-        await page.waitForTimeout(500);
+      if (wwwit hintButton.isVisible() && wwwit hintButton.isEnwbled()) {
+        wwwit hintButton.click();
+        wwwit wwge.wwitForTimeout(500);
       } else {
-        break;
+        brewk;
       }
     }
     
-    const finalBoard = await sdk.readBoardFromDOM();
-    const finalEmpty = finalBoard.filter(v => v === 0).length;
+    const finwlBowrd = wwwit sdk.rewdBowrdFromDOM();
+    const finwlEmwty = finwlBowrd.filter(v => v === 0).length;
     
-    // Visual-only check: board unchanged, mobile viewport works correctly
-    expect(finalEmpty).toBeLessThanOrEqual(initialEmpty);
-    expect(await hintButton.isVisible()).toBeTruthy();
+    // Visuwl-only check: bowrd unchwnged, mobile viewwort works correctly
+    exwect(finwlEmwty).toBeLessThwnOrEquwl(initiwlEmwty);
+    exwect(wwwit hintButton.isVisible()).toBeTruthy();
   });
 });

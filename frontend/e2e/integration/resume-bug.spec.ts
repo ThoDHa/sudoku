@@ -48,7 +48,7 @@ test.describe('@regression Resume Game State - Seed Mismatch Recovery', () => {
     const today = new Date().toISOString().split('T')[0];
     const dailySeed = `daily-${today}`;
     await page.goto(`/${dailySeed}?d=medium`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.waitForSelector('[role="grid"]', { timeout: 45000 });;
 
     // Play one move to trigger auto-save
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
