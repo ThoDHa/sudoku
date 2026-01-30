@@ -78,7 +78,7 @@ async function clearAllGameStates(page: any): Promise<void> {
 }
 
 test.describe('@integration Persistence - Auto-save on Cell Change', () => {
-  const TEST_SEED = 'persist-test-123';
+  const TEST_SEED = 'P0';
 
   test.beforeEach(async ({ page }) => {
     // Clear any existing game state for this seed
@@ -177,10 +177,10 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
 });
 
 test.describe('@integration Persistence - Restore Game on Reload', () => {
-  const TEST_SEED = 'restore-test-456';
+  const TEST_SEED = 'P1';
 
   // Note: We don't use addInitScript here because it runs on EVERY navigation including reload,
-  // which would clear the saved state before we can test restoration.
+  // which would clear saved state before we can test restoration.
 
   test('digits persist after page reload', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
@@ -275,10 +275,10 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
 });
 
 test.describe('@integration Persistence - Timer Persistence', () => {
-  const TEST_SEED = 'timer-test-789';
+  const TEST_SEED = 'P2';
 
   // Note: We don't use addInitScript here because it runs on EVERY navigation including reload,
-  // which would clear the saved state before we can test restoration.
+  // which would clear saved state before we can test restoration.
 
   test('timer continues from saved time after reload', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
@@ -319,7 +319,7 @@ test.describe('@integration Persistence - Timer Persistence', () => {
 });
 
 test.describe('@integration Persistence - Clear Game Functionality', () => {
-  const TEST_SEED = 'clear-test-101';
+  const TEST_SEED = 'P3';
 
   test('starting a new game clears the board', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
@@ -510,7 +510,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
   // NOTE: The app only keeps ONE saved game per mode (daily vs practice)
   // So we test with one daily game and one practice game to verify both modes work
   const DAILY_SEED = 'daily-2024-12-25';  // Daily mode (starts with 'daily-')
-  const PRACTICE_SEED = 'game-test-222';  // Practice mode (any seed NOT starting with 'daily-' or 'practice-')
+  const PRACTICE_SEED = 'P4';  // Practice mode (starts with 'P' prefix)
 
   // Use addInitScript to always prevent the "Game In Progress" modal
   // by setting the from_homepage flag before ANY navigation
@@ -623,7 +623,7 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
 
 test.describe('@integration Persistence - Edge Cases', () => {
   test('corrupted localStorage is handled gracefully', async ({ page }) => {
-    const CORRUPT_SEED = 'corrupt-test-999';
+    const CORRUPT_SEED = 'P5';  // Practice mode (starts with 'P' prefix)
 
     // Set corrupted data before navigation
     await page.addInitScript((seed: string) => {
@@ -650,7 +650,7 @@ test.describe('@integration Persistence - Edge Cases', () => {
   });
 
   test('empty localStorage starts fresh game', async ({ page }) => {
-    const FRESH_SEED = 'fresh-test-888';
+    const FRESH_SEED = 'P6';  // Practice mode (starts with 'P' prefix)
 
     // Ensure no saved state exists
     await page.addInitScript((seed: string) => {
@@ -676,7 +676,7 @@ test.describe('@integration Persistence - Edge Cases', () => {
   });
 
   test('invalid board length in saved state is handled gracefully', async ({ page }) => {
-    const INVALID_SEED = 'invalid-board-777';
+    const INVALID_SEED = 'P7';  // Practice mode (starts with 'P' prefix)
 
     // Set invalid board data (wrong length)
     await page.addInitScript((seed: string) => {
@@ -711,7 +711,7 @@ test.describe('@integration Persistence - Edge Cases', () => {
   test('game completion clears saved state', async ({ page }) => {
     // This test uses a nearly-complete puzzle seed if available
     // For now, we'll test that completing a puzzle removes the saved state
-    const COMPLETE_SEED = 'complete-test-666';
+    const COMPLETE_TEST_SEED = 'P8';  // Practice mode (starts with 'P' prefix)
 
     await page.addInitScript((seed: string) => {
       localStorage.removeItem(`sudoku_game_${seed}`);
@@ -738,7 +738,7 @@ test.describe('@integration Persistence - Edge Cases', () => {
 });
 
 test.describe('@integration Persistence - Auto-save Toggle', () => {
-  const TEST_SEED = 'autosave-toggle-555';
+  const TEST_SEED = 'P9';
 
   test('disabling auto-save prevents localStorage updates', async ({ page }) => {
     // Disable auto-save before navigation
@@ -803,7 +803,7 @@ test.describe('@integration Persistence - Auto-save Toggle', () => {
 });
 
 test.describe('@integration Persistence - History Persistence', () => {
-  const TEST_SEED = 'history-test-444';
+  const TEST_SEED = 'P10';
 
   test('move history is saved and restored', async ({ page }) => {
     await page.goto(`/${TEST_SEED}?d=easy`);
