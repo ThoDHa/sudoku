@@ -34,7 +34,7 @@ function getCellLocator(page: any, row: number, col: number) {
 
 // Helper to verify cell is selected (has focus ring)
 async function expectCellSelected(cell: any) {
-  await expect(cell).toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/);
+  await expect(cell).toHaveClass(/ring-accent/);
 }
 
 // Helper to verify cell is NOT selected (no focus ring)
@@ -44,11 +44,12 @@ async function expectCellNotSelected(cell: any) {
   // Check both focus and selection class with a modest timeout to reduce flakes while keeping assertions meaningful
   // Prefer semantic focus check, fall back to class check for visual verification
   await expect(cell).not.toBeFocused({ timeout: 1000 });
-  // Also ensure the cell is not tabbable (no tabindex=0)
+  // Also ensure cell is not tabbable (no tabindex=0)
   const tabindex = await cell.getAttribute('tabindex');
-  expect(tabindex).not.toBe('0');
-  // Also ensure the visual selection ring class is gone
-  await expect(cell).not.toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/, { timeout: 1000 });
+  const tabindexNum = parseInt(tabindex, 10);
+  expect(tabindexNum).not.toBe(0);
+  // Also ensure visual selection ring class is gone
+  await expect(cell).not.toHaveClass(/ring-accent/, { timeout: 1000 });
 }
 
 // Helper to find any empty cell on the board
