@@ -1,5 +1,5 @@
 import { test, expect, Page } from '../fixtures';
-import { setupGameAndWaitForBoard } from '../utils/board-wait';
+import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait';
 import { PlaywrightUISDK } from '../sdk';
 
 /**
@@ -23,20 +23,6 @@ const ACCEPTABLE_MIN_TOUCH_TARGET = 24; // Minimum acceptable for dense UIs
 // ============================================================================
 // HELPERS
 // ============================================================================
-
-/**
- * Helper to wait for WASM to be ready.
- * In production builds, WASM initialization may take longer than board rendering.
- */
-async function waitForWasmReady(page: Page, timeout = 30000) {
-  await page.waitForFunction(
-    () => {
-      // Check if SudokuWasm API is available on window
-      return typeof (window as any).SudokuWasm !== 'undefined';
-    },
-    { timeout }
-  );
-}
 
 /**
  * Verify element has adequate touch target size

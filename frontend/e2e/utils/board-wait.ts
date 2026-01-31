@@ -6,6 +6,21 @@
  */
 
 /**
+ * Wait for WASM to be ready.
+ * In production builds, WASM initialization may take longer than board rendering.
+ * This ensures hint functionality is available before tests proceed.
+ */
+export async function waitForWasmReady(page: any, timeout = 60000) {
+  await page.waitForFunction(
+    () => {
+      // Check if SudokuWasm API is available on window
+      return typeof (window as any).SudokuWasm !== 'undefined';
+    },
+    { timeout }
+  );
+}
+
+/**
  * Wait for the sudoku board to be visible, with WASM loading consideration
  *
  * This helper:

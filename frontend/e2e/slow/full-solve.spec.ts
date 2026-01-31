@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { setupGameAndWaitForBoard } from '../utils/board-wait';
+import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait';
 import { PlaywrightUISDK } from '../sdk';
 
 /**
@@ -20,18 +20,7 @@ import { PlaywrightUISDK } from '../sdk';
  * Tag: @slow @full-solve
  */
 
-/**
- * Wait for WASM module to be loaded and ready
- */
-async function waitForWasmReady(page: Page, timeout = 30000) {
-  await page.waitForFunction(
-    () => {
-      // Check if SudokuWasm API is available on window
-      return typeof (window as any).SudokuWasm !== 'undefined';
-    },
-    { timeout }
-  );
-}
+
 
 test.describe('@slow Hint System Visual Guidance', () => {
   // Extend timeout for slow tests - 2 minutes per test

@@ -1,30 +1,15 @@
 import { test, expect, Page } from '@playwright/test';
-import { setupGameAndWaitForBoard } from '../utils/board-wait';
+import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait';
 
 /**
  * Technique Hints Integration Tests
- * 
- * Tests for the "Give Technique" feature - shows technique name and explanation
+ *
+ * Tests for "Give Technique" feature - shows technique name and explanation
  * without applying the move to the board. This helps players learn which
  * technique to use without giving away the specific move.
- * 
+ *
  * Tag: @integration @technique-hints
  */
-
-/**
- * Helper to wait for WASM to be ready.
- * In production builds, WASM initialization may take longer than board rendering.
- * This ensures the hint functionality is available before tests proceed.
- */
-async function waitForWasmReady(page: Page, timeout = 60000) {
-  await page.waitForFunction(
-    () => {
-      // Check if SudokuWasm API is available on window
-      return typeof (window as any).SudokuWasm !== 'undefined';
-    },
-    { timeout }
-  );
-}
 
 /**
  * Helper to prepare board for technique hints.

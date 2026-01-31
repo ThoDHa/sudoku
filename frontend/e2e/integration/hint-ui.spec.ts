@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { setupGameAndWaitForBoard } from '../utils/board-wait';
+import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait';
 
 /**
  * Hint UI Tests
@@ -9,17 +9,7 @@ import { setupGameAndWaitForBoard } from '../utils/board-wait';
  * Tag: @integration @hints
  */
 
-/**
- * Helper to wait for WASM to be ready.
- */
-async function waitForWasmReady(page: Page, timeout = 30000) {
-  await page.waitForFunction(
-    () => {
-      return typeof (window as any).SudokuWasm !== 'undefined';
-    },
-    { timeout }
-  );
-}
+
 
 test.describe('@integration Hints - UI Behavior', () => {
   test.beforeEach(async ({ page }) => {
