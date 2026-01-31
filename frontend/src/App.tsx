@@ -24,10 +24,14 @@ const PageLoading = () => (
 
 function AppContent() {
   const location = useLocation()
-  
+
   // Manage WASM lifecycle based on route - loads on game routes, unloads after leaving
-  useWasmLifecycle({ enableLogging: false })
-  
+  // Disable unloading during E2E tests to speed up test execution (prevents ~4MB reloads)
+  useWasmLifecycle({
+    enableLogging: false,
+    unloadDelay: import.meta.env['VITE_E2E_TESTS'] === 'true' ? Infinity : undefined
+  })
+
   // Game pages need less padding (slim header)
   // Game routes: /c/* for custom, or /:seed for daily/practice (anything not a known route)
   const knownRoutes = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard', '/about']
