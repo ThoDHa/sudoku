@@ -272,7 +272,6 @@ function GameContent() {
     clearAfterUserCandidateOp,
     clearAfterDigitPlacement,
     clearAfterErase,
-    clearOnModeChange,
     clearAfterDigitToggle,
     clickGivenCell,
   } = useHighlightState()
@@ -292,55 +291,23 @@ function GameContent() {
    // CLICK OUTSIDE TO DESELECT (UX Enhancement)
    // ============================================================
    // When user clicks/taps outside of game interface, deselects the current cell
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-        // Only process if a cell is selected
-        if (selectedCellRef.current === null) return
+     useEffect(() => {
+       const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+         if (selectedCellRef.current === null) return
 
-        const target = event.target as Element
+         const target = event.target as Element
 
-        // Check if click is inside actual sudoku board element (not wrapper div)
-        const sudokuBoardElement = document.querySelector('.sudoku-board')
-        const clickedInsideBoard = sudokuBoardElement?.contains(target)
-        const clickedInsideControls = controlsContainerRef.current?.contains(target)
-        const clickedInsideHeader = target.closest('header, .game-header, [data-game-header]')
-        const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal], .fixed')
+         const clickedInsideGame = gameContentRef.current?.contains(target) ?? false
+         const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal], .fixed')
 
-        // Check if clicking on actual interactive elements (not just whitespace)
-        const clickedOnButton = target.closest('button')
-        const clickedOnInput = target.closest('input, select, textarea')
-        const clickedOnInteractive = target.closest('[role="button"], [tabindex], a[href]')
+         const shouldDeselect = !clickedInsideGame && !clickedInsideModal
 
-        const isInteractiveClick = clickedOnButton || clickedOnInput || clickedOnInteractive
-
-        // DEBUG: Enhanced click detection info for "above" direction failures
-        logger.debug('Click Debug:', {
-          target: target.tagName + (target.className ? '.' + target.className.split(' ').join('.') : ''),
-          targetClasses: target.className,
-          clickedInsideBoard: !!clickedInsideBoard,
-          clickedInsideControls: !!clickedInsideControls,
-          clickedInsideHeader: !!clickedInsideHeader,
-          clickedInsideModal: !!clickedInsideModal,
-          clickedOnButton: !!clickedOnButton,
-          clickedOnInput: !!clickedOnInput,
-          clickedOnInteractive: !!clickedOnInteractive,
-          isInteractiveClick,
-          shouldDeselect: !clickedInsideBoard && !clickedInsideModal && !clickedInsideHeader && (!clickedInsideControls || !isInteractiveClick),
-          selectedCell: selectedCellRef.current
-        })
-
-       // Deselect if clicking outside interactive areas
-       const shouldDeselect = !clickedInsideBoard &&
-                             !clickedInsideModal &&
-                             !clickedInsideHeader &&
-                             (!clickedInsideControls || !isInteractiveClick)
-
-       if (shouldDeselect) {
-         deselectCell()
-         setEraseMode(false)
-         clearMoveHighlight()
+         if (shouldDeselect) {
+           deselectCell()
+           setEraseMode(false)
+           clearMoveHighlight()
+         }
        }
-     }
 
      // Listen to both mouse and touch events for cross-device support
      document.addEventListener('mousedown', handleClickOutside)
@@ -349,7 +316,7 @@ function GameContent() {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('touchstart', handleClickOutside)
     }
-  }, [deselectCell, clearMoveHighlight])
+  }, [deselectCell, clearMoveHighlight, setEraseMode])
 
     // Extended background pause - completely suspend operations after 30 seconds hidden
     const [isExtendedPaused, setIsExtendedPaused] = useState(false)
@@ -1047,9 +1014,16 @@ function GameContent() {
       
       if (!currentGame) return
 
-     // If a digit is already highlighted and we're clicking a given cell,
-     // only block if we're NOT coming from another given cell (allow given-to-given navigation)
-     if (currentHighlightedDigit !== null && currentGame.isGivenCell(idx)) {
+      // Skip cell click if a mode change is in progress
+      // This prevents race between mode toggle and cell selection
+      if (currentEraseMode) {
+        // Erase mode active - let mode change complete before processing cell click
+        return
+      }
+
+      // If a digit is already highlighted and we're clicking a given cell,
+      // only block if we're NOT coming from another given cell (allow given-to-given navigation)
+      if (currentHighlightedDigit !== null && currentGame.isGivenCell(idx)) {
        if (currentSelectedCell === null || !currentGame.isGivenCell(currentSelectedCell)) {
          return
        }
@@ -1182,7 +1156,7 @@ if (currentGame.board[currentSelectedCell] === digit) {
       // Cell deselects after digit entry (per requirements)
       // Keep digit highlighted for adding candidates (multi-fill)
     // All deps are now stable callbacks - game accessed via ref
-     }, [toggleDigitHighlight, clearAfterDigitToggle, placeDigitAndClear, deselectCell, resumeFromExtendedPause])
+     }, [toggleDigitHighlight, clearAfterDigitToggle, placeDigitAndClear, deselectCell, resumeFromExtendedPause, clearAfterErase, clearAfterUserCandidateOp])
 
     // Keyboard cell change handler (from Board component)
     const handleCellChange = useCallback((idx: number, value: number) => {
@@ -1216,7 +1190,7 @@ if (value === 0) {
           lastRegularHintRef.current = null
         }
      // eslint-disable-next-line react-hooks/exhaustive-deps -- resumeFromExtendedPause depends on isExtendedPaused; adding it would recreate this callback on every pause state change, causing unnecessary re-renders of Board (which receives this as a prop)
-      }, [game, notesMode, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell])
+      }, [game, notesMode, clearAfterDigitPlacement, deselectCell])
 
   // Toggle notes mode handler
   const handleNotesToggle = useCallback(() => {
@@ -1226,8 +1200,8 @@ if (value === 0) {
   // Toggle erase mode handler
   const handleEraseMode = useCallback(() => {
     setEraseMode(prev => !prev)
-    clearOnModeChange()
-  }, [clearOnModeChange])
+    // DO NOT call clearOnModeChange - preserve selection during mode toggle
+  }, [])
 
   // Undo handler - STABLE: reads from refs to avoid recreation on state changes
   const handleUndo = useCallback(() => {

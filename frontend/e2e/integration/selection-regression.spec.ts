@@ -230,7 +230,7 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           
           // Toggle notes mode (usually 'n' key or similar)
           await page.keyboard.press('n');
-          await page.waitForTimeout(100);
+          await page.waitForSelector('.cell.ring-accent', { state: 'visible', timeout: 2000 });
           
           // Add candidates in notes mode
           await page.keyboard.press('1');
@@ -243,7 +243,7 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           
           // Exit notes mode
           await page.keyboard.press('n');
-          await page.waitForTimeout(100);
+          await page.waitForSelector('.cell.ring-accent', { state: 'visible', timeout: 2000 });
           
           // Cell should still be selected
           await expectCellSelected(cell);
