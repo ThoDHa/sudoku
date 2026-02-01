@@ -291,15 +291,41 @@ const Board = memo(function Board({
   const cellRefs = React.useRef<(HTMLDivElement | null)[]>([])
 
   // Focus the selected cell when it changes, blur when deselected
+  // Guard against rapid state changes that cause race conditions with DOM updates
   React.useEffect(() => {
+    const isComponentMounted = { current: true }
+
     if (selectedCell !== null && cellRefs.current[selectedCell]) {
-      cellRefs.current[selectedCell]?.focus()
+      // Use requestAnimationFrame to ensure DOM has updated before focusing
+      const animationFrameId = requestAnimationFrame(() => {
+        if (isComponentMounted.current) {
+          cellRefs.current[selectedCell]?.focus()
+        }
+      })
+
+      return () => {
+        cancelAnimationFrame(animationFrameId)
+        isComponentMounted.current = false
+      }
     } else if (selectedCell === null) {
       // When cell is deselected, blur any focused cell
       const activeElement = document.activeElement
       if (activeElement && 'blur' in activeElement) {
-        (activeElement as HTMLElement).blur()
+        const animationFrameId = requestAnimationFrame(() => {
+          if (isComponentMounted.current) {
+            (activeElement as HTMLElement).blur()
+          }
+        })
+
+        return () => {
+          cancelAnimationFrame(animationFrameId)
+          isComponentMounted.current = false
+        }
       }
+    }
+
+    return () => {
+      isComponentMounted.current = false
     }
   }, [selectedCell])
 

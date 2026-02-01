@@ -288,57 +288,63 @@ function GameContent() {
   useEffect(() => { highlightedDigitRef.current = highlightedDigit }, [highlightedDigit])
   useEffect(() => { initialBoardRef.current = initialBoard }, [initialBoard])
 
-  // ============================================================
-  // CLICK OUTSIDE TO DESELECT (UX Enhancement)
-  // ============================================================
-  // When user clicks/taps outside the game interface, deselect the current cell
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      // Only process if a cell is selected
-      if (selectedCellRef.current === null) return
-      
-      const target = event.target as Element
-      
-      // Instead of checking if outside gameContent, check if inside specific interactive elements
-      const clickedInsideBoard = boardContainerRef.current?.contains(target)
-      const clickedInsideControls = controlsContainerRef.current?.contains(target)
-      const clickedInsideHeader = target.closest('header, .game-header, [data-game-header]')
-      const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal], .fixed')
-      
-      // Check if clicking on actual interactive elements (not just whitespace)
-      const clickedOnButton = target.closest('button')
-      const clickedOnInput = target.closest('input, select, textarea')
-      const clickedOnInteractive = target.closest('[role="button"], [tabindex], a[href]')
-      
-      const isInteractiveClick = clickedOnButton || clickedOnInput || clickedOnInteractive
-      
-       // DEBUG: Log click detection info
-       logger.debug('Click Debug:', {
-         target: target.tagName + (target.className ? '.' + target.className.split(' ').join('.') : ''),
-         clickedInsideBoard: !!clickedInsideBoard,
-         clickedInsideControls: !!clickedInsideControls, 
-         clickedInsideHeader: !!clickedInsideHeader,
-         clickedInsideModal: !!clickedInsideModal,
-         isInteractiveClick,
-         selectedCell: selectedCellRef.current
-       })
-      
-      // Deselect if clicking outside interactive areas
-      const shouldDeselect = !clickedInsideBoard && 
-                            !clickedInsideModal && 
-                            !clickedInsideHeader &&
-                            (!clickedInsideControls || !isInteractiveClick)
-      
-      if (shouldDeselect) {
-        deselectCell()
-        setEraseMode(false)
-        clearMoveHighlight()
-      }
-    }
-    
-    // Listen to both mouse and touch events for cross-device support
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('touchstart', handleClickOutside)
+   // ============================================================
+   // CLICK OUTSIDE TO DESELECT (UX Enhancement)
+   // ============================================================
+   // When user clicks/taps outside of game interface, deselects the current cell
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+        // Only process if a cell is selected
+        if (selectedCellRef.current === null) return
+
+        const target = event.target as Element
+
+        // Check if click is inside actual sudoku board element (not wrapper div)
+        const sudokuBoardElement = document.querySelector('.sudoku-board')
+        const clickedInsideBoard = sudokuBoardElement?.contains(target)
+        const clickedInsideControls = controlsContainerRef.current?.contains(target)
+        const clickedInsideHeader = target.closest('header, .game-header, [data-game-header]')
+        const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal], .fixed')
+
+        // Check if clicking on actual interactive elements (not just whitespace)
+        const clickedOnButton = target.closest('button')
+        const clickedOnInput = target.closest('input, select, textarea')
+        const clickedOnInteractive = target.closest('[role="button"], [tabindex], a[href]')
+
+        const isInteractiveClick = clickedOnButton || clickedOnInput || clickedOnInteractive
+
+        // DEBUG: Enhanced click detection info for "above" direction failures
+        logger.debug('Click Debug:', {
+          target: target.tagName + (target.className ? '.' + target.className.split(' ').join('.') : ''),
+          targetClasses: target.className,
+          clickedInsideBoard: !!clickedInsideBoard,
+          clickedInsideControls: !!clickedInsideControls,
+          clickedInsideHeader: !!clickedInsideHeader,
+          clickedInsideModal: !!clickedInsideModal,
+          clickedOnButton: !!clickedOnButton,
+          clickedOnInput: !!clickedOnInput,
+          clickedOnInteractive: !!clickedOnInteractive,
+          isInteractiveClick,
+          shouldDeselect: !clickedInsideBoard && !clickedInsideModal && !clickedInsideHeader && (!clickedInsideControls || !isInteractiveClick),
+          selectedCell: selectedCellRef.current
+        })
+
+       // Deselect if clicking outside interactive areas
+       const shouldDeselect = !clickedInsideBoard &&
+                             !clickedInsideModal &&
+                             !clickedInsideHeader &&
+                             (!clickedInsideControls || !isInteractiveClick)
+
+       if (shouldDeselect) {
+         deselectCell()
+         setEraseMode(false)
+         clearMoveHighlight()
+       }
+     }
+
+     // Listen to both mouse and touch events for cross-device support
+     document.addEventListener('mousedown', handleClickOutside)
+     document.addEventListener('touchstart', handleClickOutside)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('touchstart', handleClickOutside)
@@ -1011,11 +1017,27 @@ function GameContent() {
       }
     }, [isExtendedPaused])
 
+    // Shared digit placement logic - unifies mobile and desktop behavior
+    const placeDigitAndClear = useCallback((cellIndex: number, digit: number, notesMode: boolean) => {
+      if (!gameRef.current) return
+      gameRef.current.setCell(cellIndex, digit, notesMode)
+
+      if (notesMode) {
+        clearAfterUserCandidateOp()
+      } else {
+        clearAfterDigitPlacement()
+        deselectCell()
+      }
+
+      lastTechniqueHintRef.current = null
+      lastRegularHintRef.current = null
+    }, [clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell])
+
     // Cell click handler - STABLE: reads from refs to avoid recreating on state changes
     // This is critical because Cell memo doesn't compare callback props for performance
     const handleCellClick = useCallback((idx: number) => {
       resumeFromExtendedPause()
-      
+
       // Read current state from refs for stable callback
       const currentHighlightedDigit = highlightedDigitRef.current
       const currentSelectedCell = selectedCellRef.current
@@ -1082,50 +1104,38 @@ if (currentEraseMode && currentGame.board[idx] !== 0) {
        }
 
         if (currentHighlightedDigit !== null) {
-        if (currentNotesMode) {
-          // Only allow notes toggle on empty cells (follows current game logic)
-          if (currentGame.board[idx] === 0) {
-            currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
-            // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
-            clearAfterUserCandidateOp()
-            // Reset last hint tracking so next hint counts as new
-            lastTechniqueHintRef.current = null
-            lastRegularHintRef.current = null
-          } else {
-            // If not empty, do nothing (notes not allowed)
-          }
-        } else {
-          // If cell already contains the highlighted digit, erase it.
-if (currentGame.board[idx] === currentHighlightedDigit) {
-              commitCellAction('erase', {
-                idx,
-                game: currentGame,
-                clearAfterErase,
-                deselectCell,
-                setEraseMode,
-                setAutoSolveStepsUsed,
-                setAutoSolveErrorsFixed
-              });
+         if (currentNotesMode) {
+           // Only allow notes toggle on empty cells (follows current game logic)
+           if (currentGame.board[idx] === 0) {
+             placeDigitAndClear(idx, currentHighlightedDigit, currentNotesMode)
+           }
+         } else {
+           // If cell already contains the highlighted digit, erase it.
+           if (currentGame.board[idx] === currentHighlightedDigit) {
+             commitCellAction('erase', {
+               idx,
+               game: currentGame,
+               clearAfterErase,
+               deselectCell,
+               setEraseMode,
+               setAutoSolveStepsUsed,
+               setAutoSolveErrorsFixed
+             });
              lastTechniqueHintRef.current = null;
              lastRegularHintRef.current = null;
            } else {
-            // For digit placement, clear move highlights but preserve digit highlight for multi-fill
-            currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
-            clearAfterDigitPlacement()
-            // Reset last hint tracking so next hint counts as new
-            lastTechniqueHintRef.current = null
-            lastRegularHintRef.current = null
-          }
+             placeDigitAndClear(idx, currentHighlightedDigit, currentNotesMode)
+           }
+         }
+          return
         }
-         return
-       }
 
      // Select the cell (works for both empty and user-filled cells)
      // selectCell atomically selects and clears highlights
      selectCell(idx)
      setEraseMode(false)
-   // All deps are now stable callbacks - state accessed via refs
-    }, [selectCell, clearAllAndDeselect, clearAfterErase, clearAfterUserCandidateOp, clearAfterDigitPlacement, clickGivenCell, resumeFromExtendedPause, deselectCell])
+    // All deps are now stable callbacks - state accessed via refs
+     }, [selectCell, clearAllAndDeselect, deselectCell, clickGivenCell, resumeFromExtendedPause, placeDigitAndClear])
 
     // Digit input handler - STABLE: reads from refs to avoid recreating on state changes
     const handleDigitInput = useCallback((digit: number) => {
@@ -1167,24 +1177,12 @@ if (currentGame.board[currentSelectedCell] === digit) {
             return
           }
 
-      currentGame.setCell(currentSelectedCell, digit, currentNotesMode)
-
-      if (currentNotesMode) {
-        // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
-        clearAfterUserCandidateOp()
-      } else {
-        // For digit placement, clear move highlights but preserve digit highlight for multi-fill
-        clearAfterDigitPlacement()
-        deselectCell()
-      }
-      // Reset last hint tracking so next hint counts as new
-      lastTechniqueHintRef.current = null
-      lastRegularHintRef.current = null
+      placeDigitAndClear(currentSelectedCell, digit, currentNotesMode)
 
       // Cell deselects after digit entry (per requirements)
       // Keep digit highlighted for adding candidates (multi-fill)
     // All deps are now stable callbacks - game accessed via ref
-    }, [toggleDigitHighlight, clearAfterDigitToggle, clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell, resumeFromExtendedPause])
+     }, [toggleDigitHighlight, clearAfterDigitToggle, placeDigitAndClear, deselectCell, resumeFromExtendedPause])
 
     // Keyboard cell change handler (from Board component)
     const handleCellChange = useCallback((idx: number, value: number) => {
