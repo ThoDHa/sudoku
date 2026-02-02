@@ -271,7 +271,17 @@ export function abortWasmLoad(): void {
  * Get base URL for assets (handles GitHub Pages subpath)
  */
 function getBaseUrl(): string {
-  return import.meta.env.BASE_URL || '/';
+  // Force correct base URL during tests
+  if (typeof window !== 'undefined' && window.location) {
+    const testBaseUrl = window.location.protocol + '//' + window.location.host + '/';
+    logger.debug('[WASM] Using window.location-based BASE_URL:', testBaseUrl);
+    return testBaseUrl;
+  }
+  
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  logger.debug('[WASM] BASE_URL resolved to:', baseUrl);
+  logger.debug('[WASM] import.meta.env.BASE_URL value:', import.meta.env.BASE_URL);
+  return baseUrl;
 }
 
 /**
@@ -285,10 +295,18 @@ async function loadWasmExec(): Promise<void> {
 
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = `${getBaseUrl()}wasm_exec.js`;
+    const scriptUrl = `${getBaseUrl()}wasm_exec.js`;
+    script.src = scriptUrl;
+    logger.debug('[WASM] Loading wasm_exec.js from:', scriptUrl);
     script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load wasm_exec.js'));
+    script.onload = () => {
+      logger.debug('[WASM] wasm_exec.js loaded successfully');
+      resolve();
+    };
+    script.onerror = () => {
+      logger.error('[WASM] Failed to load wasm_exec.js from:', scriptUrl);
+      reject(new Error('Failed to load wasm_exec.js'));
+    };
     document.head.appendChild(script);
     
     // Store reference for cleanup
@@ -361,19 +379,37 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
 
       // Run the Go program (this sets up window.SudokuWasm)
       // Don't await this - it blocks forever (intentionally)
-      go.run(result.instance);
+      logger.debug('[WASM] Starting Go program...')
+      try {
+        const goPromise = go.run(result.instance);
+        // Check if go.run returns a promise and handle errors
+        if (goPromise && typeof goPromise.catch === 'function') {
+          goPromise.catch((error) => {
+            logger.error('[WASM] Go program error:', error);
+          });
+        }
+      } catch (error) {
+        logger.error('[WASM] Immediate Go program error:', error);
+        throw error;
+      }
 
       // Wait for the WASM to signal it's ready
+      logger.debug('[WASM] Waiting for wasmReady event...')
       await new Promise<void>((resolve, reject) => {
         // Wait for the wasmReady event
         const handler = () => {
-          logger.debug('[WASM] wasmReady event received')
+          logger.debug('[WASM] wasmReady event received successfully!')
           clearTimeout(timeout);
           window.removeEventListener('wasmReady', handler);
           resolve();
         };
 
         const timeout = setTimeout(() => {
+          logger.error('[WASM] Timeout waiting for wasmReady event after 5 seconds')
+          logger.debug('[WASM] window.SudokuWasm available:', !!window.SudokuWasm)
+          if (window.SudokuWasm) {
+            logger.debug('[WASM] SudokuWasm object keys:', Object.keys(window.SudokuWasm))
+          }
           window.removeEventListener('wasmReady', handler);
           reject(new Error('WASM initialization timeout'));
         }, 5000);

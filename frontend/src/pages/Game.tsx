@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { commitCellAction } from '../lib/commitCellAction'
+import { wasmGetPuzzle } from '../lib/wasm'
 import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import Board from '../components/Board'
 import Controls from '../components/Controls'
@@ -1600,18 +1601,44 @@ ${bugReportJson}
 
     const loadPuzzle = async () => {
       try {
+        console.log('DEBUG: loadPuzzle starting')
         setLoading(true)
         setError(null)
-        clearAllAndDeselect()
-        // Don't hide result modal if revisiting a completed daily
-        if (!alreadyCompletedToday) {
-          setShowResultModal(false)
+
+        if (showDifficultyChooser || showOnboarding) {
+          console.log('DEBUG: Showing difficulty chooser or onboarding, skipping puzzle load')
+          setLoading(false)
+          return
+        }
+
+        console.log('DEBUG: About to fetch puzzle data')
+        let puzzleData = await wasmGetPuzzle(effectiveSeed, difficulty)
+        console.log('DEBUG: Puzzle data result:', puzzleData)
+        
+        if (!puzzleData) {
+          console.error('DEBUG: WASM returned null puzzle data - WASM not ready')
+          setError(new Error('Puzzle generator not ready. Please refresh the page.'))
+          setLoading(false)
+          return
+        }
+        
+        console.log('DEBUG: Puzzle data fetched successfully')
+
+        // Check if we should show daily prompt (for practice games only)
+        console.log('DEBUG: Checking daily prompt conditions')
+        console.log('DEBUG: Game mode:', getGameMode(puzzleData.seed))
+        console.log('DEBUG: shouldShowDailyPrompt():', shouldShowDailyPrompt())
+        if (getGameMode(puzzleData.seed) === 'practice' && shouldShowDailyPrompt()) {
+          console.log('DEBUG: Setting showDailyPrompt to true')
+          setShowDailyPrompt(true)
+          markDailyPromptShown()
+        } else {
+          console.log('DEBUG: Daily prompt conditions not met')
         }
         setIncorrectCells([])
 
         let givens: number[]
         let puzzleSolution: number[]
-        let puzzleData: PuzzleData
         let initialState: number[] | null = null
         let initialCandidates: number[][] | null = null
 
@@ -1770,9 +1797,15 @@ ${bugReportJson}
         setLoading(false)
 
         // Check if we should show daily prompt (for practice games only)
+        console.log('DEBUG: Checking daily prompt conditions')
+        console.log('DEBUG: Game mode:', getGameMode(puzzleData.seed))
+        console.log('DEBUG: shouldShowDailyPrompt():', shouldShowDailyPrompt())
         if (getGameMode(puzzleData.seed) === 'practice' && shouldShowDailyPrompt()) {
+          console.log('DEBUG: Setting showDailyPrompt to true')
           setShowDailyPrompt(true)
           markDailyPromptShown()
+        } else {
+          console.log('DEBUG: Daily prompt conditions not met')
         }
 
         // Restore shared state if available

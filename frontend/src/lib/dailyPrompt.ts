@@ -13,15 +13,18 @@ import { getShowDailyReminder } from './preferences'
  */
 export function shouldShowDailyPrompt(): boolean {
   // Check user preference
-  if (!getShowDailyReminder()) return false
+  const showDailyReminderPref = getShowDailyReminder()
+  if (!showDailyReminderPref) return false
   
   // Check if daily already completed
-  if (isTodayCompleted()) return false
+  const isTodayCompletedResult = isTodayCompleted()
+  if (isTodayCompletedResult) return false
   
   // Check if already prompted today
   try {
     const lastShown = localStorage.getItem(STORAGE_KEYS.DAILY_PROMPT_LAST_SHOWN)
-    if (lastShown === getTodayUTC()) return false
+    const todayUTC = getTodayUTC()
+    if (lastShown === todayUTC) return false
   } catch {
     // If localStorage access fails, don't show prompt
     return false
