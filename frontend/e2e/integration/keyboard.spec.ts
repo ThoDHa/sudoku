@@ -255,7 +255,9 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
 
     // Enter a digit
     await page.keyboard.press('5');
-    await page.waitForTimeout(100);
+
+    // Wait for digit to be placed and cell to be deselected
+    await expect(emptyCell).toHaveAttribute('aria-label', /value 5/, { timeout: 2000 });
 
     // CRITICAL: After digit entry, the cell should be DESELECTED
     // This is the correct behavior that prevents navigation confusion
@@ -264,7 +266,9 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     // To test arrow navigation now, we need to first select a cell again
     // Arrow keys without selection should not move focus (correct behavior)
     await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(100);
+    
+    // Verify no unexpected state changes occurred
+    await expect(page.locator('[role="gridcell"]').first()).toBeVisible();
     
     // No cell should be selected after arrow key without prior selection
     const selectedCells = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
@@ -295,10 +299,9 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
 
     // Enter digit 7
     await page.keyboard.press('7');
-    await page.waitForTimeout(100);
 
     // Verify digit was placed
-    await expectCellValue(page, pos.row, pos.col, 7);
+    await expect(getCellLocator(page, pos.row, pos.col)).toHaveAttribute('aria-label', /value 7/, { timeout: 2000 });
   });
 
   test('cannot overwrite given (fixed) cells', async ({ page }) => {
@@ -316,10 +319,9 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
     // Try to enter a different digit
     const newDigit = originalValue === 9 ? 1 : originalValue + 1;
     await page.keyboard.press(newDigit.toString());
-    await page.waitForTimeout(100);
 
-    // Value should remain unchanged
-    await expectCellValue(page, row, col, originalValue);
+    // Value should remain unchanged - given cells cannot be modified
+    await expect(givenCell).toHaveAttribute('aria-label', new RegExp(`value ${originalValue}`), { timeout: 2000 });
   });
 
   test('digit replaces existing user digit', async ({ page }) => {
@@ -330,16 +332,14 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
 
     // Enter first digit
     await page.keyboard.press('3');
-    await page.waitForTimeout(100);
-    await expectCellValue(page, pos.row, pos.col, 3);
+    await expect(cell).toHaveAttribute('aria-label', /value 3/, { timeout: 2000 });
 
     // Re-select the cell and enter different digit
     await cell.click();
     await page.keyboard.press('8');
-    await page.waitForTimeout(100);
 
     // New digit should replace old one
-    await expectCellValue(page, pos.row, pos.col, 8);
+    await expect(cell).toHaveAttribute('aria-label', /value 8/, { timeout: 2000 });
   });
 
   test('key 0 or Backspace clears cell', async ({ page }) => {
@@ -350,17 +350,15 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
 
     // Enter a digit
     await page.keyboard.press('4');
-    await page.waitForTimeout(100);
-    await expectCellValue(page, pos.row, pos.col, 4);
+    await expect(cell).toHaveAttribute('aria-label', /value 4/, { timeout: 2000 });
 
     // Clear with Backspace
     // Ensure the cell is focused/selected via shared helper before sending keys
     await selectCell(page, pos.row, pos.col);
     await page.keyboard.press('Backspace');
-    await page.waitForTimeout(100);
 
     // Cell should be empty
-    await expectCellValue(page, pos.row, pos.col, 'empty');
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
   });
 
   test('Delete key clears cell', async ({ page }) => {
@@ -371,17 +369,15 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
 
     // Enter a digit
     await page.keyboard.press('9');
-    await page.waitForTimeout(100);
-    await expectCellValue(page, pos.row, pos.col, 9);
+    await expect(cell).toHaveAttribute('aria-label', /value 9/, { timeout: 2000 });
 
     // Clear with Delete
     // Ensure the cell is focused/selected via shared helper before sending keys
     await selectCell(page, pos.row, pos.col);
     await page.keyboard.press('Delete');
-    await page.waitForTimeout(100);
 
     // Cell should be empty
-    await expectCellValue(page, pos.row, pos.col, 'empty');
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
   });
 });
 
@@ -398,16 +394,14 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
 
     // Enter a digit
     await page.keyboard.press('6');
-    await page.waitForTimeout(100);
-    await expectCellValue(page, pos.row, pos.col, 6);
+    await expect(cell).toHaveAttribute('aria-label', /value 6/, { timeout: 2000 });
 
     // Undo with Ctrl+Z (Cmd+Z on Mac/WebKit)
     const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
     await page.keyboard.press(`${modifier}+z`);
-    await page.waitForTimeout(100);
 
     // Cell should be empty again
-    await expectCellValue(page, pos.row, pos.col, 'empty');
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
   });
 
   test('Ctrl+Y or Ctrl+Shift+Z redoes', async ({ page, browserName }) => {
@@ -418,28 +412,24 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
 
     // Enter a digit
     await page.keyboard.press('2');
-    await page.waitForTimeout(100);
-    await expectCellValue(page, pos.row, pos.col, 2);
+    await expect(cell).toHaveAttribute('aria-label', /value 2/, { timeout: 2000 });
 
     // Undo
     const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
     await page.keyboard.press(`${modifier}+z`);
-    await page.waitForTimeout(100);
-    await expectCellValue(page, pos.row, pos.col, 'empty');
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
 
     // Redo with Ctrl+Y or Ctrl+Shift+Z
     await page.keyboard.press(`${modifier}+y`);
-    await page.waitForTimeout(100);
 
     // Check if redo worked - if not, try Ctrl+Shift+Z
     const ariaLabel = await cell.getAttribute('aria-label');
     if (ariaLabel?.includes('empty')) {
       await page.keyboard.press(`${modifier}+Shift+z`);
-      await page.waitForTimeout(100);
     }
 
     // Digit should be back
-    await expectCellValue(page, pos.row, pos.col, 2);
+    await expect(cell).toHaveAttribute('aria-label', /value 2/, { timeout: 2000 });
   });
 
   test('multiple undos work sequentially', async ({ page, browserName }) => {
@@ -454,24 +444,22 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
     await cell1.scrollIntoViewIfNeeded();
     await cell1.click();
     await page.keyboard.press('1');
-    await page.waitForTimeout(100);
+    await expect(cell1).toHaveAttribute('aria-label', /value 1/, { timeout: 2000 });
 
     await cell2.scrollIntoViewIfNeeded();
     await cell2.click();
     await page.keyboard.press('2');
-    await page.waitForTimeout(100);
+    await expect(cell2).toHaveAttribute('aria-label', /value 2/, { timeout: 2000 });
 
     const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
 
     // Undo second entry
     await page.keyboard.press(`${modifier}+z`);
-    await page.waitForTimeout(100);
-    await expectCellValue(page, pos2.row, pos2.col, 'empty');
+    await expect(cell2).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
 
     // Undo first entry
     await page.keyboard.press(`${modifier}+z`);
-    await page.waitForTimeout(100);
-    await expectCellValue(page, pos1.row, pos1.col, 'empty');
+    await expect(cell1).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
   });
 
   test('undo after redo works correctly', async ({ page, browserName }) => {
@@ -484,30 +472,26 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
 
     // Enter digit
     await page.keyboard.press('5');
-    await page.waitForTimeout(100);
+    await expect(cell).toHaveAttribute('aria-label', /value 5/, { timeout: 2000 });
 
     // Undo
     await page.keyboard.press(`${modifier}+z`);
-    await page.waitForTimeout(100);
-    await expectCellValue(page, pos.row, pos.col, 'empty');
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
 
     // Redo
     await page.keyboard.press(`${modifier}+y`);
-    await page.waitForTimeout(100);
 
     // Check if Ctrl+Y worked, if not try Ctrl+Shift+Z
     let ariaLabel = await cell.getAttribute('aria-label');
     if (ariaLabel?.includes('empty')) {
       await page.keyboard.press(`${modifier}+Shift+z`);
-      await page.waitForTimeout(100);
     }
 
-    await expectCellValue(page, pos.row, pos.col, 5);
+    await expect(cell).toHaveAttribute('aria-label', /value 5/, { timeout: 2000 });
 
     // Undo again
     await page.keyboard.press(`${modifier}+z`);
-    await page.waitForTimeout(100);
-    await expectCellValue(page, pos.row, pos.col, 'empty');
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
   });
 });
 
@@ -523,10 +507,9 @@ test.describe('@integration Keyboard Navigation - Notes Mode', () => {
 
     // Press N to toggle notes mode
     await page.keyboard.press('n');
-    await page.waitForTimeout(100);
 
     // Notes button should show active state
-    await expect(notesButton).toHaveClass(/bg-amber|active|enabled/);
+    await expect(notesButton).toHaveClass(/bg-amber|active|enabled/, { timeout: 2000 });
   });
 
   test('in notes mode, digits toggle candidates', async ({ page }) => {
@@ -537,21 +520,20 @@ test.describe('@integration Keyboard Navigation - Notes Mode', () => {
 
     // Enable notes mode
     await page.keyboard.press('n');
-    await page.waitForTimeout(100);
+    await expect(page.locator('button[aria-label*="Notes"]')).toHaveClass(/bg-amber|active|enabled/, { timeout: 2000 });
 
     // Enter a candidate digit
     await page.keyboard.press('3');
-    await page.waitForTimeout(100);
 
-    // Cell should show candidates (check for notes/candidates in aria-label or class)
-    const ariaLabel = await cell.getAttribute('aria-label');
-    // The cell might show "Row X, Column Y, candidates: 3" or have notes styling
-    const hasCandidates = ariaLabel?.includes('candidates') || ariaLabel?.includes('3');
-    const hasNotesClass = await cell.evaluate((el: Element) =>
-      el.querySelector('.text-xs') !== null || el.innerHTML.includes('3')
-    );
-
-    expect(hasCandidates || hasNotesClass).toBe(true);
+    // Wait for candidate to be added - check for notes/candidates in aria-label or DOM
+    await expect(async () => {
+      const ariaLabel = await cell.getAttribute('aria-label');
+      const hasNotesClass = await cell.evaluate((el: Element) =>
+        el.querySelector('.text-xs') !== null || el.innerHTML.includes('3')
+      );
+      const hasCandidates = ariaLabel?.includes('candidates') || ariaLabel?.includes('3');
+      expect(hasCandidates || hasNotesClass).toBe(true);
+    }).toPass({ timeout: 2000 });
   });
 
   test('N key again exits notes mode', async ({ page }) => {
@@ -559,15 +541,13 @@ test.describe('@integration Keyboard Navigation - Notes Mode', () => {
 
     // Enable notes mode
     await page.keyboard.press('n');
-    await page.waitForTimeout(100);
-    await expect(notesButton).toHaveClass(/bg-amber|active|enabled/);
+    await expect(notesButton).toHaveClass(/bg-amber|active|enabled/, { timeout: 2000 });
 
     // Disable notes mode
     await page.keyboard.press('n');
-    await page.waitForTimeout(100);
 
     // Notes button should not show active state
-    await expect(notesButton).not.toHaveClass(/bg-amber|active|enabled/);
+    await expect(notesButton).not.toHaveClass(/bg-amber|active|enabled/, { timeout: 2000 });
   });
 });
 
@@ -583,26 +563,24 @@ test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
 
     // Press Tab multiple times
     await page.keyboard.press('Tab');
-    await page.waitForTimeout(100);
 
     // Some element should have focus
-    const focusedElement = page.locator(':focus');
-    await expect(focusedElement).toBeVisible();
+    await expect(page.locator(':focus')).toBeVisible({ timeout: 2000 });
 
     // Tab again
     await page.keyboard.press('Tab');
-    await page.waitForTimeout(100);
 
     // A different element should now have focus
-    const newFocusedElement = page.locator(':focus');
-    await expect(newFocusedElement).toBeVisible();
+    await expect(page.locator(':focus')).toBeVisible({ timeout: 2000 });
   });
 
   test('Shift+Tab moves backwards through elements', async ({ page }) => {
     // Focus a control button first
     const undoButton = page.locator('button[title="Undo"]');
     await undoButton.focus();
-    await page.waitForTimeout(100);
+    
+    // Wait for focus to be properly set
+    await expect(undoButton).toBeFocused({ timeout: 2000 });
 
     // Tab forward twice
     await page.keyboard.press('Tab');
@@ -613,7 +591,6 @@ test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
 
     // Shift+Tab backwards
     await page.keyboard.press('Shift+Tab');
-    await page.waitForTimeout(100);
 
     // Should have moved back
     const afterShiftTab = await page.evaluate(() => document.activeElement?.tagName);
@@ -648,8 +625,7 @@ test.describe('@integration Keyboard Navigation - Focus Management', () => {
     const emptyCell = getCellLocator(page, pos.row, pos.col);
     await emptyCell.click();
     await page.keyboard.press('4');
-    await page.waitForTimeout(100);
-    await expectCellValue(page, pos.row, pos.col, 4);
+    await expect(emptyCell).toHaveAttribute('aria-label', /value 4/, { timeout: 2000 });
   });
 
   test('focus visible indicator shows on selected cell', async ({ page }) => {
@@ -755,9 +731,8 @@ test.describe('@integration Keyboard Navigation - Edge Cases', () => {
     await page.keyboard.press('a');
     await page.keyboard.press('x');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(100);
 
     // Cell should still be empty (no crash, no unexpected value)
-    await expectCellValue(page, pos.row, pos.col, 'empty');
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
   });
 });
