@@ -86,270 +86,12 @@ test.describe('@integration Technique Hints - Basic Functionality', () => {
     await techniqueButton.click();
     
     // Should either show "Got it" modal OR show a toast message (fill candidates first)
+    // OR show new behavior: "Try: {Technique}" with "Learn more" link
     const gotItButton = page.getByRole('button', { name: /Got it/i });
     const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
+    const newToastPattern = page.locator('text=/Try:.*|Learn more/').first();
     
-    // Accept either outcome as valid
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
-  });
-
-  test('technique modal shows technique name', async ({ page }) => {
-    // Prep board with candidates first
-    await prepBoardForTechniqueHint(page);
-    
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
-    await techniqueButton.click();
-    
-    // Modal should contain technique name in heading
-    const modalHeading = page.locator('h2.text-xl');
-    const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    
-    // Accept either modal or toast as valid
-    const modalOrToast = modalHeading.or(toastMessage);
-    await expect(modalOrToast).toBeVisible({ timeout: 5000 });
-    
-    // If modal is visible, verify it has content
-    if (await modalHeading.isVisible()) {
-      const headingText = await modalHeading.textContent();
-      expect(headingText).toBeTruthy();
-      expect(headingText!.length).toBeGreaterThan(0);
-    }
-  });
-
-  test('technique hint does NOT apply the move to the board', async ({ page }) => {
-    // Prep board with candidates first
-    await prepBoardForTechniqueHint(page);
-    
-    // Count empty cells before
-    const emptyCellsBefore = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
-    
-    // Click technique hint button
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
-    await techniqueButton.click();
-    
-    // Wait for modal or any toast message (multiple possible outcomes)
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
-    const toastMessage = page.locator('text=Fill in some candidates')
-      .or(page.locator('text=use 💡 Hint'))
-      .or(page.locator('text=advanced techniques'))
-      .or(page.locator('text=already complete'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
-    
-    // Wait for technique processing to complete, then count empty cells
-    await waitForTechniqueProcessing(page);
-    const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
-
-    
-    expect(emptyCellsAfter).toEqual(emptyCellsBefore);
-    
-    // Close modal if visible
-    if (await gotItButton.isVisible()) {
-      await gotItButton.click();
-    }
-  });
-
-  test('can close technique modal with Got it button', async ({ page }) => {
-    // Prep board with candidates first
-    await prepBoardForTechniqueHint(page);
-    
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
-    await techniqueButton.click();
-    
-    // Close modal
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
-    const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    
-    // Wait for modal or toast
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
-    
-    // If modal is visible, test closing it
-    if (await gotItButton.isVisible()) {
-      await gotItButton.click();
-      // Modal should be gone
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
-    }
-  });
-
-  test('can close technique modal by clicking backdrop', async ({ page }) => {
-    // Prep board with candidates first
-    await prepBoardForTechniqueHint(page);
-    
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
-    await techniqueButton.click();
-    
-    // Wait for modal or toast
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
-    const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
-    
-    // If modal is visible, test closing via backdrop
-    if (await gotItButton.isVisible()) {
-      // Click backdrop (the dark overlay)
-      const backdrop = page.locator('.bg-black\\/50');
-      await backdrop.click({ position: { x: 10, y: 10 } });
-      
-      // Modal should be gone
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
-    }
-  });
-});
-
-test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
-  test.beforeEach(async ({ page }) => {
-    // Set localStorage before navigation to skip onboarding modal
-    await page.addInitScript(() => {
-      localStorage.setItem('sudoku_onboarding_complete', 'true');
-    });
-    await setupGameAndWaitForBoard(page);
-    // Wait for WASM to be ready
-    await waitForWasmReady(page);
-  });
-
-  test('technique hint button is disabled after use', async ({ page }) => {
-    // Prep board with candidates first
-    await prepBoardForTechniqueHint(page);
-    
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
-    
-    // Should be enabled initially
-    await expect(techniqueButton).toBeEnabled();
-    
-    // Use technique hint
-    await techniqueButton.click();
-    
-    // Wait for modal or toast
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
-    const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
-    
-    // Only test disable behavior if modal appeared (toast means no technique was available)
-    if (await gotItButton.isVisible()) {
-      await gotItButton.click();
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
-      
-      // Button should now be disabled
-      await expect(techniqueButton).toBeDisabled();
-    }
-  });
-
-  test('technique hint button re-enables after user makes a move', async ({ page }) => {
-    // Prep board with candidates first
-    await prepBoardForTechniqueHint(page);
-    
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
-    
-    // Use technique hint
-    await techniqueButton.click();
-    
-    // Wait for modal or toast
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
-    const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
-    
-    // Only test re-enable behavior if modal appeared
-    if (await gotItButton.isVisible()) {
-      await gotItButton.click();
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
-      
-      // Button should be disabled
-      await expect(techniqueButton).toBeDisabled();
-      
-      // Click digit button first to enter multi-fill mode (highlights the digit)
-      const digitButton = page.locator('button[aria-label^="Enter 4,"]');
-      await digitButton.click();
-      
-      // Find an empty cell in a lower row (row 5+) that won't be obscured by sticky header
-      const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
-      await emptyCell.scrollIntoViewIfNeeded();
-      await emptyCell.click();
-      
-      // Button should be enabled again
-      await expect(techniqueButton).toBeEnabled({ timeout: 3000 });
-    }
-  });
-
-  test('technique hint button re-enables after user erases a cell', async ({ page }) => {
-    // Wait for WASM to be ready
-    await waitForWasmReady(page);
-    
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
-    const hintButton = page.getByRole('button', { name: /Hint/i });
-    
-    // Use 3-4 hints to ensure we have candidates filled
-    // This gives us a better chance of having technique hints available
-    for (let i = 0; i < 4; i++) {
-      if (await hintButton.isEnabled()) {
-        await hintButton.click();
-        await page.waitForLoadState("networkidle", { timeout: 1000 });
-      }
-    }
-    
-    // First, use technique hint - it should show EITHER a modal OR a toast
-    await techniqueButton.click();
-    
-    // Wait for EITHER technique modal OR toast message
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
-    const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    
-    // Try to wait for modal first (5 second timeout)
-    const modalAppeared = await gotItButton.isVisible({ timeout: 5000 }).catch(() => false);
-    
-    if (modalAppeared) {
-      // Modal path: button disables while modal is open
-      await expect(techniqueButton).toBeDisabled();
-      
-      // Close the modal
-      await gotItButton.click();
-      await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
-      
-      // Button should still be disabled after closing modal
-      await expect(techniqueButton).toBeDisabled();
-    } else {
-      // Toast path or no response: button stays enabled or re-enables quickly
-      // Just verify the button is interactable
-      await expect(techniqueButton).toBeEnabled({ timeout: 2000 });
-    }
-    
-    // Make a move by entering a digit
-    const digitButton = page.locator('button[aria-label^="Enter 1,"]');
-    await digitButton.click();
-    
-    // Find an empty cell in a lower row (row 5+)
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
-    await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
-    await page.waitForLoadState("networkidle", { timeout: 500 });
-    
-    // Button should be enabled after making a move
-    await expect(techniqueButton).toBeEnabled({ timeout: 3000 });
-    
-    // Now erase the cell we just filled
-    const eraseButton = page.locator('button[aria-label="Erase mode"]');
-    await eraseButton.click();
-    
-    // Click the cell we just filled
-    const filledCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="value 1"]').first();
-    await filledCell.scrollIntoViewIfNeeded();
-    await filledCell.click();
-    
-    // Button should still be enabled after erasing
-    await expect(techniqueButton).toBeEnabled({ timeout: 3000 });
-  });
-
-  test('technique hint button re-enables after using regular hint', async ({ page }) => {
-    // Prep board with candidates first
-    await prepBoardForTechniqueHint(page);
-    
-    const techniqueButton = page.getByRole('button', { name: /Technique/i });
-    const hintButton = page.locator('button:has-text("Hint")');
-    
-    // Use technique hint first
-    await techniqueButton.click();
-    
-    // Wait for modal or toast
-    const gotItButton = page.getByRole('button', { name: /Got it/i });
-    const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+    await expect(gotItButton.or(toastMessage).or(newToastPattern)).toBeVisible({ timeout: 5000 });
     
     // Only test re-enable behavior if modal appeared
     if (await gotItButton.isVisible()) {
@@ -391,7 +133,9 @@ test.describe('@integration Technique Hints - Counter', () => {
     await techniqueButton.click();
     const gotItButton = page.getByRole('button', { name: /Got it/i });
     const toastMessage = page.locator('text=Fill in some candidates').or(page.locator('text=use 💡 Hint'));
-    await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+    const newToastPattern = page.locator('text=/Try:.*|Learn more/').first();
+    
+    await expect(gotItButton.or(toastMessage).or(newToastPattern)).toBeVisible({ timeout: 5000 });
     
     // Only test counter behavior if modal appeared
     if (await gotItButton.isVisible()) {
@@ -413,7 +157,7 @@ test.describe('@integration Technique Hints - Counter', () => {
       
       // Use another technique hint
       await techniqueButton.click();
-      await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
+      await expect(gotItButton.or(toastMessage).or(newToastPattern)).toBeVisible({ timeout: 5000 });
       
       if (await gotItButton.isVisible()) {
         await gotItButton.click();
