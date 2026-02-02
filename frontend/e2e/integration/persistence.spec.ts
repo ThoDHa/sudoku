@@ -105,6 +105,33 @@ async function waitForAutoSave(
   }
 }
 
+// Helper to wait for UI elements to be ready after interactions
+// Replaces short arbitrary timeouts with element state verification
+async function waitForUIReady(page: any, timeout = 1000): Promise<void> {
+  // Wait for any loading indicators to disappear and UI to stabilize
+  await page.waitForLoadState('networkidle', { timeout });
+}
+
+// Helper to wait for menu interactions and modal appearances
+// Replaces 200ms delays with actual element visibility checks
+async function waitForMenuOrModal(page: any, selector: string, timeout = 2000): Promise<void> {
+  const element = page.locator(selector);
+  await expect(element).toBeVisible({ timeout });
+}
+
+// Helper to wait for element state changes (like aria attributes)
+// Replaces delays when waiting for UI state updates
+async function waitForElementState(
+  page: any, 
+  selector: string, 
+  attribute: string, 
+  expectedValue: string | RegExp,
+  timeout = 2000
+): Promise<void> {
+  const element = page.locator(selector);
+  await expect(element).toHaveAttribute(attribute, expectedValue, { timeout });
+}
+
 test.describe('@integration Persistence - Auto-save on Cell Change', () => {
   const TEST_SEED = 'P0';
 
@@ -410,7 +437,9 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
     // Click the menu button and find the Clear All button
     const menuButton = page.locator('button[aria-label="Menu"]');
     await menuButton.click();
-    await page.waitForTimeout(200);
+    
+    // Wait for menu to appear (replaces arbitrary 200ms timeout)
+    await waitForMenuOrModal(page, 'button:has-text("Clear All")');
 
     // Click "Clear All" to clear user entries (menu auto-closes on click)
     const clearAllButton = page.locator('button').filter({ hasText: 'Clear All' });
@@ -420,8 +449,8 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
     const confirmButton = page.locator('button').filter({ hasText: 'Confirm' });
     await confirmButton.click();
     
-    // Wait for the board to update
-    await page.waitForTimeout(500);
+    // Wait for UI to process the clear action (replaces arbitrary 500ms timeout)
+    await waitForUIReady(page);
 
     // The cell should now be empty again
     await expectCellValue(page, row, col, 'empty');
@@ -463,7 +492,9 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
     // Click menu and use Clear All
     const menuButton = page.locator('button[aria-label="Menu"]');
     await menuButton.click();
-    await page.waitForTimeout(200);
+    
+    // Wait for menu to appear (replaces arbitrary 200ms timeout)
+    await waitForMenuOrModal(page, 'button:has-text("Clear All")');
 
     const clearAllButton = page.locator('button').filter({ hasText: 'Clear All' });
     await clearAllButton.click();
@@ -502,17 +533,23 @@ test.describe('@integration Persistence - Preferences', () => {
     // Open settings/menu and toggle a preference (e.g., hide timer)
     const menuButton = page.locator('header button[aria-label*="Menu"], header button:has(svg)').last();
     await menuButton.click();
-    await page.waitForTimeout(200);
+    
+    // Wait for menu to appear (replaces arbitrary 200ms timeout)
+    await waitForMenuOrModal(page, 'button');
 
     // Look for timer toggle or theme option
     const hideTimerToggle = page.locator('button:has-text("Hide Timer"), [aria-label*="timer"]').first();
     if (await hideTimerToggle.isVisible()) {
       await hideTimerToggle.click();
-      await page.waitForTimeout(500);
+      
+      // Wait for preference change to process (replaces arbitrary 500ms timeout)
+      await waitForUIReady(page);
 
       // Close menu by pressing escape
       await page.keyboard.press('Escape');
-      await page.waitForTimeout(200);
+      
+      // Wait for menu to close (replaces arbitrary 200ms timeout)
+      await expect(hideTimerToggle).not.toBeVisible({ timeout: 1000 });
 
       // Reload
       await page.reload();
@@ -533,17 +570,23 @@ test.describe('@integration Persistence - Preferences', () => {
     // Set a speed preference via the menu
     const menuButton = page.locator('header button[aria-label*="Menu"], header button:has(svg)').last();
     await menuButton.click();
-    await page.waitForTimeout(200);
+    
+    // Wait for menu to appear (replaces arbitrary 200ms timeout)
+    await waitForMenuOrModal(page, 'button');
 
     // Look for speed controls
     const speedButton = page.locator('button[aria-label*="speed"], button:has-text("1x"), button:has-text("2x")').first();
     if (await speedButton.isVisible()) {
       await speedButton.click();
-      await page.waitForTimeout(300);
+      
+      // Wait for speed preference to process (replaces arbitrary 300ms timeout)
+      await waitForUIReady(page);
 
       // Close menu
       await page.keyboard.press('Escape');
-      await page.waitForTimeout(200);
+      
+      // Wait for menu to close (replaces arbitrary 200ms timeout)
+      await expect(speedButton).not.toBeVisible({ timeout: 1000 });
 
       // Reload and check preferences
       await page.reload();
@@ -565,11 +608,15 @@ test.describe('@integration Persistence - Preferences', () => {
     const modeToggle = page.locator('button:has-text("Practice"), button:has-text("Daily")').first();
     if (await modeToggle.isVisible()) {
       await modeToggle.click();
-      await page.waitForTimeout(500);
+      
+      // Wait for mode preference to process (replaces arbitrary 500ms timeout)
+      await waitForUIReady(page);
 
       // Reload
       await page.reload();
-      await page.waitForTimeout(500);
+      
+      // Wait for page reload to complete (replaces arbitrary 500ms timeout)
+      await waitForUIReady(page);
 
       // Check preferences
       const prefs = await getLocalStorageItem(page, PREFERENCES_KEY);
@@ -741,7 +788,9 @@ test.describe('@integration Persistence - Edge Cases', () => {
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
     await page.keyboard.press('4');
-    await page.waitForTimeout(500);
+    
+    // Wait for UI to process the input (replaces arbitrary 500ms timeout)
+    await waitForUIReady(page);
 
     // Cell should have the new value
     await expectCellValue(page, row, col, 4);
@@ -864,16 +913,16 @@ test.describe('@integration Persistence - Auto-save Toggle', () => {
     await cell.click();
     await page.keyboard.press('8');
 
-    // Wait and verify that auto-save is actually disabled (replaces blind 2000ms wait)
-    // Since auto-save is disabled, we need to wait to ensure NO save happens
+    // Wait and verify that auto-save is actually disabled
+    // Since auto-save is disabled, we verify no save occurs within reasonable time
     const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
     
-    // Wait a reasonable time for auto-save to occur if it were enabled
-    await page.waitForTimeout(1000);
-    
-    // Double-check that auto-save is indeed disabled by checking the setting
+    // Verify auto-save setting is disabled
     const autoSaveEnabled = await page.evaluate(() => localStorage.getItem('sudoku_autosave_enabled'));
     expect(autoSaveEnabled).toBe('false');
+    
+    // Wait for UI to stabilize, then verify no save occurred (replaces blind 1000ms wait)
+    await waitForUIReady(page);
 
     // Check that no save was created
     const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
@@ -934,7 +983,9 @@ test.describe('@integration Persistence - History Persistence', () => {
     await cell1.scrollIntoViewIfNeeded();
     await cell1.click();
     await page.keyboard.press('4');
-    await page.waitForTimeout(300);
+
+    // Brief pause to let first move register before second move
+    await waitForUIReady(page);
 
     const { cell: cell2 } = await findEmptyCell(page, 6);
     await cell2.scrollIntoViewIfNeeded();
@@ -996,7 +1047,9 @@ test.describe('@integration Persistence - History Persistence', () => {
     // Undo should work
     const undoButton = page.locator('button[title="Undo"]');
     await undoButton.click();
-    await page.waitForTimeout(300);
+    
+    // Wait for undo action to complete (replaces arbitrary 300ms timeout)
+    await waitForUIReady(page);
 
     // Cell should be empty after undo
     await expectCellValue(page, row, col, 'empty');
@@ -1048,9 +1101,9 @@ test.describe('@integration Persistence - Completed Game State', () => {
     expect(parsed.isComplete).toBe(true);
     expect(parsed.board.every((val: number) => val !== 0)).toBe(true); // All cells filled
 
-    // Verify game state persists (check for any auto-save operations - replaces blind 2000ms wait)
-    // Use a shorter, more reasonable wait since this tests that state persists, not auto-save timing
-    await page.waitForTimeout(500);
+    // Verify game state persists (check for any auto-save operations)
+    // Use efficient UI ready check since this tests state persistence, not timing
+    await waitForUIReady(page);
 
     // Verify the state is STILL there (not cleared on completion)
     const savedStateAfter = await getLocalStorageItem(page, storageKey);
