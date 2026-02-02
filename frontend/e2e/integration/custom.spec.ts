@@ -24,22 +24,21 @@ test.describe('@integration Custom Puzzle - Page Load', () => {
 
   test('custom page has input area or empty board', async ({ page }) => {
     await page.goto('/custom');
-    await page.waitForTimeout(500);
     
-    // Should have either a text input for puzzle string or an empty board
-    const hasInput = await page.locator('input, textarea').first().isVisible().catch(() => false);
-    const hasBoard = await page.locator('[role="grid"], [role="gridcell"]').first().isVisible().catch(() => false);
-    
-    expect(hasInput || hasBoard).toBeTruthy();
+    // Wait for either input field or board to be visible
+    await expect(async () => {
+      const hasInput = await page.locator('input, textarea').first().isVisible().catch(() => false);
+      const hasBoard = await page.locator('[role="grid"], [role="gridcell"]').first().isVisible().catch(() => false);
+      expect(hasInput || hasBoard).toBeTruthy();
+    }).toPass({ timeout: 5000 });
   });
 
   test('custom page has play/validate button', async ({ page }) => {
     await page.goto('/custom');
-    await page.waitForTimeout(500);
     
-    // Look for action buttons
+    // Wait for action button to be visible
     const playButton = page.locator('button:has-text("Play"), button:has-text("Start"), button:has-text("Validate"), button:has-text("Submit")');
-    await expect(playButton.first()).toBeVisible();
+    await expect(playButton.first()).toBeVisible({ timeout: 5000 });
   });
 });
 
@@ -49,7 +48,13 @@ test.describe('@integration Custom Puzzle - Input', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     await page.goto('/custom');
-    await page.waitForTimeout(500);
+    
+    // Wait for page to be ready for interaction
+    await expect(async () => {
+      const hasInput = await page.locator('input, textarea').first().isVisible().catch(() => false);
+      const hasCells = await page.locator('[role="gridcell"]').count().then(count => count > 0);
+      expect(hasInput || hasCells).toBeTruthy();
+    }).toPass({ timeout: 5000 });
   });
 
   test('can enter digits into custom puzzle board', async ({ page }) => {
@@ -67,10 +72,9 @@ test.describe('@integration Custom Puzzle - Input', () => {
         // Use number button instead of keyboard (custom page has digit buttons)
         const digitButton = page.locator('button:text-is("5")');
         await digitButton.click();
-        await page.waitForTimeout(300);
         
-        const cellText = await cell.textContent();
-        expect(cellText).toContain('5');
+        // Wait for the digit to appear in the cell
+        await expect(cell).toContainText('5');
       }
     } else {
       // If there's a text input, enter puzzle string
@@ -116,21 +120,16 @@ test.describe('@integration Custom Puzzle - Input', () => {
         await cell2.scrollIntoViewIfNeeded();
         await cell2.click();
         await page.locator('button:text-is("2")').click();
-        await page.waitForTimeout(200);
         
         // Look for clear/reset button (custom page has "Clear All" button)
         const clearButton = page.locator('button:has-text("Clear All"), button:has-text("Clear"), button:has-text("Reset")');
         
         if (await clearButton.first().isVisible()) {
           await clearButton.first().click();
-          await page.waitForTimeout(300);
           
-          // Cells should be empty
-          const cell1Text = await cell1.textContent();
-          const cell2Text = await cell2.textContent();
-          
-          expect(cell1Text?.trim()).toBeFalsy();
-          expect(cell2Text?.trim()).toBeFalsy();
+          // Wait for cells to be cleared
+          await expect(cell1).not.toContainText(/[1-9]/);
+          await expect(cell2).not.toContainText(/[1-9]/);
         }
       }
     }
@@ -143,7 +142,13 @@ test.describe('@integration Custom Puzzle - Validation', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     await page.goto('/custom');
-    await page.waitForTimeout(500);
+    
+    // Wait for custom page interface to be ready
+    await expect(async () => {
+      const hasInput = await page.locator('input, textarea').first().isVisible().catch(() => false);
+      const hasActionButton = await page.locator('button:has-text("Play"), button:has-text("Start"), button:has-text("Validate"), button:has-text("Submit")').first().isVisible().catch(() => false);
+      expect(hasInput || hasActionButton).toBeTruthy();
+    }).toPass({ timeout: 5000 });
   });
 
   test('valid puzzle is accepted', async ({ page }) => {
@@ -158,14 +163,13 @@ test.describe('@integration Custom Puzzle - Validation', () => {
       const actionButton = page.locator('button:has-text("Play"), button:has-text("Start"), button:has-text("Validate"), button:has-text("Submit")').first();
       await actionButton.click();
       
-      await page.waitForTimeout(1000);
-      
-      // Should either navigate to game or show success
-      const url = page.url();
-      const hasGame = url.includes('/game/') || url.includes('/custom');
-      const hasError = await page.locator('.error, [role="alert"]:has-text("error"), [role="alert"]:has-text("invalid")').first().isVisible().catch(() => false);
-      
-      expect(hasGame && !hasError).toBeTruthy();
+      // Wait for navigation or success indication
+      await expect(async () => {
+        const url = page.url();
+        const hasGame = url.includes('/game/') || url.includes('/custom');
+        const hasError = await page.locator('.error, [role="alert"]:has-text("error"), [role="alert"]:has-text("invalid")').first().isVisible().catch(() => false);
+        expect(hasGame && !hasError).toBeTruthy();
+      }).toPass({ timeout: 10000 });
     }
   });
 
@@ -180,14 +184,13 @@ test.describe('@integration Custom Puzzle - Validation', () => {
       const actionButton = page.locator('button:has-text("Play"), button:has-text("Start"), button:has-text("Validate"), button:has-text("Submit")').first();
       await actionButton.click();
       
-      await page.waitForTimeout(500);
-      
-      // Should show error message
-      const errorMessage = page.locator('.error, [role="alert"], .text-red, .text-destructive, :text("invalid"), :text("error")');
-      const hasError = await errorMessage.first().isVisible().catch(() => false);
-      
-      // The form should show some indication of invalid input
-      expect(hasError || !page.url().includes('/game/')).toBeTruthy();
+      // Wait for error message to appear or verify navigation didn't occur
+      await expect(async () => {
+        const errorMessage = page.locator('.error, [role="alert"], .text-red, .text-destructive, :text("invalid"), :text("error")');
+        const hasError = await errorMessage.first().isVisible().catch(() => false);
+        const stayedOnPage = !page.url().includes('/game/');
+        expect(hasError || stayedOnPage).toBeTruthy();
+      }).toPass({ timeout: 5000 });
     }
   });
 
@@ -202,13 +205,13 @@ test.describe('@integration Custom Puzzle - Validation', () => {
       const actionButton = page.locator('button:has-text("Play"), button:has-text("Start"), button:has-text("Validate"), button:has-text("Submit")').first();
       await actionButton.click();
       
-      await page.waitForTimeout(500);
-      
-      // Should show error or prevent submission
-      const errorMessage = page.locator('.error, [role="alert"], .text-red, .text-destructive');
-      const hasError = await errorMessage.first().isVisible().catch(() => false);
-      
-      expect(hasError || !page.url().includes('/game/')).toBeTruthy();
+      // Wait for error indication or prevention of navigation
+      await expect(async () => {
+        const errorMessage = page.locator('.error, [role="alert"], .text-red, .text-destructive');
+        const hasError = await errorMessage.first().isVisible().catch(() => false);
+        const stayedOnPage = !page.url().includes('/game/');
+        expect(hasError || stayedOnPage).toBeTruthy();
+      }).toPass({ timeout: 5000 });
     }
   });
 
@@ -223,13 +226,13 @@ test.describe('@integration Custom Puzzle - Validation', () => {
       const actionButton = page.locator('button:has-text("Play"), button:has-text("Start"), button:has-text("Validate"), button:has-text("Submit")').first();
       await actionButton.click();
       
-      await page.waitForTimeout(500);
-      
-      // Should show error
-      const errorMessage = page.locator('.error, [role="alert"], .text-red, .text-destructive');
-      const hasError = await errorMessage.first().isVisible().catch(() => false);
-      
-      expect(hasError || !page.url().includes('/game/')).toBeTruthy();
+      // Wait for error to appear
+      await expect(async () => {
+        const errorMessage = page.locator('.error, [role="alert"], .text-red, .text-destructive');
+        const hasError = await errorMessage.first().isVisible().catch(() => false);
+        const stayedOnPage = !page.url().includes('/game/');
+        expect(hasError || stayedOnPage).toBeTruthy();
+      }).toPass({ timeout: 5000 });
     }
   });
 
@@ -244,14 +247,13 @@ test.describe('@integration Custom Puzzle - Validation', () => {
       const actionButton = page.locator('button:has-text("Play"), button:has-text("Start"), button:has-text("Validate"), button:has-text("Submit")').first();
       await actionButton.click();
       
-      await page.waitForTimeout(1000);
-      
-      // Should show error about unsolvable or invalid puzzle
-      const errorMessage = page.locator('.error, [role="alert"], .text-red, .text-destructive, :text("unsolvable"), :text("no solution")');
-      const hasError = await errorMessage.first().isVisible().catch(() => false);
-      
-      // Either shows error or stays on custom page (doesn't start game)
-      expect(hasError || page.url().includes('/custom')).toBeTruthy();
+      // Wait for error or staying on custom page (more processing time for unsolvable check)
+      await expect(async () => {
+        const errorMessage = page.locator('.error, [role="alert"], .text-red, .text-destructive, :text("unsolvable"), :text("no solution")');
+        const hasError = await errorMessage.first().isVisible().catch(() => false);
+        const stayedOnCustom = page.url().includes('/custom');
+        expect(hasError || stayedOnCustom).toBeTruthy();
+      }).toPass({ timeout: 10000 });
     }
   });
 });
@@ -262,9 +264,10 @@ test.describe('@integration Custom Puzzle - Board Input Mode', () => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     await page.goto('/custom');
-    await page.waitForTimeout(500);
     
+    // Wait for board to be ready
     const cells = page.locator('[role="gridcell"]');
+    await expect(cells.first()).toBeVisible({ timeout: 5000 });
     
     if (await cells.count() === 81) {
       // Enter a few digits in different cells (use lower rows to avoid header)
@@ -282,14 +285,9 @@ test.describe('@integration Custom Puzzle - Board Input Mode', () => {
         // Use number button instead of keyboard (custom page might not have keyboard handler)
         const digitButton = page.locator(`button:text-is("${digit}")`);
         await digitButton.click();
-        await page.waitForTimeout(100);
-      }
-      
-      // Verify digits were entered
-      for (const { row, col, digit } of testDigits) {
-        const cell = page.locator(`[role="gridcell"][aria-label*="Row ${row}, Column ${col}"]`);
-        const text = await cell.textContent();
-        expect(text).toContain(digit);
+        
+        // Wait for the digit to appear
+        await expect(cell).toContainText(digit);
       }
     }
   });
@@ -302,7 +300,9 @@ test.describe('@integration Custom Puzzle - Mobile', () => {
     });
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/custom');
-    await page.waitForTimeout(500);
+    
+    // Wait for mobile layout to be ready
+    await expect(page.locator('text=Custom')).toBeVisible({ timeout: 5000 });
   });
 
   test('custom page is usable on mobile', async ({ page }) => {
@@ -335,9 +335,8 @@ test.describe('@integration Custom Puzzle - Mobile', () => {
       const numberButton = page.locator('button:text-is("9")');
       await numberButton.click();
       
-      await page.waitForTimeout(300);
-      const text = await cell.textContent();
-      expect(text).toContain('9');
+      // Wait for the digit to appear
+      await expect(cell).toContainText('9');
     }
   });
 });

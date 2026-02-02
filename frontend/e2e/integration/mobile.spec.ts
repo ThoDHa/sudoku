@@ -62,8 +62,12 @@ async function useHintsAndVerifyStable(page: import('@playwright/test').Page, co
   for (let i = 0; i < count; i++) {
     if (await hintButton.isVisible() && await hintButton.isEnabled()) {
       await hintButton.click();
-      // Wait for hint to apply
-      await page.waitForTimeout(500);
+      // Wait for hint to be processed - watch for UI state change
+      await expect(async () => {
+        const isProcessing = await hintButton.isEnabled();
+        // Hint is processed when button becomes enabled again or board state changes
+        expect(isProcessing || await page.locator('[role="grid"]').isVisible()).toBeTruthy();
+      }).toPass({ timeout: 2000 });
     }
   }
 
@@ -210,7 +214,11 @@ test.describe('@mobile Game Features - Mobile', () => {
     // Use hint once to prep board
     const hintBtn = page.locator('button:has-text("💡"), button:has-text("Hint")').first();
     await hintBtn.click();
-    await page.waitForTimeout(500);
+    // Wait for hint processing to complete by watching for UI state
+    await expect(async () => {
+      const isEnabled = await hintBtn.isEnabled();
+      expect(isEnabled).toBeTruthy();
+    }).toPass({ timeout: 2000 });
 
     const techniqueButton = page.locator('button:has-text("Technique"), button:has-text("?")').first();
     await techniqueButton.click();
@@ -238,7 +246,11 @@ test.describe('@mobile Game Features - Mobile', () => {
     // Use hint once to prep board
     const hintBtn = page.locator('button:has-text("💡"), button:has-text("Hint")').first();
     await hintBtn.click();
-    await page.waitForTimeout(500);
+    // Wait for hint processing to complete by watching for UI state
+    await expect(async () => {
+      const isEnabled = await hintBtn.isEnabled();
+      expect(isEnabled).toBeTruthy();
+    }).toPass({ timeout: 2000 });
 
     const techniqueButton = page.locator('button:has-text("Technique"), button:has-text("?")').first();
     await techniqueButton.click();
@@ -346,7 +358,16 @@ test.describe('@mobile Touch Interactions', () => {
     // Place a digit
     const numberButton = page.locator('button[aria-label^="Enter 7,"]');
     await numberButton.click();
-    await page.waitForTimeout(100);
+    // Wait for digit placement to reflect in DOM
+    if (coords) {
+      await expect(async () => {
+        const updatedCell = page.locator(
+          `[role="gridcell"][aria-label*="Row ${coords.row}, Column ${coords.col}"]`
+        );
+        const text = await updatedCell.textContent();
+        expect(text).toContain('7');
+      }).toPass({ timeout: 1000 });
+    }
 
     // Undo
     const undoButton = page.locator('button[title="Undo"]');
@@ -376,7 +397,11 @@ test.describe('@mobile Touch Interactions', () => {
     // Place a digit
     const numberButton = page.locator('button[aria-label^="Enter 3,"]');
     await numberButton.click();
-    await page.waitForTimeout(100);
+    // Wait for digit placement to reflect in DOM
+    await expect(async () => {
+      const text = await emptyCell.textContent();
+      expect(text).toContain('3');
+    }).toPass({ timeout: 1000 });
 
     // Use erase
     const eraseButton = page.locator('button[aria-label="Erase mode"]');
@@ -542,11 +567,21 @@ test.describe('@mobile Orientation Handling', () => {
 
     const numberButton = page.locator('button[aria-label^="Enter 8,"]');
     await numberButton.click();
-    await page.waitForTimeout(100);
+    // Wait for digit placement to be reflected in DOM
+    if (coords) {
+      await expect(async () => {
+        const updatedCell = page.locator(
+          `[role="gridcell"][aria-label*="Row ${coords.row}, Column ${coords.col}"]`
+        );
+        const text = await updatedCell.textContent();
+        expect(text).toContain('8');
+      }).toPass({ timeout: 1000 });
+    }
 
     // Switch to landscape
     await page.setViewportSize({ width: 667, height: 375 });
-    await page.waitForTimeout(300); // Allow re-render
+    // Wait for responsive re-render to complete
+    await expect(page.locator('.sudoku-board')).toBeVisible();
 
     // Verify move persisted
     if (coords) {
@@ -565,9 +600,8 @@ test.describe('@mobile Pages - Mobile Viewport', () => {
   test('custom page is usable', async ({ page, mobileViewport }) => {
     void mobileViewport;
     await page.goto('/custom');
-    await page.waitForTimeout(500);
-
-    await expect(page.locator('text=Custom')).toBeVisible();
+    // Wait for page elements to be visible instead of arbitrary timeout
+    await expect(page.locator('text=Custom')).toBeVisible({ timeout: 3000 });
 
     // Action buttons should be visible
     const actionButton = page
@@ -579,10 +613,15 @@ test.describe('@mobile Pages - Mobile Viewport', () => {
   test('custom page accepts puzzle input', async ({ page, mobileViewport }) => {
     void mobileViewport;
     await page.goto('/custom');
-    await page.waitForTimeout(500);
-
+    // Wait for input elements to be ready
     const input = page.locator('input, textarea').first();
     const cells = page.locator('[role="gridcell"]');
+    
+    await expect(async () => {
+      const inputVisible = await input.isVisible().catch(() => false);
+      const cellsVisible = (await cells.count()) > 0;
+      expect(inputVisible || cellsVisible).toBeTruthy();
+    }).toPass({ timeout: 3000 });
 
     if (await input.isVisible()) {
       const puzzleString =
@@ -601,9 +640,11 @@ test.describe('@mobile Pages - Mobile Viewport', () => {
       const numberButton = page.locator('button:text-is("9")');
       await numberButton.click();
 
-      await page.waitForTimeout(300);
-      const text = await cell.textContent();
-      expect(text).toContain('9');
+      // Wait for digit placement in cell
+      await expect(async () => {
+        const text = await cell.textContent();
+        expect(text).toContain('9');
+      }).toPass({ timeout: 1500 });
     }
   });
 
@@ -737,8 +778,14 @@ test.describe('@mobile Full Gameplay', () => {
 
       if ((await hintButton.isVisible().catch(() => false)) && (await hintButton.isEnabled().catch(() => false))) {
         await hintButton.click();
-        // Wait for hint to be processed (cells filled or candidates updated)
-        await page.waitForTimeout(500);
+        // Wait for hint processing by watching for board or button state changes
+        await expect(async () => {
+          const newBoard = await sdk.readBoardFromDOM();
+          const newEmptyCount = newBoard.filter((v) => v === 0).length;
+          const isEnabled = await hintButton.isEnabled().catch(() => true);
+          // Progress made when empty cells decrease OR button becomes enabled again
+          expect(newEmptyCount <= emptyCount || isEnabled).toBeTruthy();
+        }).toPass({ timeout: 2000 });
       } else {
         break;
       }
@@ -769,8 +816,11 @@ test.describe('@mobile Full Gameplay', () => {
     for (let i = 0; i < 5; i++) {
       if ((await hintButton.isVisible()) && (await hintButton.isEnabled())) {
         await hintButton.click();
-        // Wait for hint to be processed
-        await page.waitForTimeout(500);
+        // Wait for hint processing by watching for UI state changes
+        await expect(async () => {
+          const isEnabled = await hintButton.isEnabled();
+          expect(isEnabled).toBeTruthy();
+        }).toPass({ timeout: 2000 });
       }
     }
 
@@ -797,13 +847,13 @@ test.describe('@mobile Mobile Keyboard Handling', () => {
     await emptyCell.scrollIntoViewIfNeeded();
     await emptyCell.click();
 
-    // Wait a moment for any keyboard to potentially appear
-    await page.waitForTimeout(500);
-
-    // Verify no input element is focused (which would trigger native keyboard)
-    // The cells should be buttons/divs, not input elements
-    const focusedInput = page.locator('input:focus, textarea:focus');
-    await expect(focusedInput).toHaveCount(0);
+    // Wait for UI state to update and verify no native keyboard behavior
+    await expect(async () => {
+      // Verify no input element is focused (which would trigger native keyboard)
+      const focusedInput = page.locator('input:focus, textarea:focus');
+      const focusedCount = await focusedInput.count();
+      expect(focusedCount).toBe(0);
+    }).toPass({ timeout: 2000 });
 
     // Verify the in-app number pad is visible instead (our alternative to native keyboard)
     const numberButton = page.locator('button[aria-label^="Enter 1,"]');
