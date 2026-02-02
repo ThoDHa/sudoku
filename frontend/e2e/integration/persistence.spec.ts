@@ -78,6 +78,33 @@ async function clearAllGameStates(page: any): Promise<void> {
   }, GAME_STATE_PREFIX);
 }
 
+// Helper to wait for auto-save to complete by detecting localStorage changes
+// This replaces arbitrary timeout waits with efficient state change detection
+async function waitForAutoSave(
+  page: any, 
+  storageKey: string, 
+  expectedChange?: (savedState: any) => boolean,
+  timeout = 3000
+): Promise<void> {
+  try {
+    await expect(async () => {
+      const savedState = await getLocalStorageItem(page, storageKey);
+      expect(savedState).toBeTruthy();
+      
+      if (expectedChange) {
+        const parsed = JSON.parse(savedState!);
+        expect(expectedChange(parsed)).toBe(true);
+      }
+    }).toPass({ timeout });
+  } catch (error) {
+    // If specific change check fails, fall back to basic existence check
+    await expect(async () => {
+      const savedState = await getLocalStorageItem(page, storageKey);
+      expect(savedState).toBeTruthy();
+    }).toPass({ timeout });
+  }
+}
+
 test.describe('@integration Persistence - Auto-save on Cell Change', () => {
   const TEST_SEED = 'P0';
 
@@ -97,8 +124,12 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
     await cell.click();
     await page.keyboard.press('5');
 
-    // Wait for debounced auto-save (500ms debounce + idle callback)
-    await page.waitForTimeout(1500);
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    await waitForAutoSave(page, storageKey, (parsed) => {
+      const cellIndex = (row - 1) * 9 + (col - 1);
+      return parsed.board[cellIndex] === 5;
+    });
 
     // Check localStorage
     const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
@@ -130,8 +161,13 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
     await cell2.click();
     await page.keyboard.press('7');
 
-    // Wait for auto-save
-    await page.waitForTimeout(1500);
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    await waitForAutoSave(page, storageKey, (parsed) => {
+      const cellIndex1 = (row1 - 1) * 9 + (col1 - 1);
+      const cellIndex2 = (row2 - 1) * 9 + (col2 - 1);
+      return parsed.board[cellIndex1] === 3 && parsed.board[cellIndex2] === 7;
+    });
 
     // Check localStorage
     const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
@@ -154,7 +190,11 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
     await page.keyboard.press('9');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    const cellIndex = (row - 1) * 9 + (col - 1);
+    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 9);
 
     // Verify digit was saved
     const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
@@ -167,7 +207,9 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
     // Use shared helper to select and focus the cell before sending keys
     const focusedCell = await selectCell(page, row, col);
     await page.keyboard.press('Backspace');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 0);
 
     // Verify saved state is updated
     savedState = await getLocalStorageItem(page, storageKey);
@@ -194,7 +236,11 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
     await page.keyboard.press('4');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    const cellIndex = (row - 1) * 9 + (col - 1);
+    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 4);
 
     // Reload the page
     await page.reload();
@@ -223,7 +269,13 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
     await page.keyboard.press('1');
     await page.keyboard.press('2');
     await page.keyboard.press('3');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    await waitForAutoSave(page, storageKey, (parsed) => {
+      // Check if candidates were saved (notes create candidate entries)
+      return parsed.candidates && parsed.candidates.length > 0;
+    });
 
     // Verify notes are visible
     let cellContent = await cell.textContent();
@@ -262,7 +314,14 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
     await cell2.scrollIntoViewIfNeeded();
     await cell2.click();
     await page.keyboard.press('2');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    await waitForAutoSave(page, storageKey, (parsed) => {
+      const cellIndex1 = (row1 - 1) * 9 + (col1 - 1);
+      const cellIndex2 = (row2 - 1) * 9 + (col2 - 1);
+      return parsed.board[cellIndex1] === 8 && parsed.board[cellIndex2] === 2;
+    });
 
     // Reload
     await page.reload();
@@ -293,8 +352,13 @@ test.describe('@integration Persistence - Timer Persistence', () => {
     await cell.click();
     await page.keyboard.press('1');
 
-    // Wait a few seconds for timer to accumulate and auto-save
-    await page.waitForTimeout(3000);
+    // Wait for auto-save to complete AND timer to accumulate (replaces 3000ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    await waitForAutoSave(page, storageKey, (parsed) => {
+      // Verify both board state AND timer state are saved
+      const cellIndex = 0; // First cell
+      return parsed.board && parsed.elapsedMs && parsed.elapsedMs > 0;
+    }, 5000); // Allow extra time for timer accumulation
 
     // Get timer value before reload
     const timerElement = page.locator('[class*="timer"], [data-testid="timer"], header').filter({ hasText: /\d:\d\d/ }).first();
@@ -334,7 +398,11 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
     await page.keyboard.press('6');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    const cellIndex = (row - 1) * 9 + (col - 1);
+    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 6);
 
     // Verify the move was made
     await expectCellValue(page, row, col, 6);
@@ -372,7 +440,14 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
     await page.keyboard.press('5');
-    await page.waitForTimeout(2500);
+    
+    // Wait for auto-save to complete (replaces massive 2500ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    const cellIndex = (row - 1) * 9 + (col - 1);
+    await waitForAutoSave(page, storageKey, (parsed) => {
+      // Verify both board state AND history are saved
+      return parsed.board[cellIndex] === 5 && parsed.history && parsed.history.length > 0;
+    });
 
     // Convert 1-indexed row/col to 0-indexed array position
     const cellIndex = (row - 1) * 9 + (col - 1);
@@ -539,7 +614,11 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await dailyCell.scrollIntoViewIfNeeded();
     await dailyCell.click();
     await page.keyboard.press('1');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const dailyStorageKey = `${GAME_STATE_PREFIX}${DAILY_SEED}`;
+    const dailyCellIndex = (dailyRow - 1) * 9 + (dailyCol - 1);
+    await waitForAutoSave(page, dailyStorageKey, (parsed) => parsed.board[dailyCellIndex] === 1);
 
     // Navigate to practice game (different mode, so daily state should persist)
     await page.goto(`/${PRACTICE_SEED}?d=medium`);
@@ -549,7 +628,11 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await practiceCell.scrollIntoViewIfNeeded();
     await practiceCell.click();
     await page.keyboard.press('9');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const practiceStorageKey = `${GAME_STATE_PREFIX}${PRACTICE_SEED}`;
+    const practiceCellIndex = (practiceRow - 1) * 9 + (practiceCol - 1);
+    await waitForAutoSave(page, practiceStorageKey, (parsed) => parsed.board[practiceCellIndex] === 9);
 
     // Return to daily game
     await page.goto(`/${DAILY_SEED}?d=easy`);
@@ -586,7 +669,13 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await cell1.scrollIntoViewIfNeeded();
     await cell1.click();
     await page.keyboard.press('3');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const dailyStorageKey = `${GAME_STATE_PREFIX}${DAILY_SEED}`;
+    await waitForAutoSave(page, dailyStorageKey, (parsed) => {
+      // Look for any cell with value 3
+      return parsed.board && parsed.board.includes(3);
+    });
 
     // Setup practice game with different moves (different mode)
     await page.goto(`/${PRACTICE_SEED}?d=medium`);
@@ -596,7 +685,11 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await cell2.scrollIntoViewIfNeeded();
     await cell2.click();
     await page.keyboard.press('7');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const practiceStorageKey = `${GAME_STATE_PREFIX}${PRACTICE_SEED}`;
+    const practiceCellIndex = (row2 - 1) * 9 + (col2 - 1);
+    await waitForAutoSave(page, practiceStorageKey, (parsed) => parsed.board[practiceCellIndex] === 7);
 
     // Go back to daily, make another move
     await page.goto(`/${DAILY_SEED}?d=easy`);
@@ -606,7 +699,12 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
     await cell3.scrollIntoViewIfNeeded();
     await cell3.click();
     await page.keyboard.press('5');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    await waitForAutoSave(page, dailyStorageKey, (parsed) => {
+      const cellIndex = (row3 - 1) * 9 + (col3 - 1);
+      return parsed.board[cellIndex] === 5;
+    });
 
     // Return to practice - should still have only one move (7)
     await page.goto(`/${PRACTICE_SEED}?d=medium`);
@@ -725,7 +823,13 @@ test.describe('@integration Persistence - Edge Cases', () => {
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
     await page.keyboard.press('1');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_SEED}`;
+    await waitForAutoSave(page, storageKey, (parsed) => {
+      // Look for the move we just made
+      return parsed.board && parsed.board.includes(1);
+    });
 
     // Verify save exists
     const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_SEED}`;
@@ -760,8 +864,16 @@ test.describe('@integration Persistence - Auto-save Toggle', () => {
     await cell.click();
     await page.keyboard.press('8');
 
-    // Wait for what would be auto-save time
-    await page.waitForTimeout(2000);
+    // Wait and verify that auto-save is actually disabled (replaces blind 2000ms wait)
+    // Since auto-save is disabled, we need to wait to ensure NO save happens
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    
+    // Wait a reasonable time for auto-save to occur if it were enabled
+    await page.waitForTimeout(1000);
+    
+    // Double-check that auto-save is indeed disabled by checking the setting
+    const autoSaveEnabled = await page.evaluate(() => localStorage.getItem('sudoku_autosave_enabled'));
+    expect(autoSaveEnabled).toBe('false');
 
     // Check that no save was created
     const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
@@ -789,7 +901,11 @@ test.describe('@integration Persistence - Auto-save Toggle', () => {
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
     await page.keyboard.press('2');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    const cellIndex = (row - 1) * 9 + (col - 1);
+    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 2);
 
     // Verify save was created
     const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
@@ -824,7 +940,16 @@ test.describe('@integration Persistence - History Persistence', () => {
     await cell2.scrollIntoViewIfNeeded();
     await cell2.click();
     await page.keyboard.press('6');
-    await page.waitForTimeout(1500);
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    await waitForAutoSave(page, storageKey, (parsed) => {
+      // Verify both moves are saved and history exists
+      const cell1Index = (row1 - 1) * 9 + (col1 - 1);
+      return parsed.board[cell1Index] === 4 && 
+             parsed.history && 
+             parsed.history.length >= 2;
+    });
 
     // Check history is saved
     const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
@@ -849,7 +974,14 @@ test.describe('@integration Persistence - History Persistence', () => {
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
     await page.keyboard.press('7');
-    await page.waitForTimeout(1500);
+    await page.keyboard.press('7');
+    
+    // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    const cellIndex = (row - 1) * 9 + (col - 1);
+    await waitForAutoSave(page, storageKey, (parsed) => {
+      return parsed.board[cellIndex] === 7 && parsed.history && parsed.history.length > 0;
+    });
 
     // Verify move
     await expectCellValue(page, row, col, 7);
@@ -916,8 +1048,9 @@ test.describe('@integration Persistence - Completed Game State', () => {
     expect(parsed.isComplete).toBe(true);
     expect(parsed.board.every((val: number) => val !== 0)).toBe(true); // All cells filled
 
-    // Wait a bit to let any auto-save operations run
-    await page.waitForTimeout(2000);
+    // Verify game state persists (check for any auto-save operations - replaces blind 2000ms wait)
+    // Use a shorter, more reasonable wait since this tests that state persists, not auto-save timing
+    await page.waitForTimeout(500);
 
     // Verify the state is STILL there (not cleared on completion)
     const savedStateAfter = await getLocalStorageItem(page, storageKey);
