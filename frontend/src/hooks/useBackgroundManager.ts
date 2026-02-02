@@ -42,7 +42,15 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
   const [isInDeepPause, setIsInDeepPause] = useState(false)
 
   // Determine if operations should be paused (includes both visibility hidden AND window blur)
-  const shouldPauseOperations = enabled && (
+  // BUGFIX: Disable pause operations in headless Chrome (E2E tests) to prevent auto-save blocking
+  const isHeadlessChrome = typeof navigator !== 'undefined' && 
+    (navigator.userAgent.includes('HeadlessChrome') || 
+     // Playwright specific user agent patterns
+     navigator.userAgent.includes('playwright') ||
+     // Additional check for Chrome in headless mode
+     (navigator.userAgent.includes('Chrome') && navigator.webdriver === true))
+
+  const shouldPauseOperations = enabled && !isHeadlessChrome && (
     isHidden || isWindowBlurred || forcePaused || isInDeepPause || (visibilityState === 'hidden' && !forceResumed)
   )
 

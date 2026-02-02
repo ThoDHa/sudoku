@@ -159,7 +159,6 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
     });
 
     // Check localStorage
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
     const savedState = await getLocalStorageItem(page, storageKey);
     expect(savedState).toBeTruthy();
 
@@ -197,7 +196,6 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
     });
 
     // Check localStorage
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
     const savedState = await getLocalStorageItem(page, storageKey);
     expect(savedState).toBeTruthy();
 
@@ -224,10 +222,8 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
     await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 9);
 
     // Verify digit was saved
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
     let savedState = await getLocalStorageItem(page, storageKey);
     let parsed = JSON.parse(savedState!);
-    const cellIndex = (row - 1) * 9 + (col - 1);
     expect(parsed.board[cellIndex]).toBe(9);
 
     // Clear the digit
@@ -401,7 +397,6 @@ test.describe('@integration Persistence - Timer Persistence', () => {
 
     // Timer should be at least as much as before (not reset to 0:00)
     // We check that elapsedMs was saved
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
     const savedState = await getLocalStorageItem(page, storageKey);
     expect(savedState).toBeTruthy();
     const parsed = JSON.parse(savedState!);
@@ -479,10 +474,10 @@ test.describe('@integration Persistence - Clear Game Functionality', () => {
     });
 
     // Convert 1-indexed row/col to 0-indexed array position
-    const cellIndex = (row - 1) * 9 + (col - 1);
+    // (cellIndex already defined above)
 
     // Verify save exists with our move in history
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    // (storageKey already defined above)
     let savedState = await getLocalStorageItem(page, storageKey);
     expect(savedState).toBeTruthy();
     let parsed = JSON.parse(savedState!);
@@ -862,9 +857,9 @@ test.describe('@integration Persistence - Edge Cases', () => {
 
     await page.addInitScript((seed: string) => {
       localStorage.removeItem(`sudoku_game_${seed}`);
-    }, COMPLETE_SEED);
+    }, COMPLETE_TEST_SEED);
 
-    await page.goto(`/${COMPLETE_SEED}?d=easy`);
+    await page.goto(`/${COMPLETE_TEST_SEED}?d=easy`);
     await await setupGameAndWaitForBoard(page);
 
     // Make a move to create save state
@@ -874,14 +869,14 @@ test.describe('@integration Persistence - Edge Cases', () => {
     await page.keyboard.press('1');
     
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_SEED}`;
+    const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_TEST_SEED}`;
     await waitForAutoSave(page, storageKey, (parsed) => {
       // Look for the move we just made
       return parsed.board && parsed.board.includes(1);
     });
 
     // Verify save exists
-    const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_SEED}`;
+    // (storageKey already defined above)
     const savedState = await getLocalStorageItem(page, storageKey);
     expect(savedState).toBeTruthy();
 
@@ -925,7 +920,7 @@ test.describe('@integration Persistence - Auto-save Toggle', () => {
     await waitForUIReady(page);
 
     // Check that no save was created
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    // (storageKey already defined above)
     const savedState = await getLocalStorageItem(page, storageKey);
 
     // Should be null or not updated
@@ -957,12 +952,12 @@ test.describe('@integration Persistence - Auto-save Toggle', () => {
     await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 2);
 
     // Verify save was created
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    // (storageKey already defined above)
     const savedState = await getLocalStorageItem(page, storageKey);
     expect(savedState).toBeTruthy();
 
     const parsed = JSON.parse(savedState!);
-    const cellIndex = (row - 1) * 9 + (col - 1);
+    // (cellIndex already defined above)
     expect(parsed.board[cellIndex]).toBe(2);
   });
 });
@@ -1002,8 +997,7 @@ test.describe('@integration Persistence - History Persistence', () => {
              parsed.history.length >= 2;
     });
 
-    // Check history is saved
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    // Check localStorage
     const savedState = await getLocalStorageItem(page, storageKey);
     expect(savedState).toBeTruthy();
 
