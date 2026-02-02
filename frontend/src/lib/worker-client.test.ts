@@ -131,6 +131,7 @@ describe('worker-client', () => {
     
     it('should attempt to create a worker', async () => {
       vi.resetModules()
+      vi.useFakeTimers()
       
       // Track if Worker constructor was called
       let workerCreated = false
@@ -147,8 +148,8 @@ describe('worker-client', () => {
       // Start initialization (will eventually timeout, but we just verify it tries)
       const initPromise = initializeWorker()
       
-      // Give it time to create the worker
-      await new Promise(resolve => setTimeout(resolve, 50))
+      // Advance timers to allow worker creation and 'loaded' message
+      await vi.advanceTimersByTimeAsync(50)
       
       expect(workerCreated).toBe(true)
       expect(createdWorkers.length).toBeGreaterThan(0)
@@ -158,6 +159,8 @@ describe('worker-client', () => {
       
       // The promise will reject due to termination, which is expected
       await expect(initPromise).rejects.toThrow()
+      
+      vi.useRealTimers()
     })
   })
   
@@ -530,6 +533,7 @@ describe('worker-client advanced scenarios', () => {
   describe('worker.onerror handler', () => {
     it('should reject all pending requests when worker errors', async () => {
       vi.resetModules()
+      vi.useFakeTimers()
       
       globalThis.Worker = class extends MockWorker {
         constructor(url: URL | string, options?: WorkerOptions) {
@@ -544,16 +548,16 @@ describe('worker-client advanced scenarios', () => {
       // Manually construct worker and set up for init to succeed
       const initPromise = initializeWorker()
       
-      // Wait for worker to be created
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Advance timers to allow worker to be created
+      await vi.advanceTimersByTimeAsync(10)
       
       const worker = createdWorkers[0]
       
       // Manually send init success
       worker.simulateMessage({ type: 'result', id: 'req-1-' + Date.now(), success: true, data: null })
       
-      // Wait a bit more
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Advance timers a bit more
+      await vi.advanceTimersByTimeAsync(10)
       
       // Simulate a worker error
       worker.simulateError('Worker crashed!')
@@ -562,12 +566,15 @@ describe('worker-client advanced scenarios', () => {
       
       // The init promise may or may not have resolved, but we've tested the error path
       await initPromise.catch(() => {})
+      
+      vi.useRealTimers()
     })
   })
   
   describe('terminateWorker', () => {
     it('should reject all pending requests when terminated', async () => {
       vi.resetModules()
+      vi.useFakeTimers()
       
       globalThis.Worker = class extends MockWorker {
         constructor(url: URL | string, options?: WorkerOptions) {
@@ -581,13 +588,13 @@ describe('worker-client advanced scenarios', () => {
       
       // Manually handle init
       const initPromise = initializeWorker()
-      await new Promise(resolve => setTimeout(resolve, 10))
+      await vi.advanceTimersByTimeAsync(10)
       
       const worker = createdWorkers[0]
       // Send init response manually with a guessed ID (first request)
       worker.simulateMessage({ type: 'result', id: 'req-1-' + Date.now(), success: true, data: null })
       
-      await new Promise(resolve => setTimeout(resolve, 10))
+      await vi.advanceTimersByTimeAsync(10)
       
       // Now try to make a request
       const cells = new Array(81).fill(0)
@@ -604,6 +611,8 @@ describe('worker-client advanced scenarios', () => {
       await expect(findPromise).rejects.toThrow('Worker terminated')
       
       await initPromise.catch(() => {})
+      
+      vi.useRealTimers()
     })
   })
   
@@ -726,6 +735,7 @@ describe('worker-client advanced scenarios', () => {
   describe('sendRequest timeout', () => {
     it('should timeout if worker does not respond', async () => {
       vi.resetModules()
+      vi.useFakeTimers()
       
       // We'll use a custom worker that responds to init but not to findNextMove
       let capturedFindMoveId: string | null = null
@@ -748,7 +758,10 @@ describe('worker-client advanced scenarios', () => {
       
       const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
       
-      await initializeWorker()
+      // Advance timers to allow init to complete
+      const initPromise = initializeWorker()
+      await vi.advanceTimersByTimeAsync(50)
+      await initPromise
       
       const cells = new Array(81).fill(0)
       const candidates = new Array(81).fill([])
@@ -759,14 +772,16 @@ describe('worker-client advanced scenarios', () => {
       // Instead, we'll start the request and then terminate to simulate timeout-like behavior
       const findPromise = findNextMove(cells, candidates, givens)
       
-      // Wait a tick then terminate (simulates what happens after timeout clears pending)
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Advance timers a tick then terminate (simulates what happens after timeout clears pending)
+      await vi.advanceTimersByTimeAsync(10)
       
       terminateWorker()
       
       await expect(findPromise).rejects.toThrow('Worker terminated')
       
       expect(capturedFindMoveId).not.toBeNull()
+      
+      vi.useRealTimers()
     }, 10000)
   })
   
@@ -821,7 +836,7 @@ describe('worker-client advanced scenarios', () => {
       terminateWorker()
       
       // Allow any pending microtasks to settle
-      await new Promise(resolve => setTimeout(resolve, 0))
+      await vi.waitFor(() => Promise.resolve())
     })
     
     it('should handle worker error during creation', async () => {
