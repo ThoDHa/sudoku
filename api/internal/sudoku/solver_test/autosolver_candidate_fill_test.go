@@ -8,6 +8,135 @@ import (
 	"sudoku-api/pkg/constants"
 )
 
+// TestAutosolverWithNoCandidatesFilled is the main end-to-end test that verifies
+// the autosolver works correctly when starting with NO candidates filled.
+// This simulates the frontend scenario where the user starts the autosolver
+// without having filled any hints/candidates first.
+func TestAutosolverWithNoCandidatesFilled(t *testing.T) {
+	solver := human.NewSolver()
+
+	// A real puzzle - easy difficulty
+	cells := []int{
+		5, 3, 0, 0, 7, 0, 0, 0, 0,
+		6, 0, 0, 1, 9, 5, 0, 0, 0,
+		0, 9, 8, 0, 0, 0, 0, 6, 0,
+		8, 0, 0, 0, 6, 0, 0, 0, 3,
+		4, 0, 0, 8, 0, 3, 0, 0, 1,
+		7, 0, 0, 0, 2, 0, 0, 0, 6,
+		0, 6, 0, 0, 0, 0, 2, 8, 0,
+		0, 0, 0, 4, 1, 9, 0, 0, 5,
+		0, 0, 0, 0, 8, 0, 0, 7, 9,
+	}
+
+	// Create board with NO candidates filled (empty arrays) - simulates frontend state
+	emptyCandidates := make([][]int, constants.TotalCells)
+	for i := range emptyCandidates {
+		emptyCandidates[i] = []int{} // Empty!
+	}
+
+	board := human.NewBoardWithCandidates(cells, emptyCandidates)
+
+	// Verify candidates are truly empty
+	for i := 0; i < constants.TotalCells; i++ {
+		if cells[i] == 0 && !board.Candidates[i].IsEmpty() {
+			t.Fatalf("Expected empty candidates at cell %d, but found candidates", i)
+		}
+	}
+
+	moveCount := 0
+	candidateMoves := 0
+	assignMoves := 0
+
+	for moveCount < 1000 {
+		move := solver.FindNextMove(board)
+		if move == nil {
+			break
+		}
+
+		// Should NOT get a contradiction when starting with empty candidates
+		if move.Technique == "contradiction" {
+			t.Fatalf("Unexpected contradiction at move %d: %s", moveCount+1, move.Explanation)
+		}
+
+		if move.Action == "candidate" {
+			candidateMoves++
+		} else if move.Action == "assign" {
+			assignMoves++
+		}
+
+		solver.ApplyMove(board, move)
+		moveCount++
+	}
+
+	t.Logf("Total moves: %d (candidates: %d, assignments: %d)", moveCount, candidateMoves, assignMoves)
+
+	// The puzzle MUST be solved
+	if !board.IsSolved() {
+		empty := 0
+		for i := 0; i < constants.TotalCells; i++ {
+			if board.Cells[i] == 0 {
+				empty++
+			}
+		}
+		t.Fatalf("Puzzle NOT solved with empty candidates start. %d empty cells remaining", empty)
+	}
+
+	t.Log("SUCCESS: Autosolver correctly solved puzzle starting with no candidates filled")
+}
+
+// TestEmptyCandidatesNotTreatedAsContradiction verifies that when the solver
+// receives a board with no candidates filled (like from the frontend at start),
+// it does NOT incorrectly report a contradiction. Instead, it should fill candidates first.
+func TestEmptyCandidatesNotTreatedAsContradiction(t *testing.T) {
+	solver := human.NewSolver()
+
+	// Create a simple puzzle with some givens
+	cells := make([]int, constants.TotalCells)
+	cells[0] = 5 // R1C1 = 5
+	cells[4] = 3 // R1C5 = 3
+	cells[8] = 7 // R1C9 = 7
+
+	// Create a board with NO candidates filled (empty arrays for all cells)
+	// This simulates what happens when the frontend first starts the autosolver
+	emptyCandidates := make([][]int, constants.TotalCells)
+	for i := range emptyCandidates {
+		emptyCandidates[i] = []int{} // Empty candidates
+	}
+
+	board := human.NewBoardWithCandidates(cells, emptyCandidates)
+
+	// Verify that candidates are indeed empty
+	for i := 0; i < constants.TotalCells; i++ {
+		if cells[i] == 0 && !board.Candidates[i].IsEmpty() {
+			t.Fatalf("Expected empty candidates at cell %d, but found candidates", i)
+		}
+	}
+
+	// Now call FindNextMove - it should NOT return a contradiction
+	// Instead, it should return a fill-candidate move to start filling candidates
+	move := solver.FindNextMove(board)
+	if move == nil {
+		t.Fatal("Expected a move, but got nil")
+	}
+
+	// The move should NOT be a contradiction
+	if move.Technique == "contradiction" {
+		t.Errorf("Expected fill-candidate move, but got contradiction: %s", move.Explanation)
+	}
+
+	// The move should be a fill-candidate move
+	if move.Technique != "fill-candidate" {
+		t.Errorf("Expected fill-candidate move, but got: %s", move.Technique)
+	}
+
+	if move.Action != "candidate" {
+		t.Errorf("Expected action 'candidate', but got: %s", move.Action)
+	}
+
+	t.Logf("First move correctly identified as: %s (digit %d at R%dC%d)",
+		move.Technique, move.Digit, move.Targets[0].Row+1, move.Targets[0].Col+1)
+}
+
 // TestAutosolverCandidateFillBug verifies the fix for the autosolver candidate fill bug
 // where the solver would incorrectly place values before completing candidate filling
 func TestAutosolverCandidateFillBug(t *testing.T) {
@@ -348,6 +477,74 @@ func isLegitimateNakedSingle(board *human.Board, move *core.Move) bool {
 
 	// If there's exactly one candidate, it's a legitimate naked single
 	return candidateCount == 1
+}
+
+// TestHiddenSinglesDetectedDuringCandidateFilling verifies that when a digit
+// can only go in one cell in a row/column/box, it's detected immediately
+// during the candidate filling phase (not waiting until all candidates are filled)
+func TestHiddenSinglesDetectedDuringCandidateFilling(t *testing.T) {
+	solver := human.NewSolver()
+
+	// Create a puzzle where digit 6 can only go in R1C3 (row constraint)
+	// Row 1: [5,3,_,4,7,8,9,1,2] -> cell at index 2 must be 6
+	cells := make([]int, constants.TotalCells)
+	cells[0] = 5 // R1C1 = 5
+	cells[1] = 3 // R1C2 = 3
+	cells[2] = 0 // R1C3 = empty (should be 6)
+	cells[3] = 4 // R1C4 = 4
+	cells[4] = 7 // R1C5 = 7
+	cells[5] = 8 // R1C6 = 8
+	cells[6] = 9 // R1C7 = 9
+	cells[7] = 1 // R1C8 = 1
+	cells[8] = 2 // R1C9 = 2
+
+	// Create board with NO candidates filled
+	emptyCandidates := make([][]int, constants.TotalCells)
+	for i := range emptyCandidates {
+		emptyCandidates[i] = []int{}
+	}
+	board := human.NewBoardWithCandidates(cells, emptyCandidates)
+
+	// Execute moves and track when we see the hidden single
+	candidateMoves := 0
+	var hiddenSingleMove *core.Move
+
+	for i := 0; i < 100; i++ {
+		move := solver.FindNextMove(board)
+		if move == nil {
+			break
+		}
+
+		if move.Technique == "fill-candidate" {
+			candidateMoves++
+		} else if move.Technique == "hidden-single" {
+			hiddenSingleMove = move
+			break
+		}
+
+		solver.ApplyMove(board, move)
+	}
+
+	// We should have detected the hidden single after filling just the first row
+	if hiddenSingleMove == nil {
+		t.Fatal("Expected hidden single to be detected during candidate filling")
+	}
+
+	if hiddenSingleMove.Digit != 6 {
+		t.Errorf("Expected hidden single digit 6, got %d", hiddenSingleMove.Digit)
+	}
+
+	if hiddenSingleMove.Targets[0].Row != 0 || hiddenSingleMove.Targets[0].Col != 2 {
+		t.Errorf("Expected hidden single at R1C3, got R%dC%d",
+			hiddenSingleMove.Targets[0].Row+1, hiddenSingleMove.Targets[0].Col+1)
+	}
+
+	// With the row-first approach, we should detect this very quickly
+	// (should be after just 1 candidate move - adding 6 to R1C3)
+	t.Logf("Detected hidden single after %d candidate moves", candidateMoves)
+	if candidateMoves > 5 {
+		t.Errorf("Expected hidden single to be detected after 1-2 candidate moves, got %d", candidateMoves)
+	}
 }
 
 func isImmediateSingle(move *core.Move) bool {
