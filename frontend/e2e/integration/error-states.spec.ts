@@ -31,7 +31,7 @@ test.describe('@integration Error States - Invalid Puzzle Strings', () => {
     await page.goto(`/custom?puzzle=${shortPuzzle}`);
 
     // Wait for page to process the invalid input
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // Should show error state OR stay on custom page without crashing
     const hasError = await page.locator('text=/invalid|error|must be 81/i').isVisible().catch(() => false);
@@ -50,7 +50,7 @@ test.describe('@integration Error States - Invalid Puzzle Strings', () => {
     const longPuzzle = '1'.repeat(100);
     await page.goto(`/custom?puzzle=${longPuzzle}`);
 
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // Should show error state OR handle gracefully
     const hasError = await page.locator('text=/invalid|error|must be 81|too long/i').isVisible().catch(() => false);
@@ -69,7 +69,7 @@ test.describe('@integration Error States - Invalid Puzzle Strings', () => {
     const invalidCharsPuzzle = 'abc070000600195000098000060800060003400803001700020006060000280000419005000080xyz';
     await page.goto(`/custom?puzzle=${invalidCharsPuzzle}`);
 
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // Should show error about invalid characters
     const hasError = await page.locator('text=/invalid|error|character/i').isVisible().catch(() => false);
@@ -88,7 +88,7 @@ test.describe('@integration Error States - Invalid Puzzle Strings', () => {
     const duplicatePuzzle = '550070000600195000098000060800060003400803001700020006060000280000419005000080079';
     await page.goto(`/custom?puzzle=${duplicatePuzzle}`);
 
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // Should either show error about duplicates/invalid state
     // OR load the puzzle and highlight conflicts visually
@@ -106,7 +106,7 @@ test.describe('@integration Error States - Invalid Puzzle Strings', () => {
   test('handles empty puzzle string gracefully', async ({ page }) => {
     await page.goto('/custom?puzzle=');
 
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
 
     // Should show custom page with empty/editable board OR error
     const hasBoard = await page.locator('[role="grid"]').isVisible().catch(() => false);
@@ -128,27 +128,7 @@ test.describe('@integration Error States - WASM Load Failure', () => {
 
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-
-    // App should still load - either with degraded functionality or error message
-    // Give it more time since WASM loading can be slow
-    await page.waitForTimeout(3000);
-
-    // Should show EITHER the board (with JS fallback) OR a meaningful error message
-    const hasBoard = await page.locator('[role="grid"], .sudoku-board').isVisible().catch(() => false);
-    const hasError = await page.locator('text=/error|unavailable|failed to load|solver/i').isVisible().catch(() => false);
-    const hasBody = await page.locator('body').isVisible();
-
-    // App must remain functional in some form
-    expect(hasBoard || hasError || hasBody).toBeTruthy();
-  });
-
-  test('shows appropriate message when solver is unavailable', async ({ page }) => {
-    // Block WASM file
-    await page.route('**/*.wasm', (route) => route.abort());
-
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForTimeout(3000);
+    await page.waitForLoadState('networkidle');
 
     // Wait for grid to potentially load
     const hasGrid = await page.locator('[role="grid"]').isVisible({ timeout: 10000 }).catch(() => false);
@@ -159,7 +139,16 @@ test.describe('@integration Error States - WASM Load Failure', () => {
 
       if (await hintButton.isVisible().catch(() => false)) {
         await hintButton.click();
-        await page.waitForTimeout(1000);
+        
+        // Wait for hint operation to complete or error to appear
+        await Promise.race([
+          page.waitForSelector('text=/solver|unavailable|error|unable/i', { timeout: 5000 }).catch(() => null),
+          page.waitForFunction(() => 
+            // Check if board state changed (hint worked)
+            document.querySelectorAll('[role="gridcell"][data-value]').length > 0,
+            {}, { timeout: 5000 }
+          ).catch(() => null)
+        ]);
 
         // Should either work (JS fallback) or show error about solver unavailable
         const hasHintError = await page.locator('text=/solver|unavailable|error|unable/i').isVisible().catch(() => false);
@@ -187,14 +176,14 @@ test.describe('@integration Error States - WASM Load Failure', () => {
 
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
     // Now allow WASM to load
     blockWasm = false;
 
     // Refresh the page to allow WASM to load
     await page.reload();
-    await page.waitForTimeout(3000);
+    await page.waitForLoadState('networkidle');
 
     // Board should now be fully functional
     const hasGrid = await page.locator('[role="grid"]').isVisible({ timeout: 15000 }).catch(() => false);
@@ -204,7 +193,12 @@ test.describe('@integration Error States - WASM Load Failure', () => {
       const hintButton = page.getByRole('button', { name: /Hint/i });
       if (await hintButton.isVisible().catch(() => false) && await hintButton.isEnabled().catch(() => false)) {
         await hintButton.click();
-        await page.waitForTimeout(1000);
+        
+        // Wait for hint to complete
+        await page.waitForFunction(() => {
+          const cells = document.querySelectorAll('[role="gridcell"]');
+          return cells.length > 0; // Basic check that board is present
+        }, {}, { timeout: 5000 }).catch(() => null);
       }
     }
 
@@ -229,7 +223,7 @@ test.describe('@integration Error States - Network/API Errors', () => {
     });
 
     await page.goto('/');
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
     // Homepage should still load even if daily puzzle fetch fails
     const hasHomepage = await page.locator('body').isVisible();
@@ -246,7 +240,7 @@ test.describe('@integration Error States - Network/API Errors', () => {
     await page.route('**/api/**/scores**', (route) => route.abort());
 
     await page.goto('/leaderboard');
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
     // Leaderboard page should show error or empty state, not crash
     const hasPage = await page.locator('body').isVisible();
@@ -277,7 +271,7 @@ test.describe('@integration Error States - Graceful Degradation', () => {
     });
 
     await page.goto('/');
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
     // App should still load and be usable
     await expect(page.locator('body')).toBeVisible();
@@ -308,14 +302,14 @@ test.describe('@integration Error States - Graceful Degradation', () => {
 
     // Navigate through various pages
     await page.goto('/');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     await page.goto('/custom');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
 
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // Filter out expected/acceptable errors
     const criticalErrors = consoleErrors.filter((err) =>
@@ -332,7 +326,7 @@ test.describe('@integration Error States - Graceful Degradation', () => {
     // Try to navigate to a random route - in this app, any route becomes a puzzle seed
     // This tests that the app handles arbitrary seeds gracefully without crashing
     await page.goto('/this-route-definitely-does-not-exist-12345');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // The app should handle this gracefully - either by:
     // 1. Showing a valid game page (treating the route as a puzzle seed)
@@ -361,7 +355,7 @@ test.describe('@integration Error States - Error Message Display', () => {
     const invalidPuzzle = 'not-a-valid-puzzle-at-all!!!';
     await page.goto(`/custom?puzzle=${invalidPuzzle}`);
 
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // If there's an error message, it should be user-friendly
     const errorElements = page.locator('[role="alert"], .error, [class*="error"], .toast');
@@ -391,7 +385,7 @@ test.describe('@integration Error States - Error Message Display', () => {
 
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForTimeout(3000);
+    await page.waitForLoadState('networkidle');
 
     // If there's an error displayed, check for recovery options
     const errorElements = page.locator('[role="alert"], .error-message, [class*="error-state"]');
@@ -432,7 +426,7 @@ test.describe('@integration Error States - Edge Cases', () => {
     await page.goto('/');
     await page.getByRole('button', { name: /hard Play/i }).click();
 
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
     // Should not have any uncaught errors
     expect(consoleErrors.length).toBe(0);
@@ -440,7 +434,7 @@ test.describe('@integration Error States - Edge Cases', () => {
 
   test('handles browser back/forward with pending operations', async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
 
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
@@ -454,11 +448,11 @@ test.describe('@integration Error States - Edge Cases', () => {
 
     // Immediately go back
     await page.goBack();
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
 
     // Go forward
     await page.goForward();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // App should still be functional
     const hasGrid = await page.locator('[role="grid"]').isVisible().catch(() => false);
@@ -477,7 +471,9 @@ test.describe('@integration Error States - Edge Cases', () => {
     if (await hintButton.isVisible().catch(() => false) && await hintButton.isEnabled().catch(() => false)) {
       // Double-click the hint button rapidly
       await hintButton.dblclick();
-      await page.waitForTimeout(1000);
+      
+      // Wait for any hint operation to complete
+      await page.waitForLoadState('networkidle');
 
       // App should handle gracefully - no crash, grid still visible
       await expect(page.locator('[role="grid"]')).toBeVisible();

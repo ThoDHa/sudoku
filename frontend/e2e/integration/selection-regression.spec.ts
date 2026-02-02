@@ -118,7 +118,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           
           // Enter digit
           await page.keyboard.press('7');
-          await page.waitForTimeout(100);
           
           // CRITICAL: Cell should be deselected after digit entry
           await expectCellNotSelected(cell);
@@ -144,7 +143,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
             
             // Enter digit
             await page.keyboard.press(digits[i]);
-            await page.waitForTimeout(100);
             
             // Cell should deselect
             await expectCellNotSelected(cell);
@@ -182,14 +180,12 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           // Place digit first
           // Scroll cell into view and allow header to settle to avoid header intercepting clicks
           await cell.scrollIntoViewIfNeeded();
-          await page.waitForTimeout(100);
           await cell.click();
           await page.keyboard.press('9');
           await expectCellNotSelected(cell);
           
           // Clear digit with backspace
           await cell.scrollIntoViewIfNeeded();
-          await page.waitForTimeout(100);
           await cell.click();
           await expectCellSelected(cell);
           await page.keyboard.press('Backspace');
@@ -236,7 +232,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           await page.keyboard.press('1');
           await page.keyboard.press('2');
           await page.keyboard.press('3');
-          await page.waitForTimeout(100);
           
           // Cell should still be selected in notes mode
           await expectCellSelected(cell);
@@ -265,7 +260,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           
           // Click above puzzle
           await page.mouse.click(coords.above.x, coords.above.y);
-          await page.waitForTimeout(100);
           
           // Should deselect
           await expectCellNotSelected(cell);
@@ -283,7 +277,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           await expectCellSelected(cell);
           
           await page.mouse.click(coords.below.x, coords.below.y);
-          await page.waitForTimeout(100);
           
           await expectCellNotSelected(cell);
           expect(await countSelectedCells(page)).toBe(0);
@@ -300,7 +293,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           await expectCellSelected(cell);
           
           await page.mouse.click(coords.left.x, coords.left.y);
-          await page.waitForTimeout(100);
           
           await expectCellNotSelected(cell);
           expect(await countSelectedCells(page)).toBe(0);
@@ -317,7 +309,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           await expectCellSelected(cell);
           
           await page.mouse.click(coords.right.x, coords.right.y);
-          await page.waitForTimeout(100);
           
           await expectCellNotSelected(cell);
           expect(await countSelectedCells(page)).toBe(0);
@@ -344,7 +335,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
             
             // Click in corner
             await page.mouse.click(corner.coord.x, corner.coord.y);
-            await page.waitForTimeout(100);
             
             // Should deselect
             await expectCellNotSelected(cell);
@@ -380,7 +370,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
             
             if (await control.count() > 0) {
               await control.click();
-              await page.waitForTimeout(100);
               
               // Selection should be preserved when clicking game controls
               await expectCellSelected(cell);
@@ -403,7 +392,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           
           if (await digitButton.count() > 0) {
             await digitButton.click();
-            await page.waitForTimeout(100);
             
             // Should deselect after digit entry via pad
             await expectCellNotSelected(cell);
@@ -431,7 +419,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           await page.keyboard.press('ArrowDown');
           await page.keyboard.press('ArrowLeft');
           await page.keyboard.press('ArrowUp');
-          await page.waitForTimeout(100);
           
           // Should still have no selection
           expect(await countSelectedCells(page)).toBe(0);
@@ -454,7 +441,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           
           // Now arrow navigation should work
           await page.keyboard.press('ArrowRight');
-          await page.waitForTimeout(100);
           
           // Some other cell should now be selected
           expect(await countSelectedCells(page)).toBe(1);
@@ -478,8 +464,7 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
             await expectCellSelected(cell);
             
             await page.keyboard.press(digit);
-            await page.waitForTimeout(50); // Shorter timeout for stress test
-            
+            // Shorter wait for stress test - but use proper state detection
             await expectCellNotSelected(cell);
             expect(await countSelectedCells(page)).toBe(0);
           }
@@ -504,7 +489,7 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
             
             // Rapid outside click
             await page.mouse.click(clickCoord.x, clickCoord.y);
-            await page.waitForTimeout(25); // Very fast for stress test
+            // Very fast stress test - use immediate state detection
             
             // Should deselect
             await expectCellNotSelected(cell);
@@ -553,7 +538,7 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
                 break;
             }
             
-            await page.waitForTimeout(25);
+            // Fast mixed interaction - use immediate state verification without arbitrary delays
             
             // Verify selection count matches expected
             const actualCount = await countSelectedCells(page);
@@ -577,7 +562,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           await expectCellSelected(cell);
           
           await page.keyboard.press('7');
-          await page.waitForTimeout(100);
           
           await expectCellNotSelected(cell);
           expect(await countSelectedCells(page)).toBe(0);
@@ -589,7 +573,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           await expectCellSelected(cell);
           
           await page.mouse.click(coords.above.x, coords.above.y);
-          await page.waitForTimeout(100);
           
           await expectCellNotSelected(cell);
           expect(await countSelectedCells(page)).toBe(0);
