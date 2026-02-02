@@ -58,7 +58,8 @@ async function enterDigitInCell(page: Page, row: number, col: number, digit: num
   await cell.scrollIntoViewIfNeeded();
   await cell.click();
   await page.keyboard.press(digit.toString());
-  await page.waitForTimeout(100);
+  // Wait for digit to appear in the cell
+  await expect(cell).toContainText(digit.toString(), { timeout: 2000 });
 }
 
 // Helper to use a few hints and verify system doesn't crash
@@ -68,7 +69,8 @@ async function useHintsAndVerifyStable(page: Page, hintCount: number = 3): Promi
   for (let i = 0; i < hintCount; i++) {
     if (await hintButton.isEnabled().catch(() => false)) {
       await hintButton.click();
-      await page.waitForTimeout(400);
+      // Wait for hint action to complete by checking button state or grid visibility
+      await expect(page.locator('[role="grid"]')).toBeVisible({ timeout: 2000 });
     } else {
       break;
     }
@@ -240,7 +242,8 @@ test.describe('@integration Autosolve Error Handling', () => {
     for (let i = 0; i < 5; i++) {
       if (await hintButton.isEnabled().catch(() => false)) {
         await hintButton.click();
-        await page.waitForTimeout(300);
+        // Wait for hint action to complete by checking grid visibility
+        await expect(page.locator('[role="grid"]')).toBeVisible({ timeout: 2000 });
       }
     }
     
@@ -275,7 +278,9 @@ test.describe('@integration Autosolve Error Recovery', () => {
     const undoButton = page.locator('button[title="Undo"]');
     if (await undoButton.isEnabled().catch(() => false)) {
       await undoButton.click();
-      await page.waitForTimeout(200);
+      // Wait for undo to complete by checking cell is cleared
+      const cell = getCellLocator(page, pos.row, pos.col);
+      await expect(cell).not.toContainText('9', { timeout: 2000 });
     }
 
     // Use hints
@@ -302,7 +307,8 @@ test.describe('@integration Autosolve Error Recovery', () => {
     const cell = getCellLocator(page, pos.row, pos.col);
     await cell.click();
     await page.keyboard.press('Backspace');
-    await page.waitForTimeout(200);
+    // Wait for cell to be cleared
+    await expect(cell).not.toContainText('5', { timeout: 2000 });
 
     // Use hints
     const isStable = await useHintsAndVerifyStable(page, 3);

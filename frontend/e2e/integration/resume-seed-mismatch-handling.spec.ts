@@ -52,8 +52,20 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
     await emptyCell.click();
     await page.keyboard.press('5');
 
-    // Wait for auto-save
-    await page.waitForTimeout(1500);
+    // Wait for auto-save by checking localStorage
+    await expect(async () => {
+      const hasGame = await page.evaluate(() => {
+        const prefix = 'sudoku_game_';
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key?.startsWith(prefix)) {
+            return true;
+          }
+        }
+        return false;
+      });
+      expect(hasGame).toBe(true);
+    }).toPass({ timeout: 3000 });
 
     // Verify saved game has correct seed
     const savedAfterFirst = await page.evaluate(() => {
@@ -82,7 +94,6 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
     // Step 2: Navigate away from the game
     await page.goto('/');
     await expect(page.locator('h1')).toBeVisible();
-    await page.waitForTimeout(500);
 
     // Step 3: Navigate back to a DAILY seed (simulating resume modal showing wrong seed)
     const today = new Date().toISOString().split('T')[0];

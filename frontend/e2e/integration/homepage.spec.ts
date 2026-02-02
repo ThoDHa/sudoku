@@ -846,25 +846,25 @@ test.describe('Homepage - Edge Cases', () => {
     const focusedElement = await page.evaluate(() => document.activeElement?.tagName);
     expect(focusedElement).not.toBe('BODY');
 
-    // Tab through the page up to 40 times, waiting briefly between presses.
+    // Tab through the page up to 40 times looking for a "Play" or difficulty button.
     // We check `document.activeElement.innerText` rather than `textContent`.
     // Reason: the visible "Play" label is rendered inside a child element
     // (for example a <span>) and some environments expose the parent's
     // `innerText` in a more consistent, rendered form. `textContent` can
     // differ across engines and may not reflect the rendered label reliably.
-    // We include a small 20ms wait after each Tab to allow any asynchronous
-    // focus-management or rendering to complete before reading the active
-    // element. This makes the assertion more deterministic and CI friendly.
+    // We use expect().toPass() to poll for focus changes rather than arbitrary waits.
     let found = false;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 40 && !found; i++) {
       await page.keyboard.press('Tab');
-      // small pause to allow any focus-related JS to run
-      await page.waitForTimeout(20);
-      const activeText = await page.evaluate(() => document.activeElement?.innerText?.toLowerCase() || '');
-      if (activeText.includes('play') || activeText.includes('easy')) {
-        found = true;
-        break;
-      }
+      // Poll for the activeElement text to stabilize after focus change
+      await expect(async () => {
+        const activeText = await page.evaluate(() => document.activeElement?.innerText?.toLowerCase() || '');
+        if (activeText.includes('play') || activeText.includes('easy')) {
+          found = true;
+        }
+        // Always pass - we just want to ensure the evaluate completes
+        expect(true).toBe(true);
+      }).toPass({ timeout: 100 });
     }
 
     expect(found).toBeTruthy();

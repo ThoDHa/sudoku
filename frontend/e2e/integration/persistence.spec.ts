@@ -179,7 +179,9 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
     await cell1.scrollIntoViewIfNeeded();
     await cell1.click();
     await page.keyboard.press('3');
-    await page.waitForTimeout(200);
+    
+    // Wait for digit to appear in UI before proceeding
+    await expect(cell1).toContainText('3');
 
     // Find another empty cell and enter digit
     const { cell: cell2, row: row2, col: col2 } = await findEmptyCell(page, 6);
@@ -331,7 +333,9 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
     await cell1.scrollIntoViewIfNeeded();
     await cell1.click();
     await page.keyboard.press('8');
-    await page.waitForTimeout(200);
+    
+    // Wait for digit to appear in UI before proceeding
+    await expect(cell1).toContainText('8');
 
     const { cell: cell2, row: row2, col: col2 } = await findEmptyCell(page, 6);
     await cell2.scrollIntoViewIfNeeded();

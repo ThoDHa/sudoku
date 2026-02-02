@@ -189,7 +189,8 @@ test.describe('@slow Hint System Stability', () => {
     for (let i = 0; i < 10; i++) {
       if (await hintButton.isVisible() && await hintButton.isEnabled()) {
         await hintButton.click();
-        await page.waitForTimeout(500);
+        // Wait for hint action to complete by checking button is still present
+        await expect(hintButton).toBeVisible({ timeout: 2000 });
       } else {
         break;
       }

@@ -122,8 +122,8 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
       }
     });
     
-    // Wait a bit for console logs to accumulate
-    await page.waitForTimeout(2000);
+    // Wait for page to fully render and console logs to accumulate
+    await expect(page.locator('.game-background')).toBeVisible({ timeout: 10000 });
     
     // Print captured logs
     console.log('Captured console logs:', consoleLogs);
@@ -359,8 +359,15 @@ test.describe('Daily Prompt Modal - Checkbox Persistence', () => {
     const continueButton = page.locator('button', { hasText: 'Continue Practice' });
     await continueButton.click();
     
-    // Wait a moment for preference to be saved to localStorage
-    await page.waitForTimeout(200);
+    // Wait for preference to be saved to localStorage using condition-based wait
+    await expect(async () => {
+      const debugBeforeSecondNav = await page.evaluate(() => {
+        const rawPrefs = localStorage.getItem('sudoku_preferences');
+        const parsedPrefs = rawPrefs ? JSON.parse(rawPrefs) : {};
+        return parsedPrefs.showDailyReminder;
+      });
+      expect(debugBeforeSecondNav).toBe(false);
+    }).toPass({ timeout: 3000 });
     
     // Verify preference was saved - DETAILED DEBUG
     const debugBeforeSecondNav = await page.evaluate(() => {
@@ -450,8 +457,8 @@ test.describe('Daily Prompt Modal - Menu Preference Toggle', () => {
     
     if (!isExpanded) {
       await settingsButton.click();
-      // Wait for expansion animation
-      await page.waitForTimeout(500);
+      // Wait for expansion animation using condition-based wait
+      await expect(settingsContent).toBeVisible({ timeout: 2000 });
     }
     
     // Find the daily reminder toggle button
@@ -474,7 +481,9 @@ test.describe('Daily Prompt Modal - Menu Preference Toggle', () => {
     
     // Close menu by pressing Escape
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
+    
+    // Wait for menu to close
+    await expect(menu).not.toBeVisible({ timeout: 2000 });
     
     // Navigate to practice game
     const seed = `P${Date.now()}`; await page.goto(`/${seed}?d=easy`);

@@ -56,8 +56,20 @@ test.describe('@regression Resume Game State - Seed Mismatch Recovery', () => {
     await emptyCell.click();
     await page.keyboard.press('5');
 
-    // Wait for auto-save (500ms debounce + idle callback)
-    await page.waitForTimeout(1000);
+    // Wait for auto-save by checking localStorage
+    await expect(async () => {
+      const hasGame = await page.evaluate(() => {
+        const prefix = 'sudoku_game_';
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key?.startsWith(prefix)) {
+            return true;
+          }
+        }
+        return false;
+      });
+      expect(hasGame).toBe(true);
+    }).toPass({ timeout: 3000 });
 
     // Check what was saved in localStorage
     const savedGames = await page.evaluate(() => {

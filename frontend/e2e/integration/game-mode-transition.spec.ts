@@ -111,7 +111,11 @@ test.describe('Game Mode Transitions', () => {
     
     await page.click('text=Restart Puzzle')
     
-    await page.waitForTimeout(500) // Wait for restart
+    // Wait for restart by verifying the URL still has the same difficulty
+    await expect(async () => {
+      const currentUrl = page.url()
+      expect(currentUrl).toMatch(/\?d=medium$/)
+    }).toPass({ timeout: 3000 });
 
     // Verify same difficulty after restart
     const currentUrl = page.url()

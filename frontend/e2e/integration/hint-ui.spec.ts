@@ -124,8 +124,11 @@ test.describe('@integration Hints - UI Behavior', () => {
     // Undo the hint
     await undoButton.click();
     
-    // Wait for undo to be processed
-    await page.waitForTimeout(200);
+    // Wait for undo to be processed by checking empty cell count changed
+    await expect(async () => {
+      const emptyCellsAfterUndo = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
+      expect(emptyCellsAfterUndo).toBeGreaterThan(emptyCellsAfterHint);
+    }).toPass({ timeout: 3000 });
 
     const emptyCellsAfterUndo = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
     const cellsRestoredByUndo = emptyCellsAfterUndo - emptyCellsAfterHint;
@@ -141,8 +144,11 @@ test.describe('@integration Hints - UI Behavior', () => {
     const redoButton = page.getByRole('button', { name: /redo/i });
     await redoButton.click();
     
-    // Wait for redo to be processed
-    await page.waitForTimeout(200);
+    // Wait for redo to be processed by checking empty cell count matches post-hint
+    await expect(async () => {
+      const currentEmptyCells = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
+      expect(currentEmptyCells).toBe(emptyCellsAfterHint);
+    }).toPass({ timeout: 3000 });
 
     const emptyCellsAfterRedo = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
     expect(emptyCellsAfterRedo).toBe(emptyCellsAfterHint);

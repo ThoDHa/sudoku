@@ -190,8 +190,14 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     await emptyCell.click();
     await page.keyboard.press('5');
     
-    // Wait for auto-save
-    await page.waitForTimeout(1000);
+    // Wait for auto-save by checking localStorage has been updated
+    await expect(async () => {
+      const saved = await page.evaluate(() => {
+        const keys = Object.keys(localStorage);
+        return keys.some(k => k.startsWith('sudoku_game_'));
+      });
+      expect(saved).toBe(true);
+    }).toPass({ timeout: 3000 });
     
     // Open the menu (hamburger button in header) - wait for it to be visible and clickable
     const menuButton = page.locator('header button[title="Menu"]');
@@ -236,8 +242,14 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     await emptyCell.click();
     await page.keyboard.press('3');
     
-    // Wait for auto-save
-    await page.waitForTimeout(1000);
+    // Wait for auto-save by checking localStorage has been updated
+    await expect(async () => {
+      const saved = await page.evaluate(() => {
+        const keys = Object.keys(localStorage);
+        return keys.some(k => k.startsWith('sudoku_game_'));
+      });
+      expect(saved).toBe(true);
+    }).toPass({ timeout: 3000 });
 
     // Capture initial URL so we can assert it remains after cancel
     const initialGameUrl = page.url();
@@ -277,8 +289,14 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     await emptyCell.click();
     await page.keyboard.press('5');
 
-    // Wait for auto-save
-    await page.waitForTimeout(1500);
+    // Wait for auto-save by checking localStorage has been updated
+    await expect(async () => {
+      const saved = await page.evaluate(() => {
+        const keys = Object.keys(localStorage);
+        return keys.some(k => k.startsWith('sudoku_game_'));
+      });
+      expect(saved).toBe(true);
+    }).toPass({ timeout: 3000 });
 
     // Capture initial URL so we can ensure navigation happened to a new route
     const initialGameUrl = page.url();

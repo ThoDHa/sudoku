@@ -25,8 +25,6 @@ import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait'
 async function waitForTechniqueProcessing(page: Page) {
   // Wait for any network activity to settle after technique processing
   await page.waitForLoadState("networkidle", { timeout: 2000 });
-  // Small buffer for UI updates
-  await page.waitForTimeout(100);
 }
 
 async function prepBoardForTechniqueHint(page: Page) {
