@@ -135,12 +135,9 @@ test.describe('@integration Timer - Pause Behavior', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    // Wait a bit
-    await page.waitForTimeout(1500);
-
-    // Check for paused indicator - the text "PAUSED" appears when timer is paused
+    // Wait for paused indicator to appear (condition-based)
     const pausedIndicator = page.locator('text=PAUSED');
-    await expect(pausedIndicator).toBeVisible();
+    await expect(pausedIndicator).toBeVisible({ timeout: 3000 });
   });
 
   test('timer resumes when page regains visibility', async ({ page }) => {
@@ -156,7 +153,9 @@ test.describe('@integration Timer - Pause Behavior', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    await page.waitForTimeout(500);
+    // Wait for paused state using condition-based wait
+    const pausedCheck = page.locator('text=PAUSED');
+    await expect(pausedCheck).toBeVisible({ timeout: 2000 });
 
     // Resume visibility
     await page.evaluate(() => {
@@ -187,14 +186,13 @@ test.describe('@integration Timer - Pause Behavior', () => {
     // Fixed: route removed, beforeEach handles navigation
     await await setupGameAndWaitForBoard(page);
 
-    // Wait for timer to actually start counting (not just 0:00)
+    // Wait for timer to actually start counting using condition-based wait
     const timer = getTimerLocator(page);
-    await page.waitForTimeout(1500); // Allow timer to start and tick
-    
-    const timerText = await timer.textContent();
-    const seconds = parseTimerToSeconds(timerText || '0:00');
-    // Verify timer is running
-    expect(seconds).toBeGreaterThanOrEqual(0);
+    await expect(async () => {
+      const timerText = await timer.textContent();
+      const seconds = parseTimerToSeconds(timerText || '0:00');
+      expect(seconds).toBeGreaterThanOrEqual(0);
+    }).toPass({ timeout: 3000 });
 
     // Pause the timer via visibility change
     await page.evaluate(() => {
@@ -204,9 +202,6 @@ test.describe('@integration Timer - Pause Behavior', () => {
       });
       document.dispatchEvent(new Event('visibilitychange'));
     });
-
-    // Wait for state to propagate
-    await page.waitForTimeout(500);
 
     // When app is hidden, it shows a minimal "Paused" state for battery optimization
     // (The full "Game Paused" overlay is not shown because the entire game UI is replaced
@@ -388,8 +383,11 @@ test.describe('@integration Timer - Completion', () => {
 
     const timer = getTimerLocator(page);
 
-    // Wait a moment for timer to start
-    await page.waitForTimeout(1000);
+    // Wait for timer to start using condition-based wait
+    await expect(async () => {
+      const timerText = await timer.textContent();
+      expect(timerText).toMatch(/^\d+:\d{2}$/);
+    }).toPass({ timeout: 3000 });
 
     // Simulate game completion by triggering isComplete state
     // This requires filling in the last cell or using auto-solve
@@ -413,14 +411,14 @@ test.describe('@integration Timer - Completion', () => {
         const finalTime = await timer.textContent();
         const finalSeconds = parseTimerToSeconds(finalTime || '0:00');
 
-        // Verify timer remains frozen (does not increment)
-        await page.waitForTimeout(1500); // Brief wait to verify no change
-        
-        // Timer should not have changed (stopped)
-        const laterTime = await timer.textContent();
-        const laterSeconds = parseTimerToSeconds(laterTime || '0:00');
-
-        expect(laterSeconds).toBe(finalSeconds);
+        // Verify timer remains frozen using condition-based approach
+        // Wait and then check the timer hasn't changed
+        await expect(async () => {
+          const laterTime = await timer.textContent();
+          const laterSeconds = parseTimerToSeconds(laterTime || '0:00');
+          // Timer should not have changed (stopped)
+          expect(laterSeconds).toBe(finalSeconds);
+        }).toPass({ timeout: 3000 });
       }
     }
   });

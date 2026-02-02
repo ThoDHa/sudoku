@@ -86,17 +86,19 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     await selectCell(page, row, col);
     await page.keyboard.press('4');
 
-    // Wait and verify digit is there
-    await page.waitForTimeout(100);
-    await expectCellValue(page, row, col, 4);
+    // Wait for digit to appear using condition-based wait
+    await expect(async () => {
+      await expectCellValue(page, row, col, 4);
+    }).toPass({ timeout: 2000 });
 
     // Click undo
     const undoButton = page.locator('button[title="Undo"]');
     await undoButton.click();
 
-    // Wait and verify digit is removed
-    await page.waitForTimeout(100);
-    await expectCellValue(page, row, col, 'empty');
+    // Wait for digit to be removed using condition-based wait
+    await expect(async () => {
+      await expectCellValue(page, row, col, 'empty');
+    }).toPass({ timeout: 2000 });
   });
 
   test('keyboard shortcut Ctrl+Z triggers undo', async ({ page, browserName }) => {
@@ -112,17 +114,19 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     await emptyCell.click();
     await page.keyboard.press('6');
     
-    // Wait and verify digit is there
-    await page.waitForTimeout(100);
-    await expectCellValue(page, row, col, 6);
+    // Wait for digit to appear using condition-based wait
+    await expect(async () => {
+      await expectCellValue(page, row, col, 6);
+    }).toPass({ timeout: 2000 });
     
     // Ctrl+Z (or Cmd+Z on Mac)
     const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
     await page.keyboard.press(`${modifier}+z`);
     
-    // Wait and verify digit is removed
-    await page.waitForTimeout(100);
-    await expectCellValue(page, row, col, 'empty');
+    // Wait for digit to be removed using condition-based wait
+    await expect(async () => {
+      await expectCellValue(page, row, col, 'empty');
+    }).toPass({ timeout: 2000 });
   });
 
   test('multiple undo operations work sequentially', async ({ page }) => {
@@ -142,25 +146,29 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     // Place digits in both cells
     await selectCell(page, row1, col1);
     await page.keyboard.press('1');
-    await page.waitForTimeout(100);
-    await expectCellValue(page, row1, col1, 1);
+    await expect(async () => {
+      await expectCellValue(page, row1, col1, 1);
+    }).toPass({ timeout: 2000 });
     
     await selectCell(page, row2, col2);
     await page.keyboard.press('2');
-    await page.waitForTimeout(100);
-    await expectCellValue(page, row2, col2, 2);
+    await expect(async () => {
+      await expectCellValue(page, row2, col2, 2);
+    }).toPass({ timeout: 2000 });
     
     const undoButton = page.locator('button[title="Undo"]');
     
     // Undo second move
     await undoButton.click();
-    await page.waitForTimeout(100);
-    await expectCellValue(page, row2, col2, 'empty');
+    await expect(async () => {
+      await expectCellValue(page, row2, col2, 'empty');
+    }).toPass({ timeout: 2000 });
     
     // Undo first move
     await undoButton.click();
-    await page.waitForTimeout(100);
-    await expectCellValue(page, row1, col1, 'empty');
+    await expect(async () => {
+      await expectCellValue(page, row1, col1, 'empty');
+    }).toPass({ timeout: 2000 });
   });
 });
 
@@ -203,9 +211,10 @@ test.describe('@integration Gameplay - Mobile Touch', () => {
     const numberButton = page.locator('button[aria-label^="Enter 5,"]');
     await numberButton.click();
     
-    // Wait and verify digit was placed
-    await page.waitForTimeout(100);
-    await expectCellValue(page, row, col, 5);
+    // Wait for digit to appear using condition-based wait
+    await expect(async () => {
+      await expectCellValue(page, row, col, 5);
+    }).toPass({ timeout: 2000 });
   });
 
   test('control buttons accessible on mobile viewport', async ({ page }) => {

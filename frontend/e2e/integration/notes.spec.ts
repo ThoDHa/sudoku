@@ -247,7 +247,8 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     await expect(cellByPosition).toContainText('4');
     
     // Click again - should REMOVE candidate 4
-    await page.waitForTimeout(150); // Wait for debounce guard to expire
+    // Wait for UI to be ready for another click by checking the candidate is present first
+    await expect(cellByPosition).toContainText('4');
     await cellByPosition.click();
     
     // Wait for state change with explicit condition
@@ -344,8 +345,8 @@ test.describe('@integration Notes Mode - Removing Candidates', () => {
     await page.keyboard.press('4');
     await expect(cellByPosition).toContainText('4');
     
-    // Remove by pressing same digit
-    await page.waitForTimeout(150); // Wait for debounce guard to expire
+    // Remove by pressing same digit - wait for candidate to be confirmed present first
+    await expect(cellByPosition).toContainText('4');
     await page.keyboard.press('4');
     await expect(cellByPosition).not.toContainText('4');
   });
@@ -523,7 +524,8 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     await expect(digit3Button).toHaveClass(/ring-2/);
 
     // Click the same cell to REMOVE the candidate (toggle off)
-    await page.waitForTimeout(150); // Wait for debounce guard to expire
+    // Wait for UI to be ready for another click by verifying candidate is present
+    await expect(cellByPosition).toContainText('3');
     await cellByPosition.click();
 
     // Wait for candidate to be removed

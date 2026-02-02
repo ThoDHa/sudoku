@@ -47,8 +47,8 @@ test.describe('@integration Check & Fix', () => {
       await onboardingCloseButton.click();
     }
 
-    // Short settle
-    await page.waitForTimeout(500);
+    // Wait for any modal to close by checking board is interactive
+    await page.waitForSelector('[role="grid"]', { state: 'visible', timeout: 10000 });
 
     // If the board is not visible, attempt deterministic navigation via visible homepage controls
     if (!(await page.locator('[role="grid"]').isVisible().catch(() => false))) {
@@ -91,7 +91,8 @@ test.describe('@integration Check & Fix', () => {
     const continuePractice = page.getByRole('button', { name: /Continue Practice/i });
     if (await continuePractice.isVisible().catch(() => false)) {
       await continuePractice.click();
-      await page.waitForTimeout(300);
+      // Wait for modal to close
+      await expect(continuePractice).not.toBeVisible({ timeout: 3000 }).catch(() => {});
     }
 
     // Create a couple of conflicting user entries to trigger the modal later
@@ -110,7 +111,8 @@ test.describe('@integration Check & Fix', () => {
     await page.keyboard.type('5'); // introduce another conflict
 
     // Trigger the Check & Fix modal by invoking a flow that detects too many conflicts.
-    await page.waitForTimeout(500); // allow state to settle
+    // Wait for state to settle by checking grid is visible and interactive
+    await expect(page.locator('[role="grid"]')).toBeVisible();
 
     // Open the modal if present, otherwise directly call the handler via UI button if available
     const checkFixButton = page.getByRole('button', { name: /Check & Fix/i });
@@ -120,7 +122,10 @@ test.describe('@integration Check & Fix', () => {
       const hintButton = page.getByRole('button', { name: /Hint/i });
       if (await hintButton.isVisible().catch(() => false)) {
         await hintButton.click();
-        await page.waitForTimeout(1000);
+        // Wait for hint modal or check & fix button to appear
+        await expect(
+          page.getByRole('button', { name: /Check & Fix/i }).or(page.locator('text=Hint'))
+        ).toBeVisible({ timeout: 5000 }).catch(() => {});
       }
     }
 
@@ -137,8 +142,13 @@ test.describe('@integration Check & Fix', () => {
       }
     }
 
-    // Wait briefly for moves to apply
-    await page.waitForTimeout(1500);
+    // Wait for moves to apply by checking that grid is stable
+    // (either result modal appears or empty cells still exist)
+    await expect(async () => {
+      const cells = page.locator('[role="gridcell"]');
+      const count = await cells.count();
+      expect(count).toBeGreaterThan(0);
+    }).toPass({ timeout: 5000 });
 
     // Assert that the puzzle is not marked complete immediately
     const resultModal = page.getByText(/Completed|Result|Summary/i);
