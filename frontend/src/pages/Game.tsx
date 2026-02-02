@@ -792,17 +792,12 @@ function GameContent() {
 
   // Handle hint button - shows the next move with full answer (eliminations + additions visible)
   const handleNext = useCallback(async () => {
-    console.log('[HINT DEBUG] handleNext called - starting hint processing');
-    
     // Prevent concurrent hint requests (spam protection)
     if (hintInProgress.current) {
-      console.log('[HINT DEBUG] Hint already in progress, skipping');
       return
     }
     hintInProgress.current = true
     setHintLoading(true)
-    
-    console.log('[HINT DEBUG] Set hintLoading to true');
 
     try {
       // Deselect any highlighted digit when using hint
@@ -811,22 +806,8 @@ function GameContent() {
       // Get the next move from current state
       const boardSnapshot = [...game.board]
       const candidatesArray = candidatesToArrays(game.candidates)
-
-      console.log('[HINT DEBUG] Calling findNextMove with:', { 
-        boardLength: boardSnapshot.length,
-        candidatesLength: candidatesArray.length,
-        initialBoardLength: initialBoard.length,
-        wasmAvailable: !!window.SudokuWasm
-      });
       
       const data = await findNextMove(boardSnapshot, candidatesArray, initialBoard)
-      
-      console.log('[HINT DEBUG] findNextMove result:', {
-        hasMove: !!data.move,
-        solved: data.solved,
-        boardLength: data.board?.length,
-        candidatesLength: data.candidates?.length
-      });
       
       if (!data.move) {
         setValidationMessage({ 
@@ -1602,8 +1583,6 @@ ${bugReportJson}
 
   // Fetch puzzle
   useEffect(() => {
-    console.log('DEBUG: useEffect running with onboardingComplete:', onboardingComplete, 'showOnboarding:', showOnboarding, 'effectiveSeed:', effectiveSeed)
-    
     // Check if we should show the daily prompt (for practice games only) - INDEPENDENT of onboarding!
     if (getGameMode(effectiveSeed || '') === 'practice') {
       if (shouldShowDailyPrompt()) {
@@ -1614,26 +1593,22 @@ ${bugReportJson}
 
     // Don't load puzzle while onboarding is showing
     if (showOnboarding) {
-      console.log('DEBUG: Early return due to showOnboarding')
       setLoading(false) // Show empty board behind modal, not loading spinner
       return
     }
     // Don't load puzzle until difficulty is chosen (for shared links without ?d= param)
     if (showDifficultyChooser) {
-      console.log('DEBUG: Early return due to showDifficultyChooser')
       setLoading(false)
       return
     }
     // For new users, wait for onboarding to appear first (500ms delay in useOnboarding)
     // This prevents the puzzle from loading before onboarding shows
     if (!onboardingComplete) {
-      console.log('DEBUG: Early return due to !onboardingComplete')
       setLoading(false)
       return
     }
 
     if (!effectiveSeed && !isEncodedCustom) {
-      console.log('DEBUG: Early return due to no effectiveSeed')
       return
     }
 
@@ -1648,9 +1623,8 @@ ${bugReportJson}
           return
         }
 
-        // TEMPORARILY RESTORED: Early return condition to test if this was masking WASM issues
+        // Early return if puzzle already loaded and state restored
         if (!puzzle || !hasRestoredSavedState.current) {
-          console.log('DEBUG: Early return due to puzzle/hasRestoredSavedState check')
           setLoading(false)
           return
         }
@@ -1660,24 +1634,23 @@ ${bugReportJson}
           return
         }
 
-        console.log('DEBUG: About to call wasmGetPuzzle, checking WASM state...')
-        console.log('DEBUG: window.SudokuWasm exists:', !!window.SudokuWasm)
-        if (window.SudokuWasm) {
-          console.log('DEBUG: SudokuWasm keys:', Object.keys(window.SudokuWasm))
-        }
+        const wasmResult = await wasmGetPuzzle(effectiveSeed ?? '', difficulty)
         
-        let puzzleData = await wasmGetPuzzle(effectiveSeed, difficulty)
-        
-        console.log('DEBUG: wasmGetPuzzle returned:', puzzleData ? 'success' : 'null')
-        
-        if (!puzzleData) {
-          console.log('DEBUG: No puzzle data - setting error state')
+        if (!wasmResult) {
           setError('Puzzle generator not ready. Please refresh the page.')
           setLoading(false)
           return
         }
         
-        console.log('DEBUG: Puzzle loaded successfully, proceeding to setPuzzle')
+        // Convert WASM result to local PuzzleData format
+        let puzzleData: PuzzleData = {
+          puzzle_id: wasmResult.puzzleId,
+          seed: wasmResult.seed,
+          difficulty: wasmResult.difficulty,
+          givens: wasmResult.givens,
+          solution: wasmResult.solution,
+        }
+        
         setIncorrectCells([])
 
         let givens: number[]
@@ -2270,8 +2243,6 @@ ${bugReportJson}
         onContinuePractice={handleContinuePractice}
         onDontShowAgain={handleDontShowDailyPromptAgain}
       />
-      {/* DEBUG: Log showDailyPrompt state */}
-      {console.log('DEBUG: showDailyPrompt state is:', showDailyPrompt)}
 
       {/* In-Progress Game Confirmation Modal */}
       {showInProgressConfirm && existingInProgressGame && (

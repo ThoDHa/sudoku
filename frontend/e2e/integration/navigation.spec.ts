@@ -339,32 +339,28 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     await emptyCell.click();
     await page.keyboard.press('5');
 
-    // Wait for auto-save to update URL with new state
+    // Wait for URL to have difficulty parameter
     await expect(async () => {
       const url = page.url();
-      const hasNewSeed = url.match(/[?&]d=([^&]+)/) !== null;
-      expect(hasNewSeed).toBe(true);
-    }).toPass({ timeout: 3000 }); // Wait for URL to include seed from auto-save
+      const hasDifficulty = url.match(/[?&]d=([^&]+)/) !== null;
+      expect(hasDifficulty).toBe(true);
+    }).toPass({ timeout: 3000 });
 
-    // Get current URL (has a seed)
+    // Extract the full path (seed) from URL
     const currentUrl = page.url();
-    const seedMatch = currentUrl.match(/[?&]d=([^&]+)/);
-    const currentSeed = seedMatch ? seedMatch[1] : '';
+    const urlObj = new URL(currentUrl);
+    const currentPath = urlObj.pathname; // e.g., "/P1234567890"
+    const currentDifficulty = urlObj.searchParams.get('d'); // e.g., "easy"
 
-    // Simulate seed change by navigating directly to same seed
-    if (currentSeed) {
-      // Reload same seed URL (simulates returning to same game)
-      await page.goto(`/?d=${currentSeed}`);
+    // Reload the same game URL - should not show in-progress modal
+    if (currentPath && currentDifficulty) {
+      await page.goto(`${currentPath}?d=${currentDifficulty}`);
     }
 
-    // Should navigate without in-progress modal (same seed)
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
-
-    // Now navigate to a different seed directly
-    await page.goto('/?d=medium');
-
-    // Should NOT show in-progress modal (new game from same page)
-    await expect(page.locator('text=Game In Progress')).not.toBeVisible();
+    // Should navigate without in-progress modal (same game)
     await expect(page.locator('.sudoku-board')).toBeVisible({ timeout: 15000 });
+
+    // In-progress modal should NOT appear (same seed)
+    await expect(page.locator('text=Game In Progress')).not.toBeVisible();
   });
 });

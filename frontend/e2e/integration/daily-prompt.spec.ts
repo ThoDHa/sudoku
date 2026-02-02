@@ -479,8 +479,9 @@ test.describe('Daily Prompt Modal - Menu Preference Toggle', () => {
     const newBgColor = await toggleIndicator.getAttribute('class');
     expect(newBgColor).toContain('bg-board-border-light');
     
-    // Close menu by pressing Escape
-    await page.keyboard.press('Escape');
+    // Close menu by clicking the close button in the menu header
+    const closeButton = page.locator('button:has(svg path[d="M6 18L18 6M6 6l12 12"])');
+    await closeButton.click();
     
     // Wait for menu to close
     await expect(menu).not.toBeVisible({ timeout: 2000 });
