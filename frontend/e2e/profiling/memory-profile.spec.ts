@@ -425,10 +425,7 @@ test.describe('@profiling Memory - Light Profiling', () => {
         if (await autoSolveButton.isVisible({ timeout: 2000 })) {
           await autoSolveButton.click();
 
-          // Wait for auto-solve to complete (watch for completion state)
-          await page.waitForTimeout(5000); // Give it time to work
-
-          // Check if puzzle is solved or still running
+          // Check if puzzle is solved or still running (proper completion detection)
           const solveCompleteIndicator = page.locator('[data-testid="puzzle-complete"], .puzzle-complete, .game-won');
           try {
             await solveCompleteIndicator.waitFor({ timeout: 30000 });

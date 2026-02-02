@@ -88,7 +88,10 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
     const today = new Date().toISOString().split('T')[0];
     const dailySeed = `daily-${today}`;
     await page.goto(`/${dailySeed}?d=medium`);
-    await page.waitForTimeout(3000);
+    
+    // Wait for page to be fully loaded and components mounted
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('[data-testid="sudoku-board"], .sudoku-grid, .game-board')).toBeVisible();
 
     // Check restoration logs
     const restorationLogs = consoleMessages.filter(msg =>

@@ -450,8 +450,13 @@ async function runDeviceProfiling(
     await page.goto(`${BASE_URL}/?d=easy&seed=cpu-profile-seed`, { waitUntil: 'networkidle', timeout: 60000 });
     // Wait for the grid to appear (game loaded)
     await page.waitForSelector('[role="grid"]', { timeout: 30000 });
-    // Extra wait for WASM to fully initialize
-    await page.waitForTimeout(2000);
+    
+    // Wait for WASM to be fully ready by checking for solver availability
+    await expect(async () => {
+      const autoSolveButton = page.locator('button[title="Auto-solve"], button:has-text("🤖")');
+      const hasSolver = await autoSolveButton.count() > 0;
+      expect(hasSolver).toBe(true);
+    }).toPass({ timeout: 3000 }); // Detect WASM solver readiness
   });
   results.push(wasmIdleResult);
   saveProfile(wasmIdleResult, `${deviceName}-wasm-idle-profile.json`);
@@ -460,8 +465,10 @@ async function runDeviceProfiling(
   console.log('\n📊 Scenario C: Post-Cleanup');
   const postCleanupResult = await profileScenario(page, client, 'post-cleanup', deviceName, async () => {
     await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 60000 });
-    // Wait for cleanup to complete
-    await page.waitForTimeout(3000);
+    
+    // Wait for page to be fully ready after cleanup - detect stable state
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.locator('body')).toBeVisible(); // Ensure page is responsive
   });
   results.push(postCleanupResult);
   saveProfile(postCleanupResult, `${deviceName}-post-cleanup-profile.json`);

@@ -99,7 +99,10 @@ test.describe('@regression Resume Game State - Seed Mismatch Recovery', () => {
 
     // Navigate back - should show resume modal if there's an in-progress game
     await page.goto(`/${dailySeed}?d=medium`);
-    await page.waitForTimeout(2000);
+    
+    // Wait for page components to mount and game state to load
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('[data-testid="sudoku-board"], .sudoku-grid, .game-board')).toBeVisible();
 
     // Check console for in-progress check output
     const inProgressLogs = consoleMessages.filter(msg =>

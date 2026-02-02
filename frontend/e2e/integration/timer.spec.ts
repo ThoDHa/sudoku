@@ -90,29 +90,24 @@ test.describe('@integration Timer - Counting', () => {
     const initialText = await timer.textContent();
     const initialSeconds = parseTimerToSeconds(initialText || '0:00');
 
-    // Wait 3 seconds
-    await page.waitForTimeout(3000);
-
-    // Get new time
-    const newText = await timer.textContent();
-    const newSeconds = parseTimerToSeconds(newText || '0:00');
-
-    // Timer should have incremented
-    expect(newSeconds).toBeGreaterThan(initialSeconds);
+    // Wait for timer to advance beyond initial value
+    await expect(async () => {
+      const currentText = await timer.textContent();
+      const currentSeconds = parseTimerToSeconds(currentText || '0:00');
+      expect(currentSeconds).toBeGreaterThan(initialSeconds);
+    }).toPass({ timeout: 5000 }); // Give timer up to 5 seconds to advance
   });
 
   test('timer counts correctly after delay', async ({ page }) => {
 
     const timer = getTimerLocator(page);
 
-    // Wait for timer to show at least 0:02
-    await page.waitForTimeout(3000);
-
-    const timerText = await timer.textContent();
-    const seconds = parseTimerToSeconds(timerText || '0:00');
-
-    // After ~3 seconds wait, timer should show at least 2 seconds
-    expect(seconds).toBeGreaterThanOrEqual(2);
+    // Wait for timer to reach at least 2 seconds
+    await expect(async () => {
+      const timerText = await timer.textContent();
+      const seconds = parseTimerToSeconds(timerText || '0:00');
+      expect(seconds).toBeGreaterThanOrEqual(2);
+    }).toPass({ timeout: 5000 });
   });
 });
 
@@ -180,12 +175,12 @@ test.describe('@integration Timer - Pause Behavior', () => {
     const timeAfterResume = await timer.textContent();
     const secondsAfterResume = parseTimerToSeconds(timeAfterResume || '0:00');
 
-    await page.waitForTimeout(2000);
-
-    const timeLater = await timer.textContent();
-    const secondsLater = parseTimerToSeconds(timeLater || '0:00');
-
-    expect(secondsLater).toBeGreaterThan(secondsAfterResume);
+    // Wait for timer to advance beyond resume point
+    await expect(async () => {
+      const timeLater = await timer.textContent();
+      const secondsLater = parseTimerToSeconds(timeLater || '0:00');
+      expect(secondsLater).toBeGreaterThan(secondsAfterResume);
+    }).toPass({ timeout: 4000 });
   });
 
   test('pause overlay appears when timer is paused', async ({ page }) => {
@@ -316,8 +311,12 @@ test.describe('@integration Timer - Persistence', () => {
 
     const timer = getTimerLocator(page);
 
-    // Wait for timer to accumulate some time
-    await page.waitForTimeout(3000);
+    // Wait for timer to accumulate meaningful time
+    await expect(async () => {
+      const currentTime = await timer.textContent();
+      const currentSeconds = parseTimerToSeconds(currentTime || '0:00');
+      expect(currentSeconds).toBeGreaterThanOrEqual(2);
+    }).toPass({ timeout: 5000 });
 
     // Get timer value
     const timeBeforeReload = await timer.textContent();
@@ -402,22 +401,21 @@ test.describe('@integration Timer - Completion', () => {
     if (await autoSolveButton.count() > 0) {
       await autoSolveButton.click();
 
-      // Wait for auto-solve to complete (may take a few seconds)
-      await page.waitForTimeout(5000);
-
-      // Check if puzzle completion modal appeared
+      // Wait for auto-solve to complete - detect completion modal
       const completeModal = page.locator('text=Puzzle Complete').or(
         page.locator('h1:has-text("Complete")')
       );
+      
+      await completeModal.waitFor({ timeout: 10000 }); // Proper completion detection
 
       if (await completeModal.count() > 0) {
         // Get timer value
         const finalTime = await timer.textContent();
         const finalSeconds = parseTimerToSeconds(finalTime || '0:00');
 
-        // Wait a moment
-        await page.waitForTimeout(2000);
-
+        // Verify timer remains frozen (does not increment)
+        await page.waitForTimeout(1500); // Brief wait to verify no change
+        
         // Timer should not have changed (stopped)
         const laterTime = await timer.textContent();
         const laterSeconds = parseTimerToSeconds(laterTime || '0:00');

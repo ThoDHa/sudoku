@@ -321,8 +321,12 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     await emptyCell.click();
     await page.keyboard.press('5');
 
-    // Wait for auto-save
-    await page.waitForTimeout(2000);
+    // Wait for auto-save to update URL with new state
+    await expect(async () => {
+      const url = page.url();
+      const hasNewSeed = url.match(/[?&]d=([^&]+)/) !== null;
+      expect(hasNewSeed).toBe(true);
+    }).toPass({ timeout: 3000 }); // Wait for URL to include seed from auto-save
 
     // Get current URL (has a seed)
     const currentUrl = page.url();
