@@ -17,6 +17,18 @@ import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait'
  * The first few hints often fill cells with values; we need enough hints
  * to get past the initial value placements and have candidates on the board.
  */
+
+/**
+ * Helper to wait for technique processing to complete.
+ * Technique hints are async operations that may take time to process.
+ */
+async function waitForTechniqueProcessing(page: Page) {
+  // Wait for any network activity to settle after technique processing
+  await page.waitForLoadState("networkidle", { timeout: 2000 });
+  // Small buffer for UI updates
+  await page.waitForTimeout(100);
+}
+
 async function prepBoardForTechniqueHint(page: Page) {
   // Wait for WASM to be ready before clicking hint buttons
   await waitForWasmReady(page);
@@ -26,7 +38,8 @@ async function prepBoardForTechniqueHint(page: Page) {
   for (let i = 0; i < 6; i++) {
     if (await hintButton.isEnabled()) {
       await hintButton.click();
-      await page.waitForTimeout(300);
+      // Wait for hint processing to complete before next hint
+      await page.waitForLoadState("networkidle", { timeout: 1000 });
     }
   }
 }
@@ -122,8 +135,11 @@ test.describe('@integration Technique Hints - Basic Functionality', () => {
       .or(page.locator('text=already complete'));
     await expect(gotItButton.or(toastMessage)).toBeVisible({ timeout: 5000 });
     
-    // Count empty cells after - should be unchanged (technique doesn't apply the move)
+    // Wait for technique processing to complete, then count empty cells
+    await waitForTechniqueProcessing(page);
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
+
+    
     expect(emptyCellsAfter).toEqual(emptyCellsBefore);
     
     // Close modal if visible
@@ -264,7 +280,7 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
     for (let i = 0; i < 4; i++) {
       if (await hintButton.isEnabled()) {
         await hintButton.click();
-        await page.waitForTimeout(300);
+        await page.waitForLoadState("networkidle", { timeout: 1000 });
       }
     }
     
@@ -302,7 +318,7 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     await emptyCell.scrollIntoViewIfNeeded();
     await emptyCell.click();
-    await page.waitForTimeout(200);
+    await page.waitForLoadState("networkidle", { timeout: 500 });
     
     // Button should be enabled after making a move
     await expect(techniqueButton).toBeEnabled({ timeout: 3000 });
@@ -345,7 +361,7 @@ test.describe('@integration Technique Hints - Disable/Enable Behavior', () => {
       
       // Use regular hint
       await hintButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForLoadState("networkidle", { timeout: 1000 });
       
       // Technique button should be enabled again
       await expect(techniqueButton).toBeEnabled({ timeout: 3000 });
@@ -406,7 +422,7 @@ test.describe('@integration Technique Hints - Counter', () => {
       
       // Use 1 regular hint (this also re-enables technique button)
       await hintButton.click();
-      await page.waitForTimeout(500);
+      await page.waitForLoadState("networkidle", { timeout: 1000 });
       
       // Technique button should be enabled again
       await expect(techniqueButton).toBeEnabled({ timeout: 3000 });
@@ -444,7 +460,7 @@ test.describe('@integration Technique Hints - Mobile', () => {
     // Use hint once to prep board (hint button disables until user makes a move)
     const hintBtn = page.locator('button:has-text("💡"), button:has-text("Hint")').first();
     await hintBtn.click();
-    await page.waitForTimeout(500);
+    await page.waitForLoadState("networkidle", { timeout: 1000 });
     
     // Count empty cells before
     const emptyCellsBefore = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
@@ -460,8 +476,11 @@ test.describe('@integration Technique Hints - Mobile', () => {
       .or(page.getByRole('button', { name: /Got it/i }));
     await expect(toastOrModal).toBeVisible({ timeout: 5000 });
     
-    // Board should NOT have changed
+    // Wait for technique processing, then verify board unchanged
+    await waitForTechniqueProcessing(page);
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
+
+    
     expect(emptyCellsAfter).toBeLessThanOrEqual(emptyCellsBefore);
     
     // Close modal if visible
@@ -475,7 +494,7 @@ test.describe('@integration Technique Hints - Mobile', () => {
     // Use hint once to prep board (hint button disables until user makes a move)
     const hintBtn = page.locator('button:has-text("💡"), button:has-text("Hint")').first();
     await hintBtn.click();
-    await page.waitForTimeout(500);
+    await page.waitForLoadState("networkidle", { timeout: 1000 });
     
     const techniqueButton = page.locator('button:has-text("Technique"), button:has-text("?")').first();
     await techniqueButton.click();
@@ -529,7 +548,7 @@ test.describe('@integration Technique Hints - Edge Cases', () => {
     for (let i = 0; i < 3; i++) {
       if (await hintButton.isEnabled()) {
         await hintButton.click();
-        await page.waitForTimeout(600);
+        await page.waitForLoadState("networkidle", { timeout: 1500 });
       }
     }
     

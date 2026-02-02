@@ -38,8 +38,9 @@ test.describe('@integration Hints - Basic Functionality', () => {
     const hintButton = page.getByRole('button', { name: /Hint/i });
     await hintButton.click();
     
-    // Wait for hint to be applied
-    await page.waitForTimeout(1000);
+    // Wait for hint button to be disabled (processing) then enabled again (completed)
+    await expect(hintButton).toBeDisabled({ timeout: 3000 });
+    await expect(hintButton).toBeEnabled({ timeout: 5000 });
     
     // Count empty cells after hint
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
@@ -57,8 +58,9 @@ test.describe('@integration Hints - Basic Functionality', () => {
     const hintButton = page.getByRole('button', { name: /Hint/i });
     await hintButton.click();
     
-    // Wait for hint to be processed
-    await page.waitForTimeout(500);
+    // Wait for hint button to be disabled (processing) then enabled again (completed)
+    await expect(hintButton).toBeDisabled({ timeout: 3000 });
+    await expect(hintButton).toBeEnabled({ timeout: 5000 });
     
     // Look for hint explanation elements - these could be:
     // 1. A modal dialog with technique explanation
@@ -80,9 +82,13 @@ test.describe('@integration Hints - Basic Functionality', () => {
     let hasExplanation = false;
     for (const selector of explanationSelectors) {
       const element = page.locator(selector).first();
-      if (await element.isVisible().catch(() => false)) {
+      try {
+        // Wait briefly for each element to appear, but don't fail if it doesn't
+        await element.waitFor({ state: 'visible', timeout: 2000 });
         hasExplanation = true;
         break;
+      } catch {
+        // Continue to next selector
       }
     }
     
@@ -126,7 +132,10 @@ test.describe('@integration Hints - Hint Counter', () => {
     
     // Use a hint
     await hintButton.click();
-    await page.waitForTimeout(1000);
+    
+    // Wait for hint button to be disabled (processing) then enabled again (completed)
+    await expect(hintButton).toBeDisabled({ timeout: 3000 });
+    await expect(hintButton).toBeEnabled({ timeout: 5000 });
     
     // Check if count changed
     const afterText = await hintButton.textContent();
@@ -149,7 +158,10 @@ test.describe('@integration Hints - Hint Counter', () => {
     
     // Use first hint
     await hintButton.click();
-    await page.waitForTimeout(500);
+    
+    // Wait for hint to complete processing
+    await expect(hintButton).toBeDisabled({ timeout: 3000 });
+    await expect(hintButton).toBeEnabled({ timeout: 5000 });
     
     // After HINT-5 changes, hint button is disabled until user makes a move
     // Find an empty cell and make a move to re-enable hints
@@ -158,15 +170,17 @@ test.describe('@integration Hints - Hint Counter', () => {
       await emptyCell.click();
       // Enter a digit to make a move
       await page.keyboard.press('1');
-      await page.waitForTimeout(300);
+      
+      // Wait for the move to be processed and hint button to be enabled
+      await expect(hintButton).toBeEnabled({ timeout: 5000 });
     }
-    
-    // Wait for hint button to be enabled again
-    await expect(hintButton).toBeEnabled({ timeout: 5000 });
     
     // Use second hint
     await hintButton.click();
-    await page.waitForTimeout(500);
+    
+    // Wait for second hint to complete processing
+    await expect(hintButton).toBeDisabled({ timeout: 3000 });
+    await expect(hintButton).toBeEnabled({ timeout: 5000 });
     
     // Verify count decreased by 2
     const afterText = await hintButton.textContent();
@@ -201,7 +215,10 @@ test.describe('@integration Hints - Edge Cases', () => {
       // Click hint
       const hintButton = page.getByRole('button', { name: /Hint/i });
       await hintButton.click();
-      await page.waitForTimeout(1000);
+      
+      // Wait for hint button to be disabled (processing) then enabled again (completed)
+      await expect(hintButton).toBeDisabled({ timeout: 3000 });
+      await expect(hintButton).toBeEnabled({ timeout: 5000 });
       
       // Count empty cells after hint
       const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
@@ -225,7 +242,10 @@ test.describe('@integration Hints - Edge Cases', () => {
     // Click hint without selecting a cell
     const hintButton = page.getByRole('button', { name: /Hint/i });
     await hintButton.click();
-    await page.waitForTimeout(1000);
+    
+    // Wait for hint button to be disabled (processing) then enabled again (completed)
+    await expect(hintButton).toBeDisabled({ timeout: 3000 });
+    await expect(hintButton).toBeEnabled({ timeout: 5000 });
     
     // Count empty cells after hint  
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
@@ -249,7 +269,10 @@ test.describe('@integration Hints - Edge Cases', () => {
     for (let i = 0; i < 3; i++) {
       if (await hintButton.isEnabled()) {
         await hintButton.click();
-        await page.waitForTimeout(600);
+        
+        // Wait for hint to complete processing
+        await expect(hintButton).toBeDisabled({ timeout: 3000 });
+        await expect(hintButton).toBeEnabled({ timeout: 5000 });
       }
     }
     
@@ -294,7 +317,9 @@ test.describe('@integration Hints - Mobile', () => {
     const hintButton = page.locator('button:has-text("💡")');
     await hintButton.click();
     
-    await page.waitForTimeout(1000);
+    // Wait for hint button to be disabled (processing) then enabled again (completed)
+    await expect(hintButton).toBeDisabled({ timeout: 3000 });
+    await expect(hintButton).toBeEnabled({ timeout: 5000 });
     
     // Count empty cells after hint
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
