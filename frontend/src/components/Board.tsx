@@ -492,19 +492,26 @@ const Board = memo(function Board({
       return hasCandidate(candidates[idx] || 0, digit)
     }
     
-    // Check explicit secondary highlights
+    // Check explicit secondary highlights (these are part of the technique pattern, always show)
     if (highlight.highlights.secondary?.some((h) => h.row === row && h.col === col)) {
       return shouldHighlight(highlight.digit)
     }
-    // Also highlight elimination cells as secondary (check specific elimination digit)
-    const elimination = highlight.eliminations?.find((e) => e.row === row && e.col === col)
-    if (elimination) {
-      return shouldHighlight(elimination.digit)
-    }
-    // Highlight targets as secondary if not already primary
-    if (highlight.targets?.some((t) => t.row === row && t.col === col) && 
-        !isHighlightedPrimary(row, col)) {
-      return shouldHighlight(highlight.digit)
+    
+    // The following highlights reveal the ANSWER (which cells get affected)
+    // Only show them in regular hint mode (showAnswer: true), not technique hint mode
+    const showAnswer = highlight.showAnswer !== false
+    
+    if (showAnswer) {
+      // Also highlight elimination cells as secondary (check specific elimination digit)
+      const elimination = highlight.eliminations?.find((e) => e.row === row && e.col === col)
+      if (elimination) {
+        return shouldHighlight(elimination.digit)
+      }
+      // Highlight targets as secondary if not already primary
+      if (highlight.targets?.some((t) => t.row === row && t.col === col) && 
+          !isHighlightedPrimary(row, col)) {
+        return shouldHighlight(highlight.digit)
+      }
     }
     return false
   }
