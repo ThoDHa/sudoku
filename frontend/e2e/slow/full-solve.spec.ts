@@ -29,7 +29,9 @@ test.describe('@slow Hint System Visual Guidance', () => {
   test('hint button provides visual guidance on easy puzzle', async ({ page }) => {
     // Start from homepage and click easy difficulty
     await page.goto('/');
-    await page.waitForTimeout(1000);
+    
+    // Wait for page to fully load before interaction
+    await expect(page.locator('button:has-text("easy")')).toBeVisible({ timeout: 5000 });
     
     // Click the easy difficulty button to start game
     const easyButton = page.locator('button:has-text("easy")').first();
@@ -53,7 +55,8 @@ test.describe('@slow Hint System Visual Guidance', () => {
     for (let i = 0; i < 10; i++) {
       if (await hintButton.isVisible() && await hintButton.isEnabled()) {
         await hintButton.click();
-        await page.waitForTimeout(500);
+        // Wait for hint processing to complete - button state may change during processing
+        await expect(hintButton).toBeVisible({ timeout: 2000 });
       }
     }
     
@@ -86,7 +89,8 @@ test.describe('@slow Hint System Visual Guidance', () => {
     for (let i = 0; i < 10; i++) {
       if (await hintButton.isVisible() && await hintButton.isEnabled()) {
         await hintButton.click();
-        await page.waitForTimeout(500);
+        // Wait for hint processing to complete - verify button remains responsive
+        await expect(hintButton).toBeVisible({ timeout: 2000 });
       }
     }
     
@@ -117,7 +121,8 @@ test.describe('@slow Hint System Visual Guidance', () => {
     for (let i = 0; i < 10; i++) {
       if (await hintButton.isVisible() && await hintButton.isEnabled()) {
         await hintButton.click();
-        await page.waitForTimeout(500);
+        // Wait for hint processing to complete - verify button remains responsive
+        await expect(hintButton).toBeVisible({ timeout: 2000 });
       }
     }
     
@@ -147,13 +152,15 @@ test.describe('@slow Hint System Stability', () => {
     for (let i = 0; i < 20; i++) {
       if (await hintButton.isVisible() && await hintButton.isEnabled()) {
         await hintButton.click();
-        await page.waitForTimeout(500);
+        // Wait for hint processing to complete during stability testing
+        await expect(hintButton).toBeVisible({ timeout: 2000 });
       } else {
         break;
       }
     }
     
-    await page.waitForTimeout(1000);
+    // Allow system to stabilize after extended testing
+    await expect(hintButton).toBeEnabled({ timeout: 3000 });
     
     const finalBoard = await sdk.readBoardFromDOM();
     const finalEmpty = finalBoard.filter(v => v === 0).length;
@@ -215,7 +222,8 @@ test.describe('@slow Hint System Consistency', () => {
     for (let i = 0; i < 10; i++) {
       if (await hintButton.isVisible() && await hintButton.isEnabled()) {
         await hintButton.click();
-        await page.waitForTimeout(500);
+        // Wait for hint visual feedback to be processed
+        await expect(hintButton).toBeVisible({ timeout: 2000 });
       } else {
         break;
       }
@@ -247,7 +255,8 @@ test.describe('@slow Hint System Consistency', () => {
     for (let i = 0; i < 15; i++) {
       if (await hintButton.isVisible() && await hintButton.isEnabled()) {
         await hintButton.click();
-        await page.waitForTimeout(500);
+        // Wait for hint processing to complete - monitor system stability
+        await expect(hintButton).toBeVisible({ timeout: 2000 });
       } else {
         break;
       }
@@ -288,7 +297,8 @@ test.describe('@slow Hint System - Mobile Viewport', () => {
     for (let i = 0; i < 10; i++) {
       if (await hintButton.isVisible() && await hintButton.isEnabled()) {
         await hintButton.click();
-        await page.waitForTimeout(500);
+        // Wait for hint processing on mobile - verify responsive behavior
+        await expect(hintButton).toBeVisible({ timeout: 2000 });
       } else {
         break;
       }

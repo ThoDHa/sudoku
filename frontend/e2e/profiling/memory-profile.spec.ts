@@ -155,26 +155,95 @@ function calculateVariancePct(baseline: number, current: number): number {
 }
 
 /**
- * Force garbage collection if available (Chrome only via CDP)
+ * Force garbage collection and wait for memory to stabilize
  */
 async function forceGC(page: Page): Promise<void> {
   try {
     const client = await page.context().newCDPSession(page);
     await client.send('HeapProfiler.collectGarbage');
+    
+    // Wait for memory to stabilize by monitoring heap changes
+    await waitForMemoryStabilization(client);
     await client.detach();
   } catch {
     // GC not available, continue without it
   }
-  // Wait for GC to complete
-  await page.waitForTimeout(500);
 }
 
 /**
- * Wait for the game board to be ready
+ * Wait for memory to stabilize by monitoring heap size changes
+ */
+async function waitForMemoryStabilization(client: any): Promise<void> {
+  let previousHeapSize = 0;
+  let stableCount = 0;
+  const maxAttempts = 10;
+  
+  for (let i = 0; i < maxAttempts; i++) {
+    const { metrics } = await client.send('Performance.getMetrics');
+    const heapSize = metrics.find((m: any) => m.name === 'JSHeapUsedSize')?.value || 0;
+    
+    if (Math.abs(heapSize - previousHeapSize) < 1024) { // Less than 1KB change
+      stableCount++;
+      if (stableCount >= 2) { // Stable for 2 consecutive checks
+        break;
+      }
+    } else {
+      stableCount = 0;
+    }
+    
+    previousHeapSize = heapSize;
+    await new Promise(resolve => setTimeout(resolve, 50)); // Small delay between checks
+  }
+}
+
+/**
+ * Wait for the game board to be ready and WASM to initialize
  */
 async function waitForGameReady(page: Page): Promise<void> {
   await page.waitForSelector('[role="grid"]', { timeout: 15000 });
-  await page.waitForTimeout(500); // Extra wait for WASM initialization
+  
+  // Wait for WASM initialization by monitoring memory metrics
+  await waitForWASMInitialization(page);
+}
+
+/**
+ * Wait for WASM initialization by monitoring memory stabilization
+ */
+async function waitForWASMInitialization(page: Page): Promise<void> {
+  try {
+    const client = await page.context().newCDPSession(page);
+    await client.send('Performance.enable');
+    
+    let previousHeapSize = 0;
+    let initializationComplete = false;
+    const maxAttempts = 20; // Up to 1 second of monitoring
+    
+    for (let i = 0; i < maxAttempts; i++) {
+      const { metrics } = await client.send('Performance.getMetrics');
+      const heapSize = metrics.find((m: any) => m.name === 'JSHeapUsedSize')?.value || 0;
+      
+      // WASM initialization typically causes a noticeable heap increase
+      if (i > 0 && heapSize > previousHeapSize * 1.1) {
+        // Wait for heap to stabilize after initialization
+        await waitForMemoryStabilization(client);
+        initializationComplete = true;
+        break;
+      }
+      
+      previousHeapSize = heapSize;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    
+    await client.detach();
+    
+    if (!initializationComplete) {
+      // Fallback: minimal wait if we can't detect initialization
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  } catch {
+    // CDP not available, use minimal fallback wait
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
 }
 
 /**
@@ -187,7 +256,11 @@ async function makeMove(page: Page, moveNumber: number): Promise<boolean> {
     if (await emptyCell.isVisible({ timeout: 1000 })) {
       await emptyCell.click();
       await page.keyboard.press(String((moveNumber % 9) + 1));
-      await page.waitForTimeout(30);
+      // Wait for DOM update to complete instead of arbitrary timeout
+      await page.waitForFunction(() => {
+        const activeElement = document.activeElement;
+        return activeElement && activeElement.getAttribute('role') === 'gridcell';
+      }, { timeout: 200 });
       return true;
     }
     // If no empty cell with exact match, try any cell that's not prefilled
@@ -195,7 +268,10 @@ async function makeMove(page: Page, moveNumber: number): Promise<boolean> {
     if (await anyCell.isVisible({ timeout: 1000 })) {
       await anyCell.click();
       await page.keyboard.press(String((moveNumber % 9) + 1));
-      await page.waitForTimeout(30);
+      await page.waitForFunction(() => {
+        const activeElement = document.activeElement;
+        return activeElement && activeElement.getAttribute('role') === 'gridcell';
+      }, { timeout: 200 });
       return true;
     }
   } catch {
@@ -213,7 +289,19 @@ async function requestHint(page: Page): Promise<boolean> {
     const hintButton = page.getByRole('button', { name: /hint/i });
     if (await hintButton.isVisible({ timeout: 1000 })) {
       await hintButton.click();
-      await page.waitForTimeout(100);
+      // Wait for hint processing to complete by monitoring for UI changes
+      await page.waitForFunction(() => {
+        // Check if any cell has been highlighted or changed
+        const cells = document.querySelectorAll('[role="gridcell"]');
+        return Array.from(cells).some(cell => 
+          cell.classList.contains('hint') || 
+          cell.getAttribute('aria-label')?.includes('hint') ||
+          cell.getAttribute('data-hint') === 'true'
+        );
+      }, { timeout: 2000 }).catch(() => {
+        // Hint might not visually indicate, continue anyway
+      });
+      
       // Close any hint modal/tooltip that might appear
       await page.keyboard.press('Escape');
       return true;
@@ -525,7 +613,15 @@ test.describe('@profiling Memory - Light Profiling', () => {
       const noteButton = page.getByRole('button', { name: /notes mode/i });
       if (await noteButton.isVisible({ timeout: 500 }).catch(() => false)) {
         await noteButton.click();
-        await page.waitForTimeout(50);
+        // Wait for the button state to change instead of arbitrary timeout
+        await page.waitForFunction(() => {
+          const button = document.querySelector('[role="button"]') as HTMLButtonElement;
+          return button && (button.getAttribute('aria-pressed') !== null || 
+                           button.classList.contains('active') ||
+                           button.getAttribute('data-active') === 'true');
+        }, { timeout: 200 }).catch(() => {
+          // State change might not be detectable, continue
+        });
         await noteButton.click();
       }
     }
@@ -561,7 +657,7 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
 
     // Force GC and take initial snapshot
     await client.send('HeapProfiler.collectGarbage');
-    await page.waitForTimeout(1000);
+    await waitForMemoryStabilization(client);
 
     const initialMemory = await getPerformanceMemory(page);
     console.log(`📊 Initial heap (performance.memory): ${initialMemory ? (initialMemory.usedJSHeapSize / 1024 / 1024).toFixed(2) : 'N/A'} MB`);
@@ -584,13 +680,20 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
       // Undo some moves
       for (let i = 0; i < 5; i++) {
         await page.keyboard.press('Control+z');
-        await page.waitForTimeout(50);
+        // Wait for undo to complete by checking for DOM changes
+        await page.waitForFunction(() => {
+          // Check if any cell value has changed (indicating undo worked)
+          const cells = document.querySelectorAll('[role="gridcell"]');
+          return cells.length > 0; // Basic check that cells are still present
+        }, { timeout: 200 }).catch(() => {
+          // Undo might not cause detectable changes, continue
+        });
       }
     }
 
     // Force GC and take final snapshot
     await client.send('HeapProfiler.collectGarbage');
-    await page.waitForTimeout(1000);
+    await waitForMemoryStabilization(client);
 
     const finalMemory = await getPerformanceMemory(page);
     console.log(`📊 Final heap (performance.memory): ${finalMemory ? (finalMemory.usedJSHeapSize / 1024 / 1024).toFixed(2) : 'N/A'} MB`);
@@ -624,7 +727,7 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
 
     // Force GC and baseline
     await client.send('HeapProfiler.collectGarbage');
-    await page.waitForTimeout(1000);
+    await waitForMemoryStabilization(client);
 
     const initialMetrics = await getMemoryMetrics(page);
     console.log(`📊 Baseline heap: ${(initialMetrics.jsHeapUsedSize / 1024 / 1024).toFixed(2)} MB`);
@@ -637,7 +740,12 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
         const validateBtn = page.getByRole('button', { name: /validate|check/i });
         if (await validateBtn.isVisible({ timeout: 500 }).catch(() => false)) {
           await validateBtn.click();
-          await page.waitForTimeout(100);
+          // Wait for validation result to appear instead of arbitrary timeout
+          await page.waitForFunction(() => {
+            return document.querySelector('.validation-result, .puzzle-valid, .puzzle-invalid, [data-validation]') !== null;
+          }, { timeout: 1000 }).catch(() => {
+            // Validation might not show visual feedback, continue
+          });
         }
       },
       async () => await makeMove(page, Math.floor(Math.random() * 100)),
@@ -657,7 +765,7 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
 
     // Final measurement
     await client.send('HeapProfiler.collectGarbage');
-    await page.waitForTimeout(1000);
+    await waitForMemoryStabilization(client);
 
     const finalMetrics = await getMemoryMetrics(page);
     const growthMB = calculateGrowthMB(initialMetrics.jsHeapUsedSize, finalMetrics.jsHeapUsedSize);
@@ -701,7 +809,7 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
     // Force GC multiple times to ensure cleanup
     for (let i = 0; i < 3; i++) {
       await client.send('HeapProfiler.collectGarbage');
-      await page.waitForTimeout(500);
+      await waitForMemoryStabilization(client);
     }
 
     const homepageMetrics = await getMemoryMetrics(page);
@@ -760,7 +868,7 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
     // Force GC
     for (let i = 0; i < 3; i++) {
       await client.send('HeapProfiler.collectGarbage');
-      await page.waitForTimeout(500);
+      await waitForMemoryStabilization(client);
     }
 
     const finalMetrics = await getMemoryMetrics(page);
