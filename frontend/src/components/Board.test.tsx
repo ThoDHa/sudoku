@@ -524,6 +524,263 @@ describe('Board', () => {
     })
   })
 
+  describe('technique hint mode (showAnswer: false)', () => {
+    it('shows primary highlights in technique hint mode', () => {
+      const highlight = {
+        step_index: 0,
+        technique: 'Naked Single',
+        action: 'place',
+        digit: 5,
+        targets: [{ row: 4, col: 4 }],
+        eliminations: [{ row: 4, col: 5, digit: 5 }],
+        explanation: 'Test',
+        refs: { title: '', slug: '', url: '' },
+        highlights: {
+          primary: [{ row: 4, col: 4 }],
+        },
+        showAnswer: false,  // Technique hint mode
+      }
+      
+      const board = createEmptyBoard()
+      const candidates = createEmptyCandidates()
+      candidates[40] = createCandidateMask([5])  // Cell at row 4, col 4 has candidate 5
+      
+      const { container } = render(
+        <Board {...defaultProps({ board, candidates, highlight })} />
+      )
+      
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // Primary highlight should still show
+      expect(cells[40]?.className).toContain('bg-cell-primary')
+    })
+
+    it('shows explicit secondary highlights in technique hint mode', () => {
+      const highlight = {
+        step_index: 0,
+        technique: 'Hidden Single',
+        action: 'assign',
+        digit: 3,
+        targets: [{ row: 0, col: 3 }],
+        explanation: 'Test',
+        refs: { title: '', slug: '', url: '' },
+        highlights: {
+          primary: [{ row: 0, col: 3 }],
+          secondary: [{ row: 0, col: 0 }, { row: 0, col: 1 }],  // Context cells
+        },
+        showAnswer: false,  // Technique hint mode
+      }
+      
+      const board = createEmptyBoard()
+      board[0] = 1  // Filled cell in secondary
+      board[1] = 2  // Filled cell in secondary
+      
+      const { container } = render(
+        <Board {...defaultProps({ board, highlight })} />
+      )
+      
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // Explicit secondary highlights should still show (they're part of the technique pattern)
+      expect(cells[0]?.className).toContain('bg-cell-secondary')
+      expect(cells[1]?.className).toContain('bg-cell-secondary')
+    })
+
+    it('does NOT highlight elimination cells in technique hint mode', () => {
+      const highlight = {
+        step_index: 0,
+        technique: 'Pointing Pairs',
+        action: 'eliminate',
+        digit: 3,
+        targets: [],
+        eliminations: [
+          { row: 0, col: 6, digit: 3 },
+          { row: 0, col: 7, digit: 3 },
+        ],
+        explanation: 'Test',
+        refs: { title: '', slug: '', url: '' },
+        highlights: {
+          primary: [{ row: 0, col: 0 }, { row: 0, col: 1 }],  // The pair
+        },
+        showAnswer: false,  // Technique hint mode - should hide eliminations
+      }
+      
+      const board = createEmptyBoard()
+      const candidates = createEmptyCandidates()
+      candidates[0] = createCandidateMask([3])
+      candidates[1] = createCandidateMask([3])
+      candidates[6] = createCandidateMask([3, 5])  // Elimination target
+      candidates[7] = createCandidateMask([3, 8])  // Elimination target
+      
+      const { container } = render(
+        <Board {...defaultProps({ board, candidates, highlight })} />
+      )
+      
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // Elimination cells should NOT be highlighted (would reveal the answer)
+      expect(cells[6]?.className).not.toContain('bg-cell-secondary')
+      expect(cells[7]?.className).not.toContain('bg-cell-secondary')
+      // Primary cells should still be highlighted
+      expect(cells[0]?.className).toContain('bg-cell-primary')
+      expect(cells[1]?.className).toContain('bg-cell-primary')
+    })
+
+    it('does NOT highlight target cells in technique hint mode', () => {
+      const highlight = {
+        step_index: 0,
+        technique: 'Naked Single',
+        action: 'assign',
+        digit: 5,
+        targets: [{ row: 4, col: 4 }],  // Target cell (where to place)
+        explanation: 'Test',
+        refs: { title: '', slug: '', url: '' },
+        highlights: {
+          primary: [{ row: 0, col: 0 }],  // Some other primary cell
+        },
+        showAnswer: false,  // Technique hint mode - should hide target
+      }
+      
+      const board = createEmptyBoard()
+      board[0] = 5  // Primary cell has value
+      const candidates = createEmptyCandidates()
+      candidates[40] = createCandidateMask([5])  // Target cell has candidate
+      
+      const { container } = render(
+        <Board {...defaultProps({ board, candidates, highlight })} />
+      )
+      
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // Target cell should NOT be highlighted as secondary (would reveal the answer)
+      expect(cells[40]?.className).not.toContain('bg-cell-secondary')
+      // Primary cells should still be highlighted
+      expect(cells[0]?.className).toContain('bg-cell-primary')
+    })
+
+    it('DOES highlight elimination cells when showAnswer is true (regular hint)', () => {
+      const highlight = {
+        step_index: 0,
+        technique: 'Pointing Pairs',
+        action: 'eliminate',
+        digit: 3,
+        targets: [],
+        eliminations: [
+          { row: 0, col: 6, digit: 3 },
+        ],
+        explanation: 'Test',
+        refs: { title: '', slug: '', url: '' },
+        highlights: {
+          primary: [{ row: 0, col: 0 }],
+        },
+        showAnswer: true,  // Regular hint mode - should show eliminations
+      }
+      
+      const board = createEmptyBoard()
+      const candidates = createEmptyCandidates()
+      candidates[0] = createCandidateMask([3])
+      candidates[6] = createCandidateMask([3, 5])  // Elimination target
+      
+      const { container } = render(
+        <Board {...defaultProps({ board, candidates, highlight })} />
+      )
+      
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // Elimination cells SHOULD be highlighted in regular hint mode
+      expect(cells[6]?.className).toContain('bg-cell-secondary')
+    })
+
+    it('DOES highlight target cells when showAnswer is true (regular hint)', () => {
+      const highlight = {
+        step_index: 0,
+        technique: 'Naked Single',
+        action: 'assign',
+        digit: 5,
+        targets: [{ row: 4, col: 4 }],
+        explanation: 'Test',
+        refs: { title: '', slug: '', url: '' },
+        highlights: {
+          primary: [{ row: 0, col: 0 }],
+        },
+        showAnswer: true,  // Regular hint mode - should show target
+      }
+      
+      const board = createEmptyBoard()
+      board[0] = 5
+      const candidates = createEmptyCandidates()
+      candidates[40] = createCandidateMask([5])
+      
+      const { container } = render(
+        <Board {...defaultProps({ board, candidates, highlight })} />
+      )
+      
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // Target cell SHOULD be highlighted in regular hint mode
+      expect(cells[40]?.className).toContain('bg-cell-secondary')
+    })
+
+    it('defaults to showAnswer: true when not specified', () => {
+      const highlight = {
+        step_index: 0,
+        technique: 'Pointing Pairs',
+        action: 'eliminate',
+        digit: 3,
+        targets: [],
+        eliminations: [{ row: 0, col: 6, digit: 3 }],
+        explanation: 'Test',
+        refs: { title: '', slug: '', url: '' },
+        highlights: {
+          primary: [{ row: 0, col: 0 }],
+        },
+        // showAnswer not specified - should default to true
+      }
+      
+      const board = createEmptyBoard()
+      const candidates = createEmptyCandidates()
+      candidates[0] = createCandidateMask([3])
+      candidates[6] = createCandidateMask([3])
+      
+      const { container } = render(
+        <Board {...defaultProps({ board, candidates, highlight })} />
+      )
+      
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // Should behave like showAnswer: true (backward compatibility)
+      expect(cells[6]?.className).toContain('bg-cell-secondary')
+    })
+
+    it('does NOT show elimination strikethrough in technique hint mode', () => {
+      const highlight = {
+        step_index: 0,
+        technique: 'Pointing Pairs',
+        action: 'eliminate',
+        digit: 3,
+        targets: [],
+        eliminations: [{ row: 0, col: 6, digit: 3 }],
+        explanation: 'Test',
+        refs: { title: '', slug: '', url: '' },
+        highlights: {
+          primary: [{ row: 0, col: 0 }],
+        },
+        showAnswer: false,  // Technique hint mode
+      }
+      
+      const board = createEmptyBoard()
+      const candidates = createEmptyCandidates()
+      candidates[0] = createCandidateMask([3])
+      candidates[6] = createCandidateMask([3, 5])
+      
+      const { container } = render(
+        <Board {...defaultProps({ board, candidates, highlight })} />
+      )
+      
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // In the elimination cell, the candidate 3 should NOT have strikethrough
+      const eliminationCell = cells[6]
+      const candidateGrid = eliminationCell?.querySelector('.candidate-grid')
+      const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
+      // Candidate 3 is at position 2 (0-indexed, so positions are 0,1,2 for digits 1,2,3)
+      const digit3 = candidateDigits?.[2]
+      expect(digit3?.className).not.toContain('line-through')
+    })
+  })
+
   describe('keyboard navigation', () => {
     it('pressing arrow keys calls onCellClick with adjacent non-given cell', async () => {
       const user = userEvent.setup()
