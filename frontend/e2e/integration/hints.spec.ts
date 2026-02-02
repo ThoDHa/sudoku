@@ -229,19 +229,48 @@ test.describe('@integration Hints - Edge Cases', () => {
   });
 
   test('hint works with no cell selected', async ({ page }) => {
+    // Capture console messages for WASM debugging
+    const consoleMessages: string[] = [];
+    page.on('console', msg => {
+      const text = msg.text();
+      consoleMessages.push(`${msg.type()}: ${text}`);
+      // Print WASM debug messages immediately
+      if (text.includes('WASM DEBUG') || text.includes('wasmReady') || text.includes('SudokuWasm')) {
+        console.log(`[BROWSER] ${msg.type()}: ${text}`);
+      }
+    });
+    
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     await page.goto('/');
+    
+    console.log('[TEST] Starting hint test with no cell selected');
+    
     await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
+    
+    // Check WASM status
+    const wasmLoaded = await page.evaluate(() => !!window.SudokuWasm);
+    console.log('[TEST] WASM loaded after game start:', wasmLoaded);
+    
+    // Print all console messages so far
+    console.log('[TEST] Console messages so far:');
+    consoleMessages.forEach(msg => {
+      if (msg.includes('WASM') || msg.includes('error') || msg.includes('Error')) {
+        console.log(`  ${msg}`);
+      }
+    });
     
     // Count empty cells before hint
     const emptyCellsBefore = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
     
     // Click hint without selecting a cell
     const hintButton = page.getByRole('button', { name: /Hint/i });
+    
+    console.log('[TEST] About to click hint button');
     await hintButton.click();
+    console.log('[TEST] Hint button clicked');
     
     // Wait for hint button to be disabled (processing) then enabled again (completed)
     await expect(hintButton).toBeDisabled({ timeout: 3000 });

@@ -792,10 +792,17 @@ function GameContent() {
 
   // Handle hint button - shows the next move with full answer (eliminations + additions visible)
   const handleNext = useCallback(async () => {
+    console.log('[HINT DEBUG] handleNext called - starting hint processing');
+    
     // Prevent concurrent hint requests (spam protection)
-    if (hintInProgress.current) return
+    if (hintInProgress.current) {
+      console.log('[HINT DEBUG] Hint already in progress, skipping');
+      return
+    }
     hintInProgress.current = true
     setHintLoading(true)
+    
+    console.log('[HINT DEBUG] Set hintLoading to true');
 
     try {
       // Deselect any highlighted digit when using hint
@@ -805,7 +812,21 @@ function GameContent() {
       const boardSnapshot = [...game.board]
       const candidatesArray = candidatesToArrays(game.candidates)
 
+      console.log('[HINT DEBUG] Calling findNextMove with:', { 
+        boardLength: boardSnapshot.length,
+        candidatesLength: candidatesArray.length,
+        initialBoardLength: initialBoard.length,
+        wasmAvailable: !!window.SudokuWasm
+      });
+      
       const data = await findNextMove(boardSnapshot, candidatesArray, initialBoard)
+      
+      console.log('[HINT DEBUG] findNextMove result:', {
+        hasMove: !!data.move,
+        solved: data.solved,
+        boardLength: data.board?.length,
+        candidatesLength: data.candidates?.length
+      });
       
       if (!data.move) {
         setValidationMessage({ 
@@ -1110,7 +1131,7 @@ if (currentEraseMode && currentGame.board[idx] !== 0) {
      selectCell(idx)
      setEraseMode(false)
     // All deps are now stable callbacks - state accessed via refs
-     }, [selectCell, clearAllAndDeselect, deselectCell, clickGivenCell, resumeFromExtendedPause, placeDigitAndClear])
+      }, [selectCell, clearAllAndDeselect, deselectCell, clickGivenCell, resumeFromExtendedPause, placeDigitAndClear, clearAfterErase, clearAfterUserCandidateOp])
 
     // Digit input handler - STABLE: reads from refs to avoid recreating on state changes
     const handleDigitInput = useCallback((digit: number) => {
@@ -1157,7 +1178,7 @@ if (currentGame.board[currentSelectedCell] === digit) {
       // Cell deselects after digit entry (per requirements)
       // Keep digit highlighted for adding candidates (multi-fill)
     // All deps are now stable callbacks - game accessed via ref
-     }, [toggleDigitHighlight, clearAfterDigitToggle, placeDigitAndClear, deselectCell, resumeFromExtendedPause, clearAfterErase, clearAfterUserCandidateOp])
+      }, [toggleDigitHighlight, clearAfterDigitToggle, placeDigitAndClear, deselectCell, resumeFromExtendedPause])
 
     // Keyboard cell change handler (from Board component)
     const handleCellChange = useCallback((idx: number, value: number) => {
@@ -1581,60 +1602,82 @@ ${bugReportJson}
 
   // Fetch puzzle
   useEffect(() => {
+    console.log('DEBUG: useEffect running with onboardingComplete:', onboardingComplete, 'showOnboarding:', showOnboarding, 'effectiveSeed:', effectiveSeed)
+    
+    // Check if we should show the daily prompt (for practice games only) - INDEPENDENT of onboarding!
+    if (getGameMode(effectiveSeed || '') === 'practice') {
+      if (shouldShowDailyPrompt()) {
+        setShowDailyPrompt(true)
+        markDailyPromptShown()
+      }
+    }
+
     // Don't load puzzle while onboarding is showing
     if (showOnboarding) {
+      console.log('DEBUG: Early return due to showOnboarding')
       setLoading(false) // Show empty board behind modal, not loading spinner
       return
     }
     // Don't load puzzle until difficulty is chosen (for shared links without ?d= param)
     if (showDifficultyChooser) {
+      console.log('DEBUG: Early return due to showDifficultyChooser')
       setLoading(false)
       return
     }
     // For new users, wait for onboarding to appear first (500ms delay in useOnboarding)
     // This prevents the puzzle from loading before onboarding shows
     if (!onboardingComplete) {
+      console.log('DEBUG: Early return due to !onboardingComplete')
       setLoading(false)
       return
     }
-    if (!effectiveSeed && !isEncodedCustom) return
 
+    if (!effectiveSeed && !isEncodedCustom) {
+      console.log('DEBUG: Early return due to no effectiveSeed')
+      return
+    }
+
+    // DEFINE loadPuzzle function BEFORE calling it
     const loadPuzzle = async () => {
       try {
-        console.log('DEBUG: loadPuzzle starting')
         setLoading(true)
         setError(null)
 
         if (showDifficultyChooser || showOnboarding) {
-          console.log('DEBUG: Showing difficulty chooser or onboarding, skipping puzzle load')
           setLoading(false)
           return
         }
 
-        console.log('DEBUG: About to fetch puzzle data')
+        // TEMPORARILY RESTORED: Early return condition to test if this was masking WASM issues
+        if (!puzzle || !hasRestoredSavedState.current) {
+          console.log('DEBUG: Early return due to puzzle/hasRestoredSavedState check')
+          setLoading(false)
+          return
+        }
+
+        if (backgroundManager.shouldPauseOperations) {
+          setLoading(false)
+          return
+        }
+
+        console.log('DEBUG: About to call wasmGetPuzzle, checking WASM state...')
+        console.log('DEBUG: window.SudokuWasm exists:', !!window.SudokuWasm)
+        if (window.SudokuWasm) {
+          console.log('DEBUG: SudokuWasm keys:', Object.keys(window.SudokuWasm))
+        }
+        
         let puzzleData = await wasmGetPuzzle(effectiveSeed, difficulty)
-        console.log('DEBUG: Puzzle data result:', puzzleData)
+        
+        console.log('DEBUG: wasmGetPuzzle returned:', puzzleData ? 'success' : 'null')
         
         if (!puzzleData) {
-          console.error('DEBUG: WASM returned null puzzle data - WASM not ready')
-          setError(new Error('Puzzle generator not ready. Please refresh the page.'))
+          console.log('DEBUG: No puzzle data - setting error state')
+          setError('Puzzle generator not ready. Please refresh the page.')
           setLoading(false)
           return
         }
         
-        console.log('DEBUG: Puzzle data fetched successfully')
-
-        // Check if we should show daily prompt (for practice games only)
-        console.log('DEBUG: Checking daily prompt conditions')
-        console.log('DEBUG: Game mode:', getGameMode(puzzleData.seed))
-        console.log('DEBUG: shouldShowDailyPrompt():', shouldShowDailyPrompt())
-        if (getGameMode(puzzleData.seed) === 'practice' && shouldShowDailyPrompt()) {
-          console.log('DEBUG: Setting showDailyPrompt to true')
-          setShowDailyPrompt(true)
-          markDailyPromptShown()
-        } else {
-          console.log('DEBUG: Daily prompt conditions not met')
-        }
+        console.log('DEBUG: Puzzle loaded successfully, proceeding to setPuzzle')
         setIncorrectCells([])
 
         let givens: number[]
@@ -1795,18 +1838,6 @@ ${bugReportJson}
           timerControl.resetTimer()
         }
         setLoading(false)
-
-        // Check if we should show daily prompt (for practice games only)
-        console.log('DEBUG: Checking daily prompt conditions')
-        console.log('DEBUG: Game mode:', getGameMode(puzzleData.seed))
-        console.log('DEBUG: shouldShowDailyPrompt():', shouldShowDailyPrompt())
-        if (getGameMode(puzzleData.seed) === 'practice' && shouldShowDailyPrompt()) {
-          console.log('DEBUG: Setting showDailyPrompt to true')
-          setShowDailyPrompt(true)
-          markDailyPromptShown()
-        } else {
-          console.log('DEBUG: Daily prompt conditions not met')
-        }
 
         // Restore shared state if available
         if (initialState) {
@@ -2239,6 +2270,8 @@ ${bugReportJson}
         onContinuePractice={handleContinuePractice}
         onDontShowAgain={handleDontShowDailyPromptAgain}
       />
+      {/* DEBUG: Log showDailyPrompt state */}
+      {console.log('DEBUG: showDailyPrompt state is:', showDailyPrompt)}
 
       {/* In-Progress Game Confirmation Modal */}
       {showInProgressConfirm && existingInProgressGame && (

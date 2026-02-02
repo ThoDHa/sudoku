@@ -213,7 +213,10 @@ function HintButtons({ onTechniqueHint, techniqueHintDisabled, techniqueHintLoad
         <span className="hidden sm:inline">Technique</span>
       </button>
       <button
-        onClick={onHint}
+        onClick={() => {
+          console.log('[HINT DEBUG] Hint button onClick called');
+          onHint();
+        }}
         disabled={hintLoading || hintDisabled}
         className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
           hintLoading || hintDisabled ? 'text-foreground-muted/50 cursor-not-allowed' : 'text-foreground-muted hover:text-accent hover:bg-btn-hover'
