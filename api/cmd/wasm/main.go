@@ -1658,7 +1658,11 @@ func checkAndFixWithSolution(this js.Value, args []js.Value) interface{} {
 }
 
 func main() {
+	// Debug logging: Track WASM initialization progress
+	js.Global().Get("console").Call("log", "[WASM DEBUG] Starting Go WASM main function")
+
 	// Create the SudokuWasm global object with all exported functions
+	js.Global().Get("console").Call("log", "[WASM DEBUG] Creating exports map")
 	exports := map[string]interface{}{
 		// Human solver
 		"createBoard":               js.FuncOf(createBoard),
@@ -1686,12 +1690,18 @@ func main() {
 		"getPuzzleForSeed": js.FuncOf(getPuzzleForSeed),
 		"getVersion":       js.FuncOf(getVersion),
 	}
+	js.Global().Get("console").Call("log", "[WASM DEBUG] All function exports created successfully")
 
+	js.Global().Get("console").Call("log", "[WASM DEBUG] Setting window.SudokuWasm")
 	js.Global().Set("SudokuWasm", js.ValueOf(exports))
+	js.Global().Get("console").Call("log", "[WASM DEBUG] window.SudokuWasm set successfully")
 
 	// Signal that WASM is ready
+	js.Global().Get("console").Call("log", "[WASM DEBUG] Dispatching wasmReady event")
 	js.Global().Call("dispatchEvent", js.Global().Get("CustomEvent").New("wasmReady"))
+	js.Global().Get("console").Call("log", "[WASM DEBUG] wasmReady event dispatched successfully")
 
+	js.Global().Get("console").Call("log", "[WASM DEBUG] Starting event loop - Go runtime alive")
 	// Keep the Go runtime alive
 	select {}
 }
