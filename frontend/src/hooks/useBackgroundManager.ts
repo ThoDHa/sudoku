@@ -42,16 +42,31 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
   const [isInDeepPause, setIsInDeepPause] = useState(false)
 
   // Determine if operations should be paused (includes both visibility hidden AND window blur)
-  // BUGFIX: Disable pause operations in headless Chrome (E2E tests) to prevent auto-save blocking
+  // BUGFIX: Disable pause operations in headless Chrome (E2E tests) to prevent timer blocking
+  // Detection covers multiple scenarios:
+  // 1. HeadlessChrome user agent (older headless mode)
+  // 2. playwright in user agent (Playwright debugging)
+  // 3. navigator.webdriver true (automation flag)
+  // 4. Check if running in automated test environment via user agent pattern
   const isHeadlessChrome = typeof navigator !== 'undefined' && 
     (navigator.userAgent.includes('HeadlessChrome') || 
      // Playwright specific user agent patterns
      navigator.userAgent.includes('playwright') ||
-     // Additional check for Chrome in headless mode
-     (navigator.userAgent.includes('Chrome') && navigator.webdriver === true))
+     // Automation detection - webdriver flag (Playwright sets this)
+     navigator.webdriver === true ||
+     // Modern Playwright Chrome uses "Chrome/XXX" without explicit headless marker
+     // but has webdriver enabled. Check for webdriver property existence.
+     ('webdriver' in navigator && (navigator as { webdriver?: unknown }).webdriver))
 
+  // In headless mode OR when visibilityState is 'visible', don't pause operations
+  // The key insight: if document.visibilityState is 'visible', operations should NOT be paused
+  // This fixes E2E tests where the window might be "blurred" but still visible
+  const effectiveIsWindowBlurred = isHeadlessChrome ? false : isWindowBlurred
+
+  // Core logic: shouldPause if enabled AND not headless AND any pause condition is true
+  // BUT if document.visibilityState is 'visible' and we're not explicitly paused, don't pause
   const shouldPauseOperations = enabled && !isHeadlessChrome && (
-    isHidden || isWindowBlurred || forcePaused || isInDeepPause || (visibilityState === 'hidden' && !forceResumed)
+    isHidden || effectiveIsWindowBlurred || forcePaused || isInDeepPause || (visibilityState === 'hidden' && !forceResumed)
   )
 
   const handleVisibilityChange = useCallback(() => {

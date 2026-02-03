@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from 'react'
+import React, { memo, useCallback, useMemo, useRef } from 'react'
 import { hasCandidate, countCandidates } from '../lib/candidatesUtils'
 
 interface Move {
@@ -143,6 +143,7 @@ interface CellProps {
  * This prevents 80 cells from re-rendering when only 1 cell changes.
  */
 const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellProps) {
+  const localRef = useRef<HTMLDivElement>(null)
   const {
     idx,
     value,
@@ -227,14 +228,27 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
     )
   }
 
+    // Combine local ref with callback ref, and focus synchronously on click
+    const handleClick = useCallback(() => {
+      onCellClick(idx)
+      // Focus immediately for keyboard input (don't wait for useEffect + RAF)
+      localRef.current?.focus()
+    }, [onCellClick, idx])
+    
+    // Set both refs when the element mounts
+    const setRefs = useCallback((el: HTMLDivElement | null) => {
+      (localRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+      cellRef(el)
+    }, [cellRef])
+
     return (
       <div
-        ref={cellRef}
+        ref={setRefs}
         role="gridcell"
         tabIndex={isSelected ? 0 : -1}
         aria-label={ariaLabel}
         className={className}
-        onClick={() => onCellClick(idx)}
+        onClick={handleClick}
         onKeyDown={(e) => onKeyDown(e, idx)}
         style={isGiven ? { cursor: 'default' } : undefined}
       >
@@ -252,6 +266,8 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
   if (prevData === nextData) return true
 
   // Compare all fields that affect rendering
+  // NOTE: We also compare callback references because onKeyDown captures
+  // notesMode in its closure. When notesMode changes, onKeyDown must update.
   return (
     prevData.idx === nextData.idx &&
     prevData.value === nextData.value &&
@@ -266,8 +282,9 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
     prevData.isTarget === nextData.isTarget &&
     prevData.highlightDigit === nextData.highlightDigit &&
     prevData.eliminations === nextData.eliminations &&
-    prevData.showAnswer === nextData.showAnswer
-    // Note: onCellClick and onKeyDown are stable callbacks, no need to compare
+    prevData.showAnswer === nextData.showAnswer &&
+    prevProps.onKeyDown === nextProps.onKeyDown &&
+    prevProps.onCellClick === nextProps.onCellClick
   )
 })
 
@@ -289,6 +306,14 @@ const Board = memo(function Board({
   className = '',
 }: BoardProps) {
   const cellRefs = React.useRef<(HTMLDivElement | null)[]>([])
+  
+  // Ref for initialBoard to allow stable callbacks that always read the latest value
+  // This is critical because Cell memoization doesn't compare onKeyDown callbacks,
+  // so we need callbacks that don't go stale when initialBoard changes
+  // IMPORTANT: Update the ref synchronously during render, NOT in useEffect!
+  // useEffect runs after render, causing stale reads when initialBoard changes.
+  const initialBoardRef = React.useRef(initialBoard)
+  initialBoardRef.current = initialBoard
 
   // Focus the selected cell when it changes, blur when deselected
   // Guard against rapid state changes that cause race conditions with DOM updates
@@ -361,7 +386,9 @@ const Board = memo(function Board({
   }, [board, candidates, highlightedDigit, candidatesVersion])
 
   // Find next non-given cell in a direction, returns null if none found
+  // Reads from initialBoardRef to get latest value without stale closures
   const findNextNonGivenCell = useCallback((startIdx: number, direction: 'up' | 'down' | 'left' | 'right'): number | null => {
+    const currentInitialBoard = initialBoardRef.current
     let row = Math.floor(startIdx / 9)
     let col = startIdx % 9
     
@@ -379,16 +406,17 @@ const Board = memo(function Board({
     move()
     while (isValid()) {
       const idx = row * 9 + col
-      if (initialBoard[idx] === 0) {
+      if (currentInitialBoard[idx] === 0) {
         return idx
       }
       move()
     }
     return null
-  }, [initialBoard])
+  }, []) // No deps needed - reads from ref
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
-    const isGiven = initialBoard[idx] !== 0
+    const currentInitialBoard = initialBoardRef.current
+    const isGiven = currentInitialBoard[idx] !== 0
 
     // Arrow key navigation - skip over givens
     switch (e.key) {
@@ -440,7 +468,7 @@ const Board = memo(function Board({
         break
       }
     }
-  }, [initialBoard, findNextNonGivenCell, onCellClick, onCellChange])
+  }, [findNextNonGivenCell, onCellClick, onCellChange]) // No initialBoard dep - reads from ref
 
   const getCellAriaLabel = (idx: number): string => {
     const row = Math.floor(idx / 9)
