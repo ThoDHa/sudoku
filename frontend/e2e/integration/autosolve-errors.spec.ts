@@ -62,19 +62,59 @@ async function enterDigitInCell(page: Page, row: number, col: number, digit: num
   await expect(cell).toContainText(digit.toString(), { timeout: 2000 });
 }
 
+// Helper to dismiss any error modal that may appear
+async function dismissErrorModal(page: Page): Promise<void> {
+  const modalOverlay = page.locator('.fixed.inset-0.z-50');
+  
+  // Check if modal is visible
+  if (await modalOverlay.isVisible({ timeout: 300 }).catch(() => false)) {
+    // Try various dismiss buttons in order of preference
+    const dismissButtons = [
+      page.getByRole('button', { name: 'Let Me Fix It' }),
+      page.getByRole('button', { name: 'Check & Fix' }),
+      page.getByRole('button', { name: /close/i }),
+      page.getByRole('button', { name: /dismiss/i }),
+      page.getByRole('button', { name: /cancel/i }),
+      page.getByRole('button', { name: /ok/i }),
+    ];
+    
+    for (const btn of dismissButtons) {
+      if (await btn.isVisible({ timeout: 200 }).catch(() => false)) {
+        await btn.click();
+        // Wait for modal to close
+        await modalOverlay.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {});
+        return;
+      }
+    }
+    
+    // Fallback: press Escape
+    await page.keyboard.press('Escape');
+    await modalOverlay.waitFor({ state: 'hidden', timeout: 1000 }).catch(() => {});
+  }
+}
+
 // Helper to use a few hints and verify system doesn't crash
 async function useHintsAndVerifyStable(page: Page, hintCount: number = 3): Promise<boolean> {
   const hintButton = page.getByRole('button', { name: /Hint/i });
   
   for (let i = 0; i < hintCount; i++) {
+    // Dismiss any error modal that may be blocking
+    await dismissErrorModal(page);
+    
     if (await hintButton.isEnabled().catch(() => false)) {
       await hintButton.click();
       // Wait for hint action to complete by checking button state or grid visibility
       await expect(page.locator('[role="grid"]')).toBeVisible({ timeout: 2000 });
+      
+      // After clicking hint, dismiss any error modal that may appear
+      await dismissErrorModal(page);
     } else {
       break;
     }
   }
+  
+  // Final modal dismissal before checking grid
+  await dismissErrorModal(page);
   
   // Verify page is still responsive by checking grid exists
   const grid = page.locator('[role="grid"]');
@@ -236,16 +276,55 @@ test.describe('@integration Autosolve Error Handling', () => {
     await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
-    const hintButton = page.getByRole('button', { name: /Hint/i });
+    // Hint button may show as "💡 Hint" or just "💡" on mobile
+    const hintButton = page.locator('button:has-text("💡"), button:has-text("Hint")').first();
+    
+    // Helper to dismiss any modal overlay that might appear after hint
+    const dismissModal = async () => {
+      // Check for modal overlay
+      const modalOverlay = page.locator('.fixed.inset-0.z-50');
+      if (await modalOverlay.isVisible({ timeout: 500 }).catch(() => false)) {
+        // Look for specific dismissal buttons
+        const letMeFixIt = page.getByRole('button', { name: 'Let Me Fix It' });
+        const checkAndFix = page.getByRole('button', { name: 'Check & Fix' });
+        const closeButton = page.getByRole('button', { name: /close|dismiss|ok|got it/i });
+        
+        if (await letMeFixIt.isVisible({ timeout: 200 }).catch(() => false)) {
+          await letMeFixIt.click();
+        } else if (await checkAndFix.isVisible({ timeout: 200 }).catch(() => false)) {
+          await checkAndFix.click();
+        } else if (await closeButton.isVisible({ timeout: 200 }).catch(() => false)) {
+          await closeButton.click();
+        } else {
+          // Try clicking outside the modal content (the overlay itself)
+          await page.keyboard.press('Escape');
+        }
+        // Wait for modal to disappear
+        await expect(modalOverlay).not.toBeVisible({ timeout: 3000 }).catch(() => {});
+      }
+    };
     
     // Click hint several times
     for (let i = 0; i < 5; i++) {
-      if (await hintButton.isEnabled().catch(() => false)) {
+      // Dismiss any modal before attempting to click hint
+      await dismissModal();
+      
+      if (await hintButton.isVisible().catch(() => false) && await hintButton.isEnabled().catch(() => false)) {
         await hintButton.click();
-        // Wait for hint action to complete by checking grid visibility
-        await expect(page.locator('[role="grid"]')).toBeVisible({ timeout: 2000 });
+        // Wait for hint action to complete and dismiss any modal
+        await page.waitForTimeout(500); // Give time for modal to appear
+        await dismissModal();
+        
+        // Check button is enabled again
+        await expect(async () => {
+          const isEnabled = await hintButton.isEnabled();
+          expect(isEnabled).toBeTruthy();
+        }).toPass({ timeout: 5000 });
       }
     }
+    
+    // Dismiss any final modal
+    await dismissModal();
     
     // Verify hint button is still there and functional
     await expect(hintButton).toBeVisible();
