@@ -37,7 +37,7 @@ import {
 } from '../lib/constants'
 import { getAutoSolveSpeed, AutoSolveSpeed, AUTO_SOLVE_SPEEDS, getHideTimer, setHideTimer } from '../lib/preferences'
 import { getAutoSaveEnabled, getMostRecentGame, clearInProgressGame, clearOtherGamesForMode, type SavedGameInfo } from '../lib/gameSettings'
-import { validateBoard, validateCustomPuzzle, findNextMove, getPuzzle, cleanupSolver, checkAndFixWithSolution } from '../lib/solver-service'
+import { validateBoard, validateCustomPuzzle, findNextMove, getPuzzle, cleanupSolver, checkAndFixWithSolution, getDailySeed } from '../lib/solver-service'
 import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
 import { saveScore, markDailyCompleted, isTodayCompleted, getTodayUTC, getScores, type Score } from '../lib/scores'
@@ -579,7 +579,9 @@ function GameContent() {
   // Handlers for daily prompt modal
   const handleGoToDaily = useCallback(() => {
     setShowDailyPrompt(false)
-    navigate(`/daily-${getTodayUTC()}?d=medium`)
+    const { seed } = getDailySeed()
+    // Navigate without difficulty to show the difficulty chooser
+    navigate(`/${seed}`)
   }, [navigate])
 
   const handleContinuePractice = useCallback(() => {

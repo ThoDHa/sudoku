@@ -242,7 +242,7 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
 });
 
 test.describe('Daily Prompt Modal - Button Functionality', () => {
-  test('"Go to Daily" button navigates to today\'s daily puzzle', async ({ page }) => {
+  test('"Go to Daily" button navigates to today\'s daily puzzle and shows difficulty chooser', async ({ page }) => {
     // Set up clean state BEFORE any navigation
     const seed = `P${Date.now()}`;
     
@@ -270,12 +270,18 @@ test.describe('Daily Prompt Modal - Button Functionality', () => {
     const goToDailyButton = page.locator('button', { hasText: 'Go to Daily' });
     await goToDailyButton.click();
     
-    // Should navigate to daily puzzle
+    // Should navigate to daily puzzle (without difficulty param)
     await page.waitForURL('**/daily-*', { timeout: 10000 });
     expect(page.url()).toMatch(/daily-\d{4}-\d{2}-\d{2}/);
+    // URL should NOT have a difficulty parameter - difficulty chooser will be shown
+    expect(page.url()).not.toContain('?d=');
     
-    // Modal should be closed
+    // Daily prompt modal should be closed
     await expect(modal).not.toBeVisible();
+    
+    // Difficulty chooser should be visible
+    const difficultyChooser = page.locator('text=Choose Difficulty');
+    await expect(difficultyChooser).toBeVisible({ timeout: 5000 });
   });
 
   test('"Continue Practice" button closes modal and continues loading practice game', async ({ page }) => {
