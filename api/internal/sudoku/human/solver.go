@@ -362,59 +362,55 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 	return nil
 }
 
-// findNextCandidateMove finds the next candidate to fill, processing unit by unit
-// After completing a row/column/box, checks for hidden singles in that unit
+// findNextCandidateMove finds the next candidate to fill, processing digit-first
+// This means all 1s are filled across the board, then all 2s, etc.
+// After completing each digit, checks for hidden singles
 // Returns nil when all candidates are filled
 func (s *Solver) findNextCandidateMove(b *Board) *core.Move {
-	// Process by unit (row, column, box), filling all digits for each unit
-	// After each unit is complete, check for hidden singles
+	// Process by digit first (all 1s, then all 2s, etc.)
+	// This creates a visual effect where each digit "sweeps" across the board
 
-	// Process rows first
-	for row := 0; row < constants.GridSize; row++ {
-		// Fill all candidates for this row (all digits)
-		for d := 1; d <= constants.GridSize; d++ {
+	for d := 1; d <= constants.GridSize; d++ {
+		// Fill this digit across all rows
+		for row := 0; row < constants.GridSize; row++ {
 			candidateMove := s.fillCandidatesForRowDigit(b, row, d)
 			if candidateMove != nil {
 				return candidateMove
 			}
 		}
 
-		// Row is complete for all digits - check for hidden singles
-		for d := 1; d <= constants.GridSize; d++ {
+		// After filling digit d in all rows, check for hidden singles for this digit
+		for row := 0; row < constants.GridSize; row++ {
 			if hiddenSingle := s.checkHiddenSingleInRow(b, row, d); hiddenSingle != nil {
 				return hiddenSingle
 			}
 		}
-	}
 
-	// Process columns
-	for col := 0; col < constants.GridSize; col++ {
-		for d := 1; d <= constants.GridSize; d++ {
+		// Fill this digit across all columns (catches any missed by row iteration)
+		for col := 0; col < constants.GridSize; col++ {
 			candidateMove := s.fillCandidatesForColDigit(b, col, d)
 			if candidateMove != nil {
 				return candidateMove
 			}
 		}
 
-		// Column complete - check for hidden singles
-		for d := 1; d <= constants.GridSize; d++ {
+		// Check for hidden singles in columns for this digit
+		for col := 0; col < constants.GridSize; col++ {
 			if hiddenSingle := s.checkHiddenSingleInCol(b, col, d); hiddenSingle != nil {
 				return hiddenSingle
 			}
 		}
-	}
 
-	// Process boxes
-	for box := 0; box < constants.GridSize; box++ {
-		for d := 1; d <= constants.GridSize; d++ {
+		// Fill this digit across all boxes (catches any missed)
+		for box := 0; box < constants.GridSize; box++ {
 			candidateMove := s.fillCandidatesForBoxDigit(b, box, d)
 			if candidateMove != nil {
 				return candidateMove
 			}
 		}
 
-		// Box complete - check for hidden singles
-		for d := 1; d <= constants.GridSize; d++ {
+		// Check for hidden singles in boxes for this digit
+		for box := 0; box < constants.GridSize; box++ {
 			if hiddenSingle := s.checkHiddenSingleInBox(b, box, d); hiddenSingle != nil {
 				return hiddenSingle
 			}

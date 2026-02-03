@@ -714,18 +714,10 @@ func solveAll(this js.Value, args []js.Value) interface{} {
 func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLimit int) solveResult {
 	board := human.NewBoardWithCandidates(cells, candidates)
 
-	// Check if candidates are all empty (no user notes entered yet)
-	// If so, initialize fresh candidates like checkAndFixWithSolution does
-	allCandidatesEmpty := true
-	for i := 0; i < constants.TotalCells; i++ {
-		if candidates != nil && i < len(candidates) && len(candidates[i]) > 0 {
-			allCandidatesEmpty = false
-			break
-		}
-	}
-	if allCandidatesEmpty {
-		board.InitCandidates()
-	}
+	// Note: When candidates are empty (fresh board with no user notes),
+	// the solver will naturally use fill-candidate moves to add candidates
+	// one by one, creating a smooth autosolve animation. We intentionally
+	// do NOT call InitCandidates() here to preserve this behavior.
 
 	// Keep original user board for error detection
 	originalUserBoard := make([]int, constants.TotalCells)
@@ -777,7 +769,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 
 					// Reset board without the bad cell
 					board = human.NewBoardWithCandidates(originalUserBoard, nil)
-					board.InitCandidates()
+					// Note: Do NOT call InitCandidates() - let the solver fill them one-by-one
 
 					moves = append(moves, MoveResult{
 						Board:      board.GetCells(),
@@ -833,7 +825,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 				originalUserBoard[badCell] = 0
 
 				board = human.NewBoardWithCandidates(originalUserBoard, nil)
-				board.InitCandidates()
+				// Note: Do NOT call InitCandidates() - let the solver fill them one-by-one
 
 				moves = append(moves, MoveResult{
 					Board:      board.GetCells(),
@@ -857,7 +849,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 				originalUserBoard[badCell] = 0
 
 				board = human.NewBoardWithCandidates(originalUserBoard, nil)
-				board.InitCandidates()
+				// Note: Do NOT call InitCandidates() - let the solver fill them one-by-one
 
 				moves = append(moves, MoveResult{
 					Board:      board.GetCells(),
@@ -942,7 +934,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 
 					// Reset board without the bad cell
 					board = human.NewBoardWithCandidates(originalUserBoard, nil)
-					board.InitCandidates()
+					// Note: Do NOT call InitCandidates() - let the solver fill them one-by-one
 
 					moves = append(moves, MoveResult{
 						Board:      board.GetCells(),
@@ -969,7 +961,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 
 				// Reset board without the bad cell
 				board = human.NewBoardWithCandidates(originalUserBoard, nil)
-				board.InitCandidates()
+				// Note: Do NOT call InitCandidates() - let the solver fill them one-by-one
 
 				moves = append(moves, MoveResult{
 					Board:      board.GetCells(),
@@ -993,7 +985,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 				originalUserBoard[badCell] = 0
 
 				board = human.NewBoardWithCandidates(originalUserBoard, nil)
-				board.InitCandidates()
+				// Note: Do NOT call InitCandidates() - let the solver fill them one-by-one
 
 				moves = append(moves, MoveResult{
 					Board:      board.GetCells(),
@@ -1025,6 +1017,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 			Candidates: board.GetCandidates(),
 			Move:       moveToJS(move),
 		})
+
 	}
 
 	// Final validation: if board appears solved but might have errors
@@ -1640,12 +1633,15 @@ func checkAndFixWithSolution(this js.Value, args []js.Value) interface{} {
 		}
 	}
 
-	// If we made fixes, recalculate candidates for the corrected board
+	// If we made fixes, set empty candidates so the solver can fill them one-by-one
+	// when autosolve resumes (creating the animated fill effect)
 	if len(fixedCells) > 0 {
-		board := human.NewBoard(correctedBoard)
-		board.InitCandidates() // <-- Ensures all candidates are freshly regenerated after fixes
+		emptyCandidates := make([][]int, constants.TotalCells)
+		for i := range emptyCandidates {
+			emptyCandidates[i] = []int{}
+		}
 		for i := range fixedCells {
-			fixedCells[i].Candidates = board.GetCandidates()
+			fixedCells[i].Candidates = emptyCandidates
 		}
 	}
 
@@ -1653,13 +1649,10 @@ func checkAndFixWithSolution(this js.Value, args []js.Value) interface{} {
 	// This ensures 'Check & Fix' only corrects user entries and does not auto-solve the puzzle.
 
 	finalBoard := correctedBoard
-	finalCandidates := [][]int{}
-	if len(fixedCells) > 0 {
-		board := human.NewBoard(correctedBoard)
-		board.InitCandidates()
-		finalCandidates = board.GetCandidates()
-	} else {
-		finalCandidates = nil
+	// Return empty candidates so the solver fills them one-by-one when autosolve resumes
+	finalCandidates := make([][]int, constants.TotalCells)
+	for i := range finalCandidates {
+		finalCandidates[i] = []int{}
 	}
 
 	obj := js.Global().Get("Object").New()

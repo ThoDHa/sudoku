@@ -480,8 +480,10 @@ func isLegitimateNakedSingle(board *human.Board, move *core.Move) bool {
 }
 
 // TestHiddenSinglesDetectedDuringCandidateFilling verifies that when a digit
-// can only go in one cell in a row/column/box, it's detected immediately
-// during the candidate filling phase (not waiting until all candidates are filled)
+// can only go in one cell in a row/column/box, it's detected during
+// the candidate filling phase (not waiting until all candidates are filled).
+// With digit-first ordering (all 1s, then all 2s, etc.), hidden singles are
+// detected when their specific digit is being filled across the board.
 func TestHiddenSinglesDetectedDuringCandidateFilling(t *testing.T) {
 	solver := human.NewSolver()
 
@@ -508,12 +510,15 @@ func TestHiddenSinglesDetectedDuringCandidateFilling(t *testing.T) {
 	// Execute moves and track when we see the hidden single
 	candidateMoves := 0
 	var hiddenSingleMove *core.Move
+	var lastMove *core.Move
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1000; i++ {
 		move := solver.FindNextMove(board)
 		if move == nil {
+			t.Logf("No more moves after %d iterations, lastMove=%v", i, lastMove)
 			break
 		}
+		lastMove = move
 
 		if move.Technique == "fill-candidate" {
 			candidateMoves++
@@ -525,7 +530,7 @@ func TestHiddenSinglesDetectedDuringCandidateFilling(t *testing.T) {
 		solver.ApplyMove(board, move)
 	}
 
-	// We should have detected the hidden single after filling just the first row
+	// We should have detected the hidden single during candidate filling
 	if hiddenSingleMove == nil {
 		t.Fatal("Expected hidden single to be detected during candidate filling")
 	}
@@ -539,11 +544,15 @@ func TestHiddenSinglesDetectedDuringCandidateFilling(t *testing.T) {
 			hiddenSingleMove.Targets[0].Row+1, hiddenSingleMove.Targets[0].Col+1)
 	}
 
-	// With the row-first approach, we should detect this very quickly
-	// (should be after just 1 candidate move - adding 6 to R1C3)
+	// With digit-first approach (all 1s, then all 2s, etc.), digit 6 comes later
+	// The hidden single should be detected when we start filling 6s across the board
+	// With 73 empty cells and digits 1-5 filled first, expect ~300-400 candidate moves
+	// before reaching digit 6 (approximately 73 cells * 5 digits = 365 moves)
 	t.Logf("Detected hidden single after %d candidate moves", candidateMoves)
-	if candidateMoves > 5 {
-		t.Errorf("Expected hidden single to be detected after 1-2 candidate moves, got %d", candidateMoves)
+	// Upper bound: should detect during candidate filling, not after ALL candidates are done
+	// With 73 empty cells * 9 digits = ~657 max total candidate moves
+	if candidateMoves > 500 {
+		t.Errorf("Expected hidden single to be detected during candidate filling, but took %d moves", candidateMoves)
 	}
 }
 
