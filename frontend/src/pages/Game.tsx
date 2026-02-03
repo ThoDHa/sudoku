@@ -1017,11 +1017,28 @@ function GameContent() {
       
       if (!currentGame) return
 
-      // Skip cell click if a mode change is in progress
-      // This prevents race between mode toggle and cell selection
+      // Handle erase mode: if erase mode is active and cell has a value, erase it
+      if (currentEraseMode && currentGame.board[idx] !== 0 && !currentGame.isGivenCell(idx)) {
+        commitCellAction('erase', {
+          idx,
+          game: currentGame,
+          clearAfterErase,
+          deselectCell,
+          setEraseMode,
+          setAutoSolveStepsUsed,
+          setAutoSolveErrorsFixed
+        });
+        // Reset last hint tracking so next hint counts as new
+        lastTechniqueHintRef.current = null;
+        lastRegularHintRef.current = null;
+        // Keep erase mode active so user can erase multiple cells
+        return;
+      }
+      // If erase mode is active but cell is empty or given, just select it and turn off erase mode
       if (currentEraseMode) {
-        // Erase mode active - let mode change complete before processing cell click
-        return
+        selectCell(idx);
+        setEraseMode(false);
+        return;
       }
 
       // If a digit is already highlighted and we're clicking a given cell,
@@ -1062,23 +1079,6 @@ function GameContent() {
        clearAllAndDeselect()
        return
      }
-
-if (currentEraseMode && currentGame.board[idx] !== 0) {
-          commitCellAction('erase', {
-            idx,
-            game: currentGame,
-            clearAfterErase,
-            deselectCell,
-            setEraseMode,
-            setAutoSolveStepsUsed,
-            setAutoSolveErrorsFixed
-          });
-         // Reset last hint tracking so next hint counts as new
-         lastTechniqueHintRef.current = null;
-         lastRegularHintRef.current = null;
-         // Keep erase mode active so user can erase multiple cells
-         return;
-       }
 
         if (currentHighlightedDigit !== null) {
          if (currentNotesMode) {
@@ -1162,38 +1162,45 @@ if (currentGame.board[currentSelectedCell] === digit) {
       }, [toggleDigitHighlight, clearAfterDigitToggle, placeDigitAndClear, deselectCell, resumeFromExtendedPause])
 
     // Keyboard cell change handler (from Board component)
+    // STABLE: reads from refs to avoid recreation on state changes (like handleCellClick)
     const handleCellChange = useCallback((idx: number, value: number) => {
       resumeFromExtendedPause()
-      if (game.isGivenCell(idx)) return
-if (value === 0) {
-          commitCellAction('erase', {
-            idx,
-            game,
-            clearAfterErase,
-            deselectCell,
-            setEraseMode,
-            setAutoSolveStepsUsed,
-            setAutoSolveErrorsFixed
-          });
-         lastTechniqueHintRef.current = null;
-         lastRegularHintRef.current = null;
-       } else {
-          if (notesMode) {
-            game.setCell(idx, value, notesMode)
-            
-            // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
-            clearAfterUserCandidateOp()
-          } else {
-            game.setCell(idx, value, notesMode)
-            clearAfterDigitPlacement()
-            deselectCell()
-          }
-          // Reset last hint tracking so next hint counts as new
-          lastTechniqueHintRef.current = null
-          lastRegularHintRef.current = null
+      
+      const currentGame = gameRef.current
+      const currentNotesMode = notesModeRef.current
+      
+      if (!currentGame) return
+      if (currentGame.isGivenCell(idx)) return
+      
+      if (value === 0) {
+        commitCellAction('erase', {
+          idx,
+          game: currentGame,
+          clearAfterErase,
+          deselectCell,
+          setEraseMode,
+          setAutoSolveStepsUsed,
+          setAutoSolveErrorsFixed
+        });
+        lastTechniqueHintRef.current = null;
+        lastRegularHintRef.current = null;
+      } else {
+        if (currentNotesMode) {
+          currentGame.setCell(idx, value, currentNotesMode)
+          
+          // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
+          clearAfterUserCandidateOp()
+        } else {
+          currentGame.setCell(idx, value, currentNotesMode)
+          clearAfterDigitPlacement()
+          deselectCell()
         }
-     // eslint-disable-next-line react-hooks/exhaustive-deps -- resumeFromExtendedPause depends on isExtendedPaused; adding it would recreate this callback on every pause state change, causing unnecessary re-renders of Board (which receives this as a prop)
-      }, [game, notesMode, clearAfterDigitPlacement, deselectCell])
+        // Reset last hint tracking so next hint counts as new
+        lastTechniqueHintRef.current = null
+        lastRegularHintRef.current = null
+      }
+    // All deps are now stable callbacks - state accessed via refs
+    }, [clearAfterDigitPlacement, deselectCell, clearAfterErase, clearAfterUserCandidateOp, resumeFromExtendedPause])
 
   // Toggle notes mode handler
   const handleNotesToggle = useCallback(() => {
@@ -1624,7 +1631,7 @@ ${bugReportJson}
         }
 
         // Early return if puzzle already loaded and state restored
-        if (!puzzle || !hasRestoredSavedState.current) {
+        if (puzzle && hasRestoredSavedState.current) {
           setLoading(false)
           return
         }
