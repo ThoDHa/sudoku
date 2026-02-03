@@ -18,8 +18,9 @@ logger.setLevel('info');
 
 test.describe('@bug Resume Bug - Direct Reproduction', () => {
   test.beforeEach(async ({ page }) => {
-    // Clear all storage
-    await page.evaluate(() => {
+    // Use addInitScript to clear storage before first navigation
+    // This avoids SecurityError from page.evaluate on about:blank
+    await page.addInitScript(() => {
       const prefix = 'sudoku_game_';
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -44,7 +45,7 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
     // Step 1: Create a saved game with random P-seed
     const randomSeed = `P${Date.now()}`;
     await page.goto(`/${randomSeed}?d=medium`);
-    await page.waitForSelector('.sudoku-board', { timeout: 15000 });
+    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Play one move to trigger auto-save
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
@@ -102,7 +103,7 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
     
     // Wait for page to be fully loaded and components mounted
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('[data-testid="sudoku-board"], .sudoku-grid, .game-board')).toBeVisible();
+    await expect(page.locator('[role="grid"]')).toBeVisible({ timeout: 15000 });
 
     // Check restoration logs
     const restorationLogs = consoleMessages.filter(msg =>

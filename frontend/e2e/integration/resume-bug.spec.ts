@@ -18,8 +18,9 @@ logger.setLevel('info');
 
 test.describe('@regression Resume Game State - Seed Mismatch Recovery', () => {
   test.beforeEach(async ({ page }) => {
-    // Clear all game states and session storage
-    await page.evaluate(() => {
+    // Use addInitScript to clear storage before first navigation
+    // This avoids SecurityError from page.evaluate on about:blank
+    await page.addInitScript(() => {
       // Clear all game states
       const prefix = 'sudoku_game_';
       const keysToRemove: string[] = [];
@@ -114,7 +115,7 @@ test.describe('@regression Resume Game State - Seed Mismatch Recovery', () => {
     
     // Wait for page components to mount and game state to load
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('[data-testid="sudoku-board"], .sudoku-grid, .game-board')).toBeVisible();
+    await expect(page.locator('[role="grid"]')).toBeVisible({ timeout: 15000 });
 
     // Check console for in-progress check output
     const inProgressLogs = consoleMessages.filter(msg =>
