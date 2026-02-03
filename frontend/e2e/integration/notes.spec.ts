@@ -249,6 +249,8 @@ test.describe('@integration Notes Mode - Multi-Fill Workflow', () => {
     // Click again - should REMOVE candidate 4
     // Wait for UI to be ready for another click by checking the candidate is present first
     await expect(cellByPosition).toContainText('4');
+    // Wait for 100ms debounce guard in useSudokuGame.ts to expire
+    await page.waitForTimeout(150);
     await cellByPosition.click();
     
     // Wait for state change with explicit condition
@@ -345,8 +347,9 @@ test.describe('@integration Notes Mode - Removing Candidates', () => {
     await page.keyboard.press('4');
     await expect(cellByPosition).toContainText('4');
     
-    // Remove by pressing same digit - wait for candidate to be confirmed present first
-    await expect(cellByPosition).toContainText('4');
+    // Wait for debounce guard (app has 100ms debounce on note toggles to prevent double-toggles)
+    // Then press again to remove the candidate
+    await page.waitForTimeout(150);
     await page.keyboard.press('4');
     await expect(cellByPosition).not.toContainText('4');
   });
@@ -526,6 +529,8 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
     // Click the same cell to REMOVE the candidate (toggle off)
     // Wait for UI to be ready for another click by verifying candidate is present
     await expect(cellByPosition).toContainText('3');
+    // Wait for 100ms debounce guard in useSudokuGame.ts to expire
+    await page.waitForTimeout(150);
     await cellByPosition.click();
 
     // Wait for candidate to be removed
