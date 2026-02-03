@@ -45,7 +45,10 @@ test.describe('@integration Hints - UI Behavior', () => {
     
     // Wait for hint to be processed (button may briefly show loading state, then becomes enabled again)
     // The hint button stays enabled after use - it's not disabled after using
-    await page.waitForTimeout(1000); // Wait for hint processing to complete
+    await expect(async () => {
+      const isEnabled = await hintButton.isEnabled();
+      expect(isEnabled).toBeTruthy();
+    }).toPass({ timeout: 3000 });
 
     // Count should have decreased
     const afterText = await hintButton.textContent();
@@ -81,7 +84,10 @@ test.describe('@integration Hints - UI Behavior', () => {
     await hintButton.click();
     
     // Wait for hint to be processed (button stays enabled after use)
-    await page.waitForTimeout(1000); // Wait for hint processing to complete
+    await expect(async () => {
+      const isEnabled = await hintButton.isEnabled();
+      expect(isEnabled).toBeTruthy();
+    }).toPass({ timeout: 3000 });
 
     // Count should have decreased
     const afterText = await hintButton.textContent();
@@ -107,6 +113,32 @@ test.describe('@integration Hints - UI Behavior', () => {
   test('deep assertion: counters/undo/redo/error', async ({ page }) => {
     const hintButton = getHintButton(page);
 
+    // Helper to dismiss any overlay/modal that might appear after hint
+    async function dismissOverlay() {
+      // Check for error modals like "Too Many Conflicts"
+      const fixItBtn = page.locator('button:has-text("Let Me Fix It"), button:has-text("Check & Fix")').first();
+      if (await fixItBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+        await fixItBtn.click();
+        // Wait for modal to close
+        await expect(fixItBtn).not.toBeVisible({ timeout: 1000 }).catch(() => {});
+        return;
+      }
+      
+      // Check for overlay
+      const overlay = page.locator('.fixed.inset-0.z-50');
+      if (await overlay.isVisible({ timeout: 300 }).catch(() => false)) {
+        // Click outside or press Escape to dismiss
+        await page.keyboard.press('Escape');
+        await expect(overlay).not.toBeVisible({ timeout: 1000 }).catch(() => {});
+      }
+      
+      // Also dismiss any "Got it" button
+      const gotIt = page.getByRole('button', { name: /Got it|Close|OK/i });
+      if (await gotIt.isVisible({ timeout: 300 }).catch(() => false)) {
+        await gotIt.click();
+      }
+    }
+
     // Get initial hint count
     const initialHintText = await hintButton.textContent();
     const initialHintCount = parseInt(initialHintText?.match(/\d+/)?.[0] || '3');
@@ -115,7 +147,13 @@ test.describe('@integration Hints - UI Behavior', () => {
     await hintButton.click();
     
     // Wait for hint to be processed (may show toast/highlight)
-    await page.waitForTimeout(1000);
+    await expect(async () => {
+      const isEnabled = await hintButton.isEnabled();
+      expect(isEnabled).toBeTruthy();
+    }).toPass({ timeout: 3000 });
+    
+    // Dismiss any overlay that appeared
+    await dismissOverlay();
 
     // Hint count should have decreased
     const afterHintText = await hintButton.textContent();
@@ -127,7 +165,13 @@ test.describe('@integration Hints - UI Behavior', () => {
     
     // Use another hint
     await hintButton.click();
-    await page.waitForTimeout(1000);
+    await expect(async () => {
+      const isEnabled = await hintButton.isEnabled();
+      expect(isEnabled).toBeTruthy();
+    }).toPass({ timeout: 3000 });
+    
+    // Dismiss any overlay again
+    await dismissOverlay();
     
     // Count should decrease again
     const secondHintText = await hintButton.textContent();

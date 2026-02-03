@@ -235,7 +235,7 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     // Start a game and make some progress to create an in-progress save
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.getByTestId('game-background').toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('game-background')).toBeVisible({ timeout: 15000 });
     
     // Make a move
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();

@@ -852,19 +852,15 @@ test.describe('Homepage - Edge Cases', () => {
     // (for example a <span>) and some environments expose the parent's
     // `innerText` in a more consistent, rendered form. `textContent` can
     // differ across engines and may not reflect the rendered label reliably.
-    // We use expect().toPass() to poll for focus changes rather than arbitrary waits.
     let found = false;
     for (let i = 0; i < 40 && !found; i++) {
       await page.keyboard.press('Tab');
-      // Poll for the activeElement text to stabilize after focus change
-      await expect(async () => {
-        const activeText = await page.evaluate(() => document.activeElement?.innerText?.toLowerCase() || '');
-        if (activeText.includes('play') || activeText.includes('easy')) {
-          found = true;
-        }
-        // Always pass - we just want to ensure the evaluate completes
-        expect(true).toBe(true);
-      }).toPass({ timeout: 100 });
+      // Check the activeElement after each tab press
+      const activeText = await page.evaluate(() => document.activeElement?.innerText?.toLowerCase() || '');
+      const ariaLabel = await page.evaluate(() => document.activeElement?.getAttribute('aria-label')?.toLowerCase() || '');
+      if (activeText.includes('play') || activeText.includes('easy') || ariaLabel.includes('play')) {
+        found = true;
+      }
     }
 
     expect(found).toBeTruthy();

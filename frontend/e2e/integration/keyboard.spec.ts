@@ -575,7 +575,18 @@ test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
   });
 
   test('Shift+Tab moves backwards through elements', async ({ page }) => {
-    // Focus a control button first
+    // First make a move so Undo button becomes enabled
+    // Find an empty cell and enter a digit
+    const pos = await findEmptyCellPosition(page, 5);
+    const emptyCell = getCellLocator(page, pos.row, pos.col);
+    await emptyCell.scrollIntoViewIfNeeded();
+    await emptyCell.click();
+    await page.keyboard.press('5');
+    
+    // Wait for the move to be registered
+    await page.waitForTimeout(200);
+    
+    // Focus the Undo button (should be enabled now)
     const undoButton = page.locator('button[title="Undo"]');
     await undoButton.focus();
     

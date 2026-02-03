@@ -105,11 +105,11 @@ test.describe('Game Mode Transitions', () => {
     expect(mediumUrl).toMatch(/\?d=medium$/)
     logger.info(`Starting URL: ${mediumUrl}`)
 
-    // Open menu and restart puzzle
+    // Open menu and restart puzzle using Clear All (which restarts the puzzle)
     await page.click('button[aria-label="Menu"]')
-    await page.waitForSelector('text=Restart Puzzle', { state: 'visible', timeout: 10000 })
+    await page.waitForSelector('text=Clear All', { state: 'visible', timeout: 10000 })
     
-    await page.click('text=Restart Puzzle')
+    await page.click('text=Clear All')
     
     // Wait for restart by verifying the URL still has the same difficulty
     await expect(async () => {
