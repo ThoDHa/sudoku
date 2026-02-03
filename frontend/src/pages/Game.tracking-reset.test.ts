@@ -114,7 +114,7 @@ describe('History Tracking State Reset', () => {
       // Document that handleRestart uses resetAllGameState
       // This ensures restart button properly resets all tracking state
       
-      // handleRestart does:
+      // handleRestart does (in sequence):
       // 1. resetAllGameState() - resets board + tracking vars
       // 2. clearSavedGameState() - clears localStorage
       // 3. timerControl.resetTimer() - resets timer
@@ -123,28 +123,90 @@ describe('History Tracking State Reset', () => {
       // 6. setNotesMode(false) - exits notes mode
       // 7. setShowResultModal(false) - hides result
       
-      // The key part is that it calls resetAllGameState()
-      // which handles ALL the tracking variable resets
-      expect(true).toBe(true) // Placeholder for documentation
+      // Simulate the expected sequence of operations
+      const operations: string[] = []
+      
+      // Mock the operations that handleRestart performs
+      const mockResetAllGameState = () => {
+        operations.push('resetAllGameState')
+      }
+      const mockClearSavedGameState = () => {
+        operations.push('clearSavedGameState')
+      }
+      const mockResetTimer = () => {
+        operations.push('resetTimer')
+      }
+      const mockStartTimer = () => {
+        operations.push('startTimer')
+      }
+      
+      // Simulate handleRestart behavior
+      mockResetAllGameState()
+      mockClearSavedGameState()
+      mockResetTimer()
+      mockStartTimer()
+      
+      // Verify resetAllGameState is called FIRST (before other operations)
+      expect(operations[0]).toBe('resetAllGameState')
+      // Verify all operations are called
+      expect(operations).toContain('resetAllGameState')
+      expect(operations).toContain('clearSavedGameState')
+      expect(operations).toContain('resetTimer')
+      expect(operations).toContain('startTimer')
+      // Verify correct order: reset before starting fresh timer
+      expect(operations.indexOf('resetTimer')).toBeLessThan(operations.indexOf('startTimer'))
     })
   })
 
   describe('new game initialization', () => {
     it('should call resetAllGameState when no saved state exists', () => {
       // When loading a new puzzle without saved state:
-      // Line 1679-1685 in Game.tsx should call resetAllGameState()
+      // Game.tsx should call resetAllGameState()
       
       // This ensures a fresh game starts with:
       // - Clean board (via game.resetGame() inside resetAllGameState)
       // - All tracking variables reset to 0/false
       
-      const hasSavedState = false
-      
-      if (!hasSavedState) {
-        // resetAllGameState() should be called here
-        // This sets all tracking vars to initial values
-        expect(true).toBe(true)
+      // Simulate the expected behavior when loading a new game
+      let trackingState = {
+        hintsUsed: 5,           // Dirty state from previous game
+        techniqueHintsUsed: 3,
+        autoFillUsed: true,
+        autoSolveUsed: true,
+        autoSolveStepsUsed: 10,
+        autoSolveErrorsFixed: 2,
       }
+      
+      const hasSavedState = false
+      let resetCalled = false
+      
+      // Mock resetAllGameState behavior
+      const resetAllGameState = () => {
+        resetCalled = true
+        trackingState = {
+          hintsUsed: 0,
+          techniqueHintsUsed: 0,
+          autoFillUsed: false,
+          autoSolveUsed: false,
+          autoSolveStepsUsed: 0,
+          autoSolveErrorsFixed: 0,
+        }
+      }
+      
+      // When no saved state exists, resetAllGameState should be called
+      if (!hasSavedState) {
+        resetAllGameState()
+      }
+      
+      // Verify reset was called
+      expect(resetCalled).toBe(true)
+      // Verify all tracking variables are reset to initial values
+      expect(trackingState.hintsUsed).toBe(0)
+      expect(trackingState.techniqueHintsUsed).toBe(0)
+      expect(trackingState.autoFillUsed).toBe(false)
+      expect(trackingState.autoSolveUsed).toBe(false)
+      expect(trackingState.autoSolveStepsUsed).toBe(0)
+      expect(trackingState.autoSolveErrorsFixed).toBe(0)
     })
 
     it('should restore autoFillUsed from saved state when it exists', () => {

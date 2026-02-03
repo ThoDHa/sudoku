@@ -408,45 +408,52 @@ describe('worker-client advanced scenarios', () => {
   
   describe('worker.onmessage handler', () => {
     it('should ignore non-response message types', async () => {
-      const { initializeWorker, terminateWorker } = await import('./worker-client')
+      const { initializeWorker, terminateWorker, isWorkerReady } = await import('./worker-client')
       
       await initializeWorker()
+      expect(isWorkerReady()).toBe(true)
       
       // Send a message with type that should be ignored
       const worker = createdWorkers[0]
-      worker.simulateMessage({ type: 'loaded' }) // Should be ignored after init
-      worker.simulateMessage({ type: 'unknown' }) // Should be ignored
       
-      // If we get here without errors, the handler correctly ignored these
-      expect(true).toBe(true)
+      // These should not throw and should not affect worker state
+      expect(() => worker.simulateMessage({ type: 'loaded' })).not.toThrow() // Should be ignored after init
+      expect(() => worker.simulateMessage({ type: 'unknown' })).not.toThrow() // Should be ignored
+      
+      // Worker should still be ready after receiving ignored messages
+      expect(isWorkerReady()).toBe(true)
       
       terminateWorker()
     })
     
     it('should ignore messages without id', async () => {
-      const { initializeWorker, terminateWorker } = await import('./worker-client')
+      const { initializeWorker, terminateWorker, isWorkerReady } = await import('./worker-client')
       
       await initializeWorker()
+      expect(isWorkerReady()).toBe(true)
       
       const worker = createdWorkers[0]
       // Message with type but no id - should be ignored
-      worker.simulateMessage({ type: 'result', success: true, data: {} })
+      expect(() => worker.simulateMessage({ type: 'result', success: true, data: {} })).not.toThrow()
       
-      expect(true).toBe(true)
+      // Worker should still be ready after receiving ignored messages
+      expect(isWorkerReady()).toBe(true)
       
       terminateWorker()
     })
     
     it('should ignore messages with unknown request id', async () => {
-      const { initializeWorker, terminateWorker } = await import('./worker-client')
+      const { initializeWorker, terminateWorker, isWorkerReady } = await import('./worker-client')
       
       await initializeWorker()
+      expect(isWorkerReady()).toBe(true)
       
       const worker = createdWorkers[0]
       // Message with unknown id - should be ignored (no pending request)
-      worker.simulateMessage({ type: 'result', id: 'unknown-id-12345', success: true, data: {} })
+      expect(() => worker.simulateMessage({ type: 'result', id: 'unknown-id-12345', success: true, data: {} })).not.toThrow()
       
-      expect(true).toBe(true)
+      // Worker should still be ready after receiving ignored messages
+      expect(isWorkerReady()).toBe(true)
       
       terminateWorker()
     })
