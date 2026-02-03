@@ -714,6 +714,19 @@ func solveAll(this js.Value, args []js.Value) interface{} {
 func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLimit int) solveResult {
 	board := human.NewBoardWithCandidates(cells, candidates)
 
+	// Check if candidates are all empty (no user notes entered yet)
+	// If so, initialize fresh candidates like checkAndFixWithSolution does
+	allCandidatesEmpty := true
+	for i := 0; i < constants.TotalCells; i++ {
+		if candidates != nil && i < len(candidates) && len(candidates[i]) > 0 {
+			allCandidatesEmpty = false
+			break
+		}
+	}
+	if allCandidatesEmpty {
+		board.InitCandidates()
+	}
+
 	// Keep original user board for error detection
 	originalUserBoard := make([]int, constants.TotalCells)
 	copy(originalUserBoard, cells)

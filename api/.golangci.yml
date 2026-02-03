@@ -60,6 +60,11 @@ issues:
       linters:
         - gosec
 
+  # Skip WASM files - they require GOOS=js GOARCH=wasm build environment
+  # which golangci-lint cannot provide. These files are validated by TinyGo build.
+  exclude-dirs:
+    - cmd/wasm
+
   max-issues-per-linter: 0
   max-same-issues: 0
 
