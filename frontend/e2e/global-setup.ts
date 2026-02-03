@@ -70,7 +70,21 @@ async function globalSetup(config: FullConfig) {
     await page.evaluate(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
       // Disable daily reminder modal to prevent blocking tests
-      localStorage.setItem('sudoku_showDailyReminder', 'false');
+      // The preferences are stored as a JSON object in 'sudoku_preferences' key
+      const currentPrefs = JSON.parse(localStorage.getItem('sudoku_preferences') || '{}');
+      localStorage.setItem('sudoku_preferences', JSON.stringify({
+        ...currentPrefs,
+        showDailyReminder: false
+      }));
+      // Clear any existing game saves to prevent "Game In Progress" modals
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('sudoku_game_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
     });
     
     // Save storage state

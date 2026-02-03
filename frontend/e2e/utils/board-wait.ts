@@ -87,28 +87,47 @@ export async function setupGameAndWaitForBoard(page: any, options: {
   custom?: string
   /** Board wait timeout (default: 45000) */
   boardTimeout?: number
+  /** Skip waiting for cells with values (for saved state tests with empty boards) */
+  skipCellValueCheck?: boolean
+  /** Skip navigation - just wait for the board (use after page.goto or page.reload) */
+  skipNavigation?: boolean
 } = {}): Promise<void> {
   const {
     difficulty = 'easy',
     seed,
     custom,
-    boardTimeout = 45000
+    boardTimeout = 45000,
+    skipCellValueCheck = false,
+    skipNavigation = false
   } = options
 
-  // Navigate based on options provided
-  if (seed) {
-    // Navigate directly to seed route
-    await page.goto(`/${seed}?d=${difficulty}`)
-  } else if (custom) {
-    // Navigate to custom puzzle route
-    await page.goto(`/c/${custom}`)
-  } else {
-    // Navigate to homepage and click Play button
-    await page.goto('/')
-    const playButton = page.getByRole('button', { name: new RegExp(`${difficulty} Play`, 'i') })
-    await playButton.click()
+  // Navigate based on options provided (unless skipped)
+  if (!skipNavigation) {
+    if (seed) {
+      // Navigate directly to seed route
+      await page.goto(`/${seed}?d=${difficulty}`)
+    } else if (custom) {
+      // Navigate to custom puzzle route
+      await page.goto(`/c/${custom}`)
+    } else {
+      // Navigate to homepage and click Play button
+      await page.goto('/')
+      const playButton = page.getByRole('button', { name: new RegExp(`${difficulty} Play`, 'i') })
+      await playButton.click()
+    }
   }
 
   // Wait for board to appear with WASM consideration
   await waitForBoard(page, { timeout: boardTimeout })
+  
+  // Phase 3: Wait for puzzle data to actually load (unless skipped)
+  // The board div appears before the puzzle data is rendered - we need to wait for actual cells
+  // Look for cells with values (either "given" or filled cells)
+  // Note: skipCellValueCheck is useful for saved state tests where the board may appear empty
+  if (!skipCellValueCheck) {
+    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', {
+      timeout: boardTimeout,
+      state: 'visible'
+    })
+  }
 }
