@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { commitCellAction } from '../lib/commitCellAction'
-import { wasmGetPuzzle } from '../lib/wasm'
+import { wasmGetPuzzle, loadWasm, type PuzzleForSeedResult } from '../lib/wasm'
 import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import Board from '../components/Board'
 import Controls from '../components/Controls'
@@ -1686,8 +1686,29 @@ ${bugReportJson}
           return
         }
 
-        const wasmResult = await wasmGetPuzzle(effectiveSeed ?? '', difficulty)
-        
+        // Wait for WASM to be ready before attempting puzzle generation
+        await loadWasm()
+
+        // Retry puzzle generation with exponential backoff if WASM isn't ready yet
+        const maxRetries = 5
+        const baseDelay = 100
+        let wasmResult: PuzzleForSeedResult | null = null
+        let attempt = 0
+
+        while (attempt < maxRetries) {
+          wasmResult = await wasmGetPuzzle(effectiveSeed ?? '', difficulty)
+
+          if (wasmResult) {
+            break
+          }
+
+          if (attempt < maxRetries - 1) {
+            const delay = baseDelay * Math.pow(2, attempt)
+            await new Promise(resolve => setTimeout(resolve, delay))
+          }
+          attempt++
+        }
+
         if (!wasmResult) {
           setError('Puzzle generator not ready. Please refresh the page.')
           setLoading(false)
