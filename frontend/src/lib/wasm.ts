@@ -349,6 +349,12 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       const go = new window.Go();
       goInstance = go; // Store reference for cleanup
 
+      // Give Go runtime time to fully initialize importObject
+      // This prevents race conditions after rapid unload/reload cycles
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      logger.debug('[WASM] Go instance created');
+
       // Create AbortController for the fetch
       wasmAbortController = new AbortController();
 
