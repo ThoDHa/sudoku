@@ -80,6 +80,16 @@ function getHintSignature(move: { technique: string; action: string; digit: numb
 }
 
 /**
+ * Generate a signature for the current board state (cells + candidates).
+ * Used to invalidate hint cache when board changes.
+ * Candidates are stored as Uint16Array where each element is a bitmask.
+ */
+function getBoardSignature(board: number[], candidates: Uint16Array): string {
+  const candidatesStr = Array.from(candidates).join(',')
+  return `${board.join(',')}-${candidatesStr}`
+}
+
+/**
  * Format technique name for display (convert slug to title case)
  */
 function formatTechniqueName(technique: string): string {
@@ -207,6 +217,12 @@ function GameContent() {
   // Track last hint shown to avoid counting duplicate hints
   const lastTechniqueHintRef = useRef<string | null>(null)
   const lastRegularHintRef = useRef<string | null>(null)
+  // Cache hint result to ensure Technique Hint and Regular Hint show same move
+  // Invalidated when board state changes
+  const cachedHintRef = useRef<{
+    boardSignature: string
+    data: Awaited<ReturnType<typeof findNextMove>>
+  } | null>(null)
   // Track if there are unsaved changes when backgrounded
   const hasUnsavedChanges = useRef(false)
   // Track the last time we were hidden
@@ -805,11 +821,21 @@ function GameContent() {
       // Deselect any highlighted digit when using hint
       clearAllAndDeselect()
 
-      // Get the next move from current state
+      // Check if we have a cached hint for the current board state
       const boardSnapshot = [...game.board]
-      const candidatesArray = candidatesToArrays(game.candidates)
+      const currentSignature = getBoardSignature(game.board, game.candidates)
       
-      const data = await findNextMove(boardSnapshot, candidatesArray, initialBoard)
+      let data: Awaited<ReturnType<typeof findNextMove>>
+      
+      if (cachedHintRef.current && cachedHintRef.current.boardSignature === currentSignature) {
+        // Use cached hint - board hasn't changed
+        data = cachedHintRef.current.data
+      } else {
+        // Fetch fresh hint and cache it
+        const candidatesArray = candidatesToArrays(game.candidates)
+        data = await findNextMove(boardSnapshot, candidatesArray, initialBoard)
+        cachedHintRef.current = { boardSignature: currentSignature, data }
+      }
       
       if (!data.move) {
         setValidationMessage({ 
@@ -893,11 +919,21 @@ function GameContent() {
       // Deselect any highlighted digit when using technique hint
       clearAllAndDeselect()
 
-      // Get the next move from current state (efficient single-move call)
+      // Check if we have a cached hint for the current board state
       const boardSnapshot = [...game.board]
-      const candidatesArray = candidatesToArrays(game.candidates)
-
-      const data = await findNextMove(boardSnapshot, candidatesArray, initialBoard)
+      const currentSignature = getBoardSignature(game.board, game.candidates)
+      
+      let data: Awaited<ReturnType<typeof findNextMove>>
+      
+      if (cachedHintRef.current && cachedHintRef.current.boardSignature === currentSignature) {
+        // Use cached hint - board hasn't changed
+        data = cachedHintRef.current.data
+      } else {
+        // Fetch fresh hint and cache it
+        const candidatesArray = candidatesToArrays(game.candidates)
+        data = await findNextMove(boardSnapshot, candidatesArray, initialBoard)
+        cachedHintRef.current = { boardSignature: currentSignature, data }
+      }
       
       if (!data.move) {
         setValidationMessage({ 
@@ -1003,6 +1039,7 @@ function GameContent() {
 
       lastTechniqueHintRef.current = null
       lastRegularHintRef.current = null
+      cachedHintRef.current = null
     }, [clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell])
 
     // Cell click handler - STABLE: reads from refs to avoid recreating on state changes
@@ -1033,6 +1070,7 @@ function GameContent() {
         // Reset last hint tracking so next hint counts as new
         lastTechniqueHintRef.current = null;
         lastRegularHintRef.current = null;
+        cachedHintRef.current = null;
         // Keep erase mode active so user can erase multiple cells
         return;
       }
@@ -1076,6 +1114,7 @@ function GameContent() {
          clearAfterUserCandidateOp()
          lastTechniqueHintRef.current = null
          lastRegularHintRef.current = null
+         cachedHintRef.current = null
          return
        }
        clearAllAndDeselect()
@@ -1102,6 +1141,7 @@ function GameContent() {
              });
              lastTechniqueHintRef.current = null;
              lastRegularHintRef.current = null;
+             cachedHintRef.current = null;
            } else {
              placeDigitAndClear(idx, currentHighlightedDigit, currentNotesMode)
            }
@@ -1153,6 +1193,7 @@ if (currentGame.board[currentSelectedCell] === digit) {
             })
             lastTechniqueHintRef.current = null
             lastRegularHintRef.current = null
+            cachedHintRef.current = null
             return
           }
 
@@ -1186,6 +1227,7 @@ if (currentGame.board[currentSelectedCell] === digit) {
         });
         lastTechniqueHintRef.current = null;
         lastRegularHintRef.current = null;
+        cachedHintRef.current = null;
       } else {
         if (currentNotesMode) {
           currentGame.setCell(idx, value, currentNotesMode)
@@ -1200,6 +1242,7 @@ if (currentGame.board[currentSelectedCell] === digit) {
         // Reset last hint tracking so next hint counts as new
         lastTechniqueHintRef.current = null
         lastRegularHintRef.current = null
+        cachedHintRef.current = null
       }
     // All deps are now stable callbacks - state accessed via refs
     }, [clearAfterDigitPlacement, deselectCell, clearAfterErase, clearAfterUserCandidateOp, resumeFromExtendedPause])

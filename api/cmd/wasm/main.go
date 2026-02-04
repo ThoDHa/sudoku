@@ -712,6 +712,11 @@ func solveAll(this js.Value, args []js.Value) interface{} {
 // It accepts a maxMoves parameter to limit the number of moves returned
 // When maxMoves=1, this enables efficient single-move hints
 func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLimit int) solveResult {
+	// Reset solver state to ensure each request starts fresh.
+	// This prevents state from previous hint requests (e.g., Technique Hint)
+	// from affecting subsequent requests (e.g., Regular Hint).
+	solver.Reset()
+
 	board := human.NewBoardWithCandidates(cells, candidates)
 
 	// Note: When candidates are empty (fresh board with no user notes),

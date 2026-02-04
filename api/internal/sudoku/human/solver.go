@@ -84,6 +84,13 @@ func NewSolverWithRegistry(registry *TechniqueRegistry) *Solver {
 	}
 }
 
+// Reset clears the solver's stateful fields to ensure each solving session
+// starts fresh. This prevents state from one hint request affecting another.
+func (s *Solver) Reset() {
+	s.generationState = StateNotStarted
+	s.candidateIndex = 0
+}
+
 // GenerationState represents the solver's candidate-generation lifecycle
 type GenerationState int
 
