@@ -36,24 +36,28 @@ if [ -n "$FRONTEND_FILES" ]; then
   echo "✅ ESLint passed!"
 fi
 
-# Run golangci-lint if Go files are staged
-if [ -n "$GO_FILES" ]; then
-  echo ""
-  echo "Running golangci-lint on staged Go files..."
+ # Run golangci-lint if Go files are staged
+ if [ -n "$GO_FILES" ]; then
+   echo ""
+   echo "Running golangci-lint on staged Go files..."
 
-  # Run golangci-lint only on staged files
-  # golangci-lint will exit with non-zero if any issues are found
-  if ! (cd api && $(go env GOPATH)/bin/golangci-lint run $(echo "$GO_FILES" | sed 's|^api/||')); then
-    echo ""
-    echo "❌ golangci-lint found issues in staged files!"
-    echo ""
-    echo "Fix the issues above, or use 'git commit --no-verify' to bypass (not recommended)."
-    exit 1
-  fi
+   # Convert individual files to package paths for proper type checking
+   # golangci-lint needs package paths (with ...) not individual files
+   GO_PACKAGES=$(echo "$GO_FILES" | sed 's|^api/||' | sed 's|/[^/]*$|/...|' | sort -u)
 
-  cd ..
-  echo "✅ golangci-lint passed!"
-fi
+   # Run golangci-lint on package paths
+   # golangci-lint will exit with non-zero if any issues are found
+   if ! (cd api && $(go env GOPATH)/bin/golangci-lint run $GO_PACKAGES); then
+     echo ""
+     echo "❌ golangci-lint found issues in staged files!"
+     echo ""
+     echo "Fix the issues above, or use 'git commit --no-verify' to bypass (not recommended)."
+     exit 1
+   fi
+
+   cd ..
+   echo "✅ golangci-lint passed!"
+ fi
 
 # If no relevant files were staged, just pass
 if [ -z "$FRONTEND_FILES" ] && [ -z "$GO_FILES" ]; then
