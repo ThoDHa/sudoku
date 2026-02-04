@@ -30,9 +30,11 @@ export default defineConfig({
   
    // Timeouts
    timeout: 120000, // 120s default test timeout
-  expect: {
-    timeout: 10000, // 10s for expect assertions
-  },
+   expect: {
+     timeout: 10000, // 10s for expect assertions
+   },
+   // Global timeout: fail entire suite after 90 minutes
+   globalTimeout: 5400000,
   
   // Reporting - Native Allure reporter for rich test metadata, plus HTML for artifact viewing
   reporter: process.env.CI 
