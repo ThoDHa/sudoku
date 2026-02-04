@@ -219,7 +219,13 @@ jobs:
         run: |
           mkdir -p allure-results
           # Copy all results into single directory
-          find allure-results-all -type f \( -name "*.json" -o -name "*.xml" -o -name "*.txt" -o -name "*.png" -o -name "*.attach" -o -name "*.properties" \) -exec cp {} allure-results/ \; 2>/dev/null || true
+          find allure-results-all -type f \( -name "*.json" -o -name "*.xml" -o -name "*.txt" -o -name "*.png" -o -name "*.attach" \) -exec cp {} allure-results/ \;2>/dev/null || true
+
+          # Merge environment.properties from all test suites instead of overwriting
+          # Each suite (unit, go, e2e) has its own environment.properties
+          echo "=== Merging environment.properties from all test suites ===" > allure-results/environment.properties
+          find allure-results-all -name "environment.properties" -exec sh -c 'echo "--- {} ---"; cat "{}"' \; >> allure-results/environment.properties
+
           # Copy categories.json from frontend for failure classification
           if [ -f "frontend/.allure/categories.json" ]; then
             cp frontend/.allure/categories.json allure-results/
