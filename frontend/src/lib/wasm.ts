@@ -267,6 +267,10 @@ export function abortWasmLoad(): void {
   }
 }
 
+interface ImportMetaEnv {
+  VITE_BASE_PATH?: string;
+}
+
 /**
  * Get base URL for assets (handles GitHub Pages subpath)
  */
@@ -277,10 +281,10 @@ function getBaseUrl(): string {
     logger.debug('[WASM] Using window.location-based BASE_URL:', testBaseUrl);
     return testBaseUrl;
   }
-  
-  const baseUrl = import.meta.env.BASE_URL || '/';
+
+  const baseUrl = (import.meta.env as ImportMetaEnv)['VITE_BASE_PATH'] || '/';
   logger.debug('[WASM] BASE_URL resolved to:', baseUrl);
-  logger.debug('[WASM] import.meta.env.BASE_URL value:', import.meta.env.BASE_URL);
+  logger.debug('[WASM] import.meta.env.VITE_BASE_PATH value:', (import.meta.env as ImportMetaEnv)['VITE_BASE_PATH']);
   return baseUrl;
 }
 
