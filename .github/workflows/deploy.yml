@@ -223,8 +223,13 @@ jobs:
 
           # Merge environment.properties from all test suites instead of overwriting
           # Each suite (unit, go, e2e) has its own environment.properties
-          echo "=== Merging environment.properties from all test suites ===" > allure-results/environment.properties
-          find allure-results-all -name "environment.properties" -exec sh -c 'echo "--- {} ---"; cat "{}"' \; >> allure-results/environment.properties
+          echo "=== Merged environment.properties from all test suites ===" > allure-results/environment.properties
+
+          for file in $(find allure-results-all -name "environment.properties"); do
+            echo "" >> allure-results/environment.properties
+            echo "=== $file ===" >> allure-results/environment.properties
+            cat "$file" >> allure-results/environment.properties
+          done
 
           # Copy categories.json from frontend for failure classification
           if [ -f "frontend/.allure/categories.json" ]; then
