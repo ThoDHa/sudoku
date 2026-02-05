@@ -267,24 +267,15 @@ export function abortWasmLoad(): void {
   }
 }
 
-interface ImportMetaEnv {
-  VITE_BASE_PATH?: string;
-}
-
 /**
  * Get base URL for assets (handles GitHub Pages subpath)
  */
 function getBaseUrl(): string {
-  // Force correct base URL during tests
-  if (typeof window !== 'undefined' && window.location) {
-    const testBaseUrl = window.location.protocol + '//' + window.location.host + '/';
-    logger.debug('[WASM] Using window.location-based BASE_URL:', testBaseUrl);
-    return testBaseUrl;
-  }
-
-  const baseUrl = (import.meta.env as ImportMetaEnv)['VITE_BASE_PATH'] || '/';
+  // Use Vite's BASE_URL which is automatically set based on the `base` config in vite.config.ts
+  // This handles GitHub Pages subpath correctly (e.g., https://thodha.github.io/sudoku/)
+  const baseUrl = import.meta.env.BASE_URL || '/';
   logger.debug('[WASM] BASE_URL resolved to:', baseUrl);
-  logger.debug('[WASM] import.meta.env.VITE_BASE_PATH value:', (import.meta.env as ImportMetaEnv)['VITE_BASE_PATH']);
+  logger.debug('[WASM] import.meta.env.BASE_URL value:', import.meta.env.BASE_URL);
   return baseUrl;
 }
 
