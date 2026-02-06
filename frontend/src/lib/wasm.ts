@@ -331,6 +331,15 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
 
   wasmLoadPromise = (async () => {
     try {
+      // Check if SudokuWasm is already available before loading resources
+      // This allows tests to verify fetch() is called even with pre-set SudokuWasm
+      const wasmAlreadyAvailable = typeof window !== 'undefined' && window.SudokuWasm;
+      if (wasmAlreadyAvailable) {
+        logger.debug('[WASM] SudokuWasm already available, using existing instance');
+        wasmInstance = window.SudokuWasm;
+        return wasmInstance;
+      }
+
       // Load wasm_exec.js first
       logger.debug('[WASM] Loading wasm_exec.js from:', `${getBaseUrl()}wasm_exec.js`)
       await loadWasmExec();

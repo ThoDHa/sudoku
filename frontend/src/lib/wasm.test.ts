@@ -511,15 +511,16 @@ describe('wasm module', () => {
   
   describe('preloadWasm()', () => {
     it('should call loadWasm without waiting', async () => {
-      // @ts-expect-error - Mocking
-      globalThis.window.SudokuWasm = mockWasmApi
+      // Don't pre-set SudokuWasm so loading proceeds normally
+      // Note: If SudokuWasm is already set, loadWasm() will use it immediately
+      // without calling fetch(). This test verifies preloadWasm initiates loading.
       
       const { preloadWasm } = await import('./wasm')
       
       // Should not throw even if we don't await
       preloadWasm()
       
-      // Trigger the wasmReady event
+      // Trigger wasmReady event
       await vi.waitFor(() => {
         if (wasmReadyHandler) {
           wasmReadyHandler()
