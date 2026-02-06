@@ -16,8 +16,7 @@ api/server
 frontend/public/sudoku.wasm
 api/sudoku.wasm
 frontend/public/sudoku.wasm.backup
-# WASM runtime (should be kept in sync with TinyGo version)
-frontend/public/wasm_exec.js
+frontend/public/solver.wasm
 
 # Test outputs
 coverage.out
