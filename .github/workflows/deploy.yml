@@ -331,7 +331,7 @@ jobs:
       - name: Build WASM for deployment
         if: github.ref == 'refs/heads/main'
         working-directory: api
-        run: make wasm
+        run: make wasm-all
 
       - name: Build frontend for deployment
         if: github.ref == 'refs/heads/main'
@@ -348,6 +348,9 @@ jobs:
           mkdir -p pages-artifact/test-report
           cp -r allure-report/* pages-artifact/test-report/
           cp -r frontend/dist/* pages-artifact/
+          # Copy WASM files from frontend (includes updated wasm_exec.js from build)
+          cp frontend/public/wasm_exec.js pages-artifact/
+          cp frontend/public/sudoku.wasm pages-artifact/
 
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/main'

@@ -45,15 +45,10 @@
 			writeSync(fd, buf) {
 				outputBuf += decoder.decode(buf);
 				const nl = outputBuf.lastIndexOf("\n");
-                if (nl != -1) {
-                    // Route wasm stdout through logger if available, otherwise fallback to console
-                    if (typeof global.logger !== 'undefined' && typeof global.logger.info === 'function') {
-                        global.logger.info(outputBuf.substr(0, nl));
-                    } else if (typeof console !== 'undefined' && typeof console.log === 'function') {
-                        console.log(outputBuf.substr(0, nl));
-                    }
-                    outputBuf = outputBuf.substr(nl + 1);
-                }
+				if (nl != -1) {
+					console.log(outputBuf.substr(0, nl));
+					outputBuf = outputBuf.substr(nl + 1);
+				}
 				return buf.length;
 			},
 			write(fd, buf, offset, length, position, callback) {
@@ -261,22 +256,14 @@
 										// write line
 										let line = decoder.decode(new Uint8Array(logLine));
 										logLine = [];
-                                        if (typeof global.logger !== 'undefined' && typeof global.logger.info === 'function') {
-                                            global.logger.info(line);
-                                        } else if (typeof console !== 'undefined' && typeof console.log === 'function') {
-                                            console.log(line);
-                                        }
+										console.log(line);
 									} else {
 										logLine.push(c);
 									}
 								}
 							}
 						} else {
-                            if (typeof global.logger !== 'undefined' && typeof global.logger.error === 'function') {
-                                global.logger.error('invalid file descriptor:', fd);
-                            } else if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                                console.error('invalid file descriptor:', fd);
-                            }
+							console.error('invalid file descriptor:', fd);
 						}
 						mem().setUint32(nwritten_ptr, nwritten, true);
 						return 0;
@@ -328,11 +315,7 @@
 								this._idPool.push(id);
 							}
 						} else {
-                            if (typeof global.logger !== 'undefined' && typeof global.logger.error === 'function') {
-                                global.logger.error("syscall/js.finalizeRef: unknown id", id);
-                            } else if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                                console.error("syscall/js.finalizeRef: unknown id", id);
-                            }
+							console.error("syscall/js.finalizeRef: unknown id", id);
 						}
 					},
 
@@ -554,11 +537,7 @@
 		!global.process.versions.electron
 	) {
 		if (process.argv.length != 3) {
-            if (typeof global.logger !== 'undefined' && typeof global.logger.error === 'function') {
-                global.logger.error("usage: go_js_wasm_exec [wasm binary] [arguments]");
-            } else if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                console.error("usage: go_js_wasm_exec [wasm binary] [arguments]");
-            }
+			console.error("usage: go_js_wasm_exec [wasm binary] [arguments]");
 			process.exit(1);
 		}
 
@@ -567,11 +546,7 @@
 			let exitCode = await go.run(result.instance);
 			process.exit(exitCode);
 		}).catch((err) => {
-            if (typeof global.logger !== 'undefined' && typeof global.logger.error === 'function') {
-                global.logger.error(err);
-            } else if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                console.error(err);
-            }
+			console.error(err);
 			process.exit(1);
 		});
 	}
