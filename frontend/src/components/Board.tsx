@@ -514,28 +514,40 @@ const Board = memo(function Board({
     const shouldHighlight = (digit?: number): boolean => {
       // Always highlight filled cells
       if (isFilled) return true
-      // If no specific digit or user move, keep the highlight
+      // If no specific digit or user move, keep highlight
       if (!digit || digit === 0 || highlight.isUserMove) return true
-      // For empty cells, only highlight if the cell still has the relevant candidate
+      // For empty cells, only highlight if cell still has relevant candidate
       return hasCandidate(candidates[idx] || 0, digit)
     }
     
-    // Check explicit secondary highlights (these are part of the technique pattern, always show)
+    // Check explicit secondary highlights (these are part of technique pattern, always show)
     if (highlight.highlights.secondary?.some((h) => h.row === row && h.col === col)) {
       return shouldHighlight(highlight.digit)
     }
     
-    // The following highlights reveal the ANSWER (which cells get affected)
-    // Only show them in regular hint mode (showAnswer: true), not technique hint mode
+    // In technique hint mode (showAnswer: false), highlight ALL involved cells
+    // In regular hint mode (showAnswer: true), also highlight eliminations and targets
     const showAnswer = highlight.showAnswer !== false
     
     if (showAnswer) {
-      // Also highlight elimination cells as secondary (check specific elimination digit)
+      // Regular hint mode: highlight elimination cells as secondary (check specific elimination digit)
       const elimination = highlight.eliminations?.find((e) => e.row === row && e.col === col)
       if (elimination) {
         return shouldHighlight(elimination.digit)
       }
       // Highlight targets as secondary if not already primary
+      if (highlight.targets?.some((t) => t.row === row && t.col === col) && 
+          !isHighlightedPrimary(row, col)) {
+        return shouldHighlight(highlight.digit)
+      }
+    } else {
+      // Technique hint mode: highlight all involved cells
+      // Elimination cells (where candidates are removed)
+      const elimination = highlight.eliminations?.find((e) => e.row === row && e.col === col)
+      if (elimination) {
+        return shouldHighlight(elimination.digit)
+      }
+      // Target cells (where digits are placed or added)
       if (highlight.targets?.some((t) => t.row === row && t.col === col) && 
           !isHighlightedPrimary(row, col)) {
         return shouldHighlight(highlight.digit)
@@ -619,7 +631,8 @@ const Board = memo(function Board({
     } else if (isPrimary) {
       classes.push('bg-cell-primary')
     } else if (isSecondary) {
-      classes.push('bg-cell-secondary')
+      const isTechniqueHint = highlight?.showAnswer === false
+      classes.push(isTechniqueHint ? 'bg-cell-primary' : 'bg-cell-secondary')
     } else if (isSelected) {
       classes.push('bg-cell-selected')
     } else if (hasDigitMatch) {
