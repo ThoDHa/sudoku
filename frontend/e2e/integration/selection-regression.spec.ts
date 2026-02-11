@@ -99,25 +99,35 @@ async function getOutsideClickCoordinates(page: any) {
   const paddingTop = 10;
   // Bottom: Need to clear the entire game container (board + controls)
   const gameBottomY = gameBox ? gameBox.y + gameBox.height : boardBox.y + boardBox.height + 250;
-  // Left/Right: Should be mostly empty space outside the centered container
-  const paddingLeft = Math.min(boardBox.x - 20, 50); // Don't go off-screen
-  const paddingRight = Math.min(viewport.width - (boardBox.x + boardBox.width) - 20, 50);
+  // Left/Right: Use gameBox coordinates (not boardBox) to ensure click is outside game-container
+  // On mobile, game-container includes controls and is wider than board alone
+  const gameBoxX = gameBox ? gameBox.x : boardBox.x;
+  const gameBoxY = gameBox ? gameBox.y : boardBox.y;
+  const gameBoxWidth = gameBox ? gameBox.width : boardBox.width;
+  const gameBoxHeight = gameBox ? gameBox.height : boardBox.height;
+  
+  // Calculate left/right padding to be outside game-container, not just outside board
+  // Use smaller values to ensure click is truly outside on mobile
+  const paddingLeft = Math.min(gameBoxX - 20, 50); // Don't go off-screen
+  const paddingRight = Math.min(viewport.width - (gameBoxX + gameBoxWidth) - 20, 50);
   
   // Check if there's actually safe space below the game container
-  // Need at least 40px of space below game container for a reliable click
+  // Need at least 40px of space below the game container for a reliable click
   const spaceBelow = viewport.height - gameBottomY;
   const hasSafeSpaceBelow = spaceBelow >= 40;
   const safeBottomY = hasSafeSpaceBelow ? gameBottomY + 20 : null;
   
   return {
-    above: { x: boardBox.x + boardBox.width / 2, y: Math.max(boardBox.y - paddingTop, 10) },
-    below: safeBottomY ? { x: boardBox.x + boardBox.width / 2, y: safeBottomY } : null,
-    left: { x: Math.max(boardBox.x - paddingLeft, 10), y: boardBox.y + boardBox.height / 2 },
-    right: { x: Math.min(boardBox.x + boardBox.width + paddingRight, viewport.width - 10), y: boardBox.y + boardBox.height / 2 },
-    topLeft: { x: Math.max(boardBox.x - paddingLeft, 10), y: Math.max(boardBox.y - paddingTop, 10) },
-    topRight: { x: Math.min(boardBox.x + boardBox.width + paddingRight, viewport.width - 10), y: Math.max(boardBox.y - paddingTop, 10) },
-    bottomLeft: safeBottomY ? { x: Math.max(boardBox.x - paddingLeft, 10), y: safeBottomY } : null,
-    bottomRight: safeBottomY ? { x: Math.min(boardBox.x + boardBox.width + paddingRight, viewport.width - 10), y: safeBottomY } : null
+    above: { x: gameBoxX + gameBoxWidth / 2, y: Math.max(gameBoxY - paddingTop, 10) },
+    below: safeBottomY ? { x: gameBoxX + gameBoxWidth / 2, y: safeBottomY } : null,
+    // For left/right clicks, use viewport edges (not game-box-dependent)
+    // This ensures clicks are truly outside regardless of game-container position
+    left: { x: 10, y: viewport.height / 2 },
+    right: { x: viewport.width - 10, y: viewport.height / 2 },
+    topLeft: { x: 10, y: Math.max(gameBoxY - paddingTop, 10) },
+    topRight: { x: viewport.width - 10, y: Math.max(gameBoxY - paddingTop, 10) },
+    bottomLeft: safeBottomY ? { x: 10, y: safeBottomY } : null,
+    bottomRight: safeBottomY ? { x: viewport.width - 10, y: safeBottomY } : null,
   };
 }
 
