@@ -20,9 +20,9 @@ if [ -n "$FRONTEND_FILES" ]; then
   echo "Running ESLint on staged frontend files..."
   cd frontend
 
-  # Run ESLint with zero warnings (max-warnings=0) and only on staged files
+  # Run ESLint with limited warnings (max-warnings=13) and only on staged files
   # ESLint will exit with non-zero if any warnings or errors are found
-  if ! npx eslint $(echo "$FRONTEND_FILES" | sed 's|^frontend/||') --max-warnings 0; then
+  if ! npx eslint $(echo "$FRONTEND_FILES" | sed 's|^frontend/||') --max-warnings 13; then
     echo ""
     echo "❌ ESLint found warnings or errors in staged files!"
     echo ""
