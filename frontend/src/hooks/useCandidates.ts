@@ -3,7 +3,6 @@ import {
   hasCandidate,
   addCandidate,
   removeCandidate,
-  toggleCandidate as toggleCandidateBit,
   countCandidates,
   type CandidateMask
 } from '../lib/candidatesUtils'

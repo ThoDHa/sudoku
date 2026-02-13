@@ -17,12 +17,12 @@ import {
 import {
   MAX_MOVE_HISTORY,
   BOARD_SIZE,
-  SUBGRID_SIZE,
   TOTAL_CELLS,
   MIN_DIGIT,
   MAX_DIGIT
 } from '../lib/constants'
 import { useCandidates } from './useCandidates'
+import { isValidSolution } from '../lib/validationUtils'
 
 // Move can be either a solver technique or a user action
 export interface Move {
@@ -138,19 +138,44 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     firstInitRef.current = true
     setBoard(newBoard)
   }, [])
-  
+
+  // Helper to create a move with compact state diff
+  // Creates diff between old and new board/candidates states and attaches to move
+  const createMoveWithDiff = useCallback((
+    move: Move,
+    oldBoard: number[],
+    newCandidates: Uint16Array
+  ): Move => {
+    const stateDiff = createStateDiff(oldBoard, newBoard, candidatesHook.candidates, newCandidates)
+    return {
+      ...move,
+      stateDiff,
+    }
+  }, [candidatesHook.candidates])
+
+  // Helper to check if board is complete and valid
+  // Checks completion and validity of current board state
+  const checkCompletion = useCallback((newBoard: number[]) => {
+    const allFilled = newBoard.every((v: number) => v !== 0)
+    if (allFilled && isValidSolution(newBoard)) {
+      setIsComplete(true)
+    } else {
+      setIsComplete(false)
+    }
+  }, [setIsComplete])
+
   // Helper to limit history size to prevent unbounded memory growth
   // When history exceeds MAX_MOVE_HISTORY, remove oldest entries
   const limitHistory = useCallback((historyArray: Move[], currentIndex: number): { history: Move[], index: number } => {
     if (historyArray.length <= MAX_MOVE_HISTORY) {
       return { history: historyArray, index: currentIndex }
     }
-    
+
     // Remove oldest entries to stay within limit
     const excess = historyArray.length - MAX_MOVE_HISTORY
     const trimmedHistory = historyArray.slice(excess)
     const adjustedIndex = Math.max(0, currentIndex - excess)
-    
+
     return { history: trimmedHistory, index: adjustedIndex }
   }, [])
   
@@ -219,13 +244,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   // HELPER FUNCTIONS
   // ============================================================
 
-  const isGivenCell = useCallback((idx: number): boolean => {
-    return givenCells[idx] !== 0
-  }, [givenCells])
-
   const calculateAllCandidatesForBoard = useCallback((board: number[]): Uint16Array => {
     const newCandidates = new Uint16Array(TOTAL_CELLS)
-    
+
     for (let idx = 0; idx < TOTAL_CELLS; idx++) {
       if (board[idx] !== 0) {
         newCandidates[idx] = 0 // clearAll()
@@ -236,17 +257,12 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     return newCandidates
   }, [calculateCandidatesForCell])
 
-  const fillAllCandidates = useCallback((): Uint16Array => {
-    // CRITICAL: Read from ref to get fresh board state, preventing race conditions
-    // when called rapidly after setCell (e.g., place digit then immediately fill candidates)
+  const _fillAllCandidates = useCallback((): Uint16Array => {
     const currentBoard = boardRef.current
     return calculateAllCandidatesForBoard(currentBoard)
-  }, [])
+  }, [calculateAllCandidatesForBoard])
 
-  const areCandidatesFilled = useCallback((): boolean => {
-    // Check if candidates have been filled by seeing if any empty cell has candidates
-    // We don't re-check against "valid" candidates because eliminations may have
-    // legitimately removed some candidates through solving techniques
+  const _areCandidatesFilled = useCallback((): boolean => {
     let hasAnyCandidates = false
     for (let idx = 0; idx < TOTAL_CELLS; idx++) {
       if (board[idx] !== 0) continue
@@ -259,38 +275,6 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     }
     return hasAnyCandidates
   }, [board, candidatesHook.candidates])
-
-  // Helper to eliminate candidates from peers after placing a digit
-  const eliminateFromPeersCandidates = useCallback((
-    candidatesArray: Uint16Array,
-    idx: number,
-    digit: number
-  ) => {
-    const result = new Uint16Array(candidatesArray)
-    const row = Math.floor(idx / BOARD_SIZE)
-    const col = idx % BOARD_SIZE
-    const boxRow = Math.floor(row / SUBGRID_SIZE) * SUBGRID_SIZE
-    const boxCol = Math.floor(col / SUBGRID_SIZE) * SUBGRID_SIZE
-
-    result[idx] = 0
-
-    for (let c = 0; c < BOARD_SIZE; c++) {
-      const cellIdx = row * BOARD_SIZE + c
-      result[cellIdx] = removeCandidate(result[cellIdx] || 0, digit)
-    }
-    for (let r = 0; r < BOARD_SIZE; r++) {
-      const cellIdx = r * BOARD_SIZE + col
-      result[cellIdx] = removeCandidate(result[cellIdx] || 0, digit)
-    }
-    for (let r = boxRow; r < boxRow + SUBGRID_SIZE; r++) {
-      for (let c = boxCol; c < boxCol + SUBGRID_SIZE; c++) {
-        const cellIdx = r * BOARD_SIZE + c
-        result[cellIdx] = removeCandidate(result[cellIdx] || 0, digit)
-      }
-    }
-
-    return result
-  }, [])
 
   // ============================================================
   // HELPER FUNCTIONS
@@ -342,16 +326,6 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     setBoard(newBoard)
     candidatesHook.setCandidates(newCandidates)
   }, [candidatesHook.eliminateFromPeers, candidatesHook.calculateAllCandidatesForBoard])
-
-  // ============================================================
-  // CORE ACTIONS
-  // ============================================================
-  // HELPER FUNCTIONS
-  // ============================================================
-
-  const isGivenCell = useCallback((idx: number): boolean => {
-    return givenCells[idx] !== 0
-  }, [givenCells])
 
   // ============================================================
   // CORE ACTIONS
@@ -551,22 +525,24 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     newCandidates[idx] = 0
 
      // Add erase move to history with compact diff
-     const eraseMove = createMoveWithDiff({
-       step_index: truncatedHistory.length,
-       technique: 'User Input',
-       action: 'erase',
-       digit: erasedDigit,
-       targets: [{ row, col }],
-       explanation: erasedDigit > 0
-         ? `Erased ${erasedDigit} from R${row + 1}C${col + 1}`
-         : `Cleared notes from R${row + 1}C${col + 1}`,
-       refs: { title: '', slug: '', url: '' },
-       highlights: { primary: [] }, // No highlights for user moves
-       isUserMove: true,
-     }, newBoard, newCandidates)
+      const eraseMove = createMoveWithDiff({
+        step_index: truncatedHistory.length,
+        technique: 'User Input',
+        action: 'erase',
+        digit: erasedDigit,
+        targets: [{ row, col }],
+        explanation: erasedDigit > 0
+          ? `Erased ${erasedDigit} from R${row + 1}C${col + 1}`
+          : `Cleared notes from R${row + 1}C${col + 1}`,
+        refs: { title: '', slug: '', url: '' },
+        highlights: { primary: [] }, // No highlights for user moves
+        isUserMove: true,
+      }, currentBoard, newCandidates)
 
-    setHistory(limitedHistory)
-    setHistoryIndex(limitedIndex)
+     const newHistory = [...truncatedHistory, eraseMove]
+     const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
+     setHistory(limitedHistory)
+     setHistoryIndex(limitedIndex)
 
     setBoard(newBoard)
     candidatesHook.setCandidates(newCandidates)
@@ -624,55 +600,6 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     boardRef.current = prevBoard
     historyIndexRef.current = newHistoryIndex
   }, [isComplete, updateBoard, candidatesHook.setCandidates])
-
-  // Helper to replay a move's effects (defined before redo which uses it)
-  const replayMove = useCallback((move: Move) => {
-    if (!move.boardBefore || !move.candidatesBefore) return
-
-    const newBoard = [...move.boardBefore]
-    const newCandidates = arraysToCandidates(move.candidatesBefore)
-
-    if (move.action === 'place' && move.targets.length > 0) {
-      const target = move.targets[0]
-      if (!target) return
-      const { row, col } = target
-      const idx = row * BOARD_SIZE + col
-      newBoard[idx] = move.digit
-      // Eliminate from peers
-      eliminateFromPeersCandidates(newCandidates, idx, move.digit)
-    } else if (move.action === 'eliminate' && move.eliminations) {
-      for (const elim of move.eliminations) {
-        const idx = elim.row * BOARD_SIZE + elim.col
-        newCandidates[idx] = removeCandidate(newCandidates[idx] || 0, elim.digit)
-      }
-    } else if (move.action === 'note' && move.targets.length > 0) {
-      const target = move.targets[0]
-      if (!target) return
-      const { row, col } = target
-      const idx = row * BOARD_SIZE + col
-      newCandidates[idx] = addCandidate(newCandidates[idx] || 0, move.digit)
-    } else if (move.action === 'erase' && move.targets.length > 0) {
-      const target = move.targets[0]
-      if (!target) return
-      const { row, col } = target
-      const idx = row * BOARD_SIZE + col
-      newBoard[idx] = 0
-      newCandidates[idx] = candidatesHook.calculateCandidatesForCell(idx, newBoard)
-    } else if (move.action === 'candidate') {
-      // Fill candidates - this is handled by just setting the candidates
-      // The move should have the resulting state in the next move's boardBefore
-      // or we need to recalculate
-      // Use pure helper since we're working with local newBoard state
-      const filled = candidatesHook.calculateAllCandidatesForBoard(newBoard)
-      // Copy filled candidates to newCandidates
-      for (let i = 0; i < TOTAL_CELLS; i++) {
-        newCandidates[i] = filled[i] || 0
-      }
-    }
-
-    setBoard(newBoard)
-    candidatesHook.setCandidates(newCandidates)
-  }, [])
 
   const redo = useCallback(() => {
     // Read from refs for fresh values (prevents stale closure issues with rapid calls)
@@ -914,11 +841,15 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
     // Helpers
     isGivenCell,
+    calculateCandidatesForCell,
+    fillAllCandidates: _fillAllCandidates,
+    areCandidatesFilled: _areCandidatesFilled,
     checkNotes,
   }), [
     board, candidatesHook, history, historyIndex, isComplete,
     digitCounts, setCell, eraseCell, toggleCandidate, undo, redo, resetGame,
     clearAll, clearCandidates, applyExternalMove, setIsComplete, restoreState,
-    setBoardState, isGivenCell, checkNotes
+    setBoardState, isGivenCell, calculateCandidatesForCell, _fillAllCandidates,
+    _areCandidatesFilled, checkNotes
   ])
 }
