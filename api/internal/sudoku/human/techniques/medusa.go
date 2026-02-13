@@ -8,6 +8,23 @@ import (
 	"sudoku-api/pkg/constants"
 )
 
+// Algorithmic Complexity Notes:
+//
+// DetectMedusa3D: O(n × m × k) where:
+//   - n = cells (81)
+//   - m = candidates per cell (up to 9)
+//   - k = graph size (candidate pairs + strong links)
+//   - BFS coloring traverses graph edges
+// - Graph construction: O(n × m) for conjugate pairs + O(n) for bivalue cells
+// - BFS coloring: O(k) where k ≤ 81 × 9 = 729
+// - Contradiction detection: O(k) per component check
+// - Overall complexity is O(n²) in worst case, acceptable for 9x9 grid
+//
+// Complexity is acceptable because:
+//   - Only runs for Medusa detection (advanced technique, not every move)
+//   - Fixed grid size (9x9) limits worst-case operations
+//   - BFS terminates early when contradictions found
+
 // candidatePair represents a cell-candidate pair for 3D Medusa coloring
 type candidatePair struct {
 	cell  int

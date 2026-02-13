@@ -7,6 +7,34 @@ import (
 	"sudoku-api/pkg/constants"
 )
 
+// Algorithmic Complexity Notes:
+//
+// DetectDeathBlossom: O(n³ × a × p) where:
+//   - n = cells (81)
+//   - a = ALS count (all Almost Locked Sets, up to ~1000 for 9x9 grid)
+//   - p = petal combinations (exponential in number of stem candidates)
+//   - For 2-candidate stems: O(n × a²) pairwise combinations
+//   - For 3-candidate stems: O(n × a³) triplet combinations
+//
+// findPetalsForCandidate: O(n × a) where:
+//   - Scans all ALS to find valid petals
+//   - Checks peer relationships (O(1) per check)
+//
+// tryPetalCombinations: O(a^k) where k = stem candidates (2 or 3)
+//   - 2-candidate: O(a²) pairs
+//   - 3-candidate: O(a³) triplets
+//
+// findBlossomEliminations: O(n × p × m) where:
+//   - n = cells (81)
+//   - p = petals (2 or 3)
+//   - m = z-cells per petal (typically 1-4)
+//
+// Overall complexity is O(n³) to O(n⁴), acceptable because:
+//   - Only runs for Death Blossom detection (extreme technique, very rare)
+//   - Fixed grid size (9x9) limits worst-case operations
+//   - Early termination when eliminations found
+//   - ALS discovery is expensive but cached across attempts
+
 // DetectDeathBlossom finds Death Blossom pattern:
 //   - A "stem" cell with N candidates (N = 2 or 3)
 //   - N "petal" ALS, one for each stem candidate

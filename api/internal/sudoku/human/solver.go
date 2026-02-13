@@ -7,6 +7,18 @@ import (
 	"sudoku-api/pkg/constants"
 )
 
+// Algorithmic Complexity Notes:
+//
+// FindNextMove / SolveAll: O(n × t) where n = grid cells (81), t = number of techniques (~30)
+//   - For each technique, scans relevant cells and candidates
+//   - Techniques vary in complexity from O(n) (naked singles) to O(n³) (Jellyfish, Swordfish)
+//   - Overall acceptable because techniques run once per move, not per cell
+//
+// Difficulty Classification: O(n × d) where n = 81 cells, d = difficulty levels (5)
+//   - Analyzes puzzle by applying increasingly complex techniques
+//   - Each technique detection is independent and cached
+//   - Acceptable for one-time classification, not repeated during gameplay
+
 // ============================================================================
 // Solver - Sudoku Solving Orchestration
 // ============================================================================
