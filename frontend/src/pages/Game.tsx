@@ -271,8 +271,6 @@ function GameContent() {
   const { setTimeout: visibilityAwareTimeout } = useVisibilityAwareTimeout()
 
   // Centralized highlight state management with atomic updates
-  // This replaces the old separate useState calls and useHighlightManager
-  // All state updates are now atomic, preventing race conditions on mobile
   const {
     selectedCell,
     highlightedDigit,
@@ -313,20 +311,20 @@ function GameContent() {
          // Only process if a cell is selected
          if (selectedCellRef.current === null) return
 
-         const target = event.target as Element
+        const target = event.target as Element
 
-         const clickedInsideBoard = boardContainerRef.current?.contains(target) ?? false
-         const clickedInsideControls = controlsContainerRef.current?.contains(target) ?? false
-         const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal], .fixed')
+        const clickedInsideBoard = boardContainerRef.current?.contains(target) ?? false
+        const clickedInsideControls = controlsContainerRef.current?.contains(target) ?? false
+        const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal], .fixed')
 
-         const shouldDeselect = !clickedInsideBoard && !clickedInsideControls && !clickedInsideModal
+        const shouldDeselect = !clickedInsideBoard && !clickedInsideControls && !clickedInsideModal
 
-         if (shouldDeselect) {
-           deselectCell()
-           setEraseMode(false)
-           clearMoveHighlight()
-         }
-       }
+        if (shouldDeselect) {
+          deselectCell()
+          setEraseMode(false)
+          clearMoveHighlight()
+        }
+      }
 
        // Listen to both mouse and touch events for cross-device support
        document.addEventListener('mousedown', handleClickOutside)
@@ -1334,7 +1332,6 @@ if (currentGame.board[currentSelectedCell] === digit) {
 
   // Check & Fix handler - compares current board vs solution, removes mismatches, continues solving
   const handleCheckAndFix = useCallback(async () => {
-    // DEBUG: Log the result.moves list from WASM
     logger.debug('Check & Fix invoked');
     if (!solution || solution.length !== 81) {
       logger.error('Cannot check and fix: solution not available')
