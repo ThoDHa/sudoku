@@ -1,19 +1,20 @@
 import { test, expect } from '@playwright/test';
-import { setupGameAndWaitForBoard } from '../utils/board-wait';
 import log from 'loglevel';
 const logger = log;
 logger.setLevel('info');
 
 /**
- * Resume Bug Reproduction Test
+ * Resume Seed State Mismatch Tests
  *
- * Reproduces the resume functionality bug where:
- * 1. Resume button shows daily game with seed daily-YYYY-MM-DD
- * 2. Navigation goes to that seed
- * 3. Restoration fails because saved game has random P-prefixed seed
- * 4. Infinite loop occurs
+ * Verifies resume functionality handles seed state correctly when:
+ * 1. User navigates to daily game with seed daily-YYYY-MM-DD
+ * 2. Game state is saved to localStorage
+ * 3. User returns via URL with the same seed
+ * 4. Saved state seed matches URL seed parameter
  *
- * Tag: @bug @resume
+ * This ensures proper state restoration without seed mismatches
+ *
+ * Tag: @regression @resume
  */
 
 test.describe('@regression Resume Game State - Seed Mismatch Recovery', () => {
@@ -37,7 +38,7 @@ test.describe('@regression Resume Game State - Seed Mismatch Recovery', () => {
     });
   });
 
-  test('resume daily game shows correct seed in localStorage', async ({ page }) => {
+  test('resume saves daily game with correct seed in localStorage', async ({ page }) => {
     // Collect console messages
     const consoleMessages: string[] = [];
     page.on('console', msg => {
@@ -112,7 +113,7 @@ test.describe('@regression Resume Game State - Seed Mismatch Recovery', () => {
 
     // Navigate back - should show resume modal if there's an in-progress game
     await page.goto(`/${dailySeed}?d=medium`);
-    
+
     // Wait for page components to mount and game state to load
     await page.waitForLoadState('networkidle');
     await expect(page.locator('[role="grid"]')).toBeVisible({ timeout: 15000 });
@@ -134,7 +135,7 @@ test.describe('@regression Resume Game State - Seed Mismatch Recovery', () => {
       log.includes('daily-') && log.includes('P')
     );
     if (seedMismatchFound) {
-      logger.error('[PLAYWRIGHT] ❌ BUG REPRODUCED: Seed mismatch detected!');
+      logger.error('[PLAYWRIGHT] ❌ SEED MISMATCH DETECTED!');
     } else {
       logger.info('[PLAYWRIGHT] ✅ No seed mismatch detected');
     }
