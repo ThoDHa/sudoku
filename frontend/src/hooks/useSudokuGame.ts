@@ -49,8 +49,6 @@ export interface Move {
 interface UseSudokuGameOptions {
   /** Initial givens (the starting puzzle) */
   initialBoard: number[]
-  /** Callback when game is completed */
-  onComplete?: () => void
 }
 
 export interface UseSudokuGameReturn {
@@ -117,7 +115,7 @@ export interface UseSudokuGameReturn {
  * Handles board state, candidates, undo/redo, and move history.
  */
 export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameReturn {
-  const { initialBoard, onComplete } = options
+  const { initialBoard } = options
 
   // Store a stable reference to the initial board (the puzzle givens)
   // This is updated only when resetGame is called or when the initialBoard prop changes
@@ -302,6 +300,59 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     return givenCells[idx] !== 0
   }, [givenCells])
 
+  // Helper to replay a move's effects (defined before redo which uses it)
+  const replayMove = useCallback((move: Move) => {
+    if (!move.boardBefore || !move.candidatesBefore) return
+
+    const newBoard = [...move.boardBefore]
+    const newCandidates = arraysToCandidates(move.candidatesBefore)
+
+    if (move.action === 'place' && move.targets.length > 0) {
+      const target = move.targets[0]
+      if (!target) return
+      const { row, col } = target
+      const idx = row * BOARD_SIZE + col
+      newBoard[idx] = move.digit
+      candidatesHook.eliminateFromPeers(newCandidates, idx, move.digit)
+    } else if (move.action === 'eliminate' && move.eliminations) {
+      for (const elim of move.eliminations) {
+        const idx = elim.row * BOARD_SIZE + elim.col
+        newCandidates[idx] = removeCandidate(newCandidates[idx] || 0, elim.digit)
+      }
+    } else if (move.action === 'note' && move.targets.length > 0) {
+      const target = move.targets[0]
+      if (!target) return
+      const { row, col } = target
+      const idx = row * BOARD_SIZE + col
+      newCandidates[idx] = addCandidate(newCandidates[idx] || 0, move.digit)
+    } else if (move.action === 'erase' && move.targets.length > 0) {
+      const target = move.targets[0]
+      if (!target) return
+      const { row, col } = target
+      const idx = row * BOARD_SIZE + col
+      newBoard[idx] = 0
+      newCandidates[idx] = candidatesHook.calculateCandidatesForCell(idx, newBoard)
+    } else if (move.action === 'candidate') {
+      const filled = candidatesHook.calculateAllCandidatesForBoard(newBoard)
+      for (let i = 0; i < TOTAL_CELLS; i++) {
+        newCandidates[i] = filled[i] || 0
+      }
+    }
+
+    setBoard(newBoard)
+    candidatesHook.setCandidates(newCandidates)
+  }, [candidatesHook.eliminateFromPeers, candidatesHook.calculateAllCandidatesForBoard])
+
+  // ============================================================
+  // CORE ACTIONS
+  // ============================================================
+  // HELPER FUNCTIONS
+  // ============================================================
+
+  const isGivenCell = useCallback((idx: number): boolean => {
+    return givenCells[idx] !== 0
+  }, [givenCells])
+
   // ============================================================
   // CORE ACTIONS
   // ============================================================
@@ -358,7 +409,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
            ? `Removed note ${digit} from R${row + 1}C${col + 1}`
            : `Added note ${digit} to R${row + 1}C${col + 1}`,
          refs: { title: '', slug: '', url: '' },
-         highlights: { primary: [] }, // No highlights for user moves
+         highlights: { primary: [] },
          isUserMove: true,
        }, currentBoard, newCandidates)
        const newHistory = [...truncatedHistory, noteMove]
@@ -389,14 +440,14 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       // Add user move to history with compact diff
       const userMove = createMoveWithDiff({
         step_index: truncatedHistory.length,
-        technique: 'User Input',
-        action: 'place',
-        digit,
-        targets: [{ row, col }],
-        explanation: `Placed ${digit} at R${row + 1}C${col + 1}`,
-        refs: { title: '', slug: '', url: '' },
-        highlights: { primary: [] }, // No highlights for user moves
-        isUserMove: true,
+         technique: 'User Input',
+         action: 'place',
+         digit,
+         targets: [{ row, col }],
+         explanation: `Placed ${digit} at R${row + 1}C${col + 1}`,
+         refs: { title: '', slug: '', url: '' },
+         highlights: { primary: [] },
+         isUserMove: true,
       }, newBoard, newCandidates)
 
       const newHistory = [...truncatedHistory, userMove]
@@ -415,7 +466,13 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       checkCompletion(newBoard)
     }
   }, [
-    isGivenCell, candidatesHook.eliminateFromPeers, checkCompletion, createMoveWithDiff, updateBoard, candidatesHook.setCandidates, limitHistory
+    isGivenCell,
+    candidatesHook.eliminateFromPeers,
+    checkCompletion,
+    createMoveWithDiff,
+    updateBoard,
+    limitHistory,
+    candidatesHook.setCandidates
   ])
 
   const toggleCandidate = useCallback((idx: number, digit: number) => {
@@ -508,18 +565,16 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
        isUserMove: true,
      }, newBoard, newCandidates)
 
-     const newHistory = [...truncatedHistory, eraseMove]
-     const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
-     setHistory(limitedHistory)
-     setHistoryIndex(limitedIndex)
+    setHistory(limitedHistory)
+    setHistoryIndex(limitedIndex)
 
-     setBoard(newBoard)
-     candidatesHook.setCandidates(newCandidates)
+    setBoard(newBoard)
+    candidatesHook.setCandidates(newCandidates)
 
-     // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
-     boardRef.current = newBoard
-     historyRef.current = limitedHistory
-     historyIndexRef.current = limitedIndex
+    // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
+    boardRef.current = newBoard
+    historyRef.current = limitedHistory
+    historyIndexRef.current = limitedIndex
   }, [isGivenCell, candidatesHook, createMoveWithDiff, candidatesHook.setCandidates, limitHistory])
 
   const undo = useCallback(() => {
