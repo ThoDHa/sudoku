@@ -306,35 +306,34 @@ function GameContent() {
    // CLICK OUTSIDE TO DESELECT (UX Enhancement)
    // ============================================================
    // When user clicks/taps outside of game interface, deselects the current cell
-      useEffect(() => {
-        const handleClickOutside = (event: Event) => {
+       useEffect(() => {
+        const handleInteraction = (event: Event) => {
           // Only process if a cell is selected
           if (selectedCellRef.current === null) return
 
           const target = event.target as Element | null
           if (!target) return
 
-          const clickedInsideBoard = boardContainerRef.current?.contains(target) ?? false
-          const clickedInsideControls = controlsContainerRef.current?.contains(target) ?? false
-          const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal], .fixed')
+          // Use gameContentRef to check entire game interface (board + controls)
+          const clickedInsideGame = gameContentRef.current?.contains(target) ?? false
+          
+          // Check for actual modals (not toasts/notifications)
+          const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal]')
 
-          const shouldDeselect = !clickedInsideBoard && !clickedInsideControls && !clickedInsideModal
-
-          if (shouldDeselect) {
+          // Deselect if click is outside game interface and not in a modal
+          if (!clickedInsideGame && !clickedInsideModal) {
             deselectCell()
             setEraseMode(false)
             clearMoveHighlight()
           }
         }
 
-       // Listen to both mouse and touch events for cross-device support
-       document.addEventListener('mousedown', handleClickOutside)
-       document.addEventListener('touchstart', handleClickOutside)
-       document.addEventListener('click', handleClickOutside)
+       // Listen to both click and touchstart for mobile compatibility
+       document.addEventListener('click', handleInteraction)
+       document.addEventListener('touchstart', handleInteraction)
        return () => {
-         document.removeEventListener('mousedown', handleClickOutside)
-         document.removeEventListener('touchstart', handleClickOutside)
-         document.removeEventListener('click', handleClickOutside)
+         document.removeEventListener('click', handleInteraction)
+         document.removeEventListener('touchstart', handleInteraction)
        }
    }, [deselectCell, clearMoveHighlight, setEraseMode])
 
@@ -2146,7 +2145,7 @@ ${bugReportJson}
 
       {/* Validation message toast */}
       {validationMessage && (
-        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg flex items-center gap-3 ${
+        <div className={`validation-message fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg flex items-center gap-3 ${
           validationMessage.type === 'success' 
             ? 'bg-accent text-btn-active-text' 
             : validationMessage.type === 'info'
@@ -2168,19 +2167,10 @@ ${bugReportJson}
         </div>
       )}
 
-        <div
-          className="game-background game-area flex-1"
-          data-testid="game-background"
-          onClick={(e) => {
-            // Deselect cell when clicking on game-area background (outside game-container)
-            // The event target will be the game-area div itself when clicking the outer edges
-            if (e.target === e.currentTarget) {
-              deselectCell()
-              setEraseMode(false)
-              clearMoveHighlight()
-            }
-          }}
-        >
+         <div
+           className="game-background game-area flex-1"
+           data-testid="game-background"
+         >
 
         {/* Game container - sizes based on available height and width */}
         {/* Deselection now handled by global document listener for consistency */}
