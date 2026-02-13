@@ -1208,10 +1208,25 @@ func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int
 	return -1, 0, -1
 }
 
-// findErrorByTrialRemoval tries removing each user-entered digit to see if the solver can progress.
-// This is a brute-force approach when other methods fail: temporarily remove each user digit,
-// reinitialize the board, and check if the solver can now find a move.
-// Returns the cell index and digit of the first entry whose removal allows progress, or -1 if none found.
+// findErrorByTrialRemoval uses brute-force trial removal to identify user errors
+//
+// This is a fallback approach when other error detection methods fail. It tests each
+// user-entered cell by temporarily removing it and checking if the solver can then
+// find a valid move.
+//
+// Strategy:
+// 1. Collect all user-entered cells (non-zero, not givens)
+// 2. For each user cell, create a test board with that cell cleared
+// 3. Run solver on test board to see if progress is possible
+// 4. Return first cell whose removal allows a non-contradiction move
+//
+// Parameters:
+//
+//	originalUserBoard: Current board state (81 cells)
+//	givens: Original puzzle clues (identifies user-entered cells)
+//	solver: Human solver instance for testing board states
+//
+// Returns: (cellIndex, digit) or (-1, 0) if no error found
 func findErrorByTrialRemoval(originalUserBoard []int, givens []int, solver *human.Solver) (int, int) {
 	// Collect all user-entered cells (non-zero, non-given)
 	var userCells []int
@@ -1244,10 +1259,27 @@ func findErrorByTrialRemoval(originalUserBoard []int, givens []int, solver *huma
 	return -1, 0
 }
 
-// findMissingCandidates checks if the user has incorrectly removed candidates that are logically valid.
-// When solver stalls, it might be because the correct digit was eliminated from a cell.
-// This function compares user candidates against what SHOULD be valid based on Sudoku rules.
-// Returns: cell index, the missing digit that should be restored, and whether any were found.
+// findMissingCandidates detects when user incorrectly removed valid pencil mark candidates
+//
+// Sometimes users accidentally remove candidates that are logically valid. When the solver
+// stalls, this function compares user candidates against the correct candidates based
+// on Sudoku rules to find missing pencil marks.
+//
+// Strategy:
+// 1. Create fresh board to get "correct" candidates for each empty cell
+// 2. Compare user's candidates against correct candidates
+// 3. For each missing digit, test if restoring it allows solver progress
+// 4. Return first restoration that enables a valid move
+//
+// Parameters:
+//
+//	cells: Current board state (81 cells)
+//	userCandidates: User's pencil marks (81 arrays, may be empty/incomplete)
+//	solver: Human solver instance for testing candidate restorations
+//
+// Returns: (cellIndex, missingDigit, found) or (-1, 0, false) if none found
+//
+//	found: Boolean indicating if a missing candidate was identified
 func findMissingCandidates(cells []int, userCandidates [][]int, solver *human.Solver) (int, int, bool) {
 	// Create a fresh board to get "correct" candidates based on current filled cells
 	freshBoard := human.NewBoard(cells)
@@ -1289,7 +1321,17 @@ func findMissingCandidates(cells []int, userCandidates [][]int, solver *human.So
 	return -1, 0, false
 }
 
-// formatExplanation is a simple sprintf helper
+// formatExplanation provides sprintf-style formatting for error and move explanations
+//
+// This is a lightweight string formatter for WebAssembly environments where
+// full fmt.Sprintf may not be available. Supports %d (int) and %s (string) placeholders.
+//
+// Parameters:
+//
+//	format: String with %d/%s placeholders
+//	args: Variable arguments for placeholder replacement
+//
+// Returns: Formatted string with all placeholders replaced
 func formatExplanation(format string, args ...interface{}) string {
 	// Simple implementation for common case
 	result := format
@@ -1316,6 +1358,16 @@ func formatExplanation(format string, args ...interface{}) string {
 	return result
 }
 
+// intToString converts an integer to its decimal string representation
+//
+// This is a lightweight integer-to-string converter for WebAssembly environments
+// where standard strconv.Itoa may not be available.
+//
+// Parameters:
+//
+//	n: Integer value to convert (handles negative numbers)
+//
+// Returns: Decimal string representation of the integer
 func intToString(n int) string {
 	if n == 0 {
 		return "0"
@@ -1333,7 +1385,14 @@ func intToString(n int) string {
 
 // ==================== Validation Functions ====================
 
-// validationResultToJS creates a validation result JS object
+// validationResultToJS creates a JavaScript object representing a board validation result
+//
+// Parameters:
+//
+//	valid: Boolean indicating if board state is valid
+//	reason: Optional string explaining why board is invalid (empty string if valid)
+//
+// Returns: JavaScript object with "valid" and optionally "reason" properties
 func validationResultToJS(valid bool, reason string) js.Value {
 	obj := js.Global().Get("Object").New()
 	obj.Set("valid", valid)
@@ -1343,7 +1402,17 @@ func validationResultToJS(valid bool, reason string) js.Value {
 	return obj
 }
 
-// validationResultWithUniqueToJS creates a validation result with unique field
+// validationResultWithUniqueToJS creates a JavaScript object for custom puzzle validation
+//
+// Used when validating user-created puzzles to check for uniqueness (single solution).
+//
+// Parameters:
+//
+//	valid: Boolean indicating if puzzle is solvable
+//	unique: Boolean indicating if puzzle has exactly one solution
+//	reason: Optional string explaining validation result
+//
+// Returns: JavaScript object with "valid", "unique", and optionally "reason" properties
 func validationResultWithUniqueToJS(valid bool, unique bool, reason string) js.Value {
 	obj := js.Global().Get("Object").New()
 	obj.Set("valid", valid)
@@ -1354,7 +1423,17 @@ func validationResultWithUniqueToJS(valid bool, unique bool, reason string) js.V
 	return obj
 }
 
-// validationResultWithSolutionToJS creates a validation result with solution
+// validationResultWithSolutionToJS creates a JavaScript object for puzzle validation with solution
+//
+// Used when returning full puzzle solutions to the frontend.
+//
+// Parameters:
+//
+//	valid: Boolean indicating if puzzle was solvable
+//	unique: Boolean indicating if puzzle has exactly one solution
+//	solution: 81-element array representing the complete solved puzzle
+//
+// Returns: JavaScript object with "valid", "unique", and "final_board" properties
 func validationResultWithSolutionToJS(valid bool, unique bool, solution []int) js.Value {
 	obj := js.Global().Get("Object").New()
 	obj.Set("valid", valid)
