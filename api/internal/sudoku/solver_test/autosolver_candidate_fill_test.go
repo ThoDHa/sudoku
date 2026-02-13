@@ -137,9 +137,10 @@ func TestEmptyCandidatesNotTreatedAsContradiction(t *testing.T) {
 		move.Technique, move.Digit, move.Targets[0].Row+1, move.Targets[0].Col+1)
 }
 
-// TestAutosolverCandidateFillBug verifies the fix for the autosolver candidate fill bug
-// where the solver would incorrectly place values before completing candidate filling
-func TestAutosolverCandidateFillBug(t *testing.T) {
+// TestAutosolverCandidateFillPreventsIncorrectPlacement verifies that the solver
+// prevents incorrect placements during candidate filling by completing candidate
+// filling before attempting value assignments
+func TestAutosolverCandidateFillPreventsIncorrectPlacement(t *testing.T) {
 	solver := human.NewSolver()
 
 	// Create scenarios that test the two-phase approach and bug fixes
