@@ -24,6 +24,10 @@ export const ERROR_FIX_RESUME_DELAY = 500  // Delay before resuming solve after 
 export const HISTORY_SCROLL_DELAY = 50
 export const ANIMATION_STEP_INTERVAL = 2500  // Animation step duration for technique diagrams
 
+// Auto-solve timing
+export const AUTO_SOLVE_MAX_TIME = 15000  // Maximum time for auto-solve operations
+export const AUTO_SOLVE_STEP_DELAY = 100  // Delay between auto-solve polling steps
+
 // Background/battery management timing
 export const EXTENDED_PAUSE_DELAY = 15000  // Suspend all operations after 15 seconds hidden
 
