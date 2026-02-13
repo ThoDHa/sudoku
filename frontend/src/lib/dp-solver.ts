@@ -194,7 +194,7 @@ export function validatePuzzle(givens: number[]): ValidateResult {
  * Validate a board against a known solution.
  * Returns which cells are incorrect (if any).
  */
-export function validateBoard(board: number[], solution: number[]): {
+export function validateBoardAgainstSolution(board: number[], solution: number[]): {
   valid: boolean
   message?: string
   incorrectCells?: number[]

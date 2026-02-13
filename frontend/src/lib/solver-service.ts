@@ -26,7 +26,7 @@ import {
 
 import { getPuzzleForSeed as getStaticPuzzle } from './puzzles-data'
 import { logger } from './logger'
-import { validatePuzzle as dpValidatePuzzle, validateBoard as dpValidateBoard } from './dp-solver'
+import { validatePuzzle as dpValidatePuzzle, validateBoardAgainstSolution as dpValidateBoard } from './dp-solver'
 
 // ==================== Types ====================
 

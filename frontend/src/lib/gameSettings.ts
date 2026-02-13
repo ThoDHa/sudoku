@@ -3,6 +3,7 @@
 import { STORAGE_KEYS } from './constants'
 import { HomepageMode } from './preferences'
 import { logger } from './logger'
+import { getGameMode as getGameModeFromSeed } from './seedValidation'
 
 // =============================================================================
 // GAME MODE DETECTION
@@ -16,11 +17,9 @@ export type GameMode = 'daily' | 'practice' | null
  * @returns 'daily' for daily puzzles, 'practice' for practice puzzles, null for unknown
  */
 export function getGameMode(seed: string): GameMode {
-  if (!seed) return null
-  if (seed.startsWith('daily-')) return 'daily'
-  if (seed.startsWith('P')) return 'practice'
-  if (seed.startsWith('practice-')) return 'practice'
-  return null
+  const mode = getGameModeFromSeed(seed)
+  // Filter out 'custom' to maintain type safety for this module
+  return mode === 'custom' ? null : mode
 }
 
 /**
