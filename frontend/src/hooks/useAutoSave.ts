@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { STORAGE_KEYS } from '../lib/constants'
+import { STORAGE_KEYS, ERROR_FIX_RESUME_DELAY } from '../lib/constants'
 import { getAutoSaveEnabled } from '../lib/gameSettings'
 import { candidatesToArrays } from '../lib/candidatesUtils'
 import type { Move } from './useSudokuGame'
@@ -174,7 +174,7 @@ export function useAutoSave(options: UseAutoSaveOptions) {
             saveGameState()
             hasUnsavedChanges.current = false
           }
-        }, 500)
+        }, ERROR_FIX_RESUME_DELAY)
       }
     }
 

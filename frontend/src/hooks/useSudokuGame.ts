@@ -270,8 +270,6 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     return validCandidates
   }, [])
 
-  // Pure helper: Calculate all candidates for a given board state
-  // Used by legacy replay code that works with local board copies
   const calculateAllCandidatesForBoard = useCallback((board: number[]): Uint16Array => {
     const newCandidates = new Uint16Array(TOTAL_CELLS)
     
@@ -388,8 +386,6 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   }, [isComplete, isValidSolution, onComplete])
 
   // Helper to create move with state diff for compact history
-  // Note: We no longer store boardBefore/candidatesBefore for new moves (saves ~50% memory)
-  // Legacy fields are still READ by undo/redo for backward compatibility with old saves
   const createMoveWithDiff = useCallback((
     moveBase: Omit<Move, 'stateDiff' | 'boardBefore' | 'candidatesBefore'>,
     newBoard: number[],
@@ -399,8 +395,6 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     return {
       ...moveBase,
       stateDiff,
-      // No longer storing legacy fields - stateDiff is sufficient
-      // Undo/redo will fall back to legacy fields only for old saved games
     }
   }, [board, candidates])
 
@@ -645,7 +639,6 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     let prevBoard: number[]
     let prevCandidates: Uint16Array
     
-    // Use diff-based undo if available, fallback to legacy approach
     if (currentMove.stateDiff) {
       const result = unapplyStateDiff(currentBoard, currentCandidates, currentMove.stateDiff)
       prevBoard = result.board
@@ -744,7 +737,6 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     let newBoard: number[]
     let newCandidates: Uint16Array
     
-    // Use diff-based redo if available, fallback to legacy approach
     if (nextMove.stateDiff) {
       const result = applyStateDiff(currentBoard, currentCandidates, nextMove.stateDiff)
       newBoard = result.board
@@ -835,12 +827,10 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const currentHistory = historyRef.current
     const currentHistoryIndex = historyIndexRef.current
     
-    // Create move with compact diff only (no legacy fields for new moves)
     const stateDiff = createStateDiff(currentBoard, newBoard, currentCandidates, newCandidates)
     const moveWithState: Move = {
       ...move,
       stateDiff,
-      // No longer storing legacy fields - stateDiff is sufficient
     }
     
     const truncatedHistory = currentHistory.slice(0, currentHistoryIndex + 1)

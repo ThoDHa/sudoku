@@ -158,12 +158,10 @@ export function generatePuzzleUrl(score: Score): string {
   if (score.difficulty === 'custom' && score.encodedPuzzle) {
     return `${base}/c/${score.encodedPuzzle}`
   }
-  // For custom puzzles without encoded data (legacy), don't include a shareable link
   if (score.difficulty === 'custom') {
     return `${base}/custom`
   }
   // Share link without difficulty - recipient chooses their own
-  // Routes are now /:seed (no /p/ prefix)
   return `${base}/${score.seed}`
 }
 

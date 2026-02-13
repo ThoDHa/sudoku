@@ -93,7 +93,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (saved && ['light', 'dark', 'system'].includes(saved)) {
       return saved as ModePreference
     }
-    // Migrate from old 'mode' key if it exists
     const oldMode = localStorage.getItem('mode')
     if (oldMode && (oldMode === 'light' || oldMode === 'dark')) {
       return oldMode as ModePreference
@@ -127,7 +126,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('colorTheme', colorTheme)
     localStorage.setItem('modePreference', modePreference)
     localStorage.setItem('fontSize', fontSize)
-    // Clean up old key
     localStorage.removeItem('mode')
 
     // Get theme colors from centralized themes.ts and convert to CSS vars

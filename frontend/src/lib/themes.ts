@@ -818,7 +818,6 @@ export function themeToCssVars(colors: SemanticColors): Record<string, string> {
 
 export const VALID_THEMES: ColorTheme[] = ['tokyonight', 'dracula', 'nord', 'catppuccin', 'gruvbox', 'rosepine', 'solarized', 'onedark']
 
-// Map old theme names to new open-source theme names
 export const THEME_MIGRATION: Record<string, ColorTheme> = {
   'blue': 'tokyonight',
   'indigo': 'tokyonight',

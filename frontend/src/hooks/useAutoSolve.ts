@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { PLAY_DELAY } from '../lib/constants'
+import { PLAY_DELAY, AUTO_SOLVE_MAX_TIME, AUTO_SOLVE_STEP_DELAY } from '../lib/constants'
 import { solveAll } from '../lib/solver-service'
 import { useBackgroundManager } from './useBackgroundManager'
 import type { Move } from './useSudokuGame'
@@ -814,7 +814,6 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       const newCandidates = moveResult.candidates
         ? moveResult.candidates.map((cellCands: number[] | null) => new Set<number>(cellCands || []))
         : getCandidates()
-      // ADDED DEBUG LOGGING FOR EACH MOVE APPLIED
       logger.debug(`[AutoSolve:playMoves] Action: ${moveResult.move && moveResult.move.action} | Index: ${newIndex}`)
       applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
       stateHistoryRef.current.push({
@@ -950,8 +949,8 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
       // Poll for completion of the fixes playback by watching the moves queue
       const start = Date.now()
-      const POLL_INTERVAL = 100 // ms
-      const TIMEOUT = 15000 // ms - safety timeout
+      const POLL_INTERVAL = AUTO_SOLVE_STEP_DELAY // ms
+      const TIMEOUT = AUTO_SOLVE_MAX_TIME // ms - safety timeout
 
       const checkDone = async () => {
         // If queue empty, assume playback finished
