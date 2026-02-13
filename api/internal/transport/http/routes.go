@@ -25,21 +25,21 @@ var cfg *config.Config
 func RegisterRoutes(r *gin.Engine, c *config.Config) {
 	cfg = c
 
-	r.GET("/health", healthHandler)
+	r.GET(constants.RouteHealth, healthHandler)
 
-	api := r.Group("/api")
+	api := r.Group(constants.RouteAPI)
 	{
-		api.GET("/version", versionHandler)
-		api.GET("/daily", dailyHandler)
-		api.GET("/puzzle/:seed", puzzleHandler)
-		api.GET("/puzzle/:seed/analyze", puzzleAnalyzeHandler)
-		api.GET("/practice/:technique", practiceHandler)
-		api.POST("/session/start", sessionStartHandler)
-		api.POST("/solve/next", solveNextHandler)
-		api.POST("/solve/all", solveAllHandler)
-		api.POST("/solve/full", solveFullHandler)
-		api.POST("/validate", validateBoardHandler)
-		api.POST("/custom/validate", customValidateHandler)
+		api.GET(constants.RouteVersion, versionHandler)
+		api.GET(constants.RouteDaily, dailyHandler)
+		api.GET(constants.RoutePuzzleID, puzzleHandler)
+		api.GET(constants.RouteAnalyze, puzzleAnalyzeHandler)
+		api.GET(constants.RoutePractice, practiceHandler)
+		api.POST(constants.RouteSessionStart, sessionStartHandler)
+		api.POST(constants.RouteSolveNext, solveNextHandler)
+		api.POST(constants.RouteSolveAll, solveAllHandler)
+		api.POST(constants.RouteSolveFull, solveFullHandler)
+		api.POST(constants.RouteValidate, validateBoardHandler)
+		api.POST(constants.RouteCustomValidate, customValidateHandler)
 	}
 }
 
@@ -58,6 +58,8 @@ func versionHandler(c *gin.Context) {
 }
 
 // TodayUTC returns today's UTC date string
+//
+// Returns: Current date in UTC formatted as YYYY-MM-DD
 func TodayUTC() string {
 	return time.Now().UTC().Format(constants.DateFormat)
 }
@@ -66,7 +68,7 @@ func dailyHandler(c *gin.Context) {
 	dateUTC := TodayUTC()
 
 	// Deterministic seed from date
-	seed := "D" + dateUTC
+	seed := constants.DailyPuzzlePrefix + dateUTC
 
 	// Get puzzle index for today if puzzles are loaded
 	var puzzleIndex int
@@ -96,7 +98,7 @@ func puzzleHandler(c *gin.Context) {
 		difficulty != core.DifficultyHard &&
 		difficulty != core.DifficultyExtreme &&
 		difficulty != core.DifficultyImpossible {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_difficulty"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid difficulty '%s'. Must be one of: %s, %s, %s, %s, %s", difficulty, core.DifficultyEasy, core.DifficultyMedium, core.DifficultyHard, core.DifficultyExtreme, core.DifficultyImpossible)})
 		return
 	}
 
@@ -124,7 +126,7 @@ func puzzleHandler(c *gin.Context) {
 	}
 
 	// Generate a deterministic puzzle ID from seed + difficulty
-	puzzleID := seed + "-" + string(difficulty)
+	puzzleID := seed + constants.PuzzleIDDl + string(difficulty)
 
 	c.JSON(http.StatusOK, gin.H{
 		"puzzle_id":    puzzleID,
@@ -150,7 +152,7 @@ func puzzleAnalyzeHandler(c *gin.Context) {
 		difficulty != core.DifficultyHard &&
 		difficulty != core.DifficultyExtreme &&
 		difficulty != core.DifficultyImpossible {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_difficulty"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid difficulty '%s'. Must be one of: %s, %s, %s, %s, %s", difficulty, core.DifficultyEasy, core.DifficultyMedium, core.DifficultyHard, core.DifficultyExtreme, core.DifficultyImpossible)})
 		return
 	}
 
@@ -210,7 +212,35 @@ type practicePuzzle struct {
 	difficulty string
 }
 
-// practiceHandler finds a puzzle that requires a specific technique
+// practiceHandler finds a puzzle requiring a specific technique for practice purposes
+//
+// This endpoint searches the pre-generated puzzle database to find a puzzle that uses
+// the requested technique. Results are cached to speed up subsequent requests for the
+// same technique.
+//
+// Strategy:
+// 1. Check if technique has cached puzzles (random selection from cache)
+// 2. If not cached, sample up to 50 puzzles across difficulty levels
+// 3. Analyze each sampled puzzle to find one using the requested technique
+// 4. Cache found puzzles for faster future lookups
+//
+// Technique-to-difficulty mapping ensures appropriate puzzles:
+// - Simple techniques: Easy/Medium puzzles
+// - Medium techniques: Medium+ puzzles
+// - Hard techniques: Hard/Extreme/Impossible puzzles
+//
+// Parameters:
+//
+//	technique: Slug name of Sudoku technique (e.g., "x-wing", "xy-wing", "swordfish")
+//
+// Response:
+//
+//	seed: Puzzle seed for generating the puzzle
+//	difficulty: Difficulty level of found puzzle
+//	givens: 81-element puzzle clues array
+//	technique: Confirmed technique used in puzzle
+//	puzzle_index: Index in puzzle database
+//	cached: Boolean indicating if result came from cache
 func practiceHandler(c *gin.Context) {
 	technique := c.Param("technique")
 
@@ -291,7 +321,7 @@ func practiceHandler(c *gin.Context) {
 
 		givens, _, err := loader.GetPuzzle(p.index, p.difficulty)
 		if err == nil {
-			seed := fmt.Sprintf("practice-%s-%d", technique, p.index)
+			seed := fmt.Sprintf(constants.PracticePuzzleIDFmt, technique, p.index)
 			c.JSON(http.StatusOK, gin.H{
 				"seed":         seed,
 				"difficulty":   p.difficulty,
@@ -339,7 +369,7 @@ func practiceHandler(c *gin.Context) {
 				})
 				practiceCache.Unlock()
 
-				seed := fmt.Sprintf("practice-%s-%d", technique, idx)
+				seed := fmt.Sprintf(constants.PracticePuzzleIDFmt, technique, idx)
 				c.JSON(http.StatusOK, gin.H{
 					"seed":         seed,
 					"difficulty":   diff,
@@ -361,12 +391,26 @@ func practiceHandler(c *gin.Context) {
 	})
 }
 
+// hashSeed generates a deterministic hash from a seed string for puzzle generation
+//
+// Parameters:
+//
+//	seed: string to hash (can be puzzle ID, date, or any unique identifier)
+//
+// Returns: 64-bit integer hash value (overflow is expected behavior for seeding)
 func hashSeed(seed string) int64 {
 	h := fnv.New64a()
 	h.Write([]byte(seed))
 	return int64(h.Sum64()) //nolint:gosec // hash value overflow is expected behavior
 }
 
+// hashSolution generates a unique SHA-256 hash of a completed puzzle board
+//
+// Parameters:
+//
+//	board: 81-element array representing the complete solved puzzle
+//
+// Returns: Hexadecimal SHA-256 hash (64 characters)
 func hashSolution(board []int) string {
 	h := sha256.New()
 	for _, v := range board {
@@ -395,12 +439,12 @@ func sessionStartHandler(c *gin.Context) {
 		difficulty != core.DifficultyHard &&
 		difficulty != core.DifficultyExtreme &&
 		difficulty != core.DifficultyImpossible {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_difficulty"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid difficulty '%s'. Must be one of: %s, %s, %s, %s, %s", req.Difficulty, core.DifficultyEasy, core.DifficultyMedium, core.DifficultyHard, core.DifficultyExtreme, core.DifficultyImpossible)})
 		return
 	}
 
 	// Generate deterministic puzzle ID
-	puzzleID := req.Seed + "-" + req.Difficulty
+	puzzleID := req.Seed + constants.PuzzleIDDl + req.Difficulty
 
 	now := time.Now()
 	session := SessionToken{
@@ -693,10 +737,20 @@ type SolveAllRequest struct {
 	Givens     []int   `json:"givens"` // Original puzzle givens (to identify user-entered cells)
 }
 
-// findBlockingUserCell analyzes a contradiction and finds which user-entered cell is causing it.
-// originalUserBoard is the board state when solve was called (to distinguish user entries from solver placements)
-// givens is the original puzzle (to distinguish user entries from given clues)
-// Returns the cell index and the blocking digit, or -1 if no user error found.
+// findBlockingUserCell analyzes a contradiction and identifies which user-entered cell is causing it
+//
+// Parameters:
+//
+//	board: Current solver board state with all candidates
+//	contradictionCell: Cell index that has no valid candidates (0-80)
+//	originalUserBoard: Board state when solve was called (distinguishes user entries from solver placements)
+//	givens: Original puzzle (distinguishes user entries from given clues)
+//
+// Returns: Cell index and blocking digit, or (-1, 0) if no user error found
+//
+// Strategy: For each digit 1-9, find what's blocking it from the contradiction cell.
+// Only user-entered cells (not givens, not solver placements) are considered.
+// The cell blocking the most candidates is identified as most likely wrong.
 func findBlockingUserCell(board *human.Board, contradictionCell int, originalUserBoard []int, givens []int) (int, int) {
 	row, col := contradictionCell/constants.GridSize, contradictionCell%constants.GridSize
 	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
@@ -777,10 +831,23 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 	return -1, 0
 }
 
-// findErrorByCandidateRefill clears all candidates, refills them, and looks for cells with zero candidates.
-// This is the "human-like" approach: when stuck, clear your pencil marks and start fresh.
-// If a cell has zero candidates, trace back to find which user-entered cell is blocking it.
-// Returns the cell index and digit, or -1 if no error found this way.
+// findErrorByCandidateRefill uses "clear and recalculate" strategy to find user errors
+//
+// This is a "human-like" approach: when stuck, clear your pencil marks and recalculate
+// from the current board state. Any cell with zero candidates indicates an error.
+//
+// Parameters:
+//
+//	originalUserBoard: Current board state (81 cells, 0 = empty)
+//	givens: Original puzzle clues (distinguishes user entries from givens)
+//
+// Returns: (badCell, badDigit, zeroCandidateCell) or (-1, 0, -1) if no error found
+//
+// Strategy:
+// 1. Create fresh board and recalculate all candidates from scratch
+// 2. Find first cell with zero candidates (indicates unsolvable state)
+// 3. For digits 1-9, find which user-entered cells block them from that cell
+// 4. Return first blocking user cell found
 func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int, int) {
 	// Create a fresh board with candidates properly initialized
 	// Use NewBoard which auto-fills candidates based on current cell values
@@ -843,7 +910,14 @@ func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int
 	return -1, 0, -1
 }
 
-// countUserEntries counts how many cells have user entries (not givens)
+// countUserEntries counts how many cells contain user-entered digits (excluding original givens)
+//
+// Parameters:
+//
+//	board: Current board state (81 cells)
+//	givens: Original puzzle clues (distinguishes user entries from given digits)
+//
+// Returns: Number of non-zero cells that are not original givens
 func countUserEntries(board []int, givens []int) int {
 	count := 0
 	for i := 0; i < constants.TotalCells; i++ {
@@ -854,6 +928,29 @@ func countUserEntries(board []int, givens []int) int {
 	return count
 }
 
+// solveAllHandler automatically solves a puzzle with error detection and correction
+//
+// This endpoint runs the human solver in a loop, finding and applying moves until:
+// - The puzzle is solved
+// - The solver stalls (no moves found but not solved)
+// - A contradiction is detected (user error found and fixed)
+// - Too many user errors to fix (maxFixes limit reached)
+//
+// When user errors are found (direct conflicts, contradictions, impossible states),
+// the handler automatically identifies the problematic cell and removes it, then continues solving.
+//
+// Parameters (from request body):
+//
+//	token: JWT session token for validation
+//	board: Current board state (81 cells, 0 = empty)
+//	candidates: Optional pencil marks (81 arrays of digits)
+//	givens: Original puzzle clues (to identify user-entered cells)
+//
+// Response:
+//
+//	moves: Array of move snapshots (board, candidates, move description)
+//	solved: Boolean indicating if puzzle was completely solved
+//	finalBoard: Final board state (81 cells)
 func solveAllHandler(c *gin.Context) {
 	var req SolveAllRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

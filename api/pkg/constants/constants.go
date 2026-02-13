@@ -82,3 +82,29 @@ const DefaultPort = "8080"
 
 // Date format
 const DateFormat = "2006-01-02"
+
+// Puzzle constants
+const (
+	DailyPuzzlePrefix   = "D"
+	PuzzleIDDl          = "-"
+	DailyDateFormat     = "2006-01-02"
+	PracticePuzzleIDFmt = "practice-%s-%d"
+)
+
+// HTTP route paths
+const (
+	RouteHealth         = "/health"
+	RouteAPI            = "/api"
+	RouteVersion        = "/version"
+	RouteDaily          = "/daily"
+	RoutePuzzle         = "/puzzle"
+	RoutePuzzleID       = "/puzzle/:seed"
+	RouteAnalyze        = "/puzzle/:seed/analyze"
+	RoutePractice       = "/practice/:technique"
+	RouteSessionStart   = "/session/start"
+	RouteSolveNext      = "/solve/next"
+	RouteSolveAll       = "/solve/all"
+	RouteSolveFull      = "/solve/full"
+	RouteValidate       = "/validate"
+	RouteCustomValidate = "/custom/validate"
+)
