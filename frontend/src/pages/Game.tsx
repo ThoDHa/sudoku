@@ -306,25 +306,26 @@ function GameContent() {
    // CLICK OUTSIDE TO DESELECT (UX Enhancement)
    // ============================================================
    // When user clicks/taps outside of game interface, deselects the current cell
-     useEffect(() => {
-       const handleClickOutside = (event: Event) => {
-         // Only process if a cell is selected
-         if (selectedCellRef.current === null) return
+      useEffect(() => {
+        const handleClickOutside = (event: Event) => {
+          // Only process if a cell is selected
+          if (selectedCellRef.current === null) return
 
-        const target = event.target as Element
+          const target = event.target as Element | null
+          if (!target) return
 
-        const clickedInsideBoard = boardContainerRef.current?.contains(target) ?? false
-        const clickedInsideControls = controlsContainerRef.current?.contains(target) ?? false
-        const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal], .fixed')
+          const clickedInsideBoard = boardContainerRef.current?.contains(target) ?? false
+          const clickedInsideControls = controlsContainerRef.current?.contains(target) ?? false
+          const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal], .fixed')
 
-        const shouldDeselect = !clickedInsideBoard && !clickedInsideControls && !clickedInsideModal
+          const shouldDeselect = !clickedInsideBoard && !clickedInsideControls && !clickedInsideModal
 
-        if (shouldDeselect) {
-          deselectCell()
-          setEraseMode(false)
-          clearMoveHighlight()
+          if (shouldDeselect) {
+            deselectCell()
+            setEraseMode(false)
+            clearMoveHighlight()
+          }
         }
-      }
 
        // Listen to both mouse and touch events for cross-device support
        document.addEventListener('mousedown', handleClickOutside)
