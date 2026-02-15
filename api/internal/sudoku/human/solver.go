@@ -439,16 +439,27 @@ func (s *Solver) findNextCandidateMove(b *Board) *core.Move {
 	return nil
 }
 
-// fillCandidatesForRowDigit fills candidate d for all cells in row that need it
-// Returns the first candidate move found, or nil if row is complete for this digit
-func (s *Solver) fillCandidatesForRowDigit(b *Board, row, d int) *core.Move {
-	for col := 0; col < constants.GridSize; col++ {
-		i := row*constants.GridSize + col
+// fillCandidatesForUnit fills candidate d for all cells in a unit (row/col/box)
+// Returns first candidate move found, or nil if unit is complete for this digit
+func (s *Solver) fillCandidatesForUnit(b *Board, unitType UnitType, unitIndex, d int) *core.Move {
+	var cellIndices []int
+
+	switch unitType {
+	case UnitRow:
+		cellIndices = RowIndices[unitIndex]
+	case UnitCol:
+		cellIndices = ColIndices[unitIndex]
+	case UnitBox:
+		cellIndices = BoxIndices[unitIndex]
+	}
+
+	for _, i := range cellIndices {
 		if b.Cells[i] != 0 {
 			continue
 		}
 
-		// Only add if: digit not in cells AND not already a candidate AND not eliminated
+		row, col := i/constants.GridSize, i%constants.GridSize
+
 		if !digitExistsInCells(b, row, col, d) && !b.Candidates[i].Has(d) && !b.Eliminated[i].Has(d) {
 			return &core.Move{
 				Technique:   "fill-candidate",
@@ -468,178 +479,68 @@ func (s *Solver) fillCandidatesForRowDigit(b *Board, row, d int) *core.Move {
 		}
 	}
 	return nil
+}
+
+// fillCandidatesForRowDigit fills candidate d for all cells in row that need it
+// Returns first candidate move found, or nil if row is complete for this digit
+func (s *Solver) fillCandidatesForRowDigit(b *Board, row, d int) *core.Move {
+	return s.fillCandidatesForUnit(b, UnitRow, row, d)
 }
 
 // fillCandidatesForColDigit fills candidate d for all cells in column that need it
 func (s *Solver) fillCandidatesForColDigit(b *Board, col, d int) *core.Move {
-	for row := 0; row < constants.GridSize; row++ {
-		i := row*constants.GridSize + col
-		if b.Cells[i] != 0 {
-			continue
-		}
-
-		if !digitExistsInCells(b, row, col, d) && !b.Candidates[i].Has(d) && !b.Eliminated[i].Has(d) {
-			return &core.Move{
-				Technique:   "fill-candidate",
-				Action:      "candidate",
-				Digit:       d,
-				Targets:     []core.CellRef{{Row: row, Col: col}},
-				Explanation: fmt.Sprintf("Added %d as a candidate to R%dC%d", d, row+1, col+1),
-				Highlights: core.Highlights{
-					Primary: []core.CellRef{{Row: row, Col: col}},
-				},
-				Refs: core.TechniqueRef{
-					Title: "Fill Candidate",
-					Slug:  "fill-candidate",
-					URL:   "/technique/fill-candidate",
-				},
-			}
-		}
-	}
-	return nil
+	return s.fillCandidatesForUnit(b, UnitCol, col, d)
 }
 
 // fillCandidatesForBoxDigit fills candidate d for all cells in box that need it
 func (s *Solver) fillCandidatesForBoxDigit(b *Board, box, d int) *core.Move {
-	boxRow := (box / constants.BoxSize) * constants.BoxSize
-	boxCol := (box % constants.BoxSize) * constants.BoxSize
-
-	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-			i := r*constants.GridSize + c
-			if b.Cells[i] != 0 {
-				continue
-			}
-
-			if !digitExistsInCells(b, r, c, d) && !b.Candidates[i].Has(d) && !b.Eliminated[i].Has(d) {
-				return &core.Move{
-					Technique:   "fill-candidate",
-					Action:      "candidate",
-					Digit:       d,
-					Targets:     []core.CellRef{{Row: r, Col: c}},
-					Explanation: fmt.Sprintf("Added %d as a candidate to R%dC%d", d, r+1, c+1),
-					Highlights: core.Highlights{
-						Primary: []core.CellRef{{Row: r, Col: c}},
-					},
-					Refs: core.TechniqueRef{
-						Title: "Fill Candidate",
-						Slug:  "fill-candidate",
-						URL:   "/technique/fill-candidate",
-					},
-				}
-			}
-		}
-	}
-	return nil
+	return s.fillCandidatesForUnit(b, UnitBox, box, d)
 }
 
-// checkHiddenSingleInRow checks if digit d can only go in one cell in the row
-func (s *Solver) checkHiddenSingleInRow(b *Board, row, d int) *core.Move {
-	var possibleCells []int
+// checkHiddenSingleInUnit checks if digit d can only go in one cell in a unit
+func (s *Solver) checkHiddenSingleInUnit(b *Board, unitType UnitType, unitIndex, d int) *core.Move {
+	var cellIndices []int
 
-	for col := 0; col < constants.GridSize; col++ {
-		i := row*constants.GridSize + col
-		if b.Cells[i] == d {
-			// Digit already placed in this row
-			return nil
-		}
-		if b.Cells[i] == 0 && b.Candidates[i].Has(d) {
-			possibleCells = append(possibleCells, col)
-		}
+	switch unitType {
+	case UnitRow:
+		cellIndices = RowIndices[unitIndex]
+	case UnitCol:
+		cellIndices = ColIndices[unitIndex]
+	case UnitBox:
+		cellIndices = BoxIndices[unitIndex]
 	}
-
-	if len(possibleCells) == 1 {
-		col := possibleCells[0]
-		return &core.Move{
-			Technique:   "hidden-single",
-			Action:      constants.ActionAssign,
-			Digit:       d,
-			Targets:     []core.CellRef{{Row: row, Col: col}},
-			Explanation: fmt.Sprintf("R%dC%d must be %d: only cell in row %d that can contain %d", row+1, col+1, d, row+1, d),
-			Highlights: core.Highlights{
-				Primary:   []core.CellRef{{Row: row, Col: col}},
-				Secondary: getRowCellRefs(row),
-			},
-			Refs: core.TechniqueRef{
-				Title: "Hidden Single",
-				Slug:  "hidden-single",
-				URL:   "/technique/hidden-single",
-			},
-		}
-	}
-
-	return nil
-}
-
-// checkHiddenSingleInCol checks if digit d can only go in one cell in the column
-func (s *Solver) checkHiddenSingleInCol(b *Board, col, d int) *core.Move {
-	var possibleCells []int
-
-	for row := 0; row < constants.GridSize; row++ {
-		i := row*constants.GridSize + col
-		if b.Cells[i] == d {
-			// Digit already placed in this column
-			return nil
-		}
-		if b.Cells[i] == 0 && b.Candidates[i].Has(d) {
-			possibleCells = append(possibleCells, row)
-		}
-	}
-
-	if len(possibleCells) == 1 {
-		row := possibleCells[0]
-		return &core.Move{
-			Technique:   "hidden-single",
-			Action:      constants.ActionAssign,
-			Digit:       d,
-			Targets:     []core.CellRef{{Row: row, Col: col}},
-			Explanation: fmt.Sprintf("R%dC%d must be %d: only cell in column %d that can contain %d", row+1, col+1, d, col+1, d),
-			Highlights: core.Highlights{
-				Primary:   []core.CellRef{{Row: row, Col: col}},
-				Secondary: getColCellRefs(col),
-			},
-			Refs: core.TechniqueRef{
-				Title: "Hidden Single",
-				Slug:  "hidden-single",
-				URL:   "/technique/hidden-single",
-			},
-		}
-	}
-
-	return nil
-}
-
-// checkHiddenSingleInBox checks if digit d can only go in one cell in the box
-func (s *Solver) checkHiddenSingleInBox(b *Board, box, d int) *core.Move {
-	boxRow := (box / constants.BoxSize) * constants.BoxSize
-	boxCol := (box % constants.BoxSize) * constants.BoxSize
 
 	var possibleCells []core.CellRef
 
-	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-			i := r*constants.GridSize + c
-			if b.Cells[i] == d {
-				// Digit already placed in this box
-				return nil
-			}
-			if b.Cells[i] == 0 && b.Candidates[i].Has(d) {
-				possibleCells = append(possibleCells, core.CellRef{Row: r, Col: c})
-			}
+	for _, i := range cellIndices {
+		if b.Cells[i] == d {
+			return nil
+		}
+		if b.Cells[i] == 0 && b.Candidates[i].Has(d) {
+			possibleCells = append(possibleCells, core.CellRef{Row: i / constants.GridSize, Col: i % constants.GridSize})
 		}
 	}
 
 	if len(possibleCells) == 1 {
 		cell := possibleCells[0]
+		unitName := ""
+		switch unitType {
+		case UnitRow:
+			unitName = "row"
+		case UnitCol:
+			unitName = "column"
+		case UnitBox:
+			unitName = "box"
+		}
 		return &core.Move{
 			Technique:   "hidden-single",
 			Action:      constants.ActionAssign,
 			Digit:       d,
 			Targets:     []core.CellRef{cell},
-			Explanation: fmt.Sprintf("R%dC%d must be %d: only cell in box %d that can contain %d", cell.Row+1, cell.Col+1, d, box+1, d),
+			Explanation: fmt.Sprintf("R%dC%d must be %d: only cell in %s %d that can contain %d", cell.Row+1, cell.Col+1, d, unitName, unitIndex+1, d),
 			Highlights: core.Highlights{
 				Primary:   []core.CellRef{cell},
-				Secondary: getBoxCellRefs(box),
+				Secondary: getUnitCellRefs(unitType, unitIndex),
 			},
 			Refs: core.TechniqueRef{
 				Title: "Hidden Single",
@@ -650,6 +551,21 @@ func (s *Solver) checkHiddenSingleInBox(b *Board, box, d int) *core.Move {
 	}
 
 	return nil
+}
+
+// checkHiddenSingleInRow checks if digit d can only go in one cell in the row
+func (s *Solver) checkHiddenSingleInRow(b *Board, row, d int) *core.Move {
+	return s.checkHiddenSingleInUnit(b, UnitRow, row, d)
+}
+
+// checkHiddenSingleInCol checks if digit d can only go in one cell in the column
+func (s *Solver) checkHiddenSingleInCol(b *Board, col, d int) *core.Move {
+	return s.checkHiddenSingleInUnit(b, UnitCol, col, d)
+}
+
+// checkHiddenSingleInBox checks if digit d can only go in one cell in the box
+func (s *Solver) checkHiddenSingleInBox(b *Board, box, d int) *core.Move {
+	return s.checkHiddenSingleInUnit(b, UnitBox, box, d)
 }
 
 // checkForSingles performs single detection AFTER all candidates are filled
@@ -680,32 +596,44 @@ func (s *Solver) checkForSingles(b *Board) *core.Move {
 // If a future optimization requires immediate hidden-single checks without
 // relying on precomputed candidates, reintroduce a focused helper here.
 
-// Helper functions for generating CellRef slices
-func getRowCellRefs(row int) []core.CellRef {
-	cells := make([]core.CellRef, constants.GridSize)
-	for c := 0; c < constants.GridSize; c++ {
-		cells[c] = core.CellRef{Row: row, Col: c}
+// getUnitCellRefs generates CellRef slice for a unit (row/col/box)
+func getUnitCellRefs(unitType UnitType, unitIndex int) []core.CellRef {
+	switch unitType {
+	case UnitRow:
+		cells := make([]core.CellRef, constants.GridSize)
+		for c := 0; c < constants.GridSize; c++ {
+			cells[c] = core.CellRef{Row: unitIndex, Col: c}
+		}
+		return cells
+	case UnitCol:
+		cells := make([]core.CellRef, constants.GridSize)
+		for r := 0; r < constants.GridSize; r++ {
+			cells[r] = core.CellRef{Row: r, Col: unitIndex}
+		}
+		return cells
+	case UnitBox:
+		cells := make([]core.CellRef, 0, constants.GridSize)
+		boxRow, boxCol := (unitIndex/constants.BoxSize)*constants.BoxSize, (unitIndex/constants.BoxSize)*constants.BoxSize
+		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+			for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+				cells = append(cells, core.CellRef{Row: r, Col: c})
+			}
+		}
+		return cells
 	}
-	return cells
+	return nil
+}
+
+func getRowCellRefs(row int) []core.CellRef {
+	return getUnitCellRefs(UnitRow, row)
 }
 
 func getColCellRefs(col int) []core.CellRef {
-	cells := make([]core.CellRef, constants.GridSize)
-	for r := 0; r < constants.GridSize; r++ {
-		cells[r] = core.CellRef{Row: r, Col: col}
-	}
-	return cells
+	return getUnitCellRefs(UnitCol, col)
 }
 
 func getBoxCellRefs(box int) []core.CellRef {
-	cells := make([]core.CellRef, 0, constants.GridSize)
-	boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box/constants.BoxSize)*constants.BoxSize
-	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-			cells = append(cells, core.CellRef{Row: r, Col: c})
-		}
-	}
-	return cells
+	return getUnitCellRefs(UnitBox, box)
 }
 
 func digitExistsInCells(b *Board, row, col, digit int) bool {
