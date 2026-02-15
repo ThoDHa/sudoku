@@ -229,10 +229,11 @@ function GameContent() {
   const wasHiddenRef = useRef(false)
   
   // Refs for click-outside detection (deselect cell when clicking outside game interface)
-  const boardContainerRef = useRef<HTMLDivElement>(null)
-  const controlsContainerRef = useRef<HTMLDivElement>(null)
-  const gameInterfaceRef = useRef<HTMLDivElement>(null) // Entire page container (too wide)
-  const gameContentRef = useRef<HTMLDivElement>(null) // Just the actual game content (board + controls)
+	const boardContainerRef = useRef<HTMLDivElement>(null)
+	const boardRef = useRef<HTMLDivElement>(null)
+	const controlsContainerRef = useRef<HTMLDivElement>(null)
+	const gameInterfaceRef = useRef<HTMLDivElement>(null) // Entire page container (too wide)
+	const gameContentRef = useRef<HTMLDivElement>(null) // Just the actual game content (board + controls)
   
   // ============================================================
   // REFS FOR STABLE CALLBACKS (Performance Optimization)
@@ -314,8 +315,8 @@ function GameContent() {
           const target = event.target as Element | null
           if (!target) return
 
-          // Use gameContentRef to check entire game interface (board + controls)
-          const clickedInsideGame = gameContentRef.current?.contains(target) ?? false
+           // Use boardRef to check only board area (not controls)
+          const clickedInsideGame = boardRef.current?.contains(target) ?? false
           
           // Check for actual modals (not toasts/notifications)
           const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal]')
@@ -2174,7 +2175,7 @@ ${bugReportJson}
 
         {/* Game container - sizes based on available height and width */}
         {/* Deselection now handled by global document listener for consistency */}
-        <div ref={gameContentRef} className="game-container flex flex-col items-center">
+            <div ref={boardRef} className="game-container flex flex-col items-center">
           {/* Board container with pause overlay */}
           <div ref={boardContainerRef} className="relative aspect-square w-full">
           <Board
