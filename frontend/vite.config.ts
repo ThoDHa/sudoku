@@ -186,19 +186,69 @@ export default defineConfig({
             }
           }
 
-          // Consolidate all application code into single chunk
-          // This includes wasm-solver, pages, components, hooks, and all lib files
-          // Tradeoff: WASM solver is not lazy-loaded, but we eliminate all circular warnings
+          // Granular application code splitting
+          // Split by functionality to reduce initial load time
+          // Strategy: shared utilities → specialized features → page-specific code
           if (id.includes('src/') && !id.includes('node_modules')) {
+            // WASM and worker files - lazy-loaded separately
+            if (id.includes('wasm') || id.includes('worker')) {
+              return 'wasm-loader'
+            }
+
+            // Solver service and its dependencies - self-contained to avoid circular dependencies
+            if (id.includes('solver-service') || id.includes('puzzles-data') || id.includes('dp-solver') || id.includes('seedValidation')) {
+              return 'solver-service'
+            }
+
+            // Types - move to solver-service to break circular dependency
+            if (id.includes('types/sudoku')) {
+              return 'solver-service'
+            }
+
+            // Homepage route - only loads on homepage
+            if (id.includes('pages/Homepage') || id.includes('components/DifficultyGrid') || id.includes('components/DailyCard')) {
+              return 'page-home'
+            }
+
+            // Game page route - loads only when playing
+            if (id.includes('pages/Game') || id.includes('components/ResultModal') || id.includes('components/TechniqueModal') || id.includes('components/TechniquesListModal') || id.includes('components/GameModals') || id.includes('components/DailyPrompt')) {
+              return 'page-game'
+            }
+
+            // Other pages - Result, Technique, Custom, Leaderboard, About
+            if (id.includes('pages/Result') || id.includes('pages/Technique') || id.includes('pages/Custom') || id.includes('pages/Leaderboard') || id.includes('pages/About') || id.includes('components/AboutModal') || id.includes('components/TechniqueDetailView') || id.includes('components/TechniqueDiagram') || id.includes('components/GlossaryModal') || id.includes('components/GlossaryLinkedText') || id.includes('components/ResultSummary') || id.includes('components/AnimatedDiagramView')) {
+              return 'pages-other'
+            }
+
+            // Game-specific UI components
+            if (id.includes('components/Board') || id.includes('components/History') || id.includes('components/Controls') || id.includes('components/GameHeader') || id.includes('components/TimerDisplay')) {
+              return 'game-ui'
+            }
+
+            // Shared UI components
+            if (id.includes('components/Header') || id.includes('components/Menu') || id.includes('components/ErrorBoundary') || id.includes('components/ui') || id.includes('components/DifficultyBadge')) {
+              return 'components-shared'
+            }
+
+            // Core shared utilities - foundation used everywhere
+            if (id.includes('lib/') && !id.includes('node_modules')) {
+              return 'app-shared'
+            }
+
+            // Shared hooks
+            if (id.includes('hooks/') && !id.includes('node_modules')) {
+              return 'app-shared'
+            }
+
+            // Catch-all for any remaining source files
             return 'app'
           }
         }
       }
     },
-    // Consolidated app chunk (game-domain + pages + ui-components)
-    // Eliminated circular chunk warnings from over-granular splitting
-    // Remaining 2 warnings are type-level cycles, unavoidable without duplication
-    chunkSizeWarningLimit: 950
+    // Increased limit for granular chunks
+    // Individual chunks should be smaller, but total app size unchanged
+    chunkSizeWarningLimit: 300
   },
 
   plugins: [
