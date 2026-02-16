@@ -1,11 +1,11 @@
 # Sudoku
 
+**🎮 [Play Game](https://thodha.github.io/sudoku/) | 📊 [Test Report](https://thodha.github.io/sudoku/test-report/)**
+
 [![CI/CD Pipeline](https://github.com/thodha/sudoku/actions/workflows/deploy.yml/badge.svg)](https://github.com/thodha/sudoku/actions/workflows/deploy.yml)
-[![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)](./frontend/coverage/index.html)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 An advanced educational Sudoku web application that teaches solving techniques through human-like hints and intelligent assistance features.
-
-**[Play Now](https://thodha.github.io/sudoku/)**
 
 ## 🎯 What Makes This Different
 
@@ -81,8 +81,8 @@ The entire application runs locally in your browser with no server required afte
 - **Offline-First**: Service Worker + PWA manifest for complete offline functionality
 
 ### 🔧 **Technical Stack**
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, PWA
-- **WASM Solver**: Go 1.23, TinyGo, WebAssembly, constraint propagation + backtracking
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, PWA
+- **WASM Solver**: Go 1.22, TinyGo 0.40.1, WebAssembly, constraint propagation + backtracking
 - **State Management**: React hooks, Context API, localStorage persistence
 - **Performance**: Route-based code splitting, lazy loading, WASM in dedicated Web Worker
 - **Testing**: Vitest unit tests, Playwright E2E, Go test suite (all via Docker)
@@ -137,7 +137,7 @@ The architecture is designed for extensibility: all production code uses central
 
 ### 🔋 **Battery & Mobile Efficiency**
 - **Background Pause**: All operations pause when the app loses focus
-- **Extended Suspension**: Complete shutdown after 30s to prevent battery drain
+- **Extended Suspension**: Complete shutdown after 15s to prevent battery drain
 - **Touch Optimization**: Gesture-friendly controls optimized for mobile devices
 - **Memory Management**: Smart WASM lifecycle prevents memory leaks
 - **Network Aware**: Minimal data usage, works completely offline after first visit
@@ -257,14 +257,17 @@ sudoku/
 ```
 
 **Build Output** (optimized chunks):
-- `react-vendor` (165KB): React, React DOM, React Router
-- `game-page` (32KB): Game page component
-- `pages` (72KB): Other pages (lazy-loaded)
-- `ui-components` (634KB): UI components and Game dependencies
-- `auto-solve` (10KB): Auto-solve functionality
-- `game-logic` (8KB): Game state management hooks
-- `game-components` (9.5KB): Board, History components
-- `solver` (2.7KB): Solver service interface
+- `react-vendor` (230KB, gzip: 74KB): React, React DOM, React Router
+- `solver-service` (572KB, gzip: 116KB): WASM solver loader and puzzle data
+- `app-shared` (171KB, gzip: 38KB): Shared utilities and hooks
+- `pages-other` (55KB, gzip: 13KB): Result, Technique, Custom, Leaderboard, About pages
+- `page-game` (48KB, gzip: 14KB): Game page component
+- `components-shared` (46KB, gzip: 11KB): Header, Menu, UI components
+- `game-ui` (28KB, gzip: 8KB): Board, History, Controls, GameHeader
+- `page-home` (10KB, gzip: 3KB): Homepage and difficulty grid
+- `wasm-loader` (6KB, gzip: 2KB): WASM worker initialization
+- `app` (4KB, gzip: 2KB): Application entry point
+- `utils-vendor` (3KB, gzip: 1KB): Lodash, clsx, loglevel
 
 ## Solving Techniques
 
@@ -298,7 +301,7 @@ The solver implements 39+ techniques across 4 tiers:
 ### Prerequisites
 
 - Go 1.22+
-- TinyGo 0.32+ (for WASM builds only)
+- TinyGo 0.40.1 (for WASM builds only)
 - Node.js 20+
 - Docker (for E2E tests and CI/CD runs)
 
@@ -312,17 +315,23 @@ cd frontend && npm install && cd ..
 ### Run Tests Locally
 
 ```bash
-# Run all tests (lint + unit tests)
+# Run all tests (Go + unit + E2E) with Allure output
 make test
 
 # Run Go tests only
 make test-go
 
-# Run Frontend tests only (TypeScript check + unit tests + build)
-make test-frontend
+# Run Frontend unit tests only (Docker)
+make test-unit
 
-# Run E2E tests (Playwright in Docker sidecar with prod image)
+# Run E2E tests only (Docker)
 make test-e2e
+
+# Run integration tests only (Docker)
+make test-integration
+
+# Run all Frontend tests (unit + E2E)
+make test-frontend
 ```
 
 ---
@@ -428,7 +437,7 @@ Create beautiful HTML test reports locally:
 
 ```bash
 # Run all tests with Allure output
-make test-allure
+make test
 
 # Create combined report from all test results
 make allure-report
