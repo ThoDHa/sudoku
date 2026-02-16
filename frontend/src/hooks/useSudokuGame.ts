@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, useRef } from 'react'
 import {
   hasCandidate,
   countCandidates,
+  toggleCandidate,
   type CandidateMask
 } from '../lib/candidatesUtils'
 import {
@@ -13,6 +14,10 @@ import {
 import { useCandidates } from './useCandidates'
 import { useBoardHistory } from './useBoardHistory'
 import { isValidSolution } from '../lib/validationUtils'
+import {
+  createStateDiff,
+  type StateDiff
+} from '../lib/diffUtils'
 
 // Move can be either a solver technique or a user action
 export interface Move {
@@ -59,7 +64,6 @@ export interface UseSudokuGameReturn {
   // Actions
   setCell: (idx: number, digit: number, isNotesMode: boolean) => void
   eraseCell: (idx: number) => void
-  toggleCandidate: (idx: number, digit: number) => void
   undo: () => void
   redo: () => void
   resetGame: () => void
@@ -120,9 +124,12 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     return Array(81).fill(0)
   })
 
+  // Board ref for stable access in callbacks
+  const boardRef = useRef(board)
+
   const candidatesHook = useCandidates(board)
 
-  const { historyRef: historyHookHistoryRef, historyIndexRef: historyHookIndexRef, limitHistory: historyHookLimitHistory } = useBoardHistory({
+  const { historyRef: historyHookHistoryRef, historyIndexRef: historyHookIndexRef, limitHistory: historyHookLimitHistory, setHistory: historyHookSetHistory, setHistoryIndex: historyHookSetHistoryIndex, canUndo: historyHookCanUndo, canRedo: historyHookCanRedo, undo: historyHookUndo, redo: historyHookRedo } = useBoardHistory({
     setBoard,
     setCandidates: candidatesHook.setCandidates,
     boardRef,
@@ -141,6 +148,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   const createMoveWithDiff = useCallback((
     move: Move,
     oldBoard: number[],
+    newBoard: number[],
     newCandidates: Uint16Array
   ): Move => {
     const stateDiff = createStateDiff(oldBoard, newBoard, candidatesHook.candidates, newCandidates)
@@ -149,6 +157,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       stateDiff,
     }
   }, [candidatesHook.candidates])
+
+  // Completion state
+  const [isComplete, setIsComplete] = useState(false)
 
   // Helper to check if board is complete and valid
   // Checks completion and validity of current board state
@@ -160,9 +171,6 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       setIsComplete(false)
     }
    }, [setIsComplete])
-
-  // Completion state
-  const [isComplete, setIsComplete] = useState(false)
   
   // Guard against rapid double-calls (e.g., from click + focus events)
   const lastNoteToggle = useRef<{ idx: number; digit: number; time: number } | null>(null)
@@ -188,7 +196,6 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   // Result: Correct toggle behavior even if React hasn't re-rendered yet
   //
   // This pattern is critical for mobile where touch events can fire rapidly.
-  const boardRef = useRef(board)
 
   // Keep refs in sync with state after React processes update
   // (Effects run after render, but refs are also updated synchronously in callbacks)
@@ -226,10 +233,10 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
         newCandidates[idx] = 0 // clearAll()
         continue
       }
-      newCandidates[idx] = calculateCandidatesForCell(idx, board)
+      newCandidates[idx] = candidatesHook.calculateCandidatesForCell(idx, board)
     }
     return newCandidates
-  }, [calculateCandidatesForCell])
+  }, [candidatesHook])
 
   const _fillAllCandidates = useCallback((): Uint16Array => {
     const currentBoard = boardRef.current
@@ -314,11 +321,11 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
           refs: { title: '', slug: '', url: '' },
           highlights: { primary: [] },
           isUserMove: true,
-       }, currentBoard, newCandidates)
+       }, currentBoard, currentBoard, newCandidates)
         const newHistory = [...truncatedHistory, noteMove]
         const { history: limitedHistory, index: limitedIndex } = historyHookLimitHistory(newHistory, newHistory.length - 1)
-         historyHook.setHistory(limitedHistory)
-         historyHook.setHistoryIndex(limitedIndex)
+         historyHookSetHistory(limitedHistory)
+         historyHookSetHistoryIndex(limitedIndex)
          candidatesHook.setCandidates(newCandidates)
 
         // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
@@ -350,12 +357,12 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
           refs: { title: '', slug: '', url: '' },
           highlights: { primary: [] },
           isUserMove: true,
-       }, newBoard, newCandidates)
+       }, currentBoard, newBoard, newCandidates)
 
        const newHistory = [...truncatedHistory, userMove]
        const { history: limitedHistory, index: limitedIndex } = historyHookLimitHistory(newHistory, newHistory.length - 1)
-       historyHook.setHistory(limitedHistory)
-       historyHook.setHistoryIndex(limitedIndex)
+       historyHookSetHistory(limitedHistory)
+       historyHookSetHistoryIndex(limitedIndex)
 
        updateBoard(newBoard)
        candidatesHook.setCandidates(newCandidates)
@@ -369,56 +376,16 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
      }
   }, [
     isGivenCell,
-    candidatesHook.eliminateFromPeers,
+    candidatesHook,
     checkCompletion,
     createMoveWithDiff,
     updateBoard,
-    limitHistory,
-    candidatesHook.setCandidates
+    historyHookHistoryRef,
+    historyHookIndexRef,
+    historyHookLimitHistory,
+    historyHookSetHistory,
+    historyHookSetHistoryIndex
   ])
-
-  const toggleCandidate = useCallback((idx: number, digit: number) => {
-    const currentBoard = boardRef.current
-    const currentCandidates = candidatesHook.candidates
-
-    if (isGivenCell(idx) || currentBoard[idx] !== 0) return
-
-    const row = Math.floor(idx / BOARD_SIZE)
-    const col = idx % BOARD_SIZE
-    const cellCandidates = currentCandidates[idx] || 0
-    const hadCandidate = hasCandidate(cellCandidates, digit)
-
-    // Truncate history if we're in the middle
-    const truncatedHistory = historyHookHistoryRef.current.slice(0, historyHookHistoryRef.currentIndex + 1)
-
-    const newCandidates = new Uint16Array(currentCandidates)
-    newCandidates[idx] = toggleCandidate(newCandidates[idx] || 0, digit)
-
-    // Add toggle move to history with compact diff
-    const toggleMove = createMoveWithDiff({
-      step_index: truncatedHistory.length,
-      technique: 'User Input',
-      action: hadCandidate ? 'eliminate' : 'note',
-      digit,
-      targets: [{ row, col }],
-      explanation: hadCandidate
-        ? `Removed note ${digit} from R${row + 1}C${col + 1}`
-        : `Added note ${digit} to R${row + 1}C${col + 1}`,
-      refs: { title: '', slug: '', url: '' },
-      highlights: { primary: [{ row, col }] },
-      isUserMove: true,
-    }, currentBoard, newCandidates)
-
-    const newHistory = [...truncatedHistory, toggleMove]
-    const { history: limitedHistory, index: limitedIndex } = historyHookLimitHistory(newHistory, newHistory.length - 1)
-    historyHook.setHistory(limitedHistory)
-    historyHook.setHistoryIndex(limitedIndex)
-    candidatesHook.setCandidates(newCandidates)
-
-    // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
-    historyHookHistoryRef.current = limitedHistory
-    historyHookIndexRef.current = limitedIndex
-  }, [isGivenCell, candidatesHook, createMoveWithDiff, candidatesHook.setCandidates, historyHook])
 
   const eraseCell = useCallback((idx: number) => {
     const currentBoard = boardRef.current
@@ -435,7 +402,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const erasedDigit = cellValue
 
     // Truncate history if we're in the middle
-    const truncatedHistory = historyHookHistoryRef.current.slice(0, historyHookHistoryRef.currentIndex + 1)
+    const truncatedHistory = historyHookHistoryRef.current.slice(0, historyHookIndexRef.current + 1)
 
     // Calculate new state first
     const newBoard = [...currentBoard]
@@ -459,12 +426,12 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       refs: { title: '', slug: '', url: '' },
       highlights: { primary: [] }, // No highlights for user moves
       isUserMove: true,
-    }, newBoard, newCandidates)
+    }, currentBoard, newBoard, newCandidates)
 
     const newHistory = [...truncatedHistory, eraseMove]
     const { history: limitedHistory, index: limitedIndex } = historyHookLimitHistory(newHistory, newHistory.length - 1)
-    historyHook.setHistory(limitedHistory)
-    historyHook.setHistoryIndex(limitedIndex)
+    historyHookSetHistory(limitedHistory)
+    historyHookSetHistoryIndex(limitedIndex)
 
     setBoard(newBoard)
     candidatesHook.setCandidates(newCandidates)
@@ -473,81 +440,23 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     boardRef.current = newBoard
     historyHookHistoryRef.current = limitedHistory
     historyHookIndexRef.current = limitedIndex
-  }, [isGivenCell, candidatesHook, createMoveWithDiff, historyHook])
-
-  const eraseCell = useCallback((idx: number) => {
-    // Read from refs for fresh values (prevents stale closure issues with rapid calls)
-    const currentBoard = boardRef.current
-    const currentCandidates = candidatesHook.candidates
-    const currentHistory = historyRef.current
-    const currentHistoryIndex = historyIndexRef.current
-
-    if (isGivenCell(idx)) return
-    // Nothing to erase if cell is empty and has no candidates
-    const cellCandidates = currentCandidates[idx] || 0
-    const cellValue = currentBoard[idx] ?? 0
-    if (cellValue === 0 && countCandidates(cellCandidates) === 0) return
-
-    const row = Math.floor(idx / BOARD_SIZE)
-    const col = idx % BOARD_SIZE
-    const erasedDigit = cellValue
-
-    // Truncate history if we're in the middle
-    const truncatedHistory = currentHistory.slice(0, currentHistoryIndex + 1)
-
-    // Calculate new state first
-    const newBoard = [...currentBoard]
-    newBoard[idx] = 0
-
-    // Clear candidates for the erased cell - don't auto-populate
-    // Candidates should only appear when user manually adds them or clicks "Fill Candidates"
-    const newCandidates = new Uint16Array(currentCandidates)
-    newCandidates[idx] = 0
-
-     // Add erase move to history with compact diff
-      const eraseMove = createMoveWithDiff({
-        step_index: truncatedHistory.length,
-        technique: 'User Input',
-        action: 'erase',
-        digit: erasedDigit,
-        targets: [{ row, col }],
-        explanation: erasedDigit > 0
-          ? `Erased ${erasedDigit} from R${row + 1}C${col + 1}`
-          : `Cleared notes from R${row + 1}C${col + 1}`,
-        refs: { title: '', slug: '', url: '' },
-        highlights: { primary: [] }, // No highlights for user moves
-        isUserMove: true,
-      }, currentBoard, newCandidates)
-
-     const newHistory = [...truncatedHistory, eraseMove]
-     const { history: limitedHistory, index: limitedIndex } = limitHistory(newHistory, newHistory.length - 1)
-     setHistory(limitedHistory)
-     setHistoryIndex(limitedIndex)
-
-    setBoard(newBoard)
-    candidatesHook.setCandidates(newCandidates)
-
-    // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
-    boardRef.current = newBoard
-    historyRef.current = limitedHistory
-    historyIndexRef.current = limitedIndex
-  }, [isGivenCell, candidatesHook, createMoveWithDiff, candidatesHook.setCandidates, historyHook.limitHistory])
+  }, [isGivenCell, candidatesHook, createMoveWithDiff, historyHookHistoryRef, historyHookIndexRef, historyHookLimitHistory, historyHookSetHistory, historyHookSetHistoryIndex])
 
   const resetGame = useCallback(() => {
     setGivenCells([...initialBoard])
     setBoard([...initialBoard])
     candidatesHook.setCandidates(new Uint16Array(TOTAL_CELLS))
-    historyHook.setHistory([])
-    historyHook.setHistoryIndex(-1)
+    historyHookSetHistory([])
+    historyHookSetHistoryIndex(-1)
     setIsComplete(false)
-  }, [initialBoard, candidatesHook.setCandidates, historyHook])
+  }, [initialBoard, candidatesHook, setIsComplete, historyHookSetHistory, historyHookSetHistoryIndex])
 
   const clearAll = useCallback(() => {
     setBoard([...givenCells])
     candidatesHook.setCandidates(new Uint16Array(TOTAL_CELLS))
-    historyHook.setHistory([])
-    historyHook.setHistoryIndex(-1)
-  }, [givenCells, candidatesHook.setCandidates, historyHook])
+    historyHookSetHistory([])
+    historyHookSetHistoryIndex(-1)
+  }, [givenCells, candidatesHook, historyHookSetHistory, historyHookSetHistoryIndex])
 
   const clearCandidates = useCallback(() => {
     const currentBoard = boardRef.current
@@ -566,14 +475,14 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       refs: { title: '', slug: '', url: '' },
       highlights: { primary: [] },
       isUserMove: true,
-    }, currentBoard, newCandidates)
+    }, currentBoard, currentBoard, newCandidates)
 
     const newHistory = [...historyHookHistoryRef.current, clearMove]
     const { history: limitedHistory, index: limitedIndex } = historyHookLimitHistory(newHistory, newHistory.length - 1)
-    historyHook.setHistory(limitedHistory)
-    historyHook.setHistoryIndex(limitedIndex)
+    historyHookSetHistory(limitedHistory)
+    historyHookSetHistoryIndex(limitedIndex)
     candidatesHook.setCandidates(newCandidates)
-  }, [boardRef, candidatesHook, createMoveWithDiff, historyHook])
+  }, [boardRef, candidatesHook, createMoveWithDiff, historyHookHistoryRef, historyHookLimitHistory, historyHookSetHistory, historyHookSetHistoryIndex])
 
   // For external updates (hints, auto-solve)
   const applyExternalMove = useCallback((
@@ -590,11 +499,11 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       stateDiff,
     }
 
-    const truncatedHistory = historyHookHistoryRef.current.slice(0, historyHookHistoryRef.currentIndex + 1)
+    const truncatedHistory = historyHookHistoryRef.current.slice(0, historyHookIndexRef.current + 1)
     const newHistory = [...truncatedHistory, moveWithState]
     const { history: limitedHistory, index: limitedIndex } = historyHookLimitHistory(newHistory, newHistory.length - 1)
-    historyHook.setHistory(limitedHistory)
-    historyHook.setHistoryIndex(limitedIndex)
+    historyHookSetHistory(limitedHistory)
+    historyHookSetHistoryIndex(limitedIndex)
 
     updateBoard(newBoard)
     candidatesHook.setCandidates(newCandidates)
@@ -605,7 +514,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     boardRef.current = newBoard
     historyHookHistoryRef.current = limitedHistory
     historyHookIndexRef.current = limitedIndex
-  }, [checkCompletion, updateBoard, candidatesHook, historyHook])
+  }, [checkCompletion, updateBoard, candidatesHook, historyHookHistoryRef, historyHookIndexRef, historyHookLimitHistory, historyHookSetHistory, historyHookSetHistoryIndex])
 
   // Restore saved game state (for auto-save/resume functionality)
   const restoreState = useCallback((
@@ -615,8 +524,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   ) => {
     updateBoard(savedBoard)
     candidatesHook.setCandidates(savedCandidates)
-    historyHook.setHistory(savedHistory)
-    historyHook.setHistoryIndex(savedHistory.length - 1)
+    historyHookSetHistory(savedHistory)
+    historyHookSetHistoryIndex(savedHistory.length - 1)
 
     // Check if restored board is already complete
     const allFilled = savedBoard.every((v: number) => v !== 0)
@@ -625,7 +534,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     } else {
       setIsComplete(false)
     }
-  }, [updateBoard, candidatesHook.setCandidates, isValidSolution, historyHook])
+  }, [updateBoard, candidatesHook, setIsComplete, historyHookSetHistory, historyHookSetHistoryIndex])
 
   const setBoardState = useCallback((
     newBoard: number[],
@@ -633,7 +542,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   ) => {
     updateBoard(newBoard)
     candidatesHook.setCandidates(newCandidates)
-  }, [updateBoard, candidatesHook.setCandidates])
+  }, [updateBoard, candidatesHook])
 
   // Check notes for errors
   // Returns: { valid: true } if all notes are correct
@@ -683,7 +592,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       missingNotes,
       cellsWithNotes,
     }
-  }, [board, candidatesHook, candidatesHook.calculateCandidatesForCell])
+  }, [board, candidatesHook])
 
   // CRITICAL: Memoize return object to prevent cascading re-renders.
   // Without this, every render creates a new object reference, causing all
@@ -694,9 +603,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     candidates: candidatesHook.candidates,
     candidatesVersion: candidatesHook.candidatesVersion,
     history: historyHookHistoryRef.current,
-    historyIndex: historyHookHistoryRef.currentIndex,
-    canUndo: historyHook.canUndo,
-    canRedo: historyHook.canRedo,
+    historyIndex: historyHookIndexRef.current,
+    canUndo: historyHookCanUndo,
+    canRedo: historyHookCanRedo,
     isComplete,
 
     // Computed
@@ -706,8 +615,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     setCell,
     eraseCell,
     toggleCandidate,
-    undo: historyHook.undo,
-    redo: historyHook.redo,
+    undo: historyHookUndo,
+    redo: historyHookRedo,
     resetGame,
     clearAll,
     clearCandidates,
@@ -720,15 +629,15 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
     // Helpers
     isGivenCell,
-    calculateCandidatesForCell,
+    calculateCandidatesForCell: candidatesHook.calculateCandidatesForCell,
     fillAllCandidates: _fillAllCandidates,
     areCandidatesFilled: _areCandidatesFilled,
     checkNotes,
   }), [
-    board, candidatesHook, historyHook, isComplete,
-    digitCounts, setCell, eraseCell, toggleCandidate, resetGame,
+    board, candidatesHook, historyHookHistoryRef, historyHookIndexRef, historyHookCanUndo, historyHookCanRedo, historyHookUndo, historyHookRedo, isComplete,
+    digitCounts, setCell, eraseCell, resetGame,
     clearAll, clearCandidates, applyExternalMove, setIsComplete, restoreState,
-    setBoardState, isGivenCell, calculateCandidatesForCell, _fillAllCandidates,
+    setBoardState, isGivenCell, _fillAllCandidates,
     _areCandidatesFilled, checkNotes
   ])
 }
