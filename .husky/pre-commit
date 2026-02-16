@@ -7,6 +7,21 @@ echo "Running pre-commit linters..."
 # Get list of staged files
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
 
+# Check if Go constants file is staged, and regenerate TypeScript constants if so
+if echo "$STAGED_FILES" | grep -q "api/pkg/constants/constants.go"; then
+  echo ""
+  echo "Go constants file changed - regenerating TypeScript constants..."
+  cd api/scripts && go run generate-ts-constants.go
+  cd ../..
+  echo "✅ TypeScript constants regenerated!"
+
+  # Add the generated file to staging if it exists
+  if [ -f "frontend/src/lib/constants-generated.ts" ]; then
+    git add frontend/src/lib/constants-generated.ts
+    echo "✅ Generated constants file staged for commit"
+  fi
+fi
+
 # Check for frontend files (.ts, .tsx, .js, .jsx), excluding e2e directory and test files
 # Test files are ignored by ESLint config, so we exclude them here too
 FRONTEND_FILES=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|js|jsx)$' | grep -v 'e2e/' | grep -v '\.test\.' | grep -v '\.spec\.' || true)

@@ -1,6 +1,6 @@
 # Sudoku API Makefile
 
-.PHONY: all build server wasm wasm-copy clean test
+.PHONY: all build server generate-constants wasm wasm-copy clean test
 
 # Go build settings
 GO := go
@@ -20,11 +20,17 @@ LDFLAGS := -ldflags="-s -w"
 # TinyGo root for wasm_exec.js
 TINYGO_ROOT := $(shell $(TINYGO) env TINYGOROOT 2>/dev/null)
 
-all: server wasm
+all: server generate-constants wasm
 
 # Build the HTTP server
 server:
 	$(GO) build -o bin/server ./cmd/server
+
+# Generate TypeScript constants from Go source
+generate-constants:
+	@echo "Generating TypeScript constants from Go..."
+	@cd scripts && go run generate-ts-constants.go
+	@echo "TypeScript constants generated successfully"
 
 # Build WASM module with TinyGo (default - smaller output)
 wasm:
