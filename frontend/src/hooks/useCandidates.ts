@@ -42,9 +42,9 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
   const [candidatesVersion, setCandidatesVersion] = useState(0)
   
   const candidatesRef = useRef(candidates)
-  
-  React.  React.useEffect(() => { candidatesRef.current = candidates }, [candidates])
-  
+
+  React.useEffect(() => { candidatesRef.current = candidates }, [candidates])
+
   const setCandidates = useCallback((newCandidates: Uint16Array) => {
     setCandidatesState(newCandidates)
     setCandidatesVersion(v => v + 1)
@@ -92,7 +92,7 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
     const calculated = calculateAllCandidatesForBoard(board)
     setCandidates(calculated)
     return calculated
-  }, [calculateAllCandidatesForBoard, board])
+  }, [calculateAllCandidatesForBoard, board, setCandidates])
 
   const areCandidatesFilled = useCallback((): boolean => {
     let hasAnyCandidates = false
@@ -184,11 +184,6 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
       cellsWithNotes,
     }
   }, [calculateCandidatesForCell])
-
-  const setCandidates = useCallback((newCandidates: Uint16Array) => {
-    setCandidatesState(newCandidates)
-    setCandidatesVersion(v => v + 1)
-  }, [])
 
   return useMemo(() => ({
     candidates,

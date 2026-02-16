@@ -108,7 +108,7 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
     const newHistoryIndex = currentHistoryIndex - 1
     _setHistoryIndex(newHistoryIndex)
     historyIndexRef.current = newHistoryIndex
-  }, [setBoard, setCandidates])
+  }, [setBoard, setCandidates, boardRef, candidatesRef])
 
   const redo = useCallback(() => {
     const currentBoard = boardRef.current
@@ -138,7 +138,7 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
     const newHistoryIndex = currentHistoryIndex + 1
     _setHistoryIndex(newHistoryIndex)
     historyIndexRef.current = newHistoryIndex
-  }, [setBoard, setCandidates])
+  }, [setBoard, setCandidates, boardRef, candidatesRef])
 
   const canUndo = historyIndex >= 0
   const canRedo = historyIndex < history.length - 1
@@ -148,6 +148,8 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
     historyIndex,
     historyRef,
     historyIndexRef,
+    setHistory: _setHistory,
+    setHistoryIndex: _setHistoryIndex,
     canUndo,
     canRedo,
     undo,
