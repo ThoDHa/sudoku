@@ -231,9 +231,7 @@ function GameContent() {
   // Refs for click-outside detection (deselect cell when clicking outside game interface)
 	const boardContainerRef = useRef<HTMLDivElement>(null)
 	const boardRef = useRef<HTMLDivElement>(null)
-	const controlsContainerRef = useRef<HTMLDivElement>(null)
 	const gameInterfaceRef = useRef<HTMLDivElement>(null) // Entire page container (too wide)
-	const gameContentRef = useRef<HTMLDivElement>(null) // Just the actual game content (board + controls)
   
   // ============================================================
   // REFS FOR STABLE CALLBACKS (Performance Optimization)
@@ -470,13 +468,19 @@ function GameContent() {
    }, [])
 
    // Game state hook - only initialize after we have the initial board
-   const game = useSudokuGame({
-     initialBoard: initialBoard.length === 81 ? initialBoard : Array(81).fill(0),
-     onComplete: handleGameComplete,
+    const game = useSudokuGame({
+      initialBoard: initialBoard.length === 81 ? initialBoard : Array(81).fill(0),
     })
-   
-   // Keep game ref updated for stable callbacks
-   gameRef.current = game
+
+    // Handle game completion when board is full and valid
+    useEffect(() => {
+      if (game.isComplete) {
+        handleGameComplete()
+      }
+    }, [game.isComplete, handleGameComplete])
+
+    // Keep game ref updated for stable callbacks
+    gameRef.current = game
 
    // Auto-solve hook - fetches all moves at once and plays them back
   const autoSolve = useAutoSolve({
@@ -2220,7 +2224,7 @@ ${bugReportJson}
           </div>
 
           {/* Controls - same width as board, scales with container */}
-          <div ref={controlsContainerRef} className="w-full flex-shrink-0">
+          <div className="w-full flex-shrink-0">
             <Controls
               notesMode={notesMode}
               onNotesToggle={handleNotesToggle}
