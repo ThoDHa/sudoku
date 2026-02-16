@@ -30,7 +30,7 @@ vi.mock('./puzzles-data', () => ({
 
 vi.mock('./dp-solver', () => ({
   validatePuzzle: vi.fn(),
-  validateBoard: vi.fn(),
+  validateBoardAgainstSolution: vi.fn(),
 }))
 
 vi.mock('./logger', () => ({

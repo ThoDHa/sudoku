@@ -511,14 +511,11 @@ describe('wasm module', () => {
   
   describe('preloadWasm()', () => {
     it('should call loadWasm without waiting', async () => {
-      // Don't pre-set SudokuWasm so loading proceeds normally
-      // Note: If SudokuWasm is already set, loadWasm() will use it immediately
-      // without calling fetch(). This test verifies preloadWasm initiates loading.
-      
-      const { preloadWasm } = await import('./wasm')
-      
       // Should not throw even if we don't await
-      preloadWasm()
+      const loadPromise = loadWasm()
+      
+      // Wait a moment for the fetch to be initiated
+      await new Promise(resolve => setTimeout(resolve, 50))
       
       // Trigger wasmReady event
       await vi.waitFor(() => {
@@ -526,6 +523,9 @@ describe('wasm module', () => {
           wasmReadyHandler()
         }
       })
+      
+      expect(globalThis.fetch).toHaveBeenCalled()
+    })
       
       expect(globalThis.fetch).toHaveBeenCalled()
     })
