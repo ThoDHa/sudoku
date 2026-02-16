@@ -1,15 +1,60 @@
-// Shared constants for the application
+// Shared constants for application
+// Grid constants are imported from generated Go source
+// Frontend-specific constants are defined below
 
 // =============================================================================
-// GRID CONSTANTS
+// AUTO-GENERATED GRID CONSTANTS (from Go)
 // =============================================================================
-export const BOARD_SIZE = 9  // Standard 9x9 Sudoku
-export const SUBGRID_SIZE = 3  // 3x3 subgrids for 9x9 board
-export const TOTAL_CELLS = BOARD_SIZE * BOARD_SIZE  // 81 cells total
+import {
+	BOARD_SIZE,
+	SUBGRID_SIZE,
+	TOTAL_CELLS,
+	MIN_GIVENS,
+	DIFFICULTY_EASY,
+	DIFFICULTY_MEDIUM,
+	DIFFICULTY_HARD,
+	DIFFICULTY_EXTREME,
+	DIFFICULTY_IMPOSSIBLE,
+	TIER_SIMPLE,
+	TIER_MEDIUM,
+	TIER_HARD,
+	TIER_EXTREME,
+	ACTION_ASSIGN,
+	ACTION_ELIMINATE,
+	ACTION_CONTRADICTION,
+	STATUS_COMPLETED,
+	STATUS_STALLED,
+	STATUS_MAX_STEPS_REACHED,
+} from './constants-generated'
+
+// Re-export for backward compatibility
+export {
+	BOARD_SIZE,
+	SUBGRID_SIZE,
+	TOTAL_CELLS,
+	MIN_GIVENS,
+	DIFFICULTY_EASY,
+	DIFFICULTY_MEDIUM,
+	DIFFICULTY_HARD,
+	DIFFICULTY_EXTREME,
+	DIFFICULTY_IMPOSSIBLE,
+	TIER_SIMPLE,
+	TIER_MEDIUM,
+	TIER_HARD,
+	TIER_EXTREME,
+	ACTION_ASSIGN,
+	ACTION_ELIMINATE,
+	ACTION_CONTRADICTION,
+	STATUS_COMPLETED,
+	STATUS_STALLED,
+	STATUS_MAX_STEPS_REACHED,
+}
+
+// =============================================================================
+// FRONTEND-SPECIFIC CONSTANTS
+// =============================================================================
 export const MIN_DIGIT = 1
 export const MAX_DIGIT = BOARD_SIZE  // Digits 1-9 for 9x9 board
-
-export const MIN_GIVENS = 17  // Minimum givens for valid 9x9 puzzle
 
 // =============================================================================
 // TIMING CONSTANTS (milliseconds)
@@ -78,7 +123,7 @@ export const MAX_HISTORY_BADGE_COUNT = 99
 export const TIERS = ['Simple', 'Medium', 'Hard', 'NotImplemented'] as const
 export type Tier = (typeof TIERS)[number]
 
-export const DIFFICULTIES = ['easy', 'medium', 'hard', 'extreme', 'impossible'] as const
+export const DIFFICULTIES = [DIFFICULTY_EASY, DIFFICULTY_MEDIUM, DIFFICULTY_HARD, DIFFICULTY_EXTREME, DIFFICULTY_IMPOSSIBLE] as const
 export type Difficulty = (typeof DIFFICULTIES)[number]
 
 // Tier colors for technique badges
