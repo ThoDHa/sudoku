@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { commitCellAction } from '../lib/commitCellAction'
 import { wasmGetPuzzle, loadWasm, type PuzzleForSeedResult } from '../lib/wasm'
 import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
@@ -487,9 +487,14 @@ function GameContent() {
     gameRef.current = game
 
    // Auto-solve hook - fetches all moves at once and plays them back
+  const gamePaused = useMemo(() => 
+    timerControl.isPausedDueToVisibility || isExtendedPaused,
+    [timerControl.isPausedDueToVisibility, isExtendedPaused]
+  )
+  
   const autoSolve = useAutoSolve({
     stepDelay: AUTO_SOLVE_SPEEDS[autoSolveSpeedState],
-    gamePaused: timerControl.isPausedDueToVisibility || isExtendedPaused,
+    gamePaused,
     backgroundManager,
     getBoard,
     getCandidates,
