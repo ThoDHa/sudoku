@@ -246,9 +246,10 @@ export function encodePuzzleWithState(board: number[], givens: number[], candida
   }
 
   // Create bitmask for givens (81 bits)
+  // A cell is marked as a given only if it was originally a given AND hasn't been modified
   let givensMask = BigInt(0)
   for (let i = 0; i < 81; i++) {
-    if (givens[i] !== 0) {
+    if (givens[i] !== 0 && board[i] === givens[i]) {
       givensMask |= BigInt(1) << BigInt(80 - i)
     }
   }
