@@ -342,9 +342,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
        const newBoard = [...currentBoard]
        newBoard[idx] = digit
 
-       // Eliminate candidates from peers
-       const newCandidates = new Uint16Array(currentCandidates)
-       candidatesHook.eliminateFromPeers(newCandidates, idx, digit)
+        // Eliminate candidates from peers
+        const newCandidates = candidatesHook.eliminateFromPeers(currentCandidates, idx, digit)
 
        // Add user move to history with compact diff
        const userMove = createMoveWithDiff({
