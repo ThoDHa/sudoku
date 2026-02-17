@@ -172,9 +172,10 @@ function ModeSwitchSection({ onClose, currentSeed }: ModeSwitchSectionProps) {
       // Resume existing practice game
       navigate(`/${inProgressGame.seed}?d=${inProgressGame.difficulty}`)
     } else {
-      // Generate new practice seed and navigate to homepage in game mode
-      // User will select difficulty from homepage
-      navigate('/')
+      // Generate new practice seed and navigate to it without difficulty
+      // This triggers the difficulty chooser modal in Game.tsx
+      const newSeed = `P${Date.now()}`
+      navigate(`/${newSeed}`)
     }
     onClose()
   }
