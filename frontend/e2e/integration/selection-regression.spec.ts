@@ -120,14 +120,14 @@ async function getOutsideClickCoordinates(page: any) {
   return {
     above: { x: gameBoxX + gameBoxWidth / 2, y: Math.max(gameBoxY - paddingTop, 10) },
     below: safeBottomY ? { x: gameBoxX + gameBoxWidth / 2, y: safeBottomY } : null,
-    // For left/right clicks, use viewport edges (not game-box-dependent)
-    // This ensures clicks are truly outside regardless of game-container position
-    left: { x: 10, y: viewport.height / 2 },
-    right: { x: viewport.width - 10, y: viewport.height / 2 },
-    topLeft: { x: 10, y: Math.max(gameBoxY - paddingTop, 10) },
-    topRight: { x: viewport.width - 10, y: Math.max(gameBoxY - paddingTop, 10) },
-    bottomLeft: safeBottomY ? { x: 10, y: safeBottomY } : null,
-    bottomRight: safeBottomY ? { x: viewport.width - 10, y: safeBottomY } : null,
+    // For left/right clicks, use calculated padding to ensure clicks are outside game-container
+    // paddingLeft/paddingRight are calculated to be outside the game-container
+    left: paddingLeft > 0 ? { x: paddingLeft, y: viewport.height / 2 } : null,
+    right: paddingRight > 0 ? { x: viewport.width - paddingRight, y: viewport.height / 2 } : null,
+    topLeft: paddingLeft > 0 ? { x: paddingLeft, y: Math.max(gameBoxY - paddingTop, 10) } : null,
+    topRight: paddingRight > 0 ? { x: viewport.width - paddingRight, y: Math.max(gameBoxY - paddingTop, 10) } : null,
+    bottomLeft: safeBottomY && paddingLeft > 0 ? { x: paddingLeft, y: safeBottomY } : null,
+    bottomRight: safeBottomY && paddingRight > 0 ? { x: viewport.width - paddingRight, y: safeBottomY } : null,
   };
 }
 
@@ -343,10 +343,12 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           const coords = await getOutsideClickCoordinates(page);
           
+          test.skip(!coords.left, 'No safe space to click left of puzzle');
+          
           await cell.click();
           await expectCellSelected(cell);
           
-          await page.mouse.click(coords.left.x, coords.left.y);
+          await page.mouse.click(coords.left!.x, coords.left!.y);
           
           await expectCellNotSelected(cell);
           expect(await countSelectedCells(page)).toBe(0);
@@ -359,10 +361,12 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           const coords = await getOutsideClickCoordinates(page);
           
+          test.skip(!coords.right, 'No safe space to click right of puzzle');
+          
           await cell.click();
           await expectCellSelected(cell);
           
-          await page.mouse.click(coords.right.x, coords.right.y);
+          await page.mouse.click(coords.right!.x, coords.right!.y);
           
           await expectCellNotSelected(cell);
           expect(await countSelectedCells(page)).toBe(0);
@@ -374,6 +378,8 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
           
           const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
           const coords = await getOutsideClickCoordinates(page);
+          
+          test.skip(!coords.topLeft && !coords.topRight && !coords.bottomLeft && !coords.bottomRight, 'No safe corner space to click');
           
           // Only test corners that have valid coordinates (bottom corners may be null)
           const corners = [

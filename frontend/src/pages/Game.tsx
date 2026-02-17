@@ -302,38 +302,42 @@ function GameContent() {
   useEffect(() => { initialBoardRef.current = initialBoard }, [initialBoard])
 
    // ============================================================
-   // CLICK OUTSIDE TO DESELECT (UX Enhancement)
-   // ============================================================
-   // When user clicks/taps outside of game interface, deselects the current cell
-       useEffect(() => {
-        const handleInteraction = (event: Event) => {
-          // Only process if a cell is selected
-          if (selectedCellRef.current === null) return
+     // CLICK OUTSIDE TO DESELECT (UX Enhancement)
+     // ============================================================
+     // When user clicks/taps outside of game interface, deselects the current cell
+        useEffect(() => {
+          const handleInteraction = (event: Event) => {
+            // Only process if a cell is selected
+            if (selectedCellRef.current === null) return
 
-          const target = event.target as Element | null
-          if (!target) return
+            const target = event.target as Element | null
+            if (!target) return
 
-           // Use boardRef to check only board area (not controls)
-          const clickedInsideGame = boardRef.current?.contains(target) ?? false
-          
-          // Check for actual modals (not toasts/notifications)
-          const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal]')
+            // Check for actual modals (not toasts/notifications)
+            const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal]')
 
-          // Deselect if click is outside game interface and not in a modal
-          if (!clickedInsideGame && !clickedInsideModal) {
-            deselectCell()
-            setEraseMode(false)
-            clearMoveHighlight()
+            // Check if click is on interactive game elements that should NOT trigger deselection
+            const clickedOnCell = target.closest('.sudoku-cell') !== null
+            const clickedOnDigitButton = target.closest('.control-digit-btn') !== null
+            const clickedOnActionButton = target.closest('.control-action-btn-compact') !== null
+
+            // Deselect if click is NOT on a cell, NOT on digit/action buttons, and NOT in a modal
+            // This allows clicking on empty space, header buttons, etc. to deselect
+            if (!clickedOnCell && !clickedOnDigitButton && !clickedOnActionButton && !clickedInsideModal) {
+              deselectCell()
+              setEraseMode(false)
+              clearMoveHighlight()
+            }
           }
-        }
 
-       // Listen to both click and touchstart for mobile compatibility
-       document.addEventListener('click', handleInteraction)
-       document.addEventListener('touchstart', handleInteraction)
-       return () => {
-         document.removeEventListener('click', handleInteraction)
-         document.removeEventListener('touchstart', handleInteraction)
-       }
+        // Listen to both click and touchstart for mobile compatibility
+        // Use capture phase to ensure we get the event before other handlers
+        document.addEventListener('click', handleInteraction, { capture: true })
+        document.addEventListener('touchstart', handleInteraction, { capture: true })
+        return () => {
+          document.removeEventListener('click', handleInteraction, true)
+          document.removeEventListener('touchstart', handleInteraction, true)
+        }
    }, [deselectCell, clearMoveHighlight, setEraseMode])
 
     // Extended background pause - completely suspend operations after 30 seconds hidden
