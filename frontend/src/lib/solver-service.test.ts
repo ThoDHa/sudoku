@@ -55,10 +55,10 @@ describe('solver-service', () => {
   })
 
   describe('validateBoard()', () => {
-    it('should delegate to dp-solver validateBoard', async () => {
+    it('should delegate to dp-solver validateBoardAgainstSolution', async () => {
       const mockResult = { valid: true }
-      const { validateBoard: dpValidateBoard } = await import('./dp-solver')
-      vi.mocked(dpValidateBoard).mockReturnValue(mockResult)
+      const { validateBoardAgainstSolution: dpValidateBoardAgainstSolution } = await import('./dp-solver')
+      vi.mocked(dpValidateBoardAgainstSolution).mockReturnValue(mockResult)
 
       const { validateBoard } = await import('./solver-service')
       const board = [1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -66,7 +66,7 @@ describe('solver-service', () => {
 
       const result = validateBoard(board, solution)
 
-      expect(dpValidateBoard).toHaveBeenCalledWith(board, solution)
+      expect(dpValidateBoardAgainstSolution).toHaveBeenCalledWith(board, solution)
       expect(result).toEqual(mockResult)
     })
 
@@ -77,8 +77,8 @@ describe('solver-service', () => {
         message: 'Some cells are incorrect',
         incorrectCells: [0, 4, 8],
       }
-      const { validateBoard: dpValidateBoard } = await import('./dp-solver')
-      vi.mocked(dpValidateBoard).mockReturnValue(mockResult)
+      const { validateBoardAgainstSolution: dpValidateBoardAgainstSolution } = await import('./dp-solver')
+      vi.mocked(dpValidateBoardAgainstSolution).mockReturnValue(mockResult)
 
       const { validateBoard } = await import('./solver-service')
       const board = [9, 2, 3, 4, 9, 6, 7, 8, 9]

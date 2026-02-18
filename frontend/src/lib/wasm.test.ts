@@ -511,8 +511,9 @@ describe('wasm module', () => {
   
   describe('preloadWasm()', () => {
     it('should call loadWasm without waiting', async () => {
+      const { preloadWasm } = await import('./wasm')
       // Should not throw even if we don't await
-      const loadPromise = loadWasm()
+      preloadWasm()
       
       // Wait a moment for the fetch to be initiated
       await new Promise(resolve => setTimeout(resolve, 50))
@@ -523,9 +524,6 @@ describe('wasm module', () => {
           wasmReadyHandler()
         }
       })
-      
-      expect(globalThis.fetch).toHaveBeenCalled()
-    })
       
       expect(globalThis.fetch).toHaveBeenCalled()
     })

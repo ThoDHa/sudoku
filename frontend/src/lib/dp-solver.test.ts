@@ -1,16 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { solve, isValid, findConflicts, validateBoardAgainstSolution, hasUniqueSolution, validatePuzzle } from './dp-solver'
 
-vi.mock('./dp-solver', () => ({
-  solve: vi.fn(),
-  isValid: vi.fn(),
-  findConflicts: vi.fn(),
-  validateBoard: vi.fn(),
-  validateBoardAgainstSolution: vi.fn(),
-  hasUniqueSolution: vi.fn(),
-  validatePuzzle: vi.fn(),
-}))
-
-describe('dp-solver', () => {
 const VALID_SOLVED_BOARD = [
   5, 3, 4, 6, 7, 8, 9, 1, 2,
   6, 7, 2, 1, 9, 5, 3, 4, 8,
@@ -224,23 +214,6 @@ describe('dp-solver', () => {
     })
   })
 
-    it('should return null for unsolvable puzzle', () => {
-      const result = solve(UNSOLVABLE_PUZZLE)
-      expect(result).toBeNull()
-    })
-
-    it('should return same board for already solved grid', () => {
-      const result = solve(VALID_SOLVED_BOARD)
-      expect(result).toEqual(VALID_SOLVED_BOARD)
-    })
-
-    it('should not modify the original grid', () => {
-      const original = [...NEARLY_SOLVED]
-      solve(NEARLY_SOLVED)
-      expect(NEARLY_SOLVED).toEqual(original)
-    })
-  })
-
   describe('isValid', () => {
     it('should return true for valid solved board', () => {
       expect(isValid(VALID_SOLVED_BOARD)).toBe(true)
@@ -331,48 +304,48 @@ describe('dp-solver', () => {
     })
   })
 
-  describe('validateBoard', () => {
+  describe('validateBoardAgainstSolution', () => {
     it('should return valid for correct entries', async () => {
-      const { validateBoard } = await import('./dp-solver')
-      const result = validateBoard(VALID_SOLVED_BOARD, VALID_SOLVED_BOARD)
+      const { validateBoardAgainstSolution } = await import('./dp-solver')
+      const result = validateBoardAgainstSolution(VALID_SOLVED_BOARD, VALID_SOLVED_BOARD)
       expect(result.valid).toBe(true)
       expect(result.message).toBe('All entries are correct so far!')
     })
 
     it('should return invalid for incorrect entries', async () => {
-      const { validateBoard } = await import('./dp-solver')
+      const { validateBoardAgainstSolution } = await import('./dp-solver')
       const incorrect = [...VALID_SOLVED_BOARD]
       incorrect[0] = 9 // Wrong value
 
-      const result = validateBoard(incorrect, VALID_SOLVED_BOARD)
+      const result = validateBoardAgainstSolution(incorrect, VALID_SOLVED_BOARD)
       expect(result.valid).toBe(false)
       expect(result.incorrectCells).toContain(0)
     })
 
     it('should return invalid for wrong length', async () => {
-      const { validateBoard } = await import('./dp-solver')
-      const result = validateBoard([1, 2, 3], VALID_SOLVED_BOARD)
+      const { validateBoardAgainstSolution } = await import('./dp-solver')
+      const result = validateBoardAgainstSolution([1, 2, 3], VALID_SOLVED_BOARD)
       expect(result.valid).toBe(false)
       expect(result.message).toBe('Invalid board or solution length')
     })
 
     it('should ignore empty cells', async () => {
-      const { validateBoard } = await import('./dp-solver')
+      const { validateBoardAgainstSolution } = await import('./dp-solver')
       const partial = [...VALID_SOLVED_BOARD]
       partial[0] = 0
 
-      const result = validateBoard(partial, VALID_SOLVED_BOARD)
+      const result = validateBoardAgainstSolution(partial, VALID_SOLVED_BOARD)
       expect(result.valid).toBe(true)
     })
 
     it('should find multiple incorrect cells', async () => {
-      const { validateBoard } = await import('./dp-solver')
+      const { validateBoardAgainstSolution } = await import('./dp-solver')
       const incorrect = [...VALID_SOLVED_BOARD]
       incorrect[0] = 9
       incorrect[1] = 9
       incorrect[2] = 9
 
-      const result = validateBoard(incorrect, VALID_SOLVED_BOARD)
+      const result = validateBoardAgainstSolution(incorrect, VALID_SOLVED_BOARD)
       expect(result.valid).toBe(false)
       expect(result.incorrectCells).toHaveLength(3)
       expect(result.message).toBe('Found 3 incorrect cells')
@@ -481,6 +454,7 @@ describe('dp-solver', () => {
     })
   })
 
+  describe('findConflicts and isValid integration', () => {
     it('findConflicts and isValid should agree', () => {
       expect(isValid(VALID_SOLVED_BOARD)).toBe(true)
       expect(findConflicts(VALID_SOLVED_BOARD)).toEqual([])
