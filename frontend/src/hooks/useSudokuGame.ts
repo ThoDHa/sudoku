@@ -128,12 +128,18 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   const boardRef = useRef(board)
 
   const candidatesHook = useCandidates(board)
+  
+  // Candidates ref for stable access in callbacks (used by useBoardHistory)
+  const candidatesRef = useRef<Uint16Array>(candidatesHook.candidates)
+  
+  // Keep candidatesRef in sync
+  React.useEffect(() => { candidatesRef.current = candidatesHook.candidates }, [candidatesHook.candidates])
 
-  const { historyRef: historyHookHistoryRef, historyIndexRef: historyHookIndexRef, limitHistory: historyHookLimitHistory, setHistory: historyHookSetHistory, setHistoryIndex: historyHookSetHistoryIndex, canUndo: historyHookCanUndo, canRedo: historyHookCanRedo, undo: historyHookUndo, redo: historyHookRedo } = useBoardHistory({
+  const { history, historyIndex, historyRef: historyHookHistoryRef, historyIndexRef: historyHookIndexRef, limitHistory: historyHookLimitHistory, setHistory: historyHookSetHistory, setHistoryIndex: historyHookSetHistoryIndex, canUndo: historyHookCanUndo, canRedo: historyHookCanRedo, undo: historyHookUndo, redo: historyHookRedo } = useBoardHistory({
     setBoard,
     setCandidates: candidatesHook.setCandidates,
     boardRef,
-    candidatesRef: { current: candidatesHook.candidates },
+    candidatesRef,
   })
 
   // Helper to update board without overwriting on remount
@@ -601,8 +607,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     board,
     candidates: candidatesHook.candidates,
     candidatesVersion: candidatesHook.candidatesVersion,
-    history: historyHookHistoryRef.current,
-    historyIndex: historyHookIndexRef.current,
+    history,
+    historyIndex,
     canUndo: historyHookCanUndo,
     canRedo: historyHookCanRedo,
     isComplete,
@@ -633,7 +639,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     areCandidatesFilled: _areCandidatesFilled,
     checkNotes,
   }), [
-    board, candidatesHook, historyHookHistoryRef, historyHookIndexRef, historyHookCanUndo, historyHookCanRedo, historyHookUndo, historyHookRedo, isComplete,
+    board, candidatesHook, history, historyIndex, historyHookCanUndo, historyHookCanRedo, historyHookUndo, historyHookRedo, isComplete,
     digitCounts, setCell, eraseCell, resetGame,
     clearAll, clearCandidates, applyExternalMove, setIsComplete, restoreState,
     setBoardState, isGivenCell, _fillAllCandidates,
