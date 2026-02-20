@@ -4,6 +4,10 @@
  * This module provides a Promise-based API for communicating with the
  * WASM web worker. It handles worker lifecycle, request/response correlation,
  * and provides fallback to main thread WASM if workers are not supported.
+ * 
+ * IDLE CLEANUP: The worker is automatically terminated after IDLE_TIMEOUT_MS
+ * of inactivity to save memory and CPU. This prevents the WASM runtime from
+ * consuming resources when not actively solving.
  */
 
 import type { Move } from '../types/sudoku'
@@ -59,6 +63,50 @@ const pendingRequests = new Map<string, PendingRequest>()
 
 // Default timeout for worker requests (30 seconds - solveAll can take a while)
 const REQUEST_TIMEOUT = 30000
+
+// Idle timeout - terminate worker after this many milliseconds of inactivity
+// This prevents the WASM runtime from consuming CPU/memory when not actively solving
+const IDLE_TIMEOUT_MS = 60_000 // 1 minute of inactivity
+
+let idleTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+// ==================== Idle Cleanup ====================
+
+/**
+ * Reset the idle timer. Called after each worker operation.
+ * After IDLE_TIMEOUT_MS of inactivity, the worker will be terminated.
+ */
+function resetIdleTimer(): void {
+  // Clear existing timer
+  if (idleTimeoutId) {
+    clearTimeout(idleTimeoutId)
+  }
+  
+  // Set new timer to terminate worker after idle period
+  idleTimeoutId = setTimeout(() => {
+    if (worker && pendingRequests.size === 0) {
+      logger.debug('[WorkerClient] Idle timeout reached, terminating worker to save resources')
+      terminateWorker()
+    }
+  }, IDLE_TIMEOUT_MS)
+}
+
+/**
+ * Clear the idle timer (e.g., when intentionally keeping worker alive)
+ */
+function clearIdleTimer(): void {
+  if (idleTimeoutId) {
+    clearTimeout(idleTimeoutId)
+    idleTimeoutId = null
+  }
+}
+
+/**
+ * Get the configured idle timeout in milliseconds
+ */
+export function getIdleTimeout(): number {
+  return IDLE_TIMEOUT_MS
+}
 
 // ==================== Worker Lifecycle ====================
 
@@ -164,6 +212,9 @@ export async function initializeWorker(): Promise<void> {
         } else {
           pending.resolve(data)
         }
+        
+        // Reset idle timer after each operation completes
+        resetIdleTimer()
       }
       
       worker.onerror = (error) => {
@@ -181,6 +232,9 @@ export async function initializeWorker(): Promise<void> {
       
       isInitialized = true
       isInitializing = false
+      
+      // Start idle timer
+      resetIdleTimer()
       
     } catch (error) {
       isInitializing = false
@@ -208,6 +262,9 @@ async function sendRequest(type: WorkerRequest['type'], payload: unknown): Promi
   const workerRef = worker
   const id = generateRequestId()
   
+  // Clear idle timer while request is in progress
+  clearIdleTimer()
+  
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
       pendingRequests.delete(id)
@@ -225,6 +282,8 @@ async function sendRequest(type: WorkerRequest['type'], payload: unknown): Promi
  * Terminate the worker and clean up
  */
 export function terminateWorker(): void {
+  clearIdleTimer()
+  
   if (worker) {
     // Clear all pending requests
     for (const [id, pending] of pendingRequests) {
@@ -241,6 +300,8 @@ export function terminateWorker(): void {
   isInitializing = false
   initPromise = null
   requestCounter = 0
+  
+  logger.debug('[WorkerClient] Worker terminated, resources freed')
 }
 
 // ==================== Solver API ====================

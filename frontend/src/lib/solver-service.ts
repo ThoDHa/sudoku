@@ -103,7 +103,12 @@ export interface PuzzleResult {
 
 /**
  * Whether to use the Web Worker for WASM operations.
- * Falls back to main thread if workers are not supported.
+ * Worker mode is strongly preferred because:
+ * 1. WASM runs in a separate thread - no UI blocking
+ * 2. Worker can be terminated to free memory/CPU
+ * 3. Idle cleanup automatically terminates worker after inactivity
+ * 
+ * Falls back to main thread only if workers are not supported.
  */
 let useWorkerMode = true
 
@@ -120,6 +125,14 @@ export function setWorkerMode(enabled: boolean): void {
  */
 export function isUsingWorkerMode(): boolean {
   return useWorkerMode && isWorkerSupported()
+}
+
+/**
+ * Force worker mode on (unless workers not supported)
+ * This ensures WASM always runs in a worker when available
+ */
+export function enableWorkerMode(): void {
+  useWorkerMode = isWorkerSupported()
 }
 
 // ==================== WASM Solver ====================

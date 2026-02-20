@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { logger } from '../lib/logger'
-import { initializeSolver, cleanupSolver } from '../lib/solver-service'
+import { cleanupSolver } from '../lib/solver-service'
 
 interface UseWasmLifecycleOptions {
   /** Delay before unloading WASM when leaving routes (default: 2000ms) */
@@ -14,9 +14,15 @@ interface UseWasmLifecycleOptions {
 const KNOWN_NON_GAME_ROUTES = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard']
 
 /**
- * Hook to manage WASM loading and unloading based on current route
- * Automatically loads WASM when entering game routes and unloads when leaving
- * to save ~4MB of memory on non-game pages.
+ * Hook to manage WASM unloading based on current route
+ * 
+ * WASM is loaded lazily on-demand when hints/solve are requested (see solver-service.ts getApi()).
+ * This hook handles cleanup when leaving game routes to save ~4MB memory.
+ * 
+ * Note: We intentionally do NOT load WASM eagerly on game routes because:
+ * - Puzzles come from static pool (no WASM needed)
+ * - Custom puzzle validation uses pure TypeScript dp-solver
+ * - WASM only needed for hints, auto-solve, and check-and-fix operations
  */
 export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   const {
@@ -35,7 +41,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   }, [enableLogging])
 
   const isWasmRoute = useCallback((pathname: string): boolean => {
-    // Custom puzzles always need WASM
+    // Custom puzzles always need WASM (for validation during creation)
     if (pathname.startsWith('/c/')) return true
     // Check if it's a known non-game route
     const isKnownRoute = KNOWN_NON_GAME_ROUTES.some(route => 
@@ -44,15 +50,6 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
     // If not a known route and not homepage, it's a game route (/:seed)
     return !isKnownRoute && pathname !== '/'
   }, [])
-
-  const loadWasm = useCallback(async () => {
-    try {
-      await initializeSolver()
-      log('WASM loaded successfully')
-    } catch (error) {
-      logger.error('[WasmLifecycle] Failed to initialize WASM solver:', error)
-    }
-  }, [log])
 
   const unloadWasm = useCallback(async () => {
     try {
@@ -91,22 +88,21 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
     }
   }, [log])
 
-  // Handle route changes
+  // Handle route changes - only unload, don't load (WASM loads on-demand)
   useEffect(() => {
     const routeNeedsWasm = isWasmRoute(location.pathname)
 
     if (routeNeedsWasm && !currentRouteRequiresWasm.current) {
-      // Entering WASM route
+      // Entering WASM route - WASM will load on-demand when needed
       log(`Entering WASM route: ${location.pathname}`)
       cancelUnload()
-      loadWasm()
       currentRouteRequiresWasm.current = true
     } else if (!routeNeedsWasm && currentRouteRequiresWasm.current) {
-      // Leaving WASM route
+      // Leaving WASM route - schedule cleanup
       log(`Leaving WASM route: ${location.pathname}`)
       scheduleUnload()
     }
-  }, [location.pathname, isWasmRoute, loadWasm, scheduleUnload, cancelUnload, log])
+  }, [location.pathname, isWasmRoute, scheduleUnload, cancelUnload, log])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -119,7 +115,6 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
 
   return {
     isWasmRoute: isWasmRoute(location.pathname),
-    loadWasm,
     unloadWasm,
     cancelUnload
   }
