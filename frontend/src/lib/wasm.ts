@@ -148,6 +148,7 @@ let wasmLoadError: Error | null = null;
 let goInstance: GoInstance | null = null;
 let wasmScriptElement: HTMLScriptElement | null = null;
 let wasmAbortController: AbortController | null = null;
+let wasmRecentlyUnloaded = false;
 
 // Extend globalThis for TypeScript
 declare global {
@@ -250,6 +251,9 @@ export function unloadWasm(): void {
     window.gc();
   }
 
+  // Mark as recently unloaded to handle rapid reload scenarios
+  wasmRecentlyUnloaded = true;
+
   logger.debug('[WASM] WASM module unloaded, memory freed')
 }
 
@@ -346,7 +350,11 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
 
       // Give Go runtime time to fully initialize importObject
       // This prevents race conditions after rapid unload/reload cycles
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Only delay if we recently unloaded (rapid reload scenario)
+      if (wasmRecentlyUnloaded) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        wasmRecentlyUnloaded = false;
+      }
 
       logger.debug('[WASM] Go instance created');
 

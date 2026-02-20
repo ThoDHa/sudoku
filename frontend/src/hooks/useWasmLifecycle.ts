@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { logger } from '../lib/logger'
-import { cleanupSolver } from '../lib/solver-service'
+import { initializeSolver, cleanupSolver } from '../lib/solver-service'
 
 interface UseWasmLifecycleOptions {
   /** Delay before unloading WASM when leaving routes (default: 2000ms) */
@@ -88,21 +88,31 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
     }
   }, [log])
 
-  // Handle route changes - only unload, don't load (WASM loads on-demand)
+  const loadWasm = useCallback(async () => {
+    try {
+      await initializeSolver()
+      log('WASM loaded successfully')
+    } catch (error) {
+      logger.error('[WasmLifecycle] Failed to initialize WASM solver:', error)
+    }
+  }, [log])
+
+  // Handle route changes - load WASM when entering game routes, unload when leaving
   useEffect(() => {
     const routeNeedsWasm = isWasmRoute(location.pathname)
 
     if (routeNeedsWasm && !currentRouteRequiresWasm.current) {
-      // Entering WASM route - WASM will load on-demand when needed
+      // Entering WASM route - load WASM
       log(`Entering WASM route: ${location.pathname}`)
       cancelUnload()
       currentRouteRequiresWasm.current = true
+      loadWasm()
     } else if (!routeNeedsWasm && currentRouteRequiresWasm.current) {
       // Leaving WASM route - schedule cleanup
       log(`Leaving WASM route: ${location.pathname}`)
       scheduleUnload()
     }
-  }, [location.pathname, isWasmRoute, scheduleUnload, cancelUnload, log])
+  }, [location.pathname, isWasmRoute, scheduleUnload, cancelUnload, log, loadWasm])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -115,6 +125,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
 
   return {
     isWasmRoute: isWasmRoute(location.pathname),
+    loadWasm,
     unloadWasm,
     cancelUnload
   }
