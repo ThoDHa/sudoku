@@ -604,8 +604,9 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
                 expectedSelectionCount = 0; // Deselects after digit
                 break;
               case 'outside-click':
+                if (!step.coord) continue;
                 await page.mouse.click(step.coord.x, step.coord.y);
-                expectedSelectionCount = 0; // Deselects
+                expectedSelectionCount = 0;
                 break;
               case 'arrow':
                 await page.keyboard.press(step.key);
