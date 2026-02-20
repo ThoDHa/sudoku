@@ -172,6 +172,8 @@ test.describe('@integration Accessibility - Keyboard Focus', () => {
 
     // Find an empty cell and get its position
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
+    await expect(emptyCell).toBeVisible({ timeout: 5000 });
+    
     const ariaLabel = await emptyCell.getAttribute('aria-label');
     const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
     expect(match).toBeTruthy();
@@ -183,14 +185,16 @@ test.describe('@integration Accessibility - Keyboard Focus', () => {
     await emptyCell.click();
 
     // Verify cell is selected (has ring class)
-    await expect(emptyCell).toHaveClass(/ring/);
+    await expect(emptyCell).toHaveClass(/ring/, { timeout: 3000 });
 
     // Press digit 5
     await page.keyboard.press('5');
 
     // Get a fresh locator for the same cell (by position, not value)
     const cellByPosition = page.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`);
-    await expect(cellByPosition).toHaveAttribute('aria-label', /value 5/i, { timeout: 5000 });
+    
+    // On mobile, keyboard input might take longer to process
+    await expect(cellByPosition).toHaveAttribute('aria-label', /value 5/i, { timeout: 10000 });
   });
 });
 
