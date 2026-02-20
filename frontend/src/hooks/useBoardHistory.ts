@@ -95,11 +95,17 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
       prevCandidates = result.candidates
       setBoard(prevBoard)
       setCandidates(prevCandidates)
+      // CRITICAL: Update refs synchronously for rapid successive undo calls
+      boardRef.current = prevBoard
+      candidatesRef.current = prevCandidates
     } else if (currentMove.boardBefore && currentMove.candidatesBefore) {
       prevBoard = currentMove.boardBefore
       prevCandidates = new Uint16Array(currentMove.candidatesBefore.flat())
       setBoard(prevBoard)
       setCandidates(prevCandidates)
+      // CRITICAL: Update refs synchronously for rapid successive undo calls
+      boardRef.current = prevBoard
+      candidatesRef.current = prevCandidates
     } else {
       prevBoard = currentBoard
       prevCandidates = currentCandidates
@@ -130,6 +136,9 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
       newCandidates = result.candidates
       setBoard(newBoard)
       setCandidates(newCandidates)
+      // CRITICAL: Update refs synchronously for rapid successive redo calls
+      boardRef.current = newBoard
+      candidatesRef.current = newCandidates
     } else {
       newBoard = currentBoard
       newCandidates = currentCandidates

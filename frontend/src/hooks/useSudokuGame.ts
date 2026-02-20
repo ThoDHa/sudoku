@@ -44,6 +44,8 @@ export interface Move {
 interface UseSudokuGameOptions {
   /** Initial givens (the starting puzzle) */
   initialBoard: number[]
+  /** Callback fired when puzzle is completed successfully */
+  onComplete?: () => void
 }
 
 export interface UseSudokuGameReturn {
@@ -109,7 +111,13 @@ export interface UseSudokuGameReturn {
  * Handles board state, candidates, undo/redo, and move history.
  */
 export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameReturn {
-  const { initialBoard } = options
+  const { initialBoard, onComplete } = options
+
+  // Store onComplete in ref to avoid stale closure issues
+  const onCompleteRef = useRef(onComplete)
+  React.useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
   // Store a stable reference to the initial board (the puzzle givens)
   // This is updated only when resetGame is called or when the initialBoard prop changes
@@ -173,6 +181,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const allFilled = newBoard.every((v: number) => v !== 0)
     if (allFilled && isValidSolution(newBoard)) {
       setIsComplete(true)
+      onCompleteRef.current?.()
     } else {
       setIsComplete(false)
     }
@@ -388,6 +397,62 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     historyHookHistoryRef,
     historyHookIndexRef,
     historyHookLimitHistory,
+     historyHookSetHistory,
+     historyHookSetHistoryIndex
+   ])
+
+   const handleToggleCandidate = useCallback((idx: number, digit: number) => {
+    const currentBoard = boardRef.current
+    const currentCandidates = candidatesRef.current
+
+    // Can only toggle candidates on empty cells
+    if (currentBoard[idx] !== 0) return
+    if (isGivenCell(idx)) return
+
+    // Truncate history if we're in the middle
+    const truncatedHistory = historyHookHistoryRef.current.slice(0, historyHookIndexRef.current + 1)
+
+    const row = Math.floor(idx / BOARD_SIZE)
+    const col = idx % BOARD_SIZE
+    const existingCellCandidates = currentCandidates[idx] || 0
+    const hadCandidate = hasCandidate(existingCellCandidates, digit)
+
+    // Toggle candidate
+    const newCandidates = new Uint16Array(currentCandidates)
+    newCandidates[idx] = toggleCandidate(newCandidates[idx] || 0, digit)
+
+    // Add note toggle move to history with compact diff
+    const noteMove = createMoveWithDiff({
+      step_index: truncatedHistory.length,
+      technique: 'User Input',
+      action: hadCandidate ? 'eliminate' : 'note',
+      digit,
+      targets: [{ row, col }],
+      explanation: hadCandidate
+        ? `Removed note ${digit} from R${row + 1}C${col + 1}`
+        : `Added note ${digit} to R${row + 1}C${col + 1}`,
+      refs: { title: '', slug: '', url: '' },
+      highlights: { primary: [] },
+      isUserMove: true,
+    }, currentBoard, currentBoard, newCandidates)
+
+    const newHistory = [...truncatedHistory, noteMove]
+    const { history: limitedHistory, index: limitedIndex } = historyHookLimitHistory(newHistory, newHistory.length - 1)
+    historyHookSetHistory(limitedHistory)
+    historyHookSetHistoryIndex(limitedIndex)
+    candidatesHook.setCandidates(newCandidates)
+
+    // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
+    candidatesRef.current = newCandidates
+    historyHookHistoryRef.current = limitedHistory
+    historyHookIndexRef.current = limitedIndex
+  }, [
+    isGivenCell,
+    candidatesHook,
+    createMoveWithDiff,
+    historyHookHistoryRef,
+    historyHookIndexRef,
+    historyHookLimitHistory,
     historyHookSetHistory,
     historyHookSetHistoryIndex
   ])
@@ -549,6 +614,24 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     candidatesHook.setCandidates(newCandidates)
   }, [updateBoard, candidatesHook])
 
+  // Wrapped undo that also checks completion status
+  const handleUndo = useCallback(() => {
+    historyHookUndo()
+    // Check if board is no longer complete after undo
+    const newBoard = boardRef.current
+    const allFilled = newBoard.every((v: number) => v !== 0)
+    if (!allFilled || !isValidSolution(newBoard)) {
+      setIsComplete(false)
+    }
+  }, [historyHookUndo, setIsComplete])
+
+  // Wrapped redo that also checks completion status
+  const handleRedo = useCallback(() => {
+    historyHookRedo()
+    // Check if board is complete after redo
+    checkCompletion(boardRef.current)
+  }, [historyHookRedo, checkCompletion])
+
   // Check notes for errors
   // Returns: { valid: true } if all notes are correct
   // Returns: { valid: false, wrongNotes: [...], missingNotes: [...] } if there are errors
@@ -619,9 +702,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     // Actions
     setCell,
     eraseCell,
-    toggleCandidate,
-    undo: historyHookUndo,
-    redo: historyHookRedo,
+    toggleCandidate: handleToggleCandidate,
+    undo: handleUndo,
+    redo: handleRedo,
     resetGame,
     clearAll,
     clearCandidates,
@@ -639,8 +722,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     areCandidatesFilled: _areCandidatesFilled,
     checkNotes,
   }), [
-    board, candidatesHook, history, historyIndex, historyHookCanUndo, historyHookCanRedo, historyHookUndo, historyHookRedo, isComplete,
-    digitCounts, setCell, eraseCell, resetGame,
+    board, candidatesHook, history, historyIndex, historyHookCanUndo, historyHookCanRedo, isComplete,
+    digitCounts, setCell, eraseCell, handleToggleCandidate, handleUndo, handleRedo, resetGame,
     clearAll, clearCandidates, applyExternalMove, setIsComplete, restoreState,
     setBoardState, isGivenCell, _fillAllCandidates,
     _areCandidatesFilled, checkNotes
