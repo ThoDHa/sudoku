@@ -447,16 +447,20 @@ async function runDeviceProfiling(
   // === SCENARIO B: WASM LOADED BUT IDLE ===
   console.log('\n📊 Scenario B: WASM Idle');
   const wasmIdleResult = await profileScenario(page, client, 'wasm-idle', deviceName, async () => {
-    await page.goto(`${BASE_URL}/?d=easy&seed=cpu-profile-seed`, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.goto(`/Pcpuprof?d=easy`, { waitUntil: 'networkidle', timeout: 60000 });
     // Wait for the grid to appear (game loaded)
     await page.waitForSelector('[role="grid"]', { timeout: 30000 });
     
-    // Wait for WASM to be fully ready by checking for solver availability
+    // Wait for WASM to be fully ready by checking for hint button availability
+    // The hint button requires WASM solver to be initialized
     await expect(async () => {
-      const autoSolveButton = page.locator('button[title="Auto-solve"], button:has-text("🤖")');
-      const hasSolver = await autoSolveButton.count() > 0;
-      expect(hasSolver).toBe(true);
-    }).toPass({ timeout: 3000 }); // Detect WASM solver readiness
+      const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")');
+      const hasHint = await hintButton.count() > 0;
+      expect(hasHint).toBe(true);
+    }).toPass({ timeout: 5000 });
+    
+    // Additional wait for WASM to settle
+    await page.waitForTimeout(1000);
   });
   results.push(wasmIdleResult);
   saveProfile(wasmIdleResult, `${deviceName}-wasm-idle-profile.json`);
