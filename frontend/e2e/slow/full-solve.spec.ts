@@ -72,7 +72,7 @@ test.describe('@slow Hint System Visual Guidance', () => {
   });
 
   test('hint button provides visual guidance on medium puzzle', async ({ page }) => {
-    await page.goto('/full-solve-medium?d=medium');
+    await page.goto('/P-full-solve-medium?d=medium');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     await waitForWasmReady(page);
     
@@ -104,7 +104,7 @@ test.describe('@slow Hint System Visual Guidance', () => {
 
   test.skip('hint button provides visual guidance on hard puzzle', async ({ page }) => {
     // Skip by default as this can take a very long time
-    await page.goto('/full-solve-hard?d=hard');
+    await page.goto('/P-full-solve-hard?d=hard');
     await page.waitForSelector('.sudoku-board', { timeout: 15000 });
     await waitForWasmReady(page);
     
