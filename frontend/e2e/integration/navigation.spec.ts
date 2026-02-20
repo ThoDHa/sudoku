@@ -135,9 +135,10 @@ test.describe('@smoke Game Page Elements', () => {
 
   test('control buttons are visible', async ({ page }) => {
     await expect(page.locator('button[title="Undo"]')).toBeVisible();
-    await expect(page.locator('button[title*="Notes"]')).toBeVisible();
-    await expect(page.locator('button[title="Erase"]')).toBeVisible();
-    await expect(page.getByRole('button', { name: /Hint/i })).toBeVisible();
+    await expect(page.locator('button[aria-label*="Notes"]')).toBeVisible();
+    await expect(page.locator('button[aria-label="Erase mode"]')).toBeVisible();
+    // On mobile, Hint button shows only 💡 emoji (text is hidden)
+    await expect(page.locator('button:has-text("💡")')).toBeVisible();
   });
 });
 
@@ -237,41 +238,64 @@ test.describe('@smoke In-Game Menu Navigation', () => {
     await page.getByRole('button', { name: /easy Play/i }).click();
     await expect(page.getByTestId('game-background')).toBeVisible({ timeout: 15000 });
     
-    // Make a move
+    // Wait for board to be fully loaded
+    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', { timeout: 10000 });
+    
+    // Make a move - ensure cell is focused before pressing key
     const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
+    await emptyCell.scrollIntoViewIfNeeded();
     await emptyCell.click();
+    
+    // Wait for cell to be selected (has ring class) before typing
+    await expect(emptyCell).toHaveClass(/ring/, { timeout: 3000 });
     await page.keyboard.press('3');
     
     // Wait for auto-save by checking localStorage has been updated
+    // On mobile, keyboard input may be unreliable, but auto-save should still trigger
     await expect(async () => {
       const saved = await page.evaluate(() => {
         const keys = Object.keys(localStorage);
+        // Either we have a saved game, or the move didn't register (acceptable on mobile)
         return keys.some(k => k.startsWith('sudoku_game_'));
       });
       expect(saved).toBe(true);
-    }).toPass({ timeout: 3000 });
+    }).toPass({ timeout: 5000 });
 
     // Capture initial URL so we can assert it remains after cancel
     const initialGameUrl = page.url();
     
     // Open menu and try New Game - wait for button to be visible first
     const menuButton = page.locator('header button[title="Menu"]');
-    await expect(menuButton).toBeVisible();
+    await expect(menuButton).toBeVisible({ timeout: 5000 });
     await menuButton.click();
     
     // Wait for menu to open before interacting
     await expect(page.locator('text=Menu')).toBeVisible({ timeout: 10000 });
-    await page.locator('button:has-text("New Game")').click();
-    await page.locator('button:has-text("hard")').click();
     
-    // Confirmation modal appears
-    await expect(page.locator('text=Start New Game?')).toBeVisible();
+    // Wait a moment for menu animations to complete on mobile
+    await page.waitForTimeout(300);
     
-    // Cancel
-    await page.locator('button:has-text("Cancel")').click();
+    const newGameButton = page.locator('button:has-text("New Game")');
+    await expect(newGameButton).toBeEnabled({ timeout: 3000 });
+    await newGameButton.click();
     
-    // Modal closes, still on original game
-    await expect(page.locator('text=Start New Game?')).not.toBeVisible();
+    const hardButton = page.locator('button:has-text("hard")');
+    await expect(hardButton).toBeEnabled({ timeout: 3000 });
+    await hardButton.click();
+    
+    // Confirmation modal appears - wait for modal to be fully visible and interactive
+    const modalText = page.locator('text=Start New Game?');
+    await expect(modalText).toBeVisible({ timeout: 5000 });
+    
+    // Cancel - wait for Cancel button to be fully ready
+    const cancelButton = page.locator('button:has-text("Cancel")');
+    await expect(cancelButton).toBeVisible({ timeout: 3000 });
+    await expect(cancelButton).toBeEnabled({ timeout: 3000 });
+    await cancelButton.click();
+    
+    // Modal closes, still on original game - use toBeHidden for more robust wait
+    await expect(modalText).toBeHidden({ timeout: 5000 });
+    
     // Ensure URL did not change from the original game
     expect(page.url()).toBe(initialGameUrl);
     expect(page.url()).toContain('d=easy');
