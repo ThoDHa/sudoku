@@ -2,15 +2,18 @@
  * Playwright Test Helper for Board Selection
  *
  * This module provides a reusable helper to wait for the sudoku board
- * to appear in E2E tests, with proper WASM initialization handling.
+ * to appear in E2E tests.
+ *
+ * Note: WASM is now loaded lazily on-demand (when hints/solve are requested).
+ * Tests that need WASM functionality should call waitForWasmReady explicitly.
  */
 
 /**
  * Wait for WASM to be ready.
- * In production builds, WASM initialization may take longer than board rendering.
- * This ensures hint functionality is available before tests proceed.
+ * Only needed for tests that require hint/solve functionality.
+ * Most tests don't need this since WASM loads on-demand.
  */
-export async function waitForWasmReady(page: any, timeout = 60000) {
+export async function waitForWasmReady(page: any, timeout = 30000) {
   await page.waitForFunction(
     () => {
       // Check if SudokuWasm API is available on window
@@ -21,41 +24,39 @@ export async function waitForWasmReady(page: any, timeout = 60000) {
 }
 
 /**
- * Wait for the sudoku board to be visible, with WASM loading consideration
+ * Wait for the sudoku board to be visible
  *
- * This helper:
- * 1. Checks if WASM is already ready (window.SudokuWasm exists)
- * 2. Waits for WASM initialization if not ready
- * 3. Waits for .sudoku-board selector to appear
+ * This helper waits for .sudoku-board selector to appear.
+ * WASM is no longer awaited by default since it loads on-demand.
  *
  * @param page - Playwright Page instance
  * @param options - Optional configuration
  * @returns Promise that resolves when board is visible
  */
 export async function waitForBoard(page: any, options: {
-  /** Timeout in milliseconds (default: 45000) */
+  /** Timeout in milliseconds (default: 30000) */
   timeout?: number
-  /** Whether to check WASM readiness (default: true) */
+  /** Whether to check WASM readiness (default: false - WASM loads on-demand) */
   checkWasm?: boolean
 } = {}): Promise<void> {
   const {
-    timeout = 45000,
-    checkWasm = true
+    timeout = 30000,
+    checkWasm = false
   } = options
 
-  // Phase 1: Wait for WASM to be ready (if enabled)
+  // Phase 1: Wait for WASM to be ready (if explicitly requested)
+  // Note: WASM is now lazy-loaded, so most tests don't need this
   if (checkWasm) {
     try {
       await page.waitForFunction(
         () => {
-          // Check if WASM API is available
           return typeof (window as any).SudokuWasm !== 'undefined'
         },
         { timeout: Math.min(timeout, 10000) }
       )
-    } catch (error) {
-      // Log but continue - some tests might not need WASM
-      console.log('[waitForBoard] WASM readiness check timed out, continuing...')
+    } catch {
+      // Continue - WASM will load on-demand when needed
+      console.log('[waitForBoard] WASM not yet loaded - will load on-demand')
     }
   }
 
@@ -85,20 +86,23 @@ export async function setupGameAndWaitForBoard(page: any, options: {
   seed?: string
   /** Custom puzzle to navigate to */
   custom?: string
-  /** Board wait timeout (default: 45000) */
+  /** Board wait timeout (default: 30000) */
   boardTimeout?: number
   /** Skip waiting for cells with values (for saved state tests with empty boards) */
   skipCellValueCheck?: boolean
   /** Skip navigation - just wait for the board (use after page.goto or page.reload) */
   skipNavigation?: boolean
+  /** Wait for WASM to be ready (default: false - WASM loads on-demand) */
+  checkWasm?: boolean
 } = {}): Promise<void> {
   const {
     difficulty = 'easy',
     seed,
     custom,
-    boardTimeout = 45000,
+    boardTimeout = 30000,
     skipCellValueCheck = false,
-    skipNavigation = false
+    skipNavigation = false,
+    checkWasm = false
   } = options
 
   // Navigate based on options provided (unless skipped)
@@ -117,8 +121,8 @@ export async function setupGameAndWaitForBoard(page: any, options: {
     }
   }
 
-  // Wait for board to appear with WASM consideration
-  await waitForBoard(page, { timeout: boardTimeout })
+  // Wait for board to appear
+  await waitForBoard(page, { timeout: boardTimeout, checkWasm })
   
   // Phase 3: Wait for puzzle data to actually load (unless skipped)
   // The board div appears before the puzzle data is rendered - we need to wait for actual cells
