@@ -632,7 +632,14 @@ const Board = memo(function Board({
       classes.push('bg-cell-primary')
     } else if (isSecondary) {
       const isTechniqueHint = highlight?.showAnswer === false
-      classes.push(isTechniqueHint ? 'bg-cell-primary' : 'bg-cell-secondary')
+      const isExplicitSecondary = highlight?.highlights.secondary?.some(
+        (h) => h.row === row && h.col === col
+      )
+      // In technique hint mode, only upgrade derived secondary to primary
+      // Explicit secondary highlights keep their secondary styling
+      classes.push(
+        isTechniqueHint && !isExplicitSecondary ? 'bg-cell-primary' : 'bg-cell-secondary'
+      )
     } else if (isSelected) {
       classes.push('bg-cell-selected')
     } else if (hasDigitMatch) {
