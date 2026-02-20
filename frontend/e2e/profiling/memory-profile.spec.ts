@@ -684,6 +684,8 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
 });
 
 test.describe('@profiling Memory - Utilities', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium', 'CDP memory metrics only work in Chromium');
+
   test('verify memory metrics are accessible', async ({ page }) => {
     const cdp = new CDPManager(page);
     await page.goto('/');
