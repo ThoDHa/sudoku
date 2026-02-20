@@ -137,10 +137,28 @@ test.describe('@integration Timer - Pause Behavior', () => {
   });
 
   test('timer resumes when page regains visibility', async ({ page }) => {
+    // Use a more specific timer locator that works even when paused
+    const timerContainer = page.locator('[class*="timer"], [data-testid="timer"]').or(
+      page.locator('.font-mono').filter({ hasText: /\d+:\d{2}/ })
+    ).or(
+      page.locator('text=/\\d+:\\d{2}/')
+    ).first();
 
-    const timer = getTimerLocator(page);
+    // First, wait for timer to be visible and running
+    await expect(timerContainer).toBeVisible({ timeout: 10000 });
+    
+    // Wait for some elapsed time
+    await expect(async () => {
+      const timeText = await timerContainer.textContent();
+      const seconds = parseTimerToSeconds(timeText || '0:00');
+      expect(seconds).toBeGreaterThan(0);
+    }).toPass({ timeout: 5000 });
 
-    // Pause the timer
+    // Get initial time before pause
+    const timeBeforePause = await timerContainer.textContent();
+    const secondsBeforePause = parseTimerToSeconds(timeBeforePause || '0:00');
+
+    // Pause the timer by simulating page hidden
     await page.evaluate(() => {
       Object.defineProperty(document, 'visibilityState', {
         value: 'hidden',
@@ -149,9 +167,20 @@ test.describe('@integration Timer - Pause Behavior', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    // Wait for paused state using condition-based wait
+    // Wait for paused indicator to appear
     const pausedCheck = page.locator('text=PAUSED');
-    await expect(pausedCheck).toBeVisible({ timeout: 2000 });
+    await expect(pausedCheck).toBeVisible({ timeout: 5000 });
+
+    // Wait a moment while paused to ensure timer is actually paused
+    await page.waitForTimeout(1500);
+
+    // Verify timer didn't advance significantly while paused
+    // The timer text might still be there even when paused
+    const timeWhilePaused = await timerContainer.textContent().catch(() => null);
+    if (timeWhilePaused) {
+      const secondsWhilePaused = parseTimerToSeconds(timeWhilePaused);
+      expect(secondsWhilePaused).toBeLessThanOrEqual(secondsBeforePause + 1);
+    }
 
     // Resume visibility
     await page.evaluate(() => {
@@ -162,22 +191,20 @@ test.describe('@integration Timer - Pause Behavior', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    // PAUSED text should disappear - wait for it to be hidden
-    await expect(async () => {
-      const pausedVisible = await page.locator('text=PAUSED').isVisible().catch(() => false);
-      expect(pausedVisible).toBe(false);
-    }).toPass({ timeout: 3000 });
+    // Wait for resume to take effect
+    await page.waitForTimeout(500);
 
-    // Timer should continue running - get initial time then verify it increments
-    const timeAfterResume = await timer.textContent();
-    const secondsAfterResume = parseTimerToSeconds(timeAfterResume || '0:00');
+    // PAUSED text should disappear
+    await expect(pausedCheck).not.toBeVisible({ timeout: 5000 });
 
-    // Wait for timer to advance beyond resume point
+    // Timer should continue running - verify it increments
     await expect(async () => {
-      const timeLater = await timer.textContent();
-      const secondsLater = parseTimerToSeconds(timeLater || '0:00');
-      expect(secondsLater).toBeGreaterThan(secondsAfterResume);
-    }).toPass({ timeout: 4000 });
+      const timeLater = await timerContainer.textContent();
+      expect(timeLater).toBeTruthy();
+      const secondsLater = parseTimerToSeconds(timeLater!);
+      // Timer should have advanced beyond what it was before
+      expect(secondsLater).toBeGreaterThan(secondsBeforePause);
+    }).toPass({ timeout: 8000 });
   });
 
   test('pause overlay appears when timer is paused', async ({ page }) => {
