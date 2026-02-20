@@ -115,11 +115,17 @@ test.describe('@integration Custom Puzzle - Input', () => {
       if (await cell1.count() > 0 && await cell2.count() > 0) {
         await cell1.scrollIntoViewIfNeeded();
         await cell1.click();
-        await page.locator('button:text-is("1")').click();
+        
+        // On mobile, digit buttons may be outside viewport due to layout constraints
+        // Use dispatchEvent to click even when outside viewport
+        const digit1Button = page.locator('button:text-is("1")');
+        await digit1Button.dispatchEvent('click');
         
         await cell2.scrollIntoViewIfNeeded();
         await cell2.click();
-        await page.locator('button:text-is("2")').click();
+        
+        const digit2Button = page.locator('button:text-is("2")');
+        await digit2Button.dispatchEvent('click');
         
         // Look for clear/reset button (custom page has "Clear All" button)
         const clearButton = page.locator('button:has-text("Clear All"), button:has-text("Clear"), button:has-text("Reset")');

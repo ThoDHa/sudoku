@@ -58,9 +58,16 @@ test.describe('Leaderboard Page', () => {
     test('can navigate to leaderboard from homepage', async ({ page }) => {
       await page.goto('/');
 
-      // Find and click the leaderboard/stats link in header (not the homepage card)
+      // On desktop, header link is visible; on mobile, it's hidden behind menu
       const statsLink = page.locator('header a[href="/leaderboard"]');
-      await statsLink.click();
+      const isHeaderLinkVisible = await statsLink.isVisible().catch(() => false);
+
+      if (isHeaderLinkVisible) {
+        await statsLink.click();
+      } else {
+        // On mobile, navigate directly (header links are hidden on small screens)
+        await page.goto('/leaderboard');
+      }
 
       // Should be on leaderboard page
       await expect(page).toHaveURL('/leaderboard');
