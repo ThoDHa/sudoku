@@ -1747,12 +1747,19 @@ func checkAndFixWithSolution(this js.Value, args []js.Value) interface{} {
 	return obj
 }
 
-func main() {
-	// Debug logging: Track WASM initialization progress
-	js.Global().Get("console").Call("log", "[WASM DEBUG] Starting Go WASM main function")
+func debugLog(format string, args ...interface{}) {
+	logger := js.Global().Get("logger")
+	if logger.IsUndefined() || logger.IsNull() {
+		return
+	}
+	msg := fmt.Sprintf(format, args...)
+	logger.Call("debug", msg)
+}
 
-	// Create the SudokuWasm global object with all exported functions
-	js.Global().Get("console").Call("log", "[WASM DEBUG] Creating exports map")
+func main() {
+	debugLog("Starting Go WASM main function")
+
+	debugLog("Creating exports map")
 	exports := map[string]interface{}{
 		// Human solver
 		"createBoard":               js.FuncOf(createBoard),
@@ -1780,18 +1787,17 @@ func main() {
 		"getPuzzleForSeed": js.FuncOf(getPuzzleForSeed),
 		"getVersion":       js.FuncOf(getVersion),
 	}
-	js.Global().Get("console").Call("log", "[WASM DEBUG] All function exports created successfully")
+	debugLog("All function exports created successfully")
 
-	js.Global().Get("console").Call("log", "[WASM DEBUG] Setting window.SudokuWasm")
+	debugLog("Setting window.SudokuWasm")
 	js.Global().Set("SudokuWasm", js.ValueOf(exports))
-	js.Global().Get("console").Call("log", "[WASM DEBUG] window.SudokuWasm set successfully")
+	debugLog("window.SudokuWasm set successfully")
 
-	// Signal that WASM is ready
-	js.Global().Get("console").Call("log", "[WASM DEBUG] Dispatching wasmReady event")
+	debugLog("Dispatching wasmReady event")
 	js.Global().Call("dispatchEvent", js.Global().Get("CustomEvent").New("wasmReady"))
-	js.Global().Get("console").Call("log", "[WASM DEBUG] wasmReady event dispatched successfully")
+	debugLog("wasmReady event dispatched successfully")
 
-	js.Global().Get("console").Call("log", "[WASM DEBUG] Starting event loop - Go runtime alive")
+	debugLog("Starting event loop - Go runtime alive")
 	// Keep the Go runtime alive
 	select {}
 }
