@@ -102,28 +102,28 @@ test.describe('@integration Gameplay - Cell Selection', () => {
   });
 
   test('keyboard shortcut Ctrl+Z triggers undo', async ({ page, browserName }) => {
-    // Find an empty cell first to get its exact position
+    test.skip(
+      ['iphone-12', 'pixel-5'].includes(test.info().project.name),
+      'Keyboard shortcuts (Ctrl/Meta+Z) require physical keyboard - mobile devices use touch UI with undo button'
+    );
+
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]').first();
     const ariaLabel = await emptyCell.getAttribute('aria-label');
     const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
     const row = match ? parseInt(match[1]) : 5;
     const col = match ? parseInt(match[2]) : 1;
-    
-    // Select and place a digit
+
     await emptyCell.scrollIntoViewIfNeeded();
     await emptyCell.click();
     await page.keyboard.press('6');
-    
-    // Wait for digit to appear using condition-based wait
+
     await expect(async () => {
       await expectCellValue(page, row, col, 6);
     }).toPass({ timeout: 2000 });
-    
-    // Ctrl+Z (or Cmd+Z on Mac)
+
     const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
     await page.keyboard.press(`${modifier}+z`);
-    
-    // Wait for digit to be removed using condition-based wait
+
     await expect(async () => {
       await expectCellValue(page, row, col, 'empty');
     }).toPass({ timeout: 2000 });

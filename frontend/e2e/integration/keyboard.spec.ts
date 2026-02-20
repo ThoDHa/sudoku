@@ -220,29 +220,32 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
   });
 
   test('rapid arrow key pressing navigates correctly', async ({ page }) => {
-    // Find an empty cell to start from
+    test.skip(
+      ['iphone-12', 'pixel-5'].includes(test.info().project.name),
+      'Arrow key navigation tests require physical keyboard - mobile devices use touch navigation'
+    );
+
     const pos = await findEmptyCellPosition(page, 3);
     const startCell = getCellLocator(page, pos.row, pos.col);
     await startCell.scrollIntoViewIfNeeded();
     await startCell.click();
     await expectCellSelected(startCell);
 
-    // Rapid key presses - the app skips given cells, so final position varies
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
 
-    // Verify SOME cell is selected (navigation worked, app didn't crash)
     const selectedCells = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
     expect(selectedCells).toBe(1);
   });
 
   test('cell deselects after digit entry (regression test)', async ({ page }) => {
-    // REGRESSION TEST: Ensure digit entry properly deselects the cell
-    // This prevents the selection state demon from returning
-    
-    // Find an empty cell that has an adjacent empty cell to the right
+    test.skip(
+      ['iphone-12', 'pixel-5'].includes(test.info().project.name),
+      'Arrow key navigation tests require physical keyboard - mobile devices use touch navigation'
+    );
+
     const cells = await findCellWithAdjacentEmpty(page, 'right');
     test.skip(!cells, 'No adjacent empty cells found for this test');
 
@@ -250,37 +253,26 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     await emptyCell.scrollIntoViewIfNeeded();
     await emptyCell.click();
 
-    // Verify cell is selected before digit entry
     await expectCellSelected(emptyCell);
 
-    // Enter a digit
     await page.keyboard.press('5');
 
-    // Wait for digit to be placed and cell to be deselected
     await expect(emptyCell).toHaveAttribute('aria-label', /value 5/, { timeout: 2000 });
 
-    // CRITICAL: After digit entry, the cell should be DESELECTED
-    // This is the correct behavior that prevents navigation confusion
     await expectCellNotSelected(emptyCell);
 
-    // To test arrow navigation now, we need to first select a cell again
-    // Arrow keys without selection should not move focus (correct behavior)
     await page.keyboard.press('ArrowRight');
-    
-    // Verify no unexpected state changes occurred
+
     await expect(page.locator('[role="gridcell"]').first()).toBeVisible();
-    
-    // No cell should be selected after arrow key without prior selection
+
     const selectedCells = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
     expect(selectedCells).toBe(0);
-    
-    // Now test that arrow navigation works when we DO have a selection
-    await emptyCell.click(); // Re-select the cell
+
+    await emptyCell.click();
     await expectCellSelected(emptyCell);
-    
+
     await page.keyboard.press('ArrowRight');
-    
-    // NOW the adjacent cell should be selected
+
     const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol);
     await expectCellSelected(nextCell);
   });
@@ -387,60 +379,65 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
   });
 
   test('Ctrl+Z undoes last move', async ({ page, browserName }) => {
+    test.skip(
+      ['iphone-12', 'pixel-5'].includes(test.info().project.name),
+      'Keyboard shortcuts (Ctrl/Meta+Z) require physical keyboard - mobile devices use touch UI with undo button'
+    );
+
     const pos = await findEmptyCellPosition(page, 5);
     const cell = getCellLocator(page, pos.row, pos.col);
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
 
-    // Enter a digit
     await page.keyboard.press('6');
     await expect(cell).toHaveAttribute('aria-label', /value 6/, { timeout: 2000 });
 
-    // Undo with Ctrl+Z (Cmd+Z on Mac/WebKit)
     const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
     await page.keyboard.press(`${modifier}+z`);
 
-    // Cell should be empty again
     await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
   });
 
   test('Ctrl+Y or Ctrl+Shift+Z redoes', async ({ page, browserName }) => {
+    test.skip(
+      ['iphone-12', 'pixel-5'].includes(test.info().project.name),
+      'Keyboard shortcuts (Ctrl/Meta+Y) require physical keyboard - mobile devices use touch UI with redo button'
+    );
+
     const pos = await findEmptyCellPosition(page, 5);
     const cell = getCellLocator(page, pos.row, pos.col);
     await cell.scrollIntoViewIfNeeded();
     await cell.click();
 
-    // Enter a digit
     await page.keyboard.press('2');
     await expect(cell).toHaveAttribute('aria-label', /value 2/, { timeout: 2000 });
 
-    // Undo
     const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
     await page.keyboard.press(`${modifier}+z`);
     await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
 
-    // Redo with Ctrl+Y or Ctrl+Shift+Z
     await page.keyboard.press(`${modifier}+y`);
 
-    // Check if redo worked - if not, try Ctrl+Shift+Z
     const ariaLabel = await cell.getAttribute('aria-label');
     if (ariaLabel?.includes('empty')) {
       await page.keyboard.press(`${modifier}+Shift+z`);
     }
 
-    // Digit should be back
     await expect(cell).toHaveAttribute('aria-label', /value 2/, { timeout: 2000 });
   });
 
   test('multiple undos work sequentially', async ({ page, browserName }) => {
-    // Find two empty cells
+    test.skip(
+      ['iphone-12', 'pixel-5'].includes(test.info().project.name),
+      'Keyboard shortcuts (Ctrl/Meta+Z) require physical keyboard - mobile devices use touch UI with undo button'
+    );
+
     const pos1 = await findEmptyCellPosition(page, 5);
     const pos2 = await findEmptyCellPosition(page, 6);
 
     const cell1 = getCellLocator(page, pos1.row, pos1.col);
     const cell2 = getCellLocator(page, pos2.row, pos2.col);
 
-    // Enter digits in both cells
     await cell1.scrollIntoViewIfNeeded();
     await cell1.click();
     await page.keyboard.press('1');
@@ -453,16 +450,19 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
 
     const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
 
-    // Undo second entry
     await page.keyboard.press(`${modifier}+z`);
     await expect(cell2).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
 
-    // Undo first entry
     await page.keyboard.press(`${modifier}+z`);
     await expect(cell1).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
   });
 
   test('undo after redo works correctly', async ({ page, browserName }) => {
+    test.skip(
+      ['iphone-12', 'pixel-5'].includes(test.info().project.name),
+      'Keyboard shortcuts (Ctrl/Meta+Z/Y) require physical keyboard - mobile devices use touch UI with undo/redo buttons'
+    );
+
     const pos = await findEmptyCellPosition(page, 5);
     const cell = getCellLocator(page, pos.row, pos.col);
     await cell.scrollIntoViewIfNeeded();
@@ -470,18 +470,14 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
 
     const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
 
-    // Enter digit
     await page.keyboard.press('5');
     await expect(cell).toHaveAttribute('aria-label', /value 5/, { timeout: 2000 });
 
-    // Undo
     await page.keyboard.press(`${modifier}+z`);
     await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
 
-    // Redo
     await page.keyboard.press(`${modifier}+y`);
 
-    // Check if Ctrl+Y worked, if not try Ctrl+Shift+Z
     let ariaLabel = await cell.getAttribute('aria-label');
     if (ariaLabel?.includes('empty')) {
       await page.keyboard.press(`${modifier}+Shift+z`);
@@ -489,7 +485,6 @@ test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
 
     await expect(cell).toHaveAttribute('aria-label', /value 5/, { timeout: 2000 });
 
-    // Undo again
     await page.keyboard.press(`${modifier}+z`);
     await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
   });

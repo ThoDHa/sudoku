@@ -839,6 +839,7 @@ test.describe('Homepage - Edge Cases', () => {
   });
 
   test('page is accessible via keyboard navigation', async ({ page }) => {
+    test.skip(['pixel-5', 'iphone-12'].includes(test.info().project.name), 'Keyboard navigation not applicable on touch devices');
     await page.goto('/');
 
     // Ensure initial focus moves off body
