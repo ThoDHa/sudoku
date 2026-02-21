@@ -17,7 +17,7 @@ logger.setLevel('info')
 test.describe('Game Mode Transitions', () => {
   test.beforeEach(async ({ page }) => {
     // Clear all saved games before each test
-    await page.goto('http://localhost:5173/')
+    await page.goto('/')
     await page.evaluate(() => {
       const keys = Object.keys(localStorage)
       keys.forEach(key => {
@@ -30,7 +30,7 @@ test.describe('Game Mode Transitions', () => {
 
   test('should change difficulty from impossible to easy via menu', async ({ page }) => {
     // Step 1: Navigate to practice game with impossible difficulty
-    await page.goto('http://localhost:5173/P9999999999?d=impossible')
+    await page.goto('/P9999999999?d=impossible')
     await page.waitForLoadState('networkidle')
 
     // Verify we're on impossible puzzle
@@ -65,7 +65,7 @@ test.describe('Game Mode Transitions', () => {
 
   test('should change difficulty from easy to impossible via menu', async ({ page }) => {
     // Step 1: Navigate to practice game with easy difficulty
-    await page.goto('http://localhost:5173/P8888888888?d=easy')
+    await page.goto('/P8888888888?d=easy')
     await page.waitForLoadState('networkidle')
 
     // Verify we're on easy puzzle
@@ -98,7 +98,7 @@ test.describe('Game Mode Transitions', () => {
 
   test('should preserve difficulty when restarting same puzzle', async ({ page }) => {
     // Navigate to practice game with medium difficulty
-    await page.goto('http://localhost:5173/P7777777777?d=medium')
+    await page.goto('/P7777777777?d=medium')
     await page.waitForLoadState('networkidle')
 
     const mediumUrl = page.url()
