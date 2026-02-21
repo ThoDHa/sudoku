@@ -65,6 +65,7 @@ func findNakedPairInUnit(b BoardInterface, indices []int, unitType string, unitN
 								{Row: r1, Col: c1},
 								{Row: r2, Col: c2},
 							},
+							Secondary: ToCellRefs(indices),
 						},
 					}
 				}
@@ -144,6 +145,7 @@ func findHiddenPairInUnit(b BoardInterface, indices []int, unitType string, unit
 								{Row: r1, Col: c1},
 								{Row: r2, Col: c2},
 							},
+							Secondary: ToCellRefs(indices),
 						},
 					}
 				}
