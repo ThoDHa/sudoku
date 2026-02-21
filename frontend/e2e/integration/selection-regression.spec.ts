@@ -106,28 +106,31 @@ async function getOutsideClickCoordinates(page: any) {
   const gameBoxWidth = gameBox ? gameBox.width : boardBox.width;
   const gameBoxHeight = gameBox ? gameBox.height : boardBox.height;
   
-  // Calculate left/right padding to be outside game-container, not just outside board
-  // Use smaller values to ensure click is truly outside on mobile
-  const paddingLeft = Math.min(gameBoxX - 20, 50); // Don't go off-screen
-  const paddingRight = Math.min(viewport.width - (gameBoxX + gameBoxWidth) - 20, 50);
+  // Calculate left/right padding to be outside game-container
+  // Use 10px padding - just need to be outside the container, not far outside
+  const paddingLeft = gameBoxX > 10 ? gameBoxX - 10 : (gameBoxX > 0 ? gameBoxX / 2 : null);
+  const paddingRight = (viewport.width - (gameBoxX + gameBoxWidth)) > 10 
+    ? viewport.width - (gameBoxX + gameBoxWidth) - 10 
+    : ((viewport.width - (gameBoxX + gameBoxWidth)) > 0 
+        ? (viewport.width - (gameBoxX + gameBoxWidth)) / 2 
+        : null);
   
   // Check if there's actually safe space below the game container
-  // Need at least 40px of space below the game container for a reliable click
+  // Reduced from 40px to 10px - just need enough space for a reliable click
   const spaceBelow = viewport.height - gameBottomY;
-  const hasSafeSpaceBelow = spaceBelow >= 40;
-  const safeBottomY = hasSafeSpaceBelow ? gameBottomY + 20 : null;
+  const hasSafeSpaceBelow = spaceBelow >= 10;
+  const safeBottomY = hasSafeSpaceBelow ? gameBottomY + (spaceBelow / 2) : null;
   
   return {
     above: { x: gameBoxX + gameBoxWidth / 2, y: Math.max(gameBoxY - paddingTop, 10) },
     below: safeBottomY ? { x: gameBoxX + gameBoxWidth / 2, y: safeBottomY } : null,
     // For left/right clicks, use calculated padding to ensure clicks are outside game-container
-    // paddingLeft/paddingRight are calculated to be outside the game-container
-    left: paddingLeft > 0 ? { x: paddingLeft, y: viewport.height / 2 } : null,
-    right: paddingRight > 0 ? { x: viewport.width - paddingRight, y: viewport.height / 2 } : null,
-    topLeft: paddingLeft > 0 ? { x: paddingLeft, y: Math.max(gameBoxY - paddingTop, 10) } : null,
-    topRight: paddingRight > 0 ? { x: viewport.width - paddingRight, y: Math.max(gameBoxY - paddingTop, 10) } : null,
-    bottomLeft: safeBottomY && paddingLeft > 0 ? { x: paddingLeft, y: safeBottomY } : null,
-    bottomRight: safeBottomY && paddingRight > 0 ? { x: viewport.width - paddingRight, y: safeBottomY } : null,
+    left: paddingLeft ? { x: paddingLeft, y: viewport.height / 2 } : null,
+    right: paddingRight ? { x: viewport.width - paddingRight, y: viewport.height / 2 } : null,
+    topLeft: paddingLeft ? { x: paddingLeft, y: Math.max(gameBoxY - paddingTop, 10) } : null,
+    topRight: paddingRight ? { x: viewport.width - paddingRight, y: Math.max(gameBoxY - paddingTop, 10) } : null,
+    bottomLeft: safeBottomY && paddingLeft ? { x: paddingLeft, y: safeBottomY } : null,
+    bottomRight: safeBottomY && paddingRight ? { x: viewport.width - paddingRight, y: safeBottomY } : null,
   };
 }
 
