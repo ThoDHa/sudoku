@@ -1,15 +1,16 @@
 [
   {
+    "name": "Test Infrastructure",
+    "description": "Test setup, teardown, or infrastructure issues (WASM, Docker, network, timeouts)",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*(?:timeout|ETIMEDOUT|ECONNREFUSED|network|connection|ENOTFOUND|socket|WASM|wasm|WebAssembly|LinkError).*",
+    "traceRegex": ".*(?:waitForWasmReady|wasm_exec|TinyGo|scheduleTimeoutEvent).*"
+  },
+  {
     "name": "Product Defects",
     "description": "Actual bugs in the application code or business logic",
     "matchedStatuses": ["failed"],
     "messageRegex": ".*(?:AssertionError|Expected|expected|should|toBe|toEqual|toMatch|toContain|toHave).*"
-  },
-  {
-    "name": "Test Infrastructure",
-    "description": "Test setup, teardown, or infrastructure issues",
-    "matchedStatuses": ["broken"],
-    "messageRegex": ".*(?:timeout|ETIMEDOUT|ECONNREFUSED|network|connection|ENOTFOUND|socket).*"
   },
   {
     "name": "Known Issues",

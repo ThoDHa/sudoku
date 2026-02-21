@@ -267,12 +267,23 @@ jobs:
           ls -la allure-results/
 
       - name: Download previous Allure history
-        uses: actions/download-artifact@v4
-        with:
-          name: allure-history
-          path: allure-history
-        continue-on-error: true
-        if: always() && github.run_number > 1
+        run: |
+          # Find the most recent completed run with allure-history artifact
+          PREVIOUS_RUN=$(gh run list --workflow=deploy.yml --status=completed --limit 5 --json databaseId -q '.[0].databaseId' 2>/dev/null || echo "")
+          
+          if [ -n "$PREVIOUS_RUN" ] && [ "$PREVIOUS_RUN" != "${{ github.run_id }}" ]; then
+            if gh run download "$PREVIOUS_RUN" --name allure-history --dir allure-history 2>/dev/null; then
+              echo "Downloaded allure-history from run $PREVIOUS_RUN"
+            else
+              echo "No allure-history artifact in previous run - starting fresh"
+              mkdir -p allure-history
+            fi
+          else
+            echo "No previous run found - starting fresh"
+            mkdir -p allure-history
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Copy history to results
         run: |
