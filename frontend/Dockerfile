@@ -11,10 +11,10 @@ RUN go mod download || true
 COPY api/ .
 
 # Build WASM with TinyGo (smaller output, matches local dev)
-RUN tinygo build -target=wasm -no-debug -opt=z -o /sudoku.wasm ./cmd/wasm
+RUN tinygo build -target=wasm -no-debug -opt=z -o /go-app/sudoku.wasm ./cmd/wasm
 
 # Copy wasm_exec.js from TinyGo installation
-RUN cp "$(tinygo env TINYGOROOT)/targets/wasm_exec.js" /wasm_exec.js
+RUN cp "$(tinygo env TINYGOROOT)/targets/wasm_exec.js" /go-app/wasm_exec.js
 
 # Frontend build stage
 FROM node:20-alpine AS builder
@@ -22,8 +22,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy WASM files from previous stage
-COPY --from=wasm-builder /sudoku.wasm ./public/sudoku.wasm
-COPY --from=wasm-builder /wasm_exec.js ./public/wasm_exec.js
+COPY --from=wasm-builder /go-app/sudoku.wasm ./public/sudoku.wasm
+COPY --from=wasm-builder /go-app/wasm_exec.js ./public/wasm_exec.js
 
 # Copy frontend files
 COPY frontend/package*.json ./
