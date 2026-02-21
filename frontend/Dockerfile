@@ -1,5 +1,6 @@
-# WASM build stage - compile Go solver to WebAssembly
-FROM golang:1.23-alpine AS wasm-builder
+# WASM build stage - compile Go solver to WebAssembly with TinyGo
+# Must match local dev environment (TinyGo 0.40.1) and CI deploy
+FROM tinygo/tinygo:0.40.1 AS wasm-builder
 
 WORKDIR /go-app
 
@@ -9,11 +10,11 @@ RUN go mod download || true
 
 COPY api/ .
 
-# Build WASM with size optimization
-RUN GOOS=js GOARCH=wasm go build -ldflags="-s -w" -o /sudoku.wasm ./cmd/wasm
+# Build WASM with TinyGo (smaller output, matches local dev)
+RUN tinygo build -target=wasm -no-debug -opt=z -o /sudoku.wasm ./cmd/wasm
 
-# Copy wasm_exec.js from Go installation
-RUN cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" /wasm_exec.js
+# Copy wasm_exec.js from TinyGo installation
+RUN cp "$(tinygo env TINYGOROOT)/targets/wasm_exec.js" /wasm_exec.js
 
 # Frontend build stage
 FROM node:20-alpine AS builder
