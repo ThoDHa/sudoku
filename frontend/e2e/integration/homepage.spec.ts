@@ -841,6 +841,10 @@ test.describe('Homepage - Edge Cases', () => {
   test('page is accessible via keyboard navigation', async ({ page }) => {
     test.skip(['pixel-5', 'iphone-12'].includes(test.info().project.name), 'Keyboard navigation not applicable on touch devices');
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Wait for play buttons to be visible (ensures page is interactive)
+    await page.waitForSelector('button:has-text("Play")', { timeout: 10000 });
 
     // Ensure initial focus moves off body
     await page.keyboard.press('Tab');
