@@ -55,6 +55,12 @@ func DetectXWing(b BoardInterface) *core.Move {
 					}
 
 					if len(eliminations) > 0 {
+						// Build secondary highlights: all cells in the two rows forming the X-Wing
+						var secondaryCells []int
+						for col := 0; col < constants.GridSize; col++ {
+							secondaryCells = append(secondaryCells, r1*constants.GridSize+col)
+							secondaryCells = append(secondaryCells, r2*constants.GridSize+col)
+						}
 						return &core.Move{
 							Action: "eliminate",
 							Digit:  digit,
@@ -69,6 +75,7 @@ func DetectXWing(b BoardInterface) *core.Move {
 									{Row: r1, Col: c1}, {Row: r1, Col: c2},
 									{Row: r2, Col: c1}, {Row: r2, Col: c2},
 								},
+								Secondary: ToCellRefs(secondaryCells),
 							},
 						}
 					}
@@ -117,6 +124,12 @@ func DetectXWing(b BoardInterface) *core.Move {
 					}
 
 					if len(eliminations) > 0 {
+						// Build secondary highlights: all cells in the two columns forming the X-Wing
+						var secondaryCells []int
+						for row := 0; row < constants.GridSize; row++ {
+							secondaryCells = append(secondaryCells, row*constants.GridSize+c1)
+							secondaryCells = append(secondaryCells, row*constants.GridSize+c2)
+						}
 						return &core.Move{
 							Action: "eliminate",
 							Digit:  digit,
@@ -131,6 +144,7 @@ func DetectXWing(b BoardInterface) *core.Move {
 									{Row: r1, Col: c1}, {Row: r1, Col: c2},
 									{Row: r2, Col: c1}, {Row: r2, Col: c2},
 								},
+								Secondary: ToCellRefs(secondaryCells),
 							},
 						}
 					}
