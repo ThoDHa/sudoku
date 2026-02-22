@@ -1980,6 +1980,27 @@ ${bugReportJson}
     }
   }, [backgroundManager.isHidden, saveGameState])
 
+  // Handle BFCache restore (back button navigation)
+  // When page is restored from BFCache, React hooks don't re-run, so we need to
+  // manually reload state from localStorage to get the latest saved state
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted && puzzle) {
+        logger.debug('[BFCACHE] Page restored from BFCache, reloading state from localStorage')
+        const savedState = loadSavedGameState(puzzle.seed)
+        if (savedState) {
+          const restoredCandidates = arraysToCandidates(savedState.candidates)
+          game.restoreState(savedState.board, restoredCandidates, savedState.history)
+          timerControl.setElapsedMs(savedState.elapsedMs)
+          setAutoFillUsed(savedState.autoFillUsed)
+        }
+      }
+    }
+
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [puzzle, loadSavedGameState, game, timerControl])
+
   // Save game state before page unloads (browser close, refresh, navigate away)
   // This ensures timer accuracy even if the user closes the browser suddenly
   useEffect(() => {

@@ -362,6 +362,56 @@ test.describe('@integration Persistence - Restore Game on Reload', () => {
     await expectCellValue(page, row1, col1, 8);
     await expectCellValue(page, row2, col2, 2);
   });
+
+  test('notes and digits persist after back button navigation (BFCache)', async ({ page }) => {
+    await setupGameAndWaitForBoard(page, { seed: TEST_SEED });
+    
+    // Clear any existing game state AFTER initial load
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
+
+    // Enable notes mode and add notes
+    const notesButton = page.locator('button[title="Notes mode"]');
+    await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+
+    const { cell, row, col } = await findEmptyCell(page);
+    await cell.scrollIntoViewIfNeeded();
+    await cell.click();
+    await page.keyboard.press('1');
+    await page.keyboard.press('2');
+
+    // Disable notes mode and add a digit
+    await notesButton.click();
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
+
+    const { row: row2, col: col2 } = await findEmptyCell(page, 6);
+    await selectCell(page, row2, col2);
+    await page.keyboard.press('5');
+
+    // Wait for auto-save to complete
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    await waitForAutoSave(page, storageKey, (parsed) => {
+      const cellIndex2 = (row2 - 1) * 9 + (col2 - 1);
+      return parsed.board[cellIndex2] === 5 && parsed.candidates && parsed.candidates.length > 0;
+    });
+
+    // Navigate away to homepage
+    await page.goto('/');
+    await expect(page.locator('body')).toBeVisible();
+
+    // Navigate back (this should trigger BFCache restore)
+    await page.goBack();
+    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+
+    // Verify notes are restored
+    const cellAfterBack = getCellLocator(page, row, col);
+    const cellContent = await cellAfterBack.textContent();
+    expect(cellContent).toContain('1');
+    expect(cellContent).toContain('2');
+
+    // Verify digit is restored
+    await expectCellValue(page, row2, col2, 5);
+  });
 });
 
 test.describe('@integration Persistence - Timer Persistence', () => {
