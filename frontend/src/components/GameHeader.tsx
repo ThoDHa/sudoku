@@ -302,9 +302,9 @@ interface GameHeaderProps {
   onClearAll: () => void
   onTechniquesList: () => void
   onAbout: () => void
-  onReportBug: () => void
+  onCopyDebugInfo: () => void
   onFeatureRequest: () => void
-  bugReportCopied: boolean
+  debugInfoCopied: boolean
   // Theme settings
   mode: 'light' | 'dark'
   modePreference: ModePreference
@@ -349,9 +349,9 @@ export default memo(function GameHeader({
   onClearAll,
   onTechniquesList,
   onAbout,
-  onReportBug,
+  onCopyDebugInfo,
   onFeatureRequest,
-  bugReportCopied,
+  debugInfoCopied,
   mode,
   modePreference,
   colorTheme,
@@ -499,9 +499,9 @@ export default memo(function GameHeader({
         onSetMode={onSetMode}
         onSetColorTheme={onSetColorTheme}
         onSetFontSize={onSetFontSize}
-        onReportBug={onReportBug}
+        onCopyDebugInfo={onCopyDebugInfo}
         onFeatureRequest={onFeatureRequest}
-        bugReportCopied={bugReportCopied}
+        debugInfoCopied={debugInfoCopied}
         gameActions={{
           onAutoFillNotes,
           onCheckNotes,
