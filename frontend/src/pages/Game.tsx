@@ -1052,10 +1052,19 @@ function GameContent() {
         deselectCell()
       }
 
+      // Fix 1: Clear highlight when digit becomes complete
+      // Check if the digit we just placed is now complete (all 9 instances on board)
+      if (!notesMode) {
+        const digitCounts = gameRef.current.digitCounts
+        if (digitCounts[digit - 1] >= 9) {
+          clearDigitHighlight()
+        }
+      }
+
       lastTechniqueHintRef.current = null
       lastRegularHintRef.current = null
       cachedHintRef.current = null
-    }, [clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell])
+    }, [clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell, clearDigitHighlight])
 
     // Cell click handler - STABLE: reads from refs to avoid recreating on state changes
     // This is critical because Cell memo doesn't compare callback props for performance
@@ -1136,8 +1145,19 @@ function GameContent() {
        return
      }
 
-        if (currentHighlightedDigit !== null) {
-         if (currentNotesMode) {
+         if (currentHighlightedDigit !== null) {
+          // Fix 3: Block placement of complete highlighted digits
+          // Check if the highlighted digit is complete before placing it
+          const digitCounts = currentGame.digitCounts
+          const isHighlightedDigitComplete = digitCounts[currentHighlightedDigit - 1] >= 9
+
+          if (isHighlightedDigitComplete) {
+            // Clear digit highlight and don't place the digit
+            clearDigitHighlight()
+            return
+          }
+
+          if (currentNotesMode) {
            // Only allow notes toggle on empty cells (follows current game logic)
            if (currentGame.board[idx] === 0) {
              placeDigitAndClear(idx, currentHighlightedDigit, currentNotesMode)
@@ -1181,7 +1201,15 @@ function GameContent() {
       const currentNotesMode = notesModeRef.current
       const currentGame = gameRef.current
       
-      if (!currentGame) return
+       if (!currentGame) return
+
+      // Fix 2: Block selection of complete digits
+      // Don't allow selecting/placing digits that have all 9 instances on the board
+      const digitCounts = currentGame.digitCounts
+      const isDigitComplete = digitCounts[digit - 1] >= 9
+      if (isDigitComplete) {
+        return
+      }
 
       if (currentSelectedCell === null) {
         toggleDigitHighlight(digit)
