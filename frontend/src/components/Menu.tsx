@@ -623,12 +623,12 @@ export default function Menu({
       
       {/* Modal - centered in viewport */}
       <div 
-        className="fixed inset-0 z-[100] overflow-y-auto"
+        className="fixed inset-0 z-[100] overflow-hidden"
         onClick={onClose}
       >
         <div className="min-h-full flex items-center justify-center p-4">
           <div 
-            className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-xl border border-board-border-light bg-background shadow-2xl"
+            className="w-full max-w-md max-h-[95vh] overflow-auto rounded-xl border border-board-border-light bg-background shadow-2xl text-base"
             onClick={(e) => e.stopPropagation()}
           >
           {/* Header */}
