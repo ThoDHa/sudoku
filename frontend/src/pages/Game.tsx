@@ -1188,8 +1188,8 @@ function GameContent() {
      // selectCell atomically selects and clears highlights
      selectCell(idx)
      setEraseMode(false)
-    // All deps are now stable callbacks - state accessed via refs
-      }, [selectCell, clearAllAndDeselect, deselectCell, clickGivenCell, resumeFromExtendedPause, placeDigitAndClear, clearAfterErase, clearAfterUserCandidateOp])
+     // All deps are now stable callbacks - state accessed via refs
+       }, [selectCell, clearAllAndDeselect, deselectCell, clickGivenCell, resumeFromExtendedPause, placeDigitAndClear, clearAfterErase, clearAfterUserCandidateOp, clearDigitHighlight])
 
     // Digit input handler - STABLE: reads from refs to avoid recreating on state changes
     const handleDigitInput = useCallback((digit: number) => {
@@ -1244,8 +1244,8 @@ if (currentGame.board[currentSelectedCell] === digit) {
 
       // Cell deselects after digit entry (per requirements)
       // Keep digit highlighted for adding candidates (multi-fill)
-    // All deps are now stable callbacks - game accessed via ref
-      }, [toggleDigitHighlight, clearAfterDigitToggle, placeDigitAndClear, deselectCell, resumeFromExtendedPause])
+     // All deps are now stable callbacks - game accessed via ref
+       }, [toggleDigitHighlight, clearAfterDigitToggle, placeDigitAndClear, deselectCell, resumeFromExtendedPause])
 
     // Keyboard cell change handler (from Board component)
     // STABLE: reads from refs to avoid recreation on state changes (like handleCellClick)
