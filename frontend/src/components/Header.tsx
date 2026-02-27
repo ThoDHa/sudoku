@@ -48,12 +48,12 @@ export default function Header() {
     setMenuOpen(false)
   }, [location.pathname])
 
-  // Bug report handler - collects general debug info
-  const handleReportBug = useCallback(async () => {
+  // Bug report handlers - split into copy and report
+  const handleCopyDebugInfo = useCallback(async () => {
     const scores = getScores()
     const streak = getDailyStreak()
     const completions = getDailyCompletions()
-    
+
     const debugInfo = {
       timestamp: new Date().toISOString(),
       page: location.pathname,
@@ -91,30 +91,6 @@ export default function Header() {
     }
 
     const debugJson = JSON.stringify(debugInfo, null, 2)
-    
-    const issueBody = `## Bug Description
-<!-- Please describe the bug you encountered -->
-
-## Steps to Reproduce
-1. 
-2. 
-3. 
-
-## Expected Behavior
-<!-- What did you expect to happen? -->
-
-## Actual Behavior
-<!-- What actually happened? -->
-
-<details>
-<summary>Debug Information (click to expand)</summary>
-
-\`\`\`json
-${debugJson}
-\`\`\`
-
-</details>
-`
 
     // Copy debug info to clipboard
     const success = await copyToClipboard(debugJson)
@@ -122,34 +98,12 @@ ${debugJson}
       setToastMessage('Debug info copied!')
       setTimeout(() => setToastMessage(null), COPY_TOAST_DURATION)
     }
-    
-    // Open GitHub issue
-    const issueUrl = new URL('https://github.com/ThoDHa/sudoku/issues/new')
-    issueUrl.searchParams.set('title', `Bug: [Please describe briefly]`)
-    issueUrl.searchParams.set('body', issueBody)
-    issueUrl.searchParams.set('labels', 'bug')
-    
-    window.open(issueUrl.toString(), '_blank')
   }, [location.pathname, colorTheme, mode, homepageModeState])
 
   // Feature request handler
   const handleFeatureRequest = useCallback(() => {
-    const issueBody = `## Feature Description
-<!-- Please describe the feature you'd like to see -->
-
-## Use Case
-<!-- Why would this feature be useful? -->
-
-## Possible Implementation
-<!-- Optional: any ideas on how this could work? -->
-`
-
-    const issueUrl = new URL('https://github.com/ThoDHa/sudoku/issues/new')
-    issueUrl.searchParams.set('title', `Feature: [Please describe briefly]`)
-    issueUrl.searchParams.set('body', issueBody)
-    issueUrl.searchParams.set('labels', 'enhancement')
-    
-    window.open(issueUrl.toString(), '_blank')
+    // Open GitHub issues page (short URL for desktop compatibility)
+    window.open('https://github.com/thodha/sudoku/issues', '_blank')
   }, [])
 
   // Handle homepage mode change
@@ -292,7 +246,7 @@ ${debugJson}
         onSetMode={() => toggleMode()}
         onSetColorTheme={setColorTheme}
         onSetFontSize={setFontSize}
-        onReportBug={handleReportBug}
+        onCopyDebugInfo={handleCopyDebugInfo}
         onFeatureRequest={handleFeatureRequest}
         showNavigation={true}
         homepageActions={{
