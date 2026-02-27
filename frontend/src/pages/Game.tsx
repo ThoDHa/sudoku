@@ -185,7 +185,7 @@ function GameContent() {
   const [existingInProgressGame, setExistingInProgressGame] = useState<SavedGameInfo | null>(null)
   const [showDailyPrompt, setShowDailyPrompt] = useState(false)
   const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] = useState<{ message: string; count: number } | null>(null)
-  const [bugReportCopied, setBugReportCopied] = useState(false)
+  const [debugInfoCopied, setDebugInfoCopied] = useState(false)
   const [autoFillUsed, setAutoFillUsed] = useState(false)
   const [autoSolveUsed, setAutoSolveUsed] = useState(false)
   const autoSolveUsedRef = useRef(false)  // Ref for immediate access in callbacks
@@ -1056,7 +1056,8 @@ function GameContent() {
       // Check if the digit we just placed is now complete (all 9 instances on board)
       if (!notesMode) {
         const digitCounts = gameRef.current.digitCounts
-        if (digitCounts[digit - 1] >= 9) {
+        const count = digitCounts ? digitCounts[digit - 1] : 0
+        if (count !== undefined && count >= 9) {
           clearDigitHighlight()
         }
       }
@@ -1145,13 +1146,14 @@ function GameContent() {
        return
      }
 
-         if (currentHighlightedDigit !== null) {
-          // Fix 3: Block placement of complete highlighted digits
-          // Check if the highlighted digit is complete before placing it
-          const digitCounts = currentGame.digitCounts
-          const isHighlightedDigitComplete = digitCounts[currentHighlightedDigit - 1] >= 9
+          if (currentHighlightedDigit !== null) {
+           // Fix 3: Block placement of complete highlighted digits
+           // Check if the highlighted digit is complete before placing it
+           const digitCounts = currentGame.digitCounts
+           const highlightedDigitCount = digitCounts ? digitCounts[currentHighlightedDigit - 1] : 0
+           const isHighlightedDigitComplete = highlightedDigitCount !== undefined && highlightedDigitCount >= 9
 
-          if (isHighlightedDigitComplete) {
+           if (isHighlightedDigitComplete) {
             // Clear digit highlight and don't place the digit
             clearDigitHighlight()
             return
@@ -1206,7 +1208,8 @@ function GameContent() {
       // Fix 2: Block selection of complete digits
       // Don't allow selecting/placing digits that have all 9 instances on the board
       const digitCounts = currentGame.digitCounts
-      const isDigitComplete = digitCounts[digit - 1] >= 9
+      const digitCount = digitCounts ? digitCounts[digit - 1] : 0
+      const isDigitComplete = digitCount !== undefined && digitCount >= 9
       if (isDigitComplete) {
         return
       }
@@ -1410,8 +1413,8 @@ if (currentGame.board[currentSelectedCell] === digit) {
     }
   }, [solution, game.board, game.candidates, puzzle?.givens, handleAutoSolveError, autoSolve])
 
-  // Bug report handler - opens GitHub issue with state
-  const handleReportBug = useCallback(async () => {
+  // Bug report handlers - split into copy and report
+  const handleCopyDebugInfo = useCallback(async () => {
     const bugReport = {
       version: __COMMIT_HASH__,
       timestamp: new Date().toISOString(),
@@ -1423,7 +1426,7 @@ if (currentGame.board[currentSelectedCell] === digit) {
       state: {
         initialBoard: initialBoard,
         currentBoard: game.board,
-      candidates: candidatesToArrays(game.candidates),
+        candidates: candidatesToArrays(game.candidates),
         elapsedMs: timerControl.getElapsedMs(),
         isComplete: game.isComplete,
       },
@@ -1446,85 +1449,20 @@ if (currentGame.board[currentSelectedCell] === digit) {
     }
 
     const bugReportJson = JSON.stringify(bugReport, null, 2)
-    
-    // Create a compact board representation for the issue body
-    const boardString = game.board.map((v, i) => 
-      (i > 0 && i % 9 === 0 ? '\n' : '') + (v === 0 ? '.' : v)
-    ).join('')
-    
-    const issueBody = `## Bug Description
-<!-- Please describe the bug you encountered -->
 
-## Steps to Reproduce (optional)
-<!-- The debug state below includes move history, but feel free to describe steps here -->
-1. 
-2. 
-3. 
-
-## Expected Behavior
-<!-- What did you expect to happen? -->
-
-## Actual Behavior
-<!-- What actually happened? -->
-
----
-
-## Puzzle State (auto-filled)
-- **Version:** ${__COMMIT_HASH__}
-- **Seed:** ${puzzle?.seed || 'Unknown'}
-- **Difficulty:** ${puzzle?.difficulty || 'Unknown'}
-- **Time:** ${Math.floor(timerControl.getElapsedMs() / 1000)}s
-
-### Current Board
-\`\`\`
-${boardString}
-\`\`\`
-
-<details>
-<summary>Full Debug State (click to expand)</summary>
-
-\`\`\`json
-${bugReportJson}
-\`\`\`
-
-</details>
-`
-
-    // Also copy to clipboard as backup
+    // Copy to clipboard
     const success = await copyToClipboard(bugReportJson)
     if (success) {
-      setBugReportCopied(true)
-      visibilityAwareTimeout(() => setBugReportCopied(false), COPY_TOAST_DURATION)
+      setDebugInfoCopied(true)
+      visibilityAwareTimeout(() => setDebugInfoCopied(false), COPY_TOAST_DURATION)
     }
-    
-    // Open GitHub issue with pre-filled content
-    const issueUrl = new URL('https://github.com/ThoDHa/sudoku/issues/new')
-    issueUrl.searchParams.set('title', `Bug: [Please describe briefly]`)
-    issueUrl.searchParams.set('body', issueBody)
-    issueUrl.searchParams.set('labels', 'bug')
-    
-    window.open(issueUrl.toString(), '_blank')
   // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
   }, [puzzle, initialBoard, game, colorTheme, mode, visibilityAwareTimeout])
 
   // Feature request handler - opens GitHub issue for new features
   const handleFeatureRequest = useCallback(() => {
-    const issueBody = `## Feature Description
- <!-- Please describe the feature you'd like to see -->
-
-## Use Case
- <!-- Why would this feature be useful? -->
-
-## Possible Implementation (optional)
- <!-- Any ideas on how this could work? -->
-`
-
-    const issueUrl = new URL('https://github.com/ThoDHa/sudoku/issues/new')
-    issueUrl.searchParams.set('title', `Feature: [Please describe briefly]`)
-    issueUrl.searchParams.set('body', issueBody)
-    issueUrl.searchParams.set('labels', 'enhancement')
-    
-    window.open(issueUrl.toString(), '_blank')
+    // Open GitHub issues page with enhancement label (short URL for desktop compatibility)
+    window.open('https://github.com/thodha/sudoku/issues', '_blank')
   }, [])
 
   // Share puzzle handler - copies URL with current progress to clipboard
@@ -2152,9 +2090,9 @@ ${bugReportJson}
         onClearAll={() => setShowClearConfirm(true)}
         onTechniquesList={() => setTechniquesListOpen(true)}
         onAbout={openAbout}
-        onReportBug={handleReportBug}
+        onCopyDebugInfo={handleCopyDebugInfo}
         onFeatureRequest={handleFeatureRequest}
-        bugReportCopied={bugReportCopied}
+        debugInfoCopied={debugInfoCopied}
         mode={mode}
         modePreference={modePreference}
         colorTheme={colorTheme}
