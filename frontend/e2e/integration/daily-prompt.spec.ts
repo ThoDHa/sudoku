@@ -15,6 +15,18 @@ import { getDailySeed } from '../../src/lib/solver-service';
  * - Menu preference toggle functionality
  */
 
+/**
+ * Helper function to get today's local date in YYYY-MM-DD format
+ * Matches the logic in getTodayLocal() from scores.ts
+ */
+function getTodayLocal(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 test.describe('Daily Prompt Modal - Appearance Conditions', () => {
   test('shows modal when loading practice game without completing daily', async ({ page }) => {
     // Navigate DIRECTLY to practice game without intermediate page load
@@ -105,10 +117,10 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
         
         const completionsData = localStorage.getItem('sudoku_daily_completions');
         const parsedCompletions = completionsData ? JSON.parse(completionsData) : [];
-        const today = new Date().toISOString().split('T')[0];
+        const today = getTodayLocal();
         const isTodayCompleted = parsedCompletions.includes(today);
         console.log('DEBUG: Manual check - isTodayCompleted:', isTodayCompleted);
-        
+
         const lastShown = localStorage.getItem('sudoku_daily_prompt_last_shown');
         const alreadyShownToday = lastShown === today;
         console.log('DEBUG: Manual check - alreadyShownToday:', alreadyShownToday);
@@ -169,7 +181,7 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
     await page.evaluate(() => localStorage.clear());
     
     // Set daily completion status
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayLocal();
     await page.evaluate((dateStr) => {
       localStorage.setItem('sudoku_daily_completions', JSON.stringify([dateStr]));
     }, today);
@@ -212,7 +224,7 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
     await page.evaluate(() => localStorage.clear());
     
     // Mark prompt as shown today
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayLocal();
     await page.evaluate((dateStr) => {
       localStorage.setItem('sudoku_daily_prompt_last_shown', dateStr);
     }, today);
@@ -532,7 +544,7 @@ test.describe('Daily Prompt Modal - Daily Reset', () => {
       // Set prompt as shown yesterday
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
       localStorage.setItem('sudoku_daily_prompt_last_shown', yesterdayStr);
     });
     

@@ -1,7 +1,7 @@
 // Daily prompt utility functions
 
 import { STORAGE_KEYS } from './constants'
-import { isTodayCompleted, getTodayUTC } from './scores'
+import { isTodayCompleted, getTodayLocal } from './scores'
 import { getShowDailyReminder } from './preferences'
 
 /**
@@ -23,8 +23,8 @@ export function shouldShowDailyPrompt(): boolean {
   // Check if already prompted today
   try {
     const lastShown = localStorage.getItem(STORAGE_KEYS.DAILY_PROMPT_LAST_SHOWN)
-    const todayUTC = getTodayUTC()
-    if (lastShown === todayUTC) return false
+    const todayLocal = getTodayLocal()
+    if (lastShown === todayLocal) return false
   } catch {
     // If localStorage access fails, don't show prompt
     return false
@@ -38,7 +38,7 @@ export function shouldShowDailyPrompt(): boolean {
  */
 export function markDailyPromptShown(): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.DAILY_PROMPT_LAST_SHOWN, getTodayUTC())
+    localStorage.setItem(STORAGE_KEYS.DAILY_PROMPT_LAST_SHOWN, getTodayLocal())
   } catch {
     // Silently fail if localStorage is unavailable
   }
