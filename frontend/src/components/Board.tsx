@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo, useRef, useState } from 'react'
+import React, { memo, useCallback, useMemo, useRef } from 'react'
 import { hasCandidate, countCandidates } from '../lib/candidatesUtils'
 import { calculatePathCells } from '../lib/pathUtils'
 
@@ -163,7 +163,6 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onMouse
     isPrimary,
     isSecondary,
     isTarget,
-    highlightDigit,
     eliminations,
     showAnswer,
   } = data
@@ -194,7 +193,7 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onMouse
   } else if (cellCandidates && countCandidates(cellCandidates) > 0) {
     // Cell with candidates
     const isHighlightedCell = isPrimary || isSecondary
-    const singleDigit = highlightDigit && highlightDigit > 0 ? highlightDigit : null
+    const singleDigit = highlightedDigit && highlightedDigit > 0 ? highlightedDigit : null
 
     content = (
       <div className="candidate-grid">
@@ -290,7 +289,6 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onMouse
     prevData.isPrimary === nextData.isPrimary &&
     prevData.isSecondary === nextData.isSecondary &&
     prevData.isTarget === nextData.isTarget &&
-    prevData.highlightDigit === nextData.highlightDigit &&
     prevData.eliminations === nextData.eliminations &&
     prevData.showAnswer === nextData.showAnswer &&
     prevProps.onKeyDown === nextProps.onKeyDown &&
@@ -725,7 +723,6 @@ const Board = memo(function Board({
         isPrimary,
         isSecondary,
         isTarget,
-        highlightDigit: highlight?.digit ?? null,
         eliminations: highlight?.eliminations,
         showAnswer: highlight?.showAnswer !== false, // Default to true for backward compatibility
       })

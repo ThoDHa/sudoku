@@ -65,6 +65,7 @@ export interface UseSudokuGameReturn {
   
   // Actions
   setCell: (idx: number, digit: number, isNotesMode: boolean) => void
+  setCellMultiple: (indices: number[], digit: number, isNotesMode: boolean) => void
   eraseCell: (idx: number) => void
   undo: () => void
   redo: () => void

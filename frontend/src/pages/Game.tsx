@@ -2164,6 +2164,7 @@ if (currentGame.board[currentSelectedCell] === digit) {
             candidates={game.candidates}
             candidatesVersion={game.candidatesVersion}
             selectedCell={selectedCell}
+            selectedCells={selectedCells}
             highlightedDigit={highlightedDigit}
             highlight={currentHighlight}
             onCellClick={handleCellClick}

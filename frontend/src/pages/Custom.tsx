@@ -9,6 +9,7 @@ export default function Custom() {
   const navigate = useNavigate()
   const [board, setBoard] = useState<number[]>(Array(81).fill(0))
   const [selectedCell, setSelectedCell] = useState<number | null>(null)
+  const [selectedCells] = useState<Set<number>>(new Set())
   const [validating, setValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -139,6 +140,7 @@ export default function Custom() {
             initialBoard={Array(81).fill(0)}
             candidates={candidates}
             selectedCell={selectedCell}
+            selectedCells={selectedCells}
             highlightedDigit={null}
             highlight={null}
             onCellClick={handleCellClick}
