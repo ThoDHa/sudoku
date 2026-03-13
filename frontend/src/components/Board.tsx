@@ -1,5 +1,6 @@
-import React, { memo, useCallback, useMemo, useRef } from 'react'
+import React, { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { hasCandidate, countCandidates } from '../lib/candidatesUtils'
+import { calculatePathCells } from '../lib/pathUtils'
 
 interface Move {
   step_index: number
@@ -26,10 +27,13 @@ interface BoardProps {
   /** Version counter for candidates - ensures React detects changes to Uint16Array */
   candidatesVersion?: number
   selectedCell: number | null
+  selectedCells: Set<number>
   highlightedDigit: number | null
   highlight: Move | null
   onCellClick: (idx: number) => void
   onCellChange?: (idx: number, value: number) => void
+  /** Callback for multi-select - called when drag selects multiple cells */
+  onCellSelectMultiple?: (cells: number[]) => void
   /** Cells that contain incorrect values (compared to the solution) */
   incorrectCells?: number[]
   /** Additional CSS classes to apply to the board container */
@@ -118,6 +122,7 @@ interface CellData {
   cellCandidates: number
   isGiven: boolean
   isSelected: boolean
+  isMultiSelected: boolean
   className: string
   ariaLabel: string
   // For renderCell logic
@@ -125,7 +130,6 @@ interface CellData {
   isPrimary: boolean
   isSecondary: boolean
   isTarget: boolean
-  highlightDigit: number | null  // The technique's digit (0 for multi-digit techniques)
   eliminations: { row: number; col: number; digit: number }[] | undefined
   /** When false, hides eliminations and target additions (technique hint mode) */
   showAnswer: boolean
@@ -136,13 +140,16 @@ interface CellProps {
   onCellClick: (idx: number) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>, idx: number) => void
   cellRef: (el: HTMLDivElement | null) => void
+  onMouseDown?: (idx: number) => void
+  onMouseEnter?: (idx: number) => void
+  onMouseUp?: () => void
 }
 
 /**
  * Memoized Cell component - only re-renders when its specific data changes.
  * This prevents 80 cells from re-rendering when only 1 cell changes.
  */
-const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellProps) {
+const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onMouseDown, onMouseEnter, onMouseUp }: CellProps) {
   const localRef = useRef<HTMLDivElement>(null)
   const {
     idx,
@@ -250,6 +257,9 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
         className={className}
         onClick={handleClick}
         onKeyDown={(e) => onKeyDown(e, idx)}
+        onMouseDown={() => onMouseDown?.(idx)}
+        onMouseEnter={() => onMouseEnter?.(idx)}
+        onMouseUp={onMouseUp}
         style={isGiven ? { cursor: 'default' } : undefined}
       >
         {content}
@@ -258,7 +268,7 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
 
 }, (prevProps, nextProps) => {
   // Custom comparison - only re-render if this cell's data actually changed
-  // This is critical for performance - we compare the CellData object deeply
+  // This is critical for performance - we compare to CellData object deeply
   const prevData = prevProps.data
   const nextData = nextProps.data
 
@@ -284,7 +294,10 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef }: CellP
     prevData.eliminations === nextData.eliminations &&
     prevData.showAnswer === nextData.showAnswer &&
     prevProps.onKeyDown === nextProps.onKeyDown &&
-    prevProps.onCellClick === nextProps.onCellClick
+    prevProps.onCellClick === nextProps.onCellClick &&
+    prevProps.onMouseDown === nextProps.onMouseDown &&
+    prevProps.onMouseEnter === nextProps.onMouseEnter &&
+    prevProps.onMouseUp === nextProps.onMouseUp
   )
 })
 
@@ -298,14 +311,20 @@ const Board = memo(function Board({
   candidates,
   candidatesVersion,
   selectedCell,
+  selectedCells = new Set<number>(),
   highlightedDigit,
   highlight,
   onCellClick,
   onCellChange,
+  onCellSelectMultiple,
   incorrectCells = [],
   className = '',
 }: BoardProps) {
   const cellRefs = React.useRef<(HTMLDivElement | null)[]>([])
+
+  // Drag state for multi-select feature
+  const [isDragging, setIsDragging] = React.useState(false)
+  const [dragStartCell, setDragStartCell] = React.useState<number | null>(null)
   
   // Ref for initialBoard to allow stable callbacks that always read the latest value
   // This is critical because Cell memoization doesn't compare onKeyDown callbacks,
@@ -591,6 +610,7 @@ const Board = memo(function Board({
     const col = idx % 9
     const isGiven = initialBoard[idx] !== 0
     const isSelected = selectedCell === idx
+    const isMultiSelected = selectedCells.has(idx) && !isSelected
     const isPrimary = isHighlightedPrimary(row, col)
     const isSecondary = isHighlightedSecondary(row, col)
     const isDuplicate = duplicates.has(idx)
@@ -616,18 +636,25 @@ const Board = memo(function Board({
 
     // Incorrect cells get a red ring
     // Incorrect cells get an error ring
-    if (isIncorrect) {
+    // Multi-selected cells get a distinct ring
+    if (isMultiSelected) {
+      classes.push('ring-2 ring-inset ring-accent-multi z-10')
+    } else if (isIncorrect) {
       classes.push('ring-2 ring-inset ring-error-text z-10')
     } else if (isSelected) {
       // Selected cell gets a prominent ring
       classes.push('ring-2 ring-inset ring-accent z-10')
     }
 
-    // Background priority: incorrect > duplicate > selected > primary > secondary > digit match > peer > default
+    // Background priority: incorrect > duplicate > multi-selected > selected > primary > secondary > digit match > peer > default
     if (isIncorrect) {
       classes.push('bg-error-bg')
     } else if (isDuplicate) {
       classes.push('bg-error-bg')
+    } else if (isMultiSelected) {
+      classes.push('bg-cell-multi-selected')
+    } else if (isSelected) {
+      classes.push('bg-cell-selected')
     } else if (isPrimary) {
       classes.push('bg-cell-primary')
     } else if (isSecondary) {
@@ -691,6 +718,7 @@ const Board = memo(function Board({
         cellCandidates: candidates[idx] || 0,
         isGiven,
         isSelected: selectedCell === idx,
+        isMultiSelected: selectedCells.has(idx) && selectedCell !== idx,
         className: getCellClass(idx),
         ariaLabel: getCellAriaLabel(idx),
         highlightedDigit,
@@ -710,6 +738,7 @@ const Board = memo(function Board({
     candidatesVersion,
     initialBoard,
     selectedCell,
+    selectedCells,
     highlightedDigit,
     highlight,
     duplicates,
@@ -726,6 +755,36 @@ const Board = memo(function Board({
   const handleCellKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
     handleKeyDown(e, idx)
   }, [handleKeyDown])
+
+  // Drag handlers for multi-select feature
+  const handleDragStart = useCallback((idx: number) => {
+    setIsDragging(true)
+    setDragStartCell(idx)
+  }, [])
+
+  const handleDragEnter = useCallback((idx: number) => {
+    if (!isDragging || dragStartCell === null) return
+
+    // Check if drag should be blocked by given cell
+    if (initialBoard[idx] !== 0) {
+      setIsDragging(false)
+      setDragStartCell(null)
+      return
+    }
+
+    // Calculate path from dragStartCell to current cell
+    const pathCells = calculatePathCells(dragStartCell, idx)
+
+    // Call callback to update selection
+    if (onCellSelectMultiple) {
+      onCellSelectMultiple(pathCells)
+    }
+  }, [isDragging, dragStartCell, initialBoard, onCellSelectMultiple])
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false)
+    setDragStartCell(null)
+  }, [])
 
   // Stable ref callback factory - returns the same function for each cell index
   const cellRefCallbacks = useMemo(() => {
@@ -755,6 +814,9 @@ const Board = memo(function Board({
                 onCellClick={handleCellClick}
                 onKeyDown={handleCellKeyDown}
                 cellRef={cellRef}
+                onMouseDown={handleDragStart}
+                onMouseEnter={handleDragEnter}
+                onMouseUp={handleDragEnd}
               />
             )
           })}
