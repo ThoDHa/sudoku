@@ -311,7 +311,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       }
       lastNoteToggle.current = { idx, digit, time: now }
 
-      // Truncate history if we're in the middle
+      // Truncate history if we're in middle
       const truncatedHistory = historyHookHistoryRef.current.slice(0, historyHookIndexRef.current + 1)
 
       const row = Math.floor(idx / BOARD_SIZE)
@@ -343,14 +343,14 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
          historyHookSetHistoryIndex(limitedIndex)
          candidatesHook.setCandidates(newCandidates)
 
-        // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
+        // CRITICAL: Update refs synchronously so subsequent rapid calls see new values
         historyHookHistoryRef.current = limitedHistory
         historyHookIndexRef.current = limitedIndex
      } else {
        const row = Math.floor(idx / BOARD_SIZE)
        const col = idx % BOARD_SIZE
 
-       // Truncate history if we're in the middle
+       // Truncate history if we're in middle
        const truncatedHistory = historyHookHistoryRef.current.slice(0, historyHookIndexRef.current + 1)
 
        // Calculate new state first
@@ -378,28 +378,90 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
        historyHookSetHistory(limitedHistory)
        historyHookSetHistoryIndex(limitedIndex)
 
-       updateBoard(newBoard)
-       candidatesHook.setCandidates(newCandidates)
+        updateBoard(newBoard)
+        candidatesHook.setCandidates(newCandidates)
 
-       // CRITICAL: Update refs synchronously so subsequent rapid calls see the new values
-       boardRef.current = newBoard
-       historyHookHistoryRef.current = limitedHistory
-       historyHookIndexRef.current = limitedIndex
+        checkCompletion(newBoard)
 
-       checkCompletion(newBoard)
-     }
+        // CRITICAL: Update refs synchronously so subsequent rapid calls see new values
+        boardRef.current = newBoard
+        historyHookHistoryRef.current = limitedHistory
+        historyHookIndexRef.current = limitedIndex
+      }
+    }, [
+      isGivenCell, boardRef, candidatesHook, lastNoteToggle,
+      historyHookHistoryRef, historyHookIndexRef, historyHookSetHistory,
+      historyHookSetHistoryIndex, historyHookLimitHistory,
+      hasCandidate, toggleCandidate, updateBoard, checkCompletion
+    ])
+
+  const setCellMultiple = useCallback((indices: number[], digit: number, isNotesMode: boolean) => {
+    // Bulk note entry only works in notes mode
+    if (!isNotesMode) return
+
+    const currentBoard = boardRef.current
+    const currentCandidates = candidatesHook.candidates
+
+    // Filter out given cells and non-empty cells
+    const validIndices = indices.filter(idx => {
+      if (isGivenCell(idx)) return false
+      if (currentBoard[idx] !== 0) return false
+      return true
+    })
+
+    // No valid cells to update
+    if (validIndices.length === 0) return
+
+    // Truncate history if we're in middle
+    const truncatedHistory = historyHookHistoryRef.current.slice(0, historyHookIndexRef.current + 1)
+
+    // Create new candidates array with toggled notes
+    const newCandidates = new Uint16Array(currentCandidates)
+    const targets: { row: number; col: number }[] = []
+
+    validIndices.forEach(idx => {
+      newCandidates[idx] = toggleCandidate(newCandidates[idx] || 0, digit)
+      const row = Math.floor(idx / BOARD_SIZE)
+      const col = idx % BOARD_SIZE
+      targets.push({ row, col })
+    })
+
+    // Build targets for history
+    const action = validIndices.some(idx => {
+      const existing = currentCandidates[idx] || 0
+      return hasCandidate(existing, digit)
+    }) ? 'eliminate' : 'note'
+
+    // Add bulk note operation to history with compact diff
+    const bulkNoteMove = createMoveWithDiff({
+      step_index: truncatedHistory.length,
+      technique: 'User Input',
+      action,
+      digit,
+      targets,
+      explanation: action === 'note'
+        ? `Added note ${digit} to ${targets.length} cells`
+        : `Removed note ${digit} from ${targets.length} cells`,
+      refs: { title: '', slug: '', url: '' },
+      highlights: { primary: [] },
+      isUserMove: true,
+    }, currentBoard, currentBoard, newCandidates)
+
+    const newHistory = [...truncatedHistory, bulkNoteMove]
+    const { history: limitedHistory, index: limitedIndex } = historyHookLimitHistory(newHistory, newHistory.length - 1)
+    historyHookSetHistory(limitedHistory)
+    historyHookSetHistoryIndex(limitedIndex)
+    candidatesHook.setCandidates(newCandidates)
+
+    // CRITICAL: Update refs synchronously so subsequent rapid calls see new values
+    historyHookHistoryRef.current = limitedHistory
+    historyHookIndexRef.current = limitedIndex
   }, [
-    isGivenCell,
-    candidatesHook,
-    checkCompletion,
-    createMoveWithDiff,
-    updateBoard,
-    historyHookHistoryRef,
-    historyHookIndexRef,
-    historyHookLimitHistory,
-     historyHookSetHistory,
-     historyHookSetHistoryIndex
-   ])
+    isGivenCell, boardRef, candidatesHook,
+    historyHookHistoryRef, historyHookIndexRef, historyHookSetHistory,
+    historyHookSetHistoryIndex, historyHookLimitHistory,
+    hasCandidate, toggleCandidate
+  ])
 
    const handleToggleCandidate = useCallback((idx: number, digit: number) => {
     const currentBoard = boardRef.current
@@ -701,6 +763,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
     // Actions
     setCell,
+    setCellMultiple,
     eraseCell,
     toggleCandidate: handleToggleCandidate,
     undo: handleUndo,
@@ -723,7 +786,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     checkNotes,
   }), [
     board, candidatesHook, history, historyIndex, historyHookCanUndo, historyHookCanRedo, isComplete,
-    digitCounts, setCell, eraseCell, handleToggleCandidate, handleUndo, handleRedo, resetGame,
+    digitCounts, setCell, setCellMultiple, eraseCell, handleToggleCandidate, handleUndo, handleRedo, resetGame,
     clearAll, clearCandidates, applyExternalMove, setIsComplete, restoreState,
     setBoardState, isGivenCell, _fillAllCandidates,
     _areCandidatesFilled, checkNotes

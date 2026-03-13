@@ -1899,4 +1899,180 @@ describe('useSudokuGame - Memoization', () => {
     expect(result.current.board).not.toBe(firstBoard)
     expect(result.current.board[40]).toBe(5)
   })
+
+  // ===========================================================================
+  // BULK NOTE ENTRY TESTS (Multi-Select Feature)
+  // ===========================================================================
+  describe('setCellMultiple - bulk note entry', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.clearAllTimers()
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('should be available in hook return', () => {
+      const { result } = renderHook(() => useSudokuGame({
+        initialBoard: createEmptyPuzzle(),
+      }))
+
+      expect(typeof result.current.setCellMultiple).toBe('function')
+    })
+
+    it('should add note to single cell in selection (behaves like setCell)', () => {
+      const puzzle = createEmptyPuzzle()
+      const { result } = renderHook(() => useSudokuGame({
+        initialBoard: puzzle,
+      }))
+
+      act(() => {
+        result.current.setCellMultiple([10], 5, true)
+      })
+
+      // Cell 10 should have candidate 5
+      expect(result.current.candidates[10]).not.toBe(0)
+      const hasCandidate5 = hasCandidate(result.current.candidates[10] || 0, 5)
+      expect(hasCandidate5).toBe(true)
+    })
+
+    it('should add note to multiple cells in selection', () => {
+      const puzzle = createEmptyPuzzle()
+      const { result } = renderHook(() => useSudokuGame({
+        initialBoard: puzzle,
+      }))
+
+      act(() => {
+        result.current.setCellMultiple([10, 11, 12], 7, true)
+      })
+
+      // Cells 10, 11, 12 should all have candidate 7
+      expect(result.current.candidates[10]).not.toBe(0)
+      expect(result.current.candidates[11]).not.toBe(0)
+      expect(result.current.candidates[12]).not.toBe(0)
+
+      const hasCandidate7_10 = hasCandidate(result.current.candidates[10] || 0, 7)
+      const hasCandidate7_11 = hasCandidate(result.current.candidates[11] || 0, 7)
+      const hasCandidate7_12 = hasCandidate(result.current.candidates[12] || 0, 7)
+
+      expect(hasCandidate7_10).toBe(true)
+      expect(hasCandidate7_11).toBe(true)
+      expect(hasCandidate7_12).toBe(true)
+    })
+
+    it('should not add notes when notes mode is false', () => {
+      const puzzle = createEmptyPuzzle()
+      const { result } = renderHook(() => useSudokuGame({
+        initialBoard: puzzle,
+      }))
+
+      act(() => {
+        result.current.setCellMultiple([10, 11], 5, false)
+      })
+
+      // Cells 10, 11 should NOT have candidate 5
+      expect(result.current.candidates[10]).toBe(0)
+      expect(result.current.candidates[11]).toBe(0)
+
+      const hasCandidate5_10 = hasCandidate(result.current.candidates[10] || 0, 5)
+      const hasCandidate5_11 = hasCandidate(result.current.candidates[11] || 0, 5)
+
+      expect(hasCandidate5_10).toBe(false)
+      expect(hasCandidate5_11).toBe(false)
+    })
+
+    it('should skip given cells in selection', () => {
+      const puzzle = createEmptyPuzzle()
+      // Set only cell 0 as a given
+      puzzle[0] = 5
+      // Cell 10 remains empty (will get candidate)
+
+      const { result } = renderHook(() => useSudokuGame({
+        initialBoard: puzzle,
+      }))
+
+      act(() => {
+        // Cell 0 is a given, cell 10 is empty
+        // setCellMultiple should only add note to cell 10 (skip cell 0)
+        result.current.setCellMultiple([0, 10], 7, true)
+      })
+
+      // Cell 10 should have candidate 7
+      expect(result.current.candidates[10]).not.toBe(0)
+      const hasCandidate7_10 = hasCandidate(result.current.candidates[10] || 0, 7)
+      expect(hasCandidate7_10).toBe(true)
+
+      // Cell 0 (given) should NOT be modified
+      expect(result.current.candidates[0]).toBe(0)
+    })
+
+    it('should eliminate candidates from peers for each cell', () => {
+      const puzzle = createEmptyPuzzle()
+
+      const { result } = renderHook(() => useSudokuGame({
+        initialBoard: puzzle,
+      }))
+
+      act(() => {
+        result.current.setCellMultiple([0, 1, 2, 3], 5, true)
+      })
+
+      // All cells 0, 1, 2, 3 should have candidate 5
+      expect(result.current.candidates[0]).not.toBe(0)
+      expect(result.current.candidates[1]).not.toBe(0)
+      expect(result.current.candidates[2]).not.toBe(0)
+      expect(result.current.candidates[3]).not.toBe(0)
+
+      // Cell 10 (same row, same column, same box) should NOT have candidate 5
+      const hasCandidate5_10 = hasCandidate(result.current.candidates[10] || 0, 5)
+      expect(hasCandidate5_10).toBe(false)
+    })
+
+    it('should record bulk note operation in history', () => {
+      const puzzle = createEmptyPuzzle()
+      const { result } = renderHook(() => useSudokuGame({
+        initialBoard: puzzle,
+      }))
+
+      act(() => {
+        result.current.setCellMultiple([10, 11], 7, true)
+      })
+
+      // History should have one new entry
+      const history = result.current.history
+      expect(history).toHaveLength(1)
+
+      // Should be a note move (not place)
+      const noteMove = history[0]
+      expect(noteMove.technique).toBe('User Input')
+      expect(noteMove.action).toBe('note')
+      expect(noteMove.targets).toHaveLength(2)
+
+      // Targets should be cells 10 and 11
+      // Cell 10: row = Math.floor(10 / 9) = 1, col = 10 % 9 = 1
+      // Cell 11: row = Math.floor(11 / 9) = 1, col = 11 % 9 = 2
+      const cell10InTargets = noteMove.targets.some((t) => t.row === 1 && t.col === 1)
+      const cell11InTargets = noteMove.targets.some((t) => t.row === 1 && t.col === 2)
+
+      expect(cell10InTargets).toBe(true)
+      expect(cell11InTargets).toBe(true)
+    })
+
+    it('should update board state for all cells', () => {
+      const puzzle = createEmptyPuzzle()
+      const { result } = renderHook(() => useSudokuGame({
+        initialBoard: puzzle,
+      }))
+
+      act(() => {
+        result.current.setCellMultiple([10, 11, 12], 7, true)
+      })
+
+      // Board should still be all 0s
+      expect(result.current.board[10]).toBe(0)
+      expect(result.current.board[11]).toBe(0)
+      expect(result.current.board[12]).toBe(0)
+    })
+  })
 })
