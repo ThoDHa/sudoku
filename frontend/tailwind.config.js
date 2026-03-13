@@ -21,15 +21,16 @@ export default {
         },
         
         // Cell colors
-        cell: {
-          bg: 'var(--cell-bg)',
-          given: 'var(--cell-given)',
-          hover: 'var(--cell-hover)',
-          selected: 'var(--cell-selected)',
-          peer: 'var(--cell-peer)',
-          primary: 'var(--cell-primary)',
-          secondary: 'var(--cell-secondary)',
-        },
+          cell: {
+            bg: 'var(--cell-bg)',
+            given: 'var(--cell-given)',
+            hover: 'var(--cell-hover)',
+            selected: 'var(--cell-selected)',
+            multiSelected: 'var(--cell-multi-selected)',
+            peer: 'var(--cell-peer)',
+            primary: 'var(--cell-primary)',
+            secondary: 'var(--cell-secondary)',
+          },
         
         // Text colors for cells
         'cell-text': {
