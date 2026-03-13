@@ -28,6 +28,8 @@ export interface MoveHighlight {
 export interface HighlightState {
   /** Currently selected cell index (0-80) or null */
   selectedCell: number | null
+  /** Set of currently selected cell indices (0-80) - supports multi-select */
+  selectedCells: Set<number>
   /** Currently highlighted digit for multi-fill mode (1-9) or null */
   highlightedDigit: number | null
   /** Current move/hint highlight being shown */
@@ -46,16 +48,17 @@ export type HighlightAction =
   // Selection actions
   | { type: 'SELECT_CELL'; cell: number }
   | { type: 'DESELECT_CELL' }
-  
+  | { type: 'SELECT_MULTIPLE_CELLS'; cells: number[] }
+
   // Digit highlight actions
   | { type: 'SET_DIGIT_HIGHLIGHT'; digit: number }
   | { type: 'CLEAR_DIGIT_HIGHLIGHT' }
   | { type: 'TOGGLE_DIGIT_HIGHLIGHT'; digit: number }
-  
+
   // Move highlight actions
   | { type: 'SET_MOVE_HIGHLIGHT'; move: MoveHighlight; index?: number }
   | { type: 'CLEAR_MOVE_HIGHLIGHT' }
-  
+
   // Compound actions (for specific workflows)
   | { type: 'CLEAR_ALL' }
   | { type: 'CLEAR_ALL_AND_DESELECT' }
@@ -66,12 +69,13 @@ export type HighlightAction =
   | { type: 'CLEAR_ON_MODE_CHANGE' }           // Clears everything
   | { type: 'CLEAR_AFTER_DIGIT_TOGGLE' }       // User toggled same digit (erase) - clears all highlights
   | { type: 'CLEAR_HIGHLIGHTS_KEEP_SELECTION' } // Clears highlights but keeps selected cell
-  
-  // Given cell click - highlight the digit and select the cell for peer highlighting
+
+  // Given cell click - highlight digit and select cell for peer highlighting
   | { type: 'CLICK_GIVEN_CELL'; digit: number; cell: number }
 
 const initialState: HighlightState = {
   selectedCell: null,
+  selectedCells: new Set<number>(),
   highlightedDigit: null,
   currentHighlight: null,
   selectedMoveIndex: null,
@@ -91,16 +95,30 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
       return {
         ...state,
         selectedCell: action.cell,
+        selectedCells: new Set([action.cell]),
         // Clear highlights when selecting a cell (for consistent UX)
         highlightedDigit: null,
         currentHighlight: null,
         version: nextVersion,
       }
-    
+
     case 'DESELECT_CELL':
       return {
         ...state,
         selectedCell: null,
+        selectedCells: new Set<number>(),
+        version: nextVersion,
+      }
+
+    case 'SELECT_MULTIPLE_CELLS':
+      return {
+        ...state,
+        selectedCells: new Set(action.cells),
+        // Backward compatibility: single-element set updates selectedCell
+        selectedCell: action.cells.length === 1 ? action.cells[0] : null,
+        // Clear highlights when selecting cells
+        highlightedDigit: null,
+        currentHighlight: null,
         version: nextVersion,
       }
     
@@ -155,11 +173,12 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         selectedMoveIndex: null,
         version: nextVersion,
       }
-    
+
     case 'CLEAR_ALL_AND_DESELECT':
       return {
         ...state,
         selectedCell: null,
+        selectedCells: new Set<number>(),
         highlightedDigit: null,
         currentHighlight: null,
         selectedMoveIndex: null,
@@ -211,6 +230,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
       return {
         ...state,
         selectedCell: null,
+        selectedCells: new Set<number>(),
         highlightedDigit: null,
         currentHighlight: null,
         version: nextVersion,
@@ -242,6 +262,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
       return {
         ...state,
         selectedCell: action.cell,
+        selectedCells: new Set([action.cell]),
         highlightedDigit: action.digit,
         currentHighlight: null,
         version: nextVersion,
@@ -272,12 +293,13 @@ export function useHighlightState() {
     // Selection
     selectCell: (cell: number) => dispatch({ type: 'SELECT_CELL', cell }),
     deselectCell: () => dispatch({ type: 'DESELECT_CELL' }),
-    
+    selectMultipleCells: (cells: number[]) => dispatch({ type: 'SELECT_MULTIPLE_CELLS', cells }),
+
     // Digit highlight
     setDigitHighlight: (digit: number) => dispatch({ type: 'SET_DIGIT_HIGHLIGHT', digit }),
     clearDigitHighlight: () => dispatch({ type: 'CLEAR_DIGIT_HIGHLIGHT' }),
     toggleDigitHighlight: (digit: number) => dispatch({ type: 'TOGGLE_DIGIT_HIGHLIGHT', digit }),
-    
+
     // Move highlight
     setMoveHighlight: (move: MoveHighlight, index?: number) => {
       if (index !== undefined) {
@@ -287,7 +309,7 @@ export function useHighlightState() {
       }
     },
     clearMoveHighlight: () => dispatch({ type: 'CLEAR_MOVE_HIGHLIGHT' }),
-    
+
     // Compound actions
     clearAll: () => dispatch({ type: 'CLEAR_ALL' }),
     clearAllAndDeselect: () => dispatch({ type: 'CLEAR_ALL_AND_DESELECT' }),
@@ -303,6 +325,7 @@ export function useHighlightState() {
 
   // Backward compatibility getters (for gradual migration)
   const selectedCell = state.selectedCell
+  const selectedCells = state.selectedCells
   const highlightedDigit = state.highlightedDigit
   const currentHighlight = state.currentHighlight
   const selectedMoveIndex = state.selectedMoveIndex
@@ -315,14 +338,16 @@ export function useHighlightState() {
     // State values
     state,
     selectedCell,
+    selectedCells,
     highlightedDigit,
     currentHighlight,
     selectedMoveIndex,
     version,
-    
+
     // Actions (already memoized, but we need stable wrapper object)
     selectCell: actions.selectCell,
     deselectCell: actions.deselectCell,
+    selectMultipleCells: actions.selectMultipleCells,
     setDigitHighlight: actions.setDigitHighlight,
     clearDigitHighlight: actions.clearDigitHighlight,
     toggleDigitHighlight: actions.toggleDigitHighlight,
@@ -339,7 +364,7 @@ export function useHighlightState() {
     clearHighlightsKeepSelection: actions.clearHighlightsKeepSelection,
     clickGivenCell: actions.clickGivenCell,
     dispatch,
-  }), [state, selectedCell, highlightedDigit, currentHighlight, selectedMoveIndex, version, actions, dispatch])
+  }), [state, selectedCell, selectedCells, highlightedDigit, currentHighlight, selectedMoveIndex, version, actions, dispatch])
 }
 
 export type UseHighlightStateReturn = ReturnType<typeof useHighlightState>

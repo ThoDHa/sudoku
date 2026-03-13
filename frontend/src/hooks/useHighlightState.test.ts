@@ -65,9 +65,10 @@ describe('useHighlightState', () => {
 
     it('provides state object with all initial values', () => {
       const { result } = renderHook(() => useHighlightState())
-      
+
       expect(result.current.state).toEqual({
         selectedCell: null,
+        selectedCells: new Set<number>(),
         highlightedDigit: null,
         currentHighlight: null,
         selectedMoveIndex: null,
@@ -848,14 +849,14 @@ describe('useHighlightState', () => {
   describe('Action Stability', () => {
     it('action functions have stable references across renders', () => {
       const { result, rerender } = renderHook(() => useHighlightState())
-      
+
       const selectCell1 = result.current.selectCell
       const setDigitHighlight1 = result.current.setDigitHighlight
       const clearAll1 = result.current.clearAll
-      
+
       // Trigger a re-render
       rerender()
-      
+
       expect(result.current.selectCell).toBe(selectCell1)
       expect(result.current.setDigitHighlight).toBe(setDigitHighlight1)
       expect(result.current.clearAll).toBe(clearAll1)
@@ -863,14 +864,184 @@ describe('useHighlightState', () => {
 
     it('action functions remain stable after state changes', () => {
       const { result } = renderHook(() => useHighlightState())
-      
+
       const selectCell1 = result.current.selectCell
-      
+
       act(() => {
         result.current.selectCell(10)
       })
-      
+
       expect(result.current.selectCell).toBe(selectCell1)
+    })
+  })
+
+  // ===========================================================================
+  // MULTI-SELECT STATE MANAGEMENT TESTS
+  // ===========================================================================
+  describe('Multi-Select State Management', () => {
+    describe('selectedCells Property', () => {
+      it('initializes with empty set (no cells selected)', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        expect(result.current.state.selectedCells).toBeInstanceOf(Set)
+        expect(result.current.state.selectedCells.size).toBe(0)
+      })
+
+      it('provides selectedCells getter for backward compatibility', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        // Single-element set should be accessible via selectedCell getter
+        act(() => {
+          result.current.selectCell(42)
+        })
+
+        expect(result.current.state.selectedCells).toEqual(new Set([42]))
+      })
+    })
+
+    describe('selectMultipleCells Action', () => {
+      it('should be available in hook return', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        expect(result.current.selectMultipleCells).toBeDefined()
+        expect(typeof result.current.selectMultipleCells).toBe('function')
+      })
+
+      it('selects multiple cells at once', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        act(() => {
+          result.current.selectMultipleCells([10, 20, 30])
+        })
+
+        expect(result.current.state.selectedCells).toEqual(new Set([10, 20, 30]))
+      })
+
+      it('handles empty array (clears selection)', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        act(() => {
+          result.current.selectMultipleCells([10, 20])
+        })
+        expect(result.current.state.selectedCells.size).toBe(2)
+
+        act(() => {
+          result.current.selectMultipleCells([])
+        })
+        expect(result.current.state.selectedCells.size).toBe(0)
+      })
+
+      it('clears other highlights when selecting multiple cells', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        act(() => {
+          result.current.setDigitHighlight(5)
+          result.current.setMoveHighlight(createMockMoveHighlight())
+        })
+
+        act(() => {
+          result.current.selectMultipleCells([10, 20])
+        })
+
+        expect(result.current.highlightedDigit).toBeNull()
+        expect(result.current.currentHighlight).toBeNull()
+      })
+
+      it('increments version on multi-select', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        const versionBefore = result.current.version
+
+        act(() => {
+          result.current.selectMultipleCells([10, 20, 30])
+        })
+
+        expect(result.current.version).toBe(versionBefore + 1)
+      })
+    })
+
+    describe('Backward Compatibility', () => {
+      it('selectCell still works for single cell selection', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        act(() => {
+          result.current.selectCell(42)
+        })
+
+        expect(result.current.state.selectedCells).toEqual(new Set([42]))
+        expect(result.current.selectedCell).toBe(42)
+      })
+
+      it('deselectCell clears multi-select state', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        act(() => {
+          result.current.selectMultipleCells([10, 20, 30])
+        })
+
+        act(() => {
+          result.current.deselectCell()
+        })
+
+        expect(result.current.state.selectedCells.size).toBe(0)
+        expect(result.current.selectedCell).toBeNull()
+      })
+
+      it('clearAllAndDeselect clears multi-select state', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        act(() => {
+          result.current.selectMultipleCells([10, 20])
+          result.current.setDigitHighlight(5)
+        })
+
+        act(() => {
+          result.current.clearAllAndDeselect()
+        })
+
+        expect(result.current.state.selectedCells.size).toBe(0)
+        expect(result.current.selectedCell).toBeNull()
+        expect(result.current.highlightedDigit).toBeNull()
+      })
+
+      it('clearOnModeChange clears multi-select state', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        act(() => {
+          result.current.selectMultipleCells([5, 15, 25])
+        })
+
+        act(() => {
+          result.current.clearOnModeChange()
+        })
+
+        expect(result.current.state.selectedCells.size).toBe(0)
+        expect(result.current.selectedCell).toBeNull()
+      })
+    })
+
+    describe('Single vs Multi-Selection Detection', () => {
+      it('detects single selection when one cell is selected', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        act(() => {
+          result.current.selectMultipleCells([42])
+        })
+
+        expect(result.current.state.selectedCells.size).toBe(1)
+        expect(result.current.selectedCell).toBe(42)
+      })
+
+      it('detects multi-selection when multiple cells selected', () => {
+        const { result } = renderHook(() => useHighlightState())
+
+        act(() => {
+          result.current.selectMultipleCells([10, 20, 30])
+        })
+
+        expect(result.current.state.selectedCells.size).toBeGreaterThan(1)
+        expect(result.current.selectedCell).toBeNull()
+      })
     })
   })
 })
