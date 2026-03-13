@@ -54,6 +54,7 @@ export const FEATURES = {
     TIMER: 'Gameplay - Timer',
     AUTOSOLVE: 'Gameplay - Auto-Solve',
     CUSTOM_PUZZLES: 'Gameplay - Custom Puzzles',
+    MULTI_SELECT: 'Gameplay - Multi-Select Feature',
   },
   
   NAVIGATION: {
@@ -129,7 +130,7 @@ export const STORIES = {
   GAMEPLAY: {
     // Cell Selection
     SELECT_EMPTY_CELL: 'Clicking an empty cell selects it',
-    SELECT_GIVEN_CELL: 'Clicking a given cell highlights the digit',
+    SELECT_GIVEN_CELL: 'Clicking a given cell highlights digit',
     KEYBOARD_ARROW_NAVIGATION: 'Arrow keys navigate between cells',
     
     // Digit Entry
@@ -161,6 +162,15 @@ export const STORIES = {
     CUSTOM_PUZZLE_INPUT: 'Can input custom puzzle',
     CUSTOM_PUZZLE_VALIDATION: 'Custom puzzle validates input',
     CUSTOM_PUZZLE_PLAYS: 'Custom puzzle is playable',
+    
+    // Multi-Select Feature
+    HORIZONTAL_DRAG: 'Drag horizontally to select multiple cells',
+    VERTICAL_DRAG: 'Drag vertically to select multiple cells',
+    DIAGONAL_DRAG: 'Drag diagonally to select cells along path',
+    GIVEN_BLOCKING: 'Drag stops when encountering given cell',
+    BULK_NOTE_ENTRY: 'Multi-select with digit button fills note in all selected cells',
+    NOTES_MODE_ONLY: 'Multi-select only works in notes mode',
+    CLEAR_SELECTION: 'Clicking outside selection clears multi-select',
   },
   
   NAVIGATION: {
