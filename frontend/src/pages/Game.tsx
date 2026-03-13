@@ -232,15 +232,16 @@ function GameContent() {
 	const boardRef = useRef<HTMLDivElement>(null)
 	const gameInterfaceRef = useRef<HTMLDivElement>(null) // Entire page container (too wide)
   
-  // ============================================================
-  // REFS FOR STABLE CALLBACKS (Performance Optimization)
-  // ============================================================
-  // These refs allow callbacks to access current state without being recreated
-  // when that state changes, which prevents unnecessary re-renders of memoized children.
-  const selectedCellRef = useRef<number | null>(null)
-  const notesModeRef = useRef(false)
-  const eraseModeRef = useRef(false)
-  const highlightedDigitRef = useRef<number | null>(null)
+   // ============================================================
+   // REFS FOR STABLE CALLBACKS (Performance Optimization)
+   // ============================================================
+   // These refs allow callbacks to access current state without being recreated
+   // when that state changes, which prevents unnecessary re-renders of memoized children.
+   const selectedCellRef = useRef<number | null>(null)
+   const selectedCellsRef = useRef<Set<number>>(new Set())
+   const notesModeRef = useRef(false)
+   const eraseModeRef = useRef(false)
+   const highlightedDigitRef = useRef<number | null>(null)
   
   // Refs for hook return values that change frequently
   // These allow callbacks to access current values without dependency array changes
@@ -268,37 +269,39 @@ function GameContent() {
   // Visibility-aware timeouts for toast messages - cancelled on background
   const { setTimeout: visibilityAwareTimeout } = useVisibilityAwareTimeout()
 
-  // Centralized highlight state management with atomic updates
-  const {
-    selectedCell,
-    highlightedDigit,
-    currentHighlight,
-    selectedMoveIndex,
-    selectCell,
-    deselectCell,
-    setDigitHighlight,
-    clearDigitHighlight,
-    toggleDigitHighlight,
-    setMoveHighlight,
-    clearMoveHighlight,
-    clearAllAndDeselect,
-    clearAfterUserCandidateOp,
-    clearAfterDigitPlacement,
-    clearAfterErase,
-    clearAfterDigitToggle,
-    clickGivenCell,
-  } = useHighlightState()
+   // Centralized highlight state management with atomic updates
+   const {
+     selectedCell,
+     selectedCells,
+     highlightedDigit,
+     currentHighlight,
+     selectedMoveIndex,
+     selectCell,
+     deselectCell,
+     setDigitHighlight,
+     clearDigitHighlight,
+     toggleDigitHighlight,
+     setMoveHighlight,
+     clearMoveHighlight,
+     clearAllAndDeselect,
+     clearAfterUserCandidateOp,
+     clearAfterDigitPlacement,
+     clearAfterErase,
+     clearAfterDigitToggle,
+     clickGivenCell,
+   } = useHighlightState()
 
-  // ============================================================
-  // SYNC REFS WITH STATE (for stable callbacks)
-  // ============================================================
-  // These effects keep refs in sync with state, allowing callbacks to read
-  // current values without having those values in their dependency arrays.
-  useEffect(() => { selectedCellRef.current = selectedCell }, [selectedCell])
-  useEffect(() => { notesModeRef.current = notesMode }, [notesMode])
-  useEffect(() => { eraseModeRef.current = eraseMode }, [eraseMode])
-  useEffect(() => { highlightedDigitRef.current = highlightedDigit }, [highlightedDigit])
-  useEffect(() => { initialBoardRef.current = initialBoard }, [initialBoard])
+   // ============================================================
+   // SYNC REFS WITH STATE (for stable callbacks)
+   // ============================================================
+   // These effects keep refs in sync with state, allowing callbacks to read
+   // current values without having those values in their dependency arrays.
+   useEffect(() => { selectedCellRef.current = selectedCell }, [selectedCell])
+   useEffect(() => { selectedCellsRef.current = selectedCells }, [selectedCells])
+   useEffect(() => { notesModeRef.current = notesMode }, [notesMode])
+   useEffect(() => { eraseModeRef.current = eraseMode }, [eraseMode])
+   useEffect(() => { highlightedDigitRef.current = highlightedDigit }, [highlightedDigit])
+   useEffect(() => { initialBoardRef.current = initialBoard }, [initialBoard])
 
    // ============================================================
      // CLICK OUTSIDE TO DESELECT (UX Enhancement)
@@ -1043,7 +1046,19 @@ function GameContent() {
     // Shared digit placement logic - unifies mobile and desktop behavior
     const placeDigitAndClear = useCallback((cellIndex: number, digit: number, notesMode: boolean) => {
       if (!gameRef.current) return
-      gameRef.current.setCell(cellIndex, digit, notesMode)
+
+      // Use setCellMultiple when multiple cells selected AND in notes mode
+      const currentSelectedCells = selectedCellsRef.current
+      const isMultiSelect = notesMode && currentSelectedCells.size > 1
+
+      if (isMultiSelect) {
+        // Convert Set to array for setCellMultiple
+        const selectedCellsArray = Array.from(currentSelectedCells)
+        gameRef.current.setCellMultiple(selectedCellsArray, digit, notesMode)
+      } else {
+        // Single cell: use original setCell logic
+        gameRef.current.setCell(cellIndex, digit, notesMode)
+      }
 
       if (notesMode) {
         clearAfterUserCandidateOp()
