@@ -13,3 +13,19 @@ services:
     environment:
       - NODE_ENV=development
       - GIT_DISCOVERY_ACROSS_FILESYSTEM=true
+
+  playwright-tests:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.playwright
+    image: node:20-alpine
+    working_dir: /app/frontend
+    volumes:
+      # Mount entire project root
+      - .:/app
+      # Anonymous volume for node_modules
+      - /app/frontend/node_modules
+    command: ["sh", "-c", "npm ci --ignore-scripts && npx playwright install --with-deps chromium && npm run test:e2e --reporter=html"]
+    environment:
+      - NODE_ENV=test
+      - PLAYWRIGHT_BROWSERS_PATH=/app/ms-playwright
