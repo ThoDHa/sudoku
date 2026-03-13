@@ -70,6 +70,7 @@
   --cell-bg: #ffffff;
   --cell-hover: #f1f5f9;
   --cell-selected: #bfdbfe;
+  --cell-multi-selected: #93c5fd;
   --cell-peer: #e0e7ff;
   --cell-primary: #93c5fd;
   --cell-secondary: #bfdbfe;
