@@ -2074,5 +2074,110 @@ describe('useSudokuGame - Memoization', () => {
       expect(result.current.board[11]).toBe(0)
       expect(result.current.board[12]).toBe(0)
     })
+
+    it('should fill missing cells first when some cells already have the candidate', () => {
+      const puzzle = createEmptyPuzzle()
+      const { result } = renderHook(() => useSudokuGame({
+        initialBoard: puzzle,
+      }))
+
+      // First, add candidate 5 to cell 10 only
+      act(() => {
+        result.current.setCellMultiple([10], 5, true)
+      })
+      expect(hasCandidate(result.current.candidates[10] || 0, 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[11] || 0, 5)).toBe(false)
+      expect(hasCandidate(result.current.candidates[12] || 0, 5)).toBe(false)
+
+      // Now select all three cells and press 5 again
+      // Cell 10 has it, cells 11 and 12 don't: should ADD to 11 and 12
+      act(() => {
+        result.current.setCellMultiple([10, 11, 12], 5, true)
+      })
+
+      expect(hasCandidate(result.current.candidates[10] || 0, 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[11] || 0, 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[12] || 0, 5)).toBe(true)
+    })
+
+    it('should remove from all cells only when ALL already have the candidate', () => {
+      const puzzle = createEmptyPuzzle()
+      const { result } = renderHook(() => useSudokuGame({
+        initialBoard: puzzle,
+      }))
+
+      // Add candidate 3 to all three cells
+      act(() => {
+        result.current.setCellMultiple([10, 11, 12], 3, true)
+      })
+      expect(hasCandidate(result.current.candidates[10] || 0, 3)).toBe(true)
+      expect(hasCandidate(result.current.candidates[11] || 0, 3)).toBe(true)
+      expect(hasCandidate(result.current.candidates[12] || 0, 3)).toBe(true)
+
+      // Now all cells have candidate 3: pressing 3 should REMOVE from all
+      act(() => {
+        result.current.setCellMultiple([10, 11, 12], 3, true)
+      })
+
+      expect(hasCandidate(result.current.candidates[10] || 0, 3)).toBe(false)
+      expect(hasCandidate(result.current.candidates[11] || 0, 3)).toBe(false)
+      expect(hasCandidate(result.current.candidates[12] || 0, 3)).toBe(false)
+    })
+
+    it('should record correct action type based on fill-first-then-remove logic', () => {
+      const puzzle = createEmptyPuzzle()
+      const { result } = renderHook(() => useSudokuGame({
+        initialBoard: puzzle,
+      }))
+
+      // Add candidate 4 to cell 10 only
+      act(() => {
+        result.current.setCellMultiple([10], 4, true)
+      })
+      expect(result.current.history).toHaveLength(1)
+      expect(result.current.history[0].action).toBe('note')
+
+      // Select cells 10 and 11, press 4: cell 11 is missing it, so action is 'note' (fill)
+      act(() => {
+        result.current.setCellMultiple([10, 11], 4, true)
+      })
+      expect(result.current.history).toHaveLength(2)
+      expect(result.current.history[1].action).toBe('note')
+
+      // Now both cells have candidate 4: pressing 4 should be 'eliminate'
+      act(() => {
+        result.current.setCellMultiple([10, 11], 4, true)
+      })
+      expect(result.current.history).toHaveLength(3)
+      expect(result.current.history[2].action).toBe('eliminate')
+    })
+
+    it('should not modify cells that already have the candidate during fill phase', () => {
+      const puzzle = createEmptyPuzzle()
+      const { result } = renderHook(() => useSudokuGame({
+        initialBoard: puzzle,
+      }))
+
+      // Add candidates 5 and 8 to cell 10
+      act(() => {
+        result.current.setCellMultiple([10], 5, true)
+      })
+      act(() => {
+        result.current.setCellMultiple([10], 8, true)
+      })
+      expect(hasCandidate(result.current.candidates[10] || 0, 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[10] || 0, 8)).toBe(true)
+
+      // Now add candidate 5 to cells 10 and 11 (fill phase: cell 11 missing)
+      act(() => {
+        result.current.setCellMultiple([10, 11], 5, true)
+      })
+
+      // Cell 10 should still have BOTH candidates 5 and 8 (addCandidate is idempotent)
+      expect(hasCandidate(result.current.candidates[10] || 0, 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[10] || 0, 8)).toBe(true)
+      // Cell 11 should have candidate 5
+      expect(hasCandidate(result.current.candidates[11] || 0, 5)).toBe(true)
+    })
   })
 })

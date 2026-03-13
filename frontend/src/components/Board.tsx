@@ -753,28 +753,28 @@ const Board = memo(function Board({
 
   // Drag handlers for multi-select feature
   const handleDragStart = useCallback((idx: number) => {
+    // Skip starting drag on given or filled cells
+    if (initialBoard[idx] !== 0 || board[idx] !== 0) return
     setIsDragging(true)
     setDragStartCell(idx)
-  }, [])
+  }, [initialBoard, board])
 
   const handleDragEnter = useCallback((idx: number) => {
     if (!isDragging || dragStartCell === null) return
 
-    // Check if drag should be blocked by given cell
-    if (initialBoard[idx] !== 0) {
-      setIsDragging(false)
-      setDragStartCell(null)
-      return
-    }
-
     // Calculate path from dragStartCell to current cell
     const pathCells = calculatePathCells(dragStartCell, idx)
 
-    // Call callback to update selection
+    // Filter out given and filled cells from the selection
+    const selectableCells = pathCells.filter(
+      cellIdx => initialBoard[cellIdx] === 0 && board[cellIdx] === 0
+    )
+
+    // Call callback to update selection (even if empty, to clear stale selection)
     if (onCellSelectMultiple) {
-      onCellSelectMultiple(pathCells)
+      onCellSelectMultiple(selectableCells)
     }
-  }, [isDragging, dragStartCell, initialBoard, onCellSelectMultiple])
+  }, [isDragging, dragStartCell, initialBoard, board, onCellSelectMultiple])
 
   const handleDragEnd = useCallback(() => {
     setIsDragging(false)

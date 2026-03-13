@@ -287,9 +287,10 @@ function GameContent() {
      clearAfterUserCandidateOp,
      clearAfterDigitPlacement,
      clearAfterErase,
-     clearAfterDigitToggle,
-     clickGivenCell,
-   } = useHighlightState()
+      clearAfterDigitToggle,
+      clickGivenCell,
+      selectMultipleCells,
+    } = useHighlightState()
 
    // ============================================================
    // SYNC REFS WITH STATE (for stable callbacks)
@@ -1081,6 +1082,11 @@ function GameContent() {
       lastRegularHintRef.current = null
       cachedHintRef.current = null
     }, [clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell, clearDigitHighlight])
+
+    // Multi-select callback for drag selection on Board
+    const handleCellSelectMultiple = useCallback((cells: number[]) => {
+      selectMultipleCells(cells)
+    }, [selectMultipleCells])
 
     // Cell click handler - STABLE: reads from refs to avoid recreating on state changes
     // This is critical because Cell memo doesn't compare callback props for performance
@@ -2169,6 +2175,7 @@ if (currentGame.board[currentSelectedCell] === digit) {
             highlight={currentHighlight}
             onCellClick={handleCellClick}
             onCellChange={handleCellChange}
+            onCellSelectMultiple={handleCellSelectMultiple}
             incorrectCells={incorrectCells}
             className={timerControl.isPausedDueToVisibility && !game.isComplete ? 'blur-md' : ''}
           />

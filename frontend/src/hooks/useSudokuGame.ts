@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react'
 import {
   hasCandidate,
+  addCandidate,
+  removeCandidate,
   countCandidates,
   toggleCandidate,
   type CandidateMask
@@ -416,22 +418,29 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     // Truncate history if we're in middle
     const truncatedHistory = historyHookHistoryRef.current.slice(0, historyHookIndexRef.current + 1)
 
-    // Create new candidates array with toggled notes
+    // Create new candidates array with fill-first-then-remove logic:
+    // If ANY valid cell is MISSING the digit → ADD to all that don't have it
+    // If ALL valid cells HAVE the digit → REMOVE from all
     const newCandidates = new Uint16Array(currentCandidates)
     const targets: { row: number; col: number }[] = []
 
+    const allHaveCandidate = validIndices.every(idx =>
+      hasCandidate(currentCandidates[idx] || 0, digit)
+    )
+
     validIndices.forEach(idx => {
-      newCandidates[idx] = toggleCandidate(newCandidates[idx] || 0, digit)
+      if (allHaveCandidate) {
+        newCandidates[idx] = removeCandidate(newCandidates[idx] || 0, digit)
+      } else {
+        newCandidates[idx] = addCandidate(newCandidates[idx] || 0, digit)
+      }
       const row = Math.floor(idx / BOARD_SIZE)
       const col = idx % BOARD_SIZE
       targets.push({ row, col })
     })
 
     // Build targets for history
-    const action = validIndices.some(idx => {
-      const existing = currentCandidates[idx] || 0
-      return hasCandidate(existing, digit)
-    }) ? 'eliminate' : 'note'
+    const action = allHaveCandidate ? 'eliminate' : 'note'
 
     // Add bulk note operation to history with compact diff
     const bulkNoteMove = createMoveWithDiff({

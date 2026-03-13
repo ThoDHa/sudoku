@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import Board from './Board'
@@ -953,6 +953,109 @@ describe('Board', () => {
       const cells = container.querySelectorAll('.sudoku-cell')
       // Cells 10, 11, 12 should be in selectedCells and get multi-selected styling
       expect(cells.length).toBeGreaterThan(12)
+    })
+
+    it('drag does not start on given cells', () => {
+      const { board, initialBoard } = createBoardWithGivens()
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // Cell 0 is a given (value 5). Start drag on it, then enter cell 1.
+      fireEvent.mouseDown(cells[0])
+      fireEvent.mouseEnter(cells[1])
+      fireEvent.mouseUp(cells[1])
+
+      // onCellSelectMultiple should NOT be called because drag never started
+      expect(onCellSelectMultiple).not.toHaveBeenCalled()
+    })
+
+    it('drag does not start on filled (non-given) cells', () => {
+      const board = createEmptyBoard()
+      const initialBoard = createEmptyBoard()
+      // Cell 5 is user-filled (not given)
+      board[5] = 8
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // Cell 5 is filled. Start drag on it, then enter cell 6.
+      fireEvent.mouseDown(cells[5])
+      fireEvent.mouseEnter(cells[6])
+      fireEvent.mouseUp(cells[6])
+
+      // onCellSelectMultiple should NOT be called because drag never started
+      expect(onCellSelectMultiple).not.toHaveBeenCalled()
+    })
+
+    it('drag skips over given cells without canceling', () => {
+      const board = createEmptyBoard()
+      const initialBoard = createEmptyBoard()
+      // Cell 1 is a given
+      initialBoard[1] = 5
+      board[1] = 5
+      // Cells 0, 2 are empty
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // Start drag on cell 0 (empty), drag through cell 1 (given) to cell 2 (empty)
+      fireEvent.mouseDown(cells[0])
+      fireEvent.mouseEnter(cells[2])
+
+      // onCellSelectMultiple should be called with filtered cells (excluding given cell 1)
+      expect(onCellSelectMultiple).toHaveBeenCalled()
+      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      const selectedCells: number[] = lastCall[0]
+      // Cell 1 (given) should NOT be in the selection
+      expect(selectedCells).not.toContain(1)
+    })
+
+    it('drag skips over filled cells without canceling', () => {
+      const board = createEmptyBoard()
+      const initialBoard = createEmptyBoard()
+      // Cell 1 is user-filled
+      board[1] = 4
+      // Cells 0, 2 are empty
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // Start drag on cell 0 (empty), drag to cell 2
+      fireEvent.mouseDown(cells[0])
+      fireEvent.mouseEnter(cells[2])
+
+      expect(onCellSelectMultiple).toHaveBeenCalled()
+      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      const selectedCells: number[] = lastCall[0]
+      // Cell 1 (filled) should NOT be in the selection
+      expect(selectedCells).not.toContain(1)
+    })
+
+    it('drag on empty cells calls onCellSelectMultiple normally', () => {
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      // All cells empty: drag from cell 0 to cell 2
+      fireEvent.mouseDown(cells[0])
+      fireEvent.mouseEnter(cells[2])
+
+      expect(onCellSelectMultiple).toHaveBeenCalled()
+      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      const selectedCells: number[] = lastCall[0]
+      // Should include cells in the path
+      expect(selectedCells.length).toBeGreaterThan(0)
     })
   })
 })
