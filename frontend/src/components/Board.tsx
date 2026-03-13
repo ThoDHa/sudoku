@@ -665,8 +665,6 @@ const Board = memo(function Board({
       classes.push(
         isTechniqueHint && !isExplicitSecondary ? 'bg-cell-primary' : 'bg-cell-secondary'
       )
-    } else if (isSelected) {
-      classes.push('bg-cell-selected')
     } else if (hasDigitMatch) {
       classes.push('bg-accent-light')
     } else if (isPeer) {

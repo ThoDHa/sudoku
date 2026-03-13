@@ -393,7 +393,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       isGivenCell, boardRef, candidatesHook, lastNoteToggle,
       historyHookHistoryRef, historyHookIndexRef, historyHookSetHistory,
       historyHookSetHistoryIndex, historyHookLimitHistory,
-      hasCandidate, toggleCandidate, updateBoard, checkCompletion
+      createMoveWithDiff, updateBoard, checkCompletion
     ])
 
   const setCellMultiple = useCallback((indices: number[], digit: number, isNotesMode: boolean) => {
@@ -461,7 +461,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     isGivenCell, boardRef, candidatesHook,
     historyHookHistoryRef, historyHookIndexRef, historyHookSetHistory,
     historyHookSetHistoryIndex, historyHookLimitHistory,
-    hasCandidate, toggleCandidate
+    createMoveWithDiff
   ])
 
    const handleToggleCandidate = useCallback((idx: number, digit: number) => {
