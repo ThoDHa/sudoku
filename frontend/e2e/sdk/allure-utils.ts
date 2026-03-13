@@ -132,45 +132,47 @@ export const STORIES = {
     SELECT_EMPTY_CELL: 'Clicking an empty cell selects it',
     SELECT_GIVEN_CELL: 'Clicking a given cell highlights digit',
     KEYBOARD_ARROW_NAVIGATION: 'Arrow keys navigate between cells',
-    
+
     // Digit Entry
     ENTER_DIGIT_KEYBOARD: 'Entering digit via keyboard updates cell',
     ENTER_DIGIT_MOUSE: 'Entering digit via mouse click updates cell',
-    CLEAR_CELL: 'Clearing a cell removes the digit',
-    
+    CLEAR_CELL: 'Clearing a cell removes digit',
+
     // Notes
     TOGGLE_NOTES_MODE: 'Toggle notes mode',
     ENTER_NOTE: 'Enter note in a cell',
     CLEAR_NOTES: 'Clear notes from a cell',
     NOTES_PERSIST: 'Notes persist across page reload',
-    
+
     // Undo/Redo
     UNDO_ACTION: 'Undo action reverts last change',
     REDO_ACTION: 'Redo action reapplies last undone change',
     UNDO_REDO_DISABLED_STATES: 'Undo/Redo buttons disabled when no actions',
-    
+
     // Timer
     TIMER_STARTS: 'Timer starts when puzzle loads',
     TIMER_PAUSES: 'Timer pauses when navigating away',
     TIMER_RESUMES: 'Timer resumes when returning to puzzle',
-    
+
     // Auto-Solve
-    AUTOSOLVE_COMPLETES_PUZZLE: 'Auto-solve completes the puzzle',
+    AUTOSOLVE_COMPLETES_PUZZLE: 'Auto-solve completes puzzle',
     AUTOSOLVE_ERROR_HANDLING: 'Auto-solve handles errors gracefully',
-    
+
     // Custom Puzzles
     CUSTOM_PUZZLE_INPUT: 'Can input custom puzzle',
     CUSTOM_PUZZLE_VALIDATION: 'Custom puzzle validates input',
     CUSTOM_PUZZLE_PLAYS: 'Custom puzzle is playable',
-    
+
     // Multi-Select Feature
-    HORIZONTAL_DRAG: 'Drag horizontally to select multiple cells',
-    VERTICAL_DRAG: 'Drag vertically to select multiple cells',
-    DIAGONAL_DRAG: 'Drag diagonally to select cells along path',
-    GIVEN_BLOCKING: 'Drag stops when encountering given cell',
-    BULK_NOTE_ENTRY: 'Multi-select with digit button fills note in all selected cells',
-    NOTES_MODE_ONLY: 'Multi-select only works in notes mode',
-    CLEAR_SELECTION: 'Clicking outside selection clears multi-select',
+    MULTI_SELECT: {
+      HORIZONTAL_DRAG: 'Drag horizontally to select multiple cells',
+      VERTICAL_DRAG: 'Drag vertically to select multiple cells',
+      DIAGONAL_DRAG: 'Drag diagonally to select cells along path',
+      GIVEN_BLOCKING: 'Drag stops when encountering given cell',
+      BULK_NOTE_ENTRY: 'Multi-select with digit button fills note in all selected cells',
+      NOTES_MODE_ONLY: 'Multi-select only works in notes mode',
+      CLEAR_SELECTION: 'Clicking outside selection clears multi-select',
+    },
   },
   
   NAVIGATION: {
