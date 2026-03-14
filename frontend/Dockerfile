@@ -17,7 +17,7 @@ RUN tinygo build -target=wasm -no-debug -opt=z -o /go-app/sudoku.wasm ./cmd/wasm
 RUN cp "$(tinygo env TINYGOROOT)/targets/wasm_exec.js" /go-app/wasm_exec.js
 
 # Frontend build stage
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 

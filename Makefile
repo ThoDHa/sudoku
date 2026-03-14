@@ -121,7 +121,7 @@ generate-icons:
 	@echo "Generating PWA icons from SVG..."
 	@docker run --rm -u $$(id -u):$$(id -g) \
 		-v $(PWD)/frontend/public:/app -w /app \
-		node:20-alpine sh -c "npm install --silent sharp && node generate-icons.js"
+		node:24-alpine sh -c "npm install --silent sharp && node generate-icons.js"
 	@echo "Icons generated!"
 
 #-----------------------------------------------------------------------

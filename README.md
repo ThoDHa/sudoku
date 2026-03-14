@@ -302,7 +302,7 @@ The solver implements 39+ techniques across 4 tiers:
 
 - Go 1.22+
 - TinyGo 0.40.1 (for WASM builds only)
-- Node.js 20+
+- Node.js 24+
 - Docker (for E2E tests and CI/CD runs)
 
 ### Setup

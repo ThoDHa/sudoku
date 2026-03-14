@@ -18,7 +18,7 @@ RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/server
 # -----------------------------------------------------------------------------
 # Stage 2: Build React Frontend
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 
 WORKDIR /app
 

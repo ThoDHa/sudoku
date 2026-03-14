@@ -1,6 +1,6 @@
 services:
   sudoku:
-    image: node:20-alpine
+    image: node:24-alpine
     working_dir: /app/frontend
     ports:
       - "80:80"
@@ -18,7 +18,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.playwright
-    image: node:20-alpine
+    image: node:24-alpine
     working_dir: /app/frontend
     volumes:
       # Mount entire project root
