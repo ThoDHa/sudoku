@@ -97,12 +97,12 @@ jobs:
           cache-dependency-path: api/go.sum
 
       - name: Install gotestsum
-        run: go install gotest.tools/gotestsum@latest
+        run: go install gotest.tools/gotestsum@v1.12.0
 
       - name: Run Go linter
         working-directory: api
         run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
           golangci-lint run ./...
 
       - name: Run Go tests with JUnit output
