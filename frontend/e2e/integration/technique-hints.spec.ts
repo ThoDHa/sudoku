@@ -206,6 +206,8 @@ test.describe('@integration Technique Hints - Counter', () => {
 });
 
 test.describe('@integration Technique Hints - Mobile', () => {
+  test.use({ hasTouch: true });
+
   test.beforeEach(async ({ page }) => {
     // Set localStorage before navigation to skip onboarding modal
     await page.addInitScript(() => {
@@ -231,10 +233,10 @@ test.describe('@integration Technique Hints - Mobile', () => {
     }
   });
 
-  test('technique hint click works on mobile viewport', async ({ page }) => {
+  test('technique hint tap works on mobile viewport', async ({ page }) => {
     // Use hint once to prep board (hint button disables until user makes a move)
     const hintBtn = getHintButton(page);
-    await hintBtn.click();
+    await hintBtn.tap();
     await waitForHintProcessing(page);
     
     // Count empty cells before
@@ -242,7 +244,7 @@ test.describe('@integration Technique Hints - Mobile', () => {
     
     // Find technique button
     const techniqueButton = getTechniqueButton(page);
-    await techniqueButton.click();
+    await techniqueButton.tap();
     
     // Wait for technique hint processing
     await waitForHintProcessing(page);
@@ -254,18 +256,18 @@ test.describe('@integration Technique Hints - Mobile', () => {
     // Close modal if visible
     const gotItButton = page.getByRole('button', { name: /Got it/i });
     if (await gotItButton.isVisible().catch(() => false)) {
-      await gotItButton.click();
+      await gotItButton.tap();
     }
   });
 
   test('technique modal fits within mobile viewport', async ({ page }) => {
     // Use hint once to prep board (hint button disables until user makes a move)
     const hintBtn = getHintButton(page);
-    await hintBtn.click();
+    await hintBtn.tap();
     await waitForHintProcessing(page);
     
     const techniqueButton = getTechniqueButton(page);
-    await techniqueButton.click();
+    await techniqueButton.tap();
     
     // Wait for processing
     await waitForHintProcessing(page);
@@ -278,7 +280,7 @@ test.describe('@integration Technique Hints - Mobile', () => {
     const gotItButton = page.getByRole('button', { name: /Got it/i });
     
     if (await learnMoreButton.isVisible().catch(() => false)) {
-      await learnMoreButton.click();
+      await learnMoreButton.tap();
       await expect(gotItButton).toBeVisible({ timeout: 3000 });
     }
     
@@ -295,7 +297,7 @@ test.describe('@integration Technique Hints - Mobile', () => {
       }
       
       // Close modal
-      await gotItButton.click();
+      await gotItButton.tap();
       await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
     }
     

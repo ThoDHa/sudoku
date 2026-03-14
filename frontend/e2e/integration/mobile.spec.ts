@@ -10,7 +10,13 @@ import { PlaywrightUISDK } from '../sdk';
  *
  * Viewport: iPhone SE (375x667) unless otherwise specified
  * All tests use the mobileViewport fixture for consistent setup.
+ *
+ * Touch: hasTouch is enabled so all user interactions use .tap() instead of
+ * .click(), more accurately simulating real mobile touch behavior.
  */
+
+// Enable touch context for all mobile tests so .tap() works correctly
+test.use({ hasTouch: true });
 
 // ============================================================================
 // CONSTANTS
@@ -91,11 +97,11 @@ async function useHintsAndVerifyStable(page: import('@playwright/test').Page, co
   const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first();
 
   for (let i = 0; i < count; i++) {
-    // Dismiss any error modal before clicking hint
+    // Dismiss any error modal before tapping hint
     await dismissErrorModal(page);
     
     if (await hintButton.isVisible() && await hintButton.isEnabled()) {
-      await hintButton.click();
+      await hintButton.tap();
       // Wait for hint to be processed - watch for UI state change
       await expect(async () => {
         const isProcessing = await hintButton.isEnabled();
@@ -158,7 +164,7 @@ test.describe('@mobile Core UI - Mobile Viewport', () => {
   test('game page renders correctly', async ({ page, mobileViewport }) => {
     void mobileViewport;
     await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
+    await page.getByRole('button', { name: /easy Play/i }).tap();
     await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('.sudoku-board')).toBeVisible();
   });
@@ -198,7 +204,7 @@ test.describe('@mobile Game Features - Mobile', () => {
   test('hint button is accessible', async ({ page, mobileViewport }) => {
     void mobileViewport;
     await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
+    await page.getByRole('button', { name: /easy Play/i }).tap();
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
 
     const hintButton = page.locator('button:has-text("💡")');
@@ -212,16 +218,16 @@ test.describe('@mobile Game Features - Mobile', () => {
     }
   });
 
-  test('hint click works and fills a cell', async ({ page, mobileViewport }) => {
+  test('hint tap works and fills a cell', async ({ page, mobileViewport }) => {
     void mobileViewport;
     await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
+    await page.getByRole('button', { name: /easy Play/i }).tap();
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
 
     const emptyCellsBefore = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
 
     const hintButton = page.locator('button:has-text("💡")');
-    await hintButton.click();
+    await hintButton.tap();
 
     // Wait for hint animation to complete
     await expect(async () => {
@@ -253,7 +259,7 @@ test.describe('@mobile Game Features - Mobile', () => {
 
     // Use hint once to prep board
     const hintBtn = page.locator('button:has-text("💡"), button:has-text("Hint")').first();
-    await hintBtn.click();
+    await hintBtn.tap();
     // Wait for hint processing to complete by watching for UI state
     await expect(async () => {
       const isEnabled = await hintBtn.isEnabled();
@@ -267,7 +273,7 @@ test.describe('@mobile Game Features - Mobile', () => {
     const techniqueButton = page.locator('button:has-text("Technique"), button:has-text("?"), button[title*="echnique"]').first();
     
     if (await techniqueButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await techniqueButton.click();
+      await techniqueButton.tap();
 
       // Wait for technique hint to process - look for the toast or any feedback
       // The toast is a fixed div with "Try: {technique}" text or an info/error message
@@ -287,7 +293,7 @@ test.describe('@mobile Game Features - Mobile', () => {
       // Close modal if visible
       const gotItButton = page.getByRole('button', { name: /Got it|Close|OK/i });
       if (await gotItButton.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await gotItButton.click();
+        await gotItButton.tap();
       }
     } else {
       // Technique button not visible - verify hint was processed successfully
@@ -303,7 +309,7 @@ test.describe('@mobile Game Features - Mobile', () => {
 
     // Use hint once to prep board
     const hintBtn = page.locator('button:has-text("💡"), button:has-text("Hint")').first();
-    await hintBtn.click();
+    await hintBtn.tap();
     // Wait for hint processing to complete by watching for UI state
     await expect(async () => {
       const isEnabled = await hintBtn.isEnabled();
@@ -316,7 +322,7 @@ test.describe('@mobile Game Features - Mobile', () => {
     const techniqueButton = page.locator('button:has-text("Technique"), button:has-text("?"), button[title*="echnique"]').first();
     
     if (await techniqueButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await techniqueButton.click();
+      await techniqueButton.tap();
 
       // Wait for technique hint feedback - look for toast or modal
       const toastLocator = page.locator('.fixed.z-50:has-text("Try:")');
@@ -328,11 +334,11 @@ test.describe('@mobile Game Features - Mobile', () => {
         infoToast.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {}),
       ]);
 
-      // Click "Learn more" if visible to open modal
+      // Tap "Learn more" if visible to open modal
       const learnMoreButton = page.locator('.fixed.z-50 button:has-text("Learn more"), .fixed.z-50 .underline:has-text("Learn more")');
       const gotItButton = page.getByRole('button', { name: /Got it|Close|OK/i });
       if (await learnMoreButton.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await learnMoreButton.click();
+        await learnMoreButton.tap();
         await expect(gotItButton).toBeVisible({ timeout: 3000 });
       }
 
@@ -355,7 +361,7 @@ test.describe('@mobile Game Features - Mobile', () => {
   test('autosolve handles errors gracefully', async ({ page, mobileViewport }) => {
     void mobileViewport;
     await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
+    await page.getByRole('button', { name: /easy Play/i }).tap();
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Use a few hints and verify stability
@@ -371,14 +377,14 @@ test.describe('@mobile Game Features - Mobile', () => {
 // ============================================================================
 
 test.describe('@mobile Touch Interactions', () => {
-  test('clicking selects cell', async ({ page, mobileViewport }) => {
+  test('tapping selects cell', async ({ page, mobileViewport }) => {
     void mobileViewport;
     await setupGameAndWaitForBoard(page);
 
     // Use a cell in a lower row to avoid sticky header
     const cell = page.locator('[role="gridcell"][aria-label*="Row 5"]').first();
     await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    await cell.tap();
 
     // Cell should have selection styling
     await expect(cell).toHaveClass(/ring/);
@@ -395,11 +401,11 @@ test.describe('@mobile Touch Interactions', () => {
 
     // Select cell
     await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
+    await emptyCell.tap();
 
-    // Click number button
+    // Tap number button
     const numberButton = page.locator('button[aria-label^="Enter 5,"]');
-    await numberButton.click();
+    await numberButton.tap();
 
     // Verify digit was placed
     if (coords) {
@@ -423,11 +429,11 @@ test.describe('@mobile Touch Interactions', () => {
     const coords = parseAriaLabel(ariaLabel);
 
     await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
+    await emptyCell.tap();
 
     // Place a digit
     const numberButton = page.locator('button[aria-label^="Enter 7,"]');
-    await numberButton.click();
+    await numberButton.tap();
     // Wait for digit placement to reflect in DOM
     if (coords) {
       await expect(async () => {
@@ -441,7 +447,7 @@ test.describe('@mobile Touch Interactions', () => {
 
     // Undo
     const undoButton = page.locator('button[title="Undo"]');
-    await undoButton.click();
+    await undoButton.tap();
 
     // Cell should be empty again
     if (coords) {
@@ -465,11 +471,11 @@ test.describe('@mobile Touch Interactions', () => {
     const coords = parseAriaLabel(ariaLabel);
     
     await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
+    await emptyCell.tap();
 
     // Place a digit
     const numberButton = page.locator('button[aria-label^="Enter 3,"]');
-    await numberButton.click();
+    await numberButton.tap();
     
     // Wait for digit placement using stable cell reference by coordinates
     if (coords) {
@@ -481,10 +487,10 @@ test.describe('@mobile Touch Interactions', () => {
 
       // Use erase
       const eraseButton = page.locator('button[aria-label="Erase mode"]');
-      await eraseButton.click();
+      await eraseButton.tap();
 
-      // Click the cell to erase it (using stable reference)
-      await cellByCoords.click();
+      // Tap the cell to erase it (using stable reference)
+      await cellByCoords.tap();
 
       // Cell should show the digit was removed (aria-label updates to empty)
       await expect(cellByCoords).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
@@ -640,10 +646,10 @@ test.describe('@mobile Orientation Handling', () => {
     const coords = parseAriaLabel(ariaLabel);
 
     await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
+    await emptyCell.tap();
 
     const numberButton = page.locator('button[aria-label^="Enter 8,"]');
-    await numberButton.click();
+    await numberButton.tap();
     // Wait for digit placement to be reflected in DOM
     if (coords) {
       await expect(async () => {
@@ -703,7 +709,7 @@ test.describe('@mobile Pages - Mobile Viewport', () => {
     if (await input.isVisible()) {
       const puzzleString =
         '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
-      await input.click();
+      await input.tap();
       await input.fill(puzzleString);
 
       const value = await input.inputValue();
@@ -712,10 +718,10 @@ test.describe('@mobile Pages - Mobile Viewport', () => {
       // Direct cell entry mode
       const cell = page.locator('[role="gridcell"][aria-label*="Row 5"]').first();
       await cell.scrollIntoViewIfNeeded();
-      await cell.click();
+      await cell.tap();
 
       const numberButton = page.locator('button:text-is("9")');
-      await numberButton.click();
+      await numberButton.tap();
 
       // Wait for digit placement in cell
       await expect(async () => {
@@ -857,7 +863,7 @@ test.describe('@mobile Full Gameplay', () => {
       await dismissErrorModal(page);
 
       if ((await hintButton.isVisible().catch(() => false)) && (await hintButton.isEnabled().catch(() => false))) {
-        await hintButton.click();
+        await hintButton.tap();
         // Wait for hint processing by watching for board or button state changes
         await expect(async () => {
           const newBoard = await sdk.readBoardFromDOM();
@@ -901,7 +907,7 @@ test.describe('@mobile Full Gameplay', () => {
       await dismissErrorModal(page);
       
       if ((await hintButton.isVisible()) && (await hintButton.isEnabled())) {
-        await hintButton.click();
+        await hintButton.tap();
         // Wait for hint processing by watching for UI state changes
         await expect(async () => {
           const isEnabled = await hintButton.isEnabled();
@@ -934,7 +940,7 @@ test.describe('@mobile Mobile Keyboard Handling', () => {
     // Select an empty cell
     const emptyCell = page.locator('[role="gridcell"][aria-label*="Row 4"][aria-label*="empty"]').first();
     await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
+    await emptyCell.tap();
 
     // Wait for UI state to update and verify no native keyboard behavior
     await expect(async () => {
@@ -959,12 +965,12 @@ test.describe('@mobile Mobile Keyboard Handling', () => {
     const coords = parseAriaLabel(ariaLabel);
 
     await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
+    await emptyCell.tap();
 
     // Use on-screen number pad (our custom UI, not native keyboard)
     const numberButton = page.locator('button[aria-label^="Enter 6,"]');
     await expect(numberButton).toBeVisible();
-    await numberButton.click();
+    await numberButton.tap();
 
     // Verify digit was entered (use coordinates since aria-label changes after input)
     if (coords) {
@@ -985,7 +991,7 @@ test.describe('@mobile Mobile Keyboard Handling', () => {
     // Select a cell
     const cell = page.locator('[role="gridcell"][aria-label*="Row 3"]').first();
     await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    await cell.tap();
 
     // All number buttons should still be visible
     for (const num of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
@@ -1004,7 +1010,7 @@ test.describe('@mobile Mobile Keyboard Handling', () => {
     const coords = parseAriaLabel(ariaLabel);
 
     await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
+    await emptyCell.tap();
 
     // Type using keyboard
     await page.keyboard.press('4');

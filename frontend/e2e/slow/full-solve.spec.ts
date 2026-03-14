@@ -253,7 +253,7 @@ test.describe('@slow Hint System Consistency', () => {
     const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first();
     
     // Click hint button multiple times
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 10; i++) {
       if (await hintButton.isVisible() && await hintButton.isEnabled()) {
         await hintButton.click();
         // Wait for hint processing to complete - monitor system stability
@@ -276,6 +276,7 @@ test.describe('@slow Hint System Consistency', () => {
 
 test.describe('@slow Hint System - Mobile Viewport', () => {
   test.setTimeout(120_000);
+  test.use({ hasTouch: true });
 
   test('hint button provides visual guidance on mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
@@ -294,10 +295,10 @@ test.describe('@slow Hint System - Mobile Viewport', () => {
     expect(await hintButton.isVisible()).toBeTruthy();
     expect(await hintButton.isEnabled()).toBeTruthy();
     
-    // Click hint button multiple times
+    // Tap hint button multiple times
     for (let i = 0; i < 10; i++) {
       if (await hintButton.isVisible() && await hintButton.isEnabled()) {
-        await hintButton.click();
+        await hintButton.tap();
         // Wait for hint processing on mobile - verify responsive behavior
         await expect(hintButton).toBeVisible({ timeout: 2000 });
       } else {

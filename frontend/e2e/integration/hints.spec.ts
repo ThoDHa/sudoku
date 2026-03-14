@@ -384,13 +384,15 @@ test.describe('@integration Hints - Edge Cases', () => {
 });
 
 test.describe('@integration Hints - Mobile', () => {
+  test.use({ hasTouch: true });
+
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
     });
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
+    await page.getByRole('button', { name: /easy Play/i }).tap();
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });
   });
 
@@ -408,13 +410,12 @@ test.describe('@integration Hints - Mobile', () => {
     }
   });
 
-  test('hint click works on mobile', async ({ page }) => {
+  test('hint tap works on mobile', async ({ page }) => {
     // Count empty cells before hint
     const emptyCellsBefore = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
     
-    // Use click instead of tap (tap requires hasTouch context)
     const hintButton = getHintButton(page);
-    await hintButton.click();
+    await hintButton.tap();
     
     // Wait for hint processing to complete
     await waitForHintProcessing(page, hintButton);

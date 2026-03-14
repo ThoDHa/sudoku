@@ -161,16 +161,20 @@ test.describe('@smoke Responsive Design', () => {
     await expect(page.locator('header')).toBeVisible();
   });
 
-  test('game works on mobile viewport', async ({ page }) => {
-    // Skip onboarding modal
-    await page.addInitScript(() => {
-      localStorage.setItem('sudoku_onboarding_complete', 'true');
+  test.describe('Mobile Touch', () => {
+    test.use({ hasTouch: true });
+
+    test('game works on mobile viewport', async ({ page }) => {
+      // Skip onboarding modal
+      await page.addInitScript(() => {
+        localStorage.setItem('sudoku_onboarding_complete', 'true');
+      });
+      await page.setViewportSize({ width: 375, height: 667 });
+      await page.goto('/');
+      await page.getByRole('button', { name: /easy Play/i }).tap();
+      await page.waitForSelector('.game-background', { timeout: 15000 });
+      await expect(page.locator('.sudoku-board')).toBeVisible();
     });
-    await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await page.waitForSelector('.game-background', { timeout: 15000 });
-    await expect(page.locator('.sudoku-board')).toBeVisible();
   });
 });
 

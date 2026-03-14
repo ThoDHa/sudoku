@@ -61,6 +61,7 @@ export const test = base.extend<SudokuFixtures>({
   },
 
   // Mobile viewport helper (not auto, must be explicitly used)
+  // Sets viewport to iPhone SE dimensions for mobile testing
   mobileViewport: async ({ page }, use) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await use();

@@ -47,7 +47,8 @@ export class SudokuGameSession {
       this.browser = await chromium.launch({ headless: true });
       
       const viewport = this.getViewport();
-      this.context = await this.browser.newContext({ viewport });
+      const hasTouch = this.deviceType === 'mobile' || this.deviceType === 'tablet';
+      this.context = await this.browser.newContext({ viewport, hasTouch, isMobile: hasTouch });
       this.page = await this.context.newPage();
       
       return { success: true, message: 'Browser session started' };
@@ -149,11 +150,16 @@ export class SudokuGameSession {
     }
     
     try {
-      const cells = this.page.locator('.sudoku-cell');
-      await cells.nth(index).click();
-      return { success: true, message: `Clicked cell ${index}` };
+      const cell = this.page.locator('.sudoku-cell').nth(index);
+      const isTouchDevice = this.deviceType === 'mobile' || this.deviceType === 'tablet';
+      if (isTouchDevice) {
+        await cell.tap();
+      } else {
+        await cell.click();
+      }
+      return { success: true, message: `${isTouchDevice ? 'Tapped' : 'Clicked'} cell ${index}` };
     } catch (error) {
-      return { success: false, message: `Failed to click cell ${index}`, error: String(error) };
+      return { success: false, message: `Failed to interact with cell ${index}`, error: String(error) };
     }
   }
 

@@ -300,6 +300,8 @@ test.describe('@integration Custom Puzzle - Board Input Mode', () => {
 });
 
 test.describe('@integration Custom Puzzle - Mobile', () => {
+  test.use({ hasTouch: true });
+
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
@@ -325,21 +327,20 @@ test.describe('@integration Custom Puzzle - Mobile', () => {
     
     if (await input.isVisible()) {
       const puzzleString = '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
-      // Use click instead of tap (tap requires hasTouch context)
-      await input.click();
+      await input.tap();
       await input.fill(puzzleString);
       
       const value = await input.inputValue();
       expect(value).toBe(puzzleString);
     } else if (await cells.count() > 0) {
-      // Use click to enter digit (use lower rows to avoid header)
+      // Tap to enter digit (use lower rows to avoid header)
       const cell = page.locator('[role="gridcell"][aria-label*="Row 5"]').first();
       await cell.scrollIntoViewIfNeeded();
-      await cell.click();
+      await cell.tap();
       
       // Use digit button
       const numberButton = page.locator('button:text-is("9")');
-      await numberButton.click();
+      await numberButton.tap();
       
       // Wait for the digit to appear
       await expect(cell).toContainText('9');

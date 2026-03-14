@@ -173,6 +173,8 @@ test.describe('@integration Gameplay - Cell Selection', () => {
 });
 
 test.describe('@integration Gameplay - Mobile Touch', () => {
+  test.use({ hasTouch: true });
+
   test.beforeEach(async ({ page }) => {
     // Skip onboarding modal
     await page.addInitScript(() => {
@@ -183,13 +185,13 @@ test.describe('@integration Gameplay - Mobile Touch', () => {
     await setupGameAndWaitForBoard(page);
   });
 
-  test('clicking selects cell on mobile viewport', async ({ page }) => {
+  test('tapping selects cell on mobile viewport', async ({ page }) => {
     // Use a cell in a lower row to avoid sticky header
     const cell = page.locator('[role="gridcell"][aria-label*="Row 5"]').first();
     await cell.scrollIntoViewIfNeeded();
     
-    // Click works on mobile viewport (tap requires hasTouch context)
-    await cell.click();
+    // Tap uses touch events for realistic mobile interaction
+    await cell.tap();
     
     // Cell should have selection styling
     await expect(cell).toHaveClass(/ring/);
@@ -203,13 +205,13 @@ test.describe('@integration Gameplay - Mobile Touch', () => {
     const row = match ? parseInt(match[1]) : 5;
     const col = match ? parseInt(match[2]) : 1;
     
-    // Click to select
+    // Tap to select
     await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
+    await emptyCell.tap();
     
-    // Click number button
+    // Tap number button
     const numberButton = page.locator('button[aria-label^="Enter 5,"]');
-    await numberButton.click();
+    await numberButton.tap();
     
     // Wait for digit to appear using condition-based wait
     await expect(async () => {

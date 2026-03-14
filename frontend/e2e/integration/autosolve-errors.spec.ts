@@ -495,6 +495,8 @@ test.describe('@integration Autosolve Fresh Board', () => {
 });
 
 test.describe('@integration Autosolve Error - Mobile', () => {
+  test.use({ hasTouch: true });
+
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.addInitScript(() => {
@@ -504,7 +506,7 @@ test.describe('@integration Autosolve Error - Mobile', () => {
 
   test('autosolve handles errors on mobile viewport', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
+    await page.getByRole('button', { name: /easy Play/i }).tap();
     await page.waitForSelector('[role="grid"]', { timeout: 15000 });
 
     // Use a few hints on mobile
