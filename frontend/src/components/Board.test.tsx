@@ -922,36 +922,44 @@ describe('Board', () => {
 
   // ===========================================================================
   // DRAG INTERACTION TESTS (Multi-Select Feature)
+  // Uses pointer events: pointerDown on cells, pointerMove/pointerUp on board.
+  // Board-level onPointerMove uses document.elementFromPoint() to resolve
+  // which cell the pointer is over, so we mock it in jsdom.
   // ===========================================================================
-  describe('drag interaction - mouse handlers', () => {
+  describe('drag interaction - pointer handlers', () => {
+    // Helper: simulate dragging the pointer over a target cell.
+    // jsdom does not implement document.elementFromPoint, so we assign
+    // a mock directly and restore afterward.
+    function simulateDragOver(boardEl: Element, targetCell: Element) {
+      const original = document.elementFromPoint
+      document.elementFromPoint = vi.fn().mockReturnValue(targetCell)
+      fireEvent.pointerMove(boardEl, { clientX: 50, clientY: 50 })
+      document.elementFromPoint = original
+    }
+
     it('cells can receive drag handlers', () => {
-      // Verify that drag handlers can be passed to cells
-      // This is a structural test - handlers are optional props
+      // Structural test: cells render with data-cell-idx for pointer resolution
       const { container } = render(<Board {...defaultProps()} />)
 
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells.length).toBeGreaterThan(0)
+      expect(cells[0]).toHaveAttribute('data-cell-idx')
     })
 
     it('Board component provides drag handler callbacks', () => {
-      // Verify that Board has drag handler implementations
-      // Full drag simulation requires integration testing with userEvent
       const onCellSelectMultiple = vi.fn()
       render(<Board {...defaultProps({ onCellSelectMultiple })} />)
 
-      // Handler functions should exist and be callable
       expect(typeof onCellSelectMultiple).toBe('function')
     })
 
     it('multi-selected cells have distinct styling', () => {
-      // Test that multi-select styling is applied when selectedCells prop is set
       const selectedCells = new Set([10, 11, 12])
       const { container } = render(
         <Board {...defaultProps({ selectedCells })} />
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
-      // Cells 10, 11, 12 should be in selectedCells and get multi-selected styling
       expect(cells.length).toBeGreaterThan(12)
     })
 
@@ -963,10 +971,11 @@ describe('Board', () => {
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
-      // Cell 0 is a given (value 5). Start drag on it, then enter cell 1.
-      fireEvent.mouseDown(cells[0])
-      fireEvent.mouseEnter(cells[1])
-      fireEvent.mouseUp(cells[1])
+      const boardEl = screen.getByRole('grid')
+      // Cell 0 is a given (value 5). pointerDown on it, then move to cell 1.
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[1]!)
+      fireEvent.pointerUp(boardEl)
 
       // onCellSelectMultiple should NOT be called because drag never started
       expect(onCellSelectMultiple).not.toHaveBeenCalled()
@@ -983,10 +992,11 @@ describe('Board', () => {
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
-      // Cell 5 is filled. Start drag on it, then enter cell 6.
-      fireEvent.mouseDown(cells[5])
-      fireEvent.mouseEnter(cells[6])
-      fireEvent.mouseUp(cells[6])
+      const boardEl = screen.getByRole('grid')
+      // Cell 5 is filled. pointerDown on it, then move to cell 6.
+      fireEvent.pointerDown(cells[5]!)
+      simulateDragOver(boardEl, cells[6]!)
+      fireEvent.pointerUp(boardEl)
 
       // onCellSelectMultiple should NOT be called because drag never started
       expect(onCellSelectMultiple).not.toHaveBeenCalled()
@@ -1005,9 +1015,10 @@ describe('Board', () => {
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
-      // Start drag on cell 0 (empty), drag through cell 1 (given) to cell 2 (empty)
-      fireEvent.mouseDown(cells[0])
-      fireEvent.mouseEnter(cells[2])
+      const boardEl = screen.getByRole('grid')
+      // Start drag on cell 0 (empty), drag to cell 2 (empty), skipping cell 1 (given)
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[2]!)
 
       // onCellSelectMultiple should be called with filtered cells (excluding given cell 1)
       expect(onCellSelectMultiple).toHaveBeenCalled()
@@ -1029,9 +1040,10 @@ describe('Board', () => {
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
       // Start drag on cell 0 (empty), drag to cell 2
-      fireEvent.mouseDown(cells[0])
-      fireEvent.mouseEnter(cells[2])
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[2]!)
 
       expect(onCellSelectMultiple).toHaveBeenCalled()
       const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
@@ -1047,9 +1059,10 @@ describe('Board', () => {
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
       // All cells empty: drag from cell 0 to cell 2
-      fireEvent.mouseDown(cells[0])
-      fireEvent.mouseEnter(cells[2])
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[2]!)
 
       expect(onCellSelectMultiple).toHaveBeenCalled()
       const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
