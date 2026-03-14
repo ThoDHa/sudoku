@@ -115,8 +115,8 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
       return {
         ...state,
         selectedCells: newCells,
-        // Backward compatibility: single-element set updates selectedCell
-        selectedCell: action.cells.length === 1 ? (action.cells[0] ?? null) : null,
+        // First cell in selection acts as the "primary" selected cell for styling
+        selectedCell: action.cells[0] ?? null,
         // Clear highlights when selecting cells
         highlightedDigit: null,
         currentHighlight: null,

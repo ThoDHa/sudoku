@@ -126,9 +126,10 @@ test.describe('@integration Multi-Select Feature', () => {
 
     await performDrag(page, startCell, endCell);
 
-    // Verify that empty cells along the path are multi-selected
-    await expect(startCell).toHaveClass(/multi-selected/);
-    await expect(endCell).toHaveClass(/multi-selected/);
+    // Verify that empty cells along the path are highlighted:
+    // All cells get the same 'selected' styling (ring + background)
+    await expect(startCell).toHaveClass(/selected/);
+    await expect(endCell).toHaveClass(/selected/);
   });
 
   test('vertical drag selects multiple cells in same column', async ({ page }) => {
@@ -158,9 +159,9 @@ test.describe('@integration Multi-Select Feature', () => {
 
     await performDrag(page, startCell, endCell);
 
-    // Verify multi-selected class on the dragged empty cells
-    await expect(startCell).toHaveClass(/multi-selected/);
-    await expect(endCell).toHaveClass(/multi-selected/);
+    // Verify multi-select styling: all cells get 'selected' highlight
+    await expect(startCell).toHaveClass(/selected/);
+    await expect(endCell).toHaveClass(/selected/);
   });
 
   test('diagonal drag selects cells along L-shaped path', async ({ page }) => {
@@ -193,9 +194,9 @@ test.describe('@integration Multi-Select Feature', () => {
 
     await performDrag(page, startCell, endCell!);
 
-    // At least the start cell should be multi-selected (the L-shaped path may skip
+    // At least the start cell should be selected (the L-shaped path may skip
     // given cells, but the start empty cell should be in the selection)
-    await expect(startCell).toHaveClass(/multi-selected/);
+    await expect(startCell).toHaveClass(/selected/);
   });
 
   test('drag stops when encountering a given cell', async ({ page }) => {
@@ -219,12 +220,10 @@ test.describe('@integration Multi-Select Feature', () => {
       const givenCell = givenCellInRow.first();
       await performDrag(page, startCell, givenCell);
 
-      // The given cell should NOT be multi-selected
-      await expect(givenCell).not.toHaveClass(/multi-selected/);
+      // The given cell should NOT be part of the selection
+      await expect(givenCell).not.toHaveClass(/selected/);
 
-      // The start cell (empty) should be selected (single-cell or multi-selected).
-      // When only one empty cell is selectable, the reducer treats it as a
-      // single selection (bg-cell-selected) rather than multi-selected.
+      // The start cell (empty) should be selected (single-cell or multi-selected)
       await expect(startCell).toHaveClass(/selected/);
     } else {
       // Fallback: drag from empty cell toward a given cell in the same column
@@ -234,7 +233,7 @@ test.describe('@integration Multi-Select Feature', () => {
       const givenCell = givenCellInCol.first();
       await performDrag(page, startCell, givenCell);
 
-      await expect(givenCell).not.toHaveClass(/multi-selected/);
+      await expect(givenCell).not.toHaveClass(/selected/);
       await expect(startCell).toHaveClass(/selected/);
     }
   });
@@ -363,9 +362,9 @@ test.describe('@integration Multi-Select Feature', () => {
     // Drag to select
     await performDrag(page, startCell!, endCell!);
 
-    // Verify multi-select is active
-    await expect(startCell!).toHaveClass(/multi-selected/);
-    await expect(endCell!).toHaveClass(/multi-selected/);
+    // Verify multi-select is active: both cells get the same 'selected' styling
+    await expect(startCell!).toHaveClass(/selected/);
+    await expect(endCell!).toHaveClass(/selected/);
 
     // Click outside the game board (click heading or empty area)
     const heading = page.locator('h1').first();
@@ -378,8 +377,8 @@ test.describe('@integration Multi-Select Feature', () => {
     }
     await page.waitForTimeout(150);
 
-    // Verify multi-select is cleared
-    await expect(startCell!).not.toHaveClass(/multi-selected/);
-    await expect(endCell!).not.toHaveClass(/multi-selected/);
+    // Verify multi-select is cleared (neither bg-cell-selected nor multi-selected)
+    await expect(startCell!).not.toHaveClass(/selected/);
+    await expect(endCell!).not.toHaveClass(/selected/);
   });
 });

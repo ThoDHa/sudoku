@@ -1040,7 +1040,9 @@ describe('useHighlightState', () => {
         })
 
         expect(result.current.state.selectedCells.size).toBeGreaterThan(1)
-        expect(result.current.selectedCell).toBeNull()
+        // When multiple cells are selected, selectedCell is set to the first
+        // cell in the array (used as the "primary" cell for the outline styling)
+        expect(result.current.selectedCell).toBe(10)
       })
     })
   })

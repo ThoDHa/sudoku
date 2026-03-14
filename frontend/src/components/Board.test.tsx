@@ -953,14 +953,28 @@ describe('Board', () => {
       expect(typeof onCellSelectMultiple).toBe('function')
     })
 
-    it('multi-selected cells have distinct styling', () => {
+    it('multi-selected cells get outline-only styling with no background highlight', () => {
       const selectedCells = new Set([10, 11, 12])
       const { container } = render(
-        <Board {...defaultProps({ selectedCells })} />
+        <Board {...defaultProps({ selectedCell: 10, selectedCells })} />
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells.length).toBeGreaterThan(12)
+
+      // All three cells are part of the multi-selection (size > 1),
+      // so they get the outline-only rectangle styling: multi-selected class,
+      // accent borders on outer edges, no bg-cell-selected, no ring.
+      for (const idx of [10, 11, 12]) {
+        expect(cells[idx]!.className).toContain('multi-selected')
+        expect(cells[idx]!.className).not.toContain('bg-cell-selected')
+        expect(cells[idx]!.className).not.toContain('ring-accent')
+      }
+
+      // Outer edges get accent borders (cell 10 has left outer edge,
+      // cell 12 has right outer edge)
+      expect(cells[10]!.className).toContain('border-l-accent')
+      expect(cells[12]!.className).toContain('border-r-accent')
     })
 
     it('drag does not start on given cells', () => {
@@ -1069,6 +1083,277 @@ describe('Board', () => {
       const selectedCells: number[] = lastCall[0]
       // Should include cells in the path
       expect(selectedCells.length).toBeGreaterThan(0)
+    })
+
+    it('drag accumulates cells across an L-shaped path (right then down)', () => {
+      // Drag right along row 0 (cells 0,1,2) then down column 2 (cells 11,20)
+      // to verify paint-style accumulation keeps all swept cells
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
+
+      // Start drag at cell 0 (row 0, col 0)
+      fireEvent.pointerDown(cells[0]!)
+      // Move to cell 1 (row 0, col 1)
+      simulateDragOver(boardEl, cells[1]!)
+      // Move to cell 2 (row 0, col 2)
+      simulateDragOver(boardEl, cells[2]!)
+      // Move down to cell 11 (row 1, col 2)
+      simulateDragOver(boardEl, cells[11]!)
+      // Move down to cell 20 (row 2, col 2)
+      simulateDragOver(boardEl, cells[20]!)
+
+      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      const selected: number[] = lastCall[0]
+      // All 5 cells should be in the selection (accumulated, not recalculated)
+      expect(selected).toContain(0)
+      expect(selected).toContain(1)
+      expect(selected).toContain(2)
+      expect(selected).toContain(11)
+      expect(selected).toContain(20)
+      expect(selected.length).toBe(5)
+    })
+
+    it('backtrack removes cells when pointer revisits a previous trail cell', () => {
+      // Drag: 0 -> 1 -> 2 -> 1 (backtrack: should trim cell 2)
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
+
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[1]!)
+      simulateDragOver(boardEl, cells[2]!)
+
+      // At this point, trail is [0, 1, 2]
+      const callBeforeBacktrack = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      expect(callBeforeBacktrack[0]).toEqual([0, 1, 2])
+
+      // Now backtrack: pointer returns to cell 1
+      simulateDragOver(boardEl, cells[1]!)
+
+      // Trail should be trimmed to [0, 1], cell 2 removed
+      const callAfterBacktrack = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      expect(callAfterBacktrack[0]).toEqual([0, 1])
+    })
+
+    it('backtrack to start cell leaves only the start cell selected', () => {
+      // Drag: 0 -> 1 -> 2 -> 0 (full backtrack)
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
+
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[1]!)
+      simulateDragOver(boardEl, cells[2]!)
+      // Backtrack all the way to cell 0
+      simulateDragOver(boardEl, cells[0]!)
+
+      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      expect(lastCall[0]).toEqual([0])
+    })
+
+    it('handleDragEnd resets trail so next drag starts fresh', () => {
+      // First drag: 0 -> 1
+      // pointerUp (drag end)
+      // Second drag: 3 -> 4
+      // The second drag should NOT contain cells from the first drag
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
+
+      // First drag
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[1]!)
+      fireEvent.pointerUp(boardEl)
+
+      onCellSelectMultiple.mockClear()
+
+      // Second drag: should start completely fresh
+      fireEvent.pointerDown(cells[3]!)
+      simulateDragOver(boardEl, cells[4]!)
+
+      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      const selected: number[] = lastCall[0]
+      // Only cells from second drag
+      expect(selected).toContain(3)
+      expect(selected).toContain(4)
+      expect(selected).not.toContain(0)
+      expect(selected).not.toContain(1)
+    })
+
+    it('forward movement after backtrack re-accumulates correctly', () => {
+      // Drag: 0 -> 1 -> 2 -> 1 (backtrack) -> 10 (down from cell 1)
+      // Trail should be [0, 1, 10]
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
+
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[1]!)
+      simulateDragOver(boardEl, cells[2]!)
+      // Backtrack to cell 1
+      simulateDragOver(boardEl, cells[1]!)
+      // Now go down from cell 1 (row 0, col 1) to cell 10 (row 1, col 1)
+      simulateDragOver(boardEl, cells[10]!)
+
+      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      const selected: number[] = lastCall[0]
+      expect(selected).toEqual([0, 1, 10])
+      // Cell 2 should NOT be in the selection (was removed by backtrack)
+      expect(selected).not.toContain(2)
+    })
+
+    it('drag accumulation skips given cells in bridge path', () => {
+      const board = createEmptyBoard()
+      const initialBoard = createEmptyBoard()
+      // Cell 1 is given, cells 0 and 2 are empty
+      initialBoard[1] = 5
+      board[1] = 5
+
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
+
+      // Drag from cell 0 to cell 2; bridge includes cell 1 (given, skipped)
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[2]!)
+
+      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      const selected: number[] = lastCall[0]
+      expect(selected).toContain(0)
+      expect(selected).toContain(2)
+      expect(selected).not.toContain(1)
+    })
+
+    it('drag accumulation skips filled cells in bridge path', () => {
+      const board = createEmptyBoard()
+      const initialBoard = createEmptyBoard()
+      // Cell 1 is user-filled, cells 0 and 2 are empty
+      board[1] = 7
+
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
+
+      // Drag from cell 0 to cell 2; bridge includes cell 1 (filled, skipped)
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[2]!)
+
+      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      const selected: number[] = lastCall[0]
+      expect(selected).toContain(0)
+      expect(selected).toContain(2)
+      expect(selected).not.toContain(1)
+    })
+
+    it('suppressNextClickRef prevents click after drag from overwriting multi-select', () => {
+      // After a multi-cell drag, the browser fires a synthetic click.
+      // The suppress mechanism should prevent the click handler from
+      // converting the multi-select to a single-cell select.
+      const onCellClick = vi.fn()
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ onCellClick, onCellSelectMultiple })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
+
+      // Perform a multi-cell drag
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[1]!)
+      fireEvent.pointerUp(boardEl)
+
+      // The synthetic click that follows should be suppressed
+      fireEvent.click(cells[1]!)
+
+      // onCellClick should NOT be called because the click was suppressed
+      expect(onCellClick).not.toHaveBeenCalled()
+    })
+
+    it('onDragEnd is called with final trail cells on multi-cell drag completion', () => {
+      const onDragEnd = vi.fn()
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ onCellSelectMultiple, onDragEnd })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
+
+      // Multi-cell drag: 0 -> 1 -> 2
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[1]!)
+      simulateDragOver(boardEl, cells[2]!)
+      fireEvent.pointerUp(boardEl)
+
+      expect(onDragEnd).toHaveBeenCalledTimes(1)
+      expect(onDragEnd).toHaveBeenCalledWith([0, 1, 2])
+    })
+
+    it('onDragEnd is NOT called for single-cell drag (no movement)', () => {
+      const onDragEnd = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ onDragEnd })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
+
+      // Single cell: pointerDown + pointerUp without moving to another cell
+      fireEvent.pointerDown(cells[0]!)
+      fireEvent.pointerUp(boardEl)
+
+      // Trail has only 1 cell (the start cell), so onDragEnd should not fire
+      expect(onDragEnd).not.toHaveBeenCalled()
+    })
+
+    it('onDragEnd receives backtracked trail (not full history)', () => {
+      const onDragEnd = vi.fn()
+      const onCellSelectMultiple = vi.fn()
+      const { container } = render(
+        <Board {...defaultProps({ onCellSelectMultiple, onDragEnd })} />
+      )
+
+      const cells = container.querySelectorAll('.sudoku-cell')
+      const boardEl = screen.getByRole('grid')
+
+      // Drag: 0 -> 1 -> 2, then backtrack to 1
+      fireEvent.pointerDown(cells[0]!)
+      simulateDragOver(boardEl, cells[1]!)
+      simulateDragOver(boardEl, cells[2]!)
+      simulateDragOver(boardEl, cells[1]!) // backtrack
+      fireEvent.pointerUp(boardEl)
+
+      expect(onDragEnd).toHaveBeenCalledWith([0, 1])
     })
   })
 })

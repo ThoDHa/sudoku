@@ -34,6 +34,8 @@ interface BoardProps {
   onCellChange?: (idx: number, value: number) => void
   /** Callback for multi-select - called when drag selects multiple cells */
   onCellSelectMultiple?: (cells: number[]) => void
+  /** Callback when a multi-cell drag completes (pointerUp) with the final selected cells */
+  onDragEnd?: (cells: number[]) => void
   /** Cells that contain incorrect values (compared to the solution) */
   incorrectCells?: number[]
   /** Additional CSS classes to apply to the board container */
@@ -310,6 +312,7 @@ const Board = memo(function Board({
   onCellClick,
   onCellChange,
   onCellSelectMultiple,
+  onDragEnd: onDragEndProp,
   incorrectCells = [],
   className = '',
 }: BoardProps) {
@@ -320,6 +323,11 @@ const Board = memo(function Board({
   // (setState is asynchronous, so handleDragEnter would see stale isDragging=false)
   const isDraggingRef = React.useRef(false)
   const dragStartCellRef = React.useRef<number | null>(null)
+  // Ordered trail of cells the pointer has swept through. When the pointer
+  // revisits a cell already in the trail, we trim back to that point
+  // (backtracking removes cells). Uses an array for order + a set for O(1) lookup.
+  const dragTrailRef = React.useRef<number[]>([])
+  const dragTrailSetRef = React.useRef<Set<number>>(new Set())
   // Tracks whether a multi-select drag occurred, so the subsequent click event
   // (synthesized by the browser after pointerup) can be suppressed to avoid
   // overwriting the multi-select state with a single-cell selection.
@@ -604,12 +612,19 @@ const Board = memo(function Board({
     return false
   }
 
+  // Check if a cell index is part of the active multi-selection.
+  // Both the primary selectedCell and other selectedCells members participate
+  // in the unified selection rectangle when multiple cells are selected.
+  const isInMultiSelection = (idx: number): boolean => {
+    return selectedCells.size > 1 && selectedCells.has(idx)
+  }
+
   const getCellClass = (idx: number): string => {
     const row = Math.floor(idx / 9)
     const col = idx % 9
     const isGiven = initialBoard[idx] !== 0
     const isSelected = selectedCell === idx
-    const isMultiSelected = selectedCells.has(idx) && !isSelected
+    const inMultiSel = isInMultiSelection(idx)
     const isPrimary = isHighlightedPrimary(row, col)
     const isSecondary = isHighlightedSecondary(row, col)
     const isDuplicate = duplicates.has(idx)
@@ -620,55 +635,107 @@ const Board = memo(function Board({
     // Start with base CSS class
     const classes = ['sudoku-cell']
 
-    // Borders - using theme colors
-    if (col === 2 || col === 5) {
-      classes.push('border-r-2 border-r-board-border')
-    } else if (col < 8) {
-      classes.push('border-r border-r-board-border-light')
+    if (inMultiSel) {
+      // Multi-selection outline: draw accent border only on outer edges.
+      // Internal edges between adjacent selected cells keep their normal
+      // grid-line styling so the puzzle grid remains visible.
+      const hasRight = col < 8 && isInMultiSelection(idx + 1)
+      const hasBelow = row < 8 && isInMultiSelection(idx + 9)
+      const hasLeft = col > 0 && isInMultiSelection(idx - 1)
+      const hasAbove = row > 0 && isInMultiSelection(idx - 9)
+
+      // Right edge
+      if (hasRight) {
+        // Internal: keep normal grid line
+        if (col === 2 || col === 5) {
+          classes.push('border-r-2 border-r-board-border')
+        } else if (col < 8) {
+          classes.push('border-r border-r-board-border-light')
+        }
+      } else {
+        // Outer edge: accent border
+        if (col === 2 || col === 5) {
+          classes.push('border-r-2 border-r-accent')
+        } else if (col < 8) {
+          classes.push('border-r-2 border-r-accent')
+        }
+      }
+
+      // Bottom edge
+      if (hasBelow) {
+        // Internal: keep normal grid line
+        if (row === 2 || row === 5) {
+          classes.push('border-b-2 border-b-board-border')
+        } else if (row < 8) {
+          classes.push('border-b border-b-board-border-light')
+        }
+      } else {
+        // Outer edge: accent border
+        if (row === 2 || row === 5) {
+          classes.push('border-b-2 border-b-accent')
+        } else if (row < 8) {
+          classes.push('border-b-2 border-b-accent')
+        }
+      }
+
+      // Left edge (only outer gets accent)
+      if (!hasLeft) {
+        classes.push('border-l-2 border-l-accent')
+      }
+
+      // Top edge (only outer gets accent)
+      if (!hasAbove) {
+        classes.push('border-t-2 border-t-accent')
+      }
+
+      // Multi-selected cells are marked for E2E test identification
+      classes.push('multi-selected')
+
+      // No ring, no background highlight: cell keeps its normal background
+      // (determined by the priority chain below, skipping the multi-select branch)
+    } else {
+      // Normal grid borders
+      if (col === 2 || col === 5) {
+        classes.push('border-r-2 border-r-board-border')
+      } else if (col < 8) {
+        classes.push('border-r border-r-board-border-light')
+      }
+
+      if (row === 2 || row === 5) {
+        classes.push('border-b-2 border-b-board-border')
+      } else if (row < 8) {
+        classes.push('border-b border-b-board-border-light')
+      }
+
+      // Ring: incorrect or single-selected cell
+      if (isIncorrect) {
+        classes.push('ring-2 ring-inset ring-error-text z-10')
+      } else if (isSelected) {
+        classes.push('ring-2 ring-inset ring-accent z-10')
+      }
     }
 
-    if (row === 2 || row === 5) {
-      classes.push('border-b-2 border-b-board-border')
-    } else if (row < 8) {
-      classes.push('border-b border-b-board-border-light')
-    }
-
-    // Incorrect cells get a red ring
-    // Incorrect cells get an error ring
-    // Multi-selected cells get a distinct ring
-    if (isMultiSelected) {
-      classes.push('ring-2 ring-inset ring-accent-multi z-10')
-    } else if (isIncorrect) {
-      classes.push('ring-2 ring-inset ring-error-text z-10')
-    } else if (isSelected) {
-      // Selected cell gets a prominent ring
-      classes.push('ring-2 ring-inset ring-accent z-10')
-    }
-
-    // Background priority: incorrect > duplicate > multi-selected > selected > primary > secondary > digit match > peer > default
+    // Background priority: incorrect > duplicate > selected (single only) > primary > secondary > digit match > peer > default
+    // Multi-selected cells skip this: they keep their normal background
     if (isIncorrect) {
       classes.push('bg-error-bg')
     } else if (isDuplicate) {
       classes.push('bg-error-bg')
-    } else if (isMultiSelected) {
-      classes.push('bg-cell-multi-selected')
-    } else if (isSelected) {
+    } else if (isSelected && !inMultiSel) {
       classes.push('bg-cell-selected')
-    } else if (isPrimary) {
+    } else if (isPrimary && !inMultiSel) {
       classes.push('bg-cell-primary')
-    } else if (isSecondary) {
+    } else if (isSecondary && !inMultiSel) {
       const isTechniqueHint = highlight?.showAnswer === false
       const isExplicitSecondary = highlight?.highlights.secondary?.some(
         (h) => h.row === row && h.col === col
       )
-      // In technique hint mode, only upgrade derived secondary to primary
-      // Explicit secondary highlights keep their secondary styling
       classes.push(
         isTechniqueHint && !isExplicitSecondary ? 'bg-cell-primary' : 'bg-cell-secondary'
       )
-    } else if (hasDigitMatch) {
+    } else if (hasDigitMatch && !inMultiSel) {
       classes.push('bg-accent-light')
-    } else if (isPeer) {
+    } else if (isPeer && !inMultiSel) {
       classes.push('bg-cell-peer')
     } else if (isGiven) {
       classes.push('bg-cell-given')
@@ -766,36 +833,62 @@ const Board = memo(function Board({
     }
     isDraggingRef.current = true
     dragStartCellRef.current = idx
+    // Initialize ordered trail with the start cell
+    dragTrailRef.current = [idx]
+    dragTrailSetRef.current = new Set([idx])
   }, [initialBoard, board])
 
   const handleDragEnter = useCallback((idx: number) => {
     if (!isDraggingRef.current || dragStartCellRef.current === null) return
 
-    // If the pointer moved to a different cell than the drag start, this is a real
-    // multi-cell drag: suppress the click event that the browser synthesizes after
+    // If pointer moved to a different cell than the drag start, this is a real
+    // multi-cell drag: suppress the click event that browser synthesizes after
     // pointerup to avoid overwriting the multi-select state.
     if (idx !== dragStartCellRef.current) {
       suppressNextClickRef.current = true
     }
 
-    // Calculate path from dragStartCell to current cell
-    const pathCells = calculatePathCells(dragStartCellRef.current, idx)
+    const trail = dragTrailRef.current
+    const trailSet = dragTrailSetRef.current
 
-    // Filter out given and filled cells from the selection
-    const selectableCells = pathCells.filter(
-      cellIdx => initialBoard[cellIdx] === 0 && board[cellIdx] === 0
-    )
+    if (trailSet.has(idx)) {
+      // Backtrack: pointer revisited a cell already in the trail.
+      // Trim the trail back to that cell, removing everything after it.
+      const backtrackIdx = trail.indexOf(idx)
+      const removed = trail.splice(backtrackIdx + 1)
+      for (const r of removed) {
+        trailSet.delete(r)
+      }
+    } else {
+      // Forward: compute bridge from last trail cell to new cell
+      // (fills gaps if pointer skipped cells between events)
+      const prevCell = trail.length > 0 ? trail[trail.length - 1] : dragStartCellRef.current
+      if (prevCell === null) return
+      const bridgeCells = calculatePathCells(prevCell, idx)
+      for (const cellIdx of bridgeCells) {
+        if (initialBoard[cellIdx] === 0 && board[cellIdx] === 0 && !trailSet.has(cellIdx)) {
+          trail.push(cellIdx)
+          trailSet.add(cellIdx)
+        }
+      }
+    }
 
-    // Call callback to update selection (even if empty, to clear stale selection)
+    // Update selection from the current trail
     if (onCellSelectMultiple) {
-      onCellSelectMultiple(selectableCells)
+      onCellSelectMultiple([...trail])
     }
   }, [initialBoard, board, onCellSelectMultiple])
 
   const handleDragEnd = useCallback(() => {
+    // Notify parent with the final set of selected cells before clearing trail
+    if (onDragEndProp && dragTrailRef.current.length > 1) {
+      onDragEndProp([...dragTrailRef.current])
+    }
     isDraggingRef.current = false
     dragStartCellRef.current = null
     lastEnteredCellRef.current = null
+    dragTrailRef.current = []
+    dragTrailSetRef.current = new Set()
     // Safety net: clear the suppress flag after the current event cycle so that
     // a stale flag cannot block future clicks (e.g., if pointercancel fires instead
     // of a click). The click event fires synchronously after pointerup in the same
@@ -803,7 +896,7 @@ const Board = memo(function Board({
     if (suppressNextClickRef.current) {
       setTimeout(() => { suppressNextClickRef.current = false }, 0)
     }
-  }, [])
+  }, [onDragEndProp])
 
   // Track the last cell the pointer entered to avoid redundant handleDragEnter calls
   const lastEnteredCellRef = React.useRef<number | null>(null)
@@ -823,8 +916,10 @@ const Board = memo(function Board({
     const idx = Number(cellEl.getAttribute('data-cell-idx'))
     if (Number.isNaN(idx) || idx === lastEnteredCellRef.current) return
 
-    lastEnteredCellRef.current = idx
+    // handleDragEnter reads lastEnteredCellRef to bridge from the previous
+    // cell, so call it BEFORE updating the ref to the new cell.
     handleDragEnter(idx)
+    lastEnteredCellRef.current = idx
   }, [handleDragEnter])
 
   // Board-level pointer up handler

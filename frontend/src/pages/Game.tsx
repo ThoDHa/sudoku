@@ -1090,6 +1090,19 @@ function GameContent() {
       selectMultipleCells(cells)
     }, [selectMultipleCells])
 
+    // Drag end callback: when a multi-cell drag completes and a digit is highlighted
+    // in notes mode, auto-insert/toggle that candidate on all selected cells.
+    const handleDragEnd = useCallback((cells: number[]) => {
+      const currentHighlightedDigit = highlightedDigitRef.current
+      const currentNotesMode = notesModeRef.current
+      const currentGame = gameRef.current
+
+      if (!currentGame || !currentNotesMode || currentHighlightedDigit === null) return
+      if (cells.length === 0) return
+
+      currentGame.setCellMultiple(cells, currentHighlightedDigit, true)
+    }, [])
+
     // Cell click handler - STABLE: reads from refs to avoid recreating on state changes
     // This is critical because Cell memo doesn't compare callback props for performance
     const handleCellClick = useCallback((idx: number) => {
@@ -2186,6 +2199,7 @@ if (currentGame.board[currentSelectedCell] === digit) {
             onCellClick={handleCellClick}
             onCellChange={handleCellChange}
             onCellSelectMultiple={handleCellSelectMultiple}
+            onDragEnd={handleDragEnd}
             incorrectCells={incorrectCells}
             className={timerControl.isPausedDueToVisibility && !game.isComplete ? 'blur-md' : ''}
           />
