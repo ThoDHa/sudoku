@@ -18,6 +18,7 @@
   --color-cell-given: var(--cell-given);
   --color-cell-hover: var(--cell-hover);
   --color-cell-selected: var(--cell-selected);
+  --color-cell-multi-selected: var(--cell-multi-selected);
   --color-cell-peer: var(--cell-peer);
   --color-cell-primary: var(--cell-primary);
   --color-cell-secondary: var(--cell-secondary);
@@ -37,6 +38,7 @@
   /* Accent colors */
   --color-accent: var(--accent);
   --color-accent-light: var(--accent-light);
+  --color-accent-multi: var(--cell-multi-selected);
   
   /* Error/duplicate colors */
   --color-error-bg: var(--error-bg);
