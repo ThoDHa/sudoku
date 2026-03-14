@@ -310,8 +310,8 @@ function GameContent() {
      // When user clicks/taps outside of game interface, deselects the current cell
         useEffect(() => {
           const handleInteraction = (event: Event) => {
-            // Only process if a cell is selected
-            if (selectedCellRef.current === null) return
+            // Only process if a cell or multi-select is active
+            if (selectedCellRef.current === null && selectedCellsRef.current.size === 0) return
 
             const target = event.target as Element | null
             if (!target) return
@@ -321,12 +321,14 @@ function GameContent() {
 
             // Check if click is on interactive game elements that should NOT trigger deselection
             const clickedOnCell = target.closest('.sudoku-cell') !== null
+            const clickedOnBoard = target.closest('.sudoku-board') !== null
             const clickedOnDigitButton = target.closest('.control-digit-btn') !== null
             const clickedOnActionButton = target.closest('.control-action-btn-compact') !== null
 
-            // Deselect if click is NOT on a cell, NOT on digit/action buttons, and NOT in a modal
+            // Deselect if click is NOT on a cell/board, NOT on digit/action buttons, and NOT in a modal
             // This allows clicking on empty space, header buttons, etc. to deselect
-            if (!clickedOnCell && !clickedOnDigitButton && !clickedOnActionButton && !clickedInsideModal) {
+            // The board check prevents deselection from synthetic clicks after multi-select drags
+            if (!clickedOnCell && !clickedOnBoard && !clickedOnDigitButton && !clickedOnActionButton && !clickedInsideModal) {
               deselectCell()
               setEraseMode(false)
               clearMoveHighlight()
@@ -1232,6 +1234,14 @@ function GameContent() {
       const digitCount = digitCounts ? digitCounts[digit - 1] : 0
       const isDigitComplete = digitCount !== undefined && digitCount >= 9
       if (isDigitComplete) {
+        return
+      }
+
+      // Multi-select in notes mode: route to bulk note entry
+      // selectedCell is null during multi-select (by design), so check selectedCells directly
+      const currentSelectedCells = selectedCellsRef.current
+      if (currentNotesMode && currentSelectedCells.size > 1) {
+        placeDigitAndClear(0, digit, currentNotesMode)
         return
       }
 

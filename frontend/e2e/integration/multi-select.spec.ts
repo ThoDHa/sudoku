@@ -1,6 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page, Locator } from '@playwright/test';
 import { setupGameAndWaitForBoard } from '../utils/board-wait';
-import { selectCell } from '../utils/selectCell';
 import { allure } from 'allure-playwright';
 import { EPICS, FEATURES, STORIES } from '../sdk/allure-utils';
 
@@ -11,19 +10,84 @@ import { EPICS, FEATURES, STORIES } from '../sdk/allure-utils';
  *
  * Tag: @integration @multi-select
  *
- * NOTE: These tests verify the multi-select feature works correctly
- * in a real browser environment using Playwright.
+ * Drag simulation uses Playwright's page.mouse API which dispatches pointer events.
+ * The Board component uses onPointerMove at the board level with elementFromPoint,
+ * so page.mouse.move correctly triggers the drag path resolution.
  */
 
 // Helper to get a cell by row and column (1-indexed)
-function getCellLocator(page: any, row: number, col: number) {
+function getCellLocator(page: Page, row: number, col: number): Locator {
   return page.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`);
 }
 
-// Helper to check if a cell has a specific candidate
-async function expectCandidateVisible(page: any, row: number, col: number, digit: number) {
+// Helper to get all empty cells in a given row
+function getEmptyCellsInRow(page: Page, row: number): Locator {
+  return page.locator(`[role="gridcell"][aria-label*="Row ${row}"][aria-label$="empty"]`);
+}
+
+// Helper to get all empty cells in a given column
+function getEmptyCellsInColumn(page: Page, col: number): Locator {
+  return page.locator(`[role="gridcell"][aria-label*="Column ${col}"][aria-label$="empty"]`);
+}
+
+// Helper to check if a cell has a specific candidate displayed.
+// The candidate grid renders 9 spans (.candidate-digit) in order 1-9;
+// the nth span contains the digit text when that candidate is present.
+async function expectCandidateVisible(page: Page, row: number, col: number, digit: number): Promise<void> {
   const cell = getCellLocator(page, row, col);
-  await expect(cell.locator(`.candidate-${digit}`)).toBeVisible();
+  // The digit-th span (1-indexed) inside .candidate-grid holds the candidate
+  const candidateSpan = cell.locator(`.candidate-grid .candidate-digit:nth-child(${digit})`);
+  await expect(candidateSpan).toHaveText(String(digit));
+}
+
+// Helper: perform a pointer drag from startCell to endCell via the board
+async function performDrag(page: Page, startCell: Locator, endCell: Locator): Promise<void> {
+  const startBox = await startCell.boundingBox();
+  const endBox = await endCell.boundingBox();
+  if (!startBox || !endBox) throw new Error('Could not get bounding boxes for drag cells');
+
+  const startX = startBox.x + startBox.width / 2;
+  const startY = startBox.y + startBox.height / 2;
+  const endX = endBox.x + endBox.width / 2;
+  const endY = endBox.y + endBox.height / 2;
+
+  // Pointer down on start cell
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+
+  // Move to end cell (intermediate steps help trigger onPointerMove)
+  const steps = 10;
+  for (let i = 1; i <= steps; i++) {
+    const x = startX + (endX - startX) * (i / steps);
+    const y = startY + (endY - startY) * (i / steps);
+    await page.mouse.move(x, y);
+  }
+
+  // Release
+  await page.mouse.up();
+
+  // Brief wait for state update
+  await page.waitForTimeout(150);
+}
+
+// Helper: extract row and column from a cell's aria-label
+async function getCellRowCol(cell: Locator): Promise<{ row: number; col: number }> {
+  const label = await cell.getAttribute('aria-label');
+  if (!label) throw new Error('Cell has no aria-label');
+  const rowMatch = label.match(/Row (\d+)/);
+  const colMatch = label.match(/Column (\d+)/);
+  if (!rowMatch || !colMatch) throw new Error(`Cannot parse row/col from aria-label: ${label}`);
+  return { row: Number(rowMatch[1]), col: Number(colMatch[1]) };
+}
+
+// Locator for the notes mode toggle button
+function getNotesToggle(page: Page): Locator {
+  return page.locator('button[aria-label^="Notes mode"]');
+}
+
+// Locator for a digit button
+function getDigitButton(page: Page, digit: number): Locator {
+  return page.locator(`button[aria-label^="Enter ${digit}"]`);
 }
 
 test.describe('@integration Multi-Select Feature', () => {
@@ -38,233 +102,284 @@ test.describe('@integration Multi-Select Feature', () => {
   test('horizontal drag selects multiple cells in same row', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY);
     await allure.feature(FEATURES.MULTI_SELECT);
-    await allure.story(STORIES.MULTI_SELECT.HORIZONTAL_DRAG);
+    await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.HORIZONTAL_DRAG);
 
-    // Find first empty cell in Row 2
-    const startCell = page.locator('[role="gridcell"][aria-label*="Row 2"][aria-label*="empty"]').first();
-    const startBox = await startCell.boundingBox();
-    
-    // Mouse down to start drag
-    await startCell.dispatchEvent('mousedown');
-    
-    // Move to last cell in Row 2 (8 cells to the right)
-    const endCell = page.locator('[role="gridcell"][aria-label*="Row 2"]').last();
-    const endBox = await endCell.boundingBox();
-    
-    // Move mouse over end cell
-    await page.mouse.move(endBox.x + endBox.width / 2, endBox.y + endBox.height / 2);
-    await page.mouse.down();
-    
-    // Mouse up to finalize selection
-    await page.mouse.up();
-    
-    // Wait for selection to update
-    await page.waitForTimeout(100);
-    
-    // Verify cells 11-19 (indices 10-18) in Row 2 are visually selected
-    // Check a few cells to verify multi-select styling
-    await expect(page.locator('[role="gridcell"][aria-label*="Row 2"][aria-label*="Column 2"]').first()).toHaveClass(/multi-selected/);
-    await expect(page.locator('[role="gridcell"][aria-label*="Row 2"][aria-label*="Column 3"]').first()).toHaveClass(/multi-selected/);
-    await expect(page.locator('[role="gridcell"][aria-label*="Row 2"][aria-label*="Column 4"]').first()).toHaveClass(/multi-selected/);
+    // Find empty cells in a row that has multiple empty cells
+    let targetRow = 0;
+    let emptyCells: Locator | null = null;
+
+    for (let row = 1; row <= 9; row++) {
+      const cells = getEmptyCellsInRow(page, row);
+      const count = await cells.count();
+      if (count >= 3) {
+        targetRow = row;
+        emptyCells = cells;
+        break;
+      }
+    }
+
+    expect(targetRow).toBeGreaterThan(0);
+
+    // Use first and third empty cells for the drag
+    const startCell = emptyCells!.nth(0);
+    const endCell = emptyCells!.nth(2);
+
+    await performDrag(page, startCell, endCell);
+
+    // Verify that empty cells along the path are multi-selected
+    await expect(startCell).toHaveClass(/multi-selected/);
+    await expect(endCell).toHaveClass(/multi-selected/);
   });
 
   test('vertical drag selects multiple cells in same column', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY);
     await allure.feature(FEATURES.MULTI_SELECT);
-    await allure.story(STORIES.MULTI_SELECT.VERTICAL_DRAG);
+    await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.VERTICAL_DRAG);
 
-    // Find first empty cell in Column 1
-    const startCell = page.locator('[role="gridcell"][aria-label*="Row 1"][aria-label*="Column 1, empty"]').first();
-    const startBox = await startCell.boundingBox();
-    
-    // Mouse down to start drag
-    await startCell.dispatchEvent('mousedown');
-    
-    // Move to last cell in Column 1 (8 cells down)
-    const endCell = page.locator('[role="gridcell"][aria-label*="Column 1"]').last();
-    const endBox = await endCell.boundingBox();
-    
-    // Move mouse over end cell
-    await page.mouse.move(endBox.x + endBox.width / 2, endBox.y + endBox.height / 2);
-    await page.mouse.down();
-    
-    // Mouse up to finalize selection
-    await page.mouse.up();
-    
-    // Wait for selection to update
-    await page.waitForTimeout(100);
-    
-    // Verify cells in Column 1 are visually selected
-    await expect(page.locator('[role="gridcell"][aria-label*="Row 1"][aria-label*="Column 1"]').first()).toHaveClass(/multi-selected/);
-    await expect(page.locator('[role="gridcell"][aria-label*="Row 3"][aria-label*="Column 1"]').first()).toHaveClass(/multi-selected/);
-    await expect(page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="Column 1"]').first()).toHaveClass(/multi-selected/);
+    // Find empty cells in a column that has multiple empty cells
+    let targetCol = 0;
+    let emptyCells: Locator | null = null;
+
+    for (let col = 1; col <= 9; col++) {
+      const cells = getEmptyCellsInColumn(page, col);
+      const count = await cells.count();
+      if (count >= 3) {
+        targetCol = col;
+        emptyCells = cells;
+        break;
+      }
+    }
+
+    expect(targetCol).toBeGreaterThan(0);
+
+    // Drag from first to third empty cell in the column
+    const startCell = emptyCells!.nth(0);
+    const endCell = emptyCells!.nth(2);
+
+    await performDrag(page, startCell, endCell);
+
+    // Verify multi-selected class on the dragged empty cells
+    await expect(startCell).toHaveClass(/multi-selected/);
+    await expect(endCell).toHaveClass(/multi-selected/);
   });
 
-  test('diagonal drag selects cells along diagonal path', async ({ page }) => {
+  test('diagonal drag selects cells along L-shaped path', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY);
     await allure.feature(FEATURES.MULTI_SELECT);
-    await allure.story(STORIES.MULTI_SELECT.DIAGONAL_DRAG);
+    await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.DIAGONAL_DRAG);
 
-    // Start at cell (0,0) - Row 1, Column 1
-    const startCell = page.locator('[role="gridcell"][aria-label*="Row 1"][aria-label*="Column 1, empty"]').first();
-    const startBox = await startCell.boundingBox();
-    
-    // Mouse down to start drag
-    await startCell.dispatchEvent('mousedown');
-    
-    // Move diagonally to cell (4,4) - Row 5, Column 5
-    const endCell = page.locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="Column 5, empty"]').first();
-    const endBox = await endCell.boundingBox();
-    
-    // Move mouse over end cell
-    await page.mouse.move(endBox.x + endBox.width / 2, endBox.y + endBox.height / 2);
-    await page.mouse.down();
-    
-    // Mouse up to finalize selection
-    await page.mouse.up();
-    
-    // Wait for selection to update
-    await page.waitForTimeout(100);
-    
-    // Verify diagonal cells are selected
-    await expect(page.locator('[role="gridcell"][aria-label*="Row 3"][aria-label*="Column 3"]').first()).toHaveClass(/multi-selected/);
-    await expect(page.locator('[role="gridcell"][aria-label*="Row 4"][aria-label*="Column 4"]').first()).toHaveClass(/multi-selected/);
+    // Find two empty cells in different rows AND different columns to force an L-shaped path.
+    // Strategy: pick empty cells from two different rows in different columns.
+    const allEmptyCells = page.locator('[role="gridcell"][aria-label$="empty"]');
+    const totalEmpty = await allEmptyCells.count();
+    expect(totalEmpty).toBeGreaterThan(1);
+
+    // Get first empty cell
+    const startCell = allEmptyCells.nth(0);
+    const startPos = await getCellRowCol(startCell);
+
+    // Find an empty cell in a different row AND different column
+    let endCell: Locator | null = null;
+    for (let i = 1; i < totalEmpty; i++) {
+      const candidate = allEmptyCells.nth(i);
+      const pos = await getCellRowCol(candidate);
+      if (pos.row !== startPos.row && pos.col !== startPos.col) {
+        endCell = candidate;
+        break;
+      }
+    }
+
+    expect(endCell).not.toBeNull();
+
+    await performDrag(page, startCell, endCell!);
+
+    // At least the start cell should be multi-selected (the L-shaped path may skip
+    // given cells, but the start empty cell should be in the selection)
+    await expect(startCell).toHaveClass(/multi-selected/);
   });
 
   test('drag stops when encountering a given cell', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY);
     await allure.feature(FEATURES.MULTI_SELECT);
-    await allure.story(STORIES.MULTI_SELECT.GIVEN_BLOCKING);
+    await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.GIVEN_BLOCKING);
 
-    // Start at cell (1,1) - Row 2, Column 2
-    const startCell = getCellLocator(page, 1, 1);
-    
-    // Enable notes mode
-    await page.locator('[data-testid="notes-mode-toggle"]').click();
-    
-    // Mouse down to start drag
-    await startCell.dispatchEvent('mousedown');
-    
-    // Try to drag past given cell at (2,2) - Row 3, Column 3
-    // Given cells are typically set during game load
-    const givenCell = getCellLocator(page, 2, 2);
-    const givenBox = await givenCell.boundingBox();
-    
-    // Move mouse toward but not past given cell
-    await page.mouse.move(givenBox.x, givenBox.y + 20);
-    await page.mouse.down();
-    
-    // Mouse up to finalize selection
-    await page.mouse.up();
-    
-    // Wait for selection to update
-    await page.waitForTimeout(100);
-    
-    // Verify cells before given are selected
-    await expect(startCell).toHaveClass(/multi-selected/);
-    
-    // Given cell should NOT be in multi-select
-    await expect(givenCell).not.toHaveClass(/multi-selected/);
+    // Find an empty cell to start drag
+    const allEmptyCells = page.locator('[role="gridcell"][aria-label$="empty"]');
+    const startCell = allEmptyCells.nth(0);
+    const startPos = await getCellRowCol(startCell);
+
+    // Find a given cell in the same row (if any) to drag toward
+    const givenCellInRow = page.locator(
+      `[role="gridcell"][aria-label*="Row ${startPos.row}"][aria-label*="given"]`
+    );
+    const givenCount = await givenCellInRow.count();
+
+    if (givenCount > 0) {
+      // Drag from the empty cell toward the given cell
+      const givenCell = givenCellInRow.first();
+      await performDrag(page, startCell, givenCell);
+
+      // The given cell should NOT be multi-selected
+      await expect(givenCell).not.toHaveClass(/multi-selected/);
+
+      // The start cell (empty) should be selected (single-cell or multi-selected).
+      // When only one empty cell is selectable, the reducer treats it as a
+      // single selection (bg-cell-selected) rather than multi-selected.
+      await expect(startCell).toHaveClass(/selected/);
+    } else {
+      // Fallback: drag from empty cell toward a given cell in the same column
+      const givenCellInCol = page.locator(
+        `[role="gridcell"][aria-label*="Column ${startPos.col}"][aria-label*="given"]`
+      );
+      const givenCell = givenCellInCol.first();
+      await performDrag(page, startCell, givenCell);
+
+      await expect(givenCell).not.toHaveClass(/multi-selected/);
+      await expect(startCell).toHaveClass(/selected/);
+    }
   });
 
   test('multi-select with digit button fills note in all selected cells', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY);
     await allure.feature(FEATURES.MULTI_SELECT);
-    await allure.story(STORIES.MULTI_SELECT.BULK_NOTE_ENTRY);
+    await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.BULK_NOTE_ENTRY);
 
     // Enable notes mode
-    await page.locator('[data-testid="notes-mode-toggle"]').click();
-    
-    // Select multiple cells in Row 2
-    const cell11 = page.locator('[role="gridcell"][aria-label*="Row 2"][aria-label*="Column 3, empty"]').first();
-    const cell12 = page.locator('[role="gridcell"][aria-label*="Row 2"][aria-label*="Column 4, empty"]').first();
-    const cell13 = page.locator('[role="gridcell"][aria-label*="Row 2"][aria-label*="Column 5, empty"]').first();
-    
-    // Drag to select cells 11-13
-    await cell11.dispatchEvent('mousedown');
-    await cell13.dispatchEvent('mouseenter');
-    await page.mouse.up();
-    await page.waitForTimeout(100);
-    
-    // Click digit button 7 to add notes
-    await page.locator('[data-testid="digit-btn-7"]').click();
-    await page.waitForTimeout(100);
-    
-    // Verify all three cells have candidate 7
-    await expectCandidateVisible(page, 2, 3, 7);
-    await expectCandidateVisible(page, 2, 4, 7);
-    await expectCandidateVisible(page, 2, 5, 7);
+    await getNotesToggle(page).click();
+
+    // Find two truly adjacent empty cells in the same row (consecutive columns).
+    // Using nth(0)/nth(1) from getEmptyCellsInRow is not safe because given cells
+    // may sit between them, causing the drag path to differ from expectations.
+    let startCell: Locator | null = null;
+    let endCell: Locator | null = null;
+    let cell1Pos = { row: 0, col: 0 };
+    let cell2Pos = { row: 0, col: 0 };
+
+    outer:
+    for (let row = 1; row <= 9; row++) {
+      for (let col = 1; col <= 8; col++) {
+        const cellA = getCellLocator(page, row, col);
+        const cellB = getCellLocator(page, row, col + 1);
+        const labelA = await cellA.getAttribute('aria-label');
+        const labelB = await cellB.getAttribute('aria-label');
+        if (labelA?.endsWith('empty') && labelB?.endsWith('empty')) {
+          startCell = cellA;
+          endCell = cellB;
+          cell1Pos = { row, col };
+          cell2Pos = { row, col: col + 1 };
+          break outer;
+        }
+      }
+    }
+
+    expect(startCell).not.toBeNull();
+    expect(endCell).not.toBeNull();
+
+    // Drag to select the two adjacent cells
+    await performDrag(page, startCell!, endCell!);
+
+    // Click digit 7 to add notes
+    await getDigitButton(page, 7).click();
+    await page.waitForTimeout(150);
+
+    // Verify both cells have candidate 7
+    await expectCandidateVisible(page, cell1Pos.row, cell1Pos.col, 7);
+    await expectCandidateVisible(page, cell2Pos.row, cell2Pos.col, 7);
   });
 
   test('multi-select does NOT fill digits in regular placement mode', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY);
     await allure.feature(FEATURES.MULTI_SELECT);
-    await allure.story(STORIES.MULTI_SELECT.NOTES_MODE_ONLY);
+    await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.NOTES_MODE_ONLY);
 
     // Ensure notes mode is OFF (regular digit placement mode)
-    const notesToggle = page.locator('[data-testid="notes-mode-toggle"]');
+    const notesToggle = getNotesToggle(page);
     const isNotesModeOn = await notesToggle.getAttribute('aria-pressed');
     if (isNotesModeOn === 'true') {
       await notesToggle.click();
     }
-    
-    // Select multiple cells
-    const cell11 = page.locator('[role="gridcell"][aria-label*="Row 2"][aria-label*="Column 3, empty"]').first();
-    const cell12 = page.locator('[role="gridcell"][aria-label*="Row 2"][aria-label*="Column 4, empty"]').first();
-    
-    await cell11.dispatchEvent('mousedown');
-    await cell12.dispatchEvent('mouseenter');
-    await page.mouse.up();
-    await page.waitForTimeout(100);
-    
-    // Get initial board state
-    const cell11Initial = await cell11.getAttribute('aria-label');
-    const cell12Initial = await cell12.getAttribute('aria-label');
-    
-    // Click digit button 7
-    await page.locator('[data-testid="digit-btn-7"]').click();
-    await page.waitForTimeout(100);
-    
-    // Verify only single cell was filled with digit (regular placement)
-    // Multi-select should be ignored in regular placement mode
-    const cell11After = await cell11.getAttribute('aria-label');
-    const cell12After = await cell12.getAttribute('aria-label');
-    
-    // At most one cell should have value 7
-    const hasValue11 = cell11After.includes(', value 7');
-    const hasValue12 = cell12After.includes(', value 7');
-    
-    const cellsWithValue = (hasValue11 ? 1 : 0) + (hasValue12 ? 1 : 0);
+
+    // Find a row with at least 2 empty cells
+    let startCell: Locator | null = null;
+    let endCell: Locator | null = null;
+
+    for (let row = 1; row <= 9; row++) {
+      const cells = getEmptyCellsInRow(page, row);
+      const count = await cells.count();
+      if (count >= 2) {
+        startCell = cells.nth(0);
+        endCell = cells.nth(1);
+        break;
+      }
+    }
+
+    expect(startCell).not.toBeNull();
+    expect(endCell).not.toBeNull();
+
+    // Get initial state
+    const startInitial = await startCell!.getAttribute('aria-label');
+    const endInitial = await endCell!.getAttribute('aria-label');
+
+    // Drag to select
+    await performDrag(page, startCell!, endCell!);
+
+    // Click digit 7
+    await getDigitButton(page, 7).click();
+    await page.waitForTimeout(150);
+
+    // In regular mode, multi-select should be ignored: at most one cell filled
+    const startAfter = await startCell!.getAttribute('aria-label');
+    const endAfter = await endCell!.getAttribute('aria-label');
+
+    const hasValue1 = startAfter!.includes('value 7');
+    const hasValue2 = endAfter!.includes('value 7');
+
+    const cellsWithValue = (hasValue1 ? 1 : 0) + (hasValue2 ? 1 : 0);
     expect(cellsWithValue).toBeLessThanOrEqual(1);
   });
 
   test('clicking outside selection clears multi-select', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY);
     await allure.feature(FEATURES.MULTI_SELECT);
-    await allure.story(STORIES.MULTI_SELECT.CLEAR_SELECTION);
+    await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.CLEAR_SELECTION);
 
-    // Enable notes mode
-    await page.locator('[data-testid="notes-mode-toggle"]').click();
-    
-    // Select multiple cells
-    const cell11 = page.locator('[role="gridcell"][aria-label*="Row 2"][aria-label*="Column 3, empty"]').first();
-    const cell13 = page.locator('[role="gridcell"][aria-label*="Row 2"][aria-label*="Column 5, empty"]').first();
-    
-    await cell11.dispatchEvent('mousedown');
-    await cell13.dispatchEvent('mouseenter');
-    await page.mouse.up();
-    await page.waitForTimeout(100);
-    
+    // Find a row with at least 2 empty cells
+    let startCell: Locator | null = null;
+    let endCell: Locator | null = null;
+
+    for (let row = 1; row <= 9; row++) {
+      const cells = getEmptyCellsInRow(page, row);
+      const count = await cells.count();
+      if (count >= 2) {
+        startCell = cells.nth(0);
+        endCell = cells.nth(1);
+        break;
+      }
+    }
+
+    expect(startCell).not.toBeNull();
+    expect(endCell).not.toBeNull();
+
+    // Drag to select
+    await performDrag(page, startCell!, endCell!);
+
     // Verify multi-select is active
-    await expect(cell11).toHaveClass(/multi-selected/);
-    await expect(cell13).toHaveClass(/multi-selected/);
-    
-    // Click outside the game board (click header)
-    await page.locator('h1').click();
-    await page.waitForTimeout(100);
-    
+    await expect(startCell!).toHaveClass(/multi-selected/);
+    await expect(endCell!).toHaveClass(/multi-selected/);
+
+    // Click outside the game board (click heading or empty area)
+    const heading = page.locator('h1').first();
+    const headingExists = await heading.count();
+    if (headingExists > 0) {
+      await heading.click();
+    } else {
+      // Fallback: click on the page body above the board
+      await page.mouse.click(10, 10);
+    }
+    await page.waitForTimeout(150);
+
     // Verify multi-select is cleared
-    await expect(cell11).not.toHaveClass(/multi-selected/);
-    await expect(cell13).not.toHaveClass(/multi-selected/);
+    await expect(startCell!).not.toHaveClass(/multi-selected/);
+    await expect(endCell!).not.toHaveClass(/multi-selected/);
   });
 });

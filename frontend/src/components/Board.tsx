@@ -320,6 +320,10 @@ const Board = memo(function Board({
   // (setState is asynchronous, so handleDragEnter would see stale isDragging=false)
   const isDraggingRef = React.useRef(false)
   const dragStartCellRef = React.useRef<number | null>(null)
+  // Tracks whether a multi-select drag occurred, so the subsequent click event
+  // (synthesized by the browser after pointerup) can be suppressed to avoid
+  // overwriting the multi-select state with a single-cell selection.
+  const suppressNextClickRef = React.useRef(false)
   
   // Ref for initialBoard to allow stable callbacks that always read the latest value
   // This is critical because Cell memoization doesn't compare onKeyDown callbacks,
@@ -740,6 +744,12 @@ const Board = memo(function Board({
 
   // Stable callback for cell clicks - doesn't change between renders
   const handleCellClick = useCallback((idx: number) => {
+    // After a multi-cell drag, the browser synthesizes a click event.
+    // Suppress it so the multi-select state is not overwritten.
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false
+      return
+    }
     onCellClick(idx)
   }, [onCellClick])
 
@@ -751,13 +761,22 @@ const Board = memo(function Board({
   // Drag handlers for multi-select feature
   const handleDragStart = useCallback((idx: number) => {
     // Skip starting drag on given or filled cells
-    if (initialBoard[idx] !== 0 || board[idx] !== 0) return
+    if (initialBoard[idx] !== 0 || board[idx] !== 0) {
+      return
+    }
     isDraggingRef.current = true
     dragStartCellRef.current = idx
   }, [initialBoard, board])
 
   const handleDragEnter = useCallback((idx: number) => {
     if (!isDraggingRef.current || dragStartCellRef.current === null) return
+
+    // If the pointer moved to a different cell than the drag start, this is a real
+    // multi-cell drag: suppress the click event that the browser synthesizes after
+    // pointerup to avoid overwriting the multi-select state.
+    if (idx !== dragStartCellRef.current) {
+      suppressNextClickRef.current = true
+    }
 
     // Calculate path from dragStartCell to current cell
     const pathCells = calculatePathCells(dragStartCellRef.current, idx)
@@ -777,6 +796,13 @@ const Board = memo(function Board({
     isDraggingRef.current = false
     dragStartCellRef.current = null
     lastEnteredCellRef.current = null
+    // Safety net: clear the suppress flag after the current event cycle so that
+    // a stale flag cannot block future clicks (e.g., if pointercancel fires instead
+    // of a click). The click event fires synchronously after pointerup in the same
+    // task, so it sees the flag before this timeout clears it.
+    if (suppressNextClickRef.current) {
+      setTimeout(() => { suppressNextClickRef.current = false }, 0)
+    }
   }, [])
 
   // Track the last cell the pointer entered to avoid redundant handleDragEnter calls

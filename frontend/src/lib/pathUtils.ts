@@ -1,6 +1,6 @@
 /**
  * Path calculation utilities for drag-to-select functionality
- * Uses Bresenham's line algorithm to determine which cells a drag path crosses
+ * Uses L-shaped (Manhattan) path: moves vertically first, then horizontally
  */
 
 /**
@@ -25,10 +25,11 @@ export function coordsToCellIndex(row: number, col: number): number {
 }
 
 /**
- * Bresenham's line algorithm - calculates all cells on a line between two points
+ * L-shaped path calculation: moves vertically first, then horizontally.
+ * Selects all cells along the right-angle path between two points on the grid.
  * @param start - Starting cell index
  * @param end - Ending cell index
- * @returns Array of cell indices that the path crosses
+ * @returns Array of cell indices along the L-shaped path
  */
 export function calculatePathCells(start: number, end: number): number[] {
   const startCoords = cellIndexToCoords(start)
@@ -36,32 +37,25 @@ export function calculatePathCells(start: number, end: number): number[] {
 
   const cells: number[] = []
 
-  let x0 = startCoords.col
-  let y0 = startCoords.row
-  const x1 = endCoords.col
-  const y1 = endCoords.row
+  const startRow = startCoords.row
+  const startCol = startCoords.col
+  const endRow = endCoords.row
+  const endCol = endCoords.col
 
-  const dx = Math.abs(x1 - x0)
-  const dy = Math.abs(y1 - y0)
-  const sx = x0 < x1 ? 1 : -1
-  const sy = y0 < y1 ? 1 : -1
-  let err = dx - dy
-
-  while (true) {
-    cells.push(coordsToCellIndex(y0, x0))
-
-    if (x0 === x1 && y0 === y1) break
-
-    const e2 = 2 * err
-    if (e2 > -dy) {
-      err -= dy
-      x0 += sx
-    }
-    if (e2 < dx) {
-      err += dx
-      y0 += sy
-    }
+  // Phase 1: Move vertically from startRow toward endRow (column stays at startCol)
+  const rowStep = startRow <= endRow ? 1 : -1
+  for (let row = startRow; row !== endRow; row += rowStep) {
+    cells.push(coordsToCellIndex(row, startCol))
   }
+
+  // Phase 2: Move horizontally from startCol to endCol (row is now endRow)
+  const colStep = startCol <= endCol ? 1 : -1
+  for (let col = startCol; col !== endCol; col += colStep) {
+    cells.push(coordsToCellIndex(endRow, col))
+  }
+
+  // Add the final cell
+  cells.push(coordsToCellIndex(endRow, endCol))
 
   return cells
 }

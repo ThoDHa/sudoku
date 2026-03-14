@@ -128,37 +128,43 @@ describe('calculatePathCells', () => {
     })
   })
 
-  describe('diagonal drag', () => {
-    it('calculates diagonal path top-left to bottom-right', () => {
+  describe('L-shaped (diagonal) drag', () => {
+    it('calculates L-shaped path top-left to bottom-right (vertical then horizontal)', () => {
+      // (0,0) → (8,8): down col 0, then right along row 8
       const path = calculatePathCells(0, 80)
-      expect(path).toEqual([0, 10, 20, 30, 40, 50, 60, 70, 80])
+      expect(path).toEqual([0, 9, 18, 27, 36, 45, 54, 63, 72, 73, 74, 75, 76, 77, 78, 79, 80])
     })
 
-    it('calculates diagonal path bottom-right to top-left', () => {
+    it('calculates L-shaped path bottom-right to top-left (vertical then horizontal)', () => {
+      // (8,8) → (0,0): up col 8, then left along row 0
       const path = calculatePathCells(80, 0)
-      expect(path).toEqual([80, 70, 60, 50, 40, 30, 20, 10, 0])
+      expect(path).toEqual([80, 71, 62, 53, 44, 35, 26, 17, 8, 7, 6, 5, 4, 3, 2, 1, 0])
     })
 
-    it('calculates short diagonal path', () => {
+    it('calculates short L-shaped path', () => {
+      // (0,0) → (1,1): down col 0 to row 1, then right to col 1
       const path = calculatePathCells(0, 10)
-      expect(path).toEqual([0, 10])
+      expect(path).toEqual([0, 9, 10])
     })
 
-    it('calculates diagonal path in middle of board', () => {
+    it('calculates L-shaped path in middle of board', () => {
+      // (3,4) → (5,4): pure vertical (same column), no horizontal phase
       const path = calculatePathCells(31, 49)
       expect(path).toEqual([31, 40, 49])
     })
   })
 
-  describe('path works in all directions', () => {
-    it('works for top-right to bottom-left diagonal', () => {
+  describe('L-shaped path works in all directions', () => {
+    it('works for top-right to bottom-left', () => {
+      // (0,8) → (8,0): down col 8, then left along row 8
       const path = calculatePathCells(8, 72)
-      expect(path).toEqual([8, 16, 24, 32, 40, 48, 56, 64, 72])
+      expect(path).toEqual([8, 17, 26, 35, 44, 53, 62, 71, 80, 79, 78, 77, 76, 75, 74, 73, 72])
     })
 
-    it('works for bottom-left to top-right diagonal', () => {
+    it('works for bottom-left to top-right', () => {
+      // (8,0) → (0,8): up col 0, then right along row 0
       const path = calculatePathCells(72, 8)
-      expect(path).toEqual([72, 64, 56, 48, 40, 32, 24, 16, 8])
+      expect(path).toEqual([72, 63, 54, 45, 36, 27, 18, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8])
     })
   })
 })

@@ -110,10 +110,11 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         version: nextVersion,
       }
 
-    case 'SELECT_MULTIPLE_CELLS':
+    case 'SELECT_MULTIPLE_CELLS': {
+      const newCells = new Set(action.cells)
       return {
         ...state,
-        selectedCells: new Set(action.cells),
+        selectedCells: newCells,
         // Backward compatibility: single-element set updates selectedCell
         selectedCell: action.cells.length === 1 ? (action.cells[0] ?? null) : null,
         // Clear highlights when selecting cells
@@ -121,6 +122,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         currentHighlight: null,
         version: nextVersion,
       }
+    }
     
     // Digit highlight actions
     case 'SET_DIGIT_HIGHLIGHT':
