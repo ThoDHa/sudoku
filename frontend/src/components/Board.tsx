@@ -862,8 +862,19 @@ const Board = memo(function Board({
     } else {
       // Forward: compute bridge from last trail cell to new cell
       // (fills gaps if pointer skipped cells between events)
-      const prevCell = trail.length > 0 ? trail[trail.length - 1] : dragStartCellRef.current
-      if (prevCell === null) return
+      let prevCell: number
+      if (trail.length > 0) {
+        const lastIdx = trail[trail.length - 1]
+        if (lastIdx !== undefined) {
+          prevCell = lastIdx
+        } else {
+          return
+        }
+      } else {
+        const startCell = dragStartCellRef.current
+        if (startCell === null) return
+        prevCell = startCell
+      }
       const bridgeCells = calculatePathCells(prevCell, idx)
       for (const cellIdx of bridgeCells) {
         if (initialBoard[cellIdx] === 0 && board[cellIdx] === 0 && !trailSet.has(cellIdx)) {
