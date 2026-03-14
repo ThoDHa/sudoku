@@ -140,16 +140,14 @@ interface CellProps {
   onCellClick: (idx: number) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>, idx: number) => void
   cellRef: (el: HTMLDivElement | null) => void
-  onMouseDown?: (idx: number) => void
-  onMouseEnter?: (idx: number) => void
-  onMouseUp?: () => void
+  onPointerDown?: (idx: number) => void
 }
 
 /**
  * Memoized Cell component - only re-renders when its specific data changes.
  * This prevents 80 cells from re-rendering when only 1 cell changes.
  */
-const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onMouseDown, onMouseEnter, onMouseUp }: CellProps) {
+const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onPointerDown }: CellProps) {
   const localRef = useRef<HTMLDivElement>(null)
   const {
     idx,
@@ -254,11 +252,10 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onMouse
         tabIndex={isSelected ? 0 : -1}
         aria-label={ariaLabel}
         className={className}
+        data-cell-idx={idx}
         onClick={handleClick}
         onKeyDown={(e) => onKeyDown(e, idx)}
-        onMouseDown={() => onMouseDown?.(idx)}
-        onMouseEnter={() => onMouseEnter?.(idx)}
-        onMouseUp={onMouseUp}
+        onPointerDown={() => onPointerDown?.(idx)}
         style={isGiven ? { cursor: 'default' } : undefined}
       >
         {content}
@@ -293,9 +290,7 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onMouse
     prevData.showAnswer === nextData.showAnswer &&
     prevProps.onKeyDown === nextProps.onKeyDown &&
     prevProps.onCellClick === nextProps.onCellClick &&
-    prevProps.onMouseDown === nextProps.onMouseDown &&
-    prevProps.onMouseEnter === nextProps.onMouseEnter &&
-    prevProps.onMouseUp === nextProps.onMouseUp
+    prevProps.onPointerDown === nextProps.onPointerDown
   )
 })
 
@@ -321,8 +316,10 @@ const Board = memo(function Board({
   const cellRefs = React.useRef<(HTMLDivElement | null)[]>([])
 
   // Drag state for multi-select feature
-  const [isDragging, setIsDragging] = React.useState(false)
-  const [dragStartCell, setDragStartCell] = React.useState<number | null>(null)
+  // Refs updated synchronously so drag callbacks always read the latest value
+  // (setState is asynchronous, so handleDragEnter would see stale isDragging=false)
+  const isDraggingRef = React.useRef(false)
+  const dragStartCellRef = React.useRef<number | null>(null)
   
   // Ref for initialBoard to allow stable callbacks that always read the latest value
   // This is critical because Cell memoization doesn't compare onKeyDown callbacks,
@@ -755,15 +752,15 @@ const Board = memo(function Board({
   const handleDragStart = useCallback((idx: number) => {
     // Skip starting drag on given or filled cells
     if (initialBoard[idx] !== 0 || board[idx] !== 0) return
-    setIsDragging(true)
-    setDragStartCell(idx)
+    isDraggingRef.current = true
+    dragStartCellRef.current = idx
   }, [initialBoard, board])
 
   const handleDragEnter = useCallback((idx: number) => {
-    if (!isDragging || dragStartCell === null) return
+    if (!isDraggingRef.current || dragStartCellRef.current === null) return
 
     // Calculate path from dragStartCell to current cell
-    const pathCells = calculatePathCells(dragStartCell, idx)
+    const pathCells = calculatePathCells(dragStartCellRef.current, idx)
 
     // Filter out given and filled cells from the selection
     const selectableCells = pathCells.filter(
@@ -774,12 +771,40 @@ const Board = memo(function Board({
     if (onCellSelectMultiple) {
       onCellSelectMultiple(selectableCells)
     }
-  }, [isDragging, dragStartCell, initialBoard, board, onCellSelectMultiple])
+  }, [initialBoard, board, onCellSelectMultiple])
 
   const handleDragEnd = useCallback(() => {
-    setIsDragging(false)
-    setDragStartCell(null)
+    isDraggingRef.current = false
+    dragStartCellRef.current = null
+    lastEnteredCellRef.current = null
   }, [])
+
+  // Track the last cell the pointer entered to avoid redundant handleDragEnter calls
+  const lastEnteredCellRef = React.useRef<number | null>(null)
+
+  // Board-level pointer move handler: resolves which cell the pointer is over
+  // using elementFromPoint. Works for both mouse and touch (pointer events unify both).
+  const handleBoardPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return
+
+    const el = document.elementFromPoint(e.clientX, e.clientY)
+    if (!el) return
+
+    // Walk up to find the cell element with data-cell-idx
+    const cellEl = (el as HTMLElement).closest('[data-cell-idx]')
+    if (!cellEl) return
+
+    const idx = Number(cellEl.getAttribute('data-cell-idx'))
+    if (Number.isNaN(idx) || idx === lastEnteredCellRef.current) return
+
+    lastEnteredCellRef.current = idx
+    handleDragEnter(idx)
+  }, [handleDragEnter])
+
+  // Board-level pointer up handler
+  const handleBoardPointerUp = useCallback(() => {
+    handleDragEnd()
+  }, [handleDragEnd])
 
   // Stable ref callback factory - returns the same function for each cell index
   const cellRefCallbacks = useMemo(() => {
@@ -793,7 +818,15 @@ const Board = memo(function Board({
   }, []) // Empty deps - callbacks never change
 
   return (
-    <div className={`sudoku-board aspect-square w-full max-h-full ${className}`} role="grid" aria-label="Sudoku puzzle">
+    <div
+      className={`sudoku-board aspect-square w-full max-h-full ${className}`}
+      role="grid"
+      aria-label="Sudoku puzzle"
+      style={{ touchAction: 'none' }}
+      onPointerMove={handleBoardPointerMove}
+      onPointerUp={handleBoardPointerUp}
+      onPointerCancel={handleBoardPointerUp}
+    >
       {Array.from({ length: 9 }, (_, rowIdx) => (
         <div key={rowIdx} role="row" className="contents">
           {Array.from({ length: 9 }, (_, colIdx) => {
@@ -809,9 +842,7 @@ const Board = memo(function Board({
                 onCellClick={handleCellClick}
                 onKeyDown={handleCellKeyDown}
                 cellRef={cellRef}
-                onMouseDown={handleDragStart}
-                onMouseEnter={handleDragEnter}
-                onMouseUp={handleDragEnd}
+                onPointerDown={handleDragStart}
               />
             )
           })}
