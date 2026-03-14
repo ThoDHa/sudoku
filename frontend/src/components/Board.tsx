@@ -836,6 +836,10 @@ const Board = memo(function Board({
     // Initialize ordered trail with the start cell
     dragTrailRef.current = [idx]
     dragTrailSetRef.current = new Set([idx])
+    // Record the start cell so handleBoardPointerMove skips redundant
+    // handleDragEnter calls when the pointer stays on the same cell
+    // (prevents selectMultipleCells from firing on a simple tap)
+    lastEnteredCellRef.current = idx
   }, [initialBoard, board])
 
   const handleDragEnter = useCallback((idx: number) => {
