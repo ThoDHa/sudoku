@@ -588,26 +588,28 @@ const Board = memo(function Board({
     return cellsWithHighlightedDigit.has(idx)
   }
 
-  // Check if cell is a peer of the selected cell (same row, column, or box)
+  // Check if cell is a peer of any selected cell (same row, column, or box)
   const isPeerOfSelected = (idx: number): boolean => {
-    if (selectedCell === null) return false
-    if (idx === selectedCell) return false // Don't count self as peer
-    
-    const selectedRow = Math.floor(selectedCell / 9)
-    const selectedCol = selectedCell % 9
+    // Determine which cells to check peers against
+    const cellsToCheck = selectedCells.size > 0 ? selectedCells : (selectedCell !== null ? new Set([selectedCell]) : null)
+    if (!cellsToCheck || cellsToCheck.size === 0) return false
+    if (cellsToCheck.has(idx)) return false // Don't count self as peer
+
     const row = Math.floor(idx / 9)
     const col = idx % 9
-    
-    // Same row
-    if (row === selectedRow) return true
-    // Same column
-    if (col === selectedCol) return true
-    // Same box
-    const selectedBoxRow = Math.floor(selectedRow / 3)
-    const selectedBoxCol = Math.floor(selectedCol / 3)
     const boxRow = Math.floor(row / 3)
     const boxCol = Math.floor(col / 3)
-    if (boxRow === selectedBoxRow && boxCol === selectedBoxCol) return true
+
+    for (const selIdx of cellsToCheck) {
+      const selRow = Math.floor(selIdx / 9)
+      const selCol = selIdx % 9
+      // Same row
+      if (row === selRow) return true
+      // Same column
+      if (col === selCol) return true
+      // Same box
+      if (boxRow === Math.floor(selRow / 3) && boxCol === Math.floor(selCol / 3)) return true
+    }
     
     return false
   }
@@ -691,8 +693,12 @@ const Board = memo(function Board({
       // Multi-selected cells are marked for E2E test identification
       classes.push('multi-selected')
 
-      // No ring, no background highlight: cell keeps its normal background
-      // (determined by the priority chain below, skipping the multi-select branch)
+      // Ring: same as single-cell selection
+      if (isIncorrect) {
+        classes.push('ring-2 ring-inset ring-error-text z-10')
+      } else {
+        classes.push('ring-2 ring-inset ring-accent z-10')
+      }
     } else {
       // Normal grid borders
       if (col === 2 || col === 5) {
@@ -715,17 +721,16 @@ const Board = memo(function Board({
       }
     }
 
-    // Background priority: incorrect > duplicate > selected (single only) > primary > secondary > digit match > peer > default
-    // Multi-selected cells skip this: they keep their normal background
+    // Background priority: incorrect > duplicate > selected > primary > secondary > digit match > peer > given > default
     if (isIncorrect) {
       classes.push('bg-error-bg')
     } else if (isDuplicate) {
       classes.push('bg-error-bg')
-    } else if (isSelected && !inMultiSel) {
+    } else if (isSelected || inMultiSel) {
       classes.push('bg-cell-selected')
-    } else if (isPrimary && !inMultiSel) {
+    } else if (isPrimary) {
       classes.push('bg-cell-primary')
-    } else if (isSecondary && !inMultiSel) {
+    } else if (isSecondary) {
       const isTechniqueHint = highlight?.showAnswer === false
       const isExplicitSecondary = highlight?.highlights.secondary?.some(
         (h) => h.row === row && h.col === col
@@ -733,9 +738,9 @@ const Board = memo(function Board({
       classes.push(
         isTechniqueHint && !isExplicitSecondary ? 'bg-cell-primary' : 'bg-cell-secondary'
       )
-    } else if (hasDigitMatch && !inMultiSel) {
+    } else if (hasDigitMatch) {
       classes.push('bg-accent-light')
-    } else if (isPeer && !inMultiSel) {
+    } else if (isPeer) {
       classes.push('bg-cell-peer')
     } else if (isGiven) {
       classes.push('bg-cell-given')

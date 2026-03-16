@@ -953,7 +953,7 @@ describe('Board', () => {
       expect(typeof onCellSelectMultiple).toBe('function')
     })
 
-    it('multi-selected cells get outline-only styling with no background highlight', () => {
+    it('multi-selected cells get same styling as single selected cell', () => {
       const selectedCells = new Set([10, 11, 12])
       const { container } = render(
         <Board {...defaultProps({ selectedCell: 10, selectedCells })} />
@@ -963,12 +963,13 @@ describe('Board', () => {
       expect(cells.length).toBeGreaterThan(12)
 
       // All three cells are part of the multi-selection (size > 1),
-      // so they get the outline-only rectangle styling: multi-selected class,
-      // accent borders on outer edges, no bg-cell-selected, no ring.
+      // so they get the same highlight as single-cell selection:
+      // multi-selected class, accent ring, bg-cell-selected background,
+      // plus accent borders on outer edges.
       for (const idx of [10, 11, 12]) {
         expect(cells[idx]!.className).toContain('multi-selected')
-        expect(cells[idx]!.className).not.toContain('bg-cell-selected')
-        expect(cells[idx]!.className).not.toContain('ring-accent')
+        expect(cells[idx]!.className).toContain('bg-cell-selected')
+        expect(cells[idx]!.className).toContain('ring-accent')
       }
 
       // Outer edges get accent borders (cell 10 has left outer edge,
