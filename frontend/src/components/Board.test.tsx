@@ -962,14 +962,16 @@ describe('Board', () => {
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells.length).toBeGreaterThan(12)
 
-      // All three cells are part of the multi-selection (size > 1),
-      // so they get the same highlight as single-cell selection:
-      // multi-selected class, accent ring, bg-cell-selected background,
-      // plus accent borders on outer edges.
+      // All three cells are part of multi-selection (size > 1).
+      // They form a continuous box with accent borders on outer edges only:
+      // - No internal borders between adjacent cells
+      // - No individual cell rings (creates clean box appearance)
+      // - multi-selected class and bg-cell-selected background
+      // - Accent borders only on outermost edges
       for (const idx of [10, 11, 12]) {
         expect(cells[idx]!.className).toContain('multi-selected')
         expect(cells[idx]!.className).toContain('bg-cell-selected')
-        expect(cells[idx]!.className).toContain('ring-accent')
+        // No ring-accent - multi-select uses continuous borders instead
       }
 
       // Outer edges get accent borders (cell 10 has left outer edge,

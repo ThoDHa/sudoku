@@ -638,54 +638,29 @@ const Board = memo(function Board({
     const classes = ['sudoku-cell']
 
     if (inMultiSel) {
-      // Multi-selection outline: draw accent border only on outer edges.
-      // Internal edges between adjacent selected cells keep their normal
-      // grid-line styling so the puzzle grid remains visible.
+      // Multi-selection outline: draw continuous accent box with no internal borders
+      // Adjacent selected cells form a unified selection rectangle
       const hasRight = col < 8 && isInMultiSelection(idx + 1)
       const hasBelow = row < 8 && isInMultiSelection(idx + 9)
       const hasLeft = col > 0 && isInMultiSelection(idx - 1)
       const hasAbove = row > 0 && isInMultiSelection(idx - 9)
 
-      // Right edge
-      if (hasRight) {
-        // Internal: keep normal grid line
-        if (col === 2 || col === 5) {
-          classes.push('border-r-2 border-r-board-border')
-        } else if (col < 8) {
-          classes.push('border-r border-r-board-border-light')
-        }
-      } else {
-        // Outer edge: accent border
-        if (col === 2 || col === 5) {
-          classes.push('border-r-2 border-r-accent')
-        } else if (col < 8) {
-          classes.push('border-r-2 border-r-accent')
-        }
+      // Right edge: only accent border if no adjacent selected cell to right
+      if (!hasRight && col < 8) {
+        classes.push('border-r-2 border-r-accent')
       }
 
-      // Bottom edge
-      if (hasBelow) {
-        // Internal: keep normal grid line
-        if (row === 2 || row === 5) {
-          classes.push('border-b-2 border-b-board-border')
-        } else if (row < 8) {
-          classes.push('border-b border-b-board-border-light')
-        }
-      } else {
-        // Outer edge: accent border
-        if (row === 2 || row === 5) {
-          classes.push('border-b-2 border-b-accent')
-        } else if (row < 8) {
-          classes.push('border-b-2 border-b-accent')
-        }
+      // Bottom edge: only accent border if no adjacent selected cell below
+      if (!hasBelow && row < 8) {
+        classes.push('border-b-2 border-b-accent')
       }
 
-      // Left edge (only outer gets accent)
+      // Left edge: accent border if no adjacent selected cell to left
       if (!hasLeft) {
         classes.push('border-l-2 border-l-accent')
       }
 
-      // Top edge (only outer gets accent)
+      // Top edge: accent border if no adjacent selected cell above
       if (!hasAbove) {
         classes.push('border-t-2 border-t-accent')
       }
@@ -693,11 +668,10 @@ const Board = memo(function Board({
       // Multi-selected cells are marked for E2E test identification
       classes.push('multi-selected')
 
-      // Ring: same as single-cell selection
+      // Ring: only for incorrect cells in multi-select
+      // (no ring for normal multi-select to maintain continuous box appearance)
       if (isIncorrect) {
         classes.push('ring-2 ring-inset ring-error-text z-10')
-      } else {
-        classes.push('ring-2 ring-inset ring-accent z-10')
       }
     } else {
       // Normal grid borders
@@ -721,13 +695,10 @@ const Board = memo(function Board({
       }
     }
 
-    // Background priority: incorrect > duplicate > selected > primary > secondary > digit match > peer > given > default
     if (isIncorrect) {
       classes.push('bg-error-bg')
     } else if (isDuplicate) {
       classes.push('bg-error-bg')
-    } else if (isSelected || inMultiSel) {
-      classes.push('bg-cell-selected')
     } else if (isPrimary) {
       classes.push('bg-cell-primary')
     } else if (isSecondary) {
@@ -738,6 +709,8 @@ const Board = memo(function Board({
       classes.push(
         isTechniqueHint && !isExplicitSecondary ? 'bg-cell-primary' : 'bg-cell-secondary'
       )
+    } else if (isSelected || inMultiSel) {
+      classes.push('bg-cell-selected')
     } else if (hasDigitMatch) {
       classes.push('bg-accent-light')
     } else if (isPeer) {
