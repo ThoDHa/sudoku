@@ -2257,7 +2257,14 @@ if (currentGame.board[currentSelectedCell] === digit) {
         isOpen={historyOpen}
         onClose={() => setHistoryOpen(false)}
         onMoveClick={(move, index) => {
-          setMoveHighlight(move as MoveHighlight, index)
+          const moveHighlight: MoveHighlight = move as MoveHighlight
+          if (!moveHighlight.highlights || moveHighlight.highlights.primary.length === 0) {
+            moveHighlight.highlights = {
+              primary: moveHighlight.targets,
+              secondary: moveHighlight.eliminations?.map(e => ({ row: e.row, col: e.col }))
+            }
+          }
+          setMoveHighlight(moveHighlight, index)
         }}
         onTechniqueClick={(technique) => setTechniqueModal(technique)}
         selectedMoveIndex={selectedMoveIndex}
