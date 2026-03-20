@@ -135,8 +135,6 @@ interface CellData {
   eliminations: { row: number; col: number; digit: number }[] | undefined
   /** When false, hides eliminations and target additions (technique hint mode) */
   showAnswer: boolean
-  /** The target digit for hint mode (correct digit to place) */
-  targetDigit?: number
 }
 
 interface CellProps {
@@ -167,7 +165,6 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onPoint
     isTarget,
     eliminations,
     showAnswer,
-    targetDigit,
   } = data
 
   const row = Math.floor(idx / 9)
@@ -193,12 +190,13 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onPoint
         {value}
       </span>
     )
-   } else if (cellCandidates && countCandidates(cellCandidates) > 0) {
-     // Cell with candidates
-     const isHighlightedCell = isPrimary || isSecondary
+  } else if (cellCandidates && countCandidates(cellCandidates) > 0) {
+    // Cell with candidates
+    const isHighlightedCell = isPrimary || isSecondary
+    const singleDigit = highlightedDigit && highlightedDigit > 0 ? highlightedDigit : null
 
-     content = (
-       <div className="candidate-grid">
+    content = (
+      <div className="candidate-grid">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => {
           const hasCandidate_ = hasCandidate(cellCandidates, d)
           
@@ -207,20 +205,19 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onPoint
           const isEliminated = showAnswer && eliminations?.some(
             (e) => e.row === row && e.col === col && e.digit === d
           )
-
+          
+          // Check if this digit is the relevant one for highlighting
+          const isRelevantDigit = singleDigit ? d === singleDigit : isTarget
+          
           // Determine styling for this specific candidate
           let digitClass = "candidate-digit "
-
+          
           if (hasCandidate_ && isEliminated) {
             digitClass += "text-error-text line-through font-bold"
-          } else if (hasCandidate_ && isTarget && showAnswer) {
-            // In showAnswer mode (regular hint), target cells should only show the target digit in green
-            // Other candidates should be neutral (not all candidates as "correct")
-            if (d === targetDigit) {
-              digitClass += "text-hint-text font-bold"
-            } else {
-              digitClass += "text-cell-text-candidate"
-            }
+          } else if (hasCandidate_ && isRelevantDigit && isTarget && showAnswer) {
+            // Target cells show the digit to ADD in green (hint color)
+            // Only show if showAnswer is true (regular hint mode)
+            digitClass += "text-hint-text font-bold"
           } else if (isHighlightedCell) {
             digitClass += "text-cell-text-on-highlight"
           } else {
@@ -772,7 +769,6 @@ const Board = memo(function Board({
         isTarget,
         eliminations: highlight?.eliminations,
         showAnswer: highlight?.showAnswer !== false, // Default to true for backward compatibility
-        targetDigit: highlight?.digit,
       })
     }
     return result
