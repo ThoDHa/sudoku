@@ -6,9 +6,7 @@ import {
   isDragBlocked,
 } from './pathUtils'
 
-// =============================================================================
 // TEST UTILITIES
-// =============================================================================
 
 function createInitialBoard(): number[] {
   const board = Array(81).fill(0)
@@ -18,9 +16,7 @@ function createInitialBoard(): number[] {
   return board
 }
 
-// =============================================================================
 // TESTS
-// =============================================================================
 
 describe('cellIndexToCoords', () => {
   it('converts index 0 to (row 0, col 0)', () => {

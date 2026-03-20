@@ -47,9 +47,7 @@ func createTempPuzzleFile(t *testing.T, content string) string {
 	return path
 }
 
-// ============================================================================
 // Load() Tests
-// ============================================================================
 
 func TestLoad_ValidFile(t *testing.T) {
 	path := createTempPuzzleFile(t, validPuzzleJSON)
@@ -103,9 +101,7 @@ func TestLoad_EmptyPuzzleArray(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // NewLoaderFromPuzzles() Tests
-// ============================================================================
 
 func TestNewLoaderFromPuzzles(t *testing.T) {
 	puzzles := []CompactPuzzle{
@@ -117,9 +113,7 @@ func TestNewLoaderFromPuzzles(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // Count() Tests
-// ============================================================================
 
 func TestCount(t *testing.T) {
 	path := createTempPuzzleFile(t, validPuzzleJSON)
@@ -141,9 +135,7 @@ func TestCount_EmptyLoader(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // GetPuzzle() Tests
-// ============================================================================
 
 func TestGetPuzzle_ValidIndex(t *testing.T) {
 	path := createTempPuzzleFile(t, validPuzzleJSON)
@@ -283,9 +275,7 @@ func TestGetPuzzle_DifferentPuzzles(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // GetPuzzleBySeed() Tests
-// ============================================================================
 
 func TestGetPuzzleBySeed_Determinism(t *testing.T) {
 	path := createTempPuzzleFile(t, validPuzzleJSON)
@@ -384,9 +374,7 @@ func TestGetPuzzleBySeed_InvalidDifficulty(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // GetDailyPuzzle() Tests
-// ============================================================================
 
 func TestGetDailyPuzzle_Consistency(t *testing.T) {
 	path := createTempPuzzleFile(t, validPuzzleJSON)
@@ -505,9 +493,7 @@ func TestGetDailyPuzzle_AllDifficulties(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // GetTodayPuzzle() Tests
-// ============================================================================
 
 func TestGetTodayPuzzle_ReturnsValidPuzzle(t *testing.T) {
 	path := createTempPuzzleFile(t, validPuzzleJSON)
@@ -545,9 +531,7 @@ func TestGetTodayPuzzle_InvalidDifficulty(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // DifficultyKey Mapping Tests
-// ============================================================================
 
 func TestDifficultyKeyMapping(t *testing.T) {
 	expectedMappings := map[string]string{
@@ -581,9 +565,7 @@ func TestKeyToDifficultyMapping(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // Global Loader Tests
-// ============================================================================
 
 func TestSetGlobal(t *testing.T) {
 	// Save original
@@ -604,9 +586,7 @@ func TestSetGlobal(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // Edge Case Tests
-// ============================================================================
 
 func TestGetPuzzle_MissingDifficultyInPuzzle(t *testing.T) {
 	// Create puzzle missing the "extreme" difficulty

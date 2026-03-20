@@ -1,9 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach, Mock } from 'vitest'
 
-// =============================================================================
 // MOCKS
-// =============================================================================
 
 // Mock the wasm module
 const mockIsWasmReady = vi.fn(() => false)
@@ -35,9 +33,7 @@ import { useWasmSolver, isWasmReady, getWasmApi, loadWasm } from './useWasmSolve
 import type { SudokuWasmAPI, FindNextMoveResult, SolveAllResult, ValidateBoardResult, ValidateCustomResult } from '../lib/wasm'
 import { logger } from '../lib/logger'
 
-// =============================================================================
 // MOCK API FACTORY
-// =============================================================================
 
 /**
  * Create a mock WASM API for testing
@@ -84,9 +80,7 @@ function createMockWasmApi(): SudokuWasmAPI {
   }
 }
 
-// =============================================================================
 // TESTS
-// =============================================================================
 
 describe('useWasmSolver', () => {
   let mockApi: SudokuWasmAPI
@@ -103,9 +97,7 @@ describe('useWasmSolver', () => {
     vi.restoreAllMocks()
   })
 
-  // ===========================================================================
   // INITIALIZATION TESTS
-  // ===========================================================================
   describe('Initialization', () => {
     it('returns expected interface', () => {
       const { result } = renderHook(() => useWasmSolver())
@@ -179,9 +171,7 @@ describe('useWasmSolver', () => {
     })
   })
 
-  // ===========================================================================
   // PRELOAD ON MOUNT TESTS
-  // ===========================================================================
   describe('Preload on Mount', () => {
     it('calls preloadWasm by default when WASM not ready', () => {
       mockIsWasmReady.mockReturnValue(false)
@@ -213,9 +203,7 @@ describe('useWasmSolver', () => {
     })
   })
 
-  // ===========================================================================
   // LOAD FUNCTION TESTS
-  // ===========================================================================
   describe('load() Function', () => {
     it('returns true immediately if already ready', async () => {
       mockIsWasmReady.mockReturnValue(true)
@@ -377,9 +365,7 @@ describe('useWasmSolver', () => {
     })
   })
 
-  // ===========================================================================
   // WASM READY EVENT TESTS
-  // ===========================================================================
   describe('wasmReady Event', () => {
     it('updates state when wasmReady event fires', async () => {
       const { result } = renderHook(() => useWasmSolver())
@@ -436,9 +422,7 @@ describe('useWasmSolver', () => {
     })
   })
 
-  // ===========================================================================
   // SOLVER METHOD TESTS - API NOT READY
-  // ===========================================================================
   describe('Solver Methods When API Not Ready', () => {
     it('findNextMove returns null when API not ready', () => {
       const { result } = renderHook(() => useWasmSolver())
@@ -481,9 +465,7 @@ describe('useWasmSolver', () => {
     })
   })
 
-  // ===========================================================================
   // SOLVER METHOD TESTS - API READY
-  // ===========================================================================
   describe('Solver Methods When API Ready', () => {
     beforeEach(() => {
       mockIsWasmReady.mockReturnValue(true)
@@ -573,9 +555,7 @@ describe('useWasmSolver', () => {
     })
   })
 
-  // ===========================================================================
   // SOLVER METHOD ERROR HANDLING TESTS
-  // ===========================================================================
   describe('Solver Methods Error Handling', () => {
     beforeEach(() => {
       mockIsWasmReady.mockReturnValue(true)
@@ -663,9 +643,7 @@ describe('useWasmSolver', () => {
     })
   })
 
-  // ===========================================================================
   // RE-EXPORT TESTS
-  // ===========================================================================
   describe('Re-exports', () => {
     it('re-exports isWasmReady from wasm module', () => {
       mockIsWasmReady.mockReturnValue(true)
@@ -695,9 +673,7 @@ describe('useWasmSolver', () => {
     })
   })
 
-  // ===========================================================================
   // INTEGRATION TESTS
-  // ===========================================================================
   describe('Integration Scenarios', () => {
     it('full flow: load then use solver methods', async () => {
       const { result } = renderHook(() => useWasmSolver())

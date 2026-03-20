@@ -5,32 +5,6 @@ import (
 	"sudoku-api/pkg/constants"
 )
 
-// Algorithmic Complexity Notes:
-//
-// FindConflicts: O(n²) where n = grid size (9) × units (3: row, col, box)
-//   - For each unit (27 total), scans all cells to build position maps
-//   - For each digit with multiple positions, finds all pairwise conflicts
-//   - Worst case: ~200-300 conflict checks, acceptable for 9x9 grid
-//
-// CountSolutions: O(k!) where k = number of empty cells
-//   - Standard backtracking algorithm exploring all valid completions
-//   - Exponential complexity is unavoidable for solution counting
-//   - Acceptable because we count to maxCount (typically 2) and stop early
-//
-// Solve: O(9^k) where k = number of empty cells
-//   - Backtracking with constraint propagation
-//   - Worst case exponential, but average case much better with early pruning
-//   - Acceptable for verification and uniqueness checks (not real-time gameplay)
-//
-// CarveGivens: O(n × m) where n = 81 cells, m = solution checks
-//   - Tries removing each cell and checks uniqueness via HasUniqueSolution
-//   - Each uniqueness check invokes CountSolutions (O(k!))
-//   - High overall complexity, but runs once per puzzle generation
-//
-// CarveGivensWithSubset: O(n × m × d) where n = 81 cells, m = checks, d = difficulties (5)
-//   - Carves to impossible level, then restores cells for easier difficulties
-//   - Acceptable for one-time puzzle generation, not used during gameplay
-
 // Solver provides DP/backtracking based Sudoku solving for verification
 // and uniqueness checks. Not used for hints or educational gameplay.
 
@@ -180,7 +154,6 @@ func countSolutionsHelper(board []int, count *int, maxCount int) {
 		}
 	}
 
-	// All cells filled = found a solution
 	if idx == -1 {
 		*count++
 		return
@@ -210,7 +183,6 @@ func solve(board []int) bool {
 		}
 	}
 
-	// All cells filled
 	if idx == -1 {
 		return true
 	}

@@ -2,9 +2,7 @@ import { renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useKeyboardShortcuts, KeyboardShortcutHandlers } from './useKeyboardShortcuts'
 
-// =============================================================================
 // TEST UTILITIES
-// =============================================================================
 
 /**
  * Create mock handlers for keyboard shortcuts
@@ -50,9 +48,7 @@ const createKeyEventWithPreventDefault = (options: KeyboardEventInit): {
   return { event, preventDefaultSpy }
 }
 
-// =============================================================================
 // TESTS
-// =============================================================================
 
 describe('useKeyboardShortcuts', () => {
   let originalPlatform: PropertyDescriptor | undefined
@@ -80,9 +76,7 @@ describe('useKeyboardShortcuts', () => {
     })
   }
 
-  // ===========================================================================
   // UNDO SHORTCUT TESTS (Ctrl/Cmd + Z)
-  // ===========================================================================
   describe('Undo Shortcut (Ctrl/Cmd + Z)', () => {
     it('triggers onUndo with Ctrl+Z on Windows', () => {
       mockPlatform('Win32')
@@ -160,9 +154,7 @@ describe('useKeyboardShortcuts', () => {
     })
   })
 
-  // ===========================================================================
   // REDO SHORTCUT TESTS (Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y)
-  // ===========================================================================
   describe('Redo Shortcut (Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y)', () => {
     it('triggers onRedo with Ctrl+Shift+Z on Windows', () => {
       mockPlatform('Win32')
@@ -244,9 +236,7 @@ describe('useKeyboardShortcuts', () => {
     })
   })
 
-  // ===========================================================================
   // HINT SHORTCUT TESTS (H key)
-  // ===========================================================================
   describe('Hint Shortcut (H key)', () => {
     it('triggers onHint with H key', () => {
       const handlers = createMockHandlers()
@@ -298,9 +288,7 @@ describe('useKeyboardShortcuts', () => {
     })
   })
 
-  // ===========================================================================
   // TOGGLE NOTES MODE SHORTCUT TESTS (N key)
-  // ===========================================================================
   describe('Toggle Notes Mode Shortcut (N key)', () => {
     it('triggers onToggleNotesMode with N key', () => {
       const handlers = createMockHandlers()
@@ -352,9 +340,7 @@ describe('useKeyboardShortcuts', () => {
     })
   })
 
-  // ===========================================================================
   // VALIDATE SHORTCUT TESTS (V key)
-  // ===========================================================================
   describe('Validate Shortcut (V key)', () => {
     it('triggers onValidate with V key', () => {
       const handlers = createMockHandlers()
@@ -406,9 +392,7 @@ describe('useKeyboardShortcuts', () => {
     })
   })
 
-  // ===========================================================================
   // ESCAPE SHORTCUT TESTS
-  // ===========================================================================
   describe('Escape Shortcut', () => {
     it('triggers onClearAllAndDeselect with Escape key', () => {
       const handlers = createMockHandlers()
@@ -432,9 +416,7 @@ describe('useKeyboardShortcuts', () => {
     })
   })
 
-  // ===========================================================================
   // SPACE KEY SHORTCUT TESTS (Toggle Notes Mode Alternative)
-  // ===========================================================================
   describe('Space Key Shortcut (Toggle Notes Mode)', () => {
     it('triggers onToggleNotesMode with Space key', () => {
       const handlers = createMockHandlers()
@@ -541,9 +523,7 @@ describe('useKeyboardShortcuts', () => {
     })
   })
 
-  // ===========================================================================
   // DISABLED OPTION TESTS
-  // ===========================================================================
   describe('Disabled Option', () => {
     it('does NOT trigger any handler when disabled=true', () => {
       mockPlatform('Win32')
@@ -623,9 +603,7 @@ describe('useKeyboardShortcuts', () => {
     })
   })
 
-  // ===========================================================================
   // INPUT/TEXTAREA EXCLUSION TESTS
-  // ===========================================================================
   describe('Input/Textarea Exclusion', () => {
     it('does NOT trigger handlers when target is HTMLInputElement', () => {
       const handlers = createMockHandlers()
@@ -719,9 +697,7 @@ describe('useKeyboardShortcuts', () => {
     })
   })
 
-  // ===========================================================================
   // PLATFORM DETECTION TESTS
-  // ===========================================================================
   describe('Platform Detection', () => {
     it('detects Mac platform correctly (MacIntel)', () => {
       mockPlatform('MacIntel')
@@ -770,9 +746,7 @@ describe('useKeyboardShortcuts', () => {
     })
   })
 
-  // ===========================================================================
   // CLEANUP TESTS
-  // ===========================================================================
   describe('Cleanup on Unmount', () => {
     it('removes event listener when hook unmounts', () => {
       const handlers = createMockHandlers()
@@ -812,9 +786,7 @@ describe('useKeyboardShortcuts', () => {
     })
   })
 
-  // ===========================================================================
   // EDGE CASES
-  // ===========================================================================
   describe('Edge Cases', () => {
     it('handles multiple rapid key presses', () => {
       const handlers = createMockHandlers()
@@ -895,9 +867,7 @@ describe('useKeyboardShortcuts', () => {
     })
   })
 
-  // ===========================================================================
   // HANDLER UPDATES
-  // ===========================================================================
   describe('Handler Updates', () => {
     it('uses updated handlers after rerender', () => {
       const handlers1 = createMockHandlers()

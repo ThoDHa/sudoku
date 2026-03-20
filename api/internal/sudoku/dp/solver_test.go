@@ -4,9 +4,7 @@ import (
 	"testing"
 )
 
-// ============================================================================
 // Test Data
-// ============================================================================
 
 // A valid puzzle with a unique solution (standard test case)
 var validPuzzle = []int{
@@ -119,9 +117,7 @@ var unsolvableGrid = []int{
 	9, 0, 0, 0, 0, 0, 0, 0, 0, // 9 also here in same box
 }
 
-// ============================================================================
 // TestSolve
-// ============================================================================
 
 func TestSolve(t *testing.T) {
 	tests := []struct {
@@ -208,9 +204,7 @@ func TestSolve_DoesNotModifyInput(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // TestHasUniqueSolution
-// ============================================================================
 
 func TestHasUniqueSolution(t *testing.T) {
 	tests := []struct {
@@ -250,9 +244,7 @@ func TestHasUniqueSolution(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // TestIsValid
-// ============================================================================
 
 func TestIsValid(t *testing.T) {
 	tests := []struct {
@@ -302,9 +294,7 @@ func TestIsValid(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // TestFindConflicts
-// ============================================================================
 
 func TestFindConflicts(t *testing.T) {
 	t.Run("valid grid has no conflicts", func(t *testing.T) {
@@ -400,9 +390,7 @@ func TestFindConflicts(t *testing.T) {
 	})
 }
 
-// ============================================================================
 // TestCountSolutions
-// ============================================================================
 
 func TestCountSolutions(t *testing.T) {
 	tests := []struct {
@@ -472,9 +460,7 @@ func TestCountSolutions_DoesNotModifyInput(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // TestGenerateFullGrid
-// ============================================================================
 
 func TestGenerateFullGrid(t *testing.T) {
 	t.Run("generates valid complete grid", func(t *testing.T) {
@@ -532,9 +518,7 @@ func TestGenerateFullGrid(t *testing.T) {
 	})
 }
 
-// ============================================================================
 // TestCarveGivens
-// ============================================================================
 
 func TestCarveGivens(t *testing.T) {
 	t.Run("produces valid puzzle", func(t *testing.T) {
@@ -621,9 +605,7 @@ func countGivens(grid []int) int {
 	return count
 }
 
-// ============================================================================
 // TestCarveGivensWithSubset
-// ============================================================================
 
 func TestCarveGivensWithSubset(t *testing.T) {
 	fullGrid := GenerateFullGrid(12345)
@@ -705,9 +687,7 @@ func TestCarveGivensWithSubset(t *testing.T) {
 	})
 }
 
-// ============================================================================
 // Edge Cases and Boundary Tests
-// ============================================================================
 
 func TestEdgeCases(t *testing.T) {
 	t.Run("nil-like behavior with wrong size grid", func(t *testing.T) {
@@ -749,9 +729,7 @@ func TestEdgeCases(t *testing.T) {
 	})
 }
 
-// ============================================================================
 // Benchmark Tests
-// ============================================================================
 
 func BenchmarkSolve(b *testing.B) {
 	for i := 0; i < b.N; i++ {

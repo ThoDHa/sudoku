@@ -1,9 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach, Mock } from 'vitest'
 
-// =============================================================================
 // MOCKS
-// =============================================================================
 
 // Mock react-router-dom
 let mockPathname = '/'
@@ -36,9 +34,7 @@ vi.mock('../lib/logger', () => ({
 import { useWasmLifecycle } from './useWasmLifecycle'
 import { logger } from '../lib/logger'
 
-// =============================================================================
 // UTILITIES
-// =============================================================================
 
 /**
  * Helper to change the mocked route and trigger re-render
@@ -47,9 +43,7 @@ function setMockPathname(pathname: string) {
   mockPathname = pathname
 }
 
-// =============================================================================
 // TESTS
-// =============================================================================
 
 describe('useWasmLifecycle', () => {
   beforeEach(() => {
@@ -69,9 +63,7 @@ describe('useWasmLifecycle', () => {
     vi.restoreAllMocks()
   })
 
-  // ===========================================================================
   // INITIALIZATION TESTS
-  // ===========================================================================
   describe('Initialization', () => {
     it('returns expected interface', () => {
       setMockPathname('/')
@@ -109,9 +101,7 @@ describe('useWasmLifecycle', () => {
     })
   })
 
-  // ===========================================================================
   // isWasmRoute DETECTION TESTS
-  // ===========================================================================
   describe('isWasmRoute Detection', () => {
     it('returns false for homepage (/)', () => {
       setMockPathname('/')
@@ -184,9 +174,7 @@ describe('useWasmLifecycle', () => {
     })
   })
 
-  // ===========================================================================
   // loadWasm BEHAVIOR TESTS
-  // ===========================================================================
   describe('loadWasm Behavior', () => {
     it('calls initializeSolver when loadWasm is invoked', async () => {
       setMockPathname('/')
@@ -233,9 +221,7 @@ describe('useWasmLifecycle', () => {
     })
   })
 
-  // ===========================================================================
   // unloadWasm BEHAVIOR TESTS
-  // ===========================================================================
   describe('unloadWasm Behavior', () => {
     it('calls cleanupSolver when unloadWasm is invoked', async () => {
       setMockPathname('/')
@@ -284,9 +270,7 @@ describe('useWasmLifecycle', () => {
     })
   })
 
-  // ===========================================================================
   // cancelUnload BEHAVIOR TESTS
-  // ===========================================================================
   describe('cancelUnload Behavior', () => {
     it('cancels a scheduled unload', async () => {
       // Start on a WASM route
@@ -359,9 +343,7 @@ describe('useWasmLifecycle', () => {
     })
   })
 
-  // ===========================================================================
   // ROUTE CHANGE EFFECTS TESTS
-  // ===========================================================================
   describe('Route Change Effects', () => {
     it('loads WASM when entering a game route from homepage', async () => {
       // Start on homepage
@@ -498,9 +480,7 @@ describe('useWasmLifecycle', () => {
     })
   })
 
-  // ===========================================================================
   // DELAYED UNLOAD TESTS
-  // ===========================================================================
   describe('Delayed Unload', () => {
     it('uses default 2000ms delay', async () => {
       setMockPathname('/game123')
@@ -596,9 +576,7 @@ describe('useWasmLifecycle', () => {
     })
   })
 
-  // ===========================================================================
   // CLEANUP TESTS
-  // ===========================================================================
   describe('Cleanup on Unmount', () => {
     it('clears pending timeout on unmount', async () => {
       const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout')
@@ -624,9 +602,7 @@ describe('useWasmLifecycle', () => {
     })
   })
 
-  // ===========================================================================
   // LOGGING TESTS
-  // ===========================================================================
   describe('Logging', () => {
     it('does not log when enableLogging is false', async () => {
       const loggerWarnSpy = logger.warn

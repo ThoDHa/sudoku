@@ -2,9 +2,7 @@ import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useGameTimer } from './useGameTimer'
 
-// =============================================================================
 // TEST UTILITIES
-// =============================================================================
 
 /**
  * Create a mock background manager for testing
@@ -19,9 +17,7 @@ const createMockBackgroundManager = (overrides?: {
   unregisterCallback: vi.fn(),
 })
 
-// =============================================================================
 // TESTS
-// =============================================================================
 
 describe('useGameTimer', () => {
   let originalVisibilityState: PropertyDescriptor | undefined
@@ -47,9 +43,7 @@ describe('useGameTimer', () => {
     }
   })
 
-  // ===========================================================================
   // INITIAL STATE TESTS
-  // ===========================================================================
   describe('Initial State', () => {
     it('starts at 0 elapsed time', () => {
       const backgroundManager = createMockBackgroundManager()
@@ -88,9 +82,7 @@ describe('useGameTimer', () => {
     })
   })
 
-  // ===========================================================================
   // TIMER CONTROL TESTS
-  // ===========================================================================
   describe('Timer Control', () => {
     it('starts timer with startTimer', () => {
       const backgroundManager = createMockBackgroundManager()
@@ -189,9 +181,7 @@ describe('useGameTimer', () => {
     })
   })
 
-  // ===========================================================================
   // TIME INCREMENTING TESTS  
-  // ===========================================================================
   describe('Time Incrementing', () => {
     it('increments time when running', () => {
       const backgroundManager = createMockBackgroundManager()
@@ -256,9 +246,7 @@ describe('useGameTimer', () => {
     })
   })
 
-  // ===========================================================================
   // FORMAT TIME TESTS
-  // ===========================================================================
   describe('formatTime', () => {
     it('formats 0ms as "0:00"', () => {
       const backgroundManager = createMockBackgroundManager()
@@ -335,9 +323,7 @@ describe('useGameTimer', () => {
     })
   })
 
-  // ===========================================================================
   // VISIBILITY HANDLING TESTS
-  // ===========================================================================
   describe('Visibility Handling', () => {
     it('sets isPausedDueToVisibility when shouldPauseOperations is true and running', () => {
       const backgroundManager = createMockBackgroundManager({ shouldPauseOperations: true })
@@ -393,9 +379,7 @@ describe('useGameTimer', () => {
     })
   })
 
-  // ===========================================================================
   // EDGE CASES
-  // ===========================================================================
   describe('Edge Cases', () => {
     it('handles setElapsedMs while running', () => {
       const backgroundManager = createMockBackgroundManager()
@@ -468,9 +452,7 @@ describe('useGameTimer', () => {
     })
   })
 
-  // ===========================================================================
   // FUNCTION STABILITY TESTS
-  // ===========================================================================
   describe('Function Stability', () => {
     it('provides stable function references across rerenders', () => {
       const backgroundManager = createMockBackgroundManager()
@@ -491,9 +473,7 @@ describe('useGameTimer', () => {
     })
   })
 
-  // ===========================================================================
   // RETURN VALUE COMPLETENESS
-  // ===========================================================================
   describe('Return Value', () => {
     it('returns all expected properties', () => {
       const backgroundManager = createMockBackgroundManager()
@@ -525,9 +505,7 @@ describe('useGameTimer', () => {
     })
   })
 
-  // ===========================================================================
   // EDGE CASE TESTS (Added for TIMER-004)
-  // ===========================================================================
   describe('Edge Cases', () => {
     it('handles setElapsedMs with NaN value', () => {
       const backgroundManager = createMockBackgroundManager()

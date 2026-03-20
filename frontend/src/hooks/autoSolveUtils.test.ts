@@ -15,9 +15,7 @@ import {
   type MoveResult,
 } from './autoSolveUtils'
 
-// =============================================================================
 // TEST UTILITIES
-// =============================================================================
 
 /**
  * Create a mock ActionContext for testing action handlers
@@ -70,14 +68,10 @@ const createMockMoveResult = (overrides?: Partial<MoveResult>): MoveResult => ({
   ...overrides,
 })
 
-// =============================================================================
 // UTILITY FUNCTION TESTS
-// =============================================================================
 
 describe('autoSolveUtils', () => {
-  // ===========================================================================
   // convertCandidates tests
-  // ===========================================================================
   describe('convertCandidates', () => {
     it('converts number[][] to Set<number>[]', () => {
       const input: (number[] | null)[] = [[1, 2, 3], [4, 5], [6, 7, 8, 9]]
@@ -120,9 +114,7 @@ describe('autoSolveUtils', () => {
     })
   })
 
-  // ===========================================================================
   // serializeCandidates tests
-  // ===========================================================================
   describe('serializeCandidates', () => {
     it('serializes (number[] | null)[] to number[][]', () => {
       const input: (number[] | null)[] = [[1, 2, 3], [4, 5], [6]]
@@ -165,9 +157,7 @@ describe('autoSolveUtils', () => {
     })
   })
 
-  // ===========================================================================
   // createStateSnapshot tests
-  // ===========================================================================
   describe('createStateSnapshot', () => {
     it('creates a snapshot with all required fields', () => {
       const board = [1, 2, 3, 0, 0, 0, 0, 0, 0]
@@ -225,9 +215,7 @@ describe('autoSolveUtils', () => {
     })
   })
 
-  // ===========================================================================
   // handleContradiction tests
-  // ===========================================================================
   describe('handleContradiction', () => {
     it('returns skip when more moves are available and is active', () => {
       const ctx = createMockContext({
@@ -264,9 +252,7 @@ describe('autoSolveUtils', () => {
     })
   })
 
-  // ===========================================================================
   // handleError tests
-  // ===========================================================================
   describe('handleError', () => {
     it('calls onUnpinpointableError with explanation', () => {
       const onUnpinpointableError = vi.fn()
@@ -320,9 +306,7 @@ describe('autoSolveUtils', () => {
     })
   })
 
-  // ===========================================================================
   // handleDiagnostic tests
-  // ===========================================================================
   describe('handleDiagnostic', () => {
     it('calls onStatus with explanation', () => {
       const onStatus = vi.fn()
@@ -385,9 +369,7 @@ describe('autoSolveUtils', () => {
     })
   })
 
-  // ===========================================================================
   // handleUnpinpointableError tests
-  // ===========================================================================
   describe('handleUnpinpointableError', () => {
     it('calls onUnpinpointableError with explanation and user entry count', () => {
       const onUnpinpointableError = vi.fn()
@@ -442,9 +424,7 @@ describe('autoSolveUtils', () => {
     })
   })
 
-  // ===========================================================================
   // handleClearCandidates tests
-  // ===========================================================================
   describe('handleClearCandidates', () => {
     it('calls applyMove and addToHistory', () => {
       const applyMove = vi.fn()
@@ -475,9 +455,7 @@ describe('autoSolveUtils', () => {
     })
   })
 
-  // ===========================================================================
   // handleFixError tests
-  // ===========================================================================
   describe('handleFixError', () => {
     it('calls applyMove and addToHistory', () => {
       const applyMove = vi.fn()
@@ -541,9 +519,7 @@ describe('autoSolveUtils', () => {
     })
   })
 
-  // ===========================================================================
   // handleRegularMove tests
-  // ===========================================================================
   describe('handleRegularMove', () => {
     it('calls applyMove with converted candidates', () => {
       const applyMove = vi.fn()
@@ -588,9 +564,7 @@ describe('autoSolveUtils', () => {
     })
   })
 
-  // ===========================================================================
   // dispatchMoveAction tests
-  // ===========================================================================
   describe('dispatchMoveAction', () => {
     it('dispatches to handleContradiction for contradiction action', () => {
       const ctx = createMockContext({

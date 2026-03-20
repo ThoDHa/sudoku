@@ -7,23 +7,8 @@ import (
 	"sudoku-api/pkg/constants"
 )
 
-// Algorithmic Complexity Notes:
-//
-// detectJellyfishInDirection: O(n⁴) where n = grid size (9)
-//   - Finds all combinations of 4 rows/columns (C(n,4) = 126 combinations)
-//   - For each combination, checks column/row positions
-//   - High complexity acceptable because:
-//     * Only runs for Jellyfish detection (rare technique)
-//     * Grid size is fixed at 9x9, so n⁴ = 9⁴ = 6561 operations max
-//     * Early pruning reduces combinations significantly in practice
-//
-// Overall technique complexity is managed by:
-//   - Techniques only run when applicable (candidate-based filters)
-//   - Fixed grid size (9x9) limits worst-case operations
-//   - Techniques run once per move, not per cell
-
 // DetectJellyfish finds Jellyfish pattern: 4 rows where a digit appears in 2-4 positions,
-// and those positions share exactly 4 columns (or vice versa)
+// and those positions share exactly 4 columns (or vice versa).
 func DetectJellyfish(b BoardInterface) *core.Move {
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		if move := detectJellyfishInDirection(b, digit, UnitRow); move != nil {

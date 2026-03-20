@@ -2,9 +2,7 @@ import { renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useFrozenWhenHidden } from './useFrozenWhenHidden'
 
-// =============================================================================
 // MOCKING
-// =============================================================================
 
 // Mock the BackgroundManagerContext
 const mockBackgroundManagerContext = {
@@ -16,9 +14,7 @@ vi.mock('../lib/BackgroundManagerContext', () => ({
   useBackgroundManagerContext: () => mockBackgroundManagerContext,
 }))
 
-// =============================================================================
 // TESTS
-// =============================================================================
 
 describe('useFrozenWhenHidden', () => {
   beforeEach(() => {
@@ -31,9 +27,7 @@ describe('useFrozenWhenHidden', () => {
     vi.restoreAllMocks()
   })
 
-  // ===========================================================================
   // Initial State Tests
-  // ===========================================================================
   describe('Initial State', () => {
     it('returns all expected properties', () => {
       const { result } = renderHook(() => useFrozenWhenHidden())
@@ -67,9 +61,7 @@ describe('useFrozenWhenHidden', () => {
     })
   })
 
-  // ===========================================================================
   // isFrozen Tests
-  // ===========================================================================
   describe('isFrozen', () => {
     it('returns false when not hidden and not in deep pause', () => {
       mockBackgroundManagerContext.isHidden = false
@@ -109,9 +101,7 @@ describe('useFrozenWhenHidden', () => {
     })
   })
 
-  // ===========================================================================
   // isCurrentlyFrozen Tests
-  // ===========================================================================
   describe('isCurrentlyFrozen', () => {
     it('is false when not hidden and not in deep pause', () => {
       mockBackgroundManagerContext.isHidden = false
@@ -150,9 +140,7 @@ describe('useFrozenWhenHidden', () => {
     })
   })
 
-  // ===========================================================================
   // shouldSkipStateUpdate Tests
-  // ===========================================================================
   describe('shouldSkipStateUpdate', () => {
     it('returns false when not frozen', () => {
       mockBackgroundManagerContext.isHidden = false
@@ -188,9 +176,7 @@ describe('useFrozenWhenHidden', () => {
     })
   })
 
-  // ===========================================================================
   // skipWhenFrozen Tests
-  // ===========================================================================
   describe('skipWhenFrozen', () => {
     it('returns the callback result when not frozen', () => {
       mockBackgroundManagerContext.isHidden = false
@@ -289,9 +275,7 @@ describe('useFrozenWhenHidden', () => {
     })
   })
 
-  // ===========================================================================
   // Memoization Tests
-  // ===========================================================================
   describe('Memoization', () => {
     it('returns the same object reference when inputs are unchanged', () => {
       mockBackgroundManagerContext.isHidden = false
@@ -391,9 +375,7 @@ describe('useFrozenWhenHidden', () => {
     })
   })
 
-  // ===========================================================================
   // State Transition Tests
-  // ===========================================================================
   describe('State Transitions', () => {
     it('transitions from not frozen to frozen when isHidden becomes true', () => {
       mockBackgroundManagerContext.isHidden = false
@@ -473,9 +455,7 @@ describe('useFrozenWhenHidden', () => {
     })
   })
 
-  // ===========================================================================
   // Ref Synchronization Tests
-  // ===========================================================================
   describe('Ref Synchronization', () => {
     it('updates ref when transitioning to frozen', () => {
       mockBackgroundManagerContext.isHidden = false

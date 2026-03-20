@@ -2,9 +2,7 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useAutoSolve } from './useAutoSolve'
 
-// =============================================================================
 // MOCKS
-// =============================================================================
 
 // Mock the solver service
 vi.mock('../lib/solver-service', () => ({
@@ -16,9 +14,7 @@ import { solveAll } from '../lib/solver-service'
 import { createMockBackgroundManager } from '../test-utils/mocks'
 const mockSolveAll = vi.mocked(solveAll)
 
-// =============================================================================
 // TEST UTILITIES
-// =============================================================================
 
 /**
  * Create a mock background manager for testing
@@ -86,9 +82,7 @@ const createMockSolveResponse = (moveCount: number = 3, overrides?: { solved?: b
   })),
 })
 
-// =============================================================================
 // TESTS
-// =============================================================================
 
 describe('useAutoSolve', () => {
   beforeEach(() => {
@@ -105,9 +99,7 @@ describe('useAutoSolve', () => {
     vi.useRealTimers()
   })
 
-  // ===========================================================================
   // HOOK INITIALIZATION
-  // ===========================================================================
   describe('Hook Initialization', () => {
     it('starts with isAutoSolving=false', () => {
       const options = createDefaultOptions()
@@ -166,9 +158,7 @@ describe('useAutoSolve', () => {
     })
   })
 
-  // ===========================================================================
   // startAutoSolve() - HAPPY PATH
-  // ===========================================================================
   describe('startAutoSolve() - Happy Path', () => {
     it('sets isAutoSolving=true when called', async () => {
       mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
@@ -320,9 +310,7 @@ describe('useAutoSolve', () => {
     })
   })
 
-  // ===========================================================================
   // stopAutoSolve()
-  // ===========================================================================
   describe('stopAutoSolve()', () => {
     it('sets isAutoSolving=false', async () => {
       mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
@@ -449,9 +437,7 @@ describe('useAutoSolve', () => {
     })
   })
 
-  // ===========================================================================
   // togglePause()
-  // ===========================================================================
   describe('togglePause()', () => {
     it('toggles isPaused from false to true', async () => {
       mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
@@ -560,9 +546,7 @@ describe('useAutoSolve', () => {
     })
   })
 
-  // ===========================================================================
   // stepBack() / stepForward()
-  // ===========================================================================
   describe('stepBack()', () => {
     it('decrements currentIndex', async () => {
       mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
@@ -801,9 +785,7 @@ describe('useAutoSolve', () => {
     })
   })
 
-  // ===========================================================================
   // canStepBack / canStepForward COMPUTED VALUES
-  // ===========================================================================
   describe('canStepBack / canStepForward', () => {
     it('canStepBack is false when not auto-solving', () => {
       const options = createDefaultOptions()
@@ -871,9 +853,7 @@ describe('useAutoSolve', () => {
     })
   })
 
-  // ===========================================================================
   // API ERROR HANDLING
-  // ===========================================================================
   describe('API Error Handling', () => {
     it('calls onError when solveAll throws', async () => {
       mockSolveAll.mockRejectedValue(new Error('Network error'))
@@ -954,9 +934,7 @@ describe('useAutoSolve', () => {
     })
   })
 
-  // ===========================================================================
   // TIMER CLEANUP ON UNMOUNT
-  // ===========================================================================
   describe('Timer Cleanup on Unmount', () => {
     it('clears timers when component unmounts', async () => {
       mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
@@ -1005,9 +983,7 @@ describe('useAutoSolve', () => {
     })
   })
 
-  // ===========================================================================
   // BACKGROUND/VISIBILITY HANDLING
-  // ===========================================================================
   describe('Background/Visibility Handling', () => {
     it('pauses when backgroundManager.shouldPauseOperations becomes true', async () => {
       mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
@@ -1065,9 +1041,7 @@ describe('useAutoSolve', () => {
     })
   })
 
-  // ===========================================================================
   // SPECIAL MOVE ACTIONS
-  // ===========================================================================
   describe('Special Move Actions', () => {
     it('handles contradiction move by continuing to next', async () => {
       const moves = [
@@ -1150,9 +1124,7 @@ describe('useAutoSolve', () => {
     })
   })
 
-  // ===========================================================================
   // FUNCTION STABILITY
-  // ===========================================================================
   describe('Function Stability', () => {
     it('provides stable function references across rerenders', () => {
       const options = createDefaultOptions()
@@ -1175,9 +1147,7 @@ describe('useAutoSolve', () => {
     })
   })
 
-  // ===========================================================================
   // RETURN VALUE COMPLETENESS
-  // ===========================================================================
   describe('Return Value', () => {
     it('returns all expected properties', () => {
       const options = createDefaultOptions()

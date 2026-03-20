@@ -3,33 +3,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useRef, RefObject } from 'react'
 import { useClickOutside } from './useClickOutside'
 
-// =============================================================================
-// TEST UTILITIES
-// =============================================================================
-
-/**
- * Creates a DOM element and appends it to the document body.
- * Returns the element for use in tests.
- */
 function createDOMElement(tagName: string = 'div'): HTMLElement {
   const element = document.createElement(tagName)
   document.body.appendChild(element)
   return element
 }
 
-/**
- * Removes an element from the document body.
- */
 function removeDOMElement(element: HTMLElement): void {
   if (element.parentNode) {
     element.parentNode.removeChild(element)
   }
 }
 
-/**
- * Creates a mousedown event and dispatches it on the specified target.
- * Note: We omit the 'view' property because jsdom has issues with it.
- */
 function simulateMouseDown(target: EventTarget): void {
   const event = new MouseEvent('mousedown', {
     bubbles: true,
@@ -38,10 +23,6 @@ function simulateMouseDown(target: EventTarget): void {
   target.dispatchEvent(event)
 }
 
-/**
- * Custom wrapper to test hooks with refs.
- * This creates a hook that manages both the ref and the useClickOutside call.
- */
 function setupHook(
   element: HTMLElement | null,
   isActive: boolean,
@@ -59,33 +40,24 @@ function setupHook(
   )
 }
 
-// =============================================================================
-// TESTS
-// =============================================================================
-
 describe('useClickOutside', () => {
   let testElement: HTMLElement
   let outsideElement: HTMLElement
 
   beforeEach(() => {
-    // Create test elements before each test
     testElement = createDOMElement('div')
     testElement.setAttribute('data-testid', 'inside-element')
-    
+
     outsideElement = createDOMElement('div')
     outsideElement.setAttribute('data-testid', 'outside-element')
   })
 
   afterEach(() => {
-    // Clean up DOM elements after each test
     removeDOMElement(testElement)
     removeDOMElement(outsideElement)
     vi.restoreAllMocks()
   })
 
-  // ===========================================================================
-  // CLICK OUTSIDE DETECTION TESTS
-  // ===========================================================================
   describe('Click Outside Detection', () => {
     it('calls onClickOutside when clicking outside the referenced element', () => {
       const onClickOutside = vi.fn()
@@ -134,9 +106,7 @@ describe('useClickOutside', () => {
     })
   })
 
-  // ===========================================================================
   // CLICK INSIDE BEHAVIOR TESTS
-  // ===========================================================================
   describe('Click Inside Behavior', () => {
     it('does NOT call onClickOutside when clicking inside the referenced element', () => {
       const onClickOutside = vi.fn()
@@ -182,9 +152,7 @@ describe('useClickOutside', () => {
     })
   })
 
-  // ===========================================================================
   // ISACTIVE TOGGLE TESTS
-  // ===========================================================================
   describe('isActive Toggle', () => {
     it('does NOT call onClickOutside when isActive is false', () => {
       const onClickOutside = vi.fn()
@@ -269,9 +237,7 @@ describe('useClickOutside', () => {
     })
   })
 
-  // ===========================================================================
   // CLEANUP TESTS
-  // ===========================================================================
   describe('Cleanup on Unmount', () => {
     it('removes event listener on unmount', () => {
       const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener')
@@ -316,9 +282,7 @@ describe('useClickOutside', () => {
     })
   })
 
-  // ===========================================================================
   // RERENDER BEHAVIOR TESTS
-  // ===========================================================================
   describe('Rerender Behavior', () => {
     it('uses updated callback after rerender', () => {
       const onClickOutside1 = vi.fn()
@@ -361,9 +325,7 @@ describe('useClickOutside', () => {
     })
   })
 
-  // ===========================================================================
   // NULL REF HANDLING TESTS
-  // ===========================================================================
   describe('Null Ref Handling', () => {
     it('does not throw when ref.current is null', () => {
       const onClickOutside = vi.fn()
@@ -387,9 +349,7 @@ describe('useClickOutside', () => {
     })
   })
 
-  // ===========================================================================
   // EVENT DETAILS TESTS
-  // ===========================================================================
   describe('Event Details', () => {
     it('responds to mousedown events specifically', () => {
       const onClickOutside = vi.fn()
@@ -426,9 +386,7 @@ describe('useClickOutside', () => {
     })
   })
 
-  // ===========================================================================
   // MULTIPLE HOOKS TESTS
-  // ===========================================================================
   describe('Multiple Hooks', () => {
     it('multiple hooks can coexist and independently detect outside clicks', () => {
       const element1 = createDOMElement('div')

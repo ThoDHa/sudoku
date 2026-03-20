@@ -96,7 +96,6 @@ func (b *Board) canPlace(idx, digit int) bool {
 		}
 	}
 
-	// Check box
 	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
 	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
 		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
@@ -137,7 +136,6 @@ func (b *Board) SetCell(idx, digit int) {
 		}
 	}
 
-	// Remove from box and mark as eliminated
 	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
 	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
 		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
