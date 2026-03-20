@@ -20,7 +20,7 @@ func TestConstraintViolation_DuplicateInRow(t *testing.T) {
 		t.Fatal("Expected constraint violation move, got nil")
 	}
 
-	if move.Technique != "constraint-violation-duplicate-row" {
+	if move != nil && move.Technique != "constraint-violation-duplicate-row" {
 		t.Errorf("Expected technique 'constraint-violation-duplicate-row', got '%s'", move.Technique)
 	}
 
@@ -53,7 +53,7 @@ func TestConstraintViolation_DuplicateInColumn(t *testing.T) {
 		t.Fatal("Expected constraint violation move, got nil")
 	}
 
-	if move.Technique != "constraint-violation-duplicate-col" {
+	if move != nil && move.Technique != "constraint-violation-duplicate-col" {
 		t.Errorf("Expected technique 'constraint-violation-duplicate-col', got '%s'", move.Technique)
 	}
 
@@ -86,7 +86,7 @@ func TestConstraintViolation_DuplicateInBox(t *testing.T) {
 		t.Fatal("Expected constraint violation move, got nil")
 	}
 
-	if move.Technique != "constraint-violation-duplicate-box" {
+	if move != nil && move.Technique != "constraint-violation-duplicate-box" {
 		t.Errorf("Expected technique 'constraint-violation-duplicate-box', got '%s'", move.Technique)
 	}
 
@@ -126,7 +126,7 @@ func TestConstraintViolation_InvalidCandidate(t *testing.T) {
 		t.Fatal("Expected constraint violation move, got nil")
 	}
 
-	if move.Technique != "constraint-violation-invalid-candidate" {
+	if move != nil && move.Technique != "constraint-violation-invalid-candidate" {
 		t.Errorf("Expected technique 'constraint-violation-invalid-candidate', got '%s'", move.Technique)
 	}
 
@@ -195,7 +195,7 @@ func TestConstraintViolation_PriorityOverOtherMoves(t *testing.T) {
 	}
 
 	// The FIRST move should be the constraint violation
-	if move.Technique != "constraint-violation-duplicate-row" {
+	if move != nil && move.Technique != "constraint-violation-duplicate-row" {
 		t.Errorf("Constraint violation should be detected first, but got technique '%s'", move.Technique)
 	}
 }

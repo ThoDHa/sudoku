@@ -34,7 +34,7 @@ func TestNakedSingleHighlights(t *testing.T) {
 		t.Fatal("Expected Naked Single to be detected")
 	}
 
-	if len(move.Highlights.Primary) != 1 {
+	if move != nil && len(move.Highlights.Primary) != 1 {
 		t.Errorf("Expected 1 primary highlight, got %d", len(move.Highlights.Primary))
 	}
 
@@ -69,7 +69,7 @@ func TestHiddenSingleHighlights(t *testing.T) {
 		t.Fatal("Expected Hidden Single to be detected")
 	}
 
-	if len(move.Highlights.Primary) != 1 {
+	if move != nil && len(move.Highlights.Primary) != 1 {
 		t.Errorf("Expected 1 primary highlight, got %d", len(move.Highlights.Primary))
 	}
 
@@ -100,7 +100,7 @@ func TestNakedPairHighlights(t *testing.T) {
 		t.Fatal("Expected Naked Pair to be detected")
 	}
 
-	if len(move.Highlights.Primary) != 2 {
+	if move != nil && len(move.Highlights.Primary) != 2 {
 		t.Errorf("Expected 2 primary highlights for pair cells, got %d", len(move.Highlights.Primary))
 	}
 
@@ -147,7 +147,7 @@ func TestHiddenPairHighlights(t *testing.T) {
 		t.Fatal("Expected Hidden Pair to be detected")
 	}
 
-	if len(move.Highlights.Primary) != 2 {
+	if move != nil && len(move.Highlights.Primary) != 2 {
 		t.Errorf("Expected 2 primary highlights for pair cells, got %d", len(move.Highlights.Primary))
 	}
 
@@ -181,7 +181,7 @@ func TestPointingPairHighlights(t *testing.T) {
 		t.Fatal("Expected Pointing Pair to be detected")
 	}
 
-	if len(move.Highlights.Primary) < 2 {
+	if move != nil && len(move.Highlights.Primary) < 2 {
 		t.Errorf("Expected at least 2 primary highlights, got %d", len(move.Highlights.Primary))
 	}
 
@@ -213,7 +213,7 @@ func TestBoxLineReductionHighlights(t *testing.T) {
 		t.Fatal("Expected Box-Line Reduction to be detected")
 	}
 
-	if len(move.Highlights.Primary) < 2 {
+	if move != nil && len(move.Highlights.Primary) < 2 {
 		t.Errorf("Expected at least 2 primary highlights, got %d", len(move.Highlights.Primary))
 	}
 
@@ -261,7 +261,7 @@ func TestXWingHighlights(t *testing.T) {
 		t.Fatal("Expected X-Wing to be detected")
 	}
 
-	if len(move.Highlights.Primary) != 4 {
+	if move != nil && len(move.Highlights.Primary) != 4 {
 		t.Errorf("Expected 4 primary highlights for X-Wing corners, got %d", len(move.Highlights.Primary))
 	}
 
@@ -316,7 +316,7 @@ func TestXYWingHighlights(t *testing.T) {
 		t.Fatal("Expected XY-Wing to be detected")
 	}
 
-	if len(move.Highlights.Primary) != 3 {
+	if move != nil && len(move.Highlights.Primary) != 3 {
 		t.Errorf("Expected 3 primary highlights (pivot + 2 wings), got %d", len(move.Highlights.Primary))
 	}
 
@@ -366,15 +366,15 @@ func TestSimpleColoringHighlights(t *testing.T) {
 		t.Skip("Simple Coloring not detected in this configuration")
 	}
 
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlight for the cell being eliminated")
 	}
 
-	if len(move.Highlights.Secondary) == 0 {
+	if move != nil && len(move.Highlights.Secondary) == 0 {
 		t.Error("Expected secondary highlights showing the color chain")
 	}
 
-	if len(move.Eliminations) == 0 {
+	if move != nil && len(move.Eliminations) == 0 {
 		t.Error("Expected eliminations from Simple Coloring")
 	}
 }
@@ -397,7 +397,7 @@ func TestNakedTripleHighlights(t *testing.T) {
 		t.Fatal("Expected Naked Triple to be detected")
 	}
 
-	if len(move.Highlights.Primary) != 3 {
+	if move != nil && len(move.Highlights.Primary) != 3 {
 		t.Errorf("Expected 3 primary highlights for triple cells, got %d", len(move.Highlights.Primary))
 	}
 
@@ -446,7 +446,7 @@ func TestSwordfishHighlights(t *testing.T) {
 		t.Fatal("Expected Swordfish to be detected")
 	}
 
-	if len(move.Highlights.Primary) != 9 {
+	if move != nil && len(move.Highlights.Primary) != 9 {
 		t.Errorf("Expected 9 primary highlights for Swordfish cells, got %d", len(move.Highlights.Primary))
 	}
 
@@ -527,19 +527,23 @@ func TestHighlightConsistency(t *testing.T) {
 				t.Fatalf("%s not detected", tc.name)
 			}
 
-			if len(move.Highlights.Primary) == 0 {
+			if move != nil && len(move.Highlights.Primary) == 0 {
 				t.Errorf("%s: Expected at least one primary highlight", tc.name)
 			}
 
-			for _, p := range move.Highlights.Primary {
-				if p.Row < 0 || p.Row >= constants.GridSize || p.Col < 0 || p.Col >= constants.GridSize {
-					t.Errorf("%s: Invalid primary highlight position %v", tc.name, p)
+			if move != nil {
+				for _, p := range move.Highlights.Primary {
+					if p.Row < 0 || p.Row >= constants.GridSize || p.Col < 0 || p.Col >= constants.GridSize {
+						t.Errorf("%s: Invalid primary highlight position %v", tc.name, p)
+					}
 				}
 			}
 
-			for _, s := range move.Highlights.Secondary {
-				if s.Row < 0 || s.Row >= constants.GridSize || s.Col < 0 || s.Col >= constants.GridSize {
-					t.Errorf("%s: Invalid secondary highlight position %v", tc.name, s)
+			if move != nil {
+				for _, s := range move.Highlights.Secondary {
+					if s.Row < 0 || s.Row >= constants.GridSize || s.Col < 0 || s.Col >= constants.GridSize {
+						t.Errorf("%s: Invalid secondary highlight position %v", tc.name, s)
+					}
 				}
 			}
 
@@ -578,7 +582,7 @@ func TestHiddenTripleHighlights(t *testing.T) {
 	if move == nil {
 		t.Fatal("Expected Hidden Triple")
 	}
-	if len(move.Highlights.Primary) != 3 {
+	if move != nil && len(move.Highlights.Primary) != 3 {
 		t.Errorf("Expected 3 primary, got %d", len(move.Highlights.Primary))
 	}
 	if len(move.Eliminations) == 0 {
@@ -603,7 +607,7 @@ func TestNakedQuadHighlights(t *testing.T) {
 	if move == nil {
 		t.Fatal("Expected Naked Quad")
 	}
-	if len(move.Highlights.Primary) != 4 {
+	if move != nil && len(move.Highlights.Primary) != 4 {
 		t.Errorf("Expected 4 primary, got %d", len(move.Highlights.Primary))
 	}
 	if len(move.Eliminations) == 0 {
@@ -631,7 +635,7 @@ func TestHiddenQuadHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("Hidden Quad not detected in this configuration")
 	}
-	if len(move.Highlights.Primary) != 4 {
+	if move != nil && len(move.Highlights.Primary) != 4 {
 		t.Errorf("Expected 4 primary, got %d", len(move.Highlights.Primary))
 	}
 }
@@ -653,7 +657,7 @@ func TestXYZWingHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("XYZ-Wing not detected in this configuration")
 	}
-	if len(move.Highlights.Primary) < 3 {
+	if move != nil && len(move.Highlights.Primary) < 3 {
 		t.Errorf("Expected at least 3 primary, got %d", len(move.Highlights.Primary))
 	}
 }
@@ -673,10 +677,10 @@ func TestBUGHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("BUG not detected in this configuration")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlight")
 	}
-	if move.Action != "assign" {
+	if move != nil && move.Action != "assign" {
 		t.Errorf("Expected assign action, got %s", move.Action)
 	}
 }
@@ -698,7 +702,7 @@ func TestUniqueRectangleType1Highlights(t *testing.T) {
 	if move == nil {
 		t.Skip("Unique Rectangle not detected")
 	}
-	if len(move.Highlights.Primary) < 4 {
+	if move != nil && len(move.Highlights.Primary) < 4 {
 		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
 	}
 	if len(move.Eliminations) == 0 {
@@ -730,7 +734,7 @@ func TestJellyfishHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("Jellyfish not detected")
 	}
-	if len(move.Highlights.Primary) != 16 {
+	if move != nil && len(move.Highlights.Primary) != 16 {
 		t.Errorf("Expected 16 primary, got %d", len(move.Highlights.Primary))
 	}
 }
@@ -753,7 +757,7 @@ func TestSkyscraperHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("Skyscraper not detected")
 	}
-	if len(move.Highlights.Primary) < 4 {
+	if move != nil && len(move.Highlights.Primary) < 4 {
 		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
 	}
 }
@@ -776,7 +780,7 @@ func TestXChainHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("X-Chain not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }
@@ -799,7 +803,7 @@ func TestXYChainHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("XY-Chain not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }
@@ -822,7 +826,7 @@ func TestWWingHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("W-Wing not detected")
 	}
-	if len(move.Highlights.Primary) < 2 {
+	if move != nil && len(move.Highlights.Primary) < 2 {
 		t.Errorf("Expected at least 2 primary, got %d", len(move.Highlights.Primary))
 	}
 }
@@ -845,7 +849,7 @@ func TestWXYZWingHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("WXYZ-Wing not detected")
 	}
-	if len(move.Highlights.Primary) < 4 {
+	if move != nil && len(move.Highlights.Primary) < 4 {
 		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
 	}
 }
@@ -868,7 +872,7 @@ func TestEmptyRectangleHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("Empty Rectangle not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }
@@ -891,7 +895,7 @@ func TestMedusa3DHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("3D Medusa not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }
@@ -913,7 +917,7 @@ func TestUniqueRectangleType2Highlights(t *testing.T) {
 	if move == nil {
 		t.Skip("UR Type 2 not detected")
 	}
-	if len(move.Highlights.Primary) < 4 {
+	if move != nil && len(move.Highlights.Primary) < 4 {
 		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
 	}
 }
@@ -935,7 +939,7 @@ func TestUniqueRectangleType3Highlights(t *testing.T) {
 	if move == nil {
 		t.Skip("UR Type 3 not detected")
 	}
-	if len(move.Highlights.Primary) < 4 {
+	if move != nil && len(move.Highlights.Primary) < 4 {
 		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
 	}
 }
@@ -959,7 +963,7 @@ func TestUniqueRectangleType4Highlights(t *testing.T) {
 	if move == nil {
 		t.Skip("UR Type 4 not detected")
 	}
-	if len(move.Highlights.Primary) < 4 {
+	if move != nil && len(move.Highlights.Primary) < 4 {
 		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
 	}
 }
@@ -985,7 +989,7 @@ func TestFinnedXWingHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("Finned X-Wing not detected")
 	}
-	if len(move.Highlights.Primary) < 4 {
+	if move != nil && len(move.Highlights.Primary) < 4 {
 		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
 	}
 }
@@ -1015,7 +1019,7 @@ func TestFinnedSwordfishHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("Finned Swordfish not detected")
 	}
-	if len(move.Highlights.Primary) < 9 {
+	if move != nil && len(move.Highlights.Primary) < 9 {
 		t.Errorf("Expected at least 9 primary, got %d", len(move.Highlights.Primary))
 	}
 }
@@ -1038,7 +1042,7 @@ func TestGroupedXCyclesHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("Grouped X-Cycles not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }
@@ -1061,7 +1065,7 @@ func TestAICHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("AIC not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }
@@ -1084,7 +1088,7 @@ func TestALSXZHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("ALS-XZ not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }
@@ -1106,7 +1110,7 @@ func TestALSXYWingHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("ALS-XY-Wing not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }
@@ -1129,7 +1133,7 @@ func TestALSXYChainHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("ALS-XY-Chain not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }
@@ -1152,7 +1156,7 @@ func TestSueDeCoqHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("Sue de Coq not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }
@@ -1174,7 +1178,7 @@ func TestDeathBlossomHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("Death Blossom not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }
@@ -1196,7 +1200,7 @@ func TestDigitForcingChainHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("Digit Forcing Chain not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }
@@ -1218,7 +1222,7 @@ func TestForcingChainHighlights(t *testing.T) {
 	if move == nil {
 		t.Skip("Forcing Chain not detected")
 	}
-	if len(move.Highlights.Primary) == 0 {
+	if move != nil && len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlights")
 	}
 }

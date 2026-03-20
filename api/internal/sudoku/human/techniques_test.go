@@ -457,7 +457,7 @@ func TestDetectNakedSingle(t *testing.T) {
 				if move == nil {
 					t.Fatal("expected move but got nil")
 				}
-				if move.Action != "assign" {
+				if move != nil && move.Action != "assign" {
 					t.Errorf("expected action 'assign', got %q", move.Action)
 				}
 				if move.Digit != tt.expectDigit {
@@ -626,7 +626,7 @@ func TestDetectHiddenSingle(t *testing.T) {
 				if move == nil {
 					t.Fatal("expected move but got nil")
 				}
-				if move.Action != "assign" {
+				if move != nil && move.Action != "assign" {
 					t.Errorf("expected action 'assign', got %q", move.Action)
 				}
 				if move.Digit != tt.expectDigit {
@@ -797,7 +797,7 @@ func TestDetectNakedPair(t *testing.T) {
 				if move == nil {
 					t.Fatal("expected move but got nil")
 				}
-				if move.Action != "eliminate" {
+				if move != nil && move.Action != "eliminate" {
 					t.Errorf("expected action 'eliminate', got %q", move.Action)
 				}
 				if len(move.Targets) != 2 {
@@ -910,7 +910,7 @@ func TestDetectHiddenPair(t *testing.T) {
 				if move == nil {
 					t.Fatal("expected move but got nil")
 				}
-				if move.Action != "eliminate" {
+				if move != nil && move.Action != "eliminate" {
 					t.Errorf("expected action 'eliminate', got %q", move.Action)
 				}
 				if len(move.Targets) != 2 {
@@ -1013,7 +1013,7 @@ func TestDetectPointingPair(t *testing.T) {
 				if move == nil {
 					t.Fatal("expected move but got nil")
 				}
-				if move.Action != "eliminate" {
+				if move != nil && move.Action != "eliminate" {
 					t.Errorf("expected action 'eliminate', got %q", move.Action)
 				}
 				if move.Digit != tt.expectDigit {
@@ -1093,7 +1093,7 @@ func TestDetectBoxLineReduction(t *testing.T) {
 				if move == nil {
 					t.Fatal("expected move but got nil")
 				}
-				if move.Action != "eliminate" {
+				if move != nil && move.Action != "eliminate" {
 					t.Errorf("expected action 'eliminate', got %q", move.Action)
 				}
 				if move.Digit != tt.expectDigit {
@@ -1284,7 +1284,7 @@ func TestDetectMedusa3D(t *testing.T) {
 				if move == nil {
 					t.Fatal("expected move but got nil")
 				}
-				if move.Action != "eliminate" {
+				if move != nil && move.Action != "eliminate" {
 					t.Errorf("expected action 'eliminate', got %q", move.Action)
 				}
 			} else {
@@ -1342,7 +1342,7 @@ func TestDetectSueDeCoq(t *testing.T) {
 				if move == nil {
 					t.Fatal("expected move but got nil")
 				}
-				if move.Action != "eliminate" {
+				if move != nil && move.Action != "eliminate" {
 					t.Errorf("expected action 'eliminate', got %q", move.Action)
 				}
 			} else {
@@ -1415,7 +1415,7 @@ func TestDetectDeathBlossom(t *testing.T) {
 				if move == nil {
 					t.Fatal("expected move but got nil")
 				}
-				if move.Action != "eliminate" {
+				if move != nil && move.Action != "eliminate" {
 					t.Errorf("expected action 'eliminate', got %q", move.Action)
 				}
 			} else {

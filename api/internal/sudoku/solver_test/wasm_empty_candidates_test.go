@@ -60,7 +60,7 @@ func TestWASMEmptyCandidatesScenario(t *testing.T) {
 			t.Fatal("FindNextMove returned nil even after InitCandidates")
 		}
 
-		if move.Technique == "contradiction" || move.Action == "contradiction" {
+		if move != nil && (move.Technique == "contradiction" || move.Action == "contradiction") {
 			t.Errorf("Got contradiction move even after InitCandidates: %s", move.Explanation)
 		}
 

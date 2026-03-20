@@ -54,7 +54,7 @@ func TestAutosolverWithNoCandidatesFilled(t *testing.T) {
 		}
 
 		// Should NOT get a contradiction when starting with empty candidates
-		if move.Technique == "contradiction" {
+		if move != nil && move.Technique == "contradiction" {
 			t.Fatalf("Unexpected contradiction at move %d: %s", moveCount+1, move.Explanation)
 		}
 
@@ -120,7 +120,7 @@ func TestEmptyCandidatesNotTreatedAsContradiction(t *testing.T) {
 	}
 
 	// The move should NOT be a contradiction
-	if move.Technique == "contradiction" {
+	if move != nil && move.Technique == "contradiction" {
 		t.Errorf("Expected fill-candidate move, but got contradiction: %s", move.Explanation)
 	}
 
@@ -536,7 +536,7 @@ func TestHiddenSinglesDetectedDuringCandidateFilling(t *testing.T) {
 		t.Fatal("Expected hidden single to be detected during candidate filling")
 	}
 
-	if hiddenSingleMove.Digit != 6 {
+	if hiddenSingleMove != nil && hiddenSingleMove.Digit != 6 {
 		t.Errorf("Expected hidden single digit 6, got %d", hiddenSingleMove.Digit)
 	}
 

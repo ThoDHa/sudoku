@@ -324,7 +324,7 @@ func TestSolverHandlesAllCandidatesRemoved(t *testing.T) {
 		t.Fatalf("Expected a move (contradiction), got nil")
 	}
 
-	if move.Action != "contradiction" {
+	if move != nil && move.Action != "contradiction" {
 		t.Errorf("Expected contradiction action, got %q", move.Action)
 	}
 
@@ -408,7 +408,7 @@ func TestSolverHandlesImmediateContradiction(t *testing.T) {
 		t.Fatalf("Expected contradiction move, got nil")
 	}
 
-	if move.Action != "contradiction" {
+	if move != nil && move.Action != "contradiction" {
 		t.Errorf("Expected action 'contradiction', got %q", move.Action)
 	}
 
@@ -531,7 +531,7 @@ func TestContradictionMoveStructure(t *testing.T) {
 	}
 
 	// Verify move structure
-	if move.Action != "contradiction" {
+	if move != nil && move.Action != "contradiction" {
 		t.Errorf("Expected action 'contradiction', got %q", move.Action)
 	}
 
