@@ -47,11 +47,26 @@ func DetectHiddenSingle(b BoardInterface) *core.Move {
 				col := positions[0]
 				idx := row*constants.GridSize + col
 				if b.GetCandidatesAt(idx).Count() > 1 {
+					// Build eliminations for all other candidates in this cell
+					cellCandidates := b.GetCandidatesAt(idx)
+					var eliminations []core.Candidate
+
+					for d := 1; d <= constants.GridSize; d++ {
+						if d != digit && cellCandidates.Has(d) {
+							eliminations = append(eliminations, core.Candidate{
+								Row:   row,
+								Col:   col,
+								Digit: d,
+							})
+						}
+					}
+
 					return &core.Move{
-						Action:      "assign",
-						Digit:       digit,
-						Targets:     []core.CellRef{{Row: row, Col: col}},
-						Explanation: fmt.Sprintf("In row %d, %d can only go in R%dC%d", row+1, digit, row+1, col+1),
+						Action:       "assign",
+						Digit:        digit,
+						Targets:      []core.CellRef{{Row: row, Col: col}},
+						Eliminations: eliminations,
+						Explanation:  fmt.Sprintf("In row %d, %d can only go in R%dC%d", row+1, digit, row+1, col+1),
 						Highlights: core.Highlights{
 							Primary:   []core.CellRef{{Row: row, Col: col}},
 							Secondary: ToCellRefs(RowIndices[row]),
@@ -80,11 +95,26 @@ func DetectHiddenSingle(b BoardInterface) *core.Move {
 				row := positions[0]
 				idx := row*constants.GridSize + col
 				if b.GetCandidatesAt(idx).Count() > 1 {
+					// Build eliminations for all other candidates in this cell
+					cellCandidates := b.GetCandidatesAt(idx)
+					var eliminations []core.Candidate
+
+					for d := 1; d <= constants.GridSize; d++ {
+						if d != digit && cellCandidates.Has(d) {
+							eliminations = append(eliminations, core.Candidate{
+								Row:   row,
+								Col:   col,
+								Digit: d,
+							})
+						}
+					}
+
 					return &core.Move{
-						Action:      "assign",
-						Digit:       digit,
-						Targets:     []core.CellRef{{Row: row, Col: col}},
-						Explanation: fmt.Sprintf("In column %d, %d can only go in R%dC%d", col+1, digit, row+1, col+1),
+						Action:       "assign",
+						Digit:        digit,
+						Targets:      []core.CellRef{{Row: row, Col: col}},
+						Eliminations: eliminations,
+						Explanation:  fmt.Sprintf("In column %d, %d can only go in R%dC%d", col+1, digit, row+1, col+1),
 						Highlights: core.Highlights{
 							Primary:   []core.CellRef{{Row: row, Col: col}},
 							Secondary: ToCellRefs(ColIndices[col]),
@@ -119,11 +149,26 @@ func DetectHiddenSingle(b BoardInterface) *core.Move {
 				pos := positions[0]
 				idx := pos.Row*constants.GridSize + pos.Col
 				if b.GetCandidatesAt(idx).Count() > 1 {
+					// Build eliminations for all other candidates in this cell
+					cellCandidates := b.GetCandidatesAt(idx)
+					var eliminations []core.Candidate
+
+					for d := 1; d <= constants.GridSize; d++ {
+						if d != digit && cellCandidates.Has(d) {
+							eliminations = append(eliminations, core.Candidate{
+								Row:   pos.Row,
+								Col:   pos.Col,
+								Digit: d,
+							})
+						}
+					}
+
 					return &core.Move{
-						Action:      "assign",
-						Digit:       digit,
-						Targets:     []core.CellRef{pos},
-						Explanation: fmt.Sprintf("In box %d, %d can only go in R%dC%d", box+1, digit, pos.Row+1, pos.Col+1),
+						Action:       "assign",
+						Digit:        digit,
+						Targets:      []core.CellRef{pos},
+						Eliminations: eliminations,
+						Explanation:  fmt.Sprintf("In box %d, %d can only go in R%dC%d", box+1, digit, pos.Row+1, pos.Col+1),
 						Highlights: core.Highlights{
 							Primary:   []core.CellRef{pos},
 							Secondary: ToCellRefs(BoxIndices[box]),
