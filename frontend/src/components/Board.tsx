@@ -135,6 +135,8 @@ interface CellData {
   eliminations: { row: number; col: number; digit: number }[] | undefined
   /** When false, hides eliminations and target additions (technique hint mode) */
   showAnswer: boolean
+  /** The digit being placed/eliminated by the current hint (from highlight.digit) */
+  targetDigit?: number
 }
 
 interface CellProps {
@@ -165,6 +167,7 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onPoint
     isTarget,
     eliminations,
     showAnswer,
+    targetDigit,
   } = data
 
   const row = Math.floor(idx / 9)
@@ -207,7 +210,12 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onPoint
           )
           
           // Check if this digit is the relevant one for highlighting
-          const isRelevantDigit = singleDigit ? d === singleDigit : isTarget
+          // Use targetDigit (from hint) if available, otherwise fall back to singleDigit (user-selected)
+          const isRelevantDigit = targetDigit !== undefined 
+            ? d === targetDigit 
+            : singleDigit 
+              ? d === singleDigit 
+              : false
           
           // Determine styling for this specific candidate
           let digitClass = "candidate-digit "
@@ -216,6 +224,7 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onPoint
             digitClass += "text-error-text line-through font-bold"
           } else if (hasCandidate_ && isRelevantDigit && isTarget && showAnswer) {
             // Target cells show the digit to ADD in green (hint color)
+            // Only highlight the specific targetDigit, not all candidates
             // Only show if showAnswer is true (regular hint mode)
             digitClass += "text-hint-text font-bold"
           } else if (isHighlightedCell) {
@@ -769,6 +778,7 @@ const Board = memo(function Board({
         isTarget,
         eliminations: highlight?.eliminations,
         showAnswer: highlight?.showAnswer !== false, // Default to true for backward compatibility
+        targetDigit: highlight?.digit, // Pass the hint's digit for candidate highlighting
       })
     }
     return result
