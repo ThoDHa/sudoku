@@ -42,72 +42,50 @@ interface BoardProps {
   className?: string
 }
 
+// Find duplicates within a unit (row, column, or box) given cell indices
+function findDuplicatesInUnit(board: number[], indices: number[]): Set<number> {
+  const seen = new Map<number, number[]>()
+  for (const idx of indices) {
+    const val = board[idx] ?? 0
+    if (val !== 0) {
+      if (!seen.has(val)) seen.set(val, [])
+      seen.get(val)?.push(idx)
+    }
+  }
+  const duplicates = new Set<number>()
+  seen.forEach((cellIndices) => {
+    if (cellIndices.length > 1) cellIndices.forEach((i) => duplicates.add(i))
+  })
+  return duplicates
+}
+
 // Find all cells that have duplicate values in their row, column, or box
 function findDuplicates(board: number[]): Set<number> {
   const duplicates = new Set<number>()
 
   // Check rows
   for (let row = 0; row < 9; row++) {
-    const seen = new Map<number, number[]>()
-    for (let col = 0; col < 9; col++) {
-      const idx = row * 9 + col
-      const val = board[idx] ?? 0
-      if (val !== 0) {
-        if (!seen.has(val)) {
-          seen.set(val, [])
-        }
-        seen.get(val)?.push(idx)
-      }
-    }
-    seen.forEach((indices) => {
-      if (indices.length > 1) {
-        indices.forEach((i) => duplicates.add(i))
-      }
-    })
+    const indices = Array.from({ length: 9 }, (_, col) => row * 9 + col)
+    findDuplicatesInUnit(board, indices).forEach((i) => duplicates.add(i))
   }
 
   // Check columns
   for (let col = 0; col < 9; col++) {
-    const seen = new Map<number, number[]>()
-    for (let row = 0; row < 9; row++) {
-      const idx = row * 9 + col
-      const val = board[idx] ?? 0
-      if (val !== 0) {
-        if (!seen.has(val)) {
-          seen.set(val, [])
-        }
-        seen.get(val)?.push(idx)
-      }
-    }
-    seen.forEach((indices) => {
-      if (indices.length > 1) {
-        indices.forEach((i) => duplicates.add(i))
-      }
-    })
+    const indices = Array.from({ length: 9 }, (_, row) => row * 9 + col)
+    findDuplicatesInUnit(board, indices).forEach((i) => duplicates.add(i))
   }
 
   // Check boxes
   for (let box = 0; box < 9; box++) {
     const boxRow = Math.floor(box / 3) * 3
     const boxCol = (box % 3) * 3
-    const seen = new Map<number, number[]>()
+    const indices: number[] = []
     for (let r = boxRow; r < boxRow + 3; r++) {
       for (let c = boxCol; c < boxCol + 3; c++) {
-        const idx = r * 9 + c
-        const val = board[idx] ?? 0
-        if (val !== 0) {
-          if (!seen.has(val)) {
-            seen.set(val, [])
-          }
-          seen.get(val)?.push(idx)
-        }
+        indices.push(r * 9 + c)
       }
     }
-    seen.forEach((indices) => {
-      if (indices.length > 1) {
-        indices.forEach((i) => duplicates.add(i))
-      }
-    })
+    findDuplicatesInUnit(board, indices).forEach((i) => duplicates.add(i))
   }
 
   return duplicates
