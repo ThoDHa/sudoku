@@ -105,116 +105,90 @@ const (
 // Move Finding
 // ============================================================================
 
+// checkDuplicateForCell checks if the digit at cellIdx appears elsewhere in the given unit indices
+func (s *Solver) checkDuplicateForCell(b *Board, cellIdx int, unitIndices []int, unitType UnitType, unitIndex int) *core.Move {
+	digit := b.Cells[cellIdx]
+	if digit == 0 {
+		return nil
+	}
+
+	for _, otherIdx := range unitIndices {
+		if otherIdx == cellIdx {
+			continue
+		}
+		if b.Cells[otherIdx] == digit {
+			return s.createDuplicateViolationMove(digit, cellIdx, otherIdx, unitType, unitIndex)
+		}
+	}
+	return nil
+}
+
+// createDuplicateViolationMove creates a constraint violation move for duplicate digits
+func (s *Solver) createDuplicateViolationMove(digit int, idx1, idx2 int, unitType UnitType, unitIndex int) *core.Move {
+	row1, col1 := RowOf(idx1), ColOf(idx1)
+	row2, col2 := RowOf(idx2), ColOf(idx2)
+
+	var technique string
+	var unitName string
+	var secondary []core.CellRef
+
+	switch unitType {
+	case UnitRow:
+		technique = "constraint-violation-duplicate-row"
+		unitName = fmt.Sprintf("row %d", unitIndex+1)
+		secondary = getRowCellRefs(unitIndex)
+	case UnitCol:
+		technique = "constraint-violation-duplicate-col"
+		unitName = fmt.Sprintf("column %d", unitIndex+1)
+		secondary = getColCellRefs(unitIndex)
+	case UnitBox:
+		technique = "constraint-violation-duplicate-box"
+		unitName = fmt.Sprintf("box %d", unitIndex+1)
+		secondary = getBoxCellRefs(unitIndex)
+	}
+
+	return &core.Move{
+		Technique: technique,
+		Action:    "contradiction",
+		Digit:     digit,
+		Targets: []core.CellRef{
+			{Row: row1, Col: col1},
+			{Row: row2, Col: col2},
+		},
+		Explanation: fmt.Sprintf("Constraint violation: %d appears twice in %s at R%dC%d and R%dC%d",
+			digit, unitName, row1+1, col1+1, row2+1, col2+1),
+		Highlights: core.Highlights{
+			Primary:   []core.CellRef{{Row: row1, Col: col1}, {Row: row2, Col: col2}},
+			Secondary: secondary,
+		},
+		Refs: core.TechniqueRef{
+			Title: "Constraint Violation",
+			Slug:  "constraint-violation",
+			URL:   "",
+		},
+	}
+}
+
 // checkConstraintViolations detects logical constraint violations in the board
 // Returns a constraint violation move if any violations are found, nil otherwise
 func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
-	// Check for duplicate values in rows, columns, and boxes
 	for i := 0; i < constants.TotalCells; i++ {
 		if b.Cells[i] == 0 {
 			continue
 		}
 
-		digit := b.Cells[i]
-		row, col := i/constants.GridSize, i%constants.GridSize
+		row := RowOf(i)
+		col := ColOf(i)
+		box := BoxOf(i)
 
-		// Check for duplicates in row
-		duplicateCol := -1
-		for c := 0; c < constants.GridSize; c++ {
-			if c != col && b.Cells[row*constants.GridSize+c] == digit {
-				duplicateCol = c
-				break
-			}
+		if move := s.checkDuplicateForCell(b, i, RowIndices[row], UnitRow, row); move != nil {
+			return move
 		}
-		if duplicateCol >= 0 {
-			return &core.Move{
-				Technique: "constraint-violation-duplicate-row",
-				Action:    "contradiction",
-				Digit:     digit,
-				Targets: []core.CellRef{
-					{Row: row, Col: col},
-					{Row: row, Col: duplicateCol},
-				},
-				Explanation: fmt.Sprintf("Constraint violation: %d appears twice in row %d at R%dC%d and R%dC%d",
-					digit, row+1, row+1, col+1, row+1, duplicateCol+1),
-				Highlights: core.Highlights{
-					Primary:   []core.CellRef{{Row: row, Col: col}, {Row: row, Col: duplicateCol}},
-					Secondary: getRowCellRefs(row),
-				},
-				Refs: core.TechniqueRef{
-					Title: "Constraint Violation",
-					Slug:  "constraint-violation",
-					URL:   "",
-				},
-			}
+		if move := s.checkDuplicateForCell(b, i, ColIndices[col], UnitCol, col); move != nil {
+			return move
 		}
-
-		// Check for duplicates in column
-		duplicateRow := -1
-		for r := 0; r < constants.GridSize; r++ {
-			if r != row && b.Cells[r*constants.GridSize+col] == digit {
-				duplicateRow = r
-				break
-			}
-		}
-		if duplicateRow >= 0 {
-			return &core.Move{
-				Technique: "constraint-violation-duplicate-col",
-				Action:    "contradiction",
-				Digit:     digit,
-				Targets: []core.CellRef{
-					{Row: row, Col: col},
-					{Row: duplicateRow, Col: col},
-				},
-				Explanation: fmt.Sprintf("Constraint violation: %d appears twice in column %d at R%dC%d and R%dC%d",
-					digit, col+1, row+1, col+1, duplicateRow+1, col+1),
-				Highlights: core.Highlights{
-					Primary:   []core.CellRef{{Row: row, Col: col}, {Row: duplicateRow, Col: col}},
-					Secondary: getColCellRefs(col),
-				},
-				Refs: core.TechniqueRef{
-					Title: "Constraint Violation",
-					Slug:  "constraint-violation",
-					URL:   "",
-				},
-			}
-		}
-
-		// Check for duplicates in box
-		boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
-		boxNum := (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize
-		var duplicateBoxRow, duplicateBoxCol int = -1, -1
-		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-			for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-				if (r != row || c != col) && b.Cells[r*constants.GridSize+c] == digit {
-					duplicateBoxRow, duplicateBoxCol = r, c
-					break
-				}
-			}
-			if duplicateBoxRow >= 0 {
-				break
-			}
-		}
-		if duplicateBoxRow >= 0 {
-			return &core.Move{
-				Technique: "constraint-violation-duplicate-box",
-				Action:    "contradiction",
-				Digit:     digit,
-				Targets: []core.CellRef{
-					{Row: row, Col: col},
-					{Row: duplicateBoxRow, Col: duplicateBoxCol},
-				},
-				Explanation: fmt.Sprintf("Constraint violation: %d appears twice in box %d at R%dC%d and R%dC%d",
-					digit, boxNum+1, row+1, col+1, duplicateBoxRow+1, duplicateBoxCol+1),
-				Highlights: core.Highlights{
-					Primary:   []core.CellRef{{Row: row, Col: col}, {Row: duplicateBoxRow, Col: duplicateBoxCol}},
-					Secondary: getBoxCellRefs(boxNum),
-				},
-				Refs: core.TechniqueRef{
-					Title: "Constraint Violation",
-					Slug:  "constraint-violation",
-					URL:   "",
-				},
-			}
+		if move := s.checkDuplicateForCell(b, i, BoxIndices[box], UnitBox, box); move != nil {
+			return move
 		}
 	}
 
