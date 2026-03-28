@@ -211,11 +211,24 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onPoint
           
           // Check if this digit is the relevant one for highlighting
           // Use targetDigit (from hint) if available, otherwise fall back to singleDigit (user-selected)
-          const isRelevantDigit = targetDigit !== undefined 
-            ? d === targetDigit 
-            : singleDigit 
-              ? d === singleDigit 
-              : false
+          // For multi-digit techniques (digit === 0), check if digit is relevant to the technique
+          let isRelevantDigit = false
+          if (targetDigit !== undefined && targetDigit > 0) {
+            // Single-digit technique: highlight only that digit
+            isRelevantDigit = d === targetDigit
+          } else if (targetDigit === 0 && isTarget) {
+            // Multi-digit technique (naked pair, hidden pair, etc.):
+            // Highlight candidates in target cells that are NOT being eliminated
+            // For naked pair: all candidates in pair cells are the pair digits
+            // For hidden pair: the pair digits remain (others are eliminated)
+            const isBeingEliminatedHere = eliminations?.some(
+              (e) => e.row === row && e.col === col && e.digit === d
+            )
+            isRelevantDigit = !isBeingEliminatedHere
+          } else if (singleDigit) {
+            // User-selected digit highlighting
+            isRelevantDigit = d === singleDigit
+          }
           
           // Determine styling for this specific candidate
           let digitClass = "candidate-digit "
