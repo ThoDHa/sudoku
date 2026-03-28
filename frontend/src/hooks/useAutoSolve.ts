@@ -4,6 +4,13 @@ import { solveAll } from '../lib/solver-service'
 import { useBackgroundManager } from './useBackgroundManager'
 import type { Move } from './useSudokuGame'
 import { logger } from '../lib/logger'
+import {
+  createPlayNextMove,
+  candidatesToArrays,
+  type MoveResult,
+  type StateSnapshot,
+  type MoveHandlerContext,
+} from './autoSolvePlayback'
 
 interface UseAutoSolveOptions {
   /** Delay between steps in milliseconds (default: PLAY_DELAY) */
@@ -73,25 +80,6 @@ interface UseAutoSolveReturn {
   lastCompletedSteps: number
 }
 
-interface MoveResult {
-  board: number[]
-  candidates: (number[] | null)[]
-  move: Move & { userEntryCount?: number }
-}
-
-// State snapshot for rewind functionality
-interface StateSnapshot {
-  board: number[]
-  candidates: number[][] // Serialized for storage
-  move: Move | null // The move that was applied to reach this state (null for initial)
-}
-
-/**
- * Hook to manage auto-solve functionality.
- * Fetches all moves in one request via /api/solve/all, then plays them back with animation.
- * Pauses when tab is hidden and resumes when visible again.
- * Supports rewind/fast-forward with stepBack/stepForward.
- */
 export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const {
     stepDelay = PLAY_DELAY,
@@ -301,153 +289,28 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       movesQueueRef.current = [...data.moves]
       setTotalMoves(data.moves.length)
 
-      const playNextMove = async () => {
-        if (!autoSolveRef.current) {
-          stopAutoSolve()
-          return
-        }
-
-        if (pausedRef.current) {
-          return
-        }
-
-        if (movesQueueRef.current.length === 0) {
-          stopAutoSolve()
-          return
-        }
-
-        const moveResult = movesQueueRef.current.shift()
-        if (!moveResult) return
-        const newIndex = allMovesRef.current.length - movesQueueRef.current.length
-        currentIndexRef.current = newIndex
-        setCurrentIndex(newIndex)
-
-        if (moveResult.move.action === 'contradiction') {
-          if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            scheduleNextMove(playNextMove, stepDelayRef.current)
-          } else {
-            onError?.('Puzzle has a contradiction that could not be resolved.')
-            stopAutoSolve()
-          }
-          return
-        }
-
-        if (moveResult.move.action === 'error') {
-          const userEntryCount = moveResult.move.userEntryCount || 0
-          onUnpinpointableError?.(
-            moveResult.move.explanation || 'Too many incorrect entries to fix automatically.',
-            userEntryCount
-          )
-          stopAutoSolve()
-          return
-        }
-
-        if (moveResult.move.action === 'diagnostic') {
-          onStatus?.(moveResult.move.explanation || 'Taking another look...')
-          if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            scheduleNextMove(playNextMove, stepDelayRef.current)
-          } else {
-            stopAutoSolve()
-          }
-          return
-        }
-
-        if (moveResult.move.action === 'unpinpointable-error' || moveResult.move.action === 'stalled') {
-          const userEntryCount = moveResult.move.userEntryCount || 0
-          onUnpinpointableError?.(
-            moveResult.move.explanation || `Couldn't pinpoint the error. Check your ${userEntryCount} entries.`,
-            userEntryCount
-          )
-          stopAutoSolve()
-          return
-        }
-
-        if (moveResult.move.action === 'clear-candidates') {
-          const newCandidates = moveResult.candidates
-            ? moveResult.candidates.map((cellCands: number[] | null) =>
-                new Set<number>(cellCands || [])
-              )
-            : currentCandidates.map(() => new Set<number>())
-
-          applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
-
-          stateHistoryRef.current.push({
-            board: [...moveResult.board],
-            candidates: moveResult.candidates
-              ? moveResult.candidates.map(arr => arr ? [...arr] : [])
-              : [],
-            move: moveResult.move,
-          })
-
-          if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            scheduleNextMove(playNextMove, stepDelayRef.current)
-          } else {
-            stopAutoSolve()
-          }
-          return
-        }
-
-        if (moveResult.move.action === 'fix-error') {
-          const newCandidates = moveResult.candidates
-            ? moveResult.candidates.map((cellCands: number[] | null) =>
-                new Set<number>(cellCands || [])
-              )
-            : getCandidates()
-
-          applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
-
-          stateHistoryRef.current.push({
-            board: [...moveResult.board],
-            candidates: moveResult.candidates
-              ? moveResult.candidates.map(arr => arr ? [...arr] : [])
-              : getCandidates().map(set => Array.from(set)),
-            move: moveResult.move,
-          })
-
-          if (onErrorFixed) {
-            onErrorFixed(
-              moveResult.move.explanation || 'Found and fixed an error in your entries.',
-              () => {
-                if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-                  playNextMove()
-                } else {
-                  stopAutoSolve()
-                }
-              }
-            )
-          } else {
-            if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-              scheduleNextMove(playNextMove, stepDelayRef.current)
-            } else {
-              stopAutoSolve()
-            }
-          }
-          return
-        }
-
-        const newCandidates = moveResult.candidates
-          ? moveResult.candidates.map((cellCands: number[] | null) =>
-              new Set<number>(cellCands || [])
-            )
-          : currentCandidates
-
-        applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
-
-        stateHistoryRef.current.push({
-          board: [...moveResult.board],
-          candidates: moveResult.candidates
-            ? moveResult.candidates.map(arr => arr ? [...arr] : [])
-            : currentCandidates.map(set => Array.from(set)),
-          move: moveResult.move,
-        })
-
-        if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-          scheduleNextMove(playNextMove, stepDelayRef.current)
-        } else {
-          stopAutoSolve()
-        }
+      const context: MoveHandlerContext = {
+        autoSolveRef,
+        pausedRef,
+        movesQueueRef,
+        allMovesRef,
+        stateHistoryRef,
+        currentIndexRef,
+        setCurrentIndex,
+        scheduleNextMove,
+        stopAutoSolve,
+        stepDelayRef,
+        applyMove,
+        getCandidates,
+        onError,
+        onUnpinpointableError,
+        onStatus,
+        onErrorFixed,
+        initialCandidates: currentCandidates,
+        skipSpecialMoves: false,
       }
 
+      const playNextMove = createPlayNextMove(context)
       playNextMoveRef.current = playNextMove
 
       if (!startPaused) {
@@ -460,7 +323,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
     }
-  }, [getBoard, getCandidates, getGivens, applyMove, onError, onUnpinpointableError, onStatus, onErrorFixed, stopAutoSolve, scheduleNextMove])
+  }, [getBoard, getCandidates, getGivens, applyMove, onError, onUnpinpointableError, onStatus, onErrorFixed, stopAutoSolve, scheduleNextMove, setCurrentIndex])
 
   // Step backward one move
   const stepBack = useCallback(() => {
@@ -561,7 +424,6 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     setIsAutoSolving(true)
     autoSolveRef.current = true
     
-    // Store initial state
     stateHistoryRef.current = [{
       board: [...currentBoard],
       candidates: candidatesArray.map(arr => [...arr]),
@@ -583,182 +445,33 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         return
       }
 
-      // Store all moves for rewind functionality
       allMovesRef.current = data.moves
       movesQueueRef.current = [...data.moves]
       setTotalMoves(data.moves.length)
 
-      // Play back moves with animation
-      const playNextMove = async () => {
-        // Don't proceed if stopped or paused
-        if (!autoSolveRef.current) {
-          stopAutoSolve()
-          return
-        }
-        
-        // If paused, don't proceed - we'll be called again when resumed
-        if (pausedRef.current) {
-          return
-        }
-
-        if (movesQueueRef.current.length === 0) {
-          stopAutoSolve()
-          return
-        }
-
-        const moveResult = movesQueueRef.current.shift()
-        if (!moveResult) return
-        const newIndex = allMovesRef.current.length - movesQueueRef.current.length
-        currentIndexRef.current = newIndex
-        setCurrentIndex(newIndex)
-        
-        // Handle special moves from backend
-        if (moveResult.move.action === 'contradiction') {
-          // Backend detected a contradiction but continued - just skip this move in playback
-          if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            scheduleNextMove(playNextMove, stepDelayRef.current)
-          } else {
-            onError?.('Puzzle has a contradiction that could not be resolved.')
-            stopAutoSolve()
-          }
-          return
-        }
-        
-        if (moveResult.move.action === 'error') {
-          // Backend gave up - too many errors - offer user a choice
-          const userEntryCount = moveResult.move.userEntryCount || 0
-          onUnpinpointableError?.(
-            moveResult.move.explanation || 'Too many incorrect entries to fix automatically.',
-            userEntryCount
-          )
-          stopAutoSolve()
-          return
-        }
-
-        if (moveResult.move.action === 'diagnostic') {
-          // Backend is trying candidate refill diagnostic - show status message
-          onStatus?.(moveResult.move.explanation || 'Taking another look...')
-          // Continue with next moves
-          if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            scheduleNextMove(playNextMove, stepDelayRef.current)
-          } else {
-            stopAutoSolve()
-          }
-          return
-        }
-
-        if (moveResult.move.action === 'unpinpointable-error' || moveResult.move.action === 'stalled') {
-          // Backend couldn't find the error or is stuck - offer user a choice
-          const userEntryCount = moveResult.move.userEntryCount || 0
-          onUnpinpointableError?.(
-            moveResult.move.explanation || `Couldn't pinpoint the error. Check your ${userEntryCount} entries.`,
-            userEntryCount
-          )
-          stopAutoSolve()
-          return
-        }
-        
-        if (moveResult.move.action === 'clear-candidates') {
-          // Backend cleared candidates - apply the clean state
-          const newCandidates = moveResult.candidates
-            ? moveResult.candidates.map((cellCands: number[] | null) => 
-                new Set<number>(cellCands || [])
-              )
-            : currentCandidates.map(() => new Set<number>())
-          
-          applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
-          
-          // Store state for rewind
-          stateHistoryRef.current.push({
-            board: [...moveResult.board],
-            candidates: moveResult.candidates 
-              ? moveResult.candidates.map(arr => arr ? [...arr] : [])
-              : [],
-            move: moveResult.move,
-          })
-          
-          if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-            scheduleNextMove(playNextMove, stepDelayRef.current)
-          } else {
-            stopAutoSolve()
-          }
-          return
-        }
-
-        if (moveResult.move.action === 'fix-error') {
-          // Backend found and fixed a user error - apply the fix
-          // Backend now sends correct candidates (with ClearCell preserving solver progress)
-          const newCandidates = moveResult.candidates
-            ? moveResult.candidates.map((cellCands: number[] | null) => 
-                new Set<number>(cellCands || [])
-              )
-            : getCandidates()
-          
-          applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
-          
-          // Store state for rewind
-          stateHistoryRef.current.push({
-            board: [...moveResult.board],
-            candidates: moveResult.candidates 
-              ? moveResult.candidates.map(arr => arr ? [...arr] : [])
-              : getCandidates().map(set => Array.from(set)),
-            move: moveResult.move,
-          })
-          
-          // If callback provided, pause and let user acknowledge before continuing
-          if (onErrorFixed) {
-            onErrorFixed(
-              moveResult.move.explanation || 'Found and fixed an error in your entries.',
-              () => {
-                // Resume callback - continue solving
-                if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-                  playNextMove()
-                } else {
-                  stopAutoSolve()
-                }
-              }
-            )
-          } else {
-            // No callback - just continue after delay
-            if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-              scheduleNextMove(playNextMove, stepDelayRef.current)
-            } else {
-              stopAutoSolve()
-            }
-          }
-          return
-        }
-        
-        // Handle regular moves - apply the new board state
-        const newCandidates = moveResult.candidates
-          ? moveResult.candidates.map((cellCands: number[] | null) => 
-              new Set<number>(cellCands || [])
-            )
-          : currentCandidates
-
-        applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
-        
-        // Store state for rewind
-        stateHistoryRef.current.push({
-          board: [...moveResult.board],
-          candidates: moveResult.candidates 
-            ? moveResult.candidates.map(arr => arr ? [...arr] : [])
-            : currentCandidates.map(set => Array.from(set)),
-          move: moveResult.move,
-        })
-
-        // Wait then play next
-        if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-          scheduleNextMove(playNextMove, stepDelayRef.current)
-        } else {
-          stopAutoSolve()
-        }
+      const context: MoveHandlerContext = {
+        autoSolveRef,
+        pausedRef,
+        movesQueueRef,
+        allMovesRef,
+        stateHistoryRef,
+        currentIndexRef,
+        setCurrentIndex,
+        scheduleNextMove,
+        stopAutoSolve,
+        stepDelayRef,
+        applyMove,
+        getCandidates,
+        onError,
+        onUnpinpointableError,
+        onStatus,
+        onErrorFixed,
+        initialCandidates: currentCandidates,
+        skipSpecialMoves: false,
       }
 
-      // Store reference for resume functionality
+      const playNextMove = createPlayNextMove(context)
       playNextMoveRef.current = playNextMove
-
-      // Start playback
       playNextMove()
 
     } catch (err) {
@@ -767,10 +480,15 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
     }
-  }, [isAutoSolving, getBoard, getCandidates, getGivens, applyMove, isComplete, onError, onUnpinpointableError, onStatus, onErrorFixed, stopAutoSolve, scheduleNextMove])
+  }, [isAutoSolving, getBoard, getCandidates, getGivens, applyMove, isComplete, onError, onUnpinpointableError, onStatus, onErrorFixed, stopAutoSolve, scheduleNextMove, setCurrentIndex])
 
     // Play a custom move sequence (for Check & Fix, etc)
   const playMoves = useCallback((moves: MoveResult[], startPaused = false) => {
+    if (!moves || moves.length === 0) return
+
+    const currentBoard = getBoard()
+    const currentCandidates = getCandidates()
+
     setIsAutoSolving(true)
     autoSolveRef.current = true
 
@@ -783,8 +501,8 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     }
 
     stateHistoryRef.current = [{
-      board: moves[0]?.board || getBoard(),
-      candidates: moves[0]?.candidates?.map(arr => arr ? [...arr] : []) || getCandidates().map(set => Array.from(set)),
+      board: [...(moves[0]?.board || currentBoard)],
+      candidates: moves[0]?.candidates?.map(arr => arr ? [...arr] : []) || candidatesToArrays(currentCandidates),
       move: null,
     }]
     allMovesRef.current = moves
@@ -793,58 +511,45 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     setCurrentIndex(0)
     currentIndexRef.current = 0
 
-    const playNextMove = async () => {
-      if (!autoSolveRef.current) {
-        stopAutoSolve()
-        return
-      }
-      if (pausedRef.current) {
-        return
-      }
-      if (movesQueueRef.current.length === 0) {
-        stopAutoSolve()
-        return
-      }
-      const moveResult = movesQueueRef.current.shift()
-      if (!moveResult) return
-      const newIndex = allMovesRef.current.length - movesQueueRef.current.length
-      currentIndexRef.current = newIndex
-      setCurrentIndex(newIndex)
-      // Generalized move application code below (mimics normal autosolver replay)
-      const newCandidates = moveResult.candidates
-        ? moveResult.candidates.map((cellCands: number[] | null) => new Set<number>(cellCands || []))
-        : getCandidates()
-      logger.debug(`[AutoSolve:playMoves] Action: ${moveResult.move && moveResult.move.action} | Index: ${newIndex}`)
-      applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
-      stateHistoryRef.current.push({
-        board: [...moveResult.board],
-        candidates: moveResult.candidates
-          ? moveResult.candidates.map(arr => arr ? [...arr] : [])
-          : getCandidates().map(set => Array.from(set)),
-        move: moveResult.move,
-      })
-      if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-        scheduleNextMove(playNextMove, stepDelayRef.current)
-      } else {
-        stopAutoSolve()
-      }
+    const context: MoveHandlerContext = {
+      autoSolveRef,
+      pausedRef,
+      movesQueueRef,
+      allMovesRef,
+      stateHistoryRef,
+      currentIndexRef,
+      setCurrentIndex,
+      scheduleNextMove,
+      stopAutoSolve,
+      stepDelayRef,
+      applyMove,
+      getCandidates,
+      onError,
+      onUnpinpointableError: undefined,
+      onStatus: undefined,
+      onErrorFixed: undefined,
+      initialCandidates: currentCandidates,
+      skipSpecialMoves: false,
     }
+
+    const playNextMove = createPlayNextMove(context)
     playNextMoveRef.current = playNextMove
+
     if (!startPaused) {
       playNextMove()
     }
-  }, [getBoard, getCandidates, applyMove, stopAutoSolve, scheduleNextMove])
+  }, [getBoard, getCandidates, applyMove, stopAutoSolve, scheduleNextMove, onError, onUnpinpointableError])
 
   // Solve from givens only - used when user clicks "Show Solution"
   const solveFromGivens = useCallback(async () => {
     if (isAutoSolving) return
 
     const givens = getGivens()
+    const currentCandidates = getCandidates()
 
     setIsAutoSolving(true)
     autoSolveRef.current = true
     
-    // Store initial state (the givens)
     stateHistoryRef.current = [{
       board: [...givens],
       candidates: Array(81).fill([]),
@@ -866,64 +571,32 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         return
       }
 
-      // Store all moves for rewind
       allMovesRef.current = data.moves
       movesQueueRef.current = [...data.moves]
       setTotalMoves(data.moves.length)
-      
-      const currentCandidates = getCandidates()
 
-      const playNextMove = async () => {
-        if (!autoSolveRef.current || pausedRef.current) {
-          if (!autoSolveRef.current) stopAutoSolve()
-          return
-        }
-
-        if (movesQueueRef.current.length === 0) {
-          stopAutoSolve()
-          return
-        }
-
-        const moveResult = movesQueueRef.current.shift()
-        if (!moveResult) return
-        const newIndex = allMovesRef.current.length - movesQueueRef.current.length
-        currentIndexRef.current = newIndex
-        setCurrentIndex(newIndex)
-        
-        // Skip diagnostic/error moves when solving from givens
-        if (['contradiction', 'error', 'diagnostic', 'unpinpointable-error', 'stalled'].includes(moveResult.move.action)) {
-          if (movesQueueRef.current.length > 0) {
-            scheduleNextMove(playNextMove, stepDelayRef.current)
-          } else {
-            stopAutoSolve()
-          }
-          return
-        }
-
-        const newCandidates = moveResult.candidates
-          ? moveResult.candidates.map((cellCands: number[] | null) => 
-              new Set<number>(cellCands || [])
-            )
-          : currentCandidates
-
-        applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
-        
-        // Store state for rewind
-        stateHistoryRef.current.push({
-          board: [...moveResult.board],
-          candidates: moveResult.candidates 
-            ? moveResult.candidates.map(arr => arr ? [...arr] : [])
-            : currentCandidates.map(set => Array.from(set)),
-          move: moveResult.move,
-        })
-
-        if (movesQueueRef.current.length > 0 && autoSolveRef.current) {
-          scheduleNextMove(playNextMove, stepDelayRef.current)
-        } else {
-          stopAutoSolve()
-        }
+      const context: MoveHandlerContext = {
+        autoSolveRef,
+        pausedRef,
+        movesQueueRef,
+        allMovesRef,
+        stateHistoryRef,
+        currentIndexRef,
+        setCurrentIndex,
+        scheduleNextMove,
+        stopAutoSolve,
+        stepDelayRef,
+        applyMove,
+        getCandidates,
+        onError,
+        onUnpinpointableError,
+        onStatus,
+        onErrorFixed,
+        initialCandidates: currentCandidates,
+        skipSpecialMoves: true,
       }
 
+      const playNextMove = createPlayNextMove(context)
       playNextMoveRef.current = playNextMove
       playNextMove()
 
@@ -933,7 +606,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
     }
-  }, [isAutoSolving, getGivens, getCandidates, applyMove, onError, stopAutoSolve, scheduleNextMove])
+  }, [isAutoSolving, getGivens, getCandidates, applyMove, onError, onUnpinpointableError, onStatus, onErrorFixed, stopAutoSolve, scheduleNextMove, setCurrentIndex])
 
   // Apply check&fix moves and then continue normal autosolving
   const applyFixesAndContinueSolving = useCallback(async (fixMoves: MoveResult[]) => {
