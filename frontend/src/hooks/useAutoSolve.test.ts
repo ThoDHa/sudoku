@@ -1,86 +1,21 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useAutoSolve } from './useAutoSolve'
+import {
+  createMockBackgroundManager,
+  createDefaultAutoSolveOptions,
+  createMockAutoSolveMove,
+  createMockSolveResponse,
+} from '../test-utils'
 
-// MOCKS
-
-// Mock the solver service
 vi.mock('../lib/solver-service', () => ({
   solveAll: vi.fn(),
 }))
 
-// Import the mocked function for assertions
 import { solveAll } from '../lib/solver-service'
-import { createMockBackgroundManager } from '../test-utils/mocks'
 const mockSolveAll = vi.mocked(solveAll)
 
-// TEST UTILITIES
-
-/**
- * Create a mock background manager for testing
- */
-// Use shared mock from test-utils/mocks
-// Local overrides in tests can wrap or extend this helper when needed
-
-/**
- * Create default options for useAutoSolve hook
- */
-const createDefaultOptions = (overrides?: Partial<Parameters<typeof useAutoSolve>[0]>) => ({
-  getBoard: vi.fn(() => Array(81).fill(0)),
-  getCandidates: vi.fn(() => Array(81).fill(null).map(() => new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]))),
-  getGivens: vi.fn(() => Array(81).fill(0)),
-  applyMove: vi.fn(),
-  applyState: vi.fn(),
-  isComplete: vi.fn(() => false),
-  onError: vi.fn(),
-  onUnpinpointableError: vi.fn(),
-  onStatus: vi.fn(),
-  onErrorFixed: vi.fn(),
-  onStepNavigate: vi.fn(),
-  backgroundManager: createMockBackgroundManager(),
-  stepDelay: 10, // Fast for tests
-  ...overrides,
-})
-
-/**
- * Create a mock move result from the solver API
- */
-const createMockMove = (overrides?: Partial<{
-  action: string
-  technique: string
-  digit: number
-  explanation: string
-  userEntryCount: number
-}>) => ({
-  board: Array(81).fill(0),
-  candidates: Array(81).fill(null).map(() => [1, 2, 3]),
-  move: {
-    step_index: 0,
-    technique: overrides?.technique ?? 'Naked Single',
-    action: overrides?.action ?? 'place',
-    digit: overrides?.digit ?? 5,
-    targets: [{ row: 0, col: 0 }],
-    explanation: overrides?.explanation ?? 'Test move',
-    refs: { title: 'Test', slug: 'test', url: '/test' },
-    highlights: { primary: [] },
-    userEntryCount: overrides?.userEntryCount,
-  },
-})
-
-/**
- * Create a mock API response with multiple moves
- */
-const createMockSolveResponse = (moveCount: number = 3, overrides?: { solved?: boolean }) => ({
-  solved: overrides?.solved ?? true,
-  moves: Array(moveCount).fill(null).map((_, i) => ({
-    ...createMockMove(),
-    move: {
-      ...createMockMove().move,
-      step_index: i,
-      explanation: `Move ${i + 1}`,
-    },
-  })),
-})
+const createDefaultOptions = createDefaultAutoSolveOptions
 
 // TESTS
 
@@ -216,7 +151,7 @@ describe('useAutoSolve', () => {
 
       expect(mockSolveAll).toHaveBeenCalledWith(
         mockBoard,
-        expect.any(Array), // Candidates converted to arrays
+        expect.any(Array),
         mockGivens
       )
     })
@@ -242,8 +177,6 @@ describe('useAutoSolve', () => {
       await act(async () => {
         await result.current.startAutoSolve()
       })
-
-      // First move applied immediately
       expect(applyMove).toHaveBeenCalledTimes(1)
 
       // Advance timer to apply second move
@@ -1045,8 +978,8 @@ describe('useAutoSolve', () => {
   describe('Special Move Actions', () => {
     it('handles contradiction move by continuing to next', async () => {
       const moves = [
-        createMockMove({ action: 'contradiction', explanation: 'Found contradiction' }),
-        createMockMove({ action: 'place' }),
+        createMockAutoSolveMove({ action: 'contradiction', explanation: 'Found contradiction' }),
+        createMockAutoSolveMove({ action: 'place' }),
       ]
       mockSolveAll.mockResolvedValue({ solved: true, moves })
 
@@ -1069,7 +1002,7 @@ describe('useAutoSolve', () => {
 
     it('handles error move by calling onUnpinpointableError', async () => {
       const moves = [
-        createMockMove({ action: 'error', explanation: 'Too many errors', userEntryCount: 5 }),
+        createMockAutoSolveMove({ action: 'error', explanation: 'Too many errors', userEntryCount: 5 }),
       ]
       mockSolveAll.mockResolvedValue({ solved: false, moves })
 
@@ -1086,8 +1019,8 @@ describe('useAutoSolve', () => {
 
     it('handles diagnostic move by calling onStatus', async () => {
       const moves = [
-        createMockMove({ action: 'diagnostic', explanation: 'Taking another look...' }),
-        createMockMove({ action: 'place' }),
+        createMockAutoSolveMove({ action: 'diagnostic', explanation: 'Taking another look...' }),
+        createMockAutoSolveMove({ action: 'place' }),
       ]
       mockSolveAll.mockResolvedValue({ solved: true, moves })
 
@@ -1104,8 +1037,8 @@ describe('useAutoSolve', () => {
 
     it('handles fix-error move with onErrorFixed callback', async () => {
       const moves = [
-        createMockMove({ action: 'fix-error', explanation: 'Fixed cell at R1C1' }),
-        createMockMove({ action: 'place' }),
+        createMockAutoSolveMove({ action: 'fix-error', explanation: 'Fixed cell at R1C1' }),
+        createMockAutoSolveMove({ action: 'place' }),
       ]
       mockSolveAll.mockResolvedValue({ solved: true, moves })
 

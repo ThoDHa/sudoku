@@ -1,28 +1,7 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
-import { useHighlightState, type MoveHighlight } from './useHighlightState'
-
-// =============================================================================
-// TEST UTILITIES
-// =============================================================================
-
-/**
- * Create a mock MoveHighlight for testing
- */
-const createMockMoveHighlight = (overrides?: Partial<MoveHighlight>): MoveHighlight => ({
-  step_index: 0,
-  technique: 'Naked Single',
-  action: 'place',
-  digit: 5,
-  targets: [{ row: 0, col: 2 }],
-  explanation: 'Test move explanation',
-  refs: { title: 'Naked Single', slug: 'naked-single', url: '/techniques/naked-single' },
-  highlights: {
-    primary: [{ row: 0, col: 2 }],
-    secondary: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
-  },
-  ...overrides,
-})
+import { useHighlightState } from './useHighlightState'
+import { createMockMoveHighlight } from '../test-utils'
 
 // =============================================================================
 // TESTS

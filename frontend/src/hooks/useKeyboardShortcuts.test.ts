@@ -1,52 +1,14 @@
 import { renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useKeyboardShortcuts, KeyboardShortcutHandlers } from './useKeyboardShortcuts'
+import {
+  createMockKeyboardHandlers,
+  dispatchKeyDown,
+  createKeyEventWithPreventDefault,
+  mockPlatform,
+} from '../test-utils'
 
-// TEST UTILITIES
-
-/**
- * Create mock handlers for keyboard shortcuts
- */
-const createMockHandlers = (): KeyboardShortcutHandlers => ({
-  onUndo: vi.fn(),
-  onRedo: vi.fn(),
-  onHint: vi.fn(),
-  onValidate: vi.fn(),
-  onToggleNotesMode: vi.fn(),
-  onClearAllAndDeselect: vi.fn(),
-})
-
-/**
- * Create and dispatch a keyboard event on document
- */
-const dispatchKeyDown = (options: KeyboardEventInit): KeyboardEvent => {
-  const event = new KeyboardEvent('keydown', {
-    bubbles: true,
-    cancelable: true,
-    ...options,
-  })
-  document.dispatchEvent(event)
-  return event
-}
-
-/**
- * Create a keyboard event with preventDefault spy
- */
-const createKeyEventWithPreventDefault = (options: KeyboardEventInit): {
-  event: KeyboardEvent
-  preventDefaultSpy: ReturnType<typeof vi.fn>
-} => {
-  const event = new KeyboardEvent('keydown', {
-    bubbles: true,
-    cancelable: true,
-    ...options,
-  })
-  const preventDefaultSpy = vi.fn()
-  Object.defineProperty(event, 'preventDefault', {
-    value: preventDefaultSpy,
-  })
-  return { event, preventDefaultSpy }
-}
+type MockHandlers = KeyboardShortcutHandlers
 
 // TESTS
 
@@ -54,33 +16,21 @@ describe('useKeyboardShortcuts', () => {
   let originalPlatform: PropertyDescriptor | undefined
 
   beforeEach(() => {
-    // Store original platform descriptor
     originalPlatform = Object.getOwnPropertyDescriptor(navigator, 'platform')
   })
 
   afterEach(() => {
-    // Restore original platform
     if (originalPlatform) {
       Object.defineProperty(navigator, 'platform', originalPlatform)
     }
     vi.restoreAllMocks()
   })
 
-  /**
-   * Helper to mock navigator.platform
-   */
-  const mockPlatform = (platform: string) => {
-    Object.defineProperty(navigator, 'platform', {
-      configurable: true,
-      get: () => platform,
-    })
-  }
-
   // UNDO SHORTCUT TESTS (Ctrl/Cmd + Z)
   describe('Undo Shortcut (Ctrl/Cmd + Z)', () => {
     it('triggers onUndo with Ctrl+Z on Windows', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'z', ctrlKey: true })
@@ -90,7 +40,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('triggers onUndo with Cmd+Z on Mac', () => {
       mockPlatform('MacIntel')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'z', metaKey: true })
@@ -100,7 +50,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('does NOT trigger onUndo with Ctrl+Z on Mac (uses metaKey)', () => {
       mockPlatform('MacIntel')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'z', ctrlKey: true })
@@ -110,7 +60,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('does NOT trigger onUndo with Cmd+Z on Windows (uses ctrlKey)', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'z', metaKey: true })
@@ -120,7 +70,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('does NOT trigger onUndo with Ctrl+Shift+Z (that is redo)', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'z', ctrlKey: true, shiftKey: true })
@@ -131,7 +81,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('handles uppercase Z key', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'Z', ctrlKey: true })
@@ -141,7 +91,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('calls preventDefault on Ctrl+Z', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       const { event, preventDefaultSpy } = createKeyEventWithPreventDefault({
@@ -158,7 +108,7 @@ describe('useKeyboardShortcuts', () => {
   describe('Redo Shortcut (Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y)', () => {
     it('triggers onRedo with Ctrl+Shift+Z on Windows', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'z', ctrlKey: true, shiftKey: true })
@@ -168,7 +118,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('triggers onRedo with Cmd+Shift+Z on Mac', () => {
       mockPlatform('MacIntel')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'z', metaKey: true, shiftKey: true })
@@ -178,7 +128,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('triggers onRedo with Ctrl+Y on Windows', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'y', ctrlKey: true })
@@ -188,7 +138,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('triggers onRedo with Cmd+Y on Mac', () => {
       mockPlatform('MacIntel')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'y', metaKey: true })
@@ -198,7 +148,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('handles uppercase Y key', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'Y', ctrlKey: true })
@@ -208,7 +158,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('calls preventDefault on Ctrl+Shift+Z', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       const { event, preventDefaultSpy } = createKeyEventWithPreventDefault({
@@ -223,7 +173,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('calls preventDefault on Ctrl+Y', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       const { event, preventDefaultSpy } = createKeyEventWithPreventDefault({
@@ -239,7 +189,7 @@ describe('useKeyboardShortcuts', () => {
   // HINT SHORTCUT TESTS (H key)
   describe('Hint Shortcut (H key)', () => {
     it('triggers onHint with H key', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'h' })
@@ -248,7 +198,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('handles uppercase H key', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'H' })
@@ -258,7 +208,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('does NOT trigger onHint with Ctrl+H', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'h', ctrlKey: true })
@@ -267,7 +217,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('does NOT trigger onHint with Alt+H', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'h', altKey: true })
@@ -276,7 +226,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('calls preventDefault on H key', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       const { event, preventDefaultSpy } = createKeyEventWithPreventDefault({
@@ -291,7 +241,7 @@ describe('useKeyboardShortcuts', () => {
   // TOGGLE NOTES MODE SHORTCUT TESTS (N key)
   describe('Toggle Notes Mode Shortcut (N key)', () => {
     it('triggers onToggleNotesMode with N key', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'n' })
@@ -300,7 +250,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('handles uppercase N key', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'N' })
@@ -310,7 +260,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('does NOT trigger onToggleNotesMode with Ctrl+N', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'n', ctrlKey: true })
@@ -319,7 +269,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('does NOT trigger onToggleNotesMode with Alt+N', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'n', altKey: true })
@@ -328,7 +278,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('calls preventDefault on N key', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       const { event, preventDefaultSpy } = createKeyEventWithPreventDefault({
@@ -343,7 +293,7 @@ describe('useKeyboardShortcuts', () => {
   // VALIDATE SHORTCUT TESTS (V key)
   describe('Validate Shortcut (V key)', () => {
     it('triggers onValidate with V key', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'v' })
@@ -352,7 +302,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('handles uppercase V key', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'V' })
@@ -362,7 +312,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('does NOT trigger onValidate with Ctrl+V (paste)', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'v', ctrlKey: true })
@@ -371,7 +321,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('does NOT trigger onValidate with Alt+V', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'v', altKey: true })
@@ -380,7 +330,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('calls preventDefault on V key', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       const { event, preventDefaultSpy } = createKeyEventWithPreventDefault({
@@ -395,7 +345,7 @@ describe('useKeyboardShortcuts', () => {
   // ESCAPE SHORTCUT TESTS
   describe('Escape Shortcut', () => {
     it('triggers onClearAllAndDeselect with Escape key', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'Escape' })
@@ -404,7 +354,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('calls preventDefault on Escape key', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       const { event, preventDefaultSpy } = createKeyEventWithPreventDefault({
@@ -419,7 +369,7 @@ describe('useKeyboardShortcuts', () => {
   // SPACE KEY SHORTCUT TESTS (Toggle Notes Mode Alternative)
   describe('Space Key Shortcut (Toggle Notes Mode)', () => {
     it('triggers onToggleNotesMode with Space key', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: ' ' })
@@ -429,7 +379,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('does NOT trigger onToggleNotesMode with Ctrl+Space', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: ' ', ctrlKey: true })
@@ -438,7 +388,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('does NOT trigger onToggleNotesMode when active element is BUTTON', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       // Create and focus a button
@@ -455,7 +405,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('does NOT trigger onToggleNotesMode when active element is A (anchor)', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       // Create and focus an anchor
@@ -473,7 +423,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('triggers onToggleNotesMode when active element is DIV', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       // Create and focus a div (with tabIndex to make it focusable)
@@ -491,7 +441,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('calls preventDefault on Space key when handler fires', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       const { event, preventDefaultSpy } = createKeyEventWithPreventDefault({
@@ -503,7 +453,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('does NOT call preventDefault on Space when active element is BUTTON', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       // Create and focus a button
@@ -527,7 +477,7 @@ describe('useKeyboardShortcuts', () => {
   describe('Disabled Option', () => {
     it('does NOT trigger any handler when disabled=true', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers, { disabled: true }))
 
       // Try all shortcuts
@@ -549,7 +499,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('triggers handlers when disabled=false (explicit)', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers, { disabled: false }))
 
       dispatchKeyDown({ key: 'h' })
@@ -558,7 +508,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('triggers handlers when options not provided (default)', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'h' })
@@ -567,7 +517,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('respects disabled state change from false to true', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       const { rerender } = renderHook(
         ({ disabled }) => useKeyboardShortcuts(handlers, { disabled }),
         { initialProps: { disabled: false } }
@@ -585,7 +535,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('respects disabled state change from true to false', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       const { rerender } = renderHook(
         ({ disabled }) => useKeyboardShortcuts(handlers, { disabled }),
         { initialProps: { disabled: true } }
@@ -606,7 +556,7 @@ describe('useKeyboardShortcuts', () => {
   // INPUT/TEXTAREA EXCLUSION TESTS
   describe('Input/Textarea Exclusion', () => {
     it('does NOT trigger handlers when target is HTMLInputElement', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       // Create an input element
@@ -629,7 +579,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('does NOT trigger handlers when target is HTMLTextAreaElement', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       // Create a textarea element
@@ -653,7 +603,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('does NOT trigger Undo when target is input', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       const input = document.createElement('input')
@@ -674,7 +624,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('triggers handlers when target is regular element', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       // Create a div element
@@ -701,7 +651,7 @@ describe('useKeyboardShortcuts', () => {
   describe('Platform Detection', () => {
     it('detects Mac platform correctly (MacIntel)', () => {
       mockPlatform('MacIntel')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       // metaKey should work on Mac
@@ -715,7 +665,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('detects Mac platform correctly (MacPPC)', () => {
       mockPlatform('MacPPC')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'z', metaKey: true })
@@ -724,7 +674,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('detects Windows platform correctly', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       // ctrlKey should work on Windows
@@ -738,7 +688,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('detects Linux platform correctly (uses ctrlKey)', () => {
       mockPlatform('Linux x86_64')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'z', ctrlKey: true })
@@ -749,7 +699,7 @@ describe('useKeyboardShortcuts', () => {
   // CLEANUP TESTS
   describe('Cleanup on Unmount', () => {
     it('removes event listener when hook unmounts', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       const { unmount } = renderHook(() => useKeyboardShortcuts(handlers))
 
       // Handler works before unmount
@@ -765,8 +715,8 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('removes event listener when re-rendered with different handlers', () => {
-      const handlers1 = createMockHandlers()
-      const handlers2 = createMockHandlers()
+      const handlers1 = createMockKeyboardHandlers()
+      const handlers2 = createMockKeyboardHandlers()
       
       const { rerender } = renderHook(
         ({ handlers }) => useKeyboardShortcuts(handlers),
@@ -789,7 +739,7 @@ describe('useKeyboardShortcuts', () => {
   // EDGE CASES
   describe('Edge Cases', () => {
     it('handles multiple rapid key presses', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'h' })
@@ -801,7 +751,7 @@ describe('useKeyboardShortcuts', () => {
 
     it('handles mixed shortcuts in sequence', () => {
       mockPlatform('Win32')
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'z', ctrlKey: true })
@@ -816,7 +766,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('does NOT trigger handlers for unrecognized keys', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'x' })
@@ -833,7 +783,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('handles Z key without modifier (not a shortcut)', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'z' })
@@ -843,7 +793,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('handles Y key without modifier (not a shortcut)', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       dispatchKeyDown({ key: 'y' })
@@ -852,7 +802,7 @@ describe('useKeyboardShortcuts', () => {
     })
 
     it('does not trigger multiple handlers for single key press', () => {
-      const handlers = createMockHandlers()
+      const handlers = createMockKeyboardHandlers()
       renderHook(() => useKeyboardShortcuts(handlers))
 
       // N key should only trigger onToggleNotesMode
@@ -870,8 +820,8 @@ describe('useKeyboardShortcuts', () => {
   // HANDLER UPDATES
   describe('Handler Updates', () => {
     it('uses updated handlers after rerender', () => {
-      const handlers1 = createMockHandlers()
-      const handlers2 = createMockHandlers()
+      const handlers1 = createMockKeyboardHandlers()
+      const handlers2 = createMockKeyboardHandlers()
 
       const { rerender } = renderHook(
         ({ handlers }) => useKeyboardShortcuts(handlers),
