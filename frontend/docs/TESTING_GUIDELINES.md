@@ -1,231 +1,95 @@
-# Testing Guidelines: How to Write Tests That Actually Fail When Broken
+# Sudoku Project Testing Examples
 
-## Overview
+This document contains project-specific examples illustrating the testing guidelines defined in `~/.config/opencode/rules/testing-guidelines.md`.
 
-This document captures lessons learned from investigating why unit tests passed when bugs existed in the highlighting system. Follow these guidelines to ensure your tests actually catch bugs.
+## Case Study: The Highlighting Bug
 
-## The Core Problem
+### The Bug
 
-**Tests that pass when bugs exist are worse than no tests at all** because they provide false confidence.
+When a cell had multiple candidates and a hint identified only ONE as valid, ALL candidates were highlighted green instead of just the correct one.
 
-## Root Causes Identified
-
-### 1. Testing the Wrong Thing
-
-**Anti-pattern:**
+**Root cause:**
 ```typescript
-// ❌ WRONG: Tests cell background, not candidate styling
-expect(cells[40]?.className).toContain('bg-cell-primary')
+// BUGGY CODE
+const isRelevantDigit = singleDigit ? d === singleDigit : isTarget
 ```
 
-**Problem:** The bug was in candidate digit styling (`text-hint-text` class), but tests only checked cell backgrounds (`bg-cell-primary`).
+When `singleDigit` was null but `isTarget` was true, ALL candidates got highlighted.
 
-**Solution:**
+### Why Existing Tests Didn't Catch It
+
+| Gap | Problem |
+|-----|---------|
+| **Wrong target** | Tests checked `bg-cell-primary` (cell background), not `text-hint-text` (candidate styling) |
+| **Mock blind spot** | Mocks always used `digit: 5`, never `digit: 0` (multi-digit techniques) |
+| **State vs render** | Unit tests verified hook state, not the component's rendered output |
+
+### The Fix
+
 ```typescript
-// ✓ CORRECT: Test the actual thing that can break
-const digit5 = candidateDigits?.[4]
-expect(digit5?.className).toContain('text-hint-text')
-expect(digit3?.className).not.toContain('text-hint-text')
+// FIXED CODE
+const isRelevantDigit = targetDigit !== undefined 
+  ? d === targetDigit 
+  : singleDigit 
+    ? d === singleDigit 
+    : false
 ```
 
-### 2. Mock Data Doesn't Match Reality
+### The Regression Tests
 
-**Anti-pattern:**
+Added 7 tests in `Board.test.tsx` that verify candidate digit styling:
+
 ```typescript
-// ❌ WRONG: Always uses digit: 5, never tests edge cases
-export const createMockMoveHighlight = () => ({
+it('highlights ONLY the target digit in green when cell has multiple candidates', () => {
+  const highlight = {
+    digit: 5,
+    targets: [{ row: 0, col: 0 }],
+    showAnswer: true,
+    // ...
+  }
+  
+  const candidates = createEmptyCandidates()
+  candidates[0] = createCandidateMask([3, 5, 7])  // Multiple candidates
+  
+  const { container } = render(<Board {...defaultProps({ candidates, highlight })} />)
+  
+  const candidateDigits = container.querySelectorAll('.candidate-digit')
+  
+  // CRITICAL: Check the ACTUAL thing that was broken
+  expect(candidateDigits[4]?.className).toContain('text-hint-text')  // digit 5
+  expect(candidateDigits[2]?.className).not.toContain('text-hint-text')  // digit 3
+  expect(candidateDigits[6]?.className).not.toContain('text-hint-text')  // digit 7
+})
+```
+
+### Validation Performed
+
+1. Ran tests with buggy code: **3 tests failed** ✓
+2. Applied fix
+3. Ran tests with fixed code: **74 tests passed** ✓
+4. Re-broke code
+5. Ran tests again: **3 tests failed** ✓
+
+## Project-Specific Mock Variants
+
+### Standard Mock
+
+```typescript
+// frontend/src/test-utils/gameHelpers.ts
+export const createMockMoveHighlight = (overrides?: Partial<MoveHighlight>): MoveHighlight => ({
   digit: 5,
+  targets: [{ row: 0, col: 2 }],
   // ...
+  ...overrides,
 })
 ```
 
-**Problem:** Real bugs occurred with `digit: 0` (multi-digit techniques), but mocks never tested this.
-
-**Solution:**
-```typescript
-// ✓ CORRECT: Create variants for edge cases
-const multiDigitHighlight = createMockMoveHighlight({
-  digit: 0,  // Multi-digit technique
-  targets: [/* multiple cells */],
-  eliminations: [/* multiple eliminations */]
-})
-```
-
-### 3. Testing State, Not Rendering
-
-**Anti-pattern:**
-```typescript
-// ❌ WRONG: Tests hook state in isolation
-expect(result.current.currentHighlight).toEqual(mockMove)
-```
-
-**Problem:** Hook state is correct, but the component rendering logic that consumes it is broken.
-
-**Solution:**
-```typescript
-// ✓ CORRECT: Test the rendered output
-const { container } = render(<Board {...props} />)
-const candidateDigits = container.querySelectorAll('.candidate-digit')
-expect(candidateDigits[4]?.className).toContain('text-hint-text')
-```
-
-## Mandatory Validation Steps
-
-### For Every New Test
-
-1. **Write the test first** (TDD)
-2. **Verify it fails** - Run the test, confirm it fails
-3. **Implement the fix**
-4. **Verify it passes** - Run the test, confirm it passes
-5. **Break the code again** - Intentionally reintroduce the bug
-6. **Verify it fails again** - Confirm the test catches the regression
-7. **Restore the fix**
-
-### For Every Bug Fix
-
-1. **Write a test that fails with the bug** - Before fixing
-2. **Verify the test fails** - Proves it catches the bug
-3. **Apply the fix**
-4. **Verify the test passes**
-5. **Commit the test WITH the fix** - Not after
-
-## Testing Checklist
-
-Before considering a feature "tested", verify:
-
-### Visual Rendering Tests
-
-- [ ] Do tests check CSS classes on individual elements (not just containers)?
-- [ ] Do tests verify specific elements, not just "something rendered"?
-- [ ] Do tests check both positive AND negative cases?
-
-### Mock Data Quality
-
-- [ ] Do mocks include edge cases (0, null, empty, multiple)?
-- [ ] Do mocks reflect real-world scenarios?
-- [ ] Are there multiple mock variants for different scenarios?
-
-### Integration vs Unit
-
-- [ ] Do integration tests verify state → render pipeline?
-- [ ] Do unit tests cover conditional logic branches?
-- [ ] Are there tests at multiple levels (unit, integration, E2E)?
-
-### Regression Prevention
-
-- [ ] Does every bug have a regression test?
-- [ ] Was the regression test verified by breaking the code?
-- [ ] Is the regression test specific enough to catch the exact bug?
-
-## Common Anti-Patterns to Avoid
-
-### 1. Testing Implementation Details
+### Edge Case Mocks to Add
 
 ```typescript
-// ❌ AVOID: Tests internal state, not behavior
-expect(component.state.highlight).toBe(5)
-
-// ✓ PREFER: Tests rendered output
-expect(screen.getByText('5')).toHaveClass('text-hint-text')
-```
-
-### 2. Over-Mocking
-
-```typescript
-// ❌ AVOID: Mocks away the thing you're testing
-jest.mock('./highlightLogic')
-
-// ✓ PREFER: Test real logic with realistic inputs
-const highlight = { digit: 5, targets: [...] }
-```
-
-### 3. Testing Happy Path Only
-
-```typescript
-// ❌ AVOID: Only tests success case
-it('highlights the digit', () => { ... })
-
-// ✓ PREFER: Tests edge cases and failure modes
-describe('edge cases', () => {
-  it('handles digit: 0 (multi-digit techniques)', () => { ... })
-  it('handles no candidates', () => { ... })
-  it('handles multiple candidates', () => { ... })
-})
-```
-
-### 4. Assertions That Can't Fail
-
-```typescript
-// ❌ AVOID: Always true
-expect(cell.className).toBeDefined()
-
-// ✓ PREFER: Specific assertion that can fail
-expect(cell.className).toContain('bg-cell-primary')
-expect(cell.className).not.toContain('bg-cell-secondary')
-```
-
-## E2E Test Guidelines
-
-### When E2E Tests Are Appropriate
-
-- User-visible behavior that spans multiple components
-- Visual rendering that's hard to test in unit tests
-- Critical user flows
-
-### E2E Test Best Practices
-
-1. **Be specific about what you're checking**
-   ```typescript
-   // ❌ AVOID: Vague check
-   expect(await page.locator('.cell').count()).toBe(81)
-   
-   // ✓ PREFER: Specific check
-   const greenDigits = await page.evaluate(() => {
-     return [...document.querySelectorAll('.candidate-digit')]
-       .filter(el => el.className.includes('text-hint-text'))
-       .map(el => el.textContent)
-   })
-   expect(greenDigits).toEqual(['5'])
-   ```
-
-2. **Don't rely on timing**
-   ```typescript
-   // ❌ AVOID: Arbitrary waits
-   await page.waitForTimeout(1000)
-   
-   // ✓ PREFER: Wait for specific condition
-   await expect(page.locator('.text-hint-text')).toBeVisible()
-   ```
-
-3. **Capture meaningful state**
-   ```typescript
-   // ✓ PREFER: Capture and assert on specific data
-   const highlightState = await captureHighlightState(page)
-   const buggyCells = highlightState.filter(cell => 
-     cell.allCandidates.length > 1 && cell.greenDigits.length > 1
-   )
-   expect(buggyCells.length).toBe(0)
-   ```
-
-## Adding New Mock Variants
-
-When you discover a new edge case:
-
-1. **Add a new mock factory or variant**
-2. **Document what scenario it represents**
-3. **Use it in at least one test**
-
-Example:
-```typescript
-// Add to test-utils/gameHelpers.ts
-
-export const createMultiDigitTechniqueHighlight = (
-  overrides?: Partial<MoveHighlight>
-): MoveHighlight => ({
-  step_index: 0,
-  technique: 'Naked Pair',
-  action: 'eliminate',
-  digit: 0,  // Multi-digit: no single digit
+// Multi-digit technique (digit: 0)
+export const createMultiDigitTechniqueHighlight = () => ({
+  digit: 0,  // Naked Pair, Hidden Pair, etc.
   targets: [
     { row: 0, col: 0 },
     { row: 0, col: 1 },
@@ -234,19 +98,35 @@ export const createMultiDigitTechniqueHighlight = (
     { row: 0, col: 2, digit: 3 },
     { row: 0, col: 2, digit: 5 },
   ],
-  explanation: 'Naked pair eliminates 3 and 5 from other cells',
-  refs: { title: 'Naked Pair', slug: 'naked-pair', url: '/techniques/naked-pair' },
-  highlights: {
-    primary: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
-  },
-  ...overrides,
+  // ...
+})
+
+// Elimination-heavy scenario
+export const createEliminationHighlight = () => ({
+  digit: 0,
+  targets: [{ row: 2, col: 2 }],
+  eliminations: [
+    { row: 2, col: 2, digit: 1 },
+    { row: 2, col: 2, digit: 2 },
+    { row: 2, col: 2, digit: 6 },
+    // ... more eliminations
+  ],
+  // ...
 })
 ```
 
-## Summary
+## Lessons for This Codebase
 
-**Golden Rule:** A test is only valuable if it would have failed when a real bug existed.
+1. **Board component tests**: Always verify CSS classes on specific candidate digits, not just cell backgrounds
 
-**Validation:** Always verify your tests by intentionally breaking the code and confirming the test fails.
+2. **Highlight tests**: Must cover:
+   - Single-digit techniques (`digit: 1-9`)
+   - Multi-digit techniques (`digit: 0`)
+   - Eliminations vs targets
+   - `showAnswer: true` vs `showAnswer: false`
 
-**Coverage:** Test the actual behavior that can break, not just that something happened.
+3. **Mock data**: When adding new highlight scenarios, add corresponding mock variants
+
+## Reference
+
+For universal testing principles, see: `~/.config/opencode/rules/testing-guidelines.md`
