@@ -1359,4 +1359,308 @@ describe('Board', () => {
       expect(onDragEnd).toHaveBeenCalledWith([0, 1])
     })
   })
+
+  describe('candidate digit highlighting (regression tests for hint bugs)', () => {
+    describe('BUG #1: only target digit should be highlighted green, not all candidates', () => {
+      it('highlights ONLY the target digit in green when cell has multiple candidates', () => {
+        const highlight = {
+          step_index: 0,
+          technique: 'Hidden Single',
+          action: 'place',
+          digit: 5,
+          targets: [{ row: 0, col: 0 }],
+          explanation: 'Test',
+          refs: { title: '', slug: '', url: '' },
+          highlights: {
+            primary: [{ row: 0, col: 0 }],
+          },
+          showAnswer: true,
+        }
+        
+        const board = createEmptyBoard()
+        const candidates = createEmptyCandidates()
+        candidates[0] = createCandidateMask([3, 5, 7])
+        
+        const { container } = render(
+          <Board {...defaultProps({ board, candidates, highlight })} />
+        )
+        
+        const cells = container.querySelectorAll('.sudoku-cell')
+        const candidateGrid = cells[0]?.querySelector('.candidate-grid')
+        const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
+        
+        const digit3 = candidateDigits?.[2]
+        const digit5 = candidateDigits?.[4]
+        const digit7 = candidateDigits?.[6]
+        
+        expect(digit5?.className).toContain('text-hint-text')
+        expect(digit3?.className).not.toContain('text-hint-text')
+        expect(digit7?.className).not.toContain('text-hint-text')
+      })
+
+      it('does NOT highlight all candidates when targetDigit is specified', () => {
+        const highlight = {
+          step_index: 0,
+          technique: 'Naked Single',
+          action: 'place',
+          digit: 3,
+          targets: [{ row: 1, col: 1 }],
+          explanation: 'Test',
+          refs: { title: '', slug: '', url: '' },
+          highlights: {
+            primary: [{ row: 1, col: 1 }],
+          },
+          showAnswer: true,
+        }
+        
+        const board = createEmptyBoard()
+        const candidates = createEmptyCandidates()
+        candidates[10] = createCandidateMask([1, 2, 3, 4, 5])
+        
+        const { container } = render(
+          <Board {...defaultProps({ board, candidates, highlight })} />
+        )
+        
+        const cells = container.querySelectorAll('.sudoku-cell')
+        const candidateGrid = cells[10]?.querySelector('.candidate-grid')
+        const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
+        
+        const greenDigits: number[] = []
+        candidateDigits?.forEach((el, i) => {
+          if (el.className.includes('text-hint-text')) {
+            greenDigits.push(i + 1)
+          }
+        })
+        
+        expect(greenDigits).toEqual([3])
+        expect(greenDigits.length).toBe(1)
+      })
+
+      it('does NOT highlight any candidates when showAnswer is false', () => {
+        const highlight = {
+          step_index: 0,
+          technique: 'Hidden Single',
+          action: 'place',
+          digit: 5,
+          targets: [{ row: 0, col: 0 }],
+          explanation: 'Test',
+          refs: { title: '', slug: '', url: '' },
+          highlights: {
+            primary: [{ row: 0, col: 0 }],
+          },
+          showAnswer: false,
+        }
+        
+        const board = createEmptyBoard()
+        const candidates = createEmptyCandidates()
+        candidates[0] = createCandidateMask([3, 5, 7])
+        
+        const { container } = render(
+          <Board {...defaultProps({ board, candidates, highlight })} />
+        )
+        
+        const cells = container.querySelectorAll('.sudoku-cell')
+        const candidateGrid = cells[0]?.querySelector('.candidate-grid')
+        const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
+        
+        const digit5 = candidateDigits?.[4]
+        expect(digit5?.className).not.toContain('text-hint-text')
+      })
+    })
+
+    describe('BUG #2: multi-digit techniques (digit: 0) should highlight non-eliminated candidates', () => {
+      it('highlights non-eliminated candidates in target cells for multi-digit techniques', () => {
+        const highlight = {
+          step_index: 0,
+          technique: 'Naked Pair',
+          action: 'eliminate',
+          digit: 0,
+          targets: [
+            { row: 0, col: 0 },
+            { row: 0, col: 1 },
+          ],
+          eliminations: [
+            { row: 0, col: 2, digit: 3 },
+            { row: 0, col: 2, digit: 5 },
+          ],
+          explanation: 'Naked pair of 3 and 5',
+          refs: { title: '', slug: '', url: '' },
+          highlights: {
+            primary: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
+          },
+          showAnswer: true,
+        }
+        
+        const board = createEmptyBoard()
+        const candidates = createEmptyCandidates()
+        candidates[0] = createCandidateMask([3, 5])
+        candidates[1] = createCandidateMask([3, 5])
+        candidates[2] = createCandidateMask([3, 5, 7, 9])
+        
+        const { container } = render(
+          <Board {...defaultProps({ board, candidates, highlight })} />
+        )
+        
+        const cells = container.querySelectorAll('.sudoku-cell')
+        
+        const targetCell0Grid = cells[0]?.querySelector('.candidate-grid')
+        const targetCell0Digits = targetCell0Grid?.querySelectorAll('.candidate-digit')
+        
+        const digit3InCell0 = targetCell0Digits?.[2]
+        const digit5InCell0 = targetCell0Digits?.[4]
+        
+        expect(digit3InCell0?.className).toContain('text-hint-text')
+        expect(digit5InCell0?.className).toContain('text-hint-text')
+        
+        const eliminationCellGrid = cells[2]?.querySelector('.candidate-grid')
+        const eliminationDigits = eliminationCellGrid?.querySelectorAll('.candidate-digit')
+        
+        const digit3InElimCell = eliminationDigits?.[2]
+        const digit5InElimCell = eliminationDigits?.[4]
+        const digit7InElimCell = eliminationDigits?.[6]
+        
+        expect(digit3InElimCell?.className).toContain('line-through')
+        expect(digit5InElimCell?.className).toContain('line-through')
+        expect(digit7InElimCell?.className).not.toContain('line-through')
+        expect(digit7InElimCell?.className).not.toContain('text-hint-text')
+      })
+
+      it('does NOT compare candidates against digit 0 (which would never match)', () => {
+        const highlight = {
+          step_index: 0,
+          technique: 'Hidden Pair',
+          action: 'eliminate',
+          digit: 0,
+          targets: [{ row: 2, col: 2 }],
+          eliminations: [
+            { row: 2, col: 2, digit: 1 },
+            { row: 2, col: 2, digit: 2 },
+            { row: 2, col: 2, digit: 6 },
+            { row: 2, col: 2, digit: 7 },
+            { row: 2, col: 2, digit: 8 },
+            { row: 2, col: 2, digit: 9 },
+          ],
+          explanation: 'Hidden pair of 3 and 5',
+          refs: { title: '', slug: '', url: '' },
+          highlights: {
+            primary: [{ row: 2, col: 2 }],
+          },
+          showAnswer: true,
+        }
+        
+        const board = createEmptyBoard()
+        const candidates = createEmptyCandidates()
+        candidates[20] = createCandidateMask([1, 2, 3, 5, 6, 7, 8, 9])
+        
+        const { container } = render(
+          <Board {...defaultProps({ board, candidates, highlight })} />
+        )
+        
+        const cells = container.querySelectorAll('.sudoku-cell')
+        const candidateGrid = cells[20]?.querySelector('.candidate-grid')
+        const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
+        
+        const greenDigits: number[] = []
+        const struckDigits: number[] = []
+        
+        candidateDigits?.forEach((el, i) => {
+          const digit = i + 1
+          if (el.className.includes('text-hint-text')) {
+            greenDigits.push(digit)
+          }
+          if (el.className.includes('line-through')) {
+            struckDigits.push(digit)
+          }
+        })
+        
+        expect(greenDigits).toEqual([3, 5])
+        expect(struckDigits).toContain(1)
+        expect(struckDigits).toContain(2)
+        expect(struckDigits).toContain(6)
+        expect(struckDigits).toContain(7)
+        expect(struckDigits).toContain(8)
+        expect(struckDigits).toContain(9)
+      })
+    })
+
+    describe('combination scenarios', () => {
+      it('handles target cell that is also in primary highlights', () => {
+        const highlight = {
+          step_index: 0,
+          technique: 'Pointing Pairs',
+          action: 'eliminate',
+          digit: 7,
+          targets: [{ row: 4, col: 4 }],
+          explanation: 'Test',
+          refs: { title: '', slug: '', url: '' },
+          highlights: {
+            primary: [{ row: 4, col: 4 }],
+          },
+          showAnswer: true,
+        }
+        
+        const board = createEmptyBoard()
+        const candidates = createEmptyCandidates()
+        candidates[40] = createCandidateMask([3, 7, 9])
+        
+        const { container } = render(
+          <Board {...defaultProps({ board, candidates, highlight })} />
+        )
+        
+        const cells = container.querySelectorAll('.sudoku-cell')
+        expect(cells[40]?.className).toContain('bg-cell-primary')
+        
+        const candidateGrid = cells[40]?.querySelector('.candidate-grid')
+        const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
+        
+        const digit7 = candidateDigits?.[6]
+        expect(digit7?.className).toContain('text-hint-text')
+        
+        const digit3 = candidateDigits?.[2]
+        const digit9 = candidateDigits?.[8]
+        expect(digit3?.className).not.toContain('text-hint-text')
+        expect(digit9?.className).not.toContain('text-hint-text')
+      })
+
+      it('handles elimination cell with multiple candidates', () => {
+        const highlight = {
+          step_index: 0,
+          technique: 'Box/Line Reduction',
+          action: 'eliminate',
+          digit: 4,
+          targets: [],
+          eliminations: [{ row: 3, col: 3, digit: 4 }],
+          explanation: 'Test',
+          refs: { title: '', slug: '', url: '' },
+          highlights: {
+            primary: [{ row: 3, col: 0 }],
+          },
+          showAnswer: true,
+        }
+        
+        const board = createEmptyBoard()
+        const candidates = createEmptyCandidates()
+        candidates[30] = createCandidateMask([2, 4, 6, 8])
+        
+        const { container } = render(
+          <Board {...defaultProps({ board, candidates, highlight })} />
+        )
+        
+        const cells = container.querySelectorAll('.sudoku-cell')
+        const candidateGrid = cells[30]?.querySelector('.candidate-grid')
+        const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
+        
+        const digit4 = candidateDigits?.[3]
+        expect(digit4?.className).toContain('line-through')
+        expect(digit4?.className).toContain('text-error-text')
+        
+        const digit2 = candidateDigits?.[1]
+        const digit6 = candidateDigits?.[5]
+        const digit8 = candidateDigits?.[7]
+        expect(digit2?.className).not.toContain('line-through')
+        expect(digit6?.className).not.toContain('line-through')
+        expect(digit8?.className).not.toContain('line-through')
+      })
+    })
+  })
 })
