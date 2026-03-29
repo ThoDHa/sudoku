@@ -4,7 +4,7 @@ import { useTheme } from '../lib/ThemeContext'
 import { useClickOutside } from '../hooks/useClickOutside'
 import { SunIcon, MoonIcon, ComputerIcon } from './ui'
 import { getHomepageMode, setHomepageMode, HomepageMode } from '../lib/preferences'
-import { getScores, getDailyStreak, getDailyCompletions } from '../lib/scores'
+import { buildDebugInfo, formatDebugJson } from '../lib/debugInfo'
 import Menu from './Menu'
 import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
@@ -50,47 +50,8 @@ export default function Header() {
 
   // Bug report handlers - split into copy and report
   const handleCopyDebugInfo = useCallback(async () => {
-    const scores = getScores()
-    const streak = getDailyStreak()
-    const completions = getDailyCompletions()
-
-    const debugInfo = {
-      timestamp: new Date().toISOString(),
-      page: location.pathname,
-      settings: {
-        colorTheme: colorTheme,
-        mode: mode,
-        homepageMode: homepageModeState,
-      },
-      stats: {
-        totalGamesPlayed: scores.length,
-        dailyStreak: streak.currentStreak,
-        longestStreak: streak.longestStreak,
-        dailyCompletions: completions.size,
-      },
-      browser: {
-        userAgent: navigator.userAgent,
-        language: navigator.language,
-        cookiesEnabled: navigator.cookieEnabled,
-        onLine: navigator.onLine,
-        screenSize: `${window.screen.width}x${window.screen.height}`,
-        viewportSize: `${window.innerWidth}x${window.innerHeight}`,
-        devicePixelRatio: window.devicePixelRatio,
-      },
-      storage: {
-        localStorageAvailable: (() => {
-          try {
-            localStorage.setItem('test', 'test')
-            localStorage.removeItem('test')
-            return true
-          } catch {
-            return false
-          }
-        })(),
-      },
-    }
-
-    const debugJson = JSON.stringify(debugInfo, null, 2)
+    const debugInfo = buildDebugInfo(location.pathname, colorTheme, mode, homepageModeState)
+    const debugJson = formatDebugJson(debugInfo)
 
     // Copy debug info to clipboard
     const success = await copyToClipboard(debugJson)
