@@ -52,7 +52,7 @@ test-go:
 	@echo "========================================"
 	@echo "  Running Go Tests with Allure"
 	@echo "========================================"
-	@cd api && mkdir -p allure-results && $(shell go env GOPATH)/bin/gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./... || true
+	@cd api && mkdir -p allure-results && $(shell go env GOPATH)/bin/gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./...
 
 # Run Frontend unit tests with Allure output (Docker)
 test-unit:
@@ -62,7 +62,7 @@ test-unit:
 	@echo "========================================"
 	@mkdir -p allure-results
 	@docker build -t sudoku-frontend-test -f frontend/Dockerfile.test frontend
-	@docker run --rm -v $(PWD)/allure-results:/app/allure-results sudoku-frontend-test npm run test:unit || true
+	@docker run --rm -v $(PWD)/allure-results:/app/allure-results sudoku-frontend-test npm run test:unit
 
 # Run E2E tests with Allure output (Docker Compose)
 test-e2e:
@@ -70,7 +70,7 @@ test-e2e:
 	@echo "========================================"
 	@echo "  Running E2E Tests with Allure (Docker)"
 	@echo "========================================"
-	@docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from playwright || true
+	@docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from playwright
 	@docker compose -f docker-compose.test.yml down
 
 # Run integration tests with Allure output (Docker Compose)
@@ -81,7 +81,7 @@ test-integration:
 	@echo "========================================"
 	@docker compose -f docker-compose.test.yml up sudoku -d --build
 	@sleep 15
-	@docker compose -f docker-compose.test.yml run --rm playwright npx playwright test --grep @integration || true
+	@docker compose -f docker-compose.test.yml run --rm playwright npx playwright test --grep @integration
 	@docker compose -f docker-compose.test.yml down
 
 # Run all Frontend tests (unit + E2E) with Allure output

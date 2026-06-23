@@ -59,7 +59,6 @@ jobs:
       - name: Run unit tests
         working-directory: frontend
         run: npm run test:unit
-        continue-on-error: true
 
       - name: Generate environment properties
         working-directory: frontend
@@ -110,7 +109,6 @@ jobs:
         run: |
           mkdir -p allure-results
           gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./...
-        continue-on-error: true
 
       - name: Generate environment properties
         working-directory: api
@@ -153,7 +151,6 @@ jobs:
           docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from playwright
         env:
           CI: true
-        continue-on-error: true
 
       - name: Upload Playwright test-results
         uses: actions/upload-artifact@v7
@@ -373,12 +370,12 @@ jobs:
   # Deploy to GitHub Pages (Game + Test Report)
   # ============================================
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: ${{ success() && github.ref == 'refs/heads/main' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: allure-report
+    needs: [test-frontend-unit, test-go, test-e2e, allure-report]
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
