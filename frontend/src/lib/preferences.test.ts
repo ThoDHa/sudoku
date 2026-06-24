@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { 
-  getPreferences, 
-  setPreferences, 
-  getHomepageMode, 
+import {
+  getPreferences,
+  setPreferences,
+  getHomepageMode,
   setHomepageMode,
   getAutoSolveSpeed,
   setAutoSolveSpeed,
@@ -12,7 +12,7 @@ import {
   AUTO_SOLVE_SPEEDS,
   AUTO_SOLVE_SPEED_LABELS,
   type UserPreferences,
-  type AutoSolveSpeed
+  type AutoSolveSpeed,
 } from './preferences'
 
 // Mock localStorage
@@ -20,9 +20,15 @@ const localStorageMock = (() => {
   let store: Record<string, string> = {}
   return {
     getItem: vi.fn((key: string) => store[key] || null),
-    setItem: vi.fn((key: string, value: string) => { store[key] = value }),
-    removeItem: vi.fn((key: string) => { delete store[key] }),
-    clear: vi.fn(() => { store = {} })
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete store[key]
+    }),
+    clear: vi.fn(() => {
+      store = {}
+    }),
   }
 })()
 
@@ -67,7 +73,7 @@ describe('preferences', () => {
   describe('getPreferences', () => {
     it('should return default preferences when no data stored', () => {
       const prefs = getPreferences()
-      
+
       expect(prefs.homepageMode).toBe('daily')
       expect(prefs.autoSolveSpeed).toBe('fast')
       expect(prefs.hideTimer).toBe(false)
@@ -77,12 +83,12 @@ describe('preferences', () => {
       const stored: UserPreferences = {
         homepageMode: 'practice',
         autoSolveSpeed: 'slow',
-        hideTimer: true
+        hideTimer: true,
       }
       localStorageMock.setItem('sudoku_preferences', JSON.stringify(stored))
-      
+
       const prefs = getPreferences()
-      
+
       expect(prefs.homepageMode).toBe('practice')
       expect(prefs.autoSolveSpeed).toBe('slow')
       expect(prefs.hideTimer).toBe(true)
@@ -91,9 +97,9 @@ describe('preferences', () => {
     it('should merge with defaults for partial stored data', () => {
       const partial = { homepageMode: 'practice' }
       localStorageMock.setItem('sudoku_preferences', JSON.stringify(partial))
-      
+
       const prefs = getPreferences()
-      
+
       expect(prefs.homepageMode).toBe('practice')
       expect(prefs.autoSolveSpeed).toBe('fast') // default
       expect(prefs.hideTimer).toBe(false) // default
@@ -101,9 +107,9 @@ describe('preferences', () => {
 
     it('should return defaults on parse error', () => {
       localStorageMock.setItem('sudoku_preferences', 'invalid json')
-      
+
       const prefs = getPreferences()
-      
+
       expect(prefs.homepageMode).toBe('daily')
     })
   })
@@ -111,7 +117,7 @@ describe('preferences', () => {
   describe('setPreferences', () => {
     it('should update preferences', () => {
       setPreferences({ homepageMode: 'practice' })
-      
+
       const prefs = getPreferences()
       expect(prefs.homepageMode).toBe('practice')
     })
@@ -119,7 +125,7 @@ describe('preferences', () => {
     it('should merge with existing preferences', () => {
       setPreferences({ homepageMode: 'practice' })
       setPreferences({ hideTimer: true })
-      
+
       const prefs = getPreferences()
       expect(prefs.homepageMode).toBe('practice')
       expect(prefs.hideTimer).toBe(true)
@@ -141,7 +147,7 @@ describe('preferences', () => {
     it('should set homepage mode', () => {
       setHomepageMode('game')
       expect(getHomepageMode()).toBe('game')
-      
+
       setHomepageMode('daily')
       expect(getHomepageMode()).toBe('daily')
     })
@@ -161,7 +167,7 @@ describe('preferences', () => {
   describe('setAutoSolveSpeed', () => {
     it('should set all speed options', () => {
       const speeds: AutoSolveSpeed[] = ['slow', 'normal', 'fast', 'instant']
-      
+
       for (const speed of speeds) {
         setAutoSolveSpeed(speed)
         expect(getAutoSolveSpeed()).toBe(speed)
@@ -173,13 +179,13 @@ describe('preferences', () => {
     it('should return correct delay for each speed', () => {
       setAutoSolveSpeed('slow')
       expect(getAutoSolveDelay()).toBe(500)
-      
+
       setAutoSolveSpeed('normal')
       expect(getAutoSolveDelay()).toBe(150)
-      
+
       setAutoSolveSpeed('fast')
       expect(getAutoSolveDelay()).toBe(25)
-      
+
       setAutoSolveSpeed('instant')
       expect(getAutoSolveDelay()).toBe(0)
     })
@@ -199,10 +205,10 @@ describe('preferences', () => {
   describe('setHideTimer', () => {
     it('should toggle hide timer', () => {
       expect(getHideTimer()).toBe(false)
-      
+
       setHideTimer(true)
       expect(getHideTimer()).toBe(true)
-      
+
       setHideTimer(false)
       expect(getHideTimer()).toBe(false)
     })

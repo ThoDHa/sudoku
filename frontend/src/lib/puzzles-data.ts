@@ -1,6 +1,6 @@
 /**
  * Static puzzle data - embedded at build time
- * 
+ *
  * This file is auto-generated from puzzles.json and practice_puzzles.json
  * Run: npm run generate-puzzles (or equivalent) to regenerate
  */
@@ -47,7 +47,7 @@ const practiceData = practiceJson as { techniques: Record<string, PracticePuzzle
  */
 function getPuzzleByIndex(
   index: number,
-  difficulty: string
+  difficulty: string,
 ): { givens: number[]; solution: number[] } | null {
   if (index < 0 || index >= puzzlesData.puzzles.length) {
     return null
@@ -104,12 +104,12 @@ function hashSeedToIndex(seed: string): number {
  */
 export function getPuzzleForSeed(
   seed: string,
-  difficulty: string
+  difficulty: string,
 ): { givens: number[]; solution: number[]; puzzleIndex: number } | null {
   const index = hashSeedToIndex(seed)
   const result = getPuzzleByIndex(index, difficulty)
   if (!result) return null
-  
+
   return {
     givens: result.givens,
     solution: result.solution,
@@ -121,7 +121,7 @@ export function getPuzzleForSeed(
  * Get a practice puzzle for a technique
  */
 export function getPracticePuzzle(
-  technique: string
+  technique: string,
 ): { givens: number[]; difficulty: string; puzzleIndex: number } | null {
   const refs = practiceData.techniques[technique]
   if (!refs || refs.length === 0) {

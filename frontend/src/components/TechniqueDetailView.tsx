@@ -29,10 +29,10 @@ function RelatedTechniques({ slugs, onRelatedClick, variant }: RelatedTechniques
 
   return (
     <div className="flex flex-wrap gap-2">
-      {slugs.map(slug => {
+      {slugs.map((slug) => {
         const related = getTechniqueBySlug(slug)
         if (!related) return null
-        
+
         if (variant === 'modal' && onRelatedClick) {
           return (
             <button
@@ -45,7 +45,7 @@ function RelatedTechniques({ slugs, onRelatedClick, variant }: RelatedTechniques
             </button>
           )
         }
-        
+
         return (
           <Link
             key={slug}
@@ -61,39 +61,39 @@ function RelatedTechniques({ slugs, onRelatedClick, variant }: RelatedTechniques
   )
 }
 
-export default function TechniqueDetailView({ 
-  technique, 
-  onRelatedClick, 
+export default function TechniqueDetailView({
+  technique,
+  onRelatedClick,
   variant = 'modal',
-  showTips = false 
+  showTips = false,
 }: TechniqueDetailViewProps) {
   const navigate = useNavigate()
   const [practiceError, setPracticeError] = useState<string | null>(null)
-  
+
   const isPage = variant === 'page'
   const headingClass = isPage ? 'text-base font-semibold' : 'text-sm font-semibold'
   const sectionClass = isPage ? 'space-y-4' : 'space-y-4'
-  
+
   // Only show practice for implemented techniques (not 'NotImplemented' tier)
   const canPractice = technique.tier !== 'NotImplemented' && technique.tier !== 'Auto'
-  
+
   const handlePractice = () => {
     setPracticeError(null)
-    
+
     // Get a practice puzzle that uses this technique
     const puzzle = getPracticePuzzle(technique.slug)
     if (!puzzle) {
       setPracticeError('No practice puzzle available for this technique')
       return
     }
-    
+
     // Create a unique seed for this practice puzzle
     const seed = `practice-${technique.slug}-${puzzle.puzzleIndex}`
-    
+
     // Store givens in localStorage so Game.tsx can load them
     const storageKey = `${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${seed}`
     localStorage.setItem(storageKey, JSON.stringify(puzzle.givens))
-    
+
     // Navigate to the puzzle
     navigate(`/${seed}?d=${puzzle.difficulty}`)
   }
@@ -120,10 +120,10 @@ export default function TechniqueDetailView({
 
       {/* Example */}
       <div>
-        <h2 className={`mb-2 ${headingClass} text-foreground`}>
-          {isPage ? 'Example' : 'Example'}
-        </h2>
-        <div className={`rounded-lg p-3 ${isPage ? 'border border-accent bg-accent-light' : 'bg-background-secondary'}`}>
+        <h2 className={`mb-2 ${headingClass} text-foreground`}>{isPage ? 'Example' : 'Example'}</h2>
+        <div
+          className={`rounded-lg p-3 ${isPage ? 'border border-accent bg-accent-light' : 'bg-background-secondary'}`}
+        >
           <p className="text-sm leading-relaxed text-foreground">
             <GlossaryLinkedText text={technique.example} />
           </p>
@@ -158,8 +158,8 @@ export default function TechniqueDetailView({
           <h2 className={`mb-2 ${headingClass} text-foreground`}>
             {isPage ? 'Related' : 'Related Techniques'}
           </h2>
-          <RelatedTechniques 
-            slugs={technique.relatedTechniques} 
+          <RelatedTechniques
+            slugs={technique.relatedTechniques}
             variant={variant}
             {...(onRelatedClick ? { onRelatedClick } : {})}
           />
@@ -177,7 +177,7 @@ export default function TechniqueDetailView({
           </ul>
         </div>
       )}
-      
+
       {/* Practice button */}
       {canPractice && (
         <div>
@@ -187,8 +187,18 @@ export default function TechniqueDetailView({
           >
             <span className="flex items-center justify-center gap-2">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               Practice This Technique
             </span>

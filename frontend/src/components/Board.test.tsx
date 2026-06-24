@@ -18,7 +18,7 @@ function createEmptyCandidates(): Uint16Array {
 function createBoardWithGivens(): { board: number[]; initialBoard: number[] } {
   const board = createEmptyBoard()
   const initialBoard = createEmptyBoard()
-  
+
   // Set some givens (cells 0, 10, 20 will be given)
   initialBoard[0] = 5
   initialBoard[10] = 3
@@ -26,7 +26,7 @@ function createBoardWithGivens(): { board: number[]; initialBoard: number[] } {
   board[0] = 5
   board[10] = 3
   board[20] = 7
-  
+
   return { board, initialBoard }
 }
 
@@ -48,21 +48,21 @@ describe('Board', () => {
   describe('rendering', () => {
     it('renders 81 cells', () => {
       render(<Board {...defaultProps()} />)
-      
+
       const cells = screen.getAllByRole('gridcell')
       expect(cells).toHaveLength(81)
     })
 
     it('renders with correct grid structure (9 rows)', () => {
       render(<Board {...defaultProps()} />)
-      
+
       const rows = screen.getAllByRole('row')
       expect(rows).toHaveLength(9)
     })
 
     it('renders the board container with correct aria label', () => {
       render(<Board {...defaultProps()} />)
-      
+
       const grid = screen.getByRole('grid')
       expect(grid).toHaveAttribute('aria-label', 'Sudoku puzzle')
     })
@@ -71,10 +71,8 @@ describe('Board', () => {
   describe('given cells vs user cells', () => {
     it('given cells have bg-cell-given class', () => {
       const { board, initialBoard } = createBoardWithGivens()
-      const { container } = render(
-        <Board {...defaultProps({ board, initialBoard })} />
-      )
-      
+      const { container } = render(<Board {...defaultProps({ board, initialBoard })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Cell 0 is a given
       expect(cells[0]?.className).toContain('bg-cell-given')
@@ -86,11 +84,9 @@ describe('Board', () => {
       const initialBoard = createEmptyBoard()
       // User entered a value in cell 5 (not a given)
       board[5] = 8
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, initialBoard })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board, initialBoard })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Cell 5 is user-entered, should have default background
       expect(cells[5]?.className).toContain('bg-cell-bg')
@@ -99,10 +95,8 @@ describe('Board', () => {
 
     it('given cells display cursor:default style', () => {
       const { board, initialBoard } = createBoardWithGivens()
-      const { container } = render(
-        <Board {...defaultProps({ board, initialBoard })} />
-      )
-      
+      const { container } = render(<Board {...defaultProps({ board, initialBoard })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Cell 0 is a given - should have cursor: default
       expect(cells[0]).toHaveStyle({ cursor: 'default' })
@@ -110,10 +104,8 @@ describe('Board', () => {
 
     it('non-given cells do not have cursor:default style', () => {
       const { board, initialBoard } = createBoardWithGivens()
-      const { container } = render(
-        <Board {...defaultProps({ board, initialBoard })} />
-      )
-      
+      const { container } = render(<Board {...defaultProps({ board, initialBoard })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Cell 1 is not a given - should not have cursor: default
       expect(cells[1]).not.toHaveStyle({ cursor: 'default' })
@@ -127,16 +119,16 @@ describe('Board', () => {
       board[0] = 5
       board[40] = 9
       initialBoard[0] = 5 // given
-      
+
       render(<Board {...defaultProps({ board, initialBoard })} />)
-      
+
       expect(screen.getByText('5')).toBeInTheDocument()
       expect(screen.getByText('9')).toBeInTheDocument()
     })
 
     it('empty cells show no value', () => {
       const { container } = render(<Board {...defaultProps()} />)
-      
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // First cell should be empty (no text content for value)
       expect(cells[0]?.textContent).toBe('')
@@ -145,10 +137,8 @@ describe('Board', () => {
 
   describe('selection behavior', () => {
     it('selected cell has ring-accent class', () => {
-      const { container } = render(
-        <Board {...defaultProps({ selectedCell: 40 })} />
-      )
-      
+      const { container } = render(<Board {...defaultProps({ selectedCell: 40 })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells[40]?.className).toContain('ring-accent')
       expect(cells[40]?.className).toContain('bg-cell-selected')
@@ -156,7 +146,7 @@ describe('Board', () => {
 
     it('selected cell has tabIndex 0, others have -1', () => {
       render(<Board {...defaultProps({ selectedCell: 10 })} />)
-      
+
       const cells = screen.getAllByRole('gridcell')
       expect(cells[10]).toHaveAttribute('tabIndex', '0')
       expect(cells[0]).toHaveAttribute('tabIndex', '-1')
@@ -166,26 +156,26 @@ describe('Board', () => {
     it('clicking a cell triggers onCellClick callback with correct index', async () => {
       const user = userEvent.setup()
       const onCellClick = vi.fn()
-      
+
       render(<Board {...defaultProps({ onCellClick })} />)
-      
+
       const cells = screen.getAllByRole('gridcell')
       await user.click(cells[25]!)
-      
+
       expect(onCellClick).toHaveBeenCalledWith(25)
     })
 
     it('clicking multiple cells triggers correct callbacks', async () => {
       const user = userEvent.setup()
       const onCellClick = vi.fn()
-      
+
       render(<Board {...defaultProps({ onCellClick })} />)
-      
+
       const cells = screen.getAllByRole('gridcell')
       await user.click(cells[0]!)
       await user.click(cells[80]!)
       await user.click(cells[40]!)
-      
+
       expect(onCellClick).toHaveBeenCalledTimes(3)
       expect(onCellClick).toHaveBeenNthCalledWith(1, 0)
       expect(onCellClick).toHaveBeenNthCalledWith(2, 80)
@@ -196,10 +186,8 @@ describe('Board', () => {
   describe('peer cell highlighting', () => {
     it('cells in same row as selected cell have bg-cell-peer class', () => {
       // Select cell at row 4, col 4 (index 40)
-      const { container } = render(
-        <Board {...defaultProps({ selectedCell: 40 })} />
-      )
-      
+      const { container } = render(<Board {...defaultProps({ selectedCell: 40 })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Cells 36-44 are in row 4 (except 40 which is selected)
       expect(cells[36]?.className).toContain('bg-cell-peer')
@@ -209,10 +197,8 @@ describe('Board', () => {
 
     it('cells in same column as selected cell have bg-cell-peer class', () => {
       // Select cell at row 0, col 4 (index 4)
-      const { container } = render(
-        <Board {...defaultProps({ selectedCell: 4 })} />
-      )
-      
+      const { container } = render(<Board {...defaultProps({ selectedCell: 4 })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Cell 13 is at row 1, col 4 (same column)
       // Cell 22 is at row 2, col 4 (same column)
@@ -223,10 +209,8 @@ describe('Board', () => {
     it('cells in same box as selected cell have bg-cell-peer class', () => {
       // Select cell at row 0, col 0 (index 0)
       // Box 0 contains: 0,1,2,9,10,11,18,19,20
-      const { container } = render(
-        <Board {...defaultProps({ selectedCell: 0 })} />
-      )
-      
+      const { container } = render(<Board {...defaultProps({ selectedCell: 0 })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells[1]?.className).toContain('bg-cell-peer')
       expect(cells[9]?.className).toContain('bg-cell-peer')
@@ -236,10 +220,8 @@ describe('Board', () => {
 
     it('cells not related to selected cell do not have bg-cell-peer class', () => {
       // Select cell at row 0, col 0 (index 0)
-      const { container } = render(
-        <Board {...defaultProps({ selectedCell: 0 })} />
-      )
-      
+      const { container } = render(<Board {...defaultProps({ selectedCell: 0 })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Cell 40 (row 4, col 4) is not a peer of cell 0
       expect(cells[40]?.className).not.toContain('bg-cell-peer')
@@ -252,9 +234,9 @@ describe('Board', () => {
     it('displays candidates when cell is empty and has candidates', () => {
       const candidates = createEmptyCandidates()
       candidates[0] = createCandidateMask([1, 3, 5])
-      
+
       render(<Board {...defaultProps({ candidates })} />)
-      
+
       expect(screen.getByText('1')).toBeInTheDocument()
       expect(screen.getByText('3')).toBeInTheDocument()
       expect(screen.getByText('5')).toBeInTheDocument()
@@ -263,9 +245,9 @@ describe('Board', () => {
     it('shows candidate grid with 9 positions', () => {
       const candidates = createEmptyCandidates()
       candidates[0] = createCandidateMask([1, 5, 9])
-      
+
       const { container } = render(<Board {...defaultProps({ candidates })} />)
-      
+
       const candidateGrid = container.querySelector('.candidate-grid')
       expect(candidateGrid).toBeInTheDocument()
       // Should have 9 candidate-digit spans
@@ -278,11 +260,9 @@ describe('Board', () => {
       board[0] = 5
       const candidates = createEmptyCandidates()
       candidates[0] = createCandidateMask([1, 3]) // These should not display
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, candidates })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board, candidates })} />)
+
       // Cell 0 should show the value 5, not candidates
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells[0]?.textContent).toBe('5')
@@ -307,7 +287,7 @@ describe('Board', () => {
           highlightedDigit={null}
           highlight={null}
           onCellClick={(idx) => onCellClick(idx)}
-        />
+        />,
       )
 
       expect(screen.getByText('1')).toBeInTheDocument()
@@ -320,18 +300,18 @@ describe('Board', () => {
           candidates={candidates}
           selectedCell={null}
           highlightedDigit={null}
-          highlight={{ 
-            step_index: 0, 
-            technique: 'User Input', 
-            action: 'eliminate', 
-            digit: 1, 
-            targets: [{ row: 0, col: 0 }], 
-            explanation: '', 
-            refs: { title: '', slug: '', url: '' }, 
-            highlights: { primary: [{ row: 0, col: 0 }] } 
+          highlight={{
+            step_index: 0,
+            technique: 'User Input',
+            action: 'eliminate',
+            digit: 1,
+            targets: [{ row: 0, col: 0 }],
+            explanation: '',
+            refs: { title: '', slug: '', url: '' },
+            highlights: { primary: [{ row: 0, col: 0 }] },
           }}
           onCellClick={(idx) => onCellClick(idx)}
-        />
+        />,
       )
 
       expect(screen.queryByText('1')).not.toBeInTheDocument()
@@ -349,11 +329,9 @@ describe('Board', () => {
       board[0] = 5
       board[40] = 5
       board[80] = 3
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, highlightedDigit: 5 })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board, highlightedDigit: 5 })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells[0]?.className).toContain('bg-accent-light')
       expect(cells[40]?.className).toContain('bg-accent-light')
@@ -365,11 +343,9 @@ describe('Board', () => {
       const candidates = createEmptyCandidates()
       candidates[0] = createCandidateMask([1, 5, 9])
       candidates[10] = createCandidateMask([2, 3, 4])
-      
-      const { container } = render(
-        <Board {...defaultProps({ candidates, highlightedDigit: 5 })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ candidates, highlightedDigit: 5 })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Cell 0 has candidate 5
       expect(cells[0]?.className).toContain('bg-accent-light')
@@ -380,11 +356,9 @@ describe('Board', () => {
     it('value text is highlighted with text-accent when matching highlightedDigit', () => {
       const board = createEmptyBoard()
       board[0] = 5
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, highlightedDigit: 5 })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board, highlightedDigit: 5 })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       const valueSpan = cells[0]?.querySelector('span')
       expect(valueSpan?.className).toContain('text-accent')
@@ -397,11 +371,9 @@ describe('Board', () => {
       // Put duplicate 5s in row 0
       board[0] = 5
       board[5] = 5
-      
-      const { container } = render(
-        <Board {...defaultProps({ board })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells[0]?.className).toContain('bg-error-bg')
       expect(cells[5]?.className).toContain('bg-error-bg')
@@ -412,11 +384,9 @@ describe('Board', () => {
       // Put duplicate 3s in column 0 (indices 0, 9, 18, etc.)
       board[0] = 3
       board[27] = 3
-      
-      const { container } = render(
-        <Board {...defaultProps({ board })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells[0]?.className).toContain('bg-error-bg')
       expect(cells[27]?.className).toContain('bg-error-bg')
@@ -427,11 +397,9 @@ describe('Board', () => {
       // Put duplicate 7s in box 0 (indices 0,1,2,9,10,11,18,19,20)
       board[0] = 7
       board[10] = 7
-      
-      const { container } = render(
-        <Board {...defaultProps({ board })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells[0]?.className).toContain('bg-error-bg')
       expect(cells[10]?.className).toContain('bg-error-bg')
@@ -440,11 +408,9 @@ describe('Board', () => {
     it('incorrect cells (from prop) get ring-error-text class', () => {
       const board = createEmptyBoard()
       board[5] = 3
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, incorrectCells: [5] })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board, incorrectCells: [5] })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells[5]?.className).toContain('ring-error-text')
       expect(cells[5]?.className).toContain('bg-error-bg')
@@ -454,11 +420,9 @@ describe('Board', () => {
       const board = createEmptyBoard()
       board[0] = 5
       board[40] = 3
-      
-      const { container } = render(
-        <Board {...defaultProps({ board })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells[0]?.className).not.toContain('bg-error-bg')
       expect(cells[40]?.className).not.toContain('bg-error-bg')
@@ -479,14 +443,12 @@ describe('Board', () => {
           primary: [{ row: 4, col: 4 }],
         },
       }
-      
+
       const board = createEmptyBoard()
       board[40] = 5 // Cell at row 4, col 4
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, highlight })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board, highlight })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells[40]?.className).toContain('bg-cell-primary')
     })
@@ -502,10 +464,13 @@ describe('Board', () => {
         refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [{ row: 0, col: 0 }],
-          secondary: [{ row: 0, col: 1 }, { row: 0, col: 2 }],
+          secondary: [
+            { row: 0, col: 1 },
+            { row: 0, col: 2 },
+          ],
         },
       }
-      
+
       const board = createEmptyBoard()
       board[0] = 3
       board[1] = 0
@@ -513,11 +478,9 @@ describe('Board', () => {
       const candidates = createEmptyCandidates()
       candidates[1] = createCandidateMask([3])
       candidates[2] = createCandidateMask([3])
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, candidates, highlight })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells[1]?.className).toContain('bg-cell-secondary')
       expect(cells[2]?.className).toContain('bg-cell-secondary')
@@ -538,17 +501,15 @@ describe('Board', () => {
         highlights: {
           primary: [{ row: 4, col: 4 }],
         },
-        showAnswer: false,  // Technique hint mode
+        showAnswer: false, // Technique hint mode
       }
-      
+
       const board = createEmptyBoard()
       const candidates = createEmptyCandidates()
-      candidates[40] = createCandidateMask([5])  // Cell at row 4, col 4 has candidate 5
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, candidates, highlight })} />
-      )
-      
+      candidates[40] = createCandidateMask([5]) // Cell at row 4, col 4 has candidate 5
+
+      const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Primary highlight should still show
       expect(cells[40]?.className).toContain('bg-cell-primary')
@@ -565,19 +526,20 @@ describe('Board', () => {
         refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [{ row: 0, col: 3 }],
-          secondary: [{ row: 0, col: 0 }, { row: 0, col: 1 }],  // Context cells
+          secondary: [
+            { row: 0, col: 0 },
+            { row: 0, col: 1 },
+          ], // Context cells
         },
-        showAnswer: false,  // Technique hint mode
+        showAnswer: false, // Technique hint mode
       }
-      
+
       const board = createEmptyBoard()
-      board[0] = 1  // Filled cell in secondary
-      board[1] = 2  // Filled cell in secondary
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, highlight })} />
-      )
-      
+      board[0] = 1 // Filled cell in secondary
+      board[1] = 2 // Filled cell in secondary
+
+      const { container } = render(<Board {...defaultProps({ board, highlight })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Explicit secondary highlights should still show (they're part of the technique pattern)
       expect(cells[0]?.className).toContain('bg-cell-secondary')
@@ -598,22 +560,23 @@ describe('Board', () => {
         explanation: 'Test',
         refs: { title: '', slug: '', url: '' },
         highlights: {
-          primary: [{ row: 0, col: 0 }, { row: 0, col: 1 }],  // The pair
+          primary: [
+            { row: 0, col: 0 },
+            { row: 0, col: 1 },
+          ], // The pair
         },
-        showAnswer: false,  // Technique hint mode - should hide eliminations
+        showAnswer: false, // Technique hint mode - should hide eliminations
       }
-      
+
       const board = createEmptyBoard()
       const candidates = createEmptyCandidates()
       candidates[0] = createCandidateMask([3])
       candidates[1] = createCandidateMask([3])
-      candidates[6] = createCandidateMask([3, 5])  // Elimination target
-      candidates[7] = createCandidateMask([3, 8])  // Elimination target
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, candidates, highlight })} />
-      )
-      
+      candidates[6] = createCandidateMask([3, 5]) // Elimination target
+      candidates[7] = createCandidateMask([3, 8]) // Elimination target
+
+      const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Elimination cells should NOT be highlighted (would reveal the answer)
       expect(cells[6]?.className).not.toContain('bg-cell-secondary')
@@ -629,24 +592,22 @@ describe('Board', () => {
         technique: 'Naked Single',
         action: 'assign',
         digit: 5,
-        targets: [{ row: 4, col: 4 }],  // Target cell (where to place)
+        targets: [{ row: 4, col: 4 }], // Target cell (where to place)
         explanation: 'Test',
         refs: { title: '', slug: '', url: '' },
         highlights: {
-          primary: [{ row: 0, col: 0 }],  // Some other primary cell
+          primary: [{ row: 0, col: 0 }], // Some other primary cell
         },
-        showAnswer: false,  // Technique hint mode - should hide target
+        showAnswer: false, // Technique hint mode - should hide target
       }
-      
+
       const board = createEmptyBoard()
-      board[0] = 5  // Primary cell has value
+      board[0] = 5 // Primary cell has value
       const candidates = createEmptyCandidates()
-      candidates[40] = createCandidateMask([5])  // Target cell has candidate
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, candidates, highlight })} />
-      )
-      
+      candidates[40] = createCandidateMask([5]) // Target cell has candidate
+
+      const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Target cell should NOT be highlighted as secondary (would reveal the answer)
       expect(cells[40]?.className).not.toContain('bg-cell-secondary')
@@ -661,26 +622,22 @@ describe('Board', () => {
         action: 'eliminate',
         digit: 3,
         targets: [],
-        eliminations: [
-          { row: 0, col: 6, digit: 3 },
-        ],
+        eliminations: [{ row: 0, col: 6, digit: 3 }],
         explanation: 'Test',
         refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [{ row: 0, col: 0 }],
         },
-        showAnswer: true,  // Regular hint mode - should show eliminations
+        showAnswer: true, // Regular hint mode - should show eliminations
       }
-      
+
       const board = createEmptyBoard()
       const candidates = createEmptyCandidates()
       candidates[0] = createCandidateMask([3])
-      candidates[6] = createCandidateMask([3, 5])  // Elimination target
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, candidates, highlight })} />
-      )
-      
+      candidates[6] = createCandidateMask([3, 5]) // Elimination target
+
+      const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Elimination cells SHOULD be highlighted in regular hint mode
       expect(cells[6]?.className).toContain('bg-cell-secondary')
@@ -698,18 +655,16 @@ describe('Board', () => {
         highlights: {
           primary: [{ row: 0, col: 0 }],
         },
-        showAnswer: true,  // Regular hint mode - should show target
+        showAnswer: true, // Regular hint mode - should show target
       }
-      
+
       const board = createEmptyBoard()
       board[0] = 5
       const candidates = createEmptyCandidates()
       candidates[40] = createCandidateMask([5])
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, candidates, highlight })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Target cell SHOULD be highlighted in regular hint mode
       expect(cells[40]?.className).toContain('bg-cell-secondary')
@@ -730,16 +685,14 @@ describe('Board', () => {
         },
         // showAnswer not specified - should default to true
       }
-      
+
       const board = createEmptyBoard()
       const candidates = createEmptyCandidates()
       candidates[0] = createCandidateMask([3])
       candidates[6] = createCandidateMask([3])
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, candidates, highlight })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Should behave like showAnswer: true (backward compatibility)
       expect(cells[6]?.className).toContain('bg-cell-secondary')
@@ -758,18 +711,16 @@ describe('Board', () => {
         highlights: {
           primary: [{ row: 0, col: 0 }],
         },
-        showAnswer: false,  // Technique hint mode
+        showAnswer: false, // Technique hint mode
       }
-      
+
       const board = createEmptyBoard()
       const candidates = createEmptyCandidates()
       candidates[0] = createCandidateMask([3])
       candidates[6] = createCandidateMask([3, 5])
-      
-      const { container } = render(
-        <Board {...defaultProps({ board, candidates, highlight })} />
-      )
-      
+
+      const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // In the elimination cell, the candidate 3 should NOT have strikethrough
       const eliminationCell = cells[6]
@@ -788,21 +739,23 @@ describe('Board', () => {
       const initialBoard = createEmptyBoard()
       // Make cell 1 a given so arrow right from 0 should skip to cell 2
       initialBoard[1] = 5
-      
+
       render(
-        <Board {...defaultProps({ 
-          initialBoard, 
-          board: [...initialBoard],
-          selectedCell: 0, 
-          onCellClick 
-        })} />
+        <Board
+          {...defaultProps({
+            initialBoard,
+            board: [...initialBoard],
+            selectedCell: 0,
+            onCellClick,
+          })}
+        />,
       )
-      
+
       const cells = screen.getAllByRole('gridcell')
       // Focus and press ArrowRight
       cells[0]!.focus()
       await user.keyboard('{ArrowRight}')
-      
+
       // Should skip cell 1 (given) and go to cell 2
       expect(onCellClick).toHaveBeenCalledWith(2)
     })
@@ -810,18 +763,20 @@ describe('Board', () => {
     it('pressing number key calls onCellChange with value', async () => {
       const user = userEvent.setup()
       const onCellChange = vi.fn()
-      
+
       render(
-        <Board {...defaultProps({ 
-          selectedCell: 0, 
-          onCellChange 
-        })} />
+        <Board
+          {...defaultProps({
+            selectedCell: 0,
+            onCellChange,
+          })}
+        />,
       )
-      
+
       const cells = screen.getAllByRole('gridcell')
       cells[0]!.focus()
       await user.keyboard('5')
-      
+
       expect(onCellChange).toHaveBeenCalledWith(0, 5)
     })
 
@@ -830,19 +785,21 @@ describe('Board', () => {
       const onCellChange = vi.fn()
       const board = createEmptyBoard()
       board[0] = 5
-      
+
       render(
-        <Board {...defaultProps({ 
-          board,
-          selectedCell: 0, 
-          onCellChange 
-        })} />
+        <Board
+          {...defaultProps({
+            board,
+            selectedCell: 0,
+            onCellChange,
+          })}
+        />,
       )
-      
+
       const cells = screen.getAllByRole('gridcell')
       cells[0]!.focus()
       await user.keyboard('{Backspace}')
-      
+
       expect(onCellChange).toHaveBeenCalledWith(0, 0)
     })
 
@@ -850,20 +807,22 @@ describe('Board', () => {
       const user = userEvent.setup()
       const onCellChange = vi.fn()
       const { board, initialBoard } = createBoardWithGivens()
-      
+
       render(
-        <Board {...defaultProps({ 
-          board,
-          initialBoard,
-          selectedCell: 0,  // Cell 0 is a given
-          onCellChange 
-        })} />
+        <Board
+          {...defaultProps({
+            board,
+            initialBoard,
+            selectedCell: 0, // Cell 0 is a given
+            onCellChange,
+          })}
+        />,
       )
-      
+
       const cells = screen.getAllByRole('gridcell')
       cells[0]!.focus()
       await user.keyboard('7')
-      
+
       expect(onCellChange).not.toHaveBeenCalled()
     })
   })
@@ -871,7 +830,7 @@ describe('Board', () => {
   describe('accessibility', () => {
     it('cells have correct aria-label for empty cells', () => {
       render(<Board {...defaultProps()} />)
-      
+
       const cells = screen.getAllByRole('gridcell')
       expect(cells[0]).toHaveAttribute('aria-label', 'Row 1, Column 1, empty')
       expect(cells[40]).toHaveAttribute('aria-label', 'Row 5, Column 5, empty')
@@ -880,18 +839,18 @@ describe('Board', () => {
     it('cells have correct aria-label for filled cells', () => {
       const board = createEmptyBoard()
       board[0] = 5
-      
+
       render(<Board {...defaultProps({ board })} />)
-      
+
       const cells = screen.getAllByRole('gridcell')
       expect(cells[0]).toHaveAttribute('aria-label', 'Row 1, Column 1, value 5')
     })
 
     it('given cells aria-label includes "given"', () => {
       const { board, initialBoard } = createBoardWithGivens()
-      
+
       render(<Board {...defaultProps({ board, initialBoard })} />)
-      
+
       const cells = screen.getAllByRole('gridcell')
       expect(cells[0]).toHaveAttribute('aria-label', 'Row 1, Column 1, value 5, given')
     })
@@ -900,7 +859,7 @@ describe('Board', () => {
   describe('grid borders', () => {
     it('cells at box boundaries have thicker borders', () => {
       const { container } = render(<Board {...defaultProps()} />)
-      
+
       const cells = container.querySelectorAll('.sudoku-cell')
       // Cell at col 2 should have right border-2
       expect(cells[2]?.className).toContain('border-r-2')
@@ -955,9 +914,7 @@ describe('Board', () => {
 
     it('multi-selected cells get same styling as single selected cell', () => {
       const selectedCells = new Set([10, 11, 12])
-      const { container } = render(
-        <Board {...defaultProps({ selectedCell: 10, selectedCells })} />
-      )
+      const { container } = render(<Board {...defaultProps({ selectedCell: 10, selectedCells })} />)
 
       const cells = container.querySelectorAll('.sudoku-cell')
       expect(cells.length).toBeGreaterThan(12)
@@ -984,7 +941,7 @@ describe('Board', () => {
       const { board, initialBoard } = createBoardWithGivens()
       const onCellSelectMultiple = vi.fn()
       const { container } = render(
-        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />
+        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />,
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
@@ -1005,7 +962,7 @@ describe('Board', () => {
       board[5] = 8
       const onCellSelectMultiple = vi.fn()
       const { container } = render(
-        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />
+        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />,
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
@@ -1028,7 +985,7 @@ describe('Board', () => {
       // Cells 0, 2 are empty
       const onCellSelectMultiple = vi.fn()
       const { container } = render(
-        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />
+        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />,
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
@@ -1053,7 +1010,7 @@ describe('Board', () => {
       // Cells 0, 2 are empty
       const onCellSelectMultiple = vi.fn()
       const { container } = render(
-        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />
+        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />,
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
@@ -1071,9 +1028,7 @@ describe('Board', () => {
 
     it('drag on empty cells calls onCellSelectMultiple normally', () => {
       const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ onCellSelectMultiple })} />
-      )
+      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple })} />)
 
       const cells = container.querySelectorAll('.sudoku-cell')
       const boardEl = screen.getByRole('grid')
@@ -1092,9 +1047,7 @@ describe('Board', () => {
       // Drag right along row 0 (cells 0,1,2) then down column 2 (cells 11,20)
       // to verify paint-style accumulation keeps all swept cells
       const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ onCellSelectMultiple })} />
-      )
+      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple })} />)
 
       const cells = container.querySelectorAll('.sudoku-cell')
       const boardEl = screen.getByRole('grid')
@@ -1124,9 +1077,7 @@ describe('Board', () => {
     it('backtrack removes cells when pointer revisits a previous trail cell', () => {
       // Drag: 0 -> 1 -> 2 -> 1 (backtrack: should trim cell 2)
       const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ onCellSelectMultiple })} />
-      )
+      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple })} />)
 
       const cells = container.querySelectorAll('.sudoku-cell')
       const boardEl = screen.getByRole('grid')
@@ -1136,23 +1087,23 @@ describe('Board', () => {
       simulateDragOver(boardEl, cells[2]!)
 
       // At this point, trail is [0, 1, 2]
-      const callBeforeBacktrack = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      const callBeforeBacktrack =
+        onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
       expect(callBeforeBacktrack[0]).toEqual([0, 1, 2])
 
       // Now backtrack: pointer returns to cell 1
       simulateDragOver(boardEl, cells[1]!)
 
       // Trail should be trimmed to [0, 1], cell 2 removed
-      const callAfterBacktrack = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      const callAfterBacktrack =
+        onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
       expect(callAfterBacktrack[0]).toEqual([0, 1])
     })
 
     it('backtrack to start cell leaves only the start cell selected', () => {
       // Drag: 0 -> 1 -> 2 -> 0 (full backtrack)
       const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ onCellSelectMultiple })} />
-      )
+      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple })} />)
 
       const cells = container.querySelectorAll('.sudoku-cell')
       const boardEl = screen.getByRole('grid')
@@ -1173,9 +1124,7 @@ describe('Board', () => {
       // Second drag: 3 -> 4
       // The second drag should NOT contain cells from the first drag
       const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ onCellSelectMultiple })} />
-      )
+      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple })} />)
 
       const cells = container.querySelectorAll('.sudoku-cell')
       const boardEl = screen.getByRole('grid')
@@ -1204,9 +1153,7 @@ describe('Board', () => {
       // Drag: 0 -> 1 -> 2 -> 1 (backtrack) -> 10 (down from cell 1)
       // Trail should be [0, 1, 10]
       const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ onCellSelectMultiple })} />
-      )
+      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple })} />)
 
       const cells = container.querySelectorAll('.sudoku-cell')
       const boardEl = screen.getByRole('grid')
@@ -1235,7 +1182,7 @@ describe('Board', () => {
 
       const onCellSelectMultiple = vi.fn()
       const { container } = render(
-        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />
+        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />,
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
@@ -1260,7 +1207,7 @@ describe('Board', () => {
 
       const onCellSelectMultiple = vi.fn()
       const { container } = render(
-        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />
+        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />,
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
@@ -1284,7 +1231,7 @@ describe('Board', () => {
       const onCellClick = vi.fn()
       const onCellSelectMultiple = vi.fn()
       const { container } = render(
-        <Board {...defaultProps({ onCellClick, onCellSelectMultiple })} />
+        <Board {...defaultProps({ onCellClick, onCellSelectMultiple })} />,
       )
 
       const cells = container.querySelectorAll('.sudoku-cell')
@@ -1305,9 +1252,7 @@ describe('Board', () => {
     it('onDragEnd is called with final trail cells on multi-cell drag completion', () => {
       const onDragEnd = vi.fn()
       const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ onCellSelectMultiple, onDragEnd })} />
-      )
+      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple, onDragEnd })} />)
 
       const cells = container.querySelectorAll('.sudoku-cell')
       const boardEl = screen.getByRole('grid')
@@ -1324,9 +1269,7 @@ describe('Board', () => {
 
     it('onDragEnd is NOT called for single-cell drag (no movement)', () => {
       const onDragEnd = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ onDragEnd })} />
-      )
+      const { container } = render(<Board {...defaultProps({ onDragEnd })} />)
 
       const cells = container.querySelectorAll('.sudoku-cell')
       const boardEl = screen.getByRole('grid')
@@ -1342,9 +1285,7 @@ describe('Board', () => {
     it('onDragEnd receives backtracked trail (not full history)', () => {
       const onDragEnd = vi.fn()
       const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ onCellSelectMultiple, onDragEnd })} />
-      )
+      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple, onDragEnd })} />)
 
       const cells = container.querySelectorAll('.sudoku-cell')
       const boardEl = screen.getByRole('grid')
@@ -1376,23 +1317,21 @@ describe('Board', () => {
           },
           showAnswer: true,
         }
-        
+
         const board = createEmptyBoard()
         const candidates = createEmptyCandidates()
         candidates[0] = createCandidateMask([3, 5, 7])
-        
-        const { container } = render(
-          <Board {...defaultProps({ board, candidates, highlight })} />
-        )
-        
+
+        const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
         const cells = container.querySelectorAll('.sudoku-cell')
         const candidateGrid = cells[0]?.querySelector('.candidate-grid')
         const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
-        
+
         const digit3 = candidateDigits?.[2]
         const digit5 = candidateDigits?.[4]
         const digit7 = candidateDigits?.[6]
-        
+
         expect(digit5?.className).toContain('text-hint-text')
         expect(digit3?.className).not.toContain('text-hint-text')
         expect(digit7?.className).not.toContain('text-hint-text')
@@ -1412,26 +1351,24 @@ describe('Board', () => {
           },
           showAnswer: true,
         }
-        
+
         const board = createEmptyBoard()
         const candidates = createEmptyCandidates()
         candidates[10] = createCandidateMask([1, 2, 3, 4, 5])
-        
-        const { container } = render(
-          <Board {...defaultProps({ board, candidates, highlight })} />
-        )
-        
+
+        const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
         const cells = container.querySelectorAll('.sudoku-cell')
         const candidateGrid = cells[10]?.querySelector('.candidate-grid')
         const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
-        
+
         const greenDigits: number[] = []
         candidateDigits?.forEach((el, i) => {
           if (el.className.includes('text-hint-text')) {
             greenDigits.push(i + 1)
           }
         })
-        
+
         expect(greenDigits).toEqual([3])
         expect(greenDigits.length).toBe(1)
       })
@@ -1450,19 +1387,17 @@ describe('Board', () => {
           },
           showAnswer: false,
         }
-        
+
         const board = createEmptyBoard()
         const candidates = createEmptyCandidates()
         candidates[0] = createCandidateMask([3, 5, 7])
-        
-        const { container } = render(
-          <Board {...defaultProps({ board, candidates, highlight })} />
-        )
-        
+
+        const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
         const cells = container.querySelectorAll('.sudoku-cell')
         const candidateGrid = cells[0]?.querySelector('.candidate-grid')
         const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
-        
+
         const digit5 = candidateDigits?.[4]
         expect(digit5?.className).not.toContain('text-hint-text')
       })
@@ -1486,39 +1421,40 @@ describe('Board', () => {
           explanation: 'Naked pair of 3 and 5',
           refs: { title: '', slug: '', url: '' },
           highlights: {
-            primary: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
+            primary: [
+              { row: 0, col: 0 },
+              { row: 0, col: 1 },
+            ],
           },
           showAnswer: true,
         }
-        
+
         const board = createEmptyBoard()
         const candidates = createEmptyCandidates()
         candidates[0] = createCandidateMask([3, 5])
         candidates[1] = createCandidateMask([3, 5])
         candidates[2] = createCandidateMask([3, 5, 7, 9])
-        
-        const { container } = render(
-          <Board {...defaultProps({ board, candidates, highlight })} />
-        )
-        
+
+        const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
         const cells = container.querySelectorAll('.sudoku-cell')
-        
+
         const targetCell0Grid = cells[0]?.querySelector('.candidate-grid')
         const targetCell0Digits = targetCell0Grid?.querySelectorAll('.candidate-digit')
-        
+
         const digit3InCell0 = targetCell0Digits?.[2]
         const digit5InCell0 = targetCell0Digits?.[4]
-        
+
         expect(digit3InCell0?.className).toContain('text-hint-text')
         expect(digit5InCell0?.className).toContain('text-hint-text')
-        
+
         const eliminationCellGrid = cells[2]?.querySelector('.candidate-grid')
         const eliminationDigits = eliminationCellGrid?.querySelectorAll('.candidate-digit')
-        
+
         const digit3InElimCell = eliminationDigits?.[2]
         const digit5InElimCell = eliminationDigits?.[4]
         const digit7InElimCell = eliminationDigits?.[6]
-        
+
         expect(digit3InElimCell?.className).toContain('line-through')
         expect(digit5InElimCell?.className).toContain('line-through')
         expect(digit7InElimCell?.className).not.toContain('line-through')
@@ -1547,22 +1483,20 @@ describe('Board', () => {
           },
           showAnswer: true,
         }
-        
+
         const board = createEmptyBoard()
         const candidates = createEmptyCandidates()
         candidates[20] = createCandidateMask([1, 2, 3, 5, 6, 7, 8, 9])
-        
-        const { container } = render(
-          <Board {...defaultProps({ board, candidates, highlight })} />
-        )
-        
+
+        const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
         const cells = container.querySelectorAll('.sudoku-cell')
         const candidateGrid = cells[20]?.querySelector('.candidate-grid')
         const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
-        
+
         const greenDigits: number[] = []
         const struckDigits: number[] = []
-        
+
         candidateDigits?.forEach((el, i) => {
           const digit = i + 1
           if (el.className.includes('text-hint-text')) {
@@ -1572,7 +1506,7 @@ describe('Board', () => {
             struckDigits.push(digit)
           }
         })
-        
+
         expect(greenDigits).toEqual([3, 5])
         expect(struckDigits).toContain(1)
         expect(struckDigits).toContain(2)
@@ -1598,24 +1532,22 @@ describe('Board', () => {
           },
           showAnswer: true,
         }
-        
+
         const board = createEmptyBoard()
         const candidates = createEmptyCandidates()
         candidates[40] = createCandidateMask([3, 7, 9])
-        
-        const { container } = render(
-          <Board {...defaultProps({ board, candidates, highlight })} />
-        )
-        
+
+        const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
         const cells = container.querySelectorAll('.sudoku-cell')
         expect(cells[40]?.className).toContain('bg-cell-primary')
-        
+
         const candidateGrid = cells[40]?.querySelector('.candidate-grid')
         const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
-        
+
         const digit7 = candidateDigits?.[6]
         expect(digit7?.className).toContain('text-hint-text')
-        
+
         const digit3 = candidateDigits?.[2]
         const digit9 = candidateDigits?.[8]
         expect(digit3?.className).not.toContain('text-hint-text')
@@ -1637,23 +1569,21 @@ describe('Board', () => {
           },
           showAnswer: true,
         }
-        
+
         const board = createEmptyBoard()
         const candidates = createEmptyCandidates()
         candidates[30] = createCandidateMask([2, 4, 6, 8])
-        
-        const { container } = render(
-          <Board {...defaultProps({ board, candidates, highlight })} />
-        )
-        
+
+        const { container } = render(<Board {...defaultProps({ board, candidates, highlight })} />)
+
         const cells = container.querySelectorAll('.sudoku-cell')
         const candidateGrid = cells[30]?.querySelector('.candidate-grid')
         const candidateDigits = candidateGrid?.querySelectorAll('.candidate-digit')
-        
+
         const digit4 = candidateDigits?.[3]
         expect(digit4?.className).toContain('line-through')
         expect(digit4?.className).toContain('text-error-text')
-        
+
         const digit2 = candidateDigits?.[1]
         const digit6 = candidateDigits?.[5]
         const digit8 = candidateDigits?.[7]

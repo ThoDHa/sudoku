@@ -29,18 +29,18 @@ function AppContent() {
   // Disable unloading during E2E tests to speed up test execution (prevents ~4MB reloads)
   useWasmLifecycle({
     enableLogging: false,
-    unloadDelay: import.meta.env['VITE_E2E_TESTS'] === 'true' ? Infinity : undefined
+    unloadDelay: import.meta.env['VITE_E2E_TESTS'] === 'true' ? Infinity : undefined,
   })
 
   // Game pages need less padding (slim header)
   // Game routes: /c/* for custom, or /:seed for daily/practice (anything not a known route)
   const knownRoutes = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard', '/about']
   // Game pages: /c/* for custom, or /:seed for daily/practice (anything not a known route)
-  const isKnownRoute = knownRoutes.some(route => 
-    location.pathname === route || location.pathname.startsWith(route + '/')
+  const isKnownRoute = knownRoutes.some(
+    (route) => location.pathname === route || location.pathname.startsWith(route + '/'),
   )
-  const isGamePage = location.pathname.startsWith('/c/') ||
-                     (!isKnownRoute && location.pathname !== '/')
+  const isGamePage =
+    location.pathname.startsWith('/c/') || (!isKnownRoute && location.pathname !== '/')
 
   return (
     <div className="h-[100dvh] flex flex-col overflow-hidden bg-background text-foreground">
@@ -57,7 +57,7 @@ function AppContent() {
             <Route path="/custom" element={<Custom />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/about" element={<About />} />
-{/* Catch-all for puzzles: /:seed (daily if YYYYMMDD format, otherwise practice) */}
+            {/* Catch-all for puzzles: /:seed (daily if YYYYMMDD format, otherwise practice) */}
             <Route path="/:seed" element={<Game />} />
           </Routes>
         </Suspense>
@@ -67,7 +67,6 @@ function AppContent() {
 }
 
 function App() {
-
   return (
     <ThemeProvider>
       <GameProvider>

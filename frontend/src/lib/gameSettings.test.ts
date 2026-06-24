@@ -127,18 +127,12 @@ describe('gameSettings', () => {
   describe('setAutoSaveEnabled', () => {
     it('should store true value', () => {
       setAutoSaveEnabled(true)
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'sudoku_autosave_enabled',
-        'true'
-      )
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('sudoku_autosave_enabled', 'true')
     })
 
     it('should store false value', () => {
       setAutoSaveEnabled(false)
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'sudoku_autosave_enabled',
-        'false'
-      )
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('sudoku_autosave_enabled', 'false')
     })
 
     it('should handle localStorage errors gracefully', () => {
@@ -149,7 +143,7 @@ describe('gameSettings', () => {
       expect(() => setAutoSaveEnabled(true)).not.toThrow()
       expect(loggerWarnSpy).toHaveBeenCalledWith(
         'Failed to save auto-save preference:',
-        expect.any(Error)
+        expect.any(Error),
       )
     })
   })
@@ -183,8 +177,8 @@ describe('gameSettings', () => {
     it('should ignore items without correct prefix', () => {
       const gameState = createGameState({ savedAt: 1000 })
       localStorageMock._setStore({
-        'other_key': JSON.stringify(gameState),
-        'sudoku_preferences': '{}',
+        other_key: JSON.stringify(gameState),
+        sudoku_preferences: '{}',
         [`${prefix}valid-game`]: JSON.stringify(gameState),
       })
 
@@ -316,7 +310,7 @@ describe('gameSettings', () => {
       expect(games).toEqual([])
       expect(loggerWarnSpy).toHaveBeenCalledWith(
         'Failed to scan for in-progress games:',
-        expect.any(Error)
+        expect.any(Error),
       )
     })
 
@@ -326,13 +320,13 @@ describe('gameSettings', () => {
       localStorageMock._setStore({
         [`${prefix}game1`]: JSON.stringify(gameState),
       })
-      
+
       // Override key to return null for index 0
       localStorageMock.key.mockImplementation((index: number) => {
         if (index === 0) return null
         return null
       })
-      
+
       // Mock length to return 1
       Object.defineProperty(localStorageMock, 'length', {
         value: 1,
@@ -497,9 +491,7 @@ describe('gameSettings', () => {
 
       clearInProgressGame('game-to-clear')
 
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-        `${prefix}game-to-clear`
-      )
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith(`${prefix}game-to-clear`)
     })
 
     it('should not throw when game does not exist', () => {
@@ -514,7 +506,7 @@ describe('gameSettings', () => {
       expect(() => clearInProgressGame('some-game')).not.toThrow()
       expect(loggerWarnSpy).toHaveBeenCalledWith(
         'Failed to clear in-progress game:',
-        expect.any(Error)
+        expect.any(Error),
       )
     })
   })
@@ -539,15 +531,9 @@ describe('gameSettings', () => {
       clearOtherGamesForMode('daily-2024-01-15')
 
       // Should have removed the other daily but not the practice game
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-        `${prefix}daily-2024-01-14`
-      )
-      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(
-        `${prefix}daily-2024-01-15`
-      )
-      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(
-        `${prefix}P123`
-      )
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith(`${prefix}daily-2024-01-14`)
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(`${prefix}daily-2024-01-15`)
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(`${prefix}P123`)
     })
 
     it('should clear other practice games when saving a practice game', () => {
@@ -565,12 +551,8 @@ describe('gameSettings', () => {
 
       // Should have removed the other practice but not the daily game
       expect(localStorageMock.removeItem).toHaveBeenCalledWith(`${prefix}P123`)
-      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(
-        `${prefix}P456`
-      )
-      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(
-        `${prefix}daily-2024-01-15`
-      )
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(`${prefix}P456`)
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(`${prefix}daily-2024-01-15`)
     })
 
     it('should not clear anything when no other games exist in mode', () => {
@@ -599,7 +581,7 @@ describe('gameSettings', () => {
 
       // Reset mock and set up for daily test
       localStorageMock.removeItem.mockClear()
-      
+
       // Saving a daily game should not touch practice games
       clearOtherGamesForMode('daily-2024-01-15')
       expect(localStorageMock.removeItem).not.toHaveBeenCalled()
@@ -620,9 +602,7 @@ describe('gameSettings', () => {
 
       expect(localStorageMock.removeItem).toHaveBeenCalledWith(`${prefix}P111`)
       expect(localStorageMock.removeItem).toHaveBeenCalledWith(`${prefix}P222`)
-      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(
-        `${prefix}P333`
-      )
+      expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(`${prefix}P333`)
       expect(localStorageMock.removeItem).toHaveBeenCalledTimes(2)
     })
   })

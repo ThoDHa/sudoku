@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { formatTime, generateShareText, generatePuzzleUrl, getDailyStreak, isDailySeed, type Score } from '../lib/scores'
+import {
+  formatTime,
+  generateShareText,
+  generatePuzzleUrl,
+  getDailyStreak,
+  isDailySeed,
+  type Score,
+} from '../lib/scores'
 import { DIFFICULTIES, createGameRoute } from '../lib/constants'
 import { CloseIcon } from './ui'
 import DifficultyBadge from './DifficultyBadge'
@@ -57,7 +64,7 @@ export default function ResultModal({
   const [copied, setCopied] = useState(false)
   // Default to 'medium' if current difficulty is 'custom' (not a valid API difficulty)
   const [selectedDifficulty, setSelectedDifficulty] = useState(
-    difficulty === 'custom' ? 'medium' : difficulty
+    difficulty === 'custom' ? 'medium' : difficulty,
   )
   const navigate = useNavigate()
 
@@ -93,10 +100,7 @@ export default function ResultModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-md rounded-2xl bg-background p-6 shadow-2xl">
@@ -188,8 +192,10 @@ export default function ResultModal({
 
         {/* New Game Section */}
         <div className="mb-4">
-          <p className="mb-3 text-sm font-medium text-foreground text-center">Start a new puzzle:</p>
-          
+          <p className="mb-3 text-sm font-medium text-foreground text-center">
+            Start a new puzzle:
+          </p>
+
           {/* Pyramid layout: 3 on top, 2 on bottom */}
           <div className="space-y-2 mb-3">
             {/* Top row: Easy, Medium, Hard */}
@@ -211,7 +217,7 @@ export default function ResultModal({
                 )
               })}
             </div>
-            
+
             {/* Bottom row: Expert, Impossible (centered) */}
             <div className="flex justify-center gap-2">
               {DIFFICULTIES.slice(3).map((d) => {
@@ -233,7 +239,7 @@ export default function ResultModal({
               })}
             </div>
           </div>
-          
+
           <button
             onClick={() => {
               // Set flag so Game.tsx knows user is intentionally starting a new game

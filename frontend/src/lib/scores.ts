@@ -39,17 +39,17 @@ function isAssistedScore(score: Score): boolean {
 export function getBestScoresPure(): Record<string, Score> {
   const scores = getScores()
   const best: Record<string, Score> = {}
-  
+
   for (const score of scores) {
     // Skip assisted scores
     if (isAssistedScore(score)) continue
-    
+
     const existing = best[score.difficulty]
     if (!existing || score.timeMs < existing.timeMs) {
       best[score.difficulty] = score
     }
   }
-  
+
   return best
 }
 
@@ -57,17 +57,17 @@ export function getBestScoresPure(): Record<string, Score> {
 export function getBestScoresAssisted(): Record<string, Score> {
   const scores = getScores()
   const best: Record<string, Score> = {}
-  
+
   for (const score of scores) {
     // Only include assisted scores
     if (!isAssistedScore(score)) continue
-    
+
     const existing = best[score.difficulty]
     if (!existing || score.timeMs < existing.timeMs) {
       best[score.difficulty] = score
     }
   }
-  
+
   return best
 }
 
@@ -103,9 +103,9 @@ export function getDailyDate(seed: string): string | null {
 export function generateShareText(score: Score, puzzleUrl: string, streak?: number): string {
   const difficulty = score.difficulty.charAt(0).toUpperCase() + score.difficulty.slice(1)
   const time = formatTime(score.timeMs)
-  
+
   let text = ''
-  
+
   // Include appropriate header based on puzzle type
   const dailyDate = getDailyDate(score.seed)
   if (dailyDate) {
@@ -115,9 +115,9 @@ export function generateShareText(score: Score, puzzleUrl: string, streak?: numb
   } else {
     text += `Sudoku\n`
   }
-  
+
   text += `${difficulty} ⏱️ ${time}`
-  
+
   // Show hints and auto-fill usage if any assists were used
   const assists: string[] = []
   if (score.autoSolveUsed) {
@@ -126,23 +126,25 @@ export function generateShareText(score: Score, puzzleUrl: string, streak?: numb
     assists.push(`💡 ${score.hintsUsed} hint${score.hintsUsed > 1 ? 's' : ''}`)
   }
   if ((score.techniqueHintsUsed ?? 0) > 0) {
-    assists.push(`❓ ${score.techniqueHintsUsed} technique hint${(score.techniqueHintsUsed ?? 0) > 1 ? 's' : ''}`)
+    assists.push(
+      `❓ ${score.techniqueHintsUsed} technique hint${(score.techniqueHintsUsed ?? 0) > 1 ? 's' : ''}`,
+    )
   }
   if (score.autoFillUsed) {
     assists.push(`📝 auto-fill`)
   }
-  
+
   if (assists.length > 0) {
     text += ` (${assists.join(', ')})`
   }
-  
+
   // Add streak for daily puzzles
   if (dailyDate && streak && streak > 1) {
     text += `\n🔥 ${streak} day streak`
   }
-  
+
   text += `\n\n${puzzleUrl}`
-  
+
   return text
 }
 
@@ -153,7 +155,7 @@ export function generatePuzzleUrl(score: Score): string {
   const baseUrl = window.location.origin + (import.meta.env.BASE_URL || '/')
   // Remove trailing slash if present to avoid double slashes
   const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
-  
+
   // For custom puzzles with encoded data, use the /c/ route
   if (score.difficulty === 'custom' && score.encodedPuzzle) {
     return `${base}/c/${score.encodedPuzzle}`
@@ -259,7 +261,7 @@ export function getDailyStreak(): DailyStreak {
 export function markDailyCompleted(): void {
   const today = getTodayUTC()
   const yesterday = getYesterdayUTC()
-  
+
   // Add to completions set
   const completions = getDailyCompletions()
   if (completions.has(today)) {
@@ -268,11 +270,11 @@ export function markDailyCompleted(): void {
   }
   completions.add(today)
   localStorage.setItem(STORAGE_KEYS.DAILY_COMPLETIONS, JSON.stringify([...completions]))
-  
+
   // Update streak
   const streak = getDailyStreak()
   let newStreak: number
-  
+
   if (streak.lastCompletedDate === yesterday) {
     // Continuing streak
     newStreak = streak.currentStreak + 1
@@ -283,12 +285,15 @@ export function markDailyCompleted(): void {
     // Starting new streak
     newStreak = 1
   }
-  
+
   const newLongest = Math.max(streak.longestStreak, newStreak)
-  
-  localStorage.setItem(STORAGE_KEYS.DAILY_STREAK, JSON.stringify({
-    currentStreak: newStreak,
-    longestStreak: newLongest,
-    lastCompletedDate: today,
-  }))
+
+  localStorage.setItem(
+    STORAGE_KEYS.DAILY_STREAK,
+    JSON.stringify({
+      currentStreak: newStreak,
+      longestStreak: newLongest,
+      lastCompletedDate: today,
+    }),
+  )
 }

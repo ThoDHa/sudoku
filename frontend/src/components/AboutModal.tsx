@@ -11,7 +11,8 @@ const ABOUT_SECTIONS = [
     content: (
       <>
         <p className="text-center text-foreground-muted mb-4">
-          A free, educational Sudoku app designed to help you <strong className="text-foreground">learn</strong>, not just solve.
+          A free, educational Sudoku app designed to help you{' '}
+          <strong className="text-foreground">learn</strong>, not just solve.
         </p>
         <div className="bg-accent-light rounded-lg p-4 mb-4">
           <p className="text-sm text-center text-accent font-medium">
@@ -36,7 +37,9 @@ const ABOUT_SECTIONS = [
             <div>
               <h4 className="font-medium text-foreground text-sm">Technique Hints</h4>
               <p className="text-sm text-foreground-muted">
-                Stuck? We'll analyze your <strong className="text-foreground">current game state</strong> to find the next logical step using advanced Sudoku techniques.
+                Stuck? We'll analyze your{' '}
+                <strong className="text-foreground">current game state</strong> to find the next
+                logical step using advanced Sudoku techniques.
               </p>
             </div>
           </div>
@@ -45,7 +48,8 @@ const ABOUT_SECTIONS = [
             <div>
               <h4 className="font-medium text-foreground text-sm">Full Hints</h4>
               <p className="text-sm text-foreground-muted">
-                Still stuck? See exactly where and how to apply the technique with highlighted cells.
+                Still stuck? See exactly where and how to apply the technique with highlighted
+                cells.
               </p>
             </div>
           </div>
@@ -60,11 +64,13 @@ const ABOUT_SECTIONS = [
     content: (
       <>
         <p className="text-center text-foreground-muted mb-4">
-          Toggle notes mode to pencil in possible candidates for a cell. This helps you track which numbers could go where.
+          Toggle notes mode to pencil in possible candidates for a cell. This helps you track which
+          numbers could go where.
         </p>
         <div className="bg-accent-light rounded-lg p-3">
           <p className="text-sm text-center text-accent font-medium">
-            Press N or tap the pencil button to toggle notes. Use Auto-fill in the menu to fill all candidates at once!
+            Press N or tap the pencil button to toggle notes. Use Auto-fill in the menu to fill all
+            candidates at once!
           </p>
         </div>
       </>
@@ -77,17 +83,22 @@ const ABOUT_SECTIONS = [
     content: (
       <>
         <p className="text-center text-foreground-muted mb-4">
-          Watch the solver analyze your <strong className="text-foreground">current board and candidates</strong> step-by-step using real solving techniques.
+          Watch the solver analyze your{' '}
+          <strong className="text-foreground">current board and candidates</strong> step-by-step
+          using real solving techniques.
         </p>
         <p className="text-center text-foreground-muted mb-4">
-          The solver runs in a <strong className="text-foreground">background thread</strong>, keeping the interface smooth and responsive.
+          The solver runs in a <strong className="text-foreground">background thread</strong>,
+          keeping the interface smooth and responsive.
         </p>
         <p className="text-center text-foreground-muted mb-4">
-          <strong className="text-foreground">Made a mistake?</strong> The solver can fix errors from your current position.
+          <strong className="text-foreground">Made a mistake?</strong> The solver can fix errors
+          from your current position.
         </p>
         <div className="bg-accent-light rounded-lg p-3 mb-4">
           <p className="text-sm text-center text-accent font-medium">
-            Pause the solver and use undo/redo to step through moves — toast messages explain each step!
+            Pause the solver and use undo/redo to step through moves — toast messages explain each
+            step!
           </p>
         </div>
         <div className="bg-accent-light rounded-lg p-3">
@@ -105,15 +116,13 @@ const ABOUT_SECTIONS = [
     content: (
       <>
         <p className="text-center text-foreground-muted mb-4">
-          From basic singles to advanced chains — master real solving techniques used by expert players.
+          From basic singles to advanced chains — master real solving techniques used by expert
+          players.
         </p>
         <p className="text-center text-foreground-muted mb-4">
           Puzzles are graded by the techniques required. Start easy and work your way up!
         </p>
-        <Link 
-          to="/techniques" 
-          className="block text-center text-accent hover:underline text-sm"
-        >
+        <Link to="/techniques" className="block text-center text-accent hover:underline text-sm">
           Explore technique library &rarr;
         </Link>
       </>
@@ -205,15 +214,12 @@ export default function AboutModal({ isOpen, onClose, isOnboarding = false }: Ab
 
   const section = ABOUT_SECTIONS[currentStep]
   if (!section) return null
-  
+
   const isLastStep = currentStep === ABOUT_SECTIONS.length - 1
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={handleSkip}
-      />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleSkip} />
       <div className="relative z-10 w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-background p-6 shadow-2xl">
         {/* Progress dots */}
         <div className="flex justify-center gap-2 mb-6">
@@ -225,8 +231,8 @@ export default function AboutModal({ isOpen, onClose, isOnboarding = false }: Ab
                 idx === currentStep
                   ? 'bg-accent w-6'
                   : idx < currentStep
-                  ? 'bg-accent'
-                  : 'bg-board-border-light'
+                    ? 'bg-accent'
+                    : 'bg-board-border-light'
               }`}
               aria-label={`Go to step ${idx + 1}`}
             />
@@ -237,14 +243,10 @@ export default function AboutModal({ isOpen, onClose, isOnboarding = false }: Ab
         <div className="text-center text-5xl mb-4">{section.icon}</div>
 
         {/* Title */}
-        <h2 className="text-xl font-bold text-center text-foreground mb-4">
-          {section.title}
-        </h2>
+        <h2 className="text-xl font-bold text-center text-foreground mb-4">{section.title}</h2>
 
         {/* Content */}
-        <div className="mb-6">
-          {section.content}
-        </div>
+        <div className="mb-6">{section.content}</div>
 
         {/* Navigation buttons */}
         <div className="flex gap-3">
@@ -319,12 +321,12 @@ export function useAboutModal() {
   // For compatibility with existing onboarding checks
   const onboardingComplete = localStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE) === 'true'
 
-  return { 
-    showAbout, 
+  return {
+    showAbout,
     isOnboarding,
     onboardingComplete,
-    openAbout, 
-    closeAbout, 
+    openAbout,
+    closeAbout,
     resetOnboarding,
     // Aliases for backwards compatibility
     showOnboarding: showAbout && isOnboarding,

@@ -20,7 +20,7 @@ import {
   masksToSets,
   maskToString,
   maskToBinary,
-  type CandidateMask
+  type CandidateMask,
 } from './candidatesUtils'
 
 describe('candidatesUtils', () => {
@@ -160,26 +160,14 @@ describe('candidatesUtils', () => {
 
   describe('serialization', () => {
     it('converts candidates to arrays', () => {
-      const candidates = new Uint16Array([
-        0b0000000000,
-        0b0000000110,
-        0b1111111110,
-      ])
+      const candidates = new Uint16Array([0b0000000000, 0b0000000110, 0b1111111110])
 
       const arrays = candidatesToArrays(candidates)
-      expect(arrays).toEqual([
-        [],
-        [1, 2],
-        [1, 2, 3, 4, 5, 6, 7, 8, 9]
-      ])
+      expect(arrays).toEqual([[], [1, 2], [1, 2, 3, 4, 5, 6, 7, 8, 9]])
     })
 
     it('converts arrays to candidates', () => {
-      const arrays = [
-        [],
-        [1, 2],
-        [1, 2, 3, 4, 5, 6, 7, 8, 9]
-      ]
+      const arrays = [[], [1, 2], [1, 2, 3, 4, 5, 6, 7, 8, 9]]
 
       const candidates = arraysToCandidates(arrays)
       expect(candidates[0]).toBe(0b0000000000)
@@ -188,13 +176,7 @@ describe('candidatesUtils', () => {
     })
 
     it('roundtrips arrays to candidates and back', () => {
-      const originalArrays = [
-        [],
-        [1],
-        [1, 2, 3],
-        [5, 7, 9],
-        [1, 2, 3, 4, 5, 6, 7, 8, 9]
-      ]
+      const originalArrays = [[], [1], [1, 2, 3], [5, 7, 9], [1, 2, 3, 4, 5, 6, 7, 8, 9]]
 
       const candidates = arraysToCandidates(originalArrays)
       const roundtripArrays = candidatesToArrays(candidates)
@@ -208,7 +190,7 @@ describe('candidatesUtils', () => {
       const sets = [
         new Set<number>([]),
         new Set<number>([1, 2]),
-        new Set<number>([1, 2, 3, 4, 5, 6, 7, 8, 9])
+        new Set<number>([1, 2, 3, 4, 5, 6, 7, 8, 9]),
       ]
 
       const masks = setsToMasks(sets)
@@ -218,11 +200,7 @@ describe('candidatesUtils', () => {
     })
 
     it('converts masks to sets', () => {
-      const masks = new Uint16Array([
-        0b0000000000,
-        0b0000000110,
-        0b1111111110
-      ])
+      const masks = new Uint16Array([0b0000000000, 0b0000000110, 0b1111111110])
 
       const sets = masksToSets(masks)
       expect(sets[0]).toEqual(new Set([]))
@@ -236,7 +214,7 @@ describe('candidatesUtils', () => {
         new Set<number>([1]),
         new Set<number>([1, 3, 5]),
         new Set<number>([2, 4, 6, 8]),
-        new Set<number>([1, 2, 3, 4, 5, 6, 7, 8, 9])
+        new Set<number>([1, 2, 3, 4, 5, 6, 7, 8, 9]),
       ]
 
       const masks = setsToMasks(originalSets)

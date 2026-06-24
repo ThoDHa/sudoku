@@ -2,7 +2,7 @@
 // Handles side effects (UI resets, highlights, selection, notes/erase mode), so all clear paths call this
 // Usage: commitCellAction('erase', {...}), commitCellAction('clearAll', {...}), etc.
 
-export type CellActionType = 'erase' | 'clearAll' | 'undo' | 'redo';
+export type CellActionType = 'erase' | 'clearAll' | 'undo' | 'redo'
 
 export interface CommitCellActionOptions {
   // Index of the cell for per-cell actions
@@ -25,41 +25,38 @@ export interface CommitCellActionOptions {
   // ...any other state/UI side effect functions needed
 }
 
-export function commitCellAction(
-  actionType: CellActionType,
-  opts: CommitCellActionOptions
-) {
-  const { idx, game } = opts;
+export function commitCellAction(actionType: CellActionType, opts: CommitCellActionOptions) {
+  const { idx, game } = opts
 
   switch (actionType) {
     case 'erase':
       if (typeof idx === 'number') {
-        game.eraseCell(idx);
+        game.eraseCell(idx)
       }
-      opts.clearAfterErase?.();
+      opts.clearAfterErase?.()
       // Ensure UI selection state is cleared after an erase so callers do not
       // need to remember to call deselectCell everywhere. This aligns erase
       // behavior with undo/clearAll which already clear selection.
-      opts.deselectCell?.();
+      opts.deselectCell?.()
       // Any shared highlight/deselect/clear logic that should always follow erasure
-      opts.setEraseMode?.(false);
-      break;
+      opts.setEraseMode?.(false)
+      break
     case 'clearAll':
-      game.clearAll();
-      opts.clearAllAndDeselect?.();
-      opts.setNotesMode?.(false);
-      break;
+      game.clearAll()
+      opts.clearAllAndDeselect?.()
+      opts.setNotesMode?.(false)
+      break
     case 'undo':
-      game.undo();
+      game.undo()
       // Often want to clear highlights but preserve digit highlight for multi-fill mode
-      opts.deselectCell?.();
-      opts.clearMoveHighlight?.();
-      break;
+      opts.deselectCell?.()
+      opts.clearMoveHighlight?.()
+      break
     case 'redo':
-      game.redo();
-      opts.clearAllAndDeselect?.();
-      break;
+      game.redo()
+      opts.clearAllAndDeselect?.()
+      break
     default:
-      throw new Error(`Unknown actionType: ${actionType}`);
+      throw new Error(`Unknown actionType: ${actionType}`)
   }
 }

@@ -9,7 +9,7 @@ export type AutoSolveSpeed = 'step' | 'slow' | 'normal' | 'fast' | 'instant'
 // Auto-solve speed delays in milliseconds
 // 'step' uses slow speed but starts paused
 export const AUTO_SOLVE_SPEEDS: Record<AutoSolveSpeed, number> = {
-  step: 500,    // Same as slow, but starts paused
+  step: 500, // Same as slow, but starts paused
   slow: 500,
   normal: 150,
   fast: 25,

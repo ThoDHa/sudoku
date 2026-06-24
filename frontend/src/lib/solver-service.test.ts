@@ -57,7 +57,8 @@ describe('solver-service', () => {
   describe('validateBoard()', () => {
     it('should delegate to dp-solver validateBoardAgainstSolution', async () => {
       const mockResult = { valid: true }
-      const { validateBoardAgainstSolution: dpValidateBoardAgainstSolution } = await import('./dp-solver')
+      const { validateBoardAgainstSolution: dpValidateBoardAgainstSolution } =
+        await import('./dp-solver')
       vi.mocked(dpValidateBoardAgainstSolution).mockReturnValue(mockResult)
 
       const { validateBoard } = await import('./solver-service')
@@ -77,7 +78,8 @@ describe('solver-service', () => {
         message: 'Some cells are incorrect',
         incorrectCells: [0, 4, 8],
       }
-      const { validateBoardAgainstSolution: dpValidateBoardAgainstSolution } = await import('./dp-solver')
+      const { validateBoardAgainstSolution: dpValidateBoardAgainstSolution } =
+        await import('./dp-solver')
       vi.mocked(dpValidateBoardAgainstSolution).mockReturnValue(mockResult)
 
       const { validateBoard } = await import('./solver-service')
@@ -93,7 +95,9 @@ describe('solver-service', () => {
 
   describe('validateCustomPuzzle()', () => {
     it('should return valid result for unique solvable puzzle', async () => {
-      const mockSolution = Array(81).fill(0).map((_, i) => (i % 9) + 1)
+      const mockSolution = Array(81)
+        .fill(0)
+        .map((_, i) => (i % 9) + 1)
       const { validatePuzzle } = await import('./dp-solver')
       vi.mocked(validatePuzzle).mockReturnValue({
         valid: true,
@@ -201,7 +205,7 @@ describe('solver-service', () => {
       const { getPuzzle } = await import('./solver-service')
 
       expect(() => getPuzzle('invalid-seed', 'easy')).toThrow(
-        'Failed to load puzzle for seed "invalid-seed" with difficulty "easy"'
+        'Failed to load puzzle for seed "invalid-seed" with difficulty "easy"',
       )
     })
 
@@ -500,7 +504,8 @@ describe('solver-service', () => {
     const mockGivens = Array(81).fill(0)
 
     it('should use worker when worker mode is enabled', async () => {
-      const { isWorkerSupported, findNextMove: workerFindNextMove } = await import('./worker-client')
+      const { isWorkerSupported, findNextMove: workerFindNextMove } =
+        await import('./worker-client')
       vi.mocked(isWorkerSupported).mockReturnValue(true)
       vi.mocked(workerFindNextMove).mockResolvedValue({
         move: null,
@@ -520,7 +525,8 @@ describe('solver-service', () => {
     })
 
     it('should fall back to main thread when worker fails', async () => {
-      const { isWorkerSupported, findNextMove: workerFindNextMove } = await import('./worker-client')
+      const { isWorkerSupported, findNextMove: workerFindNextMove } =
+        await import('./worker-client')
       const { loadWasm, getWasmApi } = await import('./wasm')
 
       const mockApi = {
@@ -548,7 +554,8 @@ describe('solver-service', () => {
     })
 
     it('should use main thread directly when worker mode is disabled', async () => {
-      const { isWorkerSupported, findNextMove: workerFindNextMove } = await import('./worker-client')
+      const { isWorkerSupported, findNextMove: workerFindNextMove } =
+        await import('./worker-client')
       const { loadWasm, getWasmApi } = await import('./wasm')
 
       const mockApi = {

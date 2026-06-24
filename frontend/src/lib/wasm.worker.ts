@@ -1,6 +1,6 @@
 /**
  * WASM Web Worker for Sudoku Solver
- * 
+ *
  * This worker runs the Go WASM solver in a separate thread to prevent
  * UI blocking during solving operations. All heavy computation happens here.
  */
@@ -84,7 +84,7 @@ interface SudokuWasmAPI {
   createBoardWithCandidates(cells: number[], candidates: number[][]): BoardState
   findNextMove(cells: number[], candidates: number[][], givens: number[]): FindNextMoveResult
   solveAll(cells: number[], candidates: number[][], givens: number[]): SolveAllResult
-  
+
   // Other methods (for potential future use)
   getVersion(): string
 }
@@ -129,53 +129,53 @@ async function initializeWasm(): Promise<void> {
   if (wasmApi) {
     return // Already initialized
   }
-  
+
   if (isInitializing && initPromise) {
     return initPromise // Already initializing, wait for it
   }
-  
+
   isInitializing = true
-  
+
   initPromise = (async () => {
     try {
-  // Load wasm_exec.js for Go runtime. Prefer importScripts if available (classic worker).
-  // For module workers, importScripts is not available, so fetch and evaluate the script instead.
-  // Try to use importScripts if it works, but guard against environments
-  // where importScripts exists but is disallowed (module workers) by catching errors.
-  let loadedWasmExec = false
-  if (typeof importScripts === 'function') {
-    try {
-      importScripts('/wasm_exec.js')
-      loadedWasmExec = true
-    } catch {
-      // importScripts threw, likely because this is a module worker where importScripts is not allowed
-      loadedWasmExec = false
-    }
-  }
+      // Load wasm_exec.js for Go runtime. Prefer importScripts if available (classic worker).
+      // For module workers, importScripts is not available, so fetch and evaluate the script instead.
+      // Try to use importScripts if it works, but guard against environments
+      // where importScripts exists but is disallowed (module workers) by catching errors.
+      let loadedWasmExec = false
+      if (typeof importScripts === 'function') {
+        try {
+          importScripts('/wasm_exec.js')
+          loadedWasmExec = true
+        } catch {
+          // importScripts threw, likely because this is a module worker where importScripts is not allowed
+          loadedWasmExec = false
+        }
+      }
 
-  if (!loadedWasmExec) {
-    // Fetch and evaluate the wasm_exec.js script so it defines `Go` in the worker scope
-    const resp = await fetch('/wasm_exec.js')
-    if (!resp.ok) {
-      throw new Error(`Failed to fetch wasm_exec.js: ${resp.status}`)
-    }
-    const wasmExecText = await resp.text()
-    // Execute the script in global scope so it attaches `Go` to the worker global
-    new Function(wasmExecText)()
-  }
-      
+      if (!loadedWasmExec) {
+        // Fetch and evaluate the wasm_exec.js script so it defines `Go` in the worker scope
+        const resp = await fetch('/wasm_exec.js')
+        if (!resp.ok) {
+          throw new Error(`Failed to fetch wasm_exec.js: ${resp.status}`)
+        }
+        const wasmExecText = await resp.text()
+        // Execute the script in global scope so it attaches `Go` to the worker global
+        new Function(wasmExecText)()
+      }
+
       if (typeof Go === 'undefined') {
         throw new Error('Go runtime not available after loading wasm_exec.js')
       }
-      
+
       const go = new Go()
-      
+
       // Fetch the WASM file
       const wasmResponse = await fetch('/sudoku.wasm')
       if (!wasmResponse.ok) {
         throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`)
       }
-      
+
       // Instantiate the WASM module
       let result: WebAssembly.WebAssemblyInstantiatedSource
       if (WebAssembly.instantiateStreaming) {
@@ -185,11 +185,11 @@ async function initializeWasm(): Promise<void> {
         const wasmBuffer = await wasmResponse.arrayBuffer()
         result = await WebAssembly.instantiate(wasmBuffer, go.importObject)
       }
-      
+
       // Run the Go program (sets up globalThis.SudokuWasm)
       // This doesn't return - it runs forever (intentionally)
       go.run(result.instance)
-      
+
       // Wait for WASM to signal it's ready
       await new Promise<void>((resolve, reject) => {
         const checkReady = () => {
@@ -199,10 +199,10 @@ async function initializeWasm(): Promise<void> {
           }
           return false
         }
-        
+
         // Check immediately
         if (checkReady()) return
-        
+
         // Poll for SudokuWasm to become available
         const maxAttempts = 50 // 5 seconds max
         let attempts = 0
@@ -216,21 +216,20 @@ async function initializeWasm(): Promise<void> {
           }
         }, 100)
       })
-      
+
       // SudokuWasm is guaranteed to be defined after the Promise resolves
       if (!SudokuWasm) {
         throw new Error('SudokuWasm not available after initialization')
       }
       wasmApi = SudokuWasm
       isInitializing = false
-      
     } catch (error) {
       isInitializing = false
       initPromise = null
       throw error
     }
   })()
-  
+
   return initPromise
 }
 
@@ -238,7 +237,7 @@ async function initializeWasm(): Promise<void> {
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   const { type, id, payload } = event.data
-  
+
   try {
     switch (type) {
       case 'init': {
@@ -247,21 +246,21 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         self.postMessage(response)
         break
       }
-      
+
       case 'findNextMove': {
         // Ensure WASM is initialized
         if (!wasmApi) {
           await initializeWasm()
         }
-        
+
         // wasmApi is guaranteed after initializeWasm()
         if (!wasmApi) {
           throw new Error('WASM API not available after initialization')
         }
-        
+
         const { cells, candidates, givens } = payload as FindNextMovePayload
         const result = wasmApi.findNextMove(cells, candidates, givens)
-        
+
         const response: WorkerResponse = {
           type: 'result',
           id,
@@ -271,36 +270,36 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
             board: result.board.cells,
             candidates: result.board.candidates,
             solved: result.solved,
-          }
+          },
         }
         self.postMessage(response)
         break
       }
-      
+
       case 'solveAll': {
         // Ensure WASM is initialized
         if (!wasmApi) {
           await initializeWasm()
         }
-        
+
         // wasmApi is guaranteed after initializeWasm()
         if (!wasmApi) {
           throw new Error('WASM API not available after initialization')
         }
-        
+
         const { cells, candidates, givens } = payload as SolveAllPayload
         const result = wasmApi.solveAll(cells, candidates, givens)
-        
+
         const response: WorkerResponse = {
           type: 'result',
           id,
           success: true,
-          data: result
+          data: result,
         }
         self.postMessage(response)
         break
       }
-      
+
       case 'terminate': {
         // Clean up and close the worker
         wasmApi = null
@@ -309,13 +308,13 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         self.close()
         break
       }
-      
+
       default: {
         const response: WorkerResponse = {
           type: 'error',
           id,
           success: false,
-          error: `Unknown message type: ${type}`
+          error: `Unknown message type: ${type}`,
         }
         self.postMessage(response)
       }
@@ -325,7 +324,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       type: 'error',
       id,
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     }
     self.postMessage(response)
   }

@@ -31,7 +31,7 @@ export interface GameModalsState {
 
 /**
  * Hook for managing all modal states in the Game component
- * 
+ *
  * Consolidates 7 modal-related state variables into a single hook
  * with clear, semantic action methods.
  */
@@ -43,7 +43,8 @@ export function useGameModals() {
   const [solveConfirmOpen, setSolveConfirmOpen] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showSolutionConfirm, setShowSolutionConfirm] = useState(false)
-  const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] = useState<UnpinpointableErrorInfo | null>(null)
+  const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] =
+    useState<UnpinpointableErrorInfo | null>(null)
 
   // History modal actions
   const openHistory = useCallback(() => setHistoryOpen(true), [])
@@ -79,13 +80,22 @@ export function useGameModals() {
 
   // Check if any modal is open (useful for disabling keyboard shortcuts)
   const isAnyModalOpen = useMemo(() => {
-    return historyOpen || 
-           techniqueModal !== null || 
-           techniquesListOpen || 
-           solveConfirmOpen || 
-           showClearConfirm ||
-           showSolutionConfirm
-  }, [historyOpen, techniqueModal, techniquesListOpen, solveConfirmOpen, showClearConfirm, showSolutionConfirm])
+    return (
+      historyOpen ||
+      techniqueModal !== null ||
+      techniquesListOpen ||
+      solveConfirmOpen ||
+      showClearConfirm ||
+      showSolutionConfirm
+    )
+  }, [
+    historyOpen,
+    techniqueModal,
+    techniquesListOpen,
+    solveConfirmOpen,
+    showClearConfirm,
+    showSolutionConfirm,
+  ])
 
   return {
     // State values

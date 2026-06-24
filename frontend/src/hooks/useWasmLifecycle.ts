@@ -15,37 +15,37 @@ const KNOWN_NON_GAME_ROUTES = ['/', '/r', '/techniques', '/technique', '/custom'
 
 /**
  * Hook to manage WASM unloading based on current route
- * 
+ *
  * WASM is loaded lazily on-demand when hints/solve are requested (see solver-service.ts getApi()).
  * This hook handles cleanup when leaving game routes to save ~4MB memory.
- * 
+ *
  * Note: We intentionally do NOT load WASM eagerly on game routes because:
  * - Puzzles come from static pool (no WASM needed)
  * - Custom puzzle validation uses pure TypeScript dp-solver
  * - WASM only needed for hints, auto-solve, and check-and-fix operations
  */
 export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
-  const {
-    unloadDelay = 2000,
-    enableLogging = false
-  } = options
+  const { unloadDelay = 2000, enableLogging = false } = options
 
   const location = useLocation()
   const unloadTimeoutRef = useRef<number | null>(null)
   const currentRouteRequiresWasm = useRef(false)
 
-  const log = useCallback((message: string) => {
-    if (enableLogging) {
-      logger.warn(`[WasmLifecycle] ${message}`)
-    }
-  }, [enableLogging])
+  const log = useCallback(
+    (message: string) => {
+      if (enableLogging) {
+        logger.warn(`[WasmLifecycle] ${message}`)
+      }
+    },
+    [enableLogging],
+  )
 
   const isWasmRoute = useCallback((pathname: string): boolean => {
     // Custom puzzles always need WASM (for validation during creation)
     if (pathname.startsWith('/c/')) return true
     // Check if it's a known non-game route
-    const isKnownRoute = KNOWN_NON_GAME_ROUTES.some(route => 
-      pathname === route || pathname.startsWith(route + '/')
+    const isKnownRoute = KNOWN_NON_GAME_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(route + '/'),
     )
     // If not a known route and not homepage, it's a game route (/:seed)
     return !isKnownRoute && pathname !== '/'
@@ -127,6 +127,6 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
     isWasmRoute: isWasmRoute(location.pathname),
     loadWasm,
     unloadWasm,
-    cancelUnload
+    cancelUnload,
   }
 }

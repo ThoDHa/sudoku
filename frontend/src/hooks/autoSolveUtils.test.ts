@@ -23,7 +23,9 @@ import {
 const createMockContext = (overrides?: Partial<ActionContext>): ActionContext => ({
   moveResult: {
     board: Array(81).fill(0),
-    candidates: Array(81).fill(null).map(() => [1, 2, 3]),
+    candidates: Array(81)
+      .fill(null)
+      .map(() => [1, 2, 3]),
     move: {
       step_index: 0,
       technique: 'Test Technique',
@@ -36,7 +38,10 @@ const createMockContext = (overrides?: Partial<ActionContext>): ActionContext =>
     },
   },
   newIndex: 1,
-  getCandidates: () => Array(81).fill(null).map(() => new Set([1, 2, 3, 4, 5, 6, 7, 8, 9])),
+  getCandidates: () =>
+    Array(81)
+      .fill(null)
+      .map(() => new Set([1, 2, 3, 4, 5, 6, 7, 8, 9])),
   applyMove: vi.fn(),
   addToHistory: vi.fn(),
   hasMoreMoves: () => true,
@@ -54,7 +59,9 @@ const createMockContext = (overrides?: Partial<ActionContext>): ActionContext =>
  */
 const createMockMoveResult = (overrides?: Partial<MoveResult>): MoveResult => ({
   board: Array(81).fill(0),
-  candidates: Array(81).fill(null).map(() => [1, 2, 3]),
+  candidates: Array(81)
+    .fill(null)
+    .map(() => [1, 2, 3]),
   move: {
     step_index: 0,
     technique: 'Test Technique',
@@ -74,11 +81,15 @@ describe('autoSolveUtils', () => {
   // convertCandidates tests
   describe('convertCandidates', () => {
     it('converts number[][] to Set<number>[]', () => {
-      const input: (number[] | null)[] = [[1, 2, 3], [4, 5], [6, 7, 8, 9]]
+      const input: (number[] | null)[] = [
+        [1, 2, 3],
+        [4, 5],
+        [6, 7, 8, 9],
+      ]
       const fallback = [new Set<number>()]
-      
+
       const result = convertCandidates(input, fallback)
-      
+
       expect(result).toHaveLength(3)
       expect(result[0]).toEqual(new Set([1, 2, 3]))
       expect(result[1]).toEqual(new Set([4, 5]))
@@ -88,26 +99,26 @@ describe('autoSolveUtils', () => {
     it('handles null entries as empty sets', () => {
       const input: (number[] | null)[] = [[1, 2], null, [3, 4]]
       const fallback = [new Set<number>()]
-      
+
       const result = convertCandidates(input, fallback)
-      
+
       expect(result[1]).toEqual(new Set())
     })
 
     it('returns fallback when candidates is undefined', () => {
       const fallback = [new Set([1, 2, 3])]
-      
+
       const result = convertCandidates(undefined, fallback)
-      
+
       expect(result).toBe(fallback)
     })
 
     it('handles empty arrays', () => {
       const input: (number[] | null)[] = [[], [], []]
       const fallback = [new Set<number>()]
-      
+
       const result = convertCandidates(input, fallback)
-      
+
       expect(result[0]).toEqual(new Set())
       expect(result[1]).toEqual(new Set())
       expect(result[2]).toEqual(new Set())
@@ -119,39 +130,42 @@ describe('autoSolveUtils', () => {
     it('serializes (number[] | null)[] to number[][]', () => {
       const input: (number[] | null)[] = [[1, 2, 3], [4, 5], [6]]
       const fallback = [new Set<number>()]
-      
+
       const result = serializeCandidates(input, fallback)
-      
+
       expect(result).toEqual([[1, 2, 3], [4, 5], [6]])
     })
 
     it('handles null entries as empty arrays', () => {
       const input: (number[] | null)[] = [[1, 2], null, [3]]
       const fallback = [new Set<number>()]
-      
+
       const result = serializeCandidates(input, fallback)
-      
+
       expect(result[1]).toEqual([])
     })
 
     it('uses fallback when candidates is undefined', () => {
       const fallback = [new Set([1, 2, 3]), new Set([4, 5])]
-      
+
       const result = serializeCandidates(undefined, fallback)
-      
-      expect(result).toEqual([[1, 2, 3], [4, 5]])
+
+      expect(result).toEqual([
+        [1, 2, 3],
+        [4, 5],
+      ])
     })
 
     it('creates independent copy of arrays', () => {
       const original = [1, 2, 3]
       const input: (number[] | null)[] = [original]
       const fallback = [new Set<number>()]
-      
+
       const result = serializeCandidates(input, fallback)
-      
+
       // Modify original
       original.push(4)
-      
+
       // Result should not be affected
       expect(result[0]).toEqual([1, 2, 3])
     })
@@ -173,9 +187,9 @@ describe('autoSolveUtils', () => {
         highlights: { primary: [] },
       }
       const fallback = [new Set<number>()]
-      
+
       const result = createStateSnapshot(board, candidates, move, fallback)
-      
+
       expect(result.board).toEqual([1, 2, 3, 0, 0, 0, 0, 0, 0])
       expect(result.candidates).toEqual([[4, 5], [6, 7], []])
       expect(result.move).toBe(move)
@@ -185,12 +199,12 @@ describe('autoSolveUtils', () => {
       const board = [1, 2, 3]
       const candidates: (number[] | null)[] = []
       const fallback = [new Set<number>()]
-      
+
       const result = createStateSnapshot(board, candidates, null, fallback)
-      
+
       // Modify original
       board[0] = 9
-      
+
       // Result should not be affected
       expect(result.board[0]).toBe(1)
     })
@@ -199,19 +213,22 @@ describe('autoSolveUtils', () => {
       const board = [0, 0, 0]
       const candidates: (number[] | null)[] = [[1, 2, 3]]
       const fallback = [new Set<number>()]
-      
+
       const result = createStateSnapshot(board, candidates, null, fallback)
-      
+
       expect(result.move).toBeNull()
     })
 
     it('uses fallback when candidates is undefined', () => {
       const board = [0, 0, 0]
       const fallback = [new Set([1, 2]), new Set([3, 4])]
-      
+
       const result = createStateSnapshot(board, undefined, null, fallback)
-      
-      expect(result.candidates).toEqual([[1, 2], [3, 4]])
+
+      expect(result.candidates).toEqual([
+        [1, 2],
+        [3, 4],
+      ])
     })
   })
 
@@ -222,9 +239,9 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => true,
         isActive: () => true,
       })
-      
+
       const result = handleContradiction(ctx)
-      
+
       expect(result).toEqual({ type: 'skip' })
     })
 
@@ -233,9 +250,9 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => false,
         isActive: () => true,
       })
-      
+
       const result = handleContradiction(ctx)
-      
+
       expect(result.type).toBe('stop')
       expect(result).toHaveProperty('error')
     })
@@ -245,9 +262,9 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => true,
         isActive: () => false,
       })
-      
+
       const result = handleContradiction(ctx)
-      
+
       expect(result.type).toBe('stop')
     })
   })
@@ -272,9 +289,9 @@ describe('autoSolveUtils', () => {
         }),
         onUnpinpointableError,
       })
-      
+
       const result = handleError(ctx)
-      
+
       expect(result).toEqual({ type: 'stop' })
       expect(onUnpinpointableError).toHaveBeenCalledWith('Too many errors found', 5)
     })
@@ -296,12 +313,12 @@ describe('autoSolveUtils', () => {
         }),
         onUnpinpointableError,
       })
-      
+
       handleError(ctx)
-      
+
       expect(onUnpinpointableError).toHaveBeenCalledWith(
         'Too many incorrect entries to fix automatically.',
-        0
+        0,
       )
     })
   })
@@ -327,9 +344,9 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => true,
         isActive: () => true,
       })
-      
+
       const result = handleDiagnostic(ctx)
-      
+
       expect(onStatus).toHaveBeenCalledWith('Checking for errors...')
       expect(result).toEqual({ type: 'skip' })
     })
@@ -339,9 +356,9 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => false,
         isActive: () => true,
       })
-      
+
       const result = handleDiagnostic(ctx)
-      
+
       expect(result).toEqual({ type: 'stop' })
     })
 
@@ -362,9 +379,9 @@ describe('autoSolveUtils', () => {
         }),
         onStatus,
       })
-      
+
       handleDiagnostic(ctx)
-      
+
       expect(onStatus).toHaveBeenCalledWith('Taking another look...')
     })
   })
@@ -389,9 +406,9 @@ describe('autoSolveUtils', () => {
         }),
         onUnpinpointableError,
       })
-      
+
       const result = handleUnpinpointableError(ctx)
-      
+
       expect(result).toEqual({ type: 'stop' })
       expect(onUnpinpointableError).toHaveBeenCalledWith('Cannot find the error', 10)
     })
@@ -414,12 +431,12 @@ describe('autoSolveUtils', () => {
         }),
         onUnpinpointableError,
       })
-      
+
       handleUnpinpointableError(ctx)
-      
+
       expect(onUnpinpointableError).toHaveBeenCalledWith(
         "Couldn't pinpoint the error. Check your 3 entries.",
-        3
+        3,
       )
     })
   })
@@ -435,9 +452,9 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => true,
         isActive: () => true,
       })
-      
+
       const result = handleClearCandidates(ctx)
-      
+
       expect(applyMove).toHaveBeenCalled()
       expect(addToHistory).toHaveBeenCalled()
       expect(result).toEqual({ type: 'continue' })
@@ -448,9 +465,9 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => false,
         isActive: () => true,
       })
-      
+
       const result = handleClearCandidates(ctx)
-      
+
       expect(result).toEqual({ type: 'stop' })
     })
   })
@@ -467,9 +484,9 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => true,
         isActive: () => true,
       })
-      
+
       const result = handleFixError(ctx)
-      
+
       expect(applyMove).toHaveBeenCalled()
       expect(addToHistory).toHaveBeenCalled()
       expect(result).toEqual({ type: 'continue' })
@@ -482,9 +499,9 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => true,
         isActive: () => true,
       })
-      
+
       const result = handleFixError(ctx)
-      
+
       expect(result.type).toBe('pause')
       expect(result).toHaveProperty('resumeCallback')
     })
@@ -497,9 +514,9 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => true,
         isActive: () => true,
       })
-      
+
       const result = handleFixError(ctx)
-      
+
       if (result.type === 'pause') {
         result.resumeCallback()
         expect(playNextMove).toHaveBeenCalled()
@@ -512,9 +529,9 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => false,
         isActive: () => true,
       })
-      
+
       const result = handleFixError(ctx)
-      
+
       expect(result).toEqual({ type: 'stop' })
     })
   })
@@ -530,10 +547,12 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => true,
         isActive: () => true,
       })
-      const fallback = Array(81).fill(null).map(() => new Set([1, 2, 3]))
-      
+      const fallback = Array(81)
+        .fill(null)
+        .map(() => new Set([1, 2, 3]))
+
       const result = handleRegularMove(ctx, fallback)
-      
+
       expect(applyMove).toHaveBeenCalled()
       expect(addToHistory).toHaveBeenCalled()
       expect(result).toEqual({ type: 'continue' })
@@ -545,9 +564,9 @@ describe('autoSolveUtils', () => {
         isActive: () => true,
       })
       const fallback = [new Set<number>()]
-      
+
       const result = handleRegularMove(ctx, fallback)
-      
+
       expect(result).toEqual({ type: 'stop' })
     })
 
@@ -557,9 +576,9 @@ describe('autoSolveUtils', () => {
         isActive: () => false,
       })
       const fallback = [new Set<number>()]
-      
+
       const result = handleRegularMove(ctx, fallback)
-      
+
       expect(result).toEqual({ type: 'stop' })
     })
   })
@@ -583,9 +602,9 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => false,
       })
       const fallback = [new Set<number>()]
-      
+
       const result = dispatchMoveAction(ctx, fallback)
-      
+
       expect(result.type).toBe('stop')
       expect(result).toHaveProperty('error')
     })
@@ -608,9 +627,9 @@ describe('autoSolveUtils', () => {
         onUnpinpointableError,
       })
       const fallback = [new Set<number>()]
-      
+
       const result = dispatchMoveAction(ctx, fallback)
-      
+
       expect(result).toEqual({ type: 'stop' })
       expect(onUnpinpointableError).toHaveBeenCalled()
     })
@@ -635,9 +654,9 @@ describe('autoSolveUtils', () => {
         isActive: () => true,
       })
       const fallback = [new Set<number>()]
-      
+
       const result = dispatchMoveAction(ctx, fallback)
-      
+
       expect(result).toEqual({ type: 'skip' })
       expect(onStatus).toHaveBeenCalled()
     })
@@ -660,9 +679,9 @@ describe('autoSolveUtils', () => {
         onUnpinpointableError,
       })
       const fallback = [new Set<number>()]
-      
+
       const result = dispatchMoveAction(ctx, fallback)
-      
+
       expect(result).toEqual({ type: 'stop' })
     })
 
@@ -684,9 +703,9 @@ describe('autoSolveUtils', () => {
         onUnpinpointableError,
       })
       const fallback = [new Set<number>()]
-      
+
       const result = dispatchMoveAction(ctx, fallback)
-      
+
       expect(result).toEqual({ type: 'stop' })
     })
 
@@ -712,9 +731,9 @@ describe('autoSolveUtils', () => {
         isActive: () => true,
       })
       const fallback = [new Set<number>()]
-      
+
       const result = dispatchMoveAction(ctx, fallback)
-      
+
       expect(result).toEqual({ type: 'continue' })
       expect(applyMove).toHaveBeenCalled()
     })
@@ -742,9 +761,9 @@ describe('autoSolveUtils', () => {
         isActive: () => true,
       })
       const fallback = [new Set<number>()]
-      
+
       const result = dispatchMoveAction(ctx, fallback)
-      
+
       expect(result).toEqual({ type: 'continue' })
     })
 
@@ -769,10 +788,12 @@ describe('autoSolveUtils', () => {
         hasMoreMoves: () => true,
         isActive: () => true,
       })
-      const fallback = Array(81).fill(null).map(() => new Set([1, 2, 3]))
-      
+      const fallback = Array(81)
+        .fill(null)
+        .map(() => new Set([1, 2, 3]))
+
       const result = dispatchMoveAction(ctx, fallback)
-      
+
       expect(result).toEqual({ type: 'continue' })
       expect(applyMove).toHaveBeenCalled()
     })
@@ -798,9 +819,9 @@ describe('autoSolveUtils', () => {
         isActive: () => true,
       })
       const fallback = [new Set<number>()]
-      
+
       const result = dispatchMoveAction(ctx, fallback)
-      
+
       expect(result).toEqual({ type: 'continue' })
     })
   })

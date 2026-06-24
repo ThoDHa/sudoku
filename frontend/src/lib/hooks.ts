@@ -10,11 +10,11 @@ export function useDailySeed() {
   // Generate daily seed locally - no API call needed
   const [data] = useState<DailyResponse>(() => getDailySeed())
 
-  return { 
-    data, 
-    loading: false, 
-    error: null as string | null, 
-    refetch: () => {} // No-op since it's computed locally
+  return {
+    data,
+    loading: false,
+    error: null as string | null,
+    refetch: () => {}, // No-op since it's computed locally
   }
 }
 

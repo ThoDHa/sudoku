@@ -3,7 +3,7 @@ import { useEffect, RefObject } from 'react'
 /**
  * Hook that detects clicks outside a referenced element.
  * Useful for closing dropdowns, modals, etc.
- * 
+ *
  * @param ref - React ref to the element to monitor
  * @param isActive - Whether the hook should be actively listening
  * @param onClickOutside - Callback to invoke when a click outside is detected
@@ -11,7 +11,7 @@ import { useEffect, RefObject } from 'react'
 export function useClickOutside<T extends HTMLElement>(
   ref: RefObject<T | null>,
   isActive: boolean,
-  onClickOutside: () => void
+  onClickOutside: () => void,
 ): void {
   useEffect(() => {
     if (!isActive) return

@@ -22,7 +22,7 @@ vi.mock('../lib/gameSettings', () => ({
 vi.mock('../lib/candidatesUtils', () => ({
   candidatesToArrays: vi.fn((candidates: Uint16Array) => {
     // Simple mock: convert Uint16Array to number[][] where each mask becomes an array
-    return Array.from(candidates).map(mask => {
+    return Array.from(candidates).map((mask) => {
       if (mask === 0) return []
       const digits: number[] = []
       for (let d = 1; d <= 9; d++) {
@@ -37,7 +37,7 @@ vi.mock('../lib/candidatesUtils', () => ({
     for (let i = 0; i < arrays.length; i++) {
       let mask = 0
       for (const d of arrays[i] ?? []) {
-        mask |= (1 << d)
+        mask |= 1 << d
       }
       result[i] = mask
     }
@@ -92,7 +92,7 @@ const createMockLocalStorage = () => {
     }),
     clear: vi.fn(() => {
       if (shouldThrow) throw new Error('localStorage access denied')
-      Object.keys(store).forEach(key => delete store[key])
+      Object.keys(store).forEach((key) => delete store[key])
     }),
     key: vi.fn((index: number) => Object.keys(store)[index] ?? null),
     get length() {
@@ -100,9 +100,11 @@ const createMockLocalStorage = () => {
     },
     // Test helpers
     _store: store,
-    _setShouldThrow: (value: boolean) => { shouldThrow = value },
+    _setShouldThrow: (value: boolean) => {
+      shouldThrow = value
+    },
     _reset: () => {
-      Object.keys(store).forEach(key => delete store[key])
+      Object.keys(store).forEach((key) => delete store[key])
       shouldThrow = false
     },
   }
@@ -225,7 +227,12 @@ describe('loadSavedGameState', () => {
   })
 
   it('returns null when candidates.length !== 81', () => {
-    const invalidState = createValidSavedState({ candidates: [[1, 2], [3, 4]] })
+    const invalidState = createValidSavedState({
+      candidates: [
+        [1, 2],
+        [3, 4],
+      ],
+    })
     mockLocalStorage._store['sudoku_game_test-puzzle'] = JSON.stringify(invalidState)
 
     const result = loadSavedGameState('test-puzzle')
@@ -259,7 +266,7 @@ describe('loadSavedGameState', () => {
     expect(result).toBeNull()
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       'Failed to load saved game state:',
-      expect.any(Error)
+      expect.any(Error),
     )
   })
 
@@ -271,7 +278,7 @@ describe('loadSavedGameState', () => {
     expect(result).toBeNull()
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       'Failed to load saved game state:',
-      expect.any(Error)
+      expect.any(Error),
     )
   })
 })
@@ -297,7 +304,7 @@ describe('clearSavedGameState', () => {
     expect(() => clearSavedGameState('test-puzzle')).not.toThrow()
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       'Failed to clear saved game state:',
-      expect.any(Error)
+      expect.any(Error),
     )
   })
 })
@@ -426,12 +433,14 @@ describe('useAutoSave', () => {
 
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
         'sudoku_game_test-puzzle-123',
-        expect.any(String)
+        expect.any(String),
       )
     })
 
     it('saves correct game state structure', () => {
-      const board = Array(81).fill(0).map((_, i) => i % 10)
+      const board = Array(81)
+        .fill(0)
+        .map((_, i) => i % 10)
       const candidates = new Uint16Array(81)
       candidates[0] = 0b0000000110 // digits 1, 2
 
@@ -503,10 +512,7 @@ describe('useAutoSave', () => {
         result.current.saveGameState()
       })
 
-      expect(mockLoggerWarn).toHaveBeenCalledWith(
-        'Failed to save game state:',
-        expect.any(Error)
-      )
+      expect(mockLoggerWarn).toHaveBeenCalledWith('Failed to save game state:', expect.any(Error))
     })
   })
 
@@ -529,7 +535,8 @@ describe('useAutoSave', () => {
       const options = createDefaultOptions({
         puzzle: { seed: 'puzzle-to-clear', difficulty: 'easy' },
       })
-      mockLocalStorage._store['sudoku_game_puzzle-to-clear'] = JSON.stringify(createValidSavedState())
+      mockLocalStorage._store['sudoku_game_puzzle-to-clear'] =
+        JSON.stringify(createValidSavedState())
 
       const { result } = renderHook(() => useAutoSave(options))
 
@@ -547,10 +554,9 @@ describe('useAutoSave', () => {
   describe('Auto-Save Effect', () => {
     it('auto-saves when board changes', async () => {
       const options = createDefaultOptions()
-      const { result, rerender } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, rerender } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       act(() => {
         result.current.markRestored()
@@ -582,10 +588,9 @@ describe('useAutoSave', () => {
       mockGetAutoSaveEnabled.mockReturnValue(false)
 
       const options = createDefaultOptions()
-      const { result, rerender } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, rerender } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       act(() => {
         result.current.markRestored()
@@ -609,10 +614,9 @@ describe('useAutoSave', () => {
 
     it('does not auto-save before markRestored is called', async () => {
       const options = createDefaultOptions()
-      const { rerender } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { rerender } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       // Don't call markRestored
 
@@ -642,10 +646,9 @@ describe('useAutoSave', () => {
         },
       })
 
-      const { result, rerender } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, rerender } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       act(() => {
         result.current.markRestored()
@@ -668,10 +671,9 @@ describe('useAutoSave', () => {
 
     it('does not auto-save when shouldPauseOperations is true', async () => {
       const options = createDefaultOptions({ shouldPauseOperations: false })
-      const { result, rerender } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, rerender } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       act(() => {
         result.current.markRestored()
@@ -697,10 +699,9 @@ describe('useAutoSave', () => {
 
     it('debounces auto-save calls', async () => {
       const options = createDefaultOptions()
-      const { result, rerender } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, rerender } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       act(() => {
         result.current.markRestored()
@@ -741,10 +742,9 @@ describe('useAutoSave', () => {
         isHidden: true,
       })
 
-      const { result, rerender } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, rerender } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       act(() => {
         result.current.markRestored()
@@ -791,10 +791,9 @@ describe('useAutoSave', () => {
         isHidden: true,
       })
 
-      const { result, rerender } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, rerender } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       act(() => {
         result.current.markRestored()
@@ -823,10 +822,9 @@ describe('useAutoSave', () => {
         isHidden: true,
       })
 
-      const { result, rerender } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, rerender } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       act(() => {
         result.current.markRestored()
@@ -875,10 +873,9 @@ describe('useAutoSave', () => {
         },
       })
 
-      const { rerender } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { rerender } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       // Complete the game
       const completedOptions = createDefaultOptions({
@@ -953,10 +950,9 @@ describe('useAutoSave', () => {
         puzzle: { seed: 'puzzle-1', difficulty: 'easy' },
       })
 
-      const { result, rerender } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, rerender } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       act(() => {
         result.current.markRestored()
@@ -965,7 +961,7 @@ describe('useAutoSave', () => {
 
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
         'sudoku_game_puzzle-1',
-        expect.any(String)
+        expect.any(String),
       )
 
       mockLocalStorage.setItem.mockClear()
@@ -983,7 +979,7 @@ describe('useAutoSave', () => {
 
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
         'sudoku_game_puzzle-2',
-        expect.any(String)
+        expect.any(String),
       )
     })
 
@@ -1002,10 +998,9 @@ describe('useAutoSave', () => {
 
     it('handles unmount during pending save', async () => {
       const options = createDefaultOptions()
-      const { result, unmount } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, unmount } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       act(() => {
         result.current.markRestored()
@@ -1040,7 +1035,7 @@ describe('useAutoSave', () => {
 
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
         'sudoku_game_daily-2024-01-15',
-        expect.any(String)
+        expect.any(String),
       )
     })
   })
@@ -1056,10 +1051,9 @@ describe('useAutoSave', () => {
       delete globalThis.requestIdleCallback
 
       const options = createDefaultOptions()
-      const { result, rerender } = renderHook(
-        ({ opts }) => useAutoSave(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, rerender } = renderHook(({ opts }) => useAutoSave(opts), {
+        initialProps: { opts: options },
+      })
 
       act(() => {
         result.current.markRestored()

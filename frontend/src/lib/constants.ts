@@ -6,75 +6,75 @@
 // AUTO-GENERATED GRID CONSTANTS (from Go)
 // =============================================================================
 import {
-	BOARD_SIZE,
-	SUBGRID_SIZE,
-	TOTAL_CELLS,
-	MIN_GIVENS,
-	DIFFICULTY_EASY,
-	DIFFICULTY_MEDIUM,
-	DIFFICULTY_HARD,
-	DIFFICULTY_EXTREME,
-	DIFFICULTY_IMPOSSIBLE,
-	TIER_SIMPLE,
-	TIER_MEDIUM,
-	TIER_HARD,
-	TIER_EXTREME,
-	ACTION_ASSIGN,
-	ACTION_ELIMINATE,
-	ACTION_CONTRADICTION,
-	STATUS_COMPLETED,
-	STATUS_STALLED,
-	STATUS_MAX_STEPS_REACHED,
+  BOARD_SIZE,
+  SUBGRID_SIZE,
+  TOTAL_CELLS,
+  MIN_GIVENS,
+  DIFFICULTY_EASY,
+  DIFFICULTY_MEDIUM,
+  DIFFICULTY_HARD,
+  DIFFICULTY_EXTREME,
+  DIFFICULTY_IMPOSSIBLE,
+  TIER_SIMPLE,
+  TIER_MEDIUM,
+  TIER_HARD,
+  TIER_EXTREME,
+  ACTION_ASSIGN,
+  ACTION_ELIMINATE,
+  ACTION_CONTRADICTION,
+  STATUS_COMPLETED,
+  STATUS_STALLED,
+  STATUS_MAX_STEPS_REACHED,
 } from './constants-generated'
 
 // Re-export for backward compatibility
 export {
-	BOARD_SIZE,
-	SUBGRID_SIZE,
-	TOTAL_CELLS,
-	MIN_GIVENS,
-	DIFFICULTY_EASY,
-	DIFFICULTY_MEDIUM,
-	DIFFICULTY_HARD,
-	DIFFICULTY_EXTREME,
-	DIFFICULTY_IMPOSSIBLE,
-	TIER_SIMPLE,
-	TIER_MEDIUM,
-	TIER_HARD,
-	TIER_EXTREME,
-	ACTION_ASSIGN,
-	ACTION_ELIMINATE,
-	ACTION_CONTRADICTION,
-	STATUS_COMPLETED,
-	STATUS_STALLED,
-	STATUS_MAX_STEPS_REACHED,
+  BOARD_SIZE,
+  SUBGRID_SIZE,
+  TOTAL_CELLS,
+  MIN_GIVENS,
+  DIFFICULTY_EASY,
+  DIFFICULTY_MEDIUM,
+  DIFFICULTY_HARD,
+  DIFFICULTY_EXTREME,
+  DIFFICULTY_IMPOSSIBLE,
+  TIER_SIMPLE,
+  TIER_MEDIUM,
+  TIER_HARD,
+  TIER_EXTREME,
+  ACTION_ASSIGN,
+  ACTION_ELIMINATE,
+  ACTION_CONTRADICTION,
+  STATUS_COMPLETED,
+  STATUS_STALLED,
+  STATUS_MAX_STEPS_REACHED,
 }
 
 // =============================================================================
 // FRONTEND-SPECIFIC CONSTANTS
 // =============================================================================
 export const MIN_DIGIT = 1
-export const MAX_DIGIT = BOARD_SIZE  // Digits 1-9 for 9x9 board
+export const MAX_DIGIT = BOARD_SIZE // Digits 1-9 for 9x9 board
 
 // =============================================================================
 // TIMING CONSTANTS (milliseconds)
 // =============================================================================
 export const PLAY_DELAY = 25
-export const TIMER_UPDATE_INTERVAL = 1000  // Reduced from 100ms to 1000ms for battery savings
+export const TIMER_UPDATE_INTERVAL = 1000 // Reduced from 100ms to 1000ms for battery savings
 export const TOAST_DURATION_SUCCESS = 2000
 export const TOAST_DURATION_INFO = 3000
 export const TOAST_DURATION_ERROR = 4000
 export const TOAST_DURATION_FIX_ERROR = 2000
-export const ERROR_FIX_RESUME_DELAY = 500  // Delay before resuming solve after error fix (shorter than toast)
+export const ERROR_FIX_RESUME_DELAY = 500 // Delay before resuming solve after error fix (shorter than toast)
 export const HISTORY_SCROLL_DELAY = 50
-export const ANIMATION_STEP_INTERVAL = 2500  // Animation step duration for technique diagrams
+export const ANIMATION_STEP_INTERVAL = 2500 // Animation step duration for technique diagrams
 
 // Auto-solve timing
-export const AUTO_SOLVE_MAX_TIME = 15000  // Maximum time for auto-solve operations
-export const AUTO_SOLVE_STEP_DELAY = 100  // Delay between auto-solve polling steps
+export const AUTO_SOLVE_MAX_TIME = 15000 // Maximum time for auto-solve operations
+export const AUTO_SOLVE_STEP_DELAY = 100 // Delay between auto-solve polling steps
 
 // Background/battery management timing
-export const EXTENDED_PAUSE_DELAY = 15000  // Suspend all operations after 15 seconds hidden
+export const EXTENDED_PAUSE_DELAY = 15000 // Suspend all operations after 15 seconds hidden
 
 // =============================================================================
 // TIME CONVERSION
@@ -110,7 +110,7 @@ export const MAX_STORED_SCORES = 100
 // =============================================================================
 // MEMORY MANAGEMENT
 // =============================================================================
-export const MAX_MOVE_HISTORY = 500  // Maximum moves to keep in history (prevents unbounded memory growth)
+export const MAX_MOVE_HISTORY = 500 // Maximum moves to keep in history (prevents unbounded memory growth)
 
 // =============================================================================
 // UI CONSTANTS
@@ -123,7 +123,13 @@ export const MAX_HISTORY_BADGE_COUNT = 99
 export const TIERS = ['Simple', 'Medium', 'Hard', 'NotImplemented'] as const
 export type Tier = (typeof TIERS)[number]
 
-export const DIFFICULTIES = [DIFFICULTY_EASY, DIFFICULTY_MEDIUM, DIFFICULTY_HARD, DIFFICULTY_EXTREME, DIFFICULTY_IMPOSSIBLE] as const
+export const DIFFICULTIES = [
+  DIFFICULTY_EASY,
+  DIFFICULTY_MEDIUM,
+  DIFFICULTY_HARD,
+  DIFFICULTY_EXTREME,
+  DIFFICULTY_IMPOSSIBLE,
+] as const
 export type Difficulty = (typeof DIFFICULTIES)[number]
 
 // Tier colors for technique badges
@@ -148,16 +154,16 @@ export const TECHNIQUE_COLORS: Record<string, string> = {
   'Naked Quad': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   'Hidden Quad': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   'X-Wing': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  'Swordfish': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  'Jellyfish': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  Swordfish: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  Jellyfish: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   'XY-Wing': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
   'W-Wing': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
   'Simple Coloring': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
-  'Skyscraper': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+  Skyscraper: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
   'X-Chain': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
   'XY-Chain': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
   'Unique Rectangle': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  'BUG': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  BUG: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   'Finned X-Wing': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   'Empty Rectangle': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
 }
@@ -167,7 +173,9 @@ export function getTierColor(tier: string): string {
 }
 
 export function getTechniqueColor(technique: string): string {
-  return TECHNIQUE_COLORS[technique] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+  return (
+    TECHNIQUE_COLORS[technique] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+  )
 }
 
 // =============================================================================
@@ -188,12 +196,22 @@ import type { ColorTheme } from './ThemeContext'
 import type { AutoSolveSpeed } from './preferences'
 
 // Auto-solve speed options with SVG icon paths
-export const SPEED_OPTIONS: { speed: AutoSolveSpeed; iconPaths: string[]; hasRect?: boolean; label: string }[] = [
+export const SPEED_OPTIONS: {
+  speed: AutoSolveSpeed
+  iconPaths: string[]
+  hasRect?: boolean
+  label: string
+}[] = [
   { speed: 'step', iconPaths: ['M6 4h4v16H6zM14 4h4v16h-4z'], label: 'Step' },
   { speed: 'slow', iconPaths: ['M8 5v14l11-7z'], label: '1x' },
   { speed: 'normal', iconPaths: ['M4 5v14l8-7z', 'M12 5v14l8-7z'], label: '2x' },
   { speed: 'fast', iconPaths: ['M2 5v14l6-7z', 'M9 5v14l6-7z', 'M16 5v14l6-7z'], label: '3x' },
-  { speed: 'instant', iconPaths: ['M2 5v14l5-7z', 'M8 5v14l5-7z', 'M14 5v14l5-7z'], hasRect: true, label: 'Skip' },
+  {
+    speed: 'instant',
+    iconPaths: ['M2 5v14l5-7z', 'M8 5v14l5-7z', 'M14 5v14l5-7z'],
+    hasRect: true,
+    label: 'Skip',
+  },
 ]
 
 // Color theme options - open-source community themes

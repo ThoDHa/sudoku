@@ -50,18 +50,16 @@ function Controls({
           showSelectedMuted
             ? 'bg-accent text-btn-active-text ring-2 ring-accent ring-offset-2 ring-offset-background opacity-60 cursor-not-allowed'
             : isDisabled
-            ? 'bg-btn-bg text-foreground-muted opacity-40 cursor-not-allowed'
-            : isSelected
-            ? 'bg-accent text-btn-active-text ring-2 ring-accent ring-offset-2 ring-offset-background'
-              : 'bg-btn-bg text-foreground'
+              ? 'bg-btn-bg text-foreground-muted opacity-40 cursor-not-allowed'
+              : isSelected
+                ? 'bg-accent text-btn-active-text ring-2 ring-accent ring-offset-2 ring-offset-background'
+                : 'bg-btn-bg text-foreground'
         }`}
       >
         {digit}
         <span
           className={`digit-remaining-badge ${
-            digitComplete
-              ? 'bg-accent text-btn-active-text'
-              : 'bg-accent-light text-accent'
+            digitComplete ? 'bg-accent text-btn-active-text' : 'bg-accent-light text-accent'
           }`}
         >
           {remaining}
@@ -94,14 +92,16 @@ function Controls({
             notesShowSelectedMuted
               ? 'bg-btn-active text-btn-active-text ring-2 ring-accent ring-offset-1 ring-offset-background opacity-60 cursor-not-allowed'
               : controlsDisabled
-              ? 'bg-btn-bg opacity-40 cursor-not-allowed'
-              : notesMode
-              ? 'bg-btn-active text-btn-active-text ring-2 ring-accent ring-offset-1 ring-offset-background'
-              : 'bg-btn-bg text-foreground'
+                ? 'bg-btn-bg opacity-40 cursor-not-allowed'
+                : notesMode
+                  ? 'bg-btn-active text-btn-active-text ring-2 ring-accent ring-offset-1 ring-offset-background'
+                  : 'bg-btn-bg text-foreground'
           }`}
           title="Notes mode"
         >
-          <span aria-hidden="true" className="text-base">✏️</span>
+          <span aria-hidden="true" className="text-base">
+            ✏️
+          </span>
         </button>
 
         {/* Delete/Erase button */}
@@ -114,13 +114,17 @@ function Controls({
             controlsDisabled
               ? 'bg-btn-bg text-foreground-muted opacity-40 cursor-not-allowed'
               : eraseMode
-              ? 'bg-accent text-btn-active-text ring-2 ring-accent ring-offset-1 ring-offset-background'
-            : 'bg-btn-bg text-foreground'
+                ? 'bg-accent text-btn-active-text ring-2 ring-accent ring-offset-1 ring-offset-background'
+                : 'bg-btn-bg text-foreground'
           }`}
           title="Erase"
         >
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414-6.414a2 2 0 011.414-.586H19a2 2 0 012 2v10a2 2 0 01-2 2h-8.172a2 2 0 01-1.414-.586L3 12z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414-6.414a2 2 0 011.414-.586H19a2 2 0 012 2v10a2 2 0 01-2 2h-8.172a2 2 0 01-1.414-.586L3 12z"
+            />
           </svg>
         </button>
 
@@ -132,7 +136,11 @@ function Controls({
           title="Undo"
         >
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4"
+            />
           </svg>
         </button>
 
@@ -144,7 +152,11 @@ function Controls({
           title="Redo"
         >
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 10h-10a5 5 0 00-5 5v2M21 10l-4-4m4 4l-4 4" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21 10h-10a5 5 0 00-5 5v2M21 10l-4-4m4 4l-4 4"
+            />
           </svg>
         </button>
       </div>

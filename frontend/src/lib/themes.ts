@@ -2,7 +2,7 @@
  * Centralized theme definitions for the Sudoku app.
  *
  * This file is the SINGLE SOURCE OF TRUTH for all theme colors.
- * 
+ *
  * Architecture:
  * 1. ThemePalette interface - what each theme must provide
  * 2. PALETTES - raw color values for each theme (light/dark)
@@ -30,42 +30,42 @@
  */
 export interface ThemePalette {
   // Backgrounds
-  bg: string           // Page background
-  bgSecondary: string  // Secondary/card background
-  boardBg: string      // Board and cell background
+  bg: string // Page background
+  bgSecondary: string // Secondary/card background
+  boardBg: string // Board and cell background
 
   // Text
-  text: string         // Primary text
-  textMuted: string    // Muted/secondary text
-  textGiven: string    // Given digit text (often same as text)
+  text: string // Primary text
+  textMuted: string // Muted/secondary text
+  textGiven: string // Given digit text (often same as text)
 
   // Borders
-  border: string       // Strong borders (box separators)
-  borderLight: string  // Light borders (cell separators)
+  border: string // Strong borders (box separators)
+  borderLight: string // Light borders (cell separators)
 
   // Accent colors
-  accent: string       // Primary accent (buttons, entered digits, highlights)
-  accentMuted: string  // Muted accent (secondary highlights)
+  accent: string // Primary accent (buttons, entered digits, highlights)
+  accentMuted: string // Muted accent (secondary highlights)
 
   // Cell states
-  cellHover: string    // Hovered cell
+  cellHover: string // Hovered cell
   cellSelected: string // Selected cell
-  cellPeer: string     // Peer cells (same row/col/box as selected)
+  cellPeer: string // Peer cells (same row/col/box as selected)
 
   // Error states
-  errorBg: string      // Error background
-  errorText: string    // Error text
+  errorBg: string // Error background
+  errorText: string // Error text
 
   // Hint states
-  hintText: string     // Hint text (green, for additions)
+  hintText: string // Hint text (green, for additions)
 
   // Button states
-  btnBg: string        // Button background
-  btnHover: string     // Button hover
+  btnBg: string // Button background
+  btnHover: string // Button hover
 
   // Shadows
-  shadow: string       // Standard shadow (for cards, modals)
-  shadowLight: string  // Lighter shadow (for subtle elevation)
+  shadow: string // Standard shadow (for cards, modals)
+  shadowLight: string // Lighter shadow (for subtle elevation)
 
   // Difficulty colors (for badges, cards)
   diffEasy: string
@@ -99,12 +99,12 @@ export interface SemanticColors {
 
   // Cell backgrounds
   cellBg: string
-  cellGiven: string      // Same as cellBg (given digits distinguished by text color)
+  cellGiven: string // Same as cellBg (given digits distinguished by text color)
   cellHover: string
   cellSelected: string
   cellPeer: string
-  cellPrimary: string    // Primary highlight (matching digit)
-  cellSecondary: string  // Secondary highlight
+  cellPrimary: string // Primary highlight (matching digit)
+  cellSecondary: string // Secondary highlight
 
   // Cell text
   textGiven: string
@@ -149,11 +149,11 @@ function blendColors(color1: string, color2: string, ratio: number): string {
   const hex = (c: string) => parseInt(c, 16)
   const c1 = color1.replace('#', '')
   const c2 = color2.replace('#', '')
-  
+
   const r = Math.round(hex(c1.slice(0, 2)) * (1 - ratio) + hex(c2.slice(0, 2)) * ratio)
   const g = Math.round(hex(c1.slice(2, 4)) * (1 - ratio) + hex(c2.slice(2, 4)) * ratio)
   const b = Math.round(hex(c1.slice(4, 6)) * (1 - ratio) + hex(c2.slice(4, 6)) * ratio)
-  
+
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
 }
 
@@ -164,16 +164,14 @@ function blendColors(color1: string, color2: string, ratio: number): string {
  */
 function createSemanticColors(p: ThemePalette, isDark: boolean): SemanticColors {
   // cellGiven: Light mode uses cellHover, dark mode uses very subtle 2% lighter blend
-  const cellGiven = isDark 
-    ? blendColors(p.boardBg, '#ffffff', 0.02)
-    : p.cellHover
-  
+  const cellGiven = isDark ? blendColors(p.boardBg, '#ffffff', 0.02) : p.cellHover
+
   // accentLight: Subtle accent wash for digit matching highlights
   // Lighter than accentMuted to contrast with candidate highlights
   const accentLight = isDark
-    ? blendColors(p.boardBg, p.accent, 0.15)  // 15% accent on dark bg
-    : blendColors(p.boardBg, p.accent, 0.12)  // 12% accent on light bg
-  
+    ? blendColors(p.boardBg, p.accent, 0.15) // 15% accent on dark bg
+    : blendColors(p.boardBg, p.accent, 0.12) // 12% accent on light bg
+
   return {
     // Backgrounds
     bg: p.bg,
@@ -237,7 +235,15 @@ function createSemanticColors(p: ThemePalette, isDark: boolean): SemanticColors 
 // THEME PALETTES
 // ============================================================
 
-export type ColorTheme = 'tokyonight' | 'dracula' | 'nord' | 'catppuccin' | 'gruvbox' | 'rosepine' | 'solarized' | 'onedark'
+export type ColorTheme =
+  | 'tokyonight'
+  | 'dracula'
+  | 'nord'
+  | 'catppuccin'
+  | 'gruvbox'
+  | 'rosepine'
+  | 'solarized'
+  | 'onedark'
 export type Mode = 'light' | 'dark'
 
 const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> = {
@@ -816,18 +822,27 @@ export function themeToCssVars(colors: SemanticColors): Record<string, string> {
 // VALID THEMES & MIGRATION
 // ============================================================
 
-export const VALID_THEMES: ColorTheme[] = ['tokyonight', 'dracula', 'nord', 'catppuccin', 'gruvbox', 'rosepine', 'solarized', 'onedark']
+export const VALID_THEMES: ColorTheme[] = [
+  'tokyonight',
+  'dracula',
+  'nord',
+  'catppuccin',
+  'gruvbox',
+  'rosepine',
+  'solarized',
+  'onedark',
+]
 
 export const THEME_MIGRATION: Record<string, ColorTheme> = {
-  'blue': 'tokyonight',
-  'indigo': 'tokyonight',
-  'purple': 'dracula',
-  'teal': 'nord',
-  'green': 'nord',
-  'orange': 'gruvbox',
-  'pink': 'rosepine',
-  'red': 'gruvbox',
-  'classic': 'tokyonight',
+  blue: 'tokyonight',
+  indigo: 'tokyonight',
+  purple: 'dracula',
+  teal: 'nord',
+  green: 'nord',
+  orange: 'gruvbox',
+  pink: 'rosepine',
+  red: 'gruvbox',
+  classic: 'tokyonight',
 }
 
 // Helper to validate and migrate theme

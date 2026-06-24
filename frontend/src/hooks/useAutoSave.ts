@@ -61,7 +61,7 @@ export function loadSavedGameState(puzzleSeed: string): SavedGameState | null {
   try {
     const saved = localStorage.getItem(storageKey)
     if (!saved) return null
-    
+
     const parsed = JSON.parse(saved) as SavedGameState
     // Validate the saved state
     if (parsed.board?.length === 81 && parsed.candidates?.length === 81) {
@@ -87,7 +87,7 @@ export function clearSavedGameState(puzzleSeed: string): void {
 
 /**
  * Hook for managing auto-save of game state to localStorage
- * 
+ *
  * Features:
  * - Debounced saves to avoid excessive writes
  * - Uses requestIdleCallback for better battery performance
@@ -95,14 +95,7 @@ export function clearSavedGameState(puzzleSeed: string): void {
  * - Saves immediately when returning from hidden state if there are unsaved changes
  */
 export function useAutoSave(options: UseAutoSaveOptions) {
-  const {
-    puzzle,
-    game,
-    elapsedMs,
-    autoFillUsed,
-    shouldPauseOperations,
-    isHidden,
-  } = options
+  const { puzzle, game, elapsedMs, autoFillUsed, shouldPauseOperations, isHidden } = options
 
   // Track whether we've restored saved state (to prevent overwriting on initial load)
   const hasRestoredSavedState = useRef(false)
@@ -122,7 +115,7 @@ export function useAutoSave(options: UseAutoSaveOptions) {
   // Save game state to localStorage
   const saveGameState = useCallback(() => {
     if (!puzzle || game.isComplete || !hasRestoredSavedState.current) return
-    
+
     const storageKey = getStorageKey(puzzle.seed)
     const savedState: SavedGameState = {
       board: game.board,
@@ -133,7 +126,7 @@ export function useAutoSave(options: UseAutoSaveOptions) {
       savedAt: Date.now(),
       difficulty: puzzle.difficulty,
     }
-    
+
     try {
       localStorage.setItem(storageKey, JSON.stringify(savedState))
     } catch (e) {
@@ -150,7 +143,8 @@ export function useAutoSave(options: UseAutoSaveOptions) {
   // Auto-save when board or candidates change (but not when hidden)
   // Enhanced with requestIdleCallback for better battery performance
   useEffect(() => {
-    if (!puzzle || !hasRestoredSavedState.current || game.isComplete || !getAutoSaveEnabled()) return
+    if (!puzzle || !hasRestoredSavedState.current || game.isComplete || !getAutoSaveEnabled())
+      return
 
     // Don't save when app is hidden to reduce battery usage
     if (shouldPauseOperations) {
@@ -161,12 +155,15 @@ export function useAutoSave(options: UseAutoSaveOptions) {
     // Use requestIdleCallback when available for better battery performance
     const scheduleAutoSave = () => {
       if ('requestIdleCallback' in window) {
-        requestIdleCallback(() => {
-          if (!shouldPauseOperations) {
-            saveGameState()
-            hasUnsavedChanges.current = false
-          }
-        }, { timeout: 1000 })
+        requestIdleCallback(
+          () => {
+            if (!shouldPauseOperations) {
+              saveGameState()
+              hasUnsavedChanges.current = false
+            }
+          },
+          { timeout: 1000 },
+        )
       } else {
         // Fallback to setTimeout for older browsers
         setTimeout(() => {
@@ -181,7 +178,15 @@ export function useAutoSave(options: UseAutoSaveOptions) {
     // Debounce saves to avoid excessive localStorage writes
     const timeoutId = setTimeout(scheduleAutoSave, 500)
     return () => clearTimeout(timeoutId)
-  }, [game.board, game.candidates, game.history, puzzle, game.isComplete, saveGameState, shouldPauseOperations])
+  }, [
+    game.board,
+    game.candidates,
+    game.history,
+    puzzle,
+    game.isComplete,
+    saveGameState,
+    shouldPauseOperations,
+  ])
 
   // Save when returning from background if there are unsaved changes
   useEffect(() => {

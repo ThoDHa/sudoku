@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { encodePuzzle, decodePuzzle, encodePuzzleWithState, decodePuzzleWithState } from './puzzleEncoding'
+import {
+  encodePuzzle,
+  decodePuzzle,
+  encodePuzzleWithState,
+  decodePuzzleWithState,
+} from './puzzleEncoding'
 
 describe('puzzleEncoding', () => {
   describe('encodePuzzle', () => {
@@ -20,7 +25,7 @@ describe('puzzleEncoding', () => {
       for (let i = 0; i < 20; i++) {
         cells[50 + i] = (i % 9) + 1
       }
-      
+
       const encoded = encodePuzzle(cells)
       expect(encoded.startsWith('s')).toBe(true)
     })
@@ -31,7 +36,7 @@ describe('puzzleEncoding', () => {
       for (let i = 0; i < 50; i++) {
         cells[i] = (i % 9) + 1
       }
-      
+
       const encoded = encodePuzzle(cells)
       expect(encoded.startsWith('d')).toBe(true)
     })
@@ -47,7 +52,7 @@ describe('puzzleEncoding', () => {
     it('should return empty puzzle for empty string', () => {
       const result = decodePuzzle('')
       expect(result).toHaveLength(81)
-      expect(result.every(c => c === 0)).toBe(true)
+      expect(result.every((c) => c === 0)).toBe(true)
     })
 
     it('should decode sparse encoded puzzles', () => {
@@ -58,10 +63,10 @@ describe('puzzleEncoding', () => {
       cells[20] = 7
       cells[30] = 1
       cells[40] = 9
-      
+
       const encoded = encodePuzzle(cells)
       const decoded = decodePuzzle(encoded)
-      
+
       expect(decoded).toHaveLength(81)
       expect(decoded[0]).toBe(5)
       expect(decoded[10]).toBe(3)
@@ -76,10 +81,10 @@ describe('puzzleEncoding', () => {
       for (let i = 0; i < 50; i++) {
         cells[i] = (i % 9) + 1
       }
-      
+
       const encoded = encodePuzzle(cells)
       const decoded = decodePuzzle(encoded)
-      
+
       expect(decoded).toHaveLength(81)
       for (let i = 0; i < 50; i++) {
         expect(decoded[i]).toBe((i % 9) + 1)
@@ -90,7 +95,7 @@ describe('puzzleEncoding', () => {
       // Too short for sparse encoding
       const result = decodePuzzle('sABC')
       expect(result).toHaveLength(81)
-      expect(result.every(c => c === 0)).toBe(true)
+      expect(result.every((c) => c === 0)).toBe(true)
     })
   })
 
@@ -98,13 +103,17 @@ describe('puzzleEncoding', () => {
     it('should throw error for invalid board length', () => {
       const board = Array(80).fill(0)
       const givens = Array(81).fill(0)
-      expect(() => encodePuzzleWithState(board, givens)).toThrow('Board and givens must have 81 cells')
+      expect(() => encodePuzzleWithState(board, givens)).toThrow(
+        'Board and givens must have 81 cells',
+      )
     })
 
     it('should throw error for invalid givens length', () => {
       const board = Array(81).fill(0)
       const givens = Array(80).fill(0)
-      expect(() => encodePuzzleWithState(board, givens)).toThrow('Board and givens must have 81 cells')
+      expect(() => encodePuzzleWithState(board, givens)).toThrow(
+        'Board and givens must have 81 cells',
+      )
     })
 
     it('should encode board with givens marker', () => {
@@ -124,7 +133,9 @@ describe('puzzleEncoding', () => {
       const givens = Array(81).fill(0)
       board[0] = 5
       givens[0] = 5
-      const candidates: number[][] = Array(81).fill(null).map(() => [])
+      const candidates: number[][] = Array(81)
+        .fill(null)
+        .map(() => [])
       candidates[1] = [1, 2, 3]
       candidates[10] = [4, 5]
 
@@ -148,7 +159,9 @@ describe('puzzleEncoding', () => {
       const givens = Array(81).fill(0)
       board[0] = 5
       givens[0] = 5
-      const candidates: number[][] = Array(81).fill(null).map(() => [])
+      const candidates: number[][] = Array(81)
+        .fill(null)
+        .map(() => [])
 
       const encoded = encodePuzzleWithState(board, givens, candidates)
       expect(encoded.startsWith('e')).toBe(true)
@@ -173,10 +186,12 @@ describe('puzzleEncoding', () => {
       givens[0] = 5
       board[0] = 5
       // Add candidates to every empty cell
-      const candidates: number[][] = Array(81).fill(null).map((_, i) => {
-        if (givens[i] !== 0) return []
-        return [1, 2, 3, 4, 5, 6, 7, 8, 9] // All possible candidates
-      })
+      const candidates: number[][] = Array(81)
+        .fill(null)
+        .map((_, i) => {
+          if (givens[i] !== 0) return []
+          return [1, 2, 3, 4, 5, 6, 7, 8, 9] // All possible candidates
+        })
 
       const encoded = encodePuzzleWithState(board, givens, candidates)
       // Even with all candidates, should be reasonable length
@@ -217,7 +232,9 @@ describe('puzzleEncoding', () => {
       board[0] = 5
       givens[0] = 5
       // Note: don't set board[1] or board[10] since those cells have candidates (empty cells)
-      const candidates: number[][] = Array(81).fill(null).map(() => [])
+      const candidates: number[][] = Array(81)
+        .fill(null)
+        .map(() => [])
       candidates[1] = [1, 2, 3]
       candidates[10] = [4, 5]
 
@@ -252,19 +269,13 @@ describe('puzzleEncoding', () => {
   describe('enhanced encoding round-trip', () => {
     it('should preserve full state through encode/decode cycle', () => {
       const board = [
-        5, 3, 4, 6, 7, 8, 9, 1, 2,
-        6, 7, 2, 1, 9, 5, 3, 4, 8,
-        1, 9, 8, 3, 4, 2, 5, 6, 7,
-        8, 5, 9, 7, 6, 1, 4, 2, 3,
-        4, 2, 6, 8, 5, 3, 7, 9, 1,
-        7, 1, 3, 9, 2, 4, 8, 5, 6,
-        9, 6, 1, 5, 3, 7, 2, 8, 4,
-        2, 8, 7, 4, 1, 9, 6, 3, 5,
-        3, 4, 5, 2, 8, 6, 1, 7, 9
+        5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7, 8, 5, 9, 7,
+        6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8,
+        4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9,
       ]
       // Givens must match the board values at those positions!
       const givens = Array(81).fill(0)
-      givens[0] = 5  // board[0] = 5 ✓
+      givens[0] = 5 // board[0] = 5 ✓
       givens[10] = 7 // board[10] = 7 ✓
       givens[20] = 8 // board[20] = 8 ✓
 
@@ -298,8 +309,10 @@ describe('puzzleEncoding', () => {
       const givens = Array(81).fill(0)
       board[0] = 5
       givens[0] = 5
-      
-      const candidates: number[][] = Array(81).fill(null).map(() => [])
+
+      const candidates: number[][] = Array(81)
+        .fill(null)
+        .map(() => [])
       candidates[1] = [1, 2, 3]
       candidates[2] = [7, 8, 9]
       candidates[10] = [4, 5]
@@ -322,11 +335,13 @@ describe('puzzleEncoding', () => {
       const givens = Array(81).fill(0)
       board[0] = 5
       givens[0] = 5
-      
-      const candidates: number[][] = Array(81).fill(null).map((_, i) => {
-        if (i === 0) return [] // Given cell has no candidates
-        return [1, 2, 3, 4, 5, 6, 7, 8, 9]
-      })
+
+      const candidates: number[][] = Array(81)
+        .fill(null)
+        .map((_, i) => {
+          if (i === 0) return [] // Given cell has no candidates
+          return [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        })
 
       const encoded = encodePuzzleWithState(board, givens, candidates)
       const decoded = decodePuzzleWithState(encoded)
@@ -344,26 +359,47 @@ describe('puzzleEncoding', () => {
       // Create a realistic sudoku puzzle
       const cells = Array(81).fill(0)
       const givens = [
-        [0, 5], [1, 3], [4, 7],
-        [9, 6], [12, 1], [13, 9], [14, 5],
-        [19, 9], [20, 8], [25, 6],
-        [27, 8], [31, 6], [35, 3],
-        [36, 4], [39, 8], [41, 3], [44, 1],
-        [45, 7], [49, 2], [53, 6],
-        [55, 6], [60, 2], [61, 8],
-        [66, 4], [67, 1], [68, 9], [71, 5],
-        [76, 8], [79, 7], [80, 9]
+        [0, 5],
+        [1, 3],
+        [4, 7],
+        [9, 6],
+        [12, 1],
+        [13, 9],
+        [14, 5],
+        [19, 9],
+        [20, 8],
+        [25, 6],
+        [27, 8],
+        [31, 6],
+        [35, 3],
+        [36, 4],
+        [39, 8],
+        [41, 3],
+        [44, 1],
+        [45, 7],
+        [49, 2],
+        [53, 6],
+        [55, 6],
+        [60, 2],
+        [61, 8],
+        [66, 4],
+        [67, 1],
+        [68, 9],
+        [71, 5],
+        [76, 8],
+        [79, 7],
+        [80, 9],
       ]
-      
+
       for (const [idx, val] of givens) {
         if (idx !== undefined) {
           cells[idx] = val
         }
       }
-      
+
       const encoded = encodePuzzle(cells)
       const decoded = decodePuzzle(encoded)
-      
+
       expect(decoded).toEqual(cells)
     })
 
@@ -371,22 +407,16 @@ describe('puzzleEncoding', () => {
       const cells = Array(81).fill(0)
       const encoded = encodePuzzle(cells)
       const decoded = decodePuzzle(encoded)
-      
+
       expect(decoded).toEqual(cells)
     })
 
     it('should preserve complete puzzle through encode/decode', () => {
       // Create a complete puzzle (all cells filled)
       const cells = [
-        5, 3, 4, 6, 7, 8, 9, 1, 2,
-        6, 7, 2, 1, 9, 5, 3, 4, 8,
-        1, 9, 8, 3, 4, 2, 5, 6, 7,
-        8, 5, 9, 7, 6, 1, 4, 2, 3,
-        4, 2, 6, 8, 5, 3, 7, 9, 1,
-        7, 1, 3, 9, 2, 4, 8, 5, 6,
-        9, 6, 1, 5, 3, 7, 2, 8, 4,
-        2, 8, 7, 4, 1, 9, 6, 3, 5,
-        3, 4, 5, 2, 8, 6, 1, 7, 9
+        5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7, 8, 5, 9, 7,
+        6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8,
+        4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9,
       ]
 
       const encoded = encodePuzzle(cells)

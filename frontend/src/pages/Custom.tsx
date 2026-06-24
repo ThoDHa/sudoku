@@ -101,7 +101,10 @@ export default function Custom() {
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText()
-      const digits = text.replace(/[^0-9.]/g, '').split('').map((c) => (c === '.' ? 0 : parseInt(c, 10)))
+      const digits = text
+        .replace(/[^0-9.]/g, '')
+        .split('')
+        .map((c) => (c === '.' ? 0 : parseInt(c, 10)))
 
       if (digits.length === 81) {
         setBoard(digits)
@@ -118,7 +121,10 @@ export default function Custom() {
   const candidates = new Uint16Array(81)
 
   return (
-    <div className="flex h-full flex-col items-center justify-center bg-background" style={{ padding: 'var(--page-padding)' }}>
+    <div
+      className="flex h-full flex-col items-center justify-center bg-background"
+      style={{ padding: 'var(--page-padding)' }}
+    >
       <div className="mb-4">
         <Link to="/" className="text-sm text-accent hover:underline">
           &larr; Back to puzzles

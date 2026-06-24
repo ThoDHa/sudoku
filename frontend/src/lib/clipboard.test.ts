@@ -106,7 +106,9 @@ describe('clipboard', () => {
         }
 
         // Spy on document methods
-        createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockTextarea as unknown as HTMLElement)
+        createElementSpy = vi
+          .spyOn(document, 'createElement')
+          .mockReturnValue(mockTextarea as unknown as HTMLElement)
         appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => node)
         removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation((node) => node)
 

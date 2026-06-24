@@ -29,7 +29,7 @@ export function createStateDiff(
   oldBoard: number[],
   newBoard: number[],
   oldCandidates: Uint16Array,
-  newCandidates: Uint16Array
+  newCandidates: Uint16Array,
 ): StateDiff {
   const boardChanges: CellChange[] = []
   const candidateChanges: CandidateChange[] = []
@@ -61,7 +61,7 @@ export function createStateDiff(
 export function applyStateDiff(
   baseBoard: number[],
   baseCandidates: Uint16Array,
-  diff: StateDiff
+  diff: StateDiff,
 ): { board: number[]; candidates: Uint16Array } {
   // Apply board changes
   const newBoard = [...baseBoard]
@@ -84,7 +84,7 @@ export function applyStateDiff(
 export function unapplyStateDiff(
   currentBoard: number[],
   currentCandidates: Uint16Array,
-  diff: StateDiff
+  diff: StateDiff,
 ): { board: number[]; candidates: Uint16Array } {
   // Reverse board changes
   const prevBoard = [...currentBoard]
@@ -124,7 +124,7 @@ export function getFullStateMemorySize(): number {
 export function serializeDiff(diff: StateDiff): SerializedDiff {
   return {
     boardChanges: diff.boardChanges,
-    candidateChanges: diff.candidateChanges
+    candidateChanges: diff.candidateChanges,
   }
 }
 
@@ -139,6 +139,6 @@ interface SerializedDiff {
 export function deserializeDiff(data: SerializedDiff): StateDiff {
   return {
     boardChanges: data.boardChanges ?? [],
-    candidateChanges: data.candidateChanges ?? []
+    candidateChanges: data.candidateChanges ?? [],
   }
 }

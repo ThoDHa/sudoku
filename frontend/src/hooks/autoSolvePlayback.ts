@@ -39,7 +39,7 @@ export function handleMoveResult(
   moveResult: MoveResult,
   newIndex: number,
   context: MoveHandlerContext,
-  playNextMove: PlayNextMove
+  playNextMove: PlayNextMove,
 ): boolean {
   const {
     autoSolveRef,
@@ -71,7 +71,7 @@ export function handleMoveResult(
 
   function applyRegularMove(candidatesFallback: Set<number>[]) {
     const newCandidates = moveResult.candidates
-      ? moveResult.candidates.map(c => new Set<number>(c || []))
+      ? moveResult.candidates.map((c) => new Set<number>(c || []))
       : candidatesFallback
 
     applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
@@ -79,8 +79,8 @@ export function handleMoveResult(
     stateHistoryRef.current.push({
       board: [...moveResult.board],
       candidates: moveResult.candidates
-        ? moveResult.candidates.map(arr => arr ? [...arr] : [])
-        : candidatesFallback.map(s => Array.from(s)),
+        ? moveResult.candidates.map((arr) => (arr ? [...arr] : []))
+        : candidatesFallback.map((s) => Array.from(s)),
       move: moveResult.move,
     })
 
@@ -108,7 +108,7 @@ export function handleMoveResult(
       const userEntryCount = moveResult.move.userEntryCount || 0
       onUnpinpointableError?.(
         moveResult.move.explanation || 'Too many incorrect entries to fix automatically.',
-        userEntryCount
+        userEntryCount,
       )
       stopAutoSolve()
       return true
@@ -123,8 +123,9 @@ export function handleMoveResult(
     case 'stalled': {
       const userEntryCount = moveResult.move.userEntryCount || 0
       onUnpinpointableError?.(
-        moveResult.move.explanation || `Couldn't pinpoint the error. Check your ${userEntryCount} entries.`,
-        userEntryCount
+        moveResult.move.explanation ||
+          `Couldn't pinpoint the error. Check your ${userEntryCount} entries.`,
+        userEntryCount,
       )
       stopAutoSolve()
       return true
@@ -132,7 +133,7 @@ export function handleMoveResult(
 
     case 'clear-candidates': {
       const newCandidates = moveResult.candidates
-        ? moveResult.candidates.map(c => new Set<number>(c || []))
+        ? moveResult.candidates.map((c) => new Set<number>(c || []))
         : initialCandidates.map(() => new Set<number>())
 
       applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
@@ -140,7 +141,7 @@ export function handleMoveResult(
       stateHistoryRef.current.push({
         board: [...moveResult.board],
         candidates: moveResult.candidates
-          ? moveResult.candidates.map(arr => arr ? [...arr] : [])
+          ? moveResult.candidates.map((arr) => (arr ? [...arr] : []))
           : [],
         move: moveResult.move,
       })
@@ -151,7 +152,7 @@ export function handleMoveResult(
 
     case 'fix-error': {
       const newCandidates = moveResult.candidates
-        ? moveResult.candidates.map(c => new Set<number>(c || []))
+        ? moveResult.candidates.map((c) => new Set<number>(c || []))
         : getCandidates()
 
       applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
@@ -159,8 +160,8 @@ export function handleMoveResult(
       stateHistoryRef.current.push({
         board: [...moveResult.board],
         candidates: moveResult.candidates
-          ? moveResult.candidates.map(arr => arr ? [...arr] : [])
-          : getCandidates().map(s => Array.from(s)),
+          ? moveResult.candidates.map((arr) => (arr ? [...arr] : []))
+          : getCandidates().map((s) => Array.from(s)),
         move: moveResult.move,
       })
 
@@ -173,7 +174,7 @@ export function handleMoveResult(
             } else {
               stopAutoSolve()
             }
-          }
+          },
         )
       } else {
         continueOrStop()
@@ -187,9 +188,7 @@ export function handleMoveResult(
   }
 }
 
-export function createPlayNextMove(
-  context: MoveHandlerContext
-): PlayNextMove {
+export function createPlayNextMove(context: MoveHandlerContext): PlayNextMove {
   const {
     autoSolveRef,
     pausedRef,
@@ -229,9 +228,9 @@ export function createPlayNextMove(
 }
 
 export function candidatesToSets(candidates: (number[] | null)[]): Set<number>[] {
-  return candidates.map(c => new Set<number>(c || []))
+  return candidates.map((c) => new Set<number>(c || []))
 }
 
 export function candidatesToArrays(candidates: Set<number>[]): number[][] {
-  return candidates.map(s => Array.from(s))
+  return candidates.map((s) => Array.from(s))
 }

@@ -1,6 +1,6 @@
 /**
  * GameModals - Confirmation dialogs for Game page actions
- * 
+ *
  * This component contains three modal dialogs:
  * 1. Solve Confirmation - Confirms auto-solve of the entire puzzle
  * 2. Clear/Restart Confirmation - Confirms clearing entries or restarting
@@ -13,14 +13,14 @@ interface GameModalsProps {
   setSolveConfirmOpen: (open: boolean) => void
   onSolve: () => void
   isSolving?: boolean
-  
+
   // Clear/Restart confirmation modal
   showClearConfirm: boolean
   setShowClearConfirm: (open: boolean) => void
   isComplete: boolean
   onRestart: () => void
   onClearAll: () => void
-  
+
   // Check progress confirmation modal
   showSolutionConfirm: boolean
   setShowSolutionConfirm: (open: boolean) => void
@@ -55,7 +55,8 @@ export default function GameModals({
           <div className="relative z-10 w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl">
             <h2 className="mb-2 text-lg font-bold text-foreground">Solve Puzzle?</h2>
             <p className="mb-6 text-sm text-foreground-muted">
-              This will automatically solve the entire puzzle using logical techniques. Are you sure?
+              This will automatically solve the entire puzzle using logical techniques. Are you
+              sure?
             </p>
             <div className="flex gap-3">
               <button
@@ -74,9 +75,25 @@ export default function GameModals({
               >
                 {isSolving ? (
                   <>
-                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Solving...
                   </>
@@ -101,10 +118,9 @@ export default function GameModals({
               {isComplete ? 'Restart Puzzle?' : 'Clear All Entries?'}
             </h2>
             <p className="mb-6 text-sm text-foreground-muted">
-              {isComplete 
+              {isComplete
                 ? 'This will reset the puzzle to its initial state and restart the timer from zero.'
-                : 'This will remove all your entered numbers and notes, but keep your timer running.'
-              }
+                : 'This will remove all your entered numbers and notes, but keep your timer running.'}
             </p>
             <div className="flex gap-3">
               <button
@@ -137,7 +153,8 @@ export default function GameModals({
           <div className="relative z-10 w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl">
             <h2 className="mb-2 text-lg font-bold text-foreground">Too Many Conflicts</h2>
             <p className="mb-6 text-sm text-foreground-muted">
-              {unpinpointableErrorMessage || "I found too many conflicting numbers to continue. Let me scan your entries and remove any that are causing problems."}
+              {unpinpointableErrorMessage ||
+                'I found too many conflicting numbers to continue. Let me scan your entries and remove any that are causing problems.'}
             </p>
             <div className="flex gap-3">
               <button

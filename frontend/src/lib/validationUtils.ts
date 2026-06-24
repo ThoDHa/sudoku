@@ -50,7 +50,7 @@ export function getBoxCells(box: number): number[] {
  * @param callback - Called for each unit. Return false to stop iteration early.
  */
 export function forEachUnit(
-  callback: (unitType: 'row' | 'col' | 'box', index: number, cells: number[]) => boolean | void
+  callback: (unitType: 'row' | 'col' | 'box', index: number, cells: number[]) => boolean | void,
 ): void {
   // Check rows
   for (let i = 0; i < 9; i++) {
@@ -78,7 +78,7 @@ export function findDuplicates(board: number[]): Set<number> {
   forEachUnit((_unitType, _index, cells) => {
     // Map value -> list of cell indices with that value
     const seen = new Map<number, number[]>()
-    
+
     for (const idx of cells) {
       const val = board[idx] ?? 0
       if (val !== 0) {
@@ -90,7 +90,7 @@ export function findDuplicates(board: number[]): Set<number> {
         }
       }
     }
-    
+
     // Mark all cells with duplicate values
     seen.forEach((indices) => {
       if (indices.length > 1) {
@@ -113,7 +113,7 @@ export function isValidSolution(board: number[]): boolean {
 
   forEachUnit((_unitType, _index, cells) => {
     const seen = new Set<number>()
-    
+
     for (const idx of cells) {
       const val = board[idx] ?? 0
       // Reject empty cells or duplicates

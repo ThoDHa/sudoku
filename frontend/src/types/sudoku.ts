@@ -113,7 +113,12 @@ export interface SudokuWasmAPI {
   solveWithSteps(givens: number[], maxSteps?: number): SolveWithStepsResult
   analyzePuzzle(givens: number[]): AnalyzePuzzleResult
   solveAll(cells: number[], candidates: number[][], givens: number[]): SolveAllResult
-  checkAndFixWithSolution(cells: number[], candidates: number[][], givens: number[], solution: number[]): SolveAllResult
+  checkAndFixWithSolution(
+    cells: number[],
+    candidates: number[][],
+    givens: number[],
+    solution: number[],
+  ): SolveAllResult
 
   // DP solver
   solve(grid: number[]): number[] | null

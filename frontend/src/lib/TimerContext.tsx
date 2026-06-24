@@ -42,17 +42,17 @@ interface TimerProviderProps {
  * Provider that creates a game timer instance and splits it into two contexts:
  * - TimerControlContext: For components that control the timer (Game.tsx)
  * - TimerDisplayContext: For components that display the timer (TimerDisplay)
- * 
+ *
  * This separation ensures that only components subscribing to TimerDisplayContext
  * re-render when the timer ticks, not the entire Game component tree.
  */
-export function TimerProvider({ 
-  children, 
+export function TimerProvider({
+  children,
   autoStart = false,
-  pauseOnHidden = true 
+  pauseOnHidden = true,
 }: TimerProviderProps) {
   const backgroundManager = useBackgroundManagerContext()
-  
+
   const timer = useGameTimer({
     autoStart,
     pauseOnHidden,
@@ -67,37 +67,41 @@ export function TimerProvider({
   const getElapsedMs = useCallback(() => elapsedMsRef.current, [])
 
   // Split into control context (stable except for isRunning/isPausedDueToVisibility)
-  const controlValue = useMemo<TimerControlContextType>(() => ({
-    isRunning: timer.isRunning,
-    isPausedDueToVisibility: timer.isPausedDueToVisibility,
-    startTimer: timer.startTimer,
-    pauseTimer: timer.pauseTimer,
-    resetTimer: timer.resetTimer,
-    setElapsedMs: timer.setElapsedMs,
-    getElapsedMs,
-    formatTime: timer.formatTime,
-  }), [
-    timer.isRunning,
-    timer.isPausedDueToVisibility,
-    timer.startTimer,
-    timer.pauseTimer,
-    timer.resetTimer,
-    timer.setElapsedMs,
-    getElapsedMs,
-    timer.formatTime,
-  ])
+  const controlValue = useMemo<TimerControlContextType>(
+    () => ({
+      isRunning: timer.isRunning,
+      isPausedDueToVisibility: timer.isPausedDueToVisibility,
+      startTimer: timer.startTimer,
+      pauseTimer: timer.pauseTimer,
+      resetTimer: timer.resetTimer,
+      setElapsedMs: timer.setElapsedMs,
+      getElapsedMs,
+      formatTime: timer.formatTime,
+    }),
+    [
+      timer.isRunning,
+      timer.isPausedDueToVisibility,
+      timer.startTimer,
+      timer.pauseTimer,
+      timer.resetTimer,
+      timer.setElapsedMs,
+      getElapsedMs,
+      timer.formatTime,
+    ],
+  )
 
   // Display context - changes every second (only TimerDisplay subscribes)
-  const displayValue = useMemo<TimerDisplayContextType>(() => ({
-    elapsedMs: timer.elapsedMs,
-    formatTime: timer.formatTime,
-  }), [timer.elapsedMs, timer.formatTime])
+  const displayValue = useMemo<TimerDisplayContextType>(
+    () => ({
+      elapsedMs: timer.elapsedMs,
+      formatTime: timer.formatTime,
+    }),
+    [timer.elapsedMs, timer.formatTime],
+  )
 
   return (
     <TimerControlContext.Provider value={controlValue}>
-      <TimerDisplayContext.Provider value={displayValue}>
-        {children}
-      </TimerDisplayContext.Provider>
+      <TimerDisplayContext.Provider value={displayValue}>{children}</TimerDisplayContext.Provider>
     </TimerControlContext.Provider>
   )
 }
@@ -139,7 +143,7 @@ export function useTimerDisplay(): TimerDisplayContextType {
 export function useTimer(): GameTimerReturn {
   const control = useTimerControl()
   const display = useTimerDisplay()
-  
+
   return {
     ...control,
     ...display,

@@ -9,40 +9,43 @@ interface DailyCardProps {
 }
 
 // Card border colors for each difficulty - using theme-aware colors
-const difficultyColors: Record<Difficulty, { bg: string; border: string; hoverBorder: string; ring: string }> = {
-  easy: { 
-    bg: 'bg-background-secondary', 
-    border: 'border-diff-easy', 
+const difficultyColors: Record<
+  Difficulty,
+  { bg: string; border: string; hoverBorder: string; ring: string }
+> = {
+  easy: {
+    bg: 'bg-background-secondary',
+    border: 'border-diff-easy',
     hoverBorder: 'hover:border-diff-easy/80',
     ring: 'ring-diff-easy',
   },
-  medium: { 
-    bg: 'bg-background-secondary', 
-    border: 'border-diff-medium', 
+  medium: {
+    bg: 'bg-background-secondary',
+    border: 'border-diff-medium',
     hoverBorder: 'hover:border-diff-medium/80',
     ring: 'ring-diff-medium',
   },
-  hard: { 
-    bg: 'bg-background-secondary', 
-    border: 'border-diff-hard', 
+  hard: {
+    bg: 'bg-background-secondary',
+    border: 'border-diff-hard',
     hoverBorder: 'hover:border-diff-hard/80',
     ring: 'ring-diff-hard',
   },
-  extreme: { 
-    bg: 'bg-background-secondary', 
-    border: 'border-diff-extreme', 
+  extreme: {
+    bg: 'bg-background-secondary',
+    border: 'border-diff-extreme',
     hoverBorder: 'hover:border-diff-extreme/80',
     ring: 'ring-diff-extreme',
   },
-  impossible: { 
-    bg: 'bg-background-secondary', 
-    border: 'border-diff-impossible', 
+  impossible: {
+    bg: 'bg-background-secondary',
+    border: 'border-diff-impossible',
     hoverBorder: 'hover:border-diff-impossible/80',
     ring: 'ring-diff-impossible',
   },
-  custom: { 
-    bg: 'bg-background-secondary', 
-    border: 'border-diff-impossible', 
+  custom: {
+    bg: 'bg-background-secondary',
+    border: 'border-diff-impossible',
     hoverBorder: 'hover:border-diff-impossible/80',
     ring: 'ring-diff-impossible',
   },
@@ -69,8 +72,9 @@ const resumableBg: Record<Difficulty, string> = {
 
 export default function DailyCard({ difficulty, selected, isResumable, onPlay }: DailyCardProps) {
   const colors = difficultyColors[difficulty]
-  const baseClasses = 'daily-card rounded-xl border-2 transition-all duration-200 cursor-pointer focus:outline-none'
-  
+  const baseClasses =
+    'daily-card rounded-xl border-2 transition-all duration-200 cursor-pointer focus:outline-none'
+
   const bgClass = isResumable ? resumableBg[difficulty] : colors.bg
   const borderClass = selected ? selectedBorders[difficulty] : colors.border
   const hoverClass = selected ? '' : colors.hoverBorder

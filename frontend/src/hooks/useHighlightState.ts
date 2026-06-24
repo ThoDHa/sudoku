@@ -62,12 +62,12 @@ export type HighlightAction =
   // Compound actions (for specific workflows)
   | { type: 'CLEAR_ALL' }
   | { type: 'CLEAR_ALL_AND_DESELECT' }
-  | { type: 'CLEAR_AFTER_USER_CANDIDATE_OP' }  // Preserves digit highlight for multi-fill
-  | { type: 'CLEAR_AFTER_DIGIT_PLACEMENT' }    // Preserves digit highlight
-  | { type: 'CLEAR_AFTER_CELL_SELECTION' }     // Clears highlights when selecting cell
-  | { type: 'CLEAR_AFTER_ERASE' }              // Preserves digit highlight
-  | { type: 'CLEAR_ON_MODE_CHANGE' }           // Clears everything
-  | { type: 'CLEAR_AFTER_DIGIT_TOGGLE' }       // User toggled same digit (erase) - clears all highlights
+  | { type: 'CLEAR_AFTER_USER_CANDIDATE_OP' } // Preserves digit highlight for multi-fill
+  | { type: 'CLEAR_AFTER_DIGIT_PLACEMENT' } // Preserves digit highlight
+  | { type: 'CLEAR_AFTER_CELL_SELECTION' } // Clears highlights when selecting cell
+  | { type: 'CLEAR_AFTER_ERASE' } // Preserves digit highlight
+  | { type: 'CLEAR_ON_MODE_CHANGE' } // Clears everything
+  | { type: 'CLEAR_AFTER_DIGIT_TOGGLE' } // User toggled same digit (erase) - clears all highlights
   | { type: 'CLEAR_HIGHLIGHTS_KEEP_SELECTION' } // Clears highlights but keeps selected cell
 
   // Given cell click - highlight digit and select cell for peer highlighting
@@ -123,7 +123,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         version: nextVersion,
       }
     }
-    
+
     // Digit highlight actions
     case 'SET_DIGIT_HIGHLIGHT':
       return {
@@ -133,14 +133,14 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         currentHighlight: null,
         version: nextVersion,
       }
-    
+
     case 'CLEAR_DIGIT_HIGHLIGHT':
       return {
         ...state,
         highlightedDigit: null,
         version: nextVersion,
       }
-    
+
     case 'TOGGLE_DIGIT_HIGHLIGHT':
       return {
         ...state,
@@ -148,7 +148,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         currentHighlight: null,
         version: nextVersion,
       }
-    
+
     // Move highlight actions
     case 'SET_MOVE_HIGHLIGHT':
       return {
@@ -157,7 +157,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         selectedMoveIndex: action.index ?? state.selectedMoveIndex,
         version: nextVersion,
       }
-    
+
     case 'CLEAR_MOVE_HIGHLIGHT':
       return {
         ...state,
@@ -165,7 +165,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         selectedMoveIndex: null,
         version: nextVersion,
       }
-    
+
     // Compound actions for specific workflows
     case 'CLEAR_ALL':
       return {
@@ -186,7 +186,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         selectedMoveIndex: null,
         version: nextVersion,
       }
-    
+
     case 'CLEAR_AFTER_USER_CANDIDATE_OP':
       // User added/removed a candidate manually
       // PRESERVE digit highlight for multi-fill workflow
@@ -197,7 +197,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         selectedMoveIndex: null,
         version: nextVersion,
       }
-    
+
     case 'CLEAR_AFTER_DIGIT_PLACEMENT':
       // User placed a digit
       // PRESERVE digit highlight for multi-fill workflow
@@ -206,7 +206,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         currentHighlight: null,
         version: nextVersion,
       }
-    
+
     case 'CLEAR_AFTER_CELL_SELECTION':
       // User selected a cell
       // Clear digit highlight but preserve cell selection
@@ -216,7 +216,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         currentHighlight: null,
         version: nextVersion,
       }
-    
+
     case 'CLEAR_AFTER_ERASE':
       // User erased a cell
       // Preserve digit highlight for continued operations
@@ -225,7 +225,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         currentHighlight: null,
         version: nextVersion,
       }
-    
+
     case 'CLEAR_ON_MODE_CHANGE':
       // User changed modes (notes/placement/erase)
       // Clear everything
@@ -237,7 +237,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         currentHighlight: null,
         version: nextVersion,
       }
-    
+
     case 'CLEAR_AFTER_DIGIT_TOGGLE':
       // User toggled the same digit (erased it)
       // Clear all highlights
@@ -248,7 +248,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         selectedMoveIndex: null,
         version: nextVersion,
       }
-    
+
     case 'CLEAR_HIGHLIGHTS_KEEP_SELECTION':
       // Clear digit and move highlights but keep cell selection
       return {
@@ -258,7 +258,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         selectedMoveIndex: null,
         version: nextVersion,
       }
-    
+
     case 'CLICK_GIVEN_CELL':
       // User clicked on a given cell - highlight that digit and select cell for peer highlighting
       return {
@@ -269,7 +269,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         currentHighlight: null,
         version: nextVersion,
       }
-    
+
     default:
       return state
   }
@@ -277,10 +277,10 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
 
 /**
  * Hook for managing highlight state with atomic updates
- * 
+ *
  * This replaces the separate useState calls and useHighlightManager hook
  * with a single reducer that ensures all state updates are atomic.
- * 
+ *
  * Benefits:
  * 1. Atomic updates - no intermediate render states
  * 2. Version counter - ensures React detects Uint16Array changes
@@ -291,39 +291,43 @@ export function useHighlightState() {
   const [state, dispatch] = useReducer(highlightReducer, initialState)
 
   // Memoized action creators for stable references
-  const actions = useMemo(() => ({
-    // Selection
-    selectCell: (cell: number) => dispatch({ type: 'SELECT_CELL', cell }),
-    deselectCell: () => dispatch({ type: 'DESELECT_CELL' }),
-    selectMultipleCells: (cells: number[]) => dispatch({ type: 'SELECT_MULTIPLE_CELLS', cells }),
+  const actions = useMemo(
+    () => ({
+      // Selection
+      selectCell: (cell: number) => dispatch({ type: 'SELECT_CELL', cell }),
+      deselectCell: () => dispatch({ type: 'DESELECT_CELL' }),
+      selectMultipleCells: (cells: number[]) => dispatch({ type: 'SELECT_MULTIPLE_CELLS', cells }),
 
-    // Digit highlight
-    setDigitHighlight: (digit: number) => dispatch({ type: 'SET_DIGIT_HIGHLIGHT', digit }),
-    clearDigitHighlight: () => dispatch({ type: 'CLEAR_DIGIT_HIGHLIGHT' }),
-    toggleDigitHighlight: (digit: number) => dispatch({ type: 'TOGGLE_DIGIT_HIGHLIGHT', digit }),
+      // Digit highlight
+      setDigitHighlight: (digit: number) => dispatch({ type: 'SET_DIGIT_HIGHLIGHT', digit }),
+      clearDigitHighlight: () => dispatch({ type: 'CLEAR_DIGIT_HIGHLIGHT' }),
+      toggleDigitHighlight: (digit: number) => dispatch({ type: 'TOGGLE_DIGIT_HIGHLIGHT', digit }),
 
-    // Move highlight
-    setMoveHighlight: (move: MoveHighlight, index?: number) => {
-      if (index !== undefined) {
-        dispatch({ type: 'SET_MOVE_HIGHLIGHT', move, index })
-      } else {
-        dispatch({ type: 'SET_MOVE_HIGHLIGHT', move })
-      }
-    },
-    clearMoveHighlight: () => dispatch({ type: 'CLEAR_MOVE_HIGHLIGHT' }),
+      // Move highlight
+      setMoveHighlight: (move: MoveHighlight, index?: number) => {
+        if (index !== undefined) {
+          dispatch({ type: 'SET_MOVE_HIGHLIGHT', move, index })
+        } else {
+          dispatch({ type: 'SET_MOVE_HIGHLIGHT', move })
+        }
+      },
+      clearMoveHighlight: () => dispatch({ type: 'CLEAR_MOVE_HIGHLIGHT' }),
 
-    // Compound actions
-    clearAll: () => dispatch({ type: 'CLEAR_ALL' }),
-    clearAllAndDeselect: () => dispatch({ type: 'CLEAR_ALL_AND_DESELECT' }),
-    clearAfterUserCandidateOp: () => dispatch({ type: 'CLEAR_AFTER_USER_CANDIDATE_OP' }),
-    clearAfterDigitPlacement: () => dispatch({ type: 'CLEAR_AFTER_DIGIT_PLACEMENT' }),
-    clearAfterCellSelection: () => dispatch({ type: 'CLEAR_AFTER_CELL_SELECTION' }),
-    clearAfterErase: () => dispatch({ type: 'CLEAR_AFTER_ERASE' }),
-    clearOnModeChange: () => dispatch({ type: 'CLEAR_ON_MODE_CHANGE' }),
-    clearAfterDigitToggle: () => dispatch({ type: 'CLEAR_AFTER_DIGIT_TOGGLE' }),
-    clearHighlightsKeepSelection: () => dispatch({ type: 'CLEAR_HIGHLIGHTS_KEEP_SELECTION' }),
-    clickGivenCell: (digit: number, cell: number) => dispatch({ type: 'CLICK_GIVEN_CELL', digit, cell }),
-  }), [])
+      // Compound actions
+      clearAll: () => dispatch({ type: 'CLEAR_ALL' }),
+      clearAllAndDeselect: () => dispatch({ type: 'CLEAR_ALL_AND_DESELECT' }),
+      clearAfterUserCandidateOp: () => dispatch({ type: 'CLEAR_AFTER_USER_CANDIDATE_OP' }),
+      clearAfterDigitPlacement: () => dispatch({ type: 'CLEAR_AFTER_DIGIT_PLACEMENT' }),
+      clearAfterCellSelection: () => dispatch({ type: 'CLEAR_AFTER_CELL_SELECTION' }),
+      clearAfterErase: () => dispatch({ type: 'CLEAR_AFTER_ERASE' }),
+      clearOnModeChange: () => dispatch({ type: 'CLEAR_ON_MODE_CHANGE' }),
+      clearAfterDigitToggle: () => dispatch({ type: 'CLEAR_AFTER_DIGIT_TOGGLE' }),
+      clearHighlightsKeepSelection: () => dispatch({ type: 'CLEAR_HIGHLIGHTS_KEEP_SELECTION' }),
+      clickGivenCell: (digit: number, cell: number) =>
+        dispatch({ type: 'CLICK_GIVEN_CELL', digit, cell }),
+    }),
+    [],
+  )
 
   // Backward compatibility getters (for gradual migration)
   const selectedCell = state.selectedCell
@@ -336,37 +340,50 @@ export function useHighlightState() {
   // CRITICAL: Memoize return object to prevent cascading re-renders.
   // Without this, every render creates a new object reference, causing all
   // consumers to re-render unnecessarily.
-  return useMemo(() => ({
-    // State values
-    state,
-    selectedCell,
-    selectedCells,
-    highlightedDigit,
-    currentHighlight,
-    selectedMoveIndex,
-    version,
+  return useMemo(
+    () => ({
+      // State values
+      state,
+      selectedCell,
+      selectedCells,
+      highlightedDigit,
+      currentHighlight,
+      selectedMoveIndex,
+      version,
 
-    // Actions (already memoized, but we need stable wrapper object)
-    selectCell: actions.selectCell,
-    deselectCell: actions.deselectCell,
-    selectMultipleCells: actions.selectMultipleCells,
-    setDigitHighlight: actions.setDigitHighlight,
-    clearDigitHighlight: actions.clearDigitHighlight,
-    toggleDigitHighlight: actions.toggleDigitHighlight,
-    setMoveHighlight: actions.setMoveHighlight,
-    clearMoveHighlight: actions.clearMoveHighlight,
-    clearAll: actions.clearAll,
-    clearAllAndDeselect: actions.clearAllAndDeselect,
-    clearAfterUserCandidateOp: actions.clearAfterUserCandidateOp,
-    clearAfterDigitPlacement: actions.clearAfterDigitPlacement,
-    clearAfterCellSelection: actions.clearAfterCellSelection,
-    clearAfterErase: actions.clearAfterErase,
-    clearOnModeChange: actions.clearOnModeChange,
-    clearAfterDigitToggle: actions.clearAfterDigitToggle,
-    clearHighlightsKeepSelection: actions.clearHighlightsKeepSelection,
-    clickGivenCell: actions.clickGivenCell,
-    dispatch,
-  }), [state, selectedCell, selectedCells, highlightedDigit, currentHighlight, selectedMoveIndex, version, actions, dispatch])
+      // Actions (already memoized, but we need stable wrapper object)
+      selectCell: actions.selectCell,
+      deselectCell: actions.deselectCell,
+      selectMultipleCells: actions.selectMultipleCells,
+      setDigitHighlight: actions.setDigitHighlight,
+      clearDigitHighlight: actions.clearDigitHighlight,
+      toggleDigitHighlight: actions.toggleDigitHighlight,
+      setMoveHighlight: actions.setMoveHighlight,
+      clearMoveHighlight: actions.clearMoveHighlight,
+      clearAll: actions.clearAll,
+      clearAllAndDeselect: actions.clearAllAndDeselect,
+      clearAfterUserCandidateOp: actions.clearAfterUserCandidateOp,
+      clearAfterDigitPlacement: actions.clearAfterDigitPlacement,
+      clearAfterCellSelection: actions.clearAfterCellSelection,
+      clearAfterErase: actions.clearAfterErase,
+      clearOnModeChange: actions.clearOnModeChange,
+      clearAfterDigitToggle: actions.clearAfterDigitToggle,
+      clearHighlightsKeepSelection: actions.clearHighlightsKeepSelection,
+      clickGivenCell: actions.clickGivenCell,
+      dispatch,
+    }),
+    [
+      state,
+      selectedCell,
+      selectedCells,
+      highlightedDigit,
+      currentHighlight,
+      selectedMoveIndex,
+      version,
+      actions,
+      dispatch,
+    ],
+  )
 }
 
 export type UseHighlightStateReturn = ReturnType<typeof useHighlightState>

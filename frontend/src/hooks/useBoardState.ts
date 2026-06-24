@@ -19,7 +19,7 @@ export function useBoardState(options: UseBoardStateOptions): UseBoardStateRetur
   const { initialBoard } = options
 
   const [givenCells, setGivenCells] = useState<number[]>(() => {
-    if (initialBoard.length === TOTAL_CELLS && initialBoard.some(v => v !== 0)) {
+    if (initialBoard.length === TOTAL_CELLS && initialBoard.some((v) => v !== 0)) {
       return [...initialBoard]
     }
     return Array(TOTAL_CELLS).fill(0)
@@ -27,17 +27,19 @@ export function useBoardState(options: UseBoardStateOptions): UseBoardStateRetur
 
   const firstInitRef = useRef<boolean>(false)
   const [board, setBoard] = useState<number[]>(() => {
-    if (initialBoard.length === TOTAL_CELLS && initialBoard.some(v => v !== 0)) {
+    if (initialBoard.length === TOTAL_CELLS && initialBoard.some((v) => v !== 0)) {
       return [...initialBoard]
     }
     return Array(TOTAL_CELLS).fill(0)
   })
 
   const boardRef = useRef(board)
-  React.useEffect(() => { boardRef.current = board }, [board])
+  React.useEffect(() => {
+    boardRef.current = board
+  }, [board])
 
   React.useEffect(() => {
-    if (initialBoard.length === TOTAL_CELLS && initialBoard.some(v => v !== 0)) {
+    if (initialBoard.length === TOTAL_CELLS && initialBoard.some((v) => v !== 0)) {
       setGivenCells([...initialBoard])
     }
   }, [initialBoard])
@@ -47,9 +49,12 @@ export function useBoardState(options: UseBoardStateOptions): UseBoardStateRetur
     setBoard(newBoard)
   }, [])
 
-  const isGivenCell = useCallback((idx: number): boolean => {
-    return givenCells[idx] !== 0
-  }, [givenCells])
+  const isGivenCell = useCallback(
+    (idx: number): boolean => {
+      return givenCells[idx] !== 0
+    },
+    [givenCells],
+  )
 
   return {
     board,

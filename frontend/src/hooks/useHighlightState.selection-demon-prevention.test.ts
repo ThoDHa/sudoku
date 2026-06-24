@@ -1,8 +1,8 @@
 /**
  * Selection State Regression Tests
- * 
+ *
  * REGRESSION TEST FORTRESS - Prevents Selection Demons from Returning
- * 
+ *
  * Created by Sun Wukong - Tôn Ngộ Không to guard against the return of selection state demons
  */
 
@@ -22,7 +22,7 @@ describe('Selection State Regression Tests - Demon Prevention', () => {
       act(() => {
         hookResult.result.current.selectCell(42)
       })
-      
+
       expect(hookResult.result.current.selectedCell).toBe(42)
     })
 

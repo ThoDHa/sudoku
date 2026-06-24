@@ -28,10 +28,10 @@ export function BackgroundManagerProvider({ children }: { children: ReactNode })
 // eslint-disable-next-line react-refresh/only-export-components -- Context files conventionally export both Provider and hook
 export function useBackgroundManagerContext(): BackgroundManagerReturn {
   const context = useContext(BackgroundManagerContext)
-  
+
   if (context === undefined) {
     throw new Error('useBackgroundManagerContext must be used within a BackgroundManagerProvider')
   }
-  
+
   return context
 }

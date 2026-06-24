@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Tailwind v4: Register custom theme colors and variables */
 @theme {
@@ -7,12 +7,12 @@
   --color-background-secondary: var(--bg-secondary);
   --color-foreground: var(--text);
   --color-foreground-muted: var(--text-muted);
-  
+
   /* Board colors */
   --color-board-bg: var(--board-bg);
   --color-board-border: var(--border-strong);
   --color-board-border-light: var(--border-light);
-  
+
   /* Cell colors */
   --color-cell-bg: var(--cell-bg);
   --color-cell-given: var(--cell-given);
@@ -22,42 +22,42 @@
   --color-cell-peer: var(--cell-peer);
   --color-cell-primary: var(--cell-primary);
   --color-cell-secondary: var(--cell-secondary);
-  
+
   /* Text colors for cells */
   --color-cell-text-given: var(--text-given);
   --color-cell-text-entered: var(--text-entered);
   --color-cell-text-candidate: var(--text-candidate);
   --color-cell-text-on-highlight: var(--text-on-highlight);
-  
+
   /* Button colors */
   --color-btn-bg: var(--btn-bg);
   --color-btn-hover: var(--btn-hover);
   --color-btn-active: var(--btn-active);
   --color-btn-active-text: var(--btn-active-text);
-  
+
   /* Accent colors */
   --color-accent: var(--accent);
   --color-accent-light: var(--accent-light);
   --color-accent-multi: var(--cell-multi-selected);
-  
+
   /* Error/duplicate colors */
   --color-error-bg: var(--error-bg);
   --color-error-text: var(--error-text);
-  
+
   /* Hint colors */
   --color-hint-text: var(--hint-text);
-  
+
   /* Difficulty colors */
   --color-diff-easy: var(--diff-easy);
   --color-diff-medium: var(--diff-medium);
   --color-diff-hard: var(--diff-hard);
   --color-diff-extreme: var(--diff-extreme);
   --color-diff-impossible: var(--diff-impossible);
-  
+
   /* Shadows */
   --shadow-theme: var(--shadow);
   --shadow-theme-light: var(--shadow-light);
-  
+
   /* Border radius */
   --radius-board: var(--board-radius);
 }
@@ -118,7 +118,7 @@
   --header-height: 3rem;
   --game-header-height: 3rem;
   --page-padding: clamp(0.5rem, 2dvw, 1.5rem);
-  
+
   /* ============================================================
      GAME-SPECIFIC VARIABLES
      Height-aware sizing for board + controls
@@ -173,12 +173,13 @@
   /* Error colors - now set by ThemeContext, these are fallbacks */
   --error-bg: #fecaca;
   --error-text: #dc2626;
-  
+
   /* Hint colors - now set by ThemeContext, these are fallbacks */
   --hint-text: #22c55e;
 }
 
-html, body {
+html,
+body {
   @apply bg-background text-foreground antialiased;
   /* Prevent scroll and fix mobile viewport issues */
   overflow: hidden;
@@ -190,12 +191,12 @@ html, body {
 
 /* Hide scrollbar but allow scrolling */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari and Opera */
+  display: none; /* Chrome, Safari and Opera */
 }
 
 /* Transitions moved to end of file with prefers-reduced-motion support */
@@ -584,9 +585,10 @@ html, body {
   .game-container,
   header,
   main {
-    transition: background-color 150ms ease-in-out,
-                border-color 150ms ease-in-out,
-                color 150ms ease-in-out;
+    transition:
+      background-color 150ms ease-in-out,
+      border-color 150ms ease-in-out,
+      color 150ms ease-in-out;
   }
 
   /* Sudoku cells - NO background transition to prevent visual "layering" 
@@ -620,9 +622,10 @@ html, body {
   .control-action-btn-compact,
   .control-action-btn-labeled,
   .font-size-btn {
-    transition: background-color 150ms ease-in-out,
-                border-color 150ms ease-in-out,
-                color 150ms ease-in-out,
-                transform 150ms ease-in-out;
+    transition:
+      background-color 150ms ease-in-out,
+      border-color 150ms ease-in-out,
+      color 150ms ease-in-out,
+      transform 150ms ease-in-out;
   }
 }

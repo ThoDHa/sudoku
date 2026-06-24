@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { 
-  formatTime, 
-  generateShareText, 
-  generatePuzzleUrl, 
+import {
+  formatTime,
+  generateShareText,
+  generatePuzzleUrl,
   getScores,
   saveScore,
   getBestScoresPure,
@@ -15,7 +15,7 @@ import {
   isTodayCompleted,
   getDailyStreak,
   markDailyCompleted,
-  type Score 
+  type Score,
 } from './scores'
 import { STORAGE_KEYS, MAX_STORED_SCORES } from './constants'
 
@@ -24,9 +24,15 @@ const mockStoreWrapper = { store: {} as Record<string, string> }
 
 const localStorageMock = {
   getItem: vi.fn((key: string) => mockStoreWrapper.store[key] ?? null),
-  setItem: vi.fn((key: string, value: string) => { mockStoreWrapper.store[key] = value }),
-  removeItem: vi.fn((key: string) => { delete mockStoreWrapper.store[key] }),
-  clear: vi.fn(() => { mockStoreWrapper.store = {} })
+  setItem: vi.fn((key: string, value: string) => {
+    mockStoreWrapper.store[key] = value
+  }),
+  removeItem: vi.fn((key: string) => {
+    delete mockStoreWrapper.store[key]
+  }),
+  clear: vi.fn(() => {
+    mockStoreWrapper.store = {}
+  }),
 }
 
 Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock })
@@ -35,10 +41,10 @@ Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock })
 Object.defineProperty(globalThis, 'window', {
   value: {
     location: {
-      origin: 'https://example.com'
-    }
+      origin: 'https://example.com',
+    },
   },
-  writable: true
+  writable: true,
 })
 
 describe('scores', () => {
@@ -48,8 +54,12 @@ describe('scores', () => {
     // Reset all mock call history
     vi.clearAllMocks()
     // Restore the default implementations
-    localStorageMock.getItem.mockImplementation((key: string) => mockStoreWrapper.store[key] ?? null)
-    localStorageMock.setItem.mockImplementation((key: string, value: string) => { mockStoreWrapper.store[key] = value })
+    localStorageMock.getItem.mockImplementation(
+      (key: string) => mockStoreWrapper.store[key] ?? null,
+    )
+    localStorageMock.setItem.mockImplementation((key: string, value: string) => {
+      mockStoreWrapper.store[key] = value
+    })
   })
 
   describe('formatTime', () => {
@@ -87,12 +97,12 @@ describe('scores', () => {
       timeMs: 300000, // 5 minutes
       hintsUsed: 0,
       mistakes: 0,
-      completedAt: '2024-01-15T12:00:00Z'
+      completedAt: '2024-01-15T12:00:00Z',
     }
 
     it('should generate text for daily puzzle', () => {
       const text = generateShareText(baseScore, 'https://example.com')
-      
+
       expect(text).toContain('Daily Sudoku 2024-01-15')
       expect(text).toContain('Medium')
       expect(text).toContain('5:00')
@@ -101,21 +111,21 @@ describe('scores', () => {
 
     it('should include streak for daily puzzles', () => {
       const text = generateShareText(baseScore, 'https://example.com', 5)
-      
+
       expect(text).toContain('Daily Sudoku 2024-01-15')
       expect(text).toContain('🔥 5 day streak')
     })
 
     it('should not include streak of 1', () => {
       const text = generateShareText(baseScore, 'https://example.com', 1)
-      
+
       expect(text).not.toContain('streak')
     })
 
     it('should generate text for practice puzzle', () => {
       const score = { ...baseScore, seed: 'abc123' }
       const text = generateShareText(score, 'https://example.com')
-      
+
       expect(text).toContain('Sudoku')
       expect(text).not.toContain('(Practice)')
       expect(text).not.toContain('2024')
@@ -124,21 +134,21 @@ describe('scores', () => {
     it('should generate text for custom puzzle', () => {
       const score = { ...baseScore, seed: 'custom123', difficulty: 'custom' }
       const text = generateShareText(score, 'https://example.com')
-      
+
       expect(text).toContain('Sudoku (Custom)')
     })
 
     it('should include hints if used', () => {
       const score = { ...baseScore, hintsUsed: 3 }
       const text = generateShareText(score, 'https://example.com')
-      
+
       expect(text).toContain('3 hints')
     })
 
     it('should include singular hint', () => {
       const score = { ...baseScore, hintsUsed: 1 }
       const text = generateShareText(score, 'https://example.com')
-      
+
       expect(text).toContain('1 hint')
       expect(text).not.toContain('hints')
     })
@@ -146,21 +156,21 @@ describe('scores', () => {
     it('should include auto-fill indicator', () => {
       const score = { ...baseScore, autoFillUsed: true }
       const text = generateShareText(score, 'https://example.com')
-      
+
       expect(text).toContain('auto-fill')
     })
 
     it('should include auto-solve indicator', () => {
       const score = { ...baseScore, autoSolveUsed: true }
       const text = generateShareText(score, 'https://example.com')
-      
+
       expect(text).toContain('solved')
     })
 
     it('should show auto-solve instead of hints when both used', () => {
       const score = { ...baseScore, hintsUsed: 5, autoSolveUsed: true }
       const text = generateShareText(score, 'https://example.com')
-      
+
       expect(text).toContain('solved')
       expect(text).not.toContain('5 hints')
     })
@@ -168,7 +178,7 @@ describe('scores', () => {
     it('should combine multiple assists', () => {
       const score = { ...baseScore, hintsUsed: 2, autoFillUsed: true }
       const text = generateShareText(score, 'https://example.com')
-      
+
       expect(text).toContain('2 hints')
       expect(text).toContain('auto-fill')
     })
@@ -176,14 +186,14 @@ describe('scores', () => {
     it('should include technique hints if used', () => {
       const score = { ...baseScore, techniqueHintsUsed: 3 }
       const text = generateShareText(score, 'https://example.com')
-      
+
       expect(text).toContain('3 technique hints')
     })
 
     it('should include singular technique hint', () => {
       const score = { ...baseScore, techniqueHintsUsed: 1 }
       const text = generateShareText(score, 'https://example.com')
-      
+
       expect(text).toContain('1 technique hint')
       expect(text).not.toContain('technique hints')
     })
@@ -191,7 +201,7 @@ describe('scores', () => {
     it('should combine hints and technique hints', () => {
       const score = { ...baseScore, hintsUsed: 2, techniqueHintsUsed: 3 }
       const text = generateShareText(score, 'https://example.com')
-      
+
       expect(text).toContain('2 hints')
       expect(text).toContain('3 technique hints')
     })
@@ -204,12 +214,12 @@ describe('scores', () => {
       timeMs: 300000,
       hintsUsed: 0,
       mistakes: 0,
-      completedAt: '2024-01-15T12:00:00Z'
+      completedAt: '2024-01-15T12:00:00Z',
     }
 
     it('should generate URL for daily/practice puzzle', () => {
       const url = generatePuzzleUrl(baseScore)
-      
+
       // Uses window.location.origin + import.meta.env.BASE_URL
       // Routes are now /:seed (no /p/ prefix)
       expect(url).toContain('/2024-01-15')
@@ -217,27 +227,27 @@ describe('scores', () => {
     })
 
     it('should generate URL for custom puzzle with encoded data', () => {
-      const score = { 
-        ...baseScore, 
+      const score = {
+        ...baseScore,
         difficulty: 'custom',
-        encodedPuzzle: 'sABCDEF123'
+        encodedPuzzle: 'sABCDEF123',
       }
       const url = generatePuzzleUrl(score)
-      
+
       expect(url).toContain('/c/sABCDEF123')
     })
 
     it('should generate URL for custom puzzle without encoded data', () => {
       const score = { ...baseScore, difficulty: 'custom' }
       const url = generatePuzzleUrl(score)
-      
+
       expect(url).toContain('/custom')
     })
 
     it('should NOT include difficulty in URL - recipient chooses their own', () => {
       const easyScore = { ...baseScore, difficulty: 'easy' }
       const hardScore = { ...baseScore, difficulty: 'hard' }
-      
+
       // URLs should NOT contain difficulty param - recipient chooses
       expect(generatePuzzleUrl(easyScore)).not.toContain('d=')
       expect(generatePuzzleUrl(hardScore)).not.toContain('d=')
@@ -267,11 +277,11 @@ describe('scores', () => {
           timeMs: 60000,
           hintsUsed: 0,
           mistakes: 0,
-          completedAt: '2024-01-15T12:00:00Z'
-        }
+          completedAt: '2024-01-15T12:00:00Z',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(mockScores)
-      
+
       const result = getScores()
       expect(result).toEqual(mockScores)
       expect(localStorageMock.getItem).toHaveBeenCalledWith(STORAGE_KEYS.SCORES)
@@ -291,14 +301,14 @@ describe('scores', () => {
         timeMs: 120000,
         hintsUsed: 1,
         mistakes: 2,
-        completedAt: '2024-01-16T12:00:00Z'
+        completedAt: '2024-01-16T12:00:00Z',
       }
-      
+
       saveScore(newScore)
-      
+
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         STORAGE_KEYS.SCORES,
-        expect.stringContaining('new-seed')
+        expect.stringContaining('new-seed'),
       )
     })
 
@@ -310,23 +320,23 @@ describe('scores', () => {
           timeMs: 60000,
           hintsUsed: 0,
           mistakes: 0,
-          completedAt: '2024-01-15T12:00:00Z'
-        }
+          completedAt: '2024-01-15T12:00:00Z',
+        },
       ]
       // Pre-populate the store
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(existingScores)
-      
+
       const newScore: Score = {
         seed: 'new-seed',
         difficulty: 'medium',
         timeMs: 120000,
         hintsUsed: 0,
         mistakes: 0,
-        completedAt: '2024-01-16T12:00:00Z'
+        completedAt: '2024-01-16T12:00:00Z',
       }
-      
+
       saveScore(newScore)
-      
+
       const savedData = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.SCORES])
       expect(savedData[0].seed).toBe('new-seed')
       expect(savedData[1].seed).toBe('old-seed')
@@ -340,22 +350,22 @@ describe('scores', () => {
         timeMs: 60000,
         hintsUsed: 0,
         mistakes: 0,
-        completedAt: '2024-01-15T12:00:00Z'
+        completedAt: '2024-01-15T12:00:00Z',
       }))
       // Pre-populate the store
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(existingScores)
-      
+
       const newScore: Score = {
         seed: 'newest-seed',
         difficulty: 'hard',
         timeMs: 180000,
         hintsUsed: 0,
         mistakes: 0,
-        completedAt: '2024-01-17T12:00:00Z'
+        completedAt: '2024-01-17T12:00:00Z',
       }
-      
+
       saveScore(newScore)
-      
+
       const savedData = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.SCORES])
       expect(savedData.length).toBe(MAX_STORED_SCORES)
       expect(savedData[0].seed).toBe('newest-seed')
@@ -371,12 +381,33 @@ describe('scores', () => {
 
     it('should return best score per difficulty without assists', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 120000, hintsUsed: 0, mistakes: 0, completedAt: '' },
-        { seed: 's2', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },  // Best easy
-        { seed: 's3', difficulty: 'medium', timeMs: 180000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 120000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 's2',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        }, // Best easy
+        {
+          seed: 's3',
+          difficulty: 'medium',
+          timeMs: 180000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
-      
+
       const result = getBestScoresPure()
       expect(result['easy']?.timeMs).toBe(60000)
       expect(result['medium']?.timeMs).toBe(180000)
@@ -384,33 +415,77 @@ describe('scores', () => {
 
     it('should exclude scores with hints used', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 30000, hintsUsed: 1, mistakes: 0, completedAt: '' }, // Has hints
-        { seed: 's2', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' }, // Pure
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 30000,
+          hintsUsed: 1,
+          mistakes: 0,
+          completedAt: '',
+        }, // Has hints
+        {
+          seed: 's2',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        }, // Pure
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
-      
+
       const result = getBestScoresPure()
       expect(result['easy']?.timeMs).toBe(60000)
     })
 
     it('should exclude scores with technique hints used', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 30000, hintsUsed: 0, techniqueHintsUsed: 2, mistakes: 0, completedAt: '' },
-        { seed: 's2', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 30000,
+          hintsUsed: 0,
+          techniqueHintsUsed: 2,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 's2',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
-      
+
       const result = getBestScoresPure()
       expect(result['easy']?.timeMs).toBe(60000)
     })
 
     it('should exclude scores with auto-solve used', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 10000, hintsUsed: 0, autoSolveUsed: true, mistakes: 0, completedAt: '' },
-        { seed: 's2', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 10000,
+          hintsUsed: 0,
+          autoSolveUsed: true,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 's2',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
-      
+
       const result = getBestScoresPure()
       expect(result['easy']?.timeMs).toBe(60000)
     })
@@ -423,12 +498,34 @@ describe('scores', () => {
 
     it('should only include assisted scores', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' }, // Pure - excluded
-        { seed: 's2', difficulty: 'easy', timeMs: 90000, hintsUsed: 2, mistakes: 0, completedAt: '' }, // Assisted
-        { seed: 's3', difficulty: 'medium', timeMs: 120000, hintsUsed: 0, autoSolveUsed: true, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        }, // Pure - excluded
+        {
+          seed: 's2',
+          difficulty: 'easy',
+          timeMs: 90000,
+          hintsUsed: 2,
+          mistakes: 0,
+          completedAt: '',
+        }, // Assisted
+        {
+          seed: 's3',
+          difficulty: 'medium',
+          timeMs: 120000,
+          hintsUsed: 0,
+          autoSolveUsed: true,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
-      
+
       const result = getBestScoresAssisted()
       expect(result['easy']?.timeMs).toBe(90000)
       expect(result['medium']?.timeMs).toBe(120000)
@@ -436,22 +533,51 @@ describe('scores', () => {
 
     it('should return best assisted score per difficulty', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'hard', timeMs: 300000, hintsUsed: 5, mistakes: 0, completedAt: '' },
-        { seed: 's2', difficulty: 'hard', timeMs: 200000, hintsUsed: 3, mistakes: 0, completedAt: '' }, // Best
-        { seed: 's3', difficulty: 'hard', timeMs: 250000, hintsUsed: 1, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'hard',
+          timeMs: 300000,
+          hintsUsed: 5,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 's2',
+          difficulty: 'hard',
+          timeMs: 200000,
+          hintsUsed: 3,
+          mistakes: 0,
+          completedAt: '',
+        }, // Best
+        {
+          seed: 's3',
+          difficulty: 'hard',
+          timeMs: 250000,
+          hintsUsed: 1,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
-      
+
       const result = getBestScoresAssisted()
       expect(result['hard']?.timeMs).toBe(200000)
     })
 
     it('should include scores with technique hints', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, techniqueHintsUsed: 1, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          techniqueHintsUsed: 1,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
-      
+
       const result = getBestScoresAssisted()
       expect(result['easy']?.timeMs).toBe(60000)
     })
@@ -469,10 +595,10 @@ describe('scores', () => {
         timeMs: 60000,
         hintsUsed: 0,
         mistakes: 0,
-        completedAt: ''
+        completedAt: '',
       }))
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
-      
+
       const result = getRecentScores()
       expect(result.length).toBe(10)
       expect(result[0].seed).toBe('seed-0')
@@ -485,21 +611,35 @@ describe('scores', () => {
         timeMs: 60000,
         hintsUsed: 0,
         mistakes: 0,
-        completedAt: ''
+        completedAt: '',
       }))
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
-      
+
       const result = getRecentScores(5)
       expect(result.length).toBe(5)
     })
 
     it('should return all scores if less than limit', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
-        { seed: 's2', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 's2',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
-      
+
       const result = getRecentScores(10)
       expect(result.length).toBe(2)
     })
@@ -546,21 +686,21 @@ describe('scores', () => {
     it('should return current UTC date in YYYY-MM-DD format', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
-      
+
       expect(getTodayUTC()).toBe('2024-06-15')
     })
 
     it('should handle month and day padding', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-01-05T10:00:00Z'))
-      
+
       expect(getTodayUTC()).toBe('2024-01-05')
     })
 
     it('should handle year boundary', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-12-31T23:59:59Z'))
-      
+
       expect(getTodayUTC()).toBe('2024-12-31')
     })
   })
@@ -575,7 +715,7 @@ describe('scores', () => {
     it('should return set of completed dates', () => {
       const completions = ['2024-01-15', '2024-01-16', '2024-01-17']
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = JSON.stringify(completions)
-      
+
       const result = getDailyCompletions()
       expect(result.size).toBe(3)
       expect(result.has('2024-01-15')).toBe(true)
@@ -585,7 +725,7 @@ describe('scores', () => {
 
     it('should return empty set on JSON parse error', () => {
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = 'invalid json'
-      
+
       const result = getDailyCompletions()
       expect(result.size).toBe(0)
     })
@@ -599,27 +739,27 @@ describe('scores', () => {
     it('should return false when no completions', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
-      
+
       expect(isTodayCompleted()).toBe(false)
     })
 
     it('should return true when today is completed', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
-      
+
       const completions = ['2024-06-14', '2024-06-15']
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = JSON.stringify(completions)
-      
+
       expect(isTodayCompleted()).toBe(true)
     })
 
     it('should return false when today is not completed', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
-      
+
       const completions = ['2024-06-13', '2024-06-14']
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = JSON.stringify(completions)
-      
+
       expect(isTodayCompleted()).toBe(false)
     })
   })
@@ -634,21 +774,21 @@ describe('scores', () => {
       expect(result).toEqual({
         currentStreak: 0,
         longestStreak: 0,
-        lastCompletedDate: null
+        lastCompletedDate: null,
       })
     })
 
     it('should return saved streak when last completed is today', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
-      
+
       const streakData = {
         currentStreak: 5,
         longestStreak: 10,
-        lastCompletedDate: '2024-06-15'
+        lastCompletedDate: '2024-06-15',
       }
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = JSON.stringify(streakData)
-      
+
       const result = getDailyStreak()
       expect(result).toEqual(streakData)
     })
@@ -656,14 +796,14 @@ describe('scores', () => {
     it('should return saved streak when last completed is yesterday', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
-      
+
       const streakData = {
         currentStreak: 5,
         longestStreak: 10,
-        lastCompletedDate: '2024-06-14'
+        lastCompletedDate: '2024-06-14',
       }
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = JSON.stringify(streakData)
-      
+
       const result = getDailyStreak()
       expect(result).toEqual(streakData)
     })
@@ -671,30 +811,30 @@ describe('scores', () => {
     it('should reset current streak when last completed is older than yesterday', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
-      
+
       const streakData = {
         currentStreak: 5,
         longestStreak: 10,
-        lastCompletedDate: '2024-06-13' // 2 days ago - streak broken
+        lastCompletedDate: '2024-06-13', // 2 days ago - streak broken
       }
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = JSON.stringify(streakData)
-      
+
       const result = getDailyStreak()
       expect(result).toEqual({
         currentStreak: 0,
         longestStreak: 10, // Preserved
-        lastCompletedDate: '2024-06-13'
+        lastCompletedDate: '2024-06-13',
       })
     })
 
     it('should return default streak on JSON parse error', () => {
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = 'invalid json'
-      
+
       const result = getDailyStreak()
       expect(result).toEqual({
         currentStreak: 0,
         longestStreak: 0,
-        lastCompletedDate: null
+        lastCompletedDate: null,
       })
     })
   })
@@ -707,15 +847,15 @@ describe('scores', () => {
     it('should add today to completions and start new streak', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
-      
+
       // No existing completions or streak data
-      
+
       markDailyCompleted()
-      
+
       // Check completions were saved
       const savedCompletions = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS])
       expect(savedCompletions).toContain('2024-06-15')
-      
+
       // Check streak was saved
       const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK])
       expect(savedStreak.currentStreak).toBe(1)
@@ -725,17 +865,17 @@ describe('scores', () => {
     it('should continue streak when completed yesterday', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
-      
+
       // Set up existing data
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = JSON.stringify(['2024-06-14'])
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = JSON.stringify({
         currentStreak: 3,
         longestStreak: 5,
-        lastCompletedDate: '2024-06-14'
+        lastCompletedDate: '2024-06-14',
       })
-      
+
       markDailyCompleted()
-      
+
       // Check streak was incremented
       const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK])
       expect(savedStreak.currentStreak).toBe(4)
@@ -745,17 +885,17 @@ describe('scores', () => {
     it('should update longest streak when current exceeds it', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
-      
+
       // Set up existing data where current equals longest
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = JSON.stringify(['2024-06-14'])
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = JSON.stringify({
         currentStreak: 5,
         longestStreak: 5,
-        lastCompletedDate: '2024-06-14'
+        lastCompletedDate: '2024-06-14',
       })
-      
+
       markDailyCompleted()
-      
+
       const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK])
       expect(savedStreak.currentStreak).toBe(6)
       expect(savedStreak.longestStreak).toBe(6)
@@ -764,18 +904,18 @@ describe('scores', () => {
     it('should not save if already completed today', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
-      
+
       // Already completed today
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = JSON.stringify(['2024-06-15'])
       const originalStreak = JSON.stringify({
         currentStreak: 3,
         longestStreak: 5,
-        lastCompletedDate: '2024-06-15'
+        lastCompletedDate: '2024-06-15',
       })
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = originalStreak
-      
+
       markDailyCompleted()
-      
+
       // Streak should not have changed
       expect(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK]).toBe(originalStreak)
     })
@@ -783,17 +923,17 @@ describe('scores', () => {
     it('should start new streak when previous streak is broken', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
-      
+
       // Old completion, streak broken
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = JSON.stringify(['2024-06-10'])
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = JSON.stringify({
         currentStreak: 3,
         longestStreak: 10,
-        lastCompletedDate: '2024-06-10'
+        lastCompletedDate: '2024-06-10',
       })
-      
+
       markDailyCompleted()
-      
+
       const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK])
       expect(savedStreak.currentStreak).toBe(1) // New streak started
       expect(savedStreak.longestStreak).toBe(10) // Preserved

@@ -15,9 +15,9 @@ import { SUBGRID_SIZE } from './constants'
 // ==================== Types ====================
 
 export interface Conflict {
-  cell1: number  // First cell index (0-80)
-  cell2: number  // Second cell index (0-80)
-  value: number  // The conflicting value
+  cell1: number // First cell index (0-80)
+  cell2: number // Second cell index (0-80)
+  value: number // The conflicting value
   type: 'row' | 'column' | 'box'
 }
 
@@ -194,7 +194,10 @@ export function validatePuzzle(givens: number[]): ValidateResult {
  * Validate a board against a known solution.
  * Returns which cells are incorrect (if any).
  */
-export function validateBoardAgainstSolution(board: number[], solution: number[]): {
+export function validateBoardAgainstSolution(
+  board: number[],
+  solution: number[],
+): {
   valid: boolean
   message?: string
   incorrectCells?: number[]

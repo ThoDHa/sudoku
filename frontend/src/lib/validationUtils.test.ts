@@ -82,7 +82,9 @@ describe('validationUtils', () => {
   describe('forEachUnit', () => {
     it('should iterate over 27 units (9 rows + 9 cols + 9 boxes)', () => {
       let count = 0
-      forEachUnit(() => { count++ })
+      forEachUnit(() => {
+        count++
+      })
       expect(count).toBe(27)
     })
 
@@ -109,7 +111,7 @@ describe('validationUtils', () => {
     it('should provide correct cells for each unit', () => {
       forEachUnit((unitType, index, cells) => {
         expect(cells).toHaveLength(9)
-        
+
         if (unitType === 'row') {
           expect(cells).toEqual(getRowCells(index))
         } else if (unitType === 'col') {
@@ -125,15 +127,9 @@ describe('validationUtils', () => {
     it('should return empty set for valid board with no duplicates', () => {
       // A valid solved Sudoku has no duplicates
       const validBoard = [
-        5,3,4,6,7,8,9,1,2,
-        6,7,2,1,9,5,3,4,8,
-        1,9,8,3,4,2,5,6,7,
-        8,5,9,7,6,1,4,2,3,
-        4,2,6,8,5,3,7,9,1,
-        7,1,3,9,2,4,8,5,6,
-        9,6,1,5,3,7,2,8,4,
-        2,8,7,4,1,9,6,3,5,
-        3,4,5,2,8,6,1,7,9,
+        5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7, 8, 5, 9, 7,
+        6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8,
+        4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9,
       ]
       expect(findDuplicates(validBoard).size).toBe(0)
     })
@@ -145,9 +141,9 @@ describe('validationUtils', () => {
 
     it('should find duplicates in a row', () => {
       const board = Array(81).fill(0)
-      board[0] = 5  // row 0, col 0
-      board[5] = 5  // row 0, col 5 - duplicate!
-      
+      board[0] = 5 // row 0, col 0
+      board[5] = 5 // row 0, col 5 - duplicate!
+
       const duplicates = findDuplicates(board)
       expect(duplicates.has(0)).toBe(true)
       expect(duplicates.has(5)).toBe(true)
@@ -156,9 +152,9 @@ describe('validationUtils', () => {
 
     it('should find duplicates in a column', () => {
       const board = Array(81).fill(0)
-      board[0] = 3   // row 0, col 0
-      board[54] = 3  // row 6, col 0 - duplicate!
-      
+      board[0] = 3 // row 0, col 0
+      board[54] = 3 // row 6, col 0 - duplicate!
+
       const duplicates = findDuplicates(board)
       expect(duplicates.has(0)).toBe(true)
       expect(duplicates.has(54)).toBe(true)
@@ -167,9 +163,9 @@ describe('validationUtils', () => {
 
     it('should find duplicates in a box', () => {
       const board = Array(81).fill(0)
-      board[0] = 7   // row 0, col 0 (box 0)
-      board[20] = 7  // row 2, col 2 (box 0) - duplicate!
-      
+      board[0] = 7 // row 0, col 0 (box 0)
+      board[20] = 7 // row 2, col 2 (box 0) - duplicate!
+
       const duplicates = findDuplicates(board)
       expect(duplicates.has(0)).toBe(true)
       expect(duplicates.has(20)).toBe(true)
@@ -184,7 +180,7 @@ describe('validationUtils', () => {
       // Two 3s in column 4
       board[4] = 3
       board[76] = 3
-      
+
       const duplicates = findDuplicates(board)
       expect(duplicates.has(0)).toBe(true)
       expect(duplicates.has(8)).toBe(true)
@@ -198,7 +194,7 @@ describe('validationUtils', () => {
       board[0] = 9
       board[4] = 9
       board[8] = 9
-      
+
       const duplicates = findDuplicates(board)
       expect(duplicates.has(0)).toBe(true)
       expect(duplicates.has(4)).toBe(true)
@@ -210,60 +206,270 @@ describe('validationUtils', () => {
   describe('isValidSolution', () => {
     it('should return true for a valid complete solution', () => {
       const validBoard = [
-        5,3,4,6,7,8,9,1,2,
-        6,7,2,1,9,5,3,4,8,
-        1,9,8,3,4,2,5,6,7,
-        8,5,9,7,6,1,4,2,3,
-        4,2,6,8,5,3,7,9,1,
-        7,1,3,9,2,4,8,5,6,
-        9,6,1,5,3,7,2,8,4,
-        2,8,7,4,1,9,6,3,5,
-        3,4,5,2,8,6,1,7,9,
+        5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7, 8, 5, 9, 7,
+        6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8,
+        4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9,
       ]
       expect(isValidSolution(validBoard)).toBe(true)
     })
 
     it('should return false for board with empty cells', () => {
       const incompleteBoard = [
-        5,3,4,6,7,8,9,1,2,
-        6,7,2,1,9,5,3,4,8,
-        1,9,8,3,4,2,5,6,7,
-        8,5,9,7,6,1,4,2,3,
-        4,2,6,8,5,3,7,9,1,
-        7,1,3,9,2,4,8,5,6,
-        9,6,1,5,3,7,2,8,4,
-        2,8,7,4,1,9,6,3,5,
-        3,4,5,2,8,6,1,7,0, // Last cell empty
+        5,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        1,
+        2,
+        6,
+        7,
+        2,
+        1,
+        9,
+        5,
+        3,
+        4,
+        8,
+        1,
+        9,
+        8,
+        3,
+        4,
+        2,
+        5,
+        6,
+        7,
+        8,
+        5,
+        9,
+        7,
+        6,
+        1,
+        4,
+        2,
+        3,
+        4,
+        2,
+        6,
+        8,
+        5,
+        3,
+        7,
+        9,
+        1,
+        7,
+        1,
+        3,
+        9,
+        2,
+        4,
+        8,
+        5,
+        6,
+        9,
+        6,
+        1,
+        5,
+        3,
+        7,
+        2,
+        8,
+        4,
+        2,
+        8,
+        7,
+        4,
+        1,
+        9,
+        6,
+        3,
+        5,
+        3,
+        4,
+        5,
+        2,
+        8,
+        6,
+        1,
+        7,
+        0, // Last cell empty
       ]
       expect(isValidSolution(incompleteBoard)).toBe(false)
     })
 
     it('should return false for board with row duplicate', () => {
       const invalidBoard = [
-        5,3,4,6,7,8,9,1,5, // Duplicate 5 in row 0
-        6,7,2,1,9,5,3,4,8,
-        1,9,8,3,4,2,5,6,7,
-        8,5,9,7,6,1,4,2,3,
-        4,2,6,8,5,3,7,9,1,
-        7,1,3,9,2,4,8,5,6,
-        9,6,1,5,3,7,2,8,4,
-        2,8,7,4,1,9,6,3,5,
-        3,4,5,2,8,6,1,7,9,
+        5,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        1,
+        5, // Duplicate 5 in row 0
+        6,
+        7,
+        2,
+        1,
+        9,
+        5,
+        3,
+        4,
+        8,
+        1,
+        9,
+        8,
+        3,
+        4,
+        2,
+        5,
+        6,
+        7,
+        8,
+        5,
+        9,
+        7,
+        6,
+        1,
+        4,
+        2,
+        3,
+        4,
+        2,
+        6,
+        8,
+        5,
+        3,
+        7,
+        9,
+        1,
+        7,
+        1,
+        3,
+        9,
+        2,
+        4,
+        8,
+        5,
+        6,
+        9,
+        6,
+        1,
+        5,
+        3,
+        7,
+        2,
+        8,
+        4,
+        2,
+        8,
+        7,
+        4,
+        1,
+        9,
+        6,
+        3,
+        5,
+        3,
+        4,
+        5,
+        2,
+        8,
+        6,
+        1,
+        7,
+        9,
       ]
       expect(isValidSolution(invalidBoard)).toBe(false)
     })
 
     it('should return false for board with column duplicate', () => {
       const invalidBoard = [
-        5,3,4,6,7,8,9,1,2,
-        6,7,2,1,9,5,3,4,8,
-        1,9,8,3,4,2,5,6,7,
-        8,5,9,7,6,1,4,2,3,
-        4,2,6,8,5,3,7,9,1,
-        7,1,3,9,2,4,8,5,6,
-        9,6,1,5,3,7,2,8,4,
-        2,8,7,4,1,9,6,3,5,
-        5,4,5,2,8,6,1,7,9, // 5 in col 0 duplicates row 0
+        5,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        1,
+        2,
+        6,
+        7,
+        2,
+        1,
+        9,
+        5,
+        3,
+        4,
+        8,
+        1,
+        9,
+        8,
+        3,
+        4,
+        2,
+        5,
+        6,
+        7,
+        8,
+        5,
+        9,
+        7,
+        6,
+        1,
+        4,
+        2,
+        3,
+        4,
+        2,
+        6,
+        8,
+        5,
+        3,
+        7,
+        9,
+        1,
+        7,
+        1,
+        3,
+        9,
+        2,
+        4,
+        8,
+        5,
+        6,
+        9,
+        6,
+        1,
+        5,
+        3,
+        7,
+        2,
+        8,
+        4,
+        2,
+        8,
+        7,
+        4,
+        1,
+        9,
+        6,
+        3,
+        5,
+        5,
+        4,
+        5,
+        2,
+        8,
+        6,
+        1,
+        7,
+        9, // 5 in col 0 duplicates row 0
       ]
       expect(isValidSolution(invalidBoard)).toBe(false)
     })
@@ -271,15 +477,87 @@ describe('validationUtils', () => {
     it('should return false for board with box duplicate', () => {
       // Create a board that's valid for rows and columns but has box duplicate
       const invalidBoard = [
-        1,2,3,4,5,6,7,8,9,
-        4,5,6,7,8,9,1,2,3,
-        7,8,1,1,2,3,4,5,6, // Box 1 has two 1s (position 18 and 21)
-        2,3,4,5,6,7,8,9,1,
-        5,6,7,8,9,1,2,3,4,
-        8,9,1,2,3,4,5,6,7,
-        3,4,5,6,7,8,9,1,2,
-        6,7,8,9,1,2,3,4,5,
-        9,1,2,3,4,5,6,7,8,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        1,
+        2,
+        3,
+        7,
+        8,
+        1,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6, // Box 1 has two 1s (position 18 and 21)
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        1,
+        5,
+        6,
+        7,
+        8,
+        9,
+        1,
+        2,
+        3,
+        4,
+        8,
+        9,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        1,
+        2,
+        6,
+        7,
+        8,
+        9,
+        1,
+        2,
+        3,
+        4,
+        5,
+        9,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
       ]
       expect(isValidSolution(invalidBoard)).toBe(false)
     })
@@ -309,34 +587,100 @@ describe('validationUtils', () => {
   describe('integration tests', () => {
     it('findDuplicates and isValidSolution should agree on valid boards', () => {
       const validBoard = [
-        5,3,4,6,7,8,9,1,2,
-        6,7,2,1,9,5,3,4,8,
-        1,9,8,3,4,2,5,6,7,
-        8,5,9,7,6,1,4,2,3,
-        4,2,6,8,5,3,7,9,1,
-        7,1,3,9,2,4,8,5,6,
-        9,6,1,5,3,7,2,8,4,
-        2,8,7,4,1,9,6,3,5,
-        3,4,5,2,8,6,1,7,9,
+        5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7, 8, 5, 9, 7,
+        6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8,
+        4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9,
       ]
-      
+
       expect(isValidSolution(validBoard)).toBe(true)
       expect(findDuplicates(validBoard).size).toBe(0)
     })
 
     it('findDuplicates should find issues that isValidSolution rejects', () => {
       const invalidBoard = [
-        5,3,4,6,7,8,9,1,5, // Duplicate 5 in row
-        6,7,2,1,9,5,3,4,8,
-        1,9,8,3,4,2,5,6,7,
-        8,5,9,7,6,1,4,2,3,
-        4,2,6,8,5,3,7,9,1,
-        7,1,3,9,2,4,8,5,6,
-        9,6,1,5,3,7,2,8,4,
-        2,8,7,4,1,9,6,3,5,
-        3,4,5,2,8,6,1,7,9,
+        5,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        1,
+        5, // Duplicate 5 in row
+        6,
+        7,
+        2,
+        1,
+        9,
+        5,
+        3,
+        4,
+        8,
+        1,
+        9,
+        8,
+        3,
+        4,
+        2,
+        5,
+        6,
+        7,
+        8,
+        5,
+        9,
+        7,
+        6,
+        1,
+        4,
+        2,
+        3,
+        4,
+        2,
+        6,
+        8,
+        5,
+        3,
+        7,
+        9,
+        1,
+        7,
+        1,
+        3,
+        9,
+        2,
+        4,
+        8,
+        5,
+        6,
+        9,
+        6,
+        1,
+        5,
+        3,
+        7,
+        2,
+        8,
+        4,
+        2,
+        8,
+        7,
+        4,
+        1,
+        9,
+        6,
+        3,
+        5,
+        3,
+        4,
+        5,
+        2,
+        8,
+        6,
+        1,
+        7,
+        9,
       ]
-      
+
       expect(isValidSolution(invalidBoard)).toBe(false)
       expect(findDuplicates(invalidBoard).size).toBeGreaterThan(0)
     })
@@ -346,13 +690,13 @@ describe('validationUtils', () => {
       const coveredByRows = new Set<number>()
       const coveredByCols = new Set<number>()
       const coveredByBoxes = new Set<number>()
-      
+
       for (let i = 0; i < 9; i++) {
-        getRowCells(i).forEach(c => coveredByRows.add(c))
-        getColCells(i).forEach(c => coveredByCols.add(c))
-        getBoxCells(i).forEach(c => coveredByBoxes.add(c))
+        getRowCells(i).forEach((c) => coveredByRows.add(c))
+        getColCells(i).forEach((c) => coveredByCols.add(c))
+        getBoxCells(i).forEach((c) => coveredByBoxes.add(c))
       }
-      
+
       // Each type should cover all 81 cells
       expect(coveredByRows.size).toBe(81)
       expect(coveredByCols.size).toBe(81)

@@ -1,12 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react'
-import {
-  applyStateDiff,
-  unapplyStateDiff,
-  type StateDiff
-} from '../lib/diffUtils'
-import {
-  MAX_MOVE_HISTORY
-} from '../lib/constants'
+import { applyStateDiff, unapplyStateDiff, type StateDiff } from '../lib/diffUtils'
+import { MAX_MOVE_HISTORY } from '../lib/constants'
 
 export interface Move {
   step_index: number
@@ -57,23 +51,27 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
   const historyRef = useRef(history)
   const historyIndexRef = useRef(historyIndex)
 
-  React.useEffect(() => { historyRef.current = history }, [history])
-  React.useEffect(() => { historyIndexRef.current = historyIndex }, [historyIndex])
+  React.useEffect(() => {
+    historyRef.current = history
+  }, [history])
+  React.useEffect(() => {
+    historyIndexRef.current = historyIndex
+  }, [historyIndex])
 
-  const limitHistory = useCallback((
-    historyArray: Move[],
-    currentIndex: number
-  ): { history: Move[], index: number } => {
-    if (historyArray.length <= MAX_MOVE_HISTORY) {
-      return { history: historyArray, index: currentIndex }
-    }
+  const limitHistory = useCallback(
+    (historyArray: Move[], currentIndex: number): { history: Move[]; index: number } => {
+      if (historyArray.length <= MAX_MOVE_HISTORY) {
+        return { history: historyArray, index: currentIndex }
+      }
 
-    const excess = historyArray.length - MAX_MOVE_HISTORY
-    const trimmedHistory = historyArray.slice(excess)
-    const adjustedIndex = Math.max(0, currentIndex - excess)
+      const excess = historyArray.length - MAX_MOVE_HISTORY
+      const trimmedHistory = historyArray.slice(excess)
+      const adjustedIndex = Math.max(0, currentIndex - excess)
 
-    return { history: trimmedHistory, index: adjustedIndex }
-  }, [])
+      return { history: trimmedHistory, index: adjustedIndex }
+    },
+    [],
+  )
 
   const undo = useCallback(() => {
     const currentBoard = boardRef.current

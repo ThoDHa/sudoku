@@ -31,7 +31,9 @@ interface BackgroundManagerReturn {
  * - Immediate pause and deep pause on visibility change
  * - Comprehensive event handling (Page Visibility API + focus/blur + page show/hide)
  */
-export function useBackgroundManager(options: BackgroundManagerOptions = {}): BackgroundManagerReturn {
+export function useBackgroundManager(
+  options: BackgroundManagerOptions = {},
+): BackgroundManagerReturn {
   const { enabled = true } = options
 
   const [isHidden, setIsHidden] = useState(false)
@@ -48,15 +50,16 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
   // 2. playwright in user agent (Playwright debugging)
   // 3. navigator.webdriver true (automation flag)
   // 4. Check if running in automated test environment via user agent pattern
-  const isHeadlessChrome = typeof navigator !== 'undefined' && 
-    (navigator.userAgent.includes('HeadlessChrome') || 
-     // Playwright specific user agent patterns
-     navigator.userAgent.includes('playwright') ||
-     // Automation detection - webdriver flag (Playwright sets this)
-     navigator.webdriver === true ||
-     // Modern Playwright Chrome uses "Chrome/XXX" without explicit headless marker
-     // but has webdriver enabled. Check for webdriver property existence.
-     ('webdriver' in navigator && (navigator as { webdriver?: unknown }).webdriver))
+  const isHeadlessChrome =
+    typeof navigator !== 'undefined' &&
+    (navigator.userAgent.includes('HeadlessChrome') ||
+      // Playwright specific user agent patterns
+      navigator.userAgent.includes('playwright') ||
+      // Automation detection - webdriver flag (Playwright sets this)
+      navigator.webdriver === true ||
+      // Modern Playwright Chrome uses "Chrome/XXX" without explicit headless marker
+      // but has webdriver enabled. Check for webdriver property existence.
+      ('webdriver' in navigator && (navigator as { webdriver?: unknown }).webdriver))
 
   // In headless mode OR when visibilityState is 'visible', don't pause operations
   // The key insight: if document.visibilityState is 'visible', operations should NOT be paused
@@ -65,9 +68,14 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
 
   // Core logic: shouldPause if enabled AND not headless AND any pause condition is true
   // BUT if document.visibilityState is 'visible' and we're not explicitly paused, don't pause
-  const shouldPauseOperations = enabled && !isHeadlessChrome && (
-    isHidden || effectiveIsWindowBlurred || forcePaused || isInDeepPause || (visibilityState === 'hidden' && !forceResumed)
-  )
+  const shouldPauseOperations =
+    enabled &&
+    !isHeadlessChrome &&
+    (isHidden ||
+      effectiveIsWindowBlurred ||
+      forcePaused ||
+      isInDeepPause ||
+      (visibilityState === 'hidden' && !forceResumed))
 
   const handleVisibilityChange = useCallback(() => {
     const newVisibilityState = document.visibilityState as 'visible' | 'hidden'
@@ -200,13 +208,24 @@ export function useBackgroundManager(options: BackgroundManagerOptions = {}): Ba
   // CRITICAL: Memoize return object to prevent cascading re-renders.
   // Without this, every render creates a new object reference, causing all
   // context consumers to re-render (~746 renders/second instead of ~1/second).
-  return useMemo(() => ({
-    isHidden,
-    isWindowBlurred,
-    shouldPauseOperations,
-    isInDeepPause,
-    visibilityState,
-    forceResume,
-    forcePause,
-  }), [isHidden, isWindowBlurred, shouldPauseOperations, isInDeepPause, visibilityState, forceResume, forcePause])
+  return useMemo(
+    () => ({
+      isHidden,
+      isWindowBlurred,
+      shouldPauseOperations,
+      isInDeepPause,
+      visibilityState,
+      forceResume,
+      forcePause,
+    }),
+    [
+      isHidden,
+      isWindowBlurred,
+      shouldPauseOperations,
+      isInDeepPause,
+      visibilityState,
+      forceResume,
+      forcePause,
+    ],
+  )
 }

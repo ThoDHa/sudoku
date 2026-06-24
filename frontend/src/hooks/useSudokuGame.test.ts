@@ -76,7 +76,7 @@ describe('useSudokuGame - Hook Initialization', () => {
 
     // Verify digit counts match the puzzle
     const expectedCounts = Array(9).fill(0)
-    puzzle.forEach(digit => {
+    puzzle.forEach((digit) => {
       if (digit >= 1 && digit <= 9) {
         expectedCounts[digit - 1]++
       }
@@ -258,9 +258,7 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
   it('triggers onComplete when puzzle is solved', () => {
     const nearlyComplete = createNearlyCompletePuzzle()
     const onComplete = vi.fn()
-    const { result } = renderHook(() =>
-      useSudokuGame({ initialBoard: nearlyComplete, onComplete })
-    )
+    const { result } = renderHook(() => useSudokuGame({ initialBoard: nearlyComplete, onComplete }))
 
     // Place the final digit (cell 80 should be 9 in our complete puzzle)
     act(() => {
@@ -274,9 +272,7 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
   it('does not trigger onComplete for invalid solution', () => {
     const nearlyComplete = createNearlyCompletePuzzle()
     const onComplete = vi.fn()
-    const { result } = renderHook(() =>
-      useSudokuGame({ initialBoard: nearlyComplete, onComplete })
-    )
+    const { result } = renderHook(() => useSudokuGame({ initialBoard: nearlyComplete, onComplete }))
 
     // Place wrong digit
     act(() => {
@@ -636,9 +632,7 @@ describe('useSudokuGame - undo()', () => {
   it('sets isComplete to false after undoing completion', () => {
     const nearlyComplete = createNearlyCompletePuzzle()
     const onComplete = vi.fn()
-    const { result } = renderHook(() =>
-      useSudokuGame({ initialBoard: nearlyComplete, onComplete })
-    )
+    const { result } = renderHook(() => useSudokuGame({ initialBoard: nearlyComplete, onComplete }))
 
     // Complete the puzzle
     act(() => {
@@ -982,7 +976,7 @@ describe('useSudokuGame - clearCandidates()', () => {
       result.current.clearCandidates()
     })
 
-    expect(result.current.history.some(m => m.action === 'clear-candidates')).toBe(true)
+    expect(result.current.history.some((m) => m.action === 'clear-candidates')).toBe(true)
   })
 })
 
@@ -1154,11 +1148,7 @@ describe('useSudokuGame - applyExternalMove()', () => {
     const move = createMockMove()
 
     act(() => {
-      result.current.applyExternalMove(
-        [...puzzle],
-        new Uint16Array(TOTAL_CELLS),
-        move
-      )
+      result.current.applyExternalMove([...puzzle], new Uint16Array(TOTAL_CELLS), move)
     })
 
     expect(result.current.history).toHaveLength(1)
@@ -1167,19 +1157,13 @@ describe('useSudokuGame - applyExternalMove()', () => {
   it('triggers completion check', () => {
     const nearlyComplete = createNearlyCompletePuzzle()
     const onComplete = vi.fn()
-    const { result } = renderHook(() =>
-      useSudokuGame({ initialBoard: nearlyComplete, onComplete })
-    )
+    const { result } = renderHook(() => useSudokuGame({ initialBoard: nearlyComplete, onComplete }))
 
     const completeBoard = createCompletePuzzle()
     const move = createMockMove({ digit: 9 })
 
     act(() => {
-      result.current.applyExternalMove(
-        completeBoard,
-        new Uint16Array(TOTAL_CELLS),
-        move
-      )
+      result.current.applyExternalMove(completeBoard, new Uint16Array(TOTAL_CELLS), move)
     })
 
     expect(onComplete).toHaveBeenCalled()
@@ -1315,7 +1299,7 @@ describe('useSudokuGame - checkNotes()', () => {
     const check = result.current.checkNotes()
 
     expect(check.valid).toBe(false)
-    expect(check.wrongNotes.some(n => n.idx === 1 && n.digit === 5)).toBe(true)
+    expect(check.wrongNotes.some((n) => n.idx === 1 && n.digit === 5)).toBe(true)
   })
 
   it('detects missing notes', () => {
@@ -1488,7 +1472,7 @@ describe('useSudokuGame - digitCounts', () => {
 
     // Count manually
     const expected = Array(9).fill(0)
-    puzzle.forEach(d => {
+    puzzle.forEach((d) => {
       if (d >= 1 && d <= 9) expected[d - 1]++
     })
 
@@ -1655,8 +1639,8 @@ describe('useSudokuGame - Candidate Elimination Edge Cases', () => {
 
     // First add candidates to several cells
     act(() => {
-      result.current.toggleCandidate(1, 5)  // Same row as cell 0
-      result.current.toggleCandidate(9, 5)  // Same column as cell 0
+      result.current.toggleCandidate(1, 5) // Same row as cell 0
+      result.current.toggleCandidate(9, 5) // Same column as cell 0
       result.current.toggleCandidate(10, 5) // Same box as cell 0
     })
 
@@ -1697,9 +1681,7 @@ describe('useSudokuGame - Validation Edge Cases', () => {
   it('detects invalid row in completed board', () => {
     const puzzle = createEmptyPuzzle()
     const onComplete = vi.fn()
-    const { result } = renderHook(() =>
-      useSudokuGame({ initialBoard: puzzle, onComplete })
-    )
+    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle, onComplete }))
 
     // Fill board with invalid row (duplicate digits)
     const invalidBoard = Array(81).fill(1) // All 1s - invalid
@@ -1714,9 +1696,7 @@ describe('useSudokuGame - Validation Edge Cases', () => {
   it('handles partial completion correctly', () => {
     const puzzle = createEmptyPuzzle()
     const onComplete = vi.fn()
-    const { result } = renderHook(() =>
-      useSudokuGame({ initialBoard: puzzle, onComplete })
-    )
+    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle, onComplete }))
 
     // Place some digits but not complete
     act(() => {
@@ -1849,18 +1829,22 @@ describe('useSudokuGame - Memoization', () => {
     })
 
     it('should be available in hook return', () => {
-      const { result } = renderHook(() => useSudokuGame({
-        initialBoard: createEmptyPuzzle(),
-      }))
+      const { result } = renderHook(() =>
+        useSudokuGame({
+          initialBoard: createEmptyPuzzle(),
+        }),
+      )
 
       expect(typeof result.current.setCellMultiple).toBe('function')
     })
 
     it('should add note to single cell in selection (behaves like setCell)', () => {
       const puzzle = createEmptyPuzzle()
-      const { result } = renderHook(() => useSudokuGame({
-        initialBoard: puzzle,
-      }))
+      const { result } = renderHook(() =>
+        useSudokuGame({
+          initialBoard: puzzle,
+        }),
+      )
 
       act(() => {
         result.current.setCellMultiple([10], 5, true)
@@ -1874,9 +1858,11 @@ describe('useSudokuGame - Memoization', () => {
 
     it('should add note to multiple cells in selection', () => {
       const puzzle = createEmptyPuzzle()
-      const { result } = renderHook(() => useSudokuGame({
-        initialBoard: puzzle,
-      }))
+      const { result } = renderHook(() =>
+        useSudokuGame({
+          initialBoard: puzzle,
+        }),
+      )
 
       act(() => {
         result.current.setCellMultiple([10, 11, 12], 7, true)
@@ -1898,9 +1884,11 @@ describe('useSudokuGame - Memoization', () => {
 
     it('should not add notes when notes mode is false', () => {
       const puzzle = createEmptyPuzzle()
-      const { result } = renderHook(() => useSudokuGame({
-        initialBoard: puzzle,
-      }))
+      const { result } = renderHook(() =>
+        useSudokuGame({
+          initialBoard: puzzle,
+        }),
+      )
 
       act(() => {
         result.current.setCellMultiple([10, 11], 5, false)
@@ -1923,9 +1911,11 @@ describe('useSudokuGame - Memoization', () => {
       puzzle[0] = 5
       // Cell 10 remains empty (will get candidate)
 
-      const { result } = renderHook(() => useSudokuGame({
-        initialBoard: puzzle,
-      }))
+      const { result } = renderHook(() =>
+        useSudokuGame({
+          initialBoard: puzzle,
+        }),
+      )
 
       act(() => {
         // Cell 0 is a given, cell 10 is empty
@@ -1945,9 +1935,11 @@ describe('useSudokuGame - Memoization', () => {
     it('should eliminate candidates from peers for each cell', () => {
       const puzzle = createEmptyPuzzle()
 
-      const { result } = renderHook(() => useSudokuGame({
-        initialBoard: puzzle,
-      }))
+      const { result } = renderHook(() =>
+        useSudokuGame({
+          initialBoard: puzzle,
+        }),
+      )
 
       act(() => {
         result.current.setCellMultiple([0, 1, 2, 3], 5, true)
@@ -1966,9 +1958,11 @@ describe('useSudokuGame - Memoization', () => {
 
     it('should record bulk note operation in history', () => {
       const puzzle = createEmptyPuzzle()
-      const { result } = renderHook(() => useSudokuGame({
-        initialBoard: puzzle,
-      }))
+      const { result } = renderHook(() =>
+        useSudokuGame({
+          initialBoard: puzzle,
+        }),
+      )
 
       act(() => {
         result.current.setCellMultiple([10, 11], 7, true)
@@ -1996,9 +1990,11 @@ describe('useSudokuGame - Memoization', () => {
 
     it('should update board state for all cells', () => {
       const puzzle = createEmptyPuzzle()
-      const { result } = renderHook(() => useSudokuGame({
-        initialBoard: puzzle,
-      }))
+      const { result } = renderHook(() =>
+        useSudokuGame({
+          initialBoard: puzzle,
+        }),
+      )
 
       act(() => {
         result.current.setCellMultiple([10, 11, 12], 7, true)
@@ -2012,9 +2008,11 @@ describe('useSudokuGame - Memoization', () => {
 
     it('should fill missing cells first when some cells already have the candidate', () => {
       const puzzle = createEmptyPuzzle()
-      const { result } = renderHook(() => useSudokuGame({
-        initialBoard: puzzle,
-      }))
+      const { result } = renderHook(() =>
+        useSudokuGame({
+          initialBoard: puzzle,
+        }),
+      )
 
       // First, add candidate 5 to cell 10 only
       act(() => {
@@ -2037,9 +2035,11 @@ describe('useSudokuGame - Memoization', () => {
 
     it('should remove from all cells only when ALL already have the candidate', () => {
       const puzzle = createEmptyPuzzle()
-      const { result } = renderHook(() => useSudokuGame({
-        initialBoard: puzzle,
-      }))
+      const { result } = renderHook(() =>
+        useSudokuGame({
+          initialBoard: puzzle,
+        }),
+      )
 
       // Add candidate 3 to all three cells
       act(() => {
@@ -2061,9 +2061,11 @@ describe('useSudokuGame - Memoization', () => {
 
     it('should record correct action type based on fill-first-then-remove logic', () => {
       const puzzle = createEmptyPuzzle()
-      const { result } = renderHook(() => useSudokuGame({
-        initialBoard: puzzle,
-      }))
+      const { result } = renderHook(() =>
+        useSudokuGame({
+          initialBoard: puzzle,
+        }),
+      )
 
       // Add candidate 4 to cell 10 only
       act(() => {
@@ -2089,9 +2091,11 @@ describe('useSudokuGame - Memoization', () => {
 
     it('should not modify cells that already have the candidate during fill phase', () => {
       const puzzle = createEmptyPuzzle()
-      const { result } = renderHook(() => useSudokuGame({
-        initialBoard: puzzle,
-      }))
+      const { result } = renderHook(() =>
+        useSudokuGame({
+          initialBoard: puzzle,
+        }),
+      )
 
       // Add candidates 5 and 8 to cell 10
       act(() => {

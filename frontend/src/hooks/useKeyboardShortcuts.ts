@@ -22,7 +22,7 @@ export interface KeyboardShortcutOptions {
 
 /**
  * Hook for managing global keyboard shortcuts in the game
- * 
+ *
  * Shortcuts:
  * - Ctrl/Cmd + Z: Undo
  * - Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y: Redo
@@ -33,7 +33,7 @@ export interface KeyboardShortcutOptions {
  */
 export function useKeyboardShortcuts(
   handlers: KeyboardShortcutHandlers,
-  options: KeyboardShortcutOptions = {}
+  options: KeyboardShortcutOptions = {},
 ) {
   const { disabled = false } = options
 
@@ -58,8 +58,10 @@ export function useKeyboardShortcuts(
       }
 
       // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y = Redo
-      if ((ctrlOrCmd && e.shiftKey && e.key.toLowerCase() === 'z') || 
-          (ctrlOrCmd && e.key.toLowerCase() === 'y')) {
+      if (
+        (ctrlOrCmd && e.shiftKey && e.key.toLowerCase() === 'z') ||
+        (ctrlOrCmd && e.key.toLowerCase() === 'y')
+      ) {
         e.preventDefault()
         handlers.onRedo()
         return

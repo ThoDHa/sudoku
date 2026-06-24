@@ -12,8 +12,8 @@ import log from 'loglevel'
 // Type declaration for recovery script in index.html and global logger
 declare global {
   interface Window {
-    __markAppReady?: () => void;
-    logger?: typeof log;
+    __markAppReady?: () => void
+    logger?: typeof log
   }
 }
 
@@ -25,7 +25,7 @@ window.logger = logger
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || ''
 
 // Check cache version before app starts
-checkCacheVersion().then(cacheCleared => {
+checkCacheVersion().then((cacheCleared) => {
   if (cacheCleared) {
     logger.warn('Cache was cleared due to version update - fresh content loaded')
   }

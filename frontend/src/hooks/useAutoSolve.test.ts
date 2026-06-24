@@ -109,9 +109,12 @@ describe('useAutoSolve', () => {
 
     it('sets isFetching=true while fetching solution', async () => {
       let resolveFetch: (value: ReturnType<typeof createMockSolveResponse>) => void
-      mockSolveAll.mockImplementation(() => new Promise(resolve => {
-        resolveFetch = resolve
-      }))
+      mockSolveAll.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve
+          }),
+      )
 
       const options = createDefaultOptions()
       const { result } = renderHook(() => useAutoSolve(options))
@@ -135,7 +138,9 @@ describe('useAutoSolve', () => {
     it('calls solveAll with current board, candidates, and givens', async () => {
       mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
       const mockBoard = [1, 2, 3, ...Array(78).fill(0)]
-      const mockCandidates = Array(81).fill(null).map(() => new Set([4, 5, 6]))
+      const mockCandidates = Array(81)
+        .fill(null)
+        .map(() => new Set([4, 5, 6]))
       const mockGivens = [1, 2, 3, ...Array(78).fill(0)]
 
       const options = createDefaultOptions({
@@ -149,11 +154,7 @@ describe('useAutoSolve', () => {
         await result.current.startAutoSolve()
       })
 
-      expect(mockSolveAll).toHaveBeenCalledWith(
-        mockBoard,
-        expect.any(Array),
-        mockGivens
-      )
+      expect(mockSolveAll).toHaveBeenCalledWith(mockBoard, expect.any(Array), mockGivens)
     })
 
     it('sets totalMoves from API response', async () => {
@@ -849,7 +850,7 @@ describe('useAutoSolve', () => {
       })
 
       expect(onError).toHaveBeenCalledWith(
-        'This puzzle requires advanced techniques beyond our solver.'
+        'This puzzle requires advanced techniques beyond our solver.',
       )
     })
 
@@ -895,9 +896,12 @@ describe('useAutoSolve', () => {
 
     it('does not throw when unmounting while fetching', async () => {
       let resolveFetch: (value: ReturnType<typeof createMockSolveResponse>) => void
-      mockSolveAll.mockImplementation(() => new Promise(resolve => {
-        resolveFetch = resolve
-      }))
+      mockSolveAll.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve
+          }),
+      )
 
       const options = createDefaultOptions()
       const { result, unmount } = renderHook(() => useAutoSolve(options))
@@ -922,10 +926,9 @@ describe('useAutoSolve', () => {
       mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
       const bgManager = createMockBackgroundManager({ shouldPauseOperations: false })
       const options = createDefaultOptions({ backgroundManager: bgManager, stepDelay: 100 })
-      const { result, rerender } = renderHook(
-        ({ opts }) => useAutoSolve(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, rerender } = renderHook(({ opts }) => useAutoSolve(opts), {
+        initialProps: { opts: options },
+      })
 
       await act(async () => {
         await result.current.startAutoSolve()
@@ -948,10 +951,9 @@ describe('useAutoSolve', () => {
       mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
       const hiddenBgManager = createMockBackgroundManager({ shouldPauseOperations: true })
       const options = createDefaultOptions({ backgroundManager: hiddenBgManager, stepDelay: 100 })
-      const { result, rerender } = renderHook(
-        ({ opts }) => useAutoSolve(opts),
-        { initialProps: { opts: options } }
-      )
+      const { result, rerender } = renderHook(({ opts }) => useAutoSolve(opts), {
+        initialProps: { opts: options },
+      })
 
       await act(async () => {
         await result.current.startAutoSolve()
@@ -1002,7 +1004,11 @@ describe('useAutoSolve', () => {
 
     it('handles error move by calling onUnpinpointableError', async () => {
       const moves = [
-        createMockAutoSolveMove({ action: 'error', explanation: 'Too many errors', userEntryCount: 5 }),
+        createMockAutoSolveMove({
+          action: 'error',
+          explanation: 'Too many errors',
+          userEntryCount: 5,
+        }),
       ]
       mockSolveAll.mockResolvedValue({ solved: false, moves })
 
@@ -1050,10 +1056,7 @@ describe('useAutoSolve', () => {
         await result.current.startAutoSolve()
       })
 
-      expect(onErrorFixed).toHaveBeenCalledWith(
-        'Fixed cell at R1C1',
-        expect.any(Function)
-      )
+      expect(onErrorFixed).toHaveBeenCalledWith('Fixed cell at R1C1', expect.any(Function))
     })
   })
 

@@ -11,7 +11,12 @@ import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 function MenuIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M4 6h16M4 12h16M4 18h16"
+      />
     </svg>
   )
 }
@@ -22,7 +27,16 @@ export default function Header() {
   const modeDropdownRef = useRef<HTMLDivElement>(null)
   const [homepageModeState, setHomepageModeState] = useState<HomepageMode>('daily')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
-  const { colorTheme, setColorTheme, mode, modePreference, setModePreference, toggleMode, fontSize, setFontSize } = useTheme()
+  const {
+    colorTheme,
+    setColorTheme,
+    mode,
+    modePreference,
+    setModePreference,
+    toggleMode,
+    fontSize,
+    setFontSize,
+  } = useTheme()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -37,11 +51,11 @@ export default function Header() {
   // Hide header on game pages - they have their own UI
   // Game routes: /c/* for custom, or /:seed (anything not a known route)
   const knownRoutes = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard', '/about']
-  const isKnownRoute = knownRoutes.some(route => 
-    location.pathname === route || location.pathname.startsWith(route + '/')
+  const isKnownRoute = knownRoutes.some(
+    (route) => location.pathname === route || location.pathname.startsWith(route + '/'),
   )
-  const isGamePage = location.pathname.startsWith('/c/') ||
-                     (!isKnownRoute && location.pathname !== '/')
+  const isGamePage =
+    location.pathname.startsWith('/c/') || (!isKnownRoute && location.pathname !== '/')
 
   // Close menu on route change
   useEffect(() => {
@@ -68,14 +82,17 @@ export default function Header() {
   }, [])
 
   // Handle homepage mode change
-  const handleSetHomepageMode = useCallback((newMode: HomepageMode) => {
-    setHomepageMode(newMode)
-    setHomepageModeState(newMode)
-    if (location.pathname === '/') {
-      setMenuOpen(false)
-      navigate('/')
-    }
-  }, [location.pathname, navigate])
+  const handleSetHomepageMode = useCallback(
+    (newMode: HomepageMode) => {
+      setHomepageMode(newMode)
+      setHomepageModeState(newMode)
+      if (location.pathname === '/') {
+        setMenuOpen(false)
+        navigate('/')
+      }
+    },
+    [location.pathname, navigate],
+  )
 
   if (isGamePage) return null
 
@@ -86,7 +103,15 @@ export default function Header() {
           <div className="flex h-full items-center justify-between">
             {/* Left: Logo */}
             <Link to="/" className="flex items-center gap-2 font-semibold text-foreground">
-              <img src={mode === 'dark' ? `${import.meta.env.BASE_URL}sudoku-icon-dark.svg` : `${import.meta.env.BASE_URL}sudoku-icon.svg`} alt="Sudoku" className="h-8 w-8" />
+              <img
+                src={
+                  mode === 'dark'
+                    ? `${import.meta.env.BASE_URL}sudoku-icon-dark.svg`
+                    : `${import.meta.env.BASE_URL}sudoku-icon.svg`
+                }
+                alt="Sudoku"
+                className="h-8 w-8"
+              />
               <span>Sudoku</span>
             </Link>
 
@@ -148,10 +173,13 @@ export default function Header() {
                 {modeDropdownOpen && (
                   <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-background-secondary border border-board-border-light shadow-lg overflow-hidden z-50">
                     <button
-                      onClick={() => { setModePreference('light'); setModeDropdownOpen(false) }}
+                      onClick={() => {
+                        setModePreference('light')
+                        setModeDropdownOpen(false)
+                      }}
                       className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                        modePreference === 'light' 
-                          ? 'bg-accent text-btn-active-text' 
+                        modePreference === 'light'
+                          ? 'bg-accent text-btn-active-text'
                           : 'text-foreground hover:bg-btn-hover'
                       }`}
                     >
@@ -159,10 +187,13 @@ export default function Header() {
                       Light
                     </button>
                     <button
-                      onClick={() => { setModePreference('dark'); setModeDropdownOpen(false) }}
+                      onClick={() => {
+                        setModePreference('dark')
+                        setModeDropdownOpen(false)
+                      }}
                       className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                        modePreference === 'dark' 
-                          ? 'bg-accent text-btn-active-text' 
+                        modePreference === 'dark'
+                          ? 'bg-accent text-btn-active-text'
                           : 'text-foreground hover:bg-btn-hover'
                       }`}
                     >
@@ -170,10 +201,13 @@ export default function Header() {
                       Dark
                     </button>
                     <button
-                      onClick={() => { setModePreference('system'); setModeDropdownOpen(false) }}
+                      onClick={() => {
+                        setModePreference('system')
+                        setModeDropdownOpen(false)
+                      }}
                       className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                        modePreference === 'system' 
-                          ? 'bg-accent text-btn-active-text' 
+                        modePreference === 'system'
+                          ? 'bg-accent text-btn-active-text'
                           : 'text-foreground hover:bg-btn-hover'
                       }`}
                     >

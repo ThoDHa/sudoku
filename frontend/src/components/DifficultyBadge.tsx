@@ -22,13 +22,19 @@ const sizeStyles: Record<BadgeSize, string> = {
   lg: 'px-4 py-1.5 text-lg',
 }
 
-export default function DifficultyBadge({ difficulty, size = 'md', className = '' }: DifficultyBadgeProps) {
+export default function DifficultyBadge({
+  difficulty,
+  size = 'md',
+  className = '',
+}: DifficultyBadgeProps) {
   const diffKey = difficulty as Difficulty
   const colorStyle = difficultyStyles[diffKey] || difficultyStyles.medium
   const sizeStyle = sizeStyles[size]
 
   return (
-    <span className={`inline-block rounded-full font-medium capitalize ${colorStyle} ${sizeStyle} ${className}`}>
+    <span
+      className={`inline-block rounded-full font-medium capitalize ${colorStyle} ${sizeStyle} ${className}`}
+    >
       {difficulty}
     </span>
   )

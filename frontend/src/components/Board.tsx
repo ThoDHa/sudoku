@@ -129,110 +129,107 @@ interface CellProps {
  * Memoized Cell component - only re-renders when its specific data changes.
  * This prevents 80 cells from re-rendering when only 1 cell changes.
  */
-const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onPointerDown }: CellProps) {
-  const localRef = useRef<HTMLDivElement>(null)
-  const {
-    idx,
-    value,
-    cellCandidates,
-    isGiven,
-    isSelected,
-    className,
-    ariaLabel,
-    highlightedDigit,
-    isPrimary,
-    isSecondary,
-    isTarget,
-    eliminations,
-    showAnswer,
-    targetDigit,
-  } = data
+const Cell = memo(
+  function Cell({ data, onCellClick, onKeyDown, cellRef, onPointerDown }: CellProps) {
+    const localRef = useRef<HTMLDivElement>(null)
+    const {
+      idx,
+      value,
+      cellCandidates,
+      isGiven,
+      isSelected,
+      className,
+      ariaLabel,
+      highlightedDigit,
+      isPrimary,
+      isSecondary,
+      isTarget,
+      eliminations,
+      showAnswer,
+      targetDigit,
+    } = data
 
-  const row = Math.floor(idx / 9)
-  const col = idx % 9
+    const row = Math.floor(idx / 9)
+    const col = idx % 9
 
-  // Render cell content
-  let content: React.ReactNode = null
+    // Render cell content
+    let content: React.ReactNode = null
 
-  if (value !== 0) {
-    // Filled cell
-    const isOnHighlightedBackground = isPrimary || isSecondary
-    const isHighlightedDigit = highlightedDigit === value
-    
-    // Priority: background highlight needs contrast text, then digit highlighting
-    const textClass = isOnHighlightedBackground
-      ? 'text-cell-text-on-highlight font-bold'
-      : isHighlightedDigit
-        ? 'text-accent font-bold'
-        : ''
-    
-    content = (
-      <span className={textClass}>
-        {value}
-      </span>
-    )
-  } else if (cellCandidates && countCandidates(cellCandidates) > 0) {
-    // Cell with candidates
-    const isHighlightedCell = isPrimary || isSecondary
-    const singleDigit = highlightedDigit && highlightedDigit > 0 ? highlightedDigit : null
+    if (value !== 0) {
+      // Filled cell
+      const isOnHighlightedBackground = isPrimary || isSecondary
+      const isHighlightedDigit = highlightedDigit === value
 
-    content = (
-      <div className="candidate-grid">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => {
-          const hasCandidate_ = hasCandidate(cellCandidates, d)
-          
-          // Check if this specific digit in this cell is being eliminated
-          // Only show eliminations if showAnswer is true (regular hint mode)
-          const isEliminated = showAnswer && eliminations?.some(
-            (e) => e.row === row && e.col === col && e.digit === d
-          )
-          
-          // Check if this digit is the relevant one for highlighting
-          // Use targetDigit (from hint) if available, otherwise fall back to singleDigit (user-selected)
-          // For multi-digit techniques (digit === 0), check if digit is relevant to the technique
-          let isRelevantDigit = false
-          if (targetDigit !== undefined && targetDigit > 0) {
-            // Single-digit technique: highlight only that digit
-            isRelevantDigit = d === targetDigit
-          } else if (targetDigit === 0 && isTarget) {
-            // Multi-digit technique (naked pair, hidden pair, etc.):
-            // Highlight candidates in target cells that are NOT being eliminated
-            // For naked pair: all candidates in pair cells are the pair digits
-            // For hidden pair: the pair digits remain (others are eliminated)
-            const isBeingEliminatedHere = eliminations?.some(
-              (e) => e.row === row && e.col === col && e.digit === d
+      // Priority: background highlight needs contrast text, then digit highlighting
+      const textClass = isOnHighlightedBackground
+        ? 'text-cell-text-on-highlight font-bold'
+        : isHighlightedDigit
+          ? 'text-accent font-bold'
+          : ''
+
+      content = <span className={textClass}>{value}</span>
+    } else if (cellCandidates && countCandidates(cellCandidates) > 0) {
+      // Cell with candidates
+      const isHighlightedCell = isPrimary || isSecondary
+      const singleDigit = highlightedDigit && highlightedDigit > 0 ? highlightedDigit : null
+
+      content = (
+        <div className="candidate-grid">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => {
+            const hasCandidate_ = hasCandidate(cellCandidates, d)
+
+            // Check if this specific digit in this cell is being eliminated
+            // Only show eliminations if showAnswer is true (regular hint mode)
+            const isEliminated =
+              showAnswer &&
+              eliminations?.some((e) => e.row === row && e.col === col && e.digit === d)
+
+            // Check if this digit is the relevant one for highlighting
+            // Use targetDigit (from hint) if available, otherwise fall back to singleDigit (user-selected)
+            // For multi-digit techniques (digit === 0), check if digit is relevant to the technique
+            let isRelevantDigit = false
+            if (targetDigit !== undefined && targetDigit > 0) {
+              // Single-digit technique: highlight only that digit
+              isRelevantDigit = d === targetDigit
+            } else if (targetDigit === 0 && isTarget) {
+              // Multi-digit technique (naked pair, hidden pair, etc.):
+              // Highlight candidates in target cells that are NOT being eliminated
+              // For naked pair: all candidates in pair cells are the pair digits
+              // For hidden pair: the pair digits remain (others are eliminated)
+              const isBeingEliminatedHere = eliminations?.some(
+                (e) => e.row === row && e.col === col && e.digit === d,
+              )
+              isRelevantDigit = !isBeingEliminatedHere
+            } else if (singleDigit) {
+              // User-selected digit highlighting
+              isRelevantDigit = d === singleDigit
+            }
+
+            // Determine styling for this specific candidate
+            let digitClass = 'candidate-digit '
+
+            if (hasCandidate_ && isEliminated) {
+              digitClass += 'text-error-text line-through font-bold'
+            } else if (hasCandidate_ && isRelevantDigit && isTarget && showAnswer) {
+              // Target cells show the digit to ADD in green (hint color)
+              // Only highlight the specific targetDigit, not all candidates
+              // Only show if showAnswer is true (regular hint mode)
+              digitClass += 'text-hint-text font-bold'
+            } else if (isHighlightedCell) {
+              digitClass += 'text-cell-text-on-highlight'
+            } else {
+              digitClass += 'text-cell-text-candidate'
+            }
+
+            return (
+              <span key={d} className={digitClass}>
+                {hasCandidate_ ? d : ''}
+              </span>
             )
-            isRelevantDigit = !isBeingEliminatedHere
-          } else if (singleDigit) {
-            // User-selected digit highlighting
-            isRelevantDigit = d === singleDigit
-          }
-          
-          // Determine styling for this specific candidate
-          let digitClass = "candidate-digit "
-          
-          if (hasCandidate_ && isEliminated) {
-            digitClass += "text-error-text line-through font-bold"
-          } else if (hasCandidate_ && isRelevantDigit && isTarget && showAnswer) {
-            // Target cells show the digit to ADD in green (hint color)
-            // Only highlight the specific targetDigit, not all candidates
-            // Only show if showAnswer is true (regular hint mode)
-            digitClass += "text-hint-text font-bold"
-          } else if (isHighlightedCell) {
-            digitClass += "text-cell-text-on-highlight"
-          } else {
-            digitClass += "text-cell-text-candidate"
-          }
-          
-          return (
-            <span key={d} className={digitClass}>
-              {hasCandidate_ ? d : ''}
-            </span>
-          )
-        })}
-      </div>
-    )
-  }
+          })}
+        </div>
+      )
+    }
 
     // Combine local ref with callback ref, and focus synchronously on click
     const handleClick = useCallback(() => {
@@ -240,12 +237,15 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onPoint
       // Focus immediately for keyboard input (don't wait for useEffect + RAF)
       localRef.current?.focus()
     }, [onCellClick, idx])
-    
+
     // Set both refs when the element mounts
-    const setRefs = useCallback((el: HTMLDivElement | null) => {
-      (localRef as React.MutableRefObject<HTMLDivElement | null>).current = el
-      cellRef(el)
-    }, [cellRef])
+    const setRefs = useCallback(
+      (el: HTMLDivElement | null) => {
+        ;(localRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+        cellRef(el)
+      },
+      [cellRef],
+    )
 
     return (
       <div
@@ -263,38 +263,39 @@ const Cell = memo(function Cell({ data, onCellClick, onKeyDown, cellRef, onPoint
         {content}
       </div>
     )
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison - only re-render if this cell's data actually changed
+    // This is critical for performance - we compare to CellData object deeply
+    const prevData = prevProps.data
+    const nextData = nextProps.data
 
-}, (prevProps, nextProps) => {
-  // Custom comparison - only re-render if this cell's data actually changed
-  // This is critical for performance - we compare to CellData object deeply
-  const prevData = prevProps.data
-  const nextData = nextProps.data
+    // Quick reference checks first
+    if (prevData === nextData) return true
 
-  // Quick reference checks first
-  if (prevData === nextData) return true
-
-  // Compare all fields that affect rendering
-  // NOTE: We also compare callback references because onKeyDown captures
-  // notesMode in its closure. When notesMode changes, onKeyDown must update.
-  return (
-    prevData.idx === nextData.idx &&
-    prevData.value === nextData.value &&
-    prevData.cellCandidates === nextData.cellCandidates &&
-    prevData.isGiven === nextData.isGiven &&
-    prevData.isSelected === nextData.isSelected &&
-    prevData.className === nextData.className &&
-    prevData.ariaLabel === nextData.ariaLabel &&
-    prevData.highlightedDigit === nextData.highlightedDigit &&
-    prevData.isPrimary === nextData.isPrimary &&
-    prevData.isSecondary === nextData.isSecondary &&
-    prevData.isTarget === nextData.isTarget &&
-    prevData.eliminations === nextData.eliminations &&
-    prevData.showAnswer === nextData.showAnswer &&
-    prevProps.onKeyDown === nextProps.onKeyDown &&
-    prevProps.onCellClick === nextProps.onCellClick &&
-    prevProps.onPointerDown === nextProps.onPointerDown
-  )
-})
+    // Compare all fields that affect rendering
+    // NOTE: We also compare callback references because onKeyDown captures
+    // notesMode in its closure. When notesMode changes, onKeyDown must update.
+    return (
+      prevData.idx === nextData.idx &&
+      prevData.value === nextData.value &&
+      prevData.cellCandidates === nextData.cellCandidates &&
+      prevData.isGiven === nextData.isGiven &&
+      prevData.isSelected === nextData.isSelected &&
+      prevData.className === nextData.className &&
+      prevData.ariaLabel === nextData.ariaLabel &&
+      prevData.highlightedDigit === nextData.highlightedDigit &&
+      prevData.isPrimary === nextData.isPrimary &&
+      prevData.isSecondary === nextData.isSecondary &&
+      prevData.isTarget === nextData.isTarget &&
+      prevData.eliminations === nextData.eliminations &&
+      prevData.showAnswer === nextData.showAnswer &&
+      prevProps.onKeyDown === nextProps.onKeyDown &&
+      prevProps.onCellClick === nextProps.onCellClick &&
+      prevProps.onPointerDown === nextProps.onPointerDown
+    )
+  },
+)
 
 // ============================================================
 // BOARD COMPONENT
@@ -332,7 +333,7 @@ const Board = memo(function Board({
   // (synthesized by the browser after pointerup) can be suppressed to avoid
   // overwriting the multi-select state with a single-cell selection.
   const suppressNextClickRef = React.useRef(false)
-  
+
   // Ref for initialBoard to allow stable callbacks that always read the latest value
   // This is critical because Cell memoization doesn't compare onKeyDown callbacks,
   // so we need callbacks that don't go stale when initialBoard changes
@@ -364,7 +365,7 @@ const Board = memo(function Board({
       if (activeElement && 'blur' in activeElement) {
         const animationFrameId = requestAnimationFrame(() => {
           if (isComponentMounted.current) {
-            (activeElement as HTMLElement).blur()
+            ;(activeElement as HTMLElement).blur()
           }
         })
 
@@ -390,10 +391,10 @@ const Board = memo(function Board({
     // Use candidatesVersion to force recomputation when candidates change
     // (Uint16Array mutations may not trigger re-renders on mobile without this)
     void candidatesVersion
-    
+
     const result = new Set<number>()
     if (highlightedDigit === null) return result
-    
+
     for (let idx = 0; idx < 81; idx++) {
       // Check if cell is filled with the highlighted digit
       if (board[idx] === highlightedDigit) {
@@ -413,88 +414,101 @@ const Board = memo(function Board({
 
   // Find next non-given cell in a direction, returns null if none found
   // Reads from initialBoardRef to get latest value without stale closures
-  const findNextNonGivenCell = useCallback((startIdx: number, direction: 'up' | 'down' | 'left' | 'right'): number | null => {
-    const currentInitialBoard = initialBoardRef.current
-    let row = Math.floor(startIdx / 9)
-    let col = startIdx % 9
-    
-    const move = () => {
-      switch (direction) {
-        case 'up': row--; break
-        case 'down': row++; break
-        case 'left': col--; break
-        case 'right': col++; break
+  const findNextNonGivenCell = useCallback(
+    (startIdx: number, direction: 'up' | 'down' | 'left' | 'right'): number | null => {
+      const currentInitialBoard = initialBoardRef.current
+      let row = Math.floor(startIdx / 9)
+      let col = startIdx % 9
+
+      const move = () => {
+        switch (direction) {
+          case 'up':
+            row--
+            break
+          case 'down':
+            row++
+            break
+          case 'left':
+            col--
+            break
+          case 'right':
+            col++
+            break
+        }
       }
-    }
-    
-    const isValid = () => row >= 0 && row < 9 && col >= 0 && col < 9
-    
-    move()
-    while (isValid()) {
-      const idx = row * 9 + col
-      if (currentInitialBoard[idx] === 0) {
-        return idx
-      }
+
+      const isValid = () => row >= 0 && row < 9 && col >= 0 && col < 9
+
       move()
-    }
-    return null
-  }, []) // No deps needed - reads from ref
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
-    const currentInitialBoard = initialBoardRef.current
-    const isGiven = currentInitialBoard[idx] !== 0
-
-    // Arrow key navigation - skip over givens
-    switch (e.key) {
-      case 'ArrowUp': {
-        e.preventDefault()
-        const nextCell = findNextNonGivenCell(idx, 'up')
-        if (nextCell !== null) onCellClick(nextCell)
-        break
-      }
-      case 'ArrowDown': {
-        e.preventDefault()
-        const nextCell = findNextNonGivenCell(idx, 'down')
-        if (nextCell !== null) onCellClick(nextCell)
-        break
-      }
-      case 'ArrowLeft': {
-        e.preventDefault()
-        const nextCell = findNextNonGivenCell(idx, 'left')
-        if (nextCell !== null) onCellClick(nextCell)
-        break
-      }
-      case 'ArrowRight': {
-        e.preventDefault()
-        const nextCell = findNextNonGivenCell(idx, 'right')
-        if (nextCell !== null) onCellClick(nextCell)
-        break
-      }
-      case '1':
-      case '2':
-      case '3':
-      case '4':
-      case '5':
-      case '6':
-      case '7':
-      case '8':
-      case '9':
-        e.preventDefault()
-        if (!isGiven && onCellChange) {
-          onCellChange(idx, parseInt(e.key, 10))
+      while (isValid()) {
+        const idx = row * 9 + col
+        if (currentInitialBoard[idx] === 0) {
+          return idx
         }
-        break
-      case 'Backspace':
-      case 'Delete': {
-
-        e.preventDefault()
-        if (!isGiven && onCellChange) {
-          onCellChange(idx, 0)
-        }
-        break
+        move()
       }
-    }
-  }, [findNextNonGivenCell, onCellClick, onCellChange]) // No initialBoard dep - reads from ref
+      return null
+    },
+    [],
+  ) // No deps needed - reads from ref
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
+      const currentInitialBoard = initialBoardRef.current
+      const isGiven = currentInitialBoard[idx] !== 0
+
+      // Arrow key navigation - skip over givens
+      switch (e.key) {
+        case 'ArrowUp': {
+          e.preventDefault()
+          const nextCell = findNextNonGivenCell(idx, 'up')
+          if (nextCell !== null) onCellClick(nextCell)
+          break
+        }
+        case 'ArrowDown': {
+          e.preventDefault()
+          const nextCell = findNextNonGivenCell(idx, 'down')
+          if (nextCell !== null) onCellClick(nextCell)
+          break
+        }
+        case 'ArrowLeft': {
+          e.preventDefault()
+          const nextCell = findNextNonGivenCell(idx, 'left')
+          if (nextCell !== null) onCellClick(nextCell)
+          break
+        }
+        case 'ArrowRight': {
+          e.preventDefault()
+          const nextCell = findNextNonGivenCell(idx, 'right')
+          if (nextCell !== null) onCellClick(nextCell)
+          break
+        }
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+          e.preventDefault()
+          if (!isGiven && onCellChange) {
+            onCellChange(idx, parseInt(e.key, 10))
+          }
+          break
+        case 'Backspace':
+        case 'Delete': {
+          e.preventDefault()
+          if (!isGiven && onCellChange) {
+            onCellChange(idx, 0)
+          }
+          break
+        }
+      }
+    },
+    [findNextNonGivenCell, onCellClick, onCellChange],
+  ) // No initialBoard dep - reads from ref
 
   const getCellAriaLabel = (idx: number): string => {
     const row = Math.floor(idx / 9)
@@ -514,28 +528,26 @@ const Board = memo(function Board({
 
   const isHighlightedPrimary = (row: number, col: number): boolean => {
     if (!highlight) return false
-    const inPrimary = highlight.highlights.primary.some(
-      (h) => h.row === row && h.col === col
-    )
+    const inPrimary = highlight.highlights.primary.some((h) => h.row === row && h.col === col)
     if (!inPrimary) return false
-    
+
     // Always highlight filled cells
     const idx = row * 9 + col
     if (board[idx] !== 0) return true
-    
+
     // For empty cells, only highlight if the cell still has the relevant candidate
     // If no specific digit or user move, keep the highlight
     if (!highlight.digit || highlight.digit === 0 || highlight.isUserMove) return true
-    
+
     return hasCandidate(candidates[idx] || 0, highlight.digit)
   }
 
   const isHighlightedSecondary = (row: number, col: number): boolean => {
     if (!highlight) return false
-    
+
     const idx = row * 9 + col
     const isFilled = board[idx] !== 0
-    
+
     // Helper to check if cell should still be highlighted based on candidate
     const shouldHighlight = (digit?: number): boolean => {
       // Always highlight filled cells
@@ -545,16 +557,16 @@ const Board = memo(function Board({
       // For empty cells, only highlight if cell still has relevant candidate
       return hasCandidate(candidates[idx] || 0, digit)
     }
-    
+
     // Check explicit secondary highlights (these are part of technique pattern, always show)
     if (highlight.highlights.secondary?.some((h) => h.row === row && h.col === col)) {
       return shouldHighlight(highlight.digit)
     }
-    
+
     // In technique hint mode (showAnswer: false), highlight ALL involved cells
     // In regular hint mode (showAnswer: true), also highlight eliminations and targets
     const showAnswer = highlight.showAnswer !== false
-    
+
     if (showAnswer) {
       // Regular hint mode: highlight elimination cells as secondary (check specific elimination digit)
       const elimination = highlight.eliminations?.find((e) => e.row === row && e.col === col)
@@ -562,8 +574,10 @@ const Board = memo(function Board({
         return shouldHighlight(elimination.digit)
       }
       // Highlight targets as secondary if not already primary
-      if (highlight.targets?.some((t) => t.row === row && t.col === col) && 
-          !isHighlightedPrimary(row, col)) {
+      if (
+        highlight.targets?.some((t) => t.row === row && t.col === col) &&
+        !isHighlightedPrimary(row, col)
+      ) {
         return shouldHighlight(highlight.digit)
       }
     } else {
@@ -574,8 +588,10 @@ const Board = memo(function Board({
         return shouldHighlight(elimination.digit)
       }
       // Target cells (where digits are placed or added)
-      if (highlight.targets?.some((t) => t.row === row && t.col === col) && 
-          !isHighlightedPrimary(row, col)) {
+      if (
+        highlight.targets?.some((t) => t.row === row && t.col === col) &&
+        !isHighlightedPrimary(row, col)
+      ) {
         return shouldHighlight(highlight.digit)
       }
     }
@@ -591,7 +607,12 @@ const Board = memo(function Board({
   // Check if cell is a peer of any selected cell (same row, column, or box)
   const isPeerOfSelected = (idx: number): boolean => {
     // Determine which cells to check peers against
-    const cellsToCheck = selectedCells.size > 0 ? selectedCells : (selectedCell !== null ? new Set([selectedCell]) : null)
+    const cellsToCheck =
+      selectedCells.size > 0
+        ? selectedCells
+        : selectedCell !== null
+          ? new Set([selectedCell])
+          : null
     if (!cellsToCheck || cellsToCheck.size === 0) return false
     if (cellsToCheck.has(idx)) return false // Don't count self as peer
 
@@ -610,7 +631,7 @@ const Board = memo(function Board({
       // Same box
       if (boxRow === Math.floor(selRow / 3) && boxCol === Math.floor(selCol / 3)) return true
     }
-    
+
     return false
   }
 
@@ -704,10 +725,10 @@ const Board = memo(function Board({
     } else if (isSecondary) {
       const isTechniqueHint = highlight?.showAnswer === false
       const isExplicitSecondary = highlight?.highlights.secondary?.some(
-        (h) => h.row === row && h.col === col
+        (h) => h.row === row && h.col === col,
       )
       classes.push(
-        isTechniqueHint && !isExplicitSecondary ? 'bg-cell-primary' : 'bg-cell-secondary'
+        isTechniqueHint && !isExplicitSecondary ? 'bg-cell-primary' : 'bg-cell-secondary',
       )
     } else if (isSelected || inMultiSel) {
       classes.push('bg-cell-selected')
@@ -750,9 +771,7 @@ const Board = memo(function Board({
       const isGiven = initialBoard[idx] !== 0
       const isPrimary = isHighlightedPrimary(row, col)
       const isSecondary = isHighlightedSecondary(row, col)
-      const isTarget = highlight?.targets?.some(
-        (t) => t.row === row && t.col === col
-      ) ?? false
+      const isTarget = highlight?.targets?.some((t) => t.row === row && t.col === col) ?? false
 
       result.push({
         idx,
@@ -789,89 +808,101 @@ const Board = memo(function Board({
   ])
 
   // Stable callback for cell clicks - doesn't change between renders
-  const handleCellClick = useCallback((idx: number) => {
-    // After a multi-cell drag, the browser synthesizes a click event.
-    // Suppress it so the multi-select state is not overwritten.
-    if (suppressNextClickRef.current) {
-      suppressNextClickRef.current = false
-      return
-    }
-    onCellClick(idx)
-  }, [onCellClick])
+  const handleCellClick = useCallback(
+    (idx: number) => {
+      // After a multi-cell drag, the browser synthesizes a click event.
+      // Suppress it so the multi-select state is not overwritten.
+      if (suppressNextClickRef.current) {
+        suppressNextClickRef.current = false
+        return
+      }
+      onCellClick(idx)
+    },
+    [onCellClick],
+  )
 
   // Stable callback for keyboard events
-  const handleCellKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
-    handleKeyDown(e, idx)
-  }, [handleKeyDown])
+  const handleCellKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
+      handleKeyDown(e, idx)
+    },
+    [handleKeyDown],
+  )
 
   // Drag handlers for multi-select feature
-  const handleDragStart = useCallback((idx: number) => {
-    // Skip starting drag on given or filled cells
-    if (initialBoard[idx] !== 0 || board[idx] !== 0) {
-      return
-    }
-    isDraggingRef.current = true
-    dragStartCellRef.current = idx
-    // Initialize ordered trail with the start cell
-    dragTrailRef.current = [idx]
-    dragTrailSetRef.current = new Set([idx])
-    // Record the start cell so handleBoardPointerMove skips redundant
-    // handleDragEnter calls when the pointer stays on the same cell
-    // (prevents selectMultipleCells from firing on a simple tap)
-    lastEnteredCellRef.current = idx
-  }, [initialBoard, board])
-
-  const handleDragEnter = useCallback((idx: number) => {
-    if (!isDraggingRef.current || dragStartCellRef.current === null) return
-
-    // If pointer moved to a different cell than the drag start, this is a real
-    // multi-cell drag: suppress the click event that browser synthesizes after
-    // pointerup to avoid overwriting the multi-select state.
-    if (idx !== dragStartCellRef.current) {
-      suppressNextClickRef.current = true
-    }
-
-    const trail = dragTrailRef.current
-    const trailSet = dragTrailSetRef.current
-
-    if (trailSet.has(idx)) {
-      // Backtrack: pointer revisited a cell already in the trail.
-      // Trim the trail back to that cell, removing everything after it.
-      const backtrackIdx = trail.indexOf(idx)
-      const removed = trail.splice(backtrackIdx + 1)
-      for (const r of removed) {
-        trailSet.delete(r)
+  const handleDragStart = useCallback(
+    (idx: number) => {
+      // Skip starting drag on given or filled cells
+      if (initialBoard[idx] !== 0 || board[idx] !== 0) {
+        return
       }
-    } else {
-      // Forward: compute bridge from last trail cell to new cell
-      // (fills gaps if pointer skipped cells between events)
-      let prevCell: number
-      if (trail.length > 0) {
-        const lastIdx = trail[trail.length - 1]
-        if (lastIdx !== undefined) {
-          prevCell = lastIdx
-        } else {
-          return
+      isDraggingRef.current = true
+      dragStartCellRef.current = idx
+      // Initialize ordered trail with the start cell
+      dragTrailRef.current = [idx]
+      dragTrailSetRef.current = new Set([idx])
+      // Record the start cell so handleBoardPointerMove skips redundant
+      // handleDragEnter calls when the pointer stays on the same cell
+      // (prevents selectMultipleCells from firing on a simple tap)
+      lastEnteredCellRef.current = idx
+    },
+    [initialBoard, board],
+  )
+
+  const handleDragEnter = useCallback(
+    (idx: number) => {
+      if (!isDraggingRef.current || dragStartCellRef.current === null) return
+
+      // If pointer moved to a different cell than the drag start, this is a real
+      // multi-cell drag: suppress the click event that browser synthesizes after
+      // pointerup to avoid overwriting the multi-select state.
+      if (idx !== dragStartCellRef.current) {
+        suppressNextClickRef.current = true
+      }
+
+      const trail = dragTrailRef.current
+      const trailSet = dragTrailSetRef.current
+
+      if (trailSet.has(idx)) {
+        // Backtrack: pointer revisited a cell already in the trail.
+        // Trim the trail back to that cell, removing everything after it.
+        const backtrackIdx = trail.indexOf(idx)
+        const removed = trail.splice(backtrackIdx + 1)
+        for (const r of removed) {
+          trailSet.delete(r)
         }
       } else {
-        const startCell = dragStartCellRef.current
-        if (startCell === null) return
-        prevCell = startCell
-      }
-      const bridgeCells = calculatePathCells(prevCell, idx)
-      for (const cellIdx of bridgeCells) {
-        if (initialBoard[cellIdx] === 0 && board[cellIdx] === 0 && !trailSet.has(cellIdx)) {
-          trail.push(cellIdx)
-          trailSet.add(cellIdx)
+        // Forward: compute bridge from last trail cell to new cell
+        // (fills gaps if pointer skipped cells between events)
+        let prevCell: number
+        if (trail.length > 0) {
+          const lastIdx = trail[trail.length - 1]
+          if (lastIdx !== undefined) {
+            prevCell = lastIdx
+          } else {
+            return
+          }
+        } else {
+          const startCell = dragStartCellRef.current
+          if (startCell === null) return
+          prevCell = startCell
+        }
+        const bridgeCells = calculatePathCells(prevCell, idx)
+        for (const cellIdx of bridgeCells) {
+          if (initialBoard[cellIdx] === 0 && board[cellIdx] === 0 && !trailSet.has(cellIdx)) {
+            trail.push(cellIdx)
+            trailSet.add(cellIdx)
+          }
         }
       }
-    }
 
-    // Update selection from the current trail
-    if (onCellSelectMultiple) {
-      onCellSelectMultiple([...trail])
-    }
-  }, [initialBoard, board, onCellSelectMultiple])
+      // Update selection from the current trail
+      if (onCellSelectMultiple) {
+        onCellSelectMultiple([...trail])
+      }
+    },
+    [initialBoard, board, onCellSelectMultiple],
+  )
 
   const handleDragEnd = useCallback(() => {
     // Notify parent with the final set of selected cells before clearing trail
@@ -888,7 +919,9 @@ const Board = memo(function Board({
     // of a click). The click event fires synchronously after pointerup in the same
     // task, so it sees the flag before this timeout clears it.
     if (suppressNextClickRef.current) {
-      setTimeout(() => { suppressNextClickRef.current = false }, 0)
+      setTimeout(() => {
+        suppressNextClickRef.current = false
+      }, 0)
     }
   }, [onDragEndProp])
 
@@ -897,24 +930,27 @@ const Board = memo(function Board({
 
   // Board-level pointer move handler: resolves which cell the pointer is over
   // using elementFromPoint. Works for both mouse and touch (pointer events unify both).
-  const handleBoardPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current) return
+  const handleBoardPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isDraggingRef.current) return
 
-    const el = document.elementFromPoint(e.clientX, e.clientY)
-    if (!el) return
+      const el = document.elementFromPoint(e.clientX, e.clientY)
+      if (!el) return
 
-    // Walk up to find the cell element with data-cell-idx
-    const cellEl = (el as HTMLElement).closest('[data-cell-idx]')
-    if (!cellEl) return
+      // Walk up to find the cell element with data-cell-idx
+      const cellEl = (el as HTMLElement).closest('[data-cell-idx]')
+      if (!cellEl) return
 
-    const idx = Number(cellEl.getAttribute('data-cell-idx'))
-    if (Number.isNaN(idx) || idx === lastEnteredCellRef.current) return
+      const idx = Number(cellEl.getAttribute('data-cell-idx'))
+      if (Number.isNaN(idx) || idx === lastEnteredCellRef.current) return
 
-    // handleDragEnter reads lastEnteredCellRef to bridge from the previous
-    // cell, so call it BEFORE updating the ref to the new cell.
-    handleDragEnter(idx)
-    lastEnteredCellRef.current = idx
-  }, [handleDragEnter])
+      // handleDragEnter reads lastEnteredCellRef to bridge from the previous
+      // cell, so call it BEFORE updating the ref to the new cell.
+      handleDragEnter(idx)
+      lastEnteredCellRef.current = idx
+    },
+    [handleDragEnter],
+  )
 
   // Board-level pointer up handler
   const handleBoardPointerUp = useCallback(() => {

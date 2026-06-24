@@ -20,11 +20,11 @@ export interface SeedValidationResult {
  */
 export function getGameMode(seed: string): 'daily' | 'practice' | 'custom' | null {
   if (!seed) return null
-  
+
   if (seed.startsWith('daily-')) return 'daily'
   if (seed.startsWith('P') || seed.startsWith('practice-')) return 'practice'
   if (seed.startsWith('custom-')) return 'custom'
-  
+
   return null
 }
 
@@ -40,9 +40,9 @@ export function validateSeed(seed: string): SeedValidationResult {
       error: 'Seed cannot be empty',
     }
   }
-  
+
   const mode = getGameMode(seed)
-  
+
   if (!mode) {
     return {
       valid: false,
@@ -51,7 +51,7 @@ export function validateSeed(seed: string): SeedValidationResult {
       error: 'Invalid seed format. Must start with: daily-, P, practice-, or custom-',
     }
   }
-  
+
   // Additional validation for specific modes
   if (mode === 'daily') {
     const dailyMatch = seed.match(/^daily-\d{4}-\d{2}-\d{2}$/)
@@ -64,7 +64,7 @@ export function validateSeed(seed: string): SeedValidationResult {
       }
     }
   }
-  
+
   if (mode === 'practice' && !seed.toLowerCase().startsWith('p')) {
     return {
       valid: false,
@@ -73,7 +73,7 @@ export function validateSeed(seed: string): SeedValidationResult {
       error: 'Invalid practice seed format. Must start with: P',
     }
   }
-  
+
   return {
     valid: true,
     seed,
@@ -86,9 +86,13 @@ export function validateSeed(seed: string): SeedValidationResult {
  * Extract seed from localStorage key with validation
  * This is the core function that had the slice bug
  */
-export function extractSeedFromStorageKey(storageKey: string): { seed: string; valid: boolean; error?: string } {
+export function extractSeedFromStorageKey(storageKey: string): {
+  seed: string
+  valid: boolean
+  error?: string
+} {
   const prefix = STORAGE_KEYS.GAME_STATE_PREFIX
-  
+
   // Defensive: Check if key actually starts with expected prefix
   if (!storageKey.startsWith(prefix)) {
     return {
@@ -97,13 +101,13 @@ export function extractSeedFromStorageKey(storageKey: string): { seed: string; v
       error: `Invalid storage key format. Expected prefix: ${prefix}`,
     }
   }
-  
+
   // Extract seed
   const seed = storageKey.slice(prefix.length)
-  
+
   // Validate extracted seed
   const validation = validateSeed(seed)
-  
+
   if (!validation.valid) {
     return {
       seed,
@@ -111,17 +115,17 @@ export function extractSeedFromStorageKey(storageKey: string): { seed: string; v
       error: validation.error,
     }
   }
-  
+
   const result: SeedValidationResult = {
     seed,
     valid: true,
     mode: validation.mode,
   }
-  
+
   if (validation.error) {
     result.error = validation.error
   }
-  
+
   return result
 }
 
@@ -134,7 +138,10 @@ export function createStorageKey(seed: string): string {
 
   if (!validation.valid) {
     // If seed is invalid, don't create a key
-    logger.debug(`[SEED VALIDATION] Cannot create storage key for invalid seed: ${seed}`, validation.error)
+    logger.debug(
+      `[SEED VALIDATION] Cannot create storage key for invalid seed: ${seed}`,
+      validation.error,
+    )
     throw new Error(`Invalid seed: ${validation.error}`)
   }
 
@@ -145,7 +152,10 @@ export function createStorageKey(seed: string): string {
  * Check if a seed matches expected game mode
  * Useful for debugging and validation
  */
-export function seedMatchesMode(seed: string, expectedMode: 'daily' | 'practice' | 'custom'): boolean {
+export function seedMatchesMode(
+  seed: string,
+  expectedMode: 'daily' | 'practice' | 'custom',
+): boolean {
   const mode = getGameMode(seed)
   return mode === expectedMode
 }

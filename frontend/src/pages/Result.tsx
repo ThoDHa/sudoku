@@ -8,7 +8,7 @@ import { ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline'
 export default function Result() {
   const [searchParams] = useSearchParams()
   const [copied, setCopied] = useState(false)
-  
+
   const seed = searchParams.get('s')
   const difficulty = searchParams.get('d')
   const timeMs = parseInt(searchParams.get('t') || '0', 10)
@@ -54,7 +54,7 @@ export default function Result() {
         })
         return
       }
-      
+
       // Fallback to clipboard
       const success = await copyToClipboard(shareText)
       if (success) {
@@ -69,7 +69,7 @@ export default function Result() {
   return (
     <div className="page-container flex h-full flex-col items-center justify-center text-foreground">
       <h1 className="page-title text-center">Puzzle Complete!</h1>
-      
+
       <ResultSummary
         timeMs={timeMs}
         difficulty={difficulty}
@@ -79,7 +79,7 @@ export default function Result() {
         mistakes={0}
         autoSolveUsed={autoSolveUsed}
       />
-      
+
       {/* Share preview */}
       <div className="mt-6 w-full max-w-sm rounded-lg border border-board-border-light bg-background-secondary p-4">
         <p className="mb-3 text-sm font-medium text-foreground-muted">Share your result</p>

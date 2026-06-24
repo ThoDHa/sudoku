@@ -15,11 +15,17 @@ vi.mock('../lib/solver-service', () => ({
     puzzle_id: 'test-puzzle',
     seed: 'test-seed',
     difficulty: 'medium',
-    givens: Array(81).fill(0).map((_, i) => (i % 9 === 0 ? i / 9 + 1 : 0)),
-    solution: Array(81).fill(0).map((_, i) => (i % 9) + 1),
+    givens: Array(81)
+      .fill(0)
+      .map((_, i) => (i % 9 === 0 ? i / 9 + 1 : 0)),
+    solution: Array(81)
+      .fill(0)
+      .map((_, i) => (i % 9) + 1),
   }),
   validateBoard: vi.fn().mockReturnValue({ valid: true, message: 'Valid' }),
-  validateCustomPuzzle: vi.fn().mockResolvedValue({ valid: true, unique: true, solution: Array(81).fill(1) }),
+  validateCustomPuzzle: vi
+    .fn()
+    .mockResolvedValue({ valid: true, unique: true, solution: Array(81).fill(1) }),
   cleanupSolver: vi.fn(),
   checkAndFixWithSolution: vi.fn().mockResolvedValue({ moves: [] }),
   getDailySeed: vi.fn().mockReturnValue({ date_utc: '2024-01-01', seed: 'daily-2024-01-01' }),
@@ -102,10 +108,18 @@ const localStorageMock = (() => {
   let store: Record<string, string> = {}
   return {
     getItem: vi.fn((key: string) => store[key] || null),
-    setItem: vi.fn((key: string, value: string) => { store[key] = value }),
-    removeItem: vi.fn((key: string) => { delete store[key] }),
-    clear: vi.fn(() => { store = {} }),
-    get store() { return store },
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete store[key]
+    }),
+    clear: vi.fn(() => {
+      store = {}
+    }),
+    get store() {
+      return store
+    },
   }
 })()
 Object.defineProperty(window, 'localStorage', { value: localStorageMock })
@@ -156,33 +170,33 @@ function useHintCounter() {
   const [techniqueHintsUsed, setTechniqueHintsUsed] = React.useState(0)
   const [hintLoading, setHintLoading] = React.useState(false)
   const [techniqueHintLoading, setTechniqueHintLoading] = React.useState(false)
-  
+
   const handleNext = async () => {
     if (hintLoading) return
     setHintLoading(true)
     try {
       const result = await mockFindNextMove()
       if (result.move) {
-        setHintsUsed(prev => prev + 1)
+        setHintsUsed((prev) => prev + 1)
       }
     } finally {
       setHintLoading(false)
     }
   }
-  
+
   const handleTechniqueHint = async () => {
     if (techniqueHintLoading) return
     setTechniqueHintLoading(true)
     try {
       const result = await mockFindNextMove()
       if (result.move) {
-        setTechniqueHintsUsed(prev => prev + 1)
+        setTechniqueHintsUsed((prev) => prev + 1)
       }
     } finally {
       setTechniqueHintLoading(false)
     }
   }
-  
+
   return {
     hintsUsed,
     techniqueHintsUsed,
@@ -196,8 +210,8 @@ function useHintCounter() {
 }
 
 // Test wrapper component
-function HintTestComponent({ 
-  onHint, 
+function HintTestComponent({
+  onHint,
   onTechniqueHint,
   hintDisabled = false,
   techniqueHintDisabled = false,
@@ -213,14 +227,10 @@ function HintTestComponent({
 }) {
   return (
     <div>
-      <button 
-        data-testid="hint-btn"
-        onClick={onHint}
-        disabled={hintDisabled || hintLoading}
-      >
+      <button data-testid="hint-btn" onClick={onHint} disabled={hintDisabled || hintLoading}>
         {hintLoading ? 'Loading...' : 'Hint'}
       </button>
-      <button 
+      <button
         data-testid="technique-hint-btn"
         onClick={onTechniqueHint}
         disabled={techniqueHintDisabled || techniqueHintLoading}
@@ -246,7 +256,7 @@ describe('Hint System: Edge and Regression Tests', () => {
     it('should show a hint and increment counter (happy path)', async () => {
       const user = userEvent.setup()
       mockFindNextMove.mockResolvedValueOnce(createMockHintResponse())
-      
+
       let hintsUsed = 0
       const handleNext = async () => {
         const result = await mockFindNextMove()
@@ -254,12 +264,12 @@ describe('Hint System: Edge and Regression Tests', () => {
           hintsUsed++
         }
       }
-      
+
       render(<HintTestComponent onHint={handleNext} />)
-      
+
       const hintBtn = screen.getByTestId('hint-btn')
       await user.click(hintBtn)
-      
+
       await waitFor(() => {
         expect(mockFindNextMove).toHaveBeenCalledTimes(1)
         expect(hintsUsed).toBe(1)
@@ -270,34 +280,37 @@ describe('Hint System: Edge and Regression Tests', () => {
   describe('2. Mobile Viewport', () => {
     it('should behave correctly on mobile viewport', async () => {
       const user = userEvent.setup()
-      
+
       // Simulate mobile viewport
-      vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({
-        matches: query.includes('max-width') && query.includes('768'),
-        media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      } as any))
-      
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query: string) =>
+          ({
+            matches: query.includes('max-width') && query.includes('768'),
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+          }) as any,
+      )
+
       mockFindNextMove.mockResolvedValueOnce(createMockHintResponse())
-      
+
       let hintsUsed = 0
       const handleNext = async () => {
         const result = await mockFindNextMove()
         if (result.move) hintsUsed++
       }
-      
+
       render(<HintTestComponent onHint={handleNext} />)
-      
+
       const hintBtn = screen.getByTestId('hint-btn')
       expect(hintBtn).not.toBeDisabled()
-      
+
       await user.click(hintBtn)
-      
+
       await waitFor(() => {
         expect(mockFindNextMove).toHaveBeenCalledTimes(1)
         expect(hintsUsed).toBe(1)
@@ -309,21 +322,21 @@ describe('Hint System: Edge and Regression Tests', () => {
     it('should handle no cell selected (unselected state)', async () => {
       const user = userEvent.setup()
       mockFindNextMove.mockResolvedValueOnce(createMockHintResponse())
-      
+
       let hintsUsed = 0
       const handleNext = async () => {
         // Hints work regardless of cell selection
         const result = await mockFindNextMove()
         if (result.move) hintsUsed++
       }
-      
+
       render(<HintTestComponent onHint={handleNext} />)
-      
+
       const hintBtn = screen.getByTestId('hint-btn')
       expect(hintBtn).not.toBeDisabled()
-      
+
       await user.click(hintBtn)
-      
+
       await waitFor(() => {
         expect(hintsUsed).toBe(1)
       })
@@ -333,21 +346,21 @@ describe('Hint System: Edge and Regression Tests', () => {
   describe('4. Nearly-Complete Puzzle', () => {
     it('should act correctly on nearly-complete puzzles', async () => {
       const user = userEvent.setup()
-      
+
       // Simulate nearly-complete puzzle (last move)
       mockFindNextMove.mockResolvedValueOnce(createMockHintResponse({}, true))
-      
+
       let hintsUsed = 0
       const handleNext = async () => {
         const result = await mockFindNextMove()
         if (result.move) hintsUsed++
       }
-      
+
       render(<HintTestComponent onHint={handleNext} />)
-      
+
       const hintBtn = screen.getByTestId('hint-btn')
       await user.click(hintBtn)
-      
+
       await waitFor(() => {
         expect(hintsUsed).toBe(1)
       })
@@ -357,19 +370,14 @@ describe('Hint System: Edge and Regression Tests', () => {
   describe('5. Post-Completion', () => {
     it('should not allow hints after completion (game done)', async () => {
       const user = userEvent.setup()
-      
-      render(
-        <HintTestComponent 
-          onHint={() => {}} 
-          hintDisabled={true}
-        />
-      )
-      
+
+      render(<HintTestComponent onHint={() => {}} hintDisabled={true} />)
+
       const hintBtn = screen.getByTestId('hint-btn')
       expect(hintBtn).toBeDisabled()
-      
+
       await user.click(hintBtn)
-      
+
       expect(mockFindNextMove).not.toHaveBeenCalled()
     })
   })
@@ -377,14 +385,14 @@ describe('Hint System: Edge and Regression Tests', () => {
   describe('6. Spam/Rapid Clicking', () => {
     it('should block or ignore rapid/spam/race tapping of hint/technique hint', async () => {
       const user = userEvent.setup()
-      
+
       // Simulate slow hint response
       let resolveHint: () => void
       const hintPromise = new Promise<any>((resolve) => {
         resolveHint = () => resolve(createMockHintResponse())
       })
       mockFindNextMove.mockReturnValue(hintPromise)
-      
+
       let hintsUsed = 0
       let hintLoading = false
       const handleNext = async () => {
@@ -397,24 +405,21 @@ describe('Hint System: Edge and Regression Tests', () => {
           hintLoading = false
         }
       }
-      
+
       const { rerender } = render(
-        <HintTestComponent 
-          onHint={handleNext}
-          hintLoading={hintLoading}
-        />
+        <HintTestComponent onHint={handleNext} hintLoading={hintLoading} />,
       )
-      
+
       const hintBtn = screen.getByTestId('hint-btn')
-      
+
       // Rapid clicks
       await user.click(hintBtn)
       await user.click(hintBtn)
       await user.click(hintBtn)
-      
+
       // Resolve the hint
       resolveHint!()
-      
+
       await waitFor(() => {
         // Should only process once despite multiple clicks
         expect(mockFindNextMove).toHaveBeenCalledTimes(1)
@@ -426,16 +431,11 @@ describe('Hint System: Edge and Regression Tests', () => {
   describe('7. Async/Loading State', () => {
     it('should properly disable/lockout hints during async/in-flight logic', async () => {
       const user = userEvent.setup()
-      
+
       let hintLoading = true // Start in loading state
-      
-      render(
-        <HintTestComponent 
-          onHint={() => {}}
-          hintLoading={hintLoading}
-        />
-      )
-      
+
+      render(<HintTestComponent onHint={() => {}} hintLoading={hintLoading} />)
+
       const hintBtn = screen.getByTestId('hint-btn')
       expect(hintBtn).toBeDisabled()
       expect(screen.getByText('Loading...')).toBeInTheDocument()
@@ -445,22 +445,22 @@ describe('Hint System: Edge and Regression Tests', () => {
   describe('8. Restart Resets State', () => {
     it('should reset/init all hint state on puzzle restart', () => {
       const { result } = renderHookForHints()
-      
+
       // Simulate using hints
       act(() => {
         result.current.setHintsUsed(5)
         result.current.setTechniqueHintsUsed(3)
       })
-      
+
       expect(result.current.hintsUsed).toBe(5)
       expect(result.current.techniqueHintsUsed).toBe(3)
-      
+
       // Simulate restart - reset counters
       act(() => {
         result.current.setHintsUsed(0)
         result.current.setTechniqueHintsUsed(0)
       })
-      
+
       expect(result.current.hintsUsed).toBe(0)
       expect(result.current.techniqueHintsUsed).toBe(0)
     })
@@ -474,10 +474,10 @@ describe('Hint System: Edge and Regression Tests', () => {
         techniqueHintsUsed: 2,
       }
       localStorageMock.setItem('hint-state', JSON.stringify(savedState))
-      
+
       // Simulate loading state
       const loadedState = JSON.parse(localStorageMock.getItem('hint-state') || '{}')
-      
+
       expect(loadedState.hintsUsed).toBe(3)
       expect(loadedState.techniqueHintsUsed).toBe(2)
     })
@@ -486,10 +486,10 @@ describe('Hint System: Edge and Regression Tests', () => {
   describe('10. Undo/Redo Robustness', () => {
     it('should verify state shape/undo/redo/error logic is robust', async () => {
       const user = userEvent.setup()
-      
+
       // Test hint with error response
       mockFindNextMove.mockRejectedValueOnce(new Error('Solver error'))
-      
+
       let hintsUsed = 0
       let errorOccurred = false
       const handleNext = async () => {
@@ -500,23 +500,23 @@ describe('Hint System: Edge and Regression Tests', () => {
           errorOccurred = true
         }
       }
-      
+
       render(<HintTestComponent onHint={handleNext} />)
-      
+
       const hintBtn = screen.getByTestId('hint-btn')
       await user.click(hintBtn)
-      
+
       await waitFor(() => {
         expect(errorOccurred).toBe(true)
         // Counter should NOT increment on error
         expect(hintsUsed).toBe(0)
       })
-      
+
       // Verify state is clean after error - can request hint again
       mockFindNextMove.mockResolvedValueOnce(createMockHintResponse())
-      
+
       await user.click(hintBtn)
-      
+
       await waitFor(() => {
         expect(hintsUsed).toBe(1)
       })
@@ -527,14 +527,14 @@ describe('Hint System: Edge and Regression Tests', () => {
 // Helper to render hook for testing
 function renderHookForHints() {
   let result: { current: ReturnType<typeof useHintCounter> } = { current: null as any }
-  
+
   function TestWrapper() {
     const hookResult = useHintCounter()
     result.current = hookResult
     return null
   }
-  
+
   render(<TestWrapper />)
-  
+
   return { result }
 }

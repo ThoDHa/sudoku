@@ -12,158 +12,163 @@ import { logger } from './logger'
 // ==================== Type Definitions ====================
 
 export interface CellRef {
-  row: number;
-  col: number;
+  row: number
+  col: number
 }
 
 export interface Candidate {
-  row: number;
-  col: number;
-  digit: number;
+  row: number
+  col: number
+  digit: number
 }
 
 export interface TechniqueRef {
-  title: string;
-  slug: string;
-  url: string;
+  title: string
+  slug: string
+  url: string
 }
 
 export interface Highlights {
-  primary: CellRef[];
-  secondary?: CellRef[];
+  primary: CellRef[]
+  secondary?: CellRef[]
 }
 
 export interface Move {
-  step_index: number;
-  technique: string;
-  action: string; // "assign" | "eliminate" | "candidate" | "fix-error" | "fix-conflict" | "contradiction" | "unpinpointable-error"
-  digit: number;
-  targets: CellRef[];
-  eliminations?: Candidate[];
-  explanation: string;
-  refs: TechniqueRef;
-  highlights: Highlights;
+  step_index: number
+  technique: string
+  action: string // "assign" | "eliminate" | "candidate" | "fix-error" | "fix-conflict" | "contradiction" | "unpinpointable-error"
+  digit: number
+  targets: CellRef[]
+  eliminations?: Candidate[]
+  explanation: string
+  refs: TechniqueRef
+  highlights: Highlights
 }
 
 export interface BoardState {
-  cells: number[];
-  candidates: number[][];
+  cells: number[]
+  candidates: number[][]
 }
 
 export interface Conflict {
-  cell1: number;
-  cell2: number;
-  value: number;
-  type: string; // "row" | "column" | "box"
+  cell1: number
+  cell2: number
+  value: number
+  type: string // "row" | "column" | "box"
 }
 
 export interface MoveResult {
-  board: number[];
-  candidates: number[][];
-  move: Move | null;
+  board: number[]
+  candidates: number[][]
+  move: Move | null
 }
 
 export interface SolveAllResult {
-  moves: MoveResult[];
-  solved: boolean;
-  finalBoard: number[];
+  moves: MoveResult[]
+  solved: boolean
+  finalBoard: number[]
 }
 
 export interface SolveWithStepsResult {
-  moves: Move[];
-  status: string;
-  finalBoard: number[];
-  solved: boolean;
+  moves: Move[]
+  status: string
+  finalBoard: number[]
+  solved: boolean
 }
 
 export interface AnalyzePuzzleResult {
-  difficulty: string;
-  techniques: Record<string, number>;
-  status: string;
+  difficulty: string
+  techniques: Record<string, number>
+  status: string
 }
 
 export interface ValidateBoardResult {
-  valid: boolean;
-  reason?: string;
-  message?: string;
-  incorrectCells?: number[];
+  valid: boolean
+  reason?: string
+  message?: string
+  incorrectCells?: number[]
 }
 
 export interface ValidateCustomResult {
-  valid: boolean;
-  unique?: boolean;
-  reason?: string;
-  solution?: number[];
+  valid: boolean
+  unique?: boolean
+  reason?: string
+  solution?: number[]
 }
 
 export interface PuzzleForSeedResult {
-  givens: number[];
-  solution: number[];
-  puzzleId: string;
-  seed: string;
-  difficulty: string;
-  error?: string;
+  givens: number[]
+  solution: number[]
+  puzzleId: string
+  seed: string
+  difficulty: string
+  error?: string
 }
 
 export interface FindNextMoveResult {
-  move: Move | null;
-  board: BoardState;
-  solved: boolean;
+  move: Move | null
+  board: BoardState
+  solved: boolean
 }
 
 // The WASM API interface
 export interface SudokuWasmAPI {
   // Human solver
-  createBoard(givens: number[]): BoardState;
-  createBoardWithCandidates(cells: number[], candidates: number[][]): BoardState;
-  findNextMove(cells: number[], candidates: number[][], givens: number[]): FindNextMoveResult;
-  solveWithSteps(givens: number[], maxSteps?: number): SolveWithStepsResult;
-  analyzePuzzle(givens: number[]): AnalyzePuzzleResult;
-  solveAll(cells: number[], candidates: number[][], givens: number[]): SolveAllResult;
-  checkAndFixWithSolution(cells: number[], candidates: number[][], givens: number[], solution: number[]): SolveAllResult;
+  createBoard(givens: number[]): BoardState
+  createBoardWithCandidates(cells: number[], candidates: number[][]): BoardState
+  findNextMove(cells: number[], candidates: number[][], givens: number[]): FindNextMoveResult
+  solveWithSteps(givens: number[], maxSteps?: number): SolveWithStepsResult
+  analyzePuzzle(givens: number[]): AnalyzePuzzleResult
+  solveAll(cells: number[], candidates: number[][], givens: number[]): SolveAllResult
+  checkAndFixWithSolution(
+    cells: number[],
+    candidates: number[][],
+    givens: number[],
+    solution: number[],
+  ): SolveAllResult
 
   // DP solver
-  solve(grid: number[]): number[] | null;
-  hasUniqueSolution(grid: number[]): boolean;
-  isValid(grid: number[]): boolean;
-  findConflicts(grid: number[]): Conflict[];
-  generateFullGrid(seed: number): number[];
-  carveGivens(fullGrid: number[], targetGivens: number, seed: number): number[];
-  carveGivensWithSubset(fullGrid: number[], seed: number): Record<string, number[]>;
+  solve(grid: number[]): number[] | null
+  hasUniqueSolution(grid: number[]): boolean
+  isValid(grid: number[]): boolean
+  findConflicts(grid: number[]): Conflict[]
+  generateFullGrid(seed: number): number[]
+  carveGivens(fullGrid: number[], targetGivens: number, seed: number): number[]
+  carveGivensWithSubset(fullGrid: number[], seed: number): Record<string, number[]>
 
   // Validation
-  validateCustomPuzzle(givens: number[]): ValidateCustomResult;
-  validateBoard(board: number[], solution: number[]): ValidateBoardResult;
+  validateCustomPuzzle(givens: number[]): ValidateCustomResult
+  validateBoard(board: number[], solution: number[]): ValidateBoardResult
 
   // Utility
-  getPuzzleForSeed(seed: string, difficulty: string): PuzzleForSeedResult;
-  getVersion(): string;
+  getPuzzleForSeed(seed: string, difficulty: string): PuzzleForSeedResult
+  getVersion(): string
 }
 
 // ==================== Global State ====================
 
-let wasmInstance: SudokuWasmAPI | null = null;
-let wasmLoadPromise: Promise<SudokuWasmAPI> | null = null;
-let wasmLoadError: Error | null = null;
-let goInstance: GoInstance | null = null;
-let wasmScriptElement: HTMLScriptElement | null = null;
-let wasmAbortController: AbortController | null = null;
-let wasmRecentlyUnloaded = false;
+let wasmInstance: SudokuWasmAPI | null = null
+let wasmLoadPromise: Promise<SudokuWasmAPI> | null = null
+let wasmLoadError: Error | null = null
+let goInstance: GoInstance | null = null
+let wasmScriptElement: HTMLScriptElement | null = null
+let wasmAbortController: AbortController | null = null
+let wasmRecentlyUnloaded = false
 
 // Extend globalThis for TypeScript
 declare global {
   interface Window {
-    Go: new () => GoInstance;
-    SudokuWasm: SudokuWasmAPI;
-    gc?: () => void; // For manual garbage collection in development
+    Go: new () => GoInstance
+    SudokuWasm: SudokuWasmAPI
+    gc?: () => void // For manual garbage collection in development
   }
 }
 
 interface GoInstance {
-  importObject: WebAssembly.Imports;
-  run(instance: WebAssembly.Instance): Promise<void>;
-  exit?: (code: number) => void;
-  _inst?: WebAssembly.Instance;
+  importObject: WebAssembly.Imports
+  run(instance: WebAssembly.Instance): Promise<void>
+  exit?: (code: number) => void
+  _inst?: WebAssembly.Instance
 }
 
 // ==================== Loader Functions ====================
@@ -172,28 +177,28 @@ interface GoInstance {
  * Check if WASM is loaded and ready
  */
 export function isWasmReady(): boolean {
-  return wasmInstance !== null;
+  return wasmInstance !== null
 }
 
 /**
  * Check if WASM failed to load
  */
 export function hasWasmError(): boolean {
-  return wasmLoadError !== null;
+  return wasmLoadError !== null
 }
 
 /**
  * Get WASM load error if any
  */
 export function getWasmError(): Error | null {
-  return wasmLoadError;
+  return wasmLoadError
 }
 
 /**
  * Get the WASM API if loaded, otherwise null
  */
 export function getWasmApi(): SudokuWasmAPI | null {
-  return wasmInstance;
+  return wasmInstance
 }
 
 /**
@@ -202,57 +207,57 @@ export function getWasmApi(): SudokuWasmAPI | null {
  * Call this when WASM is no longer needed to save ~4MB RAM
  */
 export function unloadWasm(): void {
-    logger.debug('[WASM] Unloading WASM module...')
-  
+  logger.debug('[WASM] Unloading WASM module...')
+
   // Abort any in-progress fetch first
   if (wasmAbortController) {
-    wasmAbortController.abort();
-    wasmAbortController = null;
+    wasmAbortController.abort()
+    wasmAbortController = null
   }
-  
+
   // Clear WASM instance and API
-  wasmInstance = null;
-  wasmLoadPromise = null;
-  wasmLoadError = null;
-  
+  wasmInstance = null
+  wasmLoadPromise = null
+  wasmLoadError = null
+
   // Clear Go instance
   if (goInstance) {
     // Try to exit Go runtime cleanly if supported
     if (goInstance.exit) {
       try {
-        goInstance.exit(0);
+        goInstance.exit(0)
       } catch (e) {
-        logger.debug('[WASM] Error during Go exit:', e);
+        logger.debug('[WASM] Error during Go exit:', e)
       }
     }
-    goInstance = null;
+    goInstance = null
   }
-  
+
   // Remove wasm_exec.js script from DOM
   if (wasmScriptElement && wasmScriptElement.parentNode) {
-    wasmScriptElement.parentNode.removeChild(wasmScriptElement);
-    wasmScriptElement = null;
+    wasmScriptElement.parentNode.removeChild(wasmScriptElement)
+    wasmScriptElement = null
   }
-  
+
   // Clear global references
   if (typeof window !== 'undefined') {
     if (window.SudokuWasm) {
       // @ts-expect-error - We know this exists and want to delete it
-      delete window.SudokuWasm;
+      delete window.SudokuWasm
     }
     if (window.Go) {
-      // @ts-expect-error - We know this exists and want to delete it  
-      delete window.Go;
+      // @ts-expect-error - We know this exists and want to delete it
+      delete window.Go
     }
   }
-  
+
   // Force garbage collection if available (mainly for development)
   if (typeof window !== 'undefined' && 'gc' in window && typeof window.gc === 'function') {
-    window.gc();
+    window.gc()
   }
 
   // Mark as recently unloaded to handle rapid reload scenarios
-  wasmRecentlyUnloaded = true;
+  wasmRecentlyUnloaded = true
 
   logger.debug('[WASM] WASM module unloaded, memory freed')
 }
@@ -265,9 +270,9 @@ export function unloadWasm(): void {
 export function abortWasmLoad(): void {
   if (wasmAbortController) {
     logger.debug('[WASM] Aborting WASM fetch...')
-    wasmAbortController.abort();
-    wasmAbortController = null;
-    wasmLoadPromise = null;
+    wasmAbortController.abort()
+    wasmAbortController = null
+    wasmLoadPromise = null
   }
 }
 
@@ -277,10 +282,10 @@ export function abortWasmLoad(): void {
 function getBaseUrl(): string {
   // Use Vite's BASE_URL which is automatically set based on the `base` config in vite.config.ts
   // This handles GitHub Pages subpath correctly (e.g., https://thodha.github.io/sudoku/)
-  const baseUrl = import.meta.env.BASE_URL || '/';
-  logger.debug('[WASM] BASE_URL resolved to:', baseUrl);
-  logger.debug('[WASM] import.meta.env.BASE_URL value:', import.meta.env.BASE_URL);
-  return baseUrl;
+  const baseUrl = import.meta.env.BASE_URL || '/'
+  logger.debug('[WASM] BASE_URL resolved to:', baseUrl)
+  logger.debug('[WASM] import.meta.env.BASE_URL value:', import.meta.env.BASE_URL)
+  return baseUrl
 }
 
 /**
@@ -289,28 +294,28 @@ function getBaseUrl(): string {
 async function loadWasmExec(): Promise<void> {
   // Check if Go is already defined (script already loaded)
   if (typeof window !== 'undefined' && window.Go) {
-    return;
+    return
   }
 
   return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    const scriptUrl = `${getBaseUrl()}wasm_exec.js`;
-    script.src = scriptUrl;
-    logger.debug('[WASM] Loading wasm_exec.js from:', scriptUrl);
-    script.async = true;
+    const script = document.createElement('script')
+    const scriptUrl = `${getBaseUrl()}wasm_exec.js`
+    script.src = scriptUrl
+    logger.debug('[WASM] Loading wasm_exec.js from:', scriptUrl)
+    script.async = true
     script.onload = () => {
-      logger.debug('[WASM] wasm_exec.js loaded successfully');
-      resolve();
-    };
+      logger.debug('[WASM] wasm_exec.js loaded successfully')
+      resolve()
+    }
     script.onerror = () => {
-      logger.error('[WASM] Failed to load wasm_exec.js from:', scriptUrl);
-      reject(new Error('Failed to load wasm_exec.js'));
-    };
-    document.head.appendChild(script);
-    
+      logger.error('[WASM] Failed to load wasm_exec.js from:', scriptUrl)
+      reject(new Error('Failed to load wasm_exec.js'))
+    }
+    document.head.appendChild(script)
+
     // Store reference for cleanup
-    wasmScriptElement = script;
-  });
+    wasmScriptElement = script
+  })
 }
 
 /**
@@ -320,69 +325,69 @@ async function loadWasmExec(): Promise<void> {
 export async function loadWasm(): Promise<SudokuWasmAPI> {
   // Return cached instance if already loaded
   if (wasmInstance) {
-    return wasmInstance;
+    return wasmInstance
   }
 
   // Return existing promise if already loading
   if (wasmLoadPromise) {
-    return wasmLoadPromise;
+    return wasmLoadPromise
   }
 
   // If previously failed, try again
   if (wasmLoadError) {
-    wasmLoadError = null;
+    wasmLoadError = null
   }
 
   wasmLoadPromise = (async () => {
     try {
       // Load wasm_exec.js first
       logger.debug('[WASM] Loading wasm_exec.js from:', `${getBaseUrl()}wasm_exec.js`)
-      await loadWasmExec();
+      await loadWasmExec()
       logger.debug('[WASM] wasm_exec.js loaded')
 
       // Ensure Go is available
       if (typeof window === 'undefined' || !window.Go) {
-        throw new Error('Go runtime not available');
+        throw new Error('Go runtime not available')
       }
 
-      const go = new window.Go();
-      goInstance = go; // Store reference for cleanup
+      const go = new window.Go()
+      goInstance = go // Store reference for cleanup
 
       // Give Go runtime time to fully initialize importObject
       // This prevents race conditions after rapid unload/reload cycles
       // Only delay if we recently unloaded (rapid reload scenario)
       if (wasmRecentlyUnloaded) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        wasmRecentlyUnloaded = false;
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        wasmRecentlyUnloaded = false
       }
 
-      logger.debug('[WASM] Go instance created');
+      logger.debug('[WASM] Go instance created')
 
       // Create AbortController for the fetch
-      wasmAbortController = new AbortController();
+      wasmAbortController = new AbortController()
 
       // Fetch and instantiate the WASM module
       logger.debug('[WASM] Fetching WASM from:', `${getBaseUrl()}sudoku.wasm`)
       const wasmResponse = await fetch(`${getBaseUrl()}sudoku.wasm`, {
-        signal: wasmAbortController.signal
-      });
+        signal: wasmAbortController.signal,
+      })
       if (!wasmResponse.ok) {
-        throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`);
+        throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`)
       }
       logger.debug('[WASM] WASM fetched, instantiating...')
-      
-      // Clear the abort controller since fetch completed
-      wasmAbortController = null;
 
-      let result: WebAssembly.WebAssemblyInstantiatedSource;
+      // Clear the abort controller since fetch completed
+      wasmAbortController = null
+
+      let result: WebAssembly.WebAssemblyInstantiatedSource
       if (WebAssembly.instantiateStreaming) {
         logger.debug('[WASM] Using streaming instantiation')
-        result = await WebAssembly.instantiateStreaming(wasmResponse, go.importObject);
+        result = await WebAssembly.instantiateStreaming(wasmResponse, go.importObject)
       } else {
         // Fallback for older browsers
         logger.debug('[WASM] Falling back to buffer instantiation')
-        const wasmBuffer = await wasmResponse.arrayBuffer();
-        result = await WebAssembly.instantiate(wasmBuffer, go.importObject);
+        const wasmBuffer = await wasmResponse.arrayBuffer()
+        result = await WebAssembly.instantiate(wasmBuffer, go.importObject)
       }
       logger.debug('[WASM] WASM instantiated, running Go...')
 
@@ -390,16 +395,16 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       // Don't await this - it blocks forever (intentionally)
       logger.debug('[WASM] Starting Go program...')
       try {
-        const goPromise = go.run(result.instance);
+        const goPromise = go.run(result.instance)
         // Check if go.run returns a promise and handle errors
         if (goPromise && typeof goPromise.catch === 'function') {
           goPromise.catch((error) => {
-            logger.error('[WASM] Go program error:', error);
-          });
+            logger.error('[WASM] Go program error:', error)
+          })
         }
       } catch (error) {
-        logger.error('[WASM] Immediate Go program error:', error);
-        throw error;
+        logger.error('[WASM] Immediate Go program error:', error)
+        throw error
       }
 
       // Wait for the WASM to signal it's ready
@@ -408,10 +413,10 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
         // Wait for the wasmReady event
         const handler = () => {
           logger.debug('[WASM] wasmReady event received successfully!')
-          clearTimeout(timeout);
-          window.removeEventListener('wasmReady', handler);
-          resolve();
-        };
+          clearTimeout(timeout)
+          window.removeEventListener('wasmReady', handler)
+          resolve()
+        }
 
         const timeout = setTimeout(() => {
           logger.error('[WASM] Timeout waiting for wasmReady event after 5 seconds')
@@ -419,47 +424,47 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
           if (window.SudokuWasm) {
             logger.debug('[WASM] SudokuWasm object keys:', Object.keys(window.SudokuWasm))
           }
-          window.removeEventListener('wasmReady', handler);
-          reject(new Error('WASM initialization timeout'));
-        }, 5000);
+          window.removeEventListener('wasmReady', handler)
+          reject(new Error('WASM initialization timeout'))
+        }, 5000)
 
         // Check if already ready
         if (window.SudokuWasm) {
           logger.debug('[WASM] SudokuWasm already available')
-          clearTimeout(timeout);
-          window.removeEventListener('wasmReady', handler);
-          resolve();
-          return;
+          clearTimeout(timeout)
+          window.removeEventListener('wasmReady', handler)
+          resolve()
+          return
         }
 
-        window.addEventListener('wasmReady', handler);
-      });
+        window.addEventListener('wasmReady', handler)
+      })
 
       // Verify the API is available
       if (!window.SudokuWasm) {
-        throw new Error('SudokuWasm not available after initialization');
+        throw new Error('SudokuWasm not available after initialization')
       }
 
-      wasmInstance = window.SudokuWasm;
-      return wasmInstance;
+      wasmInstance = window.SudokuWasm
+      return wasmInstance
     } catch (error) {
       // Clean up abort controller on any error
-      wasmAbortController = null;
-      
+      wasmAbortController = null
+
       // Don't store abort as an error - it's intentional cancellation
       if (error instanceof Error && error.name === 'AbortError') {
         logger.debug('[WASM] WASM fetch was aborted')
-        wasmLoadPromise = null;
-        throw error;
+        wasmLoadPromise = null
+        throw error
       }
-      
-      wasmLoadError = error instanceof Error ? error : new Error(String(error));
-      wasmLoadPromise = null;
-      throw wasmLoadError;
-    }
-  })();
 
-  return wasmLoadPromise;
+      wasmLoadError = error instanceof Error ? error : new Error(String(error))
+      wasmLoadPromise = null
+      throw wasmLoadError
+    }
+  })()
+
+  return wasmLoadPromise
 }
 
 /**
@@ -468,8 +473,8 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
  */
 export function preloadWasm(): void {
   loadWasm().catch((error) => {
-    logger.debug('WASM preload failed:', error.message);
-  });
+    logger.debug('WASM preload failed:', error.message)
+  })
 }
 
 // ==================== Convenience Wrapper Functions ====================
@@ -486,13 +491,13 @@ export function preloadWasm(): void {
 export async function wasmFindNextMove(
   cells: number[],
   candidates: number[][],
-  givens: number[]
+  givens: number[],
 ): Promise<FindNextMoveResult | null> {
   try {
-    const api = await loadWasm();
-    return api.findNextMove(cells, candidates, givens);
+    const api = await loadWasm()
+    return api.findNextMove(cells, candidates, givens)
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -503,13 +508,13 @@ export async function wasmFindNextMove(
 export async function wasmSolveAll(
   cells: number[],
   candidates: number[][],
-  givens: number[]
+  givens: number[],
 ): Promise<SolveAllResult | null> {
   try {
-    const api = await loadWasm();
-    return api.solveAll(cells, candidates, givens);
+    const api = await loadWasm()
+    return api.solveAll(cells, candidates, givens)
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -519,13 +524,13 @@ export async function wasmSolveAll(
  */
 export async function wasmSolveWithSteps(
   givens: number[],
-  maxSteps?: number
+  maxSteps?: number,
 ): Promise<SolveWithStepsResult | null> {
   try {
-    const api = await loadWasm();
-    return api.solveWithSteps(givens, maxSteps);
+    const api = await loadWasm()
+    return api.solveWithSteps(givens, maxSteps)
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -535,10 +540,10 @@ export async function wasmSolveWithSteps(
  */
 export async function wasmSolve(grid: number[]): Promise<number[] | null> {
   try {
-    const api = await loadWasm();
-    return api.solve(grid);
+    const api = await loadWasm()
+    return api.solve(grid)
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -548,13 +553,13 @@ export async function wasmSolve(grid: number[]): Promise<number[] | null> {
  */
 export async function wasmValidateBoard(
   board: number[],
-  solution: number[]
+  solution: number[],
 ): Promise<ValidateBoardResult | null> {
   try {
-    const api = await loadWasm();
-    return api.validateBoard(board, solution);
+    const api = await loadWasm()
+    return api.validateBoard(board, solution)
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -562,14 +567,12 @@ export async function wasmValidateBoard(
  * Validate a custom puzzle
  * Returns null if WASM not loaded
  */
-export async function wasmValidateCustom(
-  givens: number[]
-): Promise<ValidateCustomResult | null> {
+export async function wasmValidateCustom(givens: number[]): Promise<ValidateCustomResult | null> {
   try {
-    const api = await loadWasm();
-    return api.validateCustomPuzzle(givens);
+    const api = await loadWasm()
+    return api.validateCustomPuzzle(givens)
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -579,13 +582,13 @@ export async function wasmValidateCustom(
  */
 export async function wasmGetPuzzle(
   seed: string,
-  difficulty: string
+  difficulty: string,
 ): Promise<PuzzleForSeedResult | null> {
   try {
-    const api = await loadWasm();
-    return api.getPuzzleForSeed(seed, difficulty);
+    const api = await loadWasm()
+    return api.getPuzzleForSeed(seed, difficulty)
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -593,14 +596,12 @@ export async function wasmGetPuzzle(
  * Analyze puzzle difficulty
  * Returns null if WASM not loaded
  */
-export async function wasmAnalyzePuzzle(
-  givens: number[]
-): Promise<AnalyzePuzzleResult | null> {
+export async function wasmAnalyzePuzzle(givens: number[]): Promise<AnalyzePuzzleResult | null> {
   try {
-    const api = await loadWasm();
-    return api.analyzePuzzle(givens);
+    const api = await loadWasm()
+    return api.analyzePuzzle(givens)
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -610,10 +611,10 @@ export async function wasmAnalyzePuzzle(
  */
 export async function wasmFindConflicts(grid: number[]): Promise<Conflict[]> {
   try {
-    const api = await loadWasm();
-    return api.findConflicts(grid);
+    const api = await loadWasm()
+    return api.findConflicts(grid)
   } catch {
-    return [];
+    return []
   }
 }
 
@@ -623,10 +624,10 @@ export async function wasmFindConflicts(grid: number[]): Promise<Conflict[]> {
  */
 export async function wasmIsValid(grid: number[]): Promise<boolean> {
   try {
-    const api = await loadWasm();
-    return api.isValid(grid);
+    const api = await loadWasm()
+    return api.isValid(grid)
   } catch {
-    return false;
+    return false
   }
 }
 
@@ -637,10 +638,10 @@ export async function wasmIsValid(grid: number[]): Promise<boolean> {
  * Returns null if WASM not loaded
  */
 export function getWasmVersion(): string | null {
-  if (!wasmInstance) return null;
+  if (!wasmInstance) return null
   try {
-    return wasmInstance.getVersion();
+    return wasmInstance.getVersion()
   } catch {
-    return null;
+    return null
   }
 }

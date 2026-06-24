@@ -33,10 +33,10 @@ interface UseGameTimerReturn {
 }
 
 /**
-  * Hook to manage a game timer with pause/resume functionality.
-  * Uses central background manager for consistent visibility handling.
-  * Auto-resumes when visible again to prevent cheating.
-  */
+ * Hook to manage a game timer with pause/resume functionality.
+ * Uses central background manager for consistent visibility handling.
+ * Auto-resumes when visible again to prevent cheating.
+ */
 export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
   const { autoStart = false, pauseOnHidden = true, backgroundManager } = options
 
@@ -84,16 +84,19 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     setIsPausedDueToVisibility(false)
   }, [isRunning])
 
-  const setElapsedMsValue = useCallback((ms: number) => {
-    // Validate input to prevent NaN or negative values
-    const validMs = Math.max(0, Number.isFinite(ms) ? ms : 0)
-    setElapsedMs(validMs)
-    accumulatedRef.current = validMs
-    // If timer is running, reset the start time reference
-    if (isRunning) {
-      startTimeRef.current = Date.now()
-    }
-  }, [isRunning])
+  const setElapsedMsValue = useCallback(
+    (ms: number) => {
+      // Validate input to prevent NaN or negative values
+      const validMs = Math.max(0, Number.isFinite(ms) ? ms : 0)
+      setElapsedMs(validMs)
+      accumulatedRef.current = validMs
+      // If timer is running, reset the start time reference
+      if (isRunning) {
+        startTimeRef.current = Date.now()
+      }
+    },
+    [isRunning],
+  )
 
   // STABLE formatTime - reads from ref instead of closure to avoid recreation every tick
   // This is critical: if formatTime changes every second, TimerControlContext updates,
@@ -113,16 +116,17 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     if (!isRunning) return
 
     // Check if we're in an E2E/automation context where focus/visibility pausing should be bypassed
-    const isAutomated = typeof navigator !== 'undefined' && (
-      navigator.webdriver === true ||
-      (typeof navigator.userAgent === 'string' && (
-        navigator.userAgent.includes('HeadlessChrome') ||
-        navigator.userAgent.includes('playwright')
-      ))
-    )
+    const isAutomated =
+      typeof navigator !== 'undefined' &&
+      (navigator.webdriver === true ||
+        (typeof navigator.userAgent === 'string' &&
+          (navigator.userAgent.includes('HeadlessChrome') ||
+            navigator.userAgent.includes('playwright'))))
 
     // In automated tests, don't pause based on visibility
-    const effectiveShouldPause = isAutomated ? false : (pauseOnHidden && backgroundManager.shouldPauseOperations)
+    const effectiveShouldPause = isAutomated
+      ? false
+      : pauseOnHidden && backgroundManager.shouldPauseOperations
 
     if (effectiveShouldPause) {
       setIsPausedDueToVisibility(true)
@@ -132,14 +136,13 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     // Start the interval
     const interval = setInterval(() => {
       // Check automation context again (for the interval callback)
-      const isAutomatedInCallback = typeof navigator !== 'undefined' && (
-        navigator.webdriver === true ||
-        (typeof navigator.userAgent === 'string' && (
-          navigator.userAgent.includes('HeadlessChrome') ||
-          navigator.userAgent.includes('playwright')
-        ))
-      )
-      
+      const isAutomatedInCallback =
+        typeof navigator !== 'undefined' &&
+        (navigator.webdriver === true ||
+          (typeof navigator.userAgent === 'string' &&
+            (navigator.userAgent.includes('HeadlessChrome') ||
+              navigator.userAgent.includes('playwright'))))
+
       // Respect background manager's pause decision (unless automated)
       if (!isAutomatedInCallback && backgroundManager.shouldPauseOperations) {
         return // Skip update when hidden
@@ -186,19 +189,35 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     // Only mark as paused due to visibility if timer is actually running
     // This prevents the pause overlay from showing for completed games
     setIsPausedDueToVisibility(isRunning && backgroundManager.shouldPauseOperations)
-
-  }, [backgroundManager.shouldPauseOperations, backgroundManager.isHidden, isRunning, pauseOnHidden])
+  }, [
+    backgroundManager.shouldPauseOperations,
+    backgroundManager.isHidden,
+    isRunning,
+    pauseOnHidden,
+  ])
 
   // CRITICAL: Memoize return object to prevent cascading re-renders.
   // Without this, every render creates a new object reference.
-  return useMemo(() => ({
-    elapsedMs,
-    isRunning,
-    isPausedDueToVisibility,
-    startTimer,
-    pauseTimer,
-    resetTimer,
-    setElapsedMs: setElapsedMsValue,
-    formatTime,
-  }), [elapsedMs, isRunning, isPausedDueToVisibility, startTimer, pauseTimer, resetTimer, setElapsedMsValue, formatTime])
+  return useMemo(
+    () => ({
+      elapsedMs,
+      isRunning,
+      isPausedDueToVisibility,
+      startTimer,
+      pauseTimer,
+      resetTimer,
+      setElapsedMs: setElapsedMsValue,
+      formatTime,
+    }),
+    [
+      elapsedMs,
+      isRunning,
+      isPausedDueToVisibility,
+      startTimer,
+      pauseTimer,
+      resetTimer,
+      setElapsedMsValue,
+      formatTime,
+    ],
+  )
 }

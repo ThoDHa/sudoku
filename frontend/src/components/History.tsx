@@ -83,10 +83,7 @@ export default function History({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
       {/* Modal */}
       <div className="relative max-h-[80vh] w-full max-w-md overflow-hidden rounded-lg bg-background shadow-xl">
@@ -103,7 +100,7 @@ export default function History({
         </div>
 
         {/* Content */}
-        <div 
+        <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
           className="max-h-[calc(80vh-4rem)] overflow-y-auto p-4"
@@ -122,7 +119,9 @@ export default function History({
                     <span className="text-sm text-foreground">
                       {(() => {
                         // Find the auto-fill move to get the cell count
-                        const autoFillMove = moves.find(move => move.technique === 'Fill Candidates')
+                        const autoFillMove = moves.find(
+                          (move) => move.technique === 'Fill Candidates',
+                        )
                         if (autoFillMove) {
                           // Extract cell count from explanation: "Filled all candidates for X cells"
                           const match = autoFillMove.explanation?.match(/(\d+) cells/)
@@ -141,8 +140,9 @@ export default function History({
                     <span className="text-lg">{isComplete ? '🏁' : '🤖'}</span>
                     <span className="text-sm text-foreground">
                       {isComplete ? 'Puzzle solved! ' : ''}
-                      The autosolver performed {autoSolveStepsUsed} move{autoSolveStepsUsed !== 1 ? 's' : ''}
-                      {autoSolveErrorsFixed && autoSolveErrorsFixed > 0 
+                      The autosolver performed {autoSolveStepsUsed} move
+                      {autoSolveStepsUsed !== 1 ? 's' : ''}
+                      {autoSolveErrorsFixed && autoSolveErrorsFixed > 0
                         ? `, fixed ${autoSolveErrorsFixed} error${autoSolveErrorsFixed !== 1 ? 's' : ''}`
                         : ''}
                     </span>
@@ -155,7 +155,9 @@ export default function History({
                 return (
                   <li
                     key={originalIdx}
-                    ref={(el) => { itemRefs.current[originalIdx] = el }}
+                    ref={(el) => {
+                      itemRefs.current[originalIdx] = el
+                    }}
                     onClick={() => {
                       onMoveClick(move, originalIdx)
                       onClose()
@@ -187,47 +189,28 @@ export default function History({
                       {move.action === 'place' || move.action === 'assign' ? (
                         <>
                           {move.isUserMove ? 'Placed' : 'Place'}{' '}
-                          <span className="font-bold text-accent">
-                            {move.digit}
-                          </span>{' '}
-                          at{' '}
-                          {move.targets
-                            .map((t) => formatCell(t.row, t.col))
-                            .join(', ')}
+                          <span className="font-bold text-accent">{move.digit}</span> at{' '}
+                          {move.targets.map((t) => formatCell(t.row, t.col)).join(', ')}
                         </>
                       ) : move.action === 'note' || move.action === 'candidate' ? (
                         <>
                           {move.isUserMove ? 'Added' : 'Add'} candidate{' '}
-                          <span className="font-bold text-accent">
-                            {move.digit}
-                          </span>{' '}
+                          <span className="font-bold text-accent">{move.digit}</span>{' '}
                           {move.isUserMove ? 'to' : 'at'}{' '}
-                          {move.targets
-                            .map((t) => formatCell(t.row, t.col))
-                            .join(', ')}
+                          {move.targets.map((t) => formatCell(t.row, t.col)).join(', ')}
                         </>
                       ) : move.action === 'erase' ? (
-                        <>
-                          Cleared{' '}
-                          {move.targets
-                            .map((t) => formatCell(t.row, t.col))
-                            .join(', ')}
-                        </>
+                        <>Cleared {move.targets.map((t) => formatCell(t.row, t.col)).join(', ')}</>
                       ) : move.action === 'clear-candidates' ? (
                         <>
                           Cleared all candidates from{' '}
-                          {move.targets
-                            .map((t) => formatCell(t.row, t.col))
-                            .join(', ')}
+                          {move.targets.map((t) => formatCell(t.row, t.col)).join(', ')}
                         </>
                       ) : (
                         <>
                           Eliminate{' '}
                           {move.eliminations
-                            ?.map(
-                              (e) =>
-                                `${e.digit} from ${formatCell(e.row, e.col)}`
-                            )
+                            ?.map((e) => `${e.digit} from ${formatCell(e.row, e.col)}`)
                             .join(', ')}
                         </>
                       )}

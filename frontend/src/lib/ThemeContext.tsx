@@ -182,14 +182,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setFontSize,
       toggleMode,
     }),
-    [colorTheme, mode, modePreference, fontSize]
+    [colorTheme, mode, modePreference, fontSize],
   )
 
-  return (
-    <ThemeContext.Provider value={contextValue}>
-      {children}
-    </ThemeContext.Provider>
-  )
+  return <ThemeContext.Provider value={contextValue}>{children}</ThemeContext.Provider>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components -- Hook is co-located with context provider for better organization

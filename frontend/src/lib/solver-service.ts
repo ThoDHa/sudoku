@@ -1,20 +1,14 @@
 /**
  * Solver Service - WASM-only sudoku solving
- * 
+ *
  * All solving, validation, and puzzle generation is done locally via WASM.
  * No API calls required.
- * 
+ *
  * Note: getPuzzle uses static puzzle data for standard seeds to avoid WASM loading.
  * WASM is only needed for solving, hints, and custom puzzle validation.
  */
 
-import {
-  loadWasm,
-  isWasmReady,
-  getWasmApi,
-  unloadWasm,
-  type SudokuWasmAPI,
-} from './wasm'
+import { loadWasm, isWasmReady, getWasmApi, unloadWasm, type SudokuWasmAPI } from './wasm'
 import {
   initializeWorker,
   terminateWorker,
@@ -26,7 +20,10 @@ import {
 
 import { getPuzzleForSeed as getStaticPuzzle } from './puzzles-data'
 import { logger } from './logger'
-import { validatePuzzle as dpValidatePuzzle, validateBoardAgainstSolution as dpValidateBoard } from './dp-solver'
+import {
+  validatePuzzle as dpValidatePuzzle,
+  validateBoardAgainstSolution as dpValidateBoard,
+} from './dp-solver'
 
 // ==================== Types ====================
 
@@ -107,7 +104,7 @@ export interface PuzzleResult {
  * 1. WASM runs in a separate thread - no UI blocking
  * 2. Worker can be terminated to free memory/CPU
  * 3. Idle cleanup automatically terminates worker after inactivity
- * 
+ *
  * Falls back to main thread only if workers are not supported.
  */
 let useWorkerMode = true
@@ -165,11 +162,14 @@ export async function initializeSolver(): Promise<void> {
       logger.debug('[SolverService] Worker mode initialized')
       return
     } catch (error) {
-      logger.debug('[SolverService] Worker initialization failed, falling back to main thread:', error)
+      logger.debug(
+        '[SolverService] Worker initialization failed, falling back to main thread:',
+        error,
+      )
       useWorkerMode = false
     }
   }
-  
+
   // Fallback to main thread WASM
   await getApi()
   logger.debug('[SolverService] Main thread mode initialized')
@@ -202,7 +202,7 @@ export function cleanupSolver(): void {
 export async function solveAll(
   board: number[],
   candidates: number[][],
-  givens: number[]
+  givens: number[],
 ): Promise<SolveAllResult> {
   // Use worker if available
   if (isUsingWorkerMode()) {
@@ -222,7 +222,7 @@ export async function solveAll(
       // Fall through to main thread
     }
   }
-  
+
   // Fallback to main thread WASM
   const api = await getApi()
   const result = api.solveAll(board, candidates, givens)
@@ -252,7 +252,7 @@ export interface FindNextMoveResult {
 export async function findNextMove(
   board: number[],
   candidates: number[][],
-  givens: number[]
+  givens: number[],
 ): Promise<FindNextMoveResult> {
   // Use worker if available
   if (isUsingWorkerMode()) {
@@ -269,7 +269,7 @@ export async function findNextMove(
       // Fall through to main thread
     }
   }
-  
+
   // Fallback to main thread WASM
   const api = await getApi()
   const result = api.findNextMove(board, candidates, givens)
@@ -289,22 +289,22 @@ export function validateBoard(board: number[], solution: number[]): ValidateBoar
 
 export async function validateCustomPuzzle(
   givens: number[],
-  _deviceId: string
+  _deviceId: string,
 ): Promise<ValidateCustomResult> {
   // Use pure TypeScript solver - no WASM needed for validation!
   // This avoids loading 3.3MB WASM just to check if a puzzle is valid
   const result = dpValidatePuzzle(givens)
-  
+
   if (result.valid && result.unique && result.solution) {
     const puzzleId = 'custom-' + hashGivens(givens).slice(0, 16)
-    return { 
-      valid: true, 
-      unique: true, 
+    return {
+      valid: true,
+      unique: true,
       puzzle_id: puzzleId,
-      solution: result.solution 
+      solution: result.solution,
     }
   }
-  
+
   // Build result object, only including defined properties
   const response: ValidateCustomResult = { valid: result.valid }
   if (result.unique !== undefined) response.unique = result.unique
@@ -320,7 +320,7 @@ export function getPuzzle(seed: string, difficulty: string): PuzzleResult {
   if (!staticPuzzle) {
     throw new Error(`Failed to load puzzle for seed "${seed}" with difficulty "${difficulty}"`)
   }
-  
+
   return {
     puzzle_id: `static-${staticPuzzle.puzzleIndex}`,
     seed: seed,
@@ -371,19 +371,21 @@ export async function checkAndFixWithSolution(
   board: number[],
   candidates: number[][],
   givens: number[],
-  solution: number[]
+  solution: number[],
 ): Promise<SolveAllResult> {
   // Use worker if available
   if (isUsingWorkerMode()) {
     try {
       // Note: Worker client will need to be updated to support this new function
       // For now, fall back to main thread
-      logger.debug('[SolverService] checkAndFixWithSolution not yet implemented in worker, using main thread')
+      logger.debug(
+        '[SolverService] checkAndFixWithSolution not yet implemented in worker, using main thread',
+      )
     } catch (error) {
       logger.debug('[SolverService] Worker checkAndFixWithSolution failed, falling back:', error)
     }
   }
-  
+
   // Fallback to main thread WASM
   const api = await getApi()
   const result = api.checkAndFixWithSolution(board, candidates, givens, solution)
@@ -393,7 +395,9 @@ export async function checkAndFixWithSolution(
       movesCount: Array.isArray(result?.moves) ? result.moves.length : 0,
       hasFinalBoard: !!result?.finalBoard,
     })
-  } catch { /* no-op */ }
+  } catch {
+    /* no-op */
+  }
   return {
     moves: result.moves.map((m) => ({
       board: m.board,

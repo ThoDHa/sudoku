@@ -26,11 +26,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const contextValue = useMemo(() => ({ gameState, setGameState }), [gameState])
 
-  return (
-    <GameContext.Provider value={contextValue}>
-      {children}
-    </GameContext.Provider>
-  )
+  return <GameContext.Provider value={contextValue}>{children}</GameContext.Provider>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components -- Hook is co-located with context provider for better organization

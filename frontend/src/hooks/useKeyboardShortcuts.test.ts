@@ -520,7 +520,7 @@ describe('useKeyboardShortcuts', () => {
       const handlers = createMockKeyboardHandlers()
       const { rerender } = renderHook(
         ({ disabled }) => useKeyboardShortcuts(handlers, { disabled }),
-        { initialProps: { disabled: false } }
+        { initialProps: { disabled: false } },
       )
 
       // Initially enabled
@@ -538,7 +538,7 @@ describe('useKeyboardShortcuts', () => {
       const handlers = createMockKeyboardHandlers()
       const { rerender } = renderHook(
         ({ disabled }) => useKeyboardShortcuts(handlers, { disabled }),
-        { initialProps: { disabled: true } }
+        { initialProps: { disabled: true } },
       )
 
       // Initially disabled
@@ -717,11 +717,10 @@ describe('useKeyboardShortcuts', () => {
     it('removes event listener when re-rendered with different handlers', () => {
       const handlers1 = createMockKeyboardHandlers()
       const handlers2 = createMockKeyboardHandlers()
-      
-      const { rerender } = renderHook(
-        ({ handlers }) => useKeyboardShortcuts(handlers),
-        { initialProps: { handlers: handlers1 } }
-      )
+
+      const { rerender } = renderHook(({ handlers }) => useKeyboardShortcuts(handlers), {
+        initialProps: { handlers: handlers1 },
+      })
 
       dispatchKeyDown({ key: 'h' })
       expect(handlers1.onHint).toHaveBeenCalledTimes(1)
@@ -823,10 +822,9 @@ describe('useKeyboardShortcuts', () => {
       const handlers1 = createMockKeyboardHandlers()
       const handlers2 = createMockKeyboardHandlers()
 
-      const { rerender } = renderHook(
-        ({ handlers }) => useKeyboardShortcuts(handlers),
-        { initialProps: { handlers: handlers1 } }
-      )
+      const { rerender } = renderHook(({ handlers }) => useKeyboardShortcuts(handlers), {
+        initialProps: { handlers: handlers1 },
+      })
 
       dispatchKeyDown({ key: 'h' })
       expect(handlers1.onHint).toHaveBeenCalledTimes(1)
@@ -850,10 +848,9 @@ describe('useKeyboardShortcuts', () => {
         onClearAllAndDeselect: vi.fn(),
       }
 
-      const { rerender } = renderHook(
-        ({ h }) => useKeyboardShortcuts(h),
-        { initialProps: { h: handlers } }
-      )
+      const { rerender } = renderHook(({ h }) => useKeyboardShortcuts(h), {
+        initialProps: { h: handlers },
+      })
 
       dispatchKeyDown({ key: 'h' })
       expect(initialOnHint).toHaveBeenCalledTimes(1)

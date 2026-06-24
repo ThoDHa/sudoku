@@ -8,21 +8,21 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
 
 /**
  * Encode a sudoku puzzle to a compact URL-safe string
- * 
+ *
  * For typical puzzles with ~25 givens, uses sparse encoding:
  * - Each given is encoded as: position (0-80) + digit (1-9) = 7 bits + 4 bits = 11 bits
  * - ~25 givens × 11 bits = ~275 bits ≈ 46 base64 chars
- * 
+ *
  * But we can do better by encoding position differences (delta encoding):
  * - First position: 7 bits (0-80)
  * - Subsequent: delta from previous position (usually small, 1-9 bits)
  * - Digit: 4 bits (1-9)
- * 
+ *
  * Simplest approach that's still compact: encode as list of (position, digit) pairs
  * Using base81 for position and base9 for digit = 81*9 = 729 combinations per given
  * log2(729) ≈ 9.5 bits per given
  * 25 givens × 9.5 bits ≈ 238 bits ≈ 40 base64 chars
- * 
+ *
  * Even simpler: Use base85 encoding on the sparse list
  */
 
@@ -34,13 +34,13 @@ export function encodePuzzle(cells: number[]): string {
     throw new Error('Puzzle must have 81 cells')
   }
 
-  const filledCount = cells.filter(c => c !== 0).length
-  
+  const filledCount = cells.filter((c) => c !== 0).length
+
   // For puzzles with many filled cells (>40), use dense encoding
   if (filledCount > 40) {
     return 'd' + encodeDense(cells)
   }
-  
+
   // For typical puzzles, use sparse encoding
   return 's' + encodeSparse(cells)
 }
@@ -51,50 +51,50 @@ export function encodePuzzle(cells: number[]): string {
  */
 function encodeSparse(cells: number[]): string {
   // Collect givens as (position, digit) pairs
-  const givens: Array<{pos: number, digit: number}> = []
+  const givens: Array<{ pos: number; digit: number }> = []
   for (let i = 0; i < 81; i++) {
     const cell = cells[i]
     if (cell !== undefined && cell !== 0) {
       givens.push({ pos: i, digit: cell })
     }
   }
-  
+
   if (givens.length === 0) {
     return '' // Empty puzzle
   }
-  
+
   // Encode each given as a single number: pos * 9 + (digit - 1)
   // This gives values 0-728, which we encode in base64
   // Each value needs ceil(log64(729)) = 2 base64 chars
   // But we can pack multiple values more efficiently
-  
+
   // Convert to a big number, then to base64
   // For simplicity, pack position (7 bits) + digit (4 bits) = 11 bits per given
   const bits: number[] = []
-  
+
   // First byte: number of givens (0-81)
   bits.push(givens.length)
-  
+
   for (const g of givens) {
     // Pack position (7 bits, 0-80) and digit (4 bits, 1-9 stored as 0-8)
     const packed = (g.pos << 4) | (g.digit - 1)
-    bits.push((packed >> 8) & 0xFF) // High byte (3 bits used)
-    bits.push(packed & 0xFF)        // Low byte (8 bits)
+    bits.push((packed >> 8) & 0xff) // High byte (3 bits used)
+    bits.push(packed & 0xff) // Low byte (8 bits)
   }
-  
+
   // But that's still 2 bytes per given. Let's use a tighter packing:
   // Encode as sequence of base64 chars directly
   // Position 0-80 (81 values) needs 7 bits
   // Digit 1-9 (9 values) needs 4 bits
   // Total: 11 bits per given
-  
+
   // Actually let's use a simpler, more compact approach:
   // Encode as: count, then for each given: position in base85, digit 1-9
-  
+
   // Simplest working approach: variable-length encoding
   // Use a bitmask (81 bits = 14 chars) + digits (1 char per given in base9)
   // Total: 14 + 25 = 39 chars for typical puzzle
-  
+
   // Bitmask approach
   let mask = BigInt(0)
   for (let i = 0; i < 81; i++) {
@@ -103,15 +103,15 @@ function encodeSparse(cells: number[]): string {
       mask |= BigInt(1) << BigInt(80 - i)
     }
   }
-  
+
   // Encode bitmask as base64 (81 bits = 14 base64 chars)
   let maskStr = ''
   for (let i = 0; i < 14; i++) {
-    const idx = Number((mask >> BigInt((13 - i) * 6)) & BigInt(0x3F))
+    const idx = Number((mask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
     const char = ALPHABET[idx]
     if (char) maskStr += char
   }
-  
+
   // Encode digits (each digit 1-9 as single char, using first 9 chars of alphabet)
   let digitsStr = ''
   for (let i = 0; i < 81; i++) {
@@ -121,7 +121,7 @@ function encodeSparse(cells: number[]): string {
       if (char) digitsStr += char // 1-9 -> A-I
     }
   }
-  
+
   return maskStr + digitsStr
 }
 
@@ -133,8 +133,8 @@ function encodeDense(cells: number[]): string {
   // Pack 2 cells per byte (4 bits each)
   const bytes: number[] = []
   for (let i = 0; i < 81; i += 2) {
-    const high = (cells[i] ?? 0) & 0x0F
-    const low = (cells[i + 1] ?? 0) & 0x0F
+    const high = (cells[i] ?? 0) & 0x0f
+    const low = (cells[i + 1] ?? 0) & 0x0f
     bytes.push((high << 4) | low)
   }
 
@@ -158,7 +158,7 @@ function isRaw81String(str: string): boolean {
  * Decode a raw 81-character puzzle string (digits 0-9, or . for empty)
  */
 function decodeRaw81(str: string): number[] {
-  return str.split('').map(c => c === '.' ? 0 : parseInt(c, 10))
+  return str.split('').map((c) => (c === '.' ? 0 : parseInt(c, 10)))
 }
 
 /**
@@ -173,15 +173,15 @@ export function decodePuzzle(encoded: string): number[] {
   if (encoded.length === 0) {
     return Array(81).fill(0)
   }
-  
+
   // Check for raw 81-digit string first
   if (isRaw81String(encoded)) {
     return decodeRaw81(encoded)
   }
-  
+
   const type = encoded[0]
   const data = encoded.slice(1)
-  
+
   if (type === 'd') {
     return decodeDense(data)
   } else if (type === 's') {
@@ -196,11 +196,11 @@ function decodeSparse(encoded: string): number[] {
   if (encoded.length < 14) {
     return Array(81).fill(0)
   }
-  
+
   // First 14 chars are the bitmask
   const maskStr = encoded.slice(0, 14)
   const digitsStr = encoded.slice(14)
-  
+
   // Decode bitmask
   let mask = BigInt(0)
   for (let i = 0; i < 14; i++) {
@@ -210,7 +210,7 @@ function decodeSparse(encoded: string): number[] {
     if (idx === -1) return Array(81).fill(0) as number[]
     mask = (mask << BigInt(6)) | BigInt(idx)
   }
-  
+
   // Decode digits
   const cells = Array(81).fill(0) as number[]
   let digitIdx = 0
@@ -229,7 +229,7 @@ function decodeSparse(encoded: string): number[] {
       }
     }
   }
-  
+
   return cells
 }
 
@@ -240,7 +240,11 @@ function decodeSparse(encoded: string): number[] {
  * - Encodes all 81 cell values (including user entries)
  * - Allows sharing puzzle at any point in solving progress
  */
-export function encodePuzzleWithState(board: number[], givens: number[], candidates?: number[][]): string {
+export function encodePuzzleWithState(
+  board: number[],
+  givens: number[],
+  candidates?: number[][],
+): string {
   if (board.length !== 81 || givens.length !== 81) {
     throw new Error('Board and givens must have 81 cells')
   }
@@ -257,15 +261,15 @@ export function encodePuzzleWithState(board: number[], givens: number[], candida
   // Encode givens mask as base64url (14 chars for 81 bits)
   let maskStr = ''
   for (let i = 0; i < 14; i++) {
-    const idx = Number((givensMask >> BigInt((13 - i) * 6)) & BigInt(0x3F))
+    const idx = Number((givensMask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
     maskStr += ALPHABET[idx]
   }
 
   // Encode all 81 cell values using dense encoding (4 bits per cell)
   const bytes: number[] = []
   for (let i = 0; i < 81; i += 2) {
-    const high = (board[i] ?? 0) & 0x0F
-    const low = (board[i + 1] ?? 0) & 0x0F
+    const high = (board[i] ?? 0) & 0x0f
+    const low = (board[i + 1] ?? 0) & 0x0f
     bytes.push((high << 4) | low)
   }
 
@@ -279,7 +283,7 @@ export function encodePuzzleWithState(board: number[], givens: number[], candida
   }
 
   // Check if there are any candidates to encode
-  const hasCandidates = candidates.some(c => c && c.length > 0)
+  const hasCandidates = candidates.some((c) => c && c.length > 0)
   if (!hasCandidates) {
     return 'e' + maskStr + boardStr
   }
@@ -291,7 +295,7 @@ export function encodePuzzleWithState(board: number[], givens: number[], candida
 
 /**
  * Encode candidates compactly
- * Strategy: 
+ * Strategy:
  * 1. Bitmask for which cells have candidates (81 bits = 14 chars)
  * 2. For each cell with candidates, 9 bits for digits 1-9
  * Pack efficiently into base64
@@ -309,7 +313,7 @@ function encodeCandidates(candidates: number[][]): string {
   // Encode hasCandMask as 14 base64 chars
   let maskStr = ''
   for (let i = 0; i < 14; i++) {
-    const idx = Number((hasCandMask >> BigInt((13 - i) * 6)) & BigInt(0x3F))
+    const idx = Number((hasCandMask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
     maskStr += ALPHABET[idx]
   }
 
@@ -322,7 +326,7 @@ function encodeCandidates(candidates: number[][]): string {
       let bits = 0
       for (const d of cands) {
         if (d >= 1 && d <= 9) {
-          bits |= (1 << (d - 1))
+          bits |= 1 << (d - 1)
         }
       }
       candBits.push(bits)
@@ -347,7 +351,7 @@ function encodeCandidates(candidates: number[][]): string {
   const byteCount = totalBits / 8
   const candBytes: number[] = []
   for (let i = byteCount - 1; i >= 0; i--) {
-    candBytes.push(Number((allBits >> BigInt(i * 8)) & BigInt(0xFF)))
+    candBytes.push(Number((allBits >> BigInt(i * 8)) & BigInt(0xff)))
   }
 
   // Convert to base64url
@@ -366,7 +370,9 @@ function encodeCandidates(candidates: number[][]): string {
  * Returns both the complete board and the givens mask
  * Allows restoring puzzle at any point in solving progress
  */
-export function decodePuzzleWithState(encoded: string): { board: number[]; givens: number[]; candidates?: number[][] } | null {
+export function decodePuzzleWithState(
+  encoded: string,
+): { board: number[]; givens: number[]; candidates?: number[][] } | null {
   // Handle 'c' prefix (with candidates) or 'e' prefix (board only)
   if (!encoded.startsWith('e') && !encoded.startsWith('c')) {
     return null
@@ -394,7 +400,7 @@ export function decodePuzzleWithState(encoded: string): { board: number[]; given
   // Board data is 41 bytes = 55 base64 chars (approximately, without padding)
   // Dense encoding: 81 cells at 4 bits each = 324 bits = 40.5 bytes = 41 bytes
   const boardEndIdx = 14 + 55 // After mask (14) + board (~55 chars)
-  
+
   // Find where the board ends by trying to decode it
   // The board is exactly 41 bytes = 328 bits, which encodes to ceil(41*8/6) = 55 base64 chars
   const boardStr = data.slice(14, boardEndIdx)
@@ -418,7 +424,7 @@ export function decodePuzzleWithState(encoded: string): { board: number[]; given
   // Decode candidates
   const candidatesData = data.slice(boardEndIdx)
   const candidates = decodeCandidates(candidatesData)
-  
+
   return { board, givens, candidates }
 }
 
@@ -426,8 +432,10 @@ export function decodePuzzleWithState(encoded: string): { board: number[]; given
  * Decode candidates from encoded string
  */
 function decodeCandidates(data: string): number[][] {
-  const candidates: number[][] = Array(81).fill(null).map(() => [])
-  
+  const candidates: number[][] = Array(81)
+    .fill(null)
+    .map(() => [])
+
   if (data.length < 14) {
     return candidates
   }
@@ -494,14 +502,14 @@ function decodeCandidates(data: string): number[][] {
   const dataBits = cellsWithCands * 9
   const totalBitsInBytes = bytes.length * 8
   const paddingBits = totalBitsInBytes - dataBits
-  
+
   // Extract 9-bit values from MSB (left side), skipping right-side padding
   for (let i = 0; i < cellsWithCands; i++) {
     // Shift amount: how many bits from the RIGHT to this 9-bit chunk
     // First chunk starts at (totalBitsInBytes - 9), second at (totalBitsInBytes - 18), etc.
     // But we also need to account for padding which is at the RIGHT
     const shiftAmount = paddingBits + (cellsWithCands - 1 - i) * 9
-    candBits.push(Number((allBits >> BigInt(shiftAmount)) & BigInt(0x1FF)))
+    candBits.push(Number((allBits >> BigInt(shiftAmount)) & BigInt(0x1ff)))
   }
 
   // Apply candidates to cells
@@ -543,7 +551,7 @@ function decodeDenseLegacy(encoded: string): number[] {
   } catch {
     return Array(81).fill(0)
   }
-  
+
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i)
@@ -554,14 +562,14 @@ function decodeDenseLegacy(encoded: string): number[] {
   for (let i = 0; i < bytes.length && cells.length < 81; i++) {
     const byte = bytes[i]
     if (byte === undefined) continue
-    const high = (byte >> 4) & 0x0F
-    const low = byte & 0x0F
+    const high = (byte >> 4) & 0x0f
+    const low = byte & 0x0f
     cells.push(high)
     if (cells.length < 81) {
       cells.push(low)
     }
   }
-  
+
   // Pad to 81 if needed
   while (cells.length < 81) {
     cells.push(0)

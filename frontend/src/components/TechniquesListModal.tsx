@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { getDisplayTechniques, type TechniqueInfo } from '../lib/techniques'
 import { TIERS } from '../lib/constants'
-import { TierBadge, HowToPlayContent, CloseIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon } from './ui'
+import {
+  TierBadge,
+  HowToPlayContent,
+  CloseIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  InfoIcon,
+} from './ui'
 import TechniqueDetailView from './TechniqueDetailView'
 import GlossaryModal from './GlossaryModal'
 
@@ -30,10 +37,7 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
       <div className="relative z-10 flex h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-background shadow-2xl">
@@ -49,11 +53,13 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
               </button>
             ) : null}
             <h2 className="text-lg font-bold text-foreground">
-              {view === 'overview' ? 'How to Play Sudoku' : selectedTechnique ? selectedTechnique.title : 'Techniques'}
+              {view === 'overview'
+                ? 'How to Play Sudoku'
+                : selectedTechnique
+                  ? selectedTechnique.title
+                  : 'Techniques'}
             </h2>
-            {selectedTechnique && (
-              <TierBadge tier={selectedTechnique.tier} />
-            )}
+            {selectedTechnique && <TierBadge tier={selectedTechnique.tier} />}
           </div>
           <button
             onClick={onClose}
@@ -69,8 +75,8 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
           {view === 'overview' ? (
             <HowToPlayContent />
           ) : selectedTechnique ? (
-            <TechniqueDetailView 
-              technique={selectedTechnique} 
+            <TechniqueDetailView
+              technique={selectedTechnique}
               variant="modal"
               onRelatedClick={(t) => setView(t)}
               showTips
@@ -96,8 +102,18 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
                 className="mb-4 flex w-full items-center justify-between rounded-lg border border-board-border-light bg-background-secondary p-3 text-left transition-colors hover:bg-btn-hover"
               >
                 <div className="flex items-center gap-3">
-                  <svg className="h-5 w-5 text-foreground-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  <svg
+                    className="h-5 w-5 text-foreground-muted"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                    />
                   </svg>
                   <span className="font-medium text-foreground">Sudoku Glossary</span>
                 </div>
@@ -161,7 +177,7 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
           </button>
         </div>
       </div>
-      
+
       {/* Glossary Modal */}
       <GlossaryModal isOpen={showGlossary} onClose={() => setShowGlossary(false)} />
     </div>

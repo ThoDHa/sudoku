@@ -32,7 +32,12 @@ export function ChevronLeftIcon({ className = 'h-5 w-5' }: { className?: string 
 export function InfoIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
     </svg>
   )
 }
@@ -40,7 +45,12 @@ export function InfoIcon({ className = 'h-5 w-5' }: { className?: string }) {
 export function SunIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+      />
     </svg>
   )
 }
@@ -48,7 +58,12 @@ export function SunIcon({ className = 'h-4 w-4' }: { className?: string }) {
 export function MoonIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+      />
     </svg>
   )
 }
@@ -56,7 +71,12 @@ export function MoonIcon({ className = 'h-4 w-4' }: { className?: string }) {
 export function ComputerIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+      />
     </svg>
   )
 }
@@ -78,15 +98,14 @@ const TIER_EMOJIS: Record<string, string> = {
 }
 
 export function TierBadge({ tier, size = 'sm', showEmoji = false }: TierBadgeProps) {
-  const sizeClasses = size === 'sm' 
-    ? 'px-2 py-0.5 text-xs' 
-    : 'px-3 py-1 text-sm'
-  
+  const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm'
+
   const emoji = showEmoji ? TIER_EMOJIS[tier.toLowerCase()] || '' : ''
-  
+
   return (
     <span className={`rounded-full font-medium ${sizeClasses} ${getTierColor(tier)}`}>
-      {emoji && <span className="mr-1">{emoji}</span>}{tier}
+      {emoji && <span className="mr-1">{emoji}</span>}
+      {tier}
     </span>
   )
 }
@@ -102,13 +121,13 @@ interface ModalProps {
   className?: string
 }
 
-export function Modal({ 
-  isOpen, 
-  onClose, 
-  children, 
+export function Modal({
+  isOpen,
+  onClose,
+  children,
   maxWidth = 'md',
   showCloseButton = true,
-  className = ''
+  className = '',
 }: ModalProps) {
   if (!isOpen) return null
 
@@ -122,13 +141,12 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className={`relative z-10 w-full ${maxWidthClasses[maxWidth]} rounded-2xl bg-background shadow-2xl ${className}`}>
+      <div
+        className={`relative z-10 w-full ${maxWidthClasses[maxWidth]} rounded-2xl bg-background shadow-2xl ${className}`}
+      >
         {showCloseButton && (
           <button
             onClick={onClose}
@@ -168,22 +186,22 @@ export function Button({
   fullWidth = false,
 }: ButtonProps) {
   const baseClasses = 'rounded-lg font-medium transition-colors'
-  
+
   const variantClasses = {
     primary: 'bg-accent text-btn-active-text hover:opacity-90',
     secondary: 'border border-accent text-accent hover:bg-accent hover:text-btn-active-text',
     ghost: 'border border-board-border-light text-foreground hover:bg-btn-hover',
   }
-  
+
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-sm',
     md: 'px-4 py-2',
     lg: 'px-6 py-3',
   }
-  
+
   const widthClass = fullWidth ? 'w-full' : ''
   const disabledClass = disabled ? 'opacity-50 cursor-not-allowed' : ''
-  
+
   return (
     <button
       type={type}
@@ -205,7 +223,8 @@ export function HowToPlayContent() {
       <div>
         <h3 className="mb-2 text-sm font-semibold text-foreground">🎯 The Goal</h3>
         <p className="text-sm leading-relaxed text-foreground-muted">
-          Fill every cell in the 9×9 grid with a digit from 1 to 9 so that each digit appears exactly once in every row, column, and 3×3 box.
+          Fill every cell in the 9×9 grid with a digit from 1 to 9 so that each digit appears
+          exactly once in every row, column, and 3×3 box.
         </p>
       </div>
 
@@ -222,9 +241,17 @@ export function HowToPlayContent() {
       <div>
         <h3 className="mb-2 text-sm font-semibold text-foreground">🚀 Getting Started</h3>
         <ul className="space-y-1 text-sm text-foreground-muted">
-          <li>🔒 <strong>Givens:</strong> The pre-filled numbers are clues — these cannot be changed</li>
-          <li>✏️ <strong>Candidates/Notes:</strong> Use notes to track which digits are possible in each empty cell</li>
-          <li>❌ <strong>Elimination:</strong> When you place a digit, eliminate it as a candidate from all cells in the same row, column, and box</li>
+          <li>
+            🔒 <strong>Givens:</strong> The pre-filled numbers are clues — these cannot be changed
+          </li>
+          <li>
+            ✏️ <strong>Candidates/Notes:</strong> Use notes to track which digits are possible in
+            each empty cell
+          </li>
+          <li>
+            ❌ <strong>Elimination:</strong> When you place a digit, eliminate it as a candidate
+            from all cells in the same row, column, and box
+          </li>
         </ul>
       </div>
 
@@ -233,7 +260,9 @@ export function HowToPlayContent() {
         <ol className="list-inside list-decimal space-y-1 text-sm text-foreground-muted">
           <li>Use "Auto-fill notes" from the menu to see all possible candidates</li>
           <li>Look for cells with only one candidate (Naked Singles)</li>
-          <li>Look for digits that can only go in one place in a row/column/box (Hidden Singles)</li>
+          <li>
+            Look for digits that can only go in one place in a row/column/box (Hidden Singles)
+          </li>
           <li>As you fill cells, candidates are automatically eliminated</li>
           <li>Use the "Hint" button when stuck — it will find and apply the next logical step</li>
         </ol>
@@ -242,19 +271,40 @@ export function HowToPlayContent() {
       <div>
         <h3 className="mb-2 text-sm font-semibold text-foreground">💡 Hints vs Solve</h3>
         <ul className="space-y-1 text-sm text-foreground-muted">
-          <li>💡 <strong>Hints:</strong> Get one logical step at a time. Each hint counts toward your score.</li>
-          <li>🤖 <strong>Solve:</strong> Watch the solver complete the puzzle step-by-step. Tracked separately from hints.</li>
-          <li>⚡ <strong>Smart Detection:</strong> The solver immediately fills cells when they have only one possible digit.</li>
+          <li>
+            💡 <strong>Hints:</strong> Get one logical step at a time. Each hint counts toward your
+            score.
+          </li>
+          <li>
+            🤖 <strong>Solve:</strong> Watch the solver complete the puzzle step-by-step. Tracked
+            separately from hints.
+          </li>
+          <li>
+            ⚡ <strong>Smart Detection:</strong> The solver immediately fills cells when they have
+            only one possible digit.
+          </li>
         </ul>
       </div>
 
       <div className="rounded-lg bg-background-secondary p-4">
         <h3 className="mb-2 text-sm font-semibold text-foreground">📊 Difficulty Levels</h3>
         <ul className="space-y-2 text-sm text-foreground-muted">
-          <li>🟢 <span className="font-medium text-green-600 dark:text-green-400">Easy:</span> Can be solved with Naked and Hidden Singles only</li>
-          <li>🟡 <span className="font-medium text-yellow-600 dark:text-yellow-400">Medium:</span> Requires pairs, triples, and basic intersection techniques</li>
-          <li>🟠 <span className="font-medium text-orange-600 dark:text-orange-400">Hard:</span> Requires X-Wings, XY-Wings, and other advanced patterns</li>
-          <li>🔴 <span className="font-medium text-red-600 dark:text-red-400">Expert:</span> Requires chains, coloring, and complex pattern recognition</li>
+          <li>
+            🟢 <span className="font-medium text-green-600 dark:text-green-400">Easy:</span> Can be
+            solved with Naked and Hidden Singles only
+          </li>
+          <li>
+            🟡 <span className="font-medium text-yellow-600 dark:text-yellow-400">Medium:</span>{' '}
+            Requires pairs, triples, and basic intersection techniques
+          </li>
+          <li>
+            🟠 <span className="font-medium text-orange-600 dark:text-orange-400">Hard:</span>{' '}
+            Requires X-Wings, XY-Wings, and other advanced patterns
+          </li>
+          <li>
+            🔴 <span className="font-medium text-red-600 dark:text-red-400">Expert:</span> Requires
+            chains, coloring, and complex pattern recognition
+          </li>
         </ul>
       </div>
 
@@ -283,9 +333,9 @@ export function HowSolverWorksContent() {
       <div>
         <h2 className="mb-3 text-lg font-semibold text-foreground">Overview</h2>
         <p className="text-sm leading-relaxed text-foreground-muted">
-          Our solver uses <strong>pure logical deduction</strong> — the same techniques human experts use. 
-          It never guesses, never backtracks, and never peeks at the solution. Every move can be explained 
-          with a specific technique, making it an ideal learning tool.
+          Our solver uses <strong>pure logical deduction</strong> — the same techniques human
+          experts use. It never guesses, never backtracks, and never peeks at the solution. Every
+          move can be explained with a specific technique, making it an ideal learning tool.
         </p>
       </div>
 
@@ -293,8 +343,8 @@ export function HowSolverWorksContent() {
       <div>
         <h2 className="mb-3 text-lg font-semibold text-foreground">🎯 Technique Tiers</h2>
         <p className="mb-3 text-sm text-foreground-muted">
-          The solver organizes 39+ techniques into tiers based on complexity. It always tries simpler 
-          techniques first, escalating only when needed:
+          The solver organizes 39+ techniques into tiers based on complexity. It always tries
+          simpler techniques first, escalating only when needed:
         </p>
         <div className="space-y-2">
           <div className="rounded-lg bg-background-secondary p-3">
@@ -302,42 +352,42 @@ export function HowSolverWorksContent() {
               <span className="text-diff-easy font-medium">🌱 Simple</span>
             </div>
             <p className="text-xs text-foreground-muted">
-              <strong>Naked Singles, Hidden Singles</strong> — The fundamentals. Most easy puzzles 
-              need only these. A naked single is a cell with one candidate; a hidden single is a 
+              <strong>Naked Singles, Hidden Singles</strong> — The fundamentals. Most easy puzzles
+              need only these. A naked single is a cell with one candidate; a hidden single is a
               digit that can only go in one place within a house.
             </p>
           </div>
-          
+
           <div className="rounded-lg bg-background-secondary p-3">
             <div className="mb-1 flex items-center gap-2">
               <span className="text-diff-medium font-medium">🌿 Medium</span>
             </div>
             <p className="text-xs text-foreground-muted">
-              <strong>Pairs, Triples, Pointing, Claiming</strong> — Pattern recognition within houses. 
-              These techniques eliminate candidates by finding groups of cells that must contain 
-              specific digits.
+              <strong>Pairs, Triples, Pointing, Claiming</strong> — Pattern recognition within
+              houses. These techniques eliminate candidates by finding groups of cells that must
+              contain specific digits.
             </p>
           </div>
-          
+
           <div className="rounded-lg bg-background-secondary p-3">
             <div className="mb-1 flex items-center gap-2">
               <span className="text-diff-extreme font-medium">🌳 Hard</span>
             </div>
             <p className="text-xs text-foreground-muted">
-              <strong>X-Wing, Swordfish, XY-Wing, Chains</strong> — Advanced patterns spanning 
-              multiple houses. These require tracking relationships between candidates across 
-              the entire grid.
+              <strong>X-Wing, Swordfish, XY-Wing, Chains</strong> — Advanced patterns spanning
+              multiple houses. These require tracking relationships between candidates across the
+              entire grid.
             </p>
           </div>
-          
+
           <div className="rounded-lg bg-background-secondary p-3">
             <div className="mb-1 flex items-center gap-2">
               <span className="text-foreground-muted font-medium">🔬 Extreme</span>
             </div>
             <p className="text-xs text-foreground-muted">
-              <strong>Unique Rectangles, ALS Chains, Forcing Chains</strong> — Expert-level 
-              techniques for the hardest puzzles. These exploit advanced logical constraints 
-              and require deep chain reasoning.
+              <strong>Unique Rectangles, ALS Chains, Forcing Chains</strong> — Expert-level
+              techniques for the hardest puzzles. These exploit advanced logical constraints and
+              require deep chain reasoning.
             </p>
           </div>
         </div>
@@ -351,18 +401,19 @@ export function HowSolverWorksContent() {
         </p>
         <ol className="list-inside list-decimal space-y-2 text-sm text-foreground-muted">
           <li>
-            <strong>Fill candidates</strong> — If your notes are incomplete, it first ensures 
-            all valid candidates are marked
+            <strong>Fill candidates</strong> — If your notes are incomplete, it first ensures all
+            valid candidates are marked
           </li>
           <li>
             <strong>Detect singles</strong> — Instantly fills any cell with only one possible digit
           </li>
           <li>
-            <strong>Apply techniques</strong> — Starting from Simple tier, tries each technique 
+            <strong>Apply techniques</strong> — Starting from Simple tier, tries each technique
             until one finds a move
           </li>
           <li>
-            <strong>Explain the move</strong> — Returns a detailed explanation with highlighted cells
+            <strong>Explain the move</strong> — Returns a detailed explanation with highlighted
+            cells
           </li>
         </ol>
       </div>
@@ -371,48 +422,53 @@ export function HowSolverWorksContent() {
       <div>
         <h2 className="mb-3 text-lg font-semibold text-foreground">🔧 Error Correction</h2>
         <p className="mb-3 text-sm text-foreground-muted">
-          Made mistakes? The solver can handle corrupted boards — even ones with many wrong entries. 
+          Made mistakes? The solver can handle corrupted boards — even ones with many wrong entries.
           It corrects errors <strong>one at a time</strong>, explaining why each cell is wrong:
         </p>
-        
+
         <div className="space-y-3">
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
             <h4 className="mb-1 text-sm font-medium text-foreground">🚨 Direct Conflicts</h4>
             <p className="text-xs text-foreground-muted">
-              <strong>Detected first.</strong> If you placed a 5 in a row that already has a 5, 
-              that's an immediate conflict. The solver spots these instantly before any technique 
-              runs. Returns a <code className="rounded bg-background-secondary px-1">fix-conflict</code> action 
-              with an explanation like: "Conflict! R3C5 and R3C7 both have 5 in the same row."
+              <strong>Detected first.</strong> If you placed a 5 in a row that already has a 5,
+              that's an immediate conflict. The solver spots these instantly before any technique
+              runs. Returns a{' '}
+              <code className="rounded bg-background-secondary px-1">fix-conflict</code> action with
+              an explanation like: "Conflict! R3C5 and R3C7 both have 5 in the same row."
             </p>
             <p className="mt-1 text-xs text-foreground-muted">
-              The solver highlights both cells — the one being removed (primary) and the one it 
+              The solver highlights both cells — the one being removed (primary) and the one it
               conflicts with (secondary) — so you can see exactly what went wrong.
             </p>
           </div>
-          
+
           <div className="rounded-lg border border-orange-500/30 bg-orange-500/10 p-3">
-            <h4 className="mb-1 text-sm font-medium text-foreground">🚫 Blocking Cells (Contradictions)</h4>
+            <h4 className="mb-1 text-sm font-medium text-foreground">
+              🚫 Blocking Cells (Contradictions)
+            </h4>
             <p className="text-xs text-foreground-muted">
-              <strong>Detected second.</strong> Your entry might not conflict directly, but it 
-              blocks all possibilities for another cell. When the solver finds an empty cell with 
+              <strong>Detected second.</strong> Your entry might not conflict directly, but it
+              blocks all possibilities for another cell. When the solver finds an empty cell with
               zero valid candidates, it traces back to find which user entry caused it.
             </p>
             <p className="mt-1 text-xs text-foreground-muted">
-              Returns a <code className="rounded bg-background-secondary px-1">fix-error</code> action 
-              explaining: "R4C2 has no valid candidates. The 7 at R4C8 was causing the problem."
+              Returns a <code className="rounded bg-background-secondary px-1">fix-error</code>{' '}
+              action explaining: "R4C2 has no valid candidates. The 7 at R4C8 was causing the
+              problem."
             </p>
           </div>
-          
+
           <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3">
             <h4 className="mb-1 text-sm font-medium text-foreground">🔍 Complex Errors</h4>
             <p className="text-xs text-foreground-muted">
-              <strong>Fallback detection.</strong> Some errors can't be traced to a single cell — 
-              for example, when multiple wrong entries combine to create an unsolvable state. 
-              In these cases, the solver suggests undoing recent moves or starting fresh.
+              <strong>Fallback detection.</strong> Some errors can't be traced to a single cell —
+              for example, when multiple wrong entries combine to create an unsolvable state. In
+              these cases, the solver suggests undoing recent moves or starting fresh.
             </p>
             <p className="mt-1 text-xs text-foreground-muted">
-              Returns an <code className="rounded bg-background-secondary px-1">unpinpointable-error</code> with 
-              guidance based on how many user entries exist on the board.
+              Returns an{' '}
+              <code className="rounded bg-background-secondary px-1">unpinpointable-error</code>{' '}
+              with guidance based on how many user entries exist on the board.
             </p>
           </div>
         </div>
@@ -420,10 +476,12 @@ export function HowSolverWorksContent() {
 
       {/* Philosophy */}
       <div className="rounded-lg border border-board-border-light p-4">
-        <h2 className="mb-2 text-lg font-semibold text-foreground">🧘 The "No Guessing" Philosophy</h2>
+        <h2 className="mb-2 text-lg font-semibold text-foreground">
+          🧘 The "No Guessing" Philosophy
+        </h2>
         <p className="text-sm text-foreground-muted">
-          Unlike brute-force solvers that try possibilities until something works, our solver 
-          proves each move is correct <em>before</em> making it. This means:
+          Unlike brute-force solvers that try possibilities until something works, our solver proves
+          each move is correct <em>before</em> making it. This means:
         </p>
         <ul className="mt-2 space-y-1 text-sm text-foreground-muted">
           <li>✅ Every move comes with a logical explanation</li>
@@ -437,13 +495,13 @@ export function HowSolverWorksContent() {
       <div className="rounded-lg bg-background-secondary p-4">
         <h2 className="mb-2 text-lg font-semibold text-foreground">⚙️ Under the Hood</h2>
         <p className="text-sm text-foreground-muted">
-          The solver is written in Go and compiled to WebAssembly for fast, offline-capable 
+          The solver is written in Go and compiled to WebAssembly for fast, offline-capable
           operation. It runs entirely in your browser — your puzzles never leave your device.
         </p>
         <p className="mt-2 text-sm text-foreground-muted">
-          For the technically curious: the solver uses constraint propagation with a 
-          technique-based inference engine. Each technique is a pattern matcher that identifies 
-          specific logical structures in the candidate grid.
+          For the technically curious: the solver uses constraint propagation with a technique-based
+          inference engine. Each technique is a pattern matcher that identifies specific logical
+          structures in the candidate grid.
         </p>
       </div>
     </div>

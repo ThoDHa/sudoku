@@ -10,7 +10,9 @@ export const dispatchKeyDown = (options: KeyboardEventInit): KeyboardEvent => {
   return event
 }
 
-export const createKeyEventWithPreventDefault = (options: KeyboardEventInit): {
+export const createKeyEventWithPreventDefault = (
+  options: KeyboardEventInit,
+): {
   event: KeyboardEvent
   preventDefaultSpy: ReturnType<typeof vi.fn>
 } => {

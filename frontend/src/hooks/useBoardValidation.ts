@@ -13,14 +13,17 @@ export interface UseBoardValidationReturn {
 export function useBoardValidation(options: UseBoardValidationOptions): UseBoardValidationReturn {
   const { setIsComplete } = options
 
-  const checkCompletion = useCallback((newBoard: number[]) => {
-    const allFilled = newBoard.every((v: number) => v !== 0)
-    if (allFilled && isValidSolution(newBoard)) {
-      setIsComplete(true)
-    } else {
-      setIsComplete(false)
-    }
-  }, [setIsComplete])
+  const checkCompletion = useCallback(
+    (newBoard: number[]) => {
+      const allFilled = newBoard.every((v: number) => v !== 0)
+      if (allFilled && isValidSolution(newBoard)) {
+        setIsComplete(true)
+      } else {
+        setIsComplete(false)
+      }
+    },
+    [setIsComplete],
+  )
 
   return {
     checkCompletion,

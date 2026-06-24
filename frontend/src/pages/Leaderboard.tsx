@@ -70,9 +70,7 @@ export default function Leaderboard() {
               key={difficulty}
               className={`content-card rounded-lg border-2 ${colors.border} ${colors.bg}`}
             >
-              <h3 className={`font-semibold capitalize ${colors.text} mb-2`}>
-                {difficulty}
-              </h3>
+              <h3 className={`font-semibold capitalize ${colors.text} mb-2`}>{difficulty}</h3>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">Best</span>

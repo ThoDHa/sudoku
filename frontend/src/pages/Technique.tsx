@@ -1,8 +1,19 @@
 import { Link } from 'react-router-dom'
 import { useParams } from 'react-router-dom'
-import { getTechniqueBySlug, getTechniquesByTier, TechniqueInfo, getPreviousTechnique, getNextTechnique } from '../lib/techniques'
+import {
+  getTechniqueBySlug,
+  getTechniquesByTier,
+  TechniqueInfo,
+  getPreviousTechnique,
+  getNextTechnique,
+} from '../lib/techniques'
 import { TIERS } from '../lib/constants'
-import { TierBadge, HowToPlayContent, HowSolverWorksContent, ChevronRightIcon } from '../components/ui'
+import {
+  TierBadge,
+  HowToPlayContent,
+  HowSolverWorksContent,
+  ChevronRightIcon,
+} from '../components/ui'
 import TechniqueDetailView from '../components/TechniqueDetailView'
 
 function TechniqueCard({ technique }: { technique: TechniqueInfo }) {
@@ -51,53 +62,62 @@ export default function Technique() {
           >
             <div>
               <h2 className="text-lg font-semibold text-accent">🎮 How to Play Sudoku</h2>
-              <p className="text-sm text-accent/80">New to Sudoku? Start here to learn the basics.</p>
+              <p className="text-sm text-accent/80">
+                New to Sudoku? Start here to learn the basics.
+              </p>
             </div>
             <ChevronRightIcon className="h-5 w-5 text-accent" />
           </Link>
-          
+
           <Link
             to="/techniques/how-solver-works"
             className="flex w-full items-center justify-between rounded-lg border border-board-border-light bg-background-secondary p-4 text-left transition-colors hover:shadow-md"
           >
             <div>
               <h2 className="text-lg font-semibold text-foreground">🤖 How the Solver Works</h2>
-              <p className="text-sm text-foreground-muted">Learn about the techniques, error correction, and philosophy behind our solver.</p>
+              <p className="text-sm text-foreground-muted">
+                Learn about the techniques, error correction, and philosophy behind our solver.
+              </p>
             </div>
             <ChevronRightIcon className="h-5 w-5 text-foreground-muted" />
           </Link>
         </section>
 
         {/* Techniques by Tier */}
-        {TIERS.filter(tier => tier !== 'NotImplemented').map((tier) => {
-          const techniques = tier === 'Simple' ? simpleTechniques 
-            : tier === 'Medium' ? mediumTechniques 
-            : hardTechniques
-          
+        {TIERS.filter((tier) => tier !== 'NotImplemented').map((tier) => {
+          const techniques =
+            tier === 'Simple'
+              ? simpleTechniques
+              : tier === 'Medium'
+                ? mediumTechniques
+                : hardTechniques
+
           const tierColors = {
             Simple: 'text-diff-easy',
             Medium: 'text-diff-medium',
             Hard: 'text-diff-extreme',
           }
-          
+
           const tierEmojis = {
             Simple: '🌱',
             Medium: '🌿',
             Hard: '🌳',
           }
-          
+
           const tierDescriptions = {
-            Simple: 'These are the foundational techniques. Most easy and medium puzzles can be solved using only these.',
-            Medium: 'These techniques handle harder patterns. Required for hard difficulty puzzles.',
+            Simple:
+              'These are the foundational techniques. Most easy and medium puzzles can be solved using only these.',
+            Medium:
+              'These techniques handle harder patterns. Required for hard difficulty puzzles.',
             Hard: 'Advanced techniques for expert-level puzzles. These require careful chain reasoning.',
           }
-          
+
           return (
             <section key={tier} className="mb-8">
-              <h2 className={`mb-4 text-xl font-semibold ${tierColors[tier]}`}>{tierEmojis[tier]} {tier} Techniques</h2>
-              <p className="mb-4 text-sm text-foreground-muted">
-                {tierDescriptions[tier]}
-              </p>
+              <h2 className={`mb-4 text-xl font-semibold ${tierColors[tier]}`}>
+                {tierEmojis[tier]} {tier} Techniques
+              </h2>
+              <p className="mb-4 text-sm text-foreground-muted">{tierDescriptions[tier]}</p>
               <div className="content-grid sm:grid-cols-2">
                 {techniques.map((t) => (
                   <TechniqueCard key={t.slug} technique={t} />
@@ -110,9 +130,12 @@ export default function Technique() {
         {/* Not Implemented / Coming Soon Section */}
         {notImplementedTechniques.length > 0 && (
           <section className="mb-8">
-            <h2 className="mb-4 text-xl font-semibold text-foreground-muted">🔬 Advanced (Coming Soon)</h2>
+            <h2 className="mb-4 text-xl font-semibold text-foreground-muted">
+              🔬 Advanced (Coming Soon)
+            </h2>
             <p className="mb-4 text-sm text-foreground-muted">
-              These advanced techniques are documented but not yet implemented in the solver. They represent the cutting edge of human solving methods.
+              These advanced techniques are documented but not yet implemented in the solver. They
+              represent the cutting edge of human solving methods.
             </p>
             <div className="content-grid sm:grid-cols-2">
               {notImplementedTechniques.map((t) => (
@@ -136,21 +159,21 @@ export default function Technique() {
         </div>
 
         <h1 className="mb-6 text-3xl font-bold text-foreground">How to Play Sudoku</h1>
-        
+
         <HowToPlayContent />
 
         <div className="mt-8 border-t border-board-border-light pt-6">
           <p className="mb-4 text-sm text-foreground-muted">Ready to learn specific techniques?</p>
           <div className="flex flex-wrap gap-3">
-            <Link 
-              to="/technique/naked-single" 
+            <Link
+              to="/technique/naked-single"
               className="inline-flex items-center gap-1 rounded-full bg-background-secondary px-4 py-2 text-sm text-accent hover:bg-btn-hover"
             >
               Start with Naked Single
               <ChevronRightIcon className="h-4 w-4" />
             </Link>
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="inline-flex items-center gap-1 rounded-full bg-accent px-4 py-2 text-sm text-btn-active-text hover:opacity-90"
             >
               Try a puzzle
@@ -173,21 +196,23 @@ export default function Technique() {
         </div>
 
         <h1 className="mb-6 text-3xl font-bold text-foreground">How the Solver Works</h1>
-        
+
         <HowSolverWorksContent />
 
         <div className="mt-8 border-t border-board-border-light pt-6">
-          <p className="mb-4 text-sm text-foreground-muted">Ready to see these techniques in action?</p>
+          <p className="mb-4 text-sm text-foreground-muted">
+            Ready to see these techniques in action?
+          </p>
           <div className="flex flex-wrap gap-3">
-            <Link 
-              to="/techniques" 
+            <Link
+              to="/techniques"
               className="inline-flex items-center gap-1 rounded-full bg-background-secondary px-4 py-2 text-sm text-accent hover:bg-btn-hover"
             >
               Browse all techniques
               <ChevronRightIcon className="h-4 w-4" />
             </Link>
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="inline-flex items-center gap-1 rounded-full bg-accent px-4 py-2 text-sm text-btn-active-text hover:opacity-90"
             >
               Try a puzzle
@@ -246,7 +271,10 @@ export default function Technique() {
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               {prevTechnique && (
-                <Link to={`/technique/${prevTechnique.slug}`} className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+                <Link
+                  to={`/technique/${prevTechnique.slug}`}
+                  className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
+                >
                   <span>&larr;</span>
                   <span className="truncate">{prevTechnique.title}</span>
                 </Link>
@@ -259,7 +287,10 @@ export default function Technique() {
             </div>
             <div className="min-w-0 flex-1 text-right">
               {nextTechnique && (
-                <Link to={`/technique/${nextTechnique.slug}`} className="inline-flex items-center gap-1 justify-end text-sm text-accent hover:underline">
+                <Link
+                  to={`/technique/${nextTechnique.slug}`}
+                  className="inline-flex items-center gap-1 justify-end text-sm text-accent hover:underline"
+                >
                   <span className="truncate">{nextTechnique.title}</span>
                   <span>&rarr;</span>
                 </Link>

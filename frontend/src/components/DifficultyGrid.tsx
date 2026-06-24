@@ -11,15 +11,16 @@ interface DifficultyGridProps {
   resumeSeed?: string | undefined // Seed of in-progress game (for practice mode resume)
 }
 
-const difficulties: Difficulty[] = [
-  'easy',
-  'medium',
-  'hard',
-  'extreme',
-  'impossible',
-]
+const difficulties: Difficulty[] = ['easy', 'medium', 'hard', 'extreme', 'impossible']
 
-export default function DifficultyGrid({ seed, lastSelected, onSelect, onBeforeNavigate, resumeDifficulty, resumeSeed }: DifficultyGridProps) {
+export default function DifficultyGrid({
+  seed,
+  lastSelected,
+  onSelect,
+  onBeforeNavigate,
+  resumeDifficulty,
+  resumeSeed,
+}: DifficultyGridProps) {
   const navigate = useNavigate()
 
   const handlePlay = (difficulty: Difficulty) => {
@@ -27,12 +28,12 @@ export default function DifficultyGrid({ seed, lastSelected, onSelect, onBeforeN
     const isResumable = resumeDifficulty === difficulty && resumeSeed
     const targetSeed = isResumable ? resumeSeed : seed
     const path = `/${targetSeed}?d=${difficulty}`
-    
+
     // If onBeforeNavigate returns false, don't navigate (caller will handle it)
     if (onBeforeNavigate && !onBeforeNavigate(path)) {
       return
     }
-    
+
     onSelect(difficulty)
     navigate(path)
   }

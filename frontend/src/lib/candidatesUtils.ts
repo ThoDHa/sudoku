@@ -1,15 +1,15 @@
 /**
  * Utilities for managing Sudoku candidates using bitmask representation.
- * 
+ *
  * Bit Layout (configurable for different board sizes):
- * - Bit 0: unused (always 0)  
+ * - Bit 0: unused (always 0)
  * - Bits 1-N: represent digits 1-N where N is MAX_DIGIT
- * 
+ *
  * Examples for 9x9:
  * - 0b0000000010 = digit 1 only
  * - 0b0000001110 = digits {1, 2, 3}
  * - 0b1111111110 = digits {1, 2, 3, 4, 5, 6, 7, 8, 9} (all candidates)
- * 
+ *
  * Examples for 16x16:
  * - 0b00000000000000010 = digit 1 only
  * - 0b00000000000001110 = digits {1, 2, 3}
@@ -84,7 +84,7 @@ export const createCandidateMask = (digits: number[]): CandidateMask => {
   let mask = 0
   for (const digit of digits) {
     if (digit >= MIN_DIGIT && digit <= MAX_DIGIT) {
-      mask |= (1 << digit)
+      mask |= 1 << digit
     }
   }
   return mask
@@ -104,7 +104,7 @@ export const isFull = (mask: CandidateMask): boolean => {
   // Create a mask with all valid digits set (bits MIN_DIGIT to MAX_DIGIT)
   let fullMask = 0
   for (let d = MIN_DIGIT; d <= MAX_DIGIT; d++) {
-    fullMask |= (1 << d)
+    fullMask |= 1 << d
   }
   return mask === fullMask
 }
@@ -122,7 +122,7 @@ export const clearAll = (): CandidateMask => {
 export const setAll = (): CandidateMask => {
   let fullMask = 0
   for (let d = MIN_DIGIT; d <= MAX_DIGIT; d++) {
-    fullMask |= (1 << d)
+    fullMask |= 1 << d
   }
   return fullMask
 }

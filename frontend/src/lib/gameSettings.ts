@@ -77,7 +77,7 @@ export interface SavedGameInfo {
 export function getInProgressGames(): SavedGameInfo[] {
   const games: SavedGameInfo[] = []
   const prefix = STORAGE_KEYS.GAME_STATE_PREFIX
-  
+
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
@@ -108,7 +108,7 @@ export function getInProgressGames(): SavedGameInfo[] {
   } catch (e) {
     logger.warn('Failed to scan for in-progress games:', e)
   }
-  
+
   // Sort by most recently saved
   return games.sort((a, b) => b.savedAt - a.savedAt)
 }
@@ -128,7 +128,7 @@ export function getMostRecentGame(): SavedGameInfo | null {
  */
 export function getMostRecentGameForMode(mode: HomepageMode): SavedGameInfo | null {
   const games = getInProgressGames()
-  const filteredGames = games.filter(game => {
+  const filteredGames = games.filter((game) => {
     const gameMode = getGameMode(game.seed)
     if (mode === 'daily') {
       return gameMode === 'daily'
@@ -164,7 +164,7 @@ export function clearInProgressGame(seed: string): void {
 function getAllSavedGames(): SavedGameInfo[] {
   const games: SavedGameInfo[] = []
   const prefix = STORAGE_KEYS.GAME_STATE_PREFIX
-  
+
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
@@ -194,7 +194,7 @@ function getAllSavedGames(): SavedGameInfo[] {
   } catch (e) {
     logger.warn('Failed to scan for saved games:', e)
   }
-  
+
   return games.sort((a, b) => b.savedAt - a.savedAt)
 }
 
@@ -207,11 +207,11 @@ export function clearOtherGamesForMode(currentSeed: string): void {
   const currentMode = getGameMode(currentSeed)
   // Use getAllSavedGames to include completed games in cleanup
   const games = getAllSavedGames()
-  
+
   for (const game of games) {
     // Skip the current game being saved
     if (game.seed === currentSeed) continue
-    
+
     // Check if this game is in the same mode
     const gameMode = getGameMode(game.seed)
     if (currentMode === gameMode) {

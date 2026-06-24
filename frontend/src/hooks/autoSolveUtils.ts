@@ -51,12 +51,10 @@ export interface ActionContext {
  */
 export function convertCandidates(
   candidates: (number[] | null)[] | undefined,
-  fallback: Set<number>[]
+  fallback: Set<number>[],
 ): Set<number>[] {
   if (!candidates) return fallback
-  return candidates.map((cellCands: number[] | null) => 
-    new Set<number>(cellCands || [])
-  )
+  return candidates.map((cellCands: number[] | null) => new Set<number>(cellCands || []))
 }
 
 /**
@@ -64,12 +62,12 @@ export function convertCandidates(
  */
 export function serializeCandidates(
   candidates: (number[] | null)[] | undefined,
-  fallback: Set<number>[]
+  fallback: Set<number>[],
 ): number[][] {
   if (!candidates) {
-    return fallback.map(set => Array.from(set))
+    return fallback.map((set) => Array.from(set))
   }
-  return candidates.map(arr => arr ? [...arr] : [])
+  return candidates.map((arr) => (arr ? [...arr] : []))
 }
 
 /**
@@ -79,7 +77,7 @@ export function createStateSnapshot(
   board: number[],
   candidates: (number[] | null)[] | undefined,
   move: Move | null,
-  fallbackCandidates: Set<number>[]
+  fallbackCandidates: Set<number>[],
 ): StateSnapshot {
   return {
     board: [...board],
@@ -109,7 +107,7 @@ export function handleError(ctx: ActionContext): ActionResult {
   const userEntryCount = ctx.moveResult.move.userEntryCount || 0
   ctx.onUnpinpointableError?.(
     ctx.moveResult.move.explanation || 'Too many incorrect entries to fix automatically.',
-    userEntryCount
+    userEntryCount,
   )
   return { type: 'stop' }
 }
@@ -131,8 +129,9 @@ export function handleDiagnostic(ctx: ActionContext): ActionResult {
 export function handleUnpinpointableError(ctx: ActionContext): ActionResult {
   const userEntryCount = ctx.moveResult.move.userEntryCount || 0
   ctx.onUnpinpointableError?.(
-    ctx.moveResult.move.explanation || `Couldn't pinpoint the error. Check your ${userEntryCount} entries.`,
-    userEntryCount
+    ctx.moveResult.move.explanation ||
+      `Couldn't pinpoint the error. Check your ${userEntryCount} entries.`,
+    userEntryCount,
   )
   return { type: 'stop' }
 }
@@ -142,20 +141,15 @@ export function handleUnpinpointableError(ctx: ActionContext): ActionResult {
  */
 export function handleClearCandidates(ctx: ActionContext): ActionResult {
   const { moveResult, newIndex, applyMove, addToHistory, getCandidates } = ctx
-  
+
   const newCandidates = convertCandidates(
     moveResult.candidates,
-    getCandidates().map(() => new Set<number>())
+    getCandidates().map(() => new Set<number>()),
   )
-  
+
   applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
-  addToHistory(createStateSnapshot(
-    moveResult.board,
-    moveResult.candidates,
-    moveResult.move,
-    []
-  ))
-  
+  addToHistory(createStateSnapshot(moveResult.board, moveResult.candidates, moveResult.move, []))
+
   if (ctx.hasMoreMoves() && ctx.isActive()) {
     return { type: 'continue' }
   }
@@ -167,17 +161,14 @@ export function handleClearCandidates(ctx: ActionContext): ActionResult {
  */
 export function handleFixError(ctx: ActionContext): ActionResult {
   const { moveResult, newIndex, applyMove, addToHistory, getCandidates } = ctx
-  
+
   const newCandidates = convertCandidates(moveResult.candidates, getCandidates())
-  
+
   applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
-  addToHistory(createStateSnapshot(
-    moveResult.board,
-    moveResult.candidates,
-    moveResult.move,
-    getCandidates()
-  ))
-  
+  addToHistory(
+    createStateSnapshot(moveResult.board, moveResult.candidates, moveResult.move, getCandidates()),
+  )
+
   // If callback provided, pause and let user acknowledge
   if (ctx.onErrorFixed) {
     return {
@@ -186,10 +177,10 @@ export function handleFixError(ctx: ActionContext): ActionResult {
         if (ctx.hasMoreMoves() && ctx.isActive()) {
           ctx.playNextMove()
         }
-      }
+      },
     }
   }
-  
+
   if (ctx.hasMoreMoves() && ctx.isActive()) {
     return { type: 'continue' }
   }
@@ -201,20 +192,22 @@ export function handleFixError(ctx: ActionContext): ActionResult {
  */
 export function handleRegularMove(
   ctx: ActionContext,
-  fallbackCandidates: Set<number>[]
+  fallbackCandidates: Set<number>[],
 ): ActionResult {
   const { moveResult, newIndex, applyMove, addToHistory } = ctx
-  
+
   const newCandidates = convertCandidates(moveResult.candidates, fallbackCandidates)
-  
+
   applyMove(moveResult.board, newCandidates, moveResult.move, newIndex)
-  addToHistory(createStateSnapshot(
-    moveResult.board,
-    moveResult.candidates,
-    moveResult.move,
-    fallbackCandidates
-  ))
-  
+  addToHistory(
+    createStateSnapshot(
+      moveResult.board,
+      moveResult.candidates,
+      moveResult.move,
+      fallbackCandidates,
+    ),
+  )
+
   if (ctx.hasMoreMoves() && ctx.isActive()) {
     return { type: 'continue' }
   }
@@ -230,31 +223,31 @@ export function handleRegularMove(
  */
 export function dispatchMoveAction(
   ctx: ActionContext,
-  fallbackCandidates: Set<number>[]
+  fallbackCandidates: Set<number>[],
 ): ActionResult {
   const action = ctx.moveResult.move.action
-  
+
   switch (action) {
     case 'contradiction':
       return handleContradiction(ctx)
-    
+
     case 'error':
       return handleError(ctx)
-    
+
     case 'diagnostic':
       return handleDiagnostic(ctx)
-    
+
     case 'unpinpointable-error':
     case 'stalled':
       return handleUnpinpointableError(ctx)
-    
+
     case 'clear-candidates':
       return handleClearCandidates(ctx)
-    
+
     case 'fix-error':
     case 'fix-conflict':
       return handleFixError(ctx)
-    
+
     default:
       return handleRegularMove(ctx, fallbackCandidates)
   }

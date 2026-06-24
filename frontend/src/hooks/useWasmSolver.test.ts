@@ -30,7 +30,13 @@ vi.mock('../lib/logger', () => ({
 
 // Import after mocks are set up
 import { useWasmSolver, isWasmReady, getWasmApi, loadWasm } from './useWasmSolver'
-import type { SudokuWasmAPI, FindNextMoveResult, SolveAllResult, ValidateBoardResult, ValidateCustomResult } from '../lib/wasm'
+import type {
+  SudokuWasmAPI,
+  FindNextMoveResult,
+  SolveAllResult,
+  ValidateBoardResult,
+  ValidateCustomResult,
+} from '../lib/wasm'
 import { logger } from '../lib/logger'
 
 // MOCK API FACTORY
@@ -43,7 +49,16 @@ function createMockWasmApi(): SudokuWasmAPI {
     createBoard: vi.fn(),
     createBoardWithCandidates: vi.fn(),
     findNextMove: vi.fn().mockReturnValue({
-      move: { step_index: 1, technique: 'Naked Single', action: 'assign', digit: 5, targets: [{ row: 0, col: 0 }], explanation: 'Test', refs: { title: 'Test', slug: 'test', url: '/test' }, highlights: { primary: [] } },
+      move: {
+        step_index: 1,
+        technique: 'Naked Single',
+        action: 'assign',
+        digit: 5,
+        targets: [{ row: 0, col: 0 }],
+        explanation: 'Test',
+        refs: { title: 'Test', slug: 'test', url: '/test' },
+        highlights: { primary: [] },
+      },
       board: { cells: [], candidates: [] },
       solved: false,
     } as FindNextMoveResult),
@@ -231,9 +246,12 @@ describe('useWasmSolver', () => {
 
     it('sets isLoading true while loading', async () => {
       let resolveLoad: (value: SudokuWasmAPI) => void
-      mockLoadWasm.mockImplementation(() => new Promise((resolve) => {
-        resolveLoad = resolve
-      }))
+      mockLoadWasm.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveLoad = resolve
+          }),
+      )
 
       const { result } = renderHook(() => useWasmSolver())
 
@@ -293,7 +311,7 @@ describe('useWasmSolver', () => {
 
     it('sets error on load failure', async () => {
       const loggerWarnSpy = logger.warn
-  logger.warn.mockClear()
+      logger.warn.mockClear()
       mockLoadWasm.mockRejectedValue(new Error('WASM load failed'))
 
       const { result } = renderHook(() => useWasmSolver())
@@ -309,7 +327,7 @@ describe('useWasmSolver', () => {
 
     it('returns false on load failure', async () => {
       const loggerWarnSpy = logger.warn
-  logger.warn.mockClear()
+      logger.warn.mockClear()
       mockLoadWasm.mockRejectedValue(new Error('WASM load failed'))
 
       const { result } = renderHook(() => useWasmSolver())
@@ -325,7 +343,7 @@ describe('useWasmSolver', () => {
 
     it('handles non-Error exceptions', async () => {
       const loggerWarnSpy = logger.warn
-  logger.warn.mockClear()
+      logger.warn.mockClear()
       mockLoadWasm.mockRejectedValue('string error')
 
       const { result } = renderHook(() => useWasmSolver())
@@ -340,9 +358,12 @@ describe('useWasmSolver', () => {
 
     it('prevents concurrent loads', async () => {
       let resolveLoad: (value: SudokuWasmAPI) => void
-      mockLoadWasm.mockImplementation(() => new Promise((resolve) => {
-        resolveLoad = resolve
-      }))
+      mockLoadWasm.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveLoad = resolve
+          }),
+      )
 
       const { result } = renderHook(() => useWasmSolver())
 
@@ -386,7 +407,7 @@ describe('useWasmSolver', () => {
 
     it('clears error when wasmReady event fires', async () => {
       const loggerWarnSpy = logger.warn
-  logger.warn.mockClear()
+      logger.warn.mockClear()
       mockLoadWasm.mockRejectedValue(new Error('Initial failure'))
 
       const { result } = renderHook(() => useWasmSolver())
@@ -538,7 +559,7 @@ describe('useWasmSolver', () => {
     })
 
     it('getPuzzle returns null when API returns error', () => {
-      (mockApi.getPuzzleForSeed as Mock).mockReturnValue({
+      ;(mockApi.getPuzzleForSeed as Mock).mockReturnValue({
         error: 'Puzzle not found',
         givens: [],
         solution: [],
@@ -564,7 +585,7 @@ describe('useWasmSolver', () => {
 
     it('findNextMove returns null and logs error on exception', () => {
       const consoleErrorSpy = logger.error
-  logger.error.mockClear()
+      logger.error.mockClear()
       ;(mockApi.findNextMove as Mock).mockImplementation(() => {
         throw new Error('WASM error')
       })
@@ -580,7 +601,7 @@ describe('useWasmSolver', () => {
 
     it('solveAll returns null and logs error on exception', () => {
       const consoleErrorSpy = logger.error
-  logger.error.mockClear()
+      logger.error.mockClear()
       ;(mockApi.solveAll as Mock).mockImplementation(() => {
         throw new Error('WASM error')
       })
@@ -596,7 +617,7 @@ describe('useWasmSolver', () => {
 
     it('validateBoard returns null and logs error on exception', () => {
       const consoleErrorSpy = logger.error
-  logger.error.mockClear()
+      logger.error.mockClear()
       ;(mockApi.validateBoard as Mock).mockImplementation(() => {
         throw new Error('WASM error')
       })
@@ -612,7 +633,7 @@ describe('useWasmSolver', () => {
 
     it('validateCustom returns null and logs error on exception', () => {
       const consoleErrorSpy = logger.error
-  logger.error.mockClear()
+      logger.error.mockClear()
       ;(mockApi.validateCustomPuzzle as Mock).mockImplementation(() => {
         throw new Error('WASM error')
       })
@@ -628,7 +649,7 @@ describe('useWasmSolver', () => {
 
     it('getPuzzle returns null and logs error on exception', () => {
       const consoleErrorSpy = logger.error
-  logger.error.mockClear()
+      logger.error.mockClear()
       ;(mockApi.getPuzzleForSeed as Mock).mockImplementation(() => {
         throw new Error('WASM error')
       })

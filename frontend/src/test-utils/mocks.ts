@@ -3,17 +3,19 @@
  * Centralized so tests can import consistent mock objects and scenario data
  */
 
-export const createMockBackgroundManager = (overrides?: Partial<{
-  isHidden: boolean
-  shouldPauseOperations: boolean
-  registerCallback: (...args: unknown[]) => void
-  unregisterCallback: (...args: unknown[]) => void
-  isWindowBlurred: boolean
-  isInDeepPause: boolean
-  visibilityState: string
-  forceResume: (...args: unknown[]) => void
-  forcePause: (...args: unknown[]) => void
-}>) => ({
+export const createMockBackgroundManager = (
+  overrides?: Partial<{
+    isHidden: boolean
+    shouldPauseOperations: boolean
+    registerCallback: (...args: unknown[]) => void
+    unregisterCallback: (...args: unknown[]) => void
+    isWindowBlurred: boolean
+    isInDeepPause: boolean
+    visibilityState: string
+    forceResume: (...args: unknown[]) => void
+    forcePause: (...args: unknown[]) => void
+  }>,
+) => ({
   isHidden: false,
   shouldPauseOperations: false,
   // Use plain no-op callbacks so this module can be imported in production
@@ -61,7 +63,7 @@ export const createEvidenceSolution = () => {
   solution[7] = 8
   for (let i = 0; i < 81; i++) {
     if (solution[i] === 0) {
-      solution[i] = ((i % 9) + 1)
+      solution[i] = (i % 9) + 1
     }
   }
   return solution
@@ -71,7 +73,9 @@ export const createEvidenceSolution = () => {
 export const createBugScenarioMoves = () => [
   {
     board: [...createEvidencePuzzle()],
-    candidates: Array(81).fill(null).map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    candidates: Array(81)
+      .fill(null)
+      .map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9]),
     move: {
       step_index: 0,
       technique: 'Naked Single',
@@ -89,7 +93,9 @@ export const createBugScenarioMoves = () => [
       board[1] = 1
       return board
     })(),
-    candidates: Array(81).fill(null).map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    candidates: Array(81)
+      .fill(null)
+      .map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9]),
     move: {
       step_index: 1,
       technique: 'Hidden Single',
@@ -106,7 +112,9 @@ export const createBugScenarioMoves = () => [
 export const createFixedScenarioMoves = () => [
   {
     board: [...createEvidencePuzzle()],
-    candidates: Array(81).fill(null).map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    candidates: Array(81)
+      .fill(null)
+      .map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9]),
     move: {
       step_index: 0,
       technique: 'Naked Single',
@@ -124,7 +132,9 @@ export const createFixedScenarioMoves = () => [
       board[1] = 4
       return board
     })(),
-    candidates: Array(81).fill(null).map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    candidates: Array(81)
+      .fill(null)
+      .map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9]),
     move: {
       step_index: 1,
       technique: 'Hidden Single',
