@@ -1,7 +1,7 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-.PHONY: check check-full test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend help generate-icons dev prod report serve-reports allure-report allure-serve allure-clean
+.PHONY: check check-full test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons dev prod report serve-reports allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Development & Production
@@ -41,6 +41,32 @@ lint-frontend:
 	@echo "[Frontend] Running linter..."
 	@cd frontend && npm run lint
 	@echo "[Frontend] Linting passed!"
+
+#-----------------------------------------------------------------------
+# Formatting
+#-----------------------------------------------------------------------
+
+# Format frontend (Prettier) and Go (gofmt) source in place
+format: format-frontend format-go
+
+# Format frontend source with Prettier (writes)
+format-frontend:
+	@cd frontend && npx prettier --write "src/**/*.{ts,tsx,css}"
+
+# Format Go source with gofmt (writes); excludes cmd/wasm/ build files
+format-go:
+	@gofmt -w $(shell find api -name '*.go' -not -path '*/cmd/wasm/*')
+
+# Check formatting without writing; exits non-zero on drift (CI-friendly)
+format-check: format-check-frontend format-check-go
+
+# Check frontend formatting (Prettier --check)
+format-check-frontend:
+	@cd frontend && npx prettier --check "src/**/*.{ts,tsx,css}"
+
+# Check Go formatting; list and fail if any file is unformatted
+format-check-go:
+	@out=$$(gofmt -l $(shell find api -name '*.go' -not -path '*/cmd/wasm/*')); if [ -n "$$out" ]; then echo "$$out"; exit 1; fi
 
 #-----------------------------------------------------------------------
 # Testing (Allure-Enabled)
@@ -148,6 +174,12 @@ help:
 	@echo "  lint            - Run all linters (Go + Frontend)"
 	@echo "  lint-go         - Run Go linter only"
 	@echo "  lint-frontend   - Run Frontend linter only"
+	@echo ""
+	@echo "Formatting:"
+	@echo "  format          - Format frontend (Prettier) and Go (gofmt) in place"
+	@echo "  format-check    - Check formatting; exit non-zero on drift (CI-friendly)"
+	@echo "  format-frontend - Format frontend source only (Prettier --write)"
+	@echo "  format-go       - Format Go source only (gofmt -w, excl cmd/wasm)"
 	@echo ""
 	@echo "Testing (Allure-Enabled):"
 	@echo "  check            - Fast per-commit gate (lint + go + unit)"
