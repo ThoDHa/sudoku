@@ -329,14 +329,15 @@ jobs:
           go-version: '1.26'
           cache-dependency-path: api/go.sum
 
-      # IMPORTANT: TinyGo version must match local development environment (0.40.1)
+      # IMPORTANT: TinyGo version must match local development environment (0.41.1)
+      # 0.41.1 is the first release supporting Go 1.26 (0.40.1 caps at Go 1.25)
       # Different TinyGo versions produce incompatible WASM binaries
       # See: https://github.com/tinygo-org/tinygo/releases
       - name: Install TinyGo for WASM build
         if: github.ref == 'refs/heads/main'
         run: |
-          wget https://github.com/tinygo-org/tinygo/releases/download/v0.40.1/tinygo_0.40.1_amd64.deb
-          sudo dpkg -i tinygo_0.40.1_amd64.deb
+          wget https://github.com/tinygo-org/tinygo/releases/download/v0.41.1/tinygo_0.41.1_amd64.deb
+          sudo dpkg -i tinygo_0.41.1_amd64.deb
 
       - name: Build WASM for deployment
         if: github.ref == 'refs/heads/main'
