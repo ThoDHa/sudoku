@@ -84,29 +84,23 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
     const currentMove = currentHistory[currentHistoryIndex]
     if (!currentMove) return
 
-    let prevBoard: number[]
-    let prevCandidates: Uint16Array
-
     if (currentMove.stateDiff) {
       const result = unapplyStateDiff(currentBoard, currentCandidates, currentMove.stateDiff)
-      prevBoard = result.board
-      prevCandidates = result.candidates
+      const prevBoard = result.board
+      const prevCandidates = result.candidates
       setBoard(prevBoard)
       setCandidates(prevCandidates)
       // CRITICAL: Update refs synchronously for rapid successive undo calls
       boardRef.current = prevBoard
       candidatesRef.current = prevCandidates
     } else if (currentMove.boardBefore && currentMove.candidatesBefore) {
-      prevBoard = currentMove.boardBefore
-      prevCandidates = new Uint16Array(currentMove.candidatesBefore.flat())
+      const prevBoard = currentMove.boardBefore
+      const prevCandidates = new Uint16Array(currentMove.candidatesBefore.flat())
       setBoard(prevBoard)
       setCandidates(prevCandidates)
       // CRITICAL: Update refs synchronously for rapid successive undo calls
       boardRef.current = prevBoard
       candidatesRef.current = prevCandidates
-    } else {
-      prevBoard = currentBoard
-      prevCandidates = currentCandidates
     }
 
     const newHistoryIndex = currentHistoryIndex - 1
@@ -125,21 +119,15 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
     const nextMove = currentHistory[currentHistoryIndex + 1]
     if (!nextMove) return
 
-    let newBoard: number[]
-    let newCandidates: Uint16Array
-
     if (nextMove.stateDiff) {
       const result = applyStateDiff(currentBoard, currentCandidates, nextMove.stateDiff)
-      newBoard = result.board
-      newCandidates = result.candidates
+      const newBoard = result.board
+      const newCandidates = result.candidates
       setBoard(newBoard)
       setCandidates(newCandidates)
       // CRITICAL: Update refs synchronously for rapid successive redo calls
       boardRef.current = newBoard
       candidatesRef.current = newCandidates
-    } else {
-      newBoard = currentBoard
-      newCandidates = currentCandidates
     }
 
     const newHistoryIndex = currentHistoryIndex + 1
