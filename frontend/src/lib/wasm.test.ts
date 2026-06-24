@@ -49,15 +49,13 @@ function createMockWasmApi() {
     carveGivensWithSubset: vi.fn().mockReturnValue({}),
     validateCustomPuzzle: vi.fn().mockReturnValue({ valid: true, unique: true }),
     validateBoard: vi.fn().mockReturnValue({ valid: true }),
-    getPuzzleForSeed: vi
-      .fn()
-      .mockReturnValue({
-        givens: [],
-        solution: [],
-        puzzleId: 'test',
-        seed: 'test',
-        difficulty: 'easy',
-      }),
+    getPuzzleForSeed: vi.fn().mockReturnValue({
+      givens: [],
+      solution: [],
+      puzzleId: 'test',
+      seed: 'test',
+      difficulty: 'easy',
+    }),
     getVersion: vi.fn().mockReturnValue('1.0.0'),
   }
 }
