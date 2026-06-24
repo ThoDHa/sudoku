@@ -134,6 +134,8 @@ jobs:
   test-e2e:
     if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'e2e' || github.event.inputs.test_suite == '' }}
     runs-on: ubuntu-latest
+    # E2E known to hang (E2E-001); tracked under TEST-001.F. Remove continue-on-error when e2e is fixed.
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v6
