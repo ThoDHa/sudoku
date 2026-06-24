@@ -414,7 +414,7 @@ func hashSeed(seed string) int64 {
 func hashSolution(board []int) string {
 	h := sha256.New()
 	for _, v := range board {
-		h.Write([]byte{byte(v)})
+		h.Write([]byte{byte(v)}) //nolint:gosec // G115: v is a Sudoku digit (0-9); always fits in a byte
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }

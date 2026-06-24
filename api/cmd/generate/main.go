@@ -125,7 +125,7 @@ func generatePuzzle(seed int64) CompactPuzzle {
 	// Convert solution to string
 	solStr := make([]byte, 81)
 	for i, v := range fullGrid {
-		solStr[i] = byte('0' + v)
+		solStr[i] = byte('0' + v) //nolint:gosec // G115: v is a Sudoku digit (0-9); '0'+v is in [48,57], always fits in a byte
 	}
 
 	// Generate puzzles for all difficulties with subset property

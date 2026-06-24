@@ -58,9 +58,10 @@ func TestAutosolverWithNoCandidatesFilled(t *testing.T) {
 			t.Fatalf("Unexpected contradiction at move %d: %s", moveCount+1, move.Explanation)
 		}
 
-		if move.Action == "candidate" {
+		switch move.Action {
+		case "candidate":
 			candidateMoves++
-		} else if move.Action == "assign" {
+		case "assign":
 			assignMoves++
 		}
 
@@ -181,11 +182,12 @@ func TestAutosolverCandidateFillPreventsIncorrectPlacement(t *testing.T) {
 				moves = append(moves, *move)
 
 				// Verify the two-phase approach
-				if move.Action == "candidate" {
+				switch move.Action {
+				case "candidate":
 					if candidateFillingComplete {
 						t.Errorf("Candidate filling move found after candidate filling was supposedly complete: %v", move)
 					}
-				} else if move.Action == "assign" {
+				case "assign":
 					// Once we see an assignment, candidate filling should be complete
 					candidateFillingComplete = true
 
@@ -254,9 +256,10 @@ func TestFindNextMoveTwoPhaseApproach(t *testing.T) {
 		if move == nil {
 			break
 		}
-		if move.Action == "candidate" {
+		switch move.Action {
+		case "candidate":
 			candidateMoves++
-		} else if move.Action == "assign" {
+		case "assign":
 			assignmentMoves++
 		}
 
@@ -429,11 +432,12 @@ func verifyTwoPhaseApproach(t *testing.T, moves []core.Move) {
 	candidatePhaseComplete := false
 
 	for i, move := range moves {
-		if move.Action == "candidate" {
+		switch move.Action {
+		case "candidate":
 			if candidatePhaseComplete {
 				t.Errorf("Candidate filling move found at position %d after candidate phase complete", i)
 			}
-		} else if move.Action == "assign" {
+		case "assign":
 			// First assignment marks candidate phase as complete
 			if !candidatePhaseComplete {
 				candidatePhaseComplete = true

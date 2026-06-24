@@ -128,7 +128,7 @@ func conflictKey(cell1, cell2, val int) string {
 	if cell1 > cell2 {
 		cell1, cell2 = cell2, cell1
 	}
-	return string(rune(cell1)) + "-" + string(rune(cell2)) + "-" + string(rune(val))
+	return string(rune(cell1)) + "-" + string(rune(cell2)) + "-" + string(rune(val)) //nolint:gosec // G115: cell indices are bounded 0-80 and val 1-9 by Sudoku grid constants
 }
 
 // CountSolutions counts solutions up to maxCount. Exported for custom puzzle validation.

@@ -1,73 +1,85 @@
+version: "2"
+run:
+  tests: true
 linters:
   enable:
-    # Default linters
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    
-    # Additional useful linters
     - bodyclose
-    - gofmt
-    - goimports
     - goprintffuncname
     - gosec
     - misspell
     - nakedret
     - nolintlint
     - revive
-    - stylecheck
+    - staticcheck
     - unconvert
     - whitespace
-
-linters-settings:
-  misspell:
-    locale: US
-  revive:
+  settings:
+    misspell:
+      locale: US
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+        - name: var-declaration
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: indent-error-flow
+        - name: errorf
+        - name: superfluous-else
+        - name: unreachable-code
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: if-return
-      - name: increment-decrement
-      - name: var-naming
-      - name: var-declaration
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: indent-error-flow
-      - name: errorf
-      - name: superfluous-else
-      - name: unreachable-code
-
+      # Relax strict checks on test files
+      - linters:
+          - bodyclose
+          - errcheck
+          - gosec
+        path: _test\.go
+      # Sudoku human-solving techniques use complex algorithms; relax gosec
+      - linters:
+          - gosec
+        path: internal/sudoku/human/
+      # G602 false positives: dp solver accesses board[idx] where idx is always
+      # validated in [0, TotalCells-1] before use and board has exactly TotalCells
+      # (81) elements. gosec cannot prove the bound statically.
+      - linters:
+          - gosec
+        path: internal/sudoku/dp/
+        text: "G602"
+    paths:
+      # WASM files require GOOS=js GOARCH=wasm build environment which
+      # golangci-lint cannot provide. These files are validated by TinyGo build.
+      - cmd/wasm
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-rules:
-    # Exclude some linters from running on test files
-    - path: _test\.go
-      linters:
-        - gosec
-        - errcheck
-        - bodyclose
-    
-    # Exclude complex algorithm files from some strict rules
-    - path: internal/sudoku/human/
-      linters:
-        - gosec
-
-  # Skip WASM files - they require GOOS=js GOARCH=wasm build environment
-  # which golangci-lint cannot provide. These files are validated by TinyGo build.
-  exclude-dirs:
-    - cmd/wasm
-
   max-issues-per-linter: 0
   max-same-issues: 0
-
-run:
-  timeout: 5m
-  tests: true
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      # WASM files require GOOS=js GOARCH=wasm build environment
+      - cmd/wasm
+      - third_party$
+      - builtin$
+      - examples$
