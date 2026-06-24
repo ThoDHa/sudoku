@@ -179,6 +179,7 @@ export default defineConfig({
     ...pwaPlugins
   ],
   server: {
+    host: true,
     proxy: {
       '/api': 'http://localhost:8080',
       '/health': 'http://localhost:8080',
