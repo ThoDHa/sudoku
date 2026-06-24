@@ -1,0 +1,10 @@
+# Test image for `make test-unit`. Distinct from the production
+# frontend/Dockerfile, which ends on nginx:alpine with no node at runtime.
+# Build context is frontend/ (see Makefile test-unit target), so COPY paths
+# are relative to frontend/, not to the repo root.
+FROM node:24-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+CMD ["npm", "run", "test:unit"]

@@ -56,6 +56,10 @@ yarn-error.log*
 
 # Go specific
 *.test
+# Exception: keep the frontend test image tracked. The *.test rule above is
+# for compiled Go test binaries, but it also matches frontend/Dockerfile.test,
+# which make test-unit needs at build time.
+!frontend/Dockerfile.test
 *.out
 
 # Go workspace file
