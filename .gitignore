@@ -28,6 +28,8 @@ test-results/
 # Allure test reports
 allure-results/
 allure-report/
+# Dated full-run Allure outputs (build artifacts, not source)
+reports/
 
 # Environment files
 .env

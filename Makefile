@@ -1,7 +1,7 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-.PHONY: check check-full test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend help generate-icons dev prod allure-report allure-serve allure-clean
+.PHONY: check check-full test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend help generate-icons dev prod report serve-reports allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Development & Production
@@ -150,18 +150,22 @@ help:
 	@echo "  lint-frontend   - Run Frontend linter only"
 	@echo ""
 	@echo "Testing (Allure-Enabled):"
-	@echo "  check           - Run all checks (lint + all tests)"
-	@echo "  test            - Run all tests with Allure output"
-	@echo "  test-go         - Run Go tests with Allure output"
-	@echo "  test-unit       - Run Frontend unit tests with Allure output (Docker)"
-	@echo "  test-e2e        - Run E2E tests with Allure output (Docker)"
+	@echo "  check            - Fast per-commit gate (lint + go + unit)"
+	@echo "  check-full       - Full gate incl. e2e (lint + go + unit + e2e)"
+	@echo "  test             - Full test run incl. e2e (Go + unit + E2E)"
+	@echo "  test-go          - Run Go tests with Allure output"
+	@echo "  test-unit        - Run Frontend unit tests with Allure output (Docker)"
+	@echo "  test-e2e         - Run E2E tests with Allure output (Docker)"
 	@echo "  test-integration - Run integration tests with Allure output (Docker)"
-	@echo "  test-frontend   - Run all Frontend tests (unit + E2E) with Allure"
+	@echo "  test-frontend    - Run all Frontend tests (unit + E2E) with Allure"
 	@echo ""
 	@echo "Allure Reporting:"
-	@echo "  allure-report   - Generate combined Allure report"
-	@echo "  allure-serve    - Serve Allure report locally (opens browser)"
-	@echo "  allure-clean    - Clean all Allure artifacts"
+	@echo "  report           - Generate dated Allure report from the latest full run"
+	@echo "                     (reports/<YYYYMMDD-HHMM>-allure/; refreshes latest-allure)"
+	@echo "  serve-reports    - Serve latest Allure report on 0.0.0.0:8099 (LAN)"
+	@echo "  allure-report    - (legacy) generate combined report into ./allure-report"
+	@echo "  allure-serve     - (legacy) serve Allure report locally (opens browser)"
+	@echo "  allure-clean     - Clean all Allure artifacts"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  generate-icons  - Generate PWA icons from SVG"
@@ -169,6 +173,37 @@ help:
 #-----------------------------------------------------------------------
 # Allure Test Reporting
 #-----------------------------------------------------------------------
+
+# Generate the Allure report from the latest FULL test run (make test).
+# Each run is kept in a dated folder reports/<YYYYMMDD-HHMM>-allure/ and
+# reports/latest-allure/ is refreshed to point at it. Coverage and mutation
+# outputs are intentionally excluded; use their native viewers for those.
+report:
+	@stamp=$$(date +%Y%m%d-%H%M); \
+	outdir="reports/$$stamp-allure"; \
+	if [ ! -d allure-results ] || [ -z "$$(ls -A allure-results 2>/dev/null)" ]; then \
+		echo "Run 'make test' first — make report needs allure-results from a full test run." >&2; \
+		exit 1; \
+	fi; \
+	mkdir -p allure-results reports; \
+	cp -r api/allure-results/* allure-results/ 2>/dev/null || true; \
+	cp -r frontend/allure-results/* allure-results/ 2>/dev/null || true; \
+	(cd frontend && npx allure generate ../allure-results -o ../$$outdir --clean); \
+	rm -rf reports/latest-allure; \
+	ln -s "$$stamp-allure" reports/latest-allure; \
+	echo ""; \
+	echo "========================================"; \
+	echo "  Allure report: $$outdir"; \
+	echo "  latest:        reports/latest-allure -> $$stamp-allure"; \
+	echo "  Serve with:    make serve-reports"; \
+	echo "========================================"
+
+# Serve the latest Allure report on the LAN (0.0.0.0:8099).
+# Blocks until interrupted; browse http://<host-LAN-IP>:8099/.
+serve-reports:
+	@echo "Serving latest Allure report on http://0.0.0.0:8099 (LAN-reachable)..."
+	@echo "Browse http://<this-host-LAN-IP>:8099/ from any machine on the network."
+	@cd frontend && npx allure open ../reports/latest-allure --host 0.0.0.0 --port 8099
 
 # Generate combined Allure report from all test results
 allure-report:
