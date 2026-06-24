@@ -71,6 +71,7 @@ go.work.sum
 # Code coverage profiles and other test artifacts
 coverage.*
 profile.cov
+frontend/coverage/
 
 # Python cache (for debug scripts)
 __pycache__/
