@@ -2,6 +2,7 @@ import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import eslintConfigPrettier from 'eslint-config-prettier'
 
 export default tseslint.config(
   // Ignore patterns - including test files that aren't in tsconfig
@@ -62,4 +63,7 @@ export default tseslint.config(
       'prefer-const': 'error',
     },
   },
+
+  // Disable formatting rules that conflict with Prettier - MUST be last
+  eslintConfigPrettier,
 )
