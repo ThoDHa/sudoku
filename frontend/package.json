@@ -53,7 +53,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.26",
     "husky": "^9.1.7",
-    "jsdom": "^27.4.0",
+    "jsdom": "^29.1.1",
     "playwright": "^1.57.0",
     "postcss": "^8.4.33",
     "prettier": "^3.8.4",
