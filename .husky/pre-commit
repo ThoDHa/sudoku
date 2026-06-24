@@ -74,6 +74,40 @@ fi
    echo "✅ golangci-lint passed!"
  fi
 
+# Run Prettier format check on staged frontend source files.
+# Includes test files: Prettier formats them, unlike ESLint (which ignores them).
+PRETTIER_FILES=$(echo "$STAGED_FILES" | grep -E '^frontend/src/.*\.(ts|tsx|css)$' || true)
+if [ -n "$PRETTIER_FILES" ]; then
+  echo ""
+  echo "Running Prettier format check on staged frontend files..."
+  cd frontend
+  if ! npx prettier --check $(echo "$PRETTIER_FILES" | sed 's|^frontend/||'); then
+    echo ""
+    echo "❌ Prettier found formatting drift in staged files!"
+    echo ""
+    echo "Run 'make format-frontend' to fix, then re-stage."
+    exit 1
+  fi
+  cd ..
+  echo "✅ Prettier format check passed!"
+fi
+
+# Run gofmt check on staged Go files (fast pre-check alongside golangci-lint)
+if [ -n "$GO_FILES" ]; then
+  echo ""
+  echo "Running gofmt check on staged Go files..."
+  GOFMT_OUT=$(gofmt -l $(echo "$GO_FILES"))
+  if [ -n "$GOFMT_OUT" ]; then
+    echo "$GOFMT_OUT"
+    echo ""
+    echo "❌ gofmt found formatting drift in staged files!"
+    echo ""
+    echo "Run 'make format-go' to fix, then re-stage."
+    exit 1
+  fi
+  echo "✅ gofmt check passed!"
+fi
+
 # If no relevant files were staged, just pass
 if [ -z "$FRONTEND_FILES" ] && [ -z "$GO_FILES" ]; then
   echo "No linterable files staged. Skipping linter checks."

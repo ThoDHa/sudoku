@@ -1,0 +1,6 @@
+# Commits whose churn should be skipped by git blame.
+# Use with: git blame --ignore-revs-file .git-blame-ignore-revs <file>
+# (or set git config blame.ignoreRevsFile .git-blame-ignore-revs)
+
+# LINT-001.C: project-wide format pass
+87c5bfd3cc3ab1b482c3307350d0233f7f5698a5
