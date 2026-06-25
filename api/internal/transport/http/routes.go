@@ -64,6 +64,80 @@ func TodayUTC() string {
 	return time.Now().UTC().Format(constants.DateFormat)
 }
 
+// validateDifficulty reports whether d is one of the supported difficulties.
+func validateDifficulty(d core.Difficulty) bool {
+	switch d {
+	case core.DifficultyEasy, core.DifficultyMedium, core.DifficultyHard,
+		core.DifficultyExtreme, core.DifficultyImpossible:
+		return true
+	}
+	return false
+}
+
+// writeInvalidDifficulty writes the standard 400 response for an unsupported
+// difficulty. Kept centralized so every handler reports the same message.
+func writeInvalidDifficulty(c *gin.Context, got core.Difficulty) {
+	c.JSON(http.StatusBadRequest, gin.H{
+		"error": fmt.Sprintf(
+			"invalid difficulty '%s'. Must be one of: %s, %s, %s, %s, %s",
+			got, core.DifficultyEasy, core.DifficultyMedium, core.DifficultyHard,
+			core.DifficultyExtreme, core.DifficultyImpossible,
+		),
+	})
+}
+
+// requireBoardLength writes a 400 and returns false when board is not the
+// expected Sudoku cell count. Returns true when the caller may proceed.
+func requireBoardLength(c *gin.Context, board []int) bool {
+	if len(board) != constants.TotalCells {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("board must have %d cells", constants.TotalCells),
+		})
+		return false
+	}
+	return true
+}
+
+// buildFixedCandidates clones the user's candidate grid for a fix response,
+// clearing the candidates of the cell being removed (badCell). It always
+// returns a full TotalCells-length grid so downstream code can index safely
+// even when reqCandidates is shorter or empty.
+func buildFixedCandidates(reqCandidates [][]int, badCell int) [][]int {
+	fixed := make([][]int, constants.TotalCells)
+	for i := 0; i < constants.TotalCells; i++ {
+		if i == badCell {
+			fixed[i] = nil // Clear candidates for the fixed cell
+		} else if i < len(reqCandidates) && reqCandidates[i] != nil {
+			fixed[i] = make([]int, len(reqCandidates[i]))
+			copy(fixed[i], reqCandidates[i])
+		}
+	}
+	return fixed
+}
+
+// resolveGivens returns the puzzle's original givens, preferring the value
+// supplied in the request and falling back to the loader or on-demand
+// generation from the session seed when it is not the right length.
+func resolveGivens(session *SessionToken, reqGivens []int) []int {
+	givens := reqGivens
+	if len(givens) == constants.TotalCells {
+		return givens
+	}
+
+	loader := puzzles.Global()
+	if loader != nil {
+		givens, _, _, _ = loader.GetPuzzleBySeed(session.Seed, session.Difficulty)
+	}
+	if len(givens) == constants.TotalCells {
+		return givens
+	}
+
+	seedHash := hashSeed(session.Seed)
+	fullGrid := dp.GenerateFullGrid(seedHash)
+	allPuzzles := dp.CarveGivensWithSubset(fullGrid, seedHash)
+	return allPuzzles[session.Difficulty]
+}
+
 func dailyHandler(c *gin.Context) {
 	dateUTC := TodayUTC()
 
@@ -93,12 +167,8 @@ func puzzleHandler(c *gin.Context) {
 	}
 
 	// Validate difficulty
-	if difficulty != core.DifficultyEasy &&
-		difficulty != core.DifficultyMedium &&
-		difficulty != core.DifficultyHard &&
-		difficulty != core.DifficultyExtreme &&
-		difficulty != core.DifficultyImpossible {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid difficulty '%s'. Must be one of: %s, %s, %s, %s, %s", difficulty, core.DifficultyEasy, core.DifficultyMedium, core.DifficultyHard, core.DifficultyExtreme, core.DifficultyImpossible)})
+	if !validateDifficulty(difficulty) {
+		writeInvalidDifficulty(c, difficulty)
 		return
 	}
 
@@ -147,12 +217,8 @@ func puzzleAnalyzeHandler(c *gin.Context) {
 	}
 
 	// Validate difficulty
-	if difficulty != core.DifficultyEasy &&
-		difficulty != core.DifficultyMedium &&
-		difficulty != core.DifficultyHard &&
-		difficulty != core.DifficultyExtreme &&
-		difficulty != core.DifficultyImpossible {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid difficulty '%s'. Must be one of: %s, %s, %s, %s, %s", difficulty, core.DifficultyEasy, core.DifficultyMedium, core.DifficultyHard, core.DifficultyExtreme, core.DifficultyImpossible)})
+	if !validateDifficulty(difficulty) {
+		writeInvalidDifficulty(c, difficulty)
 		return
 	}
 
@@ -212,6 +278,55 @@ type practicePuzzle struct {
 	difficulty string
 }
 
+// techniqueToDifficulties maps a practice technique slug to the puzzle
+// difficulties worth searching. It is constant lookup data, kept at package
+// scope so it is allocated once rather than rebuilt on every practice request.
+var techniqueToDifficulties = map[string][]string{
+	// Simple techniques: found in all difficulties, but easier puzzles have more obvious examples
+	"naked-single":       {"easy", "medium"},
+	"hidden-single":      {"easy", "medium"},
+	"pointing-pair":      {"easy", "medium", "hard"},
+	"box-line-reduction": {"easy", "medium", "hard"},
+	"naked-pair":         {"easy", "medium", "hard"},
+	"hidden-pair":        {"easy", "medium", "hard"},
+
+	// Medium techniques
+	"naked-triple":    {"easy", "medium", "hard", "extreme", "impossible"},
+	"hidden-triple":   {"easy", "medium", "hard", "extreme", "impossible"},
+	"naked-quad":      {"hard", "extreme"},
+	"hidden-quad":     {"hard", "extreme"},
+	"x-wing":          {"medium", "hard", "extreme"},
+	"xy-wing":         {"medium", "hard", "extreme"},
+	"simple-coloring": {"medium", "hard", "extreme"},
+
+	// Hard techniques
+	"swordfish":        {"medium", "hard", "extreme", "impossible"},
+	"skyscraper":       {"hard", "extreme", "impossible"},
+	"finned-x-wing":    {"impossible"},
+	"finned-swordfish": {"impossible"},
+	"unique-rectangle": {"medium", "hard", "extreme", "impossible"},
+	"bug":              {"medium", "hard", "extreme", "impossible"},
+	"jellyfish":        {"extreme", "impossible"},
+	"x-chain":          {"hard", "extreme", "impossible"},
+	"xy-chain":         {"hard", "extreme", "impossible"},
+	"w-wing":           {"hard", "extreme", "impossible"},
+	"empty-rectangle":  {"hard", "extreme", "impossible"},
+	"xyz-wing":         {"medium", "hard", "extreme", "impossible"},
+	"wxyz-wing":        {"hard", "extreme", "impossible"},
+	"als-xz":           {"impossible"},
+
+	// Extreme techniques
+	"sue-de-coq":          {"impossible"},
+	"medusa-3d":           {"hard", "extreme", "impossible"},
+	"grouped-x-cycles":    {"impossible"},
+	"aic":                 {"impossible"},
+	"als-xy-wing":         {"impossible"},
+	"als-xy-chain":        {"impossible"},
+	"forcing-chain":       {"impossible"},
+	"digit-forcing-chain": {"impossible"},
+	"death-blossom":       {"impossible"},
+}
+
 // practiceHandler finds a puzzle requiring a specific technique for practice purposes
 //
 // This endpoint searches the pre-generated puzzle database to find a puzzle that uses
@@ -253,54 +368,6 @@ func practiceHandler(c *gin.Context) {
 	if loader == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "puzzles not loaded"})
 		return
-	}
-
-	// Map technique to appropriate difficulty levels to search
-	// Simple techniques are in all puzzles, medium in medium+, etc.
-	techniqueToDifficulties := map[string][]string{
-		// Simple techniques: found in all difficulties, but easier puzzles have more obvious examples
-		"naked-single":       {"easy", "medium"},
-		"hidden-single":      {"easy", "medium"},
-		"pointing-pair":      {"easy", "medium", "hard"},
-		"box-line-reduction": {"easy", "medium", "hard"},
-		"naked-pair":         {"easy", "medium", "hard"},
-		"hidden-pair":        {"easy", "medium", "hard"},
-
-		// Medium techniques
-		"naked-triple":    {"easy", "medium", "hard", "extreme", "impossible"},
-		"hidden-triple":   {"easy", "medium", "hard", "extreme", "impossible"},
-		"naked-quad":      {"hard", "extreme"},
-		"hidden-quad":     {"hard", "extreme"},
-		"x-wing":          {"medium", "hard", "extreme"},
-		"xy-wing":         {"medium", "hard", "extreme"},
-		"simple-coloring": {"medium", "hard", "extreme"},
-
-		// Hard techniques
-		"swordfish":        {"medium", "hard", "extreme", "impossible"},
-		"skyscraper":       {"hard", "extreme", "impossible"},
-		"finned-x-wing":    {"impossible"},
-		"finned-swordfish": {"impossible"},
-		"unique-rectangle": {"medium", "hard", "extreme", "impossible"},
-		"bug":              {"medium", "hard", "extreme", "impossible"},
-		"jellyfish":        {"extreme", "impossible"},
-		"x-chain":          {"hard", "extreme", "impossible"},
-		"xy-chain":         {"hard", "extreme", "impossible"},
-		"w-wing":           {"hard", "extreme", "impossible"},
-		"empty-rectangle":  {"hard", "extreme", "impossible"},
-		"xyz-wing":         {"medium", "hard", "extreme", "impossible"},
-		"wxyz-wing":        {"hard", "extreme", "impossible"},
-		"als-xz":           {"impossible"},
-
-		// Extreme techniques
-		"sue-de-coq":          {"impossible"},
-		"medusa-3d":           {"hard", "extreme", "impossible"},
-		"grouped-x-cycles":    {"impossible"},
-		"aic":                 {"impossible"},
-		"als-xy-wing":         {"impossible"},
-		"als-xy-chain":        {"impossible"},
-		"forcing-chain":       {"impossible"},
-		"digit-forcing-chain": {"impossible"},
-		"death-blossom":       {"impossible"},
 	}
 
 	difficulties, known := techniqueToDifficulties[technique]
@@ -434,12 +501,8 @@ func sessionStartHandler(c *gin.Context) {
 
 	// Validate difficulty
 	difficulty := core.Difficulty(req.Difficulty)
-	if difficulty != core.DifficultyEasy &&
-		difficulty != core.DifficultyMedium &&
-		difficulty != core.DifficultyHard &&
-		difficulty != core.DifficultyExtreme &&
-		difficulty != core.DifficultyImpossible {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid difficulty '%s'. Must be one of: %s, %s, %s, %s, %s", req.Difficulty, core.DifficultyEasy, core.DifficultyMedium, core.DifficultyHard, core.DifficultyExtreme, core.DifficultyImpossible)})
+	if !validateDifficulty(difficulty) {
+		writeInvalidDifficulty(c, difficulty)
 		return
 	}
 
@@ -490,27 +553,12 @@ func solveNextHandler(c *gin.Context) {
 		return
 	}
 
-	if len(req.Board) != constants.TotalCells {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("board must have %d cells", constants.TotalCells)})
+	if !requireBoardLength(c, req.Board) {
 		return
 	}
 
 	// Get original givens - either from request or regenerate from session
-	givens := req.Givens
-	if len(givens) != constants.TotalCells {
-		// Regenerate givens from session info
-		loader := puzzles.Global()
-		if loader != nil {
-			givens, _, _, _ = loader.GetPuzzleBySeed(session.Seed, session.Difficulty)
-		}
-		if len(givens) != constants.TotalCells {
-			// Fallback: generate on-demand
-			seedHash := hashSeed(session.Seed)
-			fullGrid := dp.GenerateFullGrid(seedHash)
-			allPuzzles := dp.CarveGivensWithSubset(fullGrid, seedHash)
-			givens = allPuzzles[session.Difficulty]
-		}
-	}
+	givens := resolveGivens(session, req.Givens)
 
 	// STEP 1: Check for direct conflicts FIRST (before running solver)
 	// These are immediate rule violations: same digit twice in a row/column/box
@@ -552,15 +600,7 @@ func solveNextHandler(c *gin.Context) {
 			fixedBoard[badCell] = 0
 
 			// Preserve user's candidates but clear the fixed cell's candidates
-			fixedCandidates := make([][]int, constants.TotalCells)
-			for i := 0; i < constants.TotalCells; i++ {
-				if i == badCell {
-					fixedCandidates[i] = nil // Clear candidates for the fixed cell
-				} else if i < len(req.Candidates) && req.Candidates[i] != nil {
-					fixedCandidates[i] = make([]int, len(req.Candidates[i]))
-					copy(fixedCandidates[i], req.Candidates[i])
-				}
-			}
+			fixedCandidates := buildFixedCandidates(req.Candidates, badCell)
 
 			// Create explanation based on conflict type
 			var explanation string
@@ -627,15 +667,7 @@ func solveNextHandler(c *gin.Context) {
 
 				// Preserve user's candidates but clear the fixed cell's candidates
 				// Always allocate full grid slots even if req.Candidates is shorter/empty
-				fixedCandidates := make([][]int, constants.TotalCells)
-				for i := 0; i < constants.TotalCells; i++ {
-					if i == badCell {
-						fixedCandidates[i] = nil // Clear candidates for the fixed cell
-					} else if i < len(req.Candidates) && req.Candidates[i] != nil {
-						fixedCandidates[i] = make([]int, len(req.Candidates[i]))
-						copy(fixedCandidates[i], req.Candidates[i])
-					}
-				}
+				fixedCandidates := buildFixedCandidates(req.Candidates, badCell)
 
 				// Reset the board to the fixed state, preserving user's candidates
 				newBoard := human.NewBoardWithCandidates(fixedBoard, fixedCandidates)
@@ -673,15 +705,7 @@ func solveNextHandler(c *gin.Context) {
 
 			// Preserve user's candidates but clear the fixed cell's candidates
 			// Always allocate full grid slots even if req.Candidates is shorter/empty
-			fixedCandidates := make([][]int, constants.TotalCells)
-			for i := 0; i < constants.TotalCells; i++ {
-				if i == badCell {
-					fixedCandidates[i] = nil // Clear candidates for the fixed cell
-				} else if i < len(req.Candidates) && req.Candidates[i] != nil {
-					fixedCandidates[i] = make([]int, len(req.Candidates[i]))
-					copy(fixedCandidates[i], req.Candidates[i])
-				}
-			}
+			fixedCandidates := buildFixedCandidates(req.Candidates, badCell)
 
 			// Reset the board to the fixed state, preserving user's candidates
 			newBoard := human.NewBoardWithCandidates(fixedBoard, fixedCandidates)
@@ -964,27 +988,12 @@ func solveAllHandler(c *gin.Context) {
 		return
 	}
 
-	if len(req.Board) != constants.TotalCells {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("board must have %d cells", constants.TotalCells)})
+	if !requireBoardLength(c, req.Board) {
 		return
 	}
 
 	// Get original givens - either from request or regenerate from session
-	givens := req.Givens
-	if len(givens) != constants.TotalCells {
-		// Regenerate givens from session info
-		loader := puzzles.Global()
-		if loader != nil {
-			givens, _, _, _ = loader.GetPuzzleBySeed(session.Seed, session.Difficulty)
-		}
-		if len(givens) != constants.TotalCells {
-			// Fallback: generate on-demand
-			seedHash := hashSeed(session.Seed)
-			fullGrid := dp.GenerateFullGrid(seedHash)
-			allPuzzles := dp.CarveGivensWithSubset(fullGrid, seedHash)
-			givens = allPuzzles[session.Difficulty]
-		}
-	}
+	givens := resolveGivens(session, req.Givens)
 
 	// MoveResult represents a single move result snapshot returned to clients
 	type MoveResult struct {
@@ -1034,15 +1043,7 @@ func solveAllHandler(c *gin.Context) {
 			fixedBoard[badCell] = 0
 
 			// Preserve user's candidates but clear the fixed cell's candidates
-			fixedCandidates := make([][]int, constants.TotalCells)
-			for i := 0; i < constants.TotalCells; i++ {
-				if i == badCell {
-					fixedCandidates[i] = nil // Clear candidates for the fixed cell
-				} else if i < len(req.Candidates) && req.Candidates[i] != nil {
-					fixedCandidates[i] = make([]int, len(req.Candidates[i]))
-					copy(fixedCandidates[i], req.Candidates[i])
-				}
-			}
+			fixedCandidates := buildFixedCandidates(req.Candidates, badCell)
 
 			// Create explanation based on conflict type
 			var explanation string
@@ -1449,8 +1450,7 @@ func solveFullHandler(c *gin.Context) {
 		return
 	}
 
-	if len(req.Board) != constants.TotalCells {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("board must have %d cells", constants.TotalCells)})
+	if !requireBoardLength(c, req.Board) {
 		return
 	}
 
@@ -1501,8 +1501,7 @@ func validateBoardHandler(c *gin.Context) {
 		return
 	}
 
-	if len(req.Board) != constants.TotalCells {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("board must have %d cells", constants.TotalCells)})
+	if !requireBoardLength(c, req.Board) {
 		return
 	}
 
