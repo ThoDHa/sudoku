@@ -98,6 +98,23 @@ func requireBoardLength(c *gin.Context, board []int) bool {
 	return true
 }
 
+// requireBoardValues writes a 400 and returns false when any cell of board holds
+// a value outside the legal Sudoku digit range 0-9 (0 denotes an empty cell).
+// The HTTP boundary is the public attack surface, so malformed digits are
+// rejected explicitly rather than flowing into the solvers. Returns true when
+// the caller may proceed.
+func requireBoardValues(c *gin.Context, board []int) bool {
+	for _, v := range board {
+		if v < 0 || v > 9 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("board cell value %d is out of range; each cell must be 0-9", v),
+			})
+			return false
+		}
+	}
+	return true
+}
+
 // buildFixedCandidates clones the user's candidate grid for a fix response,
 // clearing the candidates of the cell being removed (badCell). It always
 // returns a full TotalCells-length grid so downstream code can index safely
@@ -556,6 +573,9 @@ func solveNextHandler(c *gin.Context) {
 	if !requireBoardLength(c, req.Board) {
 		return
 	}
+	if !requireBoardValues(c, req.Board) {
+		return
+	}
 
 	// Get original givens - either from request or regenerate from session
 	givens := resolveGivens(session, req.Givens)
@@ -989,6 +1009,9 @@ func solveAllHandler(c *gin.Context) {
 	}
 
 	if !requireBoardLength(c, req.Board) {
+		return
+	}
+	if !requireBoardValues(c, req.Board) {
 		return
 	}
 
@@ -1453,6 +1476,9 @@ func solveFullHandler(c *gin.Context) {
 	if !requireBoardLength(c, req.Board) {
 		return
 	}
+	if !requireBoardValues(c, req.Board) {
+		return
+	}
 
 	mode := c.Query("mode")
 	if mode == "" {
@@ -1502,6 +1528,9 @@ func validateBoardHandler(c *gin.Context) {
 	}
 
 	if !requireBoardLength(c, req.Board) {
+		return
+	}
+	if !requireBoardValues(c, req.Board) {
 		return
 	}
 
@@ -1561,6 +1590,9 @@ func customValidateHandler(c *gin.Context) {
 
 	if len(req.Givens) != constants.TotalCells {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("givens must have %d cells", constants.TotalCells)})
+		return
+	}
+	if !requireBoardValues(c, req.Givens) {
 		return
 	}
 
