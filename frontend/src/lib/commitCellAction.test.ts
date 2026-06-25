@@ -87,8 +87,8 @@ describe('commitCellAction redo', () => {
 describe('commitCellAction unknown action', () => {
   it('throws an error naming the unknown action type', () => {
     const game = makeGame()
-    expect(() =>
-      commitCellAction('bogus' as never, { game: game as never }),
-    ).toThrowError(/Unknown actionType: bogus/)
+    expect(() => commitCellAction('bogus' as never, { game: game as never })).toThrowError(
+      /Unknown actionType: bogus/,
+    )
   })
 })
