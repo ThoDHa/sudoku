@@ -253,3 +253,51 @@ describe('wasm.worker init failure', () => {
     })
   })
 })
+
+describe('wasm.worker init polling timeout', () => {
+  let sink: WorkerGlobalMock
+
+  beforeEach(() => {
+    posted = []
+    vi.useFakeTimers()
+    sink = installWorkerGlobals()
+    installWasmRuntimeMocks()
+
+    class SilentGoMock {
+      importObject = {}
+      run() {}
+    }
+    Object.defineProperty(globalThis, 'Go', {
+      value: SilentGoMock,
+      configurable: true,
+      writable: true,
+    })
+    Object.defineProperty(globalThis, 'SudokuWasm', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    clearWorkerGlobals()
+  })
+
+  it('posts an init-timeout error when SudokuWasm never appears', async () => {
+    await import('./wasm.worker')
+    posted.length = 0
+
+    post({ type: 'init', id: 'init-timeout' })
+
+    await vi.advanceTimersByTimeAsync(5100)
+
+    expect(posted).toContainEqual({
+      type: 'error',
+      id: 'init-timeout',
+      success: false,
+      error: 'WASM initialization timeout',
+    })
+    expect(sink.close).not.toHaveBeenCalled()
+  })
+})
