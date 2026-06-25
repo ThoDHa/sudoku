@@ -26,13 +26,6 @@ function makeCallbacks() {
   }
 }
 
-function opts(overrides: Partial<CommitCellActionOptions> = {}): CommitCellActionOptions {
-  return {
-    game: makeGame() as unknown as CommitCellActionOptions['game'],
-    ...overrides,
-  } as CommitCellActionOptions
-}
-
 describe('commitCellAction erase', () => {
   it('erases the cell at the given index and resets erase UI state', () => {
     const game = makeGame()
@@ -93,8 +86,9 @@ describe('commitCellAction redo', () => {
 
 describe('commitCellAction unknown action', () => {
   it('throws an error naming the unknown action type', () => {
-    expect(() => commitCellAction('bogus' as never, opts())).toThrowError(
-      /Unknown actionType: bogus/,
-    )
+    const game = makeGame()
+    expect(() =>
+      commitCellAction('bogus' as never, { game: game as never }),
+    ).toThrowError(/Unknown actionType: bogus/)
   })
 })

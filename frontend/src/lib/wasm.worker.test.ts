@@ -127,8 +127,7 @@ describe('wasm.worker message protocol', () => {
   })
 
   async function loadWorker() {
-    const mod = await import('./wasm.worker')
-    return mod
+    await import('./wasm.worker')
   }
 
   it('posts a loaded signal when the worker script finishes loading', async () => {

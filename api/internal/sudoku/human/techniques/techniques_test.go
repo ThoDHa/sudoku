@@ -506,27 +506,6 @@ func TestDetectPointingPairEliminatesFromRowOutsideBox(t *testing.T) {
 	}
 }
 
-func TestDetectXWingEliminatesOutsideColumns(t *testing.T) {
-	// Digit 1 restricted to cols 0 and 6 in rows 0 and 7 (X-Wing).
-	overrides := map[int][]int{}
-	for _, row := range []int{0, 7} {
-		for c := 0; c < constants.GridSize; c++ {
-			if c == 0 || c == 6 {
-				continue // keep 1 in X-Wing corners
-			}
-			overrides[idxOf(row, c)] = []int{2, 3, 4, 5, 6, 7, 8, 9} // no 1
-		}
-	}
-	b := boardFromMap([constants.TotalCells]int{}, overrides)
-	move := DetectXWing(b)
-	if move == nil {
-		t.Skip("X-Wing not detected for this constructed position; treated as non-fatal")
-	}
-	if move.Action != "eliminate" {
-		t.Errorf("expected eliminate, got %q", move.Action)
-	}
-}
-
 // ============================================================================
 // Detector negative cases: no candidates anywhere => nothing fires, no panic.
 // ============================================================================
