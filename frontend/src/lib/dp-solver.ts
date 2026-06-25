@@ -10,7 +10,7 @@
  * For hints and human-style solving, WASM is still required.
  */
 
-import { SUBGRID_SIZE } from './constants'
+import { BOARD_SIZE, SUBGRID_SIZE } from './constants'
 
 // ==================== Types ====================
 
@@ -73,95 +73,61 @@ export function findConflicts(grid: number[]): Conflict[] {
     }
   }
 
-  // Helper to safely get grid value
-  const getCell = (idx: number): number => grid[idx] ?? 0
-
-  // Check rows
-  for (let row = 0; row < 9; row++) {
+  // Collect every conflicting pair inside one unit (a row, column, or box).
+  // `seen` is shared across all units so a pair that conflicts in more than
+  // one unit (e.g. two cells sharing both a row and a box) is reported once.
+  const findInUnit = (cellIndices: number[], type: Conflict['type']) => {
     const positions = new Map<number, number[]>()
-    for (let col = 0; col < 9; col++) {
-      const val = getCell(row * 9 + col)
+    for (const idx of cellIndices) {
+      const val = grid[idx] ?? 0
       if (val === 0) continue
       let arr = positions.get(val)
       if (!arr) {
         arr = []
         positions.set(val, arr)
       }
-      arr.push(col)
-    }
-    for (const [val, cols] of positions) {
-      if (cols.length > 1) {
-        for (let i = 0; i < cols.length; i++) {
-          for (let j = i + 1; j < cols.length; j++) {
-            const c1 = cols[i]
-            const c2 = cols[j]
-            if (c1 !== undefined && c2 !== undefined) {
-              addConflict(row * 9 + c1, row * 9 + c2, val, 'row')
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Check columns
-  for (let col = 0; col < 9; col++) {
-    const positions = new Map<number, number[]>()
-    for (let row = 0; row < 9; row++) {
-      const val = getCell(row * 9 + col)
-      if (val === 0) continue
-      let arr = positions.get(val)
-      if (!arr) {
-        arr = []
-        positions.set(val, arr)
-      }
-      arr.push(row)
-    }
-    for (const [val, rows] of positions) {
-      if (rows.length > 1) {
-        for (let i = 0; i < rows.length; i++) {
-          for (let j = i + 1; j < rows.length; j++) {
-            const r1 = rows[i]
-            const r2 = rows[j]
-            if (r1 !== undefined && r2 !== undefined) {
-              addConflict(r1 * 9 + col, r2 * 9 + col, val, 'column')
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Check boxes
-  for (let box = 0; box < 9; box++) {
-    const positions = new Map<number, number[]>()
-    const boxRow = Math.floor(box / SUBGRID_SIZE) * SUBGRID_SIZE
-    const boxCol = (box % SUBGRID_SIZE) * SUBGRID_SIZE
-    for (let r = boxRow; r < boxRow + SUBGRID_SIZE; r++) {
-      for (let c = boxCol; c < boxCol + SUBGRID_SIZE; c++) {
-        const val = getCell(r * 9 + c)
-        if (val === 0) continue
-        let arr = positions.get(val)
-        if (!arr) {
-          arr = []
-          positions.set(val, arr)
-        }
-        arr.push(r * 9 + c)
-      }
+      arr.push(idx)
     }
     for (const [val, cells] of positions) {
       if (cells.length > 1) {
         for (let i = 0; i < cells.length; i++) {
           for (let j = i + 1; j < cells.length; j++) {
-            const cell1 = cells[i]
-            const cell2 = cells[j]
-            if (cell1 !== undefined && cell2 !== undefined) {
-              addConflict(cell1, cell2, val, 'box')
+            const a = cells[i]
+            const b = cells[j]
+            if (a !== undefined && b !== undefined) {
+              addConflict(a, b, val, type)
             }
           }
         }
       }
     }
+  }
+
+  // Rows
+  for (let row = 0; row < BOARD_SIZE; row++) {
+    const indices: number[] = []
+    for (let col = 0; col < BOARD_SIZE; col++) indices.push(row * BOARD_SIZE + col)
+    findInUnit(indices, 'row')
+  }
+
+  // Columns
+  for (let col = 0; col < BOARD_SIZE; col++) {
+    const indices: number[] = []
+    for (let row = 0; row < BOARD_SIZE; row++) indices.push(row * BOARD_SIZE + col)
+    findInUnit(indices, 'column')
+  }
+
+  // Boxes
+  for (let box = 0; box < BOARD_SIZE; box++) {
+    const boxRow = Math.floor(box / SUBGRID_SIZE) * SUBGRID_SIZE
+    const boxCol = (box % SUBGRID_SIZE) * SUBGRID_SIZE
+    const indices: number[] = []
+    for (let r = boxRow; r < boxRow + SUBGRID_SIZE; r++) {
+      for (let c = boxCol; c < boxCol + SUBGRID_SIZE; c++) {
+        indices.push(r * BOARD_SIZE + c)
+      }
+    }
+    findInUnit(indices, 'box')
   }
 
   return conflicts

@@ -373,20 +373,7 @@ export async function checkAndFixWithSolution(
   givens: number[],
   solution: number[],
 ): Promise<SolveAllResult> {
-  // Use worker if available
-  if (isUsingWorkerMode()) {
-    try {
-      // Note: Worker client will need to be updated to support this new function
-      // For now, fall back to main thread
-      logger.debug(
-        '[SolverService] checkAndFixWithSolution not yet implemented in worker, using main thread',
-      )
-    } catch (error) {
-      logger.debug('[SolverService] Worker checkAndFixWithSolution failed, falling back:', error)
-    }
-  }
-
-  // Fallback to main thread WASM
+  // Main-thread only: the worker client does not expose checkAndFixWithSolution.
   const api = await getApi()
   const result = api.checkAndFixWithSolution(board, candidates, givens, solution)
   try {

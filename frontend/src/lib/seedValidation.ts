@@ -75,12 +75,12 @@ export function validateSeed(seed: string): SeedValidationResult {
 
 /**
  * Extract seed from localStorage key with validation
- * This is the core function that had the slice bug
  */
 export function extractSeedFromStorageKey(storageKey: string): {
   seed: string
   valid: boolean
   error?: string
+  mode?: SeedValidationResult['mode']
 } {
   const prefix = STORAGE_KEYS.GAME_STATE_PREFIX
 
