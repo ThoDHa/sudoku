@@ -465,6 +465,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       clearAll,
       clearCandidates,
       applyExternalMove,
+      setIsComplete,
       restoreState,
       setBoardState,
       isGivenCell,
