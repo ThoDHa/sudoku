@@ -46,56 +46,11 @@ export function encodePuzzle(cells: number[]): string {
 }
 
 /**
- * Sparse encoding: Only encode cells that have values
- * Format: series of (position, digit) pairs encoded efficiently
+ * Sparse encoding: a 14-char base64 bitmask marking filled cells, followed by
+ * one base64 char per filled cell encoding its digit (1-9 -> A-I).
  */
 function encodeSparse(cells: number[]): string {
-  // Collect givens as (position, digit) pairs
-  const givens: Array<{ pos: number; digit: number }> = []
-  for (let i = 0; i < 81; i++) {
-    const cell = cells[i]
-    if (cell !== undefined && cell !== 0) {
-      givens.push({ pos: i, digit: cell })
-    }
-  }
-
-  if (givens.length === 0) {
-    return '' // Empty puzzle
-  }
-
-  // Encode each given as a single number: pos * 9 + (digit - 1)
-  // This gives values 0-728, which we encode in base64
-  // Each value needs ceil(log64(729)) = 2 base64 chars
-  // But we can pack multiple values more efficiently
-
-  // Convert to a big number, then to base64
-  // For simplicity, pack position (7 bits) + digit (4 bits) = 11 bits per given
-  const bits: number[] = []
-
-  // First byte: number of givens (0-81)
-  bits.push(givens.length)
-
-  for (const g of givens) {
-    // Pack position (7 bits, 0-80) and digit (4 bits, 1-9 stored as 0-8)
-    const packed = (g.pos << 4) | (g.digit - 1)
-    bits.push((packed >> 8) & 0xff) // High byte (3 bits used)
-    bits.push(packed & 0xff) // Low byte (8 bits)
-  }
-
-  // But that's still 2 bytes per given. Let's use a tighter packing:
-  // Encode as sequence of base64 chars directly
-  // Position 0-80 (81 values) needs 7 bits
-  // Digit 1-9 (9 values) needs 4 bits
-  // Total: 11 bits per given
-
-  // Actually let's use a simpler, more compact approach:
-  // Encode as: count, then for each given: position in base85, digit 1-9
-
-  // Simplest working approach: variable-length encoding
-  // Use a bitmask (81 bits = 14 chars) + digits (1 char per given in base9)
-  // Total: 14 + 25 = 39 chars for typical puzzle
-
-  // Bitmask approach
+  // Bitmask: one bit per cell (81 bits), set when the cell is filled.
   let mask = BigInt(0)
   for (let i = 0; i < 81; i++) {
     const cell = cells[i]
@@ -104,21 +59,24 @@ function encodeSparse(cells: number[]): string {
     }
   }
 
-  // Encode bitmask as base64 (81 bits = 14 base64 chars)
+  // Empty puzzle encodes to '' (decoder maps that back to an all-zero board).
+  if (mask === BigInt(0)) {
+    return ''
+  }
+
+  // Encode bitmask as base64url (81 bits -> 14 chars)
   let maskStr = ''
   for (let i = 0; i < 14; i++) {
     const idx = Number((mask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
-    const char = ALPHABET[idx]
-    if (char) maskStr += char
+    maskStr += ALPHABET[idx]
   }
 
-  // Encode digits (each digit 1-9 as single char, using first 9 chars of alphabet)
+  // Encode each filled cell's digit (1-9 -> first 9 chars of the alphabet)
   let digitsStr = ''
   for (let i = 0; i < 81; i++) {
     const cell = cells[i]
     if (cell !== undefined && cell !== 0) {
-      const char = ALPHABET[cell - 1]
-      if (char) digitsStr += char // 1-9 -> A-I
+      digitsStr += ALPHABET[cell - 1]
     }
   }
 
@@ -188,7 +146,7 @@ export function decodePuzzle(encoded: string): number[] {
     return decodeSparse(data)
   } else {
     // Legacy format (no prefix) - try dense decoding
-    return decodeDenseLegacy(encoded)
+    return decodeDense(encoded)
   }
 }
 
@@ -533,10 +491,6 @@ function decodeCandidates(data: string): number[][] {
 }
 
 function decodeDense(encoded: string): number[] {
-  return decodeDenseLegacy(encoded)
-}
-
-function decodeDenseLegacy(encoded: string): number[] {
   // Convert from base64url to standard base64
   let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/')
   // Add padding if needed

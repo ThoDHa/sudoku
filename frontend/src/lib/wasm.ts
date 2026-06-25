@@ -147,6 +147,11 @@ export interface SudokuWasmAPI {
 
 // ==================== Global State ====================
 
+// Time to wait for the Go runtime to signal readiness before giving up.
+const WASM_READY_TIMEOUT_MS = 5000
+// Brief settle delay after a rapid unload/reload to avoid a Go importObject race.
+const WASM_RELOAD_DELAY_MS = 100
+
 let wasmInstance: SudokuWasmAPI | null = null
 let wasmLoadPromise: Promise<SudokuWasmAPI> | null = null
 let wasmLoadError: Error | null = null
@@ -357,7 +362,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       // This prevents race conditions after rapid unload/reload cycles
       // Only delay if we recently unloaded (rapid reload scenario)
       if (wasmRecentlyUnloaded) {
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        await new Promise((resolve) => setTimeout(resolve, WASM_RELOAD_DELAY_MS))
         wasmRecentlyUnloaded = false
       }
 
@@ -426,7 +431,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
           }
           window.removeEventListener('wasmReady', handler)
           reject(new Error('WASM initialization timeout'))
-        }, 5000)
+        }, WASM_READY_TIMEOUT_MS)
 
         // Check if already ready
         if (window.SudokuWasm) {
@@ -480,155 +485,85 @@ export function preloadWasm(): void {
 // ==================== Convenience Wrapper Functions ====================
 
 /**
- * These functions provide a simpler API that handles WASM loading
- * and falls back gracefully if WASM isn't available
+ * Run a WASM API call with graceful fallback.
+ * Loads WASM on demand; if WASM is unavailable (or the call throws), returns
+ * `fallback` instead. Load errors are already logged inside loadWasm, so the
+ * catch here is an intentional "WASM unavailable" signal, not a silent swallow.
  */
+async function withWasm<T>(fn: (api: SudokuWasmAPI) => T, fallback: T): Promise<T> {
+  try {
+    const api = await loadWasm()
+    return fn(api)
+  } catch {
+    return fallback
+  }
+}
 
-/**
- * Find the next move for the current board state
- * Returns null if WASM not loaded or no move found
- */
-export async function wasmFindNextMove(
+/** Find the next move for the current board state; null if WASM unavailable. */
+export function wasmFindNextMove(
   cells: number[],
   candidates: number[][],
   givens: number[],
 ): Promise<FindNextMoveResult | null> {
-  try {
-    const api = await loadWasm()
-    return api.findNextMove(cells, candidates, givens)
-  } catch {
-    return null
-  }
+  return withWasm((api) => api.findNextMove(cells, candidates, givens), null)
 }
 
-/**
- * Solve all remaining steps from current state
- * Returns null if WASM not loaded
- */
-export async function wasmSolveAll(
+/** Solve all remaining steps from current state; null if WASM unavailable. */
+export function wasmSolveAll(
   cells: number[],
   candidates: number[][],
   givens: number[],
 ): Promise<SolveAllResult | null> {
-  try {
-    const api = await loadWasm()
-    return api.solveAll(cells, candidates, givens)
-  } catch {
-    return null
-  }
+  return withWasm((api) => api.solveAll(cells, candidates, givens), null)
 }
 
-/**
- * Solve a puzzle and return all steps
- * Returns null if WASM not loaded
- */
-export async function wasmSolveWithSteps(
+/** Solve a puzzle and return all steps; null if WASM unavailable. */
+export function wasmSolveWithSteps(
   givens: number[],
   maxSteps?: number,
 ): Promise<SolveWithStepsResult | null> {
-  try {
-    const api = await loadWasm()
-    return api.solveWithSteps(givens, maxSteps)
-  } catch {
-    return null
-  }
+  return withWasm((api) => api.solveWithSteps(givens, maxSteps), null)
 }
 
-/**
- * Fast solve using backtracking (for verification)
- * Returns null if WASM not loaded or no solution
- */
-export async function wasmSolve(grid: number[]): Promise<number[] | null> {
-  try {
-    const api = await loadWasm()
-    return api.solve(grid)
-  } catch {
-    return null
-  }
+/** Fast solve via backtracking; null if WASM unavailable or no solution. */
+export function wasmSolve(grid: number[]): Promise<number[] | null> {
+  return withWasm((api) => api.solve(grid), null)
 }
 
-/**
- * Validate a board by comparing against the known solution
- * Returns null if WASM not loaded
- */
-export async function wasmValidateBoard(
+/** Validate a board against the known solution; null if WASM unavailable. */
+export function wasmValidateBoard(
   board: number[],
   solution: number[],
 ): Promise<ValidateBoardResult | null> {
-  try {
-    const api = await loadWasm()
-    return api.validateBoard(board, solution)
-  } catch {
-    return null
-  }
+  return withWasm((api) => api.validateBoard(board, solution), null)
 }
 
-/**
- * Validate a custom puzzle
- * Returns null if WASM not loaded
- */
-export async function wasmValidateCustom(givens: number[]): Promise<ValidateCustomResult | null> {
-  try {
-    const api = await loadWasm()
-    return api.validateCustomPuzzle(givens)
-  } catch {
-    return null
-  }
+/** Validate a custom puzzle; null if WASM unavailable. */
+export function wasmValidateCustom(givens: number[]): Promise<ValidateCustomResult | null> {
+  return withWasm((api) => api.validateCustomPuzzle(givens), null)
 }
 
-/**
- * Generate a puzzle for a given seed
- * Returns null if WASM not loaded
- */
-export async function wasmGetPuzzle(
+/** Generate a puzzle for a given seed; null if WASM unavailable. */
+export function wasmGetPuzzle(
   seed: string,
   difficulty: string,
 ): Promise<PuzzleForSeedResult | null> {
-  try {
-    const api = await loadWasm()
-    return api.getPuzzleForSeed(seed, difficulty)
-  } catch {
-    return null
-  }
+  return withWasm((api) => api.getPuzzleForSeed(seed, difficulty), null)
 }
 
-/**
- * Analyze puzzle difficulty
- * Returns null if WASM not loaded
- */
-export async function wasmAnalyzePuzzle(givens: number[]): Promise<AnalyzePuzzleResult | null> {
-  try {
-    const api = await loadWasm()
-    return api.analyzePuzzle(givens)
-  } catch {
-    return null
-  }
+/** Analyze puzzle difficulty; null if WASM unavailable. */
+export function wasmAnalyzePuzzle(givens: number[]): Promise<AnalyzePuzzleResult | null> {
+  return withWasm((api) => api.analyzePuzzle(givens), null)
 }
 
-/**
- * Check for conflicts in a grid
- * Returns empty array if WASM not loaded
- */
-export async function wasmFindConflicts(grid: number[]): Promise<Conflict[]> {
-  try {
-    const api = await loadWasm()
-    return api.findConflicts(grid)
-  } catch {
-    return []
-  }
+/** Check for conflicts in a grid; empty array if WASM unavailable. */
+export function wasmFindConflicts(grid: number[]): Promise<Conflict[]> {
+  return withWasm((api) => api.findConflicts(grid), [])
 }
 
-/**
- * Check if a grid is valid (no conflicts)
- * Returns false if WASM not loaded
- */
-export async function wasmIsValid(grid: number[]): Promise<boolean> {
-  try {
-    const api = await loadWasm()
-    return api.isValid(grid)
-  } catch {
-    return false
-  }
+/** Check if a grid is valid (no conflicts); false if WASM unavailable. */
+export function wasmIsValid(grid: number[]): Promise<boolean> {
+  return withWasm((api) => api.isValid(grid), false)
 }
 
 // ==================== Version Management ====================
