@@ -222,6 +222,8 @@ export default defineConfig({
         'src/lib/constants.ts',
         'src/lib/hooks.ts',
         'src/lib/cache-version.ts',
+        // Pure re-export barrel (no logic; delegates to solver-service)
+        'src/lib/api.ts',
         // Context providers (tested via integration)
         'src/lib/GameContext.tsx',
         'src/lib/BackgroundManagerContext.tsx',
