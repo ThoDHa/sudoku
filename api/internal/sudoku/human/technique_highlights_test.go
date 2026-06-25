@@ -6,6 +6,7 @@ import (
 
 	"sudoku-api/internal/core"
 	"sudoku-api/internal/sudoku/human/techniques"
+	"sudoku-api/internal/sudoku/human/techniquetest"
 	"sudoku-api/pkg/constants"
 )
 
@@ -33,7 +34,7 @@ func cellRefIn(ref core.CellRef, refs []core.CellRef) bool {
 func detectCuratedTechniqueMove(t *testing.T, slug string) *core.Move {
 	t.Helper()
 
-	data, ok := GetTechniquePuzzle(slug)
+	data, ok := techniquetest.Get(slug)
 	if !ok {
 		t.Fatalf("no curated puzzle registered for technique %q", slug)
 	}
@@ -41,7 +42,7 @@ func detectCuratedTechniqueMove(t *testing.T, slug string) *core.Move {
 	givens, _ := loadTestPuzzle(t, data)
 	board := NewBoard(givens)
 
-	if move := TestTechniqueDetectionDirect(board, slug); move != nil {
+	if move := DetectTechniqueDirect(board, slug); move != nil {
 		// The bare detector does not stamp Technique (the solver does that in
 		// FindNextMove). Since we invoked this slug's detector directly, the move
 		// is unambiguously this technique's output.
