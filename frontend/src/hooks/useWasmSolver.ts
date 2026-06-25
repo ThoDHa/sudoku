@@ -46,6 +46,23 @@ interface UseWasmSolverReturn {
 }
 
 /**
+ * Run a synchronous WASM call; returns null if WASM isn't loaded or the call throws.
+ */
+function callWasm<T>(
+  api: SudokuWasmAPI | null,
+  fn: (api: SudokuWasmAPI) => T,
+  label: string,
+): T | null {
+  if (!api) return null
+  try {
+    return fn(api)
+  } catch (err) {
+    logger.error(`WASM ${label} error:`, err)
+    return null
+  }
+}
+
+/**
  * React hook to use the WASM Sudoku solver.
  * Provides synchronous access to solver functions when WASM is loaded.
  */
@@ -113,54 +130,26 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
 
   // Synchronous solver functions (return null if not ready)
   const findNextMove = useCallback(
-    (cells: number[], candidates: number[][], givens: number[]): FindNextMoveResult | null => {
-      if (!api) return null
-      try {
-        return api.findNextMove(cells, candidates, givens)
-      } catch (err) {
-        logger.error('WASM findNextMove error:', err)
-        return null
-      }
-    },
+    (cells: number[], candidates: number[][], givens: number[]): FindNextMoveResult | null =>
+      callWasm(api, (a) => a.findNextMove(cells, candidates, givens), 'findNextMove'),
     [api],
   )
 
   const solveAll = useCallback(
-    (cells: number[], candidates: number[][], givens: number[]): SolveAllResult | null => {
-      if (!api) return null
-      try {
-        return api.solveAll(cells, candidates, givens)
-      } catch (err) {
-        logger.error('WASM solveAll error:', err)
-        return null
-      }
-    },
+    (cells: number[], candidates: number[][], givens: number[]): SolveAllResult | null =>
+      callWasm(api, (a) => a.solveAll(cells, candidates, givens), 'solveAll'),
     [api],
   )
 
   const validateBoard = useCallback(
-    (board: number[], solution: number[]): ValidateBoardResult | null => {
-      if (!api) return null
-      try {
-        return api.validateBoard(board, solution)
-      } catch (err) {
-        logger.error('WASM validateBoard error:', err)
-        return null
-      }
-    },
+    (board: number[], solution: number[]): ValidateBoardResult | null =>
+      callWasm(api, (a) => a.validateBoard(board, solution), 'validateBoard'),
     [api],
   )
 
   const validateCustom = useCallback(
-    (givens: number[]): ValidateCustomResult | null => {
-      if (!api) return null
-      try {
-        return api.validateCustomPuzzle(givens)
-      } catch (err) {
-        logger.error('WASM validateCustom error:', err)
-        return null
-      }
-    },
+    (givens: number[]): ValidateCustomResult | null =>
+      callWasm(api, (a) => a.validateCustomPuzzle(givens), 'validateCustom'),
     [api],
   )
 
@@ -168,17 +157,16 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
     (
       seed: string,
       difficulty: string,
-    ): { givens: number[]; solution: number[]; puzzleId: string } | null => {
-      if (!api) return null
-      try {
-        const result = api.getPuzzleForSeed(seed, difficulty)
-        if (result.error) return null
-        return { givens: result.givens, solution: result.solution, puzzleId: result.puzzleId }
-      } catch (err) {
-        logger.error('WASM getPuzzle error:', err)
-        return null
-      }
-    },
+    ): { givens: number[]; solution: number[]; puzzleId: string } | null =>
+      callWasm(
+        api,
+        (a) => {
+          const result = a.getPuzzleForSeed(seed, difficulty)
+          if (result.error) return null
+          return { givens: result.givens, solution: result.solution, puzzleId: result.puzzleId }
+        },
+        'getPuzzle',
+      ),
     [api],
   )
 
