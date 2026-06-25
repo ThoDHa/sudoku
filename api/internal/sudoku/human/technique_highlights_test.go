@@ -18,6 +18,59 @@ func cellRefIn(ref core.CellRef, refs []core.CellRef) bool {
 	return false
 }
 
+// detectCuratedTechniqueMove loads the curated puzzle registered for the given
+// technique slug and returns the move the technique's detector produces.
+//
+// It first asks the detector directly on the initial board (the fast path used
+// by partial-solve-state fixtures that fire immediately). When that yields no
+// move, it steps the solver until the target technique fires, disabling the
+// preempting techniques listed in techniqueIsolationConfig so advanced
+// detectors are not crowded out. This mirrors the proven pattern in
+// technique_isolated_test.go and the TestDiagnosticTechniqueUsage run.
+//
+// A nil return means the detector did not fire on a known-good curated board,
+// which is treated as a real failure by the caller (never silently skipped).
+func detectCuratedTechniqueMove(t *testing.T, slug string) *core.Move {
+	t.Helper()
+
+	data, ok := GetTechniquePuzzle(slug)
+	if !ok {
+		t.Fatalf("no curated puzzle registered for technique %q", slug)
+	}
+
+	givens, _ := loadTestPuzzle(t, data)
+	board := NewBoard(givens)
+
+	if move := TestTechniqueDetectionDirect(board, slug); move != nil {
+		// The bare detector does not stamp Technique (the solver does that in
+		// FindNextMove). Since we invoked this slug's detector directly, the move
+		// is unambiguously this technique's output.
+		move.Technique = slug
+		return move
+	}
+
+	solver := NewSolver()
+	if disabled, has := techniqueIsolationConfig[slug]; has && len(disabled) > 0 {
+		solver = CreateSolverWithDisabledTechniques(disabled)
+	}
+
+	for step := 0; step < constants.MaxSolverSteps; step++ {
+		move := solver.FindNextMove(board)
+		if move == nil {
+			break
+		}
+		solver.ApplyMove(board, move)
+		if move.Technique == slug {
+			return move
+		}
+		if board.IsSolved() {
+			break
+		}
+	}
+
+	return nil
+}
+
 func TestNakedSingleHighlights(t *testing.T) {
 	cells := [81]int{}
 	candidateMap := map[int][]int{
@@ -347,34 +400,20 @@ func TestXYWingHighlights(t *testing.T) {
 }
 
 func TestSimpleColoringHighlights(t *testing.T) {
-	cells := [81]int{}
-	candidateMap := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		candidateMap[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	candidateMap[0] = []int{1}
-	candidateMap[8] = []int{1}
-	candidateMap[9] = []int{1}
-	candidateMap[17] = []int{1}
-	candidateMap[4] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-
-	board := makeTestBoard(cells, candidateMap)
-	move := techniques.DetectSimpleColoring(board)
-
+	move := detectCuratedTechniqueMove(t, "simple-coloring")
 	if move == nil {
-		t.Skip("Simple Coloring not detected in this configuration")
+		t.Fatal("Expected simple-coloring to fire on its curated board")
 	}
-
-	if move != nil && len(move.Highlights.Primary) == 0 {
+	if move.Technique != "simple-coloring" {
+		t.Fatalf("Expected technique simple-coloring, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
 		t.Error("Expected primary highlight for the cell being eliminated")
 	}
-
-	if move != nil && len(move.Highlights.Secondary) == 0 {
+	if len(move.Highlights.Secondary) == 0 {
 		t.Error("Expected secondary highlights showing the color chain")
 	}
-
-	if move != nil && len(move.Eliminations) == 0 {
+	if len(move.Eliminations) == 0 {
 		t.Error("Expected eliminations from Simple Coloring")
 	}
 }
@@ -616,614 +655,397 @@ func TestNakedQuadHighlights(t *testing.T) {
 }
 
 func TestHiddenQuadHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-	for col := 4; col < 9; col++ {
-		cm[col] = []int{5, 6, 7, 8, 9}
-	}
-	cm[0] = []int{1, 2, 3, 4, 5, 6}
-	cm[1] = []int{1, 2, 3, 4, 7, 8}
-	cm[2] = []int{1, 2, 3, 4, 9}
-	cm[3] = []int{1, 2, 3, 4, 5}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectHiddenQuad(board)
-
+	move := detectCuratedTechniqueMove(t, "hidden-quad")
 	if move == nil {
-		t.Skip("Hidden Quad not detected in this configuration")
+		t.Fatal("Expected hidden-quad to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) != 4 {
-		t.Errorf("Expected 4 primary, got %d", len(move.Highlights.Primary))
+	if move.Technique != "hidden-quad" {
+		t.Fatalf("Expected technique hidden-quad, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the hidden quad cells")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations of other candidates from the hidden quad cells")
 	}
 }
 
 func TestXYZWingHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-	cm[0] = []int{1, 2, 3}
-	cm[1] = []int{1, 4}
-	cm[9] = []int{2, 4}
-	cm[10] = []int{3, 4, 5}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectXYZWing(board)
-
+	move := detectCuratedTechniqueMove(t, "xyz-wing")
 	if move == nil {
-		t.Skip("XYZ-Wing not detected in this configuration")
+		t.Fatal("Expected xyz-wing to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) < 3 {
-		t.Errorf("Expected at least 3 primary, got %d", len(move.Highlights.Primary))
+	if move.Technique != "xyz-wing" {
+		t.Fatalf("Expected technique xyz-wing, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the XYZ-Wing cells")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from cells seeing the XYZ-Wing")
 	}
 }
 
 func TestBUGHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-
-	for i := 0; i < 80; i++ {
-		cm[i] = []int{1, 2}
-	}
-	cm[80] = []int{1, 2, 3}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectBUG(board)
-
+	move := detectCuratedTechniqueMove(t, "bug")
 	if move == nil {
-		t.Skip("BUG not detected in this configuration")
+		t.Fatal("Expected bug to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlight")
+	if move.Technique != "bug" {
+		t.Fatalf("Expected technique bug, got %s", move.Technique)
 	}
-	if move != nil && move.Action != "assign" {
-		t.Errorf("Expected assign action, got %s", move.Action)
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlight for the BUG pivot cell")
 	}
 }
 
 func TestUniqueRectangleType1Highlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-	cm[0] = []int{1, 2}
-	cm[2] = []int{1, 2}
-	cm[18] = []int{1, 2}
-	cm[20] = []int{1, 2, 3}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectUniqueRectangle(board)
-
+	move := detectCuratedTechniqueMove(t, "unique-rectangle")
 	if move == nil {
-		t.Skip("Unique Rectangle not detected")
+		t.Fatal("Expected unique-rectangle to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) < 4 {
-		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
+	if move.Technique != "unique-rectangle" {
+		t.Fatalf("Expected technique unique-rectangle, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the unique rectangle cells")
 	}
 	if len(move.Eliminations) == 0 {
-		t.Error("Expected eliminations")
+		t.Error("Expected eliminations of the extra candidate breaking the deadly pattern")
 	}
 }
 
 func TestJellyfishHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	fishRows := []int{0, 2, 5, 7}
-	fishCols := []int{1, 3, 6, 8}
-
-	for _, row := range fishRows {
-		for col := 0; col < 9; col++ {
-			if !slices.Contains(fishCols, col) {
-				cm[row*9+col] = []int{2, 3, 4, 5, 6, 7, 8, 9}
-			}
-		}
-	}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectJellyfish(board)
-
+	move := detectCuratedTechniqueMove(t, "jellyfish")
 	if move == nil {
-		t.Skip("Jellyfish not detected")
+		t.Fatal("Expected jellyfish to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) != 16 {
-		t.Errorf("Expected 16 primary, got %d", len(move.Highlights.Primary))
+	if move.Technique != "jellyfish" {
+		t.Fatalf("Expected technique jellyfish, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Jellyfish base cells")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from cells outside the Jellyfish cover sets")
 	}
 }
 
 func TestSkyscraperHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1}
-	cm[4] = []int{1}
-	cm[27] = []int{1}
-	cm[31] = []int{1}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectSkyscraper(board)
-
+	move := detectCuratedTechniqueMove(t, "skyscraper")
 	if move == nil {
-		t.Skip("Skyscraper not detected")
+		t.Fatal("Expected skyscraper to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) < 4 {
-		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
+	if move.Technique != "skyscraper" {
+		t.Fatalf("Expected technique skyscraper, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Skyscraper bases")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from cells seeing both Skyscraper tips")
 	}
 }
 
 func TestXChainHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1}
-	cm[8] = []int{1}
-	cm[17] = []int{1}
-	cm[26] = []int{1}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectXChain(board)
-
+	move := detectCuratedTechniqueMove(t, "x-chain")
 	if move == nil {
-		t.Skip("X-Chain not detected")
+		t.Fatal("Expected x-chain to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "x-chain" {
+		t.Fatalf("Expected technique x-chain, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the X-Chain links")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from the X-Chain contradiction")
 	}
 }
 
 func TestXYChainHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1, 2}
-	cm[1] = []int{2, 3}
-	cm[2] = []int{3, 4}
-	cm[11] = []int{4, 5}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectXYChain(board)
-
+	move := detectCuratedTechniqueMove(t, "xy-chain")
 	if move == nil {
-		t.Skip("XY-Chain not detected")
+		t.Fatal("Expected xy-chain to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "xy-chain" {
+		t.Fatalf("Expected technique xy-chain, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the XY-Chain links")
 	}
 }
 
 func TestWWingHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1, 2}
-	cm[8] = []int{1, 2}
-	cm[4] = []int{1}
-	cm[10] = []int{2}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectWWing(board)
-
+	move := detectCuratedTechniqueMove(t, "w-wing")
 	if move == nil {
-		t.Skip("W-Wing not detected")
+		t.Fatal("Expected w-wing to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) < 2 {
-		t.Errorf("Expected at least 2 primary, got %d", len(move.Highlights.Primary))
+	if move.Technique != "w-wing" {
+		t.Fatalf("Expected technique w-wing, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the W-Wing cells")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from cells seeing both W-Wing ends")
 	}
 }
 
 func TestWXYZWingHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1, 2, 3}
-	cm[1] = []int{1, 4}
-	cm[9] = []int{2, 4}
-	cm[10] = []int{3, 4}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectWXYZWing(board)
-
+	move := detectCuratedTechniqueMove(t, "wxyz-wing")
 	if move == nil {
-		t.Skip("WXYZ-Wing not detected")
+		t.Fatal("Expected wxyz-wing to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) < 4 {
-		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
+	if move.Technique != "wxyz-wing" {
+		t.Fatalf("Expected technique wxyz-wing, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the WXYZ-Wing cells")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from the WXYZ-Wing")
 	}
 }
 
 func TestEmptyRectangleHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1}
-	cm[2] = []int{1}
-	cm[18] = []int{1}
-	cm[20] = []int{1}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectEmptyRectangle(board)
-
+	move := detectCuratedTechniqueMove(t, "empty-rectangle")
 	if move == nil {
-		t.Skip("Empty Rectangle not detected")
+		t.Fatal("Expected empty-rectangle to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "empty-rectangle" {
+		t.Fatalf("Expected technique empty-rectangle, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Empty Rectangle")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from the Empty Rectangle deduction")
 	}
 }
 
 func TestMedusa3DHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1, 2}
-	cm[1] = []int{1, 2}
-	cm[9] = []int{1, 3}
-	cm[10] = []int{2, 3}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectMedusa3D(board)
-
+	move := detectCuratedTechniqueMove(t, "medusa-3d")
 	if move == nil {
-		t.Skip("3D Medusa not detected")
+		t.Fatal("Expected medusa-3d to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "medusa-3d" {
+		t.Fatalf("Expected technique medusa-3d, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the 3D Medusa coloring")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from the 3D Medusa contradiction")
 	}
 }
 
 func TestUniqueRectangleType2Highlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-	cm[0] = []int{1, 2, 3}
-	cm[2] = []int{1, 2}
-	cm[18] = []int{1, 2, 3}
-	cm[20] = []int{1, 2}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectUniqueRectangleType2(board)
-
+	move := detectCuratedTechniqueMove(t, "unique-rectangle-type-2")
 	if move == nil {
-		t.Skip("UR Type 2 not detected")
+		t.Fatal("Expected unique-rectangle-type-2 to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) < 4 {
-		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
+	if move.Technique != "unique-rectangle-type-2" {
+		t.Fatalf("Expected technique unique-rectangle-type-2, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Unique Rectangle Type 2 cells")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations of the roof extra candidate")
 	}
 }
 
 func TestUniqueRectangleType3Highlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-	cm[0] = []int{1, 2, 3}
-	cm[2] = []int{1, 2, 3}
-	cm[18] = []int{1, 2}
-	cm[20] = []int{1, 2}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectUniqueRectangleType3(board)
-
+	move := detectCuratedTechniqueMove(t, "unique-rectangle-type-3")
 	if move == nil {
-		t.Skip("UR Type 3 not detected")
+		t.Fatal("Expected unique-rectangle-type-3 to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) < 4 {
-		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
+	if move.Technique != "unique-rectangle-type-3" {
+		t.Fatalf("Expected technique unique-rectangle-type-3, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Unique Rectangle Type 3 cells")
 	}
 }
 
 func TestUniqueRectangleType4Highlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-	cm[0] = []int{1, 2}
-	cm[2] = []int{1, 2}
-	cm[18] = []int{1, 2}
-	cm[20] = []int{1, 2, 3}
-	cm[1] = []int{3}
-	cm[19] = []int{3}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectUniqueRectangleType4(board)
-
+	move := detectCuratedTechniqueMove(t, "unique-rectangle-type-4")
 	if move == nil {
-		t.Skip("UR Type 4 not detected")
+		t.Fatal("Expected unique-rectangle-type-4 to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) < 4 {
-		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
+	if move.Technique != "unique-rectangle-type-4" {
+		t.Fatalf("Expected technique unique-rectangle-type-4, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Unique Rectangle Type 4 cells")
 	}
 }
 
 func TestFinnedXWingHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	for col := 0; col < 9; col++ {
-		if col != 0 && col != 6 {
-			cm[0*9+col] = []int{2, 3, 4, 5, 6, 7, 8, 9}
-			cm[7*9+col] = []int{2, 3, 4, 5, 6, 7, 8, 9}
-		}
-	}
-	cm[1] = []int{1}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectFinnedXWing(board)
-
+	move := detectCuratedTechniqueMove(t, "finned-x-wing")
 	if move == nil {
-		t.Skip("Finned X-Wing not detected")
+		t.Fatal("Expected finned-x-wing to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) < 4 {
-		t.Errorf("Expected at least 4 primary, got %d", len(move.Highlights.Primary))
+	if move.Technique != "finned-x-wing" {
+		t.Fatalf("Expected technique finned-x-wing, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Finned X-Wing cells")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from the Finned X-Wing")
 	}
 }
 
 func TestFinnedSwordfishHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	fishRows := []int{0, 3, 6}
-	fishCols := []int{0, 3, 6}
-
-	for _, row := range fishRows {
-		for col := 0; col < 9; col++ {
-			if !slices.Contains(fishCols, col) {
-				cm[row*9+col] = []int{2, 3, 4, 5, 6, 7, 8, 9}
-			}
-		}
-	}
-	cm[1] = []int{1}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectFinnedSwordfish(board)
-
+	move := detectCuratedTechniqueMove(t, "finned-swordfish")
 	if move == nil {
-		t.Skip("Finned Swordfish not detected")
+		t.Fatal("Expected finned-swordfish to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) < 9 {
-		t.Errorf("Expected at least 9 primary, got %d", len(move.Highlights.Primary))
+	if move.Technique != "finned-swordfish" {
+		t.Fatalf("Expected technique finned-swordfish, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Finned Swordfish cells")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from the Finned Swordfish")
 	}
 }
 
 func TestGroupedXCyclesHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1}
-	cm[2] = []int{1}
-	cm[9] = []int{1}
-	cm[11] = []int{1}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectGroupedXCycles(board)
-
+	move := detectCuratedTechniqueMove(t, "grouped-x-cycles")
 	if move == nil {
-		t.Skip("Grouped X-Cycles not detected")
+		t.Fatal("Expected grouped-x-cycles to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "grouped-x-cycles" {
+		t.Fatalf("Expected technique grouped-x-cycles, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Grouped X-Cycle links")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from the Grouped X-Cycle contradiction")
 	}
 }
 
 func TestAICHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1, 2}
-	cm[1] = []int{2, 3}
-	cm[2] = []int{3, 4}
-	cm[11] = []int{4, 5}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectAIC(board)
-
+	move := detectCuratedTechniqueMove(t, "aic")
 	if move == nil {
-		t.Skip("AIC not detected")
+		t.Fatal("Expected aic to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "aic" {
+		t.Fatalf("Expected technique aic, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the AIC nodes")
 	}
 }
 
 func TestALSXZHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1, 2, 3}
-	cm[1] = []int{1, 2}
-	cm[9] = []int{2, 3, 4}
-	cm[10] = []int{3, 4}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectALSXZ(board)
-
+	move := detectCuratedTechniqueMove(t, "als-xz")
 	if move == nil {
-		t.Skip("ALS-XZ not detected")
+		t.Fatal("Expected als-xz to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "als-xz" {
+		t.Fatalf("Expected technique als-xz, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the ALS-XZ cells")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from the ALS-XZ rule")
 	}
 }
 
 func TestALSXYWingHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1, 2, 3}
-	cm[9] = []int{2, 3, 4}
-	cm[18] = []int{3, 4, 5}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectALSXYWing(board)
-
+	move := detectCuratedTechniqueMove(t, "als-xy-wing")
 	if move == nil {
-		t.Skip("ALS-XY-Wing not detected")
+		t.Fatal("Expected als-xy-wing to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "als-xy-wing" {
+		t.Fatalf("Expected technique als-xy-wing, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the ALS-XY-Wing cells")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from the ALS-XY-Wing")
 	}
 }
 
 func TestALSXYChainHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1, 2, 3}
-	cm[9] = []int{2, 3, 4}
-	cm[18] = []int{3, 4, 5}
-	cm[27] = []int{4, 5, 6}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectALSXYChain(board)
-
+	move := detectCuratedTechniqueMove(t, "als-xy-chain")
 	if move == nil {
-		t.Skip("ALS-XY-Chain not detected")
+		t.Fatal("Expected als-xy-chain to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "als-xy-chain" {
+		t.Fatalf("Expected technique als-xy-chain, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the ALS-XY-Chain cells")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from the ALS-XY-Chain")
 	}
 }
 
 func TestSueDeCoqHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1, 2}
-	cm[1] = []int{2, 3}
-	cm[3] = []int{1, 4}
-	cm[12] = []int{2, 5}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectSueDeCoq(board)
-
+	move := detectCuratedTechniqueMove(t, "sue-de-coq")
 	if move == nil {
-		t.Skip("Sue de Coq not detected")
+		t.Fatal("Expected sue-de-coq to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "sue-de-coq" {
+		t.Fatalf("Expected technique sue-de-coq, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Sue de Coq cells")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from the Sue de Coq intersection")
 	}
 }
 
 func TestDeathBlossomHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1, 2}
-	cm[1] = []int{1, 3, 4}
-	cm[9] = []int{2, 5, 6}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectDeathBlossom(board)
-
+	move := detectCuratedTechniqueMove(t, "death-blossom")
 	if move == nil {
-		t.Skip("Death Blossom not detected")
+		t.Fatal("Expected death-blossom to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "death-blossom" {
+		t.Fatalf("Expected technique death-blossom, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Death Blossom stem and petals")
+	}
+	if len(move.Eliminations) == 0 {
+		t.Error("Expected eliminations from the Death Blossom")
 	}
 }
 
 func TestDigitForcingChainHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1, 2}
-	cm[1] = []int{1, 3}
-	cm[9] = []int{2, 3}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectDigitForcingChain(board)
-
+	move := detectCuratedTechniqueMove(t, "digit-forcing-chain")
 	if move == nil {
-		t.Skip("Digit Forcing Chain not detected")
+		t.Fatal("Expected digit-forcing-chain to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "digit-forcing-chain" {
+		t.Fatalf("Expected technique digit-forcing-chain, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Digit Forcing Chain")
 	}
 }
 
 func TestForcingChainHighlights(t *testing.T) {
-	cells := [81]int{}
-	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
-		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	}
-
-	cm[0] = []int{1, 2}
-	cm[1] = []int{1, 3}
-	cm[2] = []int{2, 3}
-
-	board := makeTestBoard(cells, cm)
-	move := techniques.DetectForcingChain(board)
-
+	move := detectCuratedTechniqueMove(t, "forcing-chain")
 	if move == nil {
-		t.Skip("Forcing Chain not detected")
+		t.Fatal("Expected forcing-chain to fire on its curated board")
 	}
-	if move != nil && len(move.Highlights.Primary) == 0 {
-		t.Error("Expected primary highlights")
+	if move.Technique != "forcing-chain" {
+		t.Fatalf("Expected technique forcing-chain, got %s", move.Technique)
+	}
+	if len(move.Highlights.Primary) == 0 {
+		t.Error("Expected primary highlights for the Forcing Chain")
 	}
 }
 
