@@ -65,15 +65,6 @@ export function validateSeed(seed: string): SeedValidationResult {
     }
   }
 
-  if (mode === 'practice' && !seed.toLowerCase().startsWith('p')) {
-    return {
-      valid: false,
-      seed,
-      mode: 'practice',
-      error: 'Invalid practice seed format. Must start with: P',
-    }
-  }
-
   return {
     valid: true,
     seed,
@@ -116,17 +107,11 @@ export function extractSeedFromStorageKey(storageKey: string): {
     }
   }
 
-  const result: SeedValidationResult = {
+  return {
     seed,
     valid: true,
     mode: validation.mode,
   }
-
-  if (validation.error) {
-    result.error = validation.error
-  }
-
-  return result
 }
 
 /**
