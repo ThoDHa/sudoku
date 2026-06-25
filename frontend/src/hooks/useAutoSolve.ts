@@ -582,15 +582,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         playNextMove()
       }
     },
-    [
-      getBoard,
-      getCandidates,
-      applyMove,
-      stopAutoSolve,
-      scheduleNextMove,
-      onError,
-      onUnpinpointableError,
-    ],
+    [getBoard, getCandidates, applyMove, stopAutoSolve, scheduleNextMove, onError],
   )
 
   // Solve from givens only - used when user clicks "Show Solution"

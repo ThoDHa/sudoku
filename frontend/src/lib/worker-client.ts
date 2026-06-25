@@ -68,6 +68,9 @@ const REQUEST_TIMEOUT = 30000
 // This prevents the WASM runtime from consuming CPU/memory when not actively solving
 const IDLE_TIMEOUT_MS = 60_000 // 1 minute of inactivity
 
+// Time to wait for the worker to report its initial 'loaded' message
+const WORKER_CREATION_TIMEOUT_MS = 10_000
+
 let idleTimeoutId: ReturnType<typeof setTimeout> | null = null
 
 // ==================== Idle Cleanup ====================
@@ -142,7 +145,7 @@ async function createWorker(): Promise<Worker> {
     const timeout = setTimeout(() => {
       newWorker.terminate()
       reject(new Error('Worker creation timeout'))
-    }, 10000)
+    }, WORKER_CREATION_TIMEOUT_MS)
 
     const handleMessage = (event: MessageEvent<WorkerResponse>) => {
       if (event.data.type === 'loaded') {

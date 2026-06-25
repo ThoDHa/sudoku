@@ -52,14 +52,18 @@ export default function History({
 
   // Scroll to selected move when modal opens
   useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | undefined
     if (isOpen && selectedMoveIndex !== null && itemRefs.current[selectedMoveIndex]) {
       // Small delay to ensure modal is rendered
-      setTimeout(() => {
+      timeout = setTimeout(() => {
         itemRefs.current[selectedMoveIndex]?.scrollIntoView({
           behavior: 'instant',
           block: 'center',
         })
       }, HISTORY_SCROLL_DELAY)
+    }
+    return () => {
+      if (timeout) clearTimeout(timeout)
     }
   }, [isOpen, selectedMoveIndex])
 

@@ -65,15 +65,6 @@ export function validateSeed(seed: string): SeedValidationResult {
     }
   }
 
-  if (mode === 'practice' && !seed.toLowerCase().startsWith('p')) {
-    return {
-      valid: false,
-      seed,
-      mode: 'practice',
-      error: 'Invalid practice seed format. Must start with: P',
-    }
-  }
-
   return {
     valid: true,
     seed,
@@ -84,12 +75,12 @@ export function validateSeed(seed: string): SeedValidationResult {
 
 /**
  * Extract seed from localStorage key with validation
- * This is the core function that had the slice bug
  */
 export function extractSeedFromStorageKey(storageKey: string): {
   seed: string
   valid: boolean
   error?: string
+  mode?: SeedValidationResult['mode']
 } {
   const prefix = STORAGE_KEYS.GAME_STATE_PREFIX
 
@@ -116,17 +107,11 @@ export function extractSeedFromStorageKey(storageKey: string): {
     }
   }
 
-  const result: SeedValidationResult = {
+  return {
     seed,
     valid: true,
     mode: validation.mode,
   }
-
-  if (validation.error) {
-    result.error = validation.error
-  }
-
-  return result
 }
 
 /**

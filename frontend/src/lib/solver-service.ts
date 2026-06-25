@@ -72,6 +72,29 @@ export interface SolveAllResult {
   finalBoard: number[]
 }
 
+/**
+ * Raw solve shape returned by both the worker and the main-thread WASM API,
+ * before it is normalized into the public SolveAllResult.
+ */
+interface RawSolveResult {
+  moves: Array<{ board: number[]; candidates: (number[] | null)[]; move: Move | null }>
+  solved: boolean
+  finalBoard: number[]
+}
+
+/** Normalize a raw worker/main-thread solve result into the public SolveAllResult. */
+function toSolveAllResult(result: RawSolveResult): SolveAllResult {
+  return {
+    moves: result.moves.map((m) => ({
+      board: m.board,
+      candidates: m.candidates,
+      move: m.move as Move,
+    })),
+    solved: result.solved,
+    finalBoard: result.finalBoard,
+  }
+}
+
 export interface ValidateBoardResult {
   valid: boolean
   reason?: string
@@ -207,16 +230,7 @@ export async function solveAll(
   // Use worker if available
   if (isUsingWorkerMode()) {
     try {
-      const result = await workerSolveAll(board, candidates, givens)
-      return {
-        moves: result.moves.map((m) => ({
-          board: m.board,
-          candidates: m.candidates,
-          move: m.move as Move,
-        })),
-        solved: result.solved,
-        finalBoard: result.finalBoard,
-      }
+      return toSolveAllResult(await workerSolveAll(board, candidates, givens))
     } catch (error) {
       logger.debug('[SolverService] Worker solveAll failed, falling back:', error)
       // Fall through to main thread
@@ -225,16 +239,7 @@ export async function solveAll(
 
   // Fallback to main thread WASM
   const api = await getApi()
-  const result = api.solveAll(board, candidates, givens)
-  return {
-    moves: result.moves.map((m) => ({
-      board: m.board,
-      candidates: m.candidates,
-      move: m.move as Move,
-    })),
-    solved: result.solved,
-    finalBoard: result.finalBoard,
-  }
+  return toSolveAllResult(api.solveAll(board, candidates, givens))
 }
 
 export interface FindNextMoveResult {
@@ -373,20 +378,7 @@ export async function checkAndFixWithSolution(
   givens: number[],
   solution: number[],
 ): Promise<SolveAllResult> {
-  // Use worker if available
-  if (isUsingWorkerMode()) {
-    try {
-      // Note: Worker client will need to be updated to support this new function
-      // For now, fall back to main thread
-      logger.debug(
-        '[SolverService] checkAndFixWithSolution not yet implemented in worker, using main thread',
-      )
-    } catch (error) {
-      logger.debug('[SolverService] Worker checkAndFixWithSolution failed, falling back:', error)
-    }
-  }
-
-  // Fallback to main thread WASM
+  // Main-thread only: the worker client does not expose checkAndFixWithSolution.
   const api = await getApi()
   const result = api.checkAndFixWithSolution(board, candidates, givens, solution)
   try {
@@ -398,15 +390,7 @@ export async function checkAndFixWithSolution(
   } catch {
     /* no-op */
   }
-  return {
-    moves: result.moves.map((m) => ({
-      board: m.board,
-      candidates: m.candidates,
-      move: m.move as Move,
-    })),
-    solved: result.solved,
-    finalBoard: result.finalBoard,
-  }
+  return toSolveAllResult(result)
 }
 
 // Default export for backward compatibility
