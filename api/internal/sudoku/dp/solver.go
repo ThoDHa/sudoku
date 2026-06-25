@@ -1,6 +1,8 @@
 package dp
 
 import (
+	"strconv"
+
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
 )
@@ -128,7 +130,18 @@ func conflictKey(cell1, cell2, val int) string {
 	if cell1 > cell2 {
 		cell1, cell2 = cell2, cell1
 	}
-	return string(rune(cell1)) + "-" + string(rune(cell2)) + "-" + string(rune(val)) //nolint:gosec // G115: cell indices are bounded 0-80 and val 1-9 by Sudoku grid constants
+	// Decimal keys: cell indices are bounded 0-80 and val 1-9 by Sudoku grid constants.
+	return strconv.Itoa(cell1) + "-" + strconv.Itoa(cell2) + "-" + strconv.Itoa(val)
+}
+
+// findEmptyCell returns the index of the first empty (0) cell, or -1 if the board is full.
+func findEmptyCell(board []int) int {
+	for i := 0; i < constants.TotalCells; i++ {
+		if board[i] == 0 {
+			return i
+		}
+	}
+	return -1
 }
 
 // CountSolutions counts solutions up to maxCount. Exported for custom puzzle validation.
@@ -145,14 +158,7 @@ func countSolutionsHelper(board []int, count *int, maxCount int) {
 		return
 	}
 
-	// Find next empty cell
-	idx := -1
-	for i := 0; i < constants.TotalCells; i++ {
-		if board[i] == 0 {
-			idx = i
-			break
-		}
-	}
+	idx := findEmptyCell(board)
 
 	if idx == -1 {
 		*count++
@@ -174,14 +180,7 @@ func countSolutionsHelper(board []int, count *int, maxCount int) {
 }
 
 func solve(board []int) bool {
-	// Find next empty cell
-	idx := -1
-	for i := 0; i < constants.TotalCells; i++ {
-		if board[i] == 0 {
-			idx = i
-			break
-		}
-	}
+	idx := findEmptyCell(board)
 
 	if idx == -1 {
 		return true
@@ -258,14 +257,7 @@ func (r *rng) shuffle(arr []int) {
 }
 
 func fillGrid(board []int, rng *rng) bool {
-	// Find next empty cell
-	idx := -1
-	for i := 0; i < constants.TotalCells; i++ {
-		if board[i] == 0 {
-			idx = i
-			break
-		}
-	}
+	idx := findEmptyCell(board)
 
 	if idx == -1 {
 		return true
