@@ -231,12 +231,15 @@ export default defineConfig({
         'src/lib/techniques.ts',
         'src/lib/themes.ts',
       ],
-      // Coverage thresholds for critical paths
+      // Coverage thresholds for critical paths. Set to the TEST-001 target
+      // (85/75/85/85); measured coverage sits above this (89/81/89/89), so the
+      // floor leaves headroom for minor fluctuations while still guarding the
+      // critical lib/hooks paths against regressions.
       thresholds: {
-        statements: 70,
-        branches: 60,
-        functions: 70,
-        lines: 70,
+        statements: 85,
+        branches: 75,
+        functions: 85,
+        lines: 85,
       },
     },
   },
