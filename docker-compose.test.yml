@@ -24,15 +24,18 @@ services:
   playwright:
     image: mcr.microsoft.com/playwright:v1.57.0-noble
     working_dir: /app
+    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - ./frontend:/app
-      - playwright-cache:/root/.cache/ms-playwright
+      - playwright-cache:/tmp/ms-playwright
     depends_on:
       sudoku:
         condition: service_healthy
     environment:
       - PLAYWRIGHT_BASE_URL=http://sudoku:80
       - CI=true
+      - HOME=/tmp
+      - PLAYWRIGHT_BROWSERS_PATH=/tmp/ms-playwright
     command: >
       sh -c "
         mkdir -p /app/allure-results &&

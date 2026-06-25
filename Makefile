@@ -88,7 +88,9 @@ test-unit:
 	@echo "========================================"
 	@mkdir -p allure-results
 	@docker build -t sudoku-frontend-test -f frontend/Dockerfile.test frontend
-	@docker run --rm -v $(PWD)/allure-results:/app/allure-results sudoku-frontend-test npm run test:unit
+	@docker run --rm --user $$(id -u):$$(id -g) -e HOME=/tmp \
+		-v $(PWD)/allure-results:/app/allure-results \
+		sudoku-frontend-test npm run test:unit
 
 # Run E2E tests with Allure output (Docker Compose)
 test-e2e:

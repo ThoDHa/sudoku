@@ -7,4 +7,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+# Make write targets world-writable so the container can run as an arbitrary
+# host UID/GID (Makefile passes --user $(id -u):$(id -g)). /app is root-owned
+# after COPY; without this, vite cannot write its config timestamp files and
+# transform cache, which would break the run as a non-root user.
+RUN chmod 777 /app && mkdir -p node_modules/.vite && chmod 777 node_modules/.vite
 CMD ["npm", "run", "test:unit"]
