@@ -2310,8 +2310,9 @@ function GameContent() {
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (
+        puzzle &&
         !shouldSuppressAutoSave({
-          hasPuzzle: !!puzzle,
+          hasPuzzle: true,
           hasRestoredSavedState: hasRestoredSavedState.current,
           isComplete: game.isComplete,
           autoSaveEnabled: getAutoSaveEnabled(),
