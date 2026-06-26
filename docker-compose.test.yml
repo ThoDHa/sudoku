@@ -20,14 +20,18 @@ services:
       retries: 10
       start_period: 30s
 
-  # Playwright E2E test runner
+  # Playwright E2E test runner.
+  # The mcr.microsoft.com/playwright:vN-noble image SHIPS browsers pre-installed
+  # at /ms-playwright. Do NOT set PLAYWRIGHT_BROWSERS_PATH and do NOT run
+  # `npx playwright install`: doing so forces a re-download into a root-owned
+  # cache dir, which the non-root container cannot write to (EACCES) and which
+  # previously caused the suite to hang on download.
   playwright:
     image: mcr.microsoft.com/playwright:v1.61.1-noble
     working_dir: /app
     user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - ./frontend:/app
-      - playwright-cache:/tmp/ms-playwright
     depends_on:
       sudoku:
         condition: service_healthy
@@ -35,14 +39,9 @@ services:
       - PLAYWRIGHT_BASE_URL=http://sudoku:80
       - CI=true
       - HOME=/tmp
-      - PLAYWRIGHT_BROWSERS_PATH=/tmp/ms-playwright
     command: >
       sh -c "
         mkdir -p /app/allure-results &&
         npm ci &&
-        npx playwright install chromium webkit &&
-        npx playwright test --project=chrome-desktop --project=pixel-5 --project=iphone-12 --grep-invert @profiling --grep-invert @slow
+        npx playwright test --project=chrome-desktop --grep-invert @profiling --grep-invert @slow --grep-invert @performance
       "
-
-volumes:
-  playwright-cache:

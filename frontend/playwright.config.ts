@@ -25,7 +25,7 @@ export default defineConfig({
   // Test execution - parallel for speed
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ?2 : 0,
+  retries: 0,
   workers: undefined, // Use all available CPUs
   
    // Timeouts
@@ -33,8 +33,9 @@ export default defineConfig({
    expect: {
      timeout: 10000, // 10s for expect assertions
    },
-   // Global timeout: fail entire suite after 90 minutes
-   globalTimeout: 5400000,
+   // Global timeout: hard ceiling so the suite can never hang CI.
+   // Sized above a clean chrome-desktop run (~14m); if it fires, something is stuck.
+   globalTimeout: 1200000,
   
   // Reporting - Native Allure reporter for rich test metadata, plus HTML for artifact viewing
   reporter: process.env.CI 
