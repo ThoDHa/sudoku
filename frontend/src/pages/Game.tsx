@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { commitCellAction } from '../lib/commitCellAction'
+import { isDigitComplete } from '../lib/digitCompletion'
+import { buildFreshTrackingState } from '../lib/gameStateReset'
+import { shouldIncrementHintCounter } from '../lib/hintLifecycle'
+import { shouldSuppressAutoSave } from '../lib/autoSaveGuard'
 import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import Board from '../components/Board'
 import Controls from '../components/Controls'
@@ -840,14 +844,15 @@ function GameContent() {
 
   // Reset all game state (board, candidates, history, and tracking variables)
   const resetAllGameState = useCallback(() => {
+    const fresh = buildFreshTrackingState()
     game.resetGame()
-    setHintsUsed(0)
-    setTechniqueHintsUsed(0)
-    setAutoFillUsed(false)
-    setAutoSolveUsed(false)
-    autoSolveUsedRef.current = false
-    setAutoSolveStepsUsed(0)
-    setAutoSolveErrorsFixed(0)
+    setHintsUsed(fresh.hintsUsed)
+    setTechniqueHintsUsed(fresh.techniqueHintsUsed)
+    setAutoFillUsed(fresh.autoFillUsed)
+    setAutoSolveUsed(fresh.autoSolveUsed)
+    autoSolveUsedRef.current = fresh.autoSolveUsed
+    setAutoSolveStepsUsed(fresh.autoSolveStepsUsed)
+    setAutoSolveErrorsFixed(fresh.autoSolveErrorsFixed)
   }, [game])
 
   // Restart puzzle (clears all AND resets timer)
@@ -1029,7 +1034,7 @@ function GameContent() {
 
       // Only increment counter if this is a NEW hint (different from last shown)
       const signature = getHintSignature(move)
-      if (signature !== lastRegularHintRef.current) {
+      if (shouldIncrementHintCounter(signature, lastRegularHintRef.current)) {
         setHintsUsed((prev) => prev + 1)
         lastRegularHintRef.current = signature
       }
@@ -1152,7 +1157,7 @@ function GameContent() {
 
       // Only increment counter if this is a NEW hint (different from last shown)
       const signature = getHintSignature(move)
-      if (signature !== lastTechniqueHintRef.current) {
+      if (shouldIncrementHintCounter(signature, lastTechniqueHintRef.current)) {
         setTechniqueHintsUsed((prev) => prev + 1)
         lastTechniqueHintRef.current = signature
       }
@@ -1214,8 +1219,7 @@ function GameContent() {
       // Check if the digit we just placed is now complete (all 9 instances on board)
       if (!notesMode) {
         const digitCounts = gameRef.current.digitCounts
-        const count = digitCounts ? digitCounts[digit - 1] : 0
-        if (count !== undefined && count >= 9) {
+        if (isDigitComplete(digit, digitCounts)) {
           clearDigitHighlight()
         }
       }
@@ -1331,10 +1335,10 @@ function GameContent() {
       if (currentHighlightedDigit !== null) {
         // Fix 3: Block placement of complete highlighted digits
         // Check if the highlighted digit is complete before placing it
-        const digitCounts = currentGame.digitCounts
-        const highlightedDigitCount = digitCounts ? digitCounts[currentHighlightedDigit - 1] : 0
-        const isHighlightedDigitComplete =
-          highlightedDigitCount !== undefined && highlightedDigitCount >= 9
+        const isHighlightedDigitComplete = isDigitComplete(
+          currentHighlightedDigit,
+          currentGame.digitCounts,
+        )
 
         if (isHighlightedDigitComplete) {
           // Clear digit highlight and don't place the digit
@@ -1403,10 +1407,7 @@ function GameContent() {
 
       // Fix 2: Block selection of complete digits
       // Don't allow selecting/placing digits that have all 9 instances on the board
-      const digitCounts = currentGame.digitCounts
-      const digitCount = digitCounts ? digitCounts[digit - 1] : 0
-      const isDigitComplete = digitCount !== undefined && digitCount >= 9
-      if (isDigitComplete) {
+      if (isDigitComplete(digit, currentGame.digitCounts)) {
         return
       }
 
@@ -2167,7 +2168,14 @@ function GameContent() {
   // Auto-save game state when board or candidates change (but not when hidden)
   // Enhanced with requestIdleCallback for better battery performance
   useEffect(() => {
-    if (!puzzle || !hasRestoredSavedState.current || game.isComplete || !getAutoSaveEnabled())
+    if (
+      shouldSuppressAutoSave({
+        hasPuzzle: !!puzzle,
+        hasRestoredSavedState: hasRestoredSavedState.current,
+        isComplete: game.isComplete,
+        autoSaveEnabled: getAutoSaveEnabled(),
+      })
+    )
       return
 
     // Don't save when app is hidden to reduce battery usage
@@ -2251,7 +2259,14 @@ function GameContent() {
   // This ensures timer accuracy even if the user closes the browser suddenly
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (puzzle && !game.isComplete && hasRestoredSavedState.current && getAutoSaveEnabled()) {
+      if (
+        !shouldSuppressAutoSave({
+          hasPuzzle: !!puzzle,
+          hasRestoredSavedState: hasRestoredSavedState.current,
+          isComplete: game.isComplete,
+          autoSaveEnabled: getAutoSaveEnabled(),
+        })
+      ) {
         // Synchronous save - must complete before page unloads
         const storageKey = `${STORAGE_KEYS.GAME_STATE_PREFIX}${puzzle.seed}`
         const savedState: SavedGameState = {
