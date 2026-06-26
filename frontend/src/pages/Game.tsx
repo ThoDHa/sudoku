@@ -84,7 +84,7 @@ import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/
 import { validateSeed, extractSeedFromStorageKey } from '../lib/seedValidation'
 
 // Type for saved game state in localStorage
-interface SavedGameState {
+export interface SavedGameState {
   board: number[]
   candidates: number[][] // Serialized from Set<number>[]
   elapsedMs: number
@@ -93,6 +93,49 @@ interface SavedGameState {
   savedAt: number // timestamp
   difficulty: string // difficulty level for resume display
   isComplete?: boolean // Whether the game was completed
+  hintsUsed: number
+  techniqueHintsUsed: number
+}
+
+// Build the persisted shape from live game values. Shared by the autosave and
+// beforeunload save sites so the persisted fields cannot drift between them.
+// eslint-disable-next-line react-refresh/only-export-components -- exported for unit testing; co-located here because task territory forbids a new production module
+export function buildSavedState(input: {
+  board: number[]
+  candidates: number[][]
+  elapsedMs: number
+  history: Move[]
+  autoFillUsed: boolean
+  difficulty: string
+  isComplete?: boolean
+  hintsUsed: number
+  techniqueHintsUsed: number
+}): SavedGameState {
+  return {
+    board: input.board,
+    candidates: input.candidates,
+    elapsedMs: input.elapsedMs,
+    history: input.history,
+    autoFillUsed: input.autoFillUsed,
+    savedAt: Date.now(),
+    difficulty: input.difficulty,
+    isComplete: input.isComplete,
+    hintsUsed: input.hintsUsed,
+    techniqueHintsUsed: input.techniqueHintsUsed,
+  }
+}
+
+// Read hint counters back from a loaded save. Older saves predate these fields
+// and default to 0 so a legacy localStorage entry loads without a crash.
+// eslint-disable-next-line react-refresh/only-export-components -- exported for unit testing; co-located here because task territory forbids a new production module
+export function restoreHintCounters(saved: SavedGameState): {
+  hintsUsed: number
+  techniqueHintsUsed: number
+} {
+  return {
+    hintsUsed: saved.hintsUsed ?? 0,
+    techniqueHintsUsed: saved.techniqueHintsUsed ?? 0,
+  }
 }
 
 interface PuzzleData {
@@ -761,16 +804,17 @@ function GameContent() {
     clearOtherGamesForMode(puzzle.seed)
 
     const storageKey = getStorageKey(puzzle.seed)
-    const savedState: SavedGameState = {
+    const savedState: SavedGameState = buildSavedState({
       board: game.board,
       candidates: candidatesToArrays(game.candidates),
       elapsedMs: timerControl.getElapsedMs(),
       history: game.history,
       autoFillUsed,
-      savedAt: Date.now(),
       difficulty: puzzle.difficulty,
       isComplete: isCompleteRef.current,
-    }
+      hintsUsed,
+      techniqueHintsUsed,
+    })
 
     try {
       localStorage.setItem(storageKey, JSON.stringify(savedState))
@@ -779,7 +823,7 @@ function GameContent() {
     }
     // Note: We use isCompleteRef instead of game.isComplete to avoid stale closure issues
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
-  }, [puzzle, game.board, game.candidates, game.history, autoFillUsed, getStorageKey])
+  }, [puzzle, game.board, game.candidates, game.history, autoFillUsed, hintsUsed, techniqueHintsUsed, getStorageKey])
 
   // Clear saved game state from localStorage
   const clearSavedGameState = useCallback(() => {
@@ -2153,6 +2197,9 @@ function GameContent() {
           timerControl.startTimer()
         }
         setAutoFillUsed(savedState.autoFillUsed)
+        const restoredHints = restoreHintCounters(savedState)
+        setHintsUsed(restoredHints.hintsUsed)
+        setTechniqueHintsUsed(restoredHints.techniqueHintsUsed)
       } else {
         // No saved state - initialize board from givens
         game.setBoardState(initialBoard, new Uint16Array(81))
@@ -2247,6 +2294,9 @@ function GameContent() {
           game.restoreState(savedState.board, restoredCandidates, savedState.history)
           timerControl.setElapsedMs(savedState.elapsedMs)
           setAutoFillUsed(savedState.autoFillUsed)
+          const restoredHints = restoreHintCounters(savedState)
+          setHintsUsed(restoredHints.hintsUsed)
+          setTechniqueHintsUsed(restoredHints.techniqueHintsUsed)
         }
       }
     }
@@ -2269,15 +2319,16 @@ function GameContent() {
       ) {
         // Synchronous save - must complete before page unloads
         const storageKey = `${STORAGE_KEYS.GAME_STATE_PREFIX}${puzzle.seed}`
-        const savedState: SavedGameState = {
+        const savedState: SavedGameState = buildSavedState({
           board: game.board,
           candidates: candidatesToArrays(game.candidates),
           elapsedMs: timerControl.getElapsedMs(),
           history: game.history,
           autoFillUsed,
-          savedAt: Date.now(),
           difficulty: puzzle.difficulty,
-        }
+          hintsUsed,
+          techniqueHintsUsed,
+        })
         try {
           localStorage.setItem(storageKey, JSON.stringify(savedState))
         } catch {
@@ -2295,6 +2346,8 @@ function GameContent() {
     game.candidates,
     game.history,
     autoFillUsed,
+    hintsUsed,
+    techniqueHintsUsed,
     timerControl,
   ])
 
