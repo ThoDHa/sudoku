@@ -1,6 +1,6 @@
 # WASM build stage - compile Go solver to WebAssembly with TinyGo
-# Must match local dev environment (TinyGo 0.40.1) and CI deploy
-FROM tinygo/tinygo:0.40.1 AS wasm-builder
+# Must match local dev environment (TinyGo 0.41.1) and CI deploy
+FROM tinygo/tinygo:0.41.1 AS wasm-builder
 
 WORKDIR /go-app
 
