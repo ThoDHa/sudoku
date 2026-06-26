@@ -3,8 +3,11 @@ package puzzles
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"sudoku-api/pkg/constants"
 )
 
 // Test fixture: minimal valid puzzle data
@@ -242,6 +245,28 @@ func TestGetPuzzle_SolutionValuesInRange(t *testing.T) {
 		if v < 1 || v > 9 {
 			t.Errorf("Solution value at index %d out of range: %d", i, v)
 		}
+	}
+}
+
+func TestGetPuzzle_MalformedSolutionStringReturnsError(t *testing.T) {
+	cases := []struct {
+		name     string
+		solution string
+	}{
+		{"too short", "123"},
+		{"too long", strings.Repeat("1", constants.TotalCells+1)},
+		{"non-digit character", strings.Repeat("1", constants.TotalCells-1) + "x"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			loader := NewLoaderFromPuzzles([]CompactPuzzle{
+				{S: tc.solution, G: map[string][]int{"e": {0}}},
+			})
+			_, _, err := loader.GetPuzzle(0, "easy")
+			if err == nil {
+				t.Fatal("GetPuzzle() should return an error for a malformed solution string")
+			}
+		})
 	}
 }
 

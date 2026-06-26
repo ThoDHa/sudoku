@@ -7,6 +7,7 @@ import (
 
 	"sudoku-api/internal/puzzles"
 	"sudoku-api/internal/sudoku/dp"
+	"sudoku-api/internal/sudoku/human/techniquetest"
 	"sudoku-api/pkg/constants"
 )
 
@@ -50,7 +51,7 @@ var techniqueIsolationConfig = map[string][]string{
 }
 
 // loadTestPuzzle loads a puzzle for testing, either from puzzles.json or from a string
-func loadTestPuzzle(t *testing.T, data TechniquePuzzleData) ([]int, []int) {
+func loadTestPuzzle(t *testing.T, data techniquetest.PuzzleData) ([]int, []int) {
 	t.Helper()
 
 	if data.PuzzleIndex >= 0 {
@@ -124,7 +125,7 @@ func runIsolatedTechniqueTest(t *testing.T, slug string) {
 	t.Helper()
 
 	// Get puzzle data
-	data, ok := GetTechniquePuzzle(slug)
+	data, ok := techniquetest.Get(slug)
 	if !ok {
 		t.Fatalf("No puzzle data for technique: %s", slug)
 	}
@@ -137,7 +138,7 @@ func runIsolatedTechniqueTest(t *testing.T, slug string) {
 		t.Fatalf("Puzzle does not have unique solution")
 	}
 
-	// Convert givens to puzzle string for TestTechniqueDetection
+	// Convert givens to puzzle string for RunTechniqueDetection
 	puzzleString := ""
 	for _, v := range givens {
 		if v == 0 {
@@ -152,7 +153,7 @@ func runIsolatedTechniqueTest(t *testing.T, slug string) {
 		MaxSteps: constants.MaxSolverSteps,
 		Strategy: DisableHigherTiers,
 	}
-	result := TestTechniqueDetection(puzzleString, slug, config)
+	result := RunTechniqueDetection(puzzleString, slug, config)
 
 	if !result.Detected {
 		t.Errorf("Technique %s was never used. Status: %s, Moves: %d, Used: %v",
@@ -188,7 +189,7 @@ func runFullSolverTechniqueTest(t *testing.T, slug string) {
 	t.Helper()
 
 	// Get puzzle data
-	data, ok := GetTechniquePuzzle(slug)
+	data, ok := techniquetest.Get(slug)
 	if !ok {
 		t.Fatalf("No puzzle data for technique: %s", slug)
 	}
@@ -241,7 +242,7 @@ func runDirectDetectionTest(t *testing.T, slug string) {
 	t.Helper()
 
 	// Get puzzle data
-	data, ok := GetTechniquePuzzle(slug)
+	data, ok := techniquetest.Get(slug)
 	if !ok {
 		t.Fatalf("No puzzle data for technique: %s", slug)
 	}
@@ -256,7 +257,7 @@ func runDirectDetectionTest(t *testing.T, slug string) {
 
 	// Create board and test direct detection
 	board := NewBoard(givens)
-	move := TestTechniqueDetectionDirect(board, slug)
+	move := DetectTechniqueDirect(board, slug)
 
 	if move == nil {
 		// Try with solver's FindNextMove as fallback
@@ -308,7 +309,7 @@ func tryEarlyStopTechniqueTest(t *testing.T, slug string) bool {
 	t.Helper()
 
 	// Get puzzle data
-	data, ok := GetTechniquePuzzle(slug)
+	data, ok := techniquetest.Get(slug)
 	if !ok {
 		return false // Let the fallback handle the error
 	}
@@ -352,7 +353,7 @@ func runEarlyStopWithDisabledTechniques(t *testing.T, slug string, disabledTechn
 	t.Helper()
 
 	// Get puzzle data
-	data, ok := GetTechniquePuzzle(slug)
+	data, ok := techniquetest.Get(slug)
 	if !ok {
 		t.Fatalf("No puzzle data for technique: %s", slug)
 	}
@@ -578,7 +579,7 @@ func TestAllTechniquesHavePuzzles(t *testing.T) {
 
 	for _, tech := range registry.GetAll() {
 		t.Run(tech.Slug, func(t *testing.T) {
-			data, ok := GetTechniquePuzzle(tech.Slug)
+			data, ok := techniquetest.Get(tech.Slug)
 			if !ok {
 				t.Errorf("Technique %s has no puzzle data", tech.Slug)
 				return
@@ -596,7 +597,7 @@ func TestAllTechniquesHavePuzzles(t *testing.T) {
 func TestAllPuzzlesHaveTechniques(t *testing.T) {
 	registry := NewTechniqueRegistry()
 
-	for _, data := range TechniquePuzzles {
+	for _, data := range techniquetest.Puzzles {
 		t.Run(data.Slug, func(t *testing.T) {
 			tech := registry.GetBySlug(data.Slug)
 			if tech == nil {
@@ -629,7 +630,7 @@ func TestAllPuzzlesAreValid(t *testing.T) {
 		t.Fatalf("Failed to load puzzles.json: %v", err)
 	}
 
-	for _, data := range TechniquePuzzles {
+	for _, data := range techniquetest.Puzzles {
 		t.Run(data.Slug, func(t *testing.T) {
 			// Skip techniques with known invalid puzzles
 			if techniquesWithInvalidPuzzles[data.Slug] {
@@ -697,7 +698,7 @@ func TestDiagnosticTechniqueUsage(t *testing.T) {
 	}
 	var results []result
 
-	for _, data := range TechniquePuzzles {
+	for _, data := range techniquetest.Puzzles {
 		var givens []int
 
 		if data.PuzzleIndex >= 0 {
@@ -836,7 +837,7 @@ func TestPracticePuzzlesAlignment(t *testing.T) {
 	}
 
 	// For each technique in our test data with a puzzle index, verify it matches
-	for _, td := range TechniquePuzzles {
+	for _, td := range techniquetest.Puzzles {
 		if td.PuzzleIndex < 0 {
 			continue // Skip string-based puzzles
 		}

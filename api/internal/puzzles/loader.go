@@ -110,10 +110,9 @@ func (l *Loader) GetPuzzle(index int, difficulty string) (givens []int, solution
 
 	puzzle := l.puzzles[index]
 
-	// Parse solution
-	solution = make([]int, constants.TotalCells)
-	for i, c := range puzzle.S {
-		solution[i] = int(c - '0')
+	solution, err = parseSolution(puzzle.S)
+	if err != nil {
+		return nil, nil, fmt.Errorf("puzzle index %d: %w", index, err)
 	}
 
 	// Get difficulty key
@@ -135,6 +134,24 @@ func (l *Loader) GetPuzzle(index int, difficulty string) (givens []int, solution
 	}
 
 	return givens, solution, nil
+}
+
+// parseSolution decodes a compact solution string into one digit per cell.
+// It rejects malformed input (wrong length or non-digit characters) with an
+// error rather than letting the caller panic on index-out-of-range or silently
+// store out-of-range digit values.
+func parseSolution(s string) ([]int, error) {
+	if len(s) != constants.TotalCells {
+		return nil, fmt.Errorf("solution string length %d, expected %d", len(s), constants.TotalCells)
+	}
+	solution := make([]int, constants.TotalCells)
+	for i, c := range s {
+		if c < '0' || c > '9' {
+			return nil, fmt.Errorf("solution string has non-digit character %q at position %d", c, i)
+		}
+		solution[i] = int(c - '0')
+	}
+	return solution, nil
 }
 
 // GetPuzzleBySeed returns a puzzle for a given seed string
