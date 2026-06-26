@@ -132,6 +132,68 @@ func buildFixedCandidates(reqCandidates [][]int, badCell int) [][]int {
 	return fixed
 }
 
+// buildConflictFix resolves a single direct conflict (duplicate digit in a row,
+// column, or box) by selecting which cell to clear, then produces the corrected
+// board state and the fix-conflict move description. The cell holding a given is
+// always kept; when both cells are givens the conflict cannot be auto-fixed and
+// ok is false so the caller skips it. fixedBoard/fixedCandidates are returned
+// alongside the move so callers that continue solving (solveAll) can seed the
+// autosolve loop from the same corrected state the move reports.
+func buildConflictFix(board []int, candidates [][]int, givens []int, conflict dp.Conflict) (move map[string]interface{}, fixedBoard []int, fixedCandidates [][]int, ok bool) {
+	cell1IsGiven := givens[conflict.Cell1] != 0
+	cell2IsGiven := givens[conflict.Cell2] != 0
+
+	var badCell, otherCell int
+	if cell1IsGiven && cell2IsGiven {
+		return nil, nil, nil, false
+	} else if cell1IsGiven {
+		badCell = conflict.Cell2
+		otherCell = conflict.Cell1
+	} else if cell2IsGiven {
+		badCell = conflict.Cell1
+		otherCell = conflict.Cell2
+	} else {
+		badCell = conflict.Cell2
+		otherCell = conflict.Cell1
+	}
+
+	badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
+	otherRow, otherCol := otherCell/constants.GridSize, otherCell%constants.GridSize
+	badDigit := board[badCell]
+
+	fixedBoard = make([]int, len(board))
+	copy(fixedBoard, board)
+	fixedBoard[badCell] = 0
+
+	fixedCandidates = buildFixedCandidates(candidates, badCell)
+
+	var explanation string
+	switch conflict.Type {
+	case "row":
+		explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same row. Removing the %d from R%dC%d.",
+			badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
+	case "column":
+		explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same column. Removing the %d from R%dC%d.",
+			badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
+	case "box":
+		explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same box. Removing the %d from R%dC%d.",
+			badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
+	}
+
+	move = map[string]interface{}{
+		"technique":   "fix-conflict",
+		"action":      "fix-conflict",
+		"digit":       badDigit,
+		"explanation": explanation,
+		"targets":     []map[string]int{{"row": badRow, "col": badCol}},
+		"highlights": map[string]interface{}{
+			"primary":   []map[string]int{{"row": badRow, "col": badCol}},
+			"secondary": []map[string]int{{"row": otherRow, "col": otherCol}},
+		},
+	}
+	return move, fixedBoard, fixedCandidates, true
+}
+
 // resolveGivens returns the puzzle's original givens, preferring the value
 // supplied in the request and falling back to the loader or on-demand
 // generation from the session seed when it is not the right length.
@@ -586,73 +648,17 @@ func solveNextHandler(c *gin.Context) {
 	if len(conflicts) > 0 {
 		// Find the first conflict involving a user-entered cell (not a given)
 		for _, conflict := range conflicts {
-			// Determine which cell to remove (prefer removing user entry, not given)
-			var badCell int
-			var otherCell int
-
-			cell1IsGiven := givens[conflict.Cell1] != 0
-			cell2IsGiven := givens[conflict.Cell2] != 0
-
-			if cell1IsGiven && cell2IsGiven {
-				// Both are givens, this shouldn't happen in a valid puzzle, skip
+			move, fixedBoard, fixedCandidates, ok := buildConflictFix(req.Board, req.Candidates, givens, conflict)
+			if !ok {
 				continue
-			} else if cell1IsGiven {
-				// Cell1 is given, remove Cell2
-				badCell = conflict.Cell2
-				otherCell = conflict.Cell1
-			} else if cell2IsGiven {
-				// Cell2 is given, remove Cell1
-				badCell = conflict.Cell1
-				otherCell = conflict.Cell2
-			} else {
-				// Both are user entries - remove the one with higher index (more recently placed, typically)
-				badCell = conflict.Cell2
-				otherCell = conflict.Cell1
 			}
 
-			badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
-			otherRow, otherCol := otherCell/constants.GridSize, otherCell%constants.GridSize
-			badDigit := req.Board[badCell]
-
-			// Create a new board without the bad cell
-			fixedBoard := make([]int, len(req.Board))
-			copy(fixedBoard, req.Board)
-			fixedBoard[badCell] = 0
-
-			// Preserve user's candidates but clear the fixed cell's candidates
-			fixedCandidates := buildFixedCandidates(req.Candidates, badCell)
-
-			// Create explanation based on conflict type
-			var explanation string
-			switch conflict.Type {
-			case "row":
-				explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same row. Removing the %d from R%dC%d.",
-					badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
-			case "column":
-				explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same column. Removing the %d from R%dC%d.",
-					badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
-			case "box":
-				explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same box. Removing the %d from R%dC%d.",
-					badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
-			}
-
-			// Reset the board to the fixed state
 			newBoard := human.NewBoardWithCandidates(fixedBoard, fixedCandidates)
 
 			c.JSON(http.StatusOK, gin.H{
 				"board":      newBoard.GetCells(),
 				"candidates": newBoard.GetCandidates(),
-				"move": map[string]interface{}{
-					"technique":   "fix-conflict",
-					"action":      "fix-conflict",
-					"digit":       badDigit,
-					"explanation": explanation,
-					"targets":     []map[string]int{{"row": badRow, "col": badCol}},
-					"highlights": map[string]interface{}{
-						"primary":   []map[string]int{{"row": badRow, "col": badCol}},
-						"secondary": []map[string]int{{"row": otherRow, "col": otherCol}},
-					},
-				},
+				"move":       move,
 			})
 			return
 		}
@@ -1032,54 +1038,9 @@ func solveAllHandler(c *gin.Context) {
 	if len(conflicts) > 0 {
 		// Find the first conflict involving a user-entered cell (not a given)
 		for _, conflict := range conflicts {
-			// Determine which cell to remove (prefer removing user entry, not given)
-			var badCell int
-			var otherCell int
-
-			cell1IsGiven := givens[conflict.Cell1] != 0
-			cell2IsGiven := givens[conflict.Cell2] != 0
-
-			if cell1IsGiven && cell2IsGiven {
-				// Both are givens - this shouldn't happen in a valid puzzle, skip
+			move, fixedBoard, fixedCandidates, ok := buildConflictFix(req.Board, req.Candidates, givens, conflict)
+			if !ok {
 				continue
-			} else if cell1IsGiven {
-				// Cell1 is given, remove Cell2
-				badCell = conflict.Cell2
-				otherCell = conflict.Cell1
-			} else if cell2IsGiven {
-				// Cell2 is given, remove Cell1
-				badCell = conflict.Cell1
-				otherCell = conflict.Cell2
-			} else {
-				// Both are user entries - remove the one with higher index (more recently placed, typically)
-				badCell = conflict.Cell2
-				otherCell = conflict.Cell1
-			}
-
-			badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
-			otherRow, otherCol := otherCell/constants.GridSize, otherCell%constants.GridSize
-			badDigit := req.Board[badCell]
-
-			// Create a new board without the bad cell
-			fixedBoard := make([]int, len(req.Board))
-			copy(fixedBoard, req.Board)
-			fixedBoard[badCell] = 0
-
-			// Preserve user's candidates but clear the fixed cell's candidates
-			fixedCandidates := buildFixedCandidates(req.Candidates, badCell)
-
-			// Create explanation based on conflict type
-			var explanation string
-			switch conflict.Type {
-			case "row":
-				explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same row. Removing the %d from R%dC%d.",
-					badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
-			case "column":
-				explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same column. Removing the %d from R%dC%d.",
-					badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
-			case "box":
-				explanation = fmt.Sprintf("Conflict! R%dC%d and R%dC%d both have %d in the same box. Removing the %d from R%dC%d.",
-					badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
 			}
 
 			// Reset the board to the fixed state
@@ -1091,17 +1052,7 @@ func solveAllHandler(c *gin.Context) {
 			moves = append(moves, MoveResult{
 				Board:      newBoard.GetCells(),
 				Candidates: newBoard.GetCandidates(),
-				Move: map[string]interface{}{
-					"technique":   "fix-conflict",
-					"action":      "fix-conflict",
-					"digit":       badDigit,
-					"explanation": explanation,
-					"targets":     []map[string]int{{"row": badRow, "col": badCol}},
-					"highlights": map[string]interface{}{
-						"primary":   []map[string]int{{"row": badRow, "col": badCol}},
-						"secondary": []map[string]int{{"row": otherRow, "col": otherCol}},
-					},
-				},
+				Move:       move,
 			})
 
 			// Proceed with solving from the corrected user board
