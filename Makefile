@@ -270,5 +270,6 @@ allure-clean:
 	@echo "Cleaning Allure artifacts..."
 	@rm -rf allure-results
 	@rm -rf frontend/allure-results frontend/allure-report
+	@rm -rf frontend/test-results frontend/e2e/.auth frontend/console-debug.log
 	@rm -rf api/allure-results
 	@echo "Allure artifacts cleaned!"
