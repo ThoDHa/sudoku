@@ -2,6 +2,8 @@ package human
 
 import (
 	"testing"
+
+	"sudoku-api/internal/sudoku/human/techniquetest"
 )
 
 func TestTechniqueRegistry_Basic(t *testing.T) {
@@ -298,6 +300,35 @@ func TestGetTechniqueSlugsForTier(t *testing.T) {
 		}
 		if tech.Tier != "simple" {
 			t.Errorf("Technique %s should be simple tier, got %s", slug, tech.Tier)
+		}
+	}
+}
+
+// TestRegistrySlugsMatchCuratedFixtures guards against drift between the
+// production technique registry and the curated test fixtures: every registered
+// technique must have a curated fixture, and vice versa. A detector added to the
+// registry without a fixture (or a fixture with no registry entry) silently
+// breaks coverage. This is the registry-side companion to the techniques
+// package's TestSlugSourcesAgree, chaining registry -> fixtures -> detectors.
+func TestRegistrySlugsMatchCuratedFixtures(t *testing.T) {
+	registry := NewTechniqueRegistry()
+	registrySlugs := map[string]bool{}
+	for _, tech := range registry.GetAll() {
+		registrySlugs[tech.Slug] = true
+	}
+	fixtureSlugs := map[string]bool{}
+	for _, p := range techniquetest.Puzzles {
+		fixtureSlugs[p.Slug] = true
+	}
+
+	for slug := range registrySlugs {
+		if !fixtureSlugs[slug] {
+			t.Errorf("registry has %q but no curated fixture covers it", slug)
+		}
+	}
+	for slug := range fixtureSlugs {
+		if !registrySlugs[slug] {
+			t.Errorf("curated fixture %q has no registry entry", slug)
 		}
 	}
 }

@@ -151,15 +151,13 @@ test.describe('@integration Hints - Basic Functionality', () => {
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
     const cellFilled = emptyCellsAfter < emptyCellsBefore;
     
-    // Test passes if:
-    // 1. An explanation UI element is visible, OR
-    // 2. A cell was filled (fewer empty cells), OR  
-    // 3. Same number of empty cells but hint was processed (fill-candidate)
-    //    - We verify this by checking that the test didn't hang
-    // Since WASM hints process quickly and toasts may dismiss, we consider the test
-    // passing if either we see explanation OR board changed OR we simply completed
-    // without error (hint was clicked and processed)
-    const hintWorked = hasExplanation || cellFilled || emptyCellsAfter <= emptyCellsBefore;
+    // The hint must have produced an observable effect: an explanation UI is
+    // visible, or a cell was filled. The former third disjunct
+    // (`emptyCellsAfter <= emptyCellsBefore`) was always true — a hint never
+    // increases the empty count — so it let a no-op hint pass silently. A
+    // candidate-only hint that shows neither explanation nor fill now fails
+    // here, which is the honest signal to add candidate-DOM observation.
+    const hintWorked = hasExplanation || cellFilled;
     expect(hintWorked).toBeTruthy();
   });
 });

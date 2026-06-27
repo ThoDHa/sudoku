@@ -142,53 +142,62 @@ func boardFromPuzzleString(s string) *testBoard {
 	return b
 }
 
-// detectorBySlug maps a technique slug to its in-package detector entry point.
+// detectorFn is the in-package detector entry point signature.
 type detectorFn func(BoardInterface) *core.Move
 
+// detectorsBySlug is the single source of truth for which technique slugs have
+// an in-package detector wired up. detectorBySlug and TestSlugSourcesAgree both
+// read it, so a detector added here without a matching curated fixture or
+// detectorPriority entry fails the consistency test loudly instead of silently
+// dropping coverage.
+var detectorsBySlug = map[string]detectorFn{
+	"naked-single":            DetectNakedSingle,
+	"hidden-single":           DetectHiddenSingle,
+	"naked-pair":              DetectNakedPair,
+	"hidden-pair":             DetectHiddenPair,
+	"naked-triple":            DetectNakedTriple,
+	"hidden-triple":           DetectHiddenTriple,
+	"naked-quad":              DetectNakedQuad,
+	"hidden-quad":             DetectHiddenQuad,
+	"pointing-pair":           DetectPointingPair,
+	"box-line-reduction":      DetectBoxLineReduction,
+	"x-wing":                  DetectXWing,
+	"xy-wing":                 DetectXYWing,
+	"simple-coloring":         DetectSimpleColoring,
+	"swordfish":               DetectSwordfish,
+	"xyz-wing":                DetectXYZWing,
+	"bug":                     DetectBUG,
+	"unique-rectangle":        DetectUniqueRectangle,
+	"skyscraper":              DetectSkyscraper,
+	"x-chain":                 DetectXChain,
+	"xy-chain":                DetectXYChain,
+	"medusa-3d":               DetectMedusa3D,
+	"jellyfish":               DetectJellyfish,
+	"unique-rectangle-type-2": DetectUniqueRectangleType2,
+	"unique-rectangle-type-3": DetectUniqueRectangleType3,
+	"unique-rectangle-type-4": DetectUniqueRectangleType4,
+	"wxyz-wing":               DetectWXYZWing,
+	"w-wing":                  DetectWWing,
+	"empty-rectangle":         DetectEmptyRectangle,
+	"grouped-x-cycles":        DetectGroupedXCycles,
+	"finned-x-wing":           DetectFinnedXWing,
+	"finned-swordfish":        DetectFinnedSwordfish,
+	"aic":                     DetectAIC,
+	"als-xz":                  DetectALSXZ,
+	"als-xy-wing":             DetectALSXYWing,
+	"als-xy-chain":            DetectALSXYChain,
+	"sue-de-coq":              DetectSueDeCoq,
+	"digit-forcing-chain":     DetectDigitForcingChain,
+	"forcing-chain":           DetectForcingChain,
+	"death-blossom":           DetectDeathBlossom,
+}
+
+// detectorBySlug looks up a detector by slug and fails the test if none is
+// wired up for it. It reads detectorsBySlug so the consistency test guards the
+// same map against drift versus detectorPriority and the curated fixtures.
 func detectorBySlug(t *testing.T, slug string) detectorFn {
 	t.Helper()
-	m := map[string]detectorFn{
-		"naked-single":            DetectNakedSingle,
-		"hidden-single":           DetectHiddenSingle,
-		"naked-pair":              DetectNakedPair,
-		"hidden-pair":             DetectHiddenPair,
-		"naked-triple":            DetectNakedTriple,
-		"hidden-triple":           DetectHiddenTriple,
-		"naked-quad":              DetectNakedQuad,
-		"hidden-quad":             DetectHiddenQuad,
-		"pointing-pair":           DetectPointingPair,
-		"box-line-reduction":      DetectBoxLineReduction,
-		"x-wing":                  DetectXWing,
-		"xy-wing":                 DetectXYWing,
-		"simple-coloring":         DetectSimpleColoring,
-		"swordfish":               DetectSwordfish,
-		"xyz-wing":                DetectXYZWing,
-		"bug":                     DetectBUG,
-		"unique-rectangle":        DetectUniqueRectangle,
-		"skyscraper":              DetectSkyscraper,
-		"x-chain":                 DetectXChain,
-		"xy-chain":                DetectXYChain,
-		"medusa-3d":               DetectMedusa3D,
-		"jellyfish":               DetectJellyfish,
-		"unique-rectangle-type-2": DetectUniqueRectangleType2,
-		"unique-rectangle-type-3": DetectUniqueRectangleType3,
-		"unique-rectangle-type-4": DetectUniqueRectangleType4,
-		"wxyz-wing":               DetectWXYZWing,
-		"w-wing":                  DetectWWing,
-		"empty-rectangle":         DetectEmptyRectangle,
-		"grouped-x-cycles":        DetectGroupedXCycles,
-		"finned-x-wing":           DetectFinnedXWing,
-		"finned-swordfish":        DetectFinnedSwordfish,
-		"aic":                     DetectAIC,
-		"als-xz":                  DetectALSXZ,
-		"als-xy-wing":             DetectALSXYWing,
-		"als-xy-chain":            DetectALSXYChain,
-		"sue-de-coq":              DetectSueDeCoq,
-		"digit-forcing-chain":     DetectDigitForcingChain,
-		"forcing-chain":           DetectForcingChain,
-		"death-blossom":           DetectDeathBlossom,
-	}
-	fn, ok := m[slug]
+	fn, ok := detectorsBySlug[slug]
 	if !ok {
 		t.Fatalf("no detector registered for slug %q", slug)
 	}
@@ -311,5 +320,51 @@ func TestCuratedInlineFixturesDriveDetectors(t *testing.T) {
 				t.Fatalf("%s: unexpected move action %q", data.Slug, move.Action)
 			}
 		})
+	}
+}
+
+// TestSlugSourcesAgree guards against silent coverage drift between the three
+// parallel technique-slug sources in this package: detectorsBySlug (slug to
+// detector wiring), detectorPriority (pedagogical solve order), and
+// techniquetest.Puzzles (curated fixtures). Adding a detector to one source but
+// not the others silently drops or duplicates its coverage; this test fails
+// loudly on any mismatch. A registry-side companion lives in the human package
+// (TestRegistrySlugsMatchCuratedFixtures), chaining the registry to the same
+// curated-fixture set.
+func TestSlugSourcesAgree(t *testing.T) {
+	detectors := map[string]bool{}
+	for slug := range detectorsBySlug {
+		detectors[slug] = true
+	}
+	priority := map[string]bool{}
+	for _, slug := range detectorPriority {
+		if priority[slug] {
+			t.Errorf("detectorPriority lists %q more than once", slug)
+		}
+		priority[slug] = true
+	}
+	fixtures := map[string]bool{}
+	for _, p := range techniquetest.Puzzles {
+		if fixtures[p.Slug] {
+			t.Errorf("curated fixtures list %q more than once", p.Slug)
+		}
+		fixtures[p.Slug] = true
+	}
+
+	assertSameSlugSet(t, "detectorsBySlug", detectors, "detectorPriority", priority)
+	assertSameSlugSet(t, "detectorsBySlug", detectors, "curated fixtures", fixtures)
+}
+
+func assertSameSlugSet(t *testing.T, nameA string, a map[string]bool, nameB string, b map[string]bool) {
+	t.Helper()
+	for slug := range a {
+		if !b[slug] {
+			t.Errorf("%s has %q but %s does not: coverage drift between slug sources", nameA, slug, nameB)
+		}
+	}
+	for slug := range b {
+		if !a[slug] {
+			t.Errorf("%s has %q but %s does not: coverage drift between slug sources", nameB, slug, nameA)
+		}
 	}
 }

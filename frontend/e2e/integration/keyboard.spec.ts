@@ -186,10 +186,12 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     // Press right arrow
     await page.keyboard.press('ArrowRight');
 
-    // With skip-given-cells behavior, it either finds next empty or stays at edge
-    // Just verify selection still exists somewhere (app didn't crash)
-    const anySelected = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
-    expect(anySelected).toBeGreaterThanOrEqual(0); // App handles edge gracefully
+    // Edge behavior: pressing right at column 9 either stops (the current cell
+    // stays selected) or wraps to another column. Either way at least one cell
+    // must remain selected. A crash or full deselection leaves zero selected,
+    // which fails this guard. (Replaces a tautological >= 0 on count().)
+    const selectedCount = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
+    expect(selectedCount).toBeGreaterThanOrEqual(1);
   });
 
   test('Arrow Down from row 9 wraps or stops at edge', async ({ page }) => {
@@ -213,10 +215,10 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     // Press down arrow
     await page.keyboard.press('ArrowDown');
 
-    // With skip-given-cells behavior, it either finds next empty or stays at edge
-    // Just verify the app handles this gracefully
-    const anySelected = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
-    expect(anySelected).toBeGreaterThanOrEqual(0); // App handles edge gracefully
+    // Edge behavior: pressing down at row 9 either stops or wraps. At least one
+    // cell must remain selected afterward; a crash or full deselection fails here.
+    const selectedCount = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
+    expect(selectedCount).toBeGreaterThanOrEqual(1);
   });
 
   test('rapid arrow key pressing navigates correctly', async ({ page }) => {
@@ -608,15 +610,31 @@ test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
 
-    // Get current focused element
-    const afterTabs = await page.evaluate(() => document.activeElement?.tagName);
+    // Capture a stable identity of the focused element (tagName alone is too
+    // coarse: two buttons both report "BUTTON"). Combining id/title/aria/text
+    // distinguishes which interactive element actually holds focus.
+    const focusFingerprint = (): Promise<string> =>
+      page.evaluate(() => {
+        const el = document.activeElement;
+        if (!el) return '';
+        const tag = el.tagName.toLowerCase();
+        const id = el.id ? `#${el.id}` : '';
+        const title = el.getAttribute('title') || '';
+        const aria = el.getAttribute('aria-label') || '';
+        const text = (el.textContent || '').trim().slice(0, 20);
+        return `${tag}${id}[title=${title}][aria=${aria}]"${text}"`;
+      });
+
+    const beforeShiftTab = await focusFingerprint();
 
     // Shift+Tab backwards
     await page.keyboard.press('Shift+Tab');
 
-    // Should have moved back
-    const afterShiftTab = await page.evaluate(() => document.activeElement?.tagName);
-    expect(afterShiftTab).toBeDefined();
+    // Focus must have moved to a different element — if Shift+Tab is a no-op the
+    // fingerprint is unchanged and this fails. (Replaces a tautological
+    // toBeDefined on activeElement, which is body by default and never null.)
+    const afterShiftTab = await focusFingerprint();
+    expect(afterShiftTab).not.toBe(beforeShiftTab);
   });
 });
 
@@ -702,9 +720,10 @@ test.describe('@integration Keyboard Navigation - Edge Cases', () => {
     // Press left arrow
     await page.keyboard.press('ArrowLeft');
 
-    // With skip-given-cells behavior, verify app handles edge gracefully
-    const anySelected = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
-    expect(anySelected).toBeGreaterThanOrEqual(0);
+    // Edge behavior: pressing left at column 1 either stops or wraps. At least
+    // one cell must remain selected afterward; a crash or full deselect fails here.
+    const selectedCount = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
+    expect(selectedCount).toBeGreaterThanOrEqual(1);
   });
 
   test('Arrow Up from row 1 wraps or stops at edge', async ({ page }) => {
@@ -728,9 +747,10 @@ test.describe('@integration Keyboard Navigation - Edge Cases', () => {
     // Press up arrow
     await page.keyboard.press('ArrowUp');
 
-    // With skip-given-cells behavior, verify app handles edge gracefully
-    const anySelected = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
-    expect(anySelected).toBeGreaterThanOrEqual(0);
+    // Edge behavior: pressing up at row 1 either stops or wraps. At least one
+    // cell must remain selected afterward; a crash or full deselect fails here.
+    const selectedCount = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
+    expect(selectedCount).toBeGreaterThanOrEqual(1);
   });
 
   test('keyboard navigation works with no cell selected initially', async ({ page }) => {

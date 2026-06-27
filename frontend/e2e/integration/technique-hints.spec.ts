@@ -131,9 +131,11 @@ test.describe('@integration Technique Hints - Basic Functionality', () => {
     const toastVisible = await page.locator('.fixed.z-50').isVisible().catch(() => false);
     const gotItVisible = await gotItButton.isVisible().catch(() => false);
     
-    // Test passes if technique hint was processed without error
-    // (either toast appeared or modal appeared or at least didn't crash)
-    expect(toastVisible || gotItVisible || true).toBeTruthy();
+    // The hint must surface some UI feedback (a toast or the Got-it modal).
+    // The former `|| true` made this assertion always pass, letting a
+    // no-feedback regression slip through silently; it is dropped so a missing
+    // toast/modal now fails here.
+    expect(toastVisible || gotItVisible).toBeTruthy();
     
     // Close modal if visible
     if (gotItVisible) {
@@ -200,8 +202,11 @@ test.describe('@integration Technique Hints - Counter', () => {
       }
     }
     
-    // Test passes if we completed without error
-    expect(true).toBeTruthy();
+    // The flow above is tolerance-guarded (button may be disabled on some
+    // boards), but success must still mean the app is left in a valid state:
+    // the board is still rendered. A crash or unhandled error leaves the grid
+    // detached, failing this guard. (Replaces a tautological expect(true).)
+    await expect(page.locator('[role="grid"]')).toBeVisible();
   });
 });
 
@@ -301,8 +306,9 @@ test.describe('@integration Technique Hints - Mobile', () => {
       await expect(gotItButton).not.toBeVisible({ timeout: 3000 });
     }
     
-    // Test passes if processing completed without error
-    expect(true).toBeTruthy();
+    // Tolerance-guarded flow (modal may not appear on every board), but the app
+    // must end in a valid state: board still rendered. (Replaces expect(true).)
+    await expect(page.locator('[role="grid"]')).toBeVisible();
   });
 });
 
@@ -368,7 +374,8 @@ test.describe('@integration Technique Hints - Edge Cases', () => {
       await gotItButton.click();
     }
     
-    // Test passes if processing completed without error
-    expect(true).toBeTruthy();
+    // Clicking a technique hint with no cell selected must not crash the app:
+    // the board stays rendered in a stable state. (Replaces expect(true).)
+    await expect(page.locator('[role="grid"]')).toBeVisible();
   });
 });
