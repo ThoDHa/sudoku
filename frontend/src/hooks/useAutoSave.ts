@@ -3,20 +3,8 @@ import { STORAGE_KEYS, ERROR_FIX_RESUME_DELAY } from '../lib/constants'
 import { getAutoSaveEnabled } from '../lib/gameSettings'
 import { candidatesToArrays } from '../lib/candidatesUtils'
 import type { Move } from './useSudokuGame'
+import type { SavedGameState } from '../lib/savedGameState'
 import { logger } from '../lib/logger'
-
-/**
- * Saved game state structure for localStorage
- */
-export interface SavedGameState {
-  board: number[]
-  candidates: number[][] // Serialized from Uint16Array
-  elapsedMs: number
-  history: Move[]
-  autoFillUsed: boolean
-  savedAt: number // timestamp
-  difficulty: string // difficulty level for resume display
-}
 
 /**
  * Game state required for auto-save

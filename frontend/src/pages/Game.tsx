@@ -83,63 +83,11 @@ import {
 } from '../lib/puzzleEncoding'
 import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/candidatesUtils'
 import { validateSeed, extractSeedFromStorageKey } from '../lib/seedValidation'
-
-// Type for saved game state in localStorage
-export interface SavedGameState {
-  board: number[]
-  candidates: number[][] // Serialized from Set<number>[]
-  elapsedMs: number
-  history: Move[]
-  autoFillUsed: boolean
-  savedAt: number // timestamp
-  difficulty: string // difficulty level for resume display
-  isComplete?: boolean // Whether the game was completed
-  // Optional on the persisted shape: older saves predate these fields and are
-  // defaulted to 0 on restore (see restoreHintCounters).
-  hintsUsed?: number
-  techniqueHintsUsed?: number
-}
-
-// Build the persisted shape from live game values. Shared by the autosave and
-// beforeunload save sites so the persisted fields cannot drift between them.
-// eslint-disable-next-line react-refresh/only-export-components -- exported for unit testing; co-located here because task territory forbids a new production module
-export function buildSavedState(input: {
-  board: number[]
-  candidates: number[][]
-  elapsedMs: number
-  history: Move[]
-  autoFillUsed: boolean
-  difficulty: string
-  isComplete?: boolean
-  hintsUsed: number
-  techniqueHintsUsed: number
-}): SavedGameState {
-  return {
-    board: input.board,
-    candidates: input.candidates,
-    elapsedMs: input.elapsedMs,
-    history: input.history,
-    autoFillUsed: input.autoFillUsed,
-    savedAt: Date.now(),
-    difficulty: input.difficulty,
-    isComplete: input.isComplete,
-    hintsUsed: input.hintsUsed,
-    techniqueHintsUsed: input.techniqueHintsUsed,
-  }
-}
-
-// Read hint counters back from a loaded save. Older saves predate these fields
-// and default to 0 so a legacy localStorage entry loads without a crash.
-// eslint-disable-next-line react-refresh/only-export-components -- exported for unit testing; co-located here because task territory forbids a new production module
-export function restoreHintCounters(saved: SavedGameState): {
-  hintsUsed: number
-  techniqueHintsUsed: number
-} {
-  return {
-    hintsUsed: saved.hintsUsed ?? 0,
-    techniqueHintsUsed: saved.techniqueHintsUsed ?? 0,
-  }
-}
+import {
+  buildSavedState,
+  restoreHintCounters,
+  type SavedGameState,
+} from '../lib/savedGameState'
 
 interface PuzzleData {
   puzzle_id: string

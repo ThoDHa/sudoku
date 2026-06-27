@@ -5,9 +5,9 @@ import {
   loadSavedGameState,
   clearSavedGameState,
   useAutoSave,
-  type SavedGameState,
   type UseAutoSaveOptions,
 } from './useAutoSave'
+import type { SavedGameState } from '../lib/savedGameState'
 
 // =============================================================================
 // MOCKS

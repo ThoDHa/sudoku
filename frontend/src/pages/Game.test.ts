@@ -3,7 +3,7 @@ import {
   buildSavedState,
   restoreHintCounters,
   type SavedGameState,
-} from './Game'
+} from '../lib/savedGameState'
 
 describe('SavedGameState hint-counter persistence', () => {
   const baseSaveInput = {
