@@ -57,11 +57,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # Go specific
-*.test
-# Exception: keep the frontend test image tracked. The *.test rule above is
-# for compiled Go test binaries, but it also matches frontend/Dockerfile.test,
-# which make test-unit needs at build time.
-!frontend/Dockerfile.test
+# Compiled Go test binaries (e.g. api/<pkg>/<pkg>.test). Scoped to api/ where
+# all Go sources live, so it never swallows unrelated .test files.
+api/**/*.test
 *.out
 
 # Go workspace file
