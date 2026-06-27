@@ -26,6 +26,23 @@ import { fileURLToPath } from 'url';
 const PROFILE_DURATION_MS = 30_000; // 30 seconds per scenario (longer for accuracy)
 const WARMUP_MS = 3_000; // 3 seconds warmup before profiling
 
+// Verdict thresholds (PROF-001-D4). These are ABSOLUTE/percentage guards chosen
+// to fire on a real regression (a WASM busy loop or a leak) while tolerating
+// normal idle noise. Real baseline run: wasm-idle script≈0.02s, idle≈99.7%,
+// memory overhead≈2.5MB — so these limits have large headroom.
+const VERDICT_THRESHOLDS = {
+  IDLE_PCT_PASS: 98,            // >= 98% idle samples at wasm-idle → healthy
+  IDLE_PCT_WARN: 95,            // 95-98% → WARN, < 95% → FAIL
+  SCRIPT_SECONDS_WARN: 1,       // > 1s of script over 30s idle → WARN
+  SCRIPT_SECONDS_FAIL: 5,       // > 5s of script over 30s idle → FAIL (busy loop)
+  MEMORY_OVERHEAD_WARN_MB: 10,  // WASM adds more than this at idle → WARN
+  MEMORY_OVERHEAD_FAIL_MB: 30,  // → FAIL (leak/unbounded growth)
+  CLEANUP_EFFECTIVENESS_WARN: 50, // < 50% of WASM memory released on navigate-away → WARN
+  // Below this baseline scriptDuration (seconds) the overhead RATIO is treated
+  // as meaningless (near-zero div) and reported as null instead of a false 100%.
+  NEAR_ZERO_BASELINE_S: 0.05,
+} as const;
+
 // Use port 5173 for dev server, or override with PLAYWRIGHT_BASE_URL for production
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
 
@@ -79,9 +96,11 @@ interface ComparisonReport {
   baseUrl: string;
   scenarios: ProfileResult[];
   analysis: {
-    wasmCpuOverhead: number; // % increase from baseline to WASM idle
-    cleanupEffectiveness: number; // % return to baseline after cleanup
-    memoryOverheadMB: number; // Additional memory used by WASM
+    wasmCpuOverhead: number | null; // % increase baseline→wasm-idle; null when baseline ≈ 0 (meaningless ratio, PROF-001-D4)
+    wasmIdlePercentage: number;     // % of CPU samples in (idle) during wasm-idle — the real "is the thread idle" signal
+    wasmIdleScriptSeconds: number;  // absolute scriptDuration during wasm-idle; a busy-loop regression pushes this to seconds
+    cleanupEffectiveness: number;   // memory-based: % of WASM heap overhead released after navigating away
+    memoryOverheadMB: number;       // additional memory used by WASM at idle
     verdict: 'PASS' | 'WARN' | 'FAIL';
     findings: string[];
   };
@@ -221,39 +240,54 @@ async function profileScenario(
 }
 
 /**
- * Generate comparison report with analysis
+ * Generate comparison report with analysis.
+ *
+ * PROF-001-D4: the old overhead ratio exploded when the baseline scriptDuration
+ * was ~0 (the common case for an idle homepage), forcing a false 100% overhead
+ * and a bogus WARN. The ratio is now reported as null when the baseline is
+ * near-zero, and the verdict is driven by absolute/idle/memory signals that
+ * actually detect a regression (busy loop, leak, or non-idle WASM runtime).
  */
 function generateComparisonReport(results: ProfileResult[], deviceName: string, deviceLabel: string): ComparisonReport {
   const baseline = results.find((r) => r.scenario === 'baseline')!;
   const wasmIdle = results.find((r) => r.scenario === 'wasm-idle')!;
   const postCleanup = results.find((r) => r.scenario === 'post-cleanup')!;
 
-  // Calculate CPU overhead (comparing scriptDuration)
   const baselineScript = baseline.metrics.scriptDuration;
   const wasmIdleScript = wasmIdle.metrics.scriptDuration;
-  const postCleanupScript = postCleanup.metrics.scriptDuration;
 
-  // Avoid division by zero
+  // Overhead ratio is meaningful ONLY when the baseline is non-trivial.
+  // Otherwise report null (a near-zero/near-zero ratio is noise, not 100%).
   const wasmCpuOverhead =
-    baselineScript > 0
+    baselineScript > VERDICT_THRESHOLDS.NEAR_ZERO_BASELINE_S
       ? ((wasmIdleScript - baselineScript) / baselineScript) * 100
-      : wasmIdleScript > 0
-        ? 100
-        : 0;
+      : null;
 
-  // Cleanup effectiveness: how much did we return to baseline?
-  const wasmOverhead = wasmIdleScript - baselineScript;
-  const cleanupReturn = wasmIdleScript - postCleanupScript;
-  const cleanupEffectiveness = wasmOverhead > 0 ? (cleanupReturn / wasmOverhead) * 100 : 100;
+  // The real "is the thread idle" signal: share of CPU samples spent in (idle).
+  const wasmIdlePercentage =
+    wasmIdle.profile.topFunctions.find((f) => f.functionName === '(idle)')?.percentage ?? 0;
 
-  // Memory overhead
-  const memoryOverheadMB =
-    (wasmIdle.metrics.jsHeapUsedSize - baseline.metrics.jsHeapUsedSize) / 1024 / 1024;
+  // Memory-based cleanup effectiveness (the scriptDuration-based one was
+  // meaningless at near-zero). How much of the WASM heap overhead was released
+  // after navigating away from the game.
+  const baselineHeap = baseline.metrics.jsHeapUsedSize;
+  const wasmIdleHeap = wasmIdle.metrics.jsHeapUsedSize;
+  const postCleanupHeap = postCleanup.metrics.jsHeapUsedSize;
+  const memoryOverheadBytes = wasmIdleHeap - baselineHeap;
+  const cleanupEffectiveness =
+    memoryOverheadBytes > 0
+      ? ((wasmIdleHeap - postCleanupHeap) / memoryOverheadBytes) * 100
+      : 100;
 
-  // Generate findings
+  const memoryOverheadMB = memoryOverheadBytes / 1024 / 1024;
+
   const findings: string[] = [];
 
-  if (wasmCpuOverhead > 50) {
+  if (wasmCpuOverhead === null) {
+    findings.push(
+      `WASM idle CPU overhead: N/A (baseline scriptDuration ${baselineScript.toFixed(3)}s below noise floor; absolute idle% used instead)`
+    );
+  } else if (wasmCpuOverhead > 50) {
     findings.push(`WASM idle CPU usage is ${wasmCpuOverhead.toFixed(0)}% higher than baseline`);
   } else if (wasmCpuOverhead > 20) {
     findings.push(`WASM idle CPU usage is ${wasmCpuOverhead.toFixed(0)}% higher than baseline (moderate)`);
@@ -261,15 +295,19 @@ function generateComparisonReport(results: ProfileResult[], deviceName: string, 
     findings.push(`WASM idle CPU overhead is minimal (${wasmCpuOverhead.toFixed(0)}%)`);
   }
 
+  findings.push(
+    `WASM idle thread was idle ${wasmIdlePercentage.toFixed(2)}% of samples (${wasmIdleScript.toFixed(3)}s script over ${PROFILE_DURATION_MS / 1000}s)`
+  );
+
   if (memoryOverheadMB > 5) {
     findings.push(`WASM adds ${memoryOverheadMB.toFixed(1)}MB memory overhead`);
   }
 
-  if (cleanupEffectiveness < 80) {
+  if (cleanupEffectiveness < VERDICT_THRESHOLDS.CLEANUP_EFFECTIVENESS_WARN) {
     findings.push(
-      `Cleanup only ${cleanupEffectiveness.toFixed(0)}% effective - WASM may not be fully unloading`
+      `Cleanup only ${cleanupEffectiveness.toFixed(0)}% effective — WASM memory may not be fully released`
     );
-  } else if (cleanupEffectiveness >= 80) {
+  } else {
     findings.push(`Cleanup is ${cleanupEffectiveness.toFixed(0)}% effective`);
   }
 
@@ -293,20 +331,20 @@ function generateComparisonReport(results: ProfileResult[], deviceName: string, 
     }
   }
 
-  // Compare sample counts (higher = more CPU activity)
-  const baselineSamples = baseline.profile.totalSamples;
-  const wasmIdleSamples = wasmIdle.profile.totalSamples;
-  if (wasmIdleSamples > baselineSamples * 1.5) {
-    findings.push(
-      `WASM idle has ${((wasmIdleSamples / baselineSamples - 1) * 100).toFixed(0)}% more CPU samples than baseline`
-    );
-  }
-
-  // Determine verdict
+  // Determine verdict from absolute/idle/memory signals (not the near-zero ratio).
   let verdict: 'PASS' | 'WARN' | 'FAIL' = 'PASS';
-  if (wasmCpuOverhead > 100 || cleanupEffectiveness < 50) {
+  if (
+    wasmIdleScript > VERDICT_THRESHOLDS.SCRIPT_SECONDS_FAIL ||
+    wasmIdlePercentage < VERDICT_THRESHOLDS.IDLE_PCT_WARN ||
+    memoryOverheadMB > VERDICT_THRESHOLDS.MEMORY_OVERHEAD_FAIL_MB
+  ) {
     verdict = 'FAIL';
-  } else if (wasmCpuOverhead > 50 || cleanupEffectiveness < 80) {
+  } else if (
+    wasmIdleScript > VERDICT_THRESHOLDS.SCRIPT_SECONDS_WARN ||
+    wasmIdlePercentage < VERDICT_THRESHOLDS.IDLE_PCT_PASS ||
+    memoryOverheadMB > VERDICT_THRESHOLDS.MEMORY_OVERHEAD_WARN_MB ||
+    cleanupEffectiveness < VERDICT_THRESHOLDS.CLEANUP_EFFECTIVENESS_WARN
+  ) {
     verdict = 'WARN';
   }
 
@@ -316,9 +354,11 @@ function generateComparisonReport(results: ProfileResult[], deviceName: string, 
     deviceLabel,
     profileDurationMs: PROFILE_DURATION_MS,
     baseUrl: BASE_URL,
-    scenarios: results.map((r) => ({ ...r, rawProfile: undefined })), // Exclude raw profiles from report
+    scenarios: results.map((r) => ({ ...r, rawProfile: undefined })),
     analysis: {
       wasmCpuOverhead,
+      wasmIdlePercentage,
+      wasmIdleScriptSeconds: wasmIdleScript,
       cleanupEffectiveness,
       memoryOverheadMB,
       verdict,
@@ -384,12 +424,16 @@ function printReport(results: ProfileResult[], report: ComparisonReport): void {
   console.log('\n' + divider);
   console.log('📈 ANALYSIS');
   console.log(divider);
-  console.log(`   WASM CPU Overhead:     ${report.analysis.wasmCpuOverhead.toFixed(1)}%`);
-  console.log(`   Memory Overhead:       ${report.analysis.memoryOverheadMB.toFixed(1)} MB`);
-  console.log(`   Cleanup Effectiveness: ${report.analysis.cleanupEffectiveness.toFixed(1)}%`);
-  console.log(`   Verdict:               ${report.analysis.verdict}`);
+  const a = report.analysis;
+  const overheadStr = a.wasmCpuOverhead === null ? 'N/A (baseline below noise floor)' : `${a.wasmCpuOverhead.toFixed(1)}%`;
+  console.log(`   WASM CPU Overhead:     ${overheadStr}`);
+  console.log(`   WASM Idle %:           ${a.wasmIdlePercentage.toFixed(2)}% (higher is better)`);
+  console.log(`   WASM Idle Script:      ${a.wasmIdleScriptSeconds.toFixed(3)}s over ${PROFILE_DURATION_MS / 1000}s`);
+  console.log(`   Memory Overhead:       ${a.memoryOverheadMB.toFixed(1)} MB`);
+  console.log(`   Cleanup Effectiveness: ${a.cleanupEffectiveness.toFixed(1)}%`);
+  console.log(`   Verdict:               ${a.verdict}`);
   console.log(`\n   Findings:`);
-  for (const finding of report.analysis.findings) {
+  for (const finding of a.findings) {
     console.log(`     • ${finding}`);
   }
 
@@ -495,7 +539,8 @@ async function runDeviceProfiling(
 // Test Suite
 // ============================================
 
-test.describe('@profiling @slow WASM CPU Profiling', () => {
+// Serialized: CPU profile measurements must not contend with sibling workers (PROF-001-D9).
+test.describe.serial('@profiling @slow WASM CPU Profiling', () => {
   test.beforeAll(async () => {
     // Ensure results directory exists
     if (!fs.existsSync(RESULTS_DIR)) {
@@ -512,11 +557,15 @@ test.describe('@profiling @slow WASM CPU Profiling', () => {
 
     const report = await runDeviceProfiling(DEVICE_CONFIGS[0]);
 
-    // === ASSERTIONS ===
+    // === ASSERTIONS (PROF-001-D4: the verdict is now ASSERTED, not just logged) ===
     expect(report.scenarios.length).toBe(3);
     expect(report.scenarios.every((r) => r.profile.totalSamples > 0)).toBe(true);
+    // A FAIL verdict must break the test — that is what makes this a real guard.
+    expect(report.analysis.verdict, `Pixel 5 verdict was ${report.analysis.verdict}: ${report.analysis.findings.join('; ')}`).not.toBe('FAIL');
+    // The most robust regression signal: the WASM runtime must be (mostly) idle
+    // when nothing is happening, otherwise it drains battery on mobile.
+    expect(report.analysis.wasmIdlePercentage, 'WASM idle thread must be mostly idle').toBeGreaterThanOrEqual(VERDICT_THRESHOLDS.IDLE_PCT_WARN);
 
-    // Log verdict for CI visibility
     logVerdict(report);
   });
 
@@ -529,11 +578,12 @@ test.describe('@profiling @slow WASM CPU Profiling', () => {
 
     const report = await runDeviceProfiling(DEVICE_CONFIGS[1]);
 
-    // === ASSERTIONS ===
+    // === ASSERTIONS (PROF-001-D4) ===
     expect(report.scenarios.length).toBe(3);
     expect(report.scenarios.every((r) => r.profile.totalSamples > 0)).toBe(true);
+    expect(report.analysis.verdict, `iPhone 12 verdict was ${report.analysis.verdict}: ${report.analysis.findings.join('; ')}`).not.toBe('FAIL');
+    expect(report.analysis.wasmIdlePercentage, 'WASM idle thread must be mostly idle').toBeGreaterThanOrEqual(VERDICT_THRESHOLDS.IDLE_PCT_WARN);
 
-    // Log verdict for CI visibility
     logVerdict(report);
   });
 });

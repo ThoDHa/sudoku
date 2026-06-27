@@ -1,117 +1,157 @@
 /**
  * SELECTION PERFORMANCE REGRESSION TESTS
- * 
- * Performance Fortress - Ensures Selection Fixes Don't Impact Battle Speed
- * 
- * Created by Sun Wukong - Tôn Ngộ Không to ensure the realm remains swift
- * 
- * These tests verify that our selection state fixes and outside-click detection
- * do not cause performance regressions or impact user experience speed.
- * 
+ *
+ * Intent: guard against selection-state and outside-click-detection changes
+ * that regress interaction speed. Every test measures a REAL user-facing
+ * interaction end to end (including Playwright automation overhead, which is
+ * part of what an E2E perf guard must tolerate).
+ *
+ * Measurement contract (PROF-001-D6): selection state is asserted via the
+ * stable `tabindex` contract emitted by Board.tsx (`tabIndex={isSelected ? 0 :
+ * -1}`), the same signal used by the `selectCell` helper. We deliberately do
+ * NOT time `expect(...).toHaveClass(/ring-2.*ring-accent/)` style assertions:
+ * that would measure Playwright's own assertion-polling latency, not the app.
+ *
+ * Threshold policy (PROF-001-D7): absolute ms guards, documented as E2E
+ * thresholds. All configured projects are chromium, so there is no webkit
+ * multiplier (the old WEBKIT_MULTIPLIER branch never fired and was removed).
+ *
  * Tag: @performance @regression @selection
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures';
+import type { Page, Locator } from '@playwright/test';
 import { setupGameAndWaitForBoard } from '../utils/board-wait';
+import { measureTime, summarize } from './helpers/timing';
 
-// Performance thresholds (in milliseconds)
-// Note: These are E2E thresholds that include Playwright browser automation overhead.
-// Unit tests see ~30-60ms for React render, but E2E tests include:
-// - Playwright's internal wait loops and assertion polling
-// - Browser automation IPC latency
-// - Initial React component mount on first operations
-// - PWA service worker initialization
-// Thresholds are set to catch regressions while allowing realistic E2E performance.
-// WebKit requires higher thresholds due to slower iOS simulation.
+// E2E thresholds (ms). These bundle Playwright browser-automation overhead +
+// React mount + the auto-retrying assertion poll cadence, so they are
+// deliberately looser than the ~30-60ms React render a unit test sees. They
+// exist to catch REGRESSIONS (a change that roughly doubles interaction
+// latency), not to claim absolute speed.
+//
+// Empirical basis (chrome-desktop, healthy build, PROF-001-D7):
+//   single selection ~320ms (first-run mount); rapid-select avg ~190ms/cell
+//   single digit entry ~150ms; overwrite avg ~310ms, overwrite max ~470ms
+//   single outside-click ~170ms; outside-click cycle ~360ms
+//   rapid digit-entry STEP (click+digit+2 polls) ~330-500ms (noisy — compound)
+//   5-step mixed sequence ~1300ms
+// Single-interaction thresholds are ~2x the measured typical. The compound
+// step budget accommodates the stacked auto-retry polls of a 5-step sequence
+// while still tripping on a ≥2x regression.
 const PERFORMANCE_THRESHOLDS = {
-  SELECTION_RESPONSE: 400,      // Cell selection including first-run React mount overhead
-  DIGIT_ENTRY_RESPONSE: 200,    // Digit entry + deselection with Playwright overhead
-  OUTSIDE_CLICK_RESPONSE: 350,  // Outside click detection including first-run overhead
-  RAPID_INTERACTION: 1500       // Rapid sequence should complete within 1.5s
-};
+  SELECTION_RESPONSE: 500,           // single cell selection (incl. first-run mount)
+  DIGIT_ENTRY_RESPONSE: 350,         // single digit entry + deselection
+  OUTSIDE_CLICK_RESPONSE: 500,       // single outside-click; outside-click cycle avg
+  DIGIT_ENTRY_SEQUENCE_STEP: 700,    // per-step in a 5-step rapid digit-entry / overwrite sequence
+  RAPID_INTERACTION: 2500,           // full 5-step mixed sequence
+} as const;
 
-// WebKit multiplier for slower iOS simulation
-const WEBKIT_MULTIPLIER = 1.5;
+const SEED = 'Pselperf1';
 
-// Helper to get WebKit-adjusted threshold
-function getThreshold(baseThreshold: number, browserName: string): number {
-  return browserName === 'webkit' ? baseThreshold * WEBKIT_MULTIPLIER : baseThreshold;
+function getCellLocator(page: Page, row: number, col: number): Locator {
+  return page.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`).first();
 }
 
-// Helper to measure timing with high precision
-async function measureTime<T>(operation: () => Promise<T>): Promise<{ result: T; duration: number }> {
-  const start = performance.now();
-  const result = await operation();
-  const duration = performance.now() - start;
-  return { result, duration };
+// Stable selection contract: selected cell is focusable (tabindex 0), any
+// non-selected state is not focusable-as-selected (tabindex != 0).
+async function expectCellSelected(cell: Locator): Promise<void> {
+  await expect(cell).toHaveAttribute('tabindex', '0');
 }
 
-// Helper to get a cell by row and column (1-indexed)
-function getCellLocator(page: any, row: number, col: number) {
-  return page.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`);
+async function expectCellNotSelected(cell: Locator): Promise<void> {
+  await expect(cell).not.toHaveAttribute('tabindex', '0');
 }
 
-// Helper to verify cell is selected
-async function expectCellSelected(cell: any) {
-  await expect(cell).toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/);
-}
-
-// Helper to verify cell is NOT selected
-async function expectCellNotSelected(cell: any) {
-  await expect(cell).not.toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/);
-}
-
-// Helper to find any empty cell
-async function findEmptyCell(page: any): Promise<{ row: number; col: number } | null> {
+async function findEmptyCell(page: Page): Promise<{ row: number; col: number } | null> {
   const emptyCells = page.locator('[role="gridcell"][aria-label*="empty"]');
-  const count = await emptyCells.count();
-  
-  if (count === 0) return null;
-  
+  if ((await emptyCells.count()) === 0) return null;
   const firstEmpty = emptyCells.first();
   const ariaLabel = await firstEmpty.getAttribute('aria-label');
   const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
-  
-  return match ? { row: parseInt(match[1]), col: parseInt(match[2]) } : null;
+  return match ? { row: parseInt(match[1], 10), col: parseInt(match[2], 10) } : null;
 }
 
-// Helper to get outside click coordinates
-async function getOutsideClickCoordinates(page: any) {
+interface OutsidePoint {
+  name: string;
+  x: number;
+  y: number;
+}
+
+/**
+ * Returns one viewport-clamped point guaranteed to be OUTSIDE the board and
+ * INSIDE the viewport, for a single outside-click measurement (PROF-001-D4:
+ * the old fixed padding=50 could land off-screen on mobile).
+ */
+async function getSafeOutsidePoint(page: Page): Promise<OutsidePoint> {
+  const points = await getSafeOutsidePoints(page);
+  return points[0] ?? { name: 'fallback', x: 4, y: 4 };
+}
+
+/**
+ * Returns up to 4 outside-board points, one per side that actually has space
+ * within the viewport. Lets the "all directions" test run only on directions
+ * the viewport can host (mobile-safe).
+ */
+async function getSafeOutsidePoints(page: Page): Promise<OutsidePoint[]> {
+  const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
   const board = page.locator('.sudoku-board').first();
-  const boardBox = await board.boundingBox();
-  
-  if (!boardBox) throw new Error('Could not find sudoku board');
-  
-  const padding = 50;
-  
-  return {
-    above: { x: boardBox.x + boardBox.width / 2, y: boardBox.y - padding },
-    below: { x: boardBox.x + boardBox.width / 2, y: boardBox.y + boardBox.height + padding },
-    left: { x: boardBox.x - padding, y: boardBox.y + boardBox.height / 2 },
-    right: { x: boardBox.x + boardBox.width + padding, y: boardBox.y + boardBox.height / 2 }
-  };
+  const box = await board.boundingBox();
+  const margin = 6;
+  const points: OutsidePoint[] = [];
+
+  if (!box) return [{ name: 'top', x: viewport.width / 2, y: margin }];
+
+  const insideBoard = (x: number, y: number) =>
+    x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height;
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+  // Above
+  const aboveY = clamp(box.y - 6, margin, viewport.height - margin);
+  if (!insideBoard(viewport.width / 2, aboveY)) {
+    points.push({ name: 'above', x: viewport.width / 2, y: aboveY });
+  }
+  // Below
+  const belowY = clamp(box.y + box.height + 6, margin, viewport.height - margin);
+  if (!insideBoard(viewport.width / 2, belowY)) {
+    points.push({ name: 'below', x: viewport.width / 2, y: belowY });
+  }
+  // Left
+  const leftX = clamp(box.x - 6, margin, viewport.width - margin);
+  if (!insideBoard(leftX, box.y + box.height / 2)) {
+    points.push({ name: 'left', x: leftX, y: box.y + box.height / 2 });
+  }
+  // Right
+  const rightX = clamp(box.x + box.width + 6, margin, viewport.width - margin);
+  if (!insideBoard(rightX, box.y + box.height / 2)) {
+    points.push({ name: 'right', x: rightX, y: box.y + box.height / 2 });
+  }
+
+  return points.length > 0 ? points : [{ name: 'top', x: viewport.width / 2, y: margin }];
 }
 
-test.describe('@performance Selection Performance - No Regression', () => {
-  
+// Serialized because these are latency measurements: parallel workers steal CPU
+// and corrupt the timings (confirmed: iphone-12 tests pass in isolation but
+// flake under fullyParallel load). Profiling must measure the app, not sibling
+// tests.
+test.describe.serial('@performance Selection Performance - No Regression', () => {
   test.beforeEach(async ({ page }) => {
-    await setupGameAndWaitForBoard(page);
+    // Seeded puzzle (PROF-001-D3/H3) for deterministic empty-cell layout.
+    await setupGameAndWaitForBoard(page, { seed: SEED, difficulty: 'easy' });
   });
 
   test.describe('Cell Selection Performance', () => {
-    
     test('cell selection responds within performance threshold', async ({ page }) => {
       const emptyCell = await findEmptyCell(page);
       test.skip(!emptyCell, 'No empty cells available for testing');
-      
+
       const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
-      
-      // Measure selection timing
+
       const { duration } = await measureTime(async () => {
         await cell.click();
         await expectCellSelected(cell);
       });
-      
+
       console.log(`Cell selection took: ${duration.toFixed(2)}ms`);
       expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE);
     });
@@ -120,8 +160,7 @@ test.describe('@performance Selection Performance - No Regression', () => {
       const emptyCells = page.locator('[role="gridcell"][aria-label*="empty"]');
       const cellCount = Math.min(await emptyCells.count(), 10);
       test.skip(cellCount < 5, 'Need at least 5 empty cells for performance testing');
-      
-      // Measure rapid selection sequence
+
       const { duration } = await measureTime(async () => {
         for (let i = 0; i < 5; i++) {
           const cell = emptyCells.nth(i);
@@ -129,7 +168,7 @@ test.describe('@performance Selection Performance - No Regression', () => {
           await expectCellSelected(cell);
         }
       });
-      
+
       const avgPerSelection = duration / 5;
       console.log(`Average selection time: ${avgPerSelection.toFixed(2)}ms per cell`);
       expect(avgPerSelection).toBeLessThan(PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE);
@@ -138,49 +177,39 @@ test.describe('@performance Selection Performance - No Regression', () => {
     test('selection performance stable across different board regions', async ({ page }) => {
       const emptyCells = page.locator('[role="gridcell"][aria-label*="empty"]');
       const cellCount = Math.min(await emptyCells.count(), 5);
-      
+
       const timings: number[] = [];
-      
       for (let i = 0; i < cellCount; i++) {
         const cell = emptyCells.nth(i);
-        
         const { duration } = await measureTime(async () => {
           await cell.click();
           await expectCellSelected(cell);
         });
-        
         timings.push(duration);
       }
-      
-      const avgTiming = timings.reduce((a, b) => a + b, 0) / timings.length;
-      const maxTiming = Math.max(...timings);
-      
-      console.log(`Region selection timings: ${timings.map(t => t.toFixed(2)).join(', ')}ms`);
-      console.log(`Average: ${avgTiming.toFixed(2)}ms, Max: ${maxTiming.toFixed(2)}ms`);
-      
-      expect(avgTiming).toBeLessThan(PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE);
-      expect(maxTiming).toBeLessThan(PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE * 1.5);
+
+      const stats = summarize(timings);
+      console.log(`Region timings: ${timings.map((t) => t.toFixed(2)).join(', ')}ms`);
+      console.log(`Avg: ${stats.avg.toFixed(2)}ms, Max: ${stats.max.toFixed(2)}ms`);
+      expect(stats.avg).toBeLessThan(PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE);
+      expect(stats.max).toBeLessThan(PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE * 1.5);
     });
   });
 
   test.describe('Digit Entry Performance', () => {
-    
     test('digit entry and deselection completes within threshold', async ({ page }) => {
       const emptyCell = await findEmptyCell(page);
       test.skip(!emptyCell, 'No empty cells available for testing');
-      
+
       const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
-      
-      // Select cell first
       await cell.click();
       await expectCellSelected(cell);
-      
-      // Measure digit entry + deselection timing
+
       const { duration } = await measureTime(async () => {
         await page.keyboard.press('7');
         await expectCellNotSelected(cell);
       });
-      
+
       console.log(`Digit entry + deselection took: ${duration.toFixed(2)}ms`);
       expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.DIGIT_ENTRY_RESPONSE);
     });
@@ -189,10 +218,9 @@ test.describe('@performance Selection Performance - No Regression', () => {
       const emptyCells = page.locator('[role="gridcell"][aria-label*="empty"]');
       const cellCount = Math.min(await emptyCells.count(), 5);
       test.skip(cellCount < 5, 'Need at least 5 empty cells for performance testing');
-      
+
       const digits = ['1', '2', '3', '4', '5'];
-      
-      // Measure rapid digit entry sequence
+
       const { duration } = await measureTime(async () => {
         for (let i = 0; i < 5; i++) {
           const cell = emptyCells.nth(i);
@@ -201,299 +229,215 @@ test.describe('@performance Selection Performance - No Regression', () => {
           await expectCellNotSelected(cell);
         }
       });
-      
+
       const avgPerDigit = duration / 5;
       console.log(`Average digit entry time: ${avgPerDigit.toFixed(2)}ms per digit`);
-      expect(avgPerDigit).toBeLessThan(PERFORMANCE_THRESHOLDS.DIGIT_ENTRY_RESPONSE);
+      // Compound step (click+digit+2 auto-retry polls) is noisier than single;
+      // use the sequence-step budget.
+      expect(avgPerDigit).toBeLessThan(PERFORMANCE_THRESHOLDS.DIGIT_ENTRY_SEQUENCE_STEP);
     });
 
-    test('digit overwriting performance remains stable', async ({ page, browserName }) => {
+    test('digit overwriting performance remains stable', async ({ page }) => {
       const emptyCell = await findEmptyCell(page);
       test.skip(!emptyCell, 'No empty cells available for testing');
-      
+
       const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
       const digits = ['1', '2', '3', '4', '5'];
-      const timings: number[] = [];
-      
-      // Place initial digit
+
       await cell.click();
       await page.keyboard.press('9');
-      
-      // Measure overwriting performance for each digit
+
+      const timings: number[] = [];
       for (const digit of digits) {
         const { duration } = await measureTime(async () => {
           await cell.click();
           await page.keyboard.press(digit);
           await expectCellNotSelected(cell);
         });
-        
         timings.push(duration);
       }
-      
-      const avgTiming = timings.reduce((a, b) => a + b, 0) / timings.length;
-      const maxTiming = Math.max(...timings);
-      const threshold = getThreshold(PERFORMANCE_THRESHOLDS.DIGIT_ENTRY_RESPONSE, browserName);
-      
-      console.log(`Overwrite timings: ${timings.map(t => t.toFixed(2)).join(', ')}ms`);
-      console.log(`Average: ${avgTiming.toFixed(2)}ms, Max: ${maxTiming.toFixed(2)}ms`);
-      
-      expect(avgTiming).toBeLessThan(threshold);
-      expect(maxTiming).toBeLessThan(threshold * 1.5);
+
+      const stats = summarize(timings);
+      console.log(`Overwrite timings: ${timings.map((t) => t.toFixed(2)).join(', ')}ms`);
+      console.log(`Avg: ${stats.avg.toFixed(2)}ms, Max: ${stats.max.toFixed(2)}ms`);
+      // Same compound-step shape as the rapid digit-entry sequence (click+digit+
+      // deselect-poll per iteration), so it uses the sequence-step budget.
+      expect(stats.avg).toBeLessThan(PERFORMANCE_THRESHOLDS.DIGIT_ENTRY_SEQUENCE_STEP);
+      expect(stats.max).toBeLessThan(PERFORMANCE_THRESHOLDS.DIGIT_ENTRY_SEQUENCE_STEP * 1.5);
     });
   });
 
   test.describe('Outside-Click Detection Performance', () => {
-    
     test('outside-click detection responds within threshold', async ({ page }) => {
       const emptyCell = await findEmptyCell(page);
       test.skip(!emptyCell, 'No empty cells available for testing');
-      
+
       const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
-      const coords = await getOutsideClickCoordinates(page);
-      
-      // Select cell first
+      const outside = await getSafeOutsidePoint(page);
+
       await cell.click();
       await expectCellSelected(cell);
-      
-      // Measure outside-click detection timing
+
       const { duration } = await measureTime(async () => {
-        await page.mouse.click(coords.above.x, coords.above.y);
+        await page.mouse.click(outside.x, outside.y);
         await expectCellNotSelected(cell);
       });
-      
-      console.log(`Outside-click detection took: ${duration.toFixed(2)}ms`);
+
+      console.log(`Outside-click (${outside.name}) detection took: ${duration.toFixed(2)}ms`);
       expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.OUTSIDE_CLICK_RESPONSE);
     });
 
-    test('outside-click performance consistent across all directions', async ({ page }) => {
+    test('outside-click performance consistent across available directions', async ({ page }) => {
       const emptyCell = await findEmptyCell(page);
       test.skip(!emptyCell, 'No empty cells available for testing');
-      
+
       const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
-      const coords = await getOutsideClickCoordinates(page);
-      
-      const directions = [
-        { name: 'above', coord: coords.above },
-        { name: 'below', coord: coords.below },
-        { name: 'left', coord: coords.left },
-        { name: 'right', coord: coords.right }
-      ];
-      
+      const points = await getSafeOutsidePoints(page);
+      test.skip(points.length < 2, 'Viewport too small to test multiple outside-click directions');
+
       const timings: { direction: string; duration: number }[] = [];
-      
-      for (const direction of directions) {
-        // Select cell
+      for (const point of points) {
         await cell.click();
         await expectCellSelected(cell);
-        
-        // Measure detection timing for this direction
+
         const { duration } = await measureTime(async () => {
-          await page.mouse.click(direction.coord.x, direction.coord.y);
+          await page.mouse.click(point.x, point.y);
           await expectCellNotSelected(cell);
         });
-        
-        timings.push({ direction: direction.name, duration });
+        timings.push({ direction: point.name, duration });
       }
-      
-      const avgTiming = timings.reduce((sum, t) => sum + t.duration, 0) / timings.length;
-      const maxTiming = Math.max(...timings.map(t => t.duration));
-      
+
+      const stats = summarize(timings.map((t) => t.duration));
       console.log('Outside-click timings by direction:');
-      timings.forEach(t => console.log(`  ${t.direction}: ${t.duration.toFixed(2)}ms`));
-      console.log(`Average: ${avgTiming.toFixed(2)}ms, Max: ${maxTiming.toFixed(2)}ms`);
-      
-      expect(avgTiming).toBeLessThan(PERFORMANCE_THRESHOLDS.OUTSIDE_CLICK_RESPONSE);
-      expect(maxTiming).toBeLessThan(PERFORMANCE_THRESHOLDS.OUTSIDE_CLICK_RESPONSE * 1.5);
+      timings.forEach((t) => console.log(`  ${t.direction}: ${t.duration.toFixed(2)}ms`));
+      console.log(`Avg: ${stats.avg.toFixed(2)}ms, Max: ${stats.max.toFixed(2)}ms`);
+      expect(stats.avg).toBeLessThan(PERFORMANCE_THRESHOLDS.OUTSIDE_CLICK_RESPONSE);
+      expect(stats.max).toBeLessThan(PERFORMANCE_THRESHOLDS.OUTSIDE_CLICK_RESPONSE * 1.5);
     });
 
     test('rapid outside-click sequence maintains performance', async ({ page }) => {
-      // Simple test: select cells and verify performance
+      // Genuine outside-click sequence (PROF-001-D8): reselect + click outside
+      // repeatedly, not just cell clicks.
       const emptyCells = page.locator('[role="gridcell"][aria-label*="empty"]');
       const cellCount = Math.min(await emptyCells.count(), 5);
-      
+      test.skip(cellCount < 2, 'Need at least 2 empty cells for outside-click sequence');
+      const outside = await getSafeOutsidePoint(page);
+
       const { duration } = await measureTime(async () => {
         for (let i = 0; i < cellCount; i++) {
-          await emptyCells.nth(i).click();
+          const cell = emptyCells.nth(i);
+          await cell.click();
+          await expectCellSelected(cell);
+          await page.mouse.click(outside.x, outside.y);
+          await expectCellNotSelected(cell);
         }
       });
-      
-      const avgPerSelection = duration / cellCount;
-      console.log(`Rapid selection sequence: ${duration.toFixed(2)}ms total, ${avgPerSelection.toFixed(2)}ms avg`);
-      
-      expect(avgPerSelection).toBeLessThan(PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE);
+
+      const avgPerCycle = duration / cellCount;
+      console.log(`Outside-click sequence: ${duration.toFixed(2)}ms total, ${avgPerCycle.toFixed(2)}ms avg/cycle`);
+      // Compound 2-poll step (select-poll + deselect-poll); use the step budget.
+      expect(avgPerCycle).toBeLessThan(PERFORMANCE_THRESHOLDS.DIGIT_ENTRY_SEQUENCE_STEP);
     });
   });
 
   test.describe('Mixed Interaction Performance', () => {
-    
-    // Note: Tests that involve digit entry need to ensure valid digits are used
-    // to avoid triggering error overlays that affect performance measurements.
-    // For now, we rely on the basic selection and digit entry tests which
-    // correctly measure performance without error states.
-    
     test('complex interaction sequence completes within threshold', async ({ page }) => {
-      // Simple test: multiple selections without digit entry
+      // Genuine mixed sequence (PROF-001-D8): select + digit + outside-click.
       const emptyCells = page.locator('[role="gridcell"][aria-label*="empty"]');
       const cellCount = Math.min(await emptyCells.count(), 5);
-      
+      test.skip(cellCount < 3, 'Need at least 3 empty cells for mixed sequence');
+      const outside = await getSafeOutsidePoint(page);
+
       const { duration } = await measureTime(async () => {
         for (let i = 0; i < cellCount; i++) {
-          await emptyCells.nth(i).click();
+          const cell = emptyCells.nth(i);
+          await cell.click();
+          await expectCellSelected(cell);
+          await page.keyboard.press(String((i % 9) + 1));
+          await expectCellNotSelected(cell);
         }
+        await page.mouse.click(outside.x, outside.y);
       });
-      
-      const avgPerSelection = duration / cellCount;
-      console.log(`Multiple selections: ${duration.toFixed(2)}ms total, ${avgPerSelection.toFixed(2)}ms avg`);
-      
-      expect(avgPerSelection).toBeLessThan(PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE);
+
+      console.log(`Mixed sequence: ${duration.toFixed(2)}ms total`);
+      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.RAPID_INTERACTION);
     });
   });
 
   test.describe('Memory and Resource Usage', () => {
-    
     test('selection state changes do not cause memory leaks', async ({ page }) => {
       const emptyCell = await findEmptyCell(page);
       test.skip(!emptyCell, 'No empty cells available for testing');
-      
+
       const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
-      const coords = await getOutsideClickCoordinates(page);
-      
-      // Get baseline memory usage
+      const outside = await getSafeOutsidePoint(page);
+
       const initialMemory = await page.evaluate(() => {
-        if ('memory' in performance) {
-          return (performance as any).memory.usedJSHeapSize;
-        }
-        return 0;
+        return 'memory' in performance
+          ? (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? 0
+          : 0;
       });
-      
-      // Perform many selection operations
+
       for (let i = 0; i < 100; i++) {
         await cell.click();
         await page.keyboard.press(String((i % 9) + 1));
-        
         if (i % 10 === 0) {
-          await page.mouse.click(coords.above.x, coords.above.y);
+          await page.mouse.click(outside.x, outside.y);
         }
       }
-      
-      // Check memory after operations
+
       const finalMemory = await page.evaluate(() => {
-        if ('memory' in performance) {
-          return (performance as any).memory.usedJSHeapSize;
-        }
-        return 0;
+        return 'memory' in performance
+          ? (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? 0
+          : 0;
       });
-      
+
       if (initialMemory > 0 && finalMemory > 0) {
-        const memoryIncrease = finalMemory - initialMemory;
-        const memoryIncreasePercent = (memoryIncrease / initialMemory) * 100;
-        
-        console.log(`Memory usage - Initial: ${initialMemory}, Final: ${finalMemory}`);
-        console.log(`Memory increase: ${memoryIncrease} bytes (${memoryIncreasePercent.toFixed(2)}%)`);
-        
-        // Memory should not increase by more than 50% (allowing for normal GC delays)
+        const memoryIncreasePercent = ((finalMemory - initialMemory) / initialMemory) * 100;
+        console.log(`Memory - Initial: ${initialMemory}, Final: ${finalMemory} (${memoryIncreasePercent.toFixed(2)}%)`);
+        // Allows for normal GC delays; a leak would blow past this.
         expect(memoryIncreasePercent).toBeLessThan(50);
       }
-    });
-
-    test('event listeners are properly managed', async ({ page }) => {
-      // This test verifies that we don't leak event listeners
-      const emptyCell = await findEmptyCell(page);
-      test.skip(!emptyCell, 'No empty cells available for testing');
-      
-      const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
-      
-      // Get baseline event listener count (if available)
-      const initialListeners = await page.evaluate(() => {
-        const listeners = (window as any)._eventListenerCount || 0;
-        return listeners;
-      });
-      
-      // Perform many selection operations that might add/remove listeners
-      for (let i = 0; i < 50; i++) {
-        await cell.click();
-        await page.keyboard.press(String((i % 9) + 1));
-      }
-      
-      // Force garbage collection if available
-      await page.evaluate(() => {
-        if ('gc' in window) {
-          (window as any).gc();
-        }
-      });
-      
-      const finalListeners = await page.evaluate(() => {
-        const listeners = (window as any)._eventListenerCount || 0;
-        return listeners;
-      });
-      
-      // This is more of a baseline test - specific implementation dependent
-      console.log(`Event listeners - Initial: ${initialListeners}, Final: ${finalListeners}`);
-      
-      // Test should complete without throwing errors (main verification)
-      expect(true).toBe(true);
     });
   });
 
   test.describe('Performance Monitoring and Reporting', () => {
-    
     test('generate performance baseline report', async ({ page }) => {
-      const report = {
-        selection: [] as number[],
-        digitEntry: [] as number[],
-      };
-      
-      // Collect selection timings - use the same pattern as the working tests
+      const selectionTimings: number[] = [];
+      const digitEntryTimings: number[] = [];
+
       const emptyCells = page.locator('[role="gridcell"][aria-label*="empty"]');
       const cellCount = Math.min(await emptyCells.count(), 5);
-      
+      test.skip(cellCount < 2, 'Need at least 2 empty cells for baseline report');
+
       for (let i = 0; i < cellCount; i++) {
         const cell = emptyCells.nth(i);
-        
-        const start = performance.now();
-        await cell.click();
-        await expectCellSelected(cell);
-        const duration = performance.now() - start;
-        
-        report.selection.push(duration);
+        const { duration } = await measureTime(async () => {
+          await cell.click();
+          await expectCellSelected(cell);
+        });
+        selectionTimings.push(duration);
       }
-      
-      // Collect digit entry timings
+
       for (let i = 0; i < cellCount; i++) {
         const cell = emptyCells.nth(i);
         await cell.click();
-        
-        const start = performance.now();
-        await page.keyboard.press(String((i % 9) + 1));
-        await expectCellNotSelected(cell);
-        const duration = performance.now() - start;
-        
-        report.digitEntry.push(duration);
+        const { duration } = await measureTime(async () => {
+          await page.keyboard.press(String((i % 9) + 1));
+          await expectCellNotSelected(cell);
+        });
+        digitEntryTimings.push(duration);
       }
-      
-      // Calculate statistics
-      const calculateStats = (timings: number[]) => {
-        if (timings.length === 0) return { min: 0, max: 0, avg: 0, median: 0, p95: 0 };
-        const sorted = timings.sort((a, b) => a - b);
-        return {
-          min: Math.min(...timings),
-          max: Math.max(...timings),
-          avg: timings.reduce((a, b) => a + b, 0) / timings.length,
-          median: sorted[Math.floor(sorted.length / 2)],
-          p95: sorted[Math.floor(sorted.length * 0.95)]
-        };
-      };
-      
-      console.log('\n=== PERFORMANCE BASELINE REPORT ===');
-      console.log('Selection timings:', calculateStats(report.selection));
-      console.log('Digit entry timings:', calculateStats(report.digitEntry));
-      
-      // Verify all operations meet thresholds
-      const allSelectionGood = report.selection.every(t => t < PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE);
-      const allDigitGood = report.digitEntry.every(t => t < PERFORMANCE_THRESHOLDS.DIGIT_ENTRY_RESPONSE);
-      
-      expect(allSelectionGood).toBe(true);
-      expect(allDigitGood).toBe(true);
+
+      const selection = summarize(selectionTimings);
+      const digitEntry = summarize(digitEntryTimings);
+
+      console.log('=== PERFORMANCE BASELINE REPORT ===');
+      console.log(`Selection  — avg ${selection.avg.toFixed(2)}ms, p95 ${selection.p95.toFixed(2)}ms, max ${selection.max.toFixed(2)}ms`);
+      console.log(`Digit entry — avg ${digitEntry.avg.toFixed(2)}ms, p95 ${digitEntry.p95.toFixed(2)}ms, max ${digitEntry.max.toFixed(2)}ms`);
+
+      expect(selection.max).toBeLessThan(PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE);
+      expect(digitEntry.max).toBeLessThan(PERFORMANCE_THRESHOLDS.DIGIT_ENTRY_RESPONSE);
     });
   });
 });

@@ -27,16 +27,22 @@
  */
 
 import { test, expect } from '../fixtures';
-import { type Page, type CDPSession } from '@playwright/test';
+import { type Page } from '@playwright/test';
 import { setupGameAndWaitForBoard } from '../utils/board-wait';
+import {
+  CDPManager,
+  getPerformanceMemory,
+  calculateGrowthMB,
+  calculateVariancePct,
+} from './helpers/cdp';
 
 // ============================================
 // Configuration
 // ============================================
 
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
-
-// Memory thresholds (in bytes unless noted)
+// Memory thresholds (bytes unless noted). These are GROWTH bounds measured as
+// (final - initial) on the same run, so hardware variance largely cancels and
+// the absolute limits remain meaningful leak guards (PROF-001-D7).
 const THRESHOLDS = {
   LONG_PLAY_SESSION_MB: 5,        // Max 5MB growth for 100 moves
   WASM_SOLVER_VARIANCE_PCT: 35,   // ±35% from baseline for 50 solver calls (WASM naturally grows memory)
@@ -47,143 +53,8 @@ const THRESHOLDS = {
 } as const;
 
 // ============================================
-// Types
+// App-interaction Helpers
 // ============================================
-
-interface MemoryMetrics {
-  jsHeapUsedSize: number;
-  jsHeapTotalSize: number;
-  documents: number;
-  frames: number;
-  jsEventListeners: number;
-  nodes: number;
-  layoutCount: number;
-  recalcStyleCount: number;
-  timestamp: number;
-}
-
-interface PerformanceMemory {
-  jsHeapSizeLimit: number;
-  totalJSHeapSize: number;
-  usedJSHeapSize: number;
-}
-
-// ============================================
-// Helper Functions
-// ============================================
-
-/**
- * CDP Session Manager - reuses a single session to avoid resource exhaustion
- */
-class CDPManager {
-  private client: CDPSession | null = null;
-  private page: Page;
-  
-  constructor(page: Page) {
-    this.page = page;
-  }
-  
-  async getSession(): Promise<CDPSession> {
-    if (!this.client) {
-      this.client = await this.page.context().newCDPSession(this.page);
-      await this.client.send('Performance.enable');
-      await this.client.send('HeapProfiler.enable');
-    }
-    return this.client;
-  }
-  
-  async getMemoryMetrics(): Promise<MemoryMetrics> {
-    try {
-      const client = await this.getSession();
-      const { metrics } = await client.send('Performance.getMetrics');
-      
-      const metricsMap: Record<string, number> = {};
-      for (const metric of metrics) {
-        metricsMap[metric.name] = metric.value;
-      }
-      
-      return {
-        jsHeapUsedSize: metricsMap['JSHeapUsedSize'] ?? 0,
-        jsHeapTotalSize: metricsMap['JSHeapTotalSize'] ?? 0,
-        documents: metricsMap['Documents'] ?? 0,
-        frames: metricsMap['Frames'] ?? 0,
-        jsEventListeners: metricsMap['JSEventListeners'] ?? 0,
-        nodes: metricsMap['Nodes'] ?? 0,
-        layoutCount: metricsMap['LayoutCount'] ?? 0,
-        recalcStyleCount: metricsMap['RecalcStyleCount'] ?? 0,
-        timestamp: Date.now(),
-      };
-    } catch {
-      return this.getEmptyMetrics();
-    }
-  }
-  
-  async forceGC(): Promise<void> {
-    try {
-      const client = await this.getSession();
-      await client.send('HeapProfiler.collectGarbage');
-      await this.page.waitForTimeout(50);
-    } catch {
-      // GC not available
-    }
-  }
-  
-  async detach(): Promise<void> {
-    if (this.client) {
-      try {
-        await this.client.detach();
-      } catch {
-        // Already detached
-      }
-      this.client = null;
-    }
-  }
-  
-  private getEmptyMetrics(): MemoryMetrics {
-    return {
-      jsHeapUsedSize: 0,
-      jsHeapTotalSize: 0,
-      documents: 0,
-      frames: 0,
-      jsEventListeners: 0,
-      nodes: 0,
-      layoutCount: 0,
-      recalcStyleCount: 0,
-      timestamp: Date.now(),
-    };
-  }
-}
-
-/**
- * Get Chrome-specific performance.memory (only works in Chrome)
- */
-async function getPerformanceMemory(page: Page): Promise<PerformanceMemory | null> {
-  try {
-    const memory = await page.evaluate(() => {
-      const perf = performance as Performance & { memory?: PerformanceMemory };
-      if (perf.memory) {
-        return {
-          jsHeapSizeLimit: perf.memory.jsHeapSizeLimit,
-          totalJSHeapSize: perf.memory.totalJSHeapSize,
-          usedJSHeapSize: perf.memory.usedJSHeapSize,
-        };
-      }
-      return null;
-    });
-    return memory;
-  } catch {
-    return null;
-  }
-}
-
-function calculateGrowthMB(initial: number, final: number): number {
-  return (final - initial) / (1024 * 1024);
-}
-
-function calculateVariancePct(baseline: number, current: number): number {
-  if (baseline === 0) return current > 0 ? 100 : 0;
-  return ((current - baseline) / baseline) * 100;
-}
 
 async function makeMove(page: Page, moveNumber: number): Promise<boolean> {
   try {
@@ -216,7 +87,12 @@ async function requestHint(page: Page): Promise<boolean> {
 // Light Profiling Tests
 // ============================================
 
-test.describe('@profiling Memory - Light Profiling', () => {
+// Serialized: latency/memory measurements must not contend with sibling workers (PROF-001-D9).
+test.describe.serial('@profiling Memory - Light Profiling', () => {
+  // CDP memory metrics are chromium-only. Without this guard, webkit projects
+  // (e.g. the iphone-12 project) would "pass" vacuously because CDPManager
+  // swallows the error and returns all-zero metrics (PROF-001-D8).
+  test.skip(({ browserName }) => browserName !== 'chromium', 'CDP memory metrics only work in Chromium');
   test('long play session memory stays bounded (100 moves)', async ({ page }) => {
     test.setTimeout(120_000);
 
@@ -499,7 +375,7 @@ test.describe('@profiling Memory - Light Profiling', () => {
 // Deep Profiling Tests (CDP-based)
 // ============================================
 
-test.describe('@profiling @slow Memory - Deep Profiling', () => {
+test.describe.serial('@profiling @slow Memory - Deep Profiling', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'CDP heap profiling only works in Chromium');
 
   test('heap snapshot comparison before/after gameplay', async ({ page }) => {
@@ -508,10 +384,7 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
 
     await setupGameAndWaitForBoard(page, { seed: 'Pheapsnapshot', difficulty: 'easy' });
 
-    const client: CDPSession = await page.context().newCDPSession(page);
-    await client.send('HeapProfiler.enable');
-
-    await client.send('HeapProfiler.collectGarbage');
+    await cdp.forceGC();
     await page.waitForTimeout(100);
 
     const initialMemory = await getPerformanceMemory(page);
@@ -533,7 +406,7 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
       }
     }
 
-    await client.send('HeapProfiler.collectGarbage');
+    await cdp.forceGC();
     await page.waitForTimeout(100);
 
     const finalMemory = await getPerformanceMemory(page);
@@ -550,7 +423,6 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
       console.log(`📊 Memory growth (performance.memory): ${perfGrowthMB.toFixed(2)} MB`);
     }
 
-    await client.detach();
     await cdp.detach();
 
     expect(metricsGrowthMB).toBeLessThan(THRESHOLDS.DEEP_PROFILING_MB);
@@ -562,10 +434,7 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
 
     await setupGameAndWaitForBoard(page, { seed: 'Pwasmisol', difficulty: 'hard' });
 
-    const client: CDPSession = await page.context().newCDPSession(page);
-    await client.send('HeapProfiler.enable');
-
-    await client.send('HeapProfiler.collectGarbage');
+    await cdp.forceGC();
     await page.waitForTimeout(100);
 
     const initialMetrics = await cdp.getMemoryMetrics();
@@ -581,7 +450,7 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
       await op();
     }
 
-    await client.send('HeapProfiler.collectGarbage');
+    await cdp.forceGC();
     await page.waitForTimeout(100);
 
     const finalMetrics = await cdp.getMemoryMetrics();
@@ -589,8 +458,6 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
 
     console.log(`📊 Final heap: ${(finalMetrics.jsHeapUsedSize / 1024 / 1024).toFixed(2)} MB`);
     console.log(`📊 Total growth: ${growthMB.toFixed(2)} MB`);
-
-    await client.detach();
 
     // WASM memory should be bounded
     expect(growthMB).toBeLessThan(THRESHOLDS.DEEP_PROFILING_MB);
@@ -602,14 +469,11 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
 
     await setupGameAndWaitForBoard(page, { seed: 'Preactcleanup', difficulty: 'medium' });
 
-    const client: CDPSession = await page.context().newCDPSession(page);
-    await client.send('HeapProfiler.enable');
-
     for (let i = 0; i < 30; i++) {
       await makeMove(page, i);
     }
 
-    await client.send('HeapProfiler.collectGarbage');
+    await cdp.forceGC();
     const gameMetrics = await cdp.getMemoryMetrics();
     console.log(`📊 Game page heap: ${(gameMetrics.jsHeapUsedSize / 1024 / 1024).toFixed(2)} MB`);
     console.log(`📊 Game page nodes: ${gameMetrics.nodes}`);
@@ -619,7 +483,7 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
     await page.waitForLoadState('networkidle');
 
     for (let i = 0; i < 3; i++) {
-      await client.send('HeapProfiler.collectGarbage');
+      await cdp.forceGC();
       await page.waitForTimeout(100);
     }
 
@@ -634,7 +498,6 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
     console.log(`📊 Node reduction: ${nodeReduction}`);
     console.log(`📊 Listener reduction: ${listenerReduction}`);
 
-    await client.detach();
     await cdp.detach();
 
     expect(homepageMetrics.nodes).toBeLessThan(gameMetrics.nodes);
@@ -645,13 +508,10 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
     test.setTimeout(120_000);
     const cdp = new CDPManager(page);
 
-    const client: CDPSession = await page.context().newCDPSession(page);
-    await client.send('HeapProfiler.enable');
-
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    await client.send('HeapProfiler.collectGarbage');
+    await cdp.forceGC();
     const initialMetrics = await cdp.getMemoryMetrics();
 
     console.log(`📊 Initial nodes: ${initialMetrics.nodes}`);
@@ -666,8 +526,7 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
     }
 
     for (let i = 0; i < 3; i++) {
-      await client.send('HeapProfiler.collectGarbage');
-      await page.waitForTimeout(100);
+      await cdp.forceGC();
     }
 
     const finalMetrics = await cdp.getMemoryMetrics();
@@ -675,7 +534,6 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
     console.log(`📊 Final nodes: ${finalMetrics.nodes}`);
     console.log(`📊 Node difference: ${finalMetrics.nodes - initialMetrics.nodes}`);
 
-    await client.detach();
     await cdp.detach();
 
     const nodeGrowth = finalMetrics.nodes - initialMetrics.nodes;
@@ -683,7 +541,7 @@ test.describe('@profiling @slow Memory - Deep Profiling', () => {
   });
 });
 
-test.describe('@profiling Memory - Utilities', () => {
+test.describe.serial('@profiling Memory - Utilities', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'CDP memory metrics only work in Chromium');
 
   test('verify memory metrics are accessible', async ({ page }) => {
