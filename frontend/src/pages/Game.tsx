@@ -94,8 +94,10 @@ export interface SavedGameState {
   savedAt: number // timestamp
   difficulty: string // difficulty level for resume display
   isComplete?: boolean // Whether the game was completed
-  hintsUsed: number
-  techniqueHintsUsed: number
+  // Optional on the persisted shape: older saves predate these fields and are
+  // defaulted to 0 on restore (see restoreHintCounters).
+  hintsUsed?: number
+  techniqueHintsUsed?: number
 }
 
 // Build the persisted shape from live game values. Shared by the autosave and
@@ -2327,6 +2329,10 @@ function GameContent() {
       ) {
         // Synchronous save - must complete before page unloads
         const storageKey = `${STORAGE_KEYS.GAME_STATE_PREFIX}${puzzle.seed}`
+        // Pass isComplete from the ref (not game.isComplete) so this save site
+        // matches saveGameState: a beforeunload save that drops the completion
+        // flag would overwrite a completion-marked autosave on close/refresh,
+        // and the resumed game would incorrectly show as in-progress.
         const savedState: SavedGameState = buildSavedState({
           board: game.board,
           candidates: candidatesToArrays(game.candidates),
@@ -2334,6 +2340,7 @@ function GameContent() {
           history: game.history,
           autoFillUsed,
           difficulty: puzzle.difficulty,
+          isComplete: isCompleteRef.current,
           hintsUsed,
           techniqueHintsUsed,
         })

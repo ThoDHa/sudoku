@@ -1,7 +1,6 @@
 package human
 
 import (
-	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
 )
 
@@ -15,22 +14,6 @@ func CreateSolverWithDisabledTechniques(disabledSlugs []string) *Solver {
 	registry := NewTechniqueRegistry()
 	for _, slug := range disabledSlugs {
 		registry.SetEnabled(slug, false)
-	}
-	return NewSolverWithRegistry(registry)
-}
-
-// CreateSolverForTechnique creates a solver optimized for testing a specific technique.
-// It disables all techniques that would be tried before the target.
-func CreateSolverForTechnique(targetSlug string) *Solver {
-	registry := NewTechniqueRegistry()
-	targetTech := registry.GetBySlug(targetSlug)
-	if targetTech == nil {
-		return NewSolver()
-	}
-	for _, tech := range registry.GetAll() {
-		if tech.Order >= targetTech.Order && tech.Slug != targetSlug {
-			registry.SetEnabled(tech.Slug, false)
-		}
 	}
 	return NewSolverWithRegistry(registry)
 }
@@ -75,8 +58,11 @@ func CreateSolverUpToTier(maxTier string) *Solver {
 		return NewSolver()
 	}
 	for _, tech := range registry.GetAll() {
-		techTierOrder := tierOrder[tech.Tier]
-		if techTierOrder > maxTierOrder {
+		// An unrecognized tier is outside the known difficulty ladder; disable
+		// it rather than silently keeping it. Without this guard the map
+		// zero-value (0) would treat the unknown tier as the simplest tier.
+		techTierOrder, known := tierOrder[tech.Tier]
+		if !known || techTierOrder > maxTierOrder {
 			registry.SetEnabled(tech.Slug, false)
 		}
 	}
@@ -88,25 +74,6 @@ func CreateSolverWithoutTechniques(slugs ...string) *Solver {
 	registry := NewTechniqueRegistry()
 	for _, slug := range slugs {
 		registry.SetEnabled(slug, false)
-	}
-	return NewSolverWithRegistry(registry)
-}
-
-// CreateSolverForDifficulty creates a solver appropriate for a given difficulty level.
-func CreateSolverForDifficulty(difficulty core.Difficulty) *Solver {
-	allowedTiers, ok := DifficultyAllowedTiers[difficulty]
-	if !ok {
-		return NewSolver()
-	}
-	registry := NewTechniqueRegistry()
-	allowedTierSet := make(map[string]bool)
-	for _, tier := range allowedTiers {
-		allowedTierSet[tier] = true
-	}
-	for _, tech := range registry.GetAll() {
-		if !allowedTierSet[tech.Tier] {
-			registry.SetEnabled(tech.Slug, false)
-		}
 	}
 	return NewSolverWithRegistry(registry)
 }

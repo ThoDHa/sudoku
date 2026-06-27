@@ -457,47 +457,32 @@ const Board = memo(function Board({
       const currentInitialBoard = initialBoardRef.current
       const isGiven = currentInitialBoard[idx] !== 0
 
+      // Arrow navigation: find the next non-given cell in the direction,
+      // select it, and move focus synchronously (the selectedCell RAF effect
+      // is too slow for rapid/directed arrows and lets the origin re-fire).
+      const moveSelection = (direction: 'up' | 'down' | 'left' | 'right') => {
+        e.preventDefault()
+        const nextCell = findNextNonGivenCell(idx, direction)
+        if (nextCell !== null) {
+          onCellClick(nextCell)
+          cellRefs.current[nextCell]?.focus()
+        }
+      }
+
       // Arrow key navigation - skip over givens
       switch (e.key) {
-        case 'ArrowUp': {
-          e.preventDefault()
-          const nextCell = findNextNonGivenCell(idx, 'up')
-          if (nextCell !== null) {
-            onCellClick(nextCell)
-            // Move focus synchronously so the next keypress fires on the target,
-            // not the origin (the selectedCell effect's RAF is too slow for
-            // rapid/directed arrows and lets the origin handler re-fire).
-            cellRefs.current[nextCell]?.focus()
-          }
+        case 'ArrowUp':
+          moveSelection('up')
           break
-        }
-        case 'ArrowDown': {
-          e.preventDefault()
-          const nextCell = findNextNonGivenCell(idx, 'down')
-          if (nextCell !== null) {
-            onCellClick(nextCell)
-            cellRefs.current[nextCell]?.focus()
-          }
+        case 'ArrowDown':
+          moveSelection('down')
           break
-        }
-        case 'ArrowLeft': {
-          e.preventDefault()
-          const nextCell = findNextNonGivenCell(idx, 'left')
-          if (nextCell !== null) {
-            onCellClick(nextCell)
-            cellRefs.current[nextCell]?.focus()
-          }
+        case 'ArrowLeft':
+          moveSelection('left')
           break
-        }
-        case 'ArrowRight': {
-          e.preventDefault()
-          const nextCell = findNextNonGivenCell(idx, 'right')
-          if (nextCell !== null) {
-            onCellClick(nextCell)
-            cellRefs.current[nextCell]?.focus()
-          }
+        case 'ArrowRight':
+          moveSelection('right')
           break
-        }
         case '1':
         case '2':
         case '3':

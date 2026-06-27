@@ -256,6 +256,7 @@ func TestGetPuzzle_MalformedSolutionStringReturnsError(t *testing.T) {
 		{"too short", "123"},
 		{"too long", strings.Repeat("1", constants.TotalCells+1)},
 		{"non-digit character", strings.Repeat("1", constants.TotalCells-1) + "x"},
+		{"zero digit", strings.Repeat("1", constants.TotalCells-1) + "0"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

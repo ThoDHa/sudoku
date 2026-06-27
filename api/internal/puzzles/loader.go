@@ -137,17 +137,19 @@ func (l *Loader) GetPuzzle(index int, difficulty string) (givens []int, solution
 }
 
 // parseSolution decodes a compact solution string into one digit per cell.
-// It rejects malformed input (wrong length or non-digit characters) with an
-// error rather than letting the caller panic on index-out-of-range or silently
-// store out-of-range digit values.
+// It rejects malformed input (wrong length or characters outside the solution
+// digit range 1-9) with an error rather than letting the caller panic on
+// index-out-of-range or silently store out-of-range digit values. '0' is not a
+// valid solution digit: a solved Sudoku cell always holds 1-9, and 0 denotes an
+// empty cell, so a '0' in a solution string indicates a corrupted puzzle.
 func parseSolution(s string) ([]int, error) {
 	if len(s) != constants.TotalCells {
 		return nil, fmt.Errorf("solution string length %d, expected %d", len(s), constants.TotalCells)
 	}
 	solution := make([]int, constants.TotalCells)
 	for i, c := range s {
-		if c < '0' || c > '9' {
-			return nil, fmt.Errorf("solution string has non-digit character %q at position %d", c, i)
+		if c < '1' || c > '9' {
+			return nil, fmt.Errorf("solution string has invalid digit %q at position %d; each cell must be 1-9", c, i)
 		}
 		solution[i] = int(c - '0')
 	}
