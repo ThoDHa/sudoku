@@ -52,7 +52,7 @@ func detectCuratedTechniqueMove(t *testing.T, slug string) *core.Move {
 
 	solver := NewSolver()
 	if disabled, has := techniqueIsolationConfig[slug]; has && len(disabled) > 0 {
-		solver = CreateSolverWithDisabledTechniques(disabled)
+		solver = CreateSolverWithoutTechniques(disabled...)
 	}
 
 	for step := 0; step < constants.MaxSolverSteps; step++ {

@@ -368,7 +368,7 @@ func runEarlyStopWithDisabledTechniques(t *testing.T, slug string, disabledTechn
 
 	// Create board and solver with disabled techniques
 	board := NewBoard(givens)
-	solver := CreateSolverWithDisabledTechniques(disabledTechniques)
+	solver := CreateSolverWithoutTechniques(disabledTechniques...)
 
 	// Solve step by step until technique fires
 	for step := 0; step < constants.MaxSolverSteps; step++ {
@@ -728,7 +728,7 @@ func TestDiagnosticTechniqueUsage(t *testing.T) {
 
 		if needsIsolation {
 			// Use isolated solver with disabled techniques (early stop when target fires)
-			solver := CreateSolverWithDisabledTechniques(disabledTechs)
+			solver := CreateSolverWithoutTechniques(disabledTechs...)
 			techCounts = make(map[string]int)
 			targetCount = 0
 

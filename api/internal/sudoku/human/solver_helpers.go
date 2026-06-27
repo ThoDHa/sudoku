@@ -9,15 +9,6 @@ import (
 // (not in a _test.go file) because the diagnostic command under cmd/test_techniques
 // builds restricted-technique solvers via CreateSolverWithOnlyTechniques.
 
-// CreateSolverWithDisabledTechniques creates a solver with specific techniques disabled.
-func CreateSolverWithDisabledTechniques(disabledSlugs []string) *Solver {
-	registry := NewTechniqueRegistry()
-	for _, slug := range disabledSlugs {
-		registry.SetEnabled(slug, false)
-	}
-	return NewSolverWithRegistry(registry)
-}
-
 // CreateSolverWithOnlyTechniques creates a solver with ONLY the specified techniques enabled.
 func CreateSolverWithOnlyTechniques(slugs ...string) *Solver {
 	registry := NewTechniqueRegistry()
