@@ -4,6 +4,7 @@ import { isDigitComplete } from '../lib/digitCompletion'
 import { buildFreshTrackingState } from '../lib/gameStateReset'
 import { shouldIncrementHintCounter } from '../lib/hintLifecycle'
 import { shouldSuppressAutoSave } from '../lib/autoSaveGuard'
+import { createHintRequestGate, type HintRequestGate } from '../lib/hintRequestGate'
 import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import Board from '../components/Board'
 import Controls from '../components/Controls'
@@ -315,8 +316,12 @@ function GameContent() {
   const loadedFromSharedUrl = useRef(false)
   // Track isComplete at execution time (to prevent race condition with debounced saves)
   const isCompleteRef = useRef(false)
-  // Guard to prevent concurrent hint requests (ref is more reliable than state for this)
-  const hintInProgress = useRef(false)
+  // Guard to prevent concurrent hint requests. Held in a ref so the
+  // in-progress flag persists across renders (lazily initialized once).
+  const hintGateRef = useRef<HintRequestGate | null>(null)
+  if (hintGateRef.current === null) {
+    hintGateRef.current = createHintRequestGate()
+  }
   // Track last hint shown to avoid counting duplicate hints
   const lastTechniqueHintRef = useRef<string | null>(null)
   const lastRegularHintRef = useRef<string | null>(null)
@@ -996,10 +1001,11 @@ function GameContent() {
   // Handle hint button - shows the next move with full answer (eliminations + additions visible)
   const handleNext = useCallback(async () => {
     // Prevent concurrent hint requests (spam protection)
-    if (hintInProgress.current) {
+    const gate = hintGateRef.current
+    if (!gate || !gate.canStart()) {
       return
     }
-    hintInProgress.current = true
+    gate.begin()
     setHintLoading(true)
 
     try {
@@ -1091,7 +1097,7 @@ function GameContent() {
       })
       visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
     } finally {
-      hintInProgress.current = false
+      gate.end()
       setHintLoading(false)
     }
   }, [
@@ -1108,8 +1114,9 @@ function GameContent() {
   // Handle technique hint button - shows technique name and highlights cells without revealing the answer
   const handleTechniqueHint = useCallback(async () => {
     // Prevent concurrent requests
-    if (hintInProgress.current) return
-    hintInProgress.current = true
+    const gate = hintGateRef.current
+    if (!gate || !gate.canStart()) return
+    gate.begin()
     setTechniqueHintLoading(true)
 
     try {
@@ -1214,7 +1221,7 @@ function GameContent() {
       })
       visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
     } finally {
-      hintInProgress.current = false
+      gate.end()
       setTechniqueHintLoading(false)
     }
   }, [
