@@ -1,6 +1,6 @@
 # Sudoku API Makefile
 
-.PHONY: all build server generate-constants wasm wasm-copy clean test
+.PHONY: all build server generate-constants wasm wasm-copy clean test coverage-gate
 
 # Go build settings
 GO := go
@@ -80,6 +80,42 @@ test-coverage:
 test-coverage-verbose:
 	$(GO) test -v -coverprofile=coverage.out -covermode=atomic ./...
 	$(GO) tool cover -func=coverage.out
+
+# Per-package coverage floors. Kept below measured coverage to absorb minor
+# Go-version / test-ordering variance; see COVERAGE.md for the full policy.
+TECHNIQUES_COVERAGE_FLOOR := 88
+TRANSPORT_HTTP_COVERAGE_FLOOR := 80
+
+# Enforce per-package coverage floors. Runs `go test -cover` per gated package,
+# parses the reported percentage, and exits non-zero on breach. CI invokes this
+# from the test-go job; run locally with `make coverage-gate`.
+coverage-gate:
+	@set -e; \
+	check_pkg() { \
+		pkg="$$1"; floor="$$2"; \
+		out=$$(go test -cover "$$pkg" 2>&1) || { \
+			echo "coverage-gate: ERROR go test failed for $$pkg" >&2; \
+			echo "$$out" >&2; \
+			exit 2; \
+		}; \
+		pct=$$(printf '%s\n' "$$out" | grep -oE 'coverage:[[:space:]]+[0-9]+(\.[0-9]+)?%' | grep -oE '[0-9]+(\.[0-9]+)?' | head -1); \
+		if [ -z "$$pct" ]; then \
+			echo "coverage-gate: ERROR could not parse coverage for $$pkg" >&2; \
+			echo "$$out" >&2; \
+			exit 2; \
+		fi; \
+		ok=$$(awk -v p="$$pct" -v f="$$floor" 'BEGIN { print (p+0 >= f+0) ? 1 : 0 }'); \
+		if [ "$$ok" = "1" ]; then \
+			printf 'coverage-gate: OK   %s %s%% (floor %s%%)\n' "$$pkg" "$$pct" "$$floor"; \
+		else \
+			delta=$$(awk -v p="$$pct" -v f="$$floor" 'BEGIN { printf "%.1f", f - p }'); \
+			printf 'coverage-gate: FAIL %s %s%% < floor %s%% (short by %spp)\n' "$$pkg" "$$pct" "$$floor" "$$delta" >&2; \
+			exit 1; \
+		fi; \
+	}; \
+	check_pkg ./internal/sudoku/human/techniques $(TECHNIQUES_COVERAGE_FLOOR); \
+	check_pkg ./internal/transport/http $(TRANSPORT_HTTP_COVERAGE_FLOOR); \
+	echo "coverage-gate: all gated packages met their floors."
 
 # Memory profiling tests
 test-memory:

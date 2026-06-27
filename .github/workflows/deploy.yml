@@ -110,6 +110,10 @@ jobs:
           mkdir -p allure-results
           gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./...
 
+      - name: Run Go coverage gate
+        working-directory: api
+        run: make coverage-gate
+
       - name: Generate environment properties
         working-directory: api
         run: |
