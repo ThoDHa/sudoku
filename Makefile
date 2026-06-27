@@ -42,6 +42,13 @@ lint-frontend:
 	@cd frontend && npm run lint
 	@echo "[Frontend] Linting passed!"
 
+# Type-check the frontend production build (catches tsc errors the vitest unit gate cannot)
+typecheck-frontend:
+	@echo ""
+	@echo "[Frontend] Running TypeScript type-check..."
+	@cd frontend && npx tsc --noEmit
+	@echo "[Frontend] Type-check passed!"
+
 #-----------------------------------------------------------------------
 # Formatting
 #-----------------------------------------------------------------------
@@ -135,7 +142,7 @@ test: allure-clean
 
 # Fast per-commit gate: lint + Go + frontend unit (no e2e). e2e/integration
 # are in `make check-full` and `make test`; e2e-green is owned by TEST-001.F.
-check: lint-go lint-frontend test-go test-unit
+check: lint-go lint-frontend typecheck-frontend test-go test-unit
 	@echo ""
 	@echo "========================================"
 	@echo "  Fast gate passed (lint + go + unit)."
