@@ -137,7 +137,7 @@ test: allure-clean
 	@$(MAKE) test-e2e
 	@echo ""
 	@echo "========================================"
-	@echo "  All tests complete! Run 'make allure-report' to generate report"
+	@echo "  All tests complete! Run 'make report' to generate report"
 	@echo "========================================"
 
 # Fast per-commit gate: lint + Go + frontend unit (no e2e). e2e/integration
@@ -246,7 +246,8 @@ serve-reports:
 	@echo "Browse http://<this-host-LAN-IP>:8099/ from any machine on the network."
 	@cd frontend && npx allure open ../reports/latest-allure --host 0.0.0.0 --port 8099
 
-# Generate combined Allure report from all test results
+# Legacy: superseded by `make report` (dated output, LAN-served). Retained
+# because README.md still documents it; remove once README migrates.
 allure-report:
 	@echo "Generating combined Allure report..."
 	@mkdir -p allure-results
@@ -255,7 +256,8 @@ allure-report:
 	@cd frontend && npx allure generate ../allure-results -o allure-report --clean
 	@echo "Report generated at frontend/allure-report/"
 
-# Serve Allure report locally (opens in browser)
+# Legacy: superseded by `make serve-reports`. Retained because README.md
+# still documents it; remove once README migrates.
 allure-serve:
 	@echo "Serving Allure report..."
 	@mkdir -p allure-results
