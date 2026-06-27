@@ -418,9 +418,9 @@ test.describe('@integration Accessibility - Modals', () => {
     await expect(backdrop).not.toBeVisible({ timeout: 5000 });
   });
 
-  // Note: Escape key handling is not currently implemented in the Menu component.
-  // This test is skipped pending that feature.
-  test.skip('escape key closes menu', async ({ page }) => {
+  // Escape key handling is implemented in the Menu component via a document-level
+  // keydown listener gated on isOpen.
+  test('escape key closes menu', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /easy Play/i }).click();
     await page.waitForSelector('[role="grid"]', { timeout: 20000 });

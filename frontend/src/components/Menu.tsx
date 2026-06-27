@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ColorTheme, FontSize } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed, HomepageMode } from '../lib/preferences'
@@ -714,6 +714,26 @@ export default function Menu({
       setNewPuzzleMenuOpen(false)
       setConfirmNewPuzzle(null)
     }
+  }, [isOpen])
+
+  // onClose is an inline fn from callers, so depending on it directly would re-register
+  // the listener every parent render and drop it mid keydown dispatch. Ref keeps it stable.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
+
+  // Close on Escape while the menu is open
+  useEffect(() => {
+    if (!isOpen) return
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onCloseRef.current()
+      }
+    }
+    document.addEventListener('keydown', handleEscapeKey)
+    return () => document.removeEventListener('keydown', handleEscapeKey)
   }, [isOpen])
 
   const handleSpeedChange = (speed: AutoSolveSpeed) => {
