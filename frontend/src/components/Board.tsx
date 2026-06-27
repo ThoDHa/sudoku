@@ -462,25 +462,40 @@ const Board = memo(function Board({
         case 'ArrowUp': {
           e.preventDefault()
           const nextCell = findNextNonGivenCell(idx, 'up')
-          if (nextCell !== null) onCellClick(nextCell)
+          if (nextCell !== null) {
+            onCellClick(nextCell)
+            // Move focus synchronously so the next keypress fires on the target,
+            // not the origin (the selectedCell effect's RAF is too slow for
+            // rapid/directed arrows and lets the origin handler re-fire).
+            cellRefs.current[nextCell]?.focus()
+          }
           break
         }
         case 'ArrowDown': {
           e.preventDefault()
           const nextCell = findNextNonGivenCell(idx, 'down')
-          if (nextCell !== null) onCellClick(nextCell)
+          if (nextCell !== null) {
+            onCellClick(nextCell)
+            cellRefs.current[nextCell]?.focus()
+          }
           break
         }
         case 'ArrowLeft': {
           e.preventDefault()
           const nextCell = findNextNonGivenCell(idx, 'left')
-          if (nextCell !== null) onCellClick(nextCell)
+          if (nextCell !== null) {
+            onCellClick(nextCell)
+            cellRefs.current[nextCell]?.focus()
+          }
           break
         }
         case 'ArrowRight': {
           e.preventDefault()
           const nextCell = findNextNonGivenCell(idx, 'right')
-          if (nextCell !== null) onCellClick(nextCell)
+          if (nextCell !== null) {
+            onCellClick(nextCell)
+            cellRefs.current[nextCell]?.focus()
+          }
           break
         }
         case '1':
