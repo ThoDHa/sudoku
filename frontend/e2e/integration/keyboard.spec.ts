@@ -219,23 +219,35 @@ test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
     expect(anySelected).toBeGreaterThanOrEqual(0); // App handles edge gracefully
   });
 
-  // Out-of-territory prod gap: Board.tsx arrow handlers call onCellClick(nextCell)
-  // but never move keyboard focus to it, so directed/rapid arrows re-fire on the
-  // original cell and toggle selection off (Expected 1, Received 0). Prod fix:
-  // focus the target cell in the Arrow* cases. Re-enable when fixed.
-  test.fixme('rapid arrow key pressing navigates correctly', async ({ page }) => {
+  test('rapid arrow key pressing navigates correctly', async ({ page }) => {
     test.skip(
       ['iphone-12', 'pixel-5'].includes(test.info().project.name),
       'Arrow key navigation tests require physical keyboard - mobile devices use touch navigation'
     );
 
-    const pos = await findEmptyCellPosition(page, 3);
-    const startCell = getCellLocator(page, pos.row, pos.col);
+    const cells = await findCellWithAdjacentEmpty(page, 'right');
+    test.skip(!cells, 'No adjacent empty cells found for this test');
+
+    const startCell = getCellLocator(page, cells!.startRow, cells!.startCol);
     await startCell.scrollIntoViewIfNeeded();
     await startCell.click();
     await expectCellSelected(startCell);
 
-    await page.keyboard.press('ArrowRight');
+    // Regression guard for the focus bug: an arrow keydown must move focus to the
+    // target cell synchronously, in the same JS turn. The handler must not rely on
+    // a deferred (requestAnimationFrame) focus effect, or a rapid second keypress
+    // re-fires on the origin and toggles selection off. Asserting focus inside the
+    // same evaluate (before the event loop yields) proves focus moved immediately.
+    const startLabel = await startCell.getAttribute('aria-label');
+    const focusMoved = await page.evaluate((start) => {
+      const t = document.activeElement as HTMLElement | null;
+      t?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      const focused = (document.activeElement as HTMLElement | null)?.getAttribute('aria-label') ?? null;
+      return focused !== null && focused !== start;
+    }, startLabel);
+    expect(focusMoved).toBe(true);
+
+    // Directed rapid sequence still ends with exactly one selected cell.
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
