@@ -440,6 +440,66 @@ test.describe('@integration Accessibility - Modals', () => {
     const backdrop = page.locator('.fixed.inset-0.bg-black\\/50').first();
     await expect(backdrop).not.toBeVisible({ timeout: 5000 });
   });
+
+  // UI-002: Escape while the Menu is open must close the menu WITHOUT also
+  // clearing the active cell selection. Game.tsx's global Escape handler has a
+  // modal-guard that includes menuOpen (lifted from GameHeader), so the
+  // clearAllAndDeselect branch is skipped while the menu is open. Menu.tsx's
+  // own document-level Escape listener still closes the menu.
+  test('escape key closes menu and preserves cell selection', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
+
+    // Select an empty cell so there is a selection to preserve.
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
+    await emptyCell.click();
+    await expect(
+      page.locator('[role="gridcell"][class*="ring-accent"]'),
+    ).toHaveCount(1, { timeout: 5000 });
+
+    // Open the menu.
+    const menuButton = page.locator('button[aria-label="Menu"]');
+    await menuButton.click();
+    const menuHeader = page.locator('span:has-text("Menu")').first();
+    await expect(menuHeader).toBeVisible({ timeout: 5000 });
+
+    // Press Escape to dismiss the menu.
+    await page.keyboard.press('Escape');
+
+    // Menu backdrop is gone...
+    const backdrop = page.locator('.fixed.inset-0.bg-black\\/50').first();
+    await expect(backdrop).not.toBeVisible({ timeout: 5000 });
+
+    // ...and the previously selected cell is still selected.
+    await expect(
+      page.locator('[role="gridcell"][class*="ring-accent"]'),
+    ).toHaveCount(1, { timeout: 5000 });
+  });
+
+  // UI-002 regression branch: with no menu open, Escape must still deselect the
+  // active cell. Guarantees the modal-guard did not over-suppress the global
+  // Escape handler.
+  test('escape key deselects cell when menu is closed', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
+
+    // Select an empty cell.
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
+    await emptyCell.click();
+    await expect(
+      page.locator('[role="gridcell"][class*="ring-accent"]'),
+    ).toHaveCount(1, { timeout: 5000 });
+
+    // Press Escape with no menu open.
+    await page.keyboard.press('Escape');
+
+    // Selection is cleared.
+    await expect(
+      page.locator('[role="gridcell"][class*="ring-accent"]'),
+    ).toHaveCount(0, { timeout: 5000 });
+  });
 });
 
 test.describe('@integration Accessibility - Reduced Motion', () => {

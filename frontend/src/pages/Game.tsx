@@ -232,6 +232,7 @@ function GameContent() {
   const [solveConfirmOpen, setSolveConfirmOpen] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showSolutionConfirm, setShowSolutionConfirm] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [showInProgressConfirm, setShowInProgressConfirm] = useState(false)
   const [existingInProgressGame, setExistingInProgressGame] = useState<SavedGameInfo | null>(null)
   const [showDailyPrompt, setShowDailyPrompt] = useState(false)
@@ -395,6 +396,9 @@ function GameContent() {
       const clickedOnBoard = target.closest('.sudoku-board') !== null
       const clickedOnDigitButton = target.closest('.control-digit-btn') !== null
       const clickedOnActionButton = target.closest('.control-action-btn-compact') !== null
+      // Opening the Menu should not wipe the board selection (the Menu has its own
+      // Escape handling and is also covered by the modal-guard in the keydown handler).
+      const clickedOnMenuButton = target.closest('[data-menu-button]') !== null
 
       // Deselect if click is NOT on a cell/board, NOT on digit/action buttons, and NOT in a modal
       // This allows clicking on empty space, header buttons, etc. to deselect
@@ -404,6 +408,7 @@ function GameContent() {
         !clickedOnBoard &&
         !clickedOnDigitButton &&
         !clickedOnActionButton &&
+        !clickedOnMenuButton &&
         !clickedInsideModal
       ) {
         deselectCell()
@@ -1738,7 +1743,8 @@ function GameContent() {
         techniqueModal ||
         techniquesListOpen ||
         solveConfirmOpen ||
-        showClearConfirm
+        showClearConfirm ||
+        menuOpen
       ) {
         return
       }
@@ -1817,6 +1823,7 @@ function GameContent() {
     techniquesListOpen,
     solveConfirmOpen,
     showClearConfirm,
+    menuOpen,
   ])
 
   // Sync game state to global context for header
@@ -2428,6 +2435,8 @@ function GameContent() {
           setHideTimerState(newValue)
           setHideTimer(newValue)
         }}
+        menuOpen={menuOpen}
+        onMenuOpenChange={setMenuOpen}
       />
 
       {/* Validation message toast */}

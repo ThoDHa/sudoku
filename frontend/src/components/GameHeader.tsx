@@ -409,6 +409,10 @@ interface GameHeaderProps {
   onSetColorTheme: (theme: ColorTheme) => void
   onSetFontSize: (size: FontSize) => void
   onToggleHideTimer: () => void
+  // Menu open state is owned by the parent (Game.tsx) so its global
+  // keyboard-shortcut guard can suppress shortcuts while the menu is open.
+  menuOpen: boolean
+  onMenuOpenChange: (open: boolean) => void
 }
 
 export default memo(function GameHeader({
@@ -455,8 +459,9 @@ export default memo(function GameHeader({
   onSetColorTheme,
   onSetFontSize,
   onToggleHideTimer,
+  menuOpen,
+  onMenuOpenChange,
 }: GameHeaderProps) {
-  const [menuOpen, setMenuOpen] = useState(false)
   const [modeDropdownOpen, setModeDropdownOpen] = useState(false)
   const modeDropdownRef = useRef<HTMLDivElement>(null)
 
@@ -573,10 +578,11 @@ export default memo(function GameHeader({
 
             {/* Menu button */}
             <button
-              onClick={() => setMenuOpen(true)}
+              onClick={() => onMenuOpenChange(true)}
               className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
               title="Menu"
               aria-label="Menu"
+              data-menu-button
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -609,7 +615,7 @@ export default memo(function GameHeader({
       {/* Menu modal - outside header to overlay full page */}
       <Menu
         isOpen={menuOpen}
-        onClose={() => setMenuOpen(false)}
+        onClose={() => onMenuOpenChange(false)}
         currentSeed={seed}
         mode={mode}
         colorTheme={colorTheme}
