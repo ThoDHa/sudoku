@@ -17,7 +17,7 @@
     "test:e2e": "playwright test e2e/integration/",
     "test:e2e:slow": "playwright test e2e/slow/",
     "test:coverage": "vitest run --coverage",
-    "test:memory": "playwright test e2e/profiling/",
+    "test:memory": "playwright test e2e/profiling/ --workers=1 --project=chrome-desktop && playwright test e2e/profiling/ --workers=1 --project=pixel-5 && playwright test e2e/profiling/ --workers=1 --project=iphone-12",
     "simulate": "tsx e2e/simulation/cli.ts",
     "simulate:quick": "tsx e2e/simulation/cli.ts --users 5 --games-per-user 10",
     "allure:generate": "allure generate allure-results -o allure-report --clean",

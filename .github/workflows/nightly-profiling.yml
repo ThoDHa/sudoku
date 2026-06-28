@@ -67,7 +67,7 @@ jobs:
           cat > docker-compose.nightly-cycle1.yml <<'EOF'
           services:
             playwright:
-              command: sh -c "mkdir -p /app/allure-results && npm ci --legacy-peer-deps && npx playwright test e2e/profiling/wasm-cpu-profile.spec.ts --project=chrome-desktop"
+              command: sh -c "mkdir -p /app/allure-results && npm ci --legacy-peer-deps && npx playwright test e2e/profiling/wasm-cpu-profile.spec.ts --project=chrome-desktop --workers=1"
           EOF
 
       - name: Cycle 1 - verdict gate (hard fail on verdict FAIL)
@@ -89,7 +89,7 @@ jobs:
           cat > docker-compose.nightly-cycle2.yml <<'EOF'
           services:
             playwright:
-              command: sh -c "mkdir -p /app/allure-results && npm ci --legacy-peer-deps && npx playwright test e2e/profiling/memory-profile.spec.ts e2e/profiling/gap-coverage.spec.ts e2e/profiling/selection-performance.spec.ts --project=chrome-desktop"
+              command: sh -c "mkdir -p /app/allure-results && npm ci --legacy-peer-deps && npx playwright test e2e/profiling/memory-profile.spec.ts e2e/profiling/gap-coverage.spec.ts e2e/profiling/selection-performance.spec.ts --project=chrome-desktop --workers=1"
           EOF
 
       - name: Cycle 2 - informational thresholds

@@ -28,6 +28,36 @@ export async function measureTime<T>(operation: () => Promise<T>): Promise<Timed
   return { result, duration: performance.now() - start };
 }
 
+export interface MedianResult {
+  median: number;
+  timings: number[];
+  stats: TimingStats;
+}
+
+/**
+ * Measure an operation N times and return the median duration (ms). The median
+ * absorbs one-off environment spikes (GC pauses, CPU scheduling, WASM compile
+ * hiccups) that flake a single-sample timing assertion on noisy mobile
+ * hardware, while still catching a sustained regression (which lifts the whole
+ * distribution, median included). Use for absolute-ms timing guards on the
+ * mobile projects where single-sample expect(ms).toBeLessThan(T) is flake-prone.
+ *
+ * The operation is invoked with no per-iteration setup; callers that need to
+ * re-select / re-arm between samples should collect timings via measureTime in
+ * their own loop and call summarize(timings).median directly.
+ */
+export async function measureMedian(
+  operation: () => Promise<unknown>,
+  samples: number,
+): Promise<MedianResult> {
+  const timings: number[] = [];
+  for (let i = 0; i < samples; i++) {
+    timings.push((await measureTime(operation)).duration);
+  }
+  const stats = summarize(timings);
+  return { median: stats.median, timings, stats };
+}
+
 /** Reduce a list of timings (ms) to min/max/avg/median/p95 statistics. */
 export function summarize(timings: number[]): TimingStats {
   const count = timings.length;

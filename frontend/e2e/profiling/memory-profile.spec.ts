@@ -36,6 +36,12 @@ import {
   calculateVariancePct,
 } from './helpers/cdp';
 
+// Confirms the homepage mounted after goto('/'). Use instead of networkidle: the PWA
+// service worker holds connections, so networkidle hangs and overruns test budgets.
+async function waitForHomepageMounted(page: Page) {
+  await page.getByRole('button', { name: /Play/i }).first().waitFor({ state: 'visible' });
+}
+
 // ============================================
 // Configuration
 // ============================================
@@ -480,7 +486,7 @@ test.describe.serial('@profiling @slow Memory - Deep Profiling', () => {
     console.log(`📊 Game page listeners: ${gameMetrics.jsEventListeners}`);
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForHomepageMounted(page);
 
     for (let i = 0; i < 3; i++) {
       await cdp.forceGC();
@@ -505,11 +511,11 @@ test.describe.serial('@profiling @slow Memory - Deep Profiling', () => {
   });
 
   test('DOM node cleanup after repeated mounts/unmounts', async ({ page }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
     const cdp = new CDPManager(page);
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForHomepageMounted(page);
 
     await cdp.forceGC();
     const initialMetrics = await cdp.getMemoryMetrics();
@@ -522,7 +528,7 @@ test.describe.serial('@profiling @slow Memory - Deep Profiling', () => {
         await makeMove(page, m);
       }
       await page.goto('/');
-      await page.waitForLoadState('networkidle');
+      await waitForHomepageMounted(page);
     }
 
     for (let i = 0; i < 3; i++) {

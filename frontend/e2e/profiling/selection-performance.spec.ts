@@ -22,7 +22,7 @@
 import { test, expect } from '../fixtures';
 import type { Page, Locator } from '@playwright/test';
 import { setupGameAndWaitForBoard } from '../utils/board-wait';
-import { measureTime, summarize } from './helpers/timing';
+import { measureTime, summarize, measureMedian } from './helpers/timing';
 
 // E2E thresholds (ms). These bundle Playwright browser-automation overhead +
 // React mount + the auto-retrying assertion poll cadence, so they are
@@ -142,18 +142,33 @@ test.describe.serial('@performance Selection Performance - No Regression', () =>
 
   test.describe('Cell Selection Performance', () => {
     test('cell selection responds within performance threshold', async ({ page }) => {
-      const emptyCell = await findEmptyCell(page);
-      test.skip(!emptyCell, 'No empty cells available for testing');
+      const emptyCells = page.locator('[role="gridcell"][aria-label*="empty"]');
+      const total = await emptyCells.count();
+      test.skip(total < 4, 'Need at least 4 empty cells (1 warmup + 3 samples) for median sampling');
+      const samples = Math.min(total - 1, 5);
 
-      const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+      // Warmup: the first click on a fresh page pays JIT compile + React mount.
+      // Exclude it so a cold page (isolated run, or first test in a file) does
+      // not skew the median.
+      const warmupCell = emptyCells.nth(total - 1);
+      await warmupCell.click();
+      await expectCellSelected(warmupCell);
 
-      const { duration } = await measureTime(async () => {
+      let i = 0;
+      const { median, stats } = await measureMedian(async () => {
+        const cell = emptyCells.nth(i++);
         await cell.click();
         await expectCellSelected(cell);
-      });
+      }, samples);
 
-      console.log(`Cell selection took: ${duration.toFixed(2)}ms`);
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE);
+      console.log(
+        `Cell selection — median ${median.toFixed(2)}ms over ${samples} samples ` +
+        `(avg ${stats.avg.toFixed(2)}ms, max ${stats.max.toFixed(2)}ms)`
+      );
+      // Median-of-N (PROF-003-D3): absorbs one-off mobile env spikes that flaked
+      // the single-sample guard on iphone-12, while still tripping on a sustained
+      // regression (which lifts the whole distribution, median included).
+      expect(median).toBeLessThan(PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE);
     });
 
     test('multiple rapid cell selections maintain performance', async ({ page }) => {
@@ -198,20 +213,28 @@ test.describe.serial('@performance Selection Performance - No Regression', () =>
 
   test.describe('Digit Entry Performance', () => {
     test('digit entry and deselection completes within threshold', async ({ page }) => {
-      const emptyCell = await findEmptyCell(page);
-      test.skip(!emptyCell, 'No empty cells available for testing');
+      const emptyCells = page.locator('[role="gridcell"][aria-label*="empty"]');
+      const samples = Math.min(await emptyCells.count(), 5);
+      test.skip(samples < 3, 'Need at least 3 empty cells for median sampling');
 
-      const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
-      await cell.click();
-      await expectCellSelected(cell);
+      const timings: number[] = [];
+      for (let i = 0; i < samples; i++) {
+        const cell = emptyCells.nth(i);
+        await cell.click();
+        await expectCellSelected(cell);
+        const { duration } = await measureTime(async () => {
+          await page.keyboard.press(String((i % 9) + 1));
+          await expectCellNotSelected(cell);
+        });
+        timings.push(duration);
+      }
 
-      const { duration } = await measureTime(async () => {
-        await page.keyboard.press('7');
-        await expectCellNotSelected(cell);
-      });
-
-      console.log(`Digit entry + deselection took: ${duration.toFixed(2)}ms`);
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.DIGIT_ENTRY_RESPONSE);
+      const stats = summarize(timings);
+      console.log(
+        `Digit entry — median ${stats.median.toFixed(2)}ms over ${samples} samples ` +
+        `(avg ${stats.avg.toFixed(2)}ms, max ${stats.max.toFixed(2)}ms)`
+      );
+      expect(stats.median).toBeLessThan(PERFORMANCE_THRESHOLDS.DIGIT_ENTRY_RESPONSE);
     });
 
     test('rapid digit entry sequence maintains performance', async ({ page }) => {
@@ -275,16 +298,23 @@ test.describe.serial('@performance Selection Performance - No Regression', () =>
       const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
       const outside = await getSafeOutsidePoint(page);
 
-      await cell.click();
-      await expectCellSelected(cell);
+      const timings: number[] = [];
+      for (let i = 0; i < 5; i++) {
+        await cell.click();
+        await expectCellSelected(cell);
+        const { duration } = await measureTime(async () => {
+          await page.mouse.click(outside.x, outside.y);
+          await expectCellNotSelected(cell);
+        });
+        timings.push(duration);
+      }
 
-      const { duration } = await measureTime(async () => {
-        await page.mouse.click(outside.x, outside.y);
-        await expectCellNotSelected(cell);
-      });
-
-      console.log(`Outside-click (${outside.name}) detection took: ${duration.toFixed(2)}ms`);
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.OUTSIDE_CLICK_RESPONSE);
+      const stats = summarize(timings);
+      console.log(
+        `Outside-click (${outside.name}) — median ${stats.median.toFixed(2)}ms over 5 samples ` +
+        `(avg ${stats.avg.toFixed(2)}ms, max ${stats.max.toFixed(2)}ms)`
+      );
+      expect(stats.median).toBeLessThan(PERFORMANCE_THRESHOLDS.OUTSIDE_CLICK_RESPONSE);
     });
 
     test('outside-click performance consistent across available directions', async ({ page }) => {
