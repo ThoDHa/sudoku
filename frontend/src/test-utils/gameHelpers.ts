@@ -1,6 +1,5 @@
 import type { Move } from '../hooks/useSudokuGame'
 import type { MoveHighlight } from '../hooks/useHighlightState'
-import type { KeyboardShortcutHandlers } from '../hooks/useKeyboardShortcuts'
 import { createMockBackgroundManager } from './mocks'
 import { vi } from 'vitest'
 
@@ -33,15 +32,6 @@ export const createMockMoveHighlight = (overrides?: Partial<MoveHighlight>): Mov
     ],
   },
   ...overrides,
-})
-
-export const createMockKeyboardHandlers = (): KeyboardShortcutHandlers => ({
-  onUndo: vi.fn(),
-  onRedo: vi.fn(),
-  onHint: vi.fn(),
-  onValidate: vi.fn(),
-  onToggleNotesMode: vi.fn(),
-  onClearAllAndDeselect: vi.fn(),
 })
 
 export const createMockAutoSolveMove = (
