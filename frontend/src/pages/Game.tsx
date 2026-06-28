@@ -388,27 +388,33 @@ function GameContent() {
       const target = event.target as Element | null
       if (!target) return
 
-      // Check for actual modals (not toasts/notifications)
-      const clickedInsideModal = target.closest('[role="dialog"], .modal, [data-modal]')
+      // Check for actual modals AND overlay backdrops (not toasts/notifications).
+      // [data-overlay-backdrop] covers all three backdrop structural patterns; [data-modal]
+      // revives the panel-interior guard (panel wrappers carry the attribute).
+      const clickedInsideModal = target.closest(
+        '[role="dialog"], .modal, [data-modal], [data-overlay-backdrop]',
+      )
 
       // Check if click is on interactive game elements that should NOT trigger deselection
       const clickedOnCell = target.closest('.sudoku-cell') !== null
       const clickedOnBoard = target.closest('.sudoku-board') !== null
       const clickedOnDigitButton = target.closest('.control-digit-btn') !== null
       const clickedOnActionButton = target.closest('.control-action-btn-compact') !== null
-      // Opening the Menu should not wipe the board selection (the Menu has its own
-      // Escape handling and is also covered by the modal-guard in the keydown handler).
-      const clickedOnMenuButton = target.closest('[data-menu-button]') !== null
+      // Opening an overlay should not wipe the board selection. Each overlay opener button
+      // carries a data-*-button attribute; they are grouped here as one concept.
+      const clickedOnOverlayOpener =
+        target.closest('[data-menu-button], [data-history-button], [data-share-button]') !== null
 
-      // Deselect if click is NOT on a cell/board, NOT on digit/action buttons, and NOT in a modal
-      // This allows clicking on empty space, header buttons, etc. to deselect
-      // The board check prevents deselection from synthetic clicks after multi-select drags
+      // Deselect if click is NOT on a cell/board, NOT on digit/action buttons, NOT on an
+      // overlay opener, and NOT inside an overlay (panel or backdrop). This leaves only
+      // genuine empty-space clicks triggering deselection.
+      // The board check prevents deselection from synthetic clicks after multi-select drags.
       if (
         !clickedOnCell &&
         !clickedOnBoard &&
         !clickedOnDigitButton &&
         !clickedOnActionButton &&
-        !clickedOnMenuButton &&
+        !clickedOnOverlayOpener &&
         !clickedInsideModal
       ) {
         deselectCell()
@@ -2629,8 +2635,8 @@ function GameContent() {
 
       {/* In-Progress Game Confirmation Modal */}
       {showInProgressConfirm && existingInProgressGame && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-overlay-backdrop>
+          <div className="w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme" data-modal>
             <h2 className="mb-2 text-lg font-semibold text-foreground">Game In Progress</h2>
             <p className="mb-6 text-sm text-foreground-muted">
               You have a{' '}
@@ -2658,8 +2664,8 @@ function GameContent() {
 
       {/* Difficulty Chooser Modal - shown when opening shared link without difficulty */}
       {showDifficultyChooser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-theme">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-overlay-backdrop>
+          <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-theme" data-modal>
             <h2 className="text-xl font-semibold text-foreground text-center mb-2">
               Choose Difficulty
             </h2>

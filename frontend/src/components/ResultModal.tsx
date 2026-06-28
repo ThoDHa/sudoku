@@ -98,9 +98,9 @@ export default function ResultModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" data-modal>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} data-overlay-backdrop />
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-md rounded-2xl bg-background p-6 shadow-2xl">

@@ -530,6 +530,7 @@ export default memo(function GameHeader({
               onClick={onHistoryOpen}
               className="relative flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
               title="View move history"
+              data-history-button
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -554,6 +555,7 @@ export default memo(function GameHeader({
               onClick={isComplete ? onShowResult : onShare}
               className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
               title={isComplete ? 'Share your result' : 'Share puzzle with current progress'}
+              data-share-button
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path

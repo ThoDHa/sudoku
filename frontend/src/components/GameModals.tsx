@@ -47,10 +47,11 @@ export default function GameModals({
     <>
       {/* Solve Confirmation Dialog */}
       {solveConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-modal>
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setSolveConfirmOpen(false)}
+            data-overlay-backdrop
           />
           <div className="relative z-10 w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl">
             <h2 className="mb-2 text-lg font-bold text-foreground">Solve Puzzle?</h2>
@@ -108,10 +109,11 @@ export default function GameModals({
 
       {/* Clear All / Restart Confirmation Dialog */}
       {showClearConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-modal>
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setShowClearConfirm(false)}
+            data-overlay-backdrop
           />
           <div className="relative z-10 w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl">
             <h2 className="mb-2 text-lg font-bold text-foreground">
@@ -149,8 +151,8 @@ export default function GameModals({
 
       {/* Check Progress Confirmation Dialog */}
       {showSolutionConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-overlay-backdrop>
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl" data-modal>
             <h2 className="mb-2 text-lg font-bold text-foreground">Too Many Conflicts</h2>
             <p className="mb-6 text-sm text-foreground-muted">
               {unpinpointableErrorMessage ||

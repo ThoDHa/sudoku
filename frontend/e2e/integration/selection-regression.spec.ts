@@ -660,3 +660,109 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
     });
   }
 });
+
+// ============================================================
+// Overlay Interaction Selection Preservation (BUG-003 regression)
+//
+// The capture-phase outside-click handler in Game.tsx must NOT deselect the active
+// cell when the user interacts with an overlay: opening it via a header opener,
+// dismissing it via its backdrop, or clicking inside the modal panel. Genuine
+// empty-space clicks must still deselect. These cases cover the three overlay
+// surfaces that the handler now exempts via data-* attributes:
+//   - openers: [data-history-button], [data-share-button] (Menu covered by UI-002)
+//   - backdrops: [data-overlay-backdrop]
+//   - panel interiors: [data-modal]
+// ============================================================
+test.describe('@regression Overlay Interaction Selection Preservation', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true');
+    });
+    // clipboard-write can be needed by the Share handler in incomplete-puzzle state
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+    await page.goto('/');
+    await page.getByRole('button', { name: /easy Play/i }).click();
+    await page.waitForSelector('[role="grid"]', { timeout: 20000 });
+    await waitForWasmReady(page);
+    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', { timeout: 30000 });
+  });
+
+  test('opening history via header button preserves cell selection', async ({ page }) => {
+    const emptyCell = await findEmptyCell(page);
+    test.skip(!emptyCell, 'No empty cells available for testing');
+    const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+
+    await cell.click();
+    await expectCellSelected(cell);
+
+    // Click the History opener (capture-phase handler must exempt it).
+    await page.locator('[data-history-button]').click();
+    // History overlay is open; selection ring must remain.
+    await expect(page.locator('[data-modal]:visible')).toBeVisible();
+    await expectCellSelected(cell);
+  });
+
+  test('opening share via header button preserves cell selection', async ({ page }) => {
+    const emptyCell = await findEmptyCell(page);
+    test.skip(!emptyCell, 'No empty cells available for testing');
+    const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+
+    await cell.click();
+    await expectCellSelected(cell);
+
+    // In incomplete-puzzle state the Share opener toasts (no modal); the click itself
+    // must not wipe selection. data-share-button exempts the opener instant.
+    await page.locator('[data-share-button]').click();
+    await expectCellSelected(cell);
+  });
+
+  test('dismissing history via backdrop preserves cell selection', async ({ page }) => {
+    const emptyCell = await findEmptyCell(page);
+    test.skip(!emptyCell, 'No empty cells available for testing');
+    const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+
+    await cell.click();
+    await expectCellSelected(cell);
+
+    // Open History, then click its backdrop to dismiss. Click an exposed corner of the
+    // backdrop (the panel is centered and would otherwise intercept a center click).
+    await page.locator('[data-history-button]').click();
+    await expect(page.locator('[data-modal]:visible')).toBeVisible();
+    await page.locator('[data-overlay-backdrop]:visible').first().click({ position: { x: 5, y: 5 } });
+
+    // Overlay dismissed; selection must survive the backdrop click.
+    await expectCellSelected(cell);
+  });
+
+  test('clicking inside a modal panel preserves cell selection', async ({ page }) => {
+    const emptyCell = await findEmptyCell(page);
+    test.skip(!emptyCell, 'No empty cells available for testing');
+    const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+
+    await cell.click();
+    await expectCellSelected(cell);
+
+    // Open History and click non-interactive content inside the panel (the title).
+    await page.locator('[data-history-button]').click();
+    await expect(page.locator('[data-modal]:visible')).toBeVisible();
+    await page.getByText('Move History').click();
+
+    // Panel-interior click (data-modal) must not deselect.
+    await expectCellSelected(cell);
+  });
+
+  test('clicking genuinely empty space still deselects (regression guard)', async ({ page }) => {
+    const emptyCell = await findEmptyCell(page);
+    test.skip(!emptyCell, 'No empty cells available for testing');
+    const cell = getCellLocator(page, emptyCell!.row, emptyCell!.col);
+    const coords = await getOutsideClickCoordinates(page);
+
+    await cell.click();
+    await expectCellSelected(cell);
+
+    // A real empty-space click carries no overlay attribute; it must still deselect.
+    await page.mouse.click(coords.above.x, coords.above.y);
+    await expectCellNotSelected(cell);
+    expect(await countSelectedCells(page)).toBe(0);
+  });
+});

@@ -808,14 +808,15 @@ export default function Menu({
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50 z-[99]" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50 z-[99]" onClick={onClose} data-overlay-backdrop />
 
       {/* Modal - centered in viewport */}
-      <div className="fixed inset-0 z-[100] overflow-hidden" onClick={onClose}>
+      <div className="fixed inset-0 z-[100] overflow-hidden" onClick={onClose} data-overlay-backdrop>
         <div className="min-h-full flex items-center justify-center p-4">
           <div
             className="w-full max-w-md max-h-[95vh] overflow-auto rounded-xl border border-board-border-light bg-background shadow-2xl text-base"
             onClick={(e) => e.stopPropagation()}
+            data-modal
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-board-border-light">
@@ -1098,8 +1099,9 @@ export default function Menu({
           <div
             className="fixed inset-0 bg-black/50 z-[101]"
             onClick={() => setConfirmNewPuzzle(null)}
+            data-overlay-backdrop
           />
-          <div className="fixed inset-0 z-[102] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[102] flex items-center justify-center p-4" data-modal>
             <div
               className="w-full max-w-xs rounded-xl border border-board-border-light bg-background shadow-2xl p-4"
               onClick={(e) => e.stopPropagation()}

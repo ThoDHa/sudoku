@@ -36,10 +36,11 @@ export default function GlossaryModal({ isOpen, onClose }: GlossaryModalProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-overlay-backdrop>
       <div
         className="relative max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-background shadow-xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
+        data-modal
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-board-border-light p-4">

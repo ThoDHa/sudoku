@@ -42,8 +42,8 @@ export default function DailyPromptModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleContinue} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-modal>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleContinue} data-overlay-backdrop />
       <div className="relative z-10 w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl">
         <h2 className="mb-2 text-lg font-bold text-foreground">Daily Puzzle</h2>
         <p className="mb-4 text-sm text-foreground-muted">
