@@ -1,0 +1,142 @@
+name: Nightly Profiling Gate
+
+# Nightly gate for the profiling suite. PROF-001 moved the wasm-cpu-profile
+# verdict to an ASSERTED PASS/WARN/FAIL tier, making the suite safe for
+# unattended CI gating. This workflow is intentionally separate from
+# deploy.yml (per-commit gates): the profiling suite is slow (~15-20m for
+# memory, ~10m for wasm-cpu) and environment-sensitive, so it does not run
+# on every push/PR. See task INFRA-002 for design rationale (Option A).
+#
+# Fail policy (Option A):
+#   - Cycle 1 (hard gate): wasm-cpu-profile.spec.ts verdict FAIL fails the job.
+#   - Cycle 2 (informational, continue-on-error): env-sensitive thresholds
+#     (absolute-ms latency, heap growth) warn but do not fail the job.
+# Baselines are gitignored (frontend/e2e/profiling/results/), so uploaded
+# artifacts are the record of nightly runs.
+
+on:
+  schedule:
+    # 03:00 UTC daily. GitHub Actions cron is UTC-only; 03:00 UTC avoids
+    # typical commit activity and runner peak load.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Distinct from deploy.yml's "deploy-${{ github.ref }}" group so a nightly
+# run never cancels (and is never cancelled by) a deploy run.
+concurrency:
+  group: nightly-profiling
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  nightly-profiling:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker buildx
+        # buildx cache lets the built `sudoku` image be reused across both
+        # compose cycles, so the second `up` does not rebuild the app image.
+        uses: docker/setup-buildx-action@v4
+
+      - name: Show Docker Compose version
+        run: docker compose version
+
+      # ============================================================
+      # Cycle 1 - HARD GATE (verdict FAIL fails the job)
+      # ============================================================
+      # Only wasm-cpu-profile.spec.ts carries a PASS/WARN/FAIL verdict tier
+      # (PROF-001). Its asserted `expect(report.analysis.verdict).not.toBe('FAIL')`
+      # is the regression gate. The env-sensitive absolute thresholds live in
+      # the other specs and are isolated to Cycle 2.
+      #
+      # The override rewrites ONLY playwright.command, inheriting every other
+      # base service setting (healthcheck, volumes, env, depends_on, user).
+      # This coupling to docker-compose.test.yml is intentional: if the base
+      # service name or command shape changes, this override must be updated.
+      # Crucially the override passes NO --grep-invert flags, so the
+      # @profiling/@slow/@performance tags do NOT exclude these specs here.
+      - name: Write cycle-1 compose override (hard gate)
+        run: |
+          cat > docker-compose.nightly-cycle1.yml <<'EOF'
+          services:
+            playwright:
+              command: sh -c "mkdir -p /app/allure-results && npm ci --legacy-peer-deps && npx playwright test e2e/profiling/wasm-cpu-profile.spec.ts --project=chrome-desktop"
+          EOF
+
+      - name: Cycle 1 - verdict gate (hard fail on verdict FAIL)
+        run: |
+          docker compose -f docker-compose.test.yml -f docker-compose.nightly-cycle1.yml up --build --abort-on-container-exit --exit-code-from playwright
+
+      # ============================================================
+      # Cycle 2 - INFORMATIONAL (threshold breaches warn, not fail)
+      # ============================================================
+      # Runs the environment-sensitive specs under continue-on-error so a
+      # breach surfaces in the uploaded artifacts and step annotation without
+      # failing the job. Runs even if Cycle 1 failed (if: always()) so a full
+      # nightly picture is always collected. The three specs are listed
+      # explicitly (not the e2e/profiling/ directory) to avoid re-running
+      # wasm-cpu-profile, which Cycle 1 already gated. No --grep-invert flags.
+      - name: Write cycle-2 compose override (informational)
+        if: always()
+        run: |
+          cat > docker-compose.nightly-cycle2.yml <<'EOF'
+          services:
+            playwright:
+              command: sh -c "mkdir -p /app/allure-results && npm ci --legacy-peer-deps && npx playwright test e2e/profiling/memory-profile.spec.ts e2e/profiling/gap-coverage.spec.ts e2e/profiling/selection-performance.spec.ts --project=chrome-desktop"
+          EOF
+
+      - name: Cycle 2 - informational thresholds
+        if: always()
+        continue-on-error: true
+        run: |
+          docker compose -f docker-compose.test.yml -f docker-compose.nightly-cycle2.yml up --build --abort-on-container-exit --exit-code-from playwright
+
+      # ============================================================
+      # Artifacts - baselines are gitignored, artifacts are the record
+      # ============================================================
+      - name: Upload profiling baselines (results JSON)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-profiling-results
+          path: frontend/e2e/profiling/results/
+          retention-days: 30
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-playwright-report
+          path: frontend/playwright-report/
+          retention-days: 30
+
+      - name: Upload Playwright test-results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-test-results
+          path: frontend/test-results/
+          retention-days: 30
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-allure-results
+          path: frontend/allure-results/
+          retention-days: 30
+
+      # ============================================================
+      # Cleanup - remove inline override files
+      # ============================================================
+      - name: Remove inline override files
+        if: always()
+        run: |
+          rm -f docker-compose.nightly-cycle1.yml docker-compose.nightly-cycle2.yml
