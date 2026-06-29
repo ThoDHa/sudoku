@@ -28,6 +28,7 @@ import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import { useHighlightState } from '../hooks/useHighlightState'
 import type { MoveHighlight } from '../hooks/useHighlightState'
 import { useVisibilityAwareTimeout } from '../hooks/useVisibilityAwareTimeout'
+import { useToastClearTimer } from '../hooks/useToastClearTimer'
 import { useFrozenWhenHidden } from '../hooks/useFrozenWhenHidden'
 import type { Move } from '../hooks/useSudokuGame'
 import { logger } from '../lib/logger'
@@ -329,6 +330,10 @@ function GameContent() {
   // Visibility-aware timeouts for toast messages - cancelled on background
   const { setTimeout: visibilityAwareTimeout } = useVisibilityAwareTimeout()
 
+  // Single replaceable toast-clear timer. Scheduling a new clearer cancels the
+  // prior pending one so a stale auto-clear can never wipe a newer toast.
+  const scheduleToastClear = useToastClearTimer(visibilityAwareTimeout)
+
   // Centralized highlight state management with atomic updates
   const {
     selectedCell,
@@ -541,9 +546,9 @@ function GameContent() {
   const handleAutoSolveError = useCallback(
     (message: string) => {
       setValidationMessage({ type: 'error', message })
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
     },
-    [visibilityAwareTimeout],
+    [scheduleToastClear],
   )
 
   const handleUnpinpointableError = useCallback((message: string, count: number) => {
@@ -554,9 +559,9 @@ function GameContent() {
   const handleAutoSolveStatus = useCallback(
     (message: string) => {
       throttledSetValidationMessage({ type: 'success', message })
-      visibilityAwareTimeout(() => setValidationMessage(null), 2000)
+      scheduleToastClear(2000, () => setValidationMessage(null))
     },
-    [throttledSetValidationMessage, visibilityAwareTimeout],
+    [throttledSetValidationMessage, scheduleToastClear],
   )
 
   const handleErrorFixed = useCallback(
@@ -564,11 +569,11 @@ function GameContent() {
       // Show toast for fix-error (longer duration than normal hints)
       setValidationMessage({ type: 'error', message: `Fixed: ${message}` })
       // Clear toast after full duration
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_FIX_ERROR)
+      scheduleToastClear(TOAST_DURATION_FIX_ERROR, () => setValidationMessage(null))
       // But resume solving sooner for better UX
       visibilityAwareTimeout(resumeCallback, ERROR_FIX_RESUME_DELAY)
     },
-    [visibilityAwareTimeout],
+    [visibilityAwareTimeout, scheduleToastClear],
   )
 
   const handleStepNavigate = useCallback((move: Move | null) => {
@@ -909,7 +914,7 @@ function GameContent() {
 
     if (result.cellsWithNotes === 0) {
       setValidationMessage({ type: 'error', message: 'No notes to check. Add some notes first!' })
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
       return
     }
 
@@ -929,14 +934,14 @@ function GameContent() {
         message: `Found ${wrongCount} incorrect note${wrongCount > 1 ? 's' : ''}. Some notes are impossible.`,
       })
     }
-    visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
-  }, [game, visibilityAwareTimeout])
+    scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
+  }, [game, scheduleToastClear])
 
   // Validate current board state by comparing against the known solution
   const handleValidate = useCallback(() => {
     if (solution.length !== 81) {
       setValidationMessage({ type: 'error', message: 'Solution not available' })
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
       return
     }
 
@@ -953,11 +958,11 @@ function GameContent() {
         setIncorrectCells(data.incorrectCells)
       }
     }
-    visibilityAwareTimeout(() => {
+    scheduleToastClear(TOAST_DURATION_INFO, () => {
       setValidationMessage(null)
       setIncorrectCells([])
-    }, TOAST_DURATION_INFO)
-  }, [game.board, solution, visibilityAwareTimeout])
+    })
+  }, [game.board, solution, scheduleToastClear])
 
   // Handle hint button - shows the next move with full answer (eliminations + additions visible)
   const handleNext = useCallback(async () => {
@@ -996,7 +1001,7 @@ function GameContent() {
             ? 'Puzzle is already complete!'
             : 'This puzzle requires advanced techniques beyond our hint system.',
         })
-        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
         return
       }
 
@@ -1020,14 +1025,14 @@ function GameContent() {
             type: 'error',
             message: move.explanation || 'Contradiction found - undoing last move',
           })
-          visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+          scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
           return
         } else {
           setValidationMessage({
             type: 'error',
             message: 'The puzzle cannot be solved - initial state has errors.',
           })
-          visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+          scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
           return
         }
       }
@@ -1041,7 +1046,7 @@ function GameContent() {
         type: 'success',
         message: move.explanation || move.technique || 'Hint',
       })
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
 
       // Only increment counter if this is a NEW hint (different from last shown)
       const signature = getHintSignature(move)
@@ -1056,7 +1061,7 @@ function GameContent() {
         type: 'error',
         message: err instanceof Error ? err.message : 'Failed to get hint',
       })
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
     } finally {
       gate.end()
       setHintLoading(false)
@@ -1067,7 +1072,7 @@ function GameContent() {
     game.history.length,
     initialBoard,
     clearAllAndDeselect,
-    visibilityAwareTimeout,
+    scheduleToastClear,
     setMoveHighlight,
     clearMoveHighlight,
   ])
@@ -1107,7 +1112,7 @@ function GameContent() {
             ? 'Puzzle is already complete!'
             : 'This puzzle requires advanced techniques beyond our hint system.',
         })
-        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
         return
       }
 
@@ -1119,7 +1124,7 @@ function GameContent() {
           type: 'info',
           message: 'Fill in some candidates first, or use 💡 Hint to get started',
         })
-        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
         return
       }
 
@@ -1129,7 +1134,7 @@ function GameContent() {
           type: 'error',
           message: 'There seems to be an error in the puzzle. Try using 💡 Hint to fix it.',
         })
-        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
         return
       }
 
@@ -1143,7 +1148,7 @@ function GameContent() {
           type: 'error',
           message: move.explanation || 'Constraint violation detected',
         })
-        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
         return
       }
 
@@ -1165,7 +1170,7 @@ function GameContent() {
           onClick: () => setTechniqueModal({ title: techniqueName, slug: techniqueSlug }),
         },
       })
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+      scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
 
       // Only increment counter if this is a NEW hint (different from last shown)
       const signature = getHintSignature(move)
@@ -1180,7 +1185,7 @@ function GameContent() {
         type: 'error',
         message: err instanceof Error ? err.message : 'Failed to get technique',
       })
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
     } finally {
       gate.end()
       setTechniqueHintLoading(false)
@@ -1191,7 +1196,7 @@ function GameContent() {
     game.history.length,
     initialBoard,
     clearAllAndDeselect,
-    visibilityAwareTimeout,
+    scheduleToastClear,
     setMoveHighlight,
   ])
 
@@ -1718,17 +1723,17 @@ function GameContent() {
       const success = await copyToClipboard(url)
       if (success) {
         setValidationMessage({ type: 'success', message: 'Puzzle link copied to clipboard!' })
-        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_INFO)
+        scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
       } else {
         setValidationMessage({ type: 'error', message: 'Failed to copy link' })
-        visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
       }
     } catch (err) {
       logger.error('Share error:', err)
       setValidationMessage({ type: 'error', message: 'Failed to create share link' })
-      visibilityAwareTimeout(() => setValidationMessage(null), TOAST_DURATION_ERROR)
+      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
     }
-  }, [game.board, game.candidates, initialBoard, visibilityAwareTimeout])
+  }, [game.board, game.candidates, initialBoard, scheduleToastClear])
 
   // ============================================================
   // EFFECTS
