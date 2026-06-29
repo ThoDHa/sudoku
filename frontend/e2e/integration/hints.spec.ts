@@ -1,5 +1,6 @@
 import { test, expect, Page, Locator } from '@playwright/test';
 import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait';
+import { dismissModals, waitForHintProcessing, waitForHintToastCleared } from '../utils/hint-wait';
 
 /**
  * Hints Integration Tests
@@ -16,60 +17,6 @@ import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait'
 function getHintButton(page: Page): Locator {
   // This locator matches either the desktop "Hint" button or the mobile emoji button
   return page.locator('button:has-text("Hint"), button:has-text("💡")').first();
-}
-
-/**
- * Dismiss any open modals or toasts that might be blocking clicks.
- */
-async function dismissModals(page: Page) {
-  // Try to close common modal buttons
-  const modalButtons = [
-    page.getByRole('button', { name: /Got it/i }),
-    page.getByRole('button', { name: /Let Me Fix It/i }),
-    page.getByRole('button', { name: /Check & Fix/i }),
-    page.getByRole('button', { name: /Close/i }),
-    page.getByRole('button', { name: /OK/i }),
-  ];
-  
-  for (const button of modalButtons) {
-    if (await button.isVisible().catch(() => false)) {
-      await button.click({ timeout: 5000 }).catch(() => {});
-      await page.waitForTimeout(100);
-      break; // Only click the first visible button
-    }
-  }
-  
-  // Press Escape to close any modal
-  await page.keyboard.press('Escape').catch(() => {});
-  await page.waitForTimeout(50);
-}
-
-/**
- * Wait for hint processing to complete and dismiss any modals.
- * 
- * The hint button may show a loading spinner during processing, but WASM-based hints
- * are often too fast to observe the disabled state. Instead of checking for disabled,
- * we wait for visual indicators that the hint was processed:
- * - A toast message appearing (success or error)
- * - Board state changing (fewer empty cells)
- * - Or simply wait for network idle
- */
-async function waitForHintProcessing(page: Page, hintButton?: Locator) {
-  // Wait for any of these completion indicators:
-  // 1. A toast appears with hint info
-  // 2. Network becomes idle (hint processed)
-  await Promise.race([
-    // Look for toast messages that indicate hint completion
-    page.locator('.fixed.z-50, [class*="toast"], [role="alert"]').first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
-    // Or just wait for network idle
-    page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {}),
-  ]);
-  
-  // Give React a moment to update the DOM
-  await page.waitForTimeout(100);
-  
-  // Dismiss any modals that appeared
-  await dismissModals(page);
 }
 
 
@@ -101,7 +48,7 @@ test.describe('@integration Hints - Basic Functionality', () => {
     await hintButton.click();
     
     // Wait for hint processing to complete
-    await waitForHintProcessing(page, hintButton);
+    await waitForHintProcessing(page);
     
     // Count empty cells after hint
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
@@ -123,7 +70,7 @@ test.describe('@integration Hints - Basic Functionality', () => {
     await hintButton.click();
     
     // Wait for hint processing to complete
-    await waitForHintProcessing(page, hintButton);
+    await waitForHintProcessing(page);
     
     // After hint, one of these should be true:
     // 1. A toast/explanation appeared (transient, may have dismissed)
@@ -192,7 +139,7 @@ test.describe('@integration Hints - Hint Counter', () => {
     await hintButton.click();
     
     // Wait for hint processing to complete
-    await waitForHintProcessing(page, hintButton);
+    await waitForHintProcessing(page);
     
     // Check if count changed
     const afterText = await hintButton.textContent();
@@ -217,7 +164,7 @@ test.describe('@integration Hints - Hint Counter', () => {
     await hintButton.click();
     
     // Wait for hint to complete processing
-    await waitForHintProcessing(page, hintButton);
+    await waitForHintProcessing(page);
     
     // After HINT-5 changes, hint button is disabled until user makes a move
     // Find an empty cell and make a move to re-enable hints
@@ -238,7 +185,7 @@ test.describe('@integration Hints - Hint Counter', () => {
     await hintButton.click();
     
     // Wait for second hint to complete processing
-    await waitForHintProcessing(page, hintButton);
+    await waitForHintProcessing(page);
     
     // Verify count decreased by 2
     const afterText = await hintButton.textContent();
@@ -275,7 +222,7 @@ test.describe('@integration Hints - Edge Cases', () => {
       await hintButton.click();
       
       // Wait for hint processing to complete
-      await waitForHintProcessing(page, hintButton);
+      await waitForHintProcessing(page);
       
       // Count empty cells after hint
       const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
@@ -330,7 +277,7 @@ test.describe('@integration Hints - Edge Cases', () => {
     console.log('[TEST] Hint button clicked');
     
     // Wait for hint processing to complete
-    await waitForHintProcessing(page, hintButton);
+    await waitForHintProcessing(page);
     
     // Count empty cells after hint  
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
@@ -365,10 +312,13 @@ test.describe('@integration Hints - Edge Cases', () => {
         await hintButton.click();
         
         // Wait for hint to complete processing
-        await waitForHintProcessing(page, hintButton);
+        await waitForHintProcessing(page);
       }
     }
-    
+
+    // Let the last hint's toast clear before counting cells.
+    await waitForHintToastCleared(page);
+
     // Count filled cells after hints
     // Use :not([aria-label*="empty"]) to catch all non-empty cells including user-filled ones
     const filledCellsAfter = await page.locator('[role="gridcell"]:not([aria-label*="empty"])').count();
@@ -416,7 +366,7 @@ test.describe('@integration Hints - Mobile', () => {
     await hintButton.tap();
     
     // Wait for hint processing to complete
-    await waitForHintProcessing(page, hintButton);
+    await waitForHintProcessing(page);
     
     // Count empty cells after hint
     const emptyCellsAfter = await page.locator('[role="gridcell"][aria-label*="empty"]').count();

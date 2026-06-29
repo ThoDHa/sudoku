@@ -1,5 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { setupGameAndWaitForBoard } from '../utils/board-wait';
+import { dismissModals, waitForHintProcessing, waitForHintToastCleared } from '../utils/hint-wait';
 
 /**
  * Hint Candidate Highlighting Bug Test
@@ -33,36 +34,6 @@ test.describe('@integration Hint Candidate Highlighting Bug', () => {
 
   function getHintButton(page: Page) {
     return page.locator('button[title*="hint" i], button:has-text("💡"), button:has-text("Hint")').first();
-  }
-
-  async function dismissModals(page: Page) {
-    const modalButtons = [
-      page.getByRole('button', { name: /Got it/i }),
-      page.getByRole('button', { name: /Let Me Fix It/i }),
-      page.getByRole('button', { name: /Check & Fix/i }),
-      page.getByRole('button', { name: /Close/i }),
-      page.getByRole('button', { name: /OK/i }),
-    ];
-    
-    for (const button of modalButtons) {
-      if (await button.isVisible().catch(() => false)) {
-        await button.click({ timeout: 5000 }).catch(() => {});
-        await page.waitForTimeout(100);
-        break;
-      }
-    }
-    
-    await page.keyboard.press('Escape').catch(() => {});
-    await page.waitForTimeout(50);
-  }
-
-  async function waitForHintProcessing(page: Page) {
-    await Promise.race([
-      page.locator('.fixed.z-50, [class*="toast"], [role="alert"]').first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
-      page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {}),
-    ]);
-    await page.waitForTimeout(100);
-    await dismissModals(page);
   }
 
   async function openMenu(page: Page): Promise<void> {
@@ -152,7 +123,10 @@ test.describe('@integration Hint Candidate Highlighting Bug', () => {
       }
       await page.waitForTimeout(100);
     }
-    
+
+    // Let the last hint's toast clear before capturing state.
+    await waitForHintToastCleared(page);
+
     const cellsWithGreenCandidates = await captureHighlightState(page);
     
     const buggyCells = cellsWithGreenCandidates.filter(cell => 

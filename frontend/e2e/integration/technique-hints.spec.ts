@@ -1,5 +1,6 @@
 import { test, expect, Page, Locator } from '@playwright/test';
 import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait';
+import { dismissModals, waitForHintProcessing, waitForHintToastCleared } from '../utils/hint-wait';
 
 /**
  * Technique Hints Integration Tests
@@ -26,80 +27,6 @@ function getTechniqueButton(page: Page): Locator {
 }
 
 /**
- * Dismiss any open modals or toasts that might be blocking clicks.
- */
-async function dismissModals(page: Page) {
-  // Try to close common modal buttons
-  const modalButtons = [
-    page.getByRole('button', { name: /Got it/i }),
-    page.getByRole('button', { name: /Let Me Fix It/i }),
-    page.getByRole('button', { name: /Check & Fix/i }),
-    page.getByRole('button', { name: /Close/i }),
-    page.getByRole('button', { name: /OK/i }),
-  ];
-  
-  for (const button of modalButtons) {
-    if (await button.isVisible().catch(() => false)) {
-      await button.click({ timeout: 5000 }).catch(() => {});
-      await page.waitForTimeout(100);
-      break; // Only click the first visible button
-    }
-  }
-  
-  // Press Escape to close any modal
-  await page.keyboard.press('Escape').catch(() => {});
-  await page.waitForTimeout(50);
-}
-
-/**
- * Wait for hint processing to complete and dismiss any modals.
- *
- * Signal: the svg.animate-spin spinner on the Hint/Technique buttons. Both
- * handleNext and handleTechniqueHint set hintLoading/techniqueHintLoading
- * true (rendering the spinner) before awaiting the WASM findNextMove call,
- * and clear it in a finally block at the same moment the re-entry gate
- * releases (gate.end()). Waiting for the spinner to appear then disappear is
- * therefore the reliable "hint fully settled, gate free" signal.
- *
- * This matters because of two races that older signals hit:
- *  - networkidle resolves instantly: the hint is pure local WASM with no
- *    network I/O, and the PWA service worker holds connections anyway (see
- *    PROF-003). It returns long before the computation finishes.
- *  - the .validation-message toast can be stale from a prior hint (toasts
- *    linger 3000-4000ms), so waiting on it directly can resolve before the
- *    new hint settles, letting the next click hit a held gate and silently
- *    no-op (handleTechniqueHint early-returns at Game.tsx:1079).
- */
-async function waitForHintProcessing(page: Page) {
-  const hintSpinner = page
-    .locator('button:has-text("Technique"), button:has-text("Hint")')
-    .locator('svg.animate-spin');
-
-  // Confirm the action actually started (spinner rendered). A cached hint can
-  // settle within a single render tick, so fall back if it never appears.
-  // The bounds are generous because this suite runs under full parallel load
-  // (workers: all CPUs, 3 projects): the WASM findNextMove call is CPU-bound
-  // and contended, so render + computation can take several seconds.
-  const started = await hintSpinner.first()
-    .waitFor({ state: 'visible', timeout: 2000 })
-    .then(() => true)
-    .catch(() => false);
-  if (started) {
-    await hintSpinner.first().waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
-  }
-
-  // The gate has released; confirm the real feedback toast rendered. Generous
-  // bound for contended WASM; resolves immediately on the fast common path.
-  await page.locator('.validation-message').first()
-    .waitFor({ state: 'visible', timeout: 10000 })
-    .catch(() => {});
-  await page.waitForTimeout(100);
-
-  // Dismiss any modals that appeared
-  await dismissModals(page);
-}
-
-/**
  * Helper to prepare board for technique hints.
  * Clicks the regular Hint button multiple times to ensure candidates are filled.
  * The first few hints often fill cells with values; we need enough hints
@@ -122,15 +49,8 @@ async function prepBoardForTechniqueHint(page: Page) {
     }
   }
 
-  // Let the last hint's toast clear before handing control back. Each hint
-  // schedules an independent setValidationMessage(null) timer (3000-4000ms);
-  // useVisibilityAwareTimeout does not cancel prior timers when a new toast is
-  // set, so rapid prep hints leave pending clearers that can wipe out a later
-  // (e.g. technique) toast right after it appears. Once the toast is gone,
-  // every such timer has fired and the board is quiescent.
-  await page.locator('.validation-message').first()
-    .waitFor({ state: 'hidden', timeout: 6000 })
-    .catch(() => {});
+  // Let the last hint's toast clear before handing control back.
+  await waitForHintToastCleared(page);
 }
 
 test.describe('@integration Technique Hints - Basic Functionality', () => {
