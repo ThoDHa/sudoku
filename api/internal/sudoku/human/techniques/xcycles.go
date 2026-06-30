@@ -2,6 +2,7 @@ package techniques
 
 import (
 	"fmt"
+	"slices"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -55,6 +56,7 @@ type strongLinkXC struct {
 	unit         string // "row", "col", or "box"
 }
 
+//nolint:gocyclo // Strong-link construction walks three unit kinds, and for each unit identifies the digit's cell list and emits pair links; the per-unit accumulator and per-digit positions are shared across the three branches.
 func buildStrongLinksXC(b BoardInterface, digit int, cells []int) []strongLinkXC {
 	var links []strongLinkXC
 
@@ -133,6 +135,7 @@ func findXCyclesDFS(b BoardInterface, digit int, cells []int, strongLinks []stro
 	return nil
 }
 
+//nolint:gocyclo // searchCycle threads DFS state (path, link-strong sequence, need-strong flag, start cell) through extension and cycle-closure checks; the closure and elimination logic consume the running path state.
 func searchCycle(b BoardInterface, digit int, cells []int, strongLinks []strongLinkXC, startCell int, startWithStrong bool) *core.Move {
 	// DFS with proper alternation tracking
 	// path[i] connected to path[i+1] via linkStrong[i]
@@ -176,7 +179,7 @@ func searchCycle(b BoardInterface, digit int, cells []int, strongLinks []strongL
 			if needStrong && hasStrongLinkXC(strongLinks, currentCell, startCell) {
 				// Cycle closes with strong link
 				fullPath := state.path
-				fullLinks := append(state.linkStrong, true) // closing link is strong
+				fullLinks := append(slices.Clone(state.linkStrong), true)
 
 				if move := analyzeCycleFixed(b, digit, fullPath, fullLinks); move != nil {
 					return move
@@ -185,7 +188,7 @@ func searchCycle(b BoardInterface, digit int, cells []int, strongLinks []strongL
 			if !needStrong && hasWeakLinkXC(currentCell, startCell) {
 				// Cycle closes with weak link
 				fullPath := state.path
-				fullLinks := append(state.linkStrong, false) // closing link is weak
+				fullLinks := append(slices.Clone(state.linkStrong), false)
 
 				if move := analyzeCycleFixed(b, digit, fullPath, fullLinks); move != nil {
 					return move
@@ -295,6 +298,7 @@ func analyzeCycleFixed(b BoardInterface, digit int, path []int, linkStrong []boo
 	return findNiceLoopEliminationsFixed(b, digit, path, linkStrong)
 }
 
+//nolint:gocyclo // Nice-loop elimination analysis inspects a fixed cycle for three pattern variants (continuous, discontinuity at start, discontinuity elsewhere), each of which needs the full path and link-strong sequence to evaluate.
 func findNiceLoopEliminationsFixed(b BoardInterface, digit int, path []int, linkStrong []bool) *core.Move {
 	n := len(path)
 

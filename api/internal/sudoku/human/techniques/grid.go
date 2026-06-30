@@ -40,6 +40,8 @@ func init() {
 }
 
 // initializePeers precomputes all peer relationships
+//
+//nolint:gocyclo // initializePeers runs once at package init to populate three peer-index tables by walking each cell's row, column, and box and excluding the cell itself; the three walks share the cell-pair enumeration and would only duplicate it if split.
 func initializePeers() {
 	// Initialize row/col/box indices first
 	for r := 0; r < constants.GridSize; r++ {
@@ -372,6 +374,8 @@ type ALS struct {
 // FindAllALS finds all Almost Locked Sets in all units.
 // An ALS is a set of N cells containing exactly N+1 different candidates.
 // maxSize limits the ALS size (default 4 if <= 0).
+//
+//nolint:gocyclo // FindAllALS enumerates N-cell combinations (N up to maxSize) per shared-candidate group, validating the N+1-candidate ALS property per combination; the per-group candidate mask threads through every nested combination check.
 func FindAllALS(b BoardInterface, maxSize int) []ALS {
 	if maxSize <= 0 {
 		maxSize = 4

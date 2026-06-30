@@ -46,22 +46,7 @@ func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bo
 	boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
 
 	// Get intersection cells (cells that are in both box and line)
-	var intersectionCells []int
-	if isRow {
-		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-			idx := lineIdx*constants.GridSize + c
-			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
-				intersectionCells = append(intersectionCells, idx)
-			}
-		}
-	} else {
-		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-			idx := r*constants.GridSize + lineIdx
-			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
-				intersectionCells = append(intersectionCells, idx)
-			}
-		}
-	}
+	intersectionCells := sdcIntersectionCells(b, boxRow, boxCol, lineIdx, isRow)
 
 	// Need 2 or 3 intersection cells
 	if len(intersectionCells) < 2 || len(intersectionCells) > 3 {
@@ -83,52 +68,10 @@ func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bo
 	}
 
 	// Get box remainder cells (in box but not in intersection)
-	var boxRemainderCells []int
-	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-			idx := r*constants.GridSize + c
-			if b.GetCell(idx) != 0 || b.GetCandidatesAt(idx).Count() == 0 {
-				continue
-			}
-			// Check if in intersection
-			inIntersection := false
-			for _, iCell := range intersectionCells {
-				if idx == iCell {
-					inIntersection = true
-					break
-				}
-			}
-			if !inIntersection {
-				boxRemainderCells = append(boxRemainderCells, idx)
-			}
-		}
-	}
+	boxRemainderCells := sdcBoxRemainder(b, boxRow, boxCol, intersectionCells)
 
 	// Get line remainder cells (in line but not in intersection)
-	var lineRemainderCells []int
-	if isRow {
-		for c := 0; c < constants.GridSize; c++ {
-			// Skip cells in the box
-			if c >= boxCol && c < boxCol+constants.BoxSize {
-				continue
-			}
-			idx := lineIdx*constants.GridSize + c
-			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
-				lineRemainderCells = append(lineRemainderCells, idx)
-			}
-		}
-	} else {
-		for r := 0; r < constants.GridSize; r++ {
-			// Skip cells in the box
-			if r >= boxRow && r < boxRow+constants.BoxSize {
-				continue
-			}
-			idx := r*constants.GridSize + lineIdx
-			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
-				lineRemainderCells = append(lineRemainderCells, idx)
-			}
-		}
-	}
+	lineRemainderCells := sdcLineRemainder(b, boxRow, boxCol, lineIdx, isRow)
 
 	// Find ALS candidates in box remainder that share candidates with intersection
 	boxALSList := findALSInCells(b, boxRemainderCells, intersectionDigits)
@@ -139,180 +82,8 @@ func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bo
 	// Try all combinations of box-ALS and line-ALS
 	for _, boxALS := range boxALSList {
 		for _, lineALS := range lineALSList {
-			// The ALS candidates must not overlap
-			if digitsOverlap(boxALS.Digits, lineALS.Digits) {
-				continue
-			}
-
-			// Combined ALS candidates must cover all intersection candidates exactly
-			combinedALS := NewCandidates(boxALS.Digits).Union(NewCandidates(lineALS.Digits))
-
-			// Check if combined covers exactly the intersection candidates
-			if combinedALS != intersectionCands {
-				continue
-			}
-
-			// Found a valid Sue de Coq pattern! Now find eliminations.
-			var eliminations []core.Candidate
-
-			// Eliminate boxALS digits from rest of box (excluding intersection and boxALS cells)
-			for r := boxRow; r < boxRow+3; r++ {
-				for c := boxCol; c < boxCol+3; c++ {
-					idx := r*constants.GridSize + c
-					if b.GetCell(idx) != 0 {
-						continue
-					}
-
-					// Skip intersection cells
-					inIntersection := false
-					for _, iCell := range intersectionCells {
-						if idx == iCell {
-							inIntersection = true
-							break
-						}
-					}
-					if inIntersection {
-						continue
-					}
-
-					// Skip boxALS cells
-					inBoxALS := false
-					for _, aCell := range boxALS.Cells {
-						if idx == aCell {
-							inBoxALS = true
-							break
-						}
-					}
-					if inBoxALS {
-						continue
-					}
-
-					// Eliminate boxALS digits
-					for _, d := range boxALS.Digits {
-						if b.GetCandidatesAt(idx).Has(d) {
-							eliminations = append(eliminations, core.Candidate{
-								Row: r, Col: c, Digit: d,
-							})
-						}
-					}
-				}
-			}
-
-			// Eliminate lineALS digits from rest of line (excluding intersection and lineALS cells)
-			if isRow {
-				for c := 0; c < constants.GridSize; c++ {
-					idx := lineIdx*constants.GridSize + c
-
-					// Skip cells in box
-					if c >= boxCol && c < boxCol+3 {
-						continue
-					}
-
-					if b.GetCell(idx) != 0 {
-						continue
-					}
-
-					// Skip lineALS cells
-					inLineALS := false
-					for _, aCell := range lineALS.Cells {
-						if idx == aCell {
-							inLineALS = true
-							break
-						}
-					}
-					if inLineALS {
-						continue
-					}
-
-					// Eliminate lineALS digits
-					for _, d := range lineALS.Digits {
-						if b.GetCandidatesAt(idx).Has(d) {
-							eliminations = append(eliminations, core.Candidate{
-								Row: lineIdx, Col: c, Digit: d,
-							})
-						}
-					}
-				}
-			} else {
-				for r := 0; r < constants.GridSize; r++ {
-					idx := r*constants.GridSize + lineIdx
-
-					// Skip cells in box
-					if r >= boxRow && r < boxRow+3 {
-						continue
-					}
-
-					if b.GetCell(idx) != 0 {
-						continue
-					}
-
-					// Skip lineALS cells
-					inLineALS := false
-					for _, aCell := range lineALS.Cells {
-						if idx == aCell {
-							inLineALS = true
-							break
-						}
-					}
-					if inLineALS {
-						continue
-					}
-
-					// Eliminate lineALS digits
-					for _, d := range lineALS.Digits {
-						if b.GetCandidatesAt(idx).Has(d) {
-							eliminations = append(eliminations, core.Candidate{
-								Row: r, Col: lineIdx, Digit: d,
-							})
-						}
-					}
-				}
-			}
-
-			if len(eliminations) > 0 {
-				// Build targets: intersection cells + both ALS cells
-				var targets []core.CellRef
-				var primary []core.CellRef
-				var secondary []core.CellRef
-
-				for _, idx := range intersectionCells {
-					ref := core.CellRef{Row: idx / constants.GridSize, Col: idx % constants.GridSize}
-					targets = append(targets, ref)
-					primary = append(primary, ref)
-				}
-				for _, idx := range boxALS.Cells {
-					ref := core.CellRef{Row: idx / constants.GridSize, Col: idx % constants.GridSize}
-					targets = append(targets, ref)
-					secondary = append(secondary, ref)
-				}
-				for _, idx := range lineALS.Cells {
-					ref := core.CellRef{Row: idx / constants.GridSize, Col: idx % constants.GridSize}
-					targets = append(targets, ref)
-					secondary = append(secondary, ref)
-				}
-
-				lineType := "row"
-				lineNum := lineIdx + 1
-				if !isRow {
-					lineType = "column"
-				}
-
-				return &core.Move{
-					Action:       "eliminate",
-					Digit:        0,
-					Targets:      targets,
-					Eliminations: eliminations,
-					Explanation: fmt.Sprintf("Sue de Coq: intersection of box %d and %s %d with candidates {%s}; "+
-						"box ALS {%s} covers {%s}, %s ALS {%s} covers {%s}",
-						box+1, lineType, lineNum,
-						FormatDigits(intersectionDigits),
-						FormatCells(boxALS.Cells), FormatDigits(boxALS.Digits),
-						lineType, FormatCells(lineALS.Cells), FormatDigits(lineALS.Digits)),
-					Highlights: core.Highlights{
-						Primary:   primary,
-						Secondary: secondary,
-					},
-				}
+			if m := trySDCPair(b, box, lineIdx, isRow, intersectionCells, intersectionDigits, intersectionCands, boxALS, lineALS); m != nil {
+				return m
 			}
 		}
 	}
@@ -320,85 +91,226 @@ func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bo
 	return nil
 }
 
+// trySDCPair validates one (boxALS, lineALS) pair against the Sue de Coq
+// requirements and returns the elimination move if the pair fits the pattern.
+func trySDCPair(b BoardInterface, box, lineIdx int, isRow bool, intersectionCells, intersectionDigits []int, intersectionCands Candidates, boxALS, lineALS ALS) *core.Move {
+	if digitsOverlap(boxALS.Digits, lineALS.Digits) {
+		return nil
+	}
+	combinedALS := NewCandidates(boxALS.Digits).Union(NewCandidates(lineALS.Digits))
+	if combinedALS != intersectionCands {
+		return nil
+	}
+	boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
+	eliminations := collectSDCEliminations(b, boxRow, boxCol, lineIdx, isRow, intersectionCells, boxALS, lineALS)
+	if len(eliminations) == 0 {
+		return nil
+	}
+	return buildSDCMove(box, lineIdx, isRow, intersectionCells, intersectionDigits, boxALS, lineALS, eliminations)
+}
+
+// buildSDCMove assembles the Sue de Coq elimination move.
+func buildSDCMove(box, lineIdx int, isRow bool, intersectionCells, intersectionDigits []int, boxALS, lineALS ALS, eliminations []core.Candidate) *core.Move {
+	targets, primary, secondary := sdcHighlights(intersectionCells, boxALS, lineALS)
+	lineType := "row"
+	if !isRow {
+		lineType = "column"
+	}
+	return &core.Move{
+		Action:       "eliminate",
+		Digit:        0,
+		Targets:      targets,
+		Eliminations: eliminations,
+		Explanation: fmt.Sprintf("Sue de Coq: intersection of box %d and %s %d with candidates {%s}; "+
+			"box ALS {%s} covers {%s}, %s ALS {%s} covers {%s}",
+			box+1, lineType, lineIdx+1,
+			FormatDigits(intersectionDigits),
+			FormatCells(boxALS.Cells), FormatDigits(boxALS.Digits),
+			lineType, FormatCells(lineALS.Cells), FormatDigits(lineALS.Digits)),
+		Highlights: core.Highlights{
+			Primary:   primary,
+			Secondary: secondary,
+		},
+	}
+}
+
+// sdcHighlights builds the (targets, primary, secondary) highlight lists for a
+// Sue de Coq move: primary is the intersection cells, secondary is the two ALS.
+func sdcHighlights(intersectionCells []int, boxALS, lineALS ALS) (targets, primary, secondary []core.CellRef) {
+	appendRefs := func(cells []int) {
+		for _, idx := range cells {
+			ref := core.CellRef{Row: idx / constants.GridSize, Col: idx % constants.GridSize}
+			targets = append(targets, ref)
+		}
+	}
+	appendRefs(intersectionCells)
+	primary = append(primary, targets...)
+	for _, idx := range boxALS.Cells {
+		ref := core.CellRef{Row: idx / constants.GridSize, Col: idx % constants.GridSize}
+		targets = append(targets, ref)
+		secondary = append(secondary, ref)
+	}
+	for _, idx := range lineALS.Cells {
+		ref := core.CellRef{Row: idx / constants.GridSize, Col: idx % constants.GridSize}
+		targets = append(targets, ref)
+		secondary = append(secondary, ref)
+	}
+	return targets, primary, secondary
+}
+
+// collectSDCEliminations walks the box and the line for a Sue de Coq pattern and
+// returns the eliminations implied by the two ALS sets.
+func collectSDCEliminations(b BoardInterface, boxRow, boxCol, lineIdx int, isRow bool, intersectionCells []int, boxALS, lineALS ALS) []core.Candidate {
+	var eliminations []core.Candidate
+	eliminations = append(eliminations, sdcBoxEliminations(b, boxRow, boxCol, intersectionCells, boxALS)...)
+	eliminations = append(eliminations, sdcLineEliminations(b, boxRow, boxCol, lineIdx, isRow, lineALS)...)
+	return eliminations
+}
+
+// sdcBoxEliminations walks the 3x3 box and collects boxALS-digit candidates from
+// cells that are not in the intersection and not in boxALS.
+func sdcBoxEliminations(b BoardInterface, boxRow, boxCol int, intersectionCells []int, boxALS ALS) []core.Candidate {
+	var eliminations []core.Candidate
+	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			idx := r*constants.GridSize + c
+			if b.GetCell(idx) != 0 {
+				continue
+			}
+			if cellIndexInList(idx, intersectionCells) || cellIndexInList(idx, boxALS.Cells) {
+				continue
+			}
+			for _, d := range boxALS.Digits {
+				if b.GetCandidatesAt(idx).Has(d) {
+					eliminations = append(eliminations, core.Candidate{Row: r, Col: c, Digit: d})
+				}
+			}
+		}
+	}
+	return eliminations
+}
+
+// sdcLineEliminations walks the line outside the box and collects lineALS-digit
+// candidates from cells that are not in lineALS.
+func sdcLineEliminations(b BoardInterface, boxRow, boxCol, lineIdx int, isRow bool, lineALS ALS) []core.Candidate {
+	boxStart, boxEnd := boxCol, boxCol+constants.BoxSize
+	if !isRow {
+		boxStart, boxEnd = boxRow, boxRow+constants.BoxSize
+	}
+	var eliminations []core.Candidate
+	for k := 0; k < constants.GridSize; k++ {
+		if k >= boxStart && k < boxEnd {
+			continue
+		}
+		var idx, row, col int
+		if isRow {
+			idx, row, col = lineIdx*constants.GridSize+k, lineIdx, k
+		} else {
+			idx, row, col = k*constants.GridSize+lineIdx, k, lineIdx
+		}
+		if b.GetCell(idx) != 0 || cellIndexInList(idx, lineALS.Cells) {
+			continue
+		}
+		for _, d := range lineALS.Digits {
+			if b.GetCandidatesAt(idx).Has(d) {
+				eliminations = append(eliminations, core.Candidate{Row: row, Col: col, Digit: d})
+			}
+		}
+	}
+	return eliminations
+}
+
+// cellIndexInList reports whether idx appears in list.
+func cellIndexInList(idx int, list []int) bool {
+	for _, x := range list {
+		if x == idx {
+			return true
+		}
+	}
+	return false
+}
+
+// sdcIntersectionCells returns the empty cells (with candidates) at the box/line
+// intersection.
+func sdcIntersectionCells(b BoardInterface, boxRow, boxCol, lineIdx int, isRow bool) []int {
+	var cells []int
+	if isRow {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			idx := lineIdx*constants.GridSize + c
+			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
+				cells = append(cells, idx)
+			}
+		}
+	} else {
+		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+			idx := r*constants.GridSize + lineIdx
+			if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
+				cells = append(cells, idx)
+			}
+		}
+	}
+	return cells
+}
+
+// sdcBoxRemainder returns the empty candidate-bearing cells in the box that are
+// not in the intersection.
+func sdcBoxRemainder(b BoardInterface, boxRow, boxCol int, intersectionCells []int) []int {
+	var cells []int
+	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			idx := r*constants.GridSize + c
+			if b.GetCell(idx) != 0 || b.GetCandidatesAt(idx).Count() == 0 {
+				continue
+			}
+			if !cellIndexInList(idx, intersectionCells) {
+				cells = append(cells, idx)
+			}
+		}
+	}
+	return cells
+}
+
+// sdcLineRemainder returns the empty candidate-bearing cells in the line that
+// are outside the box.
+func sdcLineRemainder(b BoardInterface, boxRow, boxCol, lineIdx int, isRow bool) []int {
+	boxStart, boxEnd := boxCol, boxCol+constants.BoxSize
+	if !isRow {
+		boxStart, boxEnd = boxRow, boxRow+constants.BoxSize
+	}
+	var cells []int
+	for k := 0; k < constants.GridSize; k++ {
+		if k >= boxStart && k < boxEnd {
+			continue
+		}
+		var idx int
+		if isRow {
+			idx = lineIdx*constants.GridSize + k
+		} else {
+			idx = k*constants.GridSize + lineIdx
+		}
+		if b.GetCell(idx) == 0 && b.GetCandidatesAt(idx).Count() > 0 {
+			cells = append(cells, idx)
+		}
+	}
+	return cells
+}
+
 // findALSInCells finds Almost Locked Sets within the given cells
 // that share at least one digit with the intersection digits.
 // The ALS may contain extra digits - we filter by overlap, not exact match.
 func findALSInCells(b BoardInterface, cells []int, intersectionDigits []int) []ALS {
 	var result []ALS
-
 	intersectionSet := NewCandidates(intersectionDigits)
-
-	// Helper to check if ALS shares at least one digit with intersection
-	sharesDigitWithIntersection := func(digits Candidates) bool {
-		return digits.Intersect(intersectionSet) != 0
-	}
-
-	// Helper to get only intersection-overlapping digits from ALS
-	getOverlappingDigits := func(digits Candidates) []int {
-		return digits.Intersect(intersectionSet).ToSlice()
-	}
 
 	// Try ALS of size 1 (bivalue cell - 1 cell with 2 candidates)
 	for _, cell := range cells {
-		cands := b.GetCandidatesAt(cell)
-
-		// For ALS: N cells need N+1 candidates
-		// 1 cell needs 2 candidates
-		if cands.Count() != 2 {
-			continue
-		}
-
-		// Must share at least one digit with intersection
-		if !sharesDigitWithIntersection(cands) {
-			continue
-		}
-
-		// Store only the overlapping digits for matching purposes
-		overlapDigits := getOverlappingDigits(cands)
-
-		byDigit := make(map[int][]int)
-		for _, d := range cands.ToSlice() {
-			byDigit[d] = []int{cell}
-		}
-		result = append(result, ALS{
-			Cells:   []int{cell},
-			Digits:  overlapDigits, // Only intersection-overlapping digits
-			ByDigit: byDigit,
-		})
+		result = append(result, alsFromCells(b, []int{cell}, intersectionSet)...)
 	}
 
 	// Try ALS of size 2 (2 cells with 3 candidates total)
 	for i := 0; i < len(cells); i++ {
 		for j := i + 1; j < len(cells); j++ {
-			combined := b.GetCandidatesAt(cells[i]).Union(b.GetCandidatesAt(cells[j]))
-
-			// For ALS: 2 cells need 3 candidates
-			if combined.Count() != 3 {
-				continue
-			}
-
-			// Must share at least one digit with intersection
-			if !sharesDigitWithIntersection(combined) {
-				continue
-			}
-
-			overlapDigits := getOverlappingDigits(combined)
-			digits := combined.ToSlice()
-
-			byDigit := make(map[int][]int)
-			for _, d := range digits {
-				if b.GetCandidatesAt(cells[i]).Has(d) {
-					byDigit[d] = append(byDigit[d], cells[i])
-				}
-				if b.GetCandidatesAt(cells[j]).Has(d) {
-					byDigit[d] = append(byDigit[d], cells[j])
-				}
-			}
-			result = append(result, ALS{
-				Cells:   []int{cells[i], cells[j]},
-				Digits:  overlapDigits, // Only intersection-overlapping digits
-				ByDigit: byDigit,
-			})
+			result = append(result, alsFromCells(b, []int{cells[i], cells[j]}, intersectionSet)...)
 		}
 	}
 
@@ -406,43 +318,42 @@ func findALSInCells(b BoardInterface, cells []int, intersectionDigits []int) []A
 	for i := 0; i < len(cells); i++ {
 		for j := i + 1; j < len(cells); j++ {
 			for k := j + 1; k < len(cells); k++ {
-				combined := b.GetCandidatesAt(cells[i]).Union(b.GetCandidatesAt(cells[j])).Union(b.GetCandidatesAt(cells[k]))
-
-				// For ALS: 3 cells need 4 candidates
-				if combined.Count() != 4 {
-					continue
-				}
-
-				// Must share at least one digit with intersection
-				if !sharesDigitWithIntersection(combined) {
-					continue
-				}
-
-				overlapDigits := getOverlappingDigits(combined)
-				digits := combined.ToSlice()
-
-				byDigit := make(map[int][]int)
-				for _, d := range digits {
-					if b.GetCandidatesAt(cells[i]).Has(d) {
-						byDigit[d] = append(byDigit[d], cells[i])
-					}
-					if b.GetCandidatesAt(cells[j]).Has(d) {
-						byDigit[d] = append(byDigit[d], cells[j])
-					}
-					if b.GetCandidatesAt(cells[k]).Has(d) {
-						byDigit[d] = append(byDigit[d], cells[k])
-					}
-				}
-				result = append(result, ALS{
-					Cells:   []int{cells[i], cells[j], cells[k]},
-					Digits:  overlapDigits, // Only intersection-overlapping digits
-					ByDigit: byDigit,
-				})
+				result = append(result, alsFromCells(b, []int{cells[i], cells[j], cells[k]}, intersectionSet)...)
 			}
 		}
 	}
 
 	return result
+}
+
+// alsFromCells returns the ALS formed by cells if it satisfies the Almost Locked
+// Set property (N cells holding exactly N+1 candidates) and shares at least one
+// digit with intersectionSet. Returns nil otherwise.
+func alsFromCells(b BoardInterface, cells []int, intersectionSet Candidates) []ALS {
+	combined := Candidates(0)
+	for _, c := range cells {
+		combined = combined.Union(b.GetCandidatesAt(c))
+	}
+	if combined.Count() != len(cells)+1 {
+		return nil
+	}
+	if combined.Intersect(intersectionSet) == 0 {
+		return nil
+	}
+	overlapDigits := combined.Intersect(intersectionSet).ToSlice()
+	byDigit := make(map[int][]int)
+	for _, d := range combined.ToSlice() {
+		for _, c := range cells {
+			if b.GetCandidatesAt(c).Has(d) {
+				byDigit[d] = append(byDigit[d], c)
+			}
+		}
+	}
+	return []ALS{{
+		Cells:   cells,
+		Digits:  overlapDigits,
+		ByDigit: byDigit,
+	}}
 }
 
 // digitsOverlap returns true if the two digit slices share any common digit

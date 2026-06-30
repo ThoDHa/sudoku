@@ -1,6 +1,9 @@
 package human
 
-import "sudoku-api/pkg/constants"
+import (
+	"sudoku-api/internal/sudoku/human/techniques"
+	"sudoku-api/pkg/constants"
+)
 
 // ============================================================================
 // Board - Sudoku Puzzle State
@@ -45,18 +48,24 @@ func NewBoardWithCandidates(cells []int, candidates [][]int) *Board {
 		b.Cells[i] = cells[i]
 		if candidates != nil && i < len(candidates) && candidates[i] != nil {
 			b.Candidates[i] = NewCandidates(candidates[i])
-		}
-		// Mark candidates that could be valid but aren't present as eliminated
-		// This preserves eliminations from previous moves
-		if cells[i] == 0 && candidates != nil && i < len(candidates) && candidates[i] != nil && len(candidates[i]) > 0 {
-			for d := 1; d <= constants.GridSize; d++ {
-				if b.canPlace(i, d) && !b.Candidates[i].Has(d) {
-					b.Eliminated[i] = b.Eliminated[i].Set(d)
-				}
-			}
+			b.markMissingAsEliminated(i, cells[i], candidates[i])
 		}
 	}
 	return b
+}
+
+// markMissingAsEliminated flags digits that could legally be placed at idx but
+// are absent from the persisted candidate list. This preserves prior
+// eliminations across board reloads.
+func (b *Board) markMissingAsEliminated(idx, cell int, cands []int) {
+	if cell != 0 || len(cands) == 0 {
+		return
+	}
+	for d := 1; d <= constants.GridSize; d++ {
+		if b.canPlace(idx, d) && !b.Candidates[idx].Has(d) {
+			b.Eliminated[idx] = b.Eliminated[idx].Set(d)
+		}
+	}
 }
 
 // ============================================================================
@@ -198,49 +207,29 @@ func (b *Board) IsSolved() bool {
 
 // IsValid checks if the current board state has no conflicts (duplicates in row/col/box)
 func (b *Board) IsValid() bool {
-	for row := 0; row < constants.GridSize; row++ {
-		seen := make(map[int]bool)
-		for col := 0; col < constants.GridSize; col++ {
-			digit := b.Cells[row*constants.GridSize+col]
-			if digit != 0 {
-				if seen[digit] {
-					return false
-				}
-				seen[digit] = true
-			}
+	for i := 0; i < constants.GridSize; i++ {
+		if !unitIsValid(b.Cells[:], techniques.RowIndices[i]) ||
+			!unitIsValid(b.Cells[:], techniques.ColIndices[i]) ||
+			!unitIsValid(b.Cells[:], techniques.BoxIndices[i]) {
+			return false
 		}
 	}
+	return true
+}
 
-	for col := 0; col < constants.GridSize; col++ {
-		seen := make(map[int]bool)
-		for row := 0; row < constants.GridSize; row++ {
-			digit := b.Cells[row*constants.GridSize+col]
-			if digit != 0 {
-				if seen[digit] {
-					return false
-				}
-				seen[digit] = true
-			}
+// unitIsValid reports whether cells contains no duplicate non-zero values.
+func unitIsValid(cells []int, unitCells []int) bool {
+	seen := make(map[int]bool)
+	for _, idx := range unitCells {
+		digit := cells[idx]
+		if digit == 0 {
+			continue
 		}
-	}
-
-	for boxRow := 0; boxRow < constants.BoxSize; boxRow++ {
-		for boxCol := 0; boxCol < constants.BoxSize; boxCol++ {
-			seen := make(map[int]bool)
-			for r := boxRow * constants.BoxSize; r < boxRow*constants.BoxSize+constants.BoxSize; r++ {
-				for c := boxCol * constants.BoxSize; c < boxCol*constants.BoxSize+constants.BoxSize; c++ {
-					digit := b.Cells[r*constants.GridSize+c]
-					if digit != 0 {
-						if seen[digit] {
-							return false
-						}
-						seen[digit] = true
-					}
-				}
-			}
+		if seen[digit] {
+			return false
 		}
+		seen[digit] = true
 	}
-
 	return true
 }
 

@@ -47,83 +47,72 @@ func FindConflicts(grid []int) []Conflict {
 	seen := make(map[string]bool) // Track already-reported conflicts to avoid duplicates
 
 	for row := 0; row < constants.GridSize; row++ {
-		positions := make(map[int][]int) // value -> list of column positions
+		positions := map[int][]int{}
 		for col := 0; col < constants.GridSize; col++ {
 			val := grid[row*constants.GridSize+col]
 			if val == 0 {
 				continue
 			}
-			positions[val] = append(positions[val], col)
+			positions[val] = append(positions[val], row*constants.GridSize+col)
 		}
-		for val, cols := range positions {
-			if len(cols) > 1 {
-				for i := 0; i < len(cols); i++ {
-					for j := i + 1; j < len(cols); j++ {
-						cell1, cell2 := row*constants.GridSize+cols[i], row*constants.GridSize+cols[j]
-						key := conflictKey(cell1, cell2, val)
-						if !seen[key] {
-							seen[key] = true
-							conflicts = append(conflicts, Conflict{Cell1: cell1, Cell2: cell2, Value: val, Type: "row"})
-						}
-					}
-				}
-			}
-		}
+		conflicts = appendUnitConflicts(positions, "row", seen, conflicts)
 	}
 
 	for col := 0; col < constants.GridSize; col++ {
-		positions := make(map[int][]int) // value -> list of row positions
+		positions := map[int][]int{}
 		for row := 0; row < constants.GridSize; row++ {
 			val := grid[row*constants.GridSize+col]
 			if val == 0 {
 				continue
 			}
-			positions[val] = append(positions[val], row)
+			positions[val] = append(positions[val], row*constants.GridSize+col)
 		}
-		for val, rows := range positions {
-			if len(rows) > 1 {
-				for i := 0; i < len(rows); i++ {
-					for j := i + 1; j < len(rows); j++ {
-						cell1, cell2 := rows[i]*constants.GridSize+col, rows[j]*constants.GridSize+col
-						key := conflictKey(cell1, cell2, val)
-						if !seen[key] {
-							seen[key] = true
-							conflicts = append(conflicts, Conflict{Cell1: cell1, Cell2: cell2, Value: val, Type: "column"})
-						}
-					}
-				}
-			}
-		}
+		conflicts = appendUnitConflicts(positions, "column", seen, conflicts)
 	}
 
 	for box := 0; box < constants.GridSize; box++ {
-		positions := make(map[int][]int) // value -> list of cell indices
-		boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
-		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-			for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-				val := grid[r*constants.GridSize+c]
-				if val == 0 {
-					continue
-				}
-				positions[val] = append(positions[val], r*constants.GridSize+c)
-			}
-		}
-		for val, cells := range positions {
-			if len(cells) > 1 {
-				for i := 0; i < len(cells); i++ {
-					for j := i + 1; j < len(cells); j++ {
-						key := conflictKey(cells[i], cells[j], val)
-						if !seen[key] {
-							seen[key] = true
-							conflicts = append(conflicts, Conflict{Cell1: cells[i], Cell2: cells[j], Value: val, Type: "box"})
-						}
-					}
-				}
-			}
-		}
+		conflicts = appendBoxConflicts(grid, box, seen, conflicts)
 	}
 
 	return conflicts
+}
+
+// appendUnitConflicts scans a value-to-positions map for duplicates and appends
+// any new conflicts of the given type.
+func appendUnitConflicts(positions map[int][]int, conflictType string, seen map[string]bool, conflicts []Conflict) []Conflict {
+	for val, group := range positions {
+		if len(group) < 2 {
+			continue
+		}
+		for i := 0; i < len(group); i++ {
+			for j := i + 1; j < len(group); j++ {
+				key := conflictKey(group[i], group[j], val)
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+				conflicts = append(conflicts, Conflict{Cell1: group[i], Cell2: group[j], Value: val, Type: conflictType})
+			}
+		}
+	}
+	return conflicts
+}
+
+// appendBoxConflicts scans one 3x3 box for duplicate values and appends any new
+// conflicts of type "box".
+func appendBoxConflicts(grid []int, box int, seen map[string]bool, conflicts []Conflict) []Conflict {
+	boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
+	positions := map[int][]int{}
+	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			val := grid[r*constants.GridSize+c]
+			if val == 0 {
+				continue
+			}
+			positions[val] = append(positions[val], r*constants.GridSize+c)
+		}
+	}
+	return appendUnitConflicts(positions, "box", seen, conflicts)
 }
 
 func conflictKey(cell1, cell2, val int) string {

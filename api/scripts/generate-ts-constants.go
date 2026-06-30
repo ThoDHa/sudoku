@@ -36,52 +36,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var constants []ConstantInfo
-
-	for _, decl := range node.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
-		if !ok || genDecl.Tok != token.CONST {
-			continue
-		}
-
-		for _, spec := range genDecl.Specs {
-			valueSpec, ok := spec.(*ast.ValueSpec)
-			if !ok {
-				continue
-			}
-
-			for i, name := range valueSpec.Names {
-				if !name.IsExported() {
-					continue
-				}
-
-				if !shouldExport(name.Name) {
-					continue
-				}
-
-				tsName := toTSConstantName(name.Name)
-				var value string
-				var typ string
-
-				if i < len(valueSpec.Values) {
-					value = extractValue(valueSpec.Values[i])
-				}
-
-				if valueSpec.Type != nil {
-					typ = typeToString(valueSpec.Type)
-				} else if i < len(valueSpec.Values) {
-					typ = inferType(valueSpec.Values[i])
-				}
-
-				constants = append(constants, ConstantInfo{
-					Name:  tsName,
-					Value: value,
-					Type:  typ,
-				})
-			}
-		}
-	}
-
+	constants := collectConstants(node)
 	output := generateTSOutput(constants)
 
 	outputPath, err := filepath.Abs(outputFile)
@@ -97,6 +52,54 @@ func main() {
 
 	fmt.Printf("Generated %d constants\n", len(constants))
 	fmt.Printf("Output: %s\n", outputPath)
+}
+
+// collectConstants walks the parsed Go source and returns one ConstantInfo per
+// exported constant that should be exposed to the frontend.
+func collectConstants(node *ast.File) []ConstantInfo {
+	var constants []ConstantInfo
+	for _, decl := range node.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.CONST {
+			continue
+		}
+
+		for _, spec := range genDecl.Specs {
+			valueSpec, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+
+			for i, name := range valueSpec.Names {
+				if info, ok := extractConstantInfo(valueSpec, i, name); ok {
+					constants = append(constants, info)
+				}
+			}
+		}
+	}
+	return constants
+}
+
+// extractConstantInfo resolves the TS-facing name, value, and type for a
+// single exported const declaration. ok is false when the name should be
+// skipped (unexported, or on the frontend skip-list).
+func extractConstantInfo(valueSpec *ast.ValueSpec, i int, name *ast.Ident) (ConstantInfo, bool) {
+	if !name.IsExported() || !shouldExport(name.Name) {
+		return ConstantInfo{}, false
+	}
+
+	tsName := toTSConstantName(name.Name)
+	value, typ := "", ""
+	if i < len(valueSpec.Values) {
+		value = extractValue(valueSpec.Values[i])
+	}
+	if valueSpec.Type != nil {
+		typ = typeToString(valueSpec.Type)
+	} else if i < len(valueSpec.Values) {
+		typ = inferType(valueSpec.Values[i])
+	}
+
+	return ConstantInfo{Name: tsName, Value: value, Type: typ}, true
 }
 
 func shouldExport(name string) bool {
@@ -144,26 +147,34 @@ func toTSConstantName(name string) string {
 	}
 
 	result := strings.Builder{}
-	for i, r := range name {
-		if i > 0 && r >= 'A' && r <= 'Z' {
-			nextChar := ' '
-			if i+1 < len(name) {
-				nextChar = rune(name[i+1])
-			}
-
-			prevChar := ' '
-			if i > 0 {
-				prevChar = rune(name[i-1])
-			}
-
-			if (prevChar < 'A' || prevChar > 'Z') && (nextChar < 'A' || nextChar > 'Z') {
-				result.WriteRune('_')
-			}
+	for i := 0; i < len(name); i++ {
+		if shouldInsertUnderscore(name, i) {
+			result.WriteRune('_')
 		}
-		result.WriteRune(r)
+		result.WriteRune(rune(name[i]))
 	}
 
 	return strings.ToUpper(result.String())
+}
+
+// shouldInsertUnderscore reports whether a word-boundary underscore should be
+// written before the byte at position i in an identifier. An underscore is
+// inserted at an uppercase rune only when both neighbors are non-uppercase,
+// so runs of capitals (acronyms such as "URL") stay together.
+func shouldInsertUnderscore(name string, i int) bool {
+	if i == 0 {
+		return false
+	}
+	r := rune(name[i])
+	if r < 'A' || r > 'Z' {
+		return false
+	}
+	prevChar := rune(name[i-1])
+	nextChar := byte(' ')
+	if i+1 < len(name) {
+		nextChar = name[i+1]
+	}
+	return (prevChar < 'A' || prevChar > 'Z') && (nextChar < 'A' || nextChar > 'Z')
 }
 
 func extractValue(expr ast.Expr) string {
@@ -171,50 +182,75 @@ func extractValue(expr ast.Expr) string {
 	case *ast.BasicLit:
 		return e.Value
 	case *ast.BinaryExpr:
-		left := extractValue(e.X)
-		right := extractValue(e.Y)
-
-		leftNum, _ := strconv.Atoi(left)
-		rightNum, _ := strconv.Atoi(right)
-
-		if leftNum > 0 && rightNum > 0 {
-			switch e.Op {
-			case token.MUL:
-				return strconv.Itoa(leftNum * rightNum)
-			case token.ADD:
-				return strconv.Itoa(leftNum + rightNum)
-			case token.SUB:
-				return strconv.Itoa(leftNum - rightNum)
-			case token.QUO:
-				return strconv.Itoa(leftNum / rightNum)
-			}
-		}
-
-		if strings.Contains(right, "Hour") || strings.Contains(right, "Minute") || strings.Contains(right, "Second") {
-			hours := leftNum
-			return strconv.Itoa(hours * 3600000)
-		}
-
-		return fmt.Sprintf("%s %s %s", left, e.Op, right)
+		return evalBinaryExpr(e)
 	case *ast.Ident:
 		return e.Name
 	case *ast.CallExpr:
 		if sel, ok := e.Fun.(*ast.SelectorExpr); ok {
-			if x, ok := sel.X.(*ast.Ident); ok && x.Name == "time" {
-				switch sel.Sel.Name {
-				case "Hour":
-					return "3600000"
-				case "Minute":
-					return "60000"
-				case "Second":
-					return "1000"
-				}
+			if v, ok := evalTimeConstant(sel); ok {
+				return v
 			}
 		}
 		return ""
 	default:
 		return ""
 	}
+}
+
+// evalBinaryExpr folds a constant binary expression into its literal value
+// when both sides are positive integers, handles the time-duration idiom the
+// constants file uses, and otherwise falls back to a textual reconstruction.
+func evalBinaryExpr(e *ast.BinaryExpr) string {
+	left := extractValue(e.X)
+	right := extractValue(e.Y)
+
+	leftNum, _ := strconv.Atoi(left)
+	rightNum, _ := strconv.Atoi(right)
+
+	if leftNum > 0 && rightNum > 0 {
+		if folded, ok := evalIntOp(leftNum, rightNum, e.Op); ok {
+			return folded
+		}
+	}
+
+	if strings.Contains(right, "Hour") || strings.Contains(right, "Minute") || strings.Contains(right, "Second") {
+		return strconv.Itoa(leftNum * 3600000)
+	}
+
+	return fmt.Sprintf("%s %s %s", left, e.Op, right)
+}
+
+func evalIntOp(left, right int, op token.Token) (string, bool) {
+	switch op {
+	case token.MUL:
+		return strconv.Itoa(left * right), true
+	case token.ADD:
+		return strconv.Itoa(left + right), true
+	case token.SUB:
+		return strconv.Itoa(left - right), true
+	case token.QUO:
+		return strconv.Itoa(left / right), true
+	}
+	return "", false
+}
+
+// evalTimeConstant recognizes time.Hour/Minute/Second calls in the constants
+// source and returns their millisecond equivalents. The boolean is false when
+// the call is not one of these time constructors.
+func evalTimeConstant(sel *ast.SelectorExpr) (string, bool) {
+	x, ok := sel.X.(*ast.Ident)
+	if !ok || x.Name != "time" {
+		return "", false
+	}
+	switch sel.Sel.Name {
+	case "Hour":
+		return "3600000", true
+	case "Minute":
+		return "60000", true
+	case "Second":
+		return "1000", true
+	}
+	return "", false
 }
 
 func typeToString(expr ast.Expr) string {

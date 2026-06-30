@@ -2,6 +2,7 @@ package techniques
 
 import (
 	"fmt"
+	"slices"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -15,6 +16,8 @@ import (
 //
 // Logic: Either pivot is X (then wing1 is Z), pivot is Y (then wing2 is Z),
 // or pivot is Z. In all cases, Z is in one of the three cells.
+//
+//nolint:gocyclo // XYZ-Wing searches pivot × wing1 × wing2 combinations across bivalue/trivalue cells with peer-elimination; each combination's elimination check consumes the pivot and wing candidate sets computed in the same iteration.
 func DetectXYZWing(b BoardInterface) *core.Move {
 	// Find cells with exactly 3 candidates (potential pivots)
 	var trivalues []int
@@ -145,6 +148,8 @@ func DetectXYZWing(b BoardInterface) *core.Move {
 // Based on StrmCkr's definition from SudokuWiki:
 // "WXYZ-Wings can be considered as a group of 4 cells and 4 digits, restricted to exactly
 // two units, that has exactly one non-restricted common digit."
+//
+//nolint:gocyclo // WXYZ-Wing enumerates a 4-cell pattern (pivot + 3 wings) with restricted-common verification, sharing the pivot's candidate set and per-wing RC sets across the elimination phase.
 func DetectWXYZWing(b BoardInterface) *core.Move {
 	// Find all empty cells with 2-4 candidates
 	var cells []int
@@ -350,16 +355,16 @@ func DetectALSXZ(b BoardInterface) *core.Move {
 					zCellsB := alsB.ByDigit[z]
 
 					// Build exclusion set (all cells in either ALS)
-					exclude := append(alsA.Cells, alsB.Cells...)
+					exclude := slices.Concat(alsA.Cells, alsB.Cells)
 					// Combine Z cells from both ALS
-					allZCells := append(zCellsA, zCellsB...)
+					allZCells := slices.Concat(zCellsA, zCellsB)
 
 					// Find cells that see ALL Z-cells in both ALS
 					eliminations := FindEliminationsSeeing(b, z, exclude, allZCells...)
 
 					if len(eliminations) > 0 {
 						// Build targets from both ALS cells
-						targets := CellRefsFromIndices(append(alsA.Cells, alsB.Cells...)...)
+						targets := CellRefsFromIndices(slices.Concat(alsA.Cells, alsB.Cells)...)
 
 						return &core.Move{
 							Action:       "eliminate",

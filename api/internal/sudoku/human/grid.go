@@ -89,6 +89,8 @@ func init() {
 }
 
 // initializePeers precomputes all peer relationships
+//
+//nolint:gocyclo // initializePeers runs once at package init to populate three peer-index tables by walking each cell's row, column, and box and excluding the cell itself; the three walks share the cell-pair enumeration and would only duplicate it if split.
 func initializePeers() {
 	// Initialize row/col/box indices first
 	for r := 0; r < constants.GridSize; r++ {

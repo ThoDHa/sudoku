@@ -30,359 +30,320 @@ func DetectNakedSingle(b BoardInterface) *core.Move {
 
 // DetectHiddenSingle finds a digit that can only go in one cell within a unit
 func DetectHiddenSingle(b BoardInterface) *core.Move {
-	for row := 0; row < constants.GridSize; row++ {
-		for digit := 1; digit <= constants.GridSize; digit++ {
-			var positions []int
-			for col := 0; col < constants.GridSize; col++ {
-				idx := row*constants.GridSize + col
-				if b.GetCell(idx) == digit {
-					positions = nil
-					break
-				}
-				if b.GetCandidatesAt(idx).Has(digit) {
-					positions = append(positions, col)
-				}
-			}
-			if len(positions) == 1 {
-				col := positions[0]
-				idx := row*constants.GridSize + col
-				if b.GetCandidatesAt(idx).Count() > 1 {
-					// Build eliminations for all other candidates in this cell
-					cellCandidates := b.GetCandidatesAt(idx)
-					var eliminations []core.Candidate
-
-					for d := 1; d <= constants.GridSize; d++ {
-						if d != digit && cellCandidates.Has(d) {
-							eliminations = append(eliminations, core.Candidate{
-								Row:   row,
-								Col:   col,
-								Digit: d,
-							})
-						}
-					}
-
-					return &core.Move{
-						Action:       "assign",
-						Digit:        digit,
-						Targets:      []core.CellRef{{Row: row, Col: col}},
-						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("In row %d, %d can only go in R%dC%d", row+1, digit, row+1, col+1),
-						Highlights: core.Highlights{
-							Primary:   []core.CellRef{{Row: row, Col: col}},
-							Secondary: ToCellRefs(RowIndices[row]),
-						},
-					}
-				}
-			}
+	for i := 0; i < constants.GridSize; i++ {
+		if m := findHiddenSingleInUnit(b, i, RowIndices[i], "row"); m != nil {
+			return m
 		}
 	}
-
-	// Check columns
-	for col := 0; col < constants.GridSize; col++ {
-		for digit := 1; digit <= constants.GridSize; digit++ {
-			var positions []int
-			for row := 0; row < constants.GridSize; row++ {
-				idx := row*constants.GridSize + col
-				if b.GetCell(idx) == digit {
-					positions = nil
-					break
-				}
-				if b.GetCandidatesAt(idx).Has(digit) {
-					positions = append(positions, row)
-				}
-			}
-			if len(positions) == 1 {
-				row := positions[0]
-				idx := row*constants.GridSize + col
-				if b.GetCandidatesAt(idx).Count() > 1 {
-					// Build eliminations for all other candidates in this cell
-					cellCandidates := b.GetCandidatesAt(idx)
-					var eliminations []core.Candidate
-
-					for d := 1; d <= constants.GridSize; d++ {
-						if d != digit && cellCandidates.Has(d) {
-							eliminations = append(eliminations, core.Candidate{
-								Row:   row,
-								Col:   col,
-								Digit: d,
-							})
-						}
-					}
-
-					return &core.Move{
-						Action:       "assign",
-						Digit:        digit,
-						Targets:      []core.CellRef{{Row: row, Col: col}},
-						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("In column %d, %d can only go in R%dC%d", col+1, digit, row+1, col+1),
-						Highlights: core.Highlights{
-							Primary:   []core.CellRef{{Row: row, Col: col}},
-							Secondary: ToCellRefs(ColIndices[col]),
-						},
-					}
-				}
-			}
+	for i := 0; i < constants.GridSize; i++ {
+		if m := findHiddenSingleInUnit(b, i, ColIndices[i], "column"); m != nil {
+			return m
 		}
 	}
-
-	for box := 0; box < constants.GridSize; box++ {
-		boxRow, boxCol := (box/3)*3, (box%3)*3
-		for digit := 1; digit <= constants.GridSize; digit++ {
-			var positions []core.CellRef
-			found := false
-			for r := boxRow; r < boxRow+3; r++ {
-				for c := boxCol; c < boxCol+3; c++ {
-					idx := r*constants.GridSize + c
-					if b.GetCell(idx) == digit {
-						found = true
-						break
-					}
-					if b.GetCandidatesAt(idx).Has(digit) {
-						positions = append(positions, core.CellRef{Row: r, Col: c})
-					}
-				}
-				if found {
-					break
-				}
-			}
-			if !found && len(positions) == 1 {
-				pos := positions[0]
-				idx := pos.Row*constants.GridSize + pos.Col
-				if b.GetCandidatesAt(idx).Count() > 1 {
-					// Build eliminations for all other candidates in this cell
-					cellCandidates := b.GetCandidatesAt(idx)
-					var eliminations []core.Candidate
-
-					for d := 1; d <= constants.GridSize; d++ {
-						if d != digit && cellCandidates.Has(d) {
-							eliminations = append(eliminations, core.Candidate{
-								Row:   pos.Row,
-								Col:   pos.Col,
-								Digit: d,
-							})
-						}
-					}
-
-					return &core.Move{
-						Action:       "assign",
-						Digit:        digit,
-						Targets:      []core.CellRef{pos},
-						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("In box %d, %d can only go in R%dC%d", box+1, digit, pos.Row+1, pos.Col+1),
-						Highlights: core.Highlights{
-							Primary:   []core.CellRef{pos},
-							Secondary: ToCellRefs(BoxIndices[box]),
-						},
-					}
-				}
-			}
+	for i := 0; i < constants.GridSize; i++ {
+		if m := findHiddenSingleInUnit(b, i, BoxIndices[i], "box"); m != nil {
+			return m
 		}
 	}
-
 	return nil
+}
+
+// findHiddenSingleInUnit scans a single unit (described by its cell indices and
+// a human-readable label) for a digit that has exactly one candidate position.
+// cells is the unit's cell-index list (RowIndices[i], ColIndices[i], BoxIndices[i]);
+// desc is used in the explanation ("row", "column", "box").
+func findHiddenSingleInUnit(b BoardInterface, unitIdx int, cells []int, desc string) *core.Move {
+	for digit := 1; digit <= constants.GridSize; digit++ {
+		var positions []int
+		placed := false
+		for _, idx := range cells {
+			if b.GetCell(idx) == digit {
+				placed = true
+				break
+			}
+			if b.GetCandidatesAt(idx).Has(digit) {
+				positions = append(positions, idx)
+			}
+		}
+		if placed || len(positions) != 1 {
+			continue
+		}
+		idx := positions[0]
+		row, col := idx/constants.GridSize, idx%constants.GridSize
+		cellCandidates := b.GetCandidatesAt(idx)
+		if cellCandidates.Count() <= 1 {
+			continue
+		}
+		return buildHiddenSingleMove(row, col, digit, unitIdx, desc, cells, cellCandidates)
+	}
+	return nil
+}
+
+// buildHiddenSingleMove constructs the assign move for a hidden single, including
+// eliminations for every other candidate in the target cell.
+func buildHiddenSingleMove(row, col, digit, unitIdx int, desc string, cells []int, cellCandidates Candidates) *core.Move {
+	var eliminations []core.Candidate
+	for d := 1; d <= constants.GridSize; d++ {
+		if d != digit && cellCandidates.Has(d) {
+			eliminations = append(eliminations, core.Candidate{Row: row, Col: col, Digit: d})
+		}
+	}
+	return &core.Move{
+		Action:       "assign",
+		Digit:        digit,
+		Targets:      []core.CellRef{{Row: row, Col: col}},
+		Eliminations: eliminations,
+		Explanation:  fmt.Sprintf("In %s %d, %d can only go in R%dC%d", desc, unitIdx+1, digit, row+1, col+1),
+		Highlights: core.Highlights{
+			Primary:   []core.CellRef{{Row: row, Col: col}},
+			Secondary: ToCellRefs(cells),
+		},
+	}
 }
 
 // DetectPointingPair finds candidates in a box that are confined to one row/column
 func DetectPointingPair(b BoardInterface) *core.Move {
 	for box := 0; box < constants.GridSize; box++ {
 		boxRow, boxCol := (box/3)*3, (box%3)*3
-
 		for digit := 1; digit <= constants.GridSize; digit++ {
-			var positions []core.CellRef
-			for r := boxRow; r < boxRow+3; r++ {
-				for c := boxCol; c < boxCol+3; c++ {
-					if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
-						positions = append(positions, core.CellRef{Row: r, Col: c})
-					}
-				}
-			}
-
-			if len(positions) < 2 || len(positions) > 3 {
-				continue
-			}
-
-			// Check if all in same row
-			sameRow := true
-			row := positions[0].Row
-			for _, p := range positions[1:] {
-				if p.Row != row {
-					sameRow = false
-					break
-				}
-			}
-
-			if sameRow {
-				var eliminations []core.Candidate
-				for c := 0; c < constants.GridSize; c++ {
-					if c >= boxCol && c < boxCol+3 {
-						continue
-					}
-					if b.GetCandidatesAt(row*constants.GridSize + c).Has(digit) {
-						eliminations = append(eliminations, core.Candidate{Row: row, Col: c, Digit: digit})
-					}
-				}
-				if len(eliminations) > 0 {
-					return &core.Move{
-						Action:       "eliminate",
-						Digit:        digit,
-						Targets:      positions,
-						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("In box %d, %d is confined to row %d: eliminate %d from rest of row %d.", box+1, digit, row+1, digit, row+1),
-						Highlights: core.Highlights{
-							Primary:   positions,
-							Secondary: ToCellRefs(RowIndices[row]),
-						},
-					}
-				}
-			}
-
-			// Check if all in same column
-			sameCol := true
-			col := positions[0].Col
-			for _, p := range positions[1:] {
-				if p.Col != col {
-					sameCol = false
-					break
-				}
-			}
-
-			if sameCol {
-				var eliminations []core.Candidate
-				for r := 0; r < constants.GridSize; r++ {
-					if r >= boxRow && r < boxRow+3 {
-						continue
-					}
-					if b.GetCandidatesAt(r*constants.GridSize + col).Has(digit) {
-						eliminations = append(eliminations, core.Candidate{Row: r, Col: col, Digit: digit})
-					}
-				}
-				if len(eliminations) > 0 {
-					return &core.Move{
-						Action:       "eliminate",
-						Digit:        digit,
-						Targets:      positions,
-						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("In box %d, %d is confined to column %d: eliminate %d from rest of column %d.", box+1, digit, col+1, digit, col+1),
-						Highlights: core.Highlights{
-							Primary:   positions,
-							Secondary: ToCellRefs(ColIndices[col]),
-						},
-					}
-				}
+			positions := scanBoxCandidates(b, boxRow, boxCol, digit)
+			if move := findPointingPairMove(b, box, digit, positions); move != nil {
+				return move
 			}
 		}
 	}
 	return nil
 }
 
+// scanBoxCandidates collects all cells in a 3x3 box (anchored at boxRow, boxCol)
+// that have digit as a candidate.
+func scanBoxCandidates(b BoardInterface, boxRow, boxCol, digit int) []core.CellRef {
+	var positions []core.CellRef
+	for r := boxRow; r < boxRow+3; r++ {
+		for c := boxCol; c < boxCol+3; c++ {
+			if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
+				positions = append(positions, core.CellRef{Row: r, Col: c})
+			}
+		}
+	}
+	return positions
+}
+
+// findPointingPairMove checks whether a box's candidate positions for a digit all
+// lie on a single row or single column of the box, and if so returns the
+// elimination move for cells outside the box on that line.
+func findPointingPairMove(b BoardInterface, box, digit int, positions []core.CellRef) *core.Move {
+	if len(positions) < 2 || len(positions) > 3 {
+		return nil
+	}
+	boxRow, boxCol := (box/3)*3, (box%3)*3
+	if row, ok := sharedLine(positions, true); ok {
+		if m := buildPointingLineMove(b, box, digit, positions, row, boxCol, true); m != nil {
+			return m
+		}
+	}
+	if col, ok := sharedLine(positions, false); ok {
+		if m := buildPointingLineMove(b, box, digit, positions, col, boxRow, false); m != nil {
+			return m
+		}
+	}
+	return nil
+}
+
+// sharedLine reports whether every position shares the same row (byRow=true) or
+// the same column (byRow=false), returning that line index.
+func sharedLine(positions []core.CellRef, byRow bool) (int, bool) {
+	var first int
+	if byRow {
+		first = positions[0].Row
+	} else {
+		first = positions[0].Col
+	}
+	for _, p := range positions[1:] {
+		var v int
+		if byRow {
+			v = p.Row
+		} else {
+			v = p.Col
+		}
+		if v != first {
+			return 0, false
+		}
+	}
+	return first, true
+}
+
+// buildPointingLineMove walks a row (byRow=true, lineIdx=row, boxLo=boxCol) or a
+// column (byRow=false, lineIdx=col, boxLo=boxRow) outside the box and collects
+// cells holding digit as a candidate, returning the elimination move.
+func buildPointingLineMove(b BoardInterface, box, digit int, positions []core.CellRef, lineIdx, boxLo int, byRow bool) *core.Move {
+	var eliminations []core.Candidate
+	for i := 0; i < constants.GridSize; i++ {
+		if i >= boxLo && i < boxLo+3 {
+			continue
+		}
+		var idx int
+		var cand core.Candidate
+		if byRow {
+			idx = lineIdx*constants.GridSize + i
+			cand = core.Candidate{Row: lineIdx, Col: i, Digit: digit}
+		} else {
+			idx = i*constants.GridSize + lineIdx
+			cand = core.Candidate{Row: i, Col: lineIdx, Digit: digit}
+		}
+		if b.GetCandidatesAt(idx).Has(digit) {
+			eliminations = append(eliminations, cand)
+		}
+	}
+	if len(eliminations) == 0 {
+		return nil
+	}
+	desc := "row"
+	secondary := ToCellRefs(RowIndices[lineIdx])
+	if !byRow {
+		desc = "column"
+		secondary = ToCellRefs(ColIndices[lineIdx])
+	}
+	return &core.Move{
+		Action:       "eliminate",
+		Digit:        digit,
+		Targets:      positions,
+		Eliminations: eliminations,
+		Explanation:  fmt.Sprintf("In box %d, %d is confined to %s %d: eliminate %d from rest of %s %d.", box+1, digit, desc, lineIdx+1, digit, desc, lineIdx+1),
+		Highlights: core.Highlights{
+			Primary:   positions,
+			Secondary: secondary,
+		},
+	}
+}
+
 // DetectBoxLineReduction finds candidates in a row/column confined to one box
 func DetectBoxLineReduction(b BoardInterface) *core.Move {
-	for row := 0; row < constants.GridSize; row++ {
-		for digit := 1; digit <= constants.GridSize; digit++ {
-			var positions []core.CellRef
-			for col := 0; col < constants.GridSize; col++ {
-				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
-					positions = append(positions, core.CellRef{Row: row, Col: col})
-				}
-			}
-
-			if len(positions) < 2 || len(positions) > 3 {
-				continue
-			}
-
-			// Check if all in same box
-			boxCol := (positions[0].Col / 3) * 3
-			sameBox := true
-			for _, p := range positions[1:] {
-				if (p.Col/3)*3 != boxCol {
-					sameBox = false
-					break
-				}
-			}
-
-			if sameBox {
-				boxRow := (row / 3) * 3
-				var eliminations []core.Candidate
-				for r := boxRow; r < boxRow+3; r++ {
-					if r == row {
-						continue
-					}
-					for c := boxCol; c < boxCol+3; c++ {
-						if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
-							eliminations = append(eliminations, core.Candidate{Row: r, Col: c, Digit: digit})
-						}
-					}
-				}
-				if len(eliminations) > 0 {
-					return &core.Move{
-						Action:       "eliminate",
-						Digit:        digit,
-						Targets:      positions,
-						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("In row %d, %d is confined to one box: eliminate %d from rest of box.", row+1, digit, digit),
-						Highlights: core.Highlights{
-							Primary:   positions,
-							Secondary: ToCellRefs(BoxIndices[(row/3)*3+boxCol/3]),
-						},
-					}
-				}
-			}
+	for i := 0; i < constants.GridSize; i++ {
+		if m := findBoxLineReductionInLine(b, i, true); m != nil {
+			return m
 		}
 	}
-
-	// Check columns
-	for col := 0; col < constants.GridSize; col++ {
-		for digit := 1; digit <= constants.GridSize; digit++ {
-			var positions []core.CellRef
-			for row := 0; row < constants.GridSize; row++ {
-				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
-					positions = append(positions, core.CellRef{Row: row, Col: col})
-				}
-			}
-
-			if len(positions) < 2 || len(positions) > 3 {
-				continue
-			}
-
-			// Check if all in same box
-			boxRow := (positions[0].Row / 3) * 3
-			sameBox := true
-			for _, p := range positions[1:] {
-				if (p.Row/3)*3 != boxRow {
-					sameBox = false
-					break
-				}
-			}
-
-			if sameBox {
-				boxCol := (col / 3) * 3
-				var eliminations []core.Candidate
-				for r := boxRow; r < boxRow+3; r++ {
-					for c := boxCol; c < boxCol+3; c++ {
-						if c == col {
-							continue
-						}
-						if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
-							eliminations = append(eliminations, core.Candidate{Row: r, Col: c, Digit: digit})
-						}
-					}
-				}
-				if len(eliminations) > 0 {
-					return &core.Move{
-						Action:       "eliminate",
-						Digit:        digit,
-						Targets:      positions,
-						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("In column %d, %d is confined to one box: eliminate %d from rest of box.", col+1, digit, digit),
-						Highlights: core.Highlights{
-							Primary:   positions,
-							Secondary: ToCellRefs(BoxIndices[boxRow/3*3+col/3]),
-						},
-					}
-				}
-			}
+	for i := 0; i < constants.GridSize; i++ {
+		if m := findBoxLineReductionInLine(b, i, false); m != nil {
+			return m
 		}
 	}
-
 	return nil
+}
+
+// findBoxLineReductionInLine scans a single row (byRow=true) or column
+// (byRow=false) for a digit whose candidates all lie in one box, and returns
+// the elimination move for the rest of that box.
+func findBoxLineReductionInLine(b BoardInterface, lineIdx int, byRow bool) *core.Move {
+	for digit := 1; digit <= constants.GridSize; digit++ {
+		positions := scanLineCandidates(b, lineIdx, byRow, digit)
+		if len(positions) < 2 || len(positions) > 3 {
+			continue
+		}
+		boxLo, ok := sharedBoxAlongLine(positions, byRow)
+		if !ok {
+			continue
+		}
+		if m := buildBoxLineElims(b, lineIdx, byRow, digit, positions, boxLo); m != nil {
+			return m
+		}
+	}
+	return nil
+}
+
+// scanLineCandidates collects cells holding digit along a row (byRow=true) or
+// column (byRow=false).
+func scanLineCandidates(b BoardInterface, lineIdx int, byRow bool, digit int) []core.CellRef {
+	var positions []core.CellRef
+	for i := 0; i < constants.GridSize; i++ {
+		var idx int
+		var ref core.CellRef
+		if byRow {
+			idx = lineIdx*constants.GridSize + i
+			ref = core.CellRef{Row: lineIdx, Col: i}
+		} else {
+			idx = i*constants.GridSize + lineIdx
+			ref = core.CellRef{Row: i, Col: lineIdx}
+		}
+		if b.GetCandidatesAt(idx).Has(digit) {
+			positions = append(positions, ref)
+		}
+	}
+	return positions
+}
+
+// sharedBoxAlongLine returns the box origin (already *3) shared by all positions
+// along the perpendicular axis (box column when byRow, box row otherwise), or
+// ok=false if they span multiple boxes.
+func sharedBoxAlongLine(positions []core.CellRef, byRow bool) (int, bool) {
+	var first int
+	if byRow {
+		first = (positions[0].Col / 3) * 3
+	} else {
+		first = (positions[0].Row / 3) * 3
+	}
+	for _, p := range positions[1:] {
+		var v int
+		if byRow {
+			v = (p.Col / 3) * 3
+		} else {
+			v = (p.Row / 3) * 3
+		}
+		if v != first {
+			return 0, false
+		}
+	}
+	return first, true
+}
+
+// buildBoxLineElims walks the 3x3 box containing the source line and collects
+// digit candidates outside that line, returning the elimination move. boxLo is
+// the box column (byRow) or box row (otherwise) origin, already multiplied by 3.
+func buildBoxLineElims(b BoardInterface, lineIdx int, byRow bool, digit int, positions []core.CellRef, boxLo int) *core.Move {
+	var boxRow, boxCol int
+	if byRow {
+		boxRow = (lineIdx / 3) * 3
+		boxCol = boxLo
+	} else {
+		boxRow = boxLo
+		boxCol = (lineIdx / 3) * 3
+	}
+	eliminations := collectBoxExcludingLine(b, boxRow, boxCol, lineIdx, digit, byRow)
+	if len(eliminations) == 0 {
+		return nil
+	}
+	desc := "row"
+	if !byRow {
+		desc = "column"
+	}
+	boxIdx := (boxRow/3)*3 + boxCol/3
+	return &core.Move{
+		Action:       "eliminate",
+		Digit:        digit,
+		Targets:      positions,
+		Eliminations: eliminations,
+		Explanation:  fmt.Sprintf("In %s %d, %d is confined to one box: eliminate %d from rest of box.", desc, lineIdx+1, digit, digit),
+		Highlights: core.Highlights{
+			Primary:   positions,
+			Secondary: ToCellRefs(BoxIndices[boxIdx]),
+		},
+	}
+}
+
+// collectBoxExcludingLine walks a 3x3 box at (boxRow, boxCol) and collects digit
+// candidates in cells that are NOT on the source line.
+func collectBoxExcludingLine(b BoardInterface, boxRow, boxCol, lineIdx, digit int, byRow bool) []core.Candidate {
+	var elims []core.Candidate
+	for r := boxRow; r < boxRow+3; r++ {
+		for c := boxCol; c < boxCol+3; c++ {
+			if (byRow && r == lineIdx) || (!byRow && c == lineIdx) {
+				continue
+			}
+			if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
+				elims = append(elims, core.Candidate{Row: r, Col: c, Digit: digit})
+			}
+		}
+	}
+	return elims
 }

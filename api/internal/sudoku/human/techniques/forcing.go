@@ -28,6 +28,8 @@ func newPropagationResult() *propagationResult {
 
 // propagateSingles propagates naked and hidden singles from a starting assumption
 // This is NOT backtracking, it only follows deterministic implications
+//
+//nolint:gocyclo // propagateSingles threads a simulation board through a propagation loop, interleaving naked-single and hidden-single detection with peer-elimination recording; each propagation step mutates the same simulation board and accumulates eliminations seen across steps.
 func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int) *propagationResult {
 	result := newPropagationResult()
 
@@ -157,6 +159,8 @@ func DetectForcingChain(b BoardInterface) *core.Move {
 
 // detectCellForcingChain examines cells with 2-3 candidates
 // For each candidate, propagate singles and find common conclusions
+//
+//nolint:gocyclo // Cell-forcing chain detection tries each candidate of each cell as a forcing hypothesis, accumulating per-hypothesis propagation results and comparing them across hypotheses for common placements/eliminations; the per-hypothesis results and the comparison state are tightly coupled.
 func detectCellForcingChain(b BoardInterface) *core.Move {
 	// Find bivalue cells first (most likely to yield results), then trivalue
 	for numCands := 2; numCands <= 3; numCands++ {
@@ -324,6 +328,8 @@ func detectUnitForcingChain(b BoardInterface) *core.Move {
 }
 
 // tryUnitForcingChain tries forcing chains for a digit in specific positions within a unit
+//
+//nolint:gocyclo // Unit-forcing chain threads per-position propagation results and shared comparison state (digit, unit description, candidate positions) through the multi-position scan and the cross-position commonality checks; the results slice and unit metadata are shared across phases.
 func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc string) *core.Move {
 	results := make([]*propagationResult, len(positions))
 

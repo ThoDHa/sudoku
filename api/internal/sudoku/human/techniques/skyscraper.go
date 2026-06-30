@@ -17,6 +17,8 @@ import (
 // different boxes. Any cell that sees both tops can have the digit eliminated.
 
 // DetectSkyscraper finds Skyscraper pattern: two conjugate pairs sharing one end
+//
+//nolint:gocyclo // Skyscraper detection iterates digit × row-pair × column-pair and threads the per-digit strong-link scan through the pattern-match and elimination phases; the strong-link state is consumed by both downstream phases.
 func DetectSkyscraper(b BoardInterface) *core.Move {
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		// Find rows with exactly 2 candidates for this digit
@@ -50,16 +52,17 @@ func DetectSkyscraper(b BoardInterface) *core.Move {
 				shared := -1
 				unshared1, unshared2 := -1, -1
 
-				if r1.cols[0] == r2.cols[0] {
+				switch {
+				case r1.cols[0] == r2.cols[0]:
 					shared = r1.cols[0]
 					unshared1, unshared2 = r1.cols[1], r2.cols[1]
-				} else if r1.cols[0] == r2.cols[1] {
+				case r1.cols[0] == r2.cols[1]:
 					shared = r1.cols[0]
 					unshared1, unshared2 = r1.cols[1], r2.cols[0]
-				} else if r1.cols[1] == r2.cols[0] {
+				case r1.cols[1] == r2.cols[0]:
 					shared = r1.cols[1]
 					unshared1, unshared2 = r1.cols[0], r2.cols[1]
-				} else if r1.cols[1] == r2.cols[1] {
+				case r1.cols[1] == r2.cols[1]:
 					shared = r1.cols[1]
 					unshared1, unshared2 = r1.cols[0], r2.cols[0]
 				}

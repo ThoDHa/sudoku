@@ -2,6 +2,7 @@ package techniques
 
 import (
 	"fmt"
+	"slices"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -18,6 +19,8 @@ import (
 // Similarly for Y between A and C. If A contains X, it doesn't contain Y (since
 // A would be locked on its N digits). So either B has X locked out and contains Z,
 // or C has Y locked out and contains Z. Either way, Z appears in B or C.
+//
+//nolint:gocyclo // ALS-XY-Wing searches a 4-deep loop (pivot ALS × X-ALS × Y-ALS × Z digit) with structural constraints (RC exclusivity, restricted-common verification, peer elimination) checked inline against accumulated state; extracting the inner checks spreads tightly-coupled state across helpers.
 func DetectALSXYWing(b BoardInterface) *core.Move {
 	allALS := FindAllALS(b, 4)
 
@@ -161,6 +164,8 @@ func DetectALSXYChain(b BoardInterface) *core.Move {
 }
 
 // searchALSChain performs DFS to find valid ALS chains
+//
+//nolint:gocyclo // DFS body threads mutable chain state (visited set, current path, RC digits) through recursion termination, link-extension, and elimination checks; the per-iteration state transformations are tightly interwoven with the control flow.
 func searchALSChain(b BoardInterface, allALS []ALS, adjRC map[int]map[int][]int, startIdx int, maxLen int) *core.Move {
 	type chainState struct {
 		path    []int // ALS indices in the chain
@@ -349,7 +354,7 @@ func findZEliminations(b BoardInterface, z int, zCellsFirst, zCellsLast []int, e
 	}
 
 	// Combine all Z cells that must be seen
-	allZCells := append(zCellsFirst, zCellsLast...)
+	allZCells := slices.Concat(zCellsFirst, zCellsLast)
 
 	return FindEliminationsSeeing(b, z, exclude, allZCells...)
 }

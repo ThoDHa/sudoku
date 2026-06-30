@@ -171,6 +171,8 @@ func (s *Solver) createDuplicateViolationMove(digit int, idx1, idx2 int, unitTyp
 
 // checkConstraintViolations detects logical constraint violations in the board
 // Returns a constraint violation move if any violations are found, nil otherwise
+//
+//nolint:gocyclo // checkConstraintViolations walks rows, columns, and boxes to detect duplicate-digit conflicts and produce a single elimination move; the three unit iterations share the per-move accumulator and digit-position state.
 func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 	for i := 0; i < constants.TotalCells; i++ {
 		if b.Cells[i] == 0 {
@@ -352,68 +354,44 @@ func (s *Solver) findNextCandidateMove(b *Board) *core.Move {
 	// This creates a visual effect where each digit "sweeps" across the board
 
 	for d := 1; d <= constants.GridSize; d++ {
-		// Fill this digit across all rows
-		for row := 0; row < constants.GridSize; row++ {
-			candidateMove := s.fillCandidatesForRowDigit(b, row, d)
-			if candidateMove != nil {
-				return candidateMove
-			}
+		// Sweep rows, then columns, then boxes: for each unit type we first
+		// fill candidates across all units of that type, then look for hidden
+		// singles there. Order matters and is preserved per unit type.
+		if mv := s.findCandidateMoveForUnitType(b, UnitRow, d); mv != nil {
+			return mv
 		}
-
-		// After filling digit d in all rows, check for hidden singles for this digit
-		for row := 0; row < constants.GridSize; row++ {
-			if hiddenSingle := s.checkHiddenSingleInRow(b, row, d); hiddenSingle != nil {
-				return hiddenSingle
-			}
+		if mv := s.findCandidateMoveForUnitType(b, UnitCol, d); mv != nil {
+			return mv
 		}
-
-		// Fill this digit across all columns (catches any missed by row iteration)
-		for col := 0; col < constants.GridSize; col++ {
-			candidateMove := s.fillCandidatesForColDigit(b, col, d)
-			if candidateMove != nil {
-				return candidateMove
-			}
-		}
-
-		// Check for hidden singles in columns for this digit
-		for col := 0; col < constants.GridSize; col++ {
-			if hiddenSingle := s.checkHiddenSingleInCol(b, col, d); hiddenSingle != nil {
-				return hiddenSingle
-			}
-		}
-
-		// Fill this digit across all boxes (catches any missed)
-		for box := 0; box < constants.GridSize; box++ {
-			candidateMove := s.fillCandidatesForBoxDigit(b, box, d)
-			if candidateMove != nil {
-				return candidateMove
-			}
-		}
-
-		// Check for hidden singles in boxes for this digit
-		for box := 0; box < constants.GridSize; box++ {
-			if hiddenSingle := s.checkHiddenSingleInBox(b, box, d); hiddenSingle != nil {
-				return hiddenSingle
-			}
+		if mv := s.findCandidateMoveForUnitType(b, UnitBox, d); mv != nil {
+			return mv
 		}
 	}
 
 	return nil
 }
 
+// findCandidateMoveForUnitType sweeps one unit type for digit d: it fills
+// candidates across every unit of the type, then re-checks each unit for a
+// hidden single. Returns the first move found, or nil.
+func (s *Solver) findCandidateMoveForUnitType(b *Board, unitType UnitType, d int) *core.Move {
+	for i := 0; i < constants.GridSize; i++ {
+		if mv := s.fillCandidatesForUnit(b, unitType, i, d); mv != nil {
+			return mv
+		}
+	}
+	for i := 0; i < constants.GridSize; i++ {
+		if mv := s.checkHiddenSingleInUnit(b, unitType, i, d); mv != nil {
+			return mv
+		}
+	}
+	return nil
+}
+
 // fillCandidatesForUnit fills candidate d for all cells in a unit (row/col/box)
 // Returns first candidate move found, or nil if unit is complete for this digit
 func (s *Solver) fillCandidatesForUnit(b *Board, unitType UnitType, unitIndex, d int) *core.Move {
-	var cellIndices []int
-
-	switch unitType {
-	case UnitRow:
-		cellIndices = RowIndices[unitIndex]
-	case UnitCol:
-		cellIndices = ColIndices[unitIndex]
-	case UnitBox:
-		cellIndices = BoxIndices[unitIndex]
-	}
+	cellIndices := unitCellIndices(unitType, unitIndex)
 
 	for _, i := range cellIndices {
 		if b.Cells[i] != 0 {
@@ -443,34 +421,9 @@ func (s *Solver) fillCandidatesForUnit(b *Board, unitType UnitType, unitIndex, d
 	return nil
 }
 
-// fillCandidatesForRowDigit fills candidate d for all cells in row that need it
-// Returns first candidate move found, or nil if row is complete for this digit
-func (s *Solver) fillCandidatesForRowDigit(b *Board, row, d int) *core.Move {
-	return s.fillCandidatesForUnit(b, UnitRow, row, d)
-}
-
-// fillCandidatesForColDigit fills candidate d for all cells in column that need it
-func (s *Solver) fillCandidatesForColDigit(b *Board, col, d int) *core.Move {
-	return s.fillCandidatesForUnit(b, UnitCol, col, d)
-}
-
-// fillCandidatesForBoxDigit fills candidate d for all cells in box that need it
-func (s *Solver) fillCandidatesForBoxDigit(b *Board, box, d int) *core.Move {
-	return s.fillCandidatesForUnit(b, UnitBox, box, d)
-}
-
 // checkHiddenSingleInUnit checks if digit d can only go in one cell in a unit
 func (s *Solver) checkHiddenSingleInUnit(b *Board, unitType UnitType, unitIndex, d int) *core.Move {
-	var cellIndices []int
-
-	switch unitType {
-	case UnitRow:
-		cellIndices = RowIndices[unitIndex]
-	case UnitCol:
-		cellIndices = ColIndices[unitIndex]
-	case UnitBox:
-		cellIndices = BoxIndices[unitIndex]
-	}
+	cellIndices := unitCellIndices(unitType, unitIndex)
 
 	var possibleCells []core.CellRef
 
@@ -483,51 +436,32 @@ func (s *Solver) checkHiddenSingleInUnit(b *Board, unitType UnitType, unitIndex,
 		}
 	}
 
-	if len(possibleCells) == 1 {
-		cell := possibleCells[0]
-		unitName := ""
-		switch unitType {
-		case UnitRow:
-			unitName = "row"
-		case UnitCol:
-			unitName = "column"
-		case UnitBox:
-			unitName = "box"
-		}
-		return &core.Move{
-			Technique:   "hidden-single",
-			Action:      constants.ActionAssign,
-			Digit:       d,
-			Targets:     []core.CellRef{cell},
-			Explanation: fmt.Sprintf("R%dC%d must be %d: only cell in %s %d that can contain %d", cell.Row+1, cell.Col+1, d, unitName, unitIndex+1, d),
-			Highlights: core.Highlights{
-				Primary:   []core.CellRef{cell},
-				Secondary: getUnitCellRefs(unitType, unitIndex),
-			},
-			Refs: core.TechniqueRef{
-				Title: "Hidden Single",
-				Slug:  "hidden-single",
-				URL:   "/technique/hidden-single",
-			},
-		}
+	if len(possibleCells) != 1 {
+		return nil
 	}
 
-	return nil
+	return buildHiddenSingleMove(possibleCells[0], unitType, unitIndex, d)
 }
 
-// checkHiddenSingleInRow checks if digit d can only go in one cell in the row
-func (s *Solver) checkHiddenSingleInRow(b *Board, row, d int) *core.Move {
-	return s.checkHiddenSingleInUnit(b, UnitRow, row, d)
-}
-
-// checkHiddenSingleInCol checks if digit d can only go in one cell in the column
-func (s *Solver) checkHiddenSingleInCol(b *Board, col, d int) *core.Move {
-	return s.checkHiddenSingleInUnit(b, UnitCol, col, d)
-}
-
-// checkHiddenSingleInBox checks if digit d can only go in one cell in the box
-func (s *Solver) checkHiddenSingleInBox(b *Board, box, d int) *core.Move {
-	return s.checkHiddenSingleInUnit(b, UnitBox, box, d)
+// buildHiddenSingleMove assembles the hidden-single assignment move for a cell
+// that is the only candidate placement for d within its unit.
+func buildHiddenSingleMove(cell core.CellRef, unitType UnitType, unitIndex, d int) *core.Move {
+	return &core.Move{
+		Technique:   "hidden-single",
+		Action:      constants.ActionAssign,
+		Digit:       d,
+		Targets:     []core.CellRef{cell},
+		Explanation: fmt.Sprintf("R%dC%d must be %d: only cell in %s %d that can contain %d", cell.Row+1, cell.Col+1, d, unitTypeName(unitType), unitIndex+1, d),
+		Highlights: core.Highlights{
+			Primary:   []core.CellRef{cell},
+			Secondary: getUnitCellRefs(unitType, unitIndex),
+		},
+		Refs: core.TechniqueRef{
+			Title: "Hidden Single",
+			Slug:  "hidden-single",
+			URL:   "/technique/hidden-single",
+		},
+	}
 }
 
 // checkForSingles performs single detection AFTER all candidates are filled
@@ -557,6 +491,35 @@ func (s *Solver) checkForSingles(b *Board) *core.Move {
 // Note: checkHiddenSingleForDigitImmediate was removed as it was unused.
 // If a future optimization requires immediate hidden-single checks without
 // relying on precomputed candidates, reintroduce a focused helper here.
+
+// unitCellIndices returns the flat cell indices for a row, column, or box unit.
+// Shared by candidate-fill and hidden-single detection so the unitType switch
+// lives in one place.
+func unitCellIndices(unitType UnitType, unitIndex int) []int {
+	switch unitType {
+	case UnitRow:
+		return RowIndices[unitIndex]
+	case UnitCol:
+		return ColIndices[unitIndex]
+	case UnitBox:
+		return BoxIndices[unitIndex]
+	}
+	return nil
+}
+
+// unitTypeName returns the human-readable word for a unit type, used in move
+// explanations such as "only cell in row 3".
+func unitTypeName(unitType UnitType) string {
+	switch unitType {
+	case UnitRow:
+		return "row"
+	case UnitCol:
+		return "column"
+	case UnitBox:
+		return "box"
+	}
+	return ""
+}
 
 // getUnitCellRefs generates CellRef slice for a unit (row/col/box)
 func getUnitCellRefs(unitType UnitType, unitIndex int) []core.CellRef {

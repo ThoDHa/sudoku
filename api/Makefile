@@ -1,6 +1,6 @@
 # Sudoku API Makefile
 
-.PHONY: all build server generate-constants wasm wasm-copy clean test coverage-gate
+.PHONY: all build server generate-constants wasm wasm-copy clean test coverage-gate vulncheck
 
 # Go build settings
 GO := go
@@ -116,6 +116,20 @@ coverage-gate:
 	check_pkg ./internal/sudoku/human/techniques $(TECHNIQUES_COVERAGE_FLOOR); \
 	check_pkg ./internal/transport/http $(TRANSPORT_HTTP_COVERAGE_FLOOR); \
 	echo "coverage-gate: all gated packages met their floors."
+
+# Vulnerability gate. Runs govulncheck against the module and fails on
+# confirmed vulnerabilities reachable from the call graph. govulncheck must be
+# on PATH (CI installs it per run via `go install`; locally run
+# `go install golang.org/x/vuln/cmd/govulncheck@latest`). CI invokes this from
+# the test-go job; run locally with `make vulncheck`.
+vulncheck:
+	@set -e; \
+	out=$$(govulncheck ./... 2>&1) || { \
+		echo "vulncheck: FAIL confirmed vulnerabilities found" >&2; \
+		echo "$$out" >&2; \
+		exit 1; \
+	}; \
+	echo "vulncheck: OK no confirmed vulnerabilities."
 
 # Memory profiling tests
 test-memory:

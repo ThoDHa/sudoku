@@ -44,6 +44,8 @@ var urFloorRoofPairs = [][2][2]int{
 
 // findURRectangles finds all valid Unique Rectangle configurations for digits d1, d2.
 // A UR rectangle has 4 cells forming a rectangle across exactly 2 boxes.
+//
+//nolint:gocyclo // UR rectangle enumeration tries every (cell-a, cell-b, cell-c, cell-d) 4-tuple across shared-candidate cells with three structural checks (same rows, same cols, exactly two boxes); each check consumes the per-pair coordinates computed in earlier iterations.
 func findURRectangles(b BoardInterface, d1, d2 int) []urRectangle {
 	// Find all cells that have both d1 and d2 as candidates
 	var cells []int
@@ -185,6 +187,8 @@ func DetectUniqueRectangle(b BoardInterface) *core.Move {
 // 2 diagonal corners are bivalue with {A,B}
 // Other 2 corners have {A,B} plus one extra candidate X (same extra in both)
 // Eliminate X from cells that see BOTH corners with extra candidates
+//
+//nolint:gocyclo // Type 2 UR detection threads the rectangle enumeration and floor/roof pairing through a per-rectangle extra-digit search and peer elimination; the per-rectangle state (corners, floor cells, extra digit) is consumed by the elimination phase.
 func DetectUniqueRectangleType2(b BoardInterface) *core.Move {
 	for d1 := 1; d1 <= constants.GridSize-1; d1++ {
 		for d2 := d1 + 1; d2 <= constants.GridSize; d2++ {
@@ -262,6 +266,8 @@ func DetectUniqueRectangleType2(b BoardInterface) *core.Move {
 // DetectUniqueRectangleType3 finds UR Type 3 patterns
 // Similar setup to Type 2 but the two corners with extras form a "pseudo-cell"
 // If their combined extras would form a naked pair/triple with other cells in the unit, make that elimination
+//
+//nolint:gocyclo // Type 3 UR detection couples four interdependent phases (floor/roof pairing, extra-digit extraction, hidden-subset search across two cell groups, and elimination assembly) that share ~10 intermediate variables across phases; extracting any phase requires passing that state through helper signatures, which obscures the technique's logic flow.
 func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 	for d1 := 1; d1 <= constants.GridSize-1; d1++ {
 		for d2 := d1 + 1; d2 <= constants.GridSize; d2++ {
@@ -473,6 +479,8 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 // Two corners with just {A,B}, two corners with {A,B,+extras}
 // If one of A or B is confined to the UR cells within a row/column,
 // the other can be eliminated from the extra corners
+//
+//nolint:gocyclo // Type 4 UR detection threads rectangle enumeration, floor/roof pairing, bivalue-corner validation, and the line-confined-digit elimination search through one body; the floor/roof state propagates through every downstream check.
 func DetectUniqueRectangleType4(b BoardInterface) *core.Move {
 	for d1 := 1; d1 <= constants.GridSize-1; d1++ {
 		for d2 := d1 + 1; d2 <= constants.GridSize; d2++ {
@@ -501,155 +509,14 @@ func DetectUniqueRectangleType4(b BoardInterface) *core.Move {
 					exRow1, exCol1 := ex1/constants.GridSize, ex1%constants.GridSize
 
 					// Check if d1 or d2 is confined to UR cells in the shared row/column
-					// For the row containing extra corners
 					if exRow0 == exRow1 {
-						row := exRow0
-						// Check if d1 appears only in UR cells in this row
-						d1OnlyInUR := true
-						d2OnlyInUR := true
-						for c := 0; c < constants.GridSize; c++ {
-							idx := row*constants.GridSize + c
-							if idx == ex0 || idx == ex1 {
-								continue
-							}
-							if b.GetCandidatesAt(idx).Has(d1) {
-								d1OnlyInUR = false
-							}
-							if b.GetCandidatesAt(idx).Has(d2) {
-								d2OnlyInUR = false
-							}
-						}
-
-						if d1OnlyInUR && !d2OnlyInUR {
-							// d1 confined to UR, eliminate d2 from extra corners
-							var eliminations []core.Candidate
-							if b.GetCandidatesAt(ex0).Has(d2) {
-								eliminations = append(eliminations, core.Candidate{Row: exRow0, Col: exCol0, Digit: d2})
-							}
-							if b.GetCandidatesAt(ex1).Has(d2) {
-								eliminations = append(eliminations, core.Candidate{Row: exRow1, Col: exCol1, Digit: d2})
-							}
-
-							if len(eliminations) > 0 {
-								targets := CellRefsFromIndices(corners[:]...)
-
-								return &core.Move{
-									Action:       "eliminate",
-									Digit:        d2,
-									Targets:      targets,
-									Eliminations: eliminations,
-									Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d: %d confined to UR in row %d: eliminate %d.",
-										d1, d2, d1, row+1, d2),
-									Highlights: core.Highlights{
-										Primary:   CellRefsFromIndices(bv0, bv1),
-										Secondary: CellRefsFromIndices(ex0, ex1),
-									},
-								}
-							}
-						}
-
-						if d2OnlyInUR && !d1OnlyInUR {
-							// d2 confined to UR, eliminate d1 from extra corners
-							var eliminations []core.Candidate
-							if b.GetCandidatesAt(ex0).Has(d1) {
-								eliminations = append(eliminations, core.Candidate{Row: exRow0, Col: exCol0, Digit: d1})
-							}
-							if b.GetCandidatesAt(ex1).Has(d1) {
-								eliminations = append(eliminations, core.Candidate{Row: exRow1, Col: exCol1, Digit: d1})
-							}
-
-							if len(eliminations) > 0 {
-								targets := CellRefsFromIndices(corners[:]...)
-
-								return &core.Move{
-									Action:       "eliminate",
-									Digit:        d1,
-									Targets:      targets,
-									Eliminations: eliminations,
-									Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d: %d confined to UR in row %d: eliminate %d.",
-										d1, d2, d2, row+1, d1),
-									Highlights: core.Highlights{
-										Primary:   CellRefsFromIndices(bv0, bv1),
-										Secondary: CellRefsFromIndices(ex0, ex1),
-									},
-								}
-							}
+						if m := tryURType4LineElimination(b, d1, d2, ex0, ex1, corners, bv0, bv1, exRow0, "row", true); m != nil {
+							return m
 						}
 					}
-
-					// For the column containing extra corners
 					if exCol0 == exCol1 {
-						col := exCol0
-						// Check if d1 appears only in UR cells in this column
-						d1OnlyInUR := true
-						d2OnlyInUR := true
-						for r := 0; r < constants.GridSize; r++ {
-							idx := r*constants.GridSize + col
-							if idx == ex0 || idx == ex1 {
-								continue
-							}
-							if b.GetCandidatesAt(idx).Has(d1) {
-								d1OnlyInUR = false
-							}
-							if b.GetCandidatesAt(idx).Has(d2) {
-								d2OnlyInUR = false
-							}
-						}
-
-						if d1OnlyInUR && !d2OnlyInUR {
-							// d1 confined to UR, eliminate d2 from extra corners
-							var eliminations []core.Candidate
-							if b.GetCandidatesAt(ex0).Has(d2) {
-								eliminations = append(eliminations, core.Candidate{Row: exRow0, Col: exCol0, Digit: d2})
-							}
-							if b.GetCandidatesAt(ex1).Has(d2) {
-								eliminations = append(eliminations, core.Candidate{Row: exRow1, Col: exCol1, Digit: d2})
-							}
-
-							if len(eliminations) > 0 {
-								targets := CellRefsFromIndices(corners[:]...)
-
-								return &core.Move{
-									Action:       "eliminate",
-									Digit:        d2,
-									Targets:      targets,
-									Eliminations: eliminations,
-									Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d: %d confined to UR in column %d: eliminate %d.",
-										d1, d2, d1, col+1, d2),
-									Highlights: core.Highlights{
-										Primary:   CellRefsFromIndices(bv0, bv1),
-										Secondary: CellRefsFromIndices(ex0, ex1),
-									},
-								}
-							}
-						}
-
-						if d2OnlyInUR && !d1OnlyInUR {
-							// d2 confined to UR, eliminate d1 from extra corners
-							var eliminations []core.Candidate
-							if b.GetCandidatesAt(ex0).Has(d1) {
-								eliminations = append(eliminations, core.Candidate{Row: exRow0, Col: exCol0, Digit: d1})
-							}
-							if b.GetCandidatesAt(ex1).Has(d1) {
-								eliminations = append(eliminations, core.Candidate{Row: exRow1, Col: exCol1, Digit: d1})
-							}
-
-							if len(eliminations) > 0 {
-								targets := CellRefsFromIndices(corners[:]...)
-
-								return &core.Move{
-									Action:       "eliminate",
-									Digit:        d1,
-									Targets:      targets,
-									Eliminations: eliminations,
-									Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d: %d confined to UR in column %d: eliminate %d.",
-										d1, d2, d2, col+1, d1),
-									Highlights: core.Highlights{
-										Primary:   CellRefsFromIndices(bv0, bv1),
-										Secondary: CellRefsFromIndices(ex0, ex1),
-									},
-								}
-							}
+						if m := tryURType4LineElimination(b, d1, d2, ex0, ex1, corners, bv0, bv1, exCol0, "column", false); m != nil {
+							return m
 						}
 					}
 				}
@@ -658,4 +525,75 @@ func DetectUniqueRectangleType4(b BoardInterface) *core.Move {
 	}
 
 	return nil
+}
+
+// tryURType4LineElimination handles the row-shared and column-shared cases of
+// Unique Rectangle Type 4. It checks whether d1 or d2 is confined to the UR
+// cells within the line at lineIdx (a row when byRow=true, a column otherwise),
+// and if exactly one is confined, eliminates the other from the extra corners.
+func tryURType4LineElimination(b BoardInterface, d1, d2, ex0, ex1 int, corners [4]int, bv0, bv1, lineIdx int, desc string, byRow bool) *core.Move {
+	d1Confined := digitConfinedToCells(b, d1, lineIdx, ex0, ex1, byRow)
+	d2Confined := digitConfinedToCells(b, d2, lineIdx, ex0, ex1, byRow)
+	if d1Confined && !d2Confined {
+		return buildURType4Move(b, d1, d2, d2, ex0, ex1, corners, bv0, bv1, lineIdx, desc)
+	}
+	if d2Confined && !d1Confined {
+		return buildURType4Move(b, d1, d2, d1, ex0, ex1, corners, bv0, bv1, lineIdx, desc)
+	}
+	return nil
+}
+
+// digitConfinedToCells reports whether digit appears only at ex0 or ex1 within
+// the line at lineIdx (a row when byRow=true, a column otherwise).
+func digitConfinedToCells(b BoardInterface, digit, lineIdx, ex0, ex1 int, byRow bool) bool {
+	for k := 0; k < constants.GridSize; k++ {
+		var idx int
+		if byRow {
+			idx = lineIdx*constants.GridSize + k
+		} else {
+			idx = k*constants.GridSize + lineIdx
+		}
+		if idx == ex0 || idx == ex1 {
+			continue
+		}
+		if b.GetCandidatesAt(idx).Has(digit) {
+			return false
+		}
+	}
+	return true
+}
+
+// buildURType4Move eliminates eliminateDigit from ex0 and ex1 if they hold it,
+// returning the move. confinedDigit is the digit confined to UR cells; desc is
+// "row" or "column"; lineIdx is the line index used in the explanation.
+func buildURType4Move(b BoardInterface, d1, d2, eliminateDigit, ex0, ex1 int, corners [4]int, bv0, bv1, lineIdx int, desc string) *core.Move {
+	var eliminations []core.Candidate
+	er0, ec0 := ex0/constants.GridSize, ex0%constants.GridSize
+	er1, ec1 := ex1/constants.GridSize, ex1%constants.GridSize
+	if b.GetCandidatesAt(ex0).Has(eliminateDigit) {
+		eliminations = append(eliminations, core.Candidate{Row: er0, Col: ec0, Digit: eliminateDigit})
+	}
+	if b.GetCandidatesAt(ex1).Has(eliminateDigit) {
+		eliminations = append(eliminations, core.Candidate{Row: er1, Col: ec1, Digit: eliminateDigit})
+	}
+	if len(eliminations) == 0 {
+		return nil
+	}
+	confinedDigit := d1
+	if eliminateDigit == d1 {
+		confinedDigit = d2
+	}
+	targets := CellRefsFromIndices(corners[:]...)
+	return &core.Move{
+		Action:       "eliminate",
+		Digit:        eliminateDigit,
+		Targets:      targets,
+		Eliminations: eliminations,
+		Explanation: fmt.Sprintf("Unique Rectangle Type 4: %d/%d: %d confined to UR in %s %d: eliminate %d.",
+			d1, d2, confinedDigit, desc, lineIdx+1, eliminateDigit),
+		Highlights: core.Highlights{
+			Primary:   CellRefsFromIndices(bv0, bv1),
+			Secondary: CellRefsFromIndices(ex0, ex1),
+		},
+	}
 }

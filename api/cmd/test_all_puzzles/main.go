@@ -71,6 +71,158 @@ func solvePuzzle(seed int64) PuzzleResult {
 	return result
 }
 
+// puzzleSummary aggregates per-puzzle results into the counts and seed lists
+// reported at the end of the run.
+type puzzleSummary struct {
+	passing               int
+	stalled               int
+	contradictions        int
+	stalledSeeds          []int64
+	contradictionSeeds    []int64
+	globalTechUsage       map[string]int
+	contradictionLastTech map[string]int
+}
+
+func summarizeResults(allResults []PuzzleResult) puzzleSummary {
+	s := puzzleSummary{
+		globalTechUsage:       make(map[string]int),
+		contradictionLastTech: make(map[string]int),
+	}
+	for _, r := range allResults {
+		for tech, count := range r.TechniqueUsage {
+			s.globalTechUsage[tech] += count
+		}
+		switch {
+		case r.Contradiction:
+			s.contradictions++
+			s.contradictionSeeds = append(s.contradictionSeeds, r.Seed)
+			for _, t := range r.LastTechniques {
+				s.contradictionLastTech[t]++
+			}
+		case r.Status == constants.StatusCompleted:
+			s.passing++
+		default:
+			s.stalled++
+			s.stalledSeeds = append(s.stalledSeeds, r.Seed)
+		}
+	}
+	return s
+}
+
+// runStressTest fans puzzle seeds out to a worker pool, returning the per-puzzle
+// results along with the total wall-clock elapsed.
+func runStressTest(numPuzzles, numWorkers int, startSeed int64) ([]PuzzleResult, time.Duration) {
+	start := time.Now()
+
+	jobs := make(chan int64, numPuzzles)
+	results := make(chan PuzzleResult, numPuzzles)
+
+	var completed int64
+
+	var wg sync.WaitGroup
+	for w := 0; w < numWorkers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for seed := range jobs {
+				result := solvePuzzle(seed)
+				results <- result
+				atomic.AddInt64(&completed, 1)
+			}
+		}()
+	}
+
+	go func() {
+		for i := 0; i < numPuzzles; i++ {
+			jobs <- startSeed + int64(i)
+		}
+		close(jobs)
+	}()
+
+	// Progress reporter
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			c := atomic.LoadInt64(&completed)
+			if c >= int64(numPuzzles) {
+				return
+			}
+			elapsed := time.Since(start)
+			rate := float64(c) / elapsed.Seconds()
+			remaining := float64(int64(numPuzzles)-c) / rate
+			fmt.Printf("Progress: %d/%d (%.1f/sec, ~%.0fs remaining)\n",
+				c, numPuzzles, rate, remaining)
+		}
+	}()
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var allResults []PuzzleResult
+	for r := range results {
+		allResults = append(allResults, r)
+	}
+	return allResults, time.Since(start)
+}
+
+type techCount struct {
+	name  string
+	count int
+}
+
+func sortedTechCounts(counts map[string]int) []techCount {
+	sorted := make([]techCount, 0, len(counts))
+	for name, count := range counts {
+		sorted = append(sorted, techCount{name, count})
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].count > sorted[j].count
+	})
+	return sorted
+}
+
+func printReport(s puzzleSummary, numPuzzles int, elapsed time.Duration) {
+	fmt.Println()
+	fmt.Println("========================================")
+	fmt.Println("RESULTS")
+	fmt.Println("========================================")
+	fmt.Printf("Time: %v (%.1f puzzles/sec)\n", elapsed, float64(numPuzzles)/elapsed.Seconds())
+	fmt.Println()
+	fmt.Printf("Passing:        %d/%d (%.1f%%)\n", s.passing, numPuzzles, 100*float64(s.passing)/float64(numPuzzles))
+	fmt.Printf("Contradictions: %d/%d (%.1f%%)\n", s.contradictions, numPuzzles, 100*float64(s.contradictions)/float64(numPuzzles))
+	fmt.Printf("True stalls:    %d/%d (%.1f%%)\n", s.stalled, numPuzzles, 100*float64(s.stalled)/float64(numPuzzles))
+
+	if s.contradictions > 0 {
+		fmt.Println()
+		fmt.Println("Techniques appearing before contradictions:")
+		fmt.Println("(Higher count = more suspicious)")
+		topContradictionTech := sortedTechCounts(s.contradictionLastTech)
+		for _, tc := range topContradictionTech[:min(15, len(topContradictionTech))] {
+			fmt.Printf("  %-25s %d\n", tc.name, tc.count)
+		}
+
+		fmt.Println()
+		fmt.Printf("First 20 contradiction seeds: %v\n", s.contradictionSeeds[:min(20, len(s.contradictionSeeds))])
+	}
+
+	if s.stalled > 0 && len(s.stalledSeeds) > 0 {
+		fmt.Println()
+		fmt.Printf("First 20 stalled seeds: %v\n", s.stalledSeeds[:min(20, len(s.stalledSeeds))])
+	}
+
+	fmt.Println()
+	fmt.Println("Global technique usage:")
+	fmt.Println("----------------------------------------")
+	for _, tc := range sortedTechCounts(s.globalTechUsage) {
+		if tc.count > 0 {
+			fmt.Printf("  %-25s %d\n", tc.name, tc.count)
+		}
+	}
+}
+
 func main() {
 	numPuzzles := flag.Int("n", 10000, "Number of puzzles to generate and test")
 	numWorkers := flag.Int("workers", 8, "Number of parallel workers")
@@ -85,176 +237,22 @@ func main() {
 	fmt.Printf("Starting seed: %d\n", *startSeed)
 	fmt.Println()
 
-	start := time.Now()
+	allResults, elapsed := runStressTest(*numPuzzles, *numWorkers, *startSeed)
 
-	// Channels for work distribution
-	jobs := make(chan int64, *numPuzzles)
-	results := make(chan PuzzleResult, *numPuzzles)
+	summary := summarizeResults(allResults)
+	printReport(summary, *numPuzzles, elapsed)
 
-	// Progress tracking
-	var completed int64
-
-	// Start workers
-	var wg sync.WaitGroup
-	for w := 0; w < *numWorkers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for seed := range jobs {
-				result := solvePuzzle(seed)
-				results <- result
-				atomic.AddInt64(&completed, 1)
-			}
-		}()
-	}
-
-	// Send jobs
-	go func() {
-		for i := 0; i < *numPuzzles; i++ {
-			jobs <- *startSeed + int64(i)
-		}
-		close(jobs)
-	}()
-
-	// Progress reporter
-	go func() {
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
-		for range ticker.C {
-			c := atomic.LoadInt64(&completed)
-			if c >= int64(*numPuzzles) {
-				return
-			}
-			elapsed := time.Since(start)
-			rate := float64(c) / elapsed.Seconds()
-			remaining := float64(int64(*numPuzzles)-c) / rate
-			fmt.Printf("Progress: %d/%d (%.1f/sec, ~%.0fs remaining)\n",
-				c, *numPuzzles, rate, remaining)
-		}
-	}()
-
-	// Wait for workers and close results
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	// Collect results
-	var allResults []PuzzleResult
-	for r := range results {
-		allResults = append(allResults, r)
-	}
-
-	elapsed := time.Since(start)
-
-	// Analyze results
-	var passing, stalled, contradictions int
-	var stalledSeeds, contradictionSeeds []int64
-	globalTechUsage := make(map[string]int)
-	contradictionLastTech := make(map[string]int)
-
-	for _, r := range allResults {
-		for tech, count := range r.TechniqueUsage {
-			globalTechUsage[tech] += count
-		}
-
-		if r.Contradiction {
-			contradictions++
-			contradictionSeeds = append(contradictionSeeds, r.Seed)
-			// Track last technique before contradiction
-			if len(r.LastTechniques) > 0 {
-				for _, t := range r.LastTechniques {
-					contradictionLastTech[t]++
-				}
-			}
-		} else if r.Status == constants.StatusCompleted {
-			passing++
-		} else {
-			stalled++
-			stalledSeeds = append(stalledSeeds, r.Seed)
-		}
-	}
-
-	// Print results
 	fmt.Println()
 	fmt.Println("========================================")
-	fmt.Println("RESULTS")
-	fmt.Println("========================================")
-	fmt.Printf("Time: %v (%.1f puzzles/sec)\n", elapsed, float64(*numPuzzles)/elapsed.Seconds())
-	fmt.Println()
-	fmt.Printf("Passing:        %d/%d (%.1f%%)\n", passing, *numPuzzles, 100*float64(passing)/float64(*numPuzzles))
-	fmt.Printf("Contradictions: %d/%d (%.1f%%)\n", contradictions, *numPuzzles, 100*float64(contradictions)/float64(*numPuzzles))
-	fmt.Printf("True stalls:    %d/%d (%.1f%%)\n", stalled, *numPuzzles, 100*float64(stalled)/float64(*numPuzzles))
-
-	if contradictions > 0 {
-		fmt.Println()
-		fmt.Println("Techniques appearing before contradictions:")
-		fmt.Println("(Higher count = more suspicious)")
-
-		type techCount struct {
-			name  string
-			count int
-		}
-		var sorted []techCount
-		for name, count := range contradictionLastTech {
-			sorted = append(sorted, techCount{name, count})
-		}
-		sort.Slice(sorted, func(i, j int) bool {
-			return sorted[i].count > sorted[j].count
-		})
-		for _, tc := range sorted[:min(15, len(sorted))] {
-			fmt.Printf("  %-25s %d\n", tc.name, tc.count)
-		}
-
-		fmt.Println()
-		fmt.Printf("First 20 contradiction seeds: %v\n", contradictionSeeds[:min(20, len(contradictionSeeds))])
-	}
-
-	if stalled > 0 && len(stalledSeeds) > 0 {
-		fmt.Println()
-		fmt.Printf("First 20 stalled seeds: %v\n", stalledSeeds[:min(20, len(stalledSeeds))])
-	}
-
-	// Print technique usage
-	fmt.Println()
-	fmt.Println("Global technique usage:")
-	fmt.Println("----------------------------------------")
-
-	type techCount struct {
-		name  string
-		count int
-	}
-	var sorted []techCount
-	for name, count := range globalTechUsage {
-		sorted = append(sorted, techCount{name, count})
-	}
-	sort.Slice(sorted, func(i, j int) bool {
-		return sorted[i].count > sorted[j].count
-	})
-	for _, tc := range sorted {
-		if tc.count > 0 {
-			fmt.Printf("  %-25s %d\n", tc.name, tc.count)
-		}
-	}
-
-	// Exit status
-	fmt.Println()
-	fmt.Println("========================================")
-	if passing == *numPuzzles {
+	switch {
+	case summary.passing == *numPuzzles:
 		fmt.Println("SUCCESS: All puzzles solved correctly!")
 		os.Exit(0)
-	}
-	if contradictions > 0 {
-		fmt.Printf("FAILED: %d puzzles hit contradictions (buggy techniques)\n", contradictions)
+	case summary.contradictions > 0:
+		fmt.Printf("FAILED: %d puzzles hit contradictions (buggy techniques)\n", summary.contradictions)
 		os.Exit(1)
+	default:
+		fmt.Printf("WARNING: %d puzzles stalled (may need more techniques)\n", summary.stalled)
+		os.Exit(0)
 	}
-	fmt.Printf("WARNING: %d puzzles stalled (may need more techniques)\n", stalled)
-	os.Exit(0)
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

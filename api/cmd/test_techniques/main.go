@@ -109,11 +109,12 @@ func testTechnique(slug string, numPuzzles int, numWorkers int, startSeed int64)
 					}
 				}
 
-				if hasContradiction {
+				switch {
+				case hasContradiction:
 					atomic.AddInt64(&contradictions, 1)
-				} else if status == constants.StatusCompleted {
+				case status == constants.StatusCompleted:
 					atomic.AddInt64(&solved, 1)
-				} else {
+				default:
 					atomic.AddInt64(&stalls, 1)
 				}
 				atomic.AddInt64(&totalUsage, int64(usage))

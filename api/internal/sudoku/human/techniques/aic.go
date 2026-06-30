@@ -82,6 +82,8 @@ func buildStrongLinks(b BoardInterface) map[candidateNode][]candidateNode {
 }
 
 // buildWeakLinks builds a map of all weak links from each candidate node
+//
+//nolint:gocyclo // buildWeakLinks classifies every cell×digit pair into one of three link classes (in-cell, strong unit, weak unit) via tightly-coupled per-unit iteration; the three classifications share per-cell state and splitting them duplicates that loop.
 func buildWeakLinks(b BoardInterface) map[candidateNode][]candidateNode {
 	links := make(map[candidateNode][]candidateNode)
 
@@ -135,6 +137,8 @@ func containsNode(nodes []candidateNode, target candidateNode) bool {
 }
 
 // bfsAIC performs BFS to find valid AIC chains
+//
+//nolint:gocyclo // bfsAIC interleaves BFS state (queue, visited, polarity) with three per-step elimination checks (continuous loop, alternating-discontinuity, sees-both-polarities); each check needs the chain built so far, so extraction requires passing the full chain context.
 func bfsAIC(b BoardInterface, start candidateNode, startPolarity bool, strongLinks, weakLinks map[candidateNode][]candidateNode) *core.Move {
 	type queueItem struct {
 		chain    []chainLink

@@ -48,6 +48,8 @@ import (
 //   - Z gets placed somewhere in that petal
 //   - Since we don't know WHICH petal will lock, Z must appear in any position
 //     that all petals cover for Z
+//
+//nolint:gocyclo // Death Blossom couples stem-cell selection with per-digit ALS lookup and peer-elimination across the stem's peers; the ALS-candidate and elimination phases share the stem context, and decomposing them would pass stem plus per-digit ALS state across boundaries.
 func DetectDeathBlossom(b BoardInterface) *core.Move {
 	// Find all ALS with size 1-4 cells
 	allALS := FindAllALS(b, 4)

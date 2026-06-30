@@ -12,152 +12,163 @@ import (
 // and those positions share the same columns
 func DetectXWing(b BoardInterface) *core.Move {
 	for digit := 1; digit <= constants.GridSize; digit++ {
-		// Find rows where digit appears in exactly 2 columns
-		rowPositions := make(map[int][]int)
-		for row := 0; row < constants.GridSize; row++ {
-			var cols []int
-			for col := 0; col < constants.GridSize; col++ {
-				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
-					cols = append(cols, col)
-				}
-			}
-			if len(cols) == 2 {
-				rowPositions[row] = cols
-			}
+		if m := findXWingInAxis(b, digit, true); m != nil {
+			return m
 		}
-
-		// Look for matching row pairs
-		var rows []int
-		for row := range rowPositions {
-			rows = append(rows, row)
+		if m := findXWingInAxis(b, digit, false); m != nil {
+			return m
 		}
+	}
+	return nil
+}
 
-		for i := 0; i < len(rows); i++ {
-			for j := i + 1; j < len(rows); j++ {
-				r1, r2 := rows[i], rows[j]
-				cols1, cols2 := rowPositions[r1], rowPositions[r2]
-
-				if cols1[0] == cols2[0] && cols1[1] == cols2[1] {
-					c1, c2 := cols1[0], cols1[1]
-
-					// Find eliminations in the columns
-					var eliminations []core.Candidate
-					for row := 0; row < constants.GridSize; row++ {
-						if row == r1 || row == r2 {
-							continue
-						}
-						if b.GetCandidatesAt(row*constants.GridSize + c1).Has(digit) {
-							eliminations = append(eliminations, core.Candidate{Row: row, Col: c1, Digit: digit})
-						}
-						if b.GetCandidatesAt(row*constants.GridSize + c2).Has(digit) {
-							eliminations = append(eliminations, core.Candidate{Row: row, Col: c2, Digit: digit})
-						}
-					}
-
-					if len(eliminations) > 0 {
-						// Build secondary highlights: all cells in the two rows forming the X-Wing
-						var secondaryCells []int
-						for col := 0; col < constants.GridSize; col++ {
-							secondaryCells = append(secondaryCells, r1*constants.GridSize+col)
-							secondaryCells = append(secondaryCells, r2*constants.GridSize+col)
-						}
-						return &core.Move{
-							Action: "eliminate",
-							Digit:  digit,
-							Targets: []core.CellRef{
-								{Row: r1, Col: c1}, {Row: r1, Col: c2},
-								{Row: r2, Col: c1}, {Row: r2, Col: c2},
-							},
-							Eliminations: eliminations,
-							Explanation:  fmt.Sprintf("X-Wing: %d in rows %d,%d columns %d,%d", digit, r1+1, r2+1, c1+1, c2+1),
-							Highlights: core.Highlights{
-								Primary: []core.CellRef{
-									{Row: r1, Col: c1}, {Row: r1, Col: c2},
-									{Row: r2, Col: c1}, {Row: r2, Col: c2},
-								},
-								Secondary: ToCellRefs(secondaryCells),
-							},
-						}
-					}
-				}
+// findXWingInAxis scans for an X-Wing in rows (byRow=true) or columns. Each line
+// where digit has exactly two candidates is paired with every other such line;
+// when two lines share the same perpendicular coordinates, eliminations are
+// possible along those perpendicular lines.
+func findXWingInAxis(b BoardInterface, digit int, byRow bool) *core.Move {
+	lineToPerps := xwingLinePositions(b, digit, byRow)
+	var lines []int
+	for l := range lineToPerps {
+		lines = append(lines, l)
+	}
+	for i := 0; i < len(lines); i++ {
+		for j := i + 1; j < len(lines); j++ {
+			l1, l2 := lines[i], lines[j]
+			p1, p2 := lineToPerps[l1], lineToPerps[l2]
+			if p1[0] != p2[0] || p1[1] != p2[1] {
+				continue
 			}
-		}
-
-		// Check columns for X-Wing
-		colPositions := make(map[int][]int)
-		for col := 0; col < constants.GridSize; col++ {
-			var rows []int
-			for row := 0; row < constants.GridSize; row++ {
-				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
-					rows = append(rows, row)
-				}
-			}
-			if len(rows) == 2 {
-				colPositions[col] = rows
-			}
-		}
-
-		var cols []int
-		for col := range colPositions {
-			cols = append(cols, col)
-		}
-
-		for i := 0; i < len(cols); i++ {
-			for j := i + 1; j < len(cols); j++ {
-				c1, c2 := cols[i], cols[j]
-				rows1, rows2 := colPositions[c1], colPositions[c2]
-
-				if rows1[0] == rows2[0] && rows1[1] == rows2[1] {
-					r1, r2 := rows1[0], rows1[1]
-
-					var eliminations []core.Candidate
-					for col := 0; col < constants.GridSize; col++ {
-						if col == c1 || col == c2 {
-							continue
-						}
-						if b.GetCandidatesAt(r1*constants.GridSize + col).Has(digit) {
-							eliminations = append(eliminations, core.Candidate{Row: r1, Col: col, Digit: digit})
-						}
-						if b.GetCandidatesAt(r2*constants.GridSize + col).Has(digit) {
-							eliminations = append(eliminations, core.Candidate{Row: r2, Col: col, Digit: digit})
-						}
-					}
-
-					if len(eliminations) > 0 {
-						// Build secondary highlights: all cells in the two columns forming the X-Wing
-						var secondaryCells []int
-						for row := 0; row < constants.GridSize; row++ {
-							secondaryCells = append(secondaryCells, row*constants.GridSize+c1)
-							secondaryCells = append(secondaryCells, row*constants.GridSize+c2)
-						}
-						return &core.Move{
-							Action: "eliminate",
-							Digit:  digit,
-							Targets: []core.CellRef{
-								{Row: r1, Col: c1}, {Row: r1, Col: c2},
-								{Row: r2, Col: c1}, {Row: r2, Col: c2},
-							},
-							Eliminations: eliminations,
-							Explanation:  fmt.Sprintf("X-Wing: %d in columns %d,%d rows %d,%d", digit, c1+1, c2+1, r1+1, r2+1),
-							Highlights: core.Highlights{
-								Primary: []core.CellRef{
-									{Row: r1, Col: c1}, {Row: r1, Col: c2},
-									{Row: r2, Col: c1}, {Row: r2, Col: c2},
-								},
-								Secondary: ToCellRefs(secondaryCells),
-							},
-						}
-					}
-				}
+			if m := buildXWingMove(b, digit, l1, l2, p1[0], p1[1], byRow); m != nil {
+				return m
 			}
 		}
 	}
-
 	return nil
+}
+
+// xwingLinePositions returns, for each line (row if byRow, column otherwise)
+// where digit appears in exactly two cells, the perpendicular coordinates of
+// those cells.
+func xwingLinePositions(b BoardInterface, digit int, byRow bool) map[int][]int {
+	result := map[int][]int{}
+	for i := 0; i < constants.GridSize; i++ {
+		var perps []int
+		for j := 0; j < constants.GridSize; j++ {
+			var idx int
+			if byRow {
+				idx = i*constants.GridSize + j
+			} else {
+				idx = j*constants.GridSize + i
+			}
+			if b.GetCandidatesAt(idx).Has(digit) {
+				perps = append(perps, j)
+			}
+		}
+		if len(perps) == 2 {
+			result[i] = perps
+		}
+	}
+	return result
+}
+
+// buildXWingMove collects eliminations for an X-Wing on lines l1,l2 sharing
+// perpendicular coordinates p1,p2, and returns the elimination move.
+func buildXWingMove(b BoardInterface, digit, l1, l2, p1, p2 int, byRow bool) *core.Move {
+	eliminations := collectXWingElims(b, digit, l1, l2, p1, p2, byRow)
+	if len(eliminations) == 0 {
+		return nil
+	}
+	secondaryCells := xwingSecondaryCells(l1, l2, byRow)
+	r1, r2, c1, c2 := xwingCoords(l1, l2, p1, p2, byRow)
+	targets := []core.CellRef{
+		{Row: r1, Col: c1}, {Row: r1, Col: c2},
+		{Row: r2, Col: c1}, {Row: r2, Col: c2},
+	}
+	return &core.Move{
+		Action:       "eliminate",
+		Digit:        digit,
+		Targets:      targets,
+		Eliminations: eliminations,
+		Explanation:  xwingExplanation(digit, r1, r2, c1, c2, byRow),
+		Highlights: core.Highlights{
+			Primary:   targets,
+			Secondary: ToCellRefs(secondaryCells),
+		},
+	}
+}
+
+// collectXWingElims walks the perpendicular lines at p1 and p2, collecting cells
+// (outside lines l1 and l2) that hold digit as a candidate.
+func collectXWingElims(b BoardInterface, digit, l1, l2, p1, p2 int, byRow bool) []core.Candidate {
+	var eliminations []core.Candidate
+	for k := 0; k < constants.GridSize; k++ {
+		if k == l1 || k == l2 {
+			continue
+		}
+		idx1, idx2, cand1, cand2 := xwingPerpCells(k, p1, p2, digit, byRow)
+		if b.GetCandidatesAt(idx1).Has(digit) {
+			eliminations = append(eliminations, cand1)
+		}
+		if b.GetCandidatesAt(idx2).Has(digit) {
+			eliminations = append(eliminations, cand2)
+		}
+	}
+	return eliminations
+}
+
+// xwingPerpCells returns the two cell indices and Candidate structs on the
+// perpendicular lines at p1 and p2 for the given walk coordinate k.
+func xwingPerpCells(k, p1, p2, digit int, byRow bool) (int, int, core.Candidate, core.Candidate) {
+	if byRow {
+		idx1 := k*constants.GridSize + p1
+		idx2 := k*constants.GridSize + p2
+		return idx1, idx2,
+			core.Candidate{Row: k, Col: p1, Digit: digit},
+			core.Candidate{Row: k, Col: p2, Digit: digit}
+	}
+	idx1 := p1*constants.GridSize + k
+	idx2 := p2*constants.GridSize + k
+	return idx1, idx2,
+		core.Candidate{Row: p1, Col: k, Digit: digit},
+		core.Candidate{Row: p2, Col: k, Digit: digit}
+}
+
+// xwingSecondaryCells returns all cell indices along the two source lines, for
+// display as secondary highlights.
+func xwingSecondaryCells(l1, l2 int, byRow bool) []int {
+	var cells []int
+	for k := 0; k < constants.GridSize; k++ {
+		if byRow {
+			cells = append(cells, l1*constants.GridSize+k, l2*constants.GridSize+k)
+		} else {
+			cells = append(cells, k*constants.GridSize+l1, k*constants.GridSize+l2)
+		}
+	}
+	return cells
+}
+
+// xwingCoords resolves the X-Wing's four corner coordinates (r1,r2,c1,c2) from
+// the abstract line/perpendicular representation.
+func xwingCoords(l1, l2, p1, p2 int, byRow bool) (int, int, int, int) {
+	if byRow {
+		return l1, l2, p1, p2
+	}
+	return p1, p2, l1, l2
+}
+
+// xwingExplanation formats the human-readable X-Wing description.
+func xwingExplanation(digit, r1, r2, c1, c2 int, byRow bool) string {
+	if byRow {
+		return fmt.Sprintf("X-Wing: %d in rows %d,%d columns %d,%d", digit, r1+1, r2+1, c1+1, c2+1)
+	}
+	return fmt.Sprintf("X-Wing: %d in columns %d,%d rows %d,%d", digit, c1+1, c2+1, r1+1, r2+1)
 }
 
 // DetectXYWing finds XY-Wing pattern: pivot cell with candidates XY,
 // two wings with candidates XZ and YZ, eliminate Z from cells seeing both wings
+//
+//nolint:gocyclo // XY-Wing couples pivot-cell scan with per-pivot XZ/YZ wing selection and Z-elimination; the XZ/YZ candidates are computed once per pivot and consumed by the nested elimination loop, so extraction requires passing several derived slices.
 func DetectXYWing(b BoardInterface) *core.Move {
 	// Find cells with exactly 2 candidates (potential pivots or wings)
 	var bivalues []int
@@ -268,6 +279,8 @@ func DetectXYWing(b BoardInterface) *core.Move {
 }
 
 // DetectSimpleColoring uses single-digit coloring to find eliminations
+//
+//nolint:gocyclo // Simple Coloring builds a conjugate-pair graph, runs two-color BFS, then checks five trap/elimination patterns over the resulting color sets; each pattern consumes the same color buckets and per-cell color maps.
 func DetectSimpleColoring(b BoardInterface) *core.Move {
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		// Find conjugate pairs (cells where digit appears exactly twice in a unit)

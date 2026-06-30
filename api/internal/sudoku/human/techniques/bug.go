@@ -21,6 +21,8 @@ import (
 // row, column, or box) must be the solution for that cell.
 
 // DetectBUG finds BUG (Bivalue Universal Grave) patterns
+//
+//nolint:gocyclo // BUG detection requires three sequential pattern variants (BUG+1, classic BUG, bi-value-plus-extra) sharing the cell-scan and candidate-count state; each variant depends on counts accumulated in the same scan.
 func DetectBUG(b BoardInterface) *core.Move {
 	// Count cells with !=2 candidates
 	var extraCells []int

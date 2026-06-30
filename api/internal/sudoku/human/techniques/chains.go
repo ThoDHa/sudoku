@@ -22,6 +22,8 @@ func DetectJellyfish(b BoardInterface) *core.Move {
 }
 
 // detectJellyfishInDirection finds Jellyfish in the specified direction (rows or columns)
+//
+//nolint:gocyclo // Jellyfish detection enumerates all 4-combinations of source lines per digit per direction, with the per-combination validation (column-count, elimination-collection, target building) sharing the line-size map and perp sets across phases.
 func detectJellyfishInDirection(b BoardInterface, digit int, dir UnitType) *core.Move {
 	// Build map of primary unit -> secondary positions where digit appears
 	unitPositions := make(map[int][]int)
@@ -168,6 +170,7 @@ func DetectXChain(b BoardInterface) *core.Move {
 	return nil
 }
 
+//nolint:gocyclo // Conjugate graph construction walks three unit kinds and threads the per-cell pair-count state through the edge-emission check; the three unit iterations all consume the same digit-positions accumulator.
 func buildConjugateGraph(b BoardInterface, digit int) map[int][]int {
 	conjugates := make(map[int][]int)
 
@@ -230,46 +233,8 @@ func findXChainFrom(b BoardInterface, digit int, start int, conjugates map[int][
 
 		// Look for eliminations: cells that see both ends of an even-length chain
 		if len(node.path) >= 4 && len(node.path)%2 == 0 {
-			chainStart := node.path[0]
-			chainEnd := node.cell
-
-			for i := 0; i < constants.TotalCells; i++ {
-				if !b.GetCandidatesAt(i).Has(digit) {
-					continue
-				}
-				// Skip cells in the chain
-				inChain := false
-				for _, c := range node.path {
-					if i == c {
-						inChain = true
-						break
-					}
-				}
-				if inChain {
-					continue
-				}
-
-				// Must see both ends
-				if ArePeers(i, chainStart) && ArePeers(i, chainEnd) {
-					var targets []core.CellRef
-					for _, c := range node.path {
-						targets = append(targets, core.CellRef{Row: c / constants.GridSize, Col: c % constants.GridSize})
-					}
-
-					return &core.Move{
-						Action:  "eliminate",
-						Digit:   digit,
-						Targets: targets,
-						Eliminations: []core.Candidate{
-							{Row: i / constants.GridSize, Col: i % constants.GridSize, Digit: digit},
-						},
-						Explanation: fmt.Sprintf("X-Chain: sees both ends of chain: eliminate %d from R%dC%d.", digit, i/constants.GridSize+1, i%constants.GridSize+1),
-						Highlights: core.Highlights{
-							Primary:   targets,
-							Secondary: []core.CellRef{{Row: i / constants.GridSize, Col: i % constants.GridSize}},
-						},
-					}
-				}
+			if move := findChainEndpointElimination(b, digit, node.path, "X-Chain: sees both ends of chain: eliminate %d from R%dC%d."); move != nil {
+				return move
 			}
 		}
 
@@ -287,7 +252,61 @@ func findXChainFrom(b BoardInterface, digit int, start int, conjugates map[int][
 	return nil
 }
 
+// findChainEndpointElimination scans for a cell (outside path) that holds digit
+// as a candidate and sees both ends of path. If found, it returns an eliminate
+// move whose explanation is produced by formatting explanationFmt with the
+// digit, row+1, and col+1 of the eliminated cell.
+func findChainEndpointElimination(b BoardInterface, digit int, path []int, explanationFmt string) *core.Move {
+	if len(path) < 2 {
+		return nil
+	}
+	chainStart := path[0]
+	chainEnd := path[len(path)-1]
+	pathSet := map[int]bool{}
+	for _, c := range path {
+		pathSet[c] = true
+	}
+	targets := pathCellRefs(path)
+	for i := 0; i < constants.TotalCells; i++ {
+		if !b.GetCandidatesAt(i).Has(digit) {
+			continue
+		}
+		if pathSet[i] {
+			continue
+		}
+		if !ArePeers(i, chainStart) || !ArePeers(i, chainEnd) {
+			continue
+		}
+		row, col := i/constants.GridSize, i%constants.GridSize
+		return &core.Move{
+			Action:  "eliminate",
+			Digit:   digit,
+			Targets: targets,
+			Eliminations: []core.Candidate{
+				{Row: row, Col: col, Digit: digit},
+			},
+			Explanation: fmt.Sprintf(explanationFmt, digit, row+1, col+1),
+			Highlights: core.Highlights{
+				Primary:   targets,
+				Secondary: []core.CellRef{{Row: row, Col: col}},
+			},
+		}
+	}
+	return nil
+}
+
+// pathCellRefs converts a chain path (cell indices) to CellRefs for highlighting.
+func pathCellRefs(path []int) []core.CellRef {
+	refs := make([]core.CellRef, len(path))
+	for i, c := range path {
+		refs[i] = core.CellRef{Row: c / constants.GridSize, Col: c % constants.GridSize}
+	}
+	return refs
+}
+
 // DetectXYChain finds XY-Chain pattern: a chain of bivalue cells
+//
+//nolint:gocyclo // XY-Chain driver threads bivalue-cell adjacency, BFS queue state, and chain-extension validation through one BFS body; the extension step needs the per-cell adjacency and the visited set built in the outer scan.
 func DetectXYChain(b BoardInterface) *core.Move {
 	// Find all bivalue cells
 	var bivalue []int
@@ -339,6 +358,7 @@ func DetectXYChain(b BoardInterface) *core.Move {
 	return nil
 }
 
+//nolint:gocyclo // XY-Chain BFS threads chain state (visited set, path, current/end candidates) through queue pops, neighbor extension, and end-condition elimination checks; the per-iteration state mutations and the elimination logic share the running path/candidate view.
 func findXYChainFrom(b BoardInterface, start int, adj map[int][]struct {
 	cell       int
 	sharedCand int
@@ -377,44 +397,8 @@ func findXYChainFrom(b BoardInterface, start int, adj map[int][]struct {
 			// Check for eliminations: if start's startCand == end's endCand,
 			// cells seeing both can eliminate that digit
 			if len(n.path) >= 3 && startCand == n.endCand {
-				chainStart := n.path[0]
-				chainEnd := n.cell
-
-				for i := 0; i < constants.TotalCells; i++ {
-					if !b.GetCandidatesAt(i).Has(startCand) {
-						continue
-					}
-					inChain := false
-					for _, c := range n.path {
-						if i == c {
-							inChain = true
-							break
-						}
-					}
-					if inChain {
-						continue
-					}
-
-					if ArePeers(i, chainStart) && ArePeers(i, chainEnd) {
-						var targets []core.CellRef
-						for _, c := range n.path {
-							targets = append(targets, core.CellRef{Row: c / constants.GridSize, Col: c % constants.GridSize})
-						}
-
-						return &core.Move{
-							Action:  "eliminate",
-							Digit:   startCand,
-							Targets: targets,
-							Eliminations: []core.Candidate{
-								{Row: i / constants.GridSize, Col: i % constants.GridSize, Digit: startCand},
-							},
-							Explanation: fmt.Sprintf("XY-Chain: eliminate %d from R%dC%d.", startCand, i/constants.GridSize+1, i%constants.GridSize+1),
-							Highlights: core.Highlights{
-								Primary:   targets,
-								Secondary: []core.CellRef{{Row: i / constants.GridSize, Col: i % constants.GridSize}},
-							},
-						}
-					}
+				if move := findChainEndpointElimination(b, startCand, n.path, "XY-Chain: eliminate %d from R%dC%d."); move != nil {
+					return move
 				}
 			}
 
@@ -451,6 +435,8 @@ func findXYChainFrom(b BoardInterface, start int, adj map[int][]struct {
 
 // DetectWWing finds W-Wing pattern: two bivalue cells with same candidates,
 // connected by a strong link on one of the candidates
+//
+//nolint:gocyclo // W-Wing searches bivalue-cell pairs across three peer relationships (same row, same col, same box) for the strong-link bridge that justifies elimination; the three relationship branches share the bivalue-cell scan and the bridge-search state.
 func DetectWWing(b BoardInterface) *core.Move {
 	// Find all bivalue cells
 	var bivalue []struct {
@@ -565,6 +551,8 @@ func DetectWWing(b BoardInterface) *core.Move {
 // An empty rectangle is a box where all candidates for a digit are in an L-shape
 // (all in one row + one column within the box). Combined with a strong link (conjugate pair)
 // in a line outside the box, this can eliminate candidates.
+//
+//nolint:gocyclo // Empty Rectangle detection spans a 5-level nested search (digit × box × ER row/col × perpendicular cells × conjugate-pair strategies). The two strategies share box/row/col state computed at outer levels; splitting them apart would duplicate that derivation or require a wide intermediate-state struct.
 func DetectEmptyRectangle(b BoardInterface) *core.Move {
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		for box := 0; box < constants.GridSize; box++ {
@@ -635,66 +623,18 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 					// intersecting with erCol
 					for linkCol := 0; linkCol < constants.GridSize; linkCol++ {
 						if linkCol >= boxColStart && linkCol < boxColStart+constants.BoxSize {
-							continue // Skip columns in the ER box
-						}
-
-						// Find all candidates in this column
-						var colPositions []int
-						for r := 0; r < constants.GridSize; r++ {
-							if b.GetCandidatesAt(r*constants.GridSize + linkCol).Has(digit) {
-								colPositions = append(colPositions, r)
-							}
-						}
-
-						// Need exactly 2 candidates to form a conjugate pair
-						if len(colPositions) != 2 {
 							continue
 						}
-
-						// Check if one of them is in erRow
-						linkRow := -1
-						for _, r := range colPositions {
-							if r == erRow {
-								// Found the connection - the other position is the link
-								for _, r2 := range colPositions {
-									if r2 != erRow {
-										linkRow = r2
-									}
-								}
-								break
-							}
+						colPositions := digitPositionsInLine(b, digit, linkCol, false)
+						linkRow, ok := findConjugateLink(colPositions, erRow)
+						if !ok {
+							continue
 						}
-
-						if linkRow < 0 {
-							continue // No connection to erRow
-						}
-
-						// Now we can eliminate from (linkRow, erCol) if it has the digit
-						// AND the target is outside the ER box
 						if linkRow >= boxRowStart && linkRow < boxRowStart+constants.BoxSize {
-							continue // Target would be inside the ER box
+							continue
 						}
-						targetIdx := linkRow*constants.GridSize + erCol
-						if b.GetCandidatesAt(targetIdx).Has(digit) {
-							var targets []core.CellRef
-							for _, p := range positions {
-								targets = append(targets, core.CellRef{Row: p / constants.GridSize, Col: p % constants.GridSize})
-							}
-
-							return &core.Move{
-								Action:  "eliminate",
-								Digit:   digit,
-								Targets: targets,
-								Eliminations: []core.Candidate{
-									{Row: linkRow, Col: erCol, Digit: digit},
-								},
-								Explanation: fmt.Sprintf("Empty Rectangle: %d in box %d with conjugate pair in C%d: eliminate from R%dC%d.",
-									digit, box+1, linkCol+1, linkRow+1, erCol+1),
-								Highlights: core.Highlights{
-									Primary:   targets,
-									Secondary: []core.CellRef{{Row: linkRow, Col: erCol}},
-								},
-							}
+						if m := buildERMove(b, digit, box, positions, linkRow, erCol, linkCol, false); m != nil {
+							return m
 						}
 					}
 
@@ -703,67 +643,18 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 					// intersecting with erRow
 					for linkRow := 0; linkRow < constants.GridSize; linkRow++ {
 						if linkRow >= boxRowStart && linkRow < boxRowStart+constants.BoxSize {
-							continue // Skip rows in the ER box
-						}
-
-						// Find all candidates in this row
-						var rowPositions []int
-						for c := 0; c < constants.GridSize; c++ {
-							if b.GetCandidatesAt(linkRow*constants.GridSize + c).Has(digit) {
-								rowPositions = append(rowPositions, c)
-							}
-						}
-
-						// Need exactly 2 candidates to form a conjugate pair
-						if len(rowPositions) != 2 {
 							continue
 						}
-
-						// Check if one of them is in erCol
-						linkCol := -1
-						for _, c := range rowPositions {
-							if c == erCol {
-								// Found the connection - the other position is the link
-								for _, c2 := range rowPositions {
-									if c2 != erCol {
-										linkCol = c2
-									}
-								}
-								break
-							}
+						rowPositions := digitPositionsInLine(b, digit, linkRow, true)
+						linkCol, ok := findConjugateLink(rowPositions, erCol)
+						if !ok {
+							continue
 						}
-
-						if linkCol < 0 {
-							continue // No connection to erCol
-						}
-
-						// The elimination target must be outside the ER box
 						if linkCol >= boxColStart && linkCol < boxColStart+constants.BoxSize {
-							continue // Target would be inside the ER box
+							continue
 						}
-
-						// Now we can eliminate from (erRow, linkCol) if it has the digit
-						targetIdx := erRow*constants.GridSize + linkCol
-						if b.GetCandidatesAt(targetIdx).Has(digit) {
-							var targets []core.CellRef
-							for _, p := range positions {
-								targets = append(targets, core.CellRef{Row: p / constants.GridSize, Col: p % constants.GridSize})
-							}
-
-							return &core.Move{
-								Action:  "eliminate",
-								Digit:   digit,
-								Targets: targets,
-								Eliminations: []core.Candidate{
-									{Row: erRow, Col: linkCol, Digit: digit},
-								},
-								Explanation: fmt.Sprintf("Empty Rectangle: %d in box %d with conjugate pair in R%d: eliminate from R%dC%d.",
-									digit, box+1, linkRow+1, erRow+1, linkCol+1),
-								Highlights: core.Highlights{
-									Primary:   targets,
-									Secondary: []core.CellRef{{Row: erRow, Col: linkCol}},
-								},
-							}
+						if m := buildERMove(b, digit, box, positions, erRow, linkCol, linkRow, true); m != nil {
+							return m
 						}
 					}
 				}
@@ -772,4 +663,75 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 	}
 
 	return nil
+}
+
+// digitPositionsInLine returns the perpendicular coordinates (row indices for a
+// column, column indices for a row) where digit appears as a candidate in the
+// line at index lineIdx.
+func digitPositionsInLine(b BoardInterface, digit, lineIdx int, byRow bool) []int {
+	var positions []int
+	for k := 0; k < constants.GridSize; k++ {
+		var idx int
+		if byRow {
+			idx = lineIdx*constants.GridSize + k
+		} else {
+			idx = k*constants.GridSize + lineIdx
+		}
+		if b.GetCandidatesAt(idx).Has(digit) {
+			positions = append(positions, k)
+		}
+	}
+	return positions
+}
+
+// findConjugateLink returns the "other" element of a length-2 positions slice
+// when one element equals anchor. ok is false if positions is not a conjugate
+// pair or does not contain anchor.
+func findConjugateLink(positions []int, anchor int) (int, bool) {
+	if len(positions) != 2 {
+		return 0, false
+	}
+	if positions[0] == anchor {
+		return positions[1], true
+	}
+	if positions[1] == anchor {
+		return positions[0], true
+	}
+	return 0, false
+}
+
+// buildERMove returns the Empty Rectangle elimination move for a target cell at
+// (targetRow, targetCol) if that cell holds digit as a candidate. linkLineIdx is
+// the row or column holding the conjugate pair; byRow indicates which (true for
+// row, false for column), and selects the explanation format.
+func buildERMove(b BoardInterface, digit, box int, erPositions []int, targetRow, targetCol, linkLineIdx int, byRow bool) *core.Move {
+	targetIdx := targetRow*constants.GridSize + targetCol
+	if !b.GetCandidatesAt(targetIdx).Has(digit) {
+		return nil
+	}
+	targets := make([]core.CellRef, len(erPositions))
+	for i, p := range erPositions {
+		targets[i] = core.CellRef{Row: p / constants.GridSize, Col: p % constants.GridSize}
+	}
+	var explanation string
+	if byRow {
+		explanation = fmt.Sprintf("Empty Rectangle: %d in box %d with conjugate pair in R%d: eliminate from R%dC%d.",
+			digit, box+1, linkLineIdx+1, targetRow+1, targetCol+1)
+	} else {
+		explanation = fmt.Sprintf("Empty Rectangle: %d in box %d with conjugate pair in C%d: eliminate from R%dC%d.",
+			digit, box+1, linkLineIdx+1, targetRow+1, targetCol+1)
+	}
+	return &core.Move{
+		Action:  "eliminate",
+		Digit:   digit,
+		Targets: targets,
+		Eliminations: []core.Candidate{
+			{Row: targetRow, Col: targetCol, Digit: digit},
+		},
+		Explanation: explanation,
+		Highlights: core.Highlights{
+			Primary:   targets,
+			Secondary: []core.CellRef{{Row: targetRow, Col: targetCol}},
+		},
+	}
 }

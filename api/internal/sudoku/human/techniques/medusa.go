@@ -41,6 +41,8 @@ func (cp candidatePair) key() int {
 // Connections are made through:
 // 1. Same cell, different candidate -> opposite color (bivalue connection)
 // 2. Same candidate, conjugate pair in unit -> opposite color (strong link)
+//
+//nolint:gocyclo // 3D Medusa threads colored-pair state (color1, color2, color sets, per-digit buckets) through five distinct contradiction checks; each check consumes the coloring state built by BFS, and decomposition passes that coloring state to each helper.
 func DetectMedusa3D(b BoardInterface) *core.Move {
 	// Build the 3D Medusa graph
 	// For each bivalue cell and each strong link, we have connections
@@ -241,12 +243,10 @@ func checkSameCellContradiction(b BoardInterface, colorToCheck, otherColor []can
 			}
 
 			if len(eliminations) > 0 {
-				// Collect all colored cells for highlighting
-				allPairs := append(colorToCheck, otherColor...)
 				return &core.Move{
 					Action:       "eliminate",
 					Digit:        0,
-					Targets:      pairsToTargets(allPairs),
+					Targets:      pairsToTargetsMulti(colorToCheck, otherColor),
 					Eliminations: eliminations,
 					Explanation: fmt.Sprintf("3D Medusa: Color %d has two candidates in R%dC%d: eliminate all color %d.",
 						colorNum, cell/constants.GridSize+1, cell%constants.GridSize+1, colorNum),
@@ -286,11 +286,10 @@ func checkSameUnitContradiction(b BoardInterface, colorToCheck, otherColor []can
 					}
 
 					if len(eliminations) > 0 {
-						allPairs := append(colorToCheck, otherColor...)
 						return &core.Move{
 							Action:       "eliminate",
 							Digit:        0,
-							Targets:      pairsToTargets(allPairs),
+							Targets:      pairsToTargetsMulti(colorToCheck, otherColor),
 							Eliminations: eliminations,
 							Explanation: fmt.Sprintf("3D Medusa: Color %d has %d twice in same unit (R%dC%d, R%dC%d): eliminate all color %d.",
 								colorNum, digit, pairs[i].cell/constants.GridSize+1, pairs[i].cell%constants.GridSize+1,
@@ -311,6 +310,8 @@ func checkSameUnitContradiction(b BoardInterface, colorToCheck, otherColor []can
 
 // checkUncoloredSeesBothColors finds uncolored candidates that see the same digit in both colors (Rule 4)
 // If an uncolored candidate sees the same digit in both Color 1 and Color 2 in its units, eliminate it
+//
+//nolint:gocyclo // checkUncoloredSeesBothColors inspects every uncolored candidate against both color sets across three relationships (same cell, same unit, bivalue cell), each sharing the color-by-digit index built at the top of the function.
 func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePair, colors map[int]int) *core.Move {
 	// Build sets for the current component's colors
 	// This is crucial: we only consider candidates from THIS component
@@ -374,7 +375,6 @@ func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePa
 			}
 
 			if seesColor1 && seesColor2 {
-				allPairs := append(color1, color2...)
 				return &core.Move{
 					Action: "eliminate",
 					Digit:  digit,
@@ -388,7 +388,7 @@ func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePa
 						cell/constants.GridSize+1, cell%constants.GridSize+1, digit, digit),
 					Highlights: core.Highlights{
 						Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
-						Secondary: pairsToTargets(allPairs),
+						Secondary: pairsToTargetsMulti(color1, color2),
 					},
 				}
 			}
@@ -410,6 +410,23 @@ func pairsToTargets(pairs []candidatePair) []core.CellRef {
 		}
 	}
 
+	return targets
+}
+
+// pairsToTargetsMulti builds a deduplicated CellRef list from multiple
+// candidatePair groups. It exists to avoid appendAssign warnings from
+// `pairsToTargets(append(a, b...))` patterns at multiple call sites.
+func pairsToTargetsMulti(groups ...[]candidatePair) []core.CellRef {
+	seen := make(map[int]bool)
+	var targets []core.CellRef
+	for _, g := range groups {
+		for _, cp := range g {
+			if !seen[cp.cell] {
+				seen[cp.cell] = true
+				targets = append(targets, core.CellRef{Row: cp.cell / constants.GridSize, Col: cp.cell % constants.GridSize})
+			}
+		}
+	}
 	return targets
 }
 
@@ -453,7 +470,6 @@ func checkUncoloredInBicoloredCell(b BoardInterface, color1, color2 []candidateP
 			cp := candidatePair{cell, digit}
 			if !color1Set[cp.key()] && !color2Set[cp.key()] {
 				// Found an uncolored candidate in a bicolored cell - eliminate it
-				allPairs := append(color1, color2...)
 				return &core.Move{
 					Action: "eliminate",
 					Digit:  digit,
@@ -467,7 +483,7 @@ func checkUncoloredInBicoloredCell(b BoardInterface, color1, color2 []candidateP
 						cell/constants.GridSize+1, cell%constants.GridSize+1, digit),
 					Highlights: core.Highlights{
 						Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
-						Secondary: pairsToTargets(allPairs),
+						Secondary: pairsToTargetsMulti(color1, color2),
 					},
 				}
 			}
@@ -480,6 +496,8 @@ func checkUncoloredInBicoloredCell(b BoardInterface, color1, color2 []candidateP
 // checkUncoloredSeesColorAndOppositeInCell checks for uncolored candidates that
 // see one color in a unit AND have the opposite color in the same cell (Rule 5)
 // This hybrid rule catches candidates that Rules 3 and 4 miss individually
+//
+//nolint:gocyclo // checkUncoloredSeesColorAndOppositeInCell mirrors checkUncoloredSeesBothColors for the "sees color N in unit, has color !N in cell" pattern, sharing the same color-by-digit index and per-cell color maps.
 func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 []candidatePair, colors map[int]int) *core.Move {
 	// Build sets for the current component's colors
 	// This is crucial: we only consider candidates from THIS component
@@ -530,7 +548,6 @@ func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 [
 				for _, c1 := range color1ByDigit[digit] {
 					if ArePeers(cell, c1) {
 						// Elimination: sees Color1 in unit, has Color2 in cell
-						allPairs := append(color1, color2...)
 						return &core.Move{
 							Action: "eliminate",
 							Digit:  digit,
@@ -544,7 +561,7 @@ func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 [
 								cell/constants.GridSize+1, cell%constants.GridSize+1, digit, digit),
 							Highlights: core.Highlights{
 								Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
-								Secondary: pairsToTargets(allPairs),
+								Secondary: pairsToTargetsMulti(color1, color2),
 							},
 						}
 					}
@@ -557,7 +574,6 @@ func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 [
 				for _, c2 := range color2ByDigit[digit] {
 					if ArePeers(cell, c2) {
 						// Elimination: sees Color2 in unit, has Color1 in cell
-						allPairs := append(color1, color2...)
 						return &core.Move{
 							Action: "eliminate",
 							Digit:  digit,
@@ -571,7 +587,7 @@ func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 [
 								cell/constants.GridSize+1, cell%constants.GridSize+1, digit, digit),
 							Highlights: core.Highlights{
 								Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
-								Secondary: pairsToTargets(allPairs),
+								Secondary: pairsToTargetsMulti(color1, color2),
 							},
 						}
 					}
@@ -629,17 +645,16 @@ func checkAllCandidatesSameColor(b BoardInterface, colorToCheck, otherColor []ca
 			}
 
 			if len(eliminations) > 0 {
-				allPairs := append(colorToCheck, otherColor...)
 				return &core.Move{
 					Action:       "eliminate",
 					Digit:        0,
-					Targets:      pairsToTargets(allPairs),
+					Targets:      pairsToTargetsMulti(colorToCheck, otherColor),
 					Eliminations: eliminations,
 					Explanation: fmt.Sprintf("3D Medusa: R%dC%d has all candidates in color %d: eliminate all color %d.",
 						cell/constants.GridSize+1, cell%constants.GridSize+1, colorNum, colorNum),
 					Highlights: core.Highlights{
 						Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
-						Secondary: pairsToTargets(allPairs),
+						Secondary: pairsToTargetsMulti(colorToCheck, otherColor),
 					},
 				}
 			}

@@ -13,9 +13,20 @@ linters:
     - staticcheck
     - unconvert
     - whitespace
+    - gocritic
+    - gocyclo
+    - dupl
   settings:
     misspell:
       locale: US
+    gocyclo:
+      min-complexity: 10
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+      disabled-tags:
+        - opinionated
     revive:
       rules:
         - name: blank-imports
@@ -44,11 +55,22 @@ linters:
       - legacy
       - std-error-handling
     rules:
-      # Relax strict checks on test files
+      # Test files get relaxed treatment across several linters:
+      #   - bodyclose/errcheck/gosec: test fixtures intentionally skip
+      #     boilerplate close/error checks for readability.
+      #   - gocyclo: table-driven tests with many sub-cases legitimately
+      #     score high cyclomatic complexity without being hard to follow.
+      #   - gocritic: stylistic checks like httpNoBody and ifElseChain flag
+      #     common, harmless test idioms.
+      #   - dupl: repeated request-setup blocks are the norm in HTTP handler
+      #     tests; collapsing them into helpers would hurt readability.
       - linters:
           - bodyclose
           - errcheck
           - gosec
+          - gocyclo
+          - gocritic
+          - dupl
         path: _test\.go
       # Sudoku human-solving techniques use complex algorithms; relax gosec
       - linters:

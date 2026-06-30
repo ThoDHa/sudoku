@@ -18,73 +18,142 @@ func DetectNakedTriple(b BoardInterface) *core.Move {
 }
 
 func findNakedTripleInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
-	// Find cells with 2-3 candidates
+	return findNakedSubsetInUnit(b, 3, "Naked Triple", indices, unitType, unitNum)
+}
+
+// findNakedSubsetInUnit searches a unit for N cells whose candidates union to
+// exactly N digits, and returns the elimination move for those digits in the
+// unit's other cells. subsetSize is 3 (triple) or 4 (quad); name labels the
+// technique in the explanation.
+func findNakedSubsetInUnit(b BoardInterface, subsetSize int, name string, indices []int, unitType string, unitNum int) *core.Move {
 	var candidates []int
 	for _, idx := range indices {
 		n := b.GetCandidatesAt(idx).Count()
-		if n >= 2 && n <= 3 {
+		if n >= 2 && n <= subsetSize {
 			candidates = append(candidates, idx)
 		}
 	}
-
-	if len(candidates) < 3 {
+	if len(candidates) < subsetSize {
 		return nil
 	}
+	var found *core.Move
+	combinationsSizeK(candidates, subsetSize, func(combo []int) bool {
+		m := tryNakedSubset(b, combo, indices, unitType, unitNum, name)
+		if m != nil {
+			found = m
+			return true
+		}
+		return false
+	})
+	return found
+}
 
-	// Try all combinations of 3
-	for i := 0; i < len(candidates); i++ {
-		for j := i + 1; j < len(candidates); j++ {
-			for k := j + 1; k < len(candidates); k++ {
-				idx1, idx2, idx3 := candidates[i], candidates[j], candidates[k]
-
-				// Union of candidates
-				union := b.GetCandidatesAt(idx1).Union(b.GetCandidatesAt(idx2)).Union(b.GetCandidatesAt(idx3))
-
-				if union.Count() != 3 {
-					continue
-				}
-
-				digits := union.ToSlice()
-
-				// Find eliminations
-				var eliminations []core.Candidate
-				for _, idx := range indices {
-					if idx == idx1 || idx == idx2 || idx == idx3 {
-						continue
-					}
-					for _, d := range digits {
-						if b.GetCandidatesAt(idx).Has(d) {
-							eliminations = append(eliminations, core.Candidate{
-								Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: d,
-							})
-						}
-					}
-				}
-
-				if len(eliminations) > 0 {
-					return &core.Move{
-						Action: "eliminate",
-						Targets: []core.CellRef{
-							{Row: idx1 / constants.GridSize, Col: idx1 % constants.GridSize},
-							{Row: idx2 / constants.GridSize, Col: idx2 % constants.GridSize},
-							{Row: idx3 / constants.GridSize, Col: idx3 % constants.GridSize},
-						},
-						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("Naked Triple {%d,%d,%d} in %s %d", digits[0], digits[1], digits[2], unitType, unitNum),
-						Highlights: core.Highlights{
-							Primary: []core.CellRef{
-								{Row: idx1 / constants.GridSize, Col: idx1 % constants.GridSize},
-								{Row: idx2 / constants.GridSize, Col: idx2 % constants.GridSize},
-								{Row: idx3 / constants.GridSize, Col: idx3 % constants.GridSize},
-							},
-						},
-					}
-				}
+// tryNakedSubset validates one combination of cells as a naked subset and
+// returns the elimination move if the union of candidates equals subsetSize and
+// produces eliminations in other unit cells.
+func tryNakedSubset(b BoardInterface, subsetCells []int, unitCells []int, unitType string, unitNum int, name string) *core.Move {
+	union := Candidates(0)
+	for _, c := range subsetCells {
+		union = union.Union(b.GetCandidatesAt(c))
+	}
+	if union.Count() != len(subsetCells) {
+		return nil
+	}
+	digits := union.ToSlice()
+	skip := map[int]bool{}
+	for _, c := range subsetCells {
+		skip[c] = true
+	}
+	var eliminations []core.Candidate
+	for _, idx := range unitCells {
+		if skip[idx] {
+			continue
+		}
+		for _, d := range digits {
+			if b.GetCandidatesAt(idx).Has(d) {
+				eliminations = append(eliminations, core.Candidate{
+					Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: d,
+				})
 			}
 		}
 	}
+	if len(eliminations) == 0 {
+		return nil
+	}
+	targets := indicesToCellRefs(subsetCells)
+	return &core.Move{
+		Action:       "eliminate",
+		Targets:      targets,
+		Eliminations: eliminations,
+		Explanation:  fmt.Sprintf("%s %s in %s %d", name, formatDigitsBraced(digits), unitType, unitNum),
+		Highlights:   core.Highlights{Primary: targets},
+	}
+}
 
-	return nil
+// combinationsSizeK iterates all k-combinations of items in lexicographic order,
+// invoking fn for each. fn returns true to stop iteration early.
+func combinationsSizeK(items []int, k int, fn func(combo []int) bool) {
+	n := len(items)
+	if k < 0 || k > n {
+		return
+	}
+	indices := make([]int, k)
+	for i := 0; i < k; i++ {
+		indices[i] = i
+	}
+	combo := make([]int, k)
+	for {
+		for i, idx := range indices {
+			combo[i] = items[idx]
+		}
+		if fn(combo) {
+			return
+		}
+		if !advanceCombination(indices, n) {
+			return
+		}
+	}
+}
+
+// advanceCombination moves indices to the next lexicographic k-combination of
+// n items, returning false when the last combination has been passed.
+func advanceCombination(indices []int, n int) bool {
+	k := len(indices)
+	i := k - 1
+	for i >= 0 && indices[i] == i+n-k {
+		i--
+	}
+	if i < 0 {
+		return false
+	}
+	indices[i]++
+	for j := i + 1; j < k; j++ {
+		indices[j] = indices[j-1] + 1
+	}
+	return true
+}
+
+// indicesToCellRefs converts a slice of cell indices to CellRefs.
+func indicesToCellRefs(cells []int) []core.CellRef {
+	refs := make([]core.CellRef, len(cells))
+	for i, c := range cells {
+		refs[i] = core.CellRef{Row: c / constants.GridSize, Col: c % constants.GridSize}
+	}
+	return refs
+}
+
+// formatDigitsBraced formats digits as "{1,2,3}" (compact, no spaces).
+func formatDigitsBraced(digits []int) string {
+	var b []byte
+	b = append(b, '{')
+	for i, d := range digits {
+		if i > 0 {
+			b = append(b, ',')
+		}
+		b = append(b, fmt.Sprintf("%d", d)...)
+	}
+	b = append(b, '}')
+	return string(b)
 }
 
 // DetectHiddenTriple finds three digits that only appear in three cells within a unit
@@ -98,7 +167,15 @@ func DetectHiddenTriple(b BoardInterface) *core.Move {
 }
 
 func findHiddenTripleInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
-	digitPositions := make(map[int][]int)
+	return findHiddenSubsetInUnit(b, 3, "Hidden Triple", indices, unitType, unitNum)
+}
+
+// findHiddenSubsetInUnit searches a unit for N digits whose candidate positions
+// union to exactly N cells, and returns the elimination move for the cells'
+// other candidates. subsetSize is 3 (triple) or 4 (quad); name labels the
+// technique in the explanation.
+func findHiddenSubsetInUnit(b BoardInterface, subsetSize int, name string, indices []int, unitType string, unitNum int) *core.Move {
+	digitPositions := map[int][]int{}
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		for _, idx := range indices {
 			if b.GetCandidatesAt(idx).Has(digit) {
@@ -106,82 +183,66 @@ func findHiddenTripleInUnit(b BoardInterface, indices []int, unitType string, un
 			}
 		}
 	}
-
-	// Find digits that appear in 2-3 cells
 	var smallDigits []int
 	for digit, positions := range digitPositions {
-		if len(positions) >= 2 && len(positions) <= 3 {
+		if len(positions) >= 2 && len(positions) <= subsetSize {
 			smallDigits = append(smallDigits, digit)
 		}
 	}
-
-	if len(smallDigits) < 3 {
+	if len(smallDigits) < subsetSize {
 		return nil
 	}
+	var found *core.Move
+	combinationsSizeK(smallDigits, subsetSize, func(combo []int) bool {
+		m := tryHiddenSubset(b, combo, digitPositions, unitType, unitNum, name)
+		if m != nil {
+			found = m
+			return true
+		}
+		return false
+	})
+	return found
+}
 
-	// Try all combinations of 3 digits
-	for i := 0; i < len(smallDigits); i++ {
-		for j := i + 1; j < len(smallDigits); j++ {
-			for k := j + 1; k < len(smallDigits); k++ {
-				d1, d2, d3 := smallDigits[i], smallDigits[j], smallDigits[k]
-
-				// Union of positions
-				posUnion := make(map[int]bool)
-				for _, idx := range digitPositions[d1] {
-					posUnion[idx] = true
-				}
-				for _, idx := range digitPositions[d2] {
-					posUnion[idx] = true
-				}
-				for _, idx := range digitPositions[d3] {
-					posUnion[idx] = true
-				}
-
-				if len(posUnion) != 3 {
-					continue
-				}
-
-				// Found a hidden triple
-				var cells []int
-				for idx := range posUnion {
-					cells = append(cells, idx)
-				}
-
-				var eliminations []core.Candidate
-				for _, idx := range cells {
-					for _, d := range b.GetCandidatesAt(idx).ToSlice() {
-						if d != d1 && d != d2 && d != d3 {
-							eliminations = append(eliminations, core.Candidate{
-								Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: d,
-							})
-						}
-					}
-				}
-
-				if len(eliminations) > 0 {
-					return &core.Move{
-						Action: "eliminate",
-						Targets: []core.CellRef{
-							{Row: cells[0] / constants.GridSize, Col: cells[0] % constants.GridSize},
-							{Row: cells[1] / constants.GridSize, Col: cells[1] % constants.GridSize},
-							{Row: cells[2] / constants.GridSize, Col: cells[2] % constants.GridSize},
-						},
-						Eliminations: eliminations,
-						Explanation:  fmt.Sprintf("Hidden Triple {%d,%d,%d} in %s %d", d1, d2, d3, unitType, unitNum),
-						Highlights: core.Highlights{
-							Primary: []core.CellRef{
-								{Row: cells[0] / constants.GridSize, Col: cells[0] % constants.GridSize},
-								{Row: cells[1] / constants.GridSize, Col: cells[1] % constants.GridSize},
-								{Row: cells[2] / constants.GridSize, Col: cells[2] % constants.GridSize},
-							},
-						},
-					}
-				}
+// tryHiddenSubset validates one combination of digits as a hidden subset and
+// returns the elimination move if the union of their positions equals the digit
+// count and produces eliminations of other digits in those cells.
+func tryHiddenSubset(b BoardInterface, subsetDigits []int, digitPositions map[int][]int, unitType string, unitNum int, name string) *core.Move {
+	posUnion := map[int]bool{}
+	for _, d := range subsetDigits {
+		for _, idx := range digitPositions[d] {
+			posUnion[idx] = true
+		}
+	}
+	if len(posUnion) != len(subsetDigits) {
+		return nil
+	}
+	cells := make([]int, 0, len(posUnion))
+	for idx := range posUnion {
+		cells = append(cells, idx)
+	}
+	digitSet := NewCandidates(subsetDigits)
+	var eliminations []core.Candidate
+	for _, idx := range cells {
+		for _, d := range b.GetCandidatesAt(idx).ToSlice() {
+			if !digitSet.Has(d) {
+				eliminations = append(eliminations, core.Candidate{
+					Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: d,
+				})
 			}
 		}
 	}
-
-	return nil
+	if len(eliminations) == 0 {
+		return nil
+	}
+	targets := indicesToCellRefs(cells)
+	return &core.Move{
+		Action:       "eliminate",
+		Targets:      targets,
+		Eliminations: eliminations,
+		Explanation:  fmt.Sprintf("%s %s in %s %d", name, formatDigitsBraced(subsetDigits), unitType, unitNum),
+		Highlights:   core.Highlights{Primary: targets},
+	}
 }
 
 // DetectNakedQuad finds four cells with candidates that are a subset of four digits
@@ -195,80 +256,7 @@ func DetectNakedQuad(b BoardInterface) *core.Move {
 }
 
 func findNakedQuadInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
-	var candidates []int
-	for _, idx := range indices {
-		n := b.GetCandidatesAt(idx).Count()
-		if n >= 2 && n <= 4 {
-			candidates = append(candidates, idx)
-		}
-	}
-
-	if len(candidates) < 4 {
-		return nil
-	}
-
-	for i := 0; i < len(candidates); i++ {
-		for j := i + 1; j < len(candidates); j++ {
-			for k := j + 1; k < len(candidates); k++ {
-				for l := k + 1; l < len(candidates); l++ {
-					idxs := []int{candidates[i], candidates[j], candidates[k], candidates[l]}
-
-					union := b.GetCandidatesAt(idxs[0]).Union(b.GetCandidatesAt(idxs[1])).Union(b.GetCandidatesAt(idxs[2])).Union(b.GetCandidatesAt(idxs[3]))
-
-					if union.Count() != 4 {
-						continue
-					}
-
-					digits := union.ToSlice()
-
-					var eliminations []core.Candidate
-					for _, idx := range indices {
-						isQuad := false
-						for _, qi := range idxs {
-							if idx == qi {
-								isQuad = true
-								break
-							}
-						}
-						if isQuad {
-							continue
-						}
-						for _, d := range digits {
-							if b.GetCandidatesAt(idx).Has(d) {
-								eliminations = append(eliminations, core.Candidate{
-									Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: d,
-								})
-							}
-						}
-					}
-
-					if len(eliminations) > 0 {
-						return &core.Move{
-							Action: "eliminate",
-							Targets: []core.CellRef{
-								{Row: idxs[0] / constants.GridSize, Col: idxs[0] % constants.GridSize},
-								{Row: idxs[1] / constants.GridSize, Col: idxs[1] % constants.GridSize},
-								{Row: idxs[2] / constants.GridSize, Col: idxs[2] % constants.GridSize},
-								{Row: idxs[3] / constants.GridSize, Col: idxs[3] % constants.GridSize},
-							},
-							Eliminations: eliminations,
-							Explanation:  fmt.Sprintf("Naked Quad {%d,%d,%d,%d} in %s %d", digits[0], digits[1], digits[2], digits[3], unitType, unitNum),
-							Highlights: core.Highlights{
-								Primary: []core.CellRef{
-									{Row: idxs[0] / constants.GridSize, Col: idxs[0] % constants.GridSize},
-									{Row: idxs[1] / constants.GridSize, Col: idxs[1] % constants.GridSize},
-									{Row: idxs[2] / constants.GridSize, Col: idxs[2] % constants.GridSize},
-									{Row: idxs[3] / constants.GridSize, Col: idxs[3] % constants.GridSize},
-								},
-							},
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return nil
+	return findNakedSubsetInUnit(b, 4, "Naked Quad", indices, unitType, unitNum)
 }
 
 // DetectHiddenQuad finds four digits that only appear in four cells
@@ -282,95 +270,5 @@ func DetectHiddenQuad(b BoardInterface) *core.Move {
 }
 
 func findHiddenQuadInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
-	digitPositions := make(map[int][]int)
-	for digit := 1; digit <= constants.GridSize; digit++ {
-		for _, idx := range indices {
-			if b.GetCandidatesAt(idx).Has(digit) {
-				digitPositions[digit] = append(digitPositions[digit], idx)
-			}
-		}
-	}
-
-	// Find digits that appear in 2-4 cells
-	var smallDigits []int
-	for digit, positions := range digitPositions {
-		if len(positions) >= 2 && len(positions) <= 4 {
-			smallDigits = append(smallDigits, digit)
-		}
-	}
-
-	if len(smallDigits) < 4 {
-		return nil
-	}
-
-	// Try all combinations of 4 digits
-	for i := 0; i < len(smallDigits); i++ {
-		for j := i + 1; j < len(smallDigits); j++ {
-			for k := j + 1; k < len(smallDigits); k++ {
-				for l := k + 1; l < len(smallDigits); l++ {
-					d1, d2, d3, d4 := smallDigits[i], smallDigits[j], smallDigits[k], smallDigits[l]
-
-					// Union of positions
-					posUnion := make(map[int]bool)
-					for _, idx := range digitPositions[d1] {
-						posUnion[idx] = true
-					}
-					for _, idx := range digitPositions[d2] {
-						posUnion[idx] = true
-					}
-					for _, idx := range digitPositions[d3] {
-						posUnion[idx] = true
-					}
-					for _, idx := range digitPositions[d4] {
-						posUnion[idx] = true
-					}
-
-					if len(posUnion) != 4 {
-						continue
-					}
-
-					// Found a hidden quad
-					var cells []int
-					for idx := range posUnion {
-						cells = append(cells, idx)
-					}
-
-					var eliminations []core.Candidate
-					for _, idx := range cells {
-						for _, d := range b.GetCandidatesAt(idx).ToSlice() {
-							if d != d1 && d != d2 && d != d3 && d != d4 {
-								eliminations = append(eliminations, core.Candidate{
-									Row: idx / constants.GridSize, Col: idx % constants.GridSize, Digit: d,
-								})
-							}
-						}
-					}
-
-					if len(eliminations) > 0 {
-						return &core.Move{
-							Action: "eliminate",
-							Targets: []core.CellRef{
-								{Row: cells[0] / constants.GridSize, Col: cells[0] % constants.GridSize},
-								{Row: cells[1] / constants.GridSize, Col: cells[1] % constants.GridSize},
-								{Row: cells[2] / constants.GridSize, Col: cells[2] % constants.GridSize},
-								{Row: cells[3] / constants.GridSize, Col: cells[3] % constants.GridSize},
-							},
-							Eliminations: eliminations,
-							Explanation:  fmt.Sprintf("Hidden Quad {%d,%d,%d,%d} in %s %d", d1, d2, d3, d4, unitType, unitNum),
-							Highlights: core.Highlights{
-								Primary: []core.CellRef{
-									{Row: cells[0] / constants.GridSize, Col: cells[0] % constants.GridSize},
-									{Row: cells[1] / constants.GridSize, Col: cells[1] % constants.GridSize},
-									{Row: cells[2] / constants.GridSize, Col: cells[2] % constants.GridSize},
-									{Row: cells[3] / constants.GridSize, Col: cells[3] % constants.GridSize},
-								},
-							},
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return nil
+	return findHiddenSubsetInUnit(b, 4, "Hidden Quad", indices, unitType, unitNum)
 }

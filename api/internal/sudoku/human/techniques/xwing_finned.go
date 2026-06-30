@@ -31,228 +31,184 @@ func DetectFinnedXWing(b BoardInterface) *core.Move {
 }
 
 func detectFinnedXWingInRows(b BoardInterface, digit int) *core.Move {
-	// Find rows with 2-3 candidates for this digit
-	type rowInfo struct {
-		row  int
-		cols []int
-	}
-	var rows []rowInfo
-
-	for row := 0; row < constants.GridSize; row++ {
-		var cols []int
-		for col := 0; col < constants.GridSize; col++ {
-			if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
-				cols = append(cols, col)
-			}
-		}
-		if len(cols) >= 2 && len(cols) <= 3 {
-			rows = append(rows, rowInfo{row, cols})
-		}
-	}
-
-	// Try pairs of rows
-	for i := 0; i < len(rows); i++ {
-		for j := i + 1; j < len(rows); j++ {
-			r1, r2 := rows[i], rows[j]
-
-			// One row should have exactly 2, the other 2 or 3
-			// The row with 3 has the fin
-			var baseRow, finRow rowInfo
-			if len(r1.cols) == 2 && len(r2.cols) == 3 {
-				baseRow, finRow = r1, r2
-			} else if len(r1.cols) == 3 && len(r2.cols) == 2 {
-				baseRow, finRow = r2, r1
-			} else if len(r1.cols) == 2 && len(r2.cols) == 2 {
-				// Both have 2 - not a finned X-wing
-				continue
-			} else {
-				continue
-			}
-
-			// Find common columns and fin column
-			c1, c2 := baseRow.cols[0], baseRow.cols[1]
-			finCol := -1
-			hasC1, hasC2 := false, false
-
-			for _, c := range finRow.cols {
-				switch c {
-				case c1:
-					hasC1 = true
-				case c2:
-					hasC2 = true
-				default:
-					finCol = c
-				}
-			}
-
-			if !hasC1 || !hasC2 || finCol == -1 {
-				continue
-			}
-
-			// The fin must be in the same box as one of the base columns in the fin row
-			finRowBox := finRow.row / constants.BoxSize
-			finColBox := finCol / constants.BoxSize
-
-			// Find which base column the fin shares a box with
-			targetCol := -1
-			if c1/constants.BoxSize == finColBox {
-				targetCol = c1
-			} else if c2/constants.BoxSize == finColBox {
-				targetCol = c2
-			}
-
-			if targetCol == -1 {
-				continue
-			}
-
-			// Eliminations: cells in targetCol that are in the same box-row as the fin
-			// and see the base row's targetCol cell
-			var eliminations []core.Candidate
-			boxRowStart := finRowBox * constants.BoxSize
-			for r := boxRowStart; r < boxRowStart+constants.BoxSize; r++ {
-				if r == finRow.row || r == baseRow.row {
-					continue
-				}
-				idx := r*constants.GridSize + targetCol
-				if b.GetCandidatesAt(idx).Has(digit) {
-					eliminations = append(eliminations, core.Candidate{Row: r, Col: targetCol, Digit: digit})
-				}
-			}
-
-			if len(eliminations) > 0 {
-				return &core.Move{
-					Action: "eliminate",
-					Digit:  digit,
-					Targets: []core.CellRef{
-						{Row: baseRow.row, Col: c1}, {Row: baseRow.row, Col: c2},
-						{Row: finRow.row, Col: c1}, {Row: finRow.row, Col: c2},
-						{Row: finRow.row, Col: finCol},
-					},
-					Eliminations: eliminations,
-					Explanation:  fmt.Sprintf("Finned X-Wing: %d in rows %d,%d with fin at R%dC%d", digit, baseRow.row+1, finRow.row+1, finRow.row+1, finCol+1),
-					Highlights: core.Highlights{
-						Primary: []core.CellRef{
-							{Row: baseRow.row, Col: c1}, {Row: baseRow.row, Col: c2},
-							{Row: finRow.row, Col: c1}, {Row: finRow.row, Col: c2},
-						},
-						Secondary: []core.CellRef{{Row: finRow.row, Col: finCol}},
-					},
-				}
-			}
-		}
-	}
-
-	return nil
+	return detectFinnedXWingInAxis(b, digit, true)
 }
 
 func detectFinnedXWingInCols(b BoardInterface, digit int) *core.Move {
-	// Find columns with 2-3 candidates for this digit
-	type colInfo struct {
-		col  int
-		rows []int
-	}
-	var cols []colInfo
+	return detectFinnedXWingInAxis(b, digit, false)
+}
 
-	for col := 0; col < constants.GridSize; col++ {
-		var rows []int
-		for row := 0; row < constants.GridSize; row++ {
-			if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
-				rows = append(rows, row)
-			}
-		}
-		if len(rows) >= 2 && len(rows) <= 3 {
-			cols = append(cols, colInfo{col, rows})
-		}
-	}
-
-	// Try pairs of columns
-	for i := 0; i < len(cols); i++ {
-		for j := i + 1; j < len(cols); j++ {
-			c1, c2 := cols[i], cols[j]
-
-			// One column should have exactly 2 rows, the other 2 or 3
-			var baseCol, finCol colInfo
-			if len(c1.rows) == 2 && len(c2.rows) == 3 {
-				baseCol, finCol = c1, c2
-			} else if len(c1.rows) == 3 && len(c2.rows) == 2 {
-				baseCol, finCol = c2, c1
-			} else if len(c1.rows) == 2 && len(c2.rows) == 2 {
-				continue
-			} else {
+// detectFinnedXWingInAxis scans for a finned X-Wing in rows (byRow=true) or
+// columns. It looks for a base line holding exactly two perpendicular positions
+// and a finned line whose positions cover those two plus one "fin" position in
+// the same box as one of them, then eliminates along that perpendicular column
+// within the fin's box.
+func detectFinnedXWingInAxis(b BoardInterface, digit int, byRow bool) *core.Move {
+	lines := xwingFinnedLines(b, digit, byRow)
+	for i := 0; i < len(lines); i++ {
+		for j := 0; j < len(lines); j++ {
+			if i == j {
 				continue
 			}
-
-			// Find common rows and fin row
-			r1, r2 := baseCol.rows[0], baseCol.rows[1]
-			finRow := -1
-			hasR1, hasR2 := false, false
-
-			for _, r := range finCol.rows {
-				switch r {
-				case r1:
-					hasR1 = true
-				case r2:
-					hasR2 = true
-				default:
-					finRow = r
-				}
-			}
-
-			if !hasR1 || !hasR2 || finRow == -1 {
+			base, fin := lines[i], lines[j]
+			if len(base.perps) != 2 || len(fin.perps) != 3 {
 				continue
 			}
-
-			// The fin must be in the same box as one of the base rows in the fin column
-			finColBox := finCol.col / constants.BoxSize
-			finRowBox := finRow / constants.BoxSize
-
-			// Find which base row the fin shares a box with
-			targetRow := -1
-			if r1/constants.BoxSize == finRowBox {
-				targetRow = r1
-			} else if r2/constants.BoxSize == finRowBox {
-				targetRow = r2
-			}
-
-			if targetRow == -1 {
-				continue
-			}
-
-			// Eliminations: cells in targetRow that are in the same box-column as the fin
-			var eliminations []core.Candidate
-			boxColStart := finColBox * constants.BoxSize
-			for c := boxColStart; c < boxColStart+constants.BoxSize; c++ {
-				if c == finCol.col || c == baseCol.col {
-					continue
-				}
-				idx := targetRow*constants.GridSize + c
-				if b.GetCandidatesAt(idx).Has(digit) {
-					eliminations = append(eliminations, core.Candidate{Row: targetRow, Col: c, Digit: digit})
-				}
-			}
-
-			if len(eliminations) > 0 {
-				return &core.Move{
-					Action: "eliminate",
-					Digit:  digit,
-					Targets: []core.CellRef{
-						{Row: r1, Col: baseCol.col}, {Row: r2, Col: baseCol.col},
-						{Row: r1, Col: finCol.col}, {Row: r2, Col: finCol.col},
-						{Row: finRow, Col: finCol.col},
-					},
-					Eliminations: eliminations,
-					Explanation:  fmt.Sprintf("Finned X-Wing: %d in columns %d,%d with fin at R%dC%d", digit, baseCol.col+1, finCol.col+1, finRow+1, finCol.col+1),
-					Highlights: core.Highlights{
-						Primary: []core.CellRef{
-							{Row: r1, Col: baseCol.col}, {Row: r2, Col: baseCol.col},
-							{Row: r1, Col: finCol.col}, {Row: r2, Col: finCol.col},
-						},
-						Secondary: []core.CellRef{{Row: finRow, Col: finCol.col}},
-					},
-				}
+			if m := tryFinnedXWing(b, digit, base, fin, byRow); m != nil {
+				return m
 			}
 		}
 	}
-
 	return nil
+}
+
+// xwingFinnedLines returns lines (rows if byRow, cols otherwise) where digit
+// appears in 2 or 3 perpendicular positions.
+func xwingFinnedLines(b BoardInterface, digit int, byRow bool) []finnedLineInfo {
+	var lines []finnedLineInfo
+	for i := 0; i < constants.GridSize; i++ {
+		var perps []int
+		for j := 0; j < constants.GridSize; j++ {
+			var idx int
+			if byRow {
+				idx = i*constants.GridSize + j
+			} else {
+				idx = j*constants.GridSize + i
+			}
+			if b.GetCandidatesAt(idx).Has(digit) {
+				perps = append(perps, j)
+			}
+		}
+		if len(perps) >= 2 && len(perps) <= 3 {
+			lines = append(lines, finnedLineInfo{i, perps})
+		}
+	}
+	return lines
+}
+
+// tryFinnedXWing validates one (base, fin) line pair as a finned X-Wing and
+// returns the elimination move if the fin's perpendicular coord shares a box
+// with one of the base's coords and eliminations follow.
+func tryFinnedXWing(b BoardInterface, digit int, base, fin finnedLineInfo, byRow bool) *core.Move {
+	finPerp, ok := findFinnedXWingFinPerp(base.perps, fin.perps)
+	if !ok {
+		return nil
+	}
+	targetPerp := xwingFinnedTargetPerp(base.perps, finPerp)
+	if targetPerp == -1 {
+		return nil
+	}
+	eliminations := collectFinnedXWingElims(b, digit, base.line, fin.line, targetPerp, fin.line/constants.BoxSize, byRow)
+	if len(eliminations) == 0 {
+		return nil
+	}
+	return buildFinnedXWingMove(digit, base, fin, finPerp, targetPerp, eliminations, byRow)
+}
+
+// findFinnedXWingFinPerp returns the perpendicular coord of the fin (the fin
+// line's position that is not in the base's two positions), or ok=false if the
+// fin line does not cover both base positions.
+func findFinnedXWingFinPerp(basePerps, finPerps []int) (int, bool) {
+	baseSet := map[int]bool{basePerps[0]: true, basePerps[1]: true}
+	var fin int
+	found := false
+	for _, p := range finPerps {
+		if baseSet[p] {
+			continue
+		}
+		if found {
+			return 0, false
+		}
+		fin = p
+		found = true
+	}
+	if !found {
+		return 0, false
+	}
+	for _, p := range finPerps {
+		if p == fin {
+			continue
+		}
+		if !baseSet[p] {
+			return 0, false
+		}
+	}
+	return fin, true
+}
+
+// xwingFinnedTargetPerp returns the base perpendicular coord whose box axis
+// matches the fin's box axis, or -1 if neither does.
+func xwingFinnedTargetPerp(basePerps []int, finPerp int) int {
+	finBoxAxis := finPerp / constants.BoxSize
+	for _, p := range basePerps {
+		if p/constants.BoxSize == finBoxAxis {
+			return p
+		}
+	}
+	return -1
+}
+
+// collectFinnedXWingElims walks the parallel-box range containing finLine at the
+// target perpendicular coord, collecting cells outside the base and fin lines.
+func collectFinnedXWingElims(b BoardInterface, digit, baseLine, finLine, targetPerp, finParallelBox int, byRow bool) []core.Candidate {
+	var eliminations []core.Candidate
+	parallelStart := finParallelBox * constants.BoxSize
+	for k := parallelStart; k < parallelStart+constants.BoxSize; k++ {
+		if k == baseLine || k == finLine {
+			continue
+		}
+		var idx int
+		var cand core.Candidate
+		if byRow {
+			idx = k*constants.GridSize + targetPerp
+			cand = core.Candidate{Row: k, Col: targetPerp, Digit: digit}
+		} else {
+			idx = targetPerp*constants.GridSize + k
+			cand = core.Candidate{Row: targetPerp, Col: k, Digit: digit}
+		}
+		if b.GetCandidatesAt(idx).Has(digit) {
+			eliminations = append(eliminations, cand)
+		}
+	}
+	return eliminations
+}
+
+// buildFinnedXWingMove assembles the elimination move for a finned X-Wing.
+func buildFinnedXWingMove(digit int, base, fin finnedLineInfo, finPerp, targetPerp int, eliminations []core.Candidate, byRow bool) *core.Move {
+	var r1, r2, c1, c2, finRowIdx, finColIdx int
+	if byRow {
+		r1, r2 = base.line, fin.line
+		c1, c2 = base.perps[0], base.perps[1]
+		finRowIdx, finColIdx = fin.line, finPerp
+	} else {
+		r1, r2 = base.perps[0], base.perps[1]
+		c1, c2 = base.line, fin.line
+		finRowIdx, finColIdx = finPerp, fin.line
+	}
+	targets := []core.CellRef{
+		{Row: r1, Col: c1}, {Row: r1, Col: c2},
+		{Row: r2, Col: c1}, {Row: r2, Col: c2},
+		{Row: finRowIdx, Col: finColIdx},
+	}
+	primary := []core.CellRef{
+		{Row: r1, Col: c1}, {Row: r1, Col: c2},
+		{Row: r2, Col: c1}, {Row: r2, Col: c2},
+	}
+	explanation := fmt.Sprintf("Finned X-Wing: %d in rows %d,%d with fin at R%dC%d",
+		digit, base.line+1, fin.line+1, finRowIdx+1, finColIdx+1)
+	if !byRow {
+		explanation = fmt.Sprintf("Finned X-Wing: %d in columns %d,%d with fin at R%dC%d",
+			digit, base.line+1, fin.line+1, finRowIdx+1, finColIdx+1)
+	}
+	return &core.Move{
+		Action:       "eliminate",
+		Digit:        digit,
+		Targets:      targets,
+		Eliminations: eliminations,
+		Explanation:  explanation,
+		Highlights: core.Highlights{
+			Primary:   primary,
+			Secondary: []core.CellRef{{Row: finRowIdx, Col: finColIdx}},
+		},
+	}
 }
