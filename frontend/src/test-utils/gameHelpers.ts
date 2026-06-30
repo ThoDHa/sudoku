@@ -3,6 +3,8 @@ import type { MoveHighlight } from '../hooks/useHighlightState'
 import { createMockBackgroundManager } from './mocks'
 import { vi } from 'vitest'
 
+const NAKED_SINGLE = 'Naked Single'
+
 export const createMockMove = (overrides?: Partial<Move>): Move => ({
   step_index: 0,
   technique: 'User Input',
@@ -18,12 +20,12 @@ export const createMockMove = (overrides?: Partial<Move>): Move => ({
 
 export const createMockMoveHighlight = (overrides?: Partial<MoveHighlight>): MoveHighlight => ({
   step_index: 0,
-  technique: 'Naked Single',
+  technique: NAKED_SINGLE,
   action: 'place',
   digit: 5,
   targets: [{ row: 0, col: 2 }],
   explanation: 'Test move explanation',
-  refs: { title: 'Naked Single', slug: 'naked-single', url: '/techniques/naked-single' },
+  refs: { title: NAKED_SINGLE, slug: 'naked-single', url: '/techniques/naked-single' },
   highlights: {
     primary: [{ row: 0, col: 2 }],
     secondary: [
@@ -49,7 +51,7 @@ export const createMockAutoSolveMove = (
     .map(() => [1, 2, 3]),
   move: {
     step_index: 0,
-    technique: overrides?.technique ?? 'Naked Single',
+    technique: overrides?.technique ?? NAKED_SINGLE,
     action: overrides?.action ?? 'place',
     digit: overrides?.digit ?? 5,
     targets: [{ row: 0, col: 0 }],

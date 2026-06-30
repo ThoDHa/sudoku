@@ -8,56 +8,28 @@ interface DailyCardProps {
   onPlay: () => void
 }
 
+const CARD_BG = 'bg-background-secondary'
+
+// Build the border/hover/ring triple for a difficulty color token. `custom`
+// reuses the impossible palette per the existing visual mapping.
+const difficultyColorsFor = (token: string) => ({
+  bg: CARD_BG,
+  border: `border-diff-${token}`,
+  hoverBorder: `hover:border-diff-${token}/80`,
+  ring: `ring-diff-${token}`,
+})
+
 // Card border colors for each difficulty - using theme-aware colors
 const difficultyColors: Record<
   Difficulty,
   { bg: string; border: string; hoverBorder: string; ring: string }
 > = {
-  easy: {
-    bg: 'bg-background-secondary',
-    border: 'border-diff-easy',
-    hoverBorder: 'hover:border-diff-easy/80',
-    ring: 'ring-diff-easy',
-  },
-  medium: {
-    bg: 'bg-background-secondary',
-    border: 'border-diff-medium',
-    hoverBorder: 'hover:border-diff-medium/80',
-    ring: 'ring-diff-medium',
-  },
-  hard: {
-    bg: 'bg-background-secondary',
-    border: 'border-diff-hard',
-    hoverBorder: 'hover:border-diff-hard/80',
-    ring: 'ring-diff-hard',
-  },
-  extreme: {
-    bg: 'bg-background-secondary',
-    border: 'border-diff-extreme',
-    hoverBorder: 'hover:border-diff-extreme/80',
-    ring: 'ring-diff-extreme',
-  },
-  impossible: {
-    bg: 'bg-background-secondary',
-    border: 'border-diff-impossible',
-    hoverBorder: 'hover:border-diff-impossible/80',
-    ring: 'ring-diff-impossible',
-  },
-  custom: {
-    bg: 'bg-background-secondary',
-    border: 'border-diff-impossible',
-    hoverBorder: 'hover:border-diff-impossible/80',
-    ring: 'ring-diff-impossible',
-  },
-}
-
-const selectedBorders: Record<Difficulty, string> = {
-  easy: 'border-diff-easy',
-  medium: 'border-diff-medium',
-  hard: 'border-diff-hard',
-  extreme: 'border-diff-extreme',
-  impossible: 'border-diff-impossible',
-  custom: 'border-diff-impossible',
+  easy: difficultyColorsFor('easy'),
+  medium: difficultyColorsFor('medium'),
+  hard: difficultyColorsFor('hard'),
+  extreme: difficultyColorsFor('extreme'),
+  impossible: difficultyColorsFor('impossible'),
+  custom: difficultyColorsFor('impossible'),
 }
 
 // Resumable background colors (subtle tint of difficulty color)
@@ -76,7 +48,7 @@ export default function DailyCard({ difficulty, selected, isResumable, onPlay }:
     'daily-card rounded-xl border-2 transition-all duration-200 cursor-pointer focus:outline-none'
 
   const bgClass = isResumable ? resumableBg[difficulty] : colors.bg
-  const borderClass = selected ? selectedBorders[difficulty] : colors.border
+  const borderClass = colors.border
   const hoverClass = selected ? '' : colors.hoverBorder
   const ringClass = selected ? `ring-2 ${colors.ring}` : ''
 

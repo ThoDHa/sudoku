@@ -34,6 +34,16 @@ vi.mock('../lib/logger', () => ({
 import { useWasmLifecycle } from './useWasmLifecycle'
 import { logger } from '../lib/logger'
 
+type HookResult = { current: ReturnType<typeof useWasmLifecycle> }
+
+function actCancelUnload(result: HookResult) {
+  act(() => {
+    result.current.cancelUnload()
+  })
+}
+
+
+
 // UTILITIES
 
 /**
@@ -41,6 +51,12 @@ import { logger } from '../lib/logger'
  */
 function setMockPathname(pathname: string) {
   mockPathname = pathname
+}
+
+// Keep the mock pathname helper and the real window.location.pathname in sync.
+function setPath(p: string) {
+  setMockPathname(p)
+  ;(window as unknown as { location: { pathname: string } }).location.pathname = p
 }
 
 // TESTS
@@ -276,8 +292,7 @@ describe('useWasmLifecycle', () => {
   describe('cancelUnload Behavior', () => {
     it('cancels a scheduled unload', async () => {
       // Start on a WASM route
-      setMockPathname('/game123')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game123'
+      setPath('/game123')
       const { result, rerender } = renderHook(() => useWasmLifecycle())
 
       // Wait for WASM to load
@@ -286,14 +301,11 @@ describe('useWasmLifecycle', () => {
       })
 
       // Navigate away to schedule unload
-      setMockPathname('/')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/'
+      setPath('/')
       rerender()
 
       // Cancel the unload before it fires
-      act(() => {
-        result.current.cancelUnload()
-      })
+      actCancelUnload(result)
 
       // Advance past the unload delay
       await act(async () => {
@@ -309,8 +321,7 @@ describe('useWasmLifecycle', () => {
       logger.warn.mockClear()
 
       // Start on a WASM route
-      setMockPathname('/game123')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game123'
+      setPath('/game123')
       const { result, rerender } = renderHook(() => useWasmLifecycle({ enableLogging: true }))
 
       // Wait for WASM to load
@@ -319,14 +330,11 @@ describe('useWasmLifecycle', () => {
       })
 
       // Navigate away to schedule unload
-      setMockPathname('/')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/'
+      setPath('/')
       rerender()
 
       // Cancel the unload
-      act(() => {
-        result.current.cancelUnload()
-      })
+      actCancelUnload(result)
 
       expect(loggerWarnSpy).toHaveBeenCalledWith('[WasmLifecycle] Cancelled scheduled WASM unload')
       logger.warn.mockClear()
@@ -338,9 +346,7 @@ describe('useWasmLifecycle', () => {
 
       // Should not throw
       expect(() => {
-        act(() => {
-          result.current.cancelUnload()
-        })
+        actCancelUnload(result)
       }).not.toThrow()
     })
   })
@@ -367,8 +373,7 @@ describe('useWasmLifecycle', () => {
 
     it('schedules unload when leaving a game route', async () => {
       // Start on game route
-      setMockPathname('/game123')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game123'
+      setPath('/game123')
       const { rerender } = renderHook(() => useWasmLifecycle({ unloadDelay: 2000 }))
 
       await act(async () => {
@@ -378,8 +383,7 @@ describe('useWasmLifecycle', () => {
       vi.clearAllMocks()
 
       // Navigate away
-      setMockPathname('/')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/'
+      setPath('/')
       rerender()
 
       // Should not unload immediately
@@ -395,8 +399,7 @@ describe('useWasmLifecycle', () => {
 
     it('cancels scheduled unload when returning to game route', async () => {
       // Start on game route
-      setMockPathname('/game123')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game123'
+      setPath('/game123')
       const { rerender } = renderHook(() => useWasmLifecycle({ unloadDelay: 2000 }))
 
       await act(async () => {
@@ -406,8 +409,7 @@ describe('useWasmLifecycle', () => {
       vi.clearAllMocks()
 
       // Navigate away (schedules unload)
-      setMockPathname('/')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/'
+      setPath('/')
       rerender()
 
       // Return to game route before unload fires
@@ -415,8 +417,7 @@ describe('useWasmLifecycle', () => {
         await vi.advanceTimersByTimeAsync(1000) // Half the delay
       })
 
-      setMockPathname('/game456')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game456'
+      setPath('/game456')
       rerender()
 
       // Wait for remainder of original delay
@@ -444,8 +445,7 @@ describe('useWasmLifecycle', () => {
     })
 
     it('does not unload WASM when navigating between WASM routes', async () => {
-      setMockPathname('/game123')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game123'
+      setPath('/game123')
       const { rerender } = renderHook(() => useWasmLifecycle())
 
       await act(async () => {
@@ -455,8 +455,7 @@ describe('useWasmLifecycle', () => {
       vi.clearAllMocks()
 
       // Navigate to another game route
-      setMockPathname('/game456')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game456'
+      setPath('/game456')
       rerender()
 
       await act(async () => {
@@ -485,8 +484,7 @@ describe('useWasmLifecycle', () => {
   // DELAYED UNLOAD TESTS
   describe('Delayed Unload', () => {
     it('uses default 2000ms delay', async () => {
-      setMockPathname('/game123')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game123'
+      setPath('/game123')
       const { rerender } = renderHook(() => useWasmLifecycle())
 
       await act(async () => {
@@ -496,8 +494,7 @@ describe('useWasmLifecycle', () => {
       vi.clearAllMocks()
 
       // Navigate away
-      setMockPathname('/')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/'
+      setPath('/')
       rerender()
 
       // At 1500ms, should not have unloaded
@@ -514,8 +511,7 @@ describe('useWasmLifecycle', () => {
     })
 
     it('uses custom unloadDelay from options', async () => {
-      setMockPathname('/game123')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game123'
+      setPath('/game123')
       const { rerender } = renderHook(() => useWasmLifecycle({ unloadDelay: 5000 }))
 
       await act(async () => {
@@ -525,8 +521,7 @@ describe('useWasmLifecycle', () => {
       vi.clearAllMocks()
 
       // Navigate away
-      setMockPathname('/')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/'
+      setPath('/')
       rerender()
 
       // At 4000ms, should not have unloaded
@@ -543,8 +538,7 @@ describe('useWasmLifecycle', () => {
     })
 
     it('does not unload if navigated back to WASM route during delay', async () => {
-      setMockPathname('/game123')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game123'
+      setPath('/game123')
       const { rerender } = renderHook(() => useWasmLifecycle({ unloadDelay: 2000 }))
 
       await act(async () => {
@@ -554,8 +548,7 @@ describe('useWasmLifecycle', () => {
       vi.clearAllMocks()
 
       // Navigate away
-      setMockPathname('/')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/'
+      setPath('/')
       rerender()
 
       // Partway through delay
@@ -564,8 +557,7 @@ describe('useWasmLifecycle', () => {
       })
 
       // Navigate back - this updates window.location.pathname
-      setMockPathname('/game456')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game456'
+      setPath('/game456')
       rerender()
 
       // Complete the original delay
@@ -583,8 +575,7 @@ describe('useWasmLifecycle', () => {
     it('clears pending timeout on unmount', async () => {
       const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout')
 
-      setMockPathname('/game123')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game123'
+      setPath('/game123')
       const { rerender, unmount } = renderHook(() => useWasmLifecycle())
 
       await act(async () => {
@@ -592,8 +583,7 @@ describe('useWasmLifecycle', () => {
       })
 
       // Navigate away to schedule unload
-      setMockPathname('/')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/'
+      setPath('/')
       rerender()
 
       // Unmount before the unload fires
@@ -644,8 +634,7 @@ describe('useWasmLifecycle', () => {
       const loggerWarnSpy = logger.warn
       logger.warn.mockClear()
 
-      setMockPathname('/game123')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game123'
+      setPath('/game123')
       const { rerender } = renderHook(() => useWasmLifecycle({ enableLogging: true }))
 
       await act(async () => {
@@ -664,8 +653,7 @@ describe('useWasmLifecycle', () => {
       const loggerWarnSpy = logger.warn
       logger.warn.mockClear()
 
-      setMockPathname('/game123')
-      ;(window as unknown as { location: { pathname: string } }).location.pathname = '/game123'
+      setPath('/game123')
       const { rerender } = renderHook(() =>
         useWasmLifecycle({ enableLogging: true, unloadDelay: 3000 }),
       )

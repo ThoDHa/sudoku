@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import DifficultyBadge from './DifficultyBadge'
 import Menu from './Menu'
 import { TimerDisplay } from './TimerDisplay'
-import { SunIcon, MoonIcon, ComputerIcon } from './ui'
+import ThemeModeDropdown from './ThemeModeDropdown'
 import { Difficulty } from '../lib/hooks'
 import { ColorTheme, FontSize, ModePreference } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed } from '../lib/preferences'
@@ -295,68 +295,6 @@ function HintButtons({
         <span className="hidden sm:inline">Hint</span>
       </button>
     </>
-  )
-}
-
-// ============================================================================
-// Subcomponent: ThemeModeDropdown
-// ============================================================================
-interface ThemeModeDropdownProps {
-  mode: 'light' | 'dark'
-  modePreference: ModePreference
-  isOpen: boolean
-  onToggle: () => void
-  onSetModePreference: (mode: ModePreference) => void
-  dropdownRef: React.RefObject<HTMLDivElement | null>
-}
-
-function ThemeModeDropdown({
-  mode,
-  modePreference,
-  isOpen,
-  onToggle,
-  onSetModePreference,
-  dropdownRef,
-}: ThemeModeDropdownProps) {
-  const handleSelect = (pref: ModePreference) => {
-    onSetModePreference(pref)
-    onToggle()
-  }
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={onToggle}
-        className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
-        title={`Theme: ${modePreference === 'system' ? `System (${mode})` : modePreference}`}
-      >
-        {mode === 'dark' ? <MoonIcon /> : <SunIcon />}
-      </button>
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-background-secondary border border-board-border-light shadow-lg overflow-hidden z-50">
-          <button
-            onClick={() => handleSelect('light')}
-            className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${modePreference === 'light' ? 'bg-accent text-btn-active-text' : 'text-foreground hover:bg-btn-hover'}`}
-          >
-            <SunIcon className="h-4 w-4" />
-            Light
-          </button>
-          <button
-            onClick={() => handleSelect('dark')}
-            className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${modePreference === 'dark' ? 'bg-accent text-btn-active-text' : 'text-foreground hover:bg-btn-hover'}`}
-          >
-            <MoonIcon className="h-4 w-4" />
-            Dark
-          </button>
-          <button
-            onClick={() => handleSelect('system')}
-            className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${modePreference === 'system' ? 'bg-accent text-btn-active-text' : 'text-foreground hover:bg-btn-hover'}`}
-          >
-            <ComputerIcon className="h-4 w-4" />
-            System
-          </button>
-        </div>
-      )}
-    </div>
   )
 }
 

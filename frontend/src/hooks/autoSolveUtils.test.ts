@@ -15,6 +15,20 @@ import {
   type MoveResult,
 } from './autoSolveUtils'
 
+import type { Move } from './useSudokuGame'
+
+const createMockMove = (overrides?: Partial<Move>): Move => ({
+  step_index: 0,
+  technique: 'Test Technique',
+  action: 'place',
+  digit: 5,
+  targets: [{ row: 0, col: 0 }],
+  explanation: 'Test explanation',
+  refs: { title: 'Test', slug: 'test', url: '/test' },
+  highlights: { primary: [] },
+  ...overrides,
+})
+
 // TEST UTILITIES
 
 /**
@@ -26,16 +40,8 @@ const createMockContext = (overrides?: Partial<ActionContext>): ActionContext =>
     candidates: Array(81)
       .fill(null)
       .map(() => [1, 2, 3]),
-    move: {
-      step_index: 0,
-      technique: 'Test Technique',
-      action: 'place',
-      digit: 5,
-      targets: [{ row: 0, col: 0 }],
-      explanation: 'Test explanation',
-      refs: { title: 'Test', slug: 'test', url: '/test' },
-      highlights: { primary: [] },
-    },
+move: createMockMove({
+        }),
   },
   newIndex: 1,
   getCandidates: () =>
@@ -62,16 +68,8 @@ const createMockMoveResult = (overrides?: Partial<MoveResult>): MoveResult => ({
   candidates: Array(81)
     .fill(null)
     .map(() => [1, 2, 3]),
-  move: {
-    step_index: 0,
-    technique: 'Test Technique',
-    action: 'place',
-    digit: 5,
-    targets: [{ row: 0, col: 0 }],
-    explanation: 'Test explanation',
-    refs: { title: 'Test', slug: 'test', url: '/test' },
-    highlights: { primary: [] },
-  },
+move: createMockMove({
+    }),
   ...overrides,
 })
 
@@ -275,17 +273,15 @@ describe('autoSolveUtils', () => {
       const onUnpinpointableError = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Error',
             action: 'error',
             digit: 0,
             targets: [],
             explanation: 'Too many errors found',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
             userEntryCount: 5,
-          },
+                    }),
         }),
         onUnpinpointableError,
       })
@@ -300,16 +296,14 @@ describe('autoSolveUtils', () => {
       const onUnpinpointableError = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Error',
             action: 'error',
             digit: 0,
             targets: [],
             explanation: '',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
-          },
+                    }),
         }),
         onUnpinpointableError,
       })
@@ -329,16 +323,14 @@ describe('autoSolveUtils', () => {
       const onStatus = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Diagnostic',
             action: 'diagnostic',
             digit: 0,
             targets: [],
             explanation: 'Checking for errors...',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
-          },
+                    }),
         }),
         onStatus,
         hasMoreMoves: () => true,
@@ -366,16 +358,14 @@ describe('autoSolveUtils', () => {
       const onStatus = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Diagnostic',
             action: 'diagnostic',
             digit: 0,
             targets: [],
             explanation: '',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
-          },
+                    }),
         }),
         onStatus,
       })
@@ -392,17 +382,15 @@ describe('autoSolveUtils', () => {
       const onUnpinpointableError = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Error',
             action: 'unpinpointable-error',
             digit: 0,
             targets: [],
             explanation: 'Cannot find the error',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
             userEntryCount: 10,
-          },
+                    }),
         }),
         onUnpinpointableError,
       })
@@ -417,17 +405,15 @@ describe('autoSolveUtils', () => {
       const onUnpinpointableError = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Error',
             action: 'unpinpointable-error',
             digit: 0,
             targets: [],
             explanation: '',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
             userEntryCount: 3,
-          },
+                    }),
         }),
         onUnpinpointableError,
       })
@@ -588,16 +574,14 @@ describe('autoSolveUtils', () => {
     it('dispatches to handleContradiction for contradiction action', () => {
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Contradiction',
             action: 'contradiction',
             digit: 0,
             targets: [],
             explanation: '',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
-          },
+                    }),
         }),
         hasMoreMoves: () => false,
       })
@@ -613,16 +597,14 @@ describe('autoSolveUtils', () => {
       const onUnpinpointableError = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Error',
             action: 'error',
             digit: 0,
             targets: [],
             explanation: 'Test error',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
-          },
+                    }),
         }),
         onUnpinpointableError,
       })
@@ -638,16 +620,14 @@ describe('autoSolveUtils', () => {
       const onStatus = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Diagnostic',
             action: 'diagnostic',
             digit: 0,
             targets: [],
             explanation: 'Status message',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
-          },
+                    }),
         }),
         onStatus,
         hasMoreMoves: () => true,
@@ -665,16 +645,14 @@ describe('autoSolveUtils', () => {
       const onUnpinpointableError = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Error',
             action: 'unpinpointable-error',
             digit: 0,
             targets: [],
             explanation: '',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
-          },
+                    }),
         }),
         onUnpinpointableError,
       })
@@ -689,16 +667,14 @@ describe('autoSolveUtils', () => {
       const onUnpinpointableError = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Stalled',
             action: 'stalled',
             digit: 0,
             targets: [],
             explanation: '',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
-          },
+                    }),
         }),
         onUnpinpointableError,
       })
@@ -714,16 +690,14 @@ describe('autoSolveUtils', () => {
       const addToHistory = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Clear',
             action: 'clear-candidates',
             digit: 0,
             targets: [],
             explanation: '',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
-          },
+                    }),
         }),
         applyMove,
         addToHistory,
@@ -743,16 +717,12 @@ describe('autoSolveUtils', () => {
       const addToHistory = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Fix',
             action: 'fix-error',
-            digit: 5,
-            targets: [{ row: 0, col: 0 }],
             explanation: '',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
-          },
+                    }),
         }),
         applyMove,
         addToHistory,
@@ -772,16 +742,11 @@ describe('autoSolveUtils', () => {
       const addToHistory = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Naked Single',
-            action: 'place',
-            digit: 5,
-            targets: [{ row: 0, col: 0 }],
             explanation: '',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
-          },
+                    }),
         }),
         applyMove,
         addToHistory,
@@ -802,17 +767,14 @@ describe('autoSolveUtils', () => {
       const applyMove = vi.fn()
       const ctx = createMockContext({
         moveResult: createMockMoveResult({
-          move: {
-            step_index: 0,
+move: createMockMove({
             technique: 'Pointing Pairs',
             action: 'eliminate',
-            digit: 5,
             targets: [],
             explanation: '',
             refs: { title: '', slug: '', url: '' },
-            highlights: { primary: [] },
             eliminations: [{ row: 0, col: 1, digit: 5 }],
-          },
+                    }),
         }),
         applyMove,
         hasMoreMoves: () => true,

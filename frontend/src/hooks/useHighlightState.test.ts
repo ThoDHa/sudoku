@@ -3,6 +3,124 @@ import { describe, it, expect } from 'vitest'
 import { useHighlightState } from './useHighlightState'
 import { createMockMoveHighlight } from '../test-utils'
 
+type HookResult = { current: ReturnType<typeof useHighlightState> }
+
+function actClearAfterCellSelection(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.clearAfterCellSelection(...args)
+  })
+}
+
+function actClearAfterDigitPlacement(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.clearAfterDigitPlacement(...args)
+  })
+}
+
+function actClearAfterDigitToggle(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.clearAfterDigitToggle(...args)
+  })
+}
+
+function actClearAfterErase(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.clearAfterErase(...args)
+  })
+}
+
+function actClearAfterUserCandidateOp(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.clearAfterUserCandidateOp(...args)
+  })
+}
+
+function actClearAll(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.clearAll(...args)
+  })
+}
+
+function actClearAllAndDeselect(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.clearAllAndDeselect(...args)
+  })
+}
+
+function actClearDigitHighlight(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.clearDigitHighlight(...args)
+  })
+}
+
+function actClearHighlightsKeepSelection(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.clearHighlightsKeepSelection(...args)
+  })
+}
+
+function actClearMoveHighlight(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.clearMoveHighlight(...args)
+  })
+}
+
+function actClearOnModeChange(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.clearOnModeChange(...args)
+  })
+}
+
+function actClickGivenCell(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.clickGivenCell(...args)
+  })
+}
+
+function actDeselectCell(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.deselectCell(...args)
+  })
+}
+
+function actDispatch(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.dispatch(...args)
+  })
+}
+
+function actSelectCell(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.selectCell(...args)
+  })
+}
+
+function actSelectMultipleCells(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.selectMultipleCells(...args)
+  })
+}
+
+function actSetDigitHighlight(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.setDigitHighlight(...args)
+  })
+}
+
+function actSetMoveHighlight(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.setMoveHighlight(...args)
+  })
+}
+
+function actToggleDigitHighlight(result: HookResult, ...args: any[]) {
+  act(() => {
+    result.current.toggleDigitHighlight(...args)
+  })
+}
+
+
+
 // =============================================================================
 // TESTS
 // =============================================================================
@@ -63,9 +181,7 @@ describe('useHighlightState', () => {
     it('selects a cell with selectCell', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.selectCell(42)
-      })
+      actSelectCell(result, 42)
 
       expect(result.current.selectedCell).toBe(42)
     })
@@ -73,9 +189,7 @@ describe('useHighlightState', () => {
     it('selects cell at index 0', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.selectCell(0)
-      })
+      actSelectCell(result, 0)
 
       expect(result.current.selectedCell).toBe(0)
     })
@@ -83,9 +197,7 @@ describe('useHighlightState', () => {
     it('selects cell at index 80 (last cell)', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.selectCell(80)
-      })
+      actSelectCell(result, 80)
 
       expect(result.current.selectedCell).toBe(80)
     })
@@ -93,28 +205,20 @@ describe('useHighlightState', () => {
     it('changes selection when different cell is selected', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.selectCell(10)
-      })
+      actSelectCell(result, 10)
       expect(result.current.selectedCell).toBe(10)
 
-      act(() => {
-        result.current.selectCell(50)
-      })
+      actSelectCell(result, 50)
       expect(result.current.selectedCell).toBe(50)
     })
 
     it('clears highlighted digit when selecting a cell', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.setDigitHighlight(5)
-      })
+      actSetDigitHighlight(result, 5)
       expect(result.current.highlightedDigit).toBe(5)
 
-      act(() => {
-        result.current.selectCell(10)
-      })
+      actSelectCell(result, 10)
       expect(result.current.highlightedDigit).toBeNull()
     })
 
@@ -126,23 +230,17 @@ describe('useHighlightState', () => {
       })
       expect(result.current.currentHighlight).not.toBeNull()
 
-      act(() => {
-        result.current.selectCell(10)
-      })
+      actSelectCell(result, 10)
       expect(result.current.currentHighlight).toBeNull()
     })
 
     it('deselects cell with deselectCell', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.selectCell(25)
-      })
+      actSelectCell(result, 25)
       expect(result.current.selectedCell).toBe(25)
 
-      act(() => {
-        result.current.deselectCell()
-      })
+      actDeselectCell(result)
       expect(result.current.selectedCell).toBeNull()
     })
 
@@ -151,9 +249,7 @@ describe('useHighlightState', () => {
 
       const versionBefore = result.current.version
 
-      act(() => {
-        result.current.selectCell(10)
-      })
+      actSelectCell(result, 10)
 
       expect(result.current.version).toBe(versionBefore + 1)
     })
@@ -161,14 +257,10 @@ describe('useHighlightState', () => {
     it('increments version on deselectCell', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.selectCell(10)
-      })
+      actSelectCell(result, 10)
       const versionBefore = result.current.version
 
-      act(() => {
-        result.current.deselectCell()
-      })
+      actDeselectCell(result)
 
       expect(result.current.version).toBe(versionBefore + 1)
     })
@@ -181,9 +273,7 @@ describe('useHighlightState', () => {
     it('sets highlighted digit with setDigitHighlight', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.setDigitHighlight(7)
-      })
+      actSetDigitHighlight(result, 7)
 
       expect(result.current.highlightedDigit).toBe(7)
     })
@@ -191,9 +281,7 @@ describe('useHighlightState', () => {
     it('sets digit 1 as highlighted', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.setDigitHighlight(1)
-      })
+      actSetDigitHighlight(result, 1)
 
       expect(result.current.highlightedDigit).toBe(1)
     })
@@ -201,9 +289,7 @@ describe('useHighlightState', () => {
     it('sets digit 9 as highlighted', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.setDigitHighlight(9)
-      })
+      actSetDigitHighlight(result, 9)
 
       expect(result.current.highlightedDigit).toBe(9)
     })
@@ -211,14 +297,10 @@ describe('useHighlightState', () => {
     it('changes highlighted digit when different digit is set', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.setDigitHighlight(3)
-      })
+      actSetDigitHighlight(result, 3)
       expect(result.current.highlightedDigit).toBe(3)
 
-      act(() => {
-        result.current.setDigitHighlight(8)
-      })
+      actSetDigitHighlight(result, 8)
       expect(result.current.highlightedDigit).toBe(8)
     })
 
@@ -230,32 +312,24 @@ describe('useHighlightState', () => {
       })
       expect(result.current.currentHighlight).not.toBeNull()
 
-      act(() => {
-        result.current.setDigitHighlight(5)
-      })
+      actSetDigitHighlight(result, 5)
       expect(result.current.currentHighlight).toBeNull()
     })
 
     it('clears highlighted digit with clearDigitHighlight', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.setDigitHighlight(4)
-      })
+      actSetDigitHighlight(result, 4)
       expect(result.current.highlightedDigit).toBe(4)
 
-      act(() => {
-        result.current.clearDigitHighlight()
-      })
+      actClearDigitHighlight(result)
       expect(result.current.highlightedDigit).toBeNull()
     })
 
     it('toggles digit highlight on with toggleDigitHighlight', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.toggleDigitHighlight(6)
-      })
+      actToggleDigitHighlight(result, 6)
 
       expect(result.current.highlightedDigit).toBe(6)
     })
@@ -263,28 +337,20 @@ describe('useHighlightState', () => {
     it('toggles digit highlight off when same digit is toggled', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.toggleDigitHighlight(6)
-      })
+      actToggleDigitHighlight(result, 6)
       expect(result.current.highlightedDigit).toBe(6)
 
-      act(() => {
-        result.current.toggleDigitHighlight(6)
-      })
+      actToggleDigitHighlight(result, 6)
       expect(result.current.highlightedDigit).toBeNull()
     })
 
     it('changes digit when different digit is toggled', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.toggleDigitHighlight(2)
-      })
+      actToggleDigitHighlight(result, 2)
       expect(result.current.highlightedDigit).toBe(2)
 
-      act(() => {
-        result.current.toggleDigitHighlight(9)
-      })
+      actToggleDigitHighlight(result, 9)
       expect(result.current.highlightedDigit).toBe(9)
     })
 
@@ -293,9 +359,7 @@ describe('useHighlightState', () => {
 
       const versionBefore = result.current.version
 
-      act(() => {
-        result.current.setDigitHighlight(5)
-      })
+      actSetDigitHighlight(result, 5)
 
       expect(result.current.version).toBe(versionBefore + 1)
     })
@@ -309,9 +373,7 @@ describe('useHighlightState', () => {
       const { result } = renderHook(() => useHighlightState())
       const mockMove = createMockMoveHighlight()
 
-      act(() => {
-        result.current.setMoveHighlight(mockMove)
-      })
+      actSetMoveHighlight(result, mockMove)
 
       expect(result.current.currentHighlight).toEqual(mockMove)
     })
@@ -320,9 +382,7 @@ describe('useHighlightState', () => {
       const { result } = renderHook(() => useHighlightState())
       const mockMove = createMockMoveHighlight()
 
-      act(() => {
-        result.current.setMoveHighlight(mockMove, 5)
-      })
+      actSetMoveHighlight(result, mockMove, 5)
 
       expect(result.current.currentHighlight).toEqual(mockMove)
       expect(result.current.selectedMoveIndex).toBe(5)
@@ -333,9 +393,7 @@ describe('useHighlightState', () => {
       const mockMove1 = createMockMoveHighlight({ step_index: 0 })
       const mockMove2 = createMockMoveHighlight({ step_index: 1 })
 
-      act(() => {
-        result.current.setMoveHighlight(mockMove1, 3)
-      })
+      actSetMoveHighlight(result, mockMove1, 3)
       expect(result.current.selectedMoveIndex).toBe(3)
 
       act(() => {
@@ -354,9 +412,7 @@ describe('useHighlightState', () => {
         ],
       })
 
-      act(() => {
-        result.current.setMoveHighlight(mockMove)
-      })
+      actSetMoveHighlight(result, mockMove)
 
       expect(result.current.currentHighlight?.eliminations).toHaveLength(2)
     })
@@ -370,9 +426,7 @@ describe('useHighlightState', () => {
       expect(result.current.currentHighlight).not.toBeNull()
       expect(result.current.selectedMoveIndex).toBe(2)
 
-      act(() => {
-        result.current.clearMoveHighlight()
-      })
+      actClearMoveHighlight(result)
       expect(result.current.currentHighlight).toBeNull()
       expect(result.current.selectedMoveIndex).toBeNull()
     })
@@ -398,13 +452,9 @@ describe('useHighlightState', () => {
       it('clears highlighted digit', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.setDigitHighlight(5)
-        })
+        actSetDigitHighlight(result, 5)
 
-        act(() => {
-          result.current.clearAll()
-        })
+        actClearAll(result)
 
         expect(result.current.highlightedDigit).toBeNull()
       })
@@ -416,9 +466,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight())
         })
 
-        act(() => {
-          result.current.clearAll()
-        })
+        actClearAll(result)
 
         expect(result.current.currentHighlight).toBeNull()
       })
@@ -430,9 +478,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight(), 5)
         })
 
-        act(() => {
-          result.current.clearAll()
-        })
+        actClearAll(result)
 
         expect(result.current.selectedMoveIndex).toBeNull()
       })
@@ -445,9 +491,7 @@ describe('useHighlightState', () => {
           result.current.setDigitHighlight(5)
         })
 
-        act(() => {
-          result.current.clearAll()
-        })
+        actClearAll(result)
 
         expect(result.current.selectedCell).toBe(42)
       })
@@ -463,9 +507,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight(), 2)
         })
 
-        act(() => {
-          result.current.clearAllAndDeselect()
-        })
+        actClearAllAndDeselect(result)
 
         expect(result.current.selectedCell).toBeNull()
         expect(result.current.highlightedDigit).toBeNull()
@@ -482,9 +524,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight(), 3)
         })
 
-        act(() => {
-          result.current.clearAfterUserCandidateOp()
-        })
+        actClearAfterUserCandidateOp(result)
 
         expect(result.current.currentHighlight).toBeNull()
         expect(result.current.selectedMoveIndex).toBeNull()
@@ -498,9 +538,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight())
         })
 
-        act(() => {
-          result.current.clearAfterUserCandidateOp()
-        })
+        actClearAfterUserCandidateOp(result)
 
         expect(result.current.highlightedDigit).toBe(4)
       })
@@ -508,13 +546,9 @@ describe('useHighlightState', () => {
       it('preserves selected cell', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.selectCell(15)
-        })
+        actSelectCell(result, 15)
 
-        act(() => {
-          result.current.clearAfterUserCandidateOp()
-        })
+        actClearAfterUserCandidateOp(result)
 
         expect(result.current.selectedCell).toBe(15)
       })
@@ -528,9 +562,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight())
         })
 
-        act(() => {
-          result.current.clearAfterDigitPlacement()
-        })
+        actClearAfterDigitPlacement(result)
 
         expect(result.current.currentHighlight).toBeNull()
       })
@@ -538,13 +570,9 @@ describe('useHighlightState', () => {
       it('preserves digit highlight for multi-fill', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.setDigitHighlight(8)
-        })
+        actSetDigitHighlight(result, 8)
 
-        act(() => {
-          result.current.clearAfterDigitPlacement()
-        })
+        actClearAfterDigitPlacement(result)
 
         expect(result.current.highlightedDigit).toBe(8)
       })
@@ -554,13 +582,9 @@ describe('useHighlightState', () => {
       it('clears digit highlight', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.setDigitHighlight(3)
-        })
+        actSetDigitHighlight(result, 3)
 
-        act(() => {
-          result.current.clearAfterCellSelection()
-        })
+        actClearAfterCellSelection(result)
 
         expect(result.current.highlightedDigit).toBeNull()
       })
@@ -572,9 +596,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight())
         })
 
-        act(() => {
-          result.current.clearAfterCellSelection()
-        })
+        actClearAfterCellSelection(result)
 
         expect(result.current.currentHighlight).toBeNull()
       })
@@ -582,13 +604,9 @@ describe('useHighlightState', () => {
       it('preserves selected cell', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.selectCell(60)
-        })
+        actSelectCell(result, 60)
 
-        act(() => {
-          result.current.clearAfterCellSelection()
-        })
+        actClearAfterCellSelection(result)
 
         expect(result.current.selectedCell).toBe(60)
       })
@@ -602,9 +620,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight())
         })
 
-        act(() => {
-          result.current.clearAfterErase()
-        })
+        actClearAfterErase(result)
 
         expect(result.current.currentHighlight).toBeNull()
       })
@@ -612,13 +628,9 @@ describe('useHighlightState', () => {
       it('preserves digit highlight', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.setDigitHighlight(2)
-        })
+        actSetDigitHighlight(result, 2)
 
-        act(() => {
-          result.current.clearAfterErase()
-        })
+        actClearAfterErase(result)
 
         expect(result.current.highlightedDigit).toBe(2)
       })
@@ -634,9 +646,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight())
         })
 
-        act(() => {
-          result.current.clearOnModeChange()
-        })
+        actClearOnModeChange(result)
 
         expect(result.current.selectedCell).toBeNull()
         expect(result.current.highlightedDigit).toBeNull()
@@ -648,13 +658,9 @@ describe('useHighlightState', () => {
       it('clears digit highlight', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.setDigitHighlight(1)
-        })
+        actSetDigitHighlight(result, 1)
 
-        act(() => {
-          result.current.clearAfterDigitToggle()
-        })
+        actClearAfterDigitToggle(result)
 
         expect(result.current.highlightedDigit).toBeNull()
       })
@@ -666,9 +672,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight())
         })
 
-        act(() => {
-          result.current.clearAfterDigitToggle()
-        })
+        actClearAfterDigitToggle(result)
 
         expect(result.current.currentHighlight).toBeNull()
       })
@@ -680,9 +684,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight(), 7)
         })
 
-        act(() => {
-          result.current.clearAfterDigitToggle()
-        })
+        actClearAfterDigitToggle(result)
 
         expect(result.current.selectedMoveIndex).toBeNull()
       })
@@ -698,9 +700,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight(), 1)
         })
 
-        act(() => {
-          result.current.clearHighlightsKeepSelection()
-        })
+        actClearHighlightsKeepSelection(result)
 
         expect(result.current.selectedCell).toBe(20)
         expect(result.current.highlightedDigit).toBeNull()
@@ -717,9 +717,7 @@ describe('useHighlightState', () => {
     it('sets both digit highlight and selected cell', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.clickGivenCell(5, 10)
-      })
+      actClickGivenCell(result, 5, 10)
 
       expect(result.current.selectedCell).toBe(10)
       expect(result.current.highlightedDigit).toBe(5)
@@ -732,9 +730,7 @@ describe('useHighlightState', () => {
         result.current.setMoveHighlight(createMockMoveHighlight())
       })
 
-      act(() => {
-        result.current.clickGivenCell(3, 0)
-      })
+      actClickGivenCell(result, 3, 0)
 
       expect(result.current.currentHighlight).toBeNull()
     })
@@ -743,9 +739,7 @@ describe('useHighlightState', () => {
       const { result } = renderHook(() => useHighlightState())
 
       for (let digit = 1; digit <= 9; digit++) {
-        act(() => {
-          result.current.clickGivenCell(digit, digit * 5)
-        })
+        actClickGivenCell(result, digit, digit * 5)
 
         expect(result.current.highlightedDigit).toBe(digit)
         expect(result.current.selectedCell).toBe(digit * 5)
@@ -804,9 +798,7 @@ describe('useHighlightState', () => {
     it('dispatch works with SELECT_CELL action', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.dispatch({ type: 'SELECT_CELL', cell: 55 })
-      })
+      actDispatch(result, { type: 'SELECT_CELL', cell: 55 })
 
       expect(result.current.selectedCell).toBe(55)
     })
@@ -814,9 +806,7 @@ describe('useHighlightState', () => {
     it('dispatch works with SET_DIGIT_HIGHLIGHT action', () => {
       const { result } = renderHook(() => useHighlightState())
 
-      act(() => {
-        result.current.dispatch({ type: 'SET_DIGIT_HIGHLIGHT', digit: 7 })
-      })
+      actDispatch(result, { type: 'SET_DIGIT_HIGHLIGHT', digit: 7 })
 
       expect(result.current.highlightedDigit).toBe(7)
     })
@@ -846,9 +836,7 @@ describe('useHighlightState', () => {
 
       const selectCell1 = result.current.selectCell
 
-      act(() => {
-        result.current.selectCell(10)
-      })
+      actSelectCell(result, 10)
 
       expect(result.current.selectCell).toBe(selectCell1)
     })
@@ -870,9 +858,7 @@ describe('useHighlightState', () => {
         const { result } = renderHook(() => useHighlightState())
 
         // Single-element set should be accessible via selectedCell getter
-        act(() => {
-          result.current.selectCell(42)
-        })
+        actSelectCell(result, 42)
 
         expect(result.current.state.selectedCells).toEqual(new Set([42]))
       })
@@ -889,9 +875,7 @@ describe('useHighlightState', () => {
       it('selects multiple cells at once', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.selectMultipleCells([10, 20, 30])
-        })
+        actSelectMultipleCells(result, [10, 20, 30])
 
         expect(result.current.state.selectedCells).toEqual(new Set([10, 20, 30]))
       })
@@ -899,14 +883,10 @@ describe('useHighlightState', () => {
       it('handles empty array (clears selection)', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.selectMultipleCells([10, 20])
-        })
+        actSelectMultipleCells(result, [10, 20])
         expect(result.current.state.selectedCells.size).toBe(2)
 
-        act(() => {
-          result.current.selectMultipleCells([])
-        })
+        actSelectMultipleCells(result, [])
         expect(result.current.state.selectedCells.size).toBe(0)
       })
 
@@ -918,9 +898,7 @@ describe('useHighlightState', () => {
           result.current.setMoveHighlight(createMockMoveHighlight())
         })
 
-        act(() => {
-          result.current.selectMultipleCells([10, 20])
-        })
+        actSelectMultipleCells(result, [10, 20])
 
         expect(result.current.highlightedDigit).toBeNull()
         expect(result.current.currentHighlight).toBeNull()
@@ -931,9 +909,7 @@ describe('useHighlightState', () => {
 
         const versionBefore = result.current.version
 
-        act(() => {
-          result.current.selectMultipleCells([10, 20, 30])
-        })
+        actSelectMultipleCells(result, [10, 20, 30])
 
         expect(result.current.version).toBe(versionBefore + 1)
       })
@@ -943,9 +919,7 @@ describe('useHighlightState', () => {
       it('selectCell still works for single cell selection', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.selectCell(42)
-        })
+        actSelectCell(result, 42)
 
         expect(result.current.state.selectedCells).toEqual(new Set([42]))
         expect(result.current.selectedCell).toBe(42)
@@ -954,13 +928,9 @@ describe('useHighlightState', () => {
       it('deselectCell clears multi-select state', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.selectMultipleCells([10, 20, 30])
-        })
+        actSelectMultipleCells(result, [10, 20, 30])
 
-        act(() => {
-          result.current.deselectCell()
-        })
+        actDeselectCell(result)
 
         expect(result.current.state.selectedCells.size).toBe(0)
         expect(result.current.selectedCell).toBeNull()
@@ -974,9 +944,7 @@ describe('useHighlightState', () => {
           result.current.setDigitHighlight(5)
         })
 
-        act(() => {
-          result.current.clearAllAndDeselect()
-        })
+        actClearAllAndDeselect(result)
 
         expect(result.current.state.selectedCells.size).toBe(0)
         expect(result.current.selectedCell).toBeNull()
@@ -986,13 +954,9 @@ describe('useHighlightState', () => {
       it('clearOnModeChange clears multi-select state', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.selectMultipleCells([5, 15, 25])
-        })
+        actSelectMultipleCells(result, [5, 15, 25])
 
-        act(() => {
-          result.current.clearOnModeChange()
-        })
+        actClearOnModeChange(result)
 
         expect(result.current.state.selectedCells.size).toBe(0)
         expect(result.current.selectedCell).toBeNull()
@@ -1003,9 +967,7 @@ describe('useHighlightState', () => {
       it('detects single selection when one cell is selected', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.selectMultipleCells([42])
-        })
+        actSelectMultipleCells(result, [42])
 
         expect(result.current.state.selectedCells.size).toBe(1)
         expect(result.current.selectedCell).toBe(42)
@@ -1014,9 +976,7 @@ describe('useHighlightState', () => {
       it('detects multi-selection when multiple cells selected', () => {
         const { result } = renderHook(() => useHighlightState())
 
-        act(() => {
-          result.current.selectMultipleCells([10, 20, 30])
-        })
+        actSelectMultipleCells(result, [10, 20, 30])
 
         expect(result.current.state.selectedCells.size).toBeGreaterThan(1)
         // When multiple cells are selected, selectedCell is set to the first

@@ -38,31 +38,24 @@ export default function DifficultyGrid({
     navigate(path)
   }
 
+  const renderCards = (keys: Difficulty[]) =>
+    keys.map((key) => (
+      <DailyCard
+        key={key}
+        difficulty={key}
+        selected={lastSelected === key}
+        isResumable={resumeDifficulty === key}
+        onPlay={() => handlePlay(key)}
+      />
+    ))
+
   return (
     <div className="difficulty-grid flex flex-col">
       {/* Top row: Easy, Medium, Hard */}
-      <div className="grid grid-cols-3 gap-[inherit]">
-        {difficulties.slice(0, 3).map((key) => (
-          <DailyCard
-            key={key}
-            difficulty={key}
-            selected={lastSelected === key}
-            isResumable={resumeDifficulty === key}
-            onPlay={() => handlePlay(key)}
-          />
-        ))}
-      </div>
+      <div className="grid grid-cols-3 gap-[inherit]">{renderCards(difficulties.slice(0, 3))}</div>
       {/* Bottom row: Expert, Impossible (centered) */}
       <div className="grid grid-cols-2 gap-[inherit] mx-auto w-2/3">
-        {difficulties.slice(3).map((key) => (
-          <DailyCard
-            key={key}
-            difficulty={key}
-            selected={lastSelected === key}
-            isResumable={resumeDifficulty === key}
-            onPlay={() => handlePlay(key)}
-          />
-        ))}
+        {renderCards(difficulties.slice(3))}
       </div>
     </div>
   )

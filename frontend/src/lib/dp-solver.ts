@@ -76,6 +76,18 @@ export function findConflicts(grid: number[]): Conflict[] {
   // Collect every conflicting pair inside one unit (a row, column, or box).
   // `seen` is shared across all units so a pair that conflicts in more than
   // one unit (e.g. two cells sharing both a row and a box) is reported once.
+  const emitConflictingPairs = (cells: number[], value: number, type: Conflict['type']) => {
+    for (let i = 0; i < cells.length; i++) {
+      for (let j = i + 1; j < cells.length; j++) {
+        const a = cells[i]
+        const b = cells[j]
+        if (a !== undefined && b !== undefined) {
+          addConflict(a, b, value, type)
+        }
+      }
+    }
+  }
+
   const findInUnit = (cellIndices: number[], type: Conflict['type']) => {
     const positions = new Map<number, number[]>()
     for (const idx of cellIndices) {
@@ -89,17 +101,7 @@ export function findConflicts(grid: number[]): Conflict[] {
       arr.push(idx)
     }
     for (const [val, cells] of positions) {
-      if (cells.length > 1) {
-        for (let i = 0; i < cells.length; i++) {
-          for (let j = i + 1; j < cells.length; j++) {
-            const a = cells[i]
-            const b = cells[j]
-            if (a !== undefined && b !== undefined) {
-              addConflict(a, b, val, type)
-            }
-          }
-        }
-      }
+      if (cells.length > 1) emitConflictingPairs(cells, val, type)
     }
   }
 

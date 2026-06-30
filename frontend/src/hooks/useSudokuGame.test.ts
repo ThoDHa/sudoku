@@ -11,6 +11,63 @@ import {
   createMockMove,
 } from '../test-utils'
 
+type GameHook = ReturnType<typeof useSudokuGame>
+type GameResult = { current: GameHook }
+
+// Render the hook with a board. Most tests render with only initialBoard, so
+// this wraps the renderHook boilerplate they would otherwise repeat.
+function renderGame(initialBoard: number[]) {
+  return renderHook(() => useSudokuGame({ initialBoard }))
+}
+
+function actPlace(result: GameResult, cell: number, digit: number, isNote = false) {
+  act(() => {
+    result.current.setCell(cell, digit, isNote)
+  })
+}
+
+function actErase(result: GameResult, cell: number) {
+  act(() => {
+    result.current.eraseCell(cell)
+  })
+}
+
+function actToggle(result: GameResult, cell: number, digit: number) {
+  act(() => {
+    result.current.toggleCandidate(cell, digit)
+  })
+}
+
+function actReset(result: GameResult) {
+  act(() => {
+    result.current.resetGame()
+  })
+}
+
+function actClear(result: GameResult) {
+  act(() => {
+    result.current.clearAll()
+  })
+}
+
+function actUndo(result: GameResult) {
+  act(() => {
+    result.current.undo()
+  })
+}
+
+function actRedo(result: GameResult) {
+  act(() => {
+    result.current.redo()
+  })
+}
+
+function actSetComplete(result: GameResult, value: boolean) {
+  act(() => {
+    result.current.setIsComplete(value)
+  })
+}
+
 // =============================================================================
 // HOOK INITIALIZATION TESTS
 // =============================================================================
@@ -18,14 +75,14 @@ import {
 describe('useSudokuGame - Hook Initialization', () => {
   it('initializes with the provided board', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     expect(result.current.board).toEqual(puzzle)
   })
 
   it('initializes with empty candidates', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // All candidates should start at 0
     for (let i = 0; i < TOTAL_CELLS; i++) {
@@ -35,7 +92,7 @@ describe('useSudokuGame - Hook Initialization', () => {
 
   it('starts with empty history', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     expect(result.current.history).toEqual([])
     expect(result.current.historyIndex).toBe(-1)
@@ -43,7 +100,7 @@ describe('useSudokuGame - Hook Initialization', () => {
 
   it('starts with canUndo=false and canRedo=false', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     expect(result.current.canUndo).toBe(false)
     expect(result.current.canRedo).toBe(false)
@@ -51,28 +108,28 @@ describe('useSudokuGame - Hook Initialization', () => {
 
   it('starts with isComplete=false for incomplete puzzles', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     expect(result.current.isComplete).toBe(false)
   })
 
   it('initializes candidatesVersion to 0', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     expect(result.current.candidatesVersion).toBe(0)
   })
 
   it('handles empty initial board', () => {
     const emptyBoard = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: emptyBoard }))
+    const { result } = renderGame(emptyBoard)
 
     expect(result.current.board).toEqual(emptyBoard)
   })
 
   it('computes initial digitCounts correctly', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Verify digit counts match the puzzle
     const expectedCounts = Array(9).fill(0)
@@ -92,7 +149,7 @@ describe('useSudokuGame - Hook Initialization', () => {
 describe('useSudokuGame - isGivenCell()', () => {
   it('returns true for given cells', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Cell 0 has digit 5 (given)
     expect(result.current.isGivenCell(0)).toBe(true)
@@ -102,7 +159,7 @@ describe('useSudokuGame - isGivenCell()', () => {
 
   it('returns false for empty cells', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Cell 2 is empty in the test puzzle
     expect(result.current.isGivenCell(2)).toBe(false)
@@ -112,12 +169,10 @@ describe('useSudokuGame - isGivenCell()', () => {
 
   it('returns false for user-filled cells', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Place a digit in an empty cell
-    act(() => {
-      result.current.setCell(2, 4, false)
-    })
+    actPlace(result, 2, 4, false)
 
     // Cell is now filled but not a given
     expect(result.current.board[2]).toBe(4)
@@ -132,7 +187,7 @@ describe('useSudokuGame - isGivenCell()', () => {
 describe('useSudokuGame - setCell() (Digit Placement)', () => {
   it('places a digit in an empty cell', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.setCell(40, 7, false) // Center cell, digit 7
@@ -143,11 +198,9 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
 
   it('adds move to history when placing a digit', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
 
     expect(result.current.history).toHaveLength(1)
     expect(result.current.historyIndex).toBe(0)
@@ -157,12 +210,10 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
 
   it('does not modify given cells', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Cell 0 is given (has digit 5)
-    act(() => {
-      result.current.setCell(0, 9, false)
-    })
+    actPlace(result, 0, 9, false)
 
     // Should not change
     expect(result.current.board[0]).toBe(5)
@@ -171,25 +222,21 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
 
   it('overwrites existing user-placed digit', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Place first digit
-    act(() => {
-      result.current.setCell(10, 3, false)
-    })
+    actPlace(result, 10, 3, false)
     expect(result.current.board[10]).toBe(3)
 
     // Overwrite with different digit
-    act(() => {
-      result.current.setCell(10, 8, false)
-    })
+    actPlace(result, 10, 8, false)
     expect(result.current.board[10]).toBe(8)
     expect(result.current.history).toHaveLength(2)
   })
 
   it('eliminates candidates from peers when placing digit', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // First fill candidates
     act(() => {
@@ -199,9 +246,7 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
     })
 
     // Now place digit 5 at cell 0 (R1C1)
-    act(() => {
-      result.current.setCell(0, 5, false)
-    })
+    actPlace(result, 0, 5, false)
 
     // Candidates for 5 should be eliminated from row 1, col 1, and box 1
     // Cell 1 is in same row, so its candidate for 5 should be cleared
@@ -210,7 +255,7 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
 
   it('clears candidates for the placed cell', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Add candidates to cell 10
     act(() => {
@@ -221,9 +266,7 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
     expect(countCandidates(result.current.candidates[10])).toBeGreaterThan(0)
 
     // Place digit
-    act(() => {
-      result.current.setCell(10, 5, false)
-    })
+    actPlace(result, 10, 5, false)
 
     // Candidates should be cleared
     expect(result.current.candidates[10]).toBe(0)
@@ -231,26 +274,22 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
 
   it('updates digitCounts when placing digit', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const initialCount = result.current.digitCounts[6] // Count of 7s (index 6)
 
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
 
     expect(result.current.digitCounts[6]).toBe(initialCount + 1)
   })
 
   it('enables canUndo after placing digit', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     expect(result.current.canUndo).toBe(false)
 
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
 
     expect(result.current.canUndo).toBe(true)
   })
@@ -261,9 +300,7 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
     const { result } = renderHook(() => useSudokuGame({ initialBoard: nearlyComplete, onComplete }))
 
     // Place the final digit (cell 80 should be 9 in our complete puzzle)
-    act(() => {
-      result.current.setCell(80, 9, false)
-    })
+    actPlace(result, 80, 9, false)
 
     expect(onComplete).toHaveBeenCalled()
     expect(result.current.isComplete).toBe(true)
@@ -291,46 +328,36 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
 describe('useSudokuGame - setCell() (Notes Mode)', () => {
   it('toggles candidate in notes mode', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Add candidate
-    act(() => {
-      result.current.setCell(40, 5, true)
-    })
+    actPlace(result, 40, 5, true)
 
     expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
   })
 
   it('removes candidate on second toggle using toggleCandidate', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Add candidate using toggleCandidate (not affected by debounce guard)
-    act(() => {
-      result.current.toggleCandidate(40, 5)
-    })
+    actToggle(result, 40, 5)
     expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
 
     // Remove candidate (toggle off) - toggleCandidate doesn't have debounce
-    act(() => {
-      result.current.toggleCandidate(40, 5)
-    })
+    actToggle(result, 40, 5)
     expect(hasCandidate(result.current.candidates[40], 5)).toBe(false)
   })
 
   it('does not add notes to filled cells', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Place digit
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
 
     // Try to add note
-    act(() => {
-      result.current.setCell(40, 3, true)
-    })
+    actPlace(result, 40, 3, true)
 
     // Should not have any candidates
     expect(result.current.candidates[40]).toBe(0)
@@ -338,36 +365,30 @@ describe('useSudokuGame - setCell() (Notes Mode)', () => {
 
   it('does not add notes to given cells', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Cell 0 is given
-    act(() => {
-      result.current.setCell(0, 3, true)
-    })
+    actPlace(result, 0, 3, true)
 
     expect(result.current.candidates[0]).toBe(0)
   })
 
   it('increments candidatesVersion when toggling notes', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const initialVersion = result.current.candidatesVersion
 
-    act(() => {
-      result.current.setCell(40, 5, true)
-    })
+    actPlace(result, 40, 5, true)
 
     expect(result.current.candidatesVersion).toBe(initialVersion + 1)
   })
 
   it('adds history entry for note toggle', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(40, 5, true)
-    })
+    actPlace(result, 40, 5, true)
 
     expect(result.current.history).toHaveLength(1)
     expect(result.current.history[0]?.action).toBe('note')
@@ -381,33 +402,27 @@ describe('useSudokuGame - setCell() (Notes Mode)', () => {
 describe('useSudokuGame - toggleCandidate()', () => {
   it('adds candidate to empty cell', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.toggleCandidate(40, 7)
-    })
+    actToggle(result, 40, 7)
 
     expect(hasCandidate(result.current.candidates[40], 7)).toBe(true)
   })
 
   it('removes existing candidate', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Add then remove
-    act(() => {
-      result.current.toggleCandidate(40, 7)
-    })
-    act(() => {
-      result.current.toggleCandidate(40, 7)
-    })
+    actToggle(result, 40, 7)
+    actToggle(result, 40, 7)
 
     expect(hasCandidate(result.current.candidates[40], 7)).toBe(false)
   })
 
   it('does not toggle candidate for given cells', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.toggleCandidate(0, 3) // Cell 0 is given
@@ -419,19 +434,15 @@ describe('useSudokuGame - toggleCandidate()', () => {
 
   it('does not toggle candidate for filled cells', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Fill the cell first
-    act(() => {
-      result.current.setCell(40, 5, false)
-    })
+    actPlace(result, 40, 5, false)
 
     const historyLength = result.current.history.length
 
     // Try to toggle candidate
-    act(() => {
-      result.current.toggleCandidate(40, 3)
-    })
+    actToggle(result, 40, 3)
 
     expect(result.current.candidates[40]).toBe(0)
     expect(result.current.history).toHaveLength(historyLength) // No new history entry
@@ -439,11 +450,9 @@ describe('useSudokuGame - toggleCandidate()', () => {
 
   it('adds toggle to history', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.toggleCandidate(40, 7)
-    })
+    actToggle(result, 40, 7)
 
     expect(result.current.history).toHaveLength(1)
     expect(result.current.history[0]?.isUserMove).toBe(true)
@@ -457,25 +466,21 @@ describe('useSudokuGame - toggleCandidate()', () => {
 describe('useSudokuGame - eraseCell()', () => {
   it('erases user-placed digit', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Place digit
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
     expect(result.current.board[40]).toBe(7)
 
     // Erase
-    act(() => {
-      result.current.eraseCell(40)
-    })
+    actErase(result, 40)
 
     expect(result.current.board[40]).toBe(0)
   })
 
   it('does not erase given cells', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.eraseCell(0) // Cell 0 is given (5)
@@ -487,7 +492,7 @@ describe('useSudokuGame - eraseCell()', () => {
 
   it('clears candidates when erasing empty cell with notes', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Add notes
     act(() => {
@@ -498,24 +503,18 @@ describe('useSudokuGame - eraseCell()', () => {
     expect(countCandidates(result.current.candidates[40])).toBe(3)
 
     // Erase (clears notes)
-    act(() => {
-      result.current.eraseCell(40)
-    })
+    actErase(result, 40)
 
     expect(result.current.candidates[40]).toBe(0)
   })
 
   it('adds erase to history', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
 
-    act(() => {
-      result.current.eraseCell(40)
-    })
+    actErase(result, 40)
 
     expect(result.current.history).toHaveLength(2)
     expect(result.current.history[1]?.action).toBe('erase')
@@ -523,27 +522,21 @@ describe('useSudokuGame - eraseCell()', () => {
 
   it('does nothing for empty cells without candidates', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.eraseCell(40)
-    })
+    actErase(result, 40)
 
     expect(result.current.history).toHaveLength(0)
   })
 
   it('updates digitCounts when erasing', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
     const countBefore = result.current.digitCounts[6]
 
-    act(() => {
-      result.current.eraseCell(40)
-    })
+    actErase(result, 40)
 
     expect(result.current.digitCounts[6]).toBe(countBefore - 1)
   })
@@ -556,75 +549,57 @@ describe('useSudokuGame - eraseCell()', () => {
 describe('useSudokuGame - undo()', () => {
   it('undoes digit placement', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
     expect(result.current.board[40]).toBe(7)
 
-    act(() => {
-      result.current.undo()
-    })
+    actUndo(result)
 
     expect(result.current.board[40]).toBe(0)
   })
 
   it('undoes note toggle', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.toggleCandidate(40, 5)
-    })
+    actToggle(result, 40, 5)
     expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
 
-    act(() => {
-      result.current.undo()
-    })
+    actUndo(result)
 
     expect(hasCandidate(result.current.candidates[40], 5)).toBe(false)
   })
 
   it('does nothing when history is empty', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.undo()
-    })
+    actUndo(result)
 
     expect(result.current.historyIndex).toBe(-1)
   })
 
   it('decrements historyIndex', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
     expect(result.current.historyIndex).toBe(0)
 
-    act(() => {
-      result.current.undo()
-    })
+    actUndo(result)
 
     expect(result.current.historyIndex).toBe(-1)
   })
 
   it('enables canRedo after undo', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
     expect(result.current.canRedo).toBe(false)
 
-    act(() => {
-      result.current.undo()
-    })
+    actUndo(result)
 
     expect(result.current.canRedo).toBe(true)
   })
@@ -635,22 +610,18 @@ describe('useSudokuGame - undo()', () => {
     const { result } = renderHook(() => useSudokuGame({ initialBoard: nearlyComplete, onComplete }))
 
     // Complete the puzzle
-    act(() => {
-      result.current.setCell(80, 9, false)
-    })
+    actPlace(result, 80, 9, false)
     expect(result.current.isComplete).toBe(true)
 
     // Undo
-    act(() => {
-      result.current.undo()
-    })
+    actUndo(result)
 
     expect(result.current.isComplete).toBe(false)
   })
 
   it('supports multiple undos', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.setCell(10, 1, false)
@@ -678,53 +649,37 @@ describe('useSudokuGame - undo()', () => {
 describe('useSudokuGame - redo()', () => {
   it('redoes digit placement', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
-    act(() => {
-      result.current.undo()
-    })
+    actPlace(result, 40, 7, false)
+    actUndo(result)
     expect(result.current.board[40]).toBe(0)
 
-    act(() => {
-      result.current.redo()
-    })
+    actRedo(result)
 
     expect(result.current.board[40]).toBe(7)
   })
 
   it('redoes note toggle', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.toggleCandidate(40, 5)
-    })
-    act(() => {
-      result.current.undo()
-    })
+    actToggle(result, 40, 5)
+    actUndo(result)
     expect(hasCandidate(result.current.candidates[40], 5)).toBe(false)
 
-    act(() => {
-      result.current.redo()
-    })
+    actRedo(result)
 
     expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
   })
 
   it('does nothing when at end of history', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
 
-    act(() => {
-      result.current.redo()
-    })
+    actRedo(result)
 
     // Should still be at end
     expect(result.current.historyIndex).toBe(0)
@@ -733,7 +688,7 @@ describe('useSudokuGame - redo()', () => {
 
   it('increments historyIndex', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.setCell(40, 7, false)
@@ -741,16 +696,14 @@ describe('useSudokuGame - redo()', () => {
     })
     expect(result.current.historyIndex).toBe(-1)
 
-    act(() => {
-      result.current.redo()
-    })
+    actRedo(result)
 
     expect(result.current.historyIndex).toBe(0)
   })
 
   it('disables canRedo when at end of history', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.setCell(40, 7, false)
@@ -758,16 +711,14 @@ describe('useSudokuGame - redo()', () => {
     })
     expect(result.current.canRedo).toBe(true)
 
-    act(() => {
-      result.current.redo()
-    })
+    actRedo(result)
 
     expect(result.current.canRedo).toBe(false)
   })
 
   it('supports multiple redos', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.setCell(10, 1, false)
@@ -797,7 +748,7 @@ describe('useSudokuGame - redo()', () => {
 describe('useSudokuGame - resetGame()', () => {
   it('resets board to initial state', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Make some changes
     act(() => {
@@ -805,25 +756,21 @@ describe('useSudokuGame - resetGame()', () => {
       result.current.setCell(3, 8, false)
     })
 
-    act(() => {
-      result.current.resetGame()
-    })
+    actReset(result)
 
     expect(result.current.board).toEqual(puzzle)
   })
 
   it('clears all candidates', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.toggleCandidate(40, 5)
       result.current.toggleCandidate(41, 6)
     })
 
-    act(() => {
-      result.current.resetGame()
-    })
+    actReset(result)
 
     expect(result.current.candidates[40]).toBe(0)
     expect(result.current.candidates[41]).toBe(0)
@@ -831,15 +778,11 @@ describe('useSudokuGame - resetGame()', () => {
 
   it('clears history', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(2, 4, false)
-    })
+    actPlace(result, 2, 4, false)
 
-    act(() => {
-      result.current.resetGame()
-    })
+    actReset(result)
 
     expect(result.current.history).toEqual([])
     expect(result.current.historyIndex).toBe(-1)
@@ -847,16 +790,12 @@ describe('useSudokuGame - resetGame()', () => {
 
   it('resets isComplete to false', () => {
     const nearlyComplete = createNearlyCompletePuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: nearlyComplete }))
+    const { result } = renderGame(nearlyComplete)
 
-    act(() => {
-      result.current.setCell(80, 9, false)
-    })
+    actPlace(result, 80, 9, false)
     expect(result.current.isComplete).toBe(true)
 
-    act(() => {
-      result.current.resetGame()
-    })
+    actReset(result)
 
     expect(result.current.isComplete).toBe(false)
   })
@@ -869,16 +808,14 @@ describe('useSudokuGame - resetGame()', () => {
 describe('useSudokuGame - clearAll()', () => {
   it('clears user entries but keeps givens', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.setCell(2, 4, false)
       result.current.setCell(3, 8, false)
     })
 
-    act(() => {
-      result.current.clearAll()
-    })
+    actClear(result)
 
     // Givens should remain
     expect(result.current.board[0]).toBe(5)
@@ -891,16 +828,14 @@ describe('useSudokuGame - clearAll()', () => {
 
   it('clears all candidates', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.toggleCandidate(40, 5)
       result.current.toggleCandidate(41, 6)
     })
 
-    act(() => {
-      result.current.clearAll()
-    })
+    actClear(result)
 
     for (let i = 0; i < TOTAL_CELLS; i++) {
       expect(result.current.candidates[i]).toBe(0)
@@ -909,15 +844,11 @@ describe('useSudokuGame - clearAll()', () => {
 
   it('clears history', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(2, 4, false)
-    })
+    actPlace(result, 2, 4, false)
 
-    act(() => {
-      result.current.clearAll()
-    })
+    actClear(result)
 
     expect(result.current.history).toEqual([])
     expect(result.current.historyIndex).toBe(-1)
@@ -931,7 +862,7 @@ describe('useSudokuGame - clearAll()', () => {
 describe('useSudokuGame - clearCandidates()', () => {
   it('clears all candidates', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.toggleCandidate(10, 1)
@@ -950,7 +881,7 @@ describe('useSudokuGame - clearCandidates()', () => {
 
   it('keeps board digits intact', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.setCell(40, 7, false)
@@ -966,11 +897,9 @@ describe('useSudokuGame - clearCandidates()', () => {
 
   it('adds clear-candidates action to history', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.toggleCandidate(40, 5)
-    })
+    actToggle(result, 40, 5)
 
     act(() => {
       result.current.clearCandidates()
@@ -987,7 +916,7 @@ describe('useSudokuGame - clearCandidates()', () => {
 describe('useSudokuGame - fillAllCandidates()', () => {
   it('returns candidates for all empty cells', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     let filledCandidates: Uint16Array
 
@@ -1005,7 +934,7 @@ describe('useSudokuGame - fillAllCandidates()', () => {
   it('respects row constraints', () => {
     const puzzle = createEmptyPuzzle()
     puzzle[0] = 5 // R1C1 = 5
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     let filledCandidates: Uint16Array
 
@@ -1020,7 +949,7 @@ describe('useSudokuGame - fillAllCandidates()', () => {
   it('respects column constraints', () => {
     const puzzle = createEmptyPuzzle()
     puzzle[0] = 7 // R1C1 = 7
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     let filledCandidates: Uint16Array
 
@@ -1035,7 +964,7 @@ describe('useSudokuGame - fillAllCandidates()', () => {
   it('respects box constraints', () => {
     const puzzle = createEmptyPuzzle()
     puzzle[0] = 3 // R1C1 = 3
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     let filledCandidates: Uint16Array
 
@@ -1055,18 +984,16 @@ describe('useSudokuGame - fillAllCandidates()', () => {
 describe('useSudokuGame - areCandidatesFilled()', () => {
   it('returns false when no candidates are set', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     expect(result.current.areCandidatesFilled()).toBe(false)
   })
 
   it('returns true when at least one cell has candidates', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.toggleCandidate(40, 5)
-    })
+    actToggle(result, 40, 5)
 
     expect(result.current.areCandidatesFilled()).toBe(true)
   })
@@ -1079,7 +1006,7 @@ describe('useSudokuGame - areCandidatesFilled()', () => {
 describe('useSudokuGame - calculateCandidatesForCell()', () => {
   it('returns all possible candidates for empty board', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const candidates = result.current.calculateCandidatesForCell(40, puzzle)
 
@@ -1092,7 +1019,7 @@ describe('useSudokuGame - calculateCandidatesForCell()', () => {
   it('excludes digits from same row', () => {
     const puzzle = createEmptyPuzzle()
     puzzle[36] = 5 // Same row as cell 40
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const candidates = result.current.calculateCandidatesForCell(40, puzzle)
 
@@ -1102,7 +1029,7 @@ describe('useSudokuGame - calculateCandidatesForCell()', () => {
   it('excludes digits from same column', () => {
     const puzzle = createEmptyPuzzle()
     puzzle[4] = 7 // Same column as cell 40
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const candidates = result.current.calculateCandidatesForCell(40, puzzle)
 
@@ -1112,7 +1039,7 @@ describe('useSudokuGame - calculateCandidatesForCell()', () => {
   it('excludes digits from same box', () => {
     const puzzle = createEmptyPuzzle()
     puzzle[30] = 3 // Same box as cell 40
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const candidates = result.current.calculateCandidatesForCell(40, puzzle)
 
@@ -1127,7 +1054,7 @@ describe('useSudokuGame - calculateCandidatesForCell()', () => {
 describe('useSudokuGame - applyExternalMove()', () => {
   it('applies external board state', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const newBoard = [...puzzle]
     newBoard[40] = 5
@@ -1143,7 +1070,7 @@ describe('useSudokuGame - applyExternalMove()', () => {
 
   it('adds move to history', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const move = createMockMove()
 
@@ -1177,7 +1104,7 @@ describe('useSudokuGame - applyExternalMove()', () => {
 describe('useSudokuGame - restoreState()', () => {
   it('restores saved board state', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const savedBoard = [...puzzle]
     savedBoard[10] = 5
@@ -1193,7 +1120,7 @@ describe('useSudokuGame - restoreState()', () => {
 
   it('restores saved candidates', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const savedCandidates = new Uint16Array(TOTAL_CELLS)
     savedCandidates[40] = addCandidate(0, 5)
@@ -1207,7 +1134,7 @@ describe('useSudokuGame - restoreState()', () => {
 
   it('restores saved history', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const savedHistory = [createMockMove(), createMockMove({ step_index: 1 })]
 
@@ -1221,7 +1148,7 @@ describe('useSudokuGame - restoreState()', () => {
 
   it('sets isComplete for completed boards', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const completeBoard = createCompletePuzzle()
 
@@ -1240,7 +1167,7 @@ describe('useSudokuGame - restoreState()', () => {
 describe('useSudokuGame - setBoardState()', () => {
   it('sets board without modifying history', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const newBoard = [...puzzle]
     newBoard[40] = 7
@@ -1255,7 +1182,7 @@ describe('useSudokuGame - setBoardState()', () => {
 
   it('sets candidates without modifying history', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const newCandidates = new Uint16Array(TOTAL_CELLS)
     newCandidates[40] = addCandidate(0, 3)
@@ -1276,7 +1203,7 @@ describe('useSudokuGame - setBoardState()', () => {
 describe('useSudokuGame - checkNotes()', () => {
   it('returns valid=true when no notes exist', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const check = result.current.checkNotes()
 
@@ -1289,7 +1216,7 @@ describe('useSudokuGame - checkNotes()', () => {
   it('detects wrong notes', () => {
     const puzzle = createEmptyPuzzle()
     puzzle[0] = 5 // R1C1 = 5
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Add invalid note (5 is in same row)
     act(() => {
@@ -1304,12 +1231,10 @@ describe('useSudokuGame - checkNotes()', () => {
 
   it('detects missing notes', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Add only one note when all digits 1-9 are valid
-    act(() => {
-      result.current.toggleCandidate(40, 1)
-    })
+    actToggle(result, 40, 1)
 
     const check = result.current.checkNotes()
 
@@ -1319,7 +1244,7 @@ describe('useSudokuGame - checkNotes()', () => {
 
   it('counts cells with notes', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.toggleCandidate(10, 1)
@@ -1340,7 +1265,7 @@ describe('useSudokuGame - checkNotes()', () => {
 describe('useSudokuGame - History Management', () => {
   it('truncates redo history when making new move', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Make moves
     act(() => {
@@ -1358,9 +1283,7 @@ describe('useSudokuGame - History Management', () => {
     expect(result.current.canRedo).toBe(true)
 
     // Make a new move
-    act(() => {
-      result.current.setCell(40, 4, false)
-    })
+    actPlace(result, 40, 4, false)
 
     // Redo history should be gone
     expect(result.current.canRedo).toBe(false)
@@ -1369,11 +1292,9 @@ describe('useSudokuGame - History Management', () => {
 
   it('stores stateDiff in moves for compact storage', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(40, 5, false)
-    })
+    actPlace(result, 40, 5, false)
 
     expect(result.current.history[0]?.stateDiff).toBeDefined()
     expect(result.current.history[0]?.stateDiff?.boardChanges).toHaveLength(1)
@@ -1381,7 +1302,7 @@ describe('useSudokuGame - History Management', () => {
 
   it('limits history to MAX_MOVE_HISTORY', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Fill history beyond limit
     act(() => {
@@ -1401,18 +1322,16 @@ describe('useSudokuGame - History Management', () => {
 describe('useSudokuGame - Edge Cases', () => {
   it('handles placing digit 0 (no-op or clear)', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(40, 0, false)
-    })
+    actPlace(result, 40, 0, false)
 
     expect(result.current.board[40]).toBe(0)
   })
 
   it('handles out-of-range cell indices gracefully', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // These should not throw
     act(() => {
@@ -1426,7 +1345,7 @@ describe('useSudokuGame - Edge Cases', () => {
 
   it('handles multiple rapid calls correctly', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Rapid digit placements
     act(() => {
@@ -1468,7 +1387,7 @@ describe('useSudokuGame - Edge Cases', () => {
 describe('useSudokuGame - digitCounts', () => {
   it('correctly counts digits in initial board', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Count manually
     const expected = Array(9).fill(0)
@@ -1481,29 +1400,23 @@ describe('useSudokuGame - digitCounts', () => {
 
   it('updates when placing digit', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     expect(result.current.digitCounts[6]).toBe(0) // 7s
 
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
 
     expect(result.current.digitCounts[6]).toBe(1)
   })
 
   it('updates when erasing digit', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
-    act(() => {
-      result.current.setCell(40, 7, false)
-    })
+    actPlace(result, 40, 7, false)
     expect(result.current.digitCounts[6]).toBe(1)
 
-    act(() => {
-      result.current.eraseCell(40)
-    })
+    actErase(result, 40)
 
     expect(result.current.digitCounts[6]).toBe(0)
   })
@@ -1516,11 +1429,9 @@ describe('useSudokuGame - digitCounts', () => {
 describe('Click cell with matching digit', () => {
   it('erases a user-entered digit when clicked a second time with same digit', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
     // Place digit 7 in cell 10
-    act(() => {
-      result.current.setCell(10, 7, false)
-    })
+    actPlace(result, 10, 7, false)
     expect(result.current.board[10]).toBe(7)
     // Simulate clicking cell with highlighted digit again (should erase)
     act(() => {
@@ -1540,31 +1451,25 @@ describe('Click cell with matching digit', () => {
 describe('useSudokuGame - setIsComplete()', () => {
   it('allows external setting of isComplete', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     expect(result.current.isComplete).toBe(false)
 
-    act(() => {
-      result.current.setIsComplete(true)
-    })
+    actSetComplete(result, true)
 
     expect(result.current.isComplete).toBe(true)
   })
 
   it('allows resetting isComplete to false', () => {
     const nearlyComplete = createNearlyCompletePuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: nearlyComplete }))
+    const { result } = renderGame(nearlyComplete)
 
     // Complete the puzzle
-    act(() => {
-      result.current.setCell(80, 9, false)
-    })
+    actPlace(result, 80, 9, false)
     expect(result.current.isComplete).toBe(true)
 
     // Reset
-    act(() => {
-      result.current.setIsComplete(false)
-    })
+    actSetComplete(result, false)
 
     expect(result.current.isComplete).toBe(false)
   })
@@ -1577,24 +1482,20 @@ describe('useSudokuGame - setIsComplete()', () => {
 describe('useSudokuGame - Legacy Move Format Compatibility', () => {
   it('handles undo when move has no stateDiff (legacy format)', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Place a digit normally (creates stateDiff)
-    act(() => {
-      result.current.setCell(40, 5, false)
-    })
+    actPlace(result, 40, 5, false)
     expect(result.current.board[40]).toBe(5)
 
     // Undo should work via stateDiff
-    act(() => {
-      result.current.undo()
-    })
+    actUndo(result)
     expect(result.current.board[40]).toBe(0)
   })
 
   it('handles restoreState with complete history', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Create a saved state with history
     const savedBoard = [...puzzle]
@@ -1618,7 +1519,7 @@ describe('useSudokuGame - Legacy Move Format Compatibility', () => {
 
   it('handles restoring incomplete board state', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     act(() => {
       result.current.restoreState(puzzle, new Uint16Array(TOTAL_CELLS), [])
@@ -1635,7 +1536,7 @@ describe('useSudokuGame - Legacy Move Format Compatibility', () => {
 describe('useSudokuGame - Candidate Elimination Edge Cases', () => {
   it('eliminates candidates from all peers correctly', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // First add candidates to several cells
     act(() => {
@@ -1645,9 +1546,7 @@ describe('useSudokuGame - Candidate Elimination Edge Cases', () => {
     })
 
     // Place digit 5 at cell 0
-    act(() => {
-      result.current.setCell(0, 5, false)
-    })
+    actPlace(result, 0, 5, false)
 
     // All peer cells should have candidate 5 eliminated
     expect(hasCandidate(result.current.candidates[1], 5)).toBe(false)
@@ -1657,17 +1556,13 @@ describe('useSudokuGame - Candidate Elimination Edge Cases', () => {
 
   it('handles cell in corner of box for elimination', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Add candidate to cell 80 (bottom-right corner)
-    act(() => {
-      result.current.toggleCandidate(80, 9)
-    })
+    actToggle(result, 80, 9)
 
     // Place digit in same box (cell 60 - top-left of bottom-right box)
-    act(() => {
-      result.current.setCell(60, 9, false)
-    })
+    actPlace(result, 60, 9, false)
 
     expect(hasCandidate(result.current.candidates[80], 9)).toBe(false)
   })
@@ -1717,29 +1612,23 @@ describe('useSudokuGame - Validation Edge Cases', () => {
 describe('useSudokuGame - Board Update Helpers', () => {
   it('updateCandidates increments version correctly', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const v1 = result.current.candidatesVersion
 
-    act(() => {
-      result.current.toggleCandidate(40, 1)
-    })
+    actToggle(result, 40, 1)
     expect(result.current.candidatesVersion).toBe(v1 + 1)
 
-    act(() => {
-      result.current.toggleCandidate(40, 2)
-    })
+    actToggle(result, 40, 2)
     expect(result.current.candidatesVersion).toBe(v1 + 2)
   })
 
   it('setBoardState does not affect history', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Add some history
-    act(() => {
-      result.current.setCell(10, 5, false)
-    })
+    actPlace(result, 10, 5, false)
     expect(result.current.history).toHaveLength(1)
 
     // Use setBoardState
@@ -1762,18 +1651,14 @@ describe('useSudokuGame - Board Update Helpers', () => {
 describe('useSudokuGame - Given Cells Behavior', () => {
   it('updates given cells when resetGame is called', () => {
     const puzzle = createTestPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     // Place some digits
-    act(() => {
-      result.current.setCell(2, 4, false)
-    })
+    actPlace(result, 2, 4, false)
     expect(result.current.board[2]).toBe(4)
 
     // Reset
-    act(() => {
-      result.current.resetGame()
-    })
+    actReset(result)
 
     // Should be back to initial
     expect(result.current.board[2]).toBe(0)
@@ -1802,13 +1687,11 @@ describe('useSudokuGame - Memoization', () => {
 
   it('updates return object when state changes', () => {
     const puzzle = createEmptyPuzzle()
-    const { result } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
+    const { result } = renderGame(puzzle)
 
     const firstBoard = result.current.board
 
-    act(() => {
-      result.current.setCell(40, 5, false)
-    })
+    actPlace(result, 40, 5, false)
 
     // Board should be different after state change
     expect(result.current.board).not.toBe(firstBoard)

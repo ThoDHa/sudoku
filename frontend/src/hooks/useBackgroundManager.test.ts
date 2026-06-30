@@ -2,6 +2,22 @@ import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useBackgroundManager } from './useBackgroundManager'
 
+type HookResult = { current: ReturnType<typeof useBackgroundManager> }
+
+function actForcePause(result: HookResult) {
+  act(() => {
+    result.current.forcePause()
+  })
+}
+
+function actForceResume(result: HookResult) {
+  act(() => {
+    result.current.forceResume()
+  })
+}
+
+
+
 // =============================================================================
 // MOCKING UTILITIES
 // =============================================================================
@@ -182,9 +198,7 @@ describe('useBackgroundManager', () => {
       const { result } = renderHook(() => useBackgroundManager())
 
       // Force pause
-      act(() => {
-        result.current.forcePause()
-      })
+      actForcePause(result)
       expect(result.current.shouldPauseOperations).toBe(true)
 
       // Page becomes hidden then visible
@@ -203,9 +217,7 @@ describe('useBackgroundManager', () => {
       const { result } = renderHook(() => useBackgroundManager())
 
       // Force resume (while visible - the typical use case)
-      act(() => {
-        result.current.forceResume()
-      })
+      actForceResume(result)
       // forceResumed is set but doesn't affect shouldPauseOperations when visible
       expect(result.current.shouldPauseOperations).toBe(false)
 
@@ -292,9 +304,7 @@ describe('useBackgroundManager', () => {
       const { result } = renderHook(() => useBackgroundManager())
 
       // Force pause
-      act(() => {
-        result.current.forcePause()
-      })
+      actForcePause(result)
       expect(result.current.shouldPauseOperations).toBe(true)
 
       // Freeze then resume
@@ -347,9 +357,7 @@ describe('useBackgroundManager', () => {
 
       expect(result.current.shouldPauseOperations).toBe(false)
 
-      act(() => {
-        result.current.forcePause()
-      })
+      actForcePause(result)
 
       expect(result.current.shouldPauseOperations).toBe(true)
     })
@@ -361,9 +369,7 @@ describe('useBackgroundManager', () => {
       expect(result.current.shouldPauseOperations).toBe(false)
 
       // Force resume while visible just sets the flag
-      act(() => {
-        result.current.forceResume()
-      })
+      actForceResume(result)
 
       // Still not pausing (was already not pausing)
       expect(result.current.shouldPauseOperations).toBe(false)
@@ -373,15 +379,11 @@ describe('useBackgroundManager', () => {
       const { result } = renderHook(() => useBackgroundManager())
 
       // Force resume first (while visible)
-      act(() => {
-        result.current.forceResume()
-      })
+      actForceResume(result)
       expect(result.current.shouldPauseOperations).toBe(false)
 
       // Force pause should set pause state
-      act(() => {
-        result.current.forcePause()
-      })
+      actForcePause(result)
       expect(result.current.shouldPauseOperations).toBe(true)
     })
 
@@ -389,15 +391,11 @@ describe('useBackgroundManager', () => {
       const { result } = renderHook(() => useBackgroundManager())
 
       // Force pause while visible
-      act(() => {
-        result.current.forcePause()
-      })
+      actForcePause(result)
       expect(result.current.shouldPauseOperations).toBe(true)
 
       // Force resume should clear the pause state
-      act(() => {
-        result.current.forceResume()
-      })
+      actForceResume(result)
       expect(result.current.shouldPauseOperations).toBe(false)
       expect(result.current.isInDeepPause).toBe(false)
     })
@@ -478,15 +476,11 @@ describe('useBackgroundManager', () => {
       const { result } = renderHook(() => useBackgroundManager())
 
       // Force pause first
-      act(() => {
-        result.current.forcePause()
-      })
+      actForcePause(result)
       expect(result.current.shouldPauseOperations).toBe(true)
 
       // Force resume should override
-      act(() => {
-        result.current.forceResume()
-      })
+      actForceResume(result)
       expect(result.current.shouldPauseOperations).toBe(false)
     })
 
@@ -496,9 +490,7 @@ describe('useBackgroundManager', () => {
       expect(result.current.shouldPauseOperations).toBe(false)
 
       // Force pause should override visible state
-      act(() => {
-        result.current.forcePause()
-      })
+      actForcePause(result)
 
       expect(result.current.shouldPauseOperations).toBe(true)
     })

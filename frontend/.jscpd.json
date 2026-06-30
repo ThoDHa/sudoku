@@ -1,0 +1,13 @@
+{
+  "threshold": 5,
+  "reporters": ["console", "html"],
+  "output": "./reports/jscpd",
+  "ignorePattern": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/node_modules/**",
+    "**/dist/**"
+  ]
+}

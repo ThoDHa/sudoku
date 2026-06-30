@@ -8,6 +8,55 @@ import {
 } from '../lib/candidatesUtils'
 import { BOARD_SIZE, SUBGRID_SIZE, TOTAL_CELLS, MIN_DIGIT, MAX_DIGIT } from '../lib/constants'
 
+// Returns true when `digit` does not already appear in the cell's row, column, or box.
+const isDigitPlaceable = (
+  board: number[],
+  row: number,
+  col: number,
+  boxRow: number,
+  boxCol: number,
+  digit: number,
+): boolean => {
+  for (let c = 0; c < BOARD_SIZE; c++) {
+    if (board[row * BOARD_SIZE + c] === digit) return false
+  }
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    if (board[r * BOARD_SIZE + col] === digit) return false
+  }
+  for (let r = boxRow; r < boxRow + SUBGRID_SIZE; r++) {
+    for (let c = boxCol; c < boxCol + SUBGRID_SIZE; c++) {
+      if (board[r * BOARD_SIZE + c] === digit) return false
+    }
+  }
+  return true
+}
+
+type NoteList = { idx: number; digit: number }[]
+
+// Compare a cell's user notes against the valid candidate mask, returning
+// notes the user added that are wrong plus notes they omitted.
+const diffCellNotes = (
+  idx: number,
+  userMask: CandidateMask,
+  validMask: CandidateMask,
+): { wrong: NoteList; missing: NoteList } => {
+  const wrong: NoteList = []
+  for (let digit = MIN_DIGIT; digit <= MAX_DIGIT; digit++) {
+    if (hasCandidate(userMask, digit) && !hasCandidate(validMask, digit)) {
+      wrong.push({ idx, digit })
+    }
+  }
+  const missing: NoteList = []
+  if (countCandidates(userMask) > 0) {
+    for (let digit = MIN_DIGIT; digit <= MAX_DIGIT; digit++) {
+      if (hasCandidate(validMask, digit) && !hasCandidate(userMask, digit)) {
+        missing.push({ idx, digit })
+      }
+    }
+  }
+  return { wrong, missing }
+}
+
 export interface UseCandidatesReturn {
   candidates: Uint16Array
   candidatesVersion: number
@@ -56,19 +105,9 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
       let validCandidates = 0
 
       for (let d = MIN_DIGIT; d <= MAX_DIGIT; d++) {
-        let canPlace = true
-        for (let c = 0; c < BOARD_SIZE && canPlace; c++) {
-          if (currentBoard[row * BOARD_SIZE + c] === d) canPlace = false
+        if (isDigitPlaceable(currentBoard, row, col, boxRow, boxCol, d)) {
+          validCandidates = addCandidate(validCandidates, d)
         }
-        for (let r = 0; r < BOARD_SIZE && canPlace; r++) {
-          if (currentBoard[r * BOARD_SIZE + col] === d) canPlace = false
-        }
-        for (let r = boxRow; r < boxRow + SUBGRID_SIZE && canPlace; r++) {
-          for (let c = boxCol; c < boxCol + SUBGRID_SIZE && canPlace; c++) {
-            if (currentBoard[r * BOARD_SIZE + c] === d) canPlace = false
-          }
-        }
-        if (canPlace) validCandidates = addCandidate(validCandidates, d)
       }
       return validCandidates
     },
@@ -165,19 +204,9 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
           cellsWithNotes++
         }
 
-        for (let digit = MIN_DIGIT; digit <= MAX_DIGIT; digit++) {
-          if (hasCandidate(userNotesMask, digit) && !hasCandidate(validCandidatesMask, digit)) {
-            wrongNotes.push({ idx, digit })
-          }
-        }
-
-        if (countCandidates(userNotesMask) > 0) {
-          for (let digit = MIN_DIGIT; digit <= MAX_DIGIT; digit++) {
-            if (hasCandidate(validCandidatesMask, digit) && !hasCandidate(userNotesMask, digit)) {
-              missingNotes.push({ idx, digit })
-            }
-          }
-        }
+        const { wrong, missing } = diffCellNotes(idx, userNotesMask, validCandidatesMask)
+        wrongNotes.push(...wrong)
+        missingNotes.push(...missing)
       }
 
       return {

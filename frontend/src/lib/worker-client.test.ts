@@ -339,9 +339,35 @@ describe('worker-client advanced scenarios', () => {
 
     setResponseOverride(
       fn: ((request: { type: string; id: string; payload?: unknown }) => unknown) | null,
-    ): void {
+    ) {
       this.responseOverride = fn
     }
+  }
+
+  // Install a Worker that does not auto-respond, so tests can drive the message flow manually.
+  const installNoRespondWorker = () => {
+    globalThis.Worker = class extends MockWorker {
+      constructor(url: URL | string, options?: WorkerOptions) {
+        super(url, options)
+        this.setAutoRespond(false)
+        createdWorkers.push(this)
+      }
+    } as unknown as typeof Worker
+  }
+
+  // Drive the worker through initialization by sending the first init result manually.
+  const manuallyInitWorker = async (initializeWorker: () => Promise<void>) => {
+    const initPromise = initializeWorker()
+    await vi.advanceTimersByTimeAsync(10)
+    const worker = createdWorkers[0]
+    worker.simulateMessage({
+      type: 'result',
+      id: 'req-1-' + Date.now(),
+      success: true,
+      data: null,
+    })
+    await vi.advanceTimersByTimeAsync(10)
+    return { worker, initPromise }
   }
 
   beforeEach(() => {
@@ -478,55 +504,16 @@ describe('worker-client advanced scenarios', () => {
       terminateWorker()
     })
 
-    it('should reject pending request on error type', async () => {
-      vi.resetModules()
-
-      let capturedRequestId: string | null = null
-
-      globalThis.Worker = class extends MockWorker {
-        constructor(url: URL | string, options?: WorkerOptions) {
-          super(url, options)
-          const originalPostMessage = this.postMessage.bind(this)
-          this.postMessage = (data: { type: string; id: string; payload?: unknown }) => {
-            if (data.type === 'findNextMove') {
-              capturedRequestId = data.id
-              // Respond with error type
-              setTimeout(() => {
-                this.simulateMessage({
-                  type: 'error',
-                  id: data.id,
-                  success: false,
-                  error: 'Custom error message',
-                })
-              }, 5)
-              return
-            }
-            originalPostMessage(data)
-          }
-          createdWorkers.push(this)
-        }
-      } as unknown as typeof Worker
-
-      const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
-
-      await initializeWorker()
-
-      const cells = new Array(81).fill(0)
-      const candidates = new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
-      const givens = new Array(81).fill(0)
-
-      await expect(findNextMove(cells, candidates, givens)).rejects.toThrow('Custom error message')
-
-      expect(capturedRequestId).not.toBeNull()
-
-      terminateWorker()
-    })
-
-    it('should reject on success: false', async () => {
-      vi.resetModules()
-
+    // Build a Worker that intercepts findNextMove requests and responds with a custom message.
+    const installInterceptingWorker = (
+      buildResponse: (data: { type: string; id: string; payload?: unknown }) => {
+        type: string
+        id: string
+        success: boolean
+        error: string
+      },
+    ) => {
       let capturedId: string | null = null
-
       globalThis.Worker = class extends MockWorker {
         constructor(url: URL | string, options?: WorkerOptions) {
           super(url, options)
@@ -534,14 +521,8 @@ describe('worker-client advanced scenarios', () => {
           this.postMessage = (data: { type: string; id: string; payload?: unknown }) => {
             if (data.type === 'findNextMove') {
               capturedId = data.id
-              // Respond with success: false
               setTimeout(() => {
-                this.simulateMessage({
-                  type: 'result',
-                  id: data.id,
-                  success: false,
-                  error: 'Operation failed',
-                })
+                this.simulateMessage(buildResponse(data))
               }, 5)
               return
             }
@@ -550,18 +531,53 @@ describe('worker-client advanced scenarios', () => {
           createdWorkers.push(this)
         }
       } as unknown as typeof Worker
+      return () => capturedId
+    }
 
+    const emptyGrid = (): number[] => new Array(81).fill(0)
+    const fullCandidates = (): number[][] =>
+      new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+    // Wire up an intercepting worker and initialize the client, ready to call findNextMove.
+    const setupRejectingFindNextMove = async (
+      buildResponse: (data: { type: string; id: string; payload?: unknown }) => {
+        type: string
+        id: string
+        success: boolean
+        error: string
+      },
+    ) => {
+      vi.resetModules()
+      const getCapturedId = installInterceptingWorker(buildResponse)
       const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
-
       await initializeWorker()
+      return { findNextMove, terminateWorker, getCapturedId }
+    }
 
-      const cells = new Array(81).fill(0)
-      const candidates = new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
-      const givens = new Array(81).fill(0)
+    it('should reject pending request on error type', async () => {
+      const { findNextMove, terminateWorker, getCapturedId } = await setupRejectingFindNextMove(
+        (data) => ({ type: 'error', id: data.id, success: false, error: 'Custom error message' }),
+      )
 
-      await expect(findNextMove(cells, candidates, givens)).rejects.toThrow('Operation failed')
+      await expect(findNextMove(emptyGrid(), fullCandidates(), emptyGrid())).rejects.toThrow(
+        'Custom error message',
+      )
 
-      expect(capturedId).not.toBeNull()
+      expect(getCapturedId()).not.toBeNull()
+
+      terminateWorker()
+    })
+
+    it('should reject on success: false', async () => {
+      const { findNextMove, terminateWorker, getCapturedId } = await setupRejectingFindNextMove(
+        (data) => ({ type: 'result', id: data.id, success: false, error: 'Operation failed' }),
+      )
+
+      await expect(findNextMove(emptyGrid(), fullCandidates(), emptyGrid())).rejects.toThrow(
+        'Operation failed',
+      )
+
+      expect(getCapturedId()).not.toBeNull()
 
       terminateWorker()
     })
@@ -572,34 +588,12 @@ describe('worker-client advanced scenarios', () => {
       vi.resetModules()
       vi.useFakeTimers()
 
-      globalThis.Worker = class extends MockWorker {
-        constructor(url: URL | string, options?: WorkerOptions) {
-          super(url, options)
-          this.setAutoRespond(false)
-          createdWorkers.push(this)
-        }
-      } as unknown as typeof Worker
+      installNoRespondWorker()
 
       const { initializeWorker, terminateWorker } = await import('./worker-client')
 
       // Manually construct worker and set up for init to succeed
-      const initPromise = initializeWorker()
-
-      // Advance timers to allow worker to be created
-      await vi.advanceTimersByTimeAsync(10)
-
-      const worker = createdWorkers[0]
-
-      // Manually send init success
-      worker.simulateMessage({
-        type: 'result',
-        id: 'req-1-' + Date.now(),
-        success: true,
-        data: null,
-      })
-
-      // Advance timers a bit more
-      await vi.advanceTimersByTimeAsync(10)
+      const { worker, initPromise } = await manuallyInitWorker(initializeWorker)
 
       // Simulate a worker error
       worker.simulateError('Worker crashed!')
@@ -618,31 +612,13 @@ describe('worker-client advanced scenarios', () => {
       vi.resetModules()
       vi.useFakeTimers()
 
-      globalThis.Worker = class extends MockWorker {
-        constructor(url: URL | string, options?: WorkerOptions) {
-          super(url, options)
-          this.setAutoRespond(false) // Don't auto-respond so we can terminate mid-request
-          createdWorkers.push(this)
-        }
-      } as unknown as typeof Worker
+      installNoRespondWorker()
 
       const { initializeWorker, findNextMove, terminateWorker, isWorkerReady } =
         await import('./worker-client')
 
       // Manually handle init
-      const initPromise = initializeWorker()
-      await vi.advanceTimersByTimeAsync(10)
-
-      const worker = createdWorkers[0]
-      // Send init response manually with a guessed ID (first request)
-      worker.simulateMessage({
-        type: 'result',
-        id: 'req-1-' + Date.now(),
-        success: true,
-        data: null,
-      })
-
-      await vi.advanceTimersByTimeAsync(10)
+      const { initPromise } = await manuallyInitWorker(initializeWorker)
 
       // Now try to make a request
       const cells = new Array(81).fill(0)

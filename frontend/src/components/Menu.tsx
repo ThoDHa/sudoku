@@ -15,6 +15,22 @@ import { getLastDailyDifficulty } from '../lib/hooks'
 import { createGameRoute, SPEED_OPTIONS, COLOR_THEMES, TOAST_DURATION_INFO } from '../lib/constants'
 import { logger } from '../lib/logger'
 
+const ACCENT_ACTIVE = 'bg-accent text-btn-active-text'
+
+// Shared toggle-switch widget used by the Daily Reminder, Timer, and Auto-Save
+// rows. Centralizing the track/knob class strings keeps the three call sites DRY.
+function ToggleSwitch({ checked }: { checked: boolean }) {
+  return (
+    <div
+      className={`w-9 h-5 rounded-full transition-colors ${checked ? 'bg-accent' : 'bg-board-border-light'}`}
+    >
+      <div
+        className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}`}
+      />
+    </div>
+  )
+}
+
 // Game actions (for game page)
 interface GameActions {
   onAutoFillNotes: () => void
@@ -397,7 +413,7 @@ function GameActionsSection({
               title={`${label} - Click to start`}
               className={`p-1 rounded ${
                 gameActions.autoSolveSpeed === speed
-                  ? 'bg-accent text-btn-active-text'
+                  ? ACCENT_ACTIVE
                   : 'text-foreground-muted hover:bg-btn-hover hover:text-foreground'
               }`}
             >
@@ -605,13 +621,7 @@ function SettingsSection({
               </svg>
               Show Daily Puzzle Reminder
             </span>
-            <div
-              className={`w-9 h-5 rounded-full transition-colors ${showDailyReminder ? 'bg-accent' : 'bg-board-border-light'}`}
-            >
-              <div
-                className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${showDailyReminder ? 'translate-x-4' : 'translate-x-0'}`}
-              />
-            </div>
+            <ToggleSwitch checked={showDailyReminder} />
           </button>
 
           {/* Timer + Auto-save + Step-by-step toggles (game only) */}
@@ -633,13 +643,7 @@ function SettingsSection({
                   </svg>
                   Show Timer
                 </span>
-                <div
-                  className={`w-9 h-5 rounded-full transition-colors ${!gameActions.hideTimerState ? 'bg-accent' : 'bg-board-border-light'}`}
-                >
-                  <div
-                    className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${!gameActions.hideTimerState ? 'translate-x-4' : 'translate-x-0'}`}
-                  />
-                </div>
+                <ToggleSwitch checked={!gameActions.hideTimerState} />
               </button>
 
               {/* Auto-save Progress toggle */}
@@ -658,13 +662,7 @@ function SettingsSection({
                   </svg>
                   Auto-Save Progress
                 </span>
-                <div
-                  className={`w-9 h-5 rounded-full transition-colors ${autoSaveEnabled ? 'bg-accent' : 'bg-board-border-light'}`}
-                >
-                  <div
-                    className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${autoSaveEnabled ? 'translate-x-4' : 'translate-x-0'}`}
-                  />
-                </div>
+                <ToggleSwitch checked={autoSaveEnabled} />
               </button>
             </div>
           )}
@@ -879,7 +877,7 @@ export default function Menu({
                       onClick={() => homepageActions.onSetHomepageMode('daily')}
                       className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                         homepageActions.homepageMode === 'daily'
-                          ? 'bg-accent text-btn-active-text'
+                          ? ACCENT_ACTIVE
                           : 'bg-background-secondary text-foreground hover:bg-btn-hover'
                       }`}
                     >
@@ -889,7 +887,7 @@ export default function Menu({
                       onClick={() => homepageActions.onSetHomepageMode('game')}
                       className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                         homepageActions.homepageMode === 'game'
-                          ? 'bg-accent text-btn-active-text'
+                          ? ACCENT_ACTIVE
                           : 'bg-background-secondary text-foreground hover:bg-btn-hover'
                       }`}
                     >

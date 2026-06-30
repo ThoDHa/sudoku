@@ -75,6 +75,17 @@ function createMockGoClass() {
 }
 
 describe('wasm module', () => {
+
+  // Drive loadWasm through its async ready handshake (shared by every load test).
+  const runLoadCycle = async (loadWasm: () => Promise<void>) => {
+    const loadPromise = loadWasm()
+    await vi.waitFor(() => {
+      if (wasmReadyHandler) {
+        wasmReadyHandler()
+      }
+    })
+    await loadPromise
+  }
   let mockWasmApi: ReturnType<typeof createMockWasmApi>
   let MockGoClass: ReturnType<typeof createMockGoClass>
   let wasmReadyHandler: (() => void) | null = null
@@ -283,13 +294,7 @@ describe('wasm module', () => {
 
       const { loadWasm, getWasmApi } = await import('./wasm')
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       const api = getWasmApi()
       expect(api).toBe(mockWasmApi)
@@ -359,13 +364,7 @@ describe('wasm module', () => {
         arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
       } as unknown as Response)
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       expect(hasWasmError()).toBe(false)
     })
@@ -464,13 +463,7 @@ describe('wasm module', () => {
 
       const { loadWasm } = await import('./wasm')
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       expect(globalThis.WebAssembly.instantiateStreaming).toHaveBeenCalled()
     })
@@ -485,13 +478,7 @@ describe('wasm module', () => {
 
       const { loadWasm } = await import('./wasm')
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       expect(globalThis.WebAssembly.instantiate).toHaveBeenCalled()
     })
@@ -603,13 +590,7 @@ describe('wasm module', () => {
 
       const { loadWasm, unloadWasm, isWasmReady, getWasmApi } = await import('./wasm')
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       expect(isWasmReady()).toBe(true)
       expect(getWasmApi()).not.toBe(null)
@@ -626,13 +607,7 @@ describe('wasm module', () => {
 
       const { loadWasm, unloadWasm } = await import('./wasm')
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       unloadWasm()
 
@@ -655,13 +630,7 @@ describe('wasm module', () => {
 
       const { loadWasm, unloadWasm } = await import('./wasm')
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       // Should not throw
       expect(() => unloadWasm()).not.toThrow()
@@ -673,13 +642,7 @@ describe('wasm module', () => {
 
       const { loadWasm, unloadWasm } = await import('./wasm')
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       unloadWasm()
 
@@ -692,13 +655,7 @@ describe('wasm module', () => {
 
       const { loadWasm, unloadWasm } = await import('./wasm')
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       unloadWasm()
 
@@ -715,13 +672,7 @@ describe('wasm module', () => {
 
       const { loadWasm, unloadWasm } = await import('./wasm')
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       unloadWasm()
 
@@ -1109,13 +1060,7 @@ describe('wasm module', () => {
 
       const { loadWasm, getWasmVersion } = await import('./wasm')
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       expect(getWasmVersion()).toBe('2.0.0')
     })
@@ -1129,13 +1074,7 @@ describe('wasm module', () => {
 
       const { loadWasm, getWasmVersion } = await import('./wasm')
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       expect(getWasmVersion()).toBe(null)
     })
@@ -1151,13 +1090,7 @@ describe('wasm module', () => {
 
       const { loadWasm } = await import('./wasm')
 
-      const loadPromise = loadWasm()
-      await vi.waitFor(() => {
-        if (wasmReadyHandler) {
-          wasmReadyHandler()
-        }
-      })
-      await loadPromise
+      await runLoadCycle(loadWasm)
 
       // document.createElement should not have been called for script
       // (script loading is skipped when Go exists)

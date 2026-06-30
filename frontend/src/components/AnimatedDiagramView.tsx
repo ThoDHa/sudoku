@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
-import type { AnimatedTechniqueDiagram, DiagramCell } from '../lib/techniques'
+import type { AnimatedTechniqueDiagram } from '../lib/techniques'
 import { ANIMATION_STEP_INTERVAL } from '../lib/constants'
+import TechniqueBoardSvg from './TechniqueBoardSvg'
 
 interface AnimatedDiagramViewProps {
   diagram: AnimatedTechniqueDiagram
@@ -17,9 +18,6 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
 
   // Use background manager to pause animation when hidden
   const backgroundManager = useBackgroundManagerContext()
-
-  const cellSize = 20
-  const boardSize = cellSize * 9
 
   // Auto-advance when playing and not hidden - loops automatically (1→2→3→1→2→3→...)
   useEffect(() => {
@@ -50,167 +48,19 @@ export default function AnimatedDiagramView({ diagram }: AnimatedDiagramViewProp
     setIsPlaying((prev) => !prev)
   }, [])
 
-  // Create a map for quick cell lookup
-  // Must be before any early returns to satisfy Rules of Hooks
-  const cellMap = useMemo(() => {
-    const map = new Map<string, DiagramCell>()
-    if (currentStepData) {
-      currentStepData.cells.forEach((cell: DiagramCell) => {
-        map.set(`${cell.row}-${cell.col}`, cell)
-      })
-    }
-    return map
-  }, [currentStepData])
-
   // Early return if no step data (shouldn't happen in practice but satisfies type checker)
   if (!currentStepData) {
-    return null
-  }
-
-  const getCellFill = (row: number, col: number) => {
-    const cell = cellMap.get(`${row}-${col}`)
-    if (cell?.highlight === 'primary') return 'var(--cell-primary)'
-    if (cell?.highlight === 'secondary') return 'var(--cell-secondary)'
-    if (cell?.highlight === 'elimination') return 'var(--accent-light)'
-    return 'var(--cell-bg)'
-  }
-
-  const renderCellContent = (row: number, col: number) => {
-    const cell = cellMap.get(`${row}-${col}`)
-    if (!cell) return null
-
-    const x = col * cellSize
-    const y = row * cellSize
-
-    // Check if this cell is highlighted - affects text color for contrast
-    const isHighlighted =
-      cell.highlight === 'primary' ||
-      cell.highlight === 'secondary' ||
-      cell.highlight === 'elimination'
-
-    if (cell.value) {
-      // Filled cell
-      return (
-        <text
-          key={`val-${row}-${col}`}
-          x={x + cellSize / 2}
-          y={y + cellSize / 2 + 4}
-          textAnchor="middle"
-          fontSize="12"
-          fontWeight="600"
-          fill={isHighlighted ? 'var(--text-given)' : 'var(--text-given)'}
-        >
-          {cell.value}
-        </text>
-      )
-    }
-
-    if (cell.candidates && cell.candidates.length > 0) {
-      // Candidates - show in 3x3 mini grid
-      const candidateSize = cellSize / 3
-      return cell.candidates.map((d: number) => {
-        const cRow = Math.floor((d - 1) / 3)
-        const cCol = (d - 1) % 3
-        const cx = x + cCol * candidateSize + candidateSize / 2
-        const cy = y + cRow * candidateSize + candidateSize / 2 + 1.5
-        const isEliminated = cell.eliminatedCandidates?.includes(d)
-
-        // Use contrasting color on highlighted cells, matching Board behavior
-        // On highlighted cells: use text-on-highlight (contrasting with cell-primary/secondary)
-        // On normal cells: use text-candidate (theme color)
-        // Eliminated candidates use error-text to match Board
-        const candidateFill = isEliminated
-          ? 'var(--error-text)'
-          : isHighlighted
-            ? 'var(--text-on-highlight)'
-            : 'var(--text-candidate)'
-
-        return (
-          <g key={`cand-${row}-${col}-${d}`}>
-            <text
-              x={cx}
-              y={cy}
-              textAnchor="middle"
-              fontSize="5"
-              fontWeight={isEliminated ? '700' : '400'}
-              fill={candidateFill}
-              style={isEliminated ? { textDecoration: 'line-through' } : {}}
-            >
-              {d}
-            </text>
-          </g>
-        )
-      })
-    }
-
     return null
   }
 
   return (
     <div className="flex flex-col items-center">
       {/* SVG Diagram */}
-      <svg
-        viewBox={`0 0 ${boardSize} ${boardSize}`}
-        className="w-full max-w-[280px] mx-auto rounded-lg overflow-hidden transition-colors duration-300"
-        style={{ background: 'var(--board-bg)' }}
-      >
-        {/* Cells */}
-        {Array.from({ length: 81 }, (_, idx) => {
-          const row = Math.floor(idx / 9)
-          const col = idx % 9
-          return (
-            <rect
-              key={`cell-${row}-${col}`}
-              x={col * cellSize}
-              y={row * cellSize}
-              width={cellSize}
-              height={cellSize}
-              fill={getCellFill(row, col)}
-              className="transition-colors duration-300"
-            />
-          )
-        })}
-
-        {/* Grid lines */}
-        {Array.from({ length: 10 }, (_, i) => (
-          <g key={`lines-${i}`}>
-            <line
-              x1={i * cellSize}
-              y1={0}
-              x2={i * cellSize}
-              y2={boardSize}
-              stroke="var(--border-light)"
-              strokeWidth={i % 3 === 0 ? 2 : 0.5}
-            />
-            <line
-              x1={0}
-              y1={i * cellSize}
-              x2={boardSize}
-              y2={i * cellSize}
-              stroke="var(--border-light)"
-              strokeWidth={i % 3 === 0 ? 2 : 0.5}
-            />
-          </g>
-        ))}
-
-        {/* Cell content */}
-        {Array.from({ length: 81 }, (_, idx) => {
-          const row = Math.floor(idx / 9)
-          const col = idx % 9
-          return renderCellContent(row, col)
-        })}
-
-        {/* Border */}
-        <rect
-          x={0}
-          y={0}
-          width={boardSize}
-          height={boardSize}
-          fill="none"
-          stroke="var(--border-strong)"
-          strokeWidth={2}
-        />
-      </svg>
+      <TechniqueBoardSvg
+        cells={currentStepData.cells}
+        highlightElimination
+        className="transition-colors duration-300"
+      />
 
       {/* Step description */}
       <div className="mt-3 min-h-[2.5rem] text-center">

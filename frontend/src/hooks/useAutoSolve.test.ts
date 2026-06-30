@@ -13,9 +13,56 @@ vi.mock('../lib/solver-service', () => ({
 }))
 
 import { solveAll } from '../lib/solver-service'
+
+type HookResult = { current: ReturnType<typeof useAutoSolve> }
+
+function actStartAutoSolve(result: HookResult) {
+  act(() => {
+    result.current.startAutoSolve()
+  })
+}
+
+function actStepBack(result: HookResult) {
+  act(() => {
+    result.current.stepBack()
+  })
+}
+
+function actStepForward(result: HookResult) {
+  act(() => {
+    result.current.stepForward()
+  })
+}
+
+function actStopAutoSolve(result: HookResult) {
+  act(() => {
+    result.current.stopAutoSolve()
+  })
+}
+
+function actTogglePause(result: HookResult) {
+  act(() => {
+    result.current.togglePause()
+  })
+}
+
+
 const mockSolveAll = vi.mocked(solveAll)
 
 const createDefaultOptions = createDefaultAutoSolveOptions
+
+type AutoSolveOptions = Parameters<typeof useAutoSolve>[0]
+
+// Common setup: mock the solve response, render the hook, and start auto-solving.
+async function startAutoSolveWith(moveCount: number, overrides?: Partial<AutoSolveOptions>) {
+  mockSolveAll.mockResolvedValue(createMockSolveResponse(moveCount))
+  const options = createDefaultOptions(overrides)
+  const { result } = renderHook(() => useAutoSolve(options))
+  await act(async () => {
+    await result.current.startAutoSolve()
+  })
+  return result
+}
 
 // TESTS
 
@@ -119,9 +166,7 @@ describe('useAutoSolve', () => {
       const options = createDefaultOptions()
       const { result } = renderHook(() => useAutoSolve(options))
 
-      act(() => {
-        result.current.startAutoSolve()
-      })
+      actStartAutoSolve(result)
 
       // Should be fetching while waiting for API
       expect(result.current.isFetching).toBe(true)
@@ -158,13 +203,7 @@ describe('useAutoSolve', () => {
     })
 
     it('sets totalMoves from API response', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
-      const options = createDefaultOptions()
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(5)
 
       expect(result.current.totalMoves).toBe(5)
     })
@@ -196,14 +235,8 @@ describe('useAutoSolve', () => {
     })
 
     it('does not start if isComplete() returns true', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
-      const options = createDefaultOptions({
+      const result = await startAutoSolveWith(3, {
         isComplete: vi.fn(() => true),
-      })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
       })
 
       expect(result.current.isAutoSolving).toBe(false)
@@ -211,13 +244,7 @@ describe('useAutoSolve', () => {
     })
 
     it('does not start if already auto-solving', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
-      const options = createDefaultOptions({ stepDelay: 1000 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(10, { stepDelay: 1000 })
 
       // Clear mock to track subsequent calls
       mockSolveAll.mockClear()
@@ -231,13 +258,7 @@ describe('useAutoSolve', () => {
     })
 
     it('sets currentIndex to 0 at start', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
-      const options = createDefaultOptions()
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(3)
 
       // After first move, currentIndex should be 1
       expect(result.current.currentIndex).toBe(1)
@@ -247,89 +268,49 @@ describe('useAutoSolve', () => {
   // stopAutoSolve()
   describe('stopAutoSolve()', () => {
     it('sets isAutoSolving=false', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
-      const options = createDefaultOptions({ stepDelay: 1000 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(10, { stepDelay: 1000 })
 
       expect(result.current.isAutoSolving).toBe(true)
 
-      act(() => {
-        result.current.stopAutoSolve()
-      })
+      actStopAutoSolve(result)
 
       expect(result.current.isAutoSolving).toBe(false)
     })
 
     it('sets isPaused=false', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
-      const options = createDefaultOptions({ stepDelay: 1000 })
-      const { result } = renderHook(() => useAutoSolve(options))
+      const result = await startAutoSolveWith(10, { stepDelay: 1000 })
 
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
-
-      act(() => {
-        result.current.togglePause()
-      })
+      actTogglePause(result)
 
       expect(result.current.isPaused).toBe(true)
 
-      act(() => {
-        result.current.stopAutoSolve()
-      })
+      actStopAutoSolve(result)
 
       expect(result.current.isPaused).toBe(false)
     })
 
     it('resets currentIndex to -1', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
-      const options = createDefaultOptions({ stepDelay: 1000 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(10, { stepDelay: 1000 })
 
       expect(result.current.currentIndex).toBeGreaterThan(0)
 
-      act(() => {
-        result.current.stopAutoSolve()
-      })
+      actStopAutoSolve(result)
 
       expect(result.current.currentIndex).toBe(-1)
     })
 
     it('resets totalMoves to 0', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
-      const options = createDefaultOptions({ stepDelay: 1000 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(5, { stepDelay: 1000 })
 
       expect(result.current.totalMoves).toBe(5)
 
-      act(() => {
-        result.current.stopAutoSolve()
-      })
+      actStopAutoSolve(result)
 
       expect(result.current.totalMoves).toBe(0)
     })
 
     it('preserves lastCompletedSteps after stopping', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
-      const options = createDefaultOptions({ stepDelay: 100 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(5, { stepDelay: 100 })
 
       // Let a couple of moves play
       await act(async () => {
@@ -338,9 +319,7 @@ describe('useAutoSolve', () => {
 
       const stepsBeforeStop = result.current.currentIndex
 
-      act(() => {
-        result.current.stopAutoSolve()
-      })
+      actStopAutoSolve(result)
 
       expect(result.current.lastCompletedSteps).toBe(stepsBeforeStop)
     })
@@ -357,9 +336,7 @@ describe('useAutoSolve', () => {
 
       const callCountBeforeStop = applyMove.mock.calls.length
 
-      act(() => {
-        result.current.stopAutoSolve()
-      })
+      actStopAutoSolve(result)
 
       // Advance timers significantly
       await act(async () => {
@@ -374,41 +351,23 @@ describe('useAutoSolve', () => {
   // togglePause()
   describe('togglePause()', () => {
     it('toggles isPaused from false to true', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
-      const options = createDefaultOptions({ stepDelay: 1000 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(10, { stepDelay: 1000 })
 
       expect(result.current.isPaused).toBe(false)
 
-      act(() => {
-        result.current.togglePause()
-      })
+      actTogglePause(result)
 
       expect(result.current.isPaused).toBe(true)
     })
 
     it('toggles isPaused from true to false', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
-      const options = createDefaultOptions({ stepDelay: 1000 })
-      const { result } = renderHook(() => useAutoSolve(options))
+      const result = await startAutoSolveWith(10, { stepDelay: 1000 })
 
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
-
-      act(() => {
-        result.current.togglePause()
-      })
+      actTogglePause(result)
 
       expect(result.current.isPaused).toBe(true)
 
-      act(() => {
-        result.current.togglePause()
-      })
+      actTogglePause(result)
 
       expect(result.current.isPaused).toBe(false)
     })
@@ -417,9 +376,7 @@ describe('useAutoSolve', () => {
       const options = createDefaultOptions()
       const { result } = renderHook(() => useAutoSolve(options))
 
-      act(() => {
-        result.current.togglePause()
-      })
+      actTogglePause(result)
 
       expect(result.current.isPaused).toBe(false)
     })
@@ -436,9 +393,7 @@ describe('useAutoSolve', () => {
 
       const callCountBeforePause = applyMove.mock.calls.length
 
-      act(() => {
-        result.current.togglePause()
-      })
+      actTogglePause(result)
 
       // Advance timers significantly
       await act(async () => {
@@ -459,16 +414,12 @@ describe('useAutoSolve', () => {
         await result.current.startAutoSolve()
       })
 
-      act(() => {
-        result.current.togglePause()
-      })
+      actTogglePause(result)
 
       const callCountWhenPaused = applyMove.mock.calls.length
 
       // Unpause
-      act(() => {
-        result.current.togglePause()
-      })
+      actTogglePause(result)
 
       // Advance timers to allow more moves
       await act(async () => {
@@ -483,13 +434,7 @@ describe('useAutoSolve', () => {
   // stepBack() / stepForward()
   describe('stepBack()', () => {
     it('decrements currentIndex', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
-      const options = createDefaultOptions({ stepDelay: 100 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(5, { stepDelay: 100 })
 
       // Let a few moves play
       await act(async () => {
@@ -498,9 +443,7 @@ describe('useAutoSolve', () => {
 
       const indexBefore = result.current.currentIndex
 
-      act(() => {
-        result.current.stepBack()
-      })
+      actStepBack(result)
 
       expect(result.current.currentIndex).toBe(indexBefore - 1)
     })
@@ -520,21 +463,13 @@ describe('useAutoSolve', () => {
         vi.advanceTimersByTime(250)
       })
 
-      act(() => {
-        result.current.stepBack()
-      })
+      actStepBack(result)
 
       expect(applyState).toHaveBeenCalled()
     })
 
     it('pauses playback when stepping', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
-      const options = createDefaultOptions({ stepDelay: 100 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(5, { stepDelay: 100 })
 
       // Let a few moves play
       await act(async () => {
@@ -543,9 +478,7 @@ describe('useAutoSolve', () => {
 
       expect(result.current.isPaused).toBe(false)
 
-      act(() => {
-        result.current.stepBack()
-      })
+      actStepBack(result)
 
       expect(result.current.isPaused).toBe(true)
     })
@@ -565,9 +498,7 @@ describe('useAutoSolve', () => {
         vi.advanceTimersByTime(250)
       })
 
-      act(() => {
-        result.current.stepBack()
-      })
+      actStepBack(result)
 
       expect(onStepNavigate).toHaveBeenCalledWith(expect.anything(), 'back')
     })
@@ -584,17 +515,13 @@ describe('useAutoSolve', () => {
 
       // Immediately after start, index should be 1 (first move applied)
       // Step back to 0
-      act(() => {
-        result.current.stepBack()
-      })
+      actStepBack(result)
 
       expect(result.current.currentIndex).toBe(0)
       applyState.mockClear()
 
       // Try to step back again at index 0
-      act(() => {
-        result.current.stepBack()
-      })
+      actStepBack(result)
 
       // Should not have called applyState again
       expect(applyState).not.toHaveBeenCalled()
@@ -606,9 +533,7 @@ describe('useAutoSolve', () => {
       const options = createDefaultOptions({ applyState })
       const { result } = renderHook(() => useAutoSolve(options))
 
-      act(() => {
-        result.current.stepBack()
-      })
+      actStepBack(result)
 
       expect(applyState).not.toHaveBeenCalled()
     })
@@ -616,24 +541,14 @@ describe('useAutoSolve', () => {
 
   describe('stepForward()', () => {
     it('increments currentIndex', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
-      const options = createDefaultOptions({ stepDelay: 100 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(5, { stepDelay: 100 })
 
       // Step back first so we can step forward
-      act(() => {
-        result.current.stepBack()
-      })
+      actStepBack(result)
 
       const indexBefore = result.current.currentIndex
 
-      act(() => {
-        result.current.stepForward()
-      })
+      actStepForward(result)
 
       expect(result.current.currentIndex).toBe(indexBefore + 1)
     })
@@ -649,46 +564,28 @@ describe('useAutoSolve', () => {
       })
 
       // Step back first so we can step forward
-      act(() => {
-        result.current.stepBack()
-      })
+      actStepBack(result)
 
       onStepNavigate.mockClear()
 
-      act(() => {
-        result.current.stepForward()
-      })
+      actStepForward(result)
 
       expect(onStepNavigate).toHaveBeenCalledWith(expect.anything(), 'forward')
     })
 
     it('pauses playback when stepping', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
-      const options = createDefaultOptions({ stepDelay: 1000 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(5, { stepDelay: 1000 })
 
       // unpause first
       expect(result.current.isPaused).toBe(false)
 
-      act(() => {
-        result.current.stepForward()
-      })
+      actStepForward(result)
 
       expect(result.current.isPaused).toBe(true)
     })
 
     it('does nothing if at end of moves', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
-      const options = createDefaultOptions({ stepDelay: 100 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(2, { stepDelay: 100 })
 
       // Let all moves play out
       await act(async () => {
@@ -697,9 +594,7 @@ describe('useAutoSolve', () => {
 
       // At this point we've completed so isAutoSolving is false
       // stepForward should do nothing
-      act(() => {
-        result.current.stepForward()
-      })
+      actStepForward(result)
 
       // Nothing should crash
     })
@@ -710,9 +605,7 @@ describe('useAutoSolve', () => {
       const options = createDefaultOptions({ applyMove, applyState })
       const { result } = renderHook(() => useAutoSolve(options))
 
-      act(() => {
-        result.current.stepForward()
-      })
+      actStepForward(result)
 
       expect(applyMove).not.toHaveBeenCalled()
       expect(applyState).not.toHaveBeenCalled()
@@ -729,31 +622,17 @@ describe('useAutoSolve', () => {
     })
 
     it('canStepBack is false at index 0', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
-      const options = createDefaultOptions({ stepDelay: 1000 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(5, { stepDelay: 1000 })
 
       // Step back to 0
-      act(() => {
-        result.current.stepBack()
-      })
+      actStepBack(result)
 
       expect(result.current.currentIndex).toBe(0)
       expect(result.current.canStepBack).toBe(false)
     })
 
     it('canStepBack is true when index > 0', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
-      const options = createDefaultOptions({ stepDelay: 100 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(5, { stepDelay: 100 })
 
       // Let some moves play
       await act(async () => {
@@ -772,13 +651,7 @@ describe('useAutoSolve', () => {
     })
 
     it('canStepForward is true when index < totalMoves', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
-      const options = createDefaultOptions({ stepDelay: 1000 })
-      const { result } = renderHook(() => useAutoSolve(options))
-
-      await act(async () => {
-        await result.current.startAutoSolve()
-      })
+      const result = await startAutoSolveWith(5, { stepDelay: 1000 })
 
       // After first move, index=1, totalMoves=5, so canStepForward should be true
       expect(result.current.currentIndex).toBe(1)
@@ -906,9 +779,7 @@ describe('useAutoSolve', () => {
       const options = createDefaultOptions()
       const { result, unmount } = renderHook(() => useAutoSolve(options))
 
-      act(() => {
-        result.current.startAutoSolve()
-      })
+      actStartAutoSolve(result)
 
       // Unmount while still fetching
       expect(() => unmount()).not.toThrow()

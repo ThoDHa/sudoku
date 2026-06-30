@@ -2,6 +2,7 @@ import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import sonarjs from 'eslint-plugin-sonarjs'
 import eslintConfigPrettier from 'eslint-config-prettier'
 
 export default tseslint.config(
@@ -61,6 +62,21 @@ export default tseslint.config(
       'no-console': 'error',
       'eqeqeq': ['error', 'always'],
       'prefer-const': 'error',
+    },
+  },
+
+  // SonarJS complexity-focused rules (subset of recommended; not the full noisy set)
+  {
+    files: ['**/*.{ts,tsx}'],
+    plugins: { sonarjs },
+    rules: {
+      'sonarjs/cognitive-complexity': ['warn', 20],
+      'sonarjs/no-unused-collection': 'warn',
+      'sonarjs/no-identical-conditions': 'error',
+      'sonarjs/no-identical-expressions': 'error',
+      'sonarjs/no-element-overwrite': 'warn',
+      'sonarjs/no-duplicate-string': 'warn',
+      'sonarjs/no-small-switch': 'warn',
     },
   },
 

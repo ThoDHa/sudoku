@@ -16,6 +16,33 @@ import {
 } from '../components/ui'
 import TechniqueDetailView from '../components/TechniqueDetailView'
 
+function TechniqueCtaLinks({
+  primaryTo,
+  primaryLabel,
+}: {
+  primaryTo: string
+  primaryLabel: string
+}) {
+  return (
+    <div className="flex flex-wrap gap-3">
+      <Link
+        to={primaryTo}
+        className="inline-flex items-center gap-1 rounded-full bg-background-secondary px-4 py-2 text-sm text-accent hover:bg-btn-hover"
+      >
+        {primaryLabel}
+        <ChevronRightIcon className="h-4 w-4" />
+      </Link>
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1 rounded-full bg-accent px-4 py-2 text-sm text-btn-active-text hover:opacity-90"
+      >
+        Try a puzzle
+        <ChevronRightIcon className="h-4 w-4" />
+      </Link>
+    </div>
+  )
+}
+
 function TechniqueCard({ technique }: { technique: TechniqueInfo }) {
   return (
     <Link
@@ -164,22 +191,7 @@ export default function Technique() {
 
         <div className="mt-8 border-t border-board-border-light pt-6">
           <p className="mb-4 text-sm text-foreground-muted">Ready to learn specific techniques?</p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              to="/technique/naked-single"
-              className="inline-flex items-center gap-1 rounded-full bg-background-secondary px-4 py-2 text-sm text-accent hover:bg-btn-hover"
-            >
-              Start with Naked Single
-              <ChevronRightIcon className="h-4 w-4" />
-            </Link>
-            <Link
-              to="/"
-              className="inline-flex items-center gap-1 rounded-full bg-accent px-4 py-2 text-sm text-btn-active-text hover:opacity-90"
-            >
-              Try a puzzle
-              <ChevronRightIcon className="h-4 w-4" />
-            </Link>
-          </div>
+          <TechniqueCtaLinks primaryTo="/technique/naked-single" primaryLabel="Start with Naked Single" />
         </div>
       </div>
     )
@@ -203,22 +215,7 @@ export default function Technique() {
           <p className="mb-4 text-sm text-foreground-muted">
             Ready to see these techniques in action?
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              to="/techniques"
-              className="inline-flex items-center gap-1 rounded-full bg-background-secondary px-4 py-2 text-sm text-accent hover:bg-btn-hover"
-            >
-              Browse all techniques
-              <ChevronRightIcon className="h-4 w-4" />
-            </Link>
-            <Link
-              to="/"
-              className="inline-flex items-center gap-1 rounded-full bg-accent px-4 py-2 text-sm text-btn-active-text hover:opacity-90"
-            >
-              Try a puzzle
-              <ChevronRightIcon className="h-4 w-4" />
-            </Link>
-          </div>
+          <TechniqueCtaLinks primaryTo="/techniques" primaryLabel="Browse all techniques" />
         </div>
       </div>
     )

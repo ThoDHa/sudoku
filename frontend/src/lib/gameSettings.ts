@@ -72,9 +72,10 @@ export interface SavedGameInfo {
 }
 
 /**
- * Find all in-progress games stored in localStorage
+ * Scan localStorage for saved game entries and build SavedGameInfo records.
+ * Shared by getInProgressGames (excludes completed) and getAllSavedGames.
  */
-export function getInProgressGames(): SavedGameInfo[] {
+function collectSavedGames(includeComplete: boolean, warnLabel: string): SavedGameInfo[] {
   const games: SavedGameInfo[] = []
   const prefix = STORAGE_KEYS.GAME_STATE_PREFIX
 
@@ -87,9 +88,12 @@ export function getInProgressGames(): SavedGameInfo[] {
         if (data) {
           try {
             const parsed = JSON.parse(data)
-            // Validate it's a game state AND it's not complete
-            // Completed games stay in storage but don't count as "in progress"
-            if (parsed.board?.length === 81 && parsed.savedAt && !parsed.isComplete) {
+            // Validate it's a game state; completed games are kept only when requested
+            if (
+              parsed.board?.length === 81 &&
+              parsed.savedAt &&
+              (includeComplete || !parsed.isComplete)
+            ) {
               const filledCells = parsed.board.filter((v: number) => v !== 0).length
               games.push({
                 seed,
@@ -106,11 +110,18 @@ export function getInProgressGames(): SavedGameInfo[] {
       }
     }
   } catch (e) {
-    logger.warn('Failed to scan for in-progress games:', e)
+    logger.warn(warnLabel, e)
   }
 
   // Sort by most recently saved
   return games.sort((a, b) => b.savedAt - a.savedAt)
+}
+
+/**
+ * Find all in-progress games stored in localStorage
+ */
+export function getInProgressGames(): SavedGameInfo[] {
+  return collectSavedGames(false, 'Failed to scan for in-progress games:')
 }
 
 /**
@@ -162,40 +173,7 @@ export function clearInProgressGame(seed: string): void {
  * Used for cleanup operations that need to clear both in-progress and completed games
  */
 function getAllSavedGames(): SavedGameInfo[] {
-  const games: SavedGameInfo[] = []
-  const prefix = STORAGE_KEYS.GAME_STATE_PREFIX
-
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key?.startsWith(prefix)) {
-        const seed = key.slice(prefix.length)
-        const data = localStorage.getItem(key)
-        if (data) {
-          try {
-            const parsed = JSON.parse(data)
-            // Validate it's a game state (don't filter by isComplete - we want ALL games)
-            if (parsed.board?.length === 81 && parsed.savedAt) {
-              const filledCells = parsed.board.filter((v: number) => v !== 0).length
-              games.push({
-                seed,
-                difficulty: parsed.difficulty || 'unknown',
-                savedAt: parsed.savedAt,
-                elapsedMs: parsed.elapsedMs || 0,
-                progress: Math.round((filledCells / 81) * 100),
-              })
-            }
-          } catch {
-            // Skip invalid entries
-          }
-        }
-      }
-    }
-  } catch (e) {
-    logger.warn('Failed to scan for saved games:', e)
-  }
-
-  return games.sort((a, b) => b.savedAt - a.savedAt)
+  return collectSavedGames(true, 'Failed to scan for saved games:')
 }
 
 /**

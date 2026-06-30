@@ -26,39 +26,23 @@ import {
 } from './dp-solver'
 
 // ==================== Types ====================
+// The shared sudoku types live in types/sudoku.ts. This module re-exports the
+// ones it shares with the rest of the app and only declares the few that carry
+// solver-service-specific fields.
 
-export interface CellRef {
-  row: number
-  col: number
-}
+import type {
+  CellRef,
+  Candidate,
+  TechniqueRef,
+  Highlights,
+  Move as SudokuMove,
+  ValidateBoardResult,
+  ValidateCustomResult as SudokuValidateCustomResult,
+} from '../types/sudoku'
 
-export interface Candidate {
-  row: number
-  col: number
-  digit: number
-}
+export type { CellRef, Candidate, TechniqueRef, Highlights, ValidateBoardResult }
 
-export interface TechniqueRef {
-  title: string
-  slug: string
-  url: string
-}
-
-export interface Highlights {
-  primary: CellRef[]
-  secondary?: CellRef[]
-}
-
-export interface Move {
-  step_index: number
-  technique: string
-  action: string
-  digit: number
-  targets: CellRef[]
-  eliminations?: Candidate[]
-  explanation: string
-  refs: TechniqueRef
-  highlights: Highlights
+export interface Move extends SudokuMove {
   userEntryCount?: number
 }
 
@@ -95,19 +79,8 @@ function toSolveAllResult(result: RawSolveResult): SolveAllResult {
   }
 }
 
-export interface ValidateBoardResult {
-  valid: boolean
-  reason?: string
-  message?: string
-  incorrectCells?: number[]
-}
-
-export interface ValidateCustomResult {
-  valid: boolean
-  unique?: boolean
-  reason?: string
+export interface ValidateCustomResult extends SudokuValidateCustomResult {
   puzzle_id?: string
-  solution?: number[]
 }
 
 export interface PuzzleResult {

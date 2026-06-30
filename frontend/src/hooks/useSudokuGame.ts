@@ -17,6 +17,9 @@ import { createStateDiff } from '../lib/diffUtils'
 
 export type { Move } from './useBoardHistory'
 
+// Technique label applied to every user-initiated move recorded in history.
+const USER_INPUT_TECHNIQUE = 'User Input'
+
 interface UseSudokuGameOptions {
   initialBoard: number[]
   onComplete?: () => void
@@ -161,7 +164,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
         newCandidates[idx] = toggleCandidate(newCandidates[idx] || 0, digit)
 
         const noteMove = createMove(
-          'User Input',
+          USER_INPUT_TECHNIQUE,
           hadCandidate ? 'eliminate' : 'note',
           digit,
           [{ row, col }],
@@ -181,7 +184,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
         const newCandidates = candidatesHook.eliminateFromPeers(currentCandidates, idx, digit)
 
         const userMove = createMove(
-          'User Input',
+          USER_INPUT_TECHNIQUE,
           'place',
           digit,
           [{ row, col }],
@@ -220,7 +223,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
       const action = allHave ? 'eliminate' : 'note'
       const move = createMove(
-        'User Input',
+        USER_INPUT_TECHNIQUE,
         action,
         digit,
         targets,
@@ -247,7 +250,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       newCandidates[idx] = toggleCandidate(newCandidates[idx] || 0, digit)
 
       const noteMove = createMove(
-        'User Input',
+        USER_INPUT_TECHNIQUE,
         hadCandidate ? 'eliminate' : 'note',
         digit,
         [{ row, col }],
@@ -281,7 +284,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       newCandidates[idx] = 0
 
       const eraseMove = createMove(
-        'User Input',
+        USER_INPUT_TECHNIQUE,
         'erase',
         cellValue,
         [{ row, col }],

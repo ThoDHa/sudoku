@@ -246,6 +246,11 @@ export type ColorTheme =
   | 'onedark'
 export type Mode = 'light' | 'dark'
 
+// Dark themes share the same neutral drop shadows; defining them once keeps the
+// palette table free of repeated rgba literals.
+const DARK_SHADOW = '0 4px 12px rgba(0, 0, 0, 0.4)'
+const DARK_SHADOW_LIGHT = '0 2px 6px rgba(0, 0, 0, 0.25)'
+
 const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> = {
   // ----------------------------------------
   // TOKYO NIGHT
@@ -298,8 +303,8 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       hintText: '#9ece6a',
       btnBg: '#1f2335',
       btnHover: '#292e42',
-      shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-      shadowLight: '0 2px 6px rgba(0, 0, 0, 0.25)',
+      shadow: DARK_SHADOW,
+      shadowLight: DARK_SHADOW_LIGHT,
       diffEasy: '#9ece6a',
       diffMedium: '#e0af68',
       diffHard: '#ff9e64',
@@ -359,8 +364,8 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       hintText: '#50fa7b',
       btnBg: '#343746',
       btnHover: '#44475a',
-      shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-      shadowLight: '0 2px 6px rgba(0, 0, 0, 0.25)',
+      shadow: DARK_SHADOW,
+      shadowLight: DARK_SHADOW_LIGHT,
       diffEasy: '#50fa7b',
       diffMedium: '#f1fa8c',
       diffHard: '#ffb86c',
@@ -481,8 +486,8 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       hintText: '#a6e3a1',
       btnBg: '#313244',
       btnHover: '#45475a',
-      shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-      shadowLight: '0 2px 6px rgba(0, 0, 0, 0.25)',
+      shadow: DARK_SHADOW,
+      shadowLight: DARK_SHADOW_LIGHT,
       diffEasy: '#a6e3a1',
       diffMedium: '#f9e2af',
       diffHard: '#fab387',
@@ -542,8 +547,8 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       hintText: '#b8bb26',
       btnBg: '#32302f',
       btnHover: '#3c3836',
-      shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-      shadowLight: '0 2px 6px rgba(0, 0, 0, 0.25)',
+      shadow: DARK_SHADOW,
+      shadowLight: DARK_SHADOW_LIGHT,
       diffEasy: '#b8bb26',
       diffMedium: '#fabd2f',
       diffHard: '#fe8019',
@@ -603,8 +608,8 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       hintText: '#9ccfd8',
       btnBg: '#26233a',
       btnHover: '#524f67',
-      shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-      shadowLight: '0 2px 6px rgba(0, 0, 0, 0.25)',
+      shadow: DARK_SHADOW,
+      shadowLight: DARK_SHADOW_LIGHT,
       diffEasy: '#9ccfd8',
       diffMedium: '#f6c177',
       diffHard: '#ebbcba',
@@ -664,8 +669,8 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       hintText: '#859900',
       btnBg: '#0a4a5a',
       btnHover: '#0d5c6e',
-      shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-      shadowLight: '0 2px 6px rgba(0, 0, 0, 0.25)',
+      shadow: DARK_SHADOW,
+      shadowLight: DARK_SHADOW_LIGHT,
       diffEasy: '#859900',
       diffMedium: '#b58900',
       diffHard: '#cb4b16',
@@ -725,8 +730,8 @@ const PALETTES: Record<ColorTheme, { light: ThemePalette; dark: ThemePalette }> 
       hintText: '#98c379',
       btnBg: '#3a404c',
       btnHover: '#4d5566',
-      shadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-      shadowLight: '0 2px 6px rgba(0, 0, 0, 0.25)',
+      shadow: DARK_SHADOW,
+      shadowLight: DARK_SHADOW_LIGHT,
       diffEasy: '#98c379',
       diffMedium: '#e5c07b',
       diffHard: '#d19a66',

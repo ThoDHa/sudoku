@@ -1,5 +1,9 @@
 import { Link } from 'react-router-dom'
 
+// Body paragraphs share the base text size; a shared style object avoids
+// repeating the CSS variable inline at every <p>.
+const BASE_TEXT_STYLE = { fontSize: 'var(--text-base)' } as const
+
 export default function About() {
   return (
     <div className="page-container">
@@ -10,7 +14,7 @@ export default function About() {
       </div>
 
       <h1 className="page-title text-foreground">About Sudoku</h1>
-      <p className="mb-8 text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
+      <p className="mb-8 text-foreground-muted" style={BASE_TEXT_STYLE}>
         A free, educational Sudoku app designed to help you learn and improve.
       </p>
 
@@ -18,7 +22,7 @@ export default function About() {
       <section className="mb-10">
         <div className="rounded-lg border-2 border-accent bg-accent-light p-6">
           <h2 className="mb-3 text-xl font-semibold text-accent">Learn, Don't Just Solve</h2>
-          <p className="text-foreground" style={{ fontSize: 'var(--text-base)' }}>
+          <p className="text-foreground" style={BASE_TEXT_STYLE}>
             This isn't just another Sudoku app. It's built to teach you <em>how</em> to solve
             puzzles using real techniques — the same methods expert solvers use. No guessing, no
             trial and error, just logical deduction.
@@ -98,24 +102,24 @@ export default function About() {
       <section className="mb-10">
         <h2 className="mb-4 text-xl font-semibold text-foreground">🤖 The Solver</h2>
         <div className="rounded-lg border border-board-border-light bg-background-secondary p-5">
-          <p className="mb-4 text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
+          <p className="mb-4 text-foreground-muted" style={BASE_TEXT_STYLE}>
             Our solver uses the same human-like techniques to solve puzzles step by step. It runs in
             a <strong className="text-foreground">dedicated background thread</strong>, so the
             interface stays smooth and responsive even during complex solving operations.
           </p>
-          <p className="mb-4 text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
+          <p className="mb-4 text-foreground-muted" style={BASE_TEXT_STYLE}>
             But it has a superpower:{' '}
             <strong className="text-foreground">it can fix your mistakes</strong>. Made a wrong move
             somewhere? The auto-solve feature will attempt to solve the puzzle from its current
             state — even if you've made errors. It backtracks, corrects, and finds a path to the
             solution.
           </p>
-          <p className="mb-4 text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
+          <p className="mb-4 text-foreground-muted" style={BASE_TEXT_STYLE}>
             <strong className="text-foreground">Pause and step through:</strong> While the solver is
             paused, use undo/redo to step backward and forward through the moves. Toast messages
             will explain each step, helping you understand the technique being applied.
           </p>
-          <p className="text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
+          <p className="text-foreground-muted" style={BASE_TEXT_STYLE}>
             This means you can experiment freely. Try a move, see where it leads, and if you get
             stuck, let the solver guide you back on track.
           </p>
@@ -128,7 +132,7 @@ export default function About() {
           🔧 Intelligent Error Correction
         </h2>
         <div className="rounded-lg border border-board-border-light bg-background-secondary p-5">
-          <p className="mb-4 text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
+          <p className="mb-4 text-foreground-muted" style={BASE_TEXT_STYLE}>
             Made errors while solving? The solver intelligently detects and fixes them, one at a
             time, with clear explanations so you learn from each mistake.
           </p>
@@ -171,7 +175,7 @@ export default function About() {
       <section className="mb-10">
         <h2 className="mb-4 text-xl font-semibold text-foreground">🧩 Custom Puzzles</h2>
         <div className="rounded-lg border border-board-border-light bg-background-secondary p-5">
-          <p className="mb-4 text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
+          <p className="mb-4 text-foreground-muted" style={BASE_TEXT_STYLE}>
             Found a puzzle in a newspaper or book? Enter it into our custom puzzle mode and use all
             the same hints and techniques to solve it. We'll validate that your puzzle has exactly
             one solution before you start.
@@ -241,7 +245,7 @@ export default function About() {
       {/* Open Source */}
       <section className="mb-6">
         <div className="rounded-lg border border-board-border-light bg-background-secondary p-5 text-center">
-          <p className="text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
+          <p className="text-foreground-muted" style={BASE_TEXT_STYLE}>
             This project is open source. Found a bug or have a suggestion?
           </p>
           <a

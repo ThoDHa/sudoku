@@ -132,40 +132,52 @@ export const DIFFICULTIES = [
 ] as const
 export type Difficulty = (typeof DIFFICULTIES)[number]
 
+// Shared Tailwind badge class strings grouped by hue. Centralizing them keeps
+// the tier/technique color tables free of repeated multi-class literals.
+const BADGE = {
+  green: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  yellow: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+  red: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  orange: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  purple: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  pink: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+  indigo: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+} as const
+
 // Tier colors for technique badges
 export const TIER_COLORS: Record<string, string> = {
-  simple: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  hard: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  simple: BADGE.green,
+  medium: BADGE.yellow,
+  hard: BADGE.red,
   auto: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
   notimplemented: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
 }
 
 // Technique-specific colors for history view (more granular than tier)
 export const TECHNIQUE_COLORS: Record<string, string> = {
-  'Naked Single': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  'Hidden Single': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  'Naked Single': BADGE.green,
+  'Hidden Single': BADGE.green,
   'Pointing Pair': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   'Box-Line Reduction': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  'Naked Pair': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  'Hidden Pair': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  'Naked Triple': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-  'Hidden Triple': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-  'Naked Quad': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-  'Hidden Quad': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-  'X-Wing': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  Swordfish: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  Jellyfish: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  'XY-Wing': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-  'W-Wing': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-  'Simple Coloring': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
-  Skyscraper: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
-  'X-Chain': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
-  'XY-Chain': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
-  'Unique Rectangle': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  BUG: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  'Finned X-Wing': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  'Empty Rectangle': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+  'Naked Pair': BADGE.yellow,
+  'Hidden Pair': BADGE.yellow,
+  'Naked Triple': BADGE.orange,
+  'Hidden Triple': BADGE.orange,
+  'Naked Quad': BADGE.orange,
+  'Hidden Quad': BADGE.orange,
+  'X-Wing': BADGE.purple,
+  Swordfish: BADGE.purple,
+  Jellyfish: BADGE.purple,
+  'XY-Wing': BADGE.pink,
+  'W-Wing': BADGE.pink,
+  'Simple Coloring': BADGE.indigo,
+  Skyscraper: BADGE.indigo,
+  'X-Chain': BADGE.indigo,
+  'XY-Chain': BADGE.indigo,
+  'Unique Rectangle': BADGE.red,
+  BUG: BADGE.red,
+  'Finned X-Wing': BADGE.purple,
+  'Empty Rectangle': BADGE.indigo,
 }
 
 export function getTierColor(tier: string): string {

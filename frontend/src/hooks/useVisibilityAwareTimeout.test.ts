@@ -2,6 +2,22 @@ import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useVisibilityAwareTimeout } from './useVisibilityAwareTimeout'
 
+type HookResult = { current: ReturnType<typeof useVisibilityAwareTimeout> }
+
+function actCancelAll(result: HookResult) {
+  act(() => {
+    result.current.cancelAll()
+  })
+}
+
+function actSetTimeout(result: HookResult, a1: any, a2: any) {
+  act(() => {
+    result.current.setTimeout(a1, a2)
+  })
+}
+
+
+
 // =============================================================================
 // MOCKING UTILITIES
 // =============================================================================
@@ -71,9 +87,7 @@ describe('useVisibilityAwareTimeout', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
-      act(() => {
-        result.current.setTimeout(callback, 1000)
-      })
+      actSetTimeout(result, callback, 1000)
 
       expect(callback).not.toHaveBeenCalled()
 
@@ -128,9 +142,7 @@ describe('useVisibilityAwareTimeout', () => {
         result.current.setTimeout(callback3, 3000)
       })
 
-      act(() => {
-        result.current.cancelAll()
-      })
+      actCancelAll(result)
 
       act(() => {
         vi.advanceTimersByTime(5000)
@@ -150,9 +162,7 @@ describe('useVisibilityAwareTimeout', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
-      act(() => {
-        result.current.setTimeout(callback, 1000)
-      })
+      actSetTimeout(result, callback, 1000)
 
       // Simulate page becoming hidden
       act(() => {
@@ -174,9 +184,7 @@ describe('useVisibilityAwareTimeout', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
-      act(() => {
-        result.current.setTimeout(callback, 1000)
-      })
+      actSetTimeout(result, callback, 1000)
 
       act(() => {
         vi.advanceTimersByTime(2000)
@@ -189,9 +197,7 @@ describe('useVisibilityAwareTimeout', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
-      act(() => {
-        result.current.setTimeout(callback, 1000)
-      })
+      actSetTimeout(result, callback, 1000)
 
       // Advance time partially
       act(() => {
@@ -215,9 +221,7 @@ describe('useVisibilityAwareTimeout', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
-      act(() => {
-        result.current.setTimeout(callback, 1000)
-      })
+      actSetTimeout(result, callback, 1000)
 
       // Callback fires while visible
       act(() => {
@@ -236,9 +240,7 @@ describe('useVisibilityAwareTimeout', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
-      act(() => {
-        result.current.setTimeout(callback, 1000)
-      })
+      actSetTimeout(result, callback, 1000)
 
       act(() => {
         simulatePageHide()
@@ -260,9 +262,7 @@ describe('useVisibilityAwareTimeout', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
-      act(() => {
-        result.current.setTimeout(callback, 1000)
-      })
+      actSetTimeout(result, callback, 1000)
 
       act(() => {
         simulateFreeze()
@@ -361,9 +361,7 @@ describe('useVisibilityAwareTimeout', () => {
       const { result, unmount } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
-      act(() => {
-        result.current.setTimeout(callback, 1000)
-      })
+      actSetTimeout(result, callback, 1000)
 
       unmount()
 
@@ -399,9 +397,7 @@ describe('useVisibilityAwareTimeout', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
-      act(() => {
-        result.current.setTimeout(callback, 0)
-      })
+      actSetTimeout(result, callback, 0)
 
       act(() => {
         vi.advanceTimersByTime(0)
@@ -437,9 +433,7 @@ describe('useVisibilityAwareTimeout', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
 
       // Should not throw
-      act(() => {
-        result.current.cancelAll()
-      })
+      actCancelAll(result)
     })
 
     it('setTimeout returns no-op cancel function when page is hidden', () => {

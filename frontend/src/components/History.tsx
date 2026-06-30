@@ -21,6 +21,44 @@ interface Move {
   isUserMove?: boolean
 }
 
+const formatCell = (row: number, col: number): string => `R${row + 1}C${col + 1}`
+const formatCells = (cells: { row: number; col: number }[]): string =>
+  cells.map((t) => formatCell(t.row, t.col)).join(', ')
+
+// Render the human-readable description of a single move's action.
+function MoveActionText({ move }: { move: Move }) {
+  const targetCells = formatCells(move.targets)
+  if (move.action === 'place' || move.action === 'assign') {
+    return (
+      <>
+        {move.isUserMove ? 'Placed' : 'Place'}{' '}
+        <span className="font-bold text-accent">{move.digit}</span> at {targetCells}
+      </>
+    )
+  }
+  if (move.action === 'note' || move.action === 'candidate') {
+    return (
+      <>
+        {move.isUserMove ? 'Added' : 'Add'} candidate{' '}
+        <span className="font-bold text-accent">{move.digit}</span>{' '}
+        {move.isUserMove ? 'to' : 'at'} {targetCells}
+      </>
+    )
+  }
+  if (move.action === 'erase') {
+    return <>Cleared {targetCells}</>
+  }
+  if (move.action === 'clear-candidates') {
+    return <>Cleared all candidates from {targetCells}</>
+  }
+  return (
+    <>
+      Eliminate{' '}
+      {move.eliminations?.map((e) => `${e.digit} from ${formatCell(e.row, e.col)}`).join(', ')}
+    </>
+  )
+}
+
 interface HistoryProps {
   moves: Move[]
   isOpen: boolean
@@ -76,10 +114,6 @@ export default function History({
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     savedScrollPosition = e.currentTarget.scrollTop
-  }
-
-  const formatCell = (row: number, col: number): string => {
-    return `R${row + 1}C${col + 1}`
   }
 
   if (!isOpen) return null
@@ -190,34 +224,7 @@ export default function History({
                     </div>
 
                     <p className="mb-2 text-sm text-foreground">
-                      {move.action === 'place' || move.action === 'assign' ? (
-                        <>
-                          {move.isUserMove ? 'Placed' : 'Place'}{' '}
-                          <span className="font-bold text-accent">{move.digit}</span> at{' '}
-                          {move.targets.map((t) => formatCell(t.row, t.col)).join(', ')}
-                        </>
-                      ) : move.action === 'note' || move.action === 'candidate' ? (
-                        <>
-                          {move.isUserMove ? 'Added' : 'Add'} candidate{' '}
-                          <span className="font-bold text-accent">{move.digit}</span>{' '}
-                          {move.isUserMove ? 'to' : 'at'}{' '}
-                          {move.targets.map((t) => formatCell(t.row, t.col)).join(', ')}
-                        </>
-                      ) : move.action === 'erase' ? (
-                        <>Cleared {move.targets.map((t) => formatCell(t.row, t.col)).join(', ')}</>
-                      ) : move.action === 'clear-candidates' ? (
-                        <>
-                          Cleared all candidates from{' '}
-                          {move.targets.map((t) => formatCell(t.row, t.col)).join(', ')}
-                        </>
-                      ) : (
-                        <>
-                          Eliminate{' '}
-                          {move.eliminations
-                            ?.map((e) => `${e.digit} from ${formatCell(e.row, e.col)}`)
-                            .join(', ')}
-                        </>
-                      )}
+                      <MoveActionText move={move} />
                     </p>
 
                     {!move.isUserMove && (

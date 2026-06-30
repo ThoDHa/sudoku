@@ -254,6 +254,92 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     })
   }, [isAutoSolving, getBoard])
 
+  // Shared fetch+setup for startAutoSolve/restartAutoSolve: reset history, call solveAll,
+  // wire up the move queue and play-next handler. Plays the first move when shouldPlay is set.
+  // Wrapped in useCallback so startAutoSolve/restartAutoSolve keep a stable identity
+  // instead of capturing a freshly-recreated function each render.
+  const runAutoSolveFetch = useCallback(
+    async (
+      currentBoard: number[],
+      candidatesArray: number[][],
+      currentCandidates: Set<number>[],
+      givens: number[],
+      shouldPlay: boolean,
+    ) => {
+    stateHistoryRef.current = [
+      {
+        board: [...currentBoard],
+        candidates: candidatesArray.map((arr) => [...arr]),
+        move: null,
+      },
+    ]
+    currentIndexRef.current = 0
+    setCurrentIndex(0)
+
+    setIsFetching(true)
+    try {
+      const data = await solveAll(currentBoard, candidatesArray, givens)
+      setIsFetching(false)
+
+      if (!data.moves || data.moves.length === 0) {
+        if (!data.solved) {
+          onError?.('This puzzle requires advanced techniques beyond our solver.')
+        }
+        stopAutoSolve()
+        return
+      }
+
+      allMovesRef.current = data.moves
+      movesQueueRef.current = [...data.moves]
+      setTotalMoves(data.moves.length)
+
+      const context: MoveHandlerContext = {
+        autoSolveRef,
+        pausedRef,
+        movesQueueRef,
+        allMovesRef,
+        stateHistoryRef,
+        currentIndexRef,
+        setCurrentIndex,
+        scheduleNextMove,
+        stopAutoSolve,
+        stepDelayRef,
+        applyMove,
+        getCandidates,
+        onError,
+        onUnpinpointableError,
+        onStatus,
+        onErrorFixed,
+        initialCandidates: currentCandidates,
+        skipSpecialMoves: false,
+      }
+
+      const playNextMove = createPlayNextMove(context)
+      playNextMoveRef.current = playNextMove
+
+      if (shouldPlay) {
+        playNextMove()
+      }
+    } catch (err) {
+      setIsFetching(false)
+      logger.error('Auto-solve error:', err)
+      onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
+      stopAutoSolve()
+    }
+  },
+    [
+      setCurrentIndex,
+      scheduleNextMove,
+      stopAutoSolve,
+      applyMove,
+      getCandidates,
+      onError,
+      onUnpinpointableError,
+      onStatus,
+      onErrorFixed,
+    ],
+  )
+
   const restartAutoSolve = useCallback(
     async (startPaused: boolean = false) => {
       const currentBoard = getBoard()
@@ -272,79 +358,13 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         setManualPaused(false)
       }
 
-      stateHistoryRef.current = [
-        {
-          board: [...currentBoard],
-          candidates: candidatesArray.map((arr) => [...arr]),
-          move: null,
-        },
-      ]
-      currentIndexRef.current = 0
-      setCurrentIndex(0)
-
-      setIsFetching(true)
-      try {
-        const data = await solveAll(currentBoard, candidatesArray, givens)
-        setIsFetching(false)
-
-        if (!data.moves || data.moves.length === 0) {
-          if (!data.solved) {
-            onError?.('This puzzle requires advanced techniques beyond our solver.')
-          }
-          stopAutoSolve()
-          return
-        }
-
-        allMovesRef.current = data.moves
-        movesQueueRef.current = [...data.moves]
-        setTotalMoves(data.moves.length)
-
-        const context: MoveHandlerContext = {
-          autoSolveRef,
-          pausedRef,
-          movesQueueRef,
-          allMovesRef,
-          stateHistoryRef,
-          currentIndexRef,
-          setCurrentIndex,
-          scheduleNextMove,
-          stopAutoSolve,
-          stepDelayRef,
-          applyMove,
-          getCandidates,
-          onError,
-          onUnpinpointableError,
-          onStatus,
-          onErrorFixed,
-          initialCandidates: currentCandidates,
-          skipSpecialMoves: false,
-        }
-
-        const playNextMove = createPlayNextMove(context)
-        playNextMoveRef.current = playNextMove
-
-        if (!startPaused) {
-          playNextMove()
-        }
-      } catch (err) {
-        setIsFetching(false)
-        logger.error('Auto-solve error:', err)
-        onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
-        stopAutoSolve()
-      }
+      await runAutoSolveFetch(currentBoard, candidatesArray, currentCandidates, givens, !startPaused)
     },
     [
       getBoard,
       getCandidates,
       getGivens,
-      applyMove,
-      onError,
-      onUnpinpointableError,
-      onStatus,
-      onErrorFixed,
-      stopAutoSolve,
-      scheduleNextMove,
-      setCurrentIndex,
+      runAutoSolveFetch,
     ],
   )
 
@@ -447,77 +467,14 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     setIsAutoSolving(true)
     autoSolveRef.current = true
 
-    stateHistoryRef.current = [
-      {
-        board: [...currentBoard],
-        candidates: candidatesArray.map((arr) => [...arr]),
-        move: null,
-      },
-    ]
-    currentIndexRef.current = 0
-    setCurrentIndex(0)
-
-    setIsFetching(true)
-    try {
-      const data = await solveAll(currentBoard, candidatesArray, givens)
-      setIsFetching(false)
-
-      if (!data.moves || data.moves.length === 0) {
-        if (!data.solved) {
-          onError?.('This puzzle requires advanced techniques beyond our solver.')
-        }
-        stopAutoSolve()
-        return
-      }
-
-      allMovesRef.current = data.moves
-      movesQueueRef.current = [...data.moves]
-      setTotalMoves(data.moves.length)
-
-      const context: MoveHandlerContext = {
-        autoSolveRef,
-        pausedRef,
-        movesQueueRef,
-        allMovesRef,
-        stateHistoryRef,
-        currentIndexRef,
-        setCurrentIndex,
-        scheduleNextMove,
-        stopAutoSolve,
-        stepDelayRef,
-        applyMove,
-        getCandidates,
-        onError,
-        onUnpinpointableError,
-        onStatus,
-        onErrorFixed,
-        initialCandidates: currentCandidates,
-        skipSpecialMoves: false,
-      }
-
-      const playNextMove = createPlayNextMove(context)
-      playNextMoveRef.current = playNextMove
-      playNextMove()
-    } catch (err) {
-      setIsFetching(false)
-      logger.error('Auto-solve error:', err)
-      onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
-      stopAutoSolve()
-    }
+    await runAutoSolveFetch(currentBoard, candidatesArray, currentCandidates, givens, true)
   }, [
     isAutoSolving,
+    isComplete,
     getBoard,
     getCandidates,
     getGivens,
-    applyMove,
-    isComplete,
-    onError,
-    onUnpinpointableError,
-    onStatus,
-    onErrorFixed,
-    stopAutoSolve,
-    scheduleNextMove,
-    setCurrentIndex,
+    runAutoSolveFetch,
   ])
 
   // Play a custom move sequence (for Check & Fix, etc)

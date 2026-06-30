@@ -3,6 +3,10 @@
  * Centralized so tests can import consistent mock objects and scenario data
  */
 
+const NAKED_SINGLE = 'Naked Single'
+const HIDDEN_SINGLE = 'Hidden Single'
+const ONLY_CANDIDATE_EXPLANATION = 'Only candidate for this cell'
+
 export const createMockBackgroundManager = (
   overrides?: Partial<{
     isHidden: boolean
@@ -70,40 +74,44 @@ export const createEvidenceSolution = () => {
 }
 
 // Helper to produce moves whose shapes match the shared Move/Highlights types
+
+const fullCandidates = () =>
+  Array(81)
+    .fill(null)
+    .map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+const boardWithCell = (cell: number, digit: number) => {
+  const board = [...createEvidencePuzzle()]
+  board[cell] = digit
+  return board
+}
+
 export const createBugScenarioMoves = () => [
   {
     board: [...createEvidencePuzzle()],
-    candidates: Array(81)
-      .fill(null)
-      .map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    candidates: fullCandidates(),
     move: {
       step_index: 0,
-      technique: 'Naked Single',
+      technique: NAKED_SINGLE,
       action: 'place',
       digit: 1,
       targets: [{ row: 0, col: 1 }],
-      explanation: 'Only candidate for this cell',
-      refs: { title: 'Naked Single', slug: 'naked-single', url: '/techniques/naked-single' },
+      explanation: ONLY_CANDIDATE_EXPLANATION,
+      refs: { title: NAKED_SINGLE, slug: 'naked-single', url: '/techniques/naked-single' },
       highlights: { primary: [{ row: 0, col: 1 }] },
     },
   },
   {
-    board: (() => {
-      const board = [...createEvidencePuzzle()]
-      board[1] = 1
-      return board
-    })(),
-    candidates: Array(81)
-      .fill(null)
-      .map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    board: boardWithCell(1, 1),
+    candidates: fullCandidates(),
     move: {
       step_index: 1,
-      technique: 'Hidden Single',
+      technique: HIDDEN_SINGLE,
       action: 'place',
       digit: 4,
       targets: [{ row: 0, col: 2 }],
-      explanation: 'Only candidate for this cell',
-      refs: { title: 'Hidden Single', slug: 'hidden-single', url: '/techniques/hidden-single' },
+      explanation: ONLY_CANDIDATE_EXPLANATION,
+      refs: { title: HIDDEN_SINGLE, slug: 'hidden-single', url: '/techniques/hidden-single' },
       highlights: { primary: [{ row: 0, col: 2 }] },
     },
   },
@@ -112,37 +120,29 @@ export const createBugScenarioMoves = () => [
 export const createFixedScenarioMoves = () => [
   {
     board: [...createEvidencePuzzle()],
-    candidates: Array(81)
-      .fill(null)
-      .map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    candidates: fullCandidates(),
     move: {
       step_index: 0,
-      technique: 'Naked Single',
+      technique: NAKED_SINGLE,
       action: 'place',
       digit: 4,
       targets: [{ row: 0, col: 1 }],
-      explanation: 'Only candidate for this cell',
-      refs: { title: 'Naked Single', slug: 'naked-single', url: '/techniques/naked-single' },
+      explanation: ONLY_CANDIDATE_EXPLANATION,
+      refs: { title: NAKED_SINGLE, slug: 'naked-single', url: '/techniques/naked-single' },
       highlights: { primary: [{ row: 0, col: 1 }] },
     },
   },
   {
-    board: (() => {
-      const board = [...createEvidencePuzzle()]
-      board[1] = 4
-      return board
-    })(),
-    candidates: Array(81)
-      .fill(null)
-      .map(() => [1, 2, 3, 4, 5, 6, 7, 8, 9]),
+    board: boardWithCell(1, 4),
+    candidates: fullCandidates(),
     move: {
       step_index: 1,
-      technique: 'Hidden Single',
+      technique: HIDDEN_SINGLE,
       action: 'place',
       digit: 2,
       targets: [{ row: 0, col: 2 }],
-      explanation: 'Only candidate for this cell',
-      refs: { title: 'Hidden Single', slug: 'hidden-single', url: '/techniques/hidden-single' },
+      explanation: ONLY_CANDIDATE_EXPLANATION,
+      refs: { title: HIDDEN_SINGLE, slug: 'hidden-single', url: '/techniques/hidden-single' },
       highlights: { primary: [{ row: 0, col: 2 }] },
     },
   },

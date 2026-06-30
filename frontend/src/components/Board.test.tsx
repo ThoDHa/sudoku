@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi, describe, it, expect, beforeEach } from 'vitest'
+import { vi, describe, it, expect, beforeEach, type Mock } from 'vitest'
 import Board from './Board'
 import { addCandidate, removeCandidate, createCandidateMask } from '../lib/candidatesUtils'
 
@@ -42,6 +42,45 @@ function defaultProps(overrides: Partial<Parameters<typeof Board>[0]> = {}) {
     onCellClick: vi.fn(),
     ...overrides,
   }
+}
+
+type Highlight = NonNullable<Parameters<typeof Board>[0]['highlight']>
+
+// Build a highlight move object, filling in the boilerplate fields that every
+// highlight test repeats (step_index, explanation, refs) and sensible defaults.
+function makeHighlight(overrides: Partial<Highlight> = {}): Highlight {
+  return {
+    step_index: 0,
+    technique: '',
+    action: '',
+    digit: 0,
+    targets: [],
+    explanation: 'Test',
+    refs: { title: '', slug: '', url: '' },
+    highlights: { primary: [] },
+    showAnswer: true,
+    ...overrides,
+  }
+}
+
+// Render the Board wired up for a drag-interaction test, returning the element
+// handles every drag test queries in the same order.
+function setupDrag(overrides: Partial<Parameters<typeof Board>[0]> = {}) {
+  const onCellSelectMultiple = vi.fn()
+  const { container } = render(
+    <Board {...defaultProps({ onCellSelectMultiple, ...overrides })} />,
+  )
+  return {
+    cells: container.querySelectorAll('.sudoku-cell'),
+    boardEl: screen.getByRole('grid'),
+    onCellSelectMultiple,
+  }
+}
+
+// Read the most recent selection array passed to the multi-select callback.
+function lastSelection(mock: Mock): number[] {
+  const calls = mock.mock.calls as unknown[][]
+  return calls[calls.length - 1]![0] as number[]
 }
 
 describe('Board', () => {
@@ -431,18 +470,15 @@ describe('Board', () => {
 
   describe('technique highlight (Move)', () => {
     it('primary highlight cells get bg-cell-primary class', () => {
-      const highlight = {
-        step_index: 0,
+      const highlight = makeHighlight({
         technique: 'Naked Single',
         action: 'place',
         digit: 5,
         targets: [{ row: 4, col: 4 }],
-        explanation: 'Test',
-        refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [{ row: 4, col: 4 }],
         },
-      }
+      })
 
       const board = createEmptyBoard()
       board[40] = 5 // Cell at row 4, col 4
@@ -454,14 +490,11 @@ describe('Board', () => {
     })
 
     it('secondary highlight cells get bg-cell-secondary class', () => {
-      const highlight = {
-        step_index: 0,
+      const highlight = makeHighlight({
         technique: 'Pointing Pairs',
         action: 'eliminate',
         digit: 3,
         targets: [{ row: 0, col: 6 }],
-        explanation: 'Test',
-        refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [{ row: 0, col: 0 }],
           secondary: [
@@ -469,7 +502,7 @@ describe('Board', () => {
             { row: 0, col: 2 },
           ],
         },
-      }
+      })
 
       const board = createEmptyBoard()
       board[0] = 3
@@ -489,20 +522,17 @@ describe('Board', () => {
 
   describe('technique hint mode (showAnswer: false)', () => {
     it('shows primary highlights in technique hint mode', () => {
-      const highlight = {
-        step_index: 0,
+      const highlight = makeHighlight({
         technique: 'Naked Single',
         action: 'place',
         digit: 5,
         targets: [{ row: 4, col: 4 }],
         eliminations: [{ row: 4, col: 5, digit: 5 }],
-        explanation: 'Test',
-        refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [{ row: 4, col: 4 }],
         },
         showAnswer: false, // Technique hint mode
-      }
+      })
 
       const board = createEmptyBoard()
       const candidates = createEmptyCandidates()
@@ -516,14 +546,11 @@ describe('Board', () => {
     })
 
     it('shows explicit secondary highlights in technique hint mode', () => {
-      const highlight = {
-        step_index: 0,
+      const highlight = makeHighlight({
         technique: 'Hidden Single',
         action: 'assign',
         digit: 3,
         targets: [{ row: 0, col: 3 }],
-        explanation: 'Test',
-        refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [{ row: 0, col: 3 }],
           secondary: [
@@ -532,7 +559,7 @@ describe('Board', () => {
           ], // Context cells
         },
         showAnswer: false, // Technique hint mode
-      }
+      })
 
       const board = createEmptyBoard()
       board[0] = 1 // Filled cell in secondary
@@ -547,8 +574,7 @@ describe('Board', () => {
     })
 
     it('does NOT highlight elimination cells in technique hint mode', () => {
-      const highlight = {
-        step_index: 0,
+      const highlight = makeHighlight({
         technique: 'Pointing Pairs',
         action: 'eliminate',
         digit: 3,
@@ -557,8 +583,6 @@ describe('Board', () => {
           { row: 0, col: 6, digit: 3 },
           { row: 0, col: 7, digit: 3 },
         ],
-        explanation: 'Test',
-        refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [
             { row: 0, col: 0 },
@@ -566,7 +590,7 @@ describe('Board', () => {
           ], // The pair
         },
         showAnswer: false, // Technique hint mode - should hide eliminations
-      }
+      })
 
       const board = createEmptyBoard()
       const candidates = createEmptyCandidates()
@@ -587,19 +611,16 @@ describe('Board', () => {
     })
 
     it('does NOT highlight target cells in technique hint mode', () => {
-      const highlight = {
-        step_index: 0,
+      const highlight = makeHighlight({
         technique: 'Naked Single',
         action: 'assign',
         digit: 5,
         targets: [{ row: 4, col: 4 }], // Target cell (where to place)
-        explanation: 'Test',
-        refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [{ row: 0, col: 0 }], // Some other primary cell
         },
         showAnswer: false, // Technique hint mode - should hide target
-      }
+      })
 
       const board = createEmptyBoard()
       board[0] = 5 // Primary cell has value
@@ -616,20 +637,17 @@ describe('Board', () => {
     })
 
     it('DOES highlight elimination cells when showAnswer is true (regular hint)', () => {
-      const highlight = {
-        step_index: 0,
+      const highlight = makeHighlight({
         technique: 'Pointing Pairs',
         action: 'eliminate',
         digit: 3,
         targets: [],
         eliminations: [{ row: 0, col: 6, digit: 3 }],
-        explanation: 'Test',
-        refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [{ row: 0, col: 0 }],
         },
         showAnswer: true, // Regular hint mode - should show eliminations
-      }
+      })
 
       const board = createEmptyBoard()
       const candidates = createEmptyCandidates()
@@ -644,19 +662,16 @@ describe('Board', () => {
     })
 
     it('DOES highlight target cells when showAnswer is true (regular hint)', () => {
-      const highlight = {
-        step_index: 0,
+      const highlight = makeHighlight({
         technique: 'Naked Single',
         action: 'assign',
         digit: 5,
         targets: [{ row: 4, col: 4 }],
-        explanation: 'Test',
-        refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [{ row: 0, col: 0 }],
         },
         showAnswer: true, // Regular hint mode - should show target
-      }
+      })
 
       const board = createEmptyBoard()
       board[0] = 5
@@ -671,20 +686,17 @@ describe('Board', () => {
     })
 
     it('defaults to showAnswer: true when not specified', () => {
-      const highlight = {
-        step_index: 0,
+      const highlight = makeHighlight({
         technique: 'Pointing Pairs',
         action: 'eliminate',
         digit: 3,
         targets: [],
         eliminations: [{ row: 0, col: 6, digit: 3 }],
-        explanation: 'Test',
-        refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [{ row: 0, col: 0 }],
         },
         // showAnswer not specified - should default to true
-      }
+      })
 
       const board = createEmptyBoard()
       const candidates = createEmptyCandidates()
@@ -699,20 +711,17 @@ describe('Board', () => {
     })
 
     it('does NOT show elimination strikethrough in technique hint mode', () => {
-      const highlight = {
-        step_index: 0,
+      const highlight = makeHighlight({
         technique: 'Pointing Pairs',
         action: 'eliminate',
         digit: 3,
         targets: [],
         eliminations: [{ row: 0, col: 6, digit: 3 }],
-        explanation: 'Test',
-        refs: { title: '', slug: '', url: '' },
         highlights: {
           primary: [{ row: 0, col: 0 }],
         },
         showAnswer: false, // Technique hint mode
-      }
+      })
 
       const board = createEmptyBoard()
       const candidates = createEmptyCandidates()
@@ -939,13 +948,7 @@ describe('Board', () => {
 
     it('drag does not start on given cells', () => {
       const { board, initialBoard } = createBoardWithGivens()
-      const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />,
-      )
-
-      const cells = container.querySelectorAll('.sudoku-cell')
-      const boardEl = screen.getByRole('grid')
+      const { cells, boardEl, onCellSelectMultiple } = setupDrag({ board, initialBoard })
       // Cell 0 is a given (value 5). pointerDown on it, then move to cell 1.
       fireEvent.pointerDown(cells[0]!)
       simulateDragOver(boardEl, cells[1]!)
@@ -960,13 +963,7 @@ describe('Board', () => {
       const initialBoard = createEmptyBoard()
       // Cell 5 is user-filled (not given)
       board[5] = 8
-      const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />,
-      )
-
-      const cells = container.querySelectorAll('.sudoku-cell')
-      const boardEl = screen.getByRole('grid')
+      const { cells, boardEl, onCellSelectMultiple } = setupDrag({ board, initialBoard })
       // Cell 5 is filled. pointerDown on it, then move to cell 6.
       fireEvent.pointerDown(cells[5]!)
       simulateDragOver(boardEl, cells[6]!)
@@ -983,21 +980,14 @@ describe('Board', () => {
       initialBoard[1] = 5
       board[1] = 5
       // Cells 0, 2 are empty
-      const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />,
-      )
-
-      const cells = container.querySelectorAll('.sudoku-cell')
-      const boardEl = screen.getByRole('grid')
+      const { cells, boardEl, onCellSelectMultiple } = setupDrag({ board, initialBoard })
       // Start drag on cell 0 (empty), drag to cell 2 (empty), skipping cell 1 (given)
       fireEvent.pointerDown(cells[0]!)
       simulateDragOver(boardEl, cells[2]!)
 
       // onCellSelectMultiple should be called with filtered cells (excluding given cell 1)
       expect(onCellSelectMultiple).toHaveBeenCalled()
-      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
-      const selectedCells: number[] = lastCall[0]
+      const selectedCells = lastSelection(onCellSelectMultiple)
       // Cell 1 (given) should NOT be in the selection
       expect(selectedCells).not.toContain(1)
     })
@@ -1008,37 +998,25 @@ describe('Board', () => {
       // Cell 1 is user-filled
       board[1] = 4
       // Cells 0, 2 are empty
-      const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />,
-      )
-
-      const cells = container.querySelectorAll('.sudoku-cell')
-      const boardEl = screen.getByRole('grid')
+      const { cells, boardEl, onCellSelectMultiple } = setupDrag({ board, initialBoard })
       // Start drag on cell 0 (empty), drag to cell 2
       fireEvent.pointerDown(cells[0]!)
       simulateDragOver(boardEl, cells[2]!)
 
       expect(onCellSelectMultiple).toHaveBeenCalled()
-      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
-      const selectedCells: number[] = lastCall[0]
+      const selectedCells = lastSelection(onCellSelectMultiple)
       // Cell 1 (filled) should NOT be in the selection
       expect(selectedCells).not.toContain(1)
     })
 
     it('drag on empty cells calls onCellSelectMultiple normally', () => {
-      const onCellSelectMultiple = vi.fn()
-      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple })} />)
-
-      const cells = container.querySelectorAll('.sudoku-cell')
-      const boardEl = screen.getByRole('grid')
+      const { cells, boardEl, onCellSelectMultiple } = setupDrag()
       // All cells empty: drag from cell 0 to cell 2
       fireEvent.pointerDown(cells[0]!)
       simulateDragOver(boardEl, cells[2]!)
 
       expect(onCellSelectMultiple).toHaveBeenCalled()
-      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
-      const selectedCells: number[] = lastCall[0]
+      const selectedCells = lastSelection(onCellSelectMultiple)
       // Should include cells in the path
       expect(selectedCells.length).toBeGreaterThan(0)
     })
@@ -1046,11 +1024,7 @@ describe('Board', () => {
     it('drag accumulates cells across an L-shaped path (right then down)', () => {
       // Drag right along row 0 (cells 0,1,2) then down column 2 (cells 11,20)
       // to verify paint-style accumulation keeps all swept cells
-      const onCellSelectMultiple = vi.fn()
-      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple })} />)
-
-      const cells = container.querySelectorAll('.sudoku-cell')
-      const boardEl = screen.getByRole('grid')
+      const { cells, boardEl, onCellSelectMultiple } = setupDrag()
 
       // Start drag at cell 0 (row 0, col 0)
       fireEvent.pointerDown(cells[0]!)
@@ -1063,8 +1037,7 @@ describe('Board', () => {
       // Move down to cell 20 (row 2, col 2)
       simulateDragOver(boardEl, cells[20]!)
 
-      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
-      const selected: number[] = lastCall[0]
+      const selected = lastSelection(onCellSelectMultiple)
       // All 5 cells should be in the selection (accumulated, not recalculated)
       expect(selected).toContain(0)
       expect(selected).toContain(1)
@@ -1076,11 +1049,7 @@ describe('Board', () => {
 
     it('backtrack removes cells when pointer revisits a previous trail cell', () => {
       // Drag: 0 -> 1 -> 2 -> 1 (backtrack: should trim cell 2)
-      const onCellSelectMultiple = vi.fn()
-      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple })} />)
-
-      const cells = container.querySelectorAll('.sudoku-cell')
-      const boardEl = screen.getByRole('grid')
+      const { cells, boardEl, onCellSelectMultiple } = setupDrag()
 
       fireEvent.pointerDown(cells[0]!)
       simulateDragOver(boardEl, cells[1]!)
@@ -1102,11 +1071,7 @@ describe('Board', () => {
 
     it('backtrack to start cell leaves only the start cell selected', () => {
       // Drag: 0 -> 1 -> 2 -> 0 (full backtrack)
-      const onCellSelectMultiple = vi.fn()
-      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple })} />)
-
-      const cells = container.querySelectorAll('.sudoku-cell')
-      const boardEl = screen.getByRole('grid')
+      const { cells, boardEl, onCellSelectMultiple } = setupDrag()
 
       fireEvent.pointerDown(cells[0]!)
       simulateDragOver(boardEl, cells[1]!)
@@ -1123,11 +1088,7 @@ describe('Board', () => {
       // pointerUp (drag end)
       // Second drag: 3 -> 4
       // The second drag should NOT contain cells from the first drag
-      const onCellSelectMultiple = vi.fn()
-      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple })} />)
-
-      const cells = container.querySelectorAll('.sudoku-cell')
-      const boardEl = screen.getByRole('grid')
+      const { cells, boardEl, onCellSelectMultiple } = setupDrag()
 
       // First drag
       fireEvent.pointerDown(cells[0]!)
@@ -1140,8 +1101,7 @@ describe('Board', () => {
       fireEvent.pointerDown(cells[3]!)
       simulateDragOver(boardEl, cells[4]!)
 
-      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
-      const selected: number[] = lastCall[0]
+      const selected = lastSelection(onCellSelectMultiple)
       // Only cells from second drag
       expect(selected).toContain(3)
       expect(selected).toContain(4)
@@ -1152,11 +1112,7 @@ describe('Board', () => {
     it('forward movement after backtrack re-accumulates correctly', () => {
       // Drag: 0 -> 1 -> 2 -> 1 (backtrack) -> 10 (down from cell 1)
       // Trail should be [0, 1, 10]
-      const onCellSelectMultiple = vi.fn()
-      const { container } = render(<Board {...defaultProps({ onCellSelectMultiple })} />)
-
-      const cells = container.querySelectorAll('.sudoku-cell')
-      const boardEl = screen.getByRole('grid')
+      const { cells, boardEl, onCellSelectMultiple } = setupDrag()
 
       fireEvent.pointerDown(cells[0]!)
       simulateDragOver(boardEl, cells[1]!)
@@ -1166,8 +1122,7 @@ describe('Board', () => {
       // Now go down from cell 1 (row 0, col 1) to cell 10 (row 1, col 1)
       simulateDragOver(boardEl, cells[10]!)
 
-      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
-      const selected: number[] = lastCall[0]
+      const selected = lastSelection(onCellSelectMultiple)
       expect(selected).toEqual([0, 1, 10])
       // Cell 2 should NOT be in the selection (was removed by backtrack)
       expect(selected).not.toContain(2)
@@ -1180,20 +1135,13 @@ describe('Board', () => {
       initialBoard[1] = 5
       board[1] = 5
 
-      const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />,
-      )
-
-      const cells = container.querySelectorAll('.sudoku-cell')
-      const boardEl = screen.getByRole('grid')
+      const { cells, boardEl, onCellSelectMultiple } = setupDrag({ board, initialBoard })
 
       // Drag from cell 0 to cell 2; bridge includes cell 1 (given, skipped)
       fireEvent.pointerDown(cells[0]!)
       simulateDragOver(boardEl, cells[2]!)
 
-      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
-      const selected: number[] = lastCall[0]
+      const selected = lastSelection(onCellSelectMultiple)
       expect(selected).toContain(0)
       expect(selected).toContain(2)
       expect(selected).not.toContain(1)
@@ -1205,20 +1153,13 @@ describe('Board', () => {
       // Cell 1 is user-filled, cells 0 and 2 are empty
       board[1] = 7
 
-      const onCellSelectMultiple = vi.fn()
-      const { container } = render(
-        <Board {...defaultProps({ board, initialBoard, onCellSelectMultiple })} />,
-      )
-
-      const cells = container.querySelectorAll('.sudoku-cell')
-      const boardEl = screen.getByRole('grid')
+      const { cells, boardEl, onCellSelectMultiple } = setupDrag({ board, initialBoard })
 
       // Drag from cell 0 to cell 2; bridge includes cell 1 (filled, skipped)
       fireEvent.pointerDown(cells[0]!)
       simulateDragOver(boardEl, cells[2]!)
 
-      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
-      const selected: number[] = lastCall[0]
+      const selected = lastSelection(onCellSelectMultiple)
       expect(selected).toContain(0)
       expect(selected).toContain(2)
       expect(selected).not.toContain(1)
@@ -1304,19 +1245,16 @@ describe('Board', () => {
   describe('candidate digit highlighting (regression tests for hint bugs)', () => {
     describe('BUG #1: only target digit should be highlighted green, not all candidates', () => {
       it('highlights ONLY the target digit in green when cell has multiple candidates', () => {
-        const highlight = {
-          step_index: 0,
+        const highlight = makeHighlight({
           technique: 'Hidden Single',
           action: 'place',
           digit: 5,
           targets: [{ row: 0, col: 0 }],
-          explanation: 'Test',
-          refs: { title: '', slug: '', url: '' },
           highlights: {
             primary: [{ row: 0, col: 0 }],
           },
           showAnswer: true,
-        }
+        })
 
         const board = createEmptyBoard()
         const candidates = createEmptyCandidates()
@@ -1338,19 +1276,16 @@ describe('Board', () => {
       })
 
       it('does NOT highlight all candidates when targetDigit is specified', () => {
-        const highlight = {
-          step_index: 0,
+        const highlight = makeHighlight({
           technique: 'Naked Single',
           action: 'place',
           digit: 3,
           targets: [{ row: 1, col: 1 }],
-          explanation: 'Test',
-          refs: { title: '', slug: '', url: '' },
           highlights: {
             primary: [{ row: 1, col: 1 }],
           },
           showAnswer: true,
-        }
+        })
 
         const board = createEmptyBoard()
         const candidates = createEmptyCandidates()
@@ -1374,19 +1309,16 @@ describe('Board', () => {
       })
 
       it('does NOT highlight any candidates when showAnswer is false', () => {
-        const highlight = {
-          step_index: 0,
+        const highlight = makeHighlight({
           technique: 'Hidden Single',
           action: 'place',
           digit: 5,
           targets: [{ row: 0, col: 0 }],
-          explanation: 'Test',
-          refs: { title: '', slug: '', url: '' },
           highlights: {
             primary: [{ row: 0, col: 0 }],
           },
           showAnswer: false,
-        }
+        })
 
         const board = createEmptyBoard()
         const candidates = createEmptyCandidates()
@@ -1519,19 +1451,16 @@ describe('Board', () => {
 
     describe('combination scenarios', () => {
       it('handles target cell that is also in primary highlights', () => {
-        const highlight = {
-          step_index: 0,
+        const highlight = makeHighlight({
           technique: 'Pointing Pairs',
           action: 'eliminate',
           digit: 7,
           targets: [{ row: 4, col: 4 }],
-          explanation: 'Test',
-          refs: { title: '', slug: '', url: '' },
           highlights: {
             primary: [{ row: 4, col: 4 }],
           },
           showAnswer: true,
-        }
+        })
 
         const board = createEmptyBoard()
         const candidates = createEmptyCandidates()
@@ -1555,20 +1484,17 @@ describe('Board', () => {
       })
 
       it('handles elimination cell with multiple candidates', () => {
-        const highlight = {
-          step_index: 0,
+        const highlight = makeHighlight({
           technique: 'Box/Line Reduction',
           action: 'eliminate',
           digit: 4,
           targets: [],
           eliminations: [{ row: 3, col: 3, digit: 4 }],
-          explanation: 'Test',
-          refs: { title: '', slug: '', url: '' },
           highlights: {
             primary: [{ row: 3, col: 0 }],
           },
           showAnswer: true,
-        }
+        })
 
         const board = createEmptyBoard()
         const candidates = createEmptyCandidates()

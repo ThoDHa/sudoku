@@ -150,41 +150,53 @@ export function decodePuzzle(encoded: string): number[] {
   }
 }
 
-function decodeSparse(encoded: string): number[] {
-  if (encoded.length < 14) {
-    return Array(81).fill(0)
-  }
+const EMPTY_BOARD = () => Array(81).fill(0) as number[]
 
-  // First 14 chars are the bitmask
-  const maskStr = encoded.slice(0, 14)
-  const digitsStr = encoded.slice(14)
-
-  // Decode bitmask
+// Decode the leading 14-char base64url bitmask into a BigInt. Returns null when
+// the mask is malformed; callers substitute their own empty fallback.
+const decode14CharMask = (maskStr: string): bigint | null => {
   let mask = BigInt(0)
   for (let i = 0; i < 14; i++) {
     const char = maskStr[i]
-    if (!char) return Array(81).fill(0) as number[]
+    if (!char) return null
     const idx = ALPHABET.indexOf(char)
-    if (idx === -1) return Array(81).fill(0) as number[]
+    if (idx === -1) return null
     mask = (mask << BigInt(6)) | BigInt(idx)
   }
+  return mask
+}
 
-  // Decode digits
-  const cells = Array(81).fill(0) as number[]
+// Count set bits across the 81 cell positions of a mask.
+const countSetMaskBits = (mask: bigint): number => {
+  let count = 0
+  for (let i = 0; i < 81; i++) {
+    if (((mask >> BigInt(80 - i)) & BigInt(1)) === BigInt(1)) count++
+  }
+  return count
+}
+
+// Decode a single base64url digit char into a 1-based puzzle digit (0 on miss).
+const decodeDigitChar = (char: string | undefined): number => {
+  if (!char) return 0
+  const d = ALPHABET.indexOf(char)
+  return d >= 0 && d < 9 ? d + 1 : 0
+}
+
+function decodeSparse(encoded: string): number[] {
+  if (encoded.length < 14) {
+    return EMPTY_BOARD()
+  }
+
+  const mask = decode14CharMask(encoded.slice(0, 14))
+  if (mask === null) return EMPTY_BOARD()
+  const digitsStr = encoded.slice(14)
+
+  const cells = EMPTY_BOARD()
   let digitIdx = 0
   for (let i = 0; i < 81; i++) {
-    const bit = (mask >> BigInt(80 - i)) & BigInt(1)
-    if (bit === BigInt(1)) {
-      if (digitIdx < digitsStr.length) {
-        const char = digitsStr[digitIdx]
-        if (char) {
-          const d = ALPHABET.indexOf(char)
-          if (d >= 0 && d < 9) {
-            cells[i] = d + 1
-          }
-        }
-        digitIdx++
-      }
+    if (((mask >> BigInt(80 - i)) & BigInt(1)) === BigInt(1)) {
+      if (digitIdx < digitsStr.length) cells[i] = decodeDigitChar(digitsStr[digitIdx])
+      digitIdx++
     }
   }
 
@@ -389,6 +401,47 @@ export function decodePuzzleWithState(
 /**
  * Decode candidates from encoded string
  */
+// Decode a base64url string into bytes. Returns null on empty or decode error.
+const base64UrlToBytes = (str: string): Uint8Array | null => {
+  if (str.length === 0) return null
+  let base64 = str.replace(/-/g, '+').replace(/_/g, '/')
+  while (base64.length % 4) base64 += '='
+  try {
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return bytes
+  } catch {
+    return null
+  }
+}
+
+// Expand a packed 9-bit candidate mask into the list of candidate digits 1-9.
+const bitsToCandidateDigits = (bits: number | undefined): number[] => {
+  const digits: number[] = []
+  if (bits === undefined) return digits
+  for (let d = 1; d <= 9; d++) {
+    if ((bits & (1 << (d - 1))) !== 0) digits.push(d)
+  }
+  return digits
+}
+
+// Extract the packed 9-bit candidate values (MSB-first, right-padded) from bytes.
+const extractCandBits = (bytes: Uint8Array, cellsWithCands: number): number[] => {
+  let allBits = BigInt(0)
+  for (let i = 0; i < bytes.length; i++) {
+    allBits = (allBits << BigInt(8)) | BigInt(bytes[i] ?? 0)
+  }
+  const totalBitsInBytes = bytes.length * 8
+  const paddingBits = totalBitsInBytes - cellsWithCands * 9
+  const candBits: number[] = []
+  for (let i = 0; i < cellsWithCands; i++) {
+    const shiftAmount = paddingBits + (cellsWithCands - 1 - i) * 9
+    candBits.push(Number((allBits >> BigInt(shiftAmount)) & BigInt(0x1ff)))
+  }
+  return candBits
+}
+
 function decodeCandidates(data: string): number[][] {
   const candidates: number[][] = Array(81)
     .fill(null)
@@ -398,91 +451,21 @@ function decodeCandidates(data: string): number[][] {
     return candidates
   }
 
-  // First 14 chars are the bitmask for which cells have candidates
-  const maskStr = data.slice(0, 14)
-  let mask = BigInt(0)
-  for (let i = 0; i < 14; i++) {
-    const char = maskStr[i]
-    if (!char) return candidates
-    const idx = ALPHABET.indexOf(char)
-    if (idx === -1) return candidates
-    mask = (mask << BigInt(6)) | BigInt(idx)
-  }
+  const mask = decode14CharMask(data.slice(0, 14))
+  if (mask === null) return candidates
 
-  // Count how many cells have candidates
-  let cellsWithCands = 0
-  for (let i = 0; i < 81; i++) {
-    const bit = (mask >> BigInt(80 - i)) & BigInt(1)
-    if (bit === BigInt(1)) {
-      cellsWithCands++
-    }
-  }
+  const cellsWithCands = countSetMaskBits(mask)
+  if (cellsWithCands === 0) return candidates
 
-  if (cellsWithCands === 0) {
-    return candidates
-  }
+  const bytes = base64UrlToBytes(data.slice(14))
+  if (!bytes) return candidates
 
-  // Decode the candidate bits from base64
-  const candBase64 = data.slice(14)
-  if (candBase64.length === 0) {
-    return candidates
-  }
+  const candBits = extractCandBits(bytes, cellsWithCands)
 
-  // Convert from base64url to standard base64
-  let base64 = candBase64.replace(/-/g, '+').replace(/_/g, '/')
-  while (base64.length % 4) {
-    base64 += '='
-  }
-
-  let binary: string
-  try {
-    binary = atob(base64)
-  } catch {
-    return candidates
-  }
-
-  // Convert to bytes
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i)
-  }
-
-  // Reconstruct all bits
-  let allBits = BigInt(0)
-  for (let i = 0; i < bytes.length; i++) {
-    allBits = (allBits << BigInt(8)) | BigInt(bytes[i] ?? 0)
-  }
-
-  // Extract 9-bit values for each cell with candidates
-  // Encoding packs MSB-first with padding on the right (LSB side)
-  // So we extract from MSB to LSB
-  const candBits: number[] = []
-  const dataBits = cellsWithCands * 9
-  const totalBitsInBytes = bytes.length * 8
-  const paddingBits = totalBitsInBytes - dataBits
-
-  // Extract 9-bit values from MSB (left side), skipping right-side padding
-  for (let i = 0; i < cellsWithCands; i++) {
-    // Shift amount: how many bits from the RIGHT to this 9-bit chunk
-    // First chunk starts at (totalBitsInBytes - 9), second at (totalBitsInBytes - 18), etc.
-    // But we also need to account for padding which is at the RIGHT
-    const shiftAmount = paddingBits + (cellsWithCands - 1 - i) * 9
-    candBits.push(Number((allBits >> BigInt(shiftAmount)) & BigInt(0x1ff)))
-  }
-
-  // Apply candidates to cells
   let candIdx = 0
   for (let i = 0; i < 81; i++) {
-    const bit = (mask >> BigInt(80 - i)) & BigInt(1)
-    if (bit === BigInt(1) && candIdx < candBits.length) {
-      const bits = candBits[candIdx]
-      const cellCands: number[] = []
-      for (let d = 1; d <= 9; d++) {
-        if (bits !== undefined && (bits & (1 << (d - 1))) !== 0) {
-          cellCands.push(d)
-        }
-      }
-      candidates[i] = cellCands
+    if (((mask >> BigInt(80 - i)) & BigInt(1)) === BigInt(1) && candIdx < candBits.length) {
+      candidates[i] = bitsToCandidateDigits(candBits[candIdx])
       candIdx++
     }
   }

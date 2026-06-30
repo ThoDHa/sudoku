@@ -1,5 +1,7 @@
 import { memo } from 'react'
 
+const BTN_BASE = 'bg-btn-bg text-foreground'
+
 interface ControlsProps {
   notesMode: boolean
   onNotesToggle: () => void
@@ -53,7 +55,7 @@ function Controls({
               ? 'bg-btn-bg text-foreground-muted opacity-40 cursor-not-allowed'
               : isSelected
                 ? 'bg-accent text-btn-active-text ring-2 ring-accent ring-offset-2 ring-offset-background'
-                : 'bg-btn-bg text-foreground'
+                : BTN_BASE
         }`}
       >
         {digit}
@@ -95,7 +97,7 @@ function Controls({
                 ? 'bg-btn-bg opacity-40 cursor-not-allowed'
                 : notesMode
                   ? 'bg-btn-active text-btn-active-text ring-2 ring-accent ring-offset-1 ring-offset-background'
-                  : 'bg-btn-bg text-foreground'
+                  : BTN_BASE
           }`}
           title="Notes mode"
         >
@@ -115,7 +117,7 @@ function Controls({
               ? 'bg-btn-bg text-foreground-muted opacity-40 cursor-not-allowed'
               : eraseMode
                 ? 'bg-accent text-btn-active-text ring-2 ring-accent ring-offset-1 ring-offset-background'
-                : 'bg-btn-bg text-foreground'
+                : BTN_BASE
           }`}
           title="Erase"
         >

@@ -128,4 +128,12 @@ export interface SudokuWasmAPI {
   generateFullGrid(seed: number): number[]
   carveGivens(fullGrid: number[], targetGivens: number, seed: number): number[]
   carveGivensWithSubset(fullGrid: number[], seed: number): Record<string, number[]>
+
+  // Validation
+  validateCustomPuzzle(givens: number[]): ValidateCustomResult
+  validateBoard(board: number[], solution: number[]): ValidateBoardResult
+
+  // Utility
+  getPuzzleForSeed(seed: string, difficulty: string): PuzzleForSeedResult
+  getVersion(): string
 }

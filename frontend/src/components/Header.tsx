@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/ThemeContext'
 import { useClickOutside } from '../hooks/useClickOutside'
-import { SunIcon, MoonIcon, ComputerIcon } from './ui'
+import ThemeModeDropdown from './ThemeModeDropdown'
 import { getHomepageMode, setHomepageMode, HomepageMode } from '../lib/preferences'
 import { buildDebugInfo, formatDebugJson } from '../lib/debugInfo'
 import Menu from './Menu'
@@ -20,6 +20,11 @@ function MenuIcon({ className = 'h-5 w-5' }: { className?: string }) {
     </svg>
   )
 }
+
+const NAV_LINK_ACTIVE = 'text-accent'
+const NAV_LINK_INACTIVE = 'text-foreground-muted hover:text-foreground'
+const navLinkClass = (active: boolean) =>
+  `px-3 py-1.5 rounded text-sm font-medium transition-colors ${active ? NAV_LINK_ACTIVE : NAV_LINK_INACTIVE}`
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -117,44 +122,22 @@ export default function Header() {
 
             {/* Center: Nav links - desktop only */}
             <nav className="hidden sm:flex items-center gap-1">
-              <Link
-                to="/"
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  location.pathname === '/'
-                    ? 'text-accent'
-                    : 'text-foreground-muted hover:text-foreground'
-                }`}
-              >
+              <Link to="/" className={navLinkClass(location.pathname === '/')}>
                 {homepageModeState === 'daily' ? 'Daily' : 'Game'}
               </Link>
               <Link
                 to="/techniques"
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  location.pathname.startsWith('/technique')
-                    ? 'text-accent'
-                    : 'text-foreground-muted hover:text-foreground'
-                }`}
+                className={navLinkClass(location.pathname.startsWith('/technique'))}
               >
                 Learn
               </Link>
               <Link
                 to="/leaderboard"
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  location.pathname === '/leaderboard'
-                    ? 'text-accent'
-                    : 'text-foreground-muted hover:text-foreground'
-                }`}
+                className={navLinkClass(location.pathname === '/leaderboard')}
               >
                 Scores
               </Link>
-              <Link
-                to="/about"
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  location.pathname === '/about'
-                    ? 'text-accent'
-                    : 'text-foreground-muted hover:text-foreground'
-                }`}
-              >
+              <Link to="/about" className={navLinkClass(location.pathname === '/about')}>
                 About
               </Link>
             </nav>
@@ -162,61 +145,14 @@ export default function Header() {
             {/* Right: Actions */}
             <div className="flex items-center gap-1">
               {/* Theme mode dropdown */}
-              <div className="relative" ref={modeDropdownRef}>
-                <button
-                  onClick={() => setModeDropdownOpen(!modeDropdownOpen)}
-                  className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
-                  title={`Theme: ${modePreference === 'system' ? `System (${mode})` : modePreference}`}
-                >
-                  {mode === 'dark' ? <MoonIcon /> : <SunIcon />}
-                </button>
-                {modeDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-32 rounded-lg bg-background-secondary border border-board-border-light shadow-lg overflow-hidden z-50">
-                    <button
-                      onClick={() => {
-                        setModePreference('light')
-                        setModeDropdownOpen(false)
-                      }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                        modePreference === 'light'
-                          ? 'bg-accent text-btn-active-text'
-                          : 'text-foreground hover:bg-btn-hover'
-                      }`}
-                    >
-                      <SunIcon className="h-4 w-4" />
-                      Light
-                    </button>
-                    <button
-                      onClick={() => {
-                        setModePreference('dark')
-                        setModeDropdownOpen(false)
-                      }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                        modePreference === 'dark'
-                          ? 'bg-accent text-btn-active-text'
-                          : 'text-foreground hover:bg-btn-hover'
-                      }`}
-                    >
-                      <MoonIcon className="h-4 w-4" />
-                      Dark
-                    </button>
-                    <button
-                      onClick={() => {
-                        setModePreference('system')
-                        setModeDropdownOpen(false)
-                      }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                        modePreference === 'system'
-                          ? 'bg-accent text-btn-active-text'
-                          : 'text-foreground hover:bg-btn-hover'
-                      }`}
-                    >
-                      <ComputerIcon className="h-4 w-4" />
-                      System
-                    </button>
-                  </div>
-                )}
-              </div>
+              <ThemeModeDropdown
+                mode={mode}
+                modePreference={modePreference}
+                isOpen={modeDropdownOpen}
+                onToggle={() => setModeDropdownOpen(!modeDropdownOpen)}
+                onSetModePreference={setModePreference}
+                dropdownRef={modeDropdownRef}
+              />
 
               {/* Menu button */}
               <button

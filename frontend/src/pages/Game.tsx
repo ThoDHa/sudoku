@@ -128,6 +128,215 @@ function formatTechniqueName(technique: string): string {
   return technique.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+interface PuzzleSetup {
+  effectiveSeed: string | undefined
+  isEncodedCustom: boolean
+  needsDifficultyChoice: boolean
+  alreadyCompletedToday: boolean
+  completedDailyScore: Score | undefined
+}
+
+function resolvePuzzleSetup(params: {
+  seed: string | undefined
+  encoded: string | undefined
+  pathname: string
+  difficultyParam: string | null
+}): PuzzleSetup {
+  const { seed, encoded, pathname, difficultyParam } = params
+  const effectiveSeed = seed || undefined
+  const isEncodedCustom = pathname.startsWith('/c/') && !!encoded
+  const needsDifficultyChoice =
+    !difficultyParam &&
+    !isEncodedCustom &&
+    !effectiveSeed?.startsWith('custom-') &&
+    !effectiveSeed?.startsWith('practice-')
+  const isTodaysDailyPuzzle = effectiveSeed === `daily-${getTodayUTC()}`
+  const alreadyCompletedToday = isTodaysDailyPuzzle && isTodayCompleted()
+  const completedDailyScore = alreadyCompletedToday
+    ? getScores().find((s) => s.seed === effectiveSeed)
+    : undefined
+  return { effectiveSeed, isEncodedCustom, needsDifficultyChoice, alreadyCompletedToday, completedDailyScore }
+}
+
+// Result of resolving where the puzzle comes from for the current route.
+interface ResolvedPuzzle {
+  givens: number[]
+  solution: number[]
+  puzzleData: PuzzleData
+  initialState: number[] | null
+  initialCandidates: number[][] | null
+}
+
+// Validate custom givens and build the puzzleData payload shared by the
+// full-state and legacy custom-puzzle link branches.
+async function validateAndBuildCustom(
+  customGivens: number[],
+  encoded: string,
+  setEncodedPuzzle: (value: string) => void,
+): Promise<{ solution: number[]; puzzleData: PuzzleData }> {
+  const validation = await validateCustomPuzzle(customGivens, '')
+  if (!validation.valid) {
+    throw new Error(`Invalid puzzle: ${validation.reason || 'unknown error'}`)
+  }
+  if (!validation.unique) {
+    throw new Error('Invalid puzzle: has multiple solutions')
+  }
+  if (!validation.solution) {
+    throw new Error('Invalid puzzle: could not compute solution')
+  }
+  setEncodedPuzzle(encoded)
+  return {
+    solution: validation.solution,
+    puzzleData: {
+      puzzle_id: `custom-${encoded.substring(0, 8)}`,
+      seed: `custom-${encoded.substring(0, 8)}`,
+      difficulty: 'custom',
+      givens: customGivens,
+      solution: validation.solution,
+    },
+  }
+}
+
+// Resolve an encoded custom-puzzle link (full-state or legacy givens-only).
+async function resolveEncodedCustom(
+  encoded: string,
+  setEncodedPuzzle: (value: string) => void,
+): Promise<ResolvedPuzzle> {
+  let givens: number[]
+  let initialState: number[] | null = null
+  let initialCandidates: number[][] | null = null
+
+  if (encoded.startsWith('e') || encoded.startsWith('c')) {
+    const decoded = decodePuzzleWithState(encoded)
+    if (!decoded) {
+      throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
+    }
+    givens = decoded.givens
+    initialState = decoded.board
+    if (decoded.candidates) {
+      initialCandidates = decoded.candidates
+    }
+  } else {
+    try {
+      givens = decodePuzzle(encoded)
+      if (givens.length !== 81) {
+        throw new Error('Invalid puzzle encoding')
+      }
+    } catch {
+      throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
+    }
+  }
+
+  const { solution, puzzleData } = await validateAndBuildCustom(givens, encoded, setEncodedPuzzle)
+  return { givens, solution, puzzleData, initialState, initialCandidates }
+}
+
+// Resolve a custom puzzle previously saved to localStorage by its seed.
+async function resolveStoredCustom(
+  effectiveSeed: string,
+  setEncodedPuzzle: (value: string | null) => void,
+): Promise<ResolvedPuzzle> {
+  const storedGivens = localStorage.getItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${effectiveSeed}`)
+  if (!storedGivens) {
+    throw new Error('Custom puzzle not found. Please re-enter the puzzle.')
+  }
+  const givens: number[] = JSON.parse(storedGivens)
+  const validation = await validateCustomPuzzle(givens, '')
+  if (!validation.valid || !validation.unique || !validation.solution) {
+    throw new Error('Stored puzzle is invalid')
+  }
+  setEncodedPuzzle(encodePuzzle(givens))
+  return {
+    givens,
+    solution: validation.solution,
+    puzzleData: {
+      puzzle_id: effectiveSeed,
+      seed: effectiveSeed,
+      difficulty: 'custom',
+      givens,
+      solution: validation.solution,
+    },
+    initialState: null,
+    initialCandidates: null,
+  }
+}
+
+// Resolve a practice puzzle saved to localStorage by TechniqueDetailView.
+async function resolvePractice(
+  effectiveSeed: string,
+  difficulty: Difficulty,
+  setEncodedPuzzle: (value: string | null) => void,
+): Promise<ResolvedPuzzle> {
+  const storedGivens = localStorage.getItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${effectiveSeed}`)
+  if (!storedGivens) {
+    throw new Error('Practice puzzle not found. Please try again from the technique page.')
+  }
+  const givens: number[] = JSON.parse(storedGivens)
+  const validation = await validateCustomPuzzle(givens, '')
+  if (!validation.valid || !validation.unique || !validation.solution) {
+    throw new Error('Practice puzzle is invalid')
+  }
+  setEncodedPuzzle(null)
+  return {
+    givens,
+    solution: validation.solution,
+    puzzleData: {
+      puzzle_id: effectiveSeed,
+      seed: effectiveSeed,
+      difficulty,
+      givens,
+      solution: validation.solution,
+    },
+    initialState: null,
+    initialCandidates: null,
+  }
+}
+
+// Resolve a puzzle fetched from the static pool.
+function resolveFetched(
+  effectiveSeed: string | undefined,
+  difficulty: Difficulty,
+  setEncodedPuzzle: (value: string | null) => void,
+): ResolvedPuzzle {
+  const fetchedPuzzle = getPuzzle(effectiveSeed ?? '', difficulty)
+  setEncodedPuzzle(null)
+  return {
+    givens: fetchedPuzzle.givens,
+    solution: fetchedPuzzle.solution,
+    puzzleData: {
+      puzzle_id: fetchedPuzzle.puzzle_id,
+      seed: fetchedPuzzle.seed,
+      difficulty: fetchedPuzzle.difficulty,
+      givens: fetchedPuzzle.givens,
+      solution: fetchedPuzzle.solution,
+    },
+    initialState: null,
+    initialCandidates: null,
+  }
+}
+
+// Dispatch to the correct puzzle source for the current route: encoded custom
+// link, stored custom/practice puzzle, or a fetched puzzle from the static pool.
+async function fetchPuzzleSource(params: {
+  isEncodedCustom: boolean
+  encoded: string | undefined
+  difficulty: Difficulty
+  effectiveSeed: string | undefined
+  setEncodedPuzzle: (value: string | null) => void
+}): Promise<ResolvedPuzzle> {
+  const { isEncodedCustom, encoded, difficulty, effectiveSeed, setEncodedPuzzle } = params
+  if (isEncodedCustom && encoded) {
+    return resolveEncodedCustom(encoded, setEncodedPuzzle)
+  }
+  if (difficulty === 'custom' && effectiveSeed?.startsWith('custom-')) {
+    return resolveStoredCustom(effectiveSeed, setEncodedPuzzle)
+  }
+  if (effectiveSeed?.startsWith('practice-')) {
+    return resolvePractice(effectiveSeed, difficulty, setEncodedPuzzle)
+  }
+  return resolveFetched(effectiveSeed, difficulty, setEncodedPuzzle)
+}
+
 /**
  * Inner component that contains all game logic.
  * Must be wrapped by TimerProvider (see Game component below).
@@ -139,26 +348,11 @@ function GameContent() {
   const navigate = useNavigate()
 
   const difficultyParam = searchParams.get('d')
-  const effectiveSeed = seed || undefined
 
-  // Determine if this is an encoded custom puzzle (from /c/:encoded route)
-  const isEncodedCustom = location.pathname.startsWith('/c/') && encoded
+  const { effectiveSeed, isEncodedCustom, needsDifficultyChoice, alreadyCompletedToday, completedDailyScore } =
+    resolvePuzzleSetup({ seed, encoded, pathname: location.pathname, difficultyParam })
 
   // Check if difficulty was provided in URL - if not, we need to show chooser
-  const needsDifficultyChoice =
-    !difficultyParam &&
-    !isEncodedCustom &&
-    !effectiveSeed?.startsWith('custom-') &&
-    !effectiveSeed?.startsWith('practice-')
-
-  // Check if this is today's daily puzzle and user already completed it
-  const isTodaysDailyPuzzle = effectiveSeed === `daily-${getTodayUTC()}`
-  const alreadyCompletedToday = isTodaysDailyPuzzle && isTodayCompleted()
-
-  // Get the completed score for today's daily if already completed
-  const completedDailyScore = alreadyCompletedToday
-    ? getScores().find((s) => s.seed === effectiveSeed)
-    : null
 
   // Track if onboarding is complete (as state so it updates when onboarding is dismissed)
   const [onboardingComplete, setOnboardingComplete] = useState(
@@ -964,6 +1158,36 @@ function GameContent() {
     })
   }, [game.board, solution, scheduleToastClear])
 
+  // Resolve the next hint move, using the cached hint when the board signature is unchanged.
+  // Returns null (after surfacing an error toast) when there is no next move.
+  const fetchCachedHint = useCallback(async (): Promise<Move | null> => {
+    const boardSnapshot = [...game.board]
+    const currentSignature = getBoardSignature(game.board, game.candidates)
+
+    let data: Awaited<ReturnType<typeof findNextMove>>
+
+    if (cachedHintRef.current && cachedHintRef.current.boardSignature === currentSignature) {
+      data = cachedHintRef.current.data
+    } else {
+      const candidatesArray = candidatesToArrays(game.candidates)
+      data = await findNextMove(boardSnapshot, candidatesArray, initialBoard)
+      cachedHintRef.current = { boardSignature: currentSignature, data }
+    }
+
+    if (!data.move) {
+      setValidationMessage({
+        type: 'error',
+        message: data.solved
+          ? 'Puzzle is already complete!'
+          : 'This puzzle requires advanced techniques beyond our hint system.',
+      })
+      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+      return null
+    }
+
+    return data.move
+  }, [game.board, game.candidates, initialBoard, scheduleToastClear])
+
   // Handle hint button - shows the next move with full answer (eliminations + additions visible)
   const handleNext = useCallback(async () => {
     // Prevent concurrent hint requests (spam protection)
@@ -978,34 +1202,8 @@ function GameContent() {
       // Deselect any highlighted digit when using hint
       clearAllAndDeselect()
 
-      // Check if we have a cached hint for the current board state
-      const boardSnapshot = [...game.board]
-      const currentSignature = getBoardSignature(game.board, game.candidates)
-
-      let data: Awaited<ReturnType<typeof findNextMove>>
-
-      if (cachedHintRef.current && cachedHintRef.current.boardSignature === currentSignature) {
-        // Use cached hint - board hasn't changed
-        data = cachedHintRef.current.data
-      } else {
-        // Fetch fresh hint and cache it
-        const candidatesArray = candidatesToArrays(game.candidates)
-        data = await findNextMove(boardSnapshot, candidatesArray, initialBoard)
-        cachedHintRef.current = { boardSignature: currentSignature, data }
-      }
-
-      if (!data.move) {
-        setValidationMessage({
-          type: 'error',
-          message: data.solved
-            ? 'Puzzle is already complete!'
-            : 'This puzzle requires advanced techniques beyond our hint system.',
-        })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-        return
-      }
-
-      const move = data.move
+      const move = await fetchCachedHint()
+      if (!move) return
 
       // Handle special moves
       if (move.action === 'unpinpointable-error') {
@@ -1067,11 +1265,9 @@ function GameContent() {
       setHintLoading(false)
     }
   }, [
-    game.board,
-    game.candidates,
     game.history.length,
-    initialBoard,
     clearAllAndDeselect,
+    fetchCachedHint,
     scheduleToastClear,
     setMoveHighlight,
     clearMoveHighlight,
@@ -1089,34 +1285,8 @@ function GameContent() {
       // Deselect any highlighted digit when using technique hint
       clearAllAndDeselect()
 
-      // Check if we have a cached hint for the current board state
-      const boardSnapshot = [...game.board]
-      const currentSignature = getBoardSignature(game.board, game.candidates)
-
-      let data: Awaited<ReturnType<typeof findNextMove>>
-
-      if (cachedHintRef.current && cachedHintRef.current.boardSignature === currentSignature) {
-        // Use cached hint - board hasn't changed
-        data = cachedHintRef.current.data
-      } else {
-        // Fetch fresh hint and cache it
-        const candidatesArray = candidatesToArrays(game.candidates)
-        data = await findNextMove(boardSnapshot, candidatesArray, initialBoard)
-        cachedHintRef.current = { boardSignature: currentSignature, data }
-      }
-
-      if (!data.move) {
-        setValidationMessage({
-          type: 'error',
-          message: data.solved
-            ? 'Puzzle is already complete!'
-            : 'This puzzle requires advanced techniques beyond our hint system.',
-        })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-        return
-      }
-
-      const move = data.move
+      const move = await fetchCachedHint()
+      if (!move) return
 
       // If the next move is just filling candidates, show a helpful message
       if (move.technique === 'fill-candidate') {
@@ -1191,11 +1361,9 @@ function GameContent() {
       setTechniqueHintLoading(false)
     }
   }, [
-    game.board,
-    game.candidates,
     game.history.length,
-    initialBoard,
     clearAllAndDeselect,
+    fetchCachedHint,
     scheduleToastClear,
     setMoveHighlight,
   ])
@@ -1269,6 +1437,74 @@ function GameContent() {
     currentGame.setCellMultiple(cells, currentHighlightedDigit, true)
   }, [])
 
+  // Shared reset for hint tracking caches, invoked after any user action that
+  // changes the board and therefore invalidates the cached next hint.
+  const resetHintTracking = useCallback(() => {
+    lastTechniqueHintRef.current = null
+    lastRegularHintRef.current = null
+    cachedHintRef.current = null
+  }, [])
+
+  type GameApi = NonNullable<ReturnType<typeof useSudokuGame>>
+
+  // Erase-mode click: if active and the cell is erasable, erase it (keeping
+  // erase mode on); otherwise just select the cell and exit erase mode.
+  const handleEraseClick = useCallback(
+    (idx: number, game: GameApi): boolean => {
+      if (!eraseModeRef.current) return false
+      if (game.board[idx] !== 0 && !game.isGivenCell(idx)) {
+        commitCellAction('erase', {
+          idx,
+          game,
+          clearAfterErase,
+          deselectCell,
+          setEraseMode,
+          setAutoSolveStepsUsed,
+          setAutoSolveErrorsFixed,
+        })
+        resetHintTracking()
+        return true
+      }
+      selectCell(idx)
+      setEraseMode(false)
+      return true
+    },
+    [clearAfterErase, deselectCell, selectCell, resetHintTracking],
+  )
+
+  // Place (or toggle) the highlighted digit on a cell. In notes mode toggles
+  // the candidate; otherwise places the digit, or erases if the cell already
+  // holds that digit.
+  const handleHighlightedPlacement = useCallback(
+    (idx: number, game: GameApi, highlightedDigit: number, notesMode: boolean): void => {
+      if (isDigitComplete(highlightedDigit, game.digitCounts)) {
+        clearDigitHighlight()
+        return
+      }
+      if (notesMode) {
+        if (game.board[idx] === 0) {
+          placeDigitAndClear(idx, highlightedDigit, notesMode)
+        }
+        return
+      }
+      if (game.board[idx] === highlightedDigit) {
+        commitCellAction('erase', {
+          idx,
+          game,
+          clearAfterErase,
+          deselectCell,
+          setEraseMode,
+          setAutoSolveStepsUsed,
+          setAutoSolveErrorsFixed,
+        })
+        resetHintTracking()
+      } else {
+        placeDigitAndClear(idx, highlightedDigit, notesMode)
+      }
+    },
+    [clearDigitHighlight, placeDigitAndClear, clearAfterErase, deselectCell, resetHintTracking],
+  )
+
   // Cell click handler - STABLE: reads from refs to avoid recreating on state changes
   // This is critical because Cell memo doesn't compare callback props for performance
   const handleCellClick = useCallback(
@@ -1279,35 +1515,11 @@ function GameContent() {
       const currentHighlightedDigit = highlightedDigitRef.current
       const currentSelectedCell = selectedCellRef.current
       const currentNotesMode = notesModeRef.current
-      const currentEraseMode = eraseModeRef.current
       const currentGame = gameRef.current
 
       if (!currentGame) return
 
-      // Handle erase mode: if erase mode is active and cell has a value, erase it
-      if (currentEraseMode && currentGame.board[idx] !== 0 && !currentGame.isGivenCell(idx)) {
-        commitCellAction('erase', {
-          idx,
-          game: currentGame,
-          clearAfterErase,
-          deselectCell,
-          setEraseMode,
-          setAutoSolveStepsUsed,
-          setAutoSolveErrorsFixed,
-        })
-        // Reset last hint tracking so next hint counts as new
-        lastTechniqueHintRef.current = null
-        lastRegularHintRef.current = null
-        cachedHintRef.current = null
-        // Keep erase mode active so user can erase multiple cells
-        return
-      }
-      // If erase mode is active but cell is empty or given, just select it and turn off erase mode
-      if (currentEraseMode) {
-        selectCell(idx)
-        setEraseMode(false)
-        return
-      }
+      if (handleEraseClick(idx, currentGame)) return
 
       // If a digit is already highlighted and we're clicking a given cell,
       // only block if we're NOT coming from another given cell (allow given-to-given navigation)
@@ -1315,14 +1527,12 @@ function GameContent() {
         if (currentSelectedCell === null || !currentGame.isGivenCell(currentSelectedCell)) {
           return
         }
-        // Fall through to handle given cell click normally (switch between given cells)
       }
 
       // Given cells: highlight the digit AND select the cell for peer highlighting
       if (currentGame.isGivenCell(idx)) {
         const cellDigit = currentGame.board[idx]
         if (cellDigit && cellDigit > 0) {
-          // Toggle: if same given cell is clicked again, deselect
           if (currentSelectedCell === idx) {
             clearAllAndDeselect()
           } else {
@@ -1333,16 +1543,13 @@ function GameContent() {
         return
       }
 
-      // Toggle selection: clicking the same cell again deselects it (highest priority for user-fillable cells)
-      // EXCEPT: In notes mode with a digit highlighted, clicking the same cell should toggle the candidate
+      // Toggle selection: clicking the same cell again deselects it.
+      // In notes mode with a highlighted digit, instead toggle that candidate.
       if (currentSelectedCell === idx) {
         if (currentNotesMode && currentHighlightedDigit !== null && currentGame.board[idx] === 0) {
-          // Toggle the candidate on this cell
           currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
           clearAfterUserCandidateOp()
-          lastTechniqueHintRef.current = null
-          lastRegularHintRef.current = null
-          cachedHintRef.current = null
+          resetHintTracking()
           return
         }
         clearAllAndDeselect()
@@ -1350,43 +1557,7 @@ function GameContent() {
       }
 
       if (currentHighlightedDigit !== null) {
-        // Fix 3: Block placement of complete highlighted digits
-        // Check if the highlighted digit is complete before placing it
-        const isHighlightedDigitComplete = isDigitComplete(
-          currentHighlightedDigit,
-          currentGame.digitCounts,
-        )
-
-        if (isHighlightedDigitComplete) {
-          // Clear digit highlight and don't place the digit
-          clearDigitHighlight()
-          return
-        }
-
-        if (currentNotesMode) {
-          // Only allow notes toggle on empty cells (follows current game logic)
-          if (currentGame.board[idx] === 0) {
-            placeDigitAndClear(idx, currentHighlightedDigit, currentNotesMode)
-          }
-        } else {
-          // If cell already contains the highlighted digit, erase it.
-          if (currentGame.board[idx] === currentHighlightedDigit) {
-            commitCellAction('erase', {
-              idx,
-              game: currentGame,
-              clearAfterErase,
-              deselectCell,
-              setEraseMode,
-              setAutoSolveStepsUsed,
-              setAutoSolveErrorsFixed,
-            })
-            lastTechniqueHintRef.current = null
-            lastRegularHintRef.current = null
-            cachedHintRef.current = null
-          } else {
-            placeDigitAndClear(idx, currentHighlightedDigit, currentNotesMode)
-          }
-        }
+        handleHighlightedPlacement(idx, currentGame, currentHighlightedDigit, currentNotesMode)
         return
       }
 
@@ -1399,13 +1570,12 @@ function GameContent() {
     [
       selectCell,
       clearAllAndDeselect,
-      deselectCell,
       clickGivenCell,
       resumeFromExtendedPause,
-      placeDigitAndClear,
-      clearAfterErase,
       clearAfterUserCandidateOp,
-      clearDigitHighlight,
+      resetHintTracking,
+      handleEraseClick,
+      handleHighlightedPlacement,
     ],
   )
 
@@ -1940,152 +2110,16 @@ function GameContent() {
         // Note: WASM is NOT loaded here. It loads on-demand when user requests hints/solve.
         // Puzzles come from static pool (getPuzzle) or are validated with pure TypeScript (validateCustomPuzzle).
 
-        let puzzleData: PuzzleData | null = null
         setIncorrectCells([])
 
-        let givens: number[]
-        let puzzleSolution: number[]
-        let initialState: number[] | null = null
-        let initialCandidates: number[][] | null = null
-
-        if (isEncodedCustom && encoded) {
-          // Check if this is a full-state sharing link (starts with 'e' or 'c')
-          if (encoded.startsWith('e') || encoded.startsWith('c')) {
-            const decoded = decodePuzzleWithState(encoded)
-            if (!decoded) {
-              throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
-            }
-
-            // decoded.board is the full state (including user entries)
-            // decoded.givens are the original givens (editable cells will have 0)
-            // decoded.candidates (optional) are the notes/candidates
-            givens = decoded.givens
-            initialState = decoded.board
-            if (decoded.candidates) {
-              initialCandidates = decoded.candidates
-            }
-
-            // Validate the puzzle
-            const validation = await validateCustomPuzzle(givens, '')
-            if (!validation.valid) {
-              throw new Error(`Invalid puzzle: ${validation.reason || 'unknown error'}`)
-            }
-            if (!validation.unique) {
-              throw new Error('Invalid puzzle: has multiple solutions')
-            }
-            if (!validation.solution) {
-              throw new Error('Invalid puzzle: could not compute solution')
-            }
-            puzzleSolution = validation.solution
-
-            setEncodedPuzzle(encoded)
-
-            puzzleData = {
-              puzzle_id: `custom-${encoded.substring(0, 8)}`,
-              seed: `custom-${encoded.substring(0, 8)}`,
-              difficulty: 'custom',
-              givens: givens,
-              solution: puzzleSolution,
-            }
-          } else {
-            // Legacy encoding - just givens
-            try {
-              givens = decodePuzzle(encoded)
-              if (givens.length !== 81) {
-                throw new Error('Invalid puzzle encoding')
-              }
-            } catch {
-              throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
-            }
-
-            // Validate the encoded puzzle before playing
-            const validation = await validateCustomPuzzle(givens, '')
-            if (!validation.valid) {
-              throw new Error(`Invalid puzzle: ${validation.reason || 'unknown error'}`)
-            }
-            if (!validation.unique) {
-              throw new Error('Invalid puzzle: has multiple solutions')
-            }
-            if (!validation.solution) {
-              throw new Error('Invalid puzzle: could not compute solution')
-            }
-            puzzleSolution = validation.solution
-
-            setEncodedPuzzle(encoded)
-
-            puzzleData = {
-              puzzle_id: `custom-${encoded.substring(0, 8)}`,
-              seed: `custom-${encoded.substring(0, 8)}`,
-              difficulty: 'custom',
-              givens: givens,
-              solution: puzzleSolution,
-            }
-          }
-        } else if (difficulty === 'custom' && effectiveSeed?.startsWith('custom-')) {
-          const storedGivens = localStorage.getItem(
-            `${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${effectiveSeed}`,
-          )
-          if (!storedGivens) {
-            throw new Error('Custom puzzle not found. Please re-enter the puzzle.')
-          }
-          givens = JSON.parse(storedGivens)
-
-          // Validate to get solution
-          const validation = await validateCustomPuzzle(givens, '')
-          if (!validation.valid || !validation.unique || !validation.solution) {
-            throw new Error('Stored puzzle is invalid')
-          }
-          puzzleSolution = validation.solution
-
-          setEncodedPuzzle(encodePuzzle(givens))
-
-          puzzleData = {
-            puzzle_id: effectiveSeed,
-            seed: effectiveSeed,
-            difficulty: 'custom',
-            givens: givens,
-            solution: puzzleSolution,
-          }
-        } else if (effectiveSeed?.startsWith('practice-')) {
-          // Practice puzzles are stored in localStorage by TechniqueDetailView
-          const storedGivens = localStorage.getItem(
-            `${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${effectiveSeed}`,
-          )
-          if (!storedGivens) {
-            throw new Error('Practice puzzle not found. Please try again from the technique page.')
-          }
-          givens = JSON.parse(storedGivens)
-
-          // Validate to get solution
-          const validation = await validateCustomPuzzle(givens, '')
-          if (!validation.valid || !validation.unique || !validation.solution) {
-            throw new Error('Practice puzzle is invalid')
-          }
-          puzzleSolution = validation.solution
-
-          setEncodedPuzzle(null)
-
-          puzzleData = {
-            puzzle_id: effectiveSeed,
-            seed: effectiveSeed,
-            difficulty: difficulty,
-            givens: givens,
-            solution: puzzleSolution,
-          }
-        } else {
-          // Fetch puzzle from static pool (synchronous, no WASM needed)
-          const fetchedPuzzle = getPuzzle(effectiveSeed ?? '', difficulty)
-          puzzleData = {
-            puzzle_id: fetchedPuzzle.puzzle_id,
-            seed: fetchedPuzzle.seed,
-            difficulty: fetchedPuzzle.difficulty,
-            givens: fetchedPuzzle.givens,
-            solution: fetchedPuzzle.solution,
-          }
-          givens = puzzleData.givens
-          puzzleSolution = puzzleData.solution
-          setEncodedPuzzle(null)
-        }
+        const resolved = await fetchPuzzleSource({
+          isEncodedCustom,
+          encoded,
+          difficulty,
+          effectiveSeed,
+          setEncodedPuzzle,
+        })
+        const { givens, puzzleData, initialState, initialCandidates } = resolved
 
         setPuzzle(puzzleData)
         // For shared state, use the provided full board
