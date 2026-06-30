@@ -1,7 +1,7 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-.PHONY: check check-full test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons dev prod report serve-reports allure-report allure-serve allure-clean
+.PHONY: check check-fast check-full test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons dev prod report serve-reports allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Development & Production
@@ -99,6 +99,32 @@ test-unit:
 		-v $(PWD)/allure-results:/app/allure-results \
 		sudoku-frontend-test npm run test:unit
 
+# Run frontend unit tests WITH coverage thresholds (85/75/85/85). Superset
+# of test-unit; this is the gate CI's test-frontend-unit job enforces.
+coverage-frontend:
+	@echo ""
+	@echo "========================================"
+	@echo "  Running Frontend Coverage Gate"
+	@echo "========================================"
+	@cd frontend && npm run test:coverage
+
+# Run frontend duplication gate (jscpd, hard-fails over 5%).
+dup-frontend:
+	@echo ""
+	@echo "========================================"
+	@echo "  Running Frontend Duplication Gate (jscpd)"
+	@echo "========================================"
+	@cd frontend && npm run dup-check
+
+# Run Go per-package coverage floors (techniques 88%, transport/http 80%).
+coverage-go:
+	@cd api && make coverage-gate
+
+# Run Go vulnerability scan (govulncheck). Requires network access to fetch
+# the vuln DB; run `make check-fast` instead when offline.
+vulncheck:
+	@cd api && make vulncheck
+
 # Run E2E tests with Allure output (Docker Compose)
 test-e2e:
 	@echo ""
@@ -140,13 +166,28 @@ test: allure-clean
 	@echo "  All tests complete! Run 'make report' to generate report"
 	@echo "========================================"
 
-# Fast per-commit gate: lint + Go + frontend unit (no e2e). e2e/integration
-# are in `make check-full` and `make test`; e2e-green is owned by TEST-001.F.
-check: lint-go lint-frontend typecheck-frontend test-go test-unit
+# Full local gate: mirrors what CI enforces (minus e2e). Run before pushing
+# so local-green guarantees CI-green. Slower than check-fast because it adds
+# the coverage thresholds, the duplication gate, and govulncheck.
+# e2e/integration stay in `make check-full` and `make test`; e2e-green is
+# owned by TEST-001.F.
+check: lint-go lint-frontend typecheck-frontend test-go coverage-go vulncheck coverage-frontend dup-frontend
+	@echo ""
+	@echo "========================================"
+	@echo "  Full gate passed (lint + go + frontend"
+	@echo "  + coverage + duplication + vulncheck)."
+	@echo "  Run 'make check-full' for e2e."
+	@echo "========================================"
+
+# Fast per-commit gate: lint + Go + frontend unit (no coverage/dup/vuln).
+# Use for tight dev loops; run `make check` before pushing to catch the
+# quality gates CI enforces.
+check-fast: lint-go lint-frontend typecheck-frontend test-go test-unit
 	@echo ""
 	@echo "========================================"
 	@echo "  Fast gate passed (lint + go + unit)."
-	@echo "  Run 'make check-full' for e2e."
+	@echo "  Run 'make check' before pushing for the"
+	@echo "  full quality gate (coverage/dup/vuln)."
 	@echo "========================================"
 
 # Full gate incl. E2E + integration. Slow; e2e currently hangs (E2E-001).

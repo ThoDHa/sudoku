@@ -117,19 +117,29 @@ coverage-gate:
 	check_pkg ./internal/transport/http $(TRANSPORT_HTTP_COVERAGE_FLOOR); \
 	echo "coverage-gate: all gated packages met their floors."
 
+# govulncheck version; keep in sync with the test-go job in
+# .github/workflows/deploy.yml.
+GOVULNCHECK_VERSION := v1.5.0
+GOVULNCHECK_BIN := $(shell go env GOPATH)/bin/govulncheck
+
 # Vulnerability gate. Runs govulncheck against the module and fails on
-# confirmed vulnerabilities reachable from the call graph. govulncheck must be
-# on PATH (CI installs it per run via `go install`; locally run
-# `go install golang.org/x/vuln/cmd/govulncheck@latest`). CI invokes this from
-# the test-go job; run locally with `make vulncheck`.
+# confirmed vulnerabilities reachable from the call graph. Auto-installs
+# govulncheck to GOPATH/bin if missing (CI installs it fresh each run).
+# CI invokes this from the test-go job; run locally with `make vulncheck`.
 vulncheck:
 	@set -e; \
-	out=$$(govulncheck ./... 2>&1) || { \
-		echo "vulncheck: FAIL confirmed vulnerabilities found" >&2; \
+	if [ ! -x "$(GOVULNCHECK_BIN)" ]; then \
+		echo "vulncheck: installing govulncheck $(GOVULNCHECK_VERSION) to $(GOVULNCHECK_BIN)"; \
+		go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION); \
+	fi; \
+	out=$$($(GOVULNCHECK_BIN) ./... 2>&1); status=$$?; \
+	if [ $$status -eq 0 ]; then \
+		echo "vulncheck: OK no confirmed vulnerabilities."; \
+	else \
+		echo "vulncheck: FAIL govulncheck exited $$status" >&2; \
 		echo "$$out" >&2; \
 		exit 1; \
-	}; \
-	echo "vulncheck: OK no confirmed vulnerabilities."
+	fi
 
 # Memory profiling tests
 test-memory:
