@@ -486,12 +486,6 @@ func (s *Solver) checkForSingles(b *Board) *core.Move {
 	return nil // No singles found
 }
 
-// checkHiddenSingleForDigitImmediate checks if digit d at cell idx is a hidden single
-// by looking at all POTENTIAL placements (not just current candidates)
-// Note: checkHiddenSingleForDigitImmediate was removed as it was unused.
-// If a future optimization requires immediate hidden-single checks without
-// relying on precomputed candidates, reintroduce a focused helper here.
-
 // unitCellIndices returns the flat cell indices for a row, column, or box unit.
 // Shared by candidate-fill and hidden-single detection so the unitType switch
 // lives in one place.
@@ -582,10 +576,6 @@ func digitExistsInCells(b *Board, row, col, digit int) bool {
 	}
 	return false
 }
-
-// ============================================================================
-// Move Application
-// ============================================================================
 
 // ============================================================================
 // Move Application
