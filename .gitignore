@@ -31,6 +31,15 @@ allure-report/
 # Dated full-run Allure outputs (build artifacts, not source)
 reports/
 
+# Mutation testing outputs (dated per-scope runs; Stryker HTML lives under reports/)
+mutation-results/
+.stryker-tmp/
+api/report.json
+api/go-mutesting-report.html
+
+# Task management (opencode task files — local only)
+.tasks/
+
 # Environment files
 .env
 .env.local

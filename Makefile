@@ -1,7 +1,7 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-.PHONY: check check-fast check-full test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons dev prod report serve-reports allure-report allure-serve allure-clean
+.PHONY: check check-fast check-full test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck mutation-frontend mutation-go mutation-gate mutation-clean format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons dev prod report serve-reports allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Development & Production
@@ -124,6 +124,32 @@ coverage-go:
 # the vuln DB; run `make check-fast` instead when offline.
 vulncheck:
 	@cd api && make vulncheck
+
+# ============================================
+# Mutation Testing (slow; nightly CI or manual)
+# ============================================
+
+# Run frontend mutation testing (StrykerJS). ~100 min for full scope.
+mutation-frontend:
+	@echo ""
+	@echo "========================================"
+	@echo "  Running Frontend Mutation Testing"
+	@echo "========================================"
+	@cd frontend && npm run mutation
+
+# Run Go mutation testing (go-mutesting). ~17 min for dp; hours for techniques.
+mutation-go:
+	@cd api && make mutation-go
+
+# Enforce per-package mutation efficacy floors. Run after mutation-go.
+mutation-gate:
+	@cd api && make mutation-gate
+
+# Clean all mutation testing artifacts.
+mutation-clean:
+	@cd api && make mutation-clean
+	@rm -rf frontend/reports/mutation
+	@echo "Mutation artifacts cleaned."
 
 # Run E2E tests with Allure output (Docker Compose)
 test-e2e:
