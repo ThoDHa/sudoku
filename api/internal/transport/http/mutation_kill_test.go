@@ -1,11 +1,14 @@
 package http
 
 import (
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 
+	"sudoku-api/internal/core"
 	"sudoku-api/internal/sudoku/dp"
 )
 
@@ -330,5 +333,90 @@ func TestMutation_SolveAll_RespectsMaxFixesCap(t *testing.T) {
 	}
 	if fixCount > maxMovesCap {
 		t.Errorf("fix moves %d exceeded cap %d", fixCount, maxMovesCap)
+	}
+}
+
+// TestMutation_ValidateDifficulty tests all valid difficulty levels plus an
+// invalid one, killing branch/case mutants in the validation function.
+func TestMutation_ValidateDifficulty(t *testing.T) {
+	for _, d := range []string{"easy", "medium", "hard", "extreme", "impossible"} {
+		if !validateDifficulty(core.Difficulty(d)) {
+			t.Errorf("validateDifficulty(%q) = false, want true", d)
+		}
+	}
+	if validateDifficulty(core.Difficulty("bogus")) {
+		t.Error(`validateDifficulty("bogus") = true, want false`)
+	}
+}
+
+// TestMutation_PuzzleHandler_RejectsInvalidDifficulty pins the 400 status code
+// for an unsupported difficulty, killing branch/if mutants that remove the return.
+func TestMutation_PuzzleHandler_RejectsInvalidDifficulty(t *testing.T) {
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/puzzle/123?d=bogus", nil)
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid difficulty, got %d", w.Code)
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	if _, ok := resp["error"]; !ok {
+		t.Errorf("expected error field in response, got: %s", w.Body.String())
+	}
+}
+
+// TestMutation_PuzzleHandler_AcceptsAllDifficulties pins that each valid
+// difficulty produces a 200 with a givens_count field, killing branch/if
+// mutants on the validation path.
+func TestMutation_PuzzleHandler_AcceptsAllDifficulties(t *testing.T) {
+	router := setupRouter()
+	for _, d := range []string{"easy", "medium", "hard", "extreme", "impossible"} {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/api/puzzle/testseed?d="+d, nil)
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Errorf("difficulty %q: expected 200, got %d. body: %s", d, w.Code, w.Body.String())
+		}
+		var resp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		givens, ok := resp["givens"].([]interface{})
+		if !ok {
+			t.Errorf("difficulty %q: missing givens array. body: %s", d, w.Body.String())
+			continue
+		}
+		nonZero := 0
+		for _, v := range givens {
+			if n, ok := v.(float64); ok && n != 0 {
+				nonZero++
+			}
+		}
+		if nonZero == 0 || nonZero > 81 {
+			t.Errorf("difficulty %q: givens count %d is invalid", d, nonZero)
+		}
+	}
+}
+
+// TestMutation_DailyHandler_ReturnsDeterministicFields pins the exact response
+// structure for the daily endpoint, killing branch/if and statement/remove mutants
+// on the daily handler path.
+func TestMutation_DailyHandler_ReturnsDeterministicFields(t *testing.T) {
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/daily", nil)
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	for _, field := range []string{"date_utc", "seed", "puzzle_index"} {
+		if _, ok := resp[field]; !ok {
+			t.Errorf("missing %q in daily response: %v", field, resp)
+		}
 	}
 }
