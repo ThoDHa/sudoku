@@ -1,11 +1,5 @@
 package http
 
-// Error-message display formatting uses +1 to convert 0-based cell indices to
-// 1-based human-readable row/col numbers in fmt.Sprintf. Tests assert error
-// presence and JSON response fields ({"row": badRow, "col": badCol}), not the
-// exact display text. Mutating +1 to -1/*/\/ changes only the message text.
-// mutator-disable-regexp (badRow|badCol|otherRow|otherCol|zeroCandRow|zeroCandCol)\+1 arithmetic/base
-
 import (
 	"crypto/sha256"
 	"encoding/hex"
