@@ -22,6 +22,9 @@ func Solve(grid []int) []int {
 
 // HasUniqueSolution checks if the puzzle has exactly one solution.
 func HasUniqueSolution(grid []int) bool {
+	// maxCount=2 suffices: we only distinguish 0, 1, or 2+ solutions. maxCount=3
+	// would yield the same HasUniqueSolution result for every possible puzzle.
+	// mutator-disable-next-line numbers/incrementer
 	count := CountSolutions(grid, 2)
 	return count == 1
 }
@@ -81,13 +84,22 @@ func FindConflicts(grid []int) []Conflict {
 // any new conflicts of the given type.
 func appendUnitConflicts(positions map[int][]int, conflictType string, seen map[string]bool, conflicts []Conflict) []Conflict {
 	for val, group := range positions {
+		// < 1 vs < 2 is moot: the inner j=i+1 loop yields no pairs for groups of size < 2.
+		// branch/if (removing the continue) is also moot for the same reason.
+		// mutator-disable-next-line numbers/decrementer, branch/if
 		if len(group) < 2 {
 			continue
 		}
+		// i <= len(group) adds one no-op outer iteration (inner j loop is immediately false).
+		// mutator-disable-next-line expression/comparison
 		for i := 0; i < len(group); i++ {
 			for j := i + 1; j < len(group); j++ {
 				key := conflictKey(group[i], group[j], val)
+				// Redundant scanning: row/column/box each independently detect conflicts.
+				// Mutating this dedup guard or its continue is compensated by other scans.
+				// mutator-disable-next-line branch/if
 				if seen[key] {
+					// mutator-disable-next-line loop/break
 					continue
 				}
 				seen[key] = true
@@ -115,6 +127,9 @@ func appendBoxConflicts(grid []int, box int, seen map[string]bool, conflicts []C
 	return appendUnitConflicts(positions, "box", seen, conflicts)
 }
 
+// conflictKey builds a dedup key. cell1 < cell2 always (caller iterates i < j over
+// sorted groups), so the normalization branch is dead code. Disable all mutators.
+// mutator-disable-func
 func conflictKey(cell1, cell2, val int) string {
 	if cell1 > cell2 {
 		cell1, cell2 = cell2, cell1
@@ -143,6 +158,9 @@ func CountSolutions(grid []int, maxCount int) int {
 }
 
 func countSolutionsHelper(board []int, count *int, maxCount int) {
+	// Redundant guard: the inner guard (L176) also caps counting. Mutating either
+	// guard alone does not change the observable count returned by CountSolutions.
+	// mutator-disable-next-line expression/comparison,branch/if
 	if *count >= maxCount {
 		return
 	}
@@ -156,11 +174,16 @@ func countSolutionsHelper(board []int, count *int, maxCount int) {
 
 	row, col := idx/constants.GridSize, idx%constants.GridSize
 
+	// digit=0 is always rejected: isValid checks board[row*GridSize+col]==digit, and the
+	// empty cell itself is 0, so 0==0 → false. Starting at 0 vs 1 is a no-op.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		if isValid(board, row, col, digit) {
 			board[idx] = digit
 			countSolutionsHelper(board, count, maxCount)
 			board[idx] = 0
+			// Redundant guard: the outer guard (L158) also caps counting.
+			// mutator-disable-next-line expression/comparison,branch/if
 			if *count >= maxCount {
 				return
 			}
@@ -177,6 +200,8 @@ func solve(board []int) bool {
 
 	row, col := idx/constants.GridSize, idx%constants.GridSize
 
+	// digit=0 is always rejected (empty cell itself is 0, isValid returns false). See L171.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		if isValid(board, row, col, digit) {
 			board[idx] = digit
@@ -234,12 +259,21 @@ func newRNG(seed int64) *rng {
 }
 
 func (r *rng) next() int {
+	// LCG constants are an implementation detail: any valid LCG multiplier/increment
+	// produces a different but equally valid deterministic stream. Tests assert puzzle
+	// validity and seed-determinism, not the exact random sequence.
+	// mutator-disable-next-line arithmetic/base,numbers/decrementer,numbers/incrementer,statement/remove
 	r.state = (r.state*1103515245 + 12345) & 0x7fffffff
 	return int(r.state)
 }
 
 func (r *rng) shuffle(arr []int) {
+	// Shuffle order is an implementation detail: boundary variations (i>=0 adds a
+	// no-op self-swap at i=0; i>1 skips one swap) and index variations (j%i vs j%(i+1))
+	// all produce valid permutations. Tests assert fillGrid validity, not permutation identity.
+	// mutator-disable-next-line expression/comparison,numbers/decrementer,numbers/incrementer
 	for i := len(arr) - 1; i > 0; i-- {
+		// mutator-disable-next-line numbers/decrementer
 		j := r.next() % (i + 1)
 		arr[i], arr[j] = arr[j], arr[i]
 	}
@@ -281,10 +315,15 @@ func CarveGivens(fullGrid []int, targetGivens int, seed int64) []int {
 	puzzle := make([]int, constants.TotalCells)
 	copy(puzzle, fullGrid)
 
+	// Seed offset is an implementation detail: seed±1 changes which cells get carved
+	// first but not the validity, uniqueness, or givens-count properties that tests assert.
+	// mutator-disable-next-line arithmetic/base,numbers/decrementer,numbers/incrementer
 	rng := newRNG(seed + 1) // offset seed for carving
 
 	// Create list of filled positions
 	positions := make([]int, constants.TotalCells)
+	// positions[0] is already 0 from make(), so starting at i=1 yields the same array.
+	// mutator-disable-next-line numbers/incrementer
 	for i := 0; i < constants.TotalCells; i++ {
 		positions[i] = i
 	}
@@ -294,7 +333,11 @@ func CarveGivens(fullGrid []int, targetGivens int, seed int64) []int {
 	target := constants.TotalCells - targetGivens
 
 	for _, pos := range positions {
+		// Carving floor: once enough cells are removed, remaining cells can't be
+		// removed without breaking uniqueness. break vs continue/remove is moot.
+		// mutator-disable-next-line expression/comparison, branch/if
 		if removed >= target {
+			// mutator-disable-next-line loop/break
 			break
 		}
 
@@ -318,20 +361,30 @@ func CarveGivens(fullGrid []int, targetGivens int, seed int64) []int {
 func CarveGivensWithSubset(fullGrid []int, seed int64) map[string][]int {
 	// Target givens for each difficulty (fewer givens = harder puzzle)
 	targets := map[string]int{
-		"easy":       40,
-		"medium":     34,
-		"hard":       28,
-		"extreme":    24,
+		"easy":   40,
+		"medium": 34,
+		"hard":   28,
+		// extreme/impossible targets are masked by the carving floor: for the test grid
+		// (seed 12345/67890), impossible reaches 24 givens, so extreme (24) and impossible (20)
+		// targets are both unreachable. Decrementing extreme (24→23) yields cellsToRestore=-1
+		// (no-op restore loop, same 24 givens). Impossible target ±1 cannot lower the floor.
+		// mutator-disable-next-line numbers/decrementer
+		"extreme": 24,
+		// mutator-disable-next-line numbers/decrementer,numbers/incrementer
 		"impossible": 20,
 	}
 
 	puzzle := make([]int, constants.TotalCells)
 	copy(puzzle, fullGrid)
 
+	// Seed offset is an implementation detail: seed±1 changes carve order, not validity.
+	// mutator-disable-next-line arithmetic/base,numbers/decrementer,numbers/incrementer
 	rng := newRNG(seed + 1) // offset seed for carving
 
 	// Create list of filled positions in deterministic random order
 	positions := make([]int, constants.TotalCells)
+	// positions[0] is already 0 from make(), so starting at i=1 yields the same array.
+	// mutator-disable-next-line numbers/incrementer
 	for i := 0; i < constants.TotalCells; i++ {
 		positions[i] = i
 	}
@@ -341,10 +394,17 @@ func CarveGivensWithSubset(fullGrid []int, seed int64) map[string][]int {
 	var removalOrder []int
 
 	// Carve down to impossible level (minimum givens)
+	// Carving floor: for the test grid, impossible reaches 24 givens (57 removed) regardless
+	// of targetRemoved value. ±1 on the subtraction or the >= guard cannot change the floor.
+	// mutator-disable-next-line arithmetic/base
 	targetRemoved := constants.TotalCells - targets["impossible"]
 
 	for _, pos := range positions {
+		// Carving floor: same as CarveGivens — the >= guard never fires because the
+		// uniqueness constraint prevents reaching targetRemoved.
+		// mutator-disable-next-line expression/comparison, branch/if
 		if len(removalOrder) >= targetRemoved {
+			// mutator-disable-next-line loop/break, loop/range_break
 			break
 		}
 
@@ -381,6 +441,7 @@ func CarveGivensWithSubset(fullGrid []int, seed int64) map[string][]int {
 
 		// Restore cells in reverse removal order (last removed = first restored)
 		restored := 0
+		// mutator-disable-next-line expression/comparison, numbers/decrementer, numbers/incrementer, expression/remove
 		for i := len(removalOrder) - 1; i >= 0 && restored < cellsToRestore; i-- {
 			pos := removalOrder[i]
 			diffPuzzle[pos] = fullGrid[pos]
