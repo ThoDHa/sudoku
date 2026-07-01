@@ -532,7 +532,7 @@ func getUnitCellRefs(unitType UnitType, unitIndex int) []core.CellRef {
 		return cells
 	case UnitBox:
 		cells := make([]core.CellRef, 0, constants.GridSize)
-		boxRow, boxCol := (unitIndex/constants.BoxSize)*constants.BoxSize, (unitIndex/constants.BoxSize)*constants.BoxSize
+		boxRow, boxCol := (unitIndex/constants.BoxSize)*constants.BoxSize, (unitIndex%constants.BoxSize)*constants.BoxSize
 		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
 			for c := boxCol; c < boxCol+constants.BoxSize; c++ {
 				cells = append(cells, core.CellRef{Row: r, Col: c})
