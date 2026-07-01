@@ -1,0 +1,100 @@
+name: Mutation Testing
+
+on:
+  schedule:
+    # 04:00 UTC daily (one hour after nightly-profiling at 03:00 to avoid contention).
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Which scope to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - frontend
+          - go
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-testing
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  frontend-mutation:
+    name: Frontend (StrykerJS)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || inputs.scope != 'go'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run StrykerJS
+        working-directory: frontend
+        run: npx stryker run
+        continue-on-error: true
+
+      - name: Upload frontend mutation report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-frontend
+          path: |
+            frontend/reports/mutation/
+            frontend/mutation.json
+          retention-days: 30
+          if-no-files-found: warn
+
+  go-mutation:
+    name: Go (go-mutesting)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || inputs.scope != 'frontend'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache-dependency-path: api/go.sum
+
+      - name: Install go-mutesting
+        working-directory: api
+        run: make mutation-install
+
+      - name: Run go-mutesting on all in-scope packages
+        working-directory: api
+        run: make mutation-go
+        continue-on-error: true
+
+      - name: Check efficacy gates
+        working-directory: api
+        run: make mutation-gate
+        continue-on-error: true
+
+      - name: Upload Go mutation reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-go
+          path: api/reports/mutation/
+          retention-days: 30
+          if-no-files-found: warn
