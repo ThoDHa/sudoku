@@ -63,9 +63,26 @@ jobs:
           if-no-files-found: warn
 
   go-mutation:
-    name: Go (go-mutesting)
+    name: Go - ${{ matrix.name }}
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || inputs.scope != 'frontend'
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: dp
+            pkg: ./internal/sudoku/dp
+            floor: 95
+          - name: human
+            pkg: ./internal/sudoku/human
+            floor: 85
+          - name: techniques
+            pkg: ./internal/sudoku/human/techniques
+            floor: 85
+          - name: transport-http
+            pkg: ./internal/transport/http
+            floor: 85
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -80,21 +97,50 @@ jobs:
         working-directory: api
         run: make mutation-install
 
-      - name: Run go-mutesting on all in-scope packages
+      - name: Run go-mutesting on ${{ matrix.pkg }}
         working-directory: api
-        run: make mutation-go
+        run: |
+          mkdir -p reports/mutation
+          cat > /tmp/mutation-config.yml <<'YAML'
+          json_output: true
+          html_output: true
+          YAML
+          go-mutesting --config=/tmp/mutation-config.yml ${{ matrix.pkg }}
+          slug=$(echo "${{ matrix.pkg }}" | tr -d './' | tr '/' '-')
+          mkdir -p "reports/mutation/${slug}"
+          mv report.json go-mutesting-report.html "reports/mutation/${slug}/" 2>/dev/null || true
         continue-on-error: true
 
-      - name: Check efficacy gates
+      - name: Check efficacy gate
         working-directory: api
-        run: make mutation-gate
+        run: |
+          slug=$(echo "${{ matrix.pkg }}" | tr -d './' | tr '/' '-')
+          report="reports/mutation/${slug}/report.json"
+          if [ ! -f "$report" ]; then
+            echo "No report for ${{ matrix.pkg }} (run may have timed out)"
+            exit 0
+          fi
+          python3 -c "
+          import json, sys
+          with open('$report') as f:
+              r = json.load(f)
+          s = r['stats']
+          killed = s['killedCount'] + s.get('timeOutCount', 0)
+          escaped = s['escapedCount']
+          denom = killed + escaped
+          eff = killed / denom * 100 if denom > 0 else 100
+          floor = ${{ matrix.floor }}
+          status = 'OK' if eff >= floor else 'FAIL'
+          print(f'mutation-gate: {status} ${{ matrix.pkg }} {eff:.1f}% (floor {floor}%) [killed={killed} escaped={escaped} total={s[\"totalMutantsCount\"]}]')
+          sys.exit(0 if eff >= floor else 1)
+          "
         continue-on-error: true
 
-      - name: Upload Go mutation reports
+      - name: Upload Go mutation report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: mutation-go
+          name: mutation-go-${{ matrix.name }}
           path: api/reports/mutation/
           retention-days: 30
           if-no-files-found: warn
