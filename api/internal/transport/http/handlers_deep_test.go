@@ -383,6 +383,7 @@ func TestMutation_BoardValidation_RejectsOutOfRangeValues(t *testing.T) {
 		t.Errorf("expected error about range/validation, got: %s", errMsg)
 	}
 }
+
 // TestMutation_SolveAll_RespectsMaxFixesCap pins the exact maximum number of
 // fix moves in solve/all, killing numbers/incrementer+decrementer on the cap.
 func TestMutation_SolveAll_RespectsMaxFixesCap(t *testing.T) {
