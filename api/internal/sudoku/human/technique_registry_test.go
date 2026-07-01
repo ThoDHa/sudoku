@@ -135,6 +135,47 @@ func TestTechniqueRegistry_GetEnabledTechniques(t *testing.T) {
 	}
 }
 
+func TestTechniqueRegistry_GetByTierSortedByOrder(t *testing.T) {
+	registry := NewTechniqueRegistry()
+
+	for _, tier := range []string{"simple", "medium", "hard", "extreme"} {
+		techs := registry.GetByTier(tier)
+		if len(techs) < 2 {
+			continue
+		}
+		for i := 1; i < len(techs); i++ {
+			if techs[i].Order <= techs[i-1].Order {
+				t.Errorf("%s tier: techniques not sorted by Order at index %d: %s(Order=%d) before %s(Order=%d)",
+					tier, i, techs[i-1].Slug, techs[i-1].Order, techs[i].Slug, techs[i].Order)
+			}
+		}
+	}
+
+	simple := registry.GetByTier("simple")
+	if len(simple) > 0 && simple[0].Slug != "naked-single" {
+		t.Errorf("expected naked-single first in simple tier (Order=1), got %s (Order=%d)",
+			simple[0].Slug, simple[0].Order)
+	}
+}
+
+func TestTechniqueRegistry_GetAllSortedByOrder(t *testing.T) {
+	registry := NewTechniqueRegistry()
+	all := registry.GetAll()
+
+	if len(all) < 2 {
+		t.Fatal("expected at least 2 techniques")
+	}
+	for i := 1; i < len(all); i++ {
+		if all[i].Order <= all[i-1].Order {
+			t.Errorf("GetAll not sorted by Order at index %d: %s(Order=%d) before %s(Order=%d)",
+				i, all[i-1].Slug, all[i-1].Order, all[i].Slug, all[i].Order)
+		}
+	}
+	if all[0].Order != 1 {
+		t.Errorf("expected first technique to have Order=1, got Order=%d (%s)", all[0].Order, all[0].Slug)
+	}
+}
+
 func TestSolver_WithRegistry(t *testing.T) {
 	solver := NewSolver()
 
