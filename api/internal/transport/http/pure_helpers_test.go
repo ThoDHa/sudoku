@@ -1,8 +1,11 @@
 package http
 
 import (
+	"reflect"
 	"regexp"
 	"testing"
+
+	"sudoku-api/internal/core"
 )
 
 var hexPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -76,5 +79,83 @@ func TestFindErrorByCandidateRefillLocatesUserEntryBlockingAllCandidates(t *test
 	}
 	if board[badCell] != badDigit {
 		t.Errorf("reported digit %d does not match cell %d contents %d", badDigit, badCell, board[badCell])
+	}
+}
+
+// --- peerCellIndices exact cell indices ---
+// TestMutation_PeerCellIndices_ExactIndices pins the exact cell indices returned
+// by peerCellIndices for a mid-grid cell. This kills all arithmetic/base mutants
+// on row*GridSize, i*GridSize, box origin computation, and box cell computation.
+func TestMutation_PeerCellIndices_ExactIndices(t *testing.T) {
+	rowCells, colCells, boxCells := peerCellIndices(4, 5)
+
+	expectedRow := []int{36, 37, 38, 39, 40, 41, 42, 43, 44}
+	if !reflect.DeepEqual(rowCells, expectedRow) {
+		t.Errorf("rowCells: expected %v, got %v", expectedRow, rowCells)
+	}
+
+	expectedCol := []int{5, 14, 23, 32, 41, 50, 59, 68, 77}
+	if !reflect.DeepEqual(colCells, expectedCol) {
+		t.Errorf("colCells: expected %v, got %v", expectedCol, colCells)
+	}
+
+	expectedBox := []int{30, 31, 32, 39, 40, 41, 48, 49, 50}
+	if !reflect.DeepEqual(boxCells, expectedBox) {
+		t.Errorf("boxCells: expected %v, got %v", expectedBox, boxCells)
+	}
+}
+
+// TestMutation_PeerCellIndices_TopLeftCorner pins indices for cell (0,0) to
+// kill mutants on box origin at the grid boundary (0/BoxSize*BoxSize = 0).
+func TestMutation_PeerCellIndices_TopLeftCorner(t *testing.T) {
+	rowCells, colCells, boxCells := peerCellIndices(0, 0)
+
+	expectedRow := []int{0, 1, 2, 3, 4, 5, 6, 7, 8}
+	if !reflect.DeepEqual(rowCells, expectedRow) {
+		t.Errorf("rowCells (0,0): expected %v, got %v", expectedRow, rowCells)
+	}
+
+	expectedCol := []int{0, 9, 18, 27, 36, 45, 54, 63, 72}
+	if !reflect.DeepEqual(colCells, expectedCol) {
+		t.Errorf("colCells (0,0): expected %v, got %v", expectedCol, colCells)
+	}
+
+	expectedBox := []int{0, 1, 2, 9, 10, 11, 18, 19, 20}
+	if !reflect.DeepEqual(boxCells, expectedBox) {
+		t.Errorf("boxCells (0,0): expected %v, got %v", expectedBox, boxCells)
+	}
+}
+
+// TestMutation_PeerCellIndices_BottomRightCorner pins indices for cell (8,8)
+// to kill mutants on box boundary computation at the grid edge.
+func TestMutation_PeerCellIndices_BottomRightCorner(t *testing.T) {
+	rowCells, colCells, boxCells := peerCellIndices(8, 8)
+
+	expectedRow := []int{72, 73, 74, 75, 76, 77, 78, 79, 80}
+	if !reflect.DeepEqual(rowCells, expectedRow) {
+		t.Errorf("rowCells (8,8): expected %v, got %v", expectedRow, rowCells)
+	}
+
+	expectedCol := []int{8, 17, 26, 35, 44, 53, 62, 71, 80}
+	if !reflect.DeepEqual(colCells, expectedCol) {
+		t.Errorf("colCells (8,8): expected %v, got %v", expectedCol, colCells)
+	}
+
+	expectedBox := []int{60, 61, 62, 69, 70, 71, 78, 79, 80}
+	if !reflect.DeepEqual(boxCells, expectedBox) {
+		t.Errorf("boxCells (8,8): expected %v, got %v", expectedBox, boxCells)
+	}
+}
+
+// TestMutation_ValidateDifficulty tests all valid difficulty levels plus an
+// invalid one, killing branch/case mutants in the validation function.
+func TestMutation_ValidateDifficulty(t *testing.T) {
+	for _, d := range []string{"easy", "medium", "hard", "extreme", "impossible"} {
+		if !validateDifficulty(core.Difficulty(d)) {
+			t.Errorf("validateDifficulty(%q) = false, want true", d)
+		}
+	}
+	if validateDifficulty(core.Difficulty("bogus")) {
+		t.Error(`validateDifficulty("bogus") = true, want false`)
 	}
 }
