@@ -26,10 +26,14 @@ services:
   # `npx playwright install`: doing so forces a re-download into a root-owned
   # cache dir, which the non-root container cannot write to (EACCES) and which
   # previously caused the suite to hang on download.
+  #
+  # Runs as root (the image default). This is required on CI where the runner
+  # UID (1001) differs from the container's default UID assumption. Locally,
+  # users who want non-root artifact ownership can add a docker-compose.override.yml
+  # with `user: "${UID}:${GID}"`.
   playwright:
     image: mcr.microsoft.com/playwright:v1.61.1-noble
     working_dir: /app
-    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - ./frontend:/app
     depends_on:
