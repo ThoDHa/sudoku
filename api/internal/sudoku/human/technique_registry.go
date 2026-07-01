@@ -2,6 +2,15 @@
 // for enabling/disabling individual techniques at runtime.
 package human
 
+// The Order field is pedagogical metadata (documentation of intended learning
+// progression). It is NOT read by the solver — execution order comes from the
+// registration sequence in tierOrder. Mutating Order values ±1 changes nothing.
+// mutator-disable-regexp Order:\s+\d+ numbers/decrementer, numbers/incrementer
+
+// The nil guard on technique lookups is defensive: tierOrder only contains slugs
+// that were registered, so r.techniques[slug] is never nil for any reachable slug.
+// mutator-disable-regexp tech != nil expression/remove
+
 import (
 	"sudoku-api/internal/core"
 	"sudoku-api/internal/sudoku/human/techniques"
