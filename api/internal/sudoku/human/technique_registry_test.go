@@ -392,3 +392,27 @@ func TestGetBoxCellRefs_AllBoxesCorrect(t *testing.T) {
 		}
 	}
 }
+
+func TestGetRowCellRefs_ExactPositions(t *testing.T) {
+	refs := getRowCellRefs(3)
+	if len(refs) != 9 {
+		t.Fatalf("expected 9 cells, got %d", len(refs))
+	}
+	for c := 0; c < 9; c++ {
+		if refs[c].Row != 3 || refs[c].Col != c {
+			t.Errorf("row 3 cell %d: expected R3C%d, got R%dC%d", c, c, refs[c].Row, refs[c].Col)
+		}
+	}
+}
+
+func TestGetColCellRefs_ExactPositions(t *testing.T) {
+	refs := getColCellRefs(5)
+	if len(refs) != 9 {
+		t.Fatalf("expected 9 cells, got %d", len(refs))
+	}
+	for r := 0; r < 9; r++ {
+		if refs[r].Row != r || refs[r].Col != 5 {
+			t.Errorf("col 5 cell %d: expected R%dC5, got R%dC%d", r, r, refs[r].Row, refs[r].Col)
+		}
+	}
+}
