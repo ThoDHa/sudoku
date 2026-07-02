@@ -637,3 +637,55 @@ func TestMutation_SolveNext_NormalMove_ExactResponse(t *testing.T) {
 		t.Errorf("expected action 'assign', got %q", action)
 	}
 }
+
+func TestMutation_SessionStart_ExactResponse(t *testing.T) {
+	router := setupRouter()
+
+	body := map[string]interface{}{
+		"device_id":  "test-device",
+		"seed":       "test-seed",
+		"difficulty": "medium",
+	}
+	code, resp := postJSON(t, router, "/api/session/start", body)
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", code, resp)
+	}
+
+	token, ok := resp["token"].(string)
+	if !ok || token == "" {
+		t.Error("expected non-empty token")
+	}
+
+	puzzleID, ok := resp["puzzle_id"].(string)
+	if !ok || puzzleID == "" {
+		t.Error("expected non-empty puzzle_id")
+	}
+	if !strings.Contains(puzzleID, "test-seed") {
+		t.Errorf("puzzle_id should contain the seed, got: %s", puzzleID)
+	}
+	if !strings.Contains(puzzleID, "medium") {
+		t.Errorf("puzzle_id should contain the difficulty, got: %s", puzzleID)
+	}
+
+	startedAt, ok := resp["started_at"].(string)
+	if !ok || startedAt == "" {
+		t.Error("expected non-empty started_at timestamp")
+	}
+}
+
+func TestMutation_SessionStart_RejectsInvalidDifficulty(t *testing.T) {
+	router := setupRouter()
+
+	body := map[string]interface{}{
+		"device_id":  "test-device",
+		"seed":       "test-seed",
+		"difficulty": "bogus",
+	}
+	code, resp := postJSON(t, router, "/api/session/start", body)
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid difficulty, got %d", code)
+	}
+	if _, ok := resp["error"]; !ok {
+		t.Error("expected error field in response")
+	}
+}
