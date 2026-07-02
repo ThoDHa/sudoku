@@ -236,3 +236,61 @@ func slicesEqual(a, b []int) bool {
 	}
 	return true
 }
+
+func TestCombinations_Exact(t *testing.T) {
+	result := Combinations([]int{1, 2, 3, 4}, 2)
+	if len(result) != 6 {
+		t.Fatalf("C(4,2): expected 6 combinations, got %d", len(result))
+	}
+	expected := [][]int{{1, 2}, {1, 3}, {1, 4}, {2, 3}, {2, 4}, {3, 4}}
+	for i, exp := range expected {
+		if i >= len(result) || !slicesEqual(result[i], exp) {
+			t.Errorf("combination %d: expected %v, got %v", i, exp, result[i])
+		}
+	}
+
+	result3 := Combinations([]int{1, 2, 3}, 3)
+	if len(result3) != 1 || !slicesEqual(result3[0], []int{1, 2, 3}) {
+		t.Errorf("C(3,3): expected [[1,2,3]], got %v", result3)
+	}
+
+	if Combinations([]int{1, 2}, 0) != nil {
+		t.Error("C(2,0): expected nil")
+	}
+	if Combinations([]int{1}, 2) != nil {
+		t.Error("C(1,2): expected nil (k > n)")
+	}
+}
+
+func TestIntersectInts_Exact(t *testing.T) {
+	result := IntersectInts([]int{1, 3, 5, 7}, []int{3, 5, 9})
+	if len(result) != 2 || result[0] != 3 || result[1] != 5 {
+		t.Errorf("expected [3,5], got %v", result)
+	}
+
+	empty := IntersectInts([]int{1, 2}, []int{3, 4})
+	if len(empty) != 0 {
+		t.Errorf("expected empty intersection, got %v", empty)
+	}
+}
+
+func TestDedupeEliminations_Exact(t *testing.T) {
+	elims := []core.Candidate{
+		{Row: 0, Col: 1, Digit: 5},
+		{Row: 0, Col: 1, Digit: 5},
+		{Row: 2, Col: 3, Digit: 7},
+	}
+	result := DedupeEliminations(elims)
+	if len(result) != 2 {
+		t.Fatalf("expected 2 after dedup, got %d", len(result))
+	}
+}
+
+func TestAllSeeAll_Exact(t *testing.T) {
+	if !AllSeeAll([]int{1, 2}, []int{10, 11}) {
+		t.Error("cells {1,2} and {10,11} are all in box 0, should see each other")
+	}
+	if AllSeeAll([]int{0, 40}, []int{1}) {
+		t.Error("cell 40 does not see cell 1, should return false")
+	}
+}
