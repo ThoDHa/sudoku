@@ -84,6 +84,12 @@ func TestConstraintViolation_DuplicateInColumn(t *testing.T) {
 	if !strings.Contains(move.Explanation, "column 2") {
 		t.Errorf("explanation should mention 'column 2', got: %s", move.Explanation)
 	}
+	if !strings.Contains(move.Explanation, "R1C2") {
+		t.Errorf("explanation should contain R1C2, got: %s", move.Explanation)
+	}
+	if !strings.Contains(move.Explanation, "R3C2") {
+		t.Errorf("explanation should contain R3C2, got: %s", move.Explanation)
+	}
 }
 
 func TestConstraintViolation_DuplicateInBox(t *testing.T) {
@@ -125,6 +131,12 @@ func TestConstraintViolation_DuplicateInBox(t *testing.T) {
 	}
 	if !strings.Contains(move.Explanation, "box 1") {
 		t.Errorf("explanation should mention 'box 1', got: %s", move.Explanation)
+	}
+	if !strings.Contains(move.Explanation, "R1C1") {
+		t.Errorf("explanation should contain R1C1, got: %s", move.Explanation)
+	}
+	if !strings.Contains(move.Explanation, "R2C2") {
+		t.Errorf("explanation should contain R2C2, got: %s", move.Explanation)
 	}
 }
 
