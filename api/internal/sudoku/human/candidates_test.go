@@ -456,3 +456,48 @@ func TestSolver_FillCandidateMove_ExactContent(t *testing.T) {
 		t.Errorf("explanation should mention adding candidate 1, got: %s", move.Explanation)
 	}
 }
+
+func TestSolver_InvalidCandidateDetection_ExactMove(t *testing.T) {
+	cells := [81]int{}
+	cells[1] = 5
+
+	candidateMap := map[int][]int{}
+	for i := 0; i < 81; i++ {
+		candidateMap[i] = []int{1, 2, 3, 4, 6, 7, 8, 9}
+	}
+	candidateMap[0] = []int{3, 5}
+
+	board := makeTestBoard(cells, candidateMap)
+	solver := NewSolver()
+
+	for i := 0; i < 200; i++ {
+		move := solver.FindNextMove(board)
+		if move == nil {
+			t.Fatal("solver stalled")
+		}
+		if move.Technique == "constraint-violation-invalid-candidate" {
+			if move.Action != "eliminate" {
+				t.Errorf("expected action 'eliminate', got %q", move.Action)
+			}
+			if move.Digit != 5 {
+				t.Errorf("expected digit 5 (the invalid candidate), got %d", move.Digit)
+			}
+			if len(move.Targets) != 1 || move.Targets[0].Row != 0 || move.Targets[0].Col != 0 {
+				t.Errorf("expected target R0C0, got %+v", move.Targets)
+			}
+			if len(move.Eliminations) != 1 {
+				t.Fatalf("expected 1 elimination, got %d", len(move.Eliminations))
+			}
+			el := move.Eliminations[0]
+			if el.Row != 0 || el.Col != 0 || el.Digit != 5 {
+				t.Errorf("expected elimination R0C0 d5, got R%dC%d d%d", el.Row, el.Col, el.Digit)
+			}
+			if !strings.Contains(move.Explanation, "R1C1") {
+				t.Errorf("explanation should mention the conflict cell R1C1, got: %s", move.Explanation)
+			}
+			return
+		}
+		solver.ApplyMove(board, move)
+	}
+	t.Fatal("solver did not detect invalid candidate")
+}
