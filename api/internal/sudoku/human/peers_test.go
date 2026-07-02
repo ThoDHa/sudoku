@@ -294,3 +294,87 @@ func TestAllSeeAll_Exact(t *testing.T) {
 		t.Error("cell 40 does not see cell 1, should return false")
 	}
 }
+
+func TestAllUnits_ExactStructure(t *testing.T) {
+	units := AllUnits()
+	if len(units) != 27 {
+		t.Fatalf("expected 27 units (9+9+9), got %d", len(units))
+	}
+
+	rowCount, colCount, boxCount := 0, 0, 0
+	for _, u := range units {
+		if len(u.Cells) != 9 {
+			t.Errorf("unit %v: expected 9 cells, got %d", u.Type, len(u.Cells))
+		}
+		switch u.Type {
+		case UnitRow:
+			rowCount++
+		case UnitCol:
+			colCount++
+		case UnitBox:
+			boxCount++
+		}
+	}
+	if rowCount != 9 || colCount != 9 || boxCount != 9 {
+		t.Errorf("expected 9 of each type, got rows=%d cols=%d boxes=%d", rowCount, colCount, boxCount)
+	}
+}
+
+func TestRowIndices_ExactCells(t *testing.T) {
+	if len(RowIndices) != 9 {
+		t.Fatalf("expected 9 row indices, got %d", len(RowIndices))
+	}
+	for r := 0; r < 9; r++ {
+		if len(RowIndices[r]) != 9 {
+			t.Fatalf("row %d: expected 9 cells, got %d", r, len(RowIndices[r]))
+		}
+		for c := 0; c < 9; c++ {
+			expected := r*9 + c
+			if RowIndices[r][c] != expected {
+				t.Errorf("RowIndices[%d][%d] = %d, expected %d", r, c, RowIndices[r][c], expected)
+			}
+		}
+	}
+}
+
+func TestColIndices_ExactCells(t *testing.T) {
+	if len(ColIndices) != 9 {
+		t.Fatalf("expected 9 column indices, got %d", len(ColIndices))
+	}
+	for c := 0; c < 9; c++ {
+		if len(ColIndices[c]) != 9 {
+			t.Fatalf("col %d: expected 9 cells, got %d", c, len(ColIndices[c]))
+		}
+		for r := 0; r < 9; r++ {
+			expected := r*9 + c
+			if ColIndices[c][r] != expected {
+				t.Errorf("ColIndices[%d][%d] = %d, expected %d", c, r, ColIndices[c][r], expected)
+			}
+		}
+	}
+}
+
+func TestBoxIndices_ExactCells(t *testing.T) {
+	if len(BoxIndices) != 9 {
+		t.Fatalf("expected 9 box indices, got %d", len(BoxIndices))
+	}
+	for b := 0; b < 9; b++ {
+		if len(BoxIndices[b]) != 9 {
+			t.Fatalf("box %d: expected 9 cells, got %d", b, len(BoxIndices[b]))
+		}
+		boxRow := (b / 3) * 3
+		boxCol := (b % 3) * 3
+		expectedSet := make(map[int]bool)
+		for r := boxRow; r < boxRow+3; r++ {
+			for c := boxCol; c < boxCol+3; c++ {
+				expectedSet[r*9+c] = true
+			}
+		}
+		for _, idx := range BoxIndices[b] {
+			if !expectedSet[idx] {
+				t.Errorf("box %d: cell %d not in expected range (rows %d-%d, cols %d-%d)",
+					b, idx, boxRow, boxRow+2, boxCol, boxCol+2)
+			}
+		}
+	}
+}
