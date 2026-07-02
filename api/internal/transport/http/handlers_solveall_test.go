@@ -172,6 +172,12 @@ func TestSolveAllCompletesAfterFixingDirectConflict(t *testing.T) {
 	if conflicts := dp.FindConflicts(final); len(conflicts) != 0 {
 		t.Errorf("finalBoard must be conflict-free, got %d conflicts", len(conflicts))
 	}
+	for i, v := range final {
+		if v != solved[i] {
+			t.Errorf("finalBoard[%d]=%d, expected %d (original solved grid)", i, v, solved[i])
+			break
+		}
+	}
 	if len(techs) > maxMovesCap {
 		t.Errorf("move count %d exceeds cap %d", len(techs), maxMovesCap)
 	}
