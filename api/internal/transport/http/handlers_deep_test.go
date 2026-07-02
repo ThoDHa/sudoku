@@ -96,11 +96,34 @@ func TestSolveNextPinpointsUserErrorOnContradiction(t *testing.T) {
 	if !strings.Contains(explanation, "Contradiction") {
 		t.Errorf("expected explanation to mention 'Contradiction', got: %s", explanation)
 	}
+	if !strings.Contains(explanation, "R1C1") {
+		t.Errorf("expected explanation to mention R1C1 (contradiction at cell 0), got: %s", explanation)
+	}
+
+	if digit, _ := move["digit"].(float64); digit < 1 || digit > 9 {
+		t.Errorf("expected digit 1-9 (the wrong entry's value), got %v", digit)
+	}
 
 	fixedBoard, _ := resp["board"].([]interface{})
 	if filledFromIface(fixedBoard) >= filledFromInt(board) {
 		t.Errorf("expected the fix-error move to clear a cell; input filled=%d, output filled=%d",
 			filledFromInt(board), filledFromIface(fixedBoard))
+	}
+
+	clearedIdx := -1
+	for i := 0; i < 81; i++ {
+		if board[i] != 0 {
+			if v, _ := fixedBoard[i].(float64); int(v) == 0 {
+				clearedIdx = i
+				break
+			}
+		}
+	}
+	if clearedIdx >= 0 {
+		moveDigit, _ := move["digit"].(float64)
+		if int(moveDigit) != board[clearedIdx] {
+			t.Errorf("move digit %v doesn't match cleared cell %d value %d", moveDigit, clearedIdx, board[clearedIdx])
+		}
 	}
 }
 
