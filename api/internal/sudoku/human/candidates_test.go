@@ -153,3 +153,83 @@ func TestNewCandidates(t *testing.T) {
 		t.Error("NewCandidates with empty slice should be empty")
 	}
 }
+
+func TestBoard_InitCandidates_ExactState(t *testing.T) {
+	givens := make([]int, 81)
+	givens[0] = 5
+	board := NewBoard(givens)
+
+	expected := NewCandidates([]int{1, 2, 3, 4, 6, 7, 8, 9})
+	if !board.Candidates[1].Equals(expected) {
+		t.Errorf("cell 1 (row peer of 5): expected %v, got %v", expected.ToSlice(), board.Candidates[1].ToSlice())
+	}
+	if !board.Candidates[9].Equals(expected) {
+		t.Errorf("cell 9 (col peer of 5): expected %v, got %v", expected.ToSlice(), board.Candidates[9].ToSlice())
+	}
+	if !board.Candidates[10].Equals(expected) {
+		t.Errorf("cell 10 (box peer of 5): expected %v, got %v", expected.ToSlice(), board.Candidates[10].ToSlice())
+	}
+
+	allNine := AllCandidates()
+	if !board.Candidates[40].Equals(allNine) {
+		t.Errorf("cell 40 (not a peer of cell 0): expected all 9 candidates, got %v", board.Candidates[40].ToSlice())
+	}
+
+	if board.Candidates[0] != 0 {
+		t.Errorf("cell 0 (filled): expected empty candidates, got %v", board.Candidates[0].ToSlice())
+	}
+}
+
+func TestBoard_SetCell_EliminatesPeerCandidates(t *testing.T) {
+	board := NewBoard(make([]int, 81))
+	board.SetCell(0, 5)
+
+	removed := NewCandidates([]int{1, 2, 3, 4, 6, 7, 8, 9})
+	for _, peerIdx := range []int{1, 2, 3, 4, 5, 6, 7, 8} {
+		if board.Candidates[peerIdx].Has(5) {
+			t.Errorf("row peer cell %d should have 5 eliminated", peerIdx)
+		}
+		if !board.Candidates[peerIdx].Equals(removed) {
+			t.Errorf("row peer cell %d: expected %v, got %v", peerIdx, removed.ToSlice(), board.Candidates[peerIdx].ToSlice())
+		}
+	}
+
+	for _, peerIdx := range []int{9, 18, 27, 36, 45, 54, 63, 72} {
+		if board.Candidates[peerIdx].Has(5) {
+			t.Errorf("col peer cell %d should have 5 eliminated", peerIdx)
+		}
+	}
+
+	for _, peerIdx := range []int{1, 2, 10, 11, 19, 20} {
+		if board.Candidates[peerIdx].Has(5) {
+			t.Errorf("box peer cell %d should have 5 eliminated", peerIdx)
+		}
+	}
+
+	full := AllCandidates()
+	if !board.Candidates[40].Equals(full) {
+		t.Errorf("cell 40 (not a peer): expected all candidates, got %v", board.Candidates[40].ToSlice())
+	}
+}
+
+func TestBoard_canPlace_Exact(t *testing.T) {
+	givens := make([]int, 81)
+	givens[0] = 5
+	board := NewBoard(givens)
+
+	if board.canPlace(1, 5) {
+		t.Error("canPlace(1, 5): cell 1 is in same row as cell 0 (which has 5)")
+	}
+	if board.canPlace(9, 5) {
+		t.Error("canPlace(9, 5): cell 9 is in same column as cell 0 (which has 5)")
+	}
+	if board.canPlace(10, 5) {
+		t.Error("canPlace(10, 5): cell 10 is in same box as cell 0 (which has 5)")
+	}
+	if !board.canPlace(40, 5) {
+		t.Error("canPlace(40, 5): cell 40 is not a peer of cell 0, should be placeable")
+	}
+	if !board.canPlace(1, 6) {
+		t.Error("canPlace(1, 6): digit 6 is not blocked anywhere")
+	}
+}
