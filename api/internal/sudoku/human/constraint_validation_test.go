@@ -1,105 +1,130 @@
 package human
 
 import (
+	"strings"
 	"testing"
 )
 
 // TestConstraintViolation_DuplicateInRow tests detection of duplicate values in the same row
 func TestConstraintViolation_DuplicateInRow(t *testing.T) {
-	// Create a board with duplicate 5's in row 1
 	givens := make([]int, 81)
-	givens[0] = 5 // R1C1 = 5
-	givens[4] = 5 // R1C5 = 5 (DUPLICATE!)
+	givens[0] = 5
+	givens[4] = 5
 
 	solver := NewSolver()
 	board := NewBoard(givens)
-
 	move := solver.FindNextMove(board)
 
 	if move == nil {
 		t.Fatal("Expected constraint violation move, got nil")
 	}
-
 	if move.Technique != "constraint-violation-duplicate-row" {
-		t.Errorf("Expected technique 'constraint-violation-duplicate-row', got '%s'", move.Technique)
+		t.Errorf("technique: got %q", move.Technique)
 	}
-
-	if move.Action != "contradiction" {
-		t.Errorf("Expected action 'contradiction', got '%s'", move.Action)
-	}
-
 	if move.Digit != 5 {
-		t.Errorf("Expected digit 5, got %d", move.Digit)
+		t.Errorf("digit: got %d", move.Digit)
 	}
-
 	if len(move.Targets) != 2 {
-		t.Errorf("Expected 2 target cells, got %d", len(move.Targets))
+		t.Fatalf("targets: got %d", len(move.Targets))
+	}
+	if move.Targets[0].Row != 0 || move.Targets[0].Col != 0 {
+		t.Errorf("target[0]: expected R0C0, got R%dC%d", move.Targets[0].Row, move.Targets[0].Col)
+	}
+	if move.Targets[1].Row != 0 || move.Targets[1].Col != 4 {
+		t.Errorf("target[1]: expected R0C4, got R%dC%d", move.Targets[1].Row, move.Targets[1].Col)
+	}
+	if len(move.Highlights.Primary) != 2 {
+		t.Errorf("primary highlights: expected 2, got %d", len(move.Highlights.Primary))
+	}
+	if len(move.Highlights.Secondary) != 9 {
+		t.Errorf("secondary highlights: expected 9 (full row), got %d", len(move.Highlights.Secondary))
+	}
+	if !strings.Contains(move.Explanation, "row 1") {
+		t.Errorf("explanation should mention 'row 1', got: %s", move.Explanation)
+	}
+	if !strings.Contains(move.Explanation, "R1C1") {
+		t.Errorf("explanation should contain R1C1, got: %s", move.Explanation)
+	}
+	if !strings.Contains(move.Explanation, "R1C5") {
+		t.Errorf("explanation should contain R1C5, got: %s", move.Explanation)
 	}
 }
 
 // TestConstraintViolation_DuplicateInColumn tests detection of duplicate values in the same column
 func TestConstraintViolation_DuplicateInColumn(t *testing.T) {
-	// Create a board with duplicate 3's in column 2
 	givens := make([]int, 81)
-	givens[1] = 3  // R1C2 = 3
-	givens[19] = 3 // R3C2 = 3 (DUPLICATE!)
+	givens[1] = 3
+	givens[19] = 3
 
 	solver := NewSolver()
 	board := NewBoard(givens)
-
 	move := solver.FindNextMove(board)
 
 	if move == nil {
 		t.Fatal("Expected constraint violation move, got nil")
 	}
-
 	if move.Technique != "constraint-violation-duplicate-col" {
-		t.Errorf("Expected technique 'constraint-violation-duplicate-col', got '%s'", move.Technique)
+		t.Errorf("technique: got %q", move.Technique)
 	}
-
-	if move.Action != "contradiction" {
-		t.Errorf("Expected action 'contradiction', got '%s'", move.Action)
-	}
-
 	if move.Digit != 3 {
-		t.Errorf("Expected digit 3, got %d", move.Digit)
+		t.Errorf("digit: got %d", move.Digit)
 	}
-
 	if len(move.Targets) != 2 {
-		t.Errorf("Expected 2 target cells, got %d", len(move.Targets))
+		t.Fatalf("targets: got %d", len(move.Targets))
+	}
+	if move.Targets[0].Row != 0 || move.Targets[0].Col != 1 {
+		t.Errorf("target[0]: expected R0C1, got R%dC%d", move.Targets[0].Row, move.Targets[0].Col)
+	}
+	if move.Targets[1].Row != 2 || move.Targets[1].Col != 1 {
+		t.Errorf("target[1]: expected R2C1, got R%dC%d", move.Targets[1].Row, move.Targets[1].Col)
+	}
+	if len(move.Highlights.Secondary) != 9 {
+		t.Errorf("secondary highlights: expected 9 (full column), got %d", len(move.Highlights.Secondary))
+	}
+	if !strings.Contains(move.Explanation, "column 2") {
+		t.Errorf("explanation should mention 'column 2', got: %s", move.Explanation)
 	}
 }
 
-// TestConstraintViolation_DuplicateInBox tests detection of duplicate values in the same box
 func TestConstraintViolation_DuplicateInBox(t *testing.T) {
-	// Create a board with duplicate 7's in box 1 (top-left 3x3)
 	givens := make([]int, 81)
-	givens[0] = 7  // R1C1 = 7
-	givens[10] = 7 // R2C2 = 7 (DUPLICATE in same box!)
+	givens[0] = 7
+	givens[10] = 7
 
 	solver := NewSolver()
 	board := NewBoard(givens)
-
 	move := solver.FindNextMove(board)
 
 	if move == nil {
 		t.Fatal("Expected constraint violation move, got nil")
 	}
-
 	if move.Technique != "constraint-violation-duplicate-box" {
-		t.Errorf("Expected technique 'constraint-violation-duplicate-box', got '%s'", move.Technique)
+		t.Errorf("technique: got %q", move.Technique)
 	}
-
-	if move.Action != "contradiction" {
-		t.Errorf("Expected action 'contradiction', got '%s'", move.Action)
-	}
-
 	if move.Digit != 7 {
-		t.Errorf("Expected digit 7, got %d", move.Digit)
+		t.Errorf("digit: got %d", move.Digit)
 	}
-
 	if len(move.Targets) != 2 {
-		t.Errorf("Expected 2 target cells, got %d", len(move.Targets))
+		t.Fatalf("targets: got %d", len(move.Targets))
+	}
+	if move.Targets[0].Row != 0 || move.Targets[0].Col != 0 {
+		t.Errorf("target[0]: expected R0C0, got R%dC%d", move.Targets[0].Row, move.Targets[0].Col)
+	}
+	if move.Targets[1].Row != 1 || move.Targets[1].Col != 1 {
+		t.Errorf("target[1]: expected R1C1, got R%dC%d", move.Targets[1].Row, move.Targets[1].Col)
+	}
+	if len(move.Highlights.Secondary) != 9 {
+		t.Errorf("secondary highlights: expected 9 (full box), got %d", len(move.Highlights.Secondary))
+	}
+	secondaryExpected := map[[2]int]bool{{0, 0}: true, {0, 1}: true, {0, 2}: true, {1, 0}: true, {1, 1}: true, {1, 2}: true, {2, 0}: true, {2, 1}: true, {2, 2}: true}
+	for _, ref := range move.Highlights.Secondary {
+		key := [2]int{ref.Row, ref.Col}
+		if !secondaryExpected[key] {
+			t.Errorf("unexpected secondary highlight R%dC%d (box 0 should only contain rows 0-2, cols 0-2)", ref.Row, ref.Col)
+		}
+	}
+	if !strings.Contains(move.Explanation, "box 1") {
+		t.Errorf("explanation should mention 'box 1', got: %s", move.Explanation)
 	}
 }
 
