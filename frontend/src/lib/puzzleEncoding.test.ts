@@ -421,4 +421,62 @@ describe('puzzleEncoding', () => {
       expect(decoded).toEqual(cells)
     })
   })
+
+  describe('exact encoding values', () => {
+    it('encodes single-given board to exact string', () => {
+      const board = Array(81).fill(0)
+      board[0] = 5
+      const encoded = encodePuzzle(board)
+      expect(encoded.length).toBe(16) // 's' + 14-char mask + 1 digit char
+      expect(encoded[0]).toBe('s')
+      expect(encoded[15]).toBe('E') // ALPHABET[4] = digit 5 - 1 = 4
+    })
+
+    it('encodes empty board to just prefix', () => {
+      const encoded = encodePuzzle(Array(81).fill(0))
+      expect(encoded).toBe('s')
+    })
+
+    it('round-trips a sparse puzzle exactly', () => {
+      const board = Array(81).fill(0)
+      board[0] = 5
+      board[4] = 3
+      board[40] = 7
+      board[80] = 9
+      const encoded = encodePuzzle(board)
+      const decoded = decodePuzzle(encoded)
+      expect(decoded).toEqual(board)
+    })
+
+    it('round-trips a dense puzzle (all filled)', () => {
+      const board = [
+        5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2,
+        5, 6, 7, 8, 5, 9, 7, 6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3,
+        9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8, 4, 2, 8, 7, 4, 1, 9, 6, 3, 5,
+        3, 4, 5, 2, 8, 6, 1, 7, 9,
+      ]
+      expect(decodePuzzle(encodePuzzle(board))).toEqual(board)
+    })
+
+    it('preserves digit values in sparse encoding', () => {
+      const board = Array(81).fill(0)
+      board[0] = 1
+      board[1] = 9
+      const encoded = encodePuzzle(board)
+      const decoded = decodePuzzle(encoded)
+      expect(decoded[0]).toBe(1)
+      expect(decoded[1]).toBe(9)
+    })
+
+    it('preserves cell positions in sparse encoding', () => {
+      const board = Array(81).fill(0)
+      board[10] = 5
+      board[70] = 3
+      const decoded = decodePuzzle(encodePuzzle(board))
+      expect(decoded[10]).toBe(5)
+      expect(decoded[70]).toBe(3)
+      expect(decoded[0]).toBe(0)
+      expect(decoded[80]).toBe(0)
+    })
+  })
 })
