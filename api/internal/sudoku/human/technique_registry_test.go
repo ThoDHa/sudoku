@@ -138,23 +138,18 @@ func TestTechniqueRegistry_GetEnabledTechniques(t *testing.T) {
 func TestTechniqueRegistry_GetByTierSortedByOrder(t *testing.T) {
 	registry := NewTechniqueRegistry()
 
-	for _, tier := range []string{"simple", "medium", "hard", "extreme"} {
-		techs := registry.GetByTier(tier)
-		if len(techs) < 2 {
-			continue
-		}
-		for i := 1; i < len(techs); i++ {
-			if techs[i].Order <= techs[i-1].Order {
-				t.Errorf("%s tier: techniques not sorted by Order at index %d: %s(Order=%d) before %s(Order=%d)",
-					tier, i, techs[i-1].Slug, techs[i-1].Order, techs[i].Slug, techs[i].Order)
-			}
+	simple := registry.GetByTier("simple")
+	if len(simple) < 2 {
+		t.Fatal("expected at least 2 simple techniques")
+	}
+	for i, tech := range simple {
+		if tech.Order != i+1 {
+			t.Errorf("simple[%d] (%s): expected Order=%d, got Order=%d", i, tech.Slug, i+1, tech.Order)
 		}
 	}
 
-	simple := registry.GetByTier("simple")
-	if len(simple) > 0 && simple[0].Slug != "naked-single" {
-		t.Errorf("expected naked-single first in simple tier (Order=1), got %s (Order=%d)",
-			simple[0].Slug, simple[0].Order)
+	if simple[0].Slug != "naked-single" || simple[0].Order != 1 {
+		t.Errorf("expected naked-single first with Order=1, got %s Order=%d", simple[0].Slug, simple[0].Order)
 	}
 }
 
@@ -166,13 +161,10 @@ func TestTechniqueRegistry_GetAllSortedByOrder(t *testing.T) {
 		t.Fatal("expected at least 2 techniques")
 	}
 	for i := 1; i < len(all); i++ {
-		if all[i].Order <= all[i-1].Order {
-			t.Errorf("GetAll not sorted by Order at index %d: %s(Order=%d) before %s(Order=%d)",
-				i, all[i-1].Slug, all[i-1].Order, all[i].Slug, all[i].Order)
+		if all[i].Order != all[i-1].Order+1 {
+			t.Errorf("GetAll[%d] (%s): expected Order=%d (consecutive), got Order=%d after Order=%d (%s)",
+				i, all[i].Slug, all[i-1].Order+1, all[i].Order, all[i-1].Order, all[i-1].Slug)
 		}
-	}
-	if all[0].Order != 1 {
-		t.Errorf("expected first technique to have Order=1, got Order=%d (%s)", all[0].Order, all[0].Slug)
 	}
 }
 
