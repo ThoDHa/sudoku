@@ -321,3 +321,34 @@ func TestSolver_FindNextMove_ExactCandidateMove(t *testing.T) {
 	}
 	t.Fatal("solver did not find naked single for cell 0")
 }
+
+func TestBoard_QueryFunctions_ExactResults(t *testing.T) {
+	givens := make([]int, 81)
+	givens[0] = 5
+	board := NewBoard(givens)
+
+	eight := board.CellsWithNCandidates(8)
+	if len(eight) != 20 {
+		t.Errorf("CellsWithNCandidates(8): expected 20 (peers of cell 0), got %d", len(eight))
+	}
+	for _, idx := range eight {
+		if idx == 0 {
+			t.Errorf("cell 0 is filled, should not be in candidate list")
+		}
+	}
+
+	nine := board.CellsWithNCandidates(9)
+	if len(nine) != 60 {
+		t.Errorf("CellsWithNCandidates(9): expected 60 (non-peers of cell 0), got %d", len(nine))
+	}
+
+	range89 := board.CellsWithCandidateRange(8, 9)
+	if len(range89) != 80 {
+		t.Errorf("CellsWithCandidateRange(8,9): expected 80 (all empty cells), got %d", len(range89))
+	}
+
+	boxSix := board.CellsWithDigitInUnit(Unit{Type: UnitBox, Index: 0, Cells: BoxIndices[0]}, 6)
+	if len(boxSix) != 8 {
+		t.Errorf("CellsWithDigitInUnit(box 0, digit 6): expected 8, got %d", len(boxSix))
+	}
+}
