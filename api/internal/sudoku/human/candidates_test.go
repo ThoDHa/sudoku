@@ -549,3 +549,27 @@ func TestSolver_HiddenSingleAtMidGrid_ExactTarget(t *testing.T) {
 	}
 	t.Fatal("solver did not produce assign move for cell 40")
 }
+
+func TestDigitExistsInCells_Exact(t *testing.T) {
+	givens := make([]int, 81)
+	givens[1] = 5
+	givens[9] = 3
+	givens[10] = 7
+	board := NewBoard(givens)
+
+	if !digitExistsInCells(board, 0, 0, 5) {
+		t.Error("digitExistsInCells(0,0,5): 5 is in row 0 at cell 1")
+	}
+	if !digitExistsInCells(board, 0, 0, 3) {
+		t.Error("digitExistsInCells(0,0,3): 3 is in col 0 at cell 9")
+	}
+	if !digitExistsInCells(board, 0, 0, 7) {
+		t.Error("digitExistsInCells(0,0,7): 7 is in box 0 at cell 10")
+	}
+	if digitExistsInCells(board, 0, 0, 4) {
+		t.Error("digitExistsInCells(0,0,4): 4 is not in row 0, col 0, or box 0")
+	}
+	if digitExistsInCells(board, 4, 4, 5) {
+		t.Error("digitExistsInCells(4,4,5): 5 is not in row 4, col 4, or box 4")
+	}
+}
