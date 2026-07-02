@@ -689,3 +689,40 @@ func TestMutation_SessionStart_RejectsInvalidDifficulty(t *testing.T) {
 		t.Error("expected error field in response")
 	}
 }
+
+func TestMutation_PuzzleAnalyze_ExactResponse(t *testing.T) {
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/puzzle/testseed/analyze?d=easy", nil)
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+
+	for _, field := range []string{"seed", "difficulty", "givens_count", "required_difficulty", "status", "techniques"} {
+		if _, ok := resp[field]; !ok {
+			t.Errorf("missing %q in analyze response. body: %s", field, w.Body.String())
+		}
+	}
+
+	status, _ := resp["status"].(string)
+	if status != "completed" && status != "stalled" && status != "max-steps" {
+		t.Errorf("expected valid status, got %q", status)
+	}
+}
+
+func TestMutation_PuzzleAnalyze_RejectsInvalidDifficulty(t *testing.T) {
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/puzzle/testseed/analyze?d=bogus", nil)
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
