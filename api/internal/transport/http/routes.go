@@ -872,9 +872,9 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 
 	maxCount := 0
 	maxCell := -1
-	for idx, count := range cellCount {
-		if count > maxCount {
-			maxCount = count
+	for idx := 0; idx < constants.TotalCells; idx++ {
+		if cellCount[idx] > maxCount {
+			maxCount = cellCount[idx]
 			maxCell = idx
 		}
 	}

@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -119,11 +120,18 @@ func TestSolveNextPinpointsUserErrorOnContradiction(t *testing.T) {
 			}
 		}
 	}
-	if clearedIdx >= 0 {
-		moveDigit, _ := move["digit"].(float64)
-		if int(moveDigit) != board[clearedIdx] {
-			t.Errorf("move digit %v doesn't match cleared cell %d value %d", moveDigit, clearedIdx, board[clearedIdx])
-		}
+	if clearedIdx < 0 {
+		t.Fatal("no cell was cleared in the fix-error response")
+	}
+	moveDigit, _ := move["digit"].(float64)
+	if int(moveDigit) != board[clearedIdx] {
+		t.Errorf("move digit %v doesn't match cleared cell %d value %d", moveDigit, clearedIdx, board[clearedIdx])
+	}
+	clearedRow := clearedIdx / 9
+	clearedCol := clearedIdx % 9
+	expectedRef := fmt.Sprintf("R%dC%d", clearedRow+1, clearedCol+1)
+	if !strings.Contains(explanation, expectedRef) {
+		t.Errorf("explanation should mention %s (cleared cell), got: %s", expectedRef, explanation)
 	}
 }
 
