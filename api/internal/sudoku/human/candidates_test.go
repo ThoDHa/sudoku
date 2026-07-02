@@ -534,6 +534,15 @@ func TestSolver_HiddenSingleAtMidGrid_ExactTarget(t *testing.T) {
 				t.Errorf("expected target R4C4 (cell 40), got R%dC%d",
 					move.Targets[0].Row, move.Targets[0].Col)
 			}
+			if len(move.Highlights.Primary) != 1 {
+				t.Errorf("expected 1 primary highlight, got %d", len(move.Highlights.Primary))
+			} else if move.Highlights.Primary[0].Row != 4 || move.Highlights.Primary[0].Col != 4 {
+				t.Errorf("expected primary highlight R4C4, got R%dC%d",
+					move.Highlights.Primary[0].Row, move.Highlights.Primary[0].Col)
+			}
+			if len(move.Highlights.Secondary) != 9 {
+				t.Errorf("expected 9 secondary highlights (full unit), got %d", len(move.Highlights.Secondary))
+			}
 			return
 		}
 		solver.ApplyMove(board, move)
