@@ -2,6 +2,9 @@ package human
 
 import (
 	"testing"
+
+	"sudoku-api/internal/core"
+	"sudoku-api/pkg/constants"
 )
 
 func TestCandidates_Basic(t *testing.T) {
@@ -232,4 +235,89 @@ func TestBoard_canPlace_Exact(t *testing.T) {
 	if !board.canPlace(1, 6) {
 		t.Error("canPlace(1, 6): digit 6 is not blocked anywhere")
 	}
+}
+
+func TestSolver_ApplyMove_ExactBoardState(t *testing.T) {
+	solver := NewSolver()
+	board := NewBoard(make([]int, 81))
+
+	solver.ApplyMove(board, &core.Move{
+		Action: "assign",
+		Digit:  3,
+		Targets: []core.CellRef{
+			{Row: 0, Col: 0},
+		},
+	})
+	if board.Cells[0] != 3 {
+		t.Errorf("after assign: cell 0 = %d, want 3", board.Cells[0])
+	}
+	if board.Candidates[0] != 0 {
+		t.Error("after assign: cell 0 should have empty candidates")
+	}
+	for _, peer := range []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 18, 27, 36, 45, 54, 63, 72, 10, 11, 19, 20} {
+		if board.Candidates[peer].Has(3) {
+			t.Errorf("after assign: peer cell %d should have 3 eliminated", peer)
+		}
+	}
+
+	solver.ApplyMove(board, &core.Move{
+		Action: "eliminate",
+		Eliminations: []core.Candidate{
+			{Row: 4, Col: 4, Digit: 7},
+		},
+	})
+	if board.Candidates[40].Has(7) {
+		t.Error("after eliminate: cell 40 should not have candidate 7")
+	}
+	if !board.Eliminated[40].Has(7) {
+		t.Error("after eliminate: cell 40 should have 7 in Eliminated set")
+	}
+
+	solver.ApplyMove(board, &core.Move{
+		Action: "candidate",
+		Digit:  2,
+		Targets: []core.CellRef{
+			{Row: 8, Col: 8},
+		},
+	})
+	if !board.Candidates[80].Has(2) {
+		t.Error("after candidate: cell 80 should have candidate 2")
+	}
+}
+
+func TestSolver_FindNextMove_ExactCandidateMove(t *testing.T) {
+	givens := make([]int, 81)
+	givens[1] = 1
+	givens[2] = 2
+	givens[3] = 3
+	givens[4] = 4
+	givens[9] = 6
+	givens[10] = 9
+	givens[18] = 7
+	givens[27] = 8
+
+	board := NewBoard(givens)
+	solver := NewSolver()
+
+	if board.Candidates[0].Count() != 1 || !board.Candidates[0].Has(5) {
+		t.Fatalf("setup: cell 0 should be a naked single (only candidate 5), got %v", board.Candidates[0].ToSlice())
+	}
+
+	for i := 0; i < constants.TotalCells; i++ {
+		move := solver.FindNextMove(board)
+		if move != nil && move.Action == "assign" && move.Digit == 5 {
+			if len(move.Targets) != 1 {
+				t.Fatalf("expected 1 target, got %d", len(move.Targets))
+			}
+			if move.Targets[0].Row != 0 || move.Targets[0].Col != 0 {
+				t.Errorf("expected target R0C0, got R%dC%d", move.Targets[0].Row, move.Targets[0].Col)
+			}
+			return
+		}
+		if move == nil {
+			t.Fatal("solver stalled before finding naked single")
+		}
+		solver.ApplyMove(board, move)
+	}
+	t.Fatal("solver did not find naked single for cell 0")
 }
