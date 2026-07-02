@@ -501,3 +501,42 @@ func TestSolver_InvalidCandidateDetection_ExactMove(t *testing.T) {
 	}
 	t.Fatal("solver did not detect invalid candidate")
 }
+
+func TestSolver_HiddenSingleAtMidGrid_ExactTarget(t *testing.T) {
+	solved := []int{
+		5, 3, 4, 6, 7, 8, 9, 1, 2,
+		6, 7, 2, 1, 9, 5, 3, 4, 8,
+		1, 9, 8, 3, 4, 2, 5, 6, 7,
+		8, 5, 9, 7, 6, 1, 4, 2, 3,
+		4, 2, 6, 8, 5, 3, 7, 9, 1,
+		7, 1, 3, 9, 2, 4, 8, 5, 6,
+		9, 6, 1, 5, 3, 7, 2, 8, 4,
+		2, 8, 7, 4, 1, 9, 6, 3, 5,
+		3, 4, 5, 2, 8, 6, 1, 7, 9,
+	}
+	givens := make([]int, 81)
+	copy(givens, solved)
+	givens[40] = 0
+
+	board := NewBoard(givens)
+	solver := NewSolver()
+
+	for i := 0; i < 200; i++ {
+		move := solver.FindNextMove(board)
+		if move == nil {
+			t.Fatal("solver stalled")
+		}
+		if move.Action == "assign" && move.Digit == 5 {
+			if len(move.Targets) != 1 {
+				t.Fatalf("expected 1 target, got %d", len(move.Targets))
+			}
+			if move.Targets[0].Row != 4 || move.Targets[0].Col != 4 {
+				t.Errorf("expected target R4C4 (cell 40), got R%dC%d",
+					move.Targets[0].Row, move.Targets[0].Col)
+			}
+			return
+		}
+		solver.ApplyMove(board, move)
+	}
+	t.Fatal("solver did not produce assign move for cell 40")
+}
