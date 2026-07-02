@@ -1,6 +1,7 @@
 package human
 
 import (
+	"strings"
 	"testing"
 
 	"sudoku-api/internal/core"
@@ -387,5 +388,71 @@ func TestAnalyzePuzzleDifficulty_EasyPuzzle(t *testing.T) {
 	}
 	if totalTechniques == 0 {
 		t.Error("expected at least 1 solving technique in counts")
+	}
+}
+
+func TestSolver_HiddenSingleDetection_ExactMove(t *testing.T) {
+	solved := []int{
+		5, 3, 4, 6, 7, 8, 9, 1, 2,
+		6, 7, 2, 1, 9, 5, 3, 4, 8,
+		1, 9, 8, 3, 4, 2, 5, 6, 7,
+		8, 5, 9, 7, 6, 1, 4, 2, 3,
+		4, 2, 6, 8, 5, 3, 7, 9, 1,
+		7, 1, 3, 9, 2, 4, 8, 5, 6,
+		9, 6, 1, 5, 3, 7, 2, 8, 4,
+		2, 8, 7, 4, 1, 9, 6, 3, 5,
+		3, 4, 5, 2, 8, 6, 1, 7, 9,
+	}
+	givens := make([]int, 81)
+	copy(givens, solved)
+	givens[0] = 0
+
+	board := NewBoard(givens)
+	solver := NewSolver()
+
+	for i := 0; i < 100; i++ {
+		move := solver.FindNextMove(board)
+		if move == nil {
+			t.Fatal("solver stalled")
+		}
+		if move.Action == "assign" {
+			if move.Digit != 5 {
+				t.Errorf("expected digit 5 (cell 0's value in solved grid), got %d", move.Digit)
+			}
+			if len(move.Targets) != 1 || move.Targets[0].Row != 0 || move.Targets[0].Col != 0 {
+				t.Errorf("expected target R0C0, got %+v", move.Targets)
+			}
+			return
+		}
+		solver.ApplyMove(board, move)
+	}
+	t.Fatal("solver did not produce an assign move for cell 0")
+}
+
+func TestSolver_FillCandidateMove_ExactContent(t *testing.T) {
+	board := NewBoardWithCandidates(make([]int, 81), nil)
+	solver := NewSolver()
+
+	move := solver.FindNextMove(board)
+	if move == nil {
+		t.Fatal("expected a fill-candidate move on empty board, got nil")
+	}
+	if move.Technique != "fill-candidate" {
+		t.Fatalf("expected 'fill-candidate', got %q", move.Technique)
+	}
+	if move.Action != "candidate" {
+		t.Errorf("expected action 'candidate', got %q", move.Action)
+	}
+	if move.Digit != 1 {
+		t.Errorf("expected digit 1 (first digit swept), got %d", move.Digit)
+	}
+	if len(move.Targets) != 1 {
+		t.Fatalf("expected 1 target, got %d", len(move.Targets))
+	}
+	if move.Targets[0].Row != 0 || move.Targets[0].Col != 0 {
+		t.Errorf("expected first cell R0C0, got R%dC%d", move.Targets[0].Row, move.Targets[0].Col)
+	}
+	if !strings.Contains(move.Explanation, "Added 1 as a candidate") {
+		t.Errorf("explanation should mention adding candidate 1, got: %s", move.Explanation)
 	}
 }
