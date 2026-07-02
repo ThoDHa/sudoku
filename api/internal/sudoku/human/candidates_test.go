@@ -352,3 +352,40 @@ func TestBoard_QueryFunctions_ExactResults(t *testing.T) {
 		t.Errorf("CellsWithDigitInUnit(box 0, digit 6): expected 8, got %d", len(boxSix))
 	}
 }
+
+func TestAnalyzePuzzleDifficulty_EasyPuzzle(t *testing.T) {
+	solved := []int{
+		5, 3, 4, 6, 7, 8, 9, 1, 2,
+		6, 7, 2, 1, 9, 5, 3, 4, 8,
+		1, 9, 8, 3, 4, 2, 5, 6, 7,
+		8, 5, 9, 7, 6, 1, 4, 2, 3,
+		4, 2, 6, 8, 5, 3, 7, 9, 1,
+		7, 1, 3, 9, 2, 4, 8, 5, 6,
+		9, 6, 1, 5, 3, 7, 2, 8, 4,
+		2, 8, 7, 4, 1, 9, 6, 3, 5,
+		3, 4, 5, 2, 8, 6, 1, 7, 9,
+	}
+
+	givens := make([]int, 81)
+	copy(givens, solved)
+	givens[0] = 0
+	givens[40] = 0
+	givens[80] = 0
+
+	solver := NewSolver()
+	difficulty, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(givens)
+
+	if status != constants.StatusCompleted {
+		t.Errorf("expected status 'completed', got %q", status)
+	}
+	if difficulty != core.DifficultyEasy {
+		t.Errorf("expected difficulty 'easy', got %q", difficulty)
+	}
+	totalTechniques := 0
+	for _, count := range techniqueCounts {
+		totalTechniques += count
+	}
+	if totalTechniques == 0 {
+		t.Error("expected at least 1 solving technique in counts")
+	}
+}
