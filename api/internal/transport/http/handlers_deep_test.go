@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"sudoku-api/internal/sudoku/dp"
+	"sudoku-api/internal/sudoku/human"
 
 	"github.com/gin-gonic/gin"
 )
@@ -544,5 +545,64 @@ func TestMutation_ValidateBoard_AcceptsSolvedBoard(t *testing.T) {
 	}
 	if valid, _ := resp["valid"].(bool); !valid {
 		t.Error("expected valid=true for solved board")
+	}
+}
+
+func TestMutation_SolveNext_NormalMove_ExactResponse(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	givens := make([]int, 81)
+	givens[1] = 1
+	givens[2] = 2
+	givens[3] = 3
+	givens[4] = 4
+	givens[9] = 6
+	givens[10] = 9
+	givens[18] = 7
+	givens[27] = 8
+
+	board := human.NewBoard(givens)
+	if board.Candidates[0].Count() != 1 || !board.Candidates[0].Has(5) {
+		t.Fatalf("setup: cell 0 should be naked single (5 only), got %v", board.Candidates[0].ToSlice())
+	}
+	candidates := board.GetCandidates()
+
+	body := map[string]interface{}{
+		"token":      token,
+		"board":      givens,
+		"givens":     givens,
+		"candidates": candidates,
+	}
+
+	code, resp := postSolveNext(t, router, body)
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", code, resp)
+	}
+
+	move, ok := resp["move"].(map[string]interface{})
+	if move == nil || !ok {
+		t.Fatal("expected a move, got nil")
+	}
+
+	if technique, _ := move["technique"].(string); technique != "naked-single" {
+		t.Fatalf("expected naked-single (cell 0 can only be 5), got %q", technique)
+	}
+	if digit, _ := move["digit"].(float64); int(digit) != 5 {
+		t.Errorf("expected digit 5, got %v", digit)
+	}
+	targets, _ := move["targets"].([]interface{})
+	if len(targets) != 1 {
+		t.Fatalf("expected 1 target, got %d", len(targets))
+	}
+	target := targets[0].(map[string]interface{})
+	if row, _ := target["row"].(float64); int(row) != 0 {
+		t.Errorf("expected target row 0, got %v", row)
+	}
+	if col, _ := target["col"].(float64); int(col) != 0 {
+		t.Errorf("expected target col 0, got %v", col)
+	}
+	if action, _ := move["action"].(string); action != "assign" {
+		t.Errorf("expected action 'assign', got %q", action)
 	}
 }
