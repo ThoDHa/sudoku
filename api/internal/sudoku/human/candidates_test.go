@@ -543,6 +543,12 @@ func TestSolver_HiddenSingleAtMidGrid_ExactTarget(t *testing.T) {
 			if len(move.Highlights.Secondary) != 9 {
 				t.Errorf("expected 9 secondary highlights (full unit), got %d", len(move.Highlights.Secondary))
 			}
+			if !strings.Contains(move.Explanation, "R5C5") {
+				t.Errorf("explanation should contain R5C5 (cell 40 = row 4+1, col 4+1), got: %s", move.Explanation)
+			}
+			if !strings.Contains(move.Explanation, "must be 5") {
+				t.Errorf("explanation should contain 'must be 5', got: %s", move.Explanation)
+			}
 			return
 		}
 		solver.ApplyMove(board, move)
