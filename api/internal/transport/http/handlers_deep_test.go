@@ -491,3 +491,58 @@ func TestMutation_DailyHandler_ReturnsDeterministicFields(t *testing.T) {
 		}
 	}
 }
+
+func TestMutation_ValidateBoard_DetectsConflicts(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	board := make([]int, 81)
+	board[0] = 5
+	board[3] = 5
+
+	body := map[string]interface{}{
+		"token": token,
+		"board": board,
+	}
+
+	code, resp := postJSON(t, router, "/api/validate", body)
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", code, resp)
+	}
+	if valid, _ := resp["valid"].(bool); valid {
+		t.Error("expected valid=false for conflicting board")
+	}
+	if reason, _ := resp["reason"].(string); reason != "conflicts" {
+		t.Errorf("expected reason 'conflicts', got %q", reason)
+	}
+	conflictCells, _ := resp["conflictCells"].([]interface{})
+	cellSet := make(map[int]bool)
+	for _, c := range conflictCells {
+		if n, ok := c.(float64); ok {
+			cellSet[int(n)] = true
+		}
+	}
+	if !cellSet[0] || !cellSet[3] {
+		t.Errorf("expected conflictCells to contain 0 and 3, got %v", cellSet)
+	}
+}
+
+func TestMutation_ValidateBoard_AcceptsSolvedBoard(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	solved := dp.GenerateFullGrid(42)
+
+	body := map[string]interface{}{
+		"token": token,
+		"board": solved,
+	}
+
+	code, resp := postJSON(t, router, "/api/validate", body)
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", code, resp)
+	}
+	if valid, _ := resp["valid"].(bool); !valid {
+		t.Error("expected valid=true for solved board")
+	}
+}
