@@ -23,7 +23,7 @@ permissions:
 
 concurrency:
   group: mutation-testing
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   CI: true
