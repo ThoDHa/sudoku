@@ -545,7 +545,6 @@ describe('useGameTimer', () => {
 
 describe('useGameTimer - mutation-killing branch tests', () => {
   let originalVisibilityState: PropertyDescriptor | undefined
-  let originalWebdriver: PropertyDescriptor | undefined
 
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -554,7 +553,6 @@ describe('useGameTimer - mutation-killing branch tests', () => {
       configurable: true,
       get: () => 'visible',
     })
-    originalWebdriver = Object.getOwnPropertyDescriptor(navigator, 'webdriver')
   })
 
   afterEach(() => {
@@ -562,31 +560,27 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     if (originalVisibilityState) {
       Object.defineProperty(document, 'visibilityState', originalVisibilityState)
     }
-    if (originalWebdriver) {
-      Object.defineProperty(navigator, 'webdriver', originalWebdriver)
-    }
+    // jsdom exposes no webdriver descriptor on navigator or its prototype
+    // (the property is simply absent and reads as undefined). Tests that need
+    // an automated context shadow it with a configurable own property;
+    // deleting that own property fully restores the default undefined state.
+    // @ts-expect-error - removing test-only override
+    delete navigator.webdriver
   })
 
   describe('startTimer stale-closure recovery branch', () => {
-    it('recovers startTimeRef when autoStart left it null', () => {
+    it('accumulates elapsed time from mount when autoStart is true', () => {
       const bg = createMockBackgroundManager()
       const { result } = renderHook(() => useGameTimer({ backgroundManager: bg, autoStart: true }))
 
       expect(result.current.isRunning).toBe(true)
 
-      // autoStart sets isRunning=true but never assigns startTimeRef, so the
-      // interval cannot accumulate time until startTimer() runs.
+      // With the mount-effect fix, autoStart kicks off accumulation
+      // immediately: startTimer() runs on mount and its recovery branch
+      // (isRunning true but startTimeRef null) seeds startTimeRef, so the
+      // interval can accumulate without any explicit startTimer() call.
       act(() => {
-        vi.advanceTimersByTime(3000)
-      })
-      expect(result.current.elapsedMs).toBe(0)
-
-      // startTimer now hits the `else if (startTimeRef.current === null)` branch
-      act(() => {
-        result.current.startTimer()
-      })
-      act(() => {
-        vi.advanceTimersByTime(1000)
+        vi.advanceTimersByTime(1100)
       })
       expect(result.current.elapsedMs).toBeGreaterThan(0)
     })
@@ -607,16 +601,20 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('pauseTimer short-circuit when startTimeRef is null', () => {
-    it('does not pause when isRunning is true but startTimeRef is null', () => {
+  describe('pauseTimer on an autoStart-ed timer', () => {
+    it('pauses a timer that autoStart started without an explicit startTimer', () => {
       const bg = createMockBackgroundManager()
       const { result } = renderHook(() => useGameTimer({ backgroundManager: bg, autoStart: true }))
 
-      // isRunning true, startTimeRef null -> pauseTimer must no-op
+      // With the mount-effect fix, autoStart seeds startTimeRef at mount, so
+      // pauseTimer now finds a valid startTimeRef and genuinely pauses (rather
+      // than no-op'ing as it did when startTimeRef stayed null).
+      expect(result.current.isRunning).toBe(true)
+
       act(() => {
         result.current.pauseTimer()
       })
-      expect(result.current.isRunning).toBe(true)
+      expect(result.current.isRunning).toBe(false)
     })
   })
 
@@ -759,16 +757,38 @@ describe('useGameTimer - mutation-killing branch tests', () => {
       const bg = createMockBackgroundManager({ shouldPauseOperations: true })
       const { result } = renderHook(() => useGameTimer({ backgroundManager: bg, autoStart: true }))
 
-      // The isAutomated bypass only affects the interval callback guard; the
-      // timer still needs a startTimeRef, so call startTimer explicitly.
-      act(() => {
-        result.current.startTimer()
-      })
+      // In automated mode the full bypass applies: the mount effect seeds
+      // startTimeRef via autoStart, the interval ignores shouldPauseOperations,
+      // and the visibility effect early-returns. No explicit startTimer() is
+      // needed for elapsedMs to accumulate.
       act(() => {
         vi.advanceTimersByTime(2000)
       })
-      // In automated mode the interval callback must not short-circuit on
-      // shouldPauseOperations, so elapsedMs accumulates.
+      expect(result.current.elapsedMs).toBeGreaterThan(0)
+    })
+
+    it('does not set isPausedDueToVisibility in automated mode even when shouldPauseOperations is true', () => {
+      Object.defineProperty(navigator, 'webdriver', {
+        configurable: true,
+        value: true,
+      })
+      const hidden = createMockBackgroundManager({
+        shouldPauseOperations: true,
+        isHidden: true,
+      })
+      const { result } = renderHook(() =>
+        useGameTimer({ backgroundManager: hidden, autoStart: true }),
+      )
+
+      // The visibility effect early-returns in automated mode, so a hidden
+      // background manager must NOT pause the timer nor set the flag.
+      expect(result.current.isPausedDueToVisibility).toBe(false)
+      expect(result.current.isRunning).toBe(true)
+
+      // And the timer still accumulates despite the "hidden" state.
+      act(() => {
+        vi.advanceTimersByTime(1100)
+      })
       expect(result.current.elapsedMs).toBeGreaterThan(0)
     })
   })

@@ -32,6 +32,19 @@ interface UseGameTimerReturn {
   formatTime: (ms?: number) => string
 }
 
+// E2E/automation contexts (Playwright, Headless Chrome, webdriver) where
+// focus/visibility pausing must be bypassed: the runner window may not be
+// focused but the page is still "visible".
+function isAutomatedEnvironment(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return (
+    navigator.webdriver === true ||
+    (typeof navigator.userAgent === 'string' &&
+      (navigator.userAgent.includes('HeadlessChrome') ||
+        navigator.userAgent.includes('playwright')))
+  )
+}
+
 /**
  * Hook to manage a game timer with pause/resume functionality.
  * Uses central background manager for consistent visibility handling.
@@ -67,6 +80,15 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
       startTimeRef.current = Date.now()
     }
   }, [isRunning])
+
+  // On mount, if autoStart is set, kick off accumulation. startTimer()'s
+  // recovery branch (isRunning true but startTimeRef null) seeds startTimeRef.
+  useEffect(() => {
+    if (autoStart) {
+      startTimer()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const pauseTimer = useCallback(() => {
     if (isRunning && startTimeRef.current !== null) {
@@ -115,16 +137,8 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
   useEffect(() => {
     if (!isRunning) return
 
-    // Check if we're in an E2E/automation context where focus/visibility pausing should be bypassed
-    const isAutomated =
-      typeof navigator !== 'undefined' &&
-      (navigator.webdriver === true ||
-        (typeof navigator.userAgent === 'string' &&
-          (navigator.userAgent.includes('HeadlessChrome') ||
-            navigator.userAgent.includes('playwright'))))
-
     // In automated tests, don't pause based on visibility
-    const effectiveShouldPause = isAutomated
+    const effectiveShouldPause = isAutomatedEnvironment()
       ? false
       : pauseOnHidden && backgroundManager.shouldPauseOperations
 
@@ -135,16 +149,8 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
 
     // Start the interval
     const interval = setInterval(() => {
-      // Check automation context again (for the interval callback)
-      const isAutomatedInCallback =
-        typeof navigator !== 'undefined' &&
-        (navigator.webdriver === true ||
-          (typeof navigator.userAgent === 'string' &&
-            (navigator.userAgent.includes('HeadlessChrome') ||
-              navigator.userAgent.includes('playwright'))))
-
       // Respect background manager's pause decision (unless automated)
-      if (!isAutomatedInCallback && backgroundManager.shouldPauseOperations) {
+      if (!isAutomatedEnvironment() && backgroundManager.shouldPauseOperations) {
         return // Skip update when hidden
       }
 
@@ -158,6 +164,7 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
 
   // Handle visibility changes using central background manager
   useEffect(() => {
+    if (isAutomatedEnvironment()) return
     if (!pauseOnHidden) return
 
     const pauseForVisibility = () => {
