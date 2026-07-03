@@ -72,11 +72,7 @@ jobs:
   go-mutation:
     name: Go - ${{ matrix.name }}
     runs-on: ubuntu-latest
-    # Run on schedule, or on dispatch unless this is the techniques shard and the
-    # caller asked to skip it (techniques is 7700+ LOC and takes ~10-12h).
-    if: >-
-      (github.event_name == 'schedule' || inputs.scope != 'frontend') &&
-      !(matrix.name == 'techniques' && inputs.skip_techniques)
+    if: github.event_name == 'schedule' || inputs.scope != 'frontend'
     timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
@@ -90,10 +86,6 @@ jobs:
             pkg: ./internal/sudoku/human
             floor: 85
             timeout: 360
-          - name: techniques
-            pkg: ./internal/sudoku/human/techniques
-            floor: 85
-            timeout: 720
           - name: transport-http
             pkg: ./internal/transport/http
             floor: 85
@@ -156,6 +148,75 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: mutation-go-${{ matrix.name }}
+          path: api/reports/mutation/
+          retention-days: 30
+          if-no-files-found: warn
+
+  # Techniques is split into its own job because the package is 7700+ LOC and
+  # takes ~10-12h to mutate, far longer than the fast packages. It has its own
+  # (larger) timeout and can be skipped via the skip_techniques input so
+  # iteration runs measure dp/human/transport/frontend without the long wait.
+  techniques-mutation:
+    name: Go - techniques
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || (inputs.scope != 'frontend' && inputs.skip_techniques != true)
+    timeout-minutes: 720
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache-dependency-path: api/go.sum
+
+      - name: Install go-mutesting
+        working-directory: api
+        run: make mutation-install
+
+      - name: Run go-mutesting on ./internal/sudoku/human/techniques
+        working-directory: api
+        run: |
+          mkdir -p reports/mutation
+          cat > /tmp/mutation-config.yml <<'YAML'
+          json_output: true
+          html_output: true
+          YAML
+          go-mutesting --config=/tmp/mutation-config.yml ./internal/sudoku/human/techniques
+          mkdir -p "reports/mutation/internal-sudoku-human-techniques"
+          mv report.json go-mutesting-report.html "reports/mutation/internal-sudoku-human-techniques/" 2>/dev/null || true
+        continue-on-error: true
+
+      - name: Check efficacy gate
+        working-directory: api
+        run: |
+          report="reports/mutation/internal-sudoku-human-techniques/report.json"
+          if [ ! -f "$report" ]; then
+            echo "No report for ./internal/sudoku/human/techniques (run may have timed out)"
+            exit 0
+          fi
+          python3 -c "
+          import json, sys
+          with open('$report') as f:
+              r = json.load(f)
+          s = r['stats']
+          killed = s['killedCount'] + s.get('timeOutCount', 0)
+          escaped = s['escapedCount']
+          denom = killed + escaped
+          eff = killed / denom * 100 if denom > 0 else 100
+          floor = 85
+          status = 'OK' if eff >= floor else 'FAIL'
+          print(f'mutation-gate: {status} ./internal/sudoku/human/techniques {eff:.1f}% (floor {floor}%) [killed={killed} escaped={escaped} total={s[\"totalMutantsCount\"]}]')
+          sys.exit(0 if eff >= floor else 1)
+          "
+        continue-on-error: true
+
+      - name: Upload Go mutation report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-go-techniques
           path: api/reports/mutation/
           retention-days: 30
           if-no-files-found: warn
