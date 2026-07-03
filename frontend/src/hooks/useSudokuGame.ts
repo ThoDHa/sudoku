@@ -271,7 +271,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     (idx: number) => {
       if (isGivenCell(idx)) return
       const currentBoard = boardRef.current
-      const currentCandidates = candidatesHook.candidates
+      const currentCandidates = candidatesRef.current
       const cellValue = currentBoard[idx] ?? 0
       const cellCandidates = currentCandidates[idx] || 0
       if (cellValue === 0 && countCandidates(cellCandidates) === 0) return
@@ -298,6 +298,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       setBoard(newBoard)
       candidatesHook.setCandidates(newCandidates)
       boardRef.current = newBoard
+      candidatesRef.current = newCandidates
     },
     [isGivenCell, candidatesHook, createMove, addToHistory, setBoard, boardRef],
   )
