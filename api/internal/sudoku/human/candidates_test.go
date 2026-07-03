@@ -579,3 +579,20 @@ func TestDigitExistsInCells_Exact(t *testing.T) {
 		t.Error("digitExistsInCells(4,4,5): 5 is not in row 4, col 4, or box 4")
 	}
 }
+
+func TestUnitCellIndices_AllTypes(t *testing.T) {
+	rowCells := unitCellIndices(UnitRow, 3)
+	if len(rowCells) != 9 || rowCells[0] != 27 || rowCells[8] != 35 {
+		t.Errorf("UnitRow 3: expected [27..35], got %v", rowCells)
+	}
+
+	colCells := unitCellIndices(UnitCol, 5)
+	if len(colCells) != 9 || colCells[0] != 5 || colCells[8] != 77 {
+		t.Errorf("UnitCol 5: expected [5,14,...,77], got %v", colCells)
+	}
+
+	boxCells := unitCellIndices(UnitBox, 4)
+	if len(boxCells) != 9 || boxCells[0] != 30 || boxCells[8] != 50 {
+		t.Errorf("UnitBox 4: expected [30,31,32,39,40,41,48,49,50], got %v", boxCells)
+	}
+}
