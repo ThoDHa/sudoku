@@ -12,6 +12,11 @@ on:
           - all
           - frontend
           - go
+      skip_techniques:
+        description: 'Skip the techniques package (7700 LOC, ~10-12h)'
+        required: false
+        default: false
+        type: boolean
   # schedule:
   #   # 04:00 UTC daily (one hour after nightly-profiling at 03:00 to avoid contention).
   #   # Temporarily disabled during active development to prevent cancel-in-progress
@@ -67,8 +72,12 @@ jobs:
   go-mutation:
     name: Go - ${{ matrix.name }}
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || inputs.scope != 'frontend'
-    timeout-minutes: 360
+    # Run on schedule, or on dispatch unless this is the techniques shard and the
+    # caller asked to skip it (techniques is 7700+ LOC and takes ~10-12h).
+    if: >-
+      (github.event_name == 'schedule' || inputs.scope != 'frontend') &&
+      !(matrix.name == 'techniques' && inputs.skip_techniques)
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
       matrix:
@@ -76,15 +85,19 @@ jobs:
           - name: dp
             pkg: ./internal/sudoku/dp
             floor: 95
+            timeout: 360
           - name: human
             pkg: ./internal/sudoku/human
             floor: 85
+            timeout: 360
           - name: techniques
             pkg: ./internal/sudoku/human/techniques
             floor: 85
+            timeout: 720
           - name: transport-http
             pkg: ./internal/transport/http
             floor: 85
+            timeout: 360
     steps:
       - name: Checkout
         uses: actions/checkout@v6
