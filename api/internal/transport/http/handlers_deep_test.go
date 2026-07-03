@@ -726,3 +726,53 @@ func TestMutation_PuzzleAnalyze_RejectsInvalidDifficulty(t *testing.T) {
 		t.Errorf("expected 400, got %d", w.Code)
 	}
 }
+
+func TestMutation_SolveFull_FastMode_ExactSolution(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	solved := dp.GenerateFullGrid(42)
+	partial := make([]int, 81)
+	copy(partial, solved)
+	partial[0] = 0
+	partial[40] = 0
+
+	body := map[string]interface{}{
+		"token": token,
+		"board": partial,
+	}
+
+	code, resp := postJSON(t, router, "/api/solve/full?mode=fast", body)
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", code, resp)
+	}
+
+	finalBoard, _ := resp["final_board"].([]interface{})
+	if len(finalBoard) != 81 {
+		t.Fatalf("expected 81 cells, got %d", len(finalBoard))
+	}
+	for i, v := range finalBoard {
+		if n, _ := v.(float64); int(n) != solved[i] {
+			t.Errorf("cell %d: expected %d, got %v", i, solved[i], v)
+			break
+		}
+	}
+}
+
+func TestMutation_SolveFull_RejectsOutOfRangeValues(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	board := make([]int, 81)
+	board[0] = 42
+
+	body := map[string]interface{}{
+		"token": token,
+		"board": board,
+	}
+
+	code, _ := postJSON(t, router, "/api/solve/full", body)
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400 for cell value 42, got %d", code)
+	}
+}
