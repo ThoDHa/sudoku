@@ -1123,6 +1123,61 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
   })
 
+  describe('background manager resumes playback after a hidden-tab tick drop', () => {
+    it('resumes via playNextMoveRef when the background manager transitions back to visible after a scheduled tick was dropped on hidden', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      const applyMove = vi.fn()
+      const visibleBgManager = createMockBackgroundManager({ shouldPauseOperations: false })
+      const options = createDefaultAutoSolveOptions({
+        applyMove,
+        backgroundManager: visibleBgManager,
+        stepDelay: 100,
+      })
+      const { result, rerender } = renderHook(({ opts }) => useAutoSolve(opts), {
+        initialProps: { opts: options },
+      })
+
+      await act(async () => {
+        await result.current.startAutoSolve()
+      })
+      const callsAfterStart = applyMove.mock.calls.length
+      expect(callsAfterStart).toBeGreaterThanOrEqual(1)
+
+      // visibilitychange fires before the scheduled tick: the background
+      // manager pauses, setting pausedRef.current = true.
+      const hiddenBgManager = createMockBackgroundManager({ shouldPauseOperations: true })
+      rerender({ opts: { ...options, backgroundManager: hiddenBgManager } })
+      await waitFor(() => {
+        expect(result.current.isPaused).toBe(true)
+      })
+
+      // The scheduled setTimeout fires while document is hidden: the safety
+      // net drops the tick without applying a move or rescheduling.
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'hidden',
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(500)
+      })
+      expect(applyMove.mock.calls.length).toBe(callsAfterStart)
+
+      // Tab becomes visible again: the background manager transitions back,
+      // and the resume branch invokes playNextMoveRef.current().
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'visible',
+      })
+      const restoredBgManager = createMockBackgroundManager({ shouldPauseOperations: false })
+      rerender({ opts: { ...options, backgroundManager: restoredBgManager } })
+
+      await waitFor(() => {
+        expect(applyMove.mock.calls.length).toBeGreaterThan(callsAfterStart)
+      })
+      expect(result.current.isPaused).toBe(false)
+    })
+  })
+
   describe('togglePause board-change detection on resume', () => {
     it('stops auto-solve when the board was modified while paused', async () => {
       let board = Array(81).fill(0)
