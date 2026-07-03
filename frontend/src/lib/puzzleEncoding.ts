@@ -360,9 +360,7 @@ export function decodePuzzleWithState(
   const maskStr = data.slice(0, 14)
   let mask = BigInt(0)
   for (let i = 0; i < 14; i++) {
-    const char = maskStr[i]
-    if (!char) return null
-    const idx = ALPHABET.indexOf(char)
+    const idx = ALPHABET.indexOf(maskStr.charAt(i))
     if (idx === -1) return null
     mask = (mask << BigInt(6)) | BigInt(idx)
   }
