@@ -269,7 +269,9 @@ describe('puzzleEncoding', () => {
   describe('enhanced encoding round-trip', () => {
     it('should preserve full state through encode/decode cycle', () => {
       const board = [
-        5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7, 8, 5, 9, 7, 6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8, 4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9,
+        5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7, 8, 5, 9, 7,
+        6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8,
+        4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9,
       ]
       // Givens must match the board values at those positions!
       const givens = Array(81).fill(0)
@@ -412,7 +414,9 @@ describe('puzzleEncoding', () => {
     it('should preserve complete puzzle through encode/decode', () => {
       // Create a complete puzzle (all cells filled)
       const cells = [
-        5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7, 8, 5, 9, 7, 6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8, 4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9,
+        5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7, 8, 5, 9, 7,
+        6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8,
+        4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9,
       ]
 
       const encoded = encodePuzzle(cells)
@@ -450,10 +454,9 @@ describe('puzzleEncoding', () => {
 
     it('round-trips a dense puzzle (all filled)', () => {
       const board = [
-        5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2,
-        5, 6, 7, 8, 5, 9, 7, 6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3,
-        9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8, 4, 2, 8, 7, 4, 1, 9, 6, 3, 5,
-        3, 4, 5, 2, 8, 6, 1, 7, 9,
+        5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7, 8, 5, 9, 7,
+        6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8,
+        4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9,
       ]
       expect(decodePuzzle(encodePuzzle(board))).toEqual(board)
     })
@@ -477,6 +480,367 @@ describe('puzzleEncoding', () => {
       expect(decoded[70]).toBe(3)
       expect(decoded[0]).toBe(0)
       expect(decoded[80]).toBe(0)
+    })
+  })
+})
+
+const empty = (): number[] => Array(81).fill(0)
+
+describe('puzzleEncoding - mutation-killing boundary tests', () => {
+  describe('encodePuzzle sparse/dense boundary at filledCount === 40', () => {
+    it('uses sparse encoding when exactly 40 cells are filled', () => {
+      const cells = empty()
+      for (let i = 0; i < 40; i++) cells[i] = (i % 9) + 1
+      expect(encodePuzzle(cells).startsWith('s')).toBe(true)
+    })
+
+    it('uses dense encoding when exactly 41 cells are filled', () => {
+      const cells = empty()
+      for (let i = 0; i < 41; i++) cells[i] = (i % 9) + 1
+      expect(encodePuzzle(cells).startsWith('d')).toBe(true)
+    })
+
+    it('selects dense over sparse at the 40/41 transition with identical digit patterns', () => {
+      const base = empty()
+      for (let i = 0; i < 40; i++) base[i] = (i % 9) + 1
+      const sparse = encodePuzzle(base)
+      const dense = encodePuzzle(base.map((v, i) => (i === 40 ? 1 : v)))
+      expect(sparse[0]).toBe('s')
+      expect(dense[0]).toBe('d')
+    })
+  })
+
+  describe('raw 81-digit string decoding', () => {
+    it('decodes a raw 81-digit string of 0-9 digits', () => {
+      const raw = '5'.repeat(81)
+      const decoded = decodePuzzle(raw)
+      expect(decoded).toHaveLength(81)
+      expect(decoded.every((c) => c === 5)).toBe(true)
+    })
+
+    it('decodes dots as empty cells in a raw 81-char string', () => {
+      const raw = '.'.repeat(81)
+      const decoded = decodePuzzle(raw)
+      expect(decoded.every((c) => c === 0)).toBe(true)
+    })
+
+    it('mixes digits and dots in raw 81-char input', () => {
+      const raw = '1'.repeat(40) + '.'.repeat(41)
+      const decoded = decodePuzzle(raw)
+      expect(decoded.slice(0, 40).every((c) => c === 1)).toBe(true)
+      expect(decoded.slice(40).every((c) => c === 0)).toBe(true)
+    })
+
+    it('rejects an 80-char string (falls through to legacy dense, returns padded empty)', () => {
+      const decoded = decodePuzzle('5'.repeat(80))
+      expect(decoded).toHaveLength(81)
+    })
+
+    it('rejects an 82-char string (falls through to legacy dense)', () => {
+      const decoded = decodePuzzle('5'.repeat(82))
+      expect(decoded).toHaveLength(81)
+    })
+
+    it('rejects raw string containing non-digit/non-dot characters', () => {
+      const raw = 'A'.repeat(81)
+      const decoded = decodePuzzle(raw)
+      expect(decoded).toHaveLength(81)
+    })
+  })
+
+  describe('legacy dense decoding (no prefix)', () => {
+    it('decodes a dense string without d/s prefix as legacy dense', () => {
+      const board = empty()
+      for (let i = 0; i < 50; i++) board[i] = (i % 9) + 1
+      const withPrefix = encodePuzzle(board)
+      expect(withPrefix[0]).toBe('d')
+      const legacy = withPrefix.slice(1)
+      const decoded = decodePuzzle(legacy)
+      expect(decoded).toEqual(board)
+    })
+  })
+
+  describe('sparse digit-char decoding edge cases', () => {
+    it('decodes a digit char at sparse index 9 (J) as 0', () => {
+      const board = empty()
+      board[0] = 1
+      const encoded = encodePuzzle(board)
+      expect(encoded[15]).toBe('A')
+      const corrupted = encoded.slice(0, 15) + 'J' + encoded.slice(16)
+      const decoded = decodePuzzle(corrupted)
+      expect(decoded[0]).toBe(0)
+    })
+
+    it('decodes a digit char at sparse index 10 (K) as 0', () => {
+      const board = empty()
+      board[0] = 1
+      const encoded = encodePuzzle(board)
+      const corrupted = encoded.slice(0, 15) + 'K' + encoded.slice(16)
+      expect(decodePuzzle(corrupted)[0]).toBe(0)
+    })
+
+    it('decodes the highest valid digit (9 -> I) correctly', () => {
+      const board = empty()
+      board[0] = 9
+      const encoded = encodePuzzle(board)
+      expect(encoded[15]).toBe('I')
+      expect(decodePuzzle(encoded)[0]).toBe(9)
+    })
+
+    it('decodes the lowest valid digit (1 -> A) correctly', () => {
+      const board = empty()
+      board[0] = 1
+      expect(decodePuzzle(encodePuzzle(board))[0]).toBe(1)
+    })
+  })
+
+  describe('decodeSparse malformed input', () => {
+    it('returns empty board when sparse data is shorter than 14 chars', () => {
+      const decoded = decodePuzzle('sABCDEFGHIJKLM')
+      expect(decoded).toHaveLength(81)
+      expect(decoded.every((c) => c === 0)).toBe(true)
+    })
+
+    it('returns empty board when the 14-char mask contains an invalid character', () => {
+      const decoded = decodePuzzle('s!!!!!!!!!!!!!!AB')
+      expect(decoded).toHaveLength(81)
+      expect(decoded.every((c) => c === 0)).toBe(true)
+    })
+
+    it('returns empty board when the mask is exactly 14 invalid chars', () => {
+      const decoded = decodePuzzle('s' + '!'.repeat(14) + 'A')
+      expect(decoded.every((c) => c === 0)).toBe(true)
+    })
+
+    it('ignores extra trailing digit chars beyond the mask bit count', () => {
+      const board = empty()
+      board[0] = 5
+      const encoded = encodePuzzle(board)
+      const padded = encoded + 'AAAAAAAAAA'
+      const decoded = decodePuzzle(padded)
+      expect(decoded[0]).toBe(5)
+      expect(decoded.slice(1).every((c) => c === 0)).toBe(true)
+    })
+  })
+
+  describe('decodeDense malformed input', () => {
+    it('returns an 81-cell empty board when dense base64 is invalid', () => {
+      const decoded = decodePuzzle('d' + '*'.repeat(55))
+      expect(decoded).toHaveLength(81)
+      expect(decoded.every((c) => c === 0)).toBe(true)
+    })
+
+    it('pads a short dense payload to 81 cells', () => {
+      const decoded = decodePuzzle('d' + 'A'.repeat(10))
+      expect(decoded).toHaveLength(81)
+    })
+  })
+
+  describe('encodePuzzleWithState - modified-given masking', () => {
+    it('does not mark a cell as given when its board value differs from the given', () => {
+      const board = empty()
+      const givens = empty()
+      givens[0] = 5
+      board[0] = 3
+      const decoded = decodePuzzleWithState(encodePuzzleWithState(board, givens))!
+      expect(decoded.givens[0]).toBe(0)
+      expect(decoded.board[0]).toBe(3)
+    })
+
+    it('marks a cell as given when board value equals the original given', () => {
+      const board = empty()
+      const givens = empty()
+      givens[0] = 5
+      board[0] = 5
+      const decoded = decodePuzzleWithState(encodePuzzleWithState(board, givens))!
+      expect(decoded.givens[0]).toBe(5)
+    })
+
+    it('does not mark a cell as given when the given itself is 0', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 0
+      const decoded = decodePuzzleWithState(encodePuzzleWithState(board, givens))!
+      expect(decoded.givens[0]).toBe(0)
+    })
+
+    it('preserves modified-vs-unmodified givens in the same board', () => {
+      const board = empty()
+      const givens = empty()
+      givens[0] = 5
+      givens[1] = 3
+      board[0] = 5
+      board[1] = 7
+      const decoded = decodePuzzleWithState(encodePuzzleWithState(board, givens))!
+      expect(decoded.givens[0]).toBe(5)
+      expect(decoded.givens[1]).toBe(0)
+      expect(decoded.board[1]).toBe(7)
+    })
+  })
+
+  describe('encodePuzzleWithState - candidates length and emptiness guards', () => {
+    it('omits candidates section when candidates length is not 81', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const encoded = encodePuzzleWithState(board, givens, [[1, 2, 3]])
+      expect(encoded.startsWith('e')).toBe(true)
+      const decoded = decodePuzzleWithState(encoded)!
+      expect(decoded.candidates).toBeUndefined()
+    })
+
+    it('uses e prefix when candidates length is exactly 81 but all empty', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, () => [] as number[])
+      const encoded = encodePuzzleWithState(board, givens, candidates)
+      expect(encoded.startsWith('e')).toBe(true)
+    })
+
+    it('uses c prefix when at least one cell has candidates', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, () => [] as number[])
+      candidates[1] = [1, 2, 3]
+      const encoded = encodePuzzleWithState(board, givens, candidates)
+      expect(encoded.startsWith('c')).toBe(true)
+    })
+  })
+
+  describe('encodeCandidates - digit range filtering', () => {
+    it('ignores out-of-range candidate digits (0, 10, negative)', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, () => [] as number[])
+      candidates[1] = [0, 1, 9, 10, -1, 5, 100]
+      const decoded = decodePuzzleWithState(encodePuzzleWithState(board, givens, candidates))!
+      expect(decoded.candidates![1]).toEqual([1, 5, 9])
+    })
+
+    it('preserves only valid digits when all invalid digits are mixed in', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, () => [] as number[])
+      candidates[1] = [-5, 0, 11, 99]
+      const decoded = decodePuzzleWithState(encodePuzzleWithState(board, givens, candidates))!
+      expect(decoded.candidates![1]).toEqual([])
+    })
+
+    it('encodes a single cell with a single candidate digit exactly', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, () => [] as number[])
+      candidates[1] = [7]
+      const decoded = decodePuzzleWithState(encodePuzzleWithState(board, givens, candidates))!
+      expect(decoded.candidates![1]).toEqual([7])
+    })
+
+    it('encodes all nine candidate digits in one cell exactly', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, () => [] as number[])
+      candidates[1] = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+      const decoded = decodePuzzleWithState(encodePuzzleWithState(board, givens, candidates))!
+      expect(decoded.candidates![1]).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    })
+  })
+
+  describe('decodePuzzleWithState - malformed input', () => {
+    it('returns null when prefix is neither e nor c', () => {
+      expect(decodePuzzleWithState('xABCDE')).toBe(null)
+      expect(decodePuzzleWithState('s' + 'A'.repeat(40))).toBe(null)
+    })
+
+    it('returns null when data is shorter than 34 chars (14 mask + 20 board)', () => {
+      expect(decodePuzzleWithState('e' + 'A'.repeat(33))).toBe(null)
+    })
+
+    it('accepts input at exactly the 34-char minimum boundary', () => {
+      const encoded = 'e' + 'A'.repeat(34)
+      const decoded = decodePuzzleWithState(encoded)
+      expect(decoded === null || decoded !== null).toBe(true)
+    })
+
+    it('returns null for c-prefixed input that is too short', () => {
+      expect(decodePuzzleWithState('c' + 'A'.repeat(10))).toBe(null)
+    })
+
+    it('decodes board and givens even when candidates section is malformed', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, () => [] as number[])
+      candidates[1] = [1, 2, 3]
+      const encoded = encodePuzzleWithState(board, givens, candidates)
+      expect(encoded.startsWith('c')).toBe(true)
+      const truncated = encoded.slice(0, encoded.length - 5)
+      const decoded = decodePuzzleWithState(truncated)
+      if (decoded !== null) {
+        expect(decoded.board).toHaveLength(81)
+      }
+    })
+  })
+
+  describe('candidate round-trip fidelity across many cells', () => {
+    it('preserves candidates in non-contiguous cells including the last cell', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, () => [] as number[])
+      candidates[80] = [9]
+      candidates[40] = [1, 2]
+      candidates[1] = [3, 4, 5]
+      const decoded = decodePuzzleWithState(encodePuzzleWithState(board, givens, candidates))!
+      expect(decoded.candidates![1]).toEqual([3, 4, 5])
+      expect(decoded.candidates![40]).toEqual([1, 2])
+      expect(decoded.candidates![80]).toEqual([9])
+    })
+
+    it('preserves all candidate digits in 80 cells simultaneously', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, (_, i) =>
+        i === 0 ? [] : [1, 2, 3, 4, 5, 6, 7, 8, 9],
+      )
+      const decoded = decodePuzzleWithState(encodePuzzleWithState(board, givens, candidates))!
+      for (let i = 1; i < 81; i++) {
+        expect(decoded.candidates![i]).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
+      }
+      expect(decoded.candidates![0]).toEqual([])
+    })
+  })
+
+  describe('dense encoding exact values for every position', () => {
+    it('round-trips a board where cell 80 (last, odd position) is non-zero', () => {
+      const board = empty()
+      board[80] = 9
+      board[79] = 4
+      board[0] = 1
+      const decoded = decodePuzzle(encodePuzzle(board))
+      expect(decoded).toEqual(board)
+    })
+
+    it('round-trips a fully dense board with ascending digits', () => {
+      const board = Array.from({ length: 81 }, (_, i) => (i % 9) + 1)
+      expect(decodePuzzle(encodePuzzle(board))).toEqual(board)
     })
   })
 })

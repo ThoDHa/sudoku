@@ -2003,3 +2003,538 @@ describe('useSudokuGame - Memoization', () => {
     })
   })
 })
+
+describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
+  describe('createMove - default refs, highlights, and isUserMove', () => {
+    it('attaches empty refs object on every user move', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 5, false)
+      })
+      expect(result.current.history[0].refs).toEqual({ title: '', slug: '', url: '' })
+    })
+
+    it('attaches an empty primary highlights array on every user move', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 5, false)
+      })
+      expect(result.current.history[0].highlights).toEqual({ primary: [] })
+    })
+
+    it('marks user-initiated moves with isUserMove=true', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 5, false)
+      })
+      expect(result.current.history[0].isUserMove).toBe(true)
+    })
+
+    it('records step_index as the current history length', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(10, 1, false)
+        result.current.setCell(20, 2, false)
+      })
+      expect(result.current.history[0].step_index).toBe(0)
+      expect(result.current.history[1].step_index).toBe(1)
+    })
+  })
+
+  describe('setCell digit placement - exact explanation strings', () => {
+    it('records the exact "Placed" explanation for R1C1', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(0, 5, false)
+      })
+      const move = result.current.history[0]
+      expect(move.action).toBe('place')
+      expect(move.technique).toBe('User Input')
+      expect(move.digit).toBe(5)
+      expect(move.explanation).toBe('Placed 5 at R1C1')
+      expect(move.targets).toEqual([{ row: 0, col: 0 }])
+    })
+
+    it('records the exact "Placed" explanation for R5C5 (cell 40)', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 7, false)
+      })
+      expect(result.current.history[0].explanation).toBe('Placed 7 at R5C5')
+    })
+
+    it('records the exact "Placed" explanation for R9C9 (cell 80)', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(80, 9, false)
+      })
+      expect(result.current.history[0].explanation).toBe('Placed 9 at R9C9')
+      expect(result.current.history[0].targets).toEqual([{ row: 8, col: 8 }])
+    })
+  })
+
+  describe('setCell notes mode - exact "Added note" strings', () => {
+    it('records the exact "Added note" explanation on first toggle', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 5, true)
+      })
+      const move = result.current.history[0]
+      expect(move.action).toBe('note')
+      expect(move.explanation).toBe('Added note 5 to R5C5')
+      expect(move.digit).toBe(5)
+      expect(move.targets).toEqual([{ row: 4, col: 4 }])
+    })
+
+    it('records the exact "Added note" explanation at R1C1', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(0, 1, true)
+      })
+      expect(result.current.history[0].explanation).toBe('Added note 1 to R1C1')
+    })
+  })
+
+  describe('toggleCandidate - exact "Removed note" strings', () => {
+    it('records the exact "Removed note" explanation and eliminate action', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.toggleCandidate(40, 5)
+      })
+      act(() => {
+        result.current.toggleCandidate(40, 5)
+      })
+      const removeMove = result.current.history[1]
+      expect(removeMove.action).toBe('eliminate')
+      expect(removeMove.explanation).toBe('Removed note 5 from R5C5')
+      expect(removeMove.digit).toBe(5)
+    })
+
+    it('records the exact "Added note" explanation on toggleCandidate add', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.toggleCandidate(0, 9)
+      })
+      expect(result.current.history[0].action).toBe('note')
+      expect(result.current.history[0].explanation).toBe('Added note 9 to R1C1')
+    })
+  })
+
+  describe('setCellMultiple - exact explanation strings and target counts', () => {
+    it('records the exact "Added note ... to N cells" string', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCellMultiple([10, 11, 12], 7, true)
+      })
+      const move = result.current.history[0]
+      expect(move.action).toBe('note')
+      expect(move.explanation).toBe('Added note 7 to 3 cells')
+      expect(move.targets).toHaveLength(3)
+    })
+
+    it('records the exact "Removed note ... from N cells" string', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCellMultiple([10, 11, 12], 7, true)
+      })
+      act(() => {
+        result.current.setCellMultiple([10, 11, 12], 7, true)
+      })
+      const move = result.current.history[1]
+      expect(move.action).toBe('eliminate')
+      expect(move.explanation).toBe('Removed note 7 from 3 cells')
+    })
+
+    it('records the exact "Added note ... to 1 cells" for a single-cell selection', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCellMultiple([40], 3, true)
+      })
+      expect(result.current.history[0].explanation).toBe('Added note 3 to 1 cells')
+    })
+  })
+
+  describe('eraseCell - exact explanation strings for both branches', () => {
+    it('records "Erased" explanation when erasing a placed digit', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 7, false)
+      })
+      act(() => {
+        result.current.eraseCell(40)
+      })
+      const move = result.current.history[1]
+      expect(move.action).toBe('erase')
+      expect(move.digit).toBe(7)
+      expect(move.explanation).toBe('Erased 7 from R5C5')
+    })
+
+    it('records "Cleared notes" explanation when erasing notes from an empty cell', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.toggleCandidate(40, 3)
+      })
+      act(() => {
+        result.current.eraseCell(40)
+      })
+      const move = result.current.history[1]
+      expect(move.action).toBe('erase')
+      expect(move.digit).toBe(0)
+      expect(move.explanation).toBe('Cleared notes from R5C5')
+    })
+
+    it('records digit 0 in the erase move when clearing notes', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.toggleCandidate(0, 4)
+      })
+      act(() => {
+        result.current.eraseCell(0)
+      })
+      expect(result.current.history[1].digit).toBe(0)
+      expect(result.current.history[1].explanation).toBe('Cleared notes from R1C1')
+    })
+  })
+
+  describe('eraseCell early-return guard', () => {
+    it('does nothing when the cell is empty and has no candidates', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      const historyBefore = result.current.history.length
+      act(() => {
+        result.current.eraseCell(40)
+      })
+      expect(result.current.history).toHaveLength(historyBefore)
+      expect(result.current.board[40]).toBe(0)
+    })
+  })
+
+  describe('clearCandidates - exact move fields', () => {
+    it('records technique "Clear Notes", action "clear-candidates", digit 0, empty targets', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.toggleCandidate(40, 5)
+      })
+      act(() => {
+        result.current.clearCandidates()
+      })
+      const move = result.current.history[1]
+      expect(move.technique).toBe('Clear Notes')
+      expect(move.action).toBe('clear-candidates')
+      expect(move.digit).toBe(0)
+      expect(move.targets).toEqual([])
+      expect(move.explanation).toBe('Cleared all notes')
+    })
+  })
+
+  describe('digitCounts boundary - ignores out-of-range values', () => {
+    it('does not count a digit above MAX_DIGIT (10)', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 10, false)
+      })
+      expect(result.current.board[40]).toBe(10)
+      expect(result.current.digitCounts).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0])
+    })
+
+    it('does not count digit 0 toward any bucket', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 0, false)
+      })
+      expect(result.current.digitCounts).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0])
+    })
+
+    it('counts the boundary digits 1 and 9 exactly', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(0, 1, false)
+        result.current.setCell(1, 9, false)
+      })
+      const counts = result.current.digitCounts
+      expect(counts[0]).toBe(1)
+      expect(counts[8]).toBe(1)
+      counts.slice(1, 8).forEach((c) => expect(c).toBe(0))
+    })
+
+    it('returns an array of length 9', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      expect(result.current.digitCounts).toHaveLength(9)
+    })
+  })
+
+  describe('setCell notes mode 100ms debounce guard', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('suppresses a duplicate note toggle within 100ms', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 5, true)
+      })
+      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+      expect(result.current.history).toHaveLength(1)
+
+      // Immediate second toggle, same cell + digit, within 100ms -> debounced
+      act(() => {
+        result.current.setCell(40, 5, true)
+      })
+      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+      expect(result.current.history).toHaveLength(1)
+    })
+
+    it('allows a duplicate note toggle after more than 100ms', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 5, true)
+      })
+      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+
+      vi.advanceTimersByTime(101)
+
+      act(() => {
+        result.current.setCell(40, 5, true)
+      })
+      expect(hasCandidate(result.current.candidates[40], 5)).toBe(false)
+      expect(result.current.history).toHaveLength(2)
+      expect(result.current.history[1].action).toBe('eliminate')
+    })
+
+    it('does not debounce a different digit on the same cell', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 5, true)
+      })
+      act(() => {
+        result.current.setCell(40, 6, true)
+      })
+      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[40], 6)).toBe(true)
+      expect(result.current.history).toHaveLength(2)
+    })
+
+    it('does not debounce the same digit on a different cell', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 5, true)
+      })
+      act(() => {
+        result.current.setCell(41, 5, true)
+      })
+      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[41], 5)).toBe(true)
+      expect(result.current.history).toHaveLength(2)
+    })
+  })
+
+  describe('setCell notes mode early-return on filled cell', () => {
+    it('does not record a history entry when adding a note to a filled cell', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 7, false)
+      })
+      const historyBefore = result.current.history.length
+      act(() => {
+        result.current.setCell(40, 3, true)
+      })
+      expect(result.current.history).toHaveLength(historyBefore)
+      expect(result.current.candidates[40]).toBe(0)
+    })
+  })
+
+  describe('restoreState - isComplete computation branches', () => {
+    it('sets isComplete=false when the restored board is full but invalid', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      const invalidFull = Array(81).fill(1)
+      act(() => {
+        result.current.restoreState(invalidFull, new Uint16Array(TOTAL_CELLS), [])
+      })
+      expect(result.current.isComplete).toBe(false)
+    })
+
+    it('sets isComplete=false when the restored board has empty cells', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      const partial = createEmptyPuzzle()
+      partial[0] = 5
+      act(() => {
+        result.current.restoreState(partial, new Uint16Array(TOTAL_CELLS), [])
+      })
+      expect(result.current.isComplete).toBe(false)
+    })
+
+    it('sets isComplete=true only when the restored board is full AND valid', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.restoreState(createCompletePuzzle(), new Uint16Array(TOTAL_CELLS), [])
+      })
+      expect(result.current.isComplete).toBe(true)
+    })
+
+    it('sets historyIndex to length-1 of the restored history', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      const history = [
+        { ...emptyMove(), step_index: 0 },
+        { ...emptyMove(), step_index: 1 },
+        { ...emptyMove(), step_index: 2 },
+      ]
+      act(() => {
+        result.current.restoreState(createEmptyPuzzle(), new Uint16Array(TOTAL_CELLS), history)
+      })
+      expect(result.current.history).toHaveLength(3)
+      expect(result.current.historyIndex).toBe(2)
+    })
+  })
+
+  describe('handleUndo - isComplete reset logic', () => {
+    it('clears isComplete when undoing leaves the board incomplete', () => {
+      const nearly = createNearlyCompletePuzzle()
+      const onComplete = vi.fn()
+      const { result } = renderHook(() => useSudokuGame({ initialBoard: nearly, onComplete }))
+      act(() => {
+        result.current.setCell(80, 9, false)
+      })
+      expect(result.current.isComplete).toBe(true)
+      act(() => {
+        result.current.undo()
+      })
+      expect(result.current.isComplete).toBe(false)
+    })
+
+    it('does not fire onComplete again on undo of an incomplete board', () => {
+      const nearly = createNearlyCompletePuzzle()
+      const onComplete = vi.fn()
+      const { result } = renderHook(() => useSudokuGame({ initialBoard: nearly, onComplete }))
+      act(() => {
+        result.current.setCell(80, 9, false)
+      })
+      onComplete.mockClear()
+      act(() => {
+        result.current.undo()
+      })
+      expect(onComplete).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('applyExternalMove - stateDiff and history wiring', () => {
+    it('attaches a stateDiff capturing the board change', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      const newBoard = createEmptyPuzzle()
+      newBoard[40] = 7
+      act(() => {
+        result.current.applyExternalMove(newBoard, new Uint16Array(TOTAL_CELLS), emptyMove())
+      })
+      const move = result.current.history[0]
+      expect(move.stateDiff).toBeDefined()
+      expect(move.stateDiff?.boardChanges).toEqual([{ idx: 40, oldValue: 0, newValue: 7 }])
+    })
+
+    it('overwrites redo history when applied after an undo', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(10, 1, false)
+        result.current.setCell(20, 2, false)
+        result.current.undo()
+      })
+      expect(result.current.canRedo).toBe(true)
+      act(() => {
+        result.current.applyExternalMove(
+          createEmptyPuzzle(),
+          new Uint16Array(TOTAL_CELLS),
+          emptyMove(),
+        )
+      })
+      expect(result.current.canRedo).toBe(false)
+    })
+  })
+
+  describe('resetGame - full state reset exactness', () => {
+    it('resets candidatesVersion remains consistent and all candidates zero', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.toggleCandidate(10, 1)
+        result.current.toggleCandidate(20, 2)
+      })
+      act(() => {
+        result.current.resetGame()
+      })
+      for (let i = 0; i < TOTAL_CELLS; i++) {
+        expect(result.current.candidates[i]).toBe(0)
+      }
+      expect(result.current.history).toEqual([])
+      expect(result.current.historyIndex).toBe(-1)
+      expect(result.current.isComplete).toBe(false)
+    })
+  })
+
+  describe('clearAll - preserves givens exactly', () => {
+    it('restores the board to exactly the given cells after clearAll', () => {
+      const puzzle = createTestPuzzle()
+      const { result } = renderGame(puzzle)
+      act(() => {
+        result.current.setCell(2, 4, false)
+        result.current.setCell(3, 8, false)
+        result.current.toggleCandidate(40, 5)
+      })
+      act(() => {
+        result.current.clearAll()
+      })
+      expect(result.current.board).toEqual(puzzle)
+      expect(result.current.history).toEqual([])
+      expect(result.current.historyIndex).toBe(-1)
+    })
+  })
+
+  describe('isGivenCell - boundary indices', () => {
+    it('returns false for index 0 on an empty board', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      expect(result.current.isGivenCell(0)).toBe(false)
+    })
+
+    it('returns false for index 80 on an empty board', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      expect(result.current.isGivenCell(80)).toBe(false)
+    })
+  })
+
+  describe('checkNotes - exact returned shape', () => {
+    it('returns the exact empty-result shape when no notes exist', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+      const check = result.current.checkNotes()
+      expect(check).toEqual({
+        valid: true,
+        wrongNotes: [],
+        missingNotes: [],
+        cellsWithNotes: 0,
+      })
+    })
+
+    it('returns wrongNotes entries with exact idx and digit', () => {
+      const puzzle = createEmptyPuzzle()
+      puzzle[0] = 5
+      const { result } = renderGame(puzzle)
+      act(() => {
+        result.current.toggleCandidate(1, 5)
+      })
+      const check = result.current.checkNotes()
+      expect(check.valid).toBe(false)
+      expect(check.wrongNotes).toEqual([{ idx: 1, digit: 5 }])
+    })
+  })
+})
+
+function emptyMove() {
+  return {
+    step_index: 0,
+    technique: 'User Input',
+    action: 'place',
+    digit: 5,
+    targets: [{ row: 4, col: 4 }],
+    explanation: 'Test move',
+    refs: { title: '', slug: '', url: '' },
+    highlights: { primary: [] },
+    isUserMove: true,
+  }
+}

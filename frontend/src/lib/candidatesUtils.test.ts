@@ -267,3 +267,233 @@ describe('candidatesUtils', () => {
     })
   })
 })
+
+const FULL_MASK = setAll()
+
+describe('candidatesUtils - mutation-killing guard tests', () => {
+  describe('addCandidate out-of-range digit guard', () => {
+    it('returns the mask unchanged for digit 0', () => {
+      const mask = 0b0000001010
+      expect(addCandidate(mask, 0)).toBe(mask)
+    })
+
+    it('returns the mask unchanged for digit 10', () => {
+      const mask = 0b0000001010
+      expect(addCandidate(mask, 10)).toBe(mask)
+    })
+
+    it('returns the mask unchanged for negative digits', () => {
+      const mask = 0b0000001010
+      expect(addCandidate(mask, -1)).toBe(mask)
+      expect(addCandidate(mask, -5)).toBe(mask)
+    })
+
+    it('adds boundary digit 1 (lowest valid) exactly', () => {
+      expect(addCandidate(0, 1)).toBe(0b0000000010)
+    })
+
+    it('adds boundary digit 9 (highest valid) exactly', () => {
+      expect(addCandidate(0, 9)).toBe(0b1000000000)
+    })
+
+    it('is idempotent when adding an already-present digit', () => {
+      const mask = addCandidate(0, 5)
+      expect(addCandidate(mask, 5)).toBe(mask)
+    })
+  })
+
+  describe('removeCandidate out-of-range digit guard', () => {
+    it('returns the mask unchanged for digit 0', () => {
+      const mask = FULL_MASK
+      expect(removeCandidate(mask, 0)).toBe(mask)
+    })
+
+    it('returns the mask unchanged for digit 10', () => {
+      const mask = FULL_MASK
+      expect(removeCandidate(mask, 10)).toBe(mask)
+    })
+
+    it('returns the mask unchanged for negative digits', () => {
+      const mask = FULL_MASK
+      expect(removeCandidate(mask, -1)).toBe(mask)
+    })
+
+    it('removes boundary digit 1 exactly', () => {
+      expect(removeCandidate(FULL_MASK, 1)).toBe(0b1111111100)
+    })
+
+    it('removes boundary digit 9 exactly', () => {
+      expect(removeCandidate(FULL_MASK, 9)).toBe(0b0111111110)
+    })
+
+    it('is idempotent when removing an absent digit', () => {
+      const mask = 0b0000000010 // only digit 1
+      expect(removeCandidate(mask, 5)).toBe(mask)
+    })
+  })
+
+  describe('toggleCandidate out-of-range digit guard', () => {
+    it('returns the mask unchanged for digit 0', () => {
+      const mask = 0b0000001010
+      expect(toggleCandidate(mask, 0)).toBe(mask)
+    })
+
+    it('returns the mask unchanged for digit 10', () => {
+      const mask = 0b0000001010
+      expect(toggleCandidate(mask, 10)).toBe(mask)
+    })
+
+    it('returns the mask unchanged for negative digits', () => {
+      const mask = 0b0000001010
+      expect(toggleCandidate(mask, -3)).toBe(mask)
+    })
+
+    it('toggles boundary digit 1 on', () => {
+      expect(toggleCandidate(0, 1)).toBe(0b0000000010)
+    })
+
+    it('toggles boundary digit 9 on', () => {
+      expect(toggleCandidate(0, 9)).toBe(0b1000000000)
+    })
+
+    it('toggles digit 1 off when present', () => {
+      expect(toggleCandidate(0b0000000010, 1)).toBe(0)
+    })
+  })
+
+  describe('hasCandidate boundary and out-of-range', () => {
+    it('returns true for boundary digit 1 when present', () => {
+      expect(hasCandidate(0b0000000010, 1)).toBe(true)
+    })
+
+    it('returns true for boundary digit 9 when present', () => {
+      expect(hasCandidate(0b1000000000, 9)).toBe(true)
+    })
+
+    it('returns false for boundary digit 1 when absent', () => {
+      expect(hasCandidate(0b0000000000, 1)).toBe(false)
+    })
+
+    it('returns false for boundary digit 9 when absent', () => {
+      expect(hasCandidate(0b0000000000, 9)).toBe(false)
+    })
+  })
+
+  describe('bit 0 invariant', () => {
+    it('never sets bit 0 when adding any valid digit', () => {
+      let mask = 0
+      for (let d = 1; d <= 9; d++) mask = addCandidate(mask, d)
+      expect(mask & 0b1).toBe(0)
+      expect(mask).toBe(FULL_MASK)
+    })
+
+    it('never sets bit 0 when toggling any valid digit', () => {
+      let mask = 0
+      for (let d = 1; d <= 9; d++) mask = toggleCandidate(mask, d)
+      expect(mask & 0b1).toBe(0)
+    })
+  })
+
+  describe('countCandidates exact counts', () => {
+    it('returns 0 for the empty mask', () => {
+      expect(countCandidates(0)).toBe(0)
+    })
+
+    it('returns 9 for the full mask', () => {
+      expect(countCandidates(FULL_MASK)).toBe(9)
+    })
+
+    it('returns the exact count for a partial mask', () => {
+      expect(countCandidates(0b1010101010)).toBe(5)
+    })
+
+    it('does not count bit 0', () => {
+      expect(countCandidates(0b1)).toBe(0)
+      expect(countCandidates(0b1111111111)).toBe(9)
+    })
+  })
+
+  describe('getCandidatesArray exact contents', () => {
+    it('returns an empty array for the empty mask', () => {
+      expect(getCandidatesArray(0)).toEqual([])
+    })
+
+    it('returns all digits 1-9 in order for the full mask', () => {
+      expect(getCandidatesArray(FULL_MASK)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    })
+
+    it('excludes bit 0 from the result', () => {
+      expect(getCandidatesArray(0b1)).toEqual([])
+    })
+  })
+
+  describe('createCandidateMask out-of-range filtering', () => {
+    it('filters out 0, 10, and negatives, keeping only valid digits', () => {
+      expect(createCandidateMask([0, 1, 10, 2, -1, 9, 100])).toBe(0b1000000110)
+    })
+
+    it('returns 0 for an all-invalid array', () => {
+      expect(createCandidateMask([0, -1, 10, 100])).toBe(0)
+    })
+
+    it('returns 0 for an empty array', () => {
+      expect(createCandidateMask([])).toBe(0)
+    })
+  })
+
+  describe('isFull exact behavior', () => {
+    it('returns true only for the exact full mask', () => {
+      expect(isFull(FULL_MASK)).toBe(true)
+    })
+
+    it('returns false when the highest digit (9) is missing', () => {
+      expect(isFull(0b0111111110)).toBe(false)
+    })
+
+    it('returns false when the lowest digit (1) is missing', () => {
+      expect(isFull(0b1111111100)).toBe(false)
+    })
+
+    it('returns false for the empty mask', () => {
+      expect(isFull(0)).toBe(false)
+    })
+  })
+
+  describe('isEmpty and clearAll', () => {
+    it('isEmpty returns true only for 0', () => {
+      expect(isEmpty(0)).toBe(true)
+      expect(isEmpty(0b0000000010)).toBe(false)
+    })
+
+    it('clearAll returns exactly 0', () => {
+      expect(clearAll()).toBe(0)
+    })
+  })
+
+  describe('maskToString / maskToBinary exact strings', () => {
+    it('formats the empty mask as the empty-set symbol', () => {
+      expect(maskToString(0)).toBe('∅')
+    })
+
+    it('formats a single-digit mask exactly', () => {
+      expect(maskToString(0b0000000010)).toBe('{1}')
+    })
+
+    it('formats the full mask exactly', () => {
+      expect(maskToString(FULL_MASK)).toBe('{1, 2, 3, 4, 5, 6, 7, 8, 9}')
+    })
+
+    it('formats the empty mask binary exactly', () => {
+      expect(maskToBinary(0)).toBe('0b0000000000')
+    })
+
+    it('formats the full mask binary exactly', () => {
+      expect(maskToBinary(FULL_MASK)).toBe('0b1111111110')
+    })
+
+    it('always produces a 10-character binary payload', () => {
+      expect(maskToBinary(0b1)).toBe('0b0000000001')
+      expect(maskToBinary(0b10)).toBe('0b0000000010')
+    })
+  })
+})
