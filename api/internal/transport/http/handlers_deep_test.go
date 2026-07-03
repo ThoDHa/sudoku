@@ -776,3 +776,79 @@ func TestMutation_SolveFull_RejectsOutOfRangeValues(t *testing.T) {
 		t.Errorf("expected 400 for cell value 42, got %d", code)
 	}
 }
+
+func TestMutation_CustomValidate_ValidUniquePuzzle(t *testing.T) {
+	router := setupRouter()
+
+	solved := dp.GenerateFullGrid(42)
+	givens := make([]int, 81)
+	copy(givens, solved)
+	givens[0] = 0
+	givens[40] = 0
+
+	body := map[string]interface{}{
+		"givens":    givens,
+		"device_id": "test",
+	}
+
+	code, resp := postJSON(t, router, "/api/custom/validate", body)
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", code, resp)
+	}
+	if valid, _ := resp["valid"].(bool); !valid {
+		t.Error("expected valid=true for unique solvable puzzle")
+	}
+	if unique, _ := resp["unique"].(bool); !unique {
+		t.Error("expected unique=true for puzzle with single solution")
+	}
+	puzzleID, _ := resp["puzzle_id"].(string)
+	if !strings.HasPrefix(puzzleID, "custom-") {
+		t.Errorf("puzzle_id should start with 'custom-', got: %s", puzzleID)
+	}
+}
+
+func TestMutation_CustomValidate_RejectsTooFewGivens(t *testing.T) {
+	router := setupRouter()
+
+	givens := make([]int, 81)
+	givens[0] = 5
+
+	body := map[string]interface{}{
+		"givens":    givens,
+		"device_id": "test",
+	}
+
+	code, resp := postJSON(t, router, "/api/custom/validate", body)
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", code)
+	}
+	if valid, _ := resp["valid"].(bool); valid {
+		t.Error("expected valid=false for puzzle with too few givens")
+	}
+}
+
+func TestMutation_CustomValidate_RejectsConflicts(t *testing.T) {
+	router := setupRouter()
+
+	solved := dp.GenerateFullGrid(42)
+	givens := make([]int, 81)
+	copy(givens, solved)
+	givens[1] = solved[0]
+
+	body := map[string]interface{}{
+		"givens":    givens,
+		"device_id": "test",
+	}
+
+	code, resp := postJSON(t, router, "/api/custom/validate", body)
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", code)
+	}
+	if valid, _ := resp["valid"].(bool); valid {
+		t.Error("expected valid=false for conflicting puzzle")
+	}
+	reason, _ := resp["reason"].(string)
+	if !strings.Contains(reason, "conflict") {
+		t.Errorf("reason should mention conflict, got: %s", reason)
+	}
+}
