@@ -236,3 +236,112 @@ func TestConstraintViolation_PriorityOverOtherMoves(t *testing.T) {
 		t.Errorf("Constraint violation should be detected first, but got technique '%s'", move.Technique)
 	}
 }
+
+func TestConstraintViolation_InvalidCandidate_SecondaryExact(t *testing.T) {
+	cells := make([]int, 81)
+	cells[0] = 5
+	cands := make([][]int, 81)
+	for i := range cands {
+		cands[i] = []int{}
+	}
+	cands[2] = []int{5, 6, 7}
+
+	board := NewBoardWithCandidates(cells, cands)
+	solver := NewSolver()
+	move := solver.FindNextMove(board)
+
+	if move == nil {
+		t.Fatal("expected constraint-violation-invalid-candidate move, got nil")
+	}
+	if move.Technique != "constraint-violation-invalid-candidate" {
+		t.Fatalf("technique = %q, want constraint-violation-invalid-candidate", move.Technique)
+	}
+	if move.Action != "eliminate" {
+		t.Errorf("action = %q, want eliminate", move.Action)
+	}
+	if move.Digit != 5 {
+		t.Errorf("digit = %d, want 5", move.Digit)
+	}
+	if len(move.Targets) != 1 || move.Targets[0].Row != 0 || move.Targets[0].Col != 2 {
+		t.Errorf("targets = %+v, want [R0C2]", move.Targets)
+	}
+	if len(move.Eliminations) != 1 {
+		t.Fatalf("eliminations len = %d, want 1", len(move.Eliminations))
+	}
+	el := move.Eliminations[0]
+	if el.Row != 0 || el.Col != 2 || el.Digit != 5 {
+		t.Errorf("elimination = %+v, want {R0C2 d5}", el)
+	}
+	foundConflict := false
+	for _, s := range move.Highlights.Secondary {
+		if s.Row == 0 && s.Col == 0 {
+			foundConflict = true
+			break
+		}
+	}
+	if !foundConflict {
+		t.Errorf("Highlights.Secondary should contain conflict cell R0C0, got %+v", move.Highlights.Secondary)
+	}
+	if len(move.Highlights.Primary) != 1 || move.Highlights.Primary[0].Row != 0 || move.Highlights.Primary[0].Col != 2 {
+		t.Errorf("Primary = %+v, want [R0C2]", move.Highlights.Primary)
+	}
+	if move.Refs.Title != "Invalid Candidate" {
+		t.Errorf("Refs.Title = %q, want \"Invalid Candidate\"", move.Refs.Title)
+	}
+	if move.Refs.Slug != "constraint-violation" {
+		t.Errorf("Refs.Slug = %q, want \"constraint-violation\"", move.Refs.Slug)
+	}
+	if !strings.Contains(move.Explanation, "R1C3") {
+		t.Errorf("explanation should name the candidate cell R1C3, got: %s", move.Explanation)
+	}
+	if !strings.Contains(move.Explanation, "candidate 5") {
+		t.Errorf("explanation should mention 'candidate 5', got: %s", move.Explanation)
+	}
+}
+
+func TestContradictionMove_ExactFields(t *testing.T) {
+	cells := [81]int{
+		0, 1, 2, 3, 4, 5, 6, 7, 8,
+		9, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+	}
+	board := NewBoard(cells[:])
+	solver := NewSolver()
+	move := solver.FindNextMove(board)
+	if move == nil {
+		t.Fatal("expected contradiction move, got nil")
+	}
+	if move.Technique != "contradiction" {
+		t.Errorf("Technique = %q, want \"contradiction\"", move.Technique)
+	}
+	if move.Action != "contradiction" {
+		t.Errorf("Action = %q, want \"contradiction\"", move.Action)
+	}
+	if move.Digit != 0 {
+		t.Errorf("Digit = %d, want 0 for contradiction", move.Digit)
+	}
+	if len(move.Targets) != 1 || move.Targets[0].Row != 0 || move.Targets[0].Col != 0 {
+		t.Errorf("Targets = %+v, want [R0C0]", move.Targets)
+	}
+	if len(move.Highlights.Primary) != 1 || move.Highlights.Primary[0].Row != 0 || move.Highlights.Primary[0].Col != 0 {
+		t.Errorf("Primary = %+v, want [R0C0]", move.Highlights.Primary)
+	}
+	if move.Refs.Title != "Contradiction" {
+		t.Errorf("Refs.Title = %q, want \"Contradiction\"", move.Refs.Title)
+	}
+	if move.Refs.Slug != "contradiction" {
+		t.Errorf("Refs.Slug = %q, want \"contradiction\"", move.Refs.Slug)
+	}
+	if !strings.Contains(move.Explanation, "R1C1") {
+		t.Errorf("explanation should name R1C1, got: %s", move.Explanation)
+	}
+	if !strings.Contains(move.Explanation, "contradiction detected") {
+		t.Errorf("explanation should contain 'contradiction detected', got: %s", move.Explanation)
+	}
+}

@@ -416,3 +416,100 @@ func TestGetColCellRefs_ExactPositions(t *testing.T) {
 		}
 	}
 }
+
+func TestGetEnabledTechniques_OrderWithinTier(t *testing.T) {
+	registry := NewTechniqueRegistry()
+	enabled := registry.GetEnabledTechniques()
+	for tier, techs := range enabled {
+		sorted := registry.GetByTier(tier)
+		if len(techs) != len(sorted) {
+			t.Errorf("tier %s: GetEnabledTechniques len %d != GetByTier len %d", tier, len(techs), len(sorted))
+			continue
+		}
+		for i, tech := range techs {
+			if tech.Slug != sorted[i].Slug {
+				t.Errorf("tier %s position %d: GetEnabledTechniques gives %s, GetByTier gives %s (Order mismatch)",
+					tier, i, tech.Slug, sorted[i].Slug)
+			}
+		}
+	}
+}
+
+func TestRegistry_AllTechniquesMetadataComplete(t *testing.T) {
+	registry := NewTechniqueRegistry()
+	all := registry.GetAll()
+	if len(all) == 0 {
+		t.Fatal("registry should not be empty")
+	}
+	seenOrders := map[int]string{}
+	for _, tech := range all {
+		if tech.Name == "" {
+			t.Errorf("technique %q: Name is empty", tech.Slug)
+		}
+		if tech.Slug == "" {
+			t.Errorf("technique %s: Slug is empty", tech.Name)
+		}
+		if tech.Tier == "" {
+			t.Errorf("technique %q: Tier is empty", tech.Slug)
+		}
+		if tech.Description == "" {
+			t.Errorf("technique %q: Description is empty", tech.Slug)
+		}
+		if tech.Detector == nil {
+			t.Errorf("technique %q: Detector is nil", tech.Slug)
+		}
+		if !tech.Enabled {
+			t.Errorf("technique %q: should be enabled by default", tech.Slug)
+		}
+		if tech.Order < 1 {
+			t.Errorf("technique %q: Order %d should be >= 1", tech.Slug, tech.Order)
+		}
+		if prev, dup := seenOrders[tech.Order]; dup {
+			t.Errorf("technique %q shares Order %d with %s (Orders must be unique)", tech.Slug, tech.Order, prev)
+		}
+		seenOrders[tech.Order] = tech.Slug
+	}
+}
+
+func TestCreateSolverUpToTier_UnknownTierFallsBack(t *testing.T) {
+	solver := CreateSolverUpToTier("nonexistent-tier")
+	registry := solver.GetRegistry()
+	aic := registry.GetBySlug("aic")
+	if aic == nil {
+		t.Fatal("aic not found in registry")
+	}
+	if !aic.Enabled {
+		t.Error("unknown tier should fall back to full NewSolver (all enabled), but aic is disabled")
+	}
+	nakedSingle := registry.GetBySlug("naked-single")
+	if !nakedSingle.Enabled {
+		t.Error("unknown tier should fall back to full NewSolver (all enabled), but naked-single is disabled")
+	}
+	extreme := registry.GetBySlug("forcing-chain")
+	if !extreme.Enabled {
+		t.Error("unknown tier should fall back to full NewSolver (all enabled), but forcing-chain is disabled")
+	}
+}
+
+func TestGetByTier_DisabledExcludedAfterSort(t *testing.T) {
+	registry := NewTechniqueRegistry()
+	simpleCount := len(registry.GetByTier("simple"))
+	if simpleCount < 3 {
+		t.Fatalf("expected at least 3 simple techniques, got %d", simpleCount)
+	}
+	if !registry.SetEnabled("naked-single", false) {
+		t.Fatal("could not disable naked-single")
+	}
+	remaining := registry.GetByTier("simple")
+	if len(remaining) != simpleCount-1 {
+		t.Errorf("after disabling naked-single: expected %d simple techniques, got %d", simpleCount-1, len(remaining))
+	}
+	for _, tech := range remaining {
+		if tech.Slug == "naked-single" {
+			t.Error("naked-single should be excluded from GetByTier after being disabled")
+		}
+	}
+	if remaining[0].Order != 2 {
+		t.Errorf("after removing naked-single (Order 1), first remaining should be Order 2, got Order %d", remaining[0].Order)
+	}
+}

@@ -378,3 +378,142 @@ func TestBoxIndices_ExactCells(t *testing.T) {
 		}
 	}
 }
+
+func TestToCellRefs_Exact(t *testing.T) {
+	refs := ToCellRefs([]int{0, 10, 80})
+	if len(refs) != 3 {
+		t.Fatalf("expected 3 refs, got %d", len(refs))
+	}
+	expected := []core.CellRef{{Row: 0, Col: 0}, {Row: 1, Col: 1}, {Row: 8, Col: 8}}
+	for i, e := range expected {
+		if refs[i] != e {
+			t.Errorf("refs[%d] = %+v, want %+v", i, refs[i], e)
+		}
+	}
+	if len(ToCellRefs(nil)) != 0 {
+		t.Error("ToCellRefs(nil) should return empty slice")
+	}
+	if len(ToCellRefs([]int{})) != 0 {
+		t.Error("ToCellRefs([]) should return empty slice")
+	}
+}
+
+func TestMakeElimination_Exact(t *testing.T) {
+	e := MakeElimination(40, 7)
+	if e.Row != 4 || e.Col != 4 || e.Digit != 7 {
+		t.Errorf("MakeElimination(40,7) = {Row:%d Col:%d Digit:%d}, want {4,4,7}", e.Row, e.Col, e.Digit)
+	}
+	e0 := MakeElimination(0, 1)
+	if e0.Row != 0 || e0.Col != 0 || e0.Digit != 1 {
+		t.Errorf("MakeElimination(0,1) = %+v, want {0,0,1}", e0)
+	}
+}
+
+func TestAllUnits_ExactIndexType(t *testing.T) {
+	units := AllUnits()
+	rows := map[int]bool{}
+	cols := map[int]bool{}
+	boxes := map[int]bool{}
+	for _, u := range units {
+		switch u.Type {
+		case UnitRow:
+			if rows[u.Index] {
+				t.Errorf("duplicate row unit index %d", u.Index)
+			}
+			rows[u.Index] = true
+			if len(u.Cells) != len(RowIndices[u.Index]) {
+				t.Errorf("row %d cells len = %d, want %d", u.Index, len(u.Cells), len(RowIndices[u.Index]))
+				continue
+			}
+			for j, c := range u.Cells {
+				if c != RowIndices[u.Index][j] {
+					t.Errorf("row %d cell[%d] = %d, want %d", u.Index, j, c, RowIndices[u.Index][j])
+				}
+			}
+		case UnitCol:
+			if cols[u.Index] {
+				t.Errorf("duplicate col unit index %d", u.Index)
+			}
+			cols[u.Index] = true
+			if len(u.Cells) != len(ColIndices[u.Index]) {
+				t.Errorf("col %d cells len = %d, want %d", u.Index, len(u.Cells), len(ColIndices[u.Index]))
+				continue
+			}
+			for j, c := range u.Cells {
+				if c != ColIndices[u.Index][j] {
+					t.Errorf("col %d cell[%d] = %d, want %d", u.Index, j, c, ColIndices[u.Index][j])
+				}
+			}
+		case UnitBox:
+			if boxes[u.Index] {
+				t.Errorf("duplicate box unit index %d", u.Index)
+			}
+			boxes[u.Index] = true
+			if len(u.Cells) != len(BoxIndices[u.Index]) {
+				t.Errorf("box %d cells len = %d, want %d", u.Index, len(u.Cells), len(BoxIndices[u.Index]))
+				continue
+			}
+			for j, c := range u.Cells {
+				if c != BoxIndices[u.Index][j] {
+					t.Errorf("box %d cell[%d] = %d, want %d", u.Index, j, c, BoxIndices[u.Index][j])
+				}
+			}
+		default:
+			t.Errorf("unknown unit type value %d at index %d", u.Type, u.Index)
+		}
+	}
+	if len(rows) != 9 || len(cols) != 9 || len(boxes) != 9 {
+		t.Errorf("expected 9 of each type, got rows=%d cols=%d boxes=%d", len(rows), len(cols), len(boxes))
+	}
+}
+
+func TestContainsInt_Exact(t *testing.T) {
+	if !ContainsInt([]int{1, 3, 5, 7}, 5) {
+		t.Error("ContainsInt({1,3,5,7}, 5) should be true")
+	}
+	if ContainsInt([]int{1, 3, 5, 7}, 4) {
+		t.Error("ContainsInt({1,3,5,7}, 4) should be false")
+	}
+	if ContainsInt(nil, 1) {
+		t.Error("ContainsInt(nil, 1) should be false")
+	}
+	if ContainsInt([]int{}, 1) {
+		t.Error("ContainsInt([], 1) should be false")
+	}
+	if !ContainsInt([]int{9}, 9) {
+		t.Error("ContainsInt({9}, 9) should be true")
+	}
+}
+
+func TestAreRowColBoxPeers_Direct(t *testing.T) {
+	if !AreRowPeers(0, 5) {
+		t.Error("AreRowPeers(0,5) should be true (same row)")
+	}
+	if AreColPeers(0, 5) {
+		t.Error("AreColPeers(0,5) should be false (different columns)")
+	}
+	if AreBoxPeers(0, 5) {
+		t.Error("AreBoxPeers(0,5) should be false (different boxes: box 0 vs box 1)")
+	}
+
+	if AreRowPeers(0, 45) {
+		t.Error("AreRowPeers(0,45) should be false (different rows)")
+	}
+	if !AreColPeers(0, 45) {
+		t.Error("AreColPeers(0,45) should be true (same column)")
+	}
+
+	if AreRowPeers(0, 20) {
+		t.Error("AreRowPeers(0,20) should be false")
+	}
+	if AreColPeers(0, 20) {
+		t.Error("AreColPeers(0,20) should be false")
+	}
+	if !AreBoxPeers(0, 20) {
+		t.Error("AreBoxPeers(0,20) should be true (same box 0)")
+	}
+
+	if !AreRowPeers(7, 7) {
+		t.Error("AreRowPeers(7,7) should be true (same cell, same row)")
+	}
+}

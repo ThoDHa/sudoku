@@ -1,6 +1,7 @@
 package human
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -594,5 +595,331 @@ func TestUnitCellIndices_AllTypes(t *testing.T) {
 	boxCells := unitCellIndices(UnitBox, 4)
 	if len(boxCells) != 9 || boxCells[0] != 30 || boxCells[8] != 50 {
 		t.Errorf("UnitBox 4: expected [30,31,32,39,40,41,48,49,50], got %v", boxCells)
+	}
+}
+
+func TestUnitTypeName_AllTypes(t *testing.T) {
+	if got := unitTypeName(UnitRow); got != "row" {
+		t.Errorf("unitTypeName(UnitRow) = %q, want \"row\"", got)
+	}
+	if got := unitTypeName(UnitCol); got != "column" {
+		t.Errorf("unitTypeName(UnitCol) = %q, want \"column\"", got)
+	}
+	if got := unitTypeName(UnitBox); got != "box" {
+		t.Errorf("unitTypeName(UnitBox) = %q, want \"box\"", got)
+	}
+}
+
+func TestBuildHiddenSingleMove_ExactFields(t *testing.T) {
+	cell := core.CellRef{Row: 3, Col: 4}
+	tests := []struct {
+		name         string
+		unitType     UnitType
+		unitIndex    int
+		digit        int
+		wantUnitWord string
+	}{
+		{"row unit", UnitRow, 2, 7, "row"},
+		{"column unit", UnitCol, 5, 3, "column"},
+		{"box unit", UnitBox, 7, 9, "box"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			move := buildHiddenSingleMove(cell, tt.unitType, tt.unitIndex, tt.digit)
+			if move == nil {
+				t.Fatal("expected move, got nil")
+			}
+			if move.Technique != "hidden-single" {
+				t.Errorf("Technique = %q, want \"hidden-single\"", move.Technique)
+			}
+			if move.Action != constants.ActionAssign {
+				t.Errorf("Action = %q, want %q", move.Action, constants.ActionAssign)
+			}
+			if move.Digit != tt.digit {
+				t.Errorf("Digit = %d, want %d", move.Digit, tt.digit)
+			}
+			if len(move.Targets) != 1 || move.Targets[0] != cell {
+				t.Errorf("Targets = %+v, want [%+v]", move.Targets, cell)
+			}
+			wantExplanation := fmt.Sprintf("R%dC%d must be %d: only cell in %s %d that can contain %d",
+				cell.Row+1, cell.Col+1, tt.digit, tt.wantUnitWord, tt.unitIndex+1, tt.digit)
+			if move.Explanation != wantExplanation {
+				t.Errorf("Explanation = %q, want %q", move.Explanation, wantExplanation)
+			}
+			if len(move.Highlights.Primary) != 1 || move.Highlights.Primary[0] != cell {
+				t.Errorf("Primary = %+v, want [%+v]", move.Highlights.Primary, cell)
+			}
+			if len(move.Highlights.Secondary) != constants.GridSize {
+				t.Errorf("Secondary len = %d, want %d", len(move.Highlights.Secondary), constants.GridSize)
+			}
+			if move.Refs.Title != "Hidden Single" {
+				t.Errorf("Refs.Title = %q, want \"Hidden Single\"", move.Refs.Title)
+			}
+			if move.Refs.Slug != "hidden-single" {
+				t.Errorf("Refs.Slug = %q, want \"hidden-single\"", move.Refs.Slug)
+			}
+			if move.Refs.URL != "/technique/hidden-single" {
+				t.Errorf("Refs.URL = %q, want \"/technique/hidden-single\"", move.Refs.URL)
+			}
+		})
+	}
+}
+
+func TestCreateDuplicateViolationMove_ExactFields(t *testing.T) {
+	s := &Solver{}
+	tests := []struct {
+		name         string
+		unitType     UnitType
+		unitIndex    int
+		idx1, idx2   int
+		digit        int
+		wantTech     string
+		wantUnitWord string
+	}{
+		{"row", UnitRow, 0, 0, 4, 5, "constraint-violation-duplicate-row", "row"},
+		{"column", UnitCol, 1, 1, 19, 3, "constraint-violation-duplicate-col", "column"},
+		{"box", UnitBox, 0, 0, 10, 7, "constraint-violation-duplicate-box", "box"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			move := s.createDuplicateViolationMove(tt.digit, tt.idx1, tt.idx2, tt.unitType, tt.unitIndex)
+			if move == nil {
+				t.Fatal("expected move, got nil")
+			}
+			if move.Technique != tt.wantTech {
+				t.Errorf("Technique = %q, want %q", move.Technique, tt.wantTech)
+			}
+			if move.Action != "contradiction" {
+				t.Errorf("Action = %q, want \"contradiction\"", move.Action)
+			}
+			if move.Digit != tt.digit {
+				t.Errorf("Digit = %d, want %d", move.Digit, tt.digit)
+			}
+			r1, c1 := RowOf(tt.idx1), ColOf(tt.idx1)
+			r2, c2 := RowOf(tt.idx2), ColOf(tt.idx2)
+			wantTargets := []core.CellRef{{Row: r1, Col: c1}, {Row: r2, Col: c2}}
+			if len(move.Targets) != 2 {
+				t.Fatalf("Targets len = %d, want 2", len(move.Targets))
+			}
+			for i, wt := range wantTargets {
+				if move.Targets[i] != wt {
+					t.Errorf("Targets[%d] = %+v, want %+v", i, move.Targets[i], wt)
+				}
+			}
+			if len(move.Highlights.Primary) != 2 {
+				t.Errorf("Primary len = %d, want 2", len(move.Highlights.Primary))
+			} else {
+				for i, wt := range wantTargets {
+					if move.Highlights.Primary[i] != wt {
+						t.Errorf("Primary[%d] = %+v, want %+v", i, move.Highlights.Primary[i], wt)
+					}
+				}
+			}
+			if len(move.Highlights.Secondary) != constants.GridSize {
+				t.Errorf("Secondary len = %d, want %d", len(move.Highlights.Secondary), constants.GridSize)
+			}
+			if move.Refs.Title != "Constraint Violation" {
+				t.Errorf("Refs.Title = %q, want \"Constraint Violation\"", move.Refs.Title)
+			}
+			if move.Refs.Slug != "constraint-violation" {
+				t.Errorf("Refs.Slug = %q, want \"constraint-violation\"", move.Refs.Slug)
+			}
+			wantExplSub := fmt.Sprintf("%d appears twice in %s %d", tt.digit, tt.wantUnitWord, tt.unitIndex+1)
+			if !strings.Contains(move.Explanation, wantExplSub) {
+				t.Errorf("Explanation = %q, want substring %q", move.Explanation, wantExplSub)
+			}
+		})
+	}
+}
+
+func TestSolver_FillCandidateMove_RefsExact(t *testing.T) {
+	board := NewBoardWithCandidates(make([]int, 81), nil)
+	solver := NewSolver()
+	move := solver.FindNextMove(board)
+	if move == nil {
+		t.Fatal("expected fill-candidate move, got nil")
+	}
+	if move.Refs.Title != "Fill Candidate" {
+		t.Errorf("Refs.Title = %q, want \"Fill Candidate\"", move.Refs.Title)
+	}
+	if move.Refs.Slug != "fill-candidate" {
+		t.Errorf("Refs.Slug = %q, want \"fill-candidate\"", move.Refs.Slug)
+	}
+	if move.Refs.URL != "/technique/fill-candidate" {
+		t.Errorf("Refs.URL = %q, want \"/technique/fill-candidate\"", move.Refs.URL)
+	}
+}
+
+func TestBoard_SetCell_MarksPeersEliminated(t *testing.T) {
+	board := NewBoard(make([]int, 81))
+	board.SetCell(0, 5)
+	for _, peer := range Peers[0] {
+		if !board.Eliminated[peer].Has(5) {
+			t.Errorf("peer cell %d (R%dC%d): expected digit 5 in Eliminated after SetCell(0,5)",
+				peer, RowOf(peer), ColOf(peer))
+		}
+	}
+	if board.Eliminated[0] != 0 {
+		t.Errorf("cell 0: expected Eliminated cleared after fill, got %v", board.Eliminated[0].ToSlice())
+	}
+	if board.Eliminated[40].Has(5) {
+		t.Error("non-peer cell 40: should not have 5 in Eliminated")
+	}
+	if board.Candidates[0] != 0 {
+		t.Error("cell 0: candidates should be cleared after fill")
+	}
+}
+
+func TestBoard_ClearCell_RecalculatesCandidates(t *testing.T) {
+	givens := make([]int, 81)
+	givens[0] = 5
+	board := NewBoard(givens)
+	if board.Candidates[1].Has(5) {
+		t.Fatal("setup: cell 1 (peer of cell 0) should not have candidate 5")
+	}
+	board.ClearCell(0)
+	if board.Cells[0] != 0 {
+		t.Errorf("after ClearCell(0): Cells[0] = %d, want 0", board.Cells[0])
+	}
+	if board.Eliminated[0] != 0 {
+		t.Errorf("after ClearCell(0): Eliminated[0] should be cleared")
+	}
+	if !board.Candidates[0].Has(5) {
+		t.Error("after ClearCell(0): candidate 5 should be available again (no 5 in peers)")
+	}
+	board.ClearCell(-1)
+	board.ClearCell(constants.TotalCells + 5)
+}
+
+func TestBoard_Clone_IsDeepCopy(t *testing.T) {
+	givens := make([]int, 81)
+	givens[0] = 5
+	original := NewBoard(givens)
+	clone := original.Clone()
+	clone.Cells[0] = 9
+	clone.Candidates[1] = NewCandidates([]int{1, 2, 3})
+	clone.Eliminated[2] = NewCandidates([]int{7})
+	if original.Cells[0] != 5 {
+		t.Errorf("original Cells[0] = %d, want 5 (clone mutated parent)", original.Cells[0])
+	}
+	if original.Candidates[1].Equals(NewCandidates([]int{1, 2, 3})) {
+		t.Error("original Candidates[1] affected by clone mutation")
+	}
+	if original.Eliminated[2].Has(7) {
+		t.Error("original Eliminated[2] affected by clone mutation")
+	}
+	boardClone, ok := clone.CloneBoard().(*Board)
+	if !ok {
+		t.Fatal("CloneBoard() should return *Board")
+	}
+	if boardClone.Cells[0] != 9 {
+		t.Errorf("CloneBoard copy Cells[0] = %d, want 9 (clone was mutated)", boardClone.Cells[0])
+	}
+	boardClone.Cells[1] = 4
+	if clone.Cells[1] == 4 {
+		t.Error("CloneBoard must return an independent copy, not the receiver")
+	}
+}
+
+func TestBoard_IsValid_AndIsSolved(t *testing.T) {
+	empty := NewBoard(make([]int, 81))
+	if !empty.IsValid() {
+		t.Error("empty board should be valid")
+	}
+	if empty.IsSolved() {
+		t.Error("empty board should not be solved")
+	}
+
+	dupRow := make([]int, 81)
+	dupRow[0] = 5
+	dupRow[3] = 5
+	dupBoard := NewBoard(dupRow)
+	if dupBoard.IsValid() {
+		t.Error("board with duplicate in row should be invalid")
+	}
+	if dupBoard.IsSolved() {
+		t.Error("board with duplicate should not be solved")
+	}
+
+	solved := []int{
+		5, 3, 4, 6, 7, 8, 9, 1, 2,
+		6, 7, 2, 1, 9, 5, 3, 4, 8,
+		1, 9, 8, 3, 4, 2, 5, 6, 7,
+		8, 5, 9, 7, 6, 1, 4, 2, 3,
+		4, 2, 6, 8, 5, 3, 7, 9, 1,
+		7, 1, 3, 9, 2, 4, 8, 5, 6,
+		9, 6, 1, 5, 3, 7, 2, 8, 4,
+		2, 8, 7, 4, 1, 9, 6, 3, 5,
+		3, 4, 5, 2, 8, 6, 1, 7, 9,
+	}
+	solvedBoard := NewBoard(solved)
+	if !solvedBoard.IsValid() {
+		t.Error("fully solved board should be valid")
+	}
+	if !solvedBoard.IsSolved() {
+		t.Error("fully filled valid board should be solved")
+	}
+
+	bad := make([]int, 81)
+	copy(bad, solved)
+	bad[0] = 3
+	badBoard := NewBoard(bad)
+	if badBoard.IsValid() {
+		t.Error("fully filled board with duplicate should be invalid")
+	}
+	if badBoard.IsSolved() {
+		t.Error("fully filled invalid board should not be solved")
+	}
+}
+
+func TestBoard_markMissingAsEliminated_Exact(t *testing.T) {
+	cells := make([]int, 81)
+	cells[0] = 5
+	cands := make([][]int, 81)
+	cands[1] = []int{2}
+	board := NewBoardWithCandidates(cells, cands)
+	for _, d := range []int{1, 3, 4, 6, 7, 8, 9} {
+		if !board.Eliminated[1].Has(d) {
+			t.Errorf("cell 1: legal digit %d missing from persisted candidates should be eliminated", d)
+		}
+	}
+	if board.Eliminated[1].Has(2) {
+		t.Error("cell 1: digit 2 is in persisted candidates, should not be eliminated")
+	}
+	if board.Eliminated[1].Has(5) {
+		t.Error("cell 1: digit 5 is blocked by row peer (canPlace=false), should not be marked eliminated")
+	}
+}
+
+func TestBoard_Accessors_Exact(t *testing.T) {
+	givens := make([]int, 81)
+	givens[0] = 5
+	board := NewBoard(givens)
+
+	if board.GetCell(0) != 5 {
+		t.Errorf("GetCell(0) = %d, want 5", board.GetCell(0))
+	}
+	if board.GetCell(1) != 0 {
+		t.Errorf("GetCell(1) = %d, want 0", board.GetCell(1))
+	}
+	if board.GetCandidatesAt(1) != board.Candidates[1] {
+		t.Error("GetCandidatesAt(1) should mirror Candidates[1]")
+	}
+
+	cells := board.GetCells()
+	if len(cells) != constants.TotalCells || cells[0] != 5 {
+		t.Errorf("GetCells() incorrect: len=%d cells[0]=%d", len(cells), cells[0])
+	}
+	cells[0] = 99
+	if board.Cells[0] != 5 {
+		t.Error("GetCells() should return a defensive copy, mutating it must not affect the board")
+	}
+
+	asCands := board.GetCandidates()
+	if len(asCands) != constants.TotalCells {
+		t.Fatalf("GetCandidates() len = %d, want %d", len(asCands), constants.TotalCells)
+	}
+	if len(asCands[1]) == 0 {
+		t.Error("GetCandidates()[1] should list candidates for the empty peer cell")
 	}
 }
