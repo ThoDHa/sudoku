@@ -31,23 +31,6 @@ type Technique struct {
 	Detect func(b *Board) *core.Move
 }
 
-// TechniqueTierToDifficulty maps technique tiers to puzzle difficulties
-var TechniqueTierToDifficulty = map[string]core.Difficulty{
-	constants.TierSimple:  core.DifficultyEasy,
-	constants.TierMedium:  core.DifficultyMedium,
-	constants.TierHard:    core.DifficultyExtreme,
-	constants.TierExtreme: core.DifficultyImpossible,
-}
-
-// DifficultyAllowedTiers maps puzzle difficulty to allowed technique tiers
-var DifficultyAllowedTiers = map[core.Difficulty][]string{
-	core.DifficultyEasy:       {constants.TierSimple},
-	core.DifficultyMedium:     {constants.TierSimple, constants.TierMedium},
-	core.DifficultyHard:       {constants.TierSimple, constants.TierMedium, constants.TierHard},
-	core.DifficultyExtreme:    {constants.TierSimple, constants.TierMedium, constants.TierHard},
-	core.DifficultyImpossible: {constants.TierSimple, constants.TierMedium, constants.TierHard, constants.TierExtreme},
-}
-
 // ============================================================================
 // Solver Struct
 // ============================================================================
