@@ -3,9 +3,12 @@ package http
 import (
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
+	"time"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/internal/sudoku/human"
 )
 
 var hexPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -157,5 +160,322 @@ func TestMutation_ValidateDifficulty(t *testing.T) {
 	}
 	if validateDifficulty(core.Difficulty("bogus")) {
 		t.Error(`validateDifficulty("bogus") = true, want false`)
+	}
+}
+
+func TestBuildFixedCandidates_ClearsBadCellAndCopiesOthers(t *testing.T) {
+	req := make([][]int, 81)
+	req[0] = []int{1, 2, 3}
+	req[1] = nil
+	req[5] = []int{7}
+
+	fixed := buildFixedCandidates(req, 5)
+
+	if len(fixed) != 81 {
+		t.Fatalf("expected length 81, got %d", len(fixed))
+	}
+	if !reflect.DeepEqual(fixed[0], []int{1, 2, 3}) {
+		t.Errorf("cell 0: expected [1 2 3] copied, got %v", fixed[0])
+	}
+	if fixed[1] != nil {
+		t.Errorf("cell 1 was nil in req, expected nil, got %v", fixed[1])
+	}
+	if fixed[5] != nil {
+		t.Errorf("badCell 5 must be cleared to nil, got %v", fixed[5])
+	}
+	if fixed[80] != nil {
+		t.Errorf("cell 80 expected nil, got %v", fixed[80])
+	}
+	fixed[0][0] = 99
+	if req[0][0] != 1 {
+		t.Error("fixed[0] must be an independent copy, not an alias of req[0]")
+	}
+}
+
+func TestBuildFixedCandidates_HandlesShortRequestAndNilInput(t *testing.T) {
+	short := make([][]int, 10)
+	short[3] = []int{4}
+	fixed := buildFixedCandidates(short, 0)
+	if len(fixed) != 81 {
+		t.Fatalf("short req: expected length 81, got %d", len(fixed))
+	}
+	if fixed[0] != nil {
+		t.Errorf("badCell 0 must be nil, got %v", fixed[0])
+	}
+	if !reflect.DeepEqual(fixed[3], []int{4}) {
+		t.Errorf("cell 3: expected [4], got %v", fixed[3])
+	}
+	for i := 10; i < 81; i++ {
+		if fixed[i] != nil {
+			t.Errorf("cell %d beyond short req expected nil, got %v", i, fixed[i])
+		}
+	}
+
+	empty := buildFixedCandidates(nil, 40)
+	if len(empty) != 81 {
+		t.Fatalf("nil req: expected length 81, got %d", len(empty))
+	}
+	for i := 0; i < 81; i++ {
+		if empty[i] != nil {
+			t.Errorf("nil req: cell %d expected nil, got %v", i, empty[i])
+		}
+	}
+}
+
+func TestCountUserEntries_ExcludesGivensAndZeros(t *testing.T) {
+	board := make([]int, 81)
+	board[0] = 5
+	board[1] = 3
+	board[2] = 7
+	givens := make([]int, 81)
+	givens[0] = 5
+
+	if got := countUserEntries(board, givens); got != 2 {
+		t.Errorf("expected 2 user entries (cells 1 and 2), got %d", got)
+	}
+}
+
+func TestCountUserEntries_ZeroWhenAllCellsAreGivens(t *testing.T) {
+	board := make([]int, 81)
+	givens := make([]int, 81)
+	for i := 0; i < 81; i++ {
+		board[i] = (i % 9) + 1
+		givens[i] = board[i]
+	}
+	if got := countUserEntries(board, givens); got != 0 {
+		t.Errorf("expected 0 user entries when all cells are givens, got %d", got)
+	}
+}
+
+func TestCountUserEntries_ZeroOnEmptyBoard(t *testing.T) {
+	board := make([]int, 81)
+	givens := make([]int, 81)
+	if got := countUserEntries(board, givens); got != 0 {
+		t.Errorf("expected 0 user entries on empty board, got %d", got)
+	}
+}
+
+func TestFirstUserBlocker_ReturnsUserCellHoldingDigit(t *testing.T) {
+	cells := make([]int, 81)
+	cells[1] = 5
+	cells[2] = 7
+	board := human.NewBoard(cells)
+	original := make([]int, 81)
+	original[1] = 5
+	original[2] = 7
+	givens := make([]int, 81)
+
+	idx, ok := firstUserBlocker([]int{0, 1, 2}, board, 5, original, givens)
+	if !ok || idx != 1 {
+		t.Errorf("digit 5 at user cell 1: expected (1,true), got (%d,%v)", idx, ok)
+	}
+}
+
+func TestFirstUserBlocker_BreaksOnGivenCellHoldingDigit(t *testing.T) {
+	cells := make([]int, 81)
+	cells[0] = 5
+	cells[1] = 5
+	board := human.NewBoard(cells)
+	original := make([]int, 81)
+	original[0] = 5
+	original[1] = 5
+	givens := make([]int, 81)
+	givens[0] = 5
+
+	idx, ok := firstUserBlocker([]int{0, 1}, board, 5, original, givens)
+	if ok || idx != -1 {
+		t.Errorf("given cell 0 holds digit: expected (-1,false) break, got (%d,%v)", idx, ok)
+	}
+}
+
+func TestFirstUserBlocker_FalseWhenSolverPlacedCellHoldsDigit(t *testing.T) {
+	cells := make([]int, 81)
+	cells[0] = 4
+	board := human.NewBoard(cells)
+	original := make([]int, 81)
+	givens := make([]int, 81)
+
+	idx, ok := firstUserBlocker([]int{0}, board, 4, original, givens)
+	if ok || idx != -1 {
+		t.Errorf("solver-placed cell: expected (-1,false), got (%d,%v)", idx, ok)
+	}
+}
+
+func TestFirstUserBlocker_FalseWhenNoCellHoldsDigit(t *testing.T) {
+	cells := make([]int, 81)
+	cells[0] = 1
+	board := human.NewBoard(cells)
+	original := make([]int, 81)
+	original[0] = 1
+	givens := make([]int, 81)
+
+	idx, ok := firstUserBlocker([]int{0, 1, 2}, board, 9, original, givens)
+	if ok || idx != -1 {
+		t.Errorf("no cell holds digit 9: expected (-1,false), got (%d,%v)", idx, ok)
+	}
+}
+
+func TestFindBlockingUserCell_ReturnsMostBlockingCellWithItsDigit(t *testing.T) {
+	cells := make([]int, 81)
+	cells[1] = 3
+	cells[27] = 8
+	cells[36] = 9
+	board := human.NewBoard(cells)
+	original := make([]int, 81)
+	original[1] = 3
+	original[27] = 8
+	original[36] = 9
+	givens := make([]int, 81)
+
+	idx, digit := findBlockingUserCell(board, 0, original, givens)
+	if idx != 1 {
+		t.Errorf("expected blocker cell 1 (count 2, lowest max), got %d", idx)
+	}
+	if digit != 3 {
+		t.Errorf("expected digit 3 held at cell 1, got %d", digit)
+	}
+}
+
+func TestFindBlockingUserCell_ReturnsMinusOneWhenNoUserBlockers(t *testing.T) {
+	cells := make([]int, 81)
+	cells[1] = 3
+	board := human.NewBoard(cells)
+	original := make([]int, 81)
+	original[1] = 3
+	givens := make([]int, 81)
+	givens[1] = 3
+
+	idx, digit := findBlockingUserCell(board, 0, original, givens)
+	if idx != -1 || digit != 0 {
+		t.Errorf("expected (-1,0) when no user blockers, got (%d,%d)", idx, digit)
+	}
+}
+
+func TestFindErrorByCandidateRefill_ReturnsFirstBlockingUserEntry(t *testing.T) {
+	board := make([]int, 81)
+	for d := 1; d <= 8; d++ {
+		board[d] = d
+	}
+	board[9] = 9
+	givens := make([]int, 81)
+
+	badCell, badDigit, zeroCell := findErrorByCandidateRefill(board, givens)
+	if zeroCell != 0 {
+		t.Errorf("expected zero-candidate cell 0, got %d", zeroCell)
+	}
+	if badCell != 1 {
+		t.Errorf("expected blocker cell 1 (holds digit 1, first in scan), got %d", badCell)
+	}
+	if badDigit != 1 {
+		t.Errorf("expected digit 1, got %d", badDigit)
+	}
+}
+
+func TestCreateTokenVerifyTokenRoundTripPreservesSession(t *testing.T) {
+	now := time.Now().UTC().Round(time.Second)
+	session := SessionToken{
+		DeviceID:   "dev-1",
+		PuzzleID:   "puz-1",
+		Seed:       "seed-1",
+		Difficulty: "medium",
+		StartedAt:  now,
+		ExpiresAt:  now.Add(time.Hour),
+	}
+	tok, err := createToken("secret", session)
+	if err != nil {
+		t.Fatalf("createToken error: %v", err)
+	}
+	parts := strings.Split(tok, ".")
+	if len(parts) != 2 {
+		t.Fatalf("token must have exactly 2 dot-separated parts, got %d: %q", len(parts), tok)
+	}
+	if parts[0] == "" || parts[1] == "" {
+		t.Errorf("token parts must be non-empty, got %q", tok)
+	}
+
+	got, err := verifyToken("secret", tok)
+	if err != nil {
+		t.Fatalf("verifyToken error: %v", err)
+	}
+	if got.DeviceID != session.DeviceID || got.PuzzleID != session.PuzzleID ||
+		got.Seed != session.Seed || got.Difficulty != session.Difficulty {
+		t.Errorf("session fields not preserved: got %+v", got)
+	}
+	if !got.StartedAt.Equal(session.StartedAt) || !got.ExpiresAt.Equal(session.ExpiresAt) {
+		t.Errorf("timestamps not preserved: started got=%v want=%v expires got=%v want=%v",
+			got.StartedAt, session.StartedAt, got.ExpiresAt, session.ExpiresAt)
+	}
+}
+
+func TestVerifyTokenRejectsMalformedFormat(t *testing.T) {
+	for name, tok := range map[string]string{
+		"empty":       "",
+		"single-part": "abc",
+		"three-parts": "a.b.c",
+	} {
+		_, err := verifyToken("secret", tok)
+		if err == nil {
+			t.Errorf("%s: expected error for malformed token, got nil", name)
+			continue
+		}
+		if !strings.Contains(err.Error(), "invalid token format") {
+			t.Errorf("%s: expected 'invalid token format', got %q", name, err.Error())
+		}
+	}
+
+	// Two parts but an empty payload or sig field still has 2 dot-separated
+	// parts, so it clears the format check and fails at signature verification.
+	for name, tok := range map[string]string{
+		"empty-sig":     "abc.",
+		"empty-payload": ".def",
+	} {
+		_, err := verifyToken("secret", tok)
+		if err == nil {
+			t.Errorf("%s: expected error, got nil", name)
+			continue
+		}
+		if !strings.Contains(err.Error(), "invalid signature") {
+			t.Errorf("%s: expected 'invalid signature', got %q", name, err.Error())
+		}
+	}
+}
+
+func TestVerifyTokenRejectsBadSignature(t *testing.T) {
+	tok, _ := createToken("secret", SessionToken{
+		DeviceID: "d", ExpiresAt: time.Now().Add(time.Hour),
+	})
+	tampered := strings.Split(tok, ".")[0] + ".AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	_, err := verifyToken("secret", tampered)
+	if err == nil {
+		t.Fatal("expected signature error, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid signature") {
+		t.Errorf("expected 'invalid signature', got %q", err.Error())
+	}
+}
+
+func TestVerifyTokenRejectsWrongSecret(t *testing.T) {
+	tok, _ := createToken("secret-a", SessionToken{
+		DeviceID: "d", ExpiresAt: time.Now().Add(time.Hour),
+	})
+	if _, err := verifyToken("secret-b", tok); err == nil {
+		t.Error("expected error verifying token signed with a different secret")
+	}
+}
+
+func TestVerifyTokenRejectsExpiredToken(t *testing.T) {
+	past := time.Now().Add(-time.Hour)
+	session := SessionToken{
+		DeviceID:  "d",
+		ExpiresAt: past,
+		StartedAt: past.Add(-time.Hour),
+	}
+	tok, _ := createToken("secret", session)
+	_, err := verifyToken("secret", tok)
+	if err == nil {
+		t.Fatal("expected expired error, got nil")
+	}
+	if !strings.Contains(err.Error(), "token expired") {
+		t.Errorf("expected 'token expired', got %q", err.Error())
 	}
 }
