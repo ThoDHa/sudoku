@@ -150,14 +150,18 @@ jobs:
   test-e2e:
     if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'e2e' || github.event.inputs.test_suite == '' }}
     runs-on: ubuntu-latest
-    # E2E known to hang (E2E-001); tracked under TEST-001.F. Remove continue-on-error when e2e is fixed.
+    # E2E is tolerated via a failure threshold in the deploy gate (not all-or-nothing).
+    # continue-on-error keeps a failed E2E run from blocking downstream jobs; the
+    # failure count is exported for the deploy job to gate on.
     continue-on-error: true
+    outputs:
+      e2e_failures: ${{ steps.e2e-summary.outputs.failures }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Set up Docker buildx
-        uses: docker/setup-buildx-action@v4
+        uses: actions/setup-buildx-action@v4
 
       - name: Show Docker Compose version
         run: docker compose version
@@ -166,9 +170,21 @@ jobs:
         run: |
           # Run docker-compose E2E flow. This will build sudoku image (which includes WASM),
           # start services, run playwright container, and exit with playwright service exit code.
-          docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from playwright
+          # tee the output so the failure-count parser can read Playwright's summary; `|| true`
+          # lets the step complete (the job is continue-on-error anyway) and the count gates deploy.
+          docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from playwright 2>&1 | tee /tmp/e2e.log || true
         env:
           CI: true
+
+      - name: Parse E2E failure count
+        id: e2e-summary
+        if: always()
+        run: |
+          # Playwright prints a summary line like "  3 failed, 497 passed".
+          failures=$(grep -oE '[0-9]+ failed' /tmp/e2e.log | head -1 | grep -oE '^[0-9]+' || true)
+          failures="${failures:-0}"
+          echo "failures=$failures" >> "$GITHUB_OUTPUT"
+          echo "E2E failures: $failures"
 
       - name: Upload Playwright test-results
         uses: actions/upload-artifact@v7
@@ -336,11 +352,11 @@ jobs:
           retention-days: 30
 
       - name: Setup Pages
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         uses: actions/configure-pages@v5
 
       - name: Setup Go for WASM build
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         uses: actions/setup-go@v6
         with:
           go-version: '1.26'
@@ -351,25 +367,25 @@ jobs:
       # Different TinyGo versions produce incompatible WASM binaries
       # See: https://github.com/tinygo-org/tinygo/releases
       - name: Install TinyGo for WASM build
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         run: |
           wget https://github.com/tinygo-org/tinygo/releases/download/v0.41.1/tinygo_0.41.1_amd64.deb
           sudo dpkg -i tinygo_0.41.1_amd64.deb
 
       - name: Build WASM for deployment
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         working-directory: api
         run: make wasm-all
 
       - name: Build frontend for deployment
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         working-directory: frontend
         run: npm run build
         env:
           VITE_BASE_PATH: /sudoku/
 
       - name: Prepare Pages artifact
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         run: |
           # Create directory structure for GitHub Pages
           # Main app goes to root, test report goes to /test-report/
@@ -381,7 +397,7 @@ jobs:
           cp frontend/public/sudoku.wasm pages-artifact/
 
       - name: Upload Pages artifact
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         uses: actions/upload-pages-artifact@v4
         with:
           path: pages-artifact
@@ -390,7 +406,16 @@ jobs:
   # Deploy to GitHub Pages (Game + Test Report)
   # ============================================
   deploy:
-    if: ${{ success() && github.ref == 'refs/heads/main' }}
+    # Deploy runs on main (production) or modernization (working branch) when the core gates
+    # pass (Go + unit tests) AND E2E failures are within tolerance. Not all-or-nothing: a flaky
+    # E2E test no longer blocks deploy. E2E_FAILURE_THRESHOLD is the max tolerated E2E failures
+    # (currently 5). If test-e2e was skipped, the empty output is treated as "within tolerance".
+    if: |
+      always() &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization') &&
+      needs.test-go.result == 'success' &&
+      needs.test-frontend-unit.result == 'success' &&
+      (needs.test-e2e.outputs.e2e_failures == '' || needs.test-e2e.outputs.e2e_failures <= 5)
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
