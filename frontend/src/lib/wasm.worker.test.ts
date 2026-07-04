@@ -301,3 +301,187 @@ describe('wasm.worker init polling timeout', () => {
     expect(sink.close).not.toHaveBeenCalled()
   })
 })
+
+describe('wasm.worker mutation kills', () => {
+  let sink: WorkerGlobalMock
+  let runtime: ReturnType<typeof installWasmRuntimeMocks>
+
+  beforeEach(() => {
+    posted = []
+    sink = installWorkerGlobals()
+    runtime = installWasmRuntimeMocks()
+  })
+
+  afterEach(() => {
+    clearWorkerGlobals()
+  })
+
+  async function load() {
+    await import('./wasm.worker')
+  }
+
+  async function waitForReady(id: string) {
+    await vi.waitFor(() => {
+      expect(posted).toContainEqual({ type: 'ready', id })
+    })
+  }
+
+  const streamingMock = () =>
+    WebAssembly.instantiateStreaming as unknown as ReturnType<typeof vi.fn>
+
+  it('does not re-instantiate WASM on a second init when wasmApi is already set (L129)', async () => {
+    await load()
+    post({ type: 'init', id: 'i1' })
+    await waitForReady('i1')
+
+    posted.length = 0
+    post({ type: 'init', id: 'i2' })
+    await waitForReady('i2')
+
+    expect(streamingMock()).toHaveBeenCalledTimes(1)
+  })
+
+  it('loads wasm_exec.js via importScripts with the exact path (L148)', async () => {
+    await load()
+    post({ type: 'init', id: 'i3' })
+    await waitForReady('i3')
+
+    expect(runtime.importScripts).toHaveBeenCalledWith('/wasm_exec.js')
+  })
+
+  it('fetches the WASM binary from the exact path (L174)', async () => {
+    await load()
+    post({ type: 'init', id: 'i4' })
+    await waitForReady('i4')
+
+    expect(runtime.fetchMock).toHaveBeenCalledWith('/sudoku.wasm')
+  })
+
+  it('posts an error when the WASM response is not ok (L175)', async () => {
+    runtime.fetchMock.mockResolvedValue({ ok: false, status: 500 } as Response)
+    await load()
+    posted.length = 0
+    post({ type: 'init', id: 'i5' })
+
+    await vi.waitFor(() => {
+      expect(posted).toContainEqual({
+        type: 'error',
+        id: 'i5',
+        success: false,
+        error: 'Failed to fetch WASM: 500',
+      })
+    })
+  })
+
+  it('falls back to buffer instantiation when streaming is unavailable (L181)', async () => {
+    Object.defineProperty(WebAssembly, 'instantiateStreaming', {
+      value: undefined,
+      configurable: true,
+    })
+    const instantiateMock = vi.fn().mockResolvedValue({ instance: {} })
+    Object.defineProperty(WebAssembly, 'instantiate', {
+      value: instantiateMock,
+      configurable: true,
+    })
+    runtime.fetchMock.mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(8),
+    } as Response)
+
+    await load()
+    post({ type: 'init', id: 'i6' })
+    await waitForReady('i6')
+
+    expect(instantiateMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('fetches wasm_exec.js fallback when importScripts throws (L156)', async () => {
+    runtime.importScripts.mockImplementation(() => {
+      throw new Error('importScripts denied')
+    })
+    runtime.fetchMock.mockImplementation(
+      async () => ({ ok: true, text: async () => '' }) as Response,
+    )
+
+    await load()
+    posted.length = 0
+    post({ type: 'init', id: 'i7' })
+
+    await vi.waitFor(() => {
+      expect(runtime.fetchMock).toHaveBeenCalledWith('/wasm_exec.js')
+    })
+  })
+
+  it('auto-initializes on findNextMove when wasmApi is null (L252)', async () => {
+    await load()
+    posted.length = 0
+    post({
+      type: 'findNextMove',
+      id: 'fnm-1',
+      payload: { cells: [0], candidates: [[]], givens: [0] },
+    })
+
+    await vi.waitFor(() => {
+      expect(posted.find((m) => m.type === 'result' && m.id === 'fnm-1')).toBeTruthy()
+    })
+    expect(posted.find((m) => m.type === 'error')).toBeUndefined()
+  })
+
+  it('auto-initializes on solveAll when wasmApi is null (L281)', async () => {
+    await load()
+    posted.length = 0
+    post({
+      type: 'solveAll',
+      id: 'sa-1',
+      payload: { cells: [0], candidates: [[]], givens: [0] },
+    })
+
+    await vi.waitFor(() => {
+      expect(posted.find((m) => m.type === 'result' && m.id === 'sa-1')).toBeTruthy()
+    })
+    expect(posted.find((m) => m.type === 'error')).toBeUndefined()
+  })
+})
+
+describe('wasm.worker polling timeout boundary', () => {
+  let sink: WorkerGlobalMock
+
+  beforeEach(() => {
+    posted = []
+    vi.useFakeTimers()
+    sink = installWorkerGlobals()
+    installWasmRuntimeMocks()
+
+    class SilentGoMock {
+      importObject = {}
+      run() {}
+    }
+    Object.defineProperty(globalThis, 'Go', { value: SilentGoMock, configurable: true })
+    Object.defineProperty(globalThis, 'SudokuWasm', { value: undefined, configurable: true })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    clearWorkerGlobals()
+  })
+
+  it('rejects exactly at maxAttempts, not before and not after (L213)', async () => {
+    await import('./wasm.worker')
+    posted.length = 0
+
+    post({ type: 'init', id: 'tb-1' })
+
+    // 49 ticks (4900ms): no timeout yet under the original >= comparison
+    await vi.advanceTimersByTimeAsync(4900)
+    expect(posted.find((m) => m.type === 'error')).toBeUndefined()
+
+    // tick 50 (5000ms total): original rejects; the > mutant would still be waiting
+    await vi.advanceTimersByTimeAsync(100)
+    expect(posted).toContainEqual({
+      type: 'error',
+      id: 'tb-1',
+      success: false,
+      error: 'WASM initialization timeout',
+    })
+  })
+})

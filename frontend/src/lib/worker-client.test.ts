@@ -535,8 +535,7 @@ describe('worker-client advanced scenarios', () => {
     }
 
     const emptyGrid = (): number[] => new Array(81).fill(0)
-    const fullCandidates = (): number[][] =>
-      new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    const fullCandidates = (): number[][] => new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
 
     // Wire up an intercepting worker and initialize the client, ready to call findNextMove.
     const setupRejectingFindNextMove = async (
@@ -895,6 +894,211 @@ describe('worker-client advanced scenarios', () => {
       const { initializeWorker } = await import('./worker-client')
 
       await expect(initializeWorker()).rejects.toThrow('Worker error: Worker load failed')
+    })
+  })
+
+  describe('mutation-kill: request id and payload forwarding', () => {
+    const installRecordingWorker = () => {
+      const posted: { type: string; id: string; payload?: unknown }[] = []
+      globalThis.Worker = class extends MockWorker {
+        postMessage(data: { type: string; id: string; payload?: unknown }): void {
+          posted.push(data)
+          super.postMessage(data)
+        }
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          createdWorkers.push(this)
+        }
+      } as unknown as typeof Worker
+      return () => posted
+    }
+
+    it('generates incrementing request ids starting at req-1 (L134)', async () => {
+      const getPosted = installRecordingWorker()
+      const { initializeWorker, terminateWorker } = await import('./worker-client')
+
+      await initializeWorker()
+
+      const posted = getPosted()
+      expect(posted.length).toBeGreaterThan(0)
+      expect(posted[0].id).toMatch(/^req-1-\d+$/)
+
+      terminateWorker()
+    })
+
+    it('forwards the exact findNextMove payload (L322)', async () => {
+      const getPosted = installRecordingWorker()
+      const { findNextMove, terminateWorker } = await import('./worker-client')
+
+      const cells = [1, 2, 3]
+      const candidates = [[4, 5]]
+      const givens = [6, 7, 8]
+      await findNextMove(cells, candidates, givens)
+
+      const posted = getPosted()
+      const req = posted.find((p) => p.type === 'findNextMove')
+      expect(req?.payload).toEqual({ cells, candidates, givens })
+
+      terminateWorker()
+    })
+
+    it('forwards the exact solveAll payload (L339)', async () => {
+      const getPosted = installRecordingWorker()
+      const { solveAll, terminateWorker } = await import('./worker-client')
+
+      const cells = [9]
+      const candidates = [[7]]
+      const givens = [8]
+      await solveAll(cells, candidates, givens)
+
+      const posted = getPosted()
+      const req = posted.find((p) => p.type === 'solveAll')
+      expect(req?.payload).toEqual({ cells, candidates, givens })
+
+      terminateWorker()
+    })
+  })
+
+  describe('mutation-kill: init-failure cleanup', () => {
+    it('terminates the created worker when init fails (L242)', async () => {
+      vi.resetModules()
+      globalThis.Worker = class extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          this.setInitShouldFail(true)
+          createdWorkers.push(this)
+        }
+      } as unknown as typeof Worker
+
+      const { initializeWorker } = await import('./worker-client')
+
+      await expect(initializeWorker()).rejects.toThrow('Init failed')
+
+      expect(createdWorkers[0]).toBeDefined()
+      // terminate() nulls the onmessage/onerror handlers; under the mutant they stay set
+      expect(createdWorkers[0].onmessage).toBeNull()
+    })
+  })
+
+  describe('mutation-kill: message-type filtering', () => {
+    const emptyGrid = (): number[] => new Array(81).fill(0)
+    const fullCandidates = (): number[][] => new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+    it('ignores non-response types carrying a pending request id (L199)', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        const posted: { type: string; id: string; payload?: unknown }[] = []
+        globalThis.Worker = class extends MockWorker {
+          postMessage(data: { type: string; id: string; payload?: unknown }): void {
+            posted.push(data)
+          }
+          constructor(url: URL | string, options?: WorkerOptions) {
+            super(url, options)
+            this.setAutoRespond(false)
+            createdWorkers.push(this)
+          }
+        } as unknown as typeof Worker
+
+        const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
+
+        const initPromise = initializeWorker()
+        await vi.advanceTimersByTimeAsync(20)
+
+        // Resolve init with the exact id the client generated so isInitialized becomes true
+        const initReq = posted.find((p) => p.type === 'init')
+        expect(initReq).toBeDefined()
+        createdWorkers[0].simulateMessage({
+          type: 'result',
+          id: initReq!.id,
+          success: true,
+          data: null,
+        })
+        await vi.advanceTimersByTimeAsync(10)
+        await initPromise
+
+        const findPromise = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
+        let state: 'pending' | 'resolved' | 'rejected' = 'pending'
+        findPromise.then(
+          () => {
+            state = 'resolved'
+          },
+          () => {
+            state = 'rejected'
+          },
+        )
+        await vi.advanceTimersByTimeAsync(10)
+
+        const findReq = posted.find((p) => p.type === 'findNextMove')
+        expect(findReq).toBeDefined()
+
+        // 'loaded' is a non-response type: must be ignored so the request stays pending
+        createdWorkers[0].simulateMessage({ type: 'loaded', id: findReq!.id })
+        await vi.advanceTimersByTimeAsync(10)
+
+        expect(state).toBe('pending')
+
+        terminateWorker()
+        await findPromise.catch(() => {})
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
+
+  describe('mutation-kill: error-type rejection regardless of success flag', () => {
+    const emptyGrid = (): number[] => new Array(81).fill(0)
+    const fullCandidates = (): number[][] => new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+    it('rejects on error type even when success is true (L211)', async () => {
+      vi.resetModules()
+      globalThis.Worker = class extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          const originalPostMessage = this.postMessage.bind(this)
+          this.postMessage = (data: { type: string; id: string; payload?: unknown }) => {
+            if (data.type === 'findNextMove') {
+              setTimeout(() => {
+                this.simulateMessage({
+                  type: 'error',
+                  id: data.id,
+                  success: true,
+                  error: 'Boom',
+                })
+              }, 5)
+              return
+            }
+            originalPostMessage(data)
+          }
+          createdWorkers.push(this)
+        }
+      } as unknown as typeof Worker
+
+      const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
+      await initializeWorker()
+
+      await expect(findNextMove(emptyGrid(), fullCandidates(), emptyGrid())).rejects.toThrow('Boom')
+
+      terminateWorker()
+    })
+  })
+
+  describe('mutation-kill: idle-timer cleanup on terminate', () => {
+    it('clears the idle timer when terminating (L82, L100, L101)', async () => {
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
+      try {
+        const { initializeWorker, terminateWorker } = await import('./worker-client')
+
+        await initializeWorker()
+
+        const before = clearTimeoutSpy.mock.calls.length
+        terminateWorker()
+        const after = clearTimeoutSpy.mock.calls.length
+
+        expect(after).toBeGreaterThan(before)
+      } finally {
+        clearTimeoutSpy.mockRestore()
+      }
     })
   })
 })

@@ -9,10 +9,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Mock logger before importing the module
 let loggerMock = vi.fn()
+let errorMock = vi.fn()
 vi.mock('./logger', () => ({
   logger: {
     debug: loggerMock,
-    error: vi.fn(),
+    error: errorMock,
     warn: vi.fn(),
     info: vi.fn(),
   },
@@ -75,7 +76,6 @@ function createMockGoClass() {
 }
 
 describe('wasm module', () => {
-
   // Drive loadWasm through its async ready handshake (shared by every load test).
   const runLoadCycle = async (loadWasm: () => Promise<void>) => {
     const loadPromise = loadWasm()
@@ -94,6 +94,7 @@ describe('wasm module', () => {
     vi.clearAllMocks()
     vi.resetModules()
     loggerMock.mockClear()
+    errorMock.mockClear()
 
     mockWasmApi = createMockWasmApi()
     MockGoClass = createMockGoClass()
@@ -1113,6 +1114,312 @@ describe('wasm module', () => {
       const { loadWasm } = await import('./wasm')
 
       await expect(loadWasm()).rejects.toThrow('Failed to load wasm_exec.js')
+    })
+  })
+
+  // ==================== Mutation-Kill Assertions ====================
+
+  describe('mutation-kill: loadWasm log sequence (exact strings)', () => {
+    it('emits the expected debug messages and fetch URL during a streaming load (L253,L255,L273,L279,L280,L286,L293,L301,L305,L320)', async () => {
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      const { loadWasm } = await import('./wasm')
+
+      await runLoadCycle(loadWasm)
+
+      expect(loggerMock).toHaveBeenCalledWith(
+        '[WASM] Loading wasm_exec.js from:',
+        expect.stringMatching(/\/wasm_exec\.js$/),
+      )
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] wasm_exec.js loaded')
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] Go instance created')
+      expect(loggerMock).toHaveBeenCalledWith(
+        '[WASM] Fetching WASM from:',
+        expect.stringMatching(/\/sudoku\.wasm$/),
+      )
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] WASM fetched, instantiating...')
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] Using streaming instantiation')
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] WASM instantiated, running Go...')
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] Starting Go program...')
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] Waiting for wasmReady event...')
+
+      // Fetch must be called with the WASM URL and an options object carrying the abort signal
+      const fetchCalls = vi.mocked(globalThis.fetch).mock.calls
+      const wasmFetch = fetchCalls.find(
+        (c) => typeof c[0] === 'string' && /sudoku\.wasm$/.test(c[0]),
+      )
+      expect(wasmFetch).toBeDefined()
+      expect(wasmFetch?.[1]).toEqual(expect.objectContaining({ signal: expect.any(AbortSignal) }))
+    })
+
+    it('emits the buffer-instantiation log when streaming is unavailable (L297)', async () => {
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+      // @ts-expect-error - Mocking
+      globalThis.WebAssembly.instantiateStreaming = undefined
+
+      const { loadWasm } = await import('./wasm')
+
+      await runLoadCycle(loadWasm)
+
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] Falling back to buffer instantiation')
+    })
+  })
+
+  describe('mutation-kill: loadWasmExec script element', () => {
+    it('sets the script src to wasm_exec.js and async=true, logs the load (L211,L213,L214,L216)', async () => {
+      // @ts-expect-error - Removing Go so the script-load path runs
+      globalThis.window.Go = undefined
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      const createdScripts: { src: string; async: boolean }[] = []
+      // @ts-expect-error - Mocking
+      globalThis.document.createElement = vi.fn(() => {
+        const s = { src: '', async: false, onload: null as null | (() => void), onerror: null }
+        createdScripts.push(s)
+        return s
+      })
+      // @ts-expect-error - Mocking
+      globalThis.document.head.appendChild = vi.fn((script: { onload: () => void }) => {
+        setTimeout(() => {
+          // @ts-expect-error - Mocking
+          globalThis.window.Go = MockGoClass
+          script.onload()
+        }, 0)
+      })
+
+      const { loadWasm } = await import('./wasm')
+
+      await runLoadCycle(loadWasm)
+
+      expect(createdScripts.length).toBe(1)
+      expect(createdScripts[0].src).toBe('/wasm_exec.js')
+      expect(createdScripts[0].async).toBe(true)
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] Loading wasm_exec.js from:', '/wasm_exec.js')
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] wasm_exec.js loaded successfully')
+    })
+
+    it('logs an error when the script fails to load (L220)', async () => {
+      // @ts-expect-error - Removing Go
+      globalThis.window.Go = undefined
+      // @ts-expect-error - Mocking
+      globalThis.document.head.appendChild = vi.fn((script: { onerror: () => void }) => {
+        setTimeout(() => script.onerror(), 0)
+      })
+
+      const { loadWasm } = await import('./wasm')
+
+      await expect(loadWasm()).rejects.toThrow('Failed to load wasm_exec.js')
+
+      expect(errorMock).toHaveBeenCalledWith(
+        '[WASM] Failed to load wasm_exec.js from:',
+        '/wasm_exec.js',
+      )
+    })
+  })
+
+  describe('mutation-kill: Go program error attachment', () => {
+    it('logs an async Go program error via the attached catch (L309)', async () => {
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      MockGoClass = class extends MockGoClass {
+        run = vi.fn().mockReturnValue(Promise.reject(new Error('go boom')))
+      }
+      // @ts-expect-error - Mocking
+      globalThis.window.Go = MockGoClass
+
+      const { loadWasm } = await import('./wasm')
+
+      await runLoadCycle(loadWasm)
+
+      expect(errorMock).toHaveBeenCalledWith('[WASM] Go program error:', expect.any(Error))
+    })
+  })
+
+  describe('mutation-kill: wasmReady timeout logs', () => {
+    it('logs the timeout error and SudokuWasm availability (L331,L332,L336)', async () => {
+      vi.useFakeTimers()
+      try {
+        const { loadWasm } = await import('./wasm')
+
+        const loadPromise = loadWasm()
+        const caught = loadPromise.catch(() => {})
+
+        await vi.advanceTimersByTimeAsync(5100)
+        await caught
+
+        expect(errorMock).toHaveBeenCalledWith(
+          '[WASM] Timeout waiting for wasmReady event after 5 seconds',
+        )
+        expect(loggerMock).toHaveBeenCalledWith('[WASM] window.SudokuWasm available:', false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
+
+  describe('mutation-kill: abort path log', () => {
+    it('logs a debug message when the fetch is aborted (L365)', async () => {
+      const abortError = new Error('Aborted')
+      abortError.name = 'AbortError'
+      vi.mocked(globalThis.fetch).mockRejectedValue(abortError)
+
+      const { loadWasm } = await import('./wasm')
+
+      await expect(loadWasm()).rejects.toThrow('Aborted')
+
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] WASM fetch was aborted')
+    })
+  })
+
+  describe('mutation-kill: unloadWasm cleanup side-effects', () => {
+    it('calls goInstance.exit(0) during unload (L133,L135,L136)', async () => {
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      const exitSpy = vi.fn()
+      MockGoClass = class {
+        importObject = { go: {} }
+        exit = exitSpy
+        run = vi.fn().mockResolvedValue(undefined)
+      }
+      // @ts-expect-error - Mocking
+      globalThis.window.Go = MockGoClass
+
+      const { loadWasm, unloadWasm } = await import('./wasm')
+
+      await runLoadCycle(loadWasm)
+      unloadWasm()
+
+      expect(exitSpy).toHaveBeenCalledWith(0)
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] Unloading WASM module...')
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] WASM module unloaded, memory freed')
+    })
+
+    it('logs when Go.exit throws during unload (L138,L139)', async () => {
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      MockGoClass = class {
+        importObject = { go: {} }
+        exit = vi.fn(() => {
+          throw new Error('exit failed')
+        })
+        run = vi.fn().mockResolvedValue(undefined)
+      }
+      // @ts-expect-error - Mocking
+      globalThis.window.Go = MockGoClass
+
+      const { loadWasm, unloadWasm } = await import('./wasm')
+
+      await runLoadCycle(loadWasm)
+      expect(() => unloadWasm()).not.toThrow()
+
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] Error during Go exit:', expect.any(Error))
+    })
+
+    it('does not call exit when the Go instance has no exit method (L135)', async () => {
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      MockGoClass = class {
+        importObject = { go: {} }
+        run = vi.fn().mockResolvedValue(undefined)
+      }
+      // @ts-expect-error - Mocking
+      globalThis.window.Go = MockGoClass
+
+      const { loadWasm, unloadWasm } = await import('./wasm')
+
+      await runLoadCycle(loadWasm)
+      // No exit method present: unload must not throw and must not log an exit error
+      expect(() => unloadWasm()).not.toThrow()
+      expect(loggerMock).not.toHaveBeenCalledWith('[WASM] Error during Go exit:', expect.any(Error))
+    })
+
+    it('aborts an in-progress fetch via the abort controller (L122)', async () => {
+      const abortSpy = vi.spyOn(AbortController.prototype, 'abort')
+      try {
+        const { loadWasm, unloadWasm } = await import('./wasm')
+
+        vi.mocked(globalThis.fetch).mockImplementation(() => new Promise(() => {}))
+        loadWasm().catch(() => {})
+
+        await vi.waitFor(() => expect(abortSpy).not.toHaveBeenCalled())
+        unloadWasm()
+
+        expect(abortSpy).toHaveBeenCalled()
+      } finally {
+        abortSpy.mockRestore()
+      }
+    })
+
+    it('removes the wasm_exec.js script element from the DOM (L146)', async () => {
+      // @ts-expect-error - Removing Go so the script-load path runs and stores wasmScriptElement
+      globalThis.window.Go = undefined
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      const removeChild = vi.fn()
+      const mockScript = {
+        src: '',
+        async: false,
+        onload: null as null | (() => void),
+        onerror: null,
+        parentNode: { removeChild },
+      }
+      // @ts-expect-error - Mocking
+      globalThis.document.createElement = vi.fn(() => mockScript)
+      // @ts-expect-error - Mocking
+      globalThis.document.head.appendChild = vi.fn((script: { onload: () => void }) => {
+        setTimeout(() => {
+          // @ts-expect-error - Mocking
+          globalThis.window.Go = MockGoClass
+          script.onload()
+        }, 0)
+      })
+
+      const { loadWasm, unloadWasm } = await import('./wasm')
+
+      await runLoadCycle(loadWasm)
+      unloadWasm()
+
+      expect(removeChild).toHaveBeenCalledWith(mockScript)
+    })
+
+    it('deletes the global Go reference (L157)', async () => {
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      const { loadWasm, unloadWasm } = await import('./wasm')
+
+      await runLoadCycle(loadWasm)
+      unloadWasm()
+
+      // @ts-expect-error - Checking deletion
+      expect(globalThis.window.Go).toBeUndefined()
+    })
+  })
+
+  describe('mutation-kill: wasmReady event-driven log', () => {
+    it('logs when the wasmReady event is received (L324)', async () => {
+      // Do NOT pre-set SudokuWasm; let the wasmReady handler fire instead of the immediate check
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = undefined
+
+      const { loadWasm } = await import('./wasm')
+
+      const loadPromise = loadWasm()
+      await vi.waitFor(() => expect(wasmReadyHandler).not.toBeNull())
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+      wasmReadyHandler!()
+      await loadPromise
+
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] wasmReady event received successfully!')
     })
   })
 })
