@@ -923,3 +923,361 @@ func TestBoard_Accessors_Exact(t *testing.T) {
 		t.Error("GetCandidates()[1] should list candidates for the empty peer cell")
 	}
 }
+
+func TestSolver_FillCandidate_ExactExplanation(t *testing.T) {
+	board := NewBoardWithCandidates(make([]int, 81), nil)
+	solver := NewSolver()
+	move := solver.FindNextMove(board)
+	if move == nil {
+		t.Fatal("expected fill-candidate move on empty board, got nil")
+	}
+	wantExplanation := "Added 1 as a candidate to R1C1"
+	if move.Explanation != wantExplanation {
+		t.Errorf("Explanation = %q, want %q (row+1/col+1 arithmetic in format string)", move.Explanation, wantExplanation)
+	}
+}
+
+func TestSolver_ConstraintViolation_DuplicateDigitOne(t *testing.T) {
+	givens := make([]int, 81)
+	givens[0] = 1
+	givens[1] = 1
+	board := NewBoard(givens)
+	solver := NewSolver()
+	move := solver.FindNextMove(board)
+	if move == nil {
+		t.Fatal("expected constraint-violation move for duplicate 1s in row 0, got nil")
+	}
+	if move.Action != "contradiction" {
+		t.Errorf("Action = %q, want \"contradiction\"", move.Action)
+	}
+	if !strings.Contains(move.Technique, "constraint-violation") {
+		t.Errorf("Technique = %q, want substring \"constraint-violation\" (digit==0 guard mutant skips digit 1)", move.Technique)
+	}
+	if move.Digit != 1 {
+		t.Errorf("Digit = %d, want 1", move.Digit)
+	}
+}
+
+func TestSolver_InvalidCandidate_ConflictCellsCoverAllUnits(t *testing.T) {
+	for _, digit := range []int{1, 9} {
+		t.Run(fmt.Sprintf("digit-%d", digit), func(t *testing.T) {
+			var cells [81]int
+			cells[8] = digit  // R0C8: row peer of R0C0, box 2
+			cells[72] = digit // R8C0: column peer of R0C0, box 6
+			cells[20] = digit // R2C2: box peer of R0C0, outside row 0 and col 0
+			candidateMap := map[int][]int{0: {digit}}
+			board := makeTestBoard(cells, candidateMap)
+			solver := NewSolver()
+
+			move := solver.FindNextMove(board)
+			if move == nil {
+				t.Fatal("expected invalid-candidate move at cell 0")
+			}
+			if move.Technique != "constraint-violation-invalid-candidate" {
+				t.Fatalf("Technique = %q, want constraint-violation-invalid-candidate", move.Technique)
+			}
+			if move.Digit != digit {
+				t.Errorf("Digit = %d, want %d", move.Digit, digit)
+			}
+			wantSecondary := []core.CellRef{
+				{Row: 0, Col: 8},
+				{Row: 8, Col: 0},
+				{Row: 2, Col: 2},
+			}
+			if len(move.Highlights.Secondary) != len(wantSecondary) {
+				t.Fatalf("Secondary len = %d, want %d (%+v)", len(move.Highlights.Secondary), len(wantSecondary), move.Highlights.Secondary)
+			}
+			for i, ws := range wantSecondary {
+				if move.Highlights.Secondary[i] != ws {
+					t.Errorf("Secondary[%d] = %+v, want %+v", i, move.Highlights.Secondary[i], ws)
+				}
+			}
+		})
+	}
+}
+
+func TestSolver_ApplyMove_CandidateAction_ExactCell(t *testing.T) {
+	solver := NewSolver()
+	board := NewBoardWithCandidates(make([]int, 81), nil)
+	target := core.CellRef{Row: 3, Col: 4}
+	solver.ApplyMove(board, &core.Move{
+		Action:  "candidate",
+		Digit:   6,
+		Targets: []core.CellRef{target},
+	})
+	idx := target.Row*constants.GridSize + target.Col
+	if !board.Candidates[idx].Has(6) {
+		t.Errorf("candidate action should add digit 6 at cell %d (R3C4), got Candidates[%d]=%v", idx, idx, board.Candidates[idx].ToSlice())
+	}
+	wrongSub := target.Row*constants.GridSize - target.Col
+	if wrongSub != idx && board.Candidates[wrongSub].Has(6) {
+		t.Errorf("candidate leaked into wrong cell %d (row*GridSize-col arithmetic mutant)", wrongSub)
+	}
+	wrongDiv := target.Row/constants.GridSize + target.Col
+	if wrongDiv != idx && board.Candidates[wrongDiv].Has(6) {
+		t.Errorf("candidate leaked into wrong cell %d (row/GridSize+col arithmetic mutant)", wrongDiv)
+	}
+}
+
+func TestSolver_SolveWithSteps_StepIndexSequence(t *testing.T) {
+	solved := []int{
+		5, 3, 4, 6, 7, 8, 9, 1, 2,
+		6, 7, 2, 1, 9, 5, 3, 4, 8,
+		1, 9, 8, 3, 4, 2, 5, 6, 7,
+		8, 5, 9, 7, 6, 1, 4, 2, 3,
+		4, 2, 6, 8, 5, 3, 7, 9, 1,
+		7, 1, 3, 9, 2, 4, 8, 5, 6,
+		9, 6, 1, 5, 3, 7, 2, 8, 4,
+		2, 8, 7, 4, 1, 9, 6, 3, 5,
+		3, 4, 5, 2, 8, 6, 1, 7, 9,
+	}
+	givens := make([]int, 81)
+	copy(givens, solved)
+	givens[0] = 0
+	givens[40] = 0
+	givens[80] = 0
+
+	board := NewBoard(givens)
+	solver := NewSolver()
+	moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+	if status != constants.StatusCompleted {
+		t.Fatalf("status = %q, want completed", status)
+	}
+	if len(moves) == 0 {
+		t.Fatal("expected at least one move")
+	}
+	if moves[0].StepIndex != 0 {
+		t.Errorf("first move StepIndex = %d, want 0 (step initializer mutant shifts the whole sequence)", moves[0].StepIndex)
+	}
+	maxStepIndex := -1
+	for _, m := range moves {
+		if m.StepIndex > maxStepIndex {
+			maxStepIndex = m.StepIndex
+		}
+	}
+	if maxStepIndex < 1 {
+		t.Errorf("expected at least one move with StepIndex >= 1, max = %d (StepIndex-assignment mutant leaves all at 0)", maxStepIndex)
+	}
+}
+
+func TestSolver_CandidateSweep_IncludesBoundaryDigits(t *testing.T) {
+	board := NewBoardWithCandidates(make([]int, 81), nil)
+	solver := NewSolver()
+	seen := map[int]bool{}
+	for i := 0; i < 1500; i++ {
+		move := solver.FindNextMove(board)
+		if move == nil {
+			break
+		}
+		if move.Technique == "fill-candidate" {
+			seen[move.Digit] = true
+		}
+		solver.ApplyMove(board, move)
+	}
+	if !seen[1] {
+		t.Error("expected a fill-candidate move for digit 1 (sweep must start at d=1)")
+	}
+	if !seen[9] {
+		t.Error("expected a fill-candidate move for digit 9 (sweep must include d=GridSize)")
+	}
+}
+
+func TestSolver_Reset_ClearsGenerationState(t *testing.T) {
+	solver := NewSolver()
+	solver.generationState = StateCandidatesComplete
+	solver.candidateIndex = 7
+	solver.Reset()
+	if solver.generationState != StateNotStarted {
+		t.Errorf("after Reset, generationState = %v, want StateNotStarted", solver.generationState)
+	}
+	board := NewBoardWithCandidates(make([]int, 81), nil)
+	move := solver.FindNextMove(board)
+	if move == nil || move.Technique != "fill-candidate" {
+		t.Errorf("after Reset, FindNextMove on empty board should return fill-candidate, got %+v", move)
+	}
+}
+
+func TestSolver_HiddenSingle_AlreadyPresentReturnsNil(t *testing.T) {
+	var cells [81]int
+	cells[1] = 5
+	candidateMap := map[int][]int{5: {5}}
+	board := makeTestBoard(cells, candidateMap)
+	s := &Solver{}
+	move := s.checkHiddenSingleInUnit(board, UnitRow, 0, 5)
+	if move != nil {
+		t.Errorf("checkHiddenSingleInUnit should return nil when digit already placed in unit, got %+v", move)
+	}
+}
+
+func TestSolver_HiddenSingle_RequiresBothEmptyAndCandidateChecks(t *testing.T) {
+	var cells [81]int
+	cells[0] = 9
+	candidateMap := map[int][]int{0: {5}, 1: {5}}
+	board := makeTestBoard(cells, candidateMap)
+	s := &Solver{}
+	move := s.checkHiddenSingleInUnit(board, UnitRow, 0, 5)
+	if move == nil {
+		t.Fatal("expected hidden-single move for R0C1 (only empty cell with candidate 5), got nil")
+	}
+	if len(move.Targets) != 1 || move.Targets[0].Row != 0 || move.Targets[0].Col != 1 {
+		t.Errorf("target = %+v, want R0C1", move.Targets)
+	}
+}
+
+func TestBoard_IsSolved_FirstCellEmpty(t *testing.T) {
+	solved := []int{
+		5, 3, 4, 6, 7, 8, 9, 1, 2,
+		6, 7, 2, 1, 9, 5, 3, 4, 8,
+		1, 9, 8, 3, 4, 2, 5, 6, 7,
+		8, 5, 9, 7, 6, 1, 4, 2, 3,
+		4, 2, 6, 8, 5, 3, 7, 9, 1,
+		7, 1, 3, 9, 2, 4, 8, 5, 6,
+		9, 6, 1, 5, 3, 7, 2, 8, 4,
+		2, 8, 7, 4, 1, 9, 6, 3, 5,
+		3, 4, 5, 2, 8, 6, 1, 7, 9,
+	}
+	givens := make([]int, 81)
+	copy(givens, solved)
+	givens[0] = 0
+	board := NewBoard(givens)
+	if board.IsSolved() {
+		t.Error("board with cell 0 empty should not be solved (i:=1 mutant skips cell 0 and misses the gap)")
+	}
+}
+
+func TestBoard_IsValid_ColumnAndBoxDuplicates(t *testing.T) {
+	colDup := make([]int, 81)
+	colDup[0] = 5
+	colDup[36] = 5
+	if NewBoard(colDup).IsValid() {
+		t.Error("board with duplicate in column 0 (R0C0, R4C0; distinct rows and boxes) should be invalid")
+	}
+	boxDup := make([]int, 81)
+	boxDup[0] = 5
+	boxDup[10] = 5
+	if NewBoard(boxDup).IsValid() {
+		t.Error("board with duplicate in box 0 (R0C0, R1C1; distinct rows and cols) should be invalid")
+	}
+}
+
+func TestBoard_QueryFunctions_IncludesFirstCell(t *testing.T) {
+	board := NewBoard(make([]int, 81))
+	if got := board.CellsWithNCandidates(9); len(got) != 81 {
+		t.Errorf("CellsWithNCandidates(9) on empty board = %d cells, want 81 (i:=1 mutant skips cell 0)", len(got))
+	}
+	if got := board.CellsWithCandidateRange(9, 9); len(got) != 81 {
+		t.Errorf("CellsWithCandidateRange(9,9) on empty board = %d cells, want 81", len(got))
+	}
+	asCands := board.GetCandidates()
+	if len(asCands[0]) == 0 {
+		t.Error("GetCandidates()[0] on empty board should be non-empty (i:=1 mutant leaves result[0] nil)")
+	}
+}
+
+func TestBoard_CellsWithCandidateRange_RespectsMax(t *testing.T) {
+	board := NewBoard(make([]int, 81))
+	got := board.CellsWithCandidateRange(1, 5)
+	if len(got) != 0 {
+		t.Errorf("CellsWithCandidateRange(1,5) on all-9-candidate board = %d, want 0 (count<=max->true mutant drops the upper bound)", len(got))
+	}
+}
+
+func TestBoard_ClearCell_BoundaryAndCandidateRecompute(t *testing.T) {
+	board := NewBoard(make([]int, 81))
+	board.ClearCell(0)
+	cands := board.Candidates[0]
+	if !cands.Has(1) {
+		t.Error("ClearCell(0) should recompute candidate 1 (loop must start at d=1)")
+	}
+	if !cands.Has(9) {
+		t.Error("ClearCell(0) should recompute candidate 9 (loop must include d=GridSize)")
+	}
+	board.ClearCell(constants.TotalCells)
+	board.ClearCell(-1)
+}
+
+func TestBoard_NewBoardWithCandidates_ShortSlice(t *testing.T) {
+	cells := make([]int, 81)
+	candidates := make([][]int, 5)
+	candidates[0] = []int{1, 2, 3}
+	board := NewBoardWithCandidates(cells, candidates)
+	if !board.Candidates[0].Has(1) {
+		t.Errorf("Candidates[0] should contain 1, got %v", board.Candidates[0].ToSlice())
+	}
+}
+
+func TestBoard_markMissingAsEliminated_FilledCell(t *testing.T) {
+	cells := make([]int, 81)
+	cells[0] = 5
+	candidates := make([][]int, 81)
+	candidates[0] = []int{1, 2, 3}
+	board := NewBoardWithCandidates(cells, candidates)
+	if board.Eliminated[0].Count() != 0 {
+		t.Errorf("filled cell 0 should have no eliminated digits, got %v (cell!=0 guard mutant proceeds to eliminate)", board.Eliminated[0].ToSlice())
+	}
+}
+
+func TestCombinations_K2_NonEmpty(t *testing.T) {
+	got := Combinations([]int{1, 2, 3}, 2)
+	if len(got) == 0 {
+		t.Fatal("Combinations([1,2,3], 2) should return pairs, got empty (k>len->k>1 mutant rejects valid k=2)")
+	}
+	if len(got) != 3 {
+		t.Errorf("expected 3 pairs, got %d: %+v", len(got), got)
+	}
+}
+
+func TestDedupeEliminations_TwoDuplicatesCollapsed(t *testing.T) {
+	dup := []core.Candidate{
+		{Row: 0, Col: 0, Digit: 5},
+		{Row: 0, Col: 0, Digit: 5},
+	}
+	got := DedupeEliminations(dup)
+	if len(got) != 1 {
+		t.Errorf("expected 1 unique elimination, got %d: %+v (len<=1->len<=2 mutant skips dedupe for pairs)", len(got), got)
+	}
+}
+
+func TestDigitExistsInCells_OutOfBoxPeers(t *testing.T) {
+	rowBoard := NewBoard(func() []int {
+		g := make([]int, 81)
+		g[5] = 5
+		return g
+	}())
+	if !digitExistsInCells(rowBoard, 0, 0, 5) {
+		t.Error("digitExistsInCells(0,0,5): 5 sits at R0C5 (row peer, outside box 0 and col 0); row scan must detect it")
+	}
+
+	colBoard := NewBoard(func() []int {
+		g := make([]int, 81)
+		g[45] = 3
+		return g
+	}())
+	if !digitExistsInCells(colBoard, 0, 0, 3) {
+		t.Error("digitExistsInCells(0,0,3): 3 sits at R5C0 (col peer, outside box 0 and row 0); col scan must detect it")
+	}
+
+	boxBoard := NewBoard(func() []int {
+		g := make([]int, 81)
+		g[40] = 7
+		return g
+	}())
+	if !digitExistsInCells(boxBoard, 3, 3, 7) {
+		t.Error("digitExistsInCells(3,3,7): 7 sits at R4C4 (box peer of R3C3, outside row 3 and col 3); box scan must detect it")
+	}
+}
+
+func TestCreateSolverUpToTier_ExcludesHigherTiers(t *testing.T) {
+	simpleOnly := CreateSolverUpToTier(constants.TierSimple)
+	if got := simpleOnly.GetRegistry().GetByTier(constants.TierMedium); len(got) != 0 {
+		t.Errorf("CreateSolverUpToTier(TierSimple) should disable all Medium techniques, got %d enabled: %+v (Simple:0->1 or Medium:1->0 mutant leaks Medium)", len(got), got)
+	}
+	if got := simpleOnly.GetRegistry().GetByTier(constants.TierExtreme); len(got) != 0 {
+		t.Errorf("CreateSolverUpToTier(TierSimple) should disable all Extreme techniques, got %d enabled", len(got))
+	}
+
+	hardInclusive := CreateSolverUpToTier(constants.TierHard)
+	if got := hardInclusive.GetRegistry().GetByTier(constants.TierExtreme); len(got) != 0 {
+		t.Errorf("CreateSolverUpToTier(TierHard) should disable all Extreme techniques, got %d enabled: %+v (Hard:2->3 or Extreme:3->2 mutant leaks Extreme)", len(got), got)
+	}
+}
