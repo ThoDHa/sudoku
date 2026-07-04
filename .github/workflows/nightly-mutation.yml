@@ -152,15 +152,39 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-  # Techniques is split into its own job because the package is 7700+ LOC and
-  # takes ~10-12h to mutate, far longer than the fast packages. It has its own
-  # (larger) timeout and can be skipped via the skip_techniques input so
-  # iteration runs measure dp/human/transport/frontend without the long wait.
+  # Techniques is the largest package (~7700 LOC across 22 files) and cannot be
+  # mutated within GitHub Actions' hard 6h (360m) per-job limit in one run
+  # (~10-12h at ~27s per mutant). It is sharded by file group across a matrix:
+  # each shard mutates a balanced ~1900-LOC subset (~3h) well under the cap.
+  # go-mutesting mutates only the targeted files but type-checks against the
+  # whole package, so a file subset is a valid, self-contained target. A
+  # dependent aggregate job combines the per-shard reports into one efficacy
+  # number and enforces the floor. Shards can be skipped as a group via
+  # skip_techniques for fast iteration runs.
+  #
+  # Shard file groups are balanced by LOC (see INFRA-4). To rebalance, move
+  # filenames between the `files` lists; the aggregate's --expected must equal
+  # the shard count.
   techniques-mutation:
-    name: Go - techniques
+    name: Go - techniques (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || (inputs.scope != 'frontend' && inputs.skip_techniques != true)
-    timeout-minutes: 720
+    # Below GitHub's hard 6h (360m) cap so our timeout fires first if a shard is
+    # mis-balanced; that shard's report goes missing and the aggregate gate
+    # fails loudly rather than silently reporting a partial number.
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+            files: "chains.go forcing.go fish.go triples.go"
+          - shard: 2
+            files: "medusa.go swordfish.go als_chains.go aic.go pairs.go"
+          - shard: 3
+            files: "ur.go grid.go xcycles.go blossom.go board.go formatter.go"
+          - shard: 4
+            files: "wings.go sdc.go simple.go digit_forcing.go xwing_finned.go skyscraper.go bug.go"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -175,48 +199,55 @@ jobs:
         working-directory: api
         run: make mutation-install
 
-      - name: Run go-mutesting on ./internal/sudoku/human/techniques
+      - name: Run go-mutesting on techniques shard ${{ matrix.shard }}
         working-directory: api
+        shell: bash
         run: |
-          mkdir -p reports/mutation
+          outdir="reports/mutation/techniques-shard-${{ matrix.shard }}"
+          mkdir -p "$outdir"
           cat > /tmp/mutation-config.yml <<'YAML'
           json_output: true
           html_output: true
           YAML
-          go-mutesting --config=/tmp/mutation-config.yml ./internal/sudoku/human/techniques
-          mkdir -p "reports/mutation/internal-sudoku-human-techniques"
-          mv report.json go-mutesting-report.html "reports/mutation/internal-sudoku-human-techniques/" 2>/dev/null || true
+          targets=()
+          for f in ${{ matrix.files }}; do
+            targets+=("./internal/sudoku/human/techniques/$f")
+          done
+          go-mutesting --config=/tmp/mutation-config.yml "${targets[@]}"
+          mv report.json go-mutesting-report.html "$outdir/" 2>/dev/null || true
         continue-on-error: true
 
-      - name: Check efficacy gate
-        working-directory: api
-        run: |
-          report="reports/mutation/internal-sudoku-human-techniques/report.json"
-          if [ ! -f "$report" ]; then
-            echo "No report for ./internal/sudoku/human/techniques (run may have timed out)"
-            exit 0
-          fi
-          python3 -c "
-          import json, sys
-          with open('$report') as f:
-              r = json.load(f)
-          s = r['stats']
-          killed = s['killedCount'] + s.get('timeOutCount', 0)
-          escaped = s['escapedCount']
-          denom = killed + escaped
-          eff = killed / denom * 100 if denom > 0 else 100
-          floor = 85
-          status = 'OK' if eff >= floor else 'FAIL'
-          print(f'mutation-gate: {status} ./internal/sudoku/human/techniques {eff:.1f}% (floor {floor}%) [killed={killed} escaped={escaped} total={s[\"totalMutantsCount\"]}]')
-          sys.exit(0 if eff >= floor else 1)
-          "
-        continue-on-error: true
-
-      - name: Upload Go mutation report
+      - name: Upload techniques shard report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: mutation-go-techniques
+          name: mutation-go-techniques-shard-${{ matrix.shard }}
           path: api/reports/mutation/
           retention-days: 30
           if-no-files-found: warn
+
+  # Combine the per-shard techniques reports into one efficacy number and gate
+  # it against the floor, exactly as a single unsharded run would. Fails loudly
+  # (in-log) if any shard report is missing so a timed-out shard cannot masquerade
+  # as a passing partial result.
+  techniques-aggregate:
+    name: Go - techniques (aggregate gate)
+    runs-on: ubuntu-latest
+    needs: techniques-mutation
+    if: always() && (github.event_name == 'schedule' || (inputs.scope != 'frontend' && inputs.skip_techniques != true))
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download all techniques shard reports
+        uses: actions/download-artifact@v8
+        with:
+          pattern: mutation-go-techniques-shard-*
+          path: shards
+
+      - name: Aggregate efficacy gate
+        working-directory: api
+        run: |
+          python3 scripts/mutation_aggregate.py \
+            --floor 85 --expected 4 --reports-dir ../shards
+        continue-on-error: true
