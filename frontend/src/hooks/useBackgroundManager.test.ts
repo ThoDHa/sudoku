@@ -16,8 +16,6 @@ function actForceResume(result: HookResult) {
   })
 }
 
-
-
 // =============================================================================
 // MOCKING UTILITIES
 // =============================================================================
@@ -493,6 +491,209 @@ describe('useBackgroundManager', () => {
       actForcePause(result)
 
       expect(result.current.shouldPauseOperations).toBe(true)
+    })
+  })
+
+  // ===========================================================================
+  // Mutation-killing: headless / automation detection bypass
+  // ===========================================================================
+  describe('Headless automation detection bypass', () => {
+    afterEach(() => {
+      // userAgent and webdriver live on Navigator.prototype in jsdom, so
+      // our defineProperty created an own-property shadow. Deleting it lets
+      // the prototype's original value show through again.
+      // @ts-expect-error - removing test-only own-property override
+      delete navigator.userAgent
+      // @ts-expect-error - removing test-only own-property override
+      delete navigator.webdriver
+    })
+
+    function setUserAgent(ua: string) {
+      Object.defineProperty(navigator, 'userAgent', { configurable: true, value: ua })
+    }
+
+    it('does not pause when HeadlessChrome user agent is detected, even if hidden (L54:5, L55:6, L72:5)', () => {
+      setUserAgent('Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/120.0.0.0')
+      const { result } = renderHook(() => useBackgroundManager())
+
+      act(() => {
+        simulateVisibilityChange('hidden')
+      })
+
+      // Headless detection must keep shouldPauseOperations false so E2E
+      // tests keep running. Mutants that break the detection, or that drop
+      // the !isHeadlessChrome guard, flip this to true.
+      expect(result.current.shouldPauseOperations).toBe(false)
+    })
+
+    it('does not pause when playwright user agent is detected, even if hidden (L55:6 playwright branch)', () => {
+      setUserAgent('Mozilla/5.0 ... playwright/1.40.0')
+      const { result } = renderHook(() => useBackgroundManager())
+
+      act(() => {
+        simulateVisibilityChange('hidden')
+      })
+
+      expect(result.current.shouldPauseOperations).toBe(false)
+    })
+
+    it('does not pause when navigator.webdriver is true, even if hidden (webdriver detection)', () => {
+      Object.defineProperty(navigator, 'webdriver', { configurable: true, value: true })
+      const { result } = renderHook(() => useBackgroundManager())
+
+      act(() => {
+        simulateVisibilityChange('hidden')
+      })
+
+      expect(result.current.shouldPauseOperations).toBe(false)
+    })
+  })
+
+  // ===========================================================================
+  // Mutation-killing: window blur / focus drive shouldPauseOperations
+  // ===========================================================================
+  describe('Window blur drives shouldPauseOperations (L74:6, L99:24, L103:24, L131:29, L132:29)', () => {
+    it('sets shouldPauseOperations true on window blur', () => {
+      const { result } = renderHook(() => useBackgroundManager())
+
+      expect(result.current.shouldPauseOperations).toBe(false)
+
+      act(() => {
+        simulateWindowBlur()
+      })
+
+      // effectiveIsWindowBlurred feeds shouldPauseOperations; mutants that
+      // drop the term, skip the setter, or register the wrong event name
+      // all leave shouldPauseOperations false here.
+      expect(result.current.shouldPauseOperations).toBe(true)
+    })
+
+    it('clears shouldPauseOperations on window focus after blur', () => {
+      const { result } = renderHook(() => useBackgroundManager())
+
+      act(() => {
+        simulateWindowBlur()
+      })
+      expect(result.current.shouldPauseOperations).toBe(true)
+
+      act(() => {
+        simulateWindowFocus()
+      })
+
+      // Focus must clear the blur flag; mutants that skip the handler body
+      // or register the wrong event name keep shouldPauseOperations true.
+      expect(result.current.shouldPauseOperations).toBe(false)
+    })
+  })
+
+  // ===========================================================================
+  // Mutation-killing: enabled gates every effect (L143:9, L168:9, L194:9)
+  // ===========================================================================
+  describe('enabled gates background event effects', () => {
+    it('does not react to pagehide when disabled (L143:9 false mutant)', () => {
+      const { result } = renderHook(() => useBackgroundManager({ enabled: false }))
+
+      act(() => {
+        simulatePageHide()
+      })
+
+      expect(result.current.isHidden).toBe(false)
+      expect(result.current.isInDeepPause).toBe(false)
+    })
+
+    it('does not react to freeze when disabled (L168:9 false mutant)', () => {
+      const { result } = renderHook(() => useBackgroundManager({ enabled: false }))
+
+      act(() => {
+        simulateFreeze()
+      })
+
+      expect(result.current.isHidden).toBe(false)
+      expect(result.current.isInDeepPause).toBe(false)
+    })
+
+    it('does not react to beforeunload when disabled (L194:9 false/enabled mutants)', () => {
+      const { result } = renderHook(() => useBackgroundManager({ enabled: false }))
+
+      act(() => {
+        window.dispatchEvent(new Event('beforeunload'))
+      })
+
+      expect(result.current.isHidden).toBe(false)
+    })
+
+    it('reacts to beforeunload when enabled (L194:9 true mutant, L201:29, L203:18)', () => {
+      const { result } = renderHook(() => useBackgroundManager({ enabled: true }))
+
+      act(() => {
+        window.dispatchEvent(new Event('beforeunload'))
+      })
+
+      expect(result.current.isHidden).toBe(true)
+      expect(result.current.visibilityState).toBe('hidden')
+    })
+  })
+
+  // ===========================================================================
+  // Mutation-killing: effect deps re-subscribe on enabled flip (L139:6, L164:6, L190:6)
+  // ===========================================================================
+  describe('enabled-flip re-subscribes event listeners', () => {
+    it('re-runs visibility listener setup when enabled flips true (L139:6 deps mutant)', () => {
+      const { result, rerender } = renderHook(({ enabled }) => useBackgroundManager({ enabled }), {
+        initialProps: { enabled: false },
+      })
+
+      rerender({ enabled: true })
+
+      act(() => {
+        simulateVisibilityChange('hidden')
+      })
+
+      expect(result.current.isHidden).toBe(true)
+    })
+
+    it('re-runs pagehide listener setup when enabled flips true (L164:6 deps mutant)', () => {
+      const { result, rerender } = renderHook(({ enabled }) => useBackgroundManager({ enabled }), {
+        initialProps: { enabled: false },
+      })
+
+      rerender({ enabled: true })
+
+      act(() => {
+        simulatePageHide()
+      })
+
+      expect(result.current.isHidden).toBe(true)
+    })
+
+    it('re-runs freeze listener setup when enabled flips true (L190:6 deps mutant)', () => {
+      const { result, rerender } = renderHook(({ enabled }) => useBackgroundManager({ enabled }), {
+        initialProps: { enabled: false },
+      })
+
+      rerender({ enabled: true })
+
+      act(() => {
+        simulateFreeze()
+      })
+
+      expect(result.current.isHidden).toBe(true)
+    })
+  })
+
+  // ===========================================================================
+  // Mutation-killing: beforeunload cleanup (L204:34)
+  // ===========================================================================
+  describe('beforeunload cleanup', () => {
+    it('removes the beforeunload listener on unmount (L204:34 string mutant)', () => {
+      const winRemoveEventListenerSpy = vi.spyOn(window, 'removeEventListener')
+
+      const { unmount } = renderHook(() => useBackgroundManager())
+      unmount()
+
+      expect(winRemoveEventListenerSpy).toHaveBeenCalledWith('beforeunload', expect.any(Function))
+
+      winRemoveEventListenerSpy.mockRestore()
     })
   })
 })

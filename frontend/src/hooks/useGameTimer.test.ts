@@ -831,4 +831,262 @@ describe('useGameTimer - mutation-killing branch tests', () => {
       expect(result.current.isPausedDueToVisibility).toBe(false)
     })
   })
+
+  describe('mutation-killing: startTimer re-entry preserves elapsed time (L60:9, L64:16, L69:6)', () => {
+    it('does not reset the accumulated baseline when startTimer is called on a running timer', () => {
+      const bg = createMockBackgroundManager()
+      const { result } = renderHook(() => useGameTimer({ backgroundManager: bg }))
+
+      act(() => {
+        result.current.startTimer()
+      })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      const elapsedAfterFirstRun = result.current.elapsedMs
+      expect(elapsedAfterFirstRun).toBeGreaterThanOrEqual(1500)
+
+      // Calling startTimer on an already-running timer must be a no-op.
+      // Mutants that always enter the !isRunning branch or the recovery
+      // branch reset startTimeRef, collapsing elapsed back toward zero.
+      act(() => {
+        result.current.startTimer()
+      })
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      expect(result.current.elapsedMs).toBeGreaterThanOrEqual(elapsedAfterFirstRun + 500)
+    })
+  })
+
+  describe('mutation-killing: pause/resume arithmetic preserves accumulated time (L74:7, L74:33)', () => {
+    it('resumes from the saved accumulated baseline rather than subtracting or adding the start time', () => {
+      const bg = createMockBackgroundManager()
+      const { result } = renderHook(() => useGameTimer({ backgroundManager: bg }))
+
+      act(() => {
+        result.current.startTimer()
+      })
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      const beforePause = result.current.elapsedMs
+      expect(beforePause).toBeGreaterThanOrEqual(1500)
+
+      act(() => {
+        result.current.pauseTimer()
+      })
+      act(() => {
+        result.current.startTimer()
+      })
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      // Original: beforePause + ~1000. Subtraction mutant goes negative.
+      // Date.now()+startTime mutant produces astronomically large values.
+      expect(result.current.elapsedMs).toBeGreaterThanOrEqual(beforePause + 500)
+      expect(result.current.elapsedMs).toBeLessThan(beforePause + 5000)
+    })
+  })
+
+  describe('mutation-killing: startTimer clears isPausedDueToVisibility flag (L63:34)', () => {
+    it('clears isPausedDueToVisibility when starting with pauseOnHidden disabled', () => {
+      const bg = createMockBackgroundManager({ shouldPauseOperations: true })
+      const { result } = renderHook(() =>
+        useGameTimer({ backgroundManager: bg, pauseOnHidden: false }),
+      )
+
+      act(() => {
+        result.current.startTimer()
+      })
+
+      // With pauseOnHidden=false the visibility effect early-returns and
+      // cannot overwrite the flag, so startTimer's own clear is observable.
+      expect(result.current.isPausedDueToVisibility).toBe(false)
+    })
+  })
+
+  describe('mutation-killing: resetTimer keeps startTimeRef live when running (L85:6)', () => {
+    it('continues incrementing after reset when the timer was running', () => {
+      const bg = createMockBackgroundManager()
+      const { result } = renderHook(() => useGameTimer({ backgroundManager: bg }))
+
+      act(() => {
+        result.current.startTimer()
+      })
+      act(() => {
+        vi.advanceTimersByTime(3000)
+      })
+
+      act(() => {
+        result.current.resetTimer()
+      })
+      expect(result.current.elapsedMs).toBe(0)
+      expect(result.current.isRunning).toBe(true)
+
+      // With the correct [isRunning] deps, resetTimer captured isRunning=true
+      // and seeded a fresh startTimeRef. The [] deps mutant captures the
+      // initial false, nulls startTimeRef, and the interval body skips.
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+      expect(result.current.elapsedMs).toBeGreaterThan(0)
+    })
+  })
+
+  describe('mutation-killing: visibility pause saves accumulated time (L183:9, L183:50)', () => {
+    it('does not count the hidden period toward elapsed time after resume', () => {
+      const hidden = createMockBackgroundManager({
+        shouldPauseOperations: true,
+        isHidden: true,
+      })
+      const { result, rerender } = renderHook(
+        ({ bg }) => useGameTimer({ backgroundManager: bg, autoStart: true }),
+        { initialProps: { bg: createMockBackgroundManager() } },
+      )
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      const beforeHide = result.current.elapsedMs
+      expect(beforeHide).toBeGreaterThanOrEqual(1500)
+
+      // Hide: pauseForVisibility must snapshot accumulatedRef and null
+      // startTimeRef. Mutants that skip the body leave startTimeRef pointing
+      // at the pre-hide instant, so the hidden interval gets counted.
+      rerender({ bg: hidden })
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
+
+      const visible = createMockBackgroundManager({
+        shouldPauseOperations: false,
+        isHidden: false,
+      })
+      rerender({ bg: visible })
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      // Original counts ~2s + ~1s, well under 5s. Skip-pause mutant counts
+      // the 5s hidden interval too, landing near 8s.
+      expect(result.current.elapsedMs).toBeLessThan(5000)
+    })
+  })
+
+  describe('mutation-killing: visibility resume restores startTimeRef (L185:16 false mutant)', () => {
+    it('resumes incrementing after transitioning from hidden to visible', () => {
+      const hidden = createMockBackgroundManager({
+        shouldPauseOperations: true,
+        isHidden: true,
+      })
+      const { result, rerender } = renderHook(
+        ({ bg }) => useGameTimer({ backgroundManager: bg, autoStart: true }),
+        { initialProps: { bg: hidden } },
+      )
+
+      // Page becomes visible: resumeFromVisibility must seed a fresh
+      // startTimeRef so the interval can compute elapsed. The mutant that
+      // skips resume leaves startTimeRef null and elapsed frozen at 0.
+      const visible = createMockBackgroundManager({
+        shouldPauseOperations: false,
+        isHidden: false,
+      })
+      rerender({ bg: visible })
+      act(() => {
+        vi.advanceTimersByTime(1100)
+      })
+
+      expect(result.current.elapsedMs).toBeGreaterThan(0)
+    })
+  })
+
+  describe('mutation-killing: pauseForVisibility guarded by isRunning (L164:11 true mutant)', () => {
+    it('does not corrupt accumulatedRef when visibility pauses while the timer is stopped', () => {
+      const hidden = createMockBackgroundManager({
+        shouldPauseOperations: true,
+        isHidden: true,
+      })
+      const { result, rerender } = renderHook(
+        ({ bg }) => useGameTimer({ backgroundManager: bg, autoStart: false }),
+        { initialProps: { bg: hidden } },
+      )
+
+      // Mount hidden + not running. pauseForVisibility must skip because
+      // isRunning is false. The ->true mutant enters the body and computes
+      // Date.now() - null, corrupting accumulatedRef with a huge timestamp.
+      const visible = createMockBackgroundManager({
+        shouldPauseOperations: false,
+        isHidden: false,
+      })
+      rerender({ bg: visible })
+
+      act(() => {
+        result.current.startTimer()
+      })
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      // Original accumulates ~1s. The corrupted-baseline mutant produces a
+      // value on the order of Date.now() (~1.7 trillion).
+      expect(result.current.elapsedMs).toBeLessThan(10000)
+      expect(result.current.elapsedMs).toBeGreaterThanOrEqual(0)
+    })
+  })
+
+  describe('mutation-killing: isAutomatedEnvironment UA branches', () => {
+    let originalUA: PropertyDescriptor | undefined
+
+    beforeEach(() => {
+      originalUA = Object.getOwnPropertyDescriptor(navigator, 'userAgent')
+    })
+
+    afterEach(() => {
+      // @ts-expect-error - removing test-only own-property override
+      delete navigator.userAgent
+    })
+
+    it('bypasses visibility pausing when userAgent contains HeadlessChrome', () => {
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        value: 'Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/120.0.0.0',
+      })
+      const hidden = createMockBackgroundManager({
+        shouldPauseOperations: true,
+        isHidden: true,
+      })
+      const { result } = renderHook(() =>
+        useGameTimer({ backgroundManager: hidden, autoStart: true }),
+      )
+
+      expect(result.current.isPausedDueToVisibility).toBe(false)
+      act(() => {
+        vi.advanceTimersByTime(1100)
+      })
+      expect(result.current.elapsedMs).toBeGreaterThan(0)
+    })
+
+    it('bypasses visibility pausing when userAgent contains playwright', () => {
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        value: 'Mozilla/5.0 ... playwright/1.40.0',
+      })
+      const hidden = createMockBackgroundManager({
+        shouldPauseOperations: true,
+        isHidden: true,
+      })
+      const { result } = renderHook(() =>
+        useGameTimer({ backgroundManager: hidden, autoStart: true }),
+      )
+
+      expect(result.current.isPausedDueToVisibility).toBe(false)
+      act(() => {
+        vi.advanceTimersByTime(1100)
+      })
+      expect(result.current.elapsedMs).toBeGreaterThan(0)
+    })
+  })
 })

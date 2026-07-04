@@ -16,8 +16,6 @@ function actSetTimeout(result: HookResult, a1: any, a2: any) {
   })
 }
 
-
-
 // =============================================================================
 // MOCKING UTILITIES
 // =============================================================================
@@ -454,6 +452,90 @@ describe('useVisibilityAwareTimeout', () => {
       act(() => {
         cancel!()
       })
+    })
+  })
+
+  describe('mutation-killing visibility-state assertions', () => {
+    it('does not cancel timeouts when visibilitychange fires but page stays visible (L28:27, L32:11)', () => {
+      const { result } = renderHook(() => useVisibilityAwareTimeout())
+      const callback = vi.fn()
+
+      actSetTimeout(result, callback, 1000)
+
+      // Dispatch visibilitychange while still visible: handler must read
+      // visibilityState === 'hidden' as false, so no cancellation.
+      act(() => {
+        simulateVisibilityChange('visible')
+      })
+
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      expect(callback).toHaveBeenCalledTimes(1)
+    })
+
+    it('cancels pending timeout when hidden then re-shown before firing (L32:11, L32:24, L33:51)', () => {
+      const { result } = renderHook(() => useVisibilityAwareTimeout())
+      const callback = vi.fn()
+
+      actSetTimeout(result, callback, 1000)
+
+      act(() => {
+        vi.advanceTimersByTime(200)
+      })
+      // Hide: original clears the native timeout; mutants skipping the
+      // cancellation block leave it pending.
+      act(() => {
+        simulateVisibilityChange('hidden')
+      })
+      // Show again before the 1000ms maturity: isHiddenRef flips back to
+      // false, so a still-pending timeout would fire its callback.
+      act(() => {
+        simulateVisibilityChange('visible')
+      })
+      act(() => {
+        vi.advanceTimersByTime(1000)
+      })
+
+      // Original cleared the timeout at hide-time; callback must stay dormant.
+      expect(callback).not.toHaveBeenCalled()
+    })
+
+    it('does not schedule a new timeout after pagehide (L42:29)', () => {
+      const { result } = renderHook(() => useVisibilityAwareTimeout())
+      const callback = vi.fn()
+
+      act(() => {
+        simulatePageHide()
+      })
+
+      actSetTimeout(result, callback, 1000)
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      // pagehide must leave isHiddenRef true so setTimeout early-returns.
+      expect(callback).not.toHaveBeenCalled()
+    })
+
+    it('does not schedule a new timeout after freeze (L51:29)', () => {
+      const { result } = renderHook(() => useVisibilityAwareTimeout())
+      const callback = vi.fn()
+
+      act(() => {
+        simulateFreeze()
+      })
+
+      actSetTimeout(result, callback, 1000)
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+
+      // freeze must leave isHiddenRef true so setTimeout early-returns.
+      expect(callback).not.toHaveBeenCalled()
     })
   })
 })
