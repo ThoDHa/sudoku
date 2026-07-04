@@ -60,6 +60,22 @@ function parseAriaLabel(ariaLabel: string | null): { row: number; col: number } 
 }
 
 /**
+ * Tap the first available (enabled) digit button and return the digit placed.
+ * Hardcoding a digit is flaky: the puzzle's givens can fully place that digit
+ * ("0 remaining"), leaving its button disabled.
+ */
+async function tapFirstAvailableDigit(page: import('@playwright/test').Page): Promise<string> {
+  const digitButton = page.locator('button[aria-label^="Enter "]:not([disabled])').first();
+  await digitButton.waitFor({ state: 'visible' });
+  const label = (await digitButton.getAttribute('aria-label')) || '';
+  const match = label.match(/Enter (\d+)/);
+  const digit = match ? match[1] : '';
+  if (!digit) throw new Error(`No available digit button (label: "${label}")`);
+  await digitButton.tap();
+  return digit;
+}
+
+/**
  * Dismiss any error modal that may appear after hint operations
  */
 async function dismissErrorModal(page: import('@playwright/test').Page): Promise<void> {
@@ -399,24 +415,23 @@ test.describe('@mobile Touch Interactions', () => {
     const ariaLabel = await emptyCell.getAttribute('aria-label');
     const coords = parseAriaLabel(ariaLabel);
 
-    // Select cell
-    await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.tap();
+  // Select cell
+  await emptyCell.scrollIntoViewIfNeeded();
+  await emptyCell.tap();
 
-    // Tap number button
-    const numberButton = page.locator('button[aria-label^="Enter 5,"]');
-    await numberButton.tap();
+  // Tap an available digit (hardcoding one is flaky — see tapFirstAvailableDigit)
+  const placedDigit = await tapFirstAvailableDigit(page);
 
-    // Verify digit was placed
-    if (coords) {
-      await expect(async () => {
-        const updatedCell = page.locator(
-          `[role="gridcell"][aria-label*="Row ${coords.row}, Column ${coords.col}"]`
-        );
-        const text = await updatedCell.textContent();
-        expect(text).toContain('5');
-      }).toPass({ timeout: 2000 });
-    }
+  // Verify digit was placed
+  if (coords) {
+    await expect(async () => {
+      const updatedCell = page.locator(
+        `[role="gridcell"][aria-label*="Row ${coords.row}, Column ${coords.col}"]`
+      );
+      const text = await updatedCell.textContent();
+      expect(text).toContain(placedDigit);
+    }).toPass({ timeout: 2000 });
+  }
   });
 
   test('undo button works after placing digit', async ({ page, mobileViewport }) => {
@@ -648,8 +663,8 @@ test.describe('@mobile Orientation Handling', () => {
     await emptyCell.scrollIntoViewIfNeeded();
     await emptyCell.tap();
 
-    const numberButton = page.locator('button[aria-label^="Enter 8,"]');
-    await numberButton.tap();
+    // Tap an available digit (hardcoding one is flaky — see tapFirstAvailableDigit)
+    const placedDigit = await tapFirstAvailableDigit(page);
     // Wait for digit placement to be reflected in DOM
     if (coords) {
       await expect(async () => {
@@ -657,8 +672,8 @@ test.describe('@mobile Orientation Handling', () => {
           `[role="gridcell"][aria-label*="Row ${coords.row}, Column ${coords.col}"]`
         );
         const text = await updatedCell.textContent();
-        expect(text).toContain('8');
-      }).toPass({ timeout: 1000 });
+        expect(text).toContain(placedDigit);
+      }).toPass({ timeout: 2000 });
     }
 
     // Switch to landscape
@@ -670,7 +685,7 @@ test.describe('@mobile Orientation Handling', () => {
     if (coords) {
       const cell = page.locator(`[role="gridcell"][aria-label*="Row ${coords.row}, Column ${coords.col}"]`);
       const text = await cell.textContent();
-      expect(text).toContain('8');
+      expect(text).toContain(placedDigit);
     }
   });
 });
