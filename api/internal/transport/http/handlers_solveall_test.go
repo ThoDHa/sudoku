@@ -85,6 +85,29 @@ func hasTechnique(techniques []string, want string) bool {
 	return false
 }
 
+// solveAllMoveWrapperByTechnique returns the first moveResult wrapper (the
+// element of the moves array carrying board/candidates/move) whose inner move
+// carries the given technique, or nil when absent. Used to inspect the
+// board/candidates snapshot attached to a specific move.
+func solveAllMoveWrapperByTechnique(resp map[string]interface{}, want string) map[string]interface{} {
+	moves, ok := resp["moves"].([]interface{})
+	if !ok {
+		return nil
+	}
+	for _, m := range moves {
+		wrapper, ok := m.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if mv, ok := wrapper["move"].(map[string]interface{}); ok {
+			if tech, _ := mv["technique"].(string); tech == want {
+				return wrapper
+			}
+		}
+	}
+	return nil
+}
+
 // ifaceToIntBoard converts the []interface{} returned by JSON decoding back to
 // an []int board. Missing/non-number entries become 0.
 func ifaceToIntBoard(from interface{}) []int {

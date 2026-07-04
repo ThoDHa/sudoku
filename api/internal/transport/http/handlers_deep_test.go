@@ -2,6 +2,9 @@ package http
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -1689,5 +1692,689 @@ func TestMutation_PracticeHandler_MissingTechniqueExactError(t *testing.T) {
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["error"] != "technique required" {
 		t.Errorf("error: expected 'technique required', got %v", resp["error"])
+	}
+}
+
+// --- Mutation kill-list: handler-level exact-response tests ---
+
+// TestMutation_PuzzleAnalyze_ExactGivensCount pins the exact givens_count for a
+// loader-served puzzle, killing the incrementer/decrementer/branch mutants on
+// the non-zero counting loop.
+func TestMutation_PuzzleAnalyze_ExactGivensCount(t *testing.T) {
+	router := setupRouter()
+	seed, diff := "givens-count-seed", "easy"
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/puzzle/"+seed+"/analyze?d="+diff, nil)
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+
+	loader := puzzles.Global()
+	givens, _, _, err := loader.GetPuzzleBySeed(seed, diff)
+	if err != nil {
+		t.Fatalf("loader error: %v", err)
+	}
+	expected := 0
+	for _, v := range givens {
+		if v != 0 {
+			expected++
+		}
+	}
+	got, _ := resp["givens_count"].(float64)
+	if int(got) != expected {
+		t.Errorf("givens_count: expected %d, got %v", expected, got)
+	}
+}
+
+// TestMutation_CustomValidate_ExactlySixteenGivensTriggersMinCheck pins that a
+// conflict-free board with exactly 16 givens is rejected for having too few.
+// The givenCount incrementer (0 -> 1) would count 17 and skip this check.
+func TestMutation_CustomValidate_ExactlySixteenGivensTriggersMinCheck(t *testing.T) {
+	router := setupRouter()
+	solved := dp.GenerateFullGrid(42)
+	givens := make([]int, 81)
+	copy(givens, solved)
+	drop := 81 - 16
+	for i := 0; i < drop; i++ {
+		givens[i] = 0
+	}
+	if !dp.IsValid(givens) {
+		t.Skipf("setup: 16-given board has conflicts, cannot exercise min-givens check")
+	}
+	code, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{
+		"givens": givens, "device_id": "d",
+	})
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", code, resp)
+	}
+	if resp["valid"] != false {
+		t.Errorf("expected valid=false for 16 givens, got %v", resp["valid"])
+	}
+	if resp["reason"] != "need at least 17 givens" {
+		t.Errorf("reason: expected 'need at least 17 givens', got %v", resp["reason"])
+	}
+}
+
+// TestMutation_PuzzleHandler_GeneratesOnDemandWhenLoaderAbsent pins the
+// generation fallback (loader == nil): givens are produced and puzzle_index is
+// -1. This kills the givens-assignment removal and the puzzleIndex literals.
+func TestMutation_PuzzleHandler_GeneratesOnDemandWhenLoaderAbsent(t *testing.T) {
+	original := puzzles.Global()
+	puzzles.SetGlobal(nil)
+	defer puzzles.SetGlobal(original)
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/puzzle/fallback-seed?d=medium", nil)
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if resp["puzzle_index"] != nil && resp["puzzle_index"].(float64) != -1 {
+		t.Errorf("puzzle_index: expected -1 for generated puzzle, got %v", resp["puzzle_index"])
+	}
+	gotGivens := ifaceToIntBoard(resp["givens"])
+	if len(gotGivens) != 81 {
+		t.Fatalf("givens length: expected 81, got %d", len(gotGivens))
+	}
+	nonZero := 0
+	for _, v := range gotGivens {
+		if v != 0 {
+			nonZero++
+		}
+	}
+	if nonZero == 0 {
+		t.Errorf("expected generated givens to be non-empty, got all zeros")
+	}
+}
+
+// TestMutation_PuzzleAnalyze_GeneratesGivensWhenLoaderAbsent pins the analyze
+// generation fallback: givens_count must reflect a generated puzzle, not 0.
+func TestMutation_PuzzleAnalyze_GeneratesGivensWhenLoaderAbsent(t *testing.T) {
+	original := puzzles.Global()
+	puzzles.SetGlobal(nil)
+	defer puzzles.SetGlobal(original)
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/puzzle/analyze-fallback-seed/analyze?d=medium", nil)
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	got, _ := resp["givens_count"].(float64)
+	if int(got) <= 0 {
+		t.Errorf("givens_count: expected >0 for generated puzzle, got %v", got)
+	}
+}
+
+// TestMutation_DailyHandler_ExactPuzzleIndex pins puzzle_index to the loader's
+// computed daily index, killing the branch mutant that drops the assignment.
+func TestMutation_DailyHandler_ExactPuzzleIndex(t *testing.T) {
+	router := setupRouter()
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/daily", nil)
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+
+	loader := puzzles.Global()
+	_, _, expectedIdx, err := loader.GetDailyPuzzle(time.Now(), "medium")
+	if err != nil {
+		t.Fatalf("loader error: %v", err)
+	}
+	got, _ := resp["puzzle_index"].(float64)
+	if int(got) != expectedIdx {
+		t.Errorf("puzzle_index: expected %d, got %v", expectedIdx, got)
+	}
+}
+
+// TestMutation_SolveNext_NonDegenerateContradictionExactExplanation pins the
+// contradiction fix path with a non-zero-row/col contradiction cell (cell 40).
+// This kills the contradictionCell arithmetic mutants on line 681 (Row*Grid+Col
+// -> Row*Grid-Col / Row/Grid+Col), which are degenerate (invisible) when the
+// contradiction cell is 0.
+func TestMutation_SolveNext_NonDegenerateContradictionExactExplanation(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	board := make([]int, 81)
+	givens := make([]int, 81)
+	board[36] = 1
+	board[37] = 2
+	board[38] = 3
+	board[39] = 4
+	board[41] = 5
+	board[42] = 6
+	board[43] = 7
+	board[44] = 8
+	board[4] = 9
+
+	code, resp := postSolveNext(t, router, map[string]interface{}{
+		"token": token, "board": board, "givens": givens,
+	})
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", code, resp)
+	}
+	move, ok := resp["move"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected a move, got: %v", resp)
+	}
+	if move["technique"] != "fix-error" {
+		t.Errorf("expected fix-error, got %v", move["technique"])
+	}
+	explanation, _ := move["explanation"].(string)
+	expected := "Contradiction detected! R5C5 had no valid candidates. Removing incorrect 4 from R5C4."
+	if explanation != expected {
+		t.Errorf("explanation:\n want %q\n got  %q", expected, explanation)
+	}
+}
+
+// TestMutation_SolveAll_NonDegenerateContradictionFirstFix pins the first
+// fix-error move of the autosolve loop with a non-degenerate contradiction cell,
+// killing the contradictionCell arithmetic (1042) and the originalUserBoard
+// clear-to-0 decrementer (1046) on the blocking path.
+func TestMutation_SolveAll_NonDegenerateContradictionFirstFix(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	board := make([]int, 81)
+	givens := make([]int, 81)
+	board[36] = 1
+	board[37] = 2
+	board[38] = 3
+	board[39] = 4
+	board[41] = 5
+	board[42] = 6
+	board[43] = 7
+	board[44] = 8
+	board[4] = 9
+
+	_, resp := postSolveAll(t, router, map[string]interface{}{
+		"token": token, "board": board, "givens": givens,
+	})
+	fix := solveAllMoveByTechnique(resp, "fix-error")
+	if fix == nil {
+		t.Fatalf("expected a fix-error move, sequence=%v", solveAllTechniques(resp))
+	}
+	if digit, _ := fix["digit"].(float64); int(digit) != 4 {
+		t.Errorf("expected digit 4 (cell 39 holds 4), got %v", digit)
+	}
+	targets, _ := fix["targets"].([]interface{})
+	target, _ := targets[0].(map[string]interface{})
+	if int(target["row"].(float64)) != 4 || int(target["col"].(float64)) != 3 {
+		t.Errorf("expected target (4,3) for badCell=39, got %v", target)
+	}
+	wrap := solveAllMoveWrapperByTechnique(resp, "fix-error")
+	if wrap == nil {
+		t.Fatal("expected a fix-error move wrapper")
+	}
+	if ifaceToIntBoard(wrap["board"])[39] != 0 {
+		t.Errorf("expected cell 39 cleared to 0 in the fix-error board snapshot")
+	}
+}
+
+// TestMutation_SolveNext_RefillPathExactExplanation pins the "Found it!" fix
+// path in handleSolveNextContradiction, reached when findBlockingUserCell cannot
+// attribute the contradiction to a user cell but findErrorByCandidateRefill can.
+// Cell 0 is zero-candidate purely from givens (so findBlockingUserCell returns
+// -1), while cell 40 is zero-candidate because of the user-entered 9 at cell 49.
+// The exact explanation and coordinates kill the arithmetic mutants on the
+// zeroCand/badCell row/col computation, the respondSolveNextFix call removal,
+// and every +1 formatting mutant on the explanation string.
+func TestMutation_SolveNext_RefillPathExactExplanation(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	board := make([]int, 81)
+	givens := make([]int, 81)
+	given := func(i, v int) { board[i] = v; givens[i] = v }
+	user := func(i, v int) { board[i] = v }
+	for d := 1; d <= 8; d++ {
+		given(d, d)
+	}
+	given(9, 9)
+	given(36, 1)
+	given(37, 2)
+	given(38, 3)
+	given(39, 4)
+	given(41, 5)
+	given(42, 6)
+	given(43, 7)
+	given(44, 8)
+	user(49, 9)
+
+	code, resp := postSolveNext(t, router, map[string]interface{}{
+		"token": token, "board": board, "givens": givens,
+	})
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", code, resp)
+	}
+	move, ok := resp["move"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected a move, got: %v", resp)
+	}
+	if move["technique"] != "fix-error" || move["action"] != "fix-error" {
+		t.Errorf("expected fix-error technique/action, got %v", move)
+	}
+	if digit, _ := move["digit"].(float64); int(digit) != 9 {
+		t.Errorf("expected digit 9 (the user entry at cell 49), got %v", digit)
+	}
+	targets, _ := move["targets"].([]interface{})
+	if len(targets) != 1 {
+		t.Fatalf("expected 1 target, got %d", len(targets))
+	}
+	target, _ := targets[0].(map[string]interface{})
+	if int(target["row"].(float64)) != 5 || int(target["col"].(float64)) != 4 {
+		t.Errorf("expected target (5,4) for badCell=49, got %v", target)
+	}
+	explanation, _ := move["explanation"].(string)
+	expected := "Found it! R5C5 has no valid candidates. The 9 at R6C5 was causing the problem."
+	if explanation != expected {
+		t.Errorf("explanation:\n want %q\n got  %q", expected, explanation)
+	}
+	boardOut := ifaceToIntBoard(resp["board"])
+	if boardOut[49] != 0 {
+		t.Errorf("expected cell 49 cleared to 0, got %d", boardOut[49])
+	}
+	if boardOut[9] != 9 {
+		t.Errorf("cell 9 (given) should remain 9, got %d", boardOut[9])
+	}
+}
+
+// TestMutation_SolveAll_RefillPathFixErrorShape pins the fix-error move emitted
+// by the candidate-refill path of handleAutosolveContradiction (the move that
+// follows a diagnostic). The cleared-cell value, the secondary highlight
+// coordinates, and the move's presence kill the board.ClearCell removal, the
+// zeroCandCell row/col arithmetic, and the appendFixErrorMove call removal.
+func TestMutation_SolveAll_RefillPathFixErrorShape(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	board := make([]int, 81)
+	givens := make([]int, 81)
+	given := func(i, v int) { board[i] = v; givens[i] = v }
+	user := func(i, v int) { board[i] = v }
+	for d := 1; d <= 8; d++ {
+		given(d, d)
+	}
+	given(9, 9)
+	given(36, 1)
+	given(37, 2)
+	given(38, 3)
+	given(39, 4)
+	given(41, 5)
+	given(42, 6)
+	given(43, 7)
+	given(44, 8)
+	user(49, 9)
+
+	_, resp := postSolveAll(t, router, map[string]interface{}{
+		"token": token, "board": board, "givens": givens,
+	})
+	fix := solveAllMoveByTechnique(resp, "fix-error")
+	if fix == nil {
+		t.Fatalf("expected a fix-error move, sequence=%v", solveAllTechniques(resp))
+	}
+	if digit, _ := fix["digit"].(float64); int(digit) != 9 {
+		t.Errorf("expected digit 9, got %v", digit)
+	}
+	if expl, _ := fix["explanation"].(string); expl != "Removing incorrect 9 from R6C5." {
+		t.Errorf("explanation: got %q", expl)
+	}
+	highlights, _ := fix["highlights"].(map[string]interface{})
+	secondary, _ := highlights["secondary"].([]interface{})
+	if len(secondary) != 1 {
+		t.Fatalf("expected 1 secondary highlight, got %d", len(secondary))
+	}
+	sec, _ := secondary[0].(map[string]interface{})
+	if int(sec["row"].(float64)) != 4 || int(sec["col"].(float64)) != 4 {
+		t.Errorf("expected secondary (4,4) for zeroCandCell=40, got %v", sec)
+	}
+	wrap := solveAllMoveWrapperByTechnique(resp, "fix-error")
+	if wrap == nil {
+		t.Fatal("expected a fix-error move wrapper")
+	}
+	if ifaceToIntBoard(wrap["board"])[49] != 0 {
+		t.Errorf("expected cell 49 cleared to 0 in the fix-error board snapshot")
+	}
+}
+
+// TestMutation_SolveAll_FiveErrorsSolvedUnderCap corrupts exactly 5 cells of
+// a solved grid. With maxFixes=5 the loop fixes all five and solves, emitting
+// no "error" move. The maxFixes decrementer (5->4) would cap early and emit an
+// error move instead of solving.
+func TestMutation_SolveAll_FiveErrorsSolvedUnderCap(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	solved := dp.GenerateFullGrid(777)
+	corruptions := map[int]int{}
+	for i := 0; i < 5; i++ {
+		corruptions[i] = wrongDigit(solved[i])
+	}
+	board, givens := boardWithUserErrors(solved, corruptions)
+
+	_, resp := postSolveAll(t, router, map[string]interface{}{
+		"token": token, "board": board, "givens": givens,
+	})
+	if hasTechnique(solveAllTechniques(resp), "error") {
+		t.Errorf("expected no error move with 5 errors under the cap, sequence=%v", solveAllTechniques(resp))
+	}
+}
+
+// TestMutation_SolveAll_SixErrorsHitCap corrupts exactly 6 cells. With
+// maxFixes=5 the loop hits the cap and emits an "error" move. The incrementer
+// (5->6) and the >= -> > comparison mutant would both allow a sixth fix and
+// skip the error move.
+func TestMutation_SolveAll_SixErrorsHitCap(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	solved := dp.GenerateFullGrid(888)
+	corruptions := map[int]int{}
+	for i := 0; i < 6; i++ {
+		corruptions[i] = wrongDigit(solved[i])
+	}
+	board, givens := boardWithUserErrors(solved, corruptions)
+
+	_, resp := postSolveAll(t, router, map[string]interface{}{
+		"token": token, "board": board, "givens": givens,
+	})
+	if !hasTechnique(solveAllTechniques(resp), "error") {
+		t.Errorf("expected an error move with 6 errors over the cap, sequence=%v", solveAllTechniques(resp))
+	}
+}
+
+// wrongDigit returns a Sudoku digit (1-9) different from d.
+func wrongDigit(d int) int {
+	if d == 9 {
+		return 1
+	}
+	return d + 1
+}
+
+// --- solveAll / solveFull / validate bad-input validation returns ---
+
+// TestMutation_SolveAll_RejectsBadToken pins the 401 path, killing the
+// branch/if and statement/remove mutants that drop the token-error response.
+func TestMutation_SolveAll_RejectsBadToken(t *testing.T) {
+	router := setupRouter()
+	board := make([]int, 81)
+	board[0] = 5
+	code, resp := postJSON(t, router, "/api/solve/all", map[string]interface{}{
+		"token": "not.a.token", "board": board,
+	})
+	if code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", code)
+	}
+	errMsg, _ := resp["error"].(string)
+	if !strings.HasPrefix(errMsg, "invalid token:") {
+		t.Errorf("expected 'invalid token:' prefix, got %q", errMsg)
+	}
+}
+
+// TestMutation_SolveAll_RejectsWrongBoardLength pins the board-length 400 path.
+func TestMutation_SolveAll_RejectsWrongBoardLength(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+	code, resp := postJSON(t, router, "/api/solve/all", map[string]interface{}{
+		"token": token, "board": []int{1, 2, 3},
+	})
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", code)
+	}
+	if errMsg, _ := resp["error"].(string); errMsg != "board must have 81 cells" {
+		t.Errorf("error: got %q", errMsg)
+	}
+}
+
+// TestMutation_SolveAll_RejectsOutOfRangeValue pins the board-value 400 path.
+func TestMutation_SolveAll_RejectsOutOfRangeValue(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+	board := make([]int, 81)
+	board[0] = 99
+	code, resp := postJSON(t, router, "/api/solve/all", map[string]interface{}{
+		"token": token, "board": board,
+	})
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", code)
+	}
+	if errMsg, _ := resp["error"].(string); !strings.Contains(errMsg, "out of range") {
+		t.Errorf("error: got %q", errMsg)
+	}
+}
+
+// TestMutation_SolveFull_RejectsWrongBoardLength pins solveFull length check.
+func TestMutation_SolveFull_RejectsWrongBoardLength(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+	code, resp := postJSON(t, router, "/api/solve/full", map[string]interface{}{
+		"token": token, "board": []int{1, 2, 3},
+	})
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", code)
+	}
+	if errMsg, _ := resp["error"].(string); errMsg != "board must have 81 cells" {
+		t.Errorf("error: got %q", errMsg)
+	}
+}
+
+// TestMutation_SolveFull_RejectsOutOfRangeValue pins solveFull value check,
+// killing the branch mutant that drops the early return.
+func TestMutation_SolveFull_RejectsOutOfRangeValue(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+	board := make([]int, 81)
+	board[0] = 42
+	code, resp := postJSON(t, router, "/api/solve/full", map[string]interface{}{
+		"token": token, "board": board,
+	})
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400 for cell value 42, got %d", code)
+	}
+	if errMsg, _ := resp["error"].(string); !strings.Contains(errMsg, "out of range") {
+		t.Errorf("error: got %q", errMsg)
+	}
+}
+
+// TestMutation_Practice_EmptyLoaderReturnsNotFound pins the puzzleCount==0
+// early return in findPracticePuzzle. With an empty (but non-nil) loader the
+// search must short-circuit to 404; the count==0 comparison mutants would
+// fall through to a divide-by-zero on puzzleCount.
+func TestMutation_Practice_EmptyLoaderReturnsNotFound(t *testing.T) {
+	resetPracticeCache()
+	original := puzzles.Global()
+	puzzles.SetGlobal(puzzles.NewLoaderFromPuzzles([]puzzles.CompactPuzzle{}))
+	defer puzzles.SetGlobal(original)
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/practice/naked-single", nil)
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected 404 for empty loader, got %d. body: %s", w.Code, w.Body.String())
+	}
+}
+
+// TestMutation_ValidateBoard_RejectsWrongLength pins validate length check.
+func TestMutation_ValidateBoard_RejectsWrongLength(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+	code, resp := postJSON(t, router, "/api/validate", map[string]interface{}{
+		"token": token, "board": []int{1, 2, 3},
+	})
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", code)
+	}
+	if errMsg, _ := resp["error"].(string); errMsg != "board must have 81 cells" {
+		t.Errorf("error: got %q", errMsg)
+	}
+}
+
+// TestMutation_ValidateBoard_RejectsOutOfRangeValue pins validate value check.
+func TestMutation_ValidateBoard_RejectsOutOfRangeValue(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+	board := make([]int, 81)
+	board[0] = 42
+	code, resp := postJSON(t, router, "/api/validate", map[string]interface{}{
+		"token": token, "board": board,
+	})
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", code)
+	}
+	if errMsg, _ := resp["error"].(string); !strings.Contains(errMsg, "out of range") {
+		t.Errorf("error: got %q", errMsg)
+	}
+}
+
+// --- solveNext both-givens conflict then fixable conflict ---
+
+// TestMutation_SolveNext_SkipsBothGivensConflict pins that when a board has a
+// both-givens conflict followed by a user-fixable conflict, the handler skips
+// the unfixable one (continue) and fixes the fixable one. Kills the continue
+// removal and continue->break mutants on the conflict loop.
+func TestMutation_SolveNext_SkipsBothGivensConflict(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	board := make([]int, 81)
+	board[0] = 5
+	board[1] = 5
+	board[2] = 7
+	board[3] = 7
+	givens := make([]int, 81)
+	givens[0] = 5
+	givens[1] = 5
+	givens[2] = 7
+
+	code, resp := postSolveNext(t, router, map[string]interface{}{
+		"token": token, "board": board, "givens": givens,
+	})
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %v", code, resp)
+	}
+	move, ok := resp["move"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected a move, got: %v", resp)
+	}
+	if move["technique"] != "fix-conflict" {
+		t.Errorf("expected fix-conflict (skipping both-givens), got %v", move["technique"])
+	}
+	boardOut := ifaceToIntBoard(resp["board"])
+	if boardOut[3] != 0 {
+		t.Errorf("expected cell 3 (user entry) cleared, got %d", boardOut[3])
+	}
+}
+
+// --- solvable-board solveAll: clean completion ---
+
+// TestMutation_SolveAll_SolvesCleanlyWithoutStalledMove pins that a solvable
+// puzzle autosolves to completion with no stalled/error/unpinpointable move.
+// This kills the IsSolved-break removal (extra stalled appended) and the
+// normal-move continue removal (mishandles moves, fails to solve).
+func TestMutation_SolveAll_SolvesCleanlyWithoutStalledMove(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	loader := puzzles.Global()
+	givens, _, _, err := loader.GetPuzzleBySeed("clean-solve-seed", "easy")
+	if err != nil {
+		t.Fatalf("loader error: %v", err)
+	}
+
+	_, resp := postSolveAll(t, router, map[string]interface{}{
+		"token": token, "board": givens, "givens": givens,
+	})
+	if solved, _ := resp["solved"].(bool); !solved {
+		t.Errorf("expected solved=true for a solvable easy puzzle, sequence=%v", solveAllTechniques(resp))
+	}
+	for _, tech := range solveAllTechniques(resp) {
+		if tech == "stalled" || tech == "error" || tech == "unpinpointable-error" {
+			t.Errorf("expected no terminal error move, found %q in sequence %v", tech, solveAllTechniques(resp))
+		}
+	}
+}
+
+// TestMutation_SolveAll_FixErrorMoveCarriesCandidates pins that a fix-error
+// move's snapshot includes a populated candidate grid. This kills the
+// board.InitCandidates() removal in both contradiction-fix code paths.
+func TestMutation_SolveAll_FixErrorMoveCarriesCandidates(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	board := make([]int, 81)
+	for d := 1; d <= 8; d++ {
+		board[d] = d
+	}
+	board[9] = 9
+	givens := make([]int, 81)
+
+	_, resp := postSolveAll(t, router, map[string]interface{}{
+		"token": token, "board": board, "givens": givens,
+	})
+	fixWrapper := solveAllMoveWrapperByTechnique(resp, "fix-error")
+	if fixWrapper == nil {
+		t.Fatalf("expected a fix-error move, sequence=%v", solveAllTechniques(resp))
+	}
+	cands, ok := fixWrapper["candidates"].([]interface{})
+	if !ok {
+		t.Fatalf("fix-error move missing candidates field: %v", fixWrapper)
+	}
+	if len(cands) != 81 {
+		t.Errorf("fix-error move candidates: expected 81 cells, got %d", len(cands))
+	}
+}
+
+// --- token.go verify edge cases ---
+
+// TestVerifyToken_RejectsNonJsonPayload pins that a payload that is valid
+// base64 but not valid JSON returns an error (not a silent zero-value session).
+// Kills the json.Unmarshal return-removal branch mutant.
+func TestVerifyToken_RejectsNonJsonPayload(t *testing.T) {
+	encoded := base64.URLEncoding.EncodeToString([]byte("not-json{"))
+	h := hmac.New(sha256.New, []byte("secret"))
+	h.Write([]byte(encoded))
+	sig := base64.URLEncoding.EncodeToString(h.Sum(nil))
+	tok := encoded + "." + sig
+
+	got, err := verifyToken("secret", tok)
+	if err == nil {
+		t.Fatalf("expected error for non-JSON payload, got session=%+v", got)
+	}
+	if !strings.Contains(err.Error(), "invalid character") && !strings.Contains(err.Error(), "JSON") && !strings.Contains(err.Error(), "unexpected") {
+		t.Errorf("expected a JSON parse error, got %q", err.Error())
+	}
+}
+
+// TestVerifyToken_RejectsInvalidBase64Payload pins that a payload with a valid
+// HMAC signature but invalid base64 returns the decode error, not a later
+// expiry error. Kills the base64-decode return-removal branch mutant.
+func TestVerifyToken_RejectsInvalidBase64Payload(t *testing.T) {
+	encoded := "not_valid_base64!!"
+	h := hmac.New(sha256.New, []byte("secret"))
+	h.Write([]byte(encoded))
+	sig := base64.URLEncoding.EncodeToString(h.Sum(nil))
+	tok := encoded + "." + sig
+
+	got, err := verifyToken("secret", tok)
+	if err == nil {
+		t.Fatalf("expected error for invalid base64 payload, got session=%+v", got)
+	}
+	if strings.Contains(err.Error(), "token expired") {
+		t.Errorf("expected a base64/JSON error before expiry check, got %q", err.Error())
 	}
 }
