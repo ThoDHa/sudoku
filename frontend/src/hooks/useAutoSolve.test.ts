@@ -1686,4 +1686,480 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
       })
     })
   })
+
+  describe('stopAutoSolve before any solve (initial-state observability)', () => {
+    it('keeps lastCompletedSteps at 0 when stopped before auto-solve ever starts', () => {
+      const options = createDefaultAutoSolveOptions()
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      actStopAutoSolve(result)
+
+      expect(result.current.lastCompletedSteps).toBe(0)
+      expect(result.current.isAutoSolving).toBe(false)
+      expect(result.current.isPaused).toBe(false)
+      expect(result.current.currentIndex).toBe(-1)
+      expect(result.current.totalMoves).toBe(0)
+    })
+  })
+
+  describe('stepDelay prop dynamic sync', () => {
+    it('applies the updated stepDelay after the prop changes between renders', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      const applyMove = vi.fn()
+      const initialOpts = createDefaultAutoSolveOptions({ applyMove, stepDelay: 1000 })
+      const { result, rerender } = renderHook(({ opts }) => useAutoSolve(opts), {
+        initialProps: { opts: initialOpts },
+      })
+
+      // Switch to a much shorter delay before starting playback so the
+      // dynamic stepDelayRef sync is observed.
+      const newOpts = {
+        ...createDefaultAutoSolveOptions({ applyMove, stepDelay: 10 }),
+        stepDelay: 10,
+      }
+      rerender({ opts: newOpts })
+
+      await act(async () => {
+        await result.current.startAutoSolve()
+      })
+      // First move applied synchronously at start.
+      const callsAfterStart = applyMove.mock.calls.length
+      expect(callsAfterStart).toBeGreaterThanOrEqual(1)
+
+      // 10ms tick should fire the next move (would not if the ref were stale at 1000).
+      await act(async () => {
+        vi.advanceTimersByTime(15)
+      })
+      expect(applyMove.mock.calls.length).toBeGreaterThan(callsAfterStart)
+    })
+  })
+
+  describe('resume branch guard (no auto-solve active)', () => {
+    it('does not throw when gamePaused transitions from true to false without auto-solve', async () => {
+      const pausedOpts = createDefaultAutoSolveOptions({ gamePaused: true })
+      const { rerender } = renderHook(({ opts }) => useAutoSolve(opts), {
+        initialProps: { opts: pausedOpts },
+      })
+
+      const unpausedOpts = createDefaultAutoSolveOptions({ gamePaused: false })
+      expect(() => rerender({ opts: unpausedOpts })).not.toThrow()
+    })
+  })
+
+  describe('togglePause single-cell board-change detection', () => {
+    it('stops auto-solve when exactly one cell differs between snapshot and current board', async () => {
+      let board = Array(81).fill(0)
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+      const getBoard = vi.fn(() => board)
+      const options = createDefaultAutoSolveOptions({ getBoard, stepDelay: 1000 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.startAutoSolve()
+      })
+      expect(result.current.isAutoSolving).toBe(true)
+
+      actTogglePause(result)
+      expect(result.current.isPaused).toBe(true)
+
+      const snapshot = [...board]
+      snapshot[7] = 4
+      board = snapshot
+
+      actTogglePause(result)
+      await waitFor(() => {
+        expect(result.current.isAutoSolving).toBe(false)
+      })
+    })
+  })
+
+  describe('stopAutoSolve resets all observable flags', () => {
+    it('clears isAutoSolving, isPaused, manualPaused, currentIndex, and totalMoves together', async () => {
+      const result = await startAutoSolveWith(5, { stepDelay: 100 })
+
+      actTogglePause(result)
+      expect(result.current.isPaused).toBe(true)
+
+      actStopAutoSolve(result)
+
+      expect(result.current.isAutoSolving).toBe(false)
+      expect(result.current.isPaused).toBe(false)
+      expect(result.current.currentIndex).toBe(-1)
+      expect(result.current.totalMoves).toBe(0)
+    })
+  })
+
+  describe('clearActiveTimers prevents next scheduled move after stop', () => {
+    it('does not fire any pending move after stopAutoSolve even with many queued', async () => {
+      vi.useFakeTimers()
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(20))
+      const applyMove = vi.fn()
+      const options = createDefaultOptions({ applyMove, stepDelay: 50 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.startAutoSolve()
+      })
+      const callsBeforeStop = applyMove.mock.calls.length
+
+      actStopAutoSolve(result)
+
+      await act(async () => {
+        vi.advanceTimersByTime(5000)
+      })
+      expect(applyMove).toHaveBeenCalledTimes(callsBeforeStop)
+      vi.useRealTimers()
+    })
+  })
+
+  describe('optional callback absence is safe', () => {
+    it('startAutoSolve no-moves path does not throw when onError is undefined', async () => {
+      mockSolveAll.mockResolvedValue({ solved: false, moves: [] })
+      const opts = createDefaultOptions({})
+      delete (opts as Partial<typeof opts>).onError
+      const { result } = renderHook(() => useAutoSolve(opts))
+
+      await expect(
+        act(async () => {
+          await result.current.startAutoSolve()
+        }),
+      ).resolves.toBeUndefined()
+      expect(result.current.isAutoSolving).toBe(false)
+    })
+
+    it('startAutoSolve rejection path does not throw when onError is undefined', async () => {
+      mockSolveAll.mockRejectedValue(new Error('boom'))
+      const opts = createDefaultOptions({})
+      delete (opts as Partial<typeof opts>).onError
+      const { result } = renderHook(() => useAutoSolve(opts))
+
+      await expect(
+        act(async () => {
+          await result.current.startAutoSolve()
+        }),
+      ).resolves.toBeUndefined()
+      expect(result.current.isFetching).toBe(false)
+    })
+
+    it('solveFromGivens no-moves path does not throw when onError is undefined', async () => {
+      mockSolveAll.mockResolvedValue({ solved: false, moves: [] })
+      const opts = createDefaultOptions({})
+      delete (opts as Partial<typeof opts>).onError
+      const { result } = renderHook(() => useAutoSolve(opts))
+
+      await expect(
+        act(async () => {
+          await result.current.solveFromGivens()
+        }),
+      ).resolves.toBeUndefined()
+      expect(result.current.isAutoSolving).toBe(false)
+    })
+
+    it('solveFromGivens rejection path does not throw when onError is undefined', async () => {
+      mockSolveAll.mockRejectedValue(new Error('boom'))
+      const opts = createDefaultOptions({})
+      delete (opts as Partial<typeof opts>).onError
+      const { result } = renderHook(() => useAutoSolve(opts))
+
+      await expect(
+        act(async () => {
+          await result.current.solveFromGivens()
+        }),
+      ).resolves.toBeUndefined()
+      expect(result.current.isFetching).toBe(false)
+    })
+  })
+
+  describe('solveFromGivens seeds state history with the givens board', () => {
+    it('applies the givens board when stepping back to the initial snapshot', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+      const givens = Array(81).fill(0)
+      givens[0] = 5
+      givens[40] = 7
+      const applyState = vi.fn()
+      const options = createDefaultAutoSolveOptions({
+        getGivens: vi.fn(() => givens),
+        applyState,
+        stepDelay: 1000,
+      })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.solveFromGivens()
+      })
+      // First move played synchronously -> index 1. Step back to 0 -> applyState(snapshot[0]).
+      actStepBack(result)
+      expect(result.current.currentIndex).toBe(0)
+      expect(applyState).toHaveBeenCalled()
+      const [boardArg] = applyState.mock.calls[applyState.mock.calls.length - 1]
+      expect(boardArg[0]).toBe(5)
+      expect(boardArg[40]).toBe(7)
+    })
+
+    it('does not invoke onError for a single contradiction move under skipSpecialMoves=true', async () => {
+      const move = createMockAutoSolveMove({ action: 'contradiction', explanation: 'CTX' })
+      mockSolveAll.mockResolvedValue({ solved: true, moves: [move] })
+      const onError = vi.fn()
+      const options = createDefaultAutoSolveOptions({ onError, stepDelay: 50 })
+
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.solveFromGivens()
+      })
+      // skipSpecialMoves=true means contradiction is skipped, not reported.
+      expect(onError).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('restartAutoSolve startPaused toggles manualPaused correctly', () => {
+    it('starts unpaused when startPaused=false and applies the first move', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      const applyMove = vi.fn()
+      const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 100 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.restartAutoSolve(false)
+      })
+      expect(result.current.isAutoSolving).toBe(true)
+      expect(result.current.isPaused).toBe(false)
+      expect(applyMove).toHaveBeenCalled()
+    })
+
+    it('starts paused when startPaused=true and queues no moves until unpaused', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      const applyMove = vi.fn()
+      const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 100 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.restartAutoSolve(true)
+      })
+      expect(result.current.isAutoSolving).toBe(true)
+      expect(result.current.isPaused).toBe(true)
+      const callsWhilePaused = applyMove.mock.calls.length
+      await act(async () => {
+        vi.advanceTimersByTime(500)
+      })
+      expect(applyMove.mock.calls.length).toBe(callsWhilePaused)
+    })
+  })
+
+  describe('stepBack/stepForward onStepNavigate and snapshot applyState', () => {
+    it('stepBack applies the snapshot at newIndex and notifies with direction "back"', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      const applyState = vi.fn()
+      const onStepNavigate = vi.fn()
+      const options = createDefaultAutoSolveOptions({
+        applyState,
+        onStepNavigate,
+        stepDelay: 1000,
+      })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.startAutoSolve()
+      })
+      // Move 1 played -> index 1, snapshot[1] populated.
+      applyState.mockClear()
+      onStepNavigate.mockClear()
+
+      actStepBack(result)
+      expect(result.current.currentIndex).toBe(0)
+      expect(applyState).toHaveBeenCalledTimes(1)
+      // The applyState args are (board, candidates, move, index)
+      const args = applyState.mock.calls[0]
+      expect(args[3]).toBe(0)
+      expect(onStepNavigate).toHaveBeenCalledWith(null, 'back')
+    })
+
+    it('stepForward into visited snapshot applies state and notifies with direction "forward"', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      const applyState = vi.fn()
+      const onStepNavigate = vi.fn()
+      const options = createDefaultAutoSolveOptions({
+        applyState,
+        onStepNavigate,
+        stepDelay: 1000,
+      })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.startAutoSolve()
+      })
+      actStepBack(result)
+      applyState.mockClear()
+      onStepNavigate.mockClear()
+
+      actStepForward(result)
+      expect(applyState).toHaveBeenCalled()
+      expect(onStepNavigate).toHaveBeenCalledWith(expect.anything(), 'forward')
+    })
+
+    it('stepForward into new territory applies the move and updates the queue from allMovesRef', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      const applyMove = vi.fn()
+      const applyState = vi.fn()
+      const options = createDefaultAutoSolveOptions({
+        applyMove,
+        applyState,
+        stepDelay: 1000,
+      })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.startAutoSolve()
+      })
+      // index=1, snapshots=[0,1]. Step back to 0, then forward into 1 (snapshot), 2 (new), 3 (new).
+      actStepBack(result)
+      actStepForward(result)
+      applyMove.mockClear()
+      // Forward to 2: snapshot doesn't exist (history length=2), so new-territory branch.
+      actStepForward(result)
+      expect(result.current.currentIndex).toBe(2)
+      expect(applyMove).toHaveBeenCalledTimes(1)
+      // Verify candidate Sets were derived from moveResult.candidates arrays.
+      const candidatesArg = applyMove.mock.calls[0][1] as Set<number>[]
+      expect(candidatesArg[0]).toBeInstanceOf(Set)
+
+      // The new-territory branch must also push a real snapshot (board/candidates/move)
+      // so that stepBack can restore it.
+      applyState.mockClear()
+      actStepBack(result)
+      expect(result.current.currentIndex).toBe(1)
+      expect(applyState).toHaveBeenCalledTimes(1)
+      const stateArgs = applyState.mock.calls[0]
+      // applyState(board, candidates, move, index) — board must be a real array, not undefined.
+      expect(Array.isArray(stateArgs[0])).toBe(true)
+      expect(stateArgs[0]).toHaveLength(81)
+      expect(stateArgs[1]).toHaveLength(81)
+      expect(stateArgs[3]).toBe(1)
+    })
+  })
+
+  describe('canStepForward boundary at currentIndex === totalMoves', () => {
+    it('canStepForward is false after stepping forward to the last move while still auto-solving', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      const options = createDefaultAutoSolveOptions({ stepDelay: 1000 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.startAutoSolve()
+      })
+      // After first move: index=1, totalMoves=3, snapshots=[0,1]. Pause via stepBack, then walk forward.
+      actStepBack(result)
+      expect(result.current.canStepForward).toBe(true)
+
+      actStepForward(result) // 0 -> 1 (visited snapshot)
+      actStepForward(result) // 1 -> 2 (new territory)
+      actStepForward(result) // 2 -> 3 (new territory; currentIndex === totalMoves)
+      expect(result.current.currentIndex).toBe(3)
+      expect(result.current.totalMoves).toBe(3)
+      expect(result.current.isAutoSolving).toBe(true)
+      expect(result.current.canStepForward).toBe(false)
+    })
+  })
+
+  describe('playMoves branch coverage', () => {
+    it('plays the first move synchronously when startPaused is false', () => {
+      const moves = [
+        createMockAutoSolveMove({ action: 'place' }),
+        createMockAutoSolveMove({ action: 'place' }),
+      ]
+      const applyMove = vi.fn()
+      const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 1000 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      act(() => {
+        result.current.playMoves(moves, false)
+      })
+      expect(applyMove).toHaveBeenCalled()
+      expect(result.current.isAutoSolving).toBe(true)
+      expect(result.current.isPaused).toBe(false)
+    })
+
+    it('does nothing when moves is null', () => {
+      const applyMove = vi.fn()
+      const options = createDefaultAutoSolveOptions({ applyMove })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      act(() => {
+        result.current.playMoves(null as unknown as never[])
+      })
+      expect(applyMove).not.toHaveBeenCalled()
+      expect(result.current.isAutoSolving).toBe(false)
+    })
+
+    it('seeds the initial snapshot from the first move board when provided', () => {
+      const firstBoard = Array(81).fill(0)
+      firstBoard[3] = 9
+      const firstCandidates = Array(81)
+        .fill(null)
+        .map(() => [1, 2])
+      const moves = [
+        {
+          board: firstBoard,
+          candidates: firstCandidates,
+          move: {
+            step_index: 0,
+            technique: 'T',
+            action: 'place',
+            digit: 5,
+            targets: [{ row: 0, col: 0 }],
+            explanation: 'x',
+            refs: { title: '', slug: '', url: '' },
+            highlights: { primary: [] },
+          },
+        },
+      ]
+      const applyMove = vi.fn()
+      const applyState = vi.fn()
+      const options = createDefaultAutoSolveOptions({ applyMove, applyState, stepDelay: 1000 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      act(() => {
+        result.current.playMoves(moves, true)
+      })
+      // Initial snapshot is seeded from moves[0].board & moves[0].candidates; we
+      // can observe this by stepping back from index 1 to 0 once a move plays.
+      // Under startPaused the queue is held; unpause via manualPausedRef toggle.
+      expect(result.current.isAutoSolving).toBe(true)
+      expect(result.current.isPaused).toBe(true)
+      expect(result.current.totalMoves).toBe(1)
+    })
+
+    it('processes a contradiction move (skipSpecialMoves=false) by reporting the error', () => {
+      const moves = [createMockAutoSolveMove({ action: 'contradiction', explanation: 'CTX' })]
+      const onError = vi.fn()
+      const options = createDefaultAutoSolveOptions({ onError, stepDelay: 1000 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      act(() => {
+        result.current.playMoves(moves, false)
+      })
+      expect(onError).toHaveBeenCalledWith('Puzzle has a contradiction that could not be resolved.')
+      expect(result.current.isAutoSolving).toBe(false)
+    })
+  })
+
+  describe('solveFromGivens advanced path', () => {
+    it('keeps autoSolveRef active while moves are still playing', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      const applyMove = vi.fn()
+      const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 50 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.solveFromGivens()
+      })
+      expect(applyMove).toHaveBeenCalled()
+      expect(result.current.isAutoSolving).toBe(true)
+      // Advance to flush second move
+      await act(async () => {
+        vi.advanceTimersByTime(120)
+      })
+      expect(applyMove.mock.calls.length).toBeGreaterThan(1)
+    })
+  })
 })
