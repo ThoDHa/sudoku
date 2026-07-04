@@ -1085,7 +1085,6 @@ func TestSolver_CandidateSweep_IncludesBoundaryDigits(t *testing.T) {
 func TestSolver_Reset_ClearsGenerationState(t *testing.T) {
 	solver := NewSolver()
 	solver.generationState = StateCandidatesComplete
-	solver.candidateIndex = 7
 	solver.Reset()
 	if solver.generationState != StateNotStarted {
 		t.Errorf("after Reset, generationState = %v, want StateNotStarted", solver.generationState)

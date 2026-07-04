@@ -43,10 +43,6 @@ type Solver struct {
 	// candidates (digit-first) then apply techniques. Persisting the state
 	// across FindNextMove calls ensures deterministic phase transitions.
 	generationState GenerationState
-	// candidateIndex tracks which candidate move to return next during generation.
-	// This prevents infinite loops by ensuring we don't return the same candidate
-	// move repeatedly across multiple FindNextMove calls.
-	candidateIndex int
 }
 
 // NewSolver creates a solver with the technique registry
@@ -54,7 +50,6 @@ func NewSolver() *Solver {
 	return &Solver{
 		registry:        NewTechniqueRegistry(),
 		generationState: StateNotStarted,
-		candidateIndex:  0,
 	}
 }
 
@@ -63,7 +58,6 @@ func NewSolverWithRegistry(registry *TechniqueRegistry) *Solver {
 	return &Solver{
 		registry:        registry,
 		generationState: StateNotStarted,
-		candidateIndex:  0,
 	}
 }
 
@@ -71,7 +65,6 @@ func NewSolverWithRegistry(registry *TechniqueRegistry) *Solver {
 // starts fresh. This prevents state from one hint request affecting another.
 func (s *Solver) Reset() {
 	s.generationState = StateNotStarted
-	s.candidateIndex = 0
 }
 
 // GenerationState represents the solver's candidate-generation lifecycle
@@ -91,9 +84,6 @@ const (
 // checkDuplicateForCell checks if the digit at cellIdx appears elsewhere in the given unit indices
 func (s *Solver) checkDuplicateForCell(b *Board, cellIdx int, unitIndices []int, unitType UnitType, unitIndex int) *core.Move {
 	digit := b.Cells[cellIdx]
-	if digit == 0 {
-		return nil
-	}
 
 	for _, otherIdx := range unitIndices {
 		if otherIdx == cellIdx {
