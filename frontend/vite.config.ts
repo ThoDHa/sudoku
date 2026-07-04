@@ -19,10 +19,10 @@ const getCommitHash = () => {
 
   // PWA plugin: enabled in dev only when explicitly requested via env
 const pwaPlugins = [VitePWA({
-  // Use 'prompt' instead of 'autoUpdate' to prevent background update checks
-  // This reduces battery usage by not waking the app to check for updates
-  // Users will be prompted to update when a new version is available
-  registerType: 'prompt',
+  // autoUpdate so a new deploy takes over returning browsers automatically.
+  // 'prompt' left users stranded on stale cached bundles because no update
+  // prompt was ever wired, so the waiting worker never activated.
+  registerType: 'autoUpdate',
   // Enable dev service worker only when ENABLE_PWA_IN_DEV is truthy
   devOptions: {
     enabled: !!process.env.ENABLE_PWA_IN_DEV,
@@ -69,31 +69,21 @@ const pwaPlugins = [VitePWA({
     // Cache strategies - NetworkFirst for app, CacheFirst for static assets
     runtimeCaching: [
       {
-        // App JS/CSS/HTML - NetworkFirst with battery-friendly settings
+        // App JS/CSS/HTML - NetworkFirst so a fresh deploy is preferred over cache.
+        // The 3s timeout keeps offline/slow loads usable without pinning users to a
+        // stale bundle the way the old 1s timeout did.
         urlPattern: /\.(?:js|css|html)$/,
         handler: 'NetworkFirst',
         options: {
           cacheName: 'app-assets',
           expiration: {
             maxEntries: 50,
-            maxAgeSeconds: 60 * 60 * 24 * 1 // 1 day instead of 7
+            maxAgeSeconds: 60 * 60 * 24 * 1
           },
-          networkTimeoutSeconds: 1, // Reduced from 3 to 1 second for battery savings
+          networkTimeoutSeconds: 3,
           cacheableResponse: {
             statuses: [0, 200]
-          },
-          // Add plugins for better background behavior
-          plugins: [{
-            cacheKeyWillBeUsed: async ({ request, mode }) => {
-              // Add version parameter for cache busting
-              const url = new URL(request.url)
-              if (mode === 'read' && document.hidden) {
-                // When reading from cache while page is hidden, prefer cache
-                url.searchParams.set('cache-mode', 'prefer-cache')
-              }
-              return url
-            }
-          }]
+          }
         }
       },
       {
@@ -108,18 +98,6 @@ const pwaPlugins = [VitePWA({
           },
           cacheableResponse: {
             statuses: [0, 200]
-          }
-        }
-      },
-      {
-        // WASM files - CacheFirst (large files that rarely change)
-        urlPattern: /\.wasm$/,
-        handler: 'CacheFirst',
-        options: {
-          cacheName: 'wasm-cache',
-          expiration: {
-            maxEntries: 5,
-            maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
           }
         }
       },

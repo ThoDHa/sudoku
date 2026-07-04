@@ -1,7 +1,9 @@
-// Cache version management for better PWA cache invalidation
-// Increment this version when you want to force cache refresh
+// Cache version management for better PWA cache invalidation.
+// Tied to the build commit hash (injected via vite `define`) so every deploy
+// changes the version and forces a one-time cache clear for returning users.
+// A hardcoded string here was never bumped per deploy, so it never fired.
 
-export const CACHE_VERSION = '1.0.2'
+export const CACHE_VERSION = __COMMIT_HASH__
 export const CACHE_KEY = 'sudoku-app-version'
 
 import { logger } from './logger'
@@ -63,12 +65,4 @@ export async function clearAllCaches(): Promise<void> {
     logger.error('Failed to clear caches:', error)
     throw error
   }
-}
-
-/**
- * Add a cache-busting query parameter to URLs
- */
-export function addCacheBuster(url: string): string {
-  const separator = url.includes('?') ? '&' : '?'
-  return `${url}${separator}v=${CACHE_VERSION}`
 }
