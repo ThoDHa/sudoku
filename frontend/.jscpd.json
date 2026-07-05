@@ -2,7 +2,7 @@
   "threshold": 5,
   "reporters": ["console", "html"],
   "output": "./reports/jscpd",
-  "ignorePattern": [
+  "ignore": [
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.spec.ts",
