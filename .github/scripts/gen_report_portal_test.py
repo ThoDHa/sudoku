@@ -51,6 +51,29 @@ class Portal(unittest.TestCase):
             self.assertIn("Frontend (StrykerJS)", page)
             self.assertIn("Go: dp", page)
 
+    def test_groups_techniques_shards_under_a_collapsible(self):
+        with tempfile.TemporaryDirectory() as d:
+            artifacts = os.path.join(d, "artifacts")
+            make_artifact(artifacts, "mutation-go-dp",
+                          "reports/mutation/dp/go-mutesting-report.html")
+            for t in ("aic", "chains", "ur"):
+                make_artifact(artifacts, f"mutation-go-techniques-shard-{t}",
+                              f"reports/mutation/techniques-shard-{t}/go-mutesting-report.html")
+            out = os.path.join(d, "reports")
+            self._gen(artifacts, out)
+            with open(os.path.join(out, "index.html")) as fh:
+                page = fh.read()
+            # dp stays a top-level flat link; techniques collapse into one group.
+            self.assertIn("Go: dp", page)
+            self.assertIn("<details>", page)
+            self.assertIn("Techniques (3 files)", page)
+            # Grouped links use the short technique name, not the shard label.
+            self.assertNotIn("Go: techniques-shard-aic", page)
+            self.assertIn("mutation/techniques-shard-aic/go-mutesting-report.html", page)
+            # Reports are still copied into place.
+            self.assertTrue(os.path.exists(
+                os.path.join(out, "mutation/techniques-shard-ur/go-mutesting-report.html")))
+
     def test_copies_profiling_playwright_report_dir_with_assets(self):
         with tempfile.TemporaryDirectory() as d:
             artifacts = os.path.join(d, "artifacts")

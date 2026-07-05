@@ -52,6 +52,11 @@ COLLECTORS = [
 # Portal section order.
 SECTIONS = ["Test results", "Coverage", "Mutation testing", "Profiling"]
 
+# Techniques mutation is sharded one file per shard (mutation-go-techniques-shard-*);
+# collapse those into one group so 22 links don't flood the Mutation section.
+TECHNIQUES_PREFIX = "techniques-shard-"
+GROUP_MARKER = "__group__"
+
 
 def find_file(root, filename):
     """Return the first path to `filename` anywhere under root, or None."""
@@ -62,8 +67,14 @@ def find_file(root, filename):
 
 
 def collect_reports(artifacts_dir, out_dir):
-    """Copy each found report into out_dir; return {section: [(label, href)]}."""
+    """Copy each found report into out_dir; return {section: [entry]}.
+
+    An entry is either a flat ``(label, href)`` link or a collapsible group
+    ``(GROUP_MARKER, title, [(label, href), ...])``. The 22 per-file techniques
+    mutation reports are collapsed into one group so they don't flood the page.
+    """
     found = {}
+    techniques = []
     if not artifacts_dir or not os.path.isdir(artifacts_dir):
         return found
 
@@ -98,24 +109,42 @@ def collect_reports(artifacts_dir, out_dir):
                 shutil.copy2(entry, os.path.join(dest_dir, rule["find"]))
 
             href = f"{dest_rel}/{rule['find']}"
-            found.setdefault(rule["section"], []).append((label, href))
+            if suffix and suffix.startswith(TECHNIQUES_PREFIX):
+                # Collapse the per-file techniques shards; label = technique name.
+                techniques.append((suffix[len(TECHNIQUES_PREFIX):], href))
+            else:
+                found.setdefault(rule["section"], []).append((label, href))
             break
 
+    if techniques:
+        found.setdefault("Mutation testing", []).append(
+            (GROUP_MARKER, f"Techniques ({len(techniques)} files)", sorted(techniques)))
     return found
 
 
 def render_page(sections):
     """sections: list of (heading, [(label, href)]). Returns the portal HTML."""
+    def link(label, href):
+        return f'<a href="{html.escape(href)}">{html.escape(label)}</a>'
+
     items = []
     for heading, entries in sections:
         if not entries:
             continue
-        rows = "\n".join(
-            f'      <li><a href="{html.escape(href)}">{html.escape(label)}</a></li>'
-            for label, href in entries
-        )
+        rows = []
+        for entry in entries:
+            if entry[0] == GROUP_MARKER:
+                _, title, sub = entry
+                sub_rows = "\n".join(
+                    f"          <li>{link(l, h)}</li>" for l, h in sub)
+                rows.append(
+                    f"      <li><details><summary>{html.escape(title)}</summary>\n"
+                    f"        <ul>\n{sub_rows}\n        </ul>\n      </details></li>")
+            else:
+                label, href = entry
+                rows.append(f"      <li>{link(label, href)}</li>")
         items.append(f"    <section>\n      <h2>{html.escape(heading)}</h2>\n"
-                     f"      <ul>\n{rows}\n      </ul>\n    </section>")
+                     f"      <ul>\n" + "\n".join(rows) + "\n      </ul>\n    </section>")
     body = "\n".join(items) if items else "    <p>No reports available yet.</p>"
     return f"""<!doctype html>
 <html lang="en">
