@@ -155,7 +155,7 @@ jobs:
   # Techniques is the largest package (~7700 LOC across 22 files) and cannot be
   # mutated within GitHub Actions' hard 6h (360m) per-job limit in one run
   # (~10-12h at ~27s per mutant). It is sharded by file group across a matrix:
-  # each shard mutates a balanced ~1900-LOC subset (~3h) well under the cap.
+  # each shard mutates a balanced ~960-LOC subset (est. ~1.5h) well under the cap.
   # go-mutesting mutates only the targeted files but type-checks against the
   # whole package, so a file subset is a valid, self-contained target. A
   # dependent aggregate job combines the per-shard reports into one efficacy
@@ -178,13 +178,21 @@ jobs:
       matrix:
         include:
           - shard: 1
-            files: "chains.go forcing.go fish.go triples.go"
+            files: "chains.go triples.go"
           - shard: 2
-            files: "medusa.go swordfish.go als_chains.go aic.go pairs.go"
+            files: "medusa.go aic.go"
           - shard: 3
-            files: "ur.go grid.go xcycles.go blossom.go board.go formatter.go"
+            files: "ur.go blossom.go formatter.go"
           - shard: 4
-            files: "wings.go sdc.go simple.go digit_forcing.go xwing_finned.go skyscraper.go bug.go"
+            files: "forcing.go digit_forcing.go pairs.go"
+          - shard: 5
+            files: "swordfish.go simple.go skyscraper.go"
+          - shard: 6
+            files: "grid.go sdc.go bug.go"
+          - shard: 7
+            files: "fish.go xcycles.go board.go"
+          - shard: 8
+            files: "wings.go als_chains.go xwing_finned.go"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -249,5 +257,5 @@ jobs:
         working-directory: api
         run: |
           python3 scripts/mutation_aggregate.py \
-            --floor 85 --expected 4 --reports-dir ../shards
+            --floor 85 --expected 8 --reports-dir ../shards
         continue-on-error: true
