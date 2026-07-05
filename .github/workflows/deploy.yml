@@ -247,6 +247,30 @@ jobs:
           echo "allure-results-all contents:"
           ls -laR allure-results-all || echo "Directory empty"
 
+      # Best-effort: pull the latest successful nightly runs so (a) their Allure
+      # results fold into the one combined report and (b) the portal can link the
+      # mutation and profiling reports. These live in separate workflows'
+      # artifacts. If a run does not exist yet or a download fails, the combined
+      # Allure and the portal simply omit those pieces; the deploy is unaffected.
+      - name: Fetch latest nightly reports
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p nightly-artifacts
+          for wf in nightly-mutation.yml nightly-profiling.yml; do
+            run_id=$(gh run list --workflow="$wf" --status=success \
+              --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+            if [ -n "$run_id" ]; then
+              echo "Downloading artifacts from $wf run $run_id"
+              gh run download "$run_id" --dir nightly-artifacts \
+                || echo "download failed for $wf; its reports will be omitted"
+            else
+              echo "No successful $wf run found; its reports will be omitted"
+            fi
+          done
+
       - name: Merge Allure results
         run: |
           mkdir -p allure-results
@@ -256,6 +280,8 @@ jobs:
           cp -r allure-results-all/allure-results-unit/* allure-results/ 2>/dev/null || true
           cp -r allure-results-all/allure-results-go/* allure-results/ 2>/dev/null || true
           cp -r allure-results-all/allure-results-e2e/* allure-results/ 2>/dev/null || true
+          # One combined Allure: fold in the latest nightly profiling suite results
+          cp -r nightly-artifacts/nightly-allure-results/* allure-results/ 2>/dev/null || true
 
           echo "Files copied from each suite:"
           ls -la allure-results/
@@ -282,6 +308,12 @@ jobs:
             echo "" >> allure-results/environment.properties
             echo "=== E2E Tests ===" >> allure-results/environment.properties
             cat allure-results-all/allure-results-e2e/environment.properties >> allure-results/environment.properties
+          fi
+
+          if [ -f "nightly-artifacts/nightly-allure-results/environment.properties" ]; then
+            echo "" >> allure-results/environment.properties
+            echo "=== Nightly Profiling ===" >> allure-results/environment.properties
+            cat nightly-artifacts/nightly-allure-results/environment.properties >> allure-results/environment.properties
           fi
 
           # Copy categories.json from frontend for failure classification
@@ -395,6 +427,17 @@ jobs:
           # Copy WASM files from frontend (includes updated wasm_exec.js from build)
           cp frontend/public/wasm_exec.js pages-artifact/
           cp frontend/public/sudoku.wasm pages-artifact/
+
+      # Unified report portal at /reports/ linking Allure + any fetched mutation
+      # reports. Isolated and non-fatal so it can never break the app deploy.
+      - name: Build unified report portal
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        continue-on-error: true
+        run: |
+          python3 .github/scripts/gen_report_portal.py \
+            --artifacts-dir nightly-artifacts \
+            --out-dir pages-artifact/reports \
+            --allure-rel ../test-report/
 
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'

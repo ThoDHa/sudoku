@@ -1,6 +1,6 @@
 # Sudoku
 
-**🎮 [Play Game](https://thodha.github.io/sudoku/) | 📊 [Test Report](https://thodha.github.io/sudoku/test-report/)**
+**🎮 [Play Game](https://thodha.github.io/sudoku/) | 📊 [Test Reports](https://thodha.github.io/sudoku/reports/)**
 
 [![CI/CD Pipeline](https://github.com/thodha/sudoku/actions/workflows/deploy.yml/badge.svg)](https://github.com/thodha/sudoku/actions/workflows/deploy.yml)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
@@ -457,14 +457,21 @@ Tests run automatically on every push and PR via GitHub Actions:
 - **Go Tests**: Full test suite with linting
 - **E2E Tests**: Playwright integration tests
 
-**View Test Results**: After tests complete, Allure report is published to:
-**[https://thodha.github.io/sudoku/test-report/](https://thodha.github.io/sudoku/test-report/)**
+**View Test Results**: Every deploy publishes a unified report portal that links
+all quality reports in one place:
+**[https://thodha.github.io/sudoku/reports/](https://thodha.github.io/sudoku/reports/)**
 
-The report includes:
-- Test results from all suites (unit, Go, E2E)
-- Historical trends across runs
-- Detailed failure analysis
-- Test duration metrics
+The portal links:
+- **Allure** ([/test-report/](https://thodha.github.io/sudoku/test-report/)): one combined
+  report across all test suites (unit, Go, E2E, and nightly profiling), with historical
+  trends, failure analysis, and duration metrics
+- **Mutation testing**: the frontend StrykerJS report and the Go go-mutesting reports
+  (per package, plus the sharded techniques run)
+- **Profiling**: the nightly Playwright report
+
+Mutation and profiling reports are produced by the nightly workflows; the deploy fetches
+the latest successful run of each and republishes them under the portal. A report that has
+not run yet is simply omitted, never linked dead.
 
 ### Rebuild WASM Solver
 
