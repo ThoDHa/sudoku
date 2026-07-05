@@ -124,6 +124,10 @@ jobs:
           name: nightly-test-results
           path: frontend/test-results/
           retention-days: 30
+          # Playwright only writes test-results/ for failures (traces/screenshots/
+          # videos). On a green run it is empty, which is the healthy case, so an
+          # empty upload is not worth a warning.
+          if-no-files-found: ignore
 
       - name: Upload Allure results
         if: always()
