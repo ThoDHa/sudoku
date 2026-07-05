@@ -85,6 +85,16 @@ jobs:
           path: frontend/allure-results/
           retention-days: 30
 
+      # Vitest coverage HTML (produced by test:coverage) for the report portal.
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage-frontend
+          path: frontend/coverage/
+          retention-days: 30
+          if-no-files-found: warn
+
   # ============================================
   # Go Tests
   # ============================================
@@ -120,7 +130,24 @@ jobs:
         working-directory: api
         run: |
           mkdir -p allure-results
-          gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./...
+          gotestsum --junitfile allure-results/go-results.xml --format testname \
+            -- -v -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Generate Go coverage HTML
+        working-directory: api
+        if: always()
+        run: |
+          # Reuse the profile from the test run above (no second test pass)
+          go tool cover -html=coverage.out -o coverage.html || echo "no coverage profile"
+
+      - name: Upload Go coverage
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: coverage-go
+          path: api/coverage.html
+          retention-days: 30
+          if-no-files-found: warn
 
       - name: Run Go coverage gate
         working-directory: api
@@ -271,6 +298,16 @@ jobs:
             fi
           done
 
+      # Coverage reports are produced by this run's own test jobs; pull them into
+      # the same dir so the portal links them alongside the nightly reports.
+      - name: Download coverage reports
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-*
+          path: nightly-artifacts
+
       - name: Merge Allure results
         run: |
           mkdir -p allure-results
@@ -329,6 +366,18 @@ jobs:
           echo ""
           echo "=== All files in allure-results ==="
           ls -la allure-results/
+
+      # Surface mutation efficacy inside the combined Allure: one test per
+      # mutated file (passed if all its mutants were killed, failed if any
+      # survived). The rich per-mutant diffs stay in the native mutation HTML
+      # linked from the portal. Isolated so it can never break Allure generation.
+      - name: Add mutation results to Allure
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        continue-on-error: true
+        run: |
+          python3 .github/scripts/mutation_to_allure.py \
+            --out-dir allure-results \
+            --artifacts-dir nightly-artifacts
 
       - name: Download previous Allure history
         run: |

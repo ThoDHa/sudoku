@@ -41,10 +41,16 @@ COLLECTORS = [
     {"match": "nightly-playwright-report", "prefix": False, "find": "index.html",
      "copy": "dir", "section": "Profiling", "dest": "profiling/playwright",
      "label": "Profiling (Playwright report)"},
+    {"match": "coverage-frontend", "prefix": False, "find": "index.html",
+     "copy": "dir", "section": "Coverage", "dest": "coverage/frontend",
+     "label": "Frontend (Vitest)"},
+    {"match": "coverage-go", "prefix": False, "find": "coverage.html",
+     "copy": "file", "section": "Coverage", "dest": "coverage/go",
+     "label": "Go (go tool cover)"},
 ]
 
 # Portal section order.
-SECTIONS = ["Test results", "Mutation testing", "Profiling"]
+SECTIONS = ["Test results", "Coverage", "Mutation testing", "Profiling"]
 
 
 def find_file(root, filename):

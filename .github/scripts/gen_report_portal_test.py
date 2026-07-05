@@ -66,6 +66,23 @@ class Portal(unittest.TestCase):
             self.assertIn("profiling/playwright/index.html", page)
             self.assertIn("Profiling", page)
 
+    def test_copies_coverage_reports(self):
+        with tempfile.TemporaryDirectory() as d:
+            artifacts = os.path.join(d, "artifacts")
+            make_artifact(artifacts, "coverage-frontend", "index.html")
+            make_artifact(artifacts, "coverage-frontend", "assets/style.css")
+            make_artifact(artifacts, "coverage-go", "coverage.html")
+            out = os.path.join(d, "reports")
+            self._gen(artifacts, out)
+            self.assertTrue(os.path.exists(os.path.join(out, "coverage/frontend/index.html")))
+            self.assertTrue(os.path.exists(os.path.join(out, "coverage/frontend/assets/style.css")))
+            self.assertTrue(os.path.exists(os.path.join(out, "coverage/go/coverage.html")))
+            with open(os.path.join(out, "index.html")) as fh:
+                page = fh.read()
+            self.assertIn("coverage/frontend/index.html", page)
+            self.assertIn("coverage/go/coverage.html", page)
+            self.assertIn("Coverage", page)
+
     def test_omits_missing_reports_no_dead_links(self):
         with tempfile.TemporaryDirectory() as d:
             artifacts = os.path.join(d, "artifacts")
