@@ -1,14 +1,22 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-.PHONY: check check-fast check-full test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck mutation-frontend mutation-go mutation-gate mutation-clean format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons dev prod report serve-reports allure-report allure-serve allure-clean
+.PHONY: check check-fast check-full test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck mutation-frontend mutation-go mutation-gate mutation-clean format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons wasm dev prod report serve-reports allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Development & Production
 #-----------------------------------------------------------------------
 
-# Run development server with hot reload (default)
-dev:
+# Build the WASM solver + wasm_exec.js glue into frontend/public/.
+# These are gitignored build outputs (never committed); this target regenerates
+# them from current Go source so the dev server never serves a stale solver.
+# Requires TinyGo + Go on the host.
+wasm:
+	@$(MAKE) -C api wasm-all
+
+# Run development server with hot reload (default). Builds the WASM first so a
+# fresh clone works and the served solver always matches current Go source.
+dev: wasm
 	@echo "Starting development server..."
 	@docker compose up
 
@@ -243,7 +251,8 @@ help:
 	@echo "Available targets:"
 	@echo ""
 	@echo "Development:"
-	@echo "  dev             - Run development server with hot reload"
+	@echo "  wasm            - Build the WASM solver + wasm_exec.js into frontend/public"
+	@echo "  dev             - Run development server with hot reload (builds WASM first)"
 	@echo "  prod            - Run production build"
 	@echo ""
 	@echo "Linting:"
