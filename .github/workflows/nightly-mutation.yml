@@ -154,45 +154,75 @@ jobs:
 
   # Techniques is the largest package (~7700 LOC across 22 files) and cannot be
   # mutated within GitHub Actions' hard 6h (360m) per-job limit in one run
-  # (~10-12h at ~27s per mutant). It is sharded by file group across a matrix:
-  # each shard mutates a balanced ~960-LOC subset (est. ~1.5h) well under the cap.
-  # go-mutesting mutates only the targeted files but type-checks against the
-  # whole package, so a file subset is a valid, self-contained target. A
-  # dependent aggregate job combines the per-shard reports into one efficacy
-  # number and enforces the floor. Shards can be skipped as a group via
-  # skip_techniques for fast iteration runs.
+  # (~10-12h at ~27s per mutant). It is sharded ONE FILE PER SHARD across a
+  # matrix: each shard mutates a single technique file, finishing in minutes,
+  # trivially under the cap and with no bin-packing to maintain. This repo is
+  # public, so GitHub-hosted Actions minutes are free and unlimited: fine-grained
+  # sharding costs nothing. go-mutesting mutates only the targeted file but
+  # type-checks against the whole package, so a single file is a valid,
+  # self-contained target. A dependent aggregate job combines the per-shard
+  # reports into one efficacy number and enforces the floor. Shards can be
+  # skipped as a group via skip_techniques for fast iteration runs.
   #
-  # Shard file groups are balanced by LOC (see INFRA-4). To rebalance, move
-  # filenames between the `files` lists; the aggregate's --expected must equal
-  # the shard count.
+  # One matrix entry per non-test *.go file in the techniques package. When a
+  # technique file is added or removed, add/remove its entry and update the
+  # aggregate's --expected to match the shard count.
   techniques-mutation:
     name: Go - techniques (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || (inputs.scope != 'frontend' && inputs.skip_techniques != true)
-    # Below GitHub's hard 6h (360m) cap so our timeout fires first if a shard is
-    # mis-balanced; that shard's report goes missing and the aggregate gate
-    # fails loudly rather than silently reporting a partial number.
+    # Below GitHub's hard 6h (360m) cap so our timeout fires first in the
+    # unlikely event a single file runs long; that shard's report goes missing
+    # and the aggregate gate fails loudly rather than reporting a partial number.
     timeout-minutes: 350
     strategy:
       fail-fast: false
       matrix:
         include:
-          - shard: 1
-            files: "chains.go triples.go"
-          - shard: 2
-            files: "medusa.go aic.go"
-          - shard: 3
-            files: "ur.go blossom.go formatter.go"
-          - shard: 4
-            files: "forcing.go digit_forcing.go pairs.go"
-          - shard: 5
-            files: "swordfish.go simple.go skyscraper.go"
-          - shard: 6
-            files: "grid.go sdc.go bug.go"
-          - shard: 7
-            files: "fish.go xcycles.go board.go"
-          - shard: 8
-            files: "wings.go als_chains.go xwing_finned.go"
+          - shard: aic
+            files: "aic.go"
+          - shard: als_chains
+            files: "als_chains.go"
+          - shard: blossom
+            files: "blossom.go"
+          - shard: board
+            files: "board.go"
+          - shard: bug
+            files: "bug.go"
+          - shard: chains
+            files: "chains.go"
+          - shard: digit_forcing
+            files: "digit_forcing.go"
+          - shard: fish
+            files: "fish.go"
+          - shard: forcing
+            files: "forcing.go"
+          - shard: formatter
+            files: "formatter.go"
+          - shard: grid
+            files: "grid.go"
+          - shard: medusa
+            files: "medusa.go"
+          - shard: pairs
+            files: "pairs.go"
+          - shard: sdc
+            files: "sdc.go"
+          - shard: simple
+            files: "simple.go"
+          - shard: skyscraper
+            files: "skyscraper.go"
+          - shard: swordfish
+            files: "swordfish.go"
+          - shard: triples
+            files: "triples.go"
+          - shard: ur
+            files: "ur.go"
+          - shard: wings
+            files: "wings.go"
+          - shard: xcycles
+            files: "xcycles.go"
+          - shard: xwing_finned
+            files: "xwing_finned.go"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -257,5 +287,5 @@ jobs:
         working-directory: api
         run: |
           python3 scripts/mutation_aggregate.py \
-            --floor 85 --expected 8 --reports-dir ../shards
+            --floor 85 --expected 22 --reports-dir ../shards
         continue-on-error: true
