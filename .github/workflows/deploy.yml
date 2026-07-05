@@ -367,18 +367,6 @@ jobs:
           echo "=== All files in allure-results ==="
           ls -la allure-results/
 
-      # Surface mutation efficacy inside the combined Allure: one test per
-      # mutated file (passed if all its mutants were killed, failed if any
-      # survived). The rich per-mutant diffs stay in the native mutation HTML
-      # linked from the portal. Isolated so it can never break Allure generation.
-      - name: Add mutation results to Allure
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
-        continue-on-error: true
-        run: |
-          python3 .github/scripts/mutation_to_allure.py \
-            --out-dir allure-results \
-            --artifacts-dir nightly-artifacts
-
       - name: Download previous Allure history
         run: |
           # Find the most recent completed run with allure-history artifact
