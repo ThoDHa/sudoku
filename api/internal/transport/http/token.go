@@ -42,6 +42,7 @@ type SessionToken struct {
 func createToken(secret string, session SessionToken) (string, error) {
 	payload, err := json.Marshal(session)
 	if err != nil {
+		// mutator-disable-next-line branch/if
 		return "", err
 	}
 

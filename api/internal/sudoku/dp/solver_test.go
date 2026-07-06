@@ -897,6 +897,30 @@ func TestMutation_CarveGivens_ExactGivensCount(t *testing.T) {
 	}
 }
 
+// --- CarveGivens: seed must observably drive carve order ---
+//
+// rng is used only for rng.shuffle(positions). Kill the shuffle and positions is
+// always [0..80], so the seed loses all effect and distinct seeds carve the same
+// puzzle. Divergence between two seeds pins the shuffle as observable.
+
+func TestMutation_CarveGivens_DifferentSeedsProduceDifferentPuzzles(t *testing.T) {
+	fullGrid := GenerateFullGrid(2024)
+
+	puzzleA := CarveGivens(fullGrid, 30, 100)
+	puzzleB := CarveGivens(fullGrid, 30, 900)
+
+	differ := false
+	for i := range puzzleA {
+		if puzzleA[i] != puzzleB[i] {
+			differ = true
+			break
+		}
+	}
+	if !differ {
+		t.Fatal("distinct seeds produced identical puzzles; carve-order shuffle is not observable")
+	}
+}
+
 // --- CountSolutions: boundary maxCount behavior ---
 
 func TestMutation_CountSolutions_RespectsMaxCountBoundary(t *testing.T) {
