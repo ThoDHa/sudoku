@@ -19,6 +19,7 @@ export interface SeedValidationResult {
  * Get game mode from seed
  */
 export function getGameMode(seed: string): 'daily' | 'practice' | 'custom' | null {
+  // Stryker disable next-line ConditionalExpression: for an empty string every startsWith check below is false and the function returns null at the end, identical to this early return
   if (!seed) return null
 
   if (seed.startsWith('daily-')) return 'daily'

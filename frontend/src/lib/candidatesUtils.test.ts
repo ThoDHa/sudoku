@@ -330,6 +330,15 @@ describe('candidatesUtils - mutation-killing guard tests', () => {
       const mask = 0b0000000010 // only digit 1
       expect(removeCandidate(mask, 5)).toBe(mask)
     })
+
+    it('leaves bit 0 untouched for digit 0 when bit 0 is set (guard beats raw clear)', () => {
+      // mask 0b111 has bit 0 set; without the range guard removeCandidate would clear it.
+      expect(removeCandidate(0b111, 0)).toBe(0b111)
+    })
+
+    it('leaves bit 10 untouched for digit 10 when bit 10 is set', () => {
+      expect(removeCandidate(0b10000000000, 10)).toBe(0b10000000000)
+    })
   })
 
   describe('toggleCandidate out-of-range digit guard', () => {
@@ -376,6 +385,15 @@ describe('candidatesUtils - mutation-killing guard tests', () => {
 
     it('returns false for boundary digit 9 when absent', () => {
       expect(hasCandidate(0b0000000000, 9)).toBe(false)
+    })
+
+    it('returns false for digit 0 even when bit 0 is set (guard beats raw bit read)', () => {
+      // mask 0b1 has bit 0 set; without the range guard hasCandidate would read it as true.
+      expect(hasCandidate(0b1, 0)).toBe(false)
+    })
+
+    it('returns false for digit 10 even when bit 10 is set', () => {
+      expect(hasCandidate(0b10000000000, 10)).toBe(false)
     })
   })
 

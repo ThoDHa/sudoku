@@ -42,12 +42,14 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
 
   const isWasmRoute = useCallback((pathname: string): boolean => {
     // Custom puzzles always need WASM (for validation during creation)
+    // Stryker disable next-line ConditionalExpression, MethodExpression: '/c/...' paths also return true via the unknown-route fallback below
     if (pathname.startsWith('/c/')) return true
     // Check if it's a known non-game route
     const isKnownRoute = KNOWN_NON_GAME_ROUTES.some(
       (route) => pathname === route || pathname.startsWith(route + '/'),
     )
     // If not a known route and not homepage, it's a game route (/:seed)
+    // Stryker disable next-line ConditionalExpression, StringLiteral: isKnownRoute is always true for '/', so the pathname !== '/' clause is redundant
     return !isKnownRoute && pathname !== '/'
   }, [])
 
@@ -62,6 +64,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
 
   const scheduleUnload = useCallback(() => {
     // Clear any existing timeout
+    // Stryker disable next-line ConditionalExpression: clearTimeout(null/undefined) is a safe no-op
     if (unloadTimeoutRef.current) {
       clearTimeout(unloadTimeoutRef.current)
     }
@@ -81,6 +84,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   }, [unloadDelay, isWasmRoute, unloadWasm, log])
 
   const cancelUnload = useCallback(() => {
+    // Stryker disable next-line ConditionalExpression: clearTimeout(null/undefined) is a safe no-op
     if (unloadTimeoutRef.current) {
       clearTimeout(unloadTimeoutRef.current)
       unloadTimeoutRef.current = null
@@ -108,6 +112,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
       currentRouteRequiresWasm.current = true
       loadWasm()
     } else if (!routeNeedsWasm && currentRouteRequiresWasm.current) {
+      // Stryker disable next-line ConditionalExpression, LogicalOperator: in this else-if branch routeNeedsWasm is already false, so the operand is redundant
       // Leaving WASM route - schedule cleanup
       log(`Leaving WASM route: ${location.pathname}`)
       scheduleUnload()
@@ -117,6 +122,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Stryker disable next-line ConditionalExpression: clearTimeout(null/undefined) is a safe no-op
       if (unloadTimeoutRef.current) {
         clearTimeout(unloadTimeoutRef.current)
       }

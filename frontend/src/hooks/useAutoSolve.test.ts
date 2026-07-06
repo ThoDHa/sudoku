@@ -2161,5 +2161,132 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
       })
       expect(applyMove.mock.calls.length).toBeGreaterThan(1)
     })
+
+    it('sets isFetching=true while the givens solution is still pending', async () => {
+      let resolveFetch: (value: ReturnType<typeof createMockSolveResponse>) => void = () => {}
+      mockSolveAll.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve
+          }),
+      )
+      const options = createDefaultAutoSolveOptions({ stepDelay: 50 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      // Fire solveFromGivens without awaiting so we can observe the in-flight flag.
+      act(() => {
+        result.current.solveFromGivens()
+      })
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(result.current.isFetching).toBe(true)
+
+      await act(async () => {
+        resolveFetch(createMockSolveResponse(1))
+      })
+      expect(result.current.isFetching).toBe(false)
+    })
+  })
+
+  describe('applyFixesAndContinueSolving', () => {
+    it('plays the fix moves and then resumes autosolving from the current board', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+      const applyMove = vi.fn()
+      const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 10 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      const fixMove = createMockAutoSolveMove({ action: 'place' })
+      await act(async () => {
+        const promise = result.current.applyFixesAndContinueSolving([fixMove])
+        await vi.advanceTimersByTimeAsync(500)
+        await promise
+      })
+
+      // Fix move applied, and the resume step invoked solveAll (restart).
+      expect(applyMove).toHaveBeenCalled()
+      expect(mockSolveAll).toHaveBeenCalledTimes(1)
+    })
+
+    it('stops an in-progress autosolve before applying the fixes', async () => {
+      mockSolveAll.mockResolvedValueOnce(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValueOnce(createMockSolveResponse(2))
+      const applyMove = vi.fn()
+      const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 1000 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.startAutoSolve()
+      })
+      expect(result.current.isAutoSolving).toBe(true)
+      const callsBeforeFix = applyMove.mock.calls.length
+
+      const fixMove = createMockAutoSolveMove({ action: 'place' })
+      await act(async () => {
+        const promise = result.current.applyFixesAndContinueSolving([fixMove])
+        await vi.advanceTimersByTimeAsync(500)
+        await promise
+      })
+
+      expect(applyMove.mock.calls.length).toBeGreaterThan(callsBeforeFix)
+      expect(mockSolveAll).toHaveBeenCalledTimes(2)
+    })
+
+    it('reports the failure when resuming autosolving throws synchronously', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+      const onError = vi.fn()
+      // getGivens is only read inside restartAutoSolve; throwing there makes the
+      // resume throw synchronously, which applyFixesAndContinueSolving catches.
+      const getGivens = vi.fn(() => {
+        throw new Error('givens-unreadable')
+      })
+      const options = createDefaultAutoSolveOptions({ onError, getGivens, stepDelay: 10 })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      const fixMove = createMockAutoSolveMove({ action: 'place' })
+      await act(async () => {
+        const promise = result.current.applyFixesAndContinueSolving([fixMove])
+        await vi.advanceTimersByTimeAsync(500)
+        await promise
+      })
+
+      expect(onError).toHaveBeenCalledWith('Failed to resume autosolving after applying fixes')
+    })
+  })
+
+  describe('initial state-history snapshot content', () => {
+    // Kills the history-seed mutants on the candidatesArray spread/arrow inside
+    // runAutoSolveFetch: the index-0 snapshot must carry materialized candidate
+    // arrays (not [] and not undefined), observable via stepBack -> applyState.
+    it('stepBack to index 0 restores the full 81-cell candidate Sets seeded from the input candidates', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+      const applyState = vi.fn()
+      const seedCandidates = Array(81)
+        .fill(null)
+        .map(() => new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]))
+      const options = createDefaultAutoSolveOptions({
+        applyState,
+        getCandidates: vi.fn(() => seedCandidates),
+        stepDelay: 1000,
+      })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      await act(async () => {
+        await result.current.startAutoSolve()
+      })
+      // First move played synchronously -> index 1. Rewind to the seed snapshot.
+      actStepBack(result)
+      expect(result.current.currentIndex).toBe(0)
+
+      expect(applyState).toHaveBeenCalled()
+      const candidatesArg = applyState.mock.calls[applyState.mock.calls.length - 1][1] as Set<
+        number
+      >[]
+      expect(candidatesArg).toHaveLength(81)
+      candidatesArg.forEach((set) => {
+        expect(set).toBeInstanceOf(Set)
+        expect(set.size).toBe(9)
+      })
+    })
   })
 })

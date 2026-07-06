@@ -77,6 +77,18 @@ describe('diffUtils', () => {
       expect(diff.boardChanges).toHaveLength(0)
       expect(diff.candidateChanges).toHaveLength(0)
     })
+
+    it('ignores any cell at index 81 and beyond (loop bound is exclusive on the 81-cell grid)', () => {
+      // Boards intentionally carry an 82nd entry; the diff must only consider 0..80.
+      const oldBoard = Array(82).fill(0)
+      const newBoard = Array(82).fill(0)
+      newBoard[81] = 9 // past the 81-cell boundary, must not appear in the diff
+
+      const diff = createStateDiff(oldBoard, newBoard, new Uint16Array(82), new Uint16Array(82))
+
+      expect(diff.boardChanges).toHaveLength(0)
+      expect(diff.candidateChanges).toHaveLength(0)
+    })
   })
 
   describe('applyStateDiff', () => {

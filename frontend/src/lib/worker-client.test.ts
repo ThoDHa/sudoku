@@ -1101,4 +1101,142 @@ describe('worker-client advanced scenarios', () => {
       }
     })
   })
+
+  describe('mutation-kill: idle timeout and lifecycle coverage', () => {
+    it('terminates the worker after the idle timeout with no pending requests', async () => {
+      vi.useFakeTimers()
+      const { initializeWorker, isWorkerReady, terminateWorker } = await import('./worker-client')
+
+      try {
+        const initPromise = initializeWorker()
+        await vi.advanceTimersByTimeAsync(50)
+        await initPromise
+        expect(isWorkerReady()).toBe(true)
+
+        // Advance past IDLE_TIMEOUT_MS (60s)
+        await vi.advanceTimersByTimeAsync(61000)
+
+        expect(isWorkerReady()).toBe(false)
+      } finally {
+        vi.useRealTimers()
+        terminateWorker()
+      }
+    })
+
+    it('getIdleTimeout returns the configured value', async () => {
+      const { getIdleTimeout } = await import('./worker-client')
+      expect(getIdleTimeout()).toBe(60000)
+    })
+  })
+
+  describe('mutation-kill: request-timeout and error rejection paths', () => {
+    const emptyGrid = (): number[] => new Array(81).fill(0)
+    const fullCandidates = (): number[][] => new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+    // Install a worker that auto-responds to init but swallows findNextMove
+    const installInitOnlyWorker = () => {
+      globalThis.Worker = class extends MockWorker {
+        postMessage(data: { type: string; id: string; payload?: unknown }): void {
+          if (data.type === 'findNextMove') return // leave pending
+          super.postMessage(data)
+        }
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          createdWorkers.push(this)
+        }
+      } as unknown as typeof Worker
+    }
+
+    it('rejects a pending request when the worker fires onerror', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        installInitOnlyWorker()
+        const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
+
+        const initPromise = initializeWorker()
+        await vi.advanceTimersByTimeAsync(50)
+        await initPromise
+
+        const worker = createdWorkers[0]
+        const findPromise = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
+        await vi.advanceTimersByTimeAsync(10)
+
+        // Call the client's onerror handler directly (the MockWorker's triggerEvent
+        // would first hit a stale createWorker error listener that terminates the worker)
+        worker.onerror(new ErrorEvent('error', { message: 'crashed' }))
+
+        await expect(findPromise).rejects.toThrow('Worker error: crashed')
+        terminateWorker()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('rejects with the generic message when error field is empty (L217 fallback)', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        let findReqId: string | undefined
+        globalThis.Worker = class extends MockWorker {
+          postMessage(data: { type: string; id: string; payload?: unknown }): void {
+            if (data.type === 'findNextMove') {
+              findReqId = data.id
+              return
+            }
+            super.postMessage(data)
+          }
+          constructor(url: URL | string, options?: WorkerOptions) {
+            super(url, options)
+            createdWorkers.push(this)
+          }
+        } as unknown as typeof Worker
+
+        const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
+
+        const initPromise = initializeWorker()
+        await vi.advanceTimersByTimeAsync(50)
+        await initPromise
+
+        const findPromise = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
+        await vi.advanceTimersByTimeAsync(10)
+
+        expect(findReqId).toBeDefined()
+        createdWorkers[0].simulateMessage({ type: 'error', id: findReqId, success: false, error: '' })
+
+        await expect(findPromise).rejects.toThrow('Worker request failed')
+        terminateWorker()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('rejects with a timeout message after REQUEST_TIMEOUT', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        installInitOnlyWorker()
+        const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
+
+        const initPromise = initializeWorker()
+        await vi.advanceTimersByTimeAsync(50)
+        await initPromise
+
+        const findPromise = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
+        await vi.advanceTimersByTimeAsync(10)
+
+        // Attach the rejection handler BEFORE advancing past REQUEST_TIMEOUT so the
+        // timer-fired rejection always has a waiter (avoids an unhandled-rejection race).
+        const assertion = expect(findPromise).rejects.toThrow('Worker request timeout: findNextMove')
+
+        // Advance past REQUEST_TIMEOUT (30s)
+        await vi.advanceTimersByTimeAsync(31000)
+
+        await assertion
+        terminateWorker()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
 })

@@ -150,5 +150,18 @@ describe('debugInfo', () => {
 
       spy.mockRestore()
     })
+
+    it('probes localStorage using the "test" key and cleans it up (kills key-string mutants)', () => {
+      const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+      const removeItemSpy = vi.spyOn(Storage.prototype, 'removeItem')
+
+      isLocalStorageAvailable()
+
+      expect(setItemSpy).toHaveBeenCalledWith('test', 'test')
+      expect(removeItemSpy).toHaveBeenCalledWith('test')
+
+      setItemSpy.mockRestore()
+      removeItemSpy.mockRestore()
+    })
   })
 })

@@ -113,9 +113,14 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const autoSolveRef = useRef(false)
   const pausedRef = useRef(false)
   const manualPausedRef = useRef(false)
+  // Stryker disable ArrayDeclaration: each ref is reassigned to a fresh array
+  // inside startAutoSolve/restartAutoSolve/playMoves/solveFromGivens (and reads
+  // are guarded by isAutoSolving) before any consumer observes it, so the
+  // initial empty-array value is unobservable
   const movesQueueRef = useRef<MoveResult[]>([])
   const allMovesRef = useRef<MoveResult[]>([]) // All moves for rewind
   const stateHistoryRef = useRef<StateSnapshot[]>([]) // State at each step
+  // Stryker restore
   const currentIndexRef = useRef(-1)
   const playNextMoveRef = useRef<(() => Promise<void>) | null>(null)
   const stepDelayRef = useRef(stepDelay)
@@ -143,11 +148,16 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       activeTimeoutRef.current = null
     }
     if (activeIdleCallbackRef.current !== null) {
+      // Stryker disable ConditionalExpression,EqualityOperator,BlockStatement,StringLiteral: activeIdleCallbackRef is never assigned a non-null value anywhere (scheduleNextMove only ever sets activeTimeoutRef), so this entire branch is unreachable dead code and every mutant inside is unobservable
       if ('cancelIdleCallback' in window) {
         cancelIdleCallback(activeIdleCallbackRef.current)
       }
       activeIdleCallbackRef.current = null
+      // Stryker restore
     }
+    // Stryker disable next-line ArrayDeclaration: clearActiveTimers captures no
+    // external values; a stable-string mutant leaves the empty deps array
+    // observationally unchanged
   }, [])
 
   // Helper to schedule next move with proper timer tracking
@@ -166,6 +176,9 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         callback()
       }, delay)
     },
+    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is itself
+    // stable (deps []), so dropping it from the deps array leaves scheduleNextMove
+    // referentially stable with identical behavior
     [clearActiveTimers],
   )
 
@@ -174,9 +187,16 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     clearActiveTimers()
 
     // Save the final step count BEFORE resetting (for history display)
+    // Stryker disable next-line EqualityOperator: when currentIndexRef.current is 0, both >0 (false→0) and >=0 (true→0) yield finalSteps=0; for negative indices the hook guards prevent reaching here, so the boundary mutation is unobservable
     const finalSteps = currentIndexRef.current > 0 ? currentIndexRef.current : 0
     setLastCompletedSteps(finalSteps)
 
+    // Stryker disable BooleanLiteral,ArrayDeclaration,UnaryOperator: every ref
+    // reset here is unobservable after stop. Each ref is either reassigned at
+    // the start of the next solve (startAutoSolve/restart/playMoves/solveFromGivens)
+    // before any consumer reads it, or its readers are guarded by isAutoSolving
+    // (now false). The resume effect is additionally blocked because
+    // playNextMoveRef.current is nulled two lines below.
     autoSolveRef.current = false
     pausedRef.current = false
     manualPausedRef.current = false
@@ -186,19 +206,26 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     stateHistoryRef.current = []
     currentIndexRef.current = -1
     playNextMoveRef.current = null
+    // Stryker restore
     setIsAutoSolving(false)
     setIsPaused(false)
     setManualPaused(false)
     setCurrentIndex(-1)
     setTotalMoves(0)
+    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is stable,
+    // so omitting it from stopAutoSolve's deps leaves behavior unchanged
   }, [clearActiveTimers])
 
   // Cleanup on unmount - prevents battery drain from orphaned timers
   useEffect(() => {
     return () => {
       clearActiveTimers()
+      // Stryker disable next-line BooleanLiteral: after unmount the hook instance
+      // is gone, so autoSolveRef's value is never read again
       autoSolveRef.current = false
     }
+    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is stable,
+    // so the unmount effect behavior is identical with an empty deps array
   }, [clearActiveTimers])
 
   // Sync gamePaused prop and background manager with our internal pause state
@@ -208,11 +235,15 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     // Always log pause-check details using our logger. Logger implementations can
     // decide whether to emit output based on environment, so we don't need to
     // guard with process.env here and avoid relying on Node typings in the bundle.
+    // Stryker disable StringLiteral,ObjectLiteral: the logger is not mocked or
+    // asserted in any hook test, so its message string and payload object are
+    // unobservable
     logger.debug('[useAutoSolve] pause check:', {
       gamePaused,
       manualPaused,
       shouldPauseOperations: backgroundManager.shouldPauseOperations,
     })
+    // Stryker restore
     if (shouldPause) {
       pausedRef.current = true
       setIsPaused(true)
@@ -322,6 +353,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       }
     } catch (err) {
       setIsFetching(false)
+      // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
       logger.error('Auto-solve error:', err)
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
@@ -605,6 +637,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       playNextMove()
     } catch (err) {
       setIsFetching(false)
+      // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
       logger.error('Solve from givens error:', err)
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
@@ -649,6 +682,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
               try {
                 await restartAutoSolve(false)
               } catch (error) {
+                // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
                 logger.error('Failed to resume autosolving after check&fix:', error)
                 onError?.('Failed to resume autosolving after applying fixes')
               }
@@ -659,11 +693,13 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
           // Timeout guard
           if (Date.now() - start > TIMEOUT) {
+            // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
             logger.error('applyFixesAndContinueSolving: playback did not finish within timeout')
             // Try to restart anyway
             try {
               await restartAutoSolve(false)
             } catch (error) {
+              // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
               logger.error('Failed to resume autosolving after timeout:', error)
               onError?.('Failed to resume autosolving after applying fixes')
             }

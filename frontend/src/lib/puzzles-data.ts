@@ -49,6 +49,7 @@ function getPuzzleByIndex(
   index: number,
   difficulty: string,
 ): { givens: number[]; solution: number[] } | null {
+  // Stryker disable next-line ConditionalExpression: an out-of-range index yields puzzlesData.puzzles[index] === undefined, which the `if (!puzzle)` guard below returns as null identically to this bounds check
   if (index < 0 || index >= puzzlesData.puzzles.length) {
     return null
   }

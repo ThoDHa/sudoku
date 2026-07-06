@@ -128,3 +128,39 @@ describe('seedMatchesMode', () => {
     expect(seedMatchesMode('garbage', 'daily')).toBe(false)
   })
 })
+
+// =============================================================================
+// MUTATION-KILLING: empty-seed error path + daily-regex anchors
+// =============================================================================
+
+describe('validateSeed - empty seed error message', () => {
+  it('returns the cannot-be-empty error (not the format error) for an empty seed', () => {
+    const result = validateSeed('')
+    expect(result.error).toBe('Seed cannot be empty')
+    // A mutation that skips the empty check would fall through to getGameMode(''),
+    // which returns null, producing the "Invalid seed format" error instead.
+    expect(result.error).not.toMatch(/Invalid seed format/)
+  })
+})
+
+describe('validateSeed - daily date regex anchors', () => {
+  it('rejects a daily seed with extra trailing characters after the date', () => {
+    const result = validateSeed('daily-2024-01-15extra')
+    expect(result.valid).toBe(false)
+    expect(result.mode).toBe('daily')
+    expect(result.error).toBe('Invalid daily seed format. Expected: daily-YYYY-MM-DD')
+  })
+
+  it('rejects a daily seed with extra leading characters before daily-', () => {
+    const result = validateSeed('xdaily-2024-01-15')
+    // No recognized prefix -> mode is null -> generic format error
+    expect(result.valid).toBe(false)
+    expect(result.mode).toBeNull()
+  })
+
+  it('rejects a daily seed where the date is only a prefix of the tail', () => {
+    const result = validateSeed('daily-2024-01-151')
+    expect(result.valid).toBe(false)
+    expect(result.mode).toBe('daily')
+  })
+})

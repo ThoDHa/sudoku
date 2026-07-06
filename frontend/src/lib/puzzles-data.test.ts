@@ -73,6 +73,7 @@ vi.mock('../../practice_puzzles.json', () => ({
       ],
       'x-wing': [{ i: 1, d: 'x' }],
       'empty-technique': [],
+      'out-of-bounds': [{ i: 99, d: 'e' }],
     },
   },
 }))
@@ -445,6 +446,75 @@ describe('puzzles-data', () => {
       expect(practiceResult).not.toBeNull()
       expect(practiceResult!.puzzleIndex).toBeGreaterThanOrEqual(0)
       expect(practiceResult!.puzzleIndex).toBeLessThan(getPuzzleCount())
+    })
+  })
+
+  // ===========================================================================
+  // MUTATION-KILLING: deterministic hash pinning, givens population, OOB refs
+  // ===========================================================================
+
+  describe('hashSeedToIndex - deterministic seed-to-index mapping', () => {
+    // These expected indices are derived from the hash function on the mock's
+    // 3-puzzle pool. Pinning them catches any change to the hash arithmetic,
+    // loop bounds, or the final modulo expression.
+    it('maps seed "a" to puzzle index 1', () => {
+      expect(getPuzzleForSeed('a', 'easy')!.puzzleIndex).toBe(1)
+    })
+
+    it('maps seed "b" to puzzle index 2', () => {
+      expect(getPuzzleForSeed('b', 'easy')!.puzzleIndex).toBe(2)
+    })
+
+    it('maps seed "c" to puzzle index 0', () => {
+      expect(getPuzzleForSeed('c', 'easy')!.puzzleIndex).toBe(0)
+    })
+
+    it('maps seed "test" to puzzle index 1', () => {
+      expect(getPuzzleForSeed('test', 'easy')!.puzzleIndex).toBe(1)
+    })
+
+    it('produces different indices for seeds that hash differently', () => {
+      const idxA = getPuzzleForSeed('a', 'easy')!.puzzleIndex
+      const idxB = getPuzzleForSeed('b', 'easy')!.puzzleIndex
+      const idxC = getPuzzleForSeed('c', 'easy')!.puzzleIndex
+      // At least two distinct indices across three seeds
+      expect(new Set([idxA, idxB, idxC]).size).toBeGreaterThan(1)
+    })
+  })
+
+  describe('getPuzzleForSeed - givens are actually populated', () => {
+    it('produces non-zero givens for a valid difficulty', () => {
+      const result = getPuzzleForSeed('test', 'easy')
+      expect(result).not.toBeNull()
+      const nonZero = result!.givens.filter((g) => g !== 0).length
+      expect(nonZero).toBeGreaterThan(0)
+    })
+
+    it('fills givens at the revealed indices with solution values', () => {
+      const result = getPuzzleForSeed('test', 'easy')!
+      let filledCount = 0
+      for (let i = 0; i < 81; i++) {
+        if (result.givens[i] !== 0) {
+          expect(result.givens[i]).toBe(result.solution[i])
+          filledCount++
+        }
+      }
+      expect(filledCount).toBeGreaterThan(0)
+    })
+  })
+
+  describe('getPracticePuzzle - out-of-bounds ref handling', () => {
+    let originalDateNow: () => number
+    beforeEach(() => {
+      originalDateNow = Date.now
+    })
+    afterEach(() => {
+      Date.now = originalDateNow
+    })
+
+    it('returns null when the practice ref points to an out-of-bounds puzzle index', () => {
+      Date.now = () => 0 // selects first (and only) ref: { i: 99, d: 'e' }
+      expect(getPracticePuzzle('out-of-bounds')).toBeNull()
     })
   })
 })

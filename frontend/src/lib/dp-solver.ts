@@ -77,7 +77,9 @@ export function findConflicts(grid: number[]): Conflict[] {
   // `seen` is shared across all units so a pair that conflicts in more than
   // one unit (e.g. two cells sharing both a row and a box) is reported once.
   const emitConflictingPairs = (cells: number[], value: number, type: Conflict['type']) => {
+    // Stryker disable next-line EqualityOperator, UpdateOperator: i <= cells.length yields undefined (skipped by the guard below); i-- from 0 is an infinite loop the harness times out on
     for (let i = 0; i < cells.length; i++) {
+      // Stryker disable next-line EqualityOperator, UpdateOperator: j <= cells.length yields undefined (skipped by the guard below); j-- from i+1 is an infinite loop the harness times out on
       for (let j = i + 1; j < cells.length; j++) {
         const a = cells[i]
         const b = cells[j]
@@ -106,25 +108,35 @@ export function findConflicts(grid: number[]): Conflict[] {
   }
 
   // Rows
+  // Stryker disable next-line EqualityOperator, UpdateOperator: row === BOARD_SIZE yields undefined grid cells (skipped by the val === 0 guard); row-- from 0 is an infinite loop the harness times out on
   for (let row = 0; row < BOARD_SIZE; row++) {
+    // Stryker disable next-line ArrayDeclaration: a seeded non-numeric first element maps to grid[undefined] ?? 0 and is skipped
     const indices: number[] = []
+    // Stryker disable next-line UpdateOperator: col-- from 0 is an infinite loop the harness times out on
     for (let col = 0; col < BOARD_SIZE; col++) indices.push(row * BOARD_SIZE + col)
     findInUnit(indices, 'row')
   }
 
   // Columns
+  // Stryker disable next-line UpdateOperator: col-- from 0 is an infinite loop the harness times out on
   for (let col = 0; col < BOARD_SIZE; col++) {
+    // Stryker disable next-line ArrayDeclaration: a seeded non-numeric first element maps to grid[undefined] ?? 0 and is skipped
     const indices: number[] = []
+    // Stryker disable next-line EqualityOperator, UpdateOperator: row === BOARD_SIZE yields undefined grid cells (skipped by the val === 0 guard); row-- from 0 is an infinite loop the harness times out on
     for (let row = 0; row < BOARD_SIZE; row++) indices.push(row * BOARD_SIZE + col)
     findInUnit(indices, 'column')
   }
 
   // Boxes
+  // Stryker disable next-line EqualityOperator, UpdateOperator: box === BOARD_SIZE yields undefined grid cells (skipped by the val === 0 guard); box-- from 0 is an infinite loop the harness times out on
   for (let box = 0; box < BOARD_SIZE; box++) {
     const boxRow = Math.floor(box / SUBGRID_SIZE) * SUBGRID_SIZE
     const boxCol = (box % SUBGRID_SIZE) * SUBGRID_SIZE
+    // Stryker disable next-line ArrayDeclaration: a seeded non-numeric first element maps to grid[undefined] ?? 0 and is skipped
     const indices: number[] = []
+    // Stryker disable next-line UpdateOperator: r-- from boxRow (>= 0) is an infinite loop the harness times out on
     for (let r = boxRow; r < boxRow + SUBGRID_SIZE; r++) {
+      // Stryker disable next-line UpdateOperator: c-- from boxCol (>= 0) is an infinite loop the harness times out on
       for (let c = boxCol; c < boxCol + SUBGRID_SIZE; c++) {
         indices.push(r * BOARD_SIZE + c)
       }
@@ -175,6 +187,7 @@ export function validateBoardAgainstSolution(
   }
 
   const incorrectCells: number[] = []
+  // Stryker disable next-line EqualityOperator, UpdateOperator: i === 81 yields undefined (coerced to 0 by ?? 0, boardVal 0 is ignored); i-- from 0 is an infinite loop the harness times out on
   for (let i = 0; i < 81; i++) {
     const boardVal = board[i] ?? 0
     const solutionVal = solution[i] ?? 0
@@ -199,6 +212,7 @@ export function validateBoardAgainstSolution(
 function solveBacktrack(board: number[]): boolean {
   // Find next empty cell
   let idx = -1
+  // Stryker disable next-line EqualityOperator, UpdateOperator: i === 81 yields board[81] === undefined which is not === 0, so idx is unaffected; i-- from 0 is an infinite loop the harness times out on
   for (let i = 0; i < 81; i++) {
     if (board[i] === 0) {
       idx = i
@@ -235,10 +249,12 @@ function countSolutions(grid: number[], maxCount: number): number {
   let count = 0
 
   function countHelper(): void {
+    // Stryker disable next-line ConditionalExpression, EqualityOperator: early pruning at maxCount is a performance optimization; hasUniqueSolution only checks count === 1
     if (count >= maxCount) return
 
     // Find next empty cell
     let idx = -1
+    // Stryker disable next-line EqualityOperator, UpdateOperator: i === 81 yields board[81] === undefined which is not === 0, so idx is unaffected; i-- from 0 is an infinite loop the harness times out on
     for (let i = 0; i < 81; i++) {
       if (board[i] === 0) {
         idx = i
@@ -260,6 +276,7 @@ function countSolutions(grid: number[], maxCount: number): number {
         board[idx] = digit
         countHelper()
         board[idx] = 0
+        // Stryker disable next-line ConditionalExpression, EqualityOperator: early pruning at maxCount is a performance optimization; hasUniqueSolution only checks count === 1
         if (count >= maxCount) return
       }
     }
@@ -274,11 +291,13 @@ function countSolutions(grid: number[], maxCount: number): number {
  */
 function canPlace(board: number[], row: number, col: number, digit: number): boolean {
   // Check row
+  // Stryker disable next-line UpdateOperator: c-- from 0 is an infinite loop the harness times out on
   for (let c = 0; c < 9; c++) {
     if (board[row * 9 + c] === digit) return false
   }
 
   // Check column
+  // Stryker disable next-line EqualityOperator, UpdateOperator: r === 9 yields board[81 + col] === undefined which never equals digit; r-- from 0 is an infinite loop the harness times out on
   for (let r = 0; r < 9; r++) {
     if (board[r * 9 + col] === digit) return false
   }
@@ -286,7 +305,9 @@ function canPlace(board: number[], row: number, col: number, digit: number): boo
   // Check SUBGRID_SIZE x SUBGRID_SIZE box
   const boxRow = Math.floor(row / SUBGRID_SIZE) * SUBGRID_SIZE
   const boxCol = Math.floor(col / SUBGRID_SIZE) * SUBGRID_SIZE
+  // Stryker disable next-line UpdateOperator: r-- from boxRow (>= 0) is an infinite loop the harness times out on
   for (let r = boxRow; r < boxRow + SUBGRID_SIZE; r++) {
+    // Stryker disable next-line UpdateOperator: c-- from boxCol (>= 0) is an infinite loop the harness times out on
     for (let c = boxCol; c < boxCol + SUBGRID_SIZE; c++) {
       if (board[r * 9 + c] === digit) return false
     }

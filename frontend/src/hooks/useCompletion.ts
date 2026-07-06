@@ -22,6 +22,7 @@ export function useCompletion(options: UseCompletionOptions): UseCompletionRetur
   }, [onComplete])
 
   const checkCompletion = useCallback((board: number[]) => {
+    // Stryker disable next-line MethodExpression, ConditionalExpression: isValidSolution already rejects any board with an empty cell, so allFilled (and its every()/predicate) is observationally redundant here
     const allFilled = board.every((v: number) => v !== 0)
     if (allFilled && isValidSolution(board)) {
       setIsComplete(true)
@@ -29,6 +30,7 @@ export function useCompletion(options: UseCompletionOptions): UseCompletionRetur
     } else {
       setIsComplete(false)
     }
+    // Stryker disable next-line ArrayDeclaration: checkCompletion captures no external values; the empty deps array has no observable effect
   }, [])
 
   return {

@@ -215,6 +215,7 @@ export function createPlayNextMove(context: MoveHandlerContext): PlayNextMove {
     }
 
     const moveResult = movesQueueRef.current.shift()
+    // Stryker disable next-line ConditionalExpression: the preceding length>0 guard guarantees shift() returns a defined value, so this dead guard never fires and is unobservable
     if (!moveResult) return
 
     const newIndex = allMovesRef.current.length - movesQueueRef.current.length

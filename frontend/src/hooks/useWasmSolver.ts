@@ -120,6 +120,7 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load WASM'
       setError(message)
+      // Stryker disable next-line StringLiteral: warn-level log message text is not behaviorally significant
       logger.warn('WASM load failed:', message)
       return false
     } finally {

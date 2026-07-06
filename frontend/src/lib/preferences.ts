@@ -45,6 +45,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
 export function getPreferences(): UserPreferences {
   try {
     const data = localStorage.getItem(PREFERENCES_KEY)
+    // Stryker disable next-line ConditionalExpression: JSON.parse(null) coerces to JSON.parse("null") which yields null, and spreading null into an object literal is a no-op, so the merged result equals DEFAULT_PREFERENCES identical to taking the falsy branch
     if (data) {
       return { ...DEFAULT_PREFERENCES, ...JSON.parse(data) }
     }

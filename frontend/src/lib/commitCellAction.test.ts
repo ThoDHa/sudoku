@@ -92,3 +92,34 @@ describe('commitCellAction unknown action', () => {
     )
   })
 })
+
+describe('commitCellAction tolerates missing optional callbacks', () => {
+  // Passing only `game` (no optional side-effect callbacks) exercises every
+  // optional-chaining call site: the `?.()` no-ops on original but the mutant
+  // (`()`) would throw "is not a function". Asserting no throw kills all of them.
+  it('erase succeeds with no optional callbacks supplied', () => {
+    const game = makeGame()
+    expect(() =>
+      commitCellAction('erase', { idx: 3, game: game as never }),
+    ).not.toThrow()
+    expect(game.eraseCell).toHaveBeenCalledWith(3)
+  })
+
+  it('clearAll succeeds with no optional callbacks supplied', () => {
+    const game = makeGame()
+    expect(() => commitCellAction('clearAll', { game: game as never })).not.toThrow()
+    expect(game.clearAll).toHaveBeenCalledOnce()
+  })
+
+  it('undo succeeds with no optional callbacks supplied', () => {
+    const game = makeGame()
+    expect(() => commitCellAction('undo', { game: game as never })).not.toThrow()
+    expect(game.undo).toHaveBeenCalledOnce()
+  })
+
+  it('redo succeeds with no optional callbacks supplied', () => {
+    const game = makeGame()
+    expect(() => commitCellAction('redo', { game: game as never })).not.toThrow()
+    expect(game.redo).toHaveBeenCalledOnce()
+  })
+})

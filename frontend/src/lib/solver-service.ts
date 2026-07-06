@@ -274,6 +274,7 @@ export async function validateCustomPuzzle(
   const result = dpValidatePuzzle(givens)
 
   if (result.valid && result.unique && result.solution) {
+    // Stryker disable next-line MethodExpression: hash output is always 8 hex chars via padStart(8,'0'), so slice(0,16) never truncates
     const puzzleId = 'custom-' + hashGivens(givens).slice(0, 16)
     return {
       valid: true,
@@ -285,7 +286,9 @@ export async function validateCustomPuzzle(
 
   // Build result object, only including defined properties
   const response: ValidateCustomResult = { valid: result.valid }
+  // Stryker disable next-line ConditionalExpression: assigning response.unique = undefined is observationally identical to omitting the key
   if (result.unique !== undefined) response.unique = result.unique
+  // Stryker disable next-line ConditionalExpression: assigning response.reason = undefined is observationally identical to omitting the key
   if (result.reason) response.reason = result.reason
   if (result.solution) response.solution = result.solution
   return response
@@ -333,6 +336,7 @@ export { isWasmReady }
 
 function hashGivens(givens: number[]): string {
   let hash = 0
+  // Stryker disable next-line UpdateOperator: i-- from 0 is an infinite loop the harness times out on
   for (let i = 0; i < givens.length; i++) {
     const val = givens[i] ?? 0
     hash = ((hash << 5) - hash + val) | 0
@@ -355,11 +359,13 @@ export async function checkAndFixWithSolution(
   const api = await getApi()
   const result = api.checkAndFixWithSolution(board, candidates, givens, solution)
   try {
+    // Stryker disable OptionalChaining: the surrounding try/catch swallows any TypeError from removing '?., making these observationally equivalent
     logger.debug('[Check&Fix] wasm result', {
       solved: result?.solved,
       movesCount: Array.isArray(result?.moves) ? result.moves.length : 0,
       hasFinalBoard: !!result?.finalBoard,
     })
+    // Stryker restore OptionalChaining
   } catch {
     /* no-op */
   }

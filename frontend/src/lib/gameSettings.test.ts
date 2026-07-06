@@ -14,6 +14,9 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import {
   getAutoSaveEnabled,
   setAutoSaveEnabled,
+  getGameMode,
+  isDailyPuzzle,
+  isPracticePuzzle,
   getInProgressGames,
   getMostRecentGame,
   getMostRecentGameForMode,
@@ -604,6 +607,105 @@ describe('gameSettings', () => {
       expect(localStorageMock.removeItem).toHaveBeenCalledWith(`${prefix}P222`)
       expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(`${prefix}P333`)
       expect(localStorageMock.removeItem).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  // ===========================================================================
+  // MUTATION-KILLING: game-mode detection + completed-game exclusion
+  // ===========================================================================
+
+  describe('getGameMode', () => {
+    it('returns "daily" for a daily seed', () => {
+      expect(getGameMode('daily-2024-01-15')).toBe('daily')
+    })
+
+    it('returns "practice" for a practice seed starting with P', () => {
+      expect(getGameMode('P12345')).toBe('practice')
+    })
+
+    it('returns "practice" for a practice seed starting with practice-', () => {
+      expect(getGameMode('practice-42')).toBe('practice')
+    })
+
+    it('returns null for a custom seed (filtered out from the union type)', () => {
+      expect(getGameMode('custom-anything')).toBe(null)
+    })
+
+    it('returns null for an unrecognized seed', () => {
+      expect(getGameMode('garbage')).toBe(null)
+    })
+  })
+
+  describe('isDailyPuzzle', () => {
+    it('returns true for a daily seed', () => {
+      expect(isDailyPuzzle('daily-2024-01-15')).toBe(true)
+    })
+
+    it('returns false for a practice seed', () => {
+      expect(isDailyPuzzle('P123')).toBe(false)
+    })
+
+    it('returns false for a custom seed', () => {
+      expect(isDailyPuzzle('custom-1')).toBe(false)
+    })
+  })
+
+  describe('isPracticePuzzle', () => {
+    it('returns true for a practice seed starting with P', () => {
+      expect(isPracticePuzzle('P123')).toBe(true)
+    })
+
+    it('returns true for a practice seed starting with practice-', () => {
+      expect(isPracticePuzzle('practice-9')).toBe(true)
+    })
+
+    it('returns false for a daily seed', () => {
+      expect(isPracticePuzzle('daily-2024-01-15')).toBe(false)
+    })
+
+    it('returns false for a custom seed', () => {
+      expect(isPracticePuzzle('custom-1')).toBe(false)
+    })
+  })
+
+  describe('getInProgressGames - completed games are excluded', () => {
+    const prefix = STORAGE_KEYS.GAME_STATE_PREFIX
+
+    it('excludes games marked isComplete when includeComplete is false', () => {
+      const inProgress = createGameState({ savedAt: 1000, filledCells: 40 })
+      const completed = {
+        ...createGameState({ savedAt: 2000, filledCells: 81 }),
+        isComplete: true,
+      }
+      localStorageMock._setStore({
+        [`${prefix}in-progress`]: JSON.stringify(inProgress),
+        [`${prefix}completed`]: JSON.stringify(completed),
+      })
+
+      const games = getInProgressGames()
+      expect(games).toHaveLength(1)
+      expect(games[0].seed).toBe('in-progress')
+    })
+  })
+
+  describe('clearOtherGamesForMode - includes completed games in cleanup', () => {
+    const prefix = STORAGE_KEYS.GAME_STATE_PREFIX
+
+    it('clears completed games of the same mode when saving a new game', () => {
+      const current = createGameState({ savedAt: 3000 })
+      const completed = {
+        ...createGameState({ savedAt: 1000 }),
+        isComplete: true,
+      }
+      localStorageMock._setStore({
+        [`${prefix}daily-2024-01-15`]: JSON.stringify(current),
+        [`${prefix}daily-2024-01-10`]: JSON.stringify(completed),
+      })
+
+      clearOtherGamesForMode('daily-2024-01-15')
+
+      // Completed daily game from the same mode must be cleared
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith(`${prefix}daily-2024-01-10`)
     })
   })
 })

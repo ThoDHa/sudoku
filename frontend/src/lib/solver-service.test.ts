@@ -595,4 +595,425 @@ describe('solver-service', () => {
       expect(solverService.default.getPuzzle).toBeDefined()
     })
   })
+
+  describe('mutation-kill: toSolveAllResult move mapping', () => {
+    it('preserves board, candidates, and move for each entry in a non-empty moves array', async () => {
+      const { isWorkerSupported, solveAll: workerSolveAll } = await import('./worker-client')
+      vi.mocked(isWorkerSupported).mockReturnValue(true)
+      vi.mocked(workerSolveAll).mockResolvedValue({
+        moves: [
+          {
+            board: [1, 2, 3],
+            candidates: [[4], [5], [6]],
+            move: { technique: 'NakedSingle', digit: 5 } as never,
+          },
+        ],
+        solved: true,
+        finalBoard: [1, 2, 3],
+      })
+
+      vi.resetModules()
+      const { solveAll, setWorkerMode } = await import('./solver-service')
+      setWorkerMode(true)
+
+      const result = await solveAll([0], [[]], [0])
+
+      expect(result.moves).toHaveLength(1)
+      expect(result.moves[0].board).toEqual([1, 2, 3])
+      expect(result.moves[0].candidates).toEqual([[4], [5], [6]])
+      expect(result.moves[0].move).toEqual(expect.objectContaining({ technique: 'NakedSingle' }))
+    })
+  })
+
+  describe('mutation-kill: enableWorkerMode', () => {
+    it('sets worker mode to false when workers are unsupported', async () => {
+      const { isWorkerSupported } = await import('./worker-client')
+      vi.mocked(isWorkerSupported).mockReturnValue(false)
+
+      vi.resetModules()
+      const { enableWorkerMode, isUsingWorkerMode } = await import('./solver-service')
+
+      expect(isUsingWorkerMode()).toBe(false)
+      enableWorkerMode()
+      expect(isUsingWorkerMode()).toBe(false)
+    })
+
+    it('sets worker mode to true when workers are supported', async () => {
+      const { isWorkerSupported } = await import('./worker-client')
+      vi.mocked(isWorkerSupported).mockReturnValue(true)
+
+      vi.resetModules()
+      const { setWorkerMode, enableWorkerMode, isUsingWorkerMode } = await import('./solver-service')
+      setWorkerMode(false)
+      expect(isUsingWorkerMode()).toBe(false)
+
+      enableWorkerMode()
+      expect(isUsingWorkerMode()).toBe(true)
+    })
+  })
+
+  describe('mutation-kill: getApi error path', () => {
+    it('throws WASM not loaded when getWasmApi returns null after load', async () => {
+      const { loadWasm, getWasmApi } = await import('./wasm')
+      const { isWorkerSupported } = await import('./worker-client')
+
+      vi.mocked(isWorkerSupported).mockReturnValue(false)
+      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(getWasmApi).mockReturnValue(null)
+
+      vi.resetModules()
+      const { solveAll, setWorkerMode } = await import('./solver-service')
+      setWorkerMode(false)
+
+      await expect(solveAll([0], [[]], [0])).rejects.toThrow('WASM not loaded')
+    })
+
+    it('caches wasmApi and does not reload WASM on subsequent main-thread calls', async () => {
+      const { loadWasm, getWasmApi } = await import('./wasm')
+      const { isWorkerSupported } = await import('./worker-client')
+
+      const mockApi = {
+        solveAll: vi.fn().mockReturnValue({ moves: [], solved: true, finalBoard: [] }),
+        findNextMove: vi.fn(),
+      }
+      vi.mocked(isWorkerSupported).mockReturnValue(false)
+      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
+
+      vi.resetModules()
+      const { solveAll, setWorkerMode } = await import('./solver-service')
+      setWorkerMode(false)
+
+      await solveAll([0], [[]], [0])
+      await solveAll([0], [[]], [0])
+
+      expect(loadWasm).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('mutation-kill: initializeSolver fallback side effects', () => {
+    it('sets worker mode to false and logs after falling back to main thread', async () => {
+      const { isWorkerSupported, initializeWorker } = await import('./worker-client')
+      const { loadWasm, getWasmApi } = await import('./wasm')
+      const { logger } = await import('./logger')
+
+      vi.mocked(isWorkerSupported).mockReturnValue(true)
+      vi.mocked(initializeWorker).mockRejectedValue(new Error('Worker failed'))
+      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(getWasmApi).mockReturnValue({
+        solveAll: vi.fn(),
+        findNextMove: vi.fn(),
+      } as never)
+
+      vi.resetModules()
+      const mod = await import('./solver-service')
+      mod.setWorkerMode(true)
+
+      await mod.initializeSolver()
+
+      expect(mod.isUsingWorkerMode()).toBe(false)
+      expect(logger.debug).toHaveBeenCalledWith(
+        '[SolverService] Worker initialization failed, falling back to main thread:',
+        expect.any(Error),
+      )
+      expect(logger.debug).toHaveBeenCalledWith('[SolverService] Main thread mode initialized')
+    })
+
+    it('logs worker mode initialized on success', async () => {
+      const { isWorkerSupported, initializeWorker } = await import('./worker-client')
+      const { logger } = await import('./logger')
+
+      vi.mocked(isWorkerSupported).mockReturnValue(true)
+      vi.mocked(initializeWorker).mockResolvedValue(undefined)
+
+      vi.resetModules()
+      const { initializeSolver, setWorkerMode } = await import('./solver-service')
+      setWorkerMode(true)
+
+      await initializeSolver()
+
+      expect(logger.debug).toHaveBeenCalledWith('[SolverService] Worker mode initialized')
+    })
+  })
+
+  describe('mutation-kill: cleanupSolver logging', () => {
+    it('logs worker terminated and cleanup success', async () => {
+      const { isWorkerReady, terminateWorker } = await import('./worker-client')
+      const { logger } = await import('./logger')
+
+      vi.mocked(isWorkerReady).mockReturnValue(true)
+      vi.mocked(terminateWorker).mockReset()
+
+      vi.resetModules()
+      const { cleanupSolver } = await import('./solver-service')
+
+      cleanupSolver()
+
+      expect(logger.debug).toHaveBeenCalledWith('[SolverService] Worker terminated')
+      expect(logger.debug).toHaveBeenCalledWith('[SolverService] Solver cleaned up successfully')
+    })
+
+    it('logs cleanup errors when terminateWorker throws', async () => {
+      const { isWorkerReady, terminateWorker } = await import('./worker-client')
+      const { logger } = await import('./logger')
+
+      vi.mocked(isWorkerReady).mockReturnValue(true)
+      vi.mocked(terminateWorker).mockImplementation(() => {
+        throw new Error('Terminate failed')
+      })
+
+      vi.resetModules()
+      const { cleanupSolver } = await import('./solver-service')
+
+      cleanupSolver()
+
+      expect(logger.debug).toHaveBeenCalledWith(
+        '[SolverService] Error during solver cleanup:',
+        expect.any(Error),
+      )
+    })
+  })
+
+  describe('mutation-kill: solveAll / findNextMove fallback logging', () => {
+    it('logs solveAll worker fallback and uses main thread', async () => {
+      const { isWorkerSupported, solveAll: workerSolveAll } = await import('./worker-client')
+      const { loadWasm, getWasmApi } = await import('./wasm')
+      const { logger } = await import('./logger')
+
+      const mockApi = {
+        solveAll: vi.fn().mockReturnValue({ moves: [], solved: true, finalBoard: [] }),
+        findNextMove: vi.fn(),
+      }
+      vi.mocked(isWorkerSupported).mockReturnValue(true)
+      vi.mocked(workerSolveAll).mockRejectedValue(new Error('Worker failed'))
+      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
+
+      vi.resetModules()
+      const { solveAll, setWorkerMode } = await import('./solver-service')
+      setWorkerMode(true)
+
+      const result = await solveAll([0], [[]], [0])
+
+      expect(result.solved).toBe(true)
+      expect(logger.debug).toHaveBeenCalledWith(
+        '[SolverService] Worker solveAll failed, falling back:',
+        expect.any(Error),
+      )
+    })
+
+    it('logs findNextMove worker fallback and uses main thread', async () => {
+      const { isWorkerSupported, findNextMove: workerFindNextMove } = await import('./worker-client')
+      const { loadWasm, getWasmApi } = await import('./wasm')
+      const { logger } = await import('./logger')
+
+      const mockApi = {
+        solveAll: vi.fn(),
+        findNextMove: vi.fn().mockReturnValue({
+          move: null,
+          board: { cells: [0], candidates: [[]] },
+          solved: false,
+        }),
+      }
+      vi.mocked(isWorkerSupported).mockReturnValue(true)
+      vi.mocked(workerFindNextMove).mockRejectedValue(new Error('Worker failed'))
+      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
+
+      vi.resetModules()
+      const { findNextMove, setWorkerMode } = await import('./solver-service')
+      setWorkerMode(true)
+
+      const result = await findNextMove([0], [[]], [0])
+
+      expect(result.move).toBeNull()
+      expect(logger.debug).toHaveBeenCalledWith(
+        '[SolverService] Worker findNextMove failed, falling back:',
+        expect.any(Error),
+      )
+    })
+
+    it('uses main thread directly when worker mode is disabled for solveAll', async () => {
+      const { isWorkerSupported, solveAll: workerSolveAll } = await import('./worker-client')
+      const { loadWasm, getWasmApi } = await import('./wasm')
+
+      const mockApi = {
+        solveAll: vi.fn().mockReturnValue({ moves: [], solved: true, finalBoard: [] }),
+        findNextMove: vi.fn(),
+      }
+      vi.mocked(isWorkerSupported).mockReturnValue(true)
+      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
+
+      vi.resetModules()
+      const { solveAll, setWorkerMode } = await import('./solver-service')
+      setWorkerMode(false)
+
+      await solveAll([0], [[]], [0])
+
+      expect(workerSolveAll).not.toHaveBeenCalled()
+      expect(mockApi.solveAll).toHaveBeenCalled()
+    })
+  })
+
+  describe('mutation-kill: validateCustomPuzzle branching', () => {
+    it('returns puzzle_id with an 8-hex-char suffix for a valid unique puzzle', async () => {
+      const { validatePuzzle } = await import('./dp-solver')
+      vi.mocked(validatePuzzle).mockReturnValue({
+        valid: true,
+        unique: true,
+        solution: Array(81).fill(1),
+      })
+
+      vi.resetModules()
+      const { validateCustomPuzzle } = await import('./solver-service')
+
+      const givens = Array(81).fill(0)
+      givens[0] = 1
+      const result = await validateCustomPuzzle(givens, 'device')
+
+      expect(result.puzzle_id).toMatch(/^custom-[0-9a-f]{8}$/)
+    })
+
+    it('returns exact puzzle_id matching the reference hash', async () => {
+      const { validatePuzzle } = await import('./dp-solver')
+      vi.mocked(validatePuzzle).mockReturnValue({
+        valid: true,
+        unique: true,
+        solution: Array(81).fill(1),
+      })
+
+      vi.resetModules()
+      const { validateCustomPuzzle } = await import('./solver-service')
+
+      const givens = Array(81).fill(0)
+      givens[0] = 1
+      givens[1] = 2
+      givens[2] = 3
+
+      // Reference implementation of hashGivens (mirrors the original algorithm)
+      let hash = 0
+      for (let i = 0; i < givens.length; i++) {
+        hash = ((hash << 5) - hash + (givens[i] ?? 0)) | 0
+      }
+      const expected = 'custom-' + Math.abs(hash).toString(16).padStart(8, '0')
+
+      const result = await validateCustomPuzzle(givens, 'device')
+      expect(result.puzzle_id).toBe(expected)
+    })
+
+    it('does not mark a non-unique puzzle with solution as unique', async () => {
+      const { validatePuzzle } = await import('./dp-solver')
+      vi.mocked(validatePuzzle).mockReturnValue({
+        valid: true,
+        unique: false,
+        solution: Array(81).fill(1),
+      })
+
+      vi.resetModules()
+      const { validateCustomPuzzle } = await import('./solver-service')
+
+      const result = await validateCustomPuzzle(Array(81).fill(0), 'device')
+
+      expect(result.valid).toBe(true)
+      expect(result.unique).toBe(false)
+      expect(result.puzzle_id).toBeUndefined()
+    })
+
+    it('returns invalid without puzzle_id when dp returns invalid', async () => {
+      const { validatePuzzle } = await import('./dp-solver')
+      vi.mocked(validatePuzzle).mockReturnValue({
+        valid: false,
+        reason: 'unsolvable',
+      })
+
+      vi.resetModules()
+      const { validateCustomPuzzle } = await import('./solver-service')
+
+      const result = await validateCustomPuzzle(Array(81).fill(0), 'device')
+
+      expect(result.valid).toBe(false)
+      expect(result.puzzle_id).toBeUndefined()
+    })
+
+    it('forwards solution in the non-unique response when dp provides one', async () => {
+      const { validatePuzzle } = await import('./dp-solver')
+      const sol = Array(81).fill(5)
+      vi.mocked(validatePuzzle).mockReturnValue({
+        valid: true,
+        unique: false,
+        solution: sol,
+      })
+
+      vi.resetModules()
+      const { validateCustomPuzzle } = await import('./solver-service')
+
+      const result = await validateCustomPuzzle(Array(81).fill(0), 'device')
+
+      expect(result.solution).toEqual(sol)
+    })
+  })
+
+  describe('mutation-kill: checkAndFixWithSolution', () => {
+    it('returns the normalized result and logs the wasm outcome', async () => {
+      const { loadWasm, getWasmApi } = await import('./wasm')
+      const { logger } = await import('./logger')
+
+      const mockResult = {
+        moves: [{ board: [1], candidates: [[2]], move: { technique: 'NakedSingle' } }],
+        solved: true,
+        finalBoard: [1, 2, 3],
+      }
+      const mockApi = {
+        solveAll: vi.fn(),
+        findNextMove: vi.fn(),
+        checkAndFixWithSolution: vi.fn().mockReturnValue(mockResult),
+      }
+      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
+
+      vi.resetModules()
+      const { checkAndFixWithSolution } = await import('./solver-service')
+
+      const result = await checkAndFixWithSolution([0], [[]], [0], [1])
+
+      expect(result.solved).toBe(true)
+      expect(result.moves).toHaveLength(1)
+      expect(result.moves[0].board).toEqual([1])
+      expect(result.finalBoard).toEqual([1, 2, 3])
+      expect(logger.debug).toHaveBeenCalledWith('[Check&Fix] wasm result', {
+        solved: true,
+        movesCount: 1,
+        hasFinalBoard: true,
+      })
+    })
+
+    it('survives a logging error without throwing', async () => {
+      const { loadWasm, getWasmApi } = await import('./wasm')
+      const { logger } = await import('./logger')
+
+      const mockResult = {
+        moves: [],
+        solved: false,
+        finalBoard: [],
+      }
+      const mockApi = {
+        solveAll: vi.fn(),
+        findNextMove: vi.fn(),
+        checkAndFixWithSolution: vi.fn().mockReturnValue(mockResult),
+      }
+      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
+      vi.mocked(logger.debug).mockImplementation(() => {
+        throw new Error('logger exploded')
+      })
+
+      vi.resetModules()
+      const { checkAndFixWithSolution } = await import('./solver-service')
+
+      const result = await checkAndFixWithSolution([0], [[]], [0], [1])
+      expect(result).toBeDefined()
+      expect(result.solved).toBe(false)
+    })
+  })
 })

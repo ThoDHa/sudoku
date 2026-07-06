@@ -52,6 +52,7 @@ export function encodePuzzle(cells: number[]): string {
 function encodeSparse(cells: number[]): string {
   // Bitmask: one bit per cell (81 bits), set when the cell is filled.
   let mask = BigInt(0)
+  // Stryker disable next-line EqualityOperator: index 81 is out of bounds (array has exactly 81 entries); cells[81] is undefined and skipped by the inner guard, so iterating one step further is a no-op
   for (let i = 0; i < 81; i++) {
     const cell = cells[i]
     if (cell !== undefined && cell !== 0) {
@@ -73,6 +74,7 @@ function encodeSparse(cells: number[]): string {
 
   // Encode each filled cell's digit (1-9 -> first 9 chars of the alphabet)
   let digitsStr = ''
+  // Stryker disable next-line EqualityOperator: index 81 is out of bounds; cells[81] is undefined and skipped by the inner guard, so iterating to 81 is a no-op
   for (let i = 0; i < 81; i++) {
     const cell = cells[i]
     if (cell !== undefined && cell !== 0) {
@@ -90,6 +92,7 @@ function encodeSparse(cells: number[]): string {
 function encodeDense(cells: number[]): string {
   // Pack 2 cells per byte (4 bits each)
   const bytes: number[] = []
+  // Stryker disable next-line EqualityOperator: i advances by 2, so after 80 the next value is 82 which already exceeds 81; the <= variant adds no iteration
   for (let i = 0; i < 81; i += 2) {
     const high = (cells[i] ?? 0) & 0x0f
     const low = (cells[i + 1] ?? 0) & 0x0f
@@ -100,6 +103,7 @@ function encodeDense(cells: number[]): string {
   const uint8 = new Uint8Array(bytes)
   const binary = String.fromCharCode(...uint8)
   const base64 = btoa(binary)
+  // Stryker disable next-line StringLiteral: valid sudoku digits (0-9) pack into bytes <= 0x99, whose base64 encoding never produces '+' (62) or '/' (63); only the '=' removal is reachable
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
@@ -108,7 +112,9 @@ function encodeDense(cells: number[]): string {
  * Accepts digits 0-9 and . for empty cells
  */
 function isRaw81String(str: string): boolean {
+  // Stryker disable next-line ConditionalExpression: the regex below anchors to exactly 81 chars (^ and $), making this length check logically redundant
   if (str.length !== 81) return false
+  // Stryker disable next-line Regex: with the length already constrained to exactly 81 by the guard above, the ^ and $ anchors are redundant on this 81-char input
   return /^[0-9.]{81}$/.test(str)
 }
 
@@ -128,6 +134,7 @@ function decodeRaw81(str: string): number[] {
  * - Legacy dense format (no prefix)
  */
 export function decodePuzzle(encoded: string): number[] {
+  // Stryker disable next-line ConditionalExpression, BlockStatement: an empty string falls through to decodeDense('') which returns the same 81-zero board, making this early return observationally identical
   if (encoded.length === 0) {
     return Array(81).fill(0)
   }
@@ -237,6 +244,7 @@ export function encodePuzzleWithState(
 
   // Encode all 81 cell values using dense encoding (4 bits per cell)
   const bytes: number[] = []
+  // Stryker disable next-line EqualityOperator: i advances by 2, so after 80 the next value is 82 which already exceeds 81; the <= variant adds no iteration
   for (let i = 0; i < 81; i += 2) {
     const high = (board[i] ?? 0) & 0x0f
     const low = (board[i + 1] ?? 0) & 0x0f
@@ -245,6 +253,7 @@ export function encodePuzzleWithState(
 
   const uint8 = new Uint8Array(bytes)
   const binary = String.fromCharCode(...uint8)
+  // Stryker disable next-line StringLiteral: board values are sudoku digits (0-9) which pack into bytes <= 0x99, whose base64 encoding never produces '+' (62) or '/' (63); only the '=' removal is reachable
   const boardStr = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 
   // If no candidates provided, return without candidates
@@ -273,6 +282,7 @@ export function encodePuzzleWithState(
 function encodeCandidates(candidates: number[][]): string {
   // Create bitmask for cells that have candidates
   let hasCandMask = BigInt(0)
+  // Stryker disable next-line EqualityOperator: index 81 is out of bounds; candidates[81] is undefined and the inner `cands &&` guard skips it, so iterating to 81 is a no-op
   for (let i = 0; i < 81; i++) {
     const cands = candidates[i]
     if (cands && cands.length > 0) {
@@ -290,6 +300,7 @@ function encodeCandidates(candidates: number[][]): string {
   // Collect all candidate bits for cells that have candidates
   // Each cell's candidates are 9 bits (bit 0 = digit 1, bit 8 = digit 9)
   const candBits: number[] = []
+  // Stryker disable next-line EqualityOperator: index 81 is out of bounds; candidates[81] is undefined and the inner `cands &&` guard skips it, so iterating to 81 is a no-op
   for (let i = 0; i < 81; i++) {
     const cands = candidates[i]
     if (cands && cands.length > 0) {

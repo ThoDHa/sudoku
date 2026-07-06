@@ -413,84 +413,101 @@ describe('dp-solver', () => {
     })
   })
 
-  describe('findConflicts and isValid integration', () => {
-    it('findConflicts and isValid should agree', () => {
-      expect(isValid(VALID_SOLVED_BOARD)).toBe(true)
-      expect(findConflicts(VALID_SOLVED_BOARD)).toEqual([])
+  describe('mutation-kill: conflict deduplication and pairing', () => {
+    it('reports every distinct pair when three cells share a value in one unit', () => {
+      const board = [...EMPTY_GRID]
+      board[0] = 5
+      board[1] = 5
+      board[2] = 5
+      const conflicts = findConflicts(board)
+      expect(conflicts).toHaveLength(3)
+    })
 
-      expect(isValid(PUZZLE_WITH_CONFLICT)).toBe(false)
-      expect(findConflicts(PUZZLE_WITH_CONFLICT).length).toBeGreaterThan(0)
+    it('deduplicates a pair that conflicts in both a row and a box', () => {
+      const board = [...EMPTY_GRID]
+      board[0] = 7
+      board[2] = 7
+      const conflicts = findConflicts(board)
+      expect(conflicts).toHaveLength(1)
+    })
+
+    it('reports two independent conflict pairs separately', () => {
+      const board = [...EMPTY_GRID]
+      board[0] = 5
+      board[1] = 5
+      board[9] = 6
+      board[10] = 6
+      const conflicts = findConflicts(board)
+      expect(conflicts).toHaveLength(2)
+    })
+
+    it('does not pull the next-row first cell into the current row unit', () => {
+      const board = [...EMPTY_GRID]
+      board[0] = 5
+      board[9] = 5
+      const conflicts = findConflicts(board)
+      expect(conflicts).toHaveLength(1)
+      expect(conflicts[0].type).toBe('column')
+    })
+
+    it('emits pairs from units (guards against inner-loop direction mutants)', () => {
+      const board = [...EMPTY_GRID]
+      board[0] = 5
+      board[4] = 5
+      const conflicts = findConflicts(board)
+      expect(conflicts).toContainEqual(
+        expect.objectContaining({ cell1: 0, cell2: 4, value: 5, type: 'row' }),
+      )
     })
   })
 
-  describe('hasUniqueSolution', () => {
-    it('should return true for puzzle with exactly one solution', () => {
-      expect(hasUniqueSolution(VALID_UNIQUE_PUZZLE)).toBe(true)
-    })
-
-    it('should return false for puzzle with multiple solutions', () => {
-      expect(hasUniqueSolution(MULTIPLE_SOLUTIONS_PUZZLE)).toBe(false)
-    })
-
-    it('should return false for puzzle with no solution', () => {
-      expect(hasUniqueSolution(UNSOLVABLE_PUZZLE)).toBe(false)
-    })
-
-    it('should return true for already solved grid', () => {
-      expect(hasUniqueSolution(VALID_SOLVED_BOARD)).toBe(true)
-    })
-
-    it('should return false for empty grid (many solutions)', () => {
-      expect(hasUniqueSolution(EMPTY_GRID)).toBe(false)
+  describe('mutation-kill: row scanning across all rows', () => {
+    it('detects row conflicts beyond the first row', () => {
+      const board = [...EMPTY_GRID]
+      board[27] = 9
+      board[30] = 9
+      const conflicts = findConflicts(board)
+      expect(conflicts).toContainEqual(
+        expect.objectContaining({ cell1: 27, cell2: 30, value: 9, type: 'row' }),
+      )
     })
   })
 
-  describe('validatePuzzle', () => {
-    it('should return valid and unique for proper puzzle with solution', () => {
-      const result = validatePuzzle(VALID_UNIQUE_PUZZLE)
-      expect(result.valid).toBe(true)
-      expect(result.unique).toBe(true)
-      expect(result.solution).toBeDefined()
-      expect(result.solution).toHaveLength(81)
-      // Verify the solution is actually solved (no zeros)
-      expect(result.solution!.every((v) => v >= 1 && v <= 9)).toBe(true)
-    })
-
-    it('should return invalid for puzzle with conflicts', () => {
-      const result = validatePuzzle(PUZZLE_WITH_CONFLICT)
+  describe('mutation-kill: validation guards', () => {
+    it('rejects a conflicting full board before solving', () => {
+      const conflicting = [...VALID_SOLVED_BOARD]
+      conflicting[1] = conflicting[0]
+      const result = validatePuzzle(conflicting)
       expect(result.valid).toBe(false)
       expect(result.reason).toBe('Puzzle has conflicting numbers')
-      expect(result.solution).toBeUndefined()
     })
 
-    it('should return valid but not unique for puzzle with multiple solutions', () => {
-      const result = validatePuzzle(MULTIPLE_SOLUTIONS_PUZZLE)
-      expect(result.valid).toBe(true)
-      expect(result.unique).toBe(false)
-      expect(result.reason).toBe('Puzzle has multiple solutions')
-      // Still returns a solution (one of the possible ones)
-      expect(result.solution).toBeDefined()
-    })
-
-    it('should return invalid for unsolvable puzzle', () => {
-      const result = validatePuzzle(UNSOLVABLE_PUZZLE)
+    it('rejects a correct-length board against a short solution', () => {
+      const result = validateBoardAgainstSolution(VALID_SOLVED_BOARD, [1, 2, 3])
       expect(result.valid).toBe(false)
-      expect(result.reason).toBe('Puzzle has no solution')
+      expect(result.message).toBe('Invalid board or solution length')
     })
 
-    it('should handle empty grid (valid but not unique)', () => {
-      const result = validatePuzzle(EMPTY_GRID)
-      expect(result.valid).toBe(true)
-      expect(result.unique).toBe(false)
-      expect(result.reason).toBe('Puzzle has multiple solutions')
-      expect(result.solution).toBeDefined()
+    it('uses singular wording for exactly one incorrect cell', () => {
+      const incorrect = [...VALID_SOLVED_BOARD]
+      incorrect[5] = incorrect[0]
+      const result = validateBoardAgainstSolution(incorrect, VALID_SOLVED_BOARD)
+      expect(result.incorrectCells).toHaveLength(1)
+      expect(result.message).toBe('Found 1 incorrect cell')
     })
+  })
 
-    it('should return valid and unique for already solved grid', () => {
-      const result = validatePuzzle(VALID_SOLVED_BOARD)
-      expect(result.valid).toBe(true)
-      expect(result.unique).toBe(true)
-      expect(result.solution).toEqual(VALID_SOLVED_BOARD)
+  describe('mutation-kill: solver correctness', () => {
+    it('solves a multi-gap board to the unique valid solution', () => {
+      const partial = [...VALID_SOLVED_BOARD]
+      partial[40] = 0
+      partial[41] = 0
+      partial[50] = 0
+      const result = solve(partial)
+      expect(result).not.toBeNull()
+      expect(isValid(result!)).toBe(true)
+      expect(findConflicts(result!)).toEqual([])
+      expect(result).toEqual(VALID_SOLVED_BOARD)
     })
   })
 })

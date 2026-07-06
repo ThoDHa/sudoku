@@ -311,3 +311,57 @@ describe('useCandidates guard against off-by-one peer elimination (L163:23, L167
     expect(countCandidates(out[5])).toBe(1)
   })
 })
+
+describe('useCandidates eliminateFromPeers loop bounds stay inside the peer set', () => {
+  it('row loop bound is exclusive so a row>0 cell does not leak into the next row (L163 c<=BOARD_SIZE)', () => {
+    // Cell 13 = (row 1, col 4). Its row peers are 9..17. The mutant's extra c=9
+    // iteration would touch cell 18 (row 2, col 0), which is NOT a peer.
+    const initial = new Uint16Array(TOTAL_CELLS).fill(0) as unknown as Uint16Array
+    initial.fill(1022) // every cell carries all digits
+    const { result } = renderHook(() => useCandidates(emptyBoard()))
+
+    const out = result.current.eliminateFromPeers(initial, 13, 1)
+
+    // cell 18 is not a peer of cell 13; digit 1 must survive there.
+    expect(hasCandidate(out[18], 1)).toBe(true)
+    // sanity: a real row peer (cell 10) does lose digit 1.
+    expect(hasCandidate(out[10], 1)).toBe(false)
+  })
+
+  it('row index is row*BOARD_SIZE+c, not row/BOARD_SIZE+c, for row>0 (L164 ArithmeticOperator)', () => {
+    // For row 1 the mutant row/BOARD_SIZE+c yields fractional indices (no-op writes),
+    // so row peers would keep digit 1.
+    const initial = new Uint16Array(TOTAL_CELLS).fill(0) as unknown as Uint16Array
+    initial.fill(1022)
+    const { result } = renderHook(() => useCandidates(emptyBoard()))
+
+    const out = result.current.eliminateFromPeers(initial, 13, 1)
+
+    expect(hasCandidate(out[9], 1)).toBe(false) // row peer of cell 13
+    expect(hasCandidate(out[17], 1)).toBe(false) // row peer of cell 13
+  })
+
+  it('box-row bound is exclusive of the next box row (L171 r<=boxRow+SUBGRID_SIZE)', () => {
+    // Cell 0 = box (0,0). The mutant extra r=3 iteration touches cell 28 (row 3, col 1),
+    // which is NOT a peer of cell 0.
+    const initial = new Uint16Array(TOTAL_CELLS).fill(0) as unknown as Uint16Array
+    initial.fill(1022)
+    const { result } = renderHook(() => useCandidates(emptyBoard()))
+
+    const out = result.current.eliminateFromPeers(initial, 0, 1)
+
+    expect(hasCandidate(out[28], 1)).toBe(true) // non-peer, digit survives
+  })
+
+  it('box-col bound is exclusive of the next box col (L172 c<=boxCol+SUBGRID_SIZE)', () => {
+    // Cell 0 = box (0,0). The mutant extra c=3 iteration touches cell 12 (row 1, col 3),
+    // which is NOT a peer of cell 0.
+    const initial = new Uint16Array(TOTAL_CELLS).fill(0) as unknown as Uint16Array
+    initial.fill(1022)
+    const { result } = renderHook(() => useCandidates(emptyBoard()))
+
+    const out = result.current.eliminateFromPeers(initial, 0, 1)
+
+    expect(hasCandidate(out[12], 1)).toBe(true) // non-peer, digit survives
+  })
+})

@@ -670,4 +670,79 @@ describe('useWasmLifecycle', () => {
       logger.warn.mockClear()
     })
   })
+
+  describe('mutation-kill targets', () => {
+    it('does not log route-entry by default (enableLogging defaults to false)', async () => {
+      const loggerWarnSpy = logger.warn
+      logger.warn.mockClear()
+
+      setMockPathname('/')
+      const { rerender } = renderHook(() => useWasmLifecycle())
+
+      setMockPathname('/game123')
+      rerender()
+
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+
+      expect(loggerWarnSpy).not.toHaveBeenCalled()
+    })
+
+    it('clears a pending unload timeout when scheduling a new one', async () => {
+      setPath('/game123')
+      const { rerender } = renderHook(() => useWasmLifecycle({ unloadDelay: 5000 }))
+
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+
+      // Navigate away (schedules first unload)
+      setPath('/')
+      rerender()
+
+      // Navigate to another non-WASM route before timeout fires; scheduleUnload
+      // is called again and must clear the previous pending timeout
+      setPath('/techniques')
+      rerender()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(6000)
+      })
+
+      // Cleanup happened (exactly once, not twice from a stale timeout)
+      expect(mockCleanupSolver.mock.calls.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('reloads WASM when re-entering a game route after unload fires', async () => {
+      setPath('/game1')
+      const { rerender } = renderHook(() => useWasmLifecycle({ unloadDelay: 1000 }))
+
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+
+      expect(mockInitializeSolver).toHaveBeenCalledTimes(1)
+
+      // Leave and let unload fire
+      setPath('/')
+      rerender()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1500)
+      })
+
+      expect(mockCleanupSolver).toHaveBeenCalled()
+
+      // Re-enter a game route; should load again
+      vi.clearAllMocks()
+      setPath('/game2')
+      rerender()
+
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+
+      expect(mockInitializeSolver).toHaveBeenCalled()
+    })
+  })
 })

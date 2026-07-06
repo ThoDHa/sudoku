@@ -657,4 +657,118 @@ describe('autoSolvePlayback', () => {
       expect(arrs[1]).toHaveLength(0)
     })
   })
+
+  describe('continueOrStop - empty queue stops instead of scheduling', () => {
+    it('calls stopAutoSolve (not scheduleNextMove) when no moves remain after a regular move', () => {
+      const { context, mocks } = buildContext({ autoSolve: true, movesQueue: [], currentIndex: 1 })
+      const moveResult = buildMoveResult({ move: buildMove({ action: 'place' }) })
+
+      handleMoveResult(moveResult, 1, context, playNextMoveSpy)
+
+      expect(mocks.stopAutoSolve).toHaveBeenCalledTimes(1)
+      expect(mocks.scheduleNextMove).not.toHaveBeenCalled()
+    })
+
+    it('schedules the next move when more moves remain after a regular move', () => {
+      const { context, mocks } = buildContext({
+        autoSolve: true,
+        movesQueue: [buildMoveResult()],
+        currentIndex: 1,
+      })
+      const moveResult = buildMoveResult({ move: buildMove({ action: 'place' }) })
+
+      handleMoveResult(moveResult, 1, context, playNextMoveSpy)
+
+      expect(mocks.scheduleNextMove).toHaveBeenCalledWith(playNextMoveSpy, 50)
+      expect(mocks.stopAutoSolve).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('applyRegularMove - history snapshot candidates fallback', () => {
+    it('stores materialized candidate arrays (not undefined) when moveResult.candidates is absent', () => {
+      const { refs, context } = buildContext({ movesQueue: [] })
+      const fallbackSets = context.initialCandidates
+      const moveResult = buildMoveResult({
+        candidates: null as unknown as MoveResult['candidates'],
+        move: buildMove({ action: 'place' }),
+      })
+
+      handleMoveResult(moveResult, 1, context, playNextMoveSpy)
+
+      const snapshot = refs.stateHistoryRef.current[0]!
+      expect(snapshot.candidates).toHaveLength(81)
+      snapshot.candidates.forEach((arr, i) => {
+        expect(Array.isArray(arr)).toBe(true)
+        expect(arr!.slice().sort()).toEqual(Array.from(fallbackSets[i]).sort())
+      })
+    })
+  })
+
+  describe('optional-callback safety for terminal actions', () => {
+    it('does not throw when contradiction ends playback and onError is not provided', () => {
+      const { context, mocks } = buildContext({
+        omitCallbacks: ['onError'],
+        autoSolve: true,
+        movesQueue: [],
+      })
+      const moveResult = buildMoveResult({
+        move: buildMove({ action: 'contradiction', explanation: 'CTX' }),
+      })
+
+      expect(() => handleMoveResult(moveResult, 1, context, playNextMoveSpy)).not.toThrow()
+      expect(mocks.stopAutoSolve).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not throw when stalled ends playback and onUnpinpointableError is not provided', () => {
+      const { context, mocks } = buildContext({
+        omitCallbacks: ['onUnpinpointableError'],
+        autoSolve: true,
+        movesQueue: [],
+      })
+      const moveResult = buildMoveResult({
+        move: buildMove({ action: 'stalled', explanation: '' }),
+      })
+
+      expect(() => handleMoveResult(moveResult, 1, context, playNextMoveSpy)).not.toThrow()
+      expect(mocks.stopAutoSolve).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("fix-error - candidate materialization (applyMove + history)", () => {
+    it('builds Sets from non-null candidate entries and empty Sets from null entries', () => {
+      const { context, mocks } = buildContext({ movesQueue: [buildMoveResult()] })
+      const candidates: (number[] | null)[] = Array(81).fill(null)
+      candidates[0] = [1, 2, 3]
+      candidates[1] = null
+      const moveResult = buildMoveResult({
+        candidates,
+        move: buildMove({ action: 'fix-error', explanation: 'Fixed R1C1' }),
+      })
+
+      handleMoveResult(moveResult, 1, context, playNextMoveSpy)
+
+      const [, candidatesArg] = mocks.applyMove.mock.calls[0]
+      expect(candidatesArg[0]).toBeInstanceOf(Set)
+      expect(Array.from(candidatesArg[0] as Set<number>).sort()).toEqual([1, 2, 3])
+      expect(candidatesArg[1]).toBeInstanceOf(Set)
+      expect((candidatesArg[1] as Set<number>).size).toBe(0)
+    })
+
+    it('records the spread candidate arrays verbatim in the history snapshot', () => {
+      const { refs, context } = buildContext({ movesQueue: [buildMoveResult()] })
+      const candidates: (number[] | null)[] = Array(81).fill(null)
+      candidates[5] = [7, 8]
+      candidates[6] = null
+      const moveResult = buildMoveResult({
+        candidates,
+        move: buildMove({ action: 'fix-error', explanation: 'Fixed' }),
+      })
+
+      handleMoveResult(moveResult, 1, context, playNextMoveSpy)
+
+      const snapshot = refs.stateHistoryRef.current[0]!
+      expect(snapshot.candidates[5]).toEqual([7, 8])
+      expect(snapshot.candidates[6]).toEqual([])
+    })
+  })
 })

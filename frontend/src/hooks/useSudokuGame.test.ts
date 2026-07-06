@@ -2525,6 +2525,91 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
   })
 })
 
+// =============================================================================
+// MUTATION-CONVERGENCE TESTS (Pigsy pass)
+// Targets specific surviving/no-coverage mutants by asserting the observable
+// behavior that the mutant would flip.
+// =============================================================================
+describe('useSudokuGame - mutation-convergence (Pigsy)', () => {
+  describe('candidatesRef sync effect', () => {
+    // Guards the useEffect that mirrors candidatesHook.candidates into
+    // candidatesRef. setCell(notes) writes candidatesHook.candidates but does
+    // NOT write candidatesRef directly, so the ref only sees the new value
+    // through this effect. toggleCandidate reads candidatesRef.current.
+    it('toggleCandidate observes candidates added by setCell(notes) via the effect-synced ref', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+
+      act(() => {
+        result.current.setCell(40, 5, true)
+      })
+      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+
+      // If the sync effect were dead (body {} or deps []), candidatesRef would
+      // still hold the initial zeroed array; hadCandidate would be false and
+      // toggleCandidate would ADD instead of REMOVE.
+      act(() => {
+        result.current.toggleCandidate(40, 5)
+      })
+      expect(hasCandidate(result.current.candidates[40], 5)).toBe(false)
+      expect(result.current.history[result.current.history.length - 1].action).toBe(
+        'eliminate',
+      )
+    })
+  })
+
+  describe('setCell(notes) double-toggle debounce', () => {
+    // Covers the rapid same-cell+digit debounce guard and kills guard-removal
+    // ConditionalExpression mutants: without the guard the second call would
+    // toggle the note off.
+    it('suppresses a second immediate note toggle on the same cell and digit', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+
+      act(() => {
+        result.current.setCell(40, 5, true)
+        result.current.setCell(40, 5, true)
+      })
+
+      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+      expect(result.current.history).toHaveLength(1)
+      expect(result.current.history[0].action).toBe('note')
+    })
+  })
+
+  describe('setCellMultiple - validIndices filter', () => {
+    // Kills the && → || and conditional mutants on the filter predicate by
+    // proving a filled non-given cell is excluded from the toggle set.
+    it('excludes a filled non-given cell from the toggle targets', () => {
+      const { result } = renderGame(createEmptyPuzzle())
+
+      act(() => {
+        result.current.setCell(10, 4, false)
+      })
+      act(() => {
+        result.current.setCellMultiple([10, 11], 7, true)
+      })
+
+      const move = result.current.history[result.current.history.length - 1]
+      // Only cell 11 (still empty) is toggled; cell 10 has a placed digit.
+      expect(move.targets).toEqual([{ row: 1, col: 2 }])
+      expect(move.explanation).toBe('Added note 7 to 1 cells')
+    })
+
+    // Kills the empty-validIndices guard mutant (if→false): with the guard
+    // removed, an all-excluded selection would still push an empty-targets move.
+    it('records no move when every selected cell is a given', () => {
+      const puzzle = createTestPuzzle()
+      const { result } = renderGame(puzzle)
+      const historyBefore = result.current.history.length
+
+      act(() => {
+        result.current.setCellMultiple([0, 1], 7, true)
+      })
+
+      expect(result.current.history).toHaveLength(historyBefore)
+    })
+  })
+})
+
 function emptyMove() {
   return {
     step_index: 0,

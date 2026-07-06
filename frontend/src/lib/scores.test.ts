@@ -11,6 +11,7 @@ import {
   isDailySeed,
   getDailyDate,
   getTodayUTC,
+  getTodayLocal,
   getDailyCompletions,
   isTodayCompleted,
   getDailyStreak,
@@ -737,6 +738,246 @@ describe('scores', () => {
       const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK])
       expect(savedStreak.currentStreak).toBe(1) // New streak started
       expect(savedStreak.longestStreak).toBe(10) // Preserved
+    })
+  })
+
+  // =========================================================================
+  // MUTATION-KILLING: exact share text + URL structure + boundary cases
+  // =========================================================================
+
+  describe('generateShareText - exact content', () => {
+    const base: Score = {
+      seed: 'daily-2024-01-15',
+      difficulty: 'medium',
+      timeMs: 300000,
+      hintsUsed: 0,
+      mistakes: 0,
+      completedAt: '2024-01-15T12:00:00Z',
+    }
+
+    it('produces the exact share text for a daily puzzle with no assists', () => {
+      const text = generateShareText(base, 'https://example.com')
+      expect(text).toBe(
+        'Daily Sudoku 2024-01-15\nMedium ⏱️ 5:00\n\nhttps://example.com',
+      )
+    })
+
+    it('capitalizes only the first letter of the difficulty', () => {
+      const text = generateShareText(base, 'https://example.com')
+      expect(text).toContain('Medium')
+      expect(text).not.toContain('MEDIUM')
+      expect(text).not.toContain('medium')
+    })
+
+    it('starts the share text with the daily header', () => {
+      const text = generateShareText(base, 'https://example.com')
+      expect(text.startsWith('Daily Sudoku 2024-01-15')).toBe(true)
+    })
+
+    it('does not include a parenthetical assists group when no assists used', () => {
+      const text = generateShareText(base, 'https://example.com')
+      expect(text).not.toContain('(')
+      expect(text).not.toContain(' ()')
+    })
+
+    it('produces exact text for a practice (non-custom) puzzle', () => {
+      const score = { ...base, seed: 'P123' }
+      const text = generateShareText(score, 'https://example.com')
+      expect(text).toBe('Sudoku\nMedium ⏱️ 5:00\n\nhttps://example.com')
+      expect(text).not.toContain('(Custom)')
+    })
+
+    it('produces exact text for a custom puzzle', () => {
+      const score = { ...base, seed: 'custom-1', difficulty: 'custom' }
+      const text = generateShareText(score, 'https://example.com')
+      expect(text.startsWith('Sudoku (Custom)')).toBe(true)
+    })
+
+    it('does not include hint text when hintsUsed is 0', () => {
+      const score = { ...base, hintsUsed: 0 }
+      expect(generateShareText(score, 'https://example.com')).not.toContain('hint')
+    })
+
+    it('does not include technique hint text when techniqueHintsUsed is 0', () => {
+      const score = { ...base, techniqueHintsUsed: 0 }
+      expect(generateShareText(score, 'https://example.com')).not.toContain('technique')
+    })
+
+    it('does not include auto-fill when autoFillUsed is false', () => {
+      const score = { ...base, autoFillUsed: false }
+      expect(generateShareText(score, 'https://example.com')).not.toContain('auto-fill')
+    })
+
+    it('does not include streak line for non-daily puzzles even with streak > 1', () => {
+      const score = { ...base, seed: 'P999' } // practice seed
+      const text = generateShareText(score, 'https://example.com', 5)
+      expect(text).not.toContain('streak')
+      expect(text).not.toContain('🔥')
+    })
+
+    it('includes streak line only for daily puzzles with streak > 1', () => {
+      const text = generateShareText(base, 'https://example.com', 3)
+      expect(text).toContain('🔥 3 day streak')
+    })
+
+    it('does not include streak line for daily puzzle with streak of exactly 1', () => {
+      const text = generateShareText(base, 'https://example.com', 1)
+      expect(text).not.toContain('streak')
+    })
+
+    it('produces singular "hint" for hintsUsed === 1', () => {
+      const score = { ...base, hintsUsed: 1 }
+      const text = generateShareText(score, 'https://example.com')
+      expect(text).toContain('1 hint')
+      expect(text).not.toContain('1 hints')
+    })
+
+    it('produces plural "hints" for hintsUsed > 1', () => {
+      const score = { ...base, hintsUsed: 2 }
+      const text = generateShareText(score, 'https://example.com')
+      expect(text).toContain('2 hints')
+    })
+  })
+
+  describe('generatePuzzleUrl - URL structure', () => {
+    const baseScore: Score = {
+      seed: 'daily-2024-01-15',
+      difficulty: 'medium',
+      timeMs: 300000,
+      hintsUsed: 0,
+      mistakes: 0,
+      completedAt: '2024-01-15T12:00:00Z',
+    }
+
+    it('starts with the origin and contains no double slashes', () => {
+      const url = generatePuzzleUrl(baseScore)
+      expect(url.startsWith('https://example.com/')).toBe(true)
+      expect(url).not.toContain('//daily')
+      expect(url).not.toContain(':///')
+    })
+
+    it('builds the seed URL from origin + seed', () => {
+      const url = generatePuzzleUrl(baseScore)
+      expect(url).toBe('https://example.com/daily-2024-01-15')
+    })
+
+    it('builds the /c/ route for custom puzzles with encoded data', () => {
+      const score: Score = {
+        ...baseScore,
+        difficulty: 'custom',
+        encodedPuzzle: 'sABCDEF123',
+      }
+      expect(generatePuzzleUrl(score)).toBe('https://example.com/c/sABCDEF123')
+    })
+
+    it('builds the /custom route for custom puzzles without encoded data', () => {
+      const score: Score = { ...baseScore, difficulty: 'custom' }
+      expect(generatePuzzleUrl(score)).toBe('https://example.com/custom')
+    })
+  })
+
+  describe('getBestScoresPure - tie-keeping and slower-replacement', () => {
+    it('keeps the first score when a later score has equal timeMs', () => {
+      const scores: Score[] = [
+        { seed: 'first', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        { seed: 'second', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+      ]
+      mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
+      expect(getBestScoresPure()['easy']?.seed).toBe('first')
+    })
+
+    it('does not replace the best score with a slower one', () => {
+      const scores: Score[] = [
+        { seed: 'fast', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        { seed: 'slow', difficulty: 'easy', timeMs: 120000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+      ]
+      mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
+      expect(getBestScoresPure()['easy']?.seed).toBe('fast')
+      expect(getBestScoresPure()['easy']?.timeMs).toBe(60000)
+    })
+
+    it('replaces the best score when a strictly faster one arrives', () => {
+      const scores: Score[] = [
+        { seed: 'slow', difficulty: 'easy', timeMs: 120000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        { seed: 'fast', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+      ]
+      mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
+      expect(getBestScoresPure()['easy']?.seed).toBe('fast')
+    })
+  })
+
+  describe('getBestScoresAssisted - tie-keeping', () => {
+    it('keeps the first score when a later assisted score has equal timeMs', () => {
+      const scores: Score[] = [
+        { seed: 'first', difficulty: 'hard', timeMs: 200000, hintsUsed: 2, mistakes: 0, completedAt: '' },
+        { seed: 'second', difficulty: 'hard', timeMs: 200000, hintsUsed: 3, mistakes: 0, completedAt: '' },
+      ]
+      mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
+      expect(getBestScoresAssisted()['hard']?.seed).toBe('first')
+    })
+  })
+
+  describe('isDailySeed and getDailyDate - regex anchors', () => {
+    it('rejects a seed that has daily-YYYY-MM-DD only as a suffix', () => {
+      expect(isDailySeed('xdaily-2024-01-15')).toBe(false)
+    })
+
+    it('rejects a seed that has daily-YYYY-MM-DD only as a prefix', () => {
+      expect(isDailySeed('daily-2024-01-15extra')).toBe(false)
+    })
+
+    it('returns null from getDailyDate for a seed with daily-YYYY-MM-DD only as a suffix', () => {
+      expect(getDailyDate('xdaily-2024-01-15')).toBe(null)
+    })
+
+    it('returns null from getDailyDate for a seed with daily-YYYY-MM-DD only as a prefix', () => {
+      expect(getDailyDate('daily-2024-01-15extra')).toBe(null)
+    })
+  })
+
+  describe('getTodayLocal', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('returns the current local date in YYYY-MM-DD format', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2024-06-15T14:30:00'))
+      // Local time interpretation depends on TZ; assert strict YYYY-MM-DD shape
+      expect(getTodayLocal()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    })
+
+    it('pads single-digit months and days with leading zeros', () => {
+      vi.useFakeTimers()
+      // Use a UTC instant whose local date may vary; assert the format invariant
+      vi.setSystemTime(new Date('2024-01-05T10:00:00'))
+      expect(getTodayLocal()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(getTodayLocal()).toHaveLength(10)
+    })
+  })
+
+  describe('markDailyCompleted - already-counted-today path', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('does not double-count streak when streak says today but completions lack today', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
+      // Streak claims today, but completions set does NOT include today
+      mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = JSON.stringify({
+        currentStreak: 3,
+        longestStreak: 5,
+        lastCompletedDate: '2024-06-15',
+      })
+      // No completions entry for today
+      mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = JSON.stringify(['2024-06-14'])
+
+      markDailyCompleted()
+
+      const saved = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK])
+      // Should not increment again (already counted today per streak record)
+      expect(saved.currentStreak).toBe(3)
     })
   })
 })

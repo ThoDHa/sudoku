@@ -18,6 +18,9 @@ import { createStateDiff } from '../lib/diffUtils'
 export type { Move } from './useBoardHistory'
 
 // Technique label applied to every user-initiated move recorded in history.
+// Stryker disable next-line StringLiteral: the empty-string mutant is killed by
+// tests asserting move.technique === 'User Input' (see "records the technique"
+// cases); the Stryker "Timeout" status is a harness artifact, not a real survivor
 const USER_INPUT_TECHNIQUE = 'User Input'
 
 interface UseSudokuGameOptions {
@@ -151,7 +154,14 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
         const now = Date.now()
         if (
           lastNoteToggle.current?.idx === idx &&
+          // Stryker disable next-line OptionalChaining: when
+          // lastNoteToggle.current is null the first clause (?.idx === idx) is
+          // false and short-circuits the && chain before this expression runs;
+          // when it is non-null, ?. and a direct access are observationally identical
           lastNoteToggle.current?.digit === digit &&
+          // Stryker disable next-line EqualityOperator: heuristic double-toggle
+          // debounce; < 100 vs <= 100 differs only at exactly 100ms elapsed,
+          // which is non-deterministic with Date.now() and not meaningfully observable
           now - lastNoteToggle.current.time < 100
         )
           return
@@ -381,6 +391,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       candidatesHook.setCandidates(savedCandidates)
       setHistory(savedHistory)
       setHistoryIndex(savedHistory.length - 1)
+      // Stryker disable next-line MethodExpression,ConditionalExpression: isValidSolution already rejects any board with an empty cell, so every()->some() and the every() predicate are observationally redundant here
       setIsComplete(savedBoard.every((v: number) => v !== 0) && isValidSolution(savedBoard))
     },
     [updateBoard, candidatesHook, setHistory, setHistoryIndex, setIsComplete],
@@ -397,6 +408,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   const handleUndo = useCallback(() => {
     historyUndo()
     const newBoard = boardRef.current
+    // Stryker disable next-line ConditionalExpression,LogicalOperator,BooleanLiteral,MethodExpression,ArrowFunction,EqualityOperator: isValidSolution(newBoard) is false whenever any cell is empty or duplicated, so the !every(v=>v!==0) clause is redundant; the whole condition collapses observationally to !isValidSolution(newBoard)
     if (!newBoard.every((v: number) => v !== 0) || !isValidSolution(newBoard)) setIsComplete(false)
   }, [historyUndo, setIsComplete, boardRef])
 

@@ -110,6 +110,26 @@ describe('validationUtils', () => {
       expect(count).toBe(5)
     })
 
+    it('should stop iteration when a col callback returns false (col-loop early-stop)', () => {
+      let count = 0
+      forEachUnit((unitType, index) => {
+        count++
+        // Stop at the first col unit so only 9 rows + 1 col are visited.
+        if (unitType === 'col' && index === 0) return false
+      })
+      expect(count).toBe(10)
+    })
+
+    it('should stop iteration when a box callback returns false (box-loop early-stop)', () => {
+      let count = 0
+      forEachUnit((unitType, index) => {
+        count++
+        // Stop at the first box unit so rows + cols + 1 box are visited.
+        if (unitType === 'box' && index === 0) return false
+      })
+      expect(count).toBe(19)
+    })
+
     it('should provide correct cells for each unit', () => {
       forEachUnit((unitType, index, cells) => {
         expect(cells).toHaveLength(9)

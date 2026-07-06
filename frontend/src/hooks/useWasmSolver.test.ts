@@ -741,4 +741,70 @@ describe('useWasmSolver', () => {
       expect(loadedResult).not.toBeNull()
     })
   })
+
+  // MUTATION-KILL TARGETS
+  describe('mutation-kill targets', () => {
+    it('does not log an error when the API is simply not loaded', () => {
+      const errorSpy = logger.error
+      errorSpy.mockClear()
+      const { result } = renderHook(() => useWasmSolver())
+
+      result.current.findNextMove([], [[]], [])
+
+      expect(result.current.findNextMove([], [[]], [])).toBeNull()
+      expect(errorSpy).not.toHaveBeenCalled()
+    })
+
+    it('returns false for the second concurrent load caller', async () => {
+      let resolveLoad: (value: SudokuWasmAPI) => void
+      mockLoadWasm.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveLoad = resolve
+          }),
+      )
+
+      const { result } = renderHook(() => useWasmSolver())
+
+      let firstResult: boolean | undefined
+      let secondResult: boolean | undefined
+
+      act(() => {
+        result.current.load().then((r) => {
+          firstResult = r
+        })
+      })
+      await act(async () => {
+        secondResult = await result.current.load()
+      })
+
+      // Second caller gets false (did not initiate), first gets true
+      expect(secondResult).toBe(false)
+
+      await act(async () => {
+        resolveLoad!(mockApi)
+      })
+      expect(firstResult).toBe(true)
+    })
+
+    it('allows a second sequential load after the first completes', async () => {
+      const { result } = renderHook(() => useWasmSolver())
+      mockIsWasmReady.mockReturnValue(true)
+      mockGetWasmApi.mockReturnValue(mockApi)
+
+      let r1: boolean | undefined
+      await act(async () => {
+        r1 = await result.current.load()
+      })
+      expect(r1).toBe(true)
+
+      // Second call after first completed should return true (ready)
+      let r2: boolean | undefined
+      await act(async () => {
+        r2 = await result.current.load()
+      })
+      expect(r2).toBe(true)
+      expect(result.current.isReady).toBe(true)
+    })
+  })
 })

@@ -9,6 +9,9 @@ import {
   getAutoSolveDelay,
   getHideTimer,
   setHideTimer,
+  getShowDailyReminder,
+  setShowDailyReminder,
+  onHomepageModeChange,
   AUTO_SOLVE_SPEEDS,
   AUTO_SOLVE_SPEED_LABELS,
   type UserPreferences,
@@ -211,6 +214,86 @@ describe('preferences', () => {
 
       setHideTimer(false)
       expect(getHideTimer()).toBe(false)
+    })
+  })
+
+  // ===========================================================================
+  // MUTATION-KILLING: daily-reminder + homepage mode event contract
+  // ===========================================================================
+
+  describe('getShowDailyReminder', () => {
+    it('returns the default value (true) when not set', () => {
+      expect(getShowDailyReminder()).toBe(true)
+    })
+
+    it('returns the stored value after being set', () => {
+      setShowDailyReminder(false)
+      expect(getShowDailyReminder()).toBe(false)
+      setShowDailyReminder(true)
+      expect(getShowDailyReminder()).toBe(true)
+    })
+
+    it('returns a boolean (not undefined) even when no preference is stored', () => {
+      const value = getShowDailyReminder()
+      expect(typeof value).toBe('boolean')
+    })
+  })
+
+  describe('setShowDailyReminder', () => {
+    it('persists the value across reads', () => {
+      setShowDailyReminder(false)
+      expect(getShowDailyReminder()).toBe(false)
+    })
+  })
+
+  describe('AUTO_SOLVE_SPEEDS - step value', () => {
+    it('uses 500ms for the step speed (same as slow)', () => {
+      expect(AUTO_SOLVE_SPEEDS.step).toBe(500)
+    })
+  })
+
+  describe('AUTO_SOLVE_SPEED_LABELS - step label', () => {
+    it('uses "Step" as the label for the step speed', () => {
+      expect(AUTO_SOLVE_SPEED_LABELS.step).toBe('Step')
+    })
+  })
+
+  describe('setHomepageMode - event dispatch contract', () => {
+    it('dispatches a CustomEvent carrying the new mode as detail', () => {
+      setHomepageMode('game')
+      expect(windowMock.dispatchEvent).toHaveBeenCalled()
+      const event = windowMock.dispatchEvent.mock.calls[0][0] as CustomEvent
+      expect(event.detail).toBe('game')
+    })
+
+    it('dispatches an event with the daily mode detail', () => {
+      setHomepageMode('daily')
+      const event = windowMock.dispatchEvent.mock.calls[0][0] as CustomEvent
+      expect(event.detail).toBe('daily')
+    })
+  })
+
+  describe('onHomepageModeChange', () => {
+    it('registers an event listener and returns an unsubscribe function', () => {
+      const callback = vi.fn()
+      const unsubscribe = onHomepageModeChange(callback)
+      expect(windowMock.addEventListener).toHaveBeenCalled()
+      expect(typeof unsubscribe).toBe('function')
+      unsubscribe()
+      expect(windowMock.removeEventListener).toHaveBeenCalled()
+    })
+
+    it('the registered handler invokes the callback with the event detail', () => {
+      const callback = vi.fn()
+      onHomepageModeChange(callback)
+      // Grab the handler addEventListener was called with
+      const handler = windowMock.addEventListener.mock.calls.find(
+        (c) => typeof c[1] === 'function',
+      )?.[1] as ((e: Event) => void) | undefined
+      expect(handler).toBeDefined()
+      const fakeEvent = { detail: 'daily' } as unknown as Event
+      handler!(fakeEvent)
+      expect(callback).toHaveBeenCalledWith('daily')
     })
   })
 })

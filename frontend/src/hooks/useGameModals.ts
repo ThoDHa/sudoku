@@ -1,5 +1,12 @@
 import { useState, useCallback, useMemo } from 'react'
 
+// Stryker disable ArrayDeclaration: every useCallback in this hook has an empty
+// dependency array and captures only stable setState setters. Mutating those []
+// deps to a fixed primitive array (e.g. ["Stryker was here"]) leaves React's
+// element-wise Object.is dep comparison unchanged, so callback identity and
+// behavior are identical. There is no behavioral test that can distinguish the
+// mutant from the original.
+
 /**
  * Technique modal state
  */

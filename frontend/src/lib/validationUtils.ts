@@ -119,6 +119,7 @@ export function isValidSolution(board: number[]): boolean {
       // Reject empty cells or duplicates
       if (val === 0 || seen.has(val)) {
         isValid = false
+        // Stryker disable next-line BooleanLiteral: returning true here instead of false only skips the per-unit short-circuit; isValid is already false and forEachUnit keeps going, so the final return value is unchanged
         return false // Stop iteration early
       }
       seen.add(val)
