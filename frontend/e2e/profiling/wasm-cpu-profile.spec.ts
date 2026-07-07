@@ -55,6 +55,7 @@ const RESULTS_DIR = path.join(__dirname, 'results');
 const DEVICE_CONFIGS = [
   { name: 'pixel-5', device: 'Pixel 5', label: 'Android (Pixel 5)' },
   { name: 'iphone-12', device: 'iPhone 12', label: 'iOS (iPhone 12)' },
+  { name: 'desktop-chrome', device: 'Desktop Chrome', label: 'Desktop (Chrome)' },
 ] as const;
 
 // ============================================
@@ -583,6 +584,26 @@ test.describe.serial('@profiling @slow WASM CPU Profiling', () => {
     expect(report.scenarios.every((r) => r.profile.totalSamples > 0)).toBe(true);
     expect(report.analysis.verdict, `iPhone 12 verdict was ${report.analysis.verdict}: ${report.analysis.findings.join('; ')}`).not.toBe('FAIL');
     expect(report.analysis.wasmIdlePercentage, 'WASM idle thread must be mostly idle').toBeGreaterThanOrEqual(VERDICT_THRESHOLDS.IDLE_PCT_WARN);
+
+    logVerdict(report);
+  });
+
+  // Desktop is profiled for visibility on the report portal, but it is NOT a
+  // release gate: WASM CPU/memory pressure is a mobile concern (battery, thermal)
+  // and desktop has ample headroom. This run records the verdict and metrics
+  // without failing the build on the desktop result.
+  test('profile WASM runtime CPU usage - Desktop (Chrome) [informational]', async () => {
+    test.setTimeout(300_000); // 5 minutes
+
+    console.log('\n🚀 Starting WASM CPU Profiling - Desktop (Chrome)...\n');
+    console.log(`   Base URL: ${BASE_URL}`);
+
+    const report = await runDeviceProfiling(DEVICE_CONFIGS[2]);
+
+    // Sanity only: the run must produce real samples. The verdict is recorded and
+    // surfaced on the portal, but desktop does not gate the deploy.
+    expect(report.scenarios.length).toBe(3);
+    expect(report.scenarios.every((r) => r.profile.totalSamples > 0)).toBe(true);
 
     logVerdict(report);
   });
