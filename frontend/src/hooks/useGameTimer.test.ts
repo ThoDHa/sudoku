@@ -1228,3 +1228,72 @@ describe('mutation-killing: no resume when shouldPause false but page still hidd
     expect(result.current.elapsedMs).toBe(0)
   })
 })
+
+describe('mutation-killing: pauseOnHidden opt-out honored by interval body inner guard (L162)', () => {
+  let originalVisibilityState: PropertyDescriptor | undefined
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    if (originalVisibilityState) {
+      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
+    }
+  })
+
+  it('advances elapsedMs when pauseOnHidden is false despite shouldPauseOperations being true', () => {
+    const hidden = createMockBackgroundManager({
+      shouldPauseOperations: true,
+      isHidden: true,
+    })
+    const { result } = renderHook(() =>
+      useGameTimer({
+        backgroundManager: hidden,
+        autoStart: true,
+        pauseOnHidden: false,
+      }),
+    )
+
+    // Opt-out honored at the outer gate: interval starts, no visibility flag.
+    expect(result.current.isRunning).toBe(true)
+    expect(result.current.isPausedDueToVisibility).toBe(false)
+
+    act(() => {
+      vi.advanceTimersByTime(1100)
+    })
+
+    // The interval body inner guard must also honor pauseOnHidden:false,
+    // otherwise every tick early-returns and elapsedMs freezes at 0.
+    expect(result.current.elapsedMs).toBeGreaterThan(0)
+    expect(result.current.isRunning).toBe(true)
+    expect(result.current.isPausedDueToVisibility).toBe(false)
+  })
+
+  it('still freezes elapsedMs when pauseOnHidden is true and shouldPauseOperations is true', () => {
+    const hidden = createMockBackgroundManager({
+      shouldPauseOperations: true,
+      isHidden: true,
+    })
+    const { result } = renderHook(() =>
+      useGameTimer({
+        backgroundManager: hidden,
+        autoStart: true,
+        pauseOnHidden: true,
+      }),
+    )
+
+    // Default behavior: outer gate pauses, visibility flag engages.
+    expect(result.current.isPausedDueToVisibility).toBe(true)
+
+    act(() => {
+      vi.advanceTimersByTime(1100)
+    })
+
+    // No advancement while visibility-paused (regression guard for the fix).
+    expect(result.current.elapsedMs).toBe(0)
+  })
+})

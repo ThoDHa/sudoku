@@ -158,8 +158,10 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
 
     // Start the interval
     const interval = setInterval(() => {
-      // Respect background manager's pause decision (unless automated)
-      if (!isAutomatedEnvironment() && backgroundManager.shouldPauseOperations) {
+      // pauseOnHidden must gate this inner guard too, not just the outer
+      // gate: otherwise an opt-out user still gets frozen ticks whenever
+      // shouldPauseOperations is true.
+      if (!isAutomatedEnvironment() && pauseOnHidden && backgroundManager.shouldPauseOperations) {
         return // Skip update when hidden
       }
 
