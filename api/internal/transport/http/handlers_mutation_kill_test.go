@@ -627,3 +627,80 @@ func TestMutation_FindPracticePuzzle_IndexArithmeticReachesNonZeroPuzzle(t *test
 		}
 	}
 }
+
+// TestMutation_CustomValidate_RejectsOverNineGivens kills the L1373 branch/if
+// mutant that drops `return` after requireBoardValues writes its 400. With the
+// return intact the response body is exactly the validation error; without it,
+// the handler keeps running and either overwrites the body or panics into a 500.
+func TestMutation_CustomValidate_RejectsOverNineGivens(t *testing.T) {
+	router := setupRouter()
+	givens := make([]int, 81)
+	givens[0] = 50 // out of legal range 0-9
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"givens": givens, "device_id": "dev-1",
+	})
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/custom/validate", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for out-of-range given, got %d body=%s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "out of range") {
+		t.Errorf("expected body to contain 'out of range', got %q (the return-after-validation was likely dropped)", w.Body.String())
+	}
+}
+
+// Kills the numbers/incrementer mutant on runAutosolveLoop's initial fixCount=0 -> 1
+// (L1224): maxFixes=5 and 6 duplicate user entries in row 0 -> original performs 5 fixes
+// (leaving 1 valid five); the mutant (effective cap 4) leaves 2 fives, a conflict.
+func TestMutation_AutosolveFixCountCap_Incrementer(t *testing.T) {
+	board := make([]int, constants.TotalCells)
+	for c := 0; c < 6; c++ {
+		board[c] = 5 // row 0: six user-entered 5s (givens all zero, so all are fixable)
+	}
+	givens := make([]int, constants.TotalCells)
+	b := human.NewBoard(board)
+	origUser := make([]int, constants.TotalCells)
+	copy(origUser, board)
+	solver := human.NewSolver()
+	_, finalBoard := runAutosolveLoop(solver, b, origUser, givens, nil, 0)
+	cells := finalBoard.GetCells()
+	count5 := 0
+	for c := 0; c < constants.GridSize; c++ {
+		if cells[c] == 5 {
+			count5++
+		}
+	}
+	if count5 != 1 {
+		t.Fatalf("expected exactly 1 five remaining in row 0 after 5 fixes (maxFixes cap), got %d", count5)
+	}
+}
+
+// Kills the numbers/decrementer mutant on runAutosolveLoop's initial fixCount=0 -> -1
+// (L1224): maxFixes=5 and 7 duplicate user entries in row 0 -> original performs 5 fixes
+// (leaving 2 fives, still conflicting); the mutant (effective cap 6) performs 6, leaving 1.
+func TestMutation_AutosolveFixCountCap_Decrementer(t *testing.T) {
+	board := make([]int, constants.TotalCells)
+	for c := 0; c < 7; c++ {
+		board[c] = 5 // row 0: seven user-entered 5s
+	}
+	givens := make([]int, constants.TotalCells)
+	b := human.NewBoard(board)
+	origUser := make([]int, constants.TotalCells)
+	copy(origUser, board)
+	solver := human.NewSolver()
+	_, finalBoard := runAutosolveLoop(solver, b, origUser, givens, nil, 0)
+	cells := finalBoard.GetCells()
+	count5 := 0
+	for c := 0; c < constants.GridSize; c++ {
+		if cells[c] == 5 {
+			count5++
+		}
+	}
+	if count5 != 2 {
+		t.Fatalf("expected exactly 2 fives remaining in row 0 after hitting the maxFixes=5 cap, got %d", count5)
+	}
+}

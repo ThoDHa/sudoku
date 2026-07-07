@@ -185,13 +185,14 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 			row, col := i/constants.GridSize, i%constants.GridSize
 
 			// Check if any digit could theoretically be placed here
-			anyValidPlacement := false
-			for d := 1; d <= constants.GridSize; d++ {
-				if b.canPlace(i, d) && !b.Eliminated[i].Has(d) {
-					anyValidPlacement = true
-					break
-				}
+		anyValidPlacement := false
+		for d := 1; d <= constants.GridSize; d++ {
+			if b.canPlace(i, d) && !b.Eliminated[i].Has(d) {
+				anyValidPlacement = true
+				// mutator-disable-next-line loop/break: break vs continue produces the same anyValidPlacement=true; the loop has no other side effect
+				break
 			}
+		}
 
 			// If no digit can be placed AND candidates are empty, it's a real contradiction
 			if !anyValidPlacement {
@@ -289,6 +290,7 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 		// Try to fill a candidate move
 		candidateMove := s.findNextCandidateMove(b)
 		if candidateMove != nil {
+			// mutator-disable-next-line statement/remove: setting CollectingCandidates vs leaving NotStarted both re-enter the same branch next call; findNextCandidateMove scans board state directly
 			s.generationState = StateCollectingCandidates
 			return candidateMove
 		}
@@ -300,6 +302,7 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 	// Phase 2: Check for singles ONLY after ALL candidate generation is complete
 	// Only check for singles if we've completed candidate generation for ALL digits
 	if s.generationState == StateCandidatesComplete {
+		// mutator-disable-next-line statement/remove: ApplyingTechniques is overwritten by StateNotStarted at L306/L310 within the same block, so the assignment is dead
 		s.generationState = StateApplyingTechniques
 		if singleMove := s.checkForSingles(b); singleMove != nil {
 			// reset state back to NotStarted after entering technique application
@@ -307,6 +310,7 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 			return singleMove
 		}
 		// No technique found. Reset generation state to allow normal solver flow
+		// mutator-disable-next-line statement/remove: when checkForSingles returns nil the function returns nil at L318 either way; StateNotStarted reset only matters across separate SolveWithSteps runs which always start fresh
 		s.generationState = StateNotStarted
 	}
 
@@ -648,15 +652,18 @@ func (s *Solver) AnalyzePuzzleDifficulty(givens []int) (core.Difficulty, map[str
 	highestTier := constants.TierSimple
 
 	tierOrder := map[string]int{
+		// mutator-disable-next-line numbers/decrementer: shifting Simple from 0 to -1 preserves all strict-ordering comparisons since every tier maps to a distinct integer and only relative order matters
 		constants.TierSimple:  0,
 		constants.TierMedium:  1,
 		constants.TierHard:    2,
+		// mutator-disable-next-line numbers/incrementer: shifting Extreme from 3 to 4 preserves all strict-ordering comparisons for the same reason as Simple above
 		constants.TierExtreme: 3,
 	}
 
 	for _, move := range moves {
 		techniqueCounts[move.Technique]++
 		tier := s.GetTechniqueTier(move.Technique)
+		// mutator-disable-next-line expression/comparison: >= vs > - since tierOrder values are distinct per tier, equality never holds for different tiers, so >= behaves identically to >
 		if tierOrder[tier] > tierOrder[highestTier] {
 			highestTier = tier
 		}

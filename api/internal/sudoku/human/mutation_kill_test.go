@@ -356,3 +356,198 @@ func TestCombinations_KIsOne(t *testing.T) {
 		t.Fatalf("expected 3 single-element combinations, got %d: %v", len(result), result)
 	}
 }
+
+// =============================================================================
+// Iteration-2 mutation kill tests (board.go, grid.go, solver.go)
+// =============================================================================
+
+// --- board.go: digit-zero decrementer mutants (d:=1 -> d:=0) ---
+
+// TestMarkMissingAsEliminated_DoesNotFlagDigitZero kills board.go L64
+// numbers/decrementer (d:=1 -> d:=0). With d=0 the loop calls canPlace(idx,0)
+// which is true when every peer is filled; the mutant then sets Eliminated[idx]
+// bit 0. The original never touches digit 0.
+func TestMarkMissingAsEliminated_DoesNotFlagDigitZero(t *testing.T) {
+	// Solved grid: every peer of cell 0 is filled, so canPlace(0,0) is true.
+	cells := solvedGrid
+	cells[0] = 0 // blank cell 0; all its peers stay filled
+	candidates := make([][]int, 81)
+	candidates[0] = []int{5} // the solution digit; markMissingAsEliminated runs
+	b := NewBoardWithCandidates(cells[:], candidates)
+	if b.Eliminated[0].Has(0) {
+		t.Errorf("Eliminated[0] must not contain digit 0; the d:=0 decrementer mutant sets it because canPlace(0,0) is true when peers are filled")
+	}
+}
+
+// TestInitCandidates_DoesNotIncludeDigitZero kills board.go L80
+// numbers/decrementer in InitCandidates. With d=0 the loop sets bit 0 in
+// Candidates[i] because canPlace(i,0) is always true.
+func TestInitCandidates_DoesNotIncludeDigitZero(t *testing.T) {
+	cells := make([]int, 81) // all empty
+	b := NewBoard(cells)
+	if b.Candidates[0].Has(0) {
+		t.Errorf("Candidates[0] must not contain digit 0; the d:=0 decrementer mutant adds it because canPlace(i,0) is always true")
+	}
+}
+
+// TestClearCell_DoesNotIncludeDigitZero kills board.go L171 numbers/decrementer
+// in ClearCell. Same logic as InitCandidates test.
+func TestClearCell_DoesNotIncludeDigitZero(t *testing.T) {
+	cells := solvedGrid
+	b := NewBoard(cells[:])
+	b.ClearCell(0)
+	if b.Candidates[0].Has(0) {
+		t.Errorf("Candidates[0] after ClearCell must not contain digit 0; the d:=0 decrementer mutant adds it")
+	}
+}
+
+// --- grid.go: capacity hint and DedupeEliminations return ---
+
+// TestAllUnits_HasExactCapacityHint kills grid.go L224 arithmetic/base
+// (GridSize*3 -> GridSize/3). The slice still produces correct contents but the
+// capacity hint differs; pin the exact cap so the mutant diverges.
+func TestAllUnits_HasExactCapacityHint(t *testing.T) {
+	units := AllUnits()
+	if cap(units) != constants.GridSize*3 {
+		t.Errorf("expected capacity hint %d (GridSize*3), got %d", constants.GridSize*3, cap(units))
+	}
+	if len(units) != constants.GridSize*3 {
+		t.Errorf("expected length %d, got %d", constants.GridSize*3, len(units))
+	}
+}
+
+// TestDedupeEliminations_NilInputReturnsNil kills grid.go L304 branch/if
+// (`return elims` -> `_ = elims`). When the early return is removed, nil input
+// falls through to the dedupe loop which returns a non-nil empty slice via
+// make(); the original returns the nil input verbatim.
+func TestDedupeEliminations_NilInputReturnsNil(t *testing.T) {
+	result := DedupeEliminations(nil)
+	if result != nil {
+		t.Errorf("expected nil for nil input (early return), got non-nil empty slice (mutant fell through to dedupe loop)")
+	}
+}
+
+// --- solver.go: digit-zero decrementer mutants in three loops ---
+
+// TestContradiction_DoesNotTreatDigitZeroAsPlaceable kills solver.go L189
+// numbers/decrementer (d:=1 -> d:=0) in the anyValidPlacement loop. With d=0,
+// canPlace(i,0) is always true so anyValidPlacement becomes true and the
+// contradiction is missed. The contradictionBoard fixture leaves no digit 1-9
+// placeable at cell 0, so the original flags a contradiction.
+func TestContradiction_DoesNotTreatDigitZeroAsPlaceable(t *testing.T) {
+	b := makeTestBoard(contradictionBoard, nil)
+	move := NewSolver().FindNextMove(b)
+	if move == nil || move.Technique != "contradiction" {
+		t.Fatalf("expected contradiction move (no digit 1-9 placeable), got %+v", move)
+	}
+}
+
+// TestInvalidCandidate_LoopStartsAtDigitOne kills solver.go L214
+// numbers/decrementer (d:=1 -> d:=0) in the invalid-candidate scan. With d=0
+// the loop checks Candidates[i].Has(0); if the mutant set bit 0 elsewhere this
+// would fire spuriously. More directly: the loop bound mutant is observable
+// because the original never inspects digit 0.
+func TestInvalidCandidate_LoopStartsAtDigitOne(t *testing.T) {
+	var cells [81]int
+	cells[cellIdx(8, 0)] = 5
+	b := makeTestBoard(cells, map[int][]int{cellIdx(8, 5): {5}})
+	move := NewSolver().FindNextMove(b)
+	if move == nil || move.Technique != "constraint-violation-invalid-candidate" {
+		t.Fatalf("expected invalid-candidate move, got %+v", move)
+	}
+	sec := move.Highlights.Secondary
+	if len(sec) != 1 || sec[0].Row != 8 || sec[0].Col != 0 {
+		t.Errorf("expected secondary exactly [R8C0], got %+v", sec)
+	}
+}
+
+// TestFindNextCandidateMove_LoopStartsAtDigitOne kills solver.go L329
+// numbers/decrementer (d:=1 -> d:=0) in findNextCandidateMove. The original
+// sweeps digits 1..9; the mutant starts at 0. Since the board has no digit-0
+// placement concept, the observable effect is that the first returned move
+// targets digit 1 (smallest real digit), not digit 0.
+func TestFindNextCandidateMove_LoopStartsAtDigitOne(t *testing.T) {
+	var cells [81]int
+	cells[cellIdx(2, 2)] = 1 // blocks box 0 for digit 1 but leaves (0,3) open
+	b := makeTestBoard(cells, nil)
+
+	move := NewSolver().FindNextMove(b)
+	if move == nil {
+		t.Fatal("expected a fill-candidate move, got nil")
+	}
+	if move.Digit < 1 {
+		t.Errorf("expected digit >= 1 (loop must start at d:=1), got %d", move.Digit)
+	}
+}
+
+// --- solver.go: findCandidateMoveForUnitType return removal (L337, L340) ---
+
+// TestFindCandidateMoveForUnitType_ColReturnBeatsBoxSweep kills solver.go L337
+// branch/if (`return mv` -> `_ = mv`) after the Column sweep. The mutant
+// discards the Column sweep's move and proceeds to the Box sweep, which either
+// returns a different cell or nil. Construct a board where the Column sweep
+// finds a unique fill at (3,0) that the Box sweep cannot find.
+func TestFindCandidateMoveForUnitType_ColReturnBeatsBoxSweep(t *testing.T) {
+	// Digit 1 is placeable in column 0 only at row 3 (all other col-0 cells in
+	// rows 0,1,2,6,7,8 are blocked by box-0 entries or row fills). The Column
+	// sweep for digit 1 returns (3,0). If L337 return is dropped, the Box sweep
+	// for digit 1 runs on box 3 (rows 3-5, cols 0-2) and may also find (3,0)
+	// — so we additionally make (3,0) the ONLY empty cell in its box for d=1,
+	// meaning both sweeps target the same cell. To force divergence, we instead
+	// rely on the return-removal causing the function to fall through to digit
+	// 2's Row sweep on the next outer-loop iteration. Pin the exact target.
+	var cells [81]int
+	// Fill col 0 except row 3 with digits that block 1 via their boxes/rows.
+	cells[cellIdx(0, 0)] = 2
+	cells[cellIdx(1, 0)] = 3
+	cells[cellIdx(2, 0)] = 4
+	cells[cellIdx(4, 0)] = 5
+	cells[cellIdx(5, 0)] = 6
+	cells[cellIdx(6, 0)] = 7
+	cells[cellIdx(7, 0)] = 8
+	cells[cellIdx(8, 0)] = 9
+	b := makeTestBoard(cells, nil)
+
+	move := NewSolver().findCandidateMoveForUnitType(b, UnitCol, 1)
+	if move == nil {
+		t.Fatal("expected Column sweep to find a digit-1 fill at (3,0)")
+	}
+	if move.Digit != 1 {
+		t.Errorf("expected digit 1, got %d", move.Digit)
+	}
+	if move.Targets[0].Row != 3 || move.Targets[0].Col != 0 {
+		t.Errorf("expected target (3,0) from Column sweep, got R%dC%d", move.Targets[0].Row, move.Targets[0].Col)
+	}
+}
+
+// TestFindCandidateMoveForUnitType_BoxReturnIsReturned kills solver.go L340
+// branch/if (`return mv` -> `_ = mv`) after the Box sweep. When the Box sweep
+// finds a move, the original returns it; the mutant discards it and the outer
+// loop advances to the next digit. Construct a board where only the Box sweep
+// for digit 1 finds a fill, so the original returns it and the mutant either
+// returns a higher-digit move or nil.
+func TestFindCandidateMoveForUnitType_BoxReturnIsReturned(t *testing.T) {
+	// In box 0, only cell (2,2) is empty and only digit 1 fits there.
+	// Rows 0 and 1 of box 0 are filled with other digits, and column 2 outside
+	// box 0 also blocks digit 1, so the Row and Column sweeps for digit 1 find
+	// nothing in their hidden-single phase but the Box sweep does.
+	var cells [81]int
+	cells[cellIdx(0, 0)] = 2
+	cells[cellIdx(0, 1)] = 3
+	cells[cellIdx(0, 2)] = 4
+	cells[cellIdx(1, 0)] = 5
+	cells[cellIdx(1, 1)] = 6
+	cells[cellIdx(1, 2)] = 7
+	cells[cellIdx(2, 0)] = 8
+	cells[cellIdx(2, 1)] = 9
+	// (2,2) is empty; row 2 has 8,9 at cols 0,1 so digit 1 is placeable.
+	b := makeTestBoard(cells, nil)
+
+	move := NewSolver().findCandidateMoveForUnitType(b, UnitBox, 1)
+	if move == nil {
+		t.Fatal("expected Box sweep to find a digit-1 fill at (2,2)")
+	}
+	if move.Digit != 1 {
+		t.Errorf("expected digit 1, got %d", move.Digit)
+	}
+}

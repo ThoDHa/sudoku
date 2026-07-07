@@ -42,7 +42,7 @@ type SessionToken struct {
 func createToken(secret string, session SessionToken) (string, error) {
 	payload, err := json.Marshal(session)
 	if err != nil {
-		// mutator-disable-next-line branch/if
+		// mutator-disable-next-line statement/remove: json.Marshal(SessionToken) never fails (struct of primitives); the error path is dead defensive code
 		return "", err
 	}
 

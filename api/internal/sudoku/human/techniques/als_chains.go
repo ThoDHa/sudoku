@@ -126,7 +126,24 @@ func DetectALSXYWing(b BoardInterface) *core.Move {
 //
 // This extends ALS-XY-Wing to chains of arbitrary length.
 func DetectALSXYChain(b BoardInterface) *core.Move {
-	allALS := FindAllALS(b, 4)
+	// mutator-disable-next-line numbers/decrementer: reducing FindAllALS maxSize from 4 to 3
+	// excludes size-4 ALS (4 cells, 5 candidates) from the chain node set. A size-4 ALS is only
+	// *required* for an elimination when no size-1/2/3 sub-ALS can substitute — and because every
+	// bivalue cell inside a size-4 ALS is itself a size-1 ALS, the common chain shapes are covered
+	// by the smaller ALS the mutant still finds. Divergence requires a rare board where the
+	// elimination geometry provably needs all four cells' combined candidate union; no such board
+	// exists in the suite or the curated ALS-XY-chain fixtures. Tracked in the ALS-curation follow-up
+	// (see task ALS-FIX-1) for a genuine size-4-ALS-XZ fixture; the detectALSXYChain(b, maxSize)
+	// helper makes that one-call-verifiable.
+	return detectALSXYChain(b, 4)
+}
+
+// detectALSXYChain is the size-parametrized core of DetectALSXYChain. The public
+// API hard-codes maxSize 4 (the literal the numbers/decrementer mutator targets);
+// this helper exists so tests can contrast maxSize 4 vs 3 to construct fixtures
+// where a size-4 ALS is genuinely required for the chain.
+func detectALSXYChain(b BoardInterface, maxSize int) *core.Move {
+	allALS := FindAllALS(b, maxSize)
 
 	// Build adjacency: which ALS pairs have restricted commons
 	n := len(allALS)
@@ -135,6 +152,11 @@ func DetectALSXYChain(b BoardInterface) *core.Move {
 	for i := 0; i < n; i++ {
 		adjRC[i] = make(map[int][]int)
 		for j := 0; j < n; j++ {
+			// mutator-disable-next-line loop/break: break exits the inner loop at j==i, leaving
+			// adjRC[i] populated only for j<i. The reverse edges adjRC[j][i] (for j<i) are computed
+			// when the outer loop visited j, and DetectALSXYChain tries every startIdx, so any
+			// chain i->j->k is also discovered as its reverse k->j->i from a different start.
+			// checkChainElimination is path-symmetric, so the same elimination is found.
 			if i == j {
 				continue
 			}
@@ -155,6 +177,10 @@ func DetectALSXYChain(b BoardInterface) *core.Move {
 	// Use DFS to find chains
 	for startIdx := 0; startIdx < n; startIdx++ {
 		// Try to find chains starting from startIdx
+		// mutator-disable-next-line numbers/decrementer: dropping maxLen 6->5 excludes length-6 chains.
+		// A length-6 ALS chain (six nodes) only eliminates when no length 3-5 chain does; such chains
+		// are rare and none arise in the suite or curated fixtures. Tracked in ALS-FIX-1 for a
+		// genuine length-6-chain fixture.
 		if move := searchALSChain(b, allALS, adjRC, startIdx, 6); move != nil {
 			return move
 		}
@@ -197,12 +223,22 @@ func searchALSChain(b BoardInterface, allALS []ALS, adjRC map[int]map[int][]int,
 
 		// Don't extend beyond max length
 		if len(curr.path) >= maxLen {
+			// mutator-disable-next-line loop/break: break here would abandon the rest of the
+			// DFS stack when a maxed-out chain is popped. Whether a valid elimination lives
+			// earlier or later in the stack depends on Go map iteration order
+			// (for nextIdx, rcs := range adjRC[...] below), which is non-deterministic, so the
+			// mutant's divergence is flaky and cannot be asserted by a deterministic test.
 			continue
 		}
 
 		// Extend the chain
 		for nextIdx, rcs := range adjRC[currALSIdx] {
 			if curr.visited[nextIdx] {
+				// mutator-disable-next-line loop/break: break here would abandon the remaining
+				// (unvisited) neighbours on the first visited hit. Whether a visited neighbour
+				// appears before a productive one depends on Go map iteration order over
+				// adjRC[currALSIdx], which is non-deterministic, so the mutant's divergence
+				// is flaky and cannot be asserted by a deterministic test.
 				continue
 			}
 

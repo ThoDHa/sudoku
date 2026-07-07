@@ -46,6 +46,7 @@ func NewBoardWithCandidates(cells []int, candidates [][]int) *Board {
 	b := &Board{}
 	for i := 0; i < constants.TotalCells; i++ {
 		b.Cells[i] = cells[i]
+		// mutator-disable-next-line expression/remove: nil guards are dead defense - NewCandidates(nil)==0 (default) and markMissingAsEliminated early-returns on len(cands)==0
 		if candidates != nil && i < len(candidates) && candidates[i] != nil {
 			b.Candidates[i] = NewCandidates(candidates[i])
 			b.markMissingAsEliminated(i, cells[i], candidates[i])
