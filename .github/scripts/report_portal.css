@@ -1,0 +1,185 @@
+/* Report portal styles. Copied to <reports>/styles.css by gen_report_portal.py
+   and linked from the generated index.html. Theme-aware: the OS preference
+   drives the default, and the in-page toggle stamps data-theme on :root. */
+
+:root {
+  --bg: #f5f7fb; --surface: #ffffff; --surface-2: #fbfcfe; --text: #171d29;
+  --muted: #5a6478; --border: #e4e8f0; --border-2: #d3dae6; --accent: #3866e6;
+  --ok: #12864a; --ok-bg: #12864a14; --warn: #b06a08; --warn-bg: #b06a0814;
+  --fail: #cc2f2f; --fail-bg: #cc2f2f14;
+  --shadow: 0 1px 2px rgba(20, 30, 60, .04), 0 2px 8px rgba(20, 30, 60, .05);
+  --shadow-h: 0 2px 6px rgba(20, 30, 60, .08), 0 8px 20px rgba(20, 30, 60, .09);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c1017; --surface: #151b25; --surface-2: #121822; --text: #e8ecf3;
+    --muted: #939dae; --border: #232d3c; --border-2: #313c4e; --accent: #6f9bff;
+    --ok: #38d488; --ok-bg: #38d48818; --warn: #f2b43d; --warn-bg: #f2b43d18;
+    --fail: #f77c7e; --fail-bg: #f77c7e18; --shadow: none; --shadow-h: 0 6px 20px rgba(0, 0, 0, .4);
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #f5f7fb; --surface: #ffffff; --surface-2: #fbfcfe; --text: #171d29;
+  --muted: #5a6478; --border: #e4e8f0; --border-2: #d3dae6; --accent: #3866e6;
+  --ok: #12864a; --ok-bg: #12864a14; --warn: #b06a08; --warn-bg: #b06a0814;
+  --fail: #cc2f2f; --fail-bg: #cc2f2f14;
+  --shadow: 0 1px 2px rgba(20, 30, 60, .04), 0 2px 8px rgba(20, 30, 60, .05);
+  --shadow-h: 0 2px 6px rgba(20, 30, 60, .08), 0 8px 20px rgba(20, 30, 60, .09);
+}
+
+:root[data-theme="dark"] {
+  --bg: #0c1017; --surface: #151b25; --surface-2: #121822; --text: #e8ecf3;
+  --muted: #939dae; --border: #232d3c; --border-2: #313c4e; --accent: #6f9bff;
+  --ok: #38d488; --ok-bg: #38d48818; --warn: #f2b43d; --warn-bg: #f2b43d18;
+  --fail: #f77c7e; --fail-bg: #f77c7e18; --shadow: none; --shadow-h: 0 6px 20px rgba(0, 0, 0, .4);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 55rem; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+
+/* Header */
+header { display: flex; align-items: center; gap: .85rem; margin-bottom: .35rem; }
+.mark { flex: none; color: var(--accent); }
+header h1 { margin: 0; font-size: 1.55rem; letter-spacing: -.015em; font-weight: 700; }
+header .grow { flex: 1; }
+.sub { margin: 0 0 .3rem; color: var(--muted); font-size: .95rem; }
+
+.toggle {
+  flex: none; font: inherit; font-size: .78rem; color: var(--muted); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+  padding: .35rem .7rem; display: inline-flex; align-items: center; gap: .35rem;
+}
+.toggle:hover { border-color: var(--accent); color: var(--text); }
+
+/* Legend */
+.legend { display: flex; flex-wrap: wrap; gap: .4rem 1.15rem; margin: .9rem 0 .4rem; font-size: .76rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: .42rem; }
+.legend .sw { width: .7rem; height: .7rem; border-radius: 3px; display: inline-block; }
+.legend .sw.ok { background: var(--ok); }
+.legend .sw.warn { background: var(--warn); }
+.legend .sw.fail { background: var(--fail); }
+.legend .arrow { color: var(--accent); font-weight: 600; }
+
+.also { margin: .7rem 0 0; font-size: .8rem; color: var(--muted); }
+.also a { color: var(--accent); text-decoration: none; }
+.also a:hover { text-decoration: underline; }
+
+/* Sections */
+section { margin: 2.3rem 0 0; }
+.h2row {
+  display: flex; align-items: baseline; gap: .6rem; margin: 0 0 .8rem;
+  padding-bottom: .45rem; border-bottom: 1px solid var(--border);
+}
+h2 { font-size: .72rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 700; margin: 0; }
+.h2row .count { font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Banner: the section's overall figure, colored by health */
+.banner {
+  position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .7rem;
+  padding: .45rem .8rem .45rem .95rem; margin-bottom: .7rem; border-radius: 9px;
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.banner::before {
+  content: ""; position: absolute; left: 0; top: .4rem; bottom: .4rem; width: 3px;
+  border-radius: 3px; background: var(--state);
+}
+.banner.ok { --state: var(--ok); --state-bg: var(--ok-bg); background: linear-gradient(var(--ok-bg), var(--ok-bg)), var(--surface); }
+.banner.warn { --state: var(--warn); --state-bg: var(--warn-bg); background: linear-gradient(var(--warn-bg), var(--warn-bg)), var(--surface); }
+.banner.fail { --state: var(--fail); --state-bg: var(--fail-bg); background: linear-gradient(var(--fail-bg), var(--fail-bg)), var(--surface); }
+.banner .dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--state); box-shadow: 0 0 0 3px var(--state-bg); flex: none; }
+.banner .verdict { font-weight: 700; color: var(--state); font-size: .92rem; letter-spacing: .02em; }
+.banner .score { font-weight: 700; color: var(--state); font-size: 1.08rem; font-variant-numeric: tabular-nums; }
+.banner .msg { color: var(--muted); font-size: .82rem; }
+.banner .links { margin-left: auto; display: flex; gap: 1rem; font-size: .8rem; }
+.banner a { color: var(--accent); text-decoration: none; white-space: nowrap; }
+.banner a:hover { text-decoration: underline; }
+
+/* Tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(10.75rem, 1fr)); gap: .75rem; }
+.tile {
+  position: relative; display: flex; flex-direction: column; gap: .1rem; min-height: 4.9rem;
+  padding: .8rem .95rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow); text-decoration: none; color: inherit;
+  transition: transform .13s ease, box-shadow .13s ease, border-color .13s ease;
+}
+.tile::before {
+  content: ""; position: absolute; left: 0; top: .8rem; bottom: .8rem; width: 3px;
+  border-radius: 3px; background: var(--border-2);
+}
+.tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-h); border-color: var(--border-2); }
+.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tile .k { font-size: .69rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+.tile .v { font-size: 1.5rem; font-weight: 680; font-variant-numeric: tabular-nums; margin-top: auto; letter-spacing: -.01em; }
+.tile .d { font-size: .74rem; color: var(--muted); }
+.tile.ok { background: linear-gradient(var(--ok-bg), var(--ok-bg)), var(--surface); }
+.tile.ok::before { background: var(--ok); }
+.tile.warn { background: linear-gradient(var(--warn-bg), var(--warn-bg)), var(--surface); }
+.tile.warn::before { background: var(--warn); }
+.tile.fail { background: linear-gradient(var(--fail-bg), var(--fail-bg)), var(--surface); }
+.tile.fail::before { background: var(--fail); }
+.tile.link { background: var(--surface-2); }
+.tile.link .name { font-size: 1.02rem; font-weight: 640; margin-top: auto; }
+.tile.link .name::after { content: " \2192"; color: var(--accent); }
+
+/* Collapsible per-shard list */
+details { margin-top: .9rem; }
+summary { cursor: pointer; font-size: .84rem; color: var(--muted); list-style: none; display: inline-flex; align-items: center; gap: .4rem; }
+summary::before { content: "\25B8"; font-size: .7rem; transition: transform .12s ease; }
+details[open] summary::before { transform: rotate(90deg); }
+summary::-webkit-details-marker { display: none; }
+details ul { margin: .6rem 0 0; padding-left: 1.15rem; columns: 3; font-size: .9rem; }
+details li { padding: .12rem 0; }
+a.rep { color: var(--accent); text-decoration: none; }
+a.rep:hover { text-decoration: underline; }
+
+/* Profiling device cards */
+.devices { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)); gap: .75rem; margin-top: .9rem; }
+.pcard {
+  position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: .85rem 1rem .85rem 1.15rem; box-shadow: var(--shadow);
+}
+.pcard::before { content: ""; position: absolute; left: 0; top: .9rem; bottom: .9rem; width: 3px; border-radius: 3px; background: var(--border-2); }
+.pcard.ok { background: linear-gradient(var(--ok-bg), var(--ok-bg)), var(--surface); }
+.pcard.ok::before { background: var(--ok); }
+.pcard.warn { background: linear-gradient(var(--warn-bg), var(--warn-bg)), var(--surface); }
+.pcard.warn::before { background: var(--warn); }
+.pcard.fail { background: linear-gradient(var(--fail-bg), var(--fail-bg)), var(--surface); }
+.pcard.fail::before { background: var(--fail); }
+.pcard-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: .6rem; }
+.pcard-top h3 { margin: 0; font-size: 1rem; }
+.badge { font-size: .64rem; font-weight: 700; letter-spacing: .05em; padding: .1rem .5rem; border-radius: 999px; background: var(--state-bg); color: var(--state); }
+.badge.ok { --state: var(--ok); --state-bg: var(--ok-bg); }
+.badge.warn { --state: var(--warn); --state-bg: var(--warn-bg); }
+.badge.fail { --state: var(--fail); --state-bg: var(--fail-bg); }
+
+/* Meters */
+.meterrow { margin: .55rem 0; }
+.meterhead { display: flex; justify-content: space-between; align-items: baseline; font-size: .82rem; margin-bottom: .3rem; }
+.meterhead .lbl { color: var(--muted); }
+.meterhead .n { font-variant-numeric: tabular-nums; font-weight: 650; }
+.meterhead .cap { color: var(--muted); font-size: .72rem; font-weight: 400; }
+.meter { height: 6px; border-radius: 6px; background: var(--border); overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 6px; background: var(--ok); }
+.meter.warn i { background: var(--warn); }
+.meter.fail i { background: var(--fail); }
+
+.findings { margin: .75rem 0 0; font-size: .82rem; color: var(--muted); display: flex; align-items: center; gap: .45rem; }
+.findings .chk { color: var(--ok); font-weight: 800; }
+
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .78rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

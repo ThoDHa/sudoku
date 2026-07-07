@@ -4,15 +4,15 @@
 The deploy workflow publishes the Allure report to /test-report/ and the app to
 the Pages root. Other reports (frontend StrykerJS and Go go-mutesting mutation,
 and the profiling suite) are produced by separate nightly workflows and live in
-their artifacts. This script takes those fetched artifacts, copies each report
-into the Pages `reports/` tree, and writes a `reports/index.html` portal that
-opens with a high-level results strip (test totals, coverage, mutation score,
-profiling verdict) and then links to Allure plus every report actually present.
+their artifacts. This script copies each report into the Pages `reports/` tree
+and writes a `reports/index.html` portal that opens each section with a
+health-colored banner (an overall figure) and breaks it down into per-report
+tiles, plus a per-device profiling dashboard. The page links a sibling
+`styles.css` and `app.js`, both copied next to it.
 
-It is deliberately best-effort and degrades gracefully: a missing artifacts
-directory, report, or metric simply omits that link or stat, so a nightly run
-that has not happened yet (or a failed job) never breaks the deploy or produces
-dead links.
+Everything is best-effort: a missing artifacts directory, report, or metric
+simply omits that tile/link/stat, so a nightly run that has not happened yet
+(or a failed job) never breaks the deploy or produces dead links.
 
 Usage:
     gen_report_portal.py --artifacts-dir <dir> --out-dir <pages-artifact/reports> \
@@ -26,51 +26,26 @@ import os
 import re
 import shutil
 
-# Report collectors. Each rule matches a fetched artifact directory by its name
-# (exact or prefix), finds the report's entry HTML inside it, and copies either
-# that single self-contained file or the whole directory containing it.
-#   section:  portal heading to group the link under
-#   find:     entry HTML filename to locate within the artifact
-#   copy:     "file" (self-contained HTML) or "dir" (report folder with assets)
-#   dest:     subpath under the out dir; for prefix rules, {} is the name suffix
-#   label:    link text; for prefix rules, {} is the name suffix
-#   extra:    optional list of {find, label} extra self-contained files from the
-#             same artifact, copied to the same dest and linked in the same
-#             section; each is skipped if absent (the main find must be present)
-COLLECTORS = [
-    {"match": "mutation-frontend", "prefix": False, "find": "mutation.html",
-     "copy": "file", "section": "Mutation testing", "dest": "mutation/frontend",
-     "label": "Frontend (StrykerJS)"},
-    {"match": "mutation-go-", "prefix": True, "find": "go-mutesting-report.html",
-     "copy": "file", "section": "Mutation testing", "dest": "mutation/{}",
-     "label": "Go: {} (go-mutesting)"},
-    # The Playwright report is the generic test-runner output (pass/fail per
-    # spec), not the profiling analysis. Label it honestly; the profiling
-    # verdict + metrics are surfaced separately from the results JSON below.
-    {"match": "nightly-playwright-report", "prefix": False, "find": "index.html",
-     "copy": "dir", "section": "Profiling", "dest": "profiling/playwright",
-     "label": "Profiling test run (Playwright report)"},
-    {"match": "coverage-frontend", "prefix": False, "find": "index.html",
-     "copy": "dir", "section": "Coverage", "dest": "coverage/frontend",
-     "label": "Frontend (Vitest)"},
-    {"match": "coverage-go", "prefix": False, "find": "coverage.html",
-     "copy": "file", "section": "Coverage", "dest": "coverage/go",
-     "label": "Go (go tool cover)",
-     "extra": [{"find": "coverage.svg", "label": "Go (treemap)"}]},
-]
+# --- Health gates (from the project's real gates) ---
+# Coverage line gate is 85 (frontend vitest + Go floors sit at/below this).
+COVERAGE = {"ok": 85.0, "warn": 75.0}
+# Mutation efficacy: Stryker high/low is 90; the Go techniques floor is 85.
+MUTATION = {"ok": 90.0, "warn": 80.0}
+# Profiling idle-thread health (wasm-cpu-profile VERDICT_THRESHOLDS).
+IDLE = {"ok": 98.0, "warn": 95.0}
+# Profiling memory overhead thresholds in MB (WARN at 10, FAIL at 30).
+MEM_WARN_MB, MEM_FAIL_MB = 10.0, 30.0
 
-# Portal section order.
-SECTIONS = ["Test results", "Coverage", "Mutation testing", "Profiling"]
-
-# Techniques mutation is sharded one file per shard (mutation-go-techniques-shard-*);
-# collapse those into one group so 22 links don't flood the Mutation section.
-TECHNIQUES_PREFIX = "techniques-shard-"
 TECHNIQUES_ARTIFACT_PREFIX = "mutation-go-techniques-shard-"
-GROUP_MARKER = "__group__"
-
-# Profiling verdict ordering, worst wins for the combined headline.
+GO_MUTATION_PREFIX = "mutation-go-"
 VERDICT_RANK = {"PASS": 0, "WARN": 1, "FAIL": 2}
 VERDICT_STATE = {"PASS": "ok", "WARN": "warn", "FAIL": "fail"}
+
+_ASSET_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _esc(value):
+    return html.escape(str(value))
 
 
 def find_file(root, filename):
@@ -82,7 +57,6 @@ def find_file(root, filename):
 
 
 def _read_json(path):
-    """Best-effort JSON load; None on any missing/unreadable/invalid file."""
     if not path:
         return None
     try:
@@ -93,67 +67,116 @@ def _read_json(path):
 
 
 def _find_in_artifact(artifacts_dir, artifact_name, filename):
-    """Locate `filename` inside a named fetched artifact directory, or None."""
     if not artifacts_dir:
         return None
     art = os.path.join(artifacts_dir, artifact_name)
     return find_file(art, filename) if os.path.isdir(art) else None
 
 
-# --- High-level metric readers (all best-effort, return None when absent) ---
-
-def techniques_score(artifacts_dir):
-    """Combined techniques mutation efficacy across all present shards.
-
-    Sums the per-shard report.json counts and applies the same efficacy formula
-    as the CI gate (api/scripts/mutation_aggregate.py): killed+timeouts over
-    killed+timeouts+escaped. Returns (percent, shard_count) or None.
-    """
+def _artifact_names(artifacts_dir):
     if not artifacts_dir or not os.path.isdir(artifacts_dir):
-        return None
-    killed = timeouts = escaped = shards = 0
-    for name in sorted(os.listdir(artifacts_dir)):
-        if not name.startswith(TECHNIQUES_ARTIFACT_PREFIX):
-            continue
-        stats = (_read_json(_find_in_artifact(artifacts_dir, name, "report.json"))
-                 or {}).get("stats") or {}
-        if not stats:
-            continue
-        killed += stats.get("killedCount", 0)
-        timeouts += stats.get("timeOutCount", 0)
-        escaped += stats.get("escapedCount", 0)
-        shards += 1
-    denom = killed + timeouts + escaped
-    if shards == 0 or denom == 0:
-        return None
-    return (100.0 * (killed + timeouts) / denom, shards)
+        return []
+    return sorted(os.listdir(artifacts_dir))
 
 
-def frontend_mutation_score(artifacts_dir):
-    """StrykerJS mutation score from mutation.json, or None.
+def health(value, gate):
+    return "ok" if value >= gate["ok"] else "warn" if value >= gate["warn"] else "fail"
 
-    Score = (killed+timeout) / (killed+timeout+survived+no-coverage), the
-    standard mutation score including undetected mutants.
+
+def _efficacy(detected, survived):
+    denom = detected + survived
+    return 100.0 * detected / denom if denom else None
+
+
+# --- Copying reports and collecting their hrefs ---
+
+def collect_reports(artifacts_dir, out_dir):
+    """Copy each present report into out_dir. Return (hrefs, techniques, go_scopes).
+
+    hrefs maps a stable key to the report's relative href. techniques is a sorted
+    list of (name, href) for the per-shard techniques reports. go_scopes is the
+    sorted list of non-techniques Go mutation scope names present.
     """
-    data = _read_json(_find_in_artifact(artifacts_dir, "mutation-frontend", "mutation.json"))
-    if not data:
+    hrefs, techniques, go_scopes = {}, [], []
+    for name in _artifact_names(artifacts_dir):
+        art = os.path.join(artifacts_dir, name)
+        if not os.path.isdir(art):
+            continue
+
+        def copy_file(find, dest_rel):
+            src = find_file(art, find)
+            if not src:
+                return None
+            dest_dir = os.path.join(out_dir, dest_rel)
+            os.makedirs(dest_dir, exist_ok=True)
+            shutil.copy2(src, os.path.join(dest_dir, find))
+            return f"{dest_rel}/{find}"
+
+        def copy_dir(find, dest_rel):
+            src = find_file(art, find)
+            if not src:
+                return None
+            dest_dir = os.path.join(out_dir, dest_rel)
+            if os.path.exists(dest_dir):
+                shutil.rmtree(dest_dir)
+            shutil.copytree(os.path.dirname(src), dest_dir)
+            return f"{dest_rel}/{find}"
+
+        if name == "coverage-frontend":
+            h = copy_dir("index.html", "coverage/frontend")
+            if h:
+                hrefs["coverage-frontend"] = h
+        elif name == "coverage-go":
+            h = copy_file("coverage.html", "coverage/go")
+            if h:
+                hrefs["coverage-go"] = h
+            svg = copy_file("coverage.svg", "coverage/go")
+            if svg:
+                hrefs["coverage-go-treemap"] = svg
+        elif name == "mutation-frontend":
+            h = copy_file("mutation.html", "mutation/frontend")
+            if h:
+                hrefs["mutation-frontend"] = h
+        elif name.startswith(TECHNIQUES_ARTIFACT_PREFIX):
+            scope = name[len(GO_MUTATION_PREFIX):]  # e.g. techniques-shard-aic
+            h = copy_file("go-mutesting-report.html", f"mutation/{scope}")
+            if h:
+                techniques.append((scope[len("techniques-shard-"):], h))
+        elif name.startswith(GO_MUTATION_PREFIX):
+            scope = name[len(GO_MUTATION_PREFIX):]  # dp / human / transport-http
+            h = copy_file("go-mutesting-report.html", f"mutation/{scope}")
+            if h:
+                hrefs[f"mutation-go:{scope}"] = h
+                go_scopes.append(scope)
+        elif name == "nightly-playwright-report":
+            h = copy_dir("index.html", "profiling/playwright")
+            if h:
+                hrefs["playwright"] = h
+
+    return hrefs, sorted(techniques), sorted(go_scopes)
+
+
+def copy_assets(out_dir):
+    """Copy the stylesheet and script next to the generated index.html."""
+    for src_name, dest_name in (("report_portal.css", "styles.css"),
+                                ("report_portal.js", "app.js")):
+        src = os.path.join(_ASSET_DIR, src_name)
+        if os.path.exists(src):
+            shutil.copy2(src, os.path.join(out_dir, dest_name))
+
+
+# --- Metric readers ---
+
+def allure_totals(summary_path):
+    stat = (_read_json(summary_path) or {}).get("statistic") or {}
+    if not stat:
         return None
-    detected = undetected = 0
-    for file_result in (data.get("files") or {}).values():
-        for mutant in file_result.get("mutants") or []:
-            status = mutant.get("status")
-            if status in ("Killed", "Timeout"):
-                detected += 1
-            elif status in ("Survived", "NoCoverage"):
-                undetected += 1
-    total = detected + undetected
-    if total == 0:
-        return None
-    return 100.0 * detected / total
+    return {"passed": stat.get("passed", 0),
+            "failed": stat.get("failed", 0) + stat.get("broken", 0),
+            "total": stat.get("total", 0)}
 
 
 def frontend_coverage_pct(artifacts_dir):
-    """Frontend line-coverage percent from Vitest coverage-summary.json, or None."""
     data = _read_json(_find_in_artifact(artifacts_dir, "coverage-frontend", "coverage-summary.json"))
     try:
         return float(data["total"]["lines"]["pct"])
@@ -162,7 +185,6 @@ def frontend_coverage_pct(artifacts_dir):
 
 
 def go_coverage_pct(artifacts_dir):
-    """Go total coverage percent from the uploaded `go tool cover -func` total line."""
     path = _find_in_artifact(artifacts_dir, "coverage-go", "coverage.func.txt")
     if not path:
         return None
@@ -171,24 +193,50 @@ def go_coverage_pct(artifacts_dir):
             text = f.read()
     except OSError:
         return None
-    match = re.search(r"(\d+(?:\.\d+)?)%", text)
-    return float(match.group(1)) if match else None
+    m = re.search(r"(\d+(?:\.\d+)?)%", text)
+    return float(m.group(1)) if m else None
 
 
-def allure_totals(summary_path):
-    """Test pass/fail totals from Allure widgets/summary.json, or None."""
-    stat = (_read_json(summary_path) or {}).get("statistic") or {}
-    if not stat:
+def _frontend_mutants(artifacts_dir):
+    """(detected, survived) from Stryker mutation.json, efficacy-style (excludes no-coverage)."""
+    data = _read_json(_find_in_artifact(artifacts_dir, "mutation-frontend", "mutation.json"))
+    if not data:
         return None
-    return {
-        "passed": stat.get("passed", 0),
-        "failed": stat.get("failed", 0) + stat.get("broken", 0),
-        "total": stat.get("total", 0),
-    }
+    detected = survived = 0
+    for file_result in (data.get("files") or {}).values():
+        for mutant in file_result.get("mutants") or []:
+            status = mutant.get("status")
+            if status in ("Killed", "Timeout"):
+                detected += 1
+            elif status == "Survived":
+                survived += 1
+    return (detected, survived)
+
+
+def _go_counts(artifacts_dir, artifact_name):
+    """(detected, survived) from a Go go-mutesting report.json, or None."""
+    stats = (_read_json(_find_in_artifact(artifacts_dir, artifact_name, "report.json")) or {}).get("stats") or {}
+    if not stats:
+        return None
+    return (stats.get("killedCount", 0) + stats.get("timeOutCount", 0), stats.get("escapedCount", 0))
+
+
+def _techniques_counts(artifacts_dir):
+    """(detected, survived, shard_count) summed across all techniques shards."""
+    detected = survived = shards = 0
+    for name in _artifact_names(artifacts_dir):
+        if not name.startswith(TECHNIQUES_ARTIFACT_PREFIX):
+            continue
+        counts = _go_counts(artifacts_dir, name)
+        if not counts:
+            continue
+        detected += counts[0]
+        survived += counts[1]
+        shards += 1
+    return (detected, survived, shards)
 
 
 def profiling_reports(artifacts_dir):
-    """All parsed <device>-comparison-report.json from the profiling artifact."""
     art = os.path.join(artifacts_dir, "nightly-profiling-results") if artifacts_dir else ""
     reports = []
     if art and os.path.isdir(art):
@@ -202,336 +250,232 @@ def profiling_reports(artifacts_dir):
 
 
 def _worst_verdict(reports):
-    """The worst analysis.verdict across reports (FAIL > WARN > PASS), or None."""
     verdicts = [(r.get("analysis") or {}).get("verdict") for r in reports]
     verdicts = [v for v in verdicts if v in VERDICT_RANK]
     return max(verdicts, key=lambda v: VERDICT_RANK[v]) if verdicts else None
 
 
-def write_profiling_summary(artifacts_dir, out_dir):
-    """Render a per-device profiling summary page from the results JSON.
+# --- HTML builders ---
 
-    Returns (href, worst_verdict) or None when no profiling results are present.
-    The generic Playwright report shows pass/fail; this surfaces the actual
-    profiling verdict and metrics the gate cares about.
-    """
-    reports = profiling_reports(artifacts_dir)
-    if not reports:
-        return None
-    verdict = _worst_verdict(reports)
-
-    cards = []
-    for report in reports:
-        analysis = report.get("analysis") or {}
-        device = report.get("deviceLabel") or report.get("device") or "device"
-        dev_verdict = analysis.get("verdict") or "?"
-        state = VERDICT_STATE.get(dev_verdict, "")
-        metrics = []
-        idle = analysis.get("wasmIdlePercentage")
-        if isinstance(idle, (int, float)):
-            metrics.append(("WASM idle", f"{idle:.2f}%"))
-        mem = analysis.get("memoryOverheadMB")
-        if isinstance(mem, (int, float)):
-            metrics.append(("Memory overhead", f"{mem:.2f} MB"))
-        cpu = analysis.get("wasmCpuOverhead")
-        if isinstance(cpu, (int, float)):
-            metrics.append(("WASM CPU overhead", f"{cpu:.2f}"))
-        metric_rows = "".join(
-            f"        <tr><td>{html.escape(k)}</td><td>{html.escape(v)}</td></tr>\n"
-            for k, v in metrics)
-        findings = analysis.get("findings") or []
-        finding_items = "".join(
-            f"        <li>{html.escape(str(x))}</li>\n" for x in findings)
-        findings_html = (f"      <p class=\"muted\">Findings</p>\n      <ul>\n{finding_items}      </ul>\n"
-                         if finding_items else "")
-        cards.append(
-            f"    <section class=\"card {state}\">\n"
-            f"      <h2>{html.escape(str(device))} "
-            f"<span class=\"badge {state}\">{html.escape(dev_verdict)}</span></h2>\n"
-            f"      <table>\n{metric_rows}      </table>\n"
-            f"{findings_html}"
-            f"    </section>")
-
-    page = _PROFILING_PAGE.format(body="\n".join(cards))
-    dest_dir = os.path.join(out_dir, "profiling")
-    os.makedirs(dest_dir, exist_ok=True)
-    with open(os.path.join(dest_dir, "summary.html"), "w") as f:
-        f.write(page)
-    return ("profiling/summary.html", verdict)
+def _banner(state, value, kind, msg, links=None):
+    links_html = ""
+    if links:
+        links_html = '<span class="links">' + "".join(
+            f'<a href="{_esc(h)}">{_esc(t)} &rarr;</a>' for t, h in links) + "</span>"
+    return (f'<div class="banner {state}"><span class="dot"></span>'
+            f'<span class="{kind}">{_esc(value)}</span>'
+            f'<span class="msg">{_esc(msg)}</span>{links_html}</div>')
 
 
-def build_summary(artifacts_dir, out_dir, allure_rel, profiling, techniques):
-    """Assemble the high-level stat strip. Each present metric becomes one stat.
+def _tile(label, value, sub, state, href):
+    cls = f"tile {state}" if state else "tile"
+    return (f'<a class="{cls}" href="{_esc(href)}"><span class="k">{_esc(label)}</span>'
+            f'<span class="v">{_esc(value)}</span><span class="d">{_esc(sub)}</span></a>')
 
-    profiling is the (href, verdict) from write_profiling_summary (or None);
-    techniques is the (percent, shards) from techniques_score (or None).
-    """
-    stats = []
 
+def _link_tile(label, name, sub, href):
+    return (f'<a class="tile link" href="{_esc(href)}"><span class="k">{_esc(label)}</span>'
+            f'<span class="name">{_esc(name)}</span><span class="d">{_esc(sub)}</span></a>')
+
+
+def _tiles(tiles):
+    return '    <div class="tiles">\n' + "\n".join("      " + t for t in tiles) + "\n    </div>"
+
+
+def _section(heading, count, blocks):
+    count_html = f'<span class="count">{_esc(count)}</span>' if count else ""
+    slug = re.sub(r"[^a-z0-9]+", "-", heading.lower()).strip("-")
+    return (f'  <section id="{slug}">\n'
+            f'    <div class="h2row"><h2>{_esc(heading)}</h2>{count_html}</div>\n'
+            + "\n".join(blocks) + "\n  </section>")
+
+
+def _meter(label, value, cap, fill_pct, state):
+    mcls = f"meter {state}" if state and state != "ok" else "meter"
+    return (f'        <div class="meterrow">\n'
+            f'          <div class="meterhead"><span class="lbl">{_esc(label)}</span>'
+            f'<span class="n">{_esc(value)} <span class="cap">{_esc(cap)}</span></span></div>\n'
+            f'          <div class="{mcls}"><i style="width:{fill_pct:.1f}%"></i></div>\n'
+            f'        </div>')
+
+
+def _device_card(report):
+    analysis = report.get("analysis") or {}
+    name = report.get("deviceLabel") or report.get("device") or "device"
+    verdict = analysis.get("verdict") or "?"
+    state = VERDICT_STATE.get(verdict, "warn")
+
+    rows = []
+    idle = analysis.get("wasmIdlePercentage")
+    if isinstance(idle, (int, float)):
+        rows.append(_meter("WASM idle", f"{idle:.2f}%", "higher is better",
+                           min(100.0, idle), health(idle, IDLE)))
+    mem = analysis.get("memoryOverheadMB")
+    if isinstance(mem, (int, float)):
+        mem_state = "ok" if mem < MEM_WARN_MB else "warn" if mem < MEM_FAIL_MB else "fail"
+        rows.append(_meter("Memory overhead", f"{mem:.2f} MB", f"of {MEM_WARN_MB:.0f} MB budget",
+                           min(100.0, mem / MEM_WARN_MB * 100.0), mem_state))
+    findings = analysis.get("findings") or []
+    finding_text = findings[0] if findings else "No regressions"
+
+    return (f'      <div class="pcard {state}">\n'
+            f'        <div class="pcard-top"><h3>{_esc(name)}</h3>'
+            f'<span class="badge {state}">{_esc(verdict)}</span></div>\n'
+            + "\n".join(rows) + "\n"
+            f'        <p class="findings"><span class="chk">&check;</span> {_esc(finding_text)}</p>\n'
+            f'      </div>')
+
+
+def build_sections(artifacts_dir, out_dir, allure_rel, hrefs, techniques, go_scopes):
+    sections = []
+
+    # Test results
     totals = allure_totals(os.path.join(out_dir, allure_rel, "widgets", "summary.json"))
     if totals:
-        stats.append({
-            "label": "Tests",
-            "value": f"{totals['passed']}/{totals['total']} passed",
-            "state": "fail" if totals["failed"] else "ok",
-            "href": allure_rel,
-        })
+        state = "fail" if totals["failed"] else "ok"
+        tile = _tile("Tests", f"{totals['passed']:,}/{totals['total']:,}", "passed · Allure", state, allure_rel)
+    else:
+        tile = _link_tile("Tests", "Allure report", "unit + Go + E2E + profiling", allure_rel)
+    sections.append(_section("Test results", None, [_tiles([tile])]))
 
+    # Coverage
+    cov_tiles, cov_vals = [], []
     fe_cov = frontend_coverage_pct(artifacts_dir)
-    if fe_cov is not None:
-        stats.append({"label": "Frontend coverage", "value": f"{fe_cov:.1f}%",
-                      "state": "", "href": "coverage/frontend/index.html"})
-
+    if fe_cov is not None and "coverage-frontend" in hrefs:
+        cov_vals.append(fe_cov)
+        cov_tiles.append(_tile("Frontend · Vitest", f"{fe_cov:.1f}%", "lines covered",
+                               health(fe_cov, COVERAGE), hrefs["coverage-frontend"]))
     go_cov = go_coverage_pct(artifacts_dir)
-    if go_cov is not None:
-        stats.append({"label": "Go coverage", "value": f"{go_cov:.1f}%",
-                      "state": "", "href": "coverage/go/coverage.html"})
+    if go_cov is not None and "coverage-go" in hrefs:
+        cov_vals.append(go_cov)
+        cov_tiles.append(_tile("Go · go tool cover", f"{go_cov:.1f}%", "statements · line report",
+                               health(go_cov, COVERAGE), hrefs["coverage-go"]))
+    if cov_tiles:
+        overall = sum(cov_vals) / len(cov_vals)
+        blocks = [_banner(health(overall, COVERAGE), f"{overall:.1f}%", "score",
+                          "Overall line coverage across the frontend and Go codebases."),
+                  _tiles(cov_tiles)]
+        if "coverage-go-treemap" in hrefs:
+            blocks.append(f'    <p class="also">Go coverage, also viewable as a '
+                          f'<a href="{_esc(hrefs["coverage-go-treemap"])}">treemap map &rarr;</a> '
+                          f'(same data, each file sized by statements).</p>')
+        sections.append(_section("Coverage", f"{len(cov_tiles)} suites", blocks))
 
-    fe_mut = frontend_mutation_score(artifacts_dir)
-    if fe_mut is not None:
-        stats.append({"label": "Frontend mutation", "value": f"{fe_mut:.1f}%",
-                      "state": "", "href": "mutation/frontend/mutation.html"})
-
-    if techniques:
-        pct, _shards = techniques
-        stats.append({"label": "Go techniques mutation", "value": f"{pct:.1f}%",
-                      "state": "", "href": "#mutation-testing"})
-
-    if profiling:
-        href, verdict = profiling
-        if verdict:
-            stats.append({"label": "Profiling", "value": verdict,
-                          "state": VERDICT_STATE.get(verdict, ""), "href": href})
-
-    return stats
-
-
-def collect_reports(artifacts_dir, out_dir, techniques):
-    """Copy each found report into out_dir; return {section: [entry]}.
-
-    An entry is either a flat ``(label, href)`` link or a collapsible group
-    ``(GROUP_MARKER, title, [(label, href), ...])``. The per-file techniques
-    mutation reports are collapsed into one group whose title carries the
-    combined score (`techniques` = (percent, shards) or None).
-    """
-    found = {}
-    tech_links = []
-    if not artifacts_dir or not os.path.isdir(artifacts_dir):
-        return found
-
-    for name in sorted(os.listdir(artifacts_dir)):
-        artifact_path = os.path.join(artifacts_dir, name)
-        if not os.path.isdir(artifact_path):
-            continue
-
-        for rule in COLLECTORS:
-            suffix = None
-            if rule["prefix"]:
-                if not name.startswith(rule["match"]):
-                    continue
-                suffix = name[len(rule["match"]):]
-            elif name != rule["match"]:
-                continue
-
-            entry = find_file(artifact_path, rule["find"])
-            if not entry:
-                break  # matched the rule but has no report; nothing else matches
-
-            dest_rel = rule["dest"].format(suffix) if suffix is not None else rule["dest"]
-            label = rule["label"].format(suffix) if suffix is not None else rule["label"]
-            dest_dir = os.path.join(out_dir, dest_rel)
-
-            if rule["copy"] == "dir":
-                if os.path.exists(dest_dir):
-                    shutil.rmtree(dest_dir)
-                shutil.copytree(os.path.dirname(entry), dest_dir)
-            else:
-                os.makedirs(dest_dir, exist_ok=True)
-                shutil.copy2(entry, os.path.join(dest_dir, rule["find"]))
-
-            href = f"{dest_rel}/{rule['find']}"
-            if suffix and suffix.startswith(TECHNIQUES_PREFIX):
-                # Collapse the per-file techniques shards; label = technique name.
-                tech_links.append((suffix[len(TECHNIQUES_PREFIX):], href))
-            else:
-                found.setdefault(rule["section"], []).append((label, href))
-
-            # Optional sibling files from the same artifact (e.g. a treemap SVG
-            # alongside the line-coverage HTML), each linked in the same section.
-            for ex in rule.get("extra", []):
-                ex_entry = find_file(artifact_path, ex["find"])
-                if not ex_entry:
-                    continue
-                shutil.copy2(ex_entry, os.path.join(dest_dir, ex["find"]))
-                found.setdefault(rule["section"], []).append(
-                    (ex["label"], f"{dest_rel}/{ex['find']}"))
-            break
-
-    if tech_links:
-        # One aggregated result: the combined score as the group title, with the
-        # per-shard reports preserved inside for drill-down.
+    # Mutation testing
+    mut_tiles, all_det, all_surv = [], 0, 0
+    fe = _frontend_mutants(artifacts_dir)
+    if fe and "mutation-frontend" in hrefs:
+        score = _efficacy(*fe)
+        if score is not None:
+            all_det += fe[0]
+            all_surv += fe[1]
+            mut_tiles.append(_tile("Frontend · StrykerJS", f"{score:.1f}%", "mutation efficacy",
+                                   health(score, MUTATION), hrefs["mutation-frontend"]))
+    for scope in go_scopes:
+        counts = _go_counts(artifacts_dir, GO_MUTATION_PREFIX + scope)
+        score = _efficacy(*counts) if counts else None
+        if score is not None:
+            all_det += counts[0]
+            all_surv += counts[1]
+            mut_tiles.append(_tile(f"Go · {scope}", f"{score:.1f}%", "go-mutesting",
+                                   health(score, MUTATION), hrefs.get(f"mutation-go:{scope}", "#mutation-testing")))
+    t_det, t_surv, t_shards = _techniques_counts(artifacts_dir)
+    tech_score = _efficacy(t_det, t_surv)
+    if tech_score is not None:
+        all_det += t_det
+        all_surv += t_surv
+        mut_tiles.append(_tile("Go · techniques", f"{tech_score:.1f}%", f"killed · {t_shards} shards",
+                               health(tech_score, MUTATION), "#mutation-testing"))
+    if mut_tiles:
+        overall = _efficacy(all_det, all_surv)
+        blocks = [_banner(health(overall, MUTATION), f"{overall:.1f}%", "score",
+                          "Overall mutation efficacy, weighted by mutant count across all scopes."),
+                  _tiles(mut_tiles)]
         if techniques:
-            pct, shards = techniques
-            title = f"Techniques: {pct:.1f}% killed ({shards} shards)"
-        else:
-            title = f"Techniques ({len(tech_links)} files)"
-        found.setdefault("Mutation testing", []).append(
-            (GROUP_MARKER, title, sorted(tech_links)))
-    return found
+            shard_links = "\n".join(
+                f'        <li><a class="rep" href="{_esc(h)}">{_esc(n)}</a></li>' for n, h in techniques)
+            blocks.append(
+                f'    <details>\n'
+                f'      <summary>Per-shard technique reports ({len(techniques)})</summary>\n'
+                f'      <ul>\n{shard_links}\n      </ul>\n    </details>')
+        sections.append(_section("Mutation testing", f"{len(mut_tiles)} scopes", blocks))
+
+    # Profiling
+    reports = profiling_reports(artifacts_dir)
+    if reports:
+        verdict = _worst_verdict(reports) or "PASS"
+        state = VERDICT_STATE.get(verdict, "warn")
+        msg = ("WASM CPU and memory within budget on every profiled device."
+               if verdict == "PASS" else "One or more profiled devices need attention.")
+        links = [("Playwright run", hrefs["playwright"])] if "playwright" in hrefs else None
+        cards = "\n".join(_device_card(r) for r in reports)
+        blocks = [_banner(state, verdict, "verdict", msg, links),
+                  f'    <div class="devices">\n{cards}\n    </div>']
+        sections.append(_section("Profiling", f"{len(reports)} devices", blocks))
+
+    return sections
 
 
-def _slug(heading):
-    return re.sub(r"[^a-z0-9]+", "-", heading.lower()).strip("-")
-
-
-def _stat_html(stat):
-    cls = "stat " + stat["state"] if stat["state"] else "stat"
-    inner = (f'<span class="stat-label">{html.escape(stat["label"])}</span>'
-             f'<span class="stat-value">{html.escape(stat["value"])}</span>')
-    if stat.get("href"):
-        return f'    <a class="{cls}" href="{html.escape(stat["href"])}">{inner}</a>'
-    return f'    <div class="{cls}">{inner}</div>'
-
-
-def render_page(sections, summary):
-    """sections: list of (heading, [entry]); summary: list of stat dicts."""
-    def link(label, href):
-        return f'<a href="{html.escape(href)}">{html.escape(label)}</a>'
-
-    items = []
-    for heading, entries in sections:
-        if not entries:
-            continue
-        rows = []
-        for entry in entries:
-            if entry[0] == GROUP_MARKER:
-                _, title, sub = entry
-                sub_rows = "\n".join(
-                    f"          <li>{link(l, h)}</li>" for l, h in sub)
-                rows.append(
-                    f"      <li><details><summary>{html.escape(title)}</summary>\n"
-                    f"        <ul>\n{sub_rows}\n        </ul>\n      </details></li>")
-            else:
-                label, href = entry
-                rows.append(f"      <li>{link(label, href)}</li>")
-        items.append(f'    <section id="{_slug(heading)}">\n      <h2>{html.escape(heading)}</h2>\n'
-                     f"      <ul>\n" + "\n".join(rows) + "\n      </ul>\n    </section>")
-    body = "\n".join(items) if items else "    <p>No reports available yet.</p>"
-
-    summary_html = ""
-    if summary:
-        cards = "\n".join(_stat_html(s) for s in summary)
-        summary_html = f'  <div class="summary">\n{cards}\n  </div>\n'
-
-    return f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sudoku Test Reports</title>
-  <style>
-    :root {{ color-scheme: light dark; }}
-    body {{ font-family: system-ui, sans-serif; max-width: 48rem; margin: 3rem auto;
-           padding: 0 1rem; line-height: 1.5; }}
-    h1 {{ margin-bottom: 0.25rem; }}
-    p.sub {{ color: gray; margin-top: 0; }}
-    section {{ margin: 1.5rem 0; }}
-    ul {{ padding-left: 1.25rem; }}
-    a {{ color: #3b82f6; }}
-    .summary {{ display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1.25rem 0 0.5rem; }}
-    .stat {{ display: flex; flex-direction: column; gap: 0.15rem; padding: 0.5rem 0.85rem;
-            border: 1px solid rgba(128,128,128,0.35); border-left-width: 4px;
-            border-radius: 6px; min-width: 7rem; text-decoration: none; color: inherit; }}
-    .stat:hover {{ border-color: #3b82f6; }}
-    .stat-label {{ font-size: 0.72rem; color: gray; text-transform: uppercase;
-                  letter-spacing: 0.03em; }}
-    .stat-value {{ font-size: 1.15rem; font-weight: 600; }}
-    .stat.ok {{ border-left-color: #22c55e; }}
-    .stat.warn {{ border-left-color: #f59e0b; }}
-    .stat.fail {{ border-left-color: #ef4444; }}
-  </style>
-</head>
-<body>
-  <h1>Sudoku Test Reports</h1>
-  <p class="sub">One place for every quality report in the project.</p>
-{summary_html}{body}
-</body>
-</html>
-"""
-
-
-# Standalone profiling summary page (self-contained, theme-aware).
-_PROFILING_PAGE = """<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Profiling Results</title>
-  <style>
-    :root {{ color-scheme: light dark; }}
-    body {{ font-family: system-ui, sans-serif; max-width: 48rem; margin: 3rem auto;
-           padding: 0 1rem; line-height: 1.5; }}
-    h1 {{ margin-bottom: 0.25rem; }}
-    p.sub, p.muted {{ color: gray; }}
-    .card {{ border: 1px solid rgba(128,128,128,0.35); border-left-width: 4px;
-            border-radius: 6px; padding: 0.5rem 1rem; margin: 1rem 0; }}
-    .card.ok {{ border-left-color: #22c55e; }}
-    .card.warn {{ border-left-color: #f59e0b; }}
-    .card.fail {{ border-left-color: #ef4444; }}
-    .badge {{ font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 999px;
-             vertical-align: middle; border: 1px solid currentColor; }}
-    .badge.ok {{ color: #16a34a; }}
-    .badge.warn {{ color: #d97706; }}
-    .badge.fail {{ color: #dc2626; }}
-    table {{ border-collapse: collapse; }}
-    td {{ padding: 0.15rem 1.25rem 0.15rem 0; }}
-    td:last-child {{ font-variant-numeric: tabular-nums; font-weight: 600; }}
-    a {{ color: #3b82f6; }}
-  </style>
-</head>
-<body>
-  <h1>Profiling Results</h1>
-  <p class="sub">WASM CPU / memory verdicts from the nightly profiling suite. <a href="index.html">Back to reports</a></p>
-{body}
-</body>
-</html>
-"""
+def render_page(sections):
+    body = "\n".join(sections) if sections else "  <p>No reports available yet.</p>"
+    return _DOC_HEAD + _LEGEND + "\n" + body + "\n" + _DOC_TAIL
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--artifacts-dir", default="",
-                        help="Directory of fetched nightly report artifacts.")
-    parser.add_argument("--out-dir", required=True,
-                        help="Pages reports directory to populate (e.g. pages-artifact/reports).")
-    parser.add_argument("--allure-rel", default="../test-report/",
-                        help="Relative href from the portal to the Allure report.")
+    parser.add_argument("--artifacts-dir", default="")
+    parser.add_argument("--out-dir", required=True)
+    parser.add_argument("--allure-rel", default="../test-report/")
     args = parser.parse_args(argv)
 
     os.makedirs(args.out_dir, exist_ok=True)
-
-    techniques = techniques_score(args.artifacts_dir)
-    found = collect_reports(args.artifacts_dir, args.out_dir, techniques)
-
-    profiling = write_profiling_summary(args.artifacts_dir, args.out_dir)
-    if profiling:
-        href, verdict = profiling
-        found.setdefault("Profiling", []).insert(
-            0, (f"Profiling verdict: {verdict} (metrics)", href))
-
-    found.setdefault("Test results", []).insert(
-        0, ("Allure (all tests: unit + Go + E2E + profiling)", args.allure_rel))
-
-    summary = build_summary(args.artifacts_dir, args.out_dir, args.allure_rel,
-                            profiling, techniques)
-    ordered = [(section, found.get(section, [])) for section in SECTIONS]
+    copy_assets(args.out_dir)
+    hrefs, techniques, go_scopes = collect_reports(args.artifacts_dir, args.out_dir)
+    sections = build_sections(args.artifacts_dir, args.out_dir, args.allure_rel,
+                              hrefs, techniques, go_scopes)
     with open(os.path.join(args.out_dir, "index.html"), "w") as f:
-        f.write(render_page(ordered, summary))
-
-    total = sum(len(v) for k, v in found.items() if k != "Test results")
-    print(f"portal: wrote {args.out_dir}/index.html with {total} nightly report(s), "
-          f"{len(summary)} summary stat(s)")
+        f.write(render_page(sections))
+    print(f"portal: wrote {args.out_dir}/index.html with {len(sections)} section(s)")
     return 0
+
+
+# --- Static page chrome ---
+
+_MARK_SVG = (
+    '<svg class="mark" width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true">'
+    '<rect x="1.5" y="1.5" width="31" height="31" rx="5" stroke="currentColor" stroke-width="1.6"/>'
+    '<path d="M12 2v30M23 2v30M2 12h30M2 23h30" stroke="currentColor" stroke-width="1" opacity="0.55"/>'
+    '<rect x="3.5" y="14" width="6.5" height="6.5" rx="1.4" fill="currentColor" opacity="0.9"/>'
+    '<rect x="14" y="25" width="6.5" height="6.5" rx="1.4" fill="currentColor" opacity="0.55"/>'
+    '<rect x="24.5" y="3.5" width="6.5" height="6.5" rx="1.4" fill="currentColor" opacity="0.7"/></svg>')
+
+_LEGEND = (
+    '  <div class="legend">\n'
+    '    <span><i class="sw ok"></i> meets gate</span>\n'
+    '    <span><i class="sw warn"></i> watch</span>\n'
+    '    <span><i class="sw fail"></i> below gate</span>\n'
+    '    <span><span class="arrow">&rarr;</span> opens a report</span>\n'
+    '  </div>')
+
+_DOC_HEAD = (
+    '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+    '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    '<title>Sudoku Test Reports</title>\n'
+    '<link rel="stylesheet" href="styles.css">\n'
+    '</head>\n<body>\n'
+    '<main class="wrap">\n'
+    '  <header>\n    ' + _MARK_SVG + '\n'
+    '    <div><h1>Sudoku Test Reports</h1>'
+    '<p class="sub">Every quality signal for the project, in one place.</p></div>\n'
+    '    <span class="grow"></span>\n'
+    '    <button class="toggle" id="themeBtn" type="button" aria-label="Toggle theme">◐ Theme</button>\n'
+    '  </header>\n')
+
+_DOC_TAIL = (
+    '  <footer>Generated by the deploy pipeline.</footer>\n'
+    '</main>\n'
+    '<script src="app.js"></script>\n'
+    '</body>\n</html>\n')
 
 
 if __name__ == "__main__":
