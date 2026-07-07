@@ -699,3 +699,47 @@ func TestGetPuzzle_HarderDifficultyHasFewerGivens(t *testing.T) {
 		t.Errorf("Hard should have more givens than impossible: hard=%d, impossible=%d", hardCount, impossibleCount)
 	}
 }
+
+// LoadGlobal() Tests
+
+func TestLoadGlobal(t *testing.T) {
+	// sync.Once fires LoadGlobal's closure exactly once per process; subtests
+	// are sequenced (no t.Parallel) so the first call drives the closure body
+	// and later calls verify the cached return path.
+	t.Run("ErrorPathFiresClosure", func(t *testing.T) {
+		if err := LoadGlobal("/nonexistent/sudoku/puzzles.json"); err == nil {
+			t.Fatal("LoadGlobal should return error for nonexistent path on first call")
+		}
+		if Global() != nil {
+			t.Error("Global() should be nil after failed LoadGlobal")
+		}
+	})
+
+	t.Run("CachedErrorPersistsAfterOnceFired", func(t *testing.T) {
+		// Once already fired; the path argument is ignored.
+		path := createTempPuzzleFile(t, validPuzzleJSON)
+		if err := LoadGlobal(path); err == nil {
+			t.Fatal("LoadGlobal should return cached error after Once fired")
+		}
+		if Global() != nil {
+			t.Error("Global() should remain nil after Once fired with error")
+		}
+	})
+
+	t.Run("SetGlobalSurfacesLoaderInstance", func(t *testing.T) {
+		// SetGlobal replaces globalLoader without resetting loadOnce.
+		original := Global()
+		defer SetGlobal(original)
+		injected := NewLoaderFromPuzzles([]CompactPuzzle{
+			{S: "157924638362158974498736512531279486926483157784615293273561849619847325845392761",
+				G: map[string][]int{"e": {0}}},
+		})
+		SetGlobal(injected)
+		if Global() != injected {
+			t.Error("Global() should return the loader set by SetGlobal")
+		}
+		if Global().Count() != 1 {
+			t.Errorf("expected 1 puzzle, got %d", Global().Count())
+		}
+	})
+}
