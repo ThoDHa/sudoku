@@ -143,9 +143,12 @@ jobs:
         if: always()
         run: |
           # Reuse the profile from the test run above (no second test pass).
-          # Drop cmd/* command packages (generators, wasm/server entrypoints):
-          # they are 0%-covered by design and skew the report. Keep the mode line.
-          grep -vE 'sudoku-api/cmd/' coverage.out > coverage.lib.out || cp coverage.out coverage.lib.out
+          # Drop non-library packages that are 0%-covered by design and skew
+          # the report: cmd/* command packages (generators, wasm/server
+          # entrypoints), scripts/* build-time generators, and the
+          # techniquetest fixtures package (test-support code, not library
+          # code). Keep the mode line.
+          grep -vE 'sudoku-api/(cmd|scripts|internal/sudoku/human/techniquetest)/' coverage.out > coverage.lib.out || cp coverage.out coverage.lib.out
           # Machine-readable total percent for the report portal's summary stat.
           go tool cover -func=coverage.lib.out | tail -1 > coverage.func.txt || true
           # lcov for the istanbul HTML report, rendered in the portal build so Go
