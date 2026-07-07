@@ -138,30 +138,20 @@ jobs:
           gotestsum --junitfile allure-results/go-results.xml --format testname \
             -- -v -coverprofile=coverage.out -covermode=atomic ./...
 
-      - name: Generate Go coverage HTML
+      - name: Generate Go coverage data
         working-directory: api
         if: always()
         run: |
           # Reuse the profile from the test run above (no second test pass).
           # Drop cmd/* command packages (generators, wasm/server entrypoints):
-          # they are 0%-covered by design and, being alphabetically first, make
-          # the report open on an empty-looking untested file. Keep the mode line.
+          # they are 0%-covered by design and skew the report. Keep the mode line.
           grep -vE 'sudoku-api/cmd/' coverage.out > coverage.lib.out || cp coverage.out coverage.lib.out
-          go tool cover -html=coverage.lib.out -o coverage.html || echo "no coverage profile"
-          # Machine-readable total percent for the report portal's summary strip.
+          # Machine-readable total percent for the report portal's summary stat.
           go tool cover -func=coverage.lib.out | tail -1 > coverage.func.txt || true
-
-      # Visual coverage map: a treemap SVG where each file is a rectangle sized by
-      # statements and colored by coverage (color-blind-friendly palette). Reuses
-      # the cmd/*-stripped profile from the step above. Non-fatal so a treemap
-      # hiccup never blocks the line-coverage html or the build.
-      - name: Generate Go coverage treemap
-        working-directory: api
-        if: always()
-        continue-on-error: true
-        run: |
-          go install github.com/nikolaydubina/go-cover-treemap@v1.5.1
-          go-cover-treemap -color-blind -coverprofile=coverage.lib.out > coverage.svg
+          # lcov for the istanbul HTML report, rendered in the portal build so Go
+          # coverage matches the frontend's Vitest coverage exactly.
+          go install github.com/jandelgado/gcov2lcov@v1.1.1
+          gcov2lcov -infile=coverage.lib.out -outfile=coverage.lcov || echo "no coverage profile"
 
       - name: Upload Go coverage
         uses: actions/upload-artifact@v7
@@ -169,9 +159,8 @@ jobs:
         with:
           name: coverage-go
           path: |
-            api/coverage.html
-            api/coverage.svg
             api/coverage.func.txt
+            api/coverage.lcov
           retention-days: 30
           if-no-files-found: warn
 
@@ -490,6 +479,20 @@ jobs:
           # Copy WASM files from frontend (includes updated wasm_exec.js from build)
           cp frontend/public/wasm_exec.js pages-artifact/
           cp frontend/public/sudoku.wasm pages-artifact/
+
+      # Render Go coverage as an istanbul report (the same reporter Vitest uses)
+      # so it matches the frontend coverage exactly. Uses the frontend's already
+      # installed istanbul libs; the api/ source is present from the checkout.
+      - name: Render Go coverage report (istanbul, matches frontend)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        continue-on-error: true
+        run: |
+          if [ -f nightly-artifacts/coverage-go/coverage.lcov ]; then
+            node frontend/scripts/lcov-to-istanbul.mjs \
+              nightly-artifacts/coverage-go/coverage.lcov . pages-artifact/reports/coverage/go
+          else
+            echo "no coverage.lcov fetched; Go coverage report omitted"
+          fi
 
       # Unified report portal at /reports/ linking Allure + any fetched mutation
       # reports. Isolated and non-fatal so it can never break the app deploy.

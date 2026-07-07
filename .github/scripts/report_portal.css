@@ -1,39 +1,27 @@
-/* Report portal styles. Copied to <reports>/styles.css by gen_report_portal.py
-   and linked from the generated index.html. Theme-aware: the OS preference
-   drives the default, and the in-page toggle stamps data-theme on :root. */
+/* Report portal styles. Copied to <reports>/styles.css by gen_report_portal.py.
+   The game's theme tokens (--bg, --accent, --text, --hint-text, ...) are set by
+   the sibling themes.css from the shared localStorage theme; app.js stamps
+   data-color-theme / data-mode on :root. This file only MAPS the portal's own
+   semantic names onto those game tokens, so the portal tracks whichever of the
+   game's themes the player has chosen, in light or dark. */
 
 :root {
-  --bg: #f5f7fb; --surface: #ffffff; --surface-2: #fbfcfe; --text: #171d29;
-  --muted: #5a6478; --border: #e4e8f0; --border-2: #d3dae6; --accent: #3866e6;
-  --ok: #12864a; --ok-bg: #12864a14; --warn: #b06a08; --warn-bg: #b06a0814;
-  --fail: #cc2f2f; --fail-bg: #cc2f2f14;
-  --shadow: 0 1px 2px rgba(20, 30, 60, .04), 0 2px 8px rgba(20, 30, 60, .05);
-  --shadow-h: 0 2px 6px rgba(20, 30, 60, .08), 0 8px 20px rgba(20, 30, 60, .09);
-}
+  /* Surfaces and neutrals from the game palette. */
+  --surface: var(--board-bg);
+  --surface-2: var(--bg-secondary);
+  --muted: var(--text-muted);
+  --border: var(--border-light);
+  --border-2: var(--border-light);
+  --shadow-h: var(--shadow);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0c1017; --surface: #151b25; --surface-2: #121822; --text: #e8ecf3;
-    --muted: #939dae; --border: #232d3c; --border-2: #313c4e; --accent: #6f9bff;
-    --ok: #38d488; --ok-bg: #38d48818; --warn: #f2b43d; --warn-bg: #f2b43d18;
-    --fail: #f77c7e; --fail-bg: #f77c7e18; --shadow: none; --shadow-h: 0 6px 20px rgba(0, 0, 0, .4);
-  }
-}
-
-:root[data-theme="light"] {
-  --bg: #f5f7fb; --surface: #ffffff; --surface-2: #fbfcfe; --text: #171d29;
-  --muted: #5a6478; --border: #e4e8f0; --border-2: #d3dae6; --accent: #3866e6;
-  --ok: #12864a; --ok-bg: #12864a14; --warn: #b06a08; --warn-bg: #b06a0814;
-  --fail: #cc2f2f; --fail-bg: #cc2f2f14;
-  --shadow: 0 1px 2px rgba(20, 30, 60, .04), 0 2px 8px rgba(20, 30, 60, .05);
-  --shadow-h: 0 2px 6px rgba(20, 30, 60, .08), 0 8px 20px rgba(20, 30, 60, .09);
-}
-
-:root[data-theme="dark"] {
-  --bg: #0c1017; --surface: #151b25; --surface-2: #121822; --text: #e8ecf3;
-  --muted: #939dae; --border: #232d3c; --border-2: #313c4e; --accent: #6f9bff;
-  --ok: #38d488; --ok-bg: #38d48818; --warn: #f2b43d; --warn-bg: #f2b43d18;
-  --fail: #f77c7e; --fail-bg: #f77c7e18; --shadow: none; --shadow-h: 0 6px 20px rgba(0, 0, 0, .4);
+  /* Health states reuse the game's own hint (green), difficulty-medium (amber),
+     and error (red) colors, so they stay legible in every theme. */
+  --ok: var(--hint-text);
+  --warn: var(--diff-medium);
+  --fail: var(--error-text);
+  --ok-bg: color-mix(in srgb, var(--hint-text) 12%, transparent);
+  --warn-bg: color-mix(in srgb, var(--diff-medium) 14%, transparent);
+  --fail-bg: color-mix(in srgb, var(--error-text) 12%, transparent);
 }
 
 * { box-sizing: border-box; }
@@ -51,7 +39,9 @@ body {
 
 /* Header */
 header { display: flex; align-items: center; gap: .85rem; margin-bottom: .35rem; }
-.mark { flex: none; color: var(--accent); }
+.mark { flex: none; width: 34px; height: 34px; background: center / contain no-repeat url("sudoku-icon.svg"); }
+:root[data-mode="dark"] .mark { background-image: url("sudoku-icon-dark.svg"); }
+@media (prefers-color-scheme: dark) { :root:not([data-mode]) .mark { background-image: url("sudoku-icon-dark.svg"); } }
 header h1 { margin: 0; font-size: 1.55rem; letter-spacing: -.015em; font-weight: 700; }
 header .grow { flex: 1; }
 .sub { margin: 0 0 .3rem; color: var(--muted); font-size: .95rem; }

@@ -42,6 +42,10 @@ VERDICT_RANK = {"PASS": 0, "WARN": 1, "FAIL": 2}
 VERDICT_STATE = {"PASS": "ok", "WARN": "warn", "FAIL": "fail"}
 
 _ASSET_DIR = os.path.dirname(os.path.abspath(__file__))
+# The game's own icon (theme-aware light/dark variants), used for the portal
+# header and favicon so the reports carry the game's identity.
+_ICON_DIR = os.path.join(os.path.dirname(os.path.dirname(_ASSET_DIR)), "frontend", "public")
+_ICONS = ("sudoku-icon.svg", "sudoku-icon-dark.svg")
 
 
 def _esc(value):
@@ -126,13 +130,6 @@ def collect_reports(artifacts_dir, out_dir):
             h = copy_dir("index.html", "coverage/frontend")
             if h:
                 hrefs["coverage-frontend"] = h
-        elif name == "coverage-go":
-            h = copy_file("coverage.html", "coverage/go")
-            if h:
-                hrefs["coverage-go"] = h
-            svg = copy_file("coverage.svg", "coverage/go")
-            if svg:
-                hrefs["coverage-go-treemap"] = svg
         elif name == "mutation-frontend":
             h = copy_file("mutation.html", "mutation/frontend")
             if h:
@@ -157,12 +154,17 @@ def collect_reports(artifacts_dir, out_dir):
 
 
 def copy_assets(out_dir):
-    """Copy the stylesheet and script next to the generated index.html."""
-    for src_name, dest_name in (("report_portal.css", "styles.css"),
+    """Copy the theme tokens, stylesheet, script, and game icons next to index.html."""
+    for src_name, dest_name in (("report_portal.themes.css", "themes.css"),
+                                ("report_portal.css", "styles.css"),
                                 ("report_portal.js", "app.js")):
         src = os.path.join(_ASSET_DIR, src_name)
         if os.path.exists(src):
             shutil.copy2(src, os.path.join(out_dir, dest_name))
+    for icon in _ICONS:
+        src = os.path.join(_ICON_DIR, icon)
+        if os.path.exists(src):
+            shutil.copy2(src, os.path.join(out_dir, icon))
 
 
 # --- Metric readers ---
@@ -346,19 +348,18 @@ def build_sections(artifacts_dir, out_dir, allure_rel, hrefs, techniques, go_sco
         cov_tiles.append(_tile("Frontend · Vitest", f"{fe_cov:.1f}%", "lines covered",
                                health(fe_cov, COVERAGE), hrefs["coverage-frontend"]))
     go_cov = go_coverage_pct(artifacts_dir)
-    if go_cov is not None and "coverage-go" in hrefs:
+    # The Go coverage report is rendered as an istanbul report (matching the
+    # frontend's Vitest coverage) by the portal build before this runs.
+    go_report_exists = os.path.exists(os.path.join(out_dir, "coverage", "go", "index.html"))
+    if go_cov is not None and go_report_exists:
         cov_vals.append(go_cov)
-        cov_tiles.append(_tile("Go · go tool cover", f"{go_cov:.1f}%", "statements · line report",
-                               health(go_cov, COVERAGE), hrefs["coverage-go"]))
+        cov_tiles.append(_tile("Go · go test", f"{go_cov:.1f}%", "lines covered",
+                               health(go_cov, COVERAGE), "coverage/go/index.html"))
     if cov_tiles:
         overall = sum(cov_vals) / len(cov_vals)
         blocks = [_banner(health(overall, COVERAGE), f"{overall:.1f}%", "score",
                           "Overall line coverage across the frontend and Go codebases."),
                   _tiles(cov_tiles)]
-        if "coverage-go-treemap" in hrefs:
-            blocks.append(f'    <p class="also">Go coverage, also viewable as a '
-                          f'<a href="{_esc(hrefs["coverage-go-treemap"])}">treemap map &rarr;</a> '
-                          f'(same data, each file sized by statements).</p>')
         sections.append(_section("Coverage", f"{len(cov_tiles)} suites", blocks))
 
     # Mutation testing
@@ -441,14 +442,6 @@ def main(argv=None):
 
 # --- Static page chrome ---
 
-_MARK_SVG = (
-    '<svg class="mark" width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true">'
-    '<rect x="1.5" y="1.5" width="31" height="31" rx="5" stroke="currentColor" stroke-width="1.6"/>'
-    '<path d="M12 2v30M23 2v30M2 12h30M2 23h30" stroke="currentColor" stroke-width="1" opacity="0.55"/>'
-    '<rect x="3.5" y="14" width="6.5" height="6.5" rx="1.4" fill="currentColor" opacity="0.9"/>'
-    '<rect x="14" y="25" width="6.5" height="6.5" rx="1.4" fill="currentColor" opacity="0.55"/>'
-    '<rect x="24.5" y="3.5" width="6.5" height="6.5" rx="1.4" fill="currentColor" opacity="0.7"/></svg>')
-
 _LEGEND = (
     '  <div class="legend">\n'
     '    <span><i class="sw ok"></i> meets gate</span>\n'
@@ -461,10 +454,12 @@ _DOC_HEAD = (
     '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
     '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
     '<title>Sudoku Test Reports</title>\n'
+    '<link rel="icon" type="image/svg+xml" href="sudoku-icon.svg">\n'
+    '<link rel="stylesheet" href="themes.css">\n'
     '<link rel="stylesheet" href="styles.css">\n'
     '</head>\n<body>\n'
     '<main class="wrap">\n'
-    '  <header>\n    ' + _MARK_SVG + '\n'
+    '  <header>\n    <span class="mark" role="img" aria-label="Sudoku"></span>\n'
     '    <div><h1>Sudoku Test Reports</h1>'
     '<p class="sub">Every quality signal for the project, in one place.</p></div>\n'
     '    <span class="grow"></span>\n'

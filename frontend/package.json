@@ -27,7 +27,9 @@
     "allure:clean": "rm -rf allure-results allure-report",
     "mutation": "stryker run",
     "mutation:incremental": "stryker run --incremental",
-    "prepare": "husky install .husky"
+    "prepare": "husky install .husky",
+    "gen:portal-themes": "tsx scripts/gen-portal-themes.mjs > ../.github/scripts/report_portal.themes.css",
+    "gen:go-coverage": "node scripts/lcov-to-istanbul.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.1",
@@ -42,8 +44,8 @@
     "@playwright/test": "^1.57.0",
     "@stryker-mutator/core": "~9.6",
     "@stryker-mutator/vitest-runner": "~9.6",
-      "@testing-library/dom": "^10.4.1",
-      "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^26.0.0",
