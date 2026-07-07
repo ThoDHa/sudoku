@@ -13,6 +13,7 @@ const DEBUG_STORAGE_KEY = 'debug'
 function isDebugModeEnabled(): boolean {
   try {
     return localStorage.getItem(DEBUG_STORAGE_KEY) === 'true'
+    // Stryker disable next-line BlockStatement: emptying the catch makes the function return undefined instead of false; the only consumer (`if (isDebugModeEnabled())`) treats both as falsy, so the change is observationally identical at module init
   } catch {
     return false
   }

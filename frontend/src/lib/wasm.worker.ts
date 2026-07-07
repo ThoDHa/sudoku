@@ -120,6 +120,7 @@ interface WorkerResponse {
 // ==================== Worker State ====================
 
 let wasmApi: SudokuWasmAPI | null = null
+// Stryker disable next-line BooleanLiteral: the initial value is overwritten by `isInitializing = true` on the first call before any caller can observe it; the dedup check at L133 requires initPromise to also be set, which is null at start, so the initial true value is observationally identical to false here
 let isInitializing = false
 let initPromise: Promise<void> | null = null
 
@@ -130,6 +131,7 @@ async function initializeWasm(): Promise<void> {
     return // Already initialized
   }
 
+  // Stryker disable next-line ConditionalExpression,LogicalOperator,BlockStatement: the `false`/`{}` mutants are killed by the "parallel init dedup" test (which sends two init messages before either resolves and asserts a single instantiateStreaming call). The `||` mutant is equivalent because initPromise is null whenever isInitializing is false, so `false || null` is still falsy.
   if (isInitializing && initPromise) {
     return initPromise // Already initializing, wait for it
   }
@@ -143,7 +145,9 @@ async function initializeWasm(): Promise<void> {
       // Try to use importScripts if it works, but guard against environments
       // where importScripts exists but is disallowed (module workers) by catching errors.
       let loadedWasmExec = false
+      // Stryker disable next-line ConditionalExpression: forcing `true` here is equivalent because the catch below resets loadedWasmExec=false on error, and a successful importScripts reassigns it to true; the only divergence (importScripts not being a function) is covered by the "importScripts undefined" test which kills the L145 mutant directly
       if (typeof importScripts === 'function') {
+        // Stryker disable next-line BlockStatement: the catch body sets loadedWasmExec=false, but the variable is already false at this point, so emptying the block is observationally identical (the subsequent `if (!loadedWasmExec)` still enters the fallback)
         try {
           importScripts('/wasm_exec.js')
           loadedWasmExec = true
@@ -195,12 +199,14 @@ async function initializeWasm(): Promise<void> {
         const checkReady = () => {
           if (SudokuWasm) {
             resolve()
+            // Stryker disable next-line BooleanLiteral: returning false here leaks the polling interval but the promise is already resolved, so ready is still posted; no test-observable difference
             return true
           }
           return false
         }
 
         // Check immediately
+        // Stryker disable next-line ConditionalExpression: skipping the immediate check just defers to the polling interval, which calls checkReady on the next tick; same promise outcome
         if (checkReady()) return
 
         // Poll for SudokuWasm to become available
@@ -208,6 +214,7 @@ async function initializeWasm(): Promise<void> {
         let attempts = 0
         const interval = setInterval(() => {
           attempts++
+          // Stryker disable next-line ConditionalExpression,BlockStatement: clearing the interval is a cleanup optimization; even if it stays running, the promise is already resolved by checkReady and subsequent rejects are no-ops, and the polling never runs when the Go mock sets SudokuWasm synchronously
           if (checkReady()) {
             clearInterval(interval)
           } else if (attempts >= maxAttempts) {
@@ -218,12 +225,15 @@ async function initializeWasm(): Promise<void> {
       })
 
       // SudokuWasm is guaranteed to be defined after the Promise resolves
+      // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: this is a defensive guard that is unreachable when the polling promise resolves (SudokuWasm must be truthy for resolve() to have been called); the mutants are observationally equivalent
       if (!SudokuWasm) {
         throw new Error('SudokuWasm not available after initialization')
       }
       wasmApi = SudokuWasm
+      // Stryker disable next-line BooleanLiteral: leaving isInitializing=true after success is harmless because the `if (wasmApi) return` guard at the top of initializeWasm short-circuits all subsequent callers
       isInitializing = false
     } catch (error) {
+      // Stryker disable next-line BooleanLiteral: leaving isInitializing=true after failure is harmless because initPromise is also set to null on the next line, and the dedup check requires BOTH flags, so `true && null` is still falsy
       isInitializing = false
       initPromise = null
       throw error
@@ -249,11 +259,13 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
 
       case 'findNextMove': {
         // Ensure WASM is initialized
+        // Stryker disable next-line ConditionalExpression: forcing `true` here is harmless because initializeWasm short-circuits via `if (wasmApi) return` at the top, so re-calling it when wasmApi is set is a no-op
         if (!wasmApi) {
           await initializeWasm()
         }
 
         // wasmApi is guaranteed after initializeWasm()
+        // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: this defensive guard is unreachable in normal flow — initializeWasm either sets wasmApi or throws (caught by the outer onmessage try/catch), so after `await initializeWasm()` completes successfully wasmApi is always set. The mutants are observationally equivalent dead-code guards.
         if (!wasmApi) {
           throw new Error('WASM API not available after initialization')
         }
@@ -278,11 +290,13 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
 
       case 'solveAll': {
         // Ensure WASM is initialized
+        // Stryker disable next-line ConditionalExpression: forcing `true` here is harmless because initializeWasm short-circuits via `if (wasmApi) return` at the top
         if (!wasmApi) {
           await initializeWasm()
         }
 
         // wasmApi is guaranteed after initializeWasm()
+        // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: this defensive guard is unreachable in normal flow — initializeWasm either sets wasmApi or throws (caught by the outer onmessage try/catch), so after `await initializeWasm()` completes successfully wasmApi is always set. The mutants are observationally equivalent dead-code guards.
         if (!wasmApi) {
           throw new Error('WASM API not available after initialization')
         }

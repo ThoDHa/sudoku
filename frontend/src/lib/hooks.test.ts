@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 
 vi.mock('./solver-service', () => ({
   getDailySeed: vi.fn(() => ({ date_utc: '2026-01-01', seed: 'test-seed' })),
@@ -49,6 +49,50 @@ describe('getLastDailyDifficulty', () => {
     const { getLastDailyDifficulty } = await import('./hooks')
     localStorage.setItem('lastDailyDifficulty', 'not-a-difficulty')
     expect(getLastDailyDifficulty()).toBeNull()
+  })
+
+  describe('window-undefined SSR guard', () => {
+    const originalWindow = globalThis.window
+
+    afterEach(() => {
+      // Restore window after each sub-test
+      Object.defineProperty(globalThis, 'window', {
+        value: originalWindow,
+        writable: true,
+        configurable: true,
+      })
+      vi.resetModules()
+    })
+
+    it('returns null when window is undefined (SSR / non-browser)', async () => {
+      // @ts-expect-error intentionally deleting window for the SSR guard test
+      delete globalThis.window
+      const { getLastDailyDifficulty } = await import('./hooks')
+      expect(getLastDailyDifficulty()).toBeNull()
+    })
+
+    it('short-circuits before any localStorage read when window is undefined, even with stored data', async () => {
+      // Pre-populate so a missing typeof-window guard would surface the stored value.
+      localStorage.setItem('lastDailyDifficulty', 'easy')
+      // @ts-expect-error intentionally deleting window for the SSR guard test
+      delete globalThis.window
+      const { getLastDailyDifficulty } = await import('./hooks')
+      expect(getLastDailyDifficulty()).toBeNull()
+    })
+
+    it('does not read localStorage when window is undefined (typeof check short-circuits)', async () => {
+      // @ts-expect-error intentionally deleting window for the SSR guard test
+      delete globalThis.window
+      const getItemSpy = vi.spyOn(Storage.prototype, 'getItem')
+      getItemSpy.mockClear()
+
+      const { getLastDailyDifficulty } = await import('./hooks')
+      getLastDailyDifficulty()
+
+      // The guard must skip the localStorage.getItem call entirely.
+      expect(getItemSpy).not.toHaveBeenCalled()
+      getItemSpy.mockRestore()
+    })
   })
 })
 

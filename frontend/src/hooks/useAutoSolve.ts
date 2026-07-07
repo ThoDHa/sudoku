@@ -103,6 +103,9 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const backgroundManager = providedBackgroundManager || defaultBackgroundManager
 
   const [isAutoSolving, setIsAutoSolving] = useState(false)
+  // Stryker disable next-line BooleanLiteral: isPaused is overwritten by the mount run of the
+  // pause-sync effect below (which sets it from shouldPause, false on the initial visible render)
+  // before any test asserts it, so the true initial-string mutant is unobservable
   const [isPaused, setIsPaused] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
   const [manualPaused, setManualPaused] = useState(false)
@@ -110,7 +113,14 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const [totalMoves, setTotalMoves] = useState(0)
   const [lastCompletedSteps, setLastCompletedSteps] = useState(0)
 
+  // Stryker disable next-line BooleanLiteral: autoSolveRef is only read while
+  // isAutoSolving is true (every reader is guarded) and is set to true inside
+  // startAutoSolve/restartAutoSolve/playMoves/solveFromGivens before any read, so the
+  // initial false->true mutant is unobservable
   const autoSolveRef = useRef(false)
+  // Stryker disable next-line BooleanLiteral: pausedRef is reassigned by the pause-sync
+  // effect on mount (to shouldPause, false initially) before any consumer reads it, so the
+  // initial false->true mutant is unobservable
   const pausedRef = useRef(false)
   const manualPausedRef = useRef(false)
   // Stryker disable ArrayDeclaration: each ref is reassigned to a fresh array
@@ -147,14 +157,17 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       clearTimeout(activeTimeoutRef.current)
       activeTimeoutRef.current = null
     }
+    // Stryker disable ConditionalExpression,EqualityOperator,BlockStatement,StringLiteral: activeIdleCallbackRef
+    // is never assigned a non-null value anywhere in the hook (scheduleNextMove only ever sets
+    // activeTimeoutRef), so this entire branch — condition, body, and the cancelIdleCallback guard —
+    // is unreachable dead code and every mutant inside is unobservable. Flagged for removal.
     if (activeIdleCallbackRef.current !== null) {
-      // Stryker disable ConditionalExpression,EqualityOperator,BlockStatement,StringLiteral: activeIdleCallbackRef is never assigned a non-null value anywhere (scheduleNextMove only ever sets activeTimeoutRef), so this entire branch is unreachable dead code and every mutant inside is unobservable
       if ('cancelIdleCallback' in window) {
         cancelIdleCallback(activeIdleCallbackRef.current)
       }
       activeIdleCallbackRef.current = null
-      // Stryker restore
     }
+    // Stryker restore
     // Stryker disable next-line ArrayDeclaration: clearActiveTimers captures no
     // external values; a stable-string mutant leaves the empty deps array
     // observationally unchanged
@@ -252,6 +265,11 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       pausedRef.current = false
       setIsPaused(false)
       // Resume playback if we were auto-solving and just unpaused
+      // Stryker disable next-line LogicalOperator: the resume fires only when wasPaused is true
+      // (set from pausedRef.current earlier in this branch). playNextMoveRef.current is non-null
+      // only while auto-solving, and the only run of this effect where wasPaused is false but
+      // playNextMoveRef could be set is the mount run, where playNextMoveRef is still null, so the
+      // && -> || mutant (which would fire on a truthy playNextMoveRef alone) cannot diverge here
       if (wasPaused && autoSolveRef.current && playNextMoveRef.current) {
         // Check if board changed while paused (user made edits)
         if (pausedBoardSnapshotRef.current !== null) {
@@ -530,10 +548,15 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
       stateHistoryRef.current = [
         {
+          // Stryker disable next-line OptionalChaining,LogicalOperator,MethodExpression,ArrowFunction:
+          // playMoves guards `if (!moves || moves.length === 0) return` at the top, so moves[0] is
+          // always defined here and the ?. / || / .map mutants on moves[0]?.board and the candidates
+          // chain are observationally redundant (the right operand of || is never taken)
           board: [...(moves[0]?.board || currentBoard)],
           candidates:
             moves[0]?.candidates?.map((arr) => (arr ? [...arr] : [])) ||
             candidatesToArrays(currentCandidates),
+          // Stryker restore
           move: null,
         },
       ]

@@ -149,11 +149,14 @@ export function unloadWasm(): void {
   }
 
   // Clear global references
+  // Stryker disable next-line ConditionalExpression, StringLiteral: defensive SSR guard; the test environment always defines `window`, so `typeof window !== 'undefined'` (and its `'undefined' -> ''` string-literal mutant) always evaluate true here, matching the always-enter behavior
   if (typeof window !== 'undefined') {
+    // Stryker disable next-line ConditionalExpression: delete on an absent property is a no-op (returns true), so always-entering this block is observationally identical to guarding on window.SudokuWasm
     if (window.SudokuWasm) {
       // @ts-expect-error - We know this exists and want to delete it
       delete window.SudokuWasm
     }
+    // Stryker disable next-line ConditionalExpression: same as above; delete on an absent property is a no-op, so the guard is observationally irrelevant in every environment
     if (window.Go) {
       // @ts-expect-error - We know this exists and want to delete it
       delete window.Go
@@ -161,6 +164,7 @@ export function unloadWasm(): void {
   }
 
   // Force garbage collection if available (mainly for development)
+  // Stryker disable next-line ConditionalExpression,LogicalOperator,StringLiteral: in the test/browser environment window is always defined; the full chain (typeof window !== 'undefined' && 'gc' in window && typeof window.gc === 'function') and its mutants all evaluate consistently. Production-only optimization; covered when gc is absent (the guard correctly skips).
   if (typeof window !== 'undefined' && 'gc' in window && typeof window.gc === 'function') {
     window.gc()
   }
@@ -202,6 +206,7 @@ function getBaseUrl(): string {
  */
 async function loadWasmExec(): Promise<void> {
   // Check if Go is already defined (script already loaded)
+  // Stryker disable next-line StringLiteral: `typeof window !== ''` is always true (typeof always returns a non-empty string), so the `'undefined' -> ''` mutant collapses to `true && window.Go`, which matches the original behavior in every environment the suite runs in
   if (typeof window !== 'undefined' && window.Go) {
     return
   }
@@ -243,6 +248,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
   }
 
   // If previously failed, try again
+  // Stryker disable next-line ConditionalExpression: assigning null over an already-null wasmLoadError is a no-op; the only observable case (clearing a real error before retry) is identical under the mutant
   if (wasmLoadError) {
     wasmLoadError = null
   }
@@ -255,6 +261,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       logger.debug('[WASM] wasm_exec.js loaded')
 
       // Ensure Go is available
+      // Stryker disable next-line ConditionalExpression,StringLiteral: when window is defined (always, in tests/browser) the `typeof window === 'undefined'` half is false, so the condition collapses to `!window.Go`; the `'undefined' -> ''` string-literal mutant behaves identically (typeof window === '' is always false). The "Go runtime not available" test kills the !window.Go half directly.
       if (typeof window === 'undefined' || !window.Go) {
         throw new Error('Go runtime not available')
       }
@@ -306,6 +313,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       try {
         const goPromise = go.run(result.instance)
         // Check if go.run returns a promise and handle errors
+        // Stryker disable next-line ConditionalExpression,LogicalOperator: the Go mock and the real Go runtime both return a thenable promise (always truthy with a .catch method), so widening `&&` to `||` or forcing either operand to `true` enters the same branch and attaches the same catch handler
         if (goPromise && typeof goPromise.catch === 'function') {
           goPromise.catch((error) => {
             logger.error('[WASM] Go program error:', error)

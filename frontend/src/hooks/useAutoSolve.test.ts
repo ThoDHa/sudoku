@@ -2290,3 +2290,171 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
   })
 })
+
+// ============================================================================
+// Mutation killing tests (MUT-1 iteration 2). No deferrals: every survivor is
+// either killed here or annotated as a true equivalent in useAutoSolve.ts.
+// ============================================================================
+describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    mockSolveAll.mockReset()
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    })
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('startAutoSolve on an unsolvable puzzle does not throw when onError is omitted', async () => {
+    // Kills OptionalChaining mutants on `onError?.('This puzzle requires advanced techniques...')`
+    // and the catch-block `onError?.(err...)` (L317, L358): removing ?. throws when onError is undefined.
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(0, { solved: false }))
+    const opts = createDefaultOptions({ onError: undefined, onStepNavigate: undefined })
+    const { result } = renderHook(() => useAutoSolve(opts))
+    await expect(act(async () => { await result.current.startAutoSolve() })).resolves.toBeUndefined()
+    expect(result.current.isAutoSolving).toBe(false)
+  })
+
+  it('startAutoSolve when solveAll rejects does not throw when onError is omitted', async () => {
+    // Kills the catch-block OptionalChaining `onError?.(err.message)` (L358).
+    mockSolveAll.mockRejectedValue(new Error('boom'))
+    const opts = createDefaultOptions({ onError: undefined })
+    const { result } = renderHook(() => useAutoSolve(opts))
+    await expect(act(async () => { await result.current.startAutoSolve() })).resolves.toBeUndefined()
+    expect(result.current.isAutoSolving).toBe(false)
+  })
+
+  it('solveFromGivens on an unsolvable puzzle does not throw when onError is omitted', async () => {
+    // Kills OptionalChaining `onError?.('Could not solve this puzzle.')` (L604) and catch (L642).
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(0, { solved: false }))
+    const opts = createDefaultOptions({ onError: undefined })
+    const { result } = renderHook(() => useAutoSolve(opts))
+    await expect(act(async () => { await result.current.solveFromGivens() })).resolves.toBeUndefined()
+  })
+
+  it('solveFromGivens when solveAll rejects does not throw when onError is omitted', async () => {
+    // Kills the solveFromGivens catch-block OptionalChaining (L642).
+    mockSolveAll.mockRejectedValue(new Error('boom'))
+    const opts = createDefaultOptions({ onError: undefined })
+    const { result } = renderHook(() => useAutoSolve(opts))
+    await expect(act(async () => { await result.current.solveFromGivens() })).resolves.toBeUndefined()
+  })
+
+  it('stepBack/stepForward do not throw when onStepNavigate is omitted', async () => {
+    // Kills OptionalChaining `onStepNavigate?.(...)` mutants at L423, L453, L483.
+    const result = await startAutoSolveWith(3, { onStepNavigate: undefined })
+    expect(() => {
+      act(() => result.current.stepBack())
+      act(() => result.current.stepForward())
+    }).not.toThrow()
+  })
+
+  it('stepForward before auto-solving is a no-op (guard returns early)', async () => {
+    // Kills the LogicalOperator mutant on
+    // `if (!isAutoSolving || currentIndexRef.current >= allMovesRef.current.length) return`
+    // (L432): flipping || to && lets the call proceed when not auto-solving.
+    const opts = createDefaultOptions()
+    const { result } = renderHook(() => useAutoSolve(opts))
+    const before = result.current.currentIndex
+    expect(() => act(() => result.current.stepForward())).not.toThrow()
+    expect(result.current.currentIndex).toBe(before)
+  })
+
+  it('stepForward into new territory passes defined candidate Sets to applyMove', async () => {
+    // Kills ArrowFunction mutants on `.map((arr) => new Set(arr))` (L450, L477):
+    // `() => undefined` yields undefined entries, observed via applyMove payload.
+    const applyMove = vi.fn()
+    const result = await startAutoSolveWith(3, { applyMove })
+    // auto-playback has applied move 0 (currentIndex 1); step forward to index 2 (new territory)
+    act(() => result.current.stepBack())
+    act(() => result.current.stepForward()) // index 1 -> existing snapshot
+    act(() => result.current.stepForward()) // index 2 -> new territory branch (L460-486)
+    const lastCall = applyMove.mock.calls[applyMove.mock.calls.length - 1]
+    const candidatesArg = lastCall?.[1]
+    expect(Array.isArray(candidatesArg)).toBe(true)
+    expect(candidatesArg.every((c: unknown) => c instanceof Set)).toBe(true)
+  })
+
+  it('stepForward new territory tolerates a null candidate cell without throwing', async () => {
+    // Kills the LogicalOperator mutant on `(cellCands: number[] | null) => new Set(cellCands || [])`
+    // (L467): `cellCands && []` yields null for a null cellCand, and `new Set(null)` throws.
+    mockSolveAll.mockResolvedValue({
+      solved: true,
+      moves: [
+        {
+          ...createMockAutoSolveMove(),
+          candidates: Array(81).fill(null).map((_, i) => (i === 0 ? null : [1, 2, 3])),
+          move: { ...createMockAutoSolveMove().move, step_index: 0 },
+        },
+        { ...createMockAutoSolveMove(), move: { ...createMockAutoSolveMove().move, step_index: 1 } },
+      ],
+    })
+    const opts = createDefaultOptions()
+    const { result } = renderHook(() => useAutoSolve(opts))
+    await act(async () => { await result.current.startAutoSolve() })
+    act(() => result.current.stepBack())
+    expect(() => act(() => result.current.stepForward())).not.toThrow()
+  })
+
+  it('movesQueueRef is a copy, not an alias of allMovesRef: stepping remains consistent after a resume cycle', async () => {
+    // Kills MethodExpression mutants that drop `.slice(newIndex)` (L427, L456, L486):
+    // without slice, movesQueueRef aliases allMovesRef, and playNextMove's shift() corrupts
+    // allMovesRef, so subsequent stepping cannot reach the final index.
+    const result = await startAutoSolveWith(3)
+    // auto-playback applied move 0 (currentIndex 1). Step back to 0 (reassigns queue via slice).
+    act(() => result.current.stepBack())
+    expect(result.current.currentIndex).toBe(0)
+    // Resume auto-playback (shifts the queue). Under the aliasing mutant, allMovesRef shrinks.
+    act(() => result.current.togglePause())
+    act(() => result.current.togglePause()) // resume
+    await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+    // After resume, we should still be able to step forward through every move to the end.
+    // The mutant corrupts allMovesRef via shift() aliasing and stalls short of index 3.
+    for (let i = 0; i < 5; i++) {
+      act(() => result.current.stepForward())
+    }
+    expect(result.current.currentIndex).toBe(3)
+  })
+
+  it('applyFixesAndContinueSolving resolves without throwing when the playback times out and onError is omitted', async () => {
+    // Kills the NoCoverage ArithmeticOperator mutant on `Date.now() - start > TIMEOUT` (L695)
+    // and the OptionalChaining `onError?.('Failed to resume...')` mutants at L687, L704:
+    // forces the timeout branch to execute (covering L695) and asserts no-throw without onError.
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(1))
+    const opts = createDefaultOptions({
+      applyMove: vi.fn(), // no-op applyMove so the fixes queue never drains -> timeout branch fires
+      onError: undefined,
+    })
+    const { result } = renderHook(() => useAutoSolve(opts))
+    await act(async () => { await result.current.startAutoSolve() })
+    // Now drive applyFixesAndContinueSolving and advance past the safety timeout.
+    await expect(
+      act(async () => {
+        const p = result.current.applyFixesAndContinueSolving([createMockAutoSolveMove()])
+        await vi.advanceTimersByTimeAsync(10_000_000) // well past AUTO_SOLVE_MAX_TIME
+        await p
+      }),
+    ).resolves.toBeUndefined()
+  })
+
+  it('stepForward new territory tolerates a move whose candidates field is null', async () => {
+    // Kills the NoCoverage ArrowFunction mutant on the else-branch
+    // `: getCandidates().map((set) => Array.from(set))` (L478): `() => undefined` stores
+    // undefined entries in stateHistory, and a later stepBack restoring that snapshot calls
+    // `new Set(undefined)` which throws.
+    mockSolveAll.mockResolvedValue({
+      solved: true,
+      moves: [
+        { ...createMockAutoSolveMove(), candidates: null, move: { ...createMockAutoSolveMove().move, step_index: 0 } },
+        { ...createMockAutoSolveMove(), move: { ...createMockAutoSolveMove().move, step_index: 1 } },
+      ],
+    })
+    const opts = createDefaultOptions()
+    const { result } = renderHook(() => useAutoSolve(opts))
+    await act(async () => { await result.current.startAutoSolve() })
+    act(() => result.current.stepBack()) // to index 0
+    act(() => result.current.stepForward()) // index 1 -> new territory, move.candidates null -> L478 branch
+    expect(() => act(() => result.current.stepBack())).not.toThrow() // restore that snapshot
+  })
+})

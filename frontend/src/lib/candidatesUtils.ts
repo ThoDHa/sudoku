@@ -168,6 +168,7 @@ export const candidatesToArrays = (candidates: Uint16Array): number[][] => {
  */
 export const arraysToCandidates = (arrays: number[][]): Uint16Array => {
   const result = new Uint16Array(arrays.length)
+  // Stryker disable next-line EqualityOperator: at i===arrays.length, arrays[i] is undefined and `arr ?` short-circuits to 0; result is exactly arrays.length long so the assignment to result[i] is silently dropped by the typed array, making the extra iteration a no-op
   for (let i = 0; i < arrays.length; i++) {
     const arr = arrays[i]
     result[i] = arr ? createCandidateMask(arr) : 0
@@ -184,6 +185,7 @@ export const arraysToCandidates = (arrays: number[][]): Uint16Array => {
  */
 export const setsToMasks = (sets: Set<number>[]): Uint16Array => {
   const result = new Uint16Array(sets.length)
+  // Stryker disable next-line EqualityOperator: at i===sets.length, sets[i] is undefined and `set ?` short-circuits to 0; result is exactly sets.length long so the assignment to result[i] is silently dropped by the typed array, making the extra iteration a no-op
   for (let i = 0; i < sets.length; i++) {
     const set = sets[i]
     result[i] = set ? createCandidateMask(Array.from(set)) : 0

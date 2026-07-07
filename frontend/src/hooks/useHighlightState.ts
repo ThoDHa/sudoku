@@ -238,6 +238,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         version: nextVersion,
       }
 
+    // Stryker disable next-line ConditionalExpression: CLEAR_AFTER_DIGIT_TOGGLE and CLEAR_HIGHLIGHTS_KEEP_SELECTION have byte-identical reducer bodies, so any case fall-through is observationally identical
     case 'CLEAR_AFTER_DIGIT_TOGGLE':
       // User toggled the same digit (erased it)
       // Clear all highlights
@@ -305,6 +306,7 @@ export function useHighlightState() {
 
       // Move highlight
       setMoveHighlight: (move: MoveHighlight, index?: number) => {
+        // Stryker disable next-line ConditionalExpression: dispatching {index: undefined} reads action.index as undefined exactly like dispatching without the index property, so the reducer action.index ?? fallback yields the same result
         if (index !== undefined) {
           dispatch({ type: 'SET_MOVE_HIGHLIGHT', move, index })
         } else {
@@ -326,6 +328,7 @@ export function useHighlightState() {
       clickGivenCell: (digit: number, cell: number) =>
         dispatch({ type: 'CLICK_GIVEN_CELL', digit, cell }),
     }),
+    // Stryker disable next-line ArrayDeclaration: every action creator closes over the stable dispatch, so a constant deps entry is observationally identical to the empty array
     [],
   )
 

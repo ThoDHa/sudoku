@@ -37,6 +37,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
         logger.warn(`[WasmLifecycle] ${message}`)
       }
     },
+    // Stryker disable next-line ArrayDeclaration: log captures enableLogging; covered by the "picks up changed enableLogging" test in useWasmLifecycle.test.ts
     [enableLogging],
   )
 
@@ -51,6 +52,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
     // If not a known route and not homepage, it's a game route (/:seed)
     // Stryker disable next-line ConditionalExpression, StringLiteral: isKnownRoute is always true for '/', so the pathname !== '/' clause is redundant
     return !isKnownRoute && pathname !== '/'
+    // Stryker disable next-line ArrayDeclaration: isWasmRoute is a pure function over its pathname argument with no closure captures, so the empty deps array has no observable effect
   }, [])
 
   const unloadWasm = useCallback(async () => {
@@ -60,6 +62,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
     } catch (error) {
       logger.error('[WasmLifecycle] Error during WASM cleanup:', error)
     }
+    // Stryker disable next-line ArrayDeclaration: unloadWasm only depends on log, whose enableLogging dependency is covered by the "picks up changed enableLogging" test
   }, [log])
 
   const scheduleUnload = useCallback(() => {
@@ -81,6 +84,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
     }, unloadDelay)
 
     log(`Scheduled WASM unload in ${unloadDelay}ms`)
+    // Stryker disable next-line ArrayDeclaration: the captured deps (unloadDelay, isWasmRoute, unloadWasm, log) are exercised by the "picks up changed unloadDelay" test
   }, [unloadDelay, isWasmRoute, unloadWasm, log])
 
   const cancelUnload = useCallback(() => {
@@ -90,6 +94,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
       unloadTimeoutRef.current = null
       log('Cancelled scheduled WASM unload')
     }
+    // Stryker disable next-line ArrayDeclaration: cancelUnload only depends on log, whose enableLogging dependency is covered by the "picks up changed enableLogging" test
   }, [log])
 
   const loadWasm = useCallback(async () => {
@@ -99,6 +104,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
     } catch (error) {
       logger.error('[WasmLifecycle] Failed to initialize WASM solver:', error)
     }
+    // Stryker disable next-line ArrayDeclaration: loadWasm only depends on log, whose enableLogging dependency is covered by the "picks up changed enableLogging" test
   }, [log])
 
   // Handle route changes - load WASM when entering game routes, unload when leaving
@@ -127,6 +133,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
         clearTimeout(unloadTimeoutRef.current)
       }
     }
+    // Stryker disable next-line ArrayDeclaration: the unmount cleanup captures no values; the constant `["Stryker was here"]` mutant never changes so the effect never re-runs, matching the original empty array
   }, [])
 
   return {

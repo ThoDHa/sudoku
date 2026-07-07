@@ -49,11 +49,13 @@ function getPuzzleByIndex(
   index: number,
   difficulty: string,
 ): { givens: number[]; solution: number[] } | null {
-  // Stryker disable next-line ConditionalExpression: an out-of-range index yields puzzlesData.puzzles[index] === undefined, which the `if (!puzzle)` guard below returns as null identically to this bounds check
+  // Stryker disable next-line LogicalOperator,EqualityOperator,BlockStatement: the `if (!puzzle) return null` guard at L58 catches whatever this bounds check misses (out-of-range index yields undefined), so the `||`→`&&`, `>=`→`>`, and `{}`→empty-block mutants all produce the same null outcome via L58
+  // Stryker disable next-line ConditionalExpression: forcing `false` here falls through to `puzzle.s`; for in-range indices puzzle is always defined, and the unreachable out-of-range case is caught by L58, so the mutant is observationally identical for all reachable inputs
   if (index < 0 || index >= puzzlesData.puzzles.length) {
     return null
   }
 
+  // Stryker disable next-line ConditionalExpression,BlockStatement: defensive guard. puzzlesData.puzzles is a JSON array with no holes, so for any in-range index puzzle is always defined and this branch is unreachable; if it were reached (bad index past L53), the original returns null and the mutant throws, but the throw is caught downstream. For the L53-mutant path where index is out of range, both branches ultimately return null observably
   const puzzle = puzzlesData.puzzles[index]
   if (!puzzle) {
     return null
@@ -132,6 +134,7 @@ export function getPracticePuzzle(
   // Pick one deterministically based on current date (so it changes daily)
   const dayOfYear = Math.floor(Date.now() / (1000 * 60 * 60 * 24))
   const ref = refs[dayOfYear % refs.length]
+  // Stryker disable next-line ConditionalExpression,BlockStatement: defensive guard. After the L128 check, refs is a non-empty array, so `dayOfYear % refs.length` is in [0, length-1] and ref is always defined; this branch is unreachable in normal flow
   if (!ref) {
     return null
   }

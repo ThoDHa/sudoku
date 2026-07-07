@@ -67,3 +67,27 @@ describe('useBoardValidation', () => {
     expect(result.current.checkCompletion).toBe(first)
   })
 })
+// =============================================================================
+// Mutation-killing tests added for cluster F4 retry (iteration 2).
+// =============================================================================
+
+describe('mutation-killing: checkCompletion uses the latest setIsComplete (L26 deps)', () => {
+  it('invokes the latest setIsComplete after the prop changes', () => {
+    const first = vi.fn()
+    const second = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ cb }) => useBoardValidation({ setIsComplete: cb }),
+      { initialProps: { cb: first } },
+    )
+
+    rerender({ cb: second })
+    act(() => {
+      result.current.checkCompletion(SOLVED)
+    })
+
+    // Original deps [setIsComplete] captured second. The [] mutant captured first.
+    expect(second).toHaveBeenCalledWith(true)
+    expect(second).toHaveBeenCalledTimes(1)
+    expect(first).not.toHaveBeenCalled()
+  })
+})

@@ -70,6 +70,7 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
 
       return { history: trimmedHistory, index: adjustedIndex }
     },
+    // Stryker disable next-line ArrayDeclaration: limitHistory captures no external values, so a constant deps entry is observationally identical to the empty array
     [],
   )
 
@@ -79,6 +80,7 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
     const currentHistory = historyRef.current
     const currentHistoryIndex = historyIndexRef.current
 
+    // Stryker disable next-line ConditionalExpression: currentHistory[negativeIndex] is undefined in JS, so the L85 !currentMove guard catches the same case and this early return is redundant
     if (currentHistoryIndex < 0) return
 
     const currentMove = currentHistory[currentHistoryIndex]
@@ -114,9 +116,11 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
     const currentHistory = historyRef.current
     const currentHistoryIndex = historyIndexRef.current
 
+    // Stryker disable next-line ConditionalExpression,EqualityOperator,ArithmeticOperator: at index>=length-1 the next-move lookup yields undefined and is caught by the L120 !nextMove guard, so every mutation of this bound is observationally identical
     if (currentHistoryIndex >= currentHistory.length - 1) return
 
     const nextMove = currentHistory[currentHistoryIndex + 1]
+    // Stryker disable next-line ConditionalExpression: after the L117 bound check nextMove is always defined, so this guard is dead and forcing it false is unobservable
     if (!nextMove) return
 
     if (nextMove.stateDiff) {

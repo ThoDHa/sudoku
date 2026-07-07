@@ -85,7 +85,7 @@ describe('cache-version', () => {
     const cleared = await checkCacheVersion()
 
     expect(cleared).toBe(false)
-    expect(logger.warn).toHaveBeenCalled()
+    expect(logger.warn).toHaveBeenCalledWith('Cache version check failed:', expect.any(Error))
     spy.mockRestore()
   })
 })
@@ -135,14 +135,26 @@ describe('clearAllCaches', () => {
     expect(localStorage.getItem(CACHE_KEY)).toBeNull()
   })
 
-  it('rethrows and logs an error when clearing fails', async () => {
+  it('logs the success message with the exact text when all caches clear', async () => {
+    const { logger } = await import('./logger')
+    vi.stubGlobal('caches', {
+      keys: vi.fn().mockResolvedValue(['app-assets']),
+      delete: vi.fn().mockResolvedValue(true),
+    })
+
+    await clearAllCaches()
+
+    expect(logger.warn).toHaveBeenCalledWith('All caches cleared successfully')
+  })
+
+  it('logs the failure message with the exact text and rethrows when clearing fails', async () => {
     const { logger } = await import('./logger')
     const spy = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
       throw new Error('SecurityError')
     })
 
     await expect(clearAllCaches()).rejects.toThrow('SecurityError')
-    expect(logger.error).toHaveBeenCalled()
+    expect(logger.error).toHaveBeenCalledWith('Failed to clear caches:', expect.any(Error))
 
     spy.mockRestore()
   })

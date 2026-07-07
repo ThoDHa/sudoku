@@ -485,3 +485,152 @@ describe('wasm.worker polling timeout boundary', () => {
     })
   })
 })
+
+describe('wasm.worker mutation-kill: parallel init and edge paths', () => {
+  let sink: WorkerGlobalMock
+  let runtime: ReturnType<typeof installWasmRuntimeMocks>
+
+  beforeEach(() => {
+    posted = []
+    sink = installWorkerGlobals()
+    runtime = installWasmRuntimeMocks()
+  })
+
+  afterEach(() => {
+    clearWorkerGlobals()
+  })
+
+  async function load() {
+    await import('./wasm.worker')
+  }
+
+  async function waitForReady(id: string) {
+    await vi.waitFor(() => {
+      expect(posted).toContainEqual({ type: 'ready', id })
+    })
+  }
+
+  const streamingMock = () =>
+    WebAssembly.instantiateStreaming as unknown as ReturnType<typeof vi.fn>
+
+  it('deduplicates concurrent init messages to a single WASM instantiation (L133,L137)', async () => {
+    await load()
+    // Send two init messages back-to-back, BEFORE either resolves. The original
+    // returns the in-flight initPromise to the second caller; the `if (false)` and
+    // empty-block mutants create a second init promise, invoking instantiateStreaming twice.
+    post({ type: 'init', id: 'init-a' })
+    post({ type: 'init', id: 'init-b' })
+
+    await waitForReady('init-a')
+    await waitForReady('init-b')
+
+    expect(streamingMock()).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses fetch fallback when importScripts is undefined (L145)', async () => {
+    // Remove importScripts entirely. The original enters the fallback fetch path
+    // (loadedWasmExec stays false); the `= true` mutant skips the fallback, leaving
+    // Go undefined so init fails.
+    Object.defineProperty(globalThis, 'importScripts', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    })
+    runtime.fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/wasm_exec.js') return { ok: true, text: async () => '' } as Response
+      return { ok: true } as Response
+    })
+
+    await load()
+    posted.length = 0
+    post({ type: 'init', id: 'i-fb' })
+
+    await waitForReady('i-fb')
+    expect(runtime.fetchMock).toHaveBeenCalledWith('/wasm_exec.js')
+  })
+
+  it('does not throw when wasm_exec.js fallback response is ok (L159)', async () => {
+    // Make importScripts throw so the fallback fetch path runs. The mutant
+    // `if (resp.ok)` inverts the check and throws on a successful response.
+    runtime.importScripts.mockImplementation(() => {
+      throw new Error('denied')
+    })
+    runtime.fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/wasm_exec.js') return { ok: true, text: async () => '' } as Response
+      return { ok: true } as Response
+    })
+
+    await load()
+    posted.length = 0
+    post({ type: 'init', id: 'i-ok' })
+
+    await waitForReady('i-ok')
+  })
+
+  it('throws when wasm_exec.js fallback response is not ok (L159,L160)', async () => {
+    runtime.importScripts.mockImplementation(() => {
+      throw new Error('denied')
+    })
+    runtime.fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/wasm_exec.js') return { ok: false, status: 503 } as Response
+      return { ok: true } as Response
+    })
+
+    await load()
+    posted.length = 0
+    post({ type: 'init', id: 'i-bad' })
+
+    await vi.waitFor(() => {
+      expect(posted).toContainEqual({
+        type: 'error',
+        id: 'i-bad',
+        success: false,
+        error: 'Failed to fetch wasm_exec.js: 503',
+      })
+    })
+  })
+
+  it('throws "WASM API not available" when init fails before findNextMove (L257,L258)', async () => {
+    // Force initialization to fail by removing Go after the mocks install it,
+    // so initializeWasm rejects and wasmApi stays null when findNextMove runs.
+    runtime.importScripts.mockImplementation(() => {
+      throw new Error('denied')
+    })
+    runtime.fetchMock.mockImplementation(async () => {
+      return { ok: true, text: async () => '' } as Response
+    })
+    Object.defineProperty(globalThis, 'Go', { value: undefined, configurable: true })
+
+    await load()
+    posted.length = 0
+    post({ type: 'findNextMove', id: 'fnm-fail', payload: { cells: [0], candidates: [[]], givens: [0] } })
+
+    await vi.waitFor(() => {
+      const err = posted.find((m) => m.type === 'error' && m.id === 'fnm-fail')
+      expect(err).toBeDefined()
+      // The original throws the exact 'WASM API not available...' message after init failure.
+      // The `if (false)` mutant would crash on null.findNextMove, producing a different error.
+      expect(err?.error).toBe('Go runtime not available after loading wasm_exec.js')
+    })
+  })
+
+  it('throws "WASM API not available" when init fails before solveAll (L286,L287)', async () => {
+    runtime.importScripts.mockImplementation(() => {
+      throw new Error('denied')
+    })
+    runtime.fetchMock.mockImplementation(async () => {
+      return { ok: true, text: async () => '' } as Response
+    })
+    Object.defineProperty(globalThis, 'Go', { value: undefined, configurable: true })
+
+    await load()
+    posted.length = 0
+    post({ type: 'solveAll', id: 'sa-fail', payload: { cells: [0], candidates: [[]], givens: [0] } })
+
+    await vi.waitFor(() => {
+      const err = posted.find((m) => m.type === 'error' && m.id === 'sa-fail')
+      expect(err).toBeDefined()
+      expect(err?.error).toBe('Go runtime not available after loading wasm_exec.js')
+    })
+  })
+})

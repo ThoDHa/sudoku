@@ -539,3 +539,100 @@ describe('useVisibilityAwareTimeout', () => {
     })
   })
 })
+// =============================================================================
+// Mutation-killing tests added for cluster F4 retry (iteration 2).
+// =============================================================================
+
+describe('mutation-killing: hidden-event handlers actually clear pending timeouts', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mockVisibilityState = 'visible'
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => mockVisibilityState,
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('clears the pending timeout on pagehide so it cannot fire after re-show (L43 block)', () => {
+    const { result } = renderHook(() => useVisibilityAwareTimeout())
+    const callback = vi.fn()
+
+    actSetTimeout(result, callback, 1000)
+
+    // pagehide must clear the native timeout. The empty-block mutant leaves it
+    // pending; isHiddenRef is later flipped back to visible, so the stale
+    // timeout would fire its callback.
+    act(() => {
+      simulatePageHide()
+    })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+    simulateVisibilityChange('visible')
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    expect(callback).not.toHaveBeenCalled()
+  })
+
+  it('clears the pending timeout on freeze so it cannot fire after re-show (L52 block)', () => {
+    const { result } = renderHook(() => useVisibilityAwareTimeout())
+    const callback = vi.fn()
+
+    actSetTimeout(result, callback, 1000)
+
+    act(() => {
+      simulateFreeze()
+    })
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+    simulateVisibilityChange('visible')
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    expect(callback).not.toHaveBeenCalled()
+  })
+})
+
+describe('mutation-killing: setTimeout no-ops when the page is already hidden (L78 guard)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => mockVisibilityState,
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('does not schedule a hidden-state timeout that later fires after re-show', () => {
+    // Start hidden so isHiddenRef is true at mount.
+    mockVisibilityState = 'hidden'
+    const { result } = renderHook(() => useVisibilityAwareTimeout())
+    const callback = vi.fn()
+
+    // Original returns a no-op canceler and schedules nothing. The force-false
+    // / empty-block mutants schedule the timeout anyway; once the page becomes
+    // visible again the pending timeout fires its callback.
+    actSetTimeout(result, callback, 1000)
+
+    mockVisibilityState = 'visible'
+    simulateVisibilityChange('visible')
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    expect(callback).not.toHaveBeenCalled()
+  })
+})

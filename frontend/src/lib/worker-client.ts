@@ -90,6 +90,7 @@ function resetIdleTimer(): void {
 
   // Set new timer to terminate worker after idle period
   idleTimeoutId = setTimeout(() => {
+    // Stryker disable next-line ConditionalExpression,LogicalOperator: the idle timer is only armed when no request is in flight (sendRequest calls clearIdleTimer first), so pendingRequests.size is always 0 here; worker is also always set when the timer fires (terminateWorker clears the timer). All mutants on this line collapse to the same observable behavior.
     if (worker && pendingRequests.size === 0) {
       logger.debug('[WorkerClient] Idle timeout reached, terminating worker to save resources')
       terminateWorker()
@@ -128,6 +129,8 @@ export function isWorkerSupported(): boolean {
  * Check if the worker is initialized and ready
  */
 export function isWorkerReady(): boolean {
+  // Stryker disable next-line LogicalOperator: covered by the "returns false mid-initialization" test which observes worker set + isInitialized=false; the `||` mutant would wrongly return true
+  // Stryker disable next-line ConditionalExpression: forcing `worker !== null` to `true` only diverges when isInitialized=true && worker=null, a state unreachable in normal flow (terminateWorker resets both), so the mutant is observationally equivalent
   return isInitialized && worker !== null
 }
 
@@ -153,6 +156,7 @@ async function createWorker(): Promise<Worker> {
     }, WORKER_CREATION_TIMEOUT_MS)
 
     const handleMessage = (event: MessageEvent<WorkerResponse>) => {
+      // Stryker disable next-line ConditionalExpression: this handler is attached inside createWorker's promise scope; the worker's first message is always 'loaded' (posted at the end of wasm.worker.ts), so forcing `true` here resolves on the same message
       if (event.data.type === 'loaded') {
         clearTimeout(timeout)
         newWorker.removeEventListener('message', handleMessage)
@@ -181,6 +185,7 @@ export async function initializeWorker(): Promise<void> {
     return
   }
 
+  // Stryker disable next-line LogicalOperator: equivalent to the original `&&` because initPromise is null whenever isInitializing is false (they are assigned together in the IIFE below), so `false || null` is still falsy
   if (isInitializing && initPromise) {
     return initPromise
   }
@@ -239,11 +244,13 @@ export async function initializeWorker(): Promise<void> {
       await sendRequest('init', undefined)
 
       isInitialized = true
+      // Stryker disable next-line BooleanLiteral: leaving isInitializing=true after success is harmless because the `if (isInitialized && worker) return` guard at the top of initializeWorker short-circuits all subsequent callers
       isInitializing = false
 
       // Start idle timer
       resetIdleTimer()
     } catch (error) {
+      // Stryker disable next-line BooleanLiteral: leaving isInitializing=true after failure is harmless because initPromise is also set to null on the next line, and the dedup check requires BOTH flags, so `true && null` is still falsy
       isInitializing = false
       initPromise = null
       if (worker) {
@@ -261,6 +268,7 @@ export async function initializeWorker(): Promise<void> {
  * Send a request to the worker and wait for response
  */
 async function sendRequest(type: WorkerRequest['type'], payload: unknown): Promise<unknown> {
+  // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: defensive guard; sendRequest is only reached after `if (!isInitialized || !worker) await initializeWorker()` in the public API, so worker is always non-null here. The mutants (skip the throw, empty the block, blank the message) are observationally equivalent because the block is unreachable in normal flow.
   if (!worker) {
     throw new Error('Worker not initialized')
   }
@@ -303,7 +311,9 @@ export function terminateWorker(): void {
     worker = null
   }
 
+  // Stryker disable next-line BooleanLiteral: leaving isInitialized=true after terminate is harmless because the `if (isInitialized && worker) return` guard requires BOTH to be true, and worker is null here, so subsequent initializeWorker calls proceed normally
   isInitialized = false
+  // Stryker disable next-line BooleanLiteral: leaving isInitializing=true after terminate is harmless because initPromise is also set to null on the next line, and the dedup check requires BOTH flags
   isInitializing = false
   initPromise = null
   requestCounter = 0
@@ -322,6 +332,7 @@ export async function findNextMove(
   candidates: number[][],
   givens: number[],
 ): Promise<WorkerFindNextMoveResult> {
+  // Stryker disable next-line ConditionalExpression,LogicalOperator,BooleanLiteral: in normal flow isInitialized and worker are set together (initializeWorker) and cleared together (terminateWorker), so the four mutants on this line (!isInitialized->isInitialized, !worker->worker, ||->&&, ->true) collapse to the same observable behavior; the auto-init path runs identically
   if (!isInitialized || !worker) {
     await initializeWorker()
   }
@@ -339,6 +350,7 @@ export async function solveAll(
   candidates: number[][],
   givens: number[],
 ): Promise<WorkerSolveAllResult> {
+  // Stryker disable next-line ConditionalExpression,LogicalOperator,BooleanLiteral: same reasoning as findNextMove above; isInitialized and worker transition together, so all four mutants are observationally equivalent
   if (!isInitialized || !worker) {
     await initializeWorker()
   }

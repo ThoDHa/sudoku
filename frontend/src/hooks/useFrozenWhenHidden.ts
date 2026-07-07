@@ -18,6 +18,7 @@ export function useFrozenWhenHidden() {
   const backgroundManager = useBackgroundManagerContext()
 
   // Use ref for immediate access without React state update lag
+  // Stryker disable next-line BooleanLiteral: the mount effect overwrites isFrozenRef from backgroundManager before any read, so the initial false is observationally identical to true
   const isFrozenRef = useRef(false)
 
   // Track frozen state
@@ -28,6 +29,7 @@ export function useFrozenWhenHidden() {
   // Check if currently frozen
   const isFrozen = useCallback(() => {
     return isFrozenRef.current
+  // Stryker disable next-line ArrayDeclaration: isFrozen captures only the stable isFrozenRef, so a constant deps entry is observationally identical to the empty array
   }, [])
 
   // Wrap a callback to skip execution when frozen
@@ -40,12 +42,14 @@ export function useFrozenWhenHidden() {
         return callback(...args)
       }) as T
     },
+    // Stryker disable next-line ArrayDeclaration: skipWhenFrozen captures only the stable isFrozenRef, so a constant deps entry is observationally identical to the empty array
     [],
   )
 
   // For state updates that should be skipped when hidden
   const shouldSkipStateUpdate = useCallback(() => {
     return isFrozenRef.current
+  // Stryker disable next-line ArrayDeclaration: shouldSkipStateUpdate captures only the stable isFrozenRef, so a constant deps entry is observationally identical to the empty array
   }, [])
 
   // CRITICAL: Memoize return object to prevent cascading re-renders.

@@ -707,5 +707,22 @@ describe('gameSettings', () => {
       // Completed daily game from the same mode must be cleared
       expect(localStorageMock.removeItem).toHaveBeenCalledWith(`${prefix}daily-2024-01-10`)
     })
+
+    it('logs the saved-games scan label when localStorage iteration throws during cleanup', () => {
+      // getAllSavedGames (used by clearOtherGamesForMode) calls collectSavedGames
+      // with the "Failed to scan for saved games:" label. Force the outer scan to throw.
+      Object.defineProperty(localStorageMock, 'length', {
+        get: () => {
+          throw new Error('Access denied')
+        },
+      })
+
+      clearOtherGamesForMode('daily-2024-01-15')
+
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        'Failed to scan for saved games:',
+        expect.any(Error),
+      )
+    })
   })
 })

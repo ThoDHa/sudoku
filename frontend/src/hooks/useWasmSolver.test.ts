@@ -807,4 +807,110 @@ describe('useWasmSolver', () => {
       expect(result.current.isReady).toBe(true)
     })
   })
+
+  describe('mutation-kill: effect and callback dependency arrays', () => {
+    it('re-runs the preload effect when preloadOnMount changes (L84)', async () => {
+      mockIsWasmReady.mockReturnValue(false)
+      mockPreloadWasm.mockClear()
+
+      const { rerender } = renderHook(
+        ({ preloadOnMount }) => useWasmSolver({ preloadOnMount }),
+        { initialProps: { preloadOnMount: false } },
+      )
+
+      expect(mockPreloadWasm).not.toHaveBeenCalled()
+
+      // Flip preloadOnMount: original re-runs the effect and calls preloadWasm.
+      // The empty-deps mutant never re-runs, so preloadWasm stays uncalled.
+      rerender({ preloadOnMount: true })
+      expect(mockPreloadWasm).toHaveBeenCalled()
+    })
+
+    it('re-subscribes the wasmReady listener when isReady changes (L105)', async () => {
+      const removeSpy = vi.spyOn(window, 'removeEventListener')
+      try {
+        mockIsWasmReady.mockReturnValue(false)
+        const { unmount } = renderHook(() => useWasmSolver())
+
+        expect(removeSpy.mock.calls.filter((c) => c[0] === 'wasmReady')).toHaveLength(0)
+
+        // Trigger isReady true; the [isReady] effect must clean up the old listener.
+        mockIsWasmReady.mockReturnValue(true)
+        mockGetWasmApi.mockReturnValue(mockApi)
+        await act(async () => {
+          window.dispatchEvent(new Event('wasmReady'))
+        })
+
+        // Under the original deps array, the effect cleanup runs and removeEventListener
+        // is invoked for 'wasmReady'. The empty-deps mutant never re-runs the effect,
+        // so no cleanup happens between mount and unmount.
+        expect(removeSpy.mock.calls.filter((c) => c[0] === 'wasmReady').length).toBeGreaterThan(0)
+
+        unmount()
+      } finally {
+        removeSpy.mockRestore()
+      }
+    })
+
+    it('resets loadingRef after a failed load so a retry is allowed (L127)', async () => {
+      mockLoadWasm.mockRejectedValueOnce(new Error('fail'))
+      const { result } = renderHook(() => useWasmSolver())
+
+      let r1: boolean | undefined
+      await act(async () => {
+        r1 = await result.current.load()
+      })
+      expect(r1).toBe(false)
+
+      // Under the original finally { loadingRef.current = false }, the next load
+      // proceeds normally. The `= true` mutant pins loadingRef.current true, so
+      // the second call hits the `if (loadingRef.current) return false` guard.
+      let r2: boolean | undefined
+      await act(async () => {
+        r2 = await result.current.load()
+      })
+      expect(r2).toBe(true)
+    })
+
+    it('does not re-invoke loadWasm once isReady becomes true (L130)', async () => {
+      const { result } = renderHook(() => useWasmSolver())
+      // initial isReady=false: load runs the body
+      await act(async () => {
+        await result.current.load()
+      })
+      expect(mockLoadWasm).toHaveBeenCalledTimes(1)
+
+      // After load, isReady is true. The [isReady] dep rebuilds load so the
+      // second call short-circuits. The empty-deps mutant captures stale
+      // isReady=false and re-invokes loadWasm.
+      await act(async () => {
+        await result.current.load()
+      })
+      expect(mockLoadWasm).toHaveBeenCalledTimes(1)
+    })
+
+    it('uses the freshly loaded api in solveAll, validateBoard, validateCustom, getPuzzle (L142,L148,L154,L171)', async () => {
+      const { result } = renderHook(() => useWasmSolver())
+      expect(result.current.api).toBeNull()
+
+      await act(async () => {
+        await result.current.load()
+      })
+      expect(result.current.api).toBe(mockApi)
+
+      // Each callback captures api via its [api] dep. The empty-deps mutants
+      // keep the stale null api, so callWasm short-circuits and the mock is never hit.
+      result.current.solveAll([1], [[2]], [3])
+      expect(mockApi.solveAll).toHaveBeenCalled()
+
+      result.current.validateBoard([1], [2])
+      expect(mockApi.validateBoard).toHaveBeenCalled()
+
+      result.current.validateCustom([1])
+      expect(mockApi.validateCustomPuzzle).toHaveBeenCalled()
+
+      result.current.getPuzzle('seed', 'easy')
+      expect(mockApi.getPuzzleForSeed).toHaveBeenCalled()
+    })
+  })
 })

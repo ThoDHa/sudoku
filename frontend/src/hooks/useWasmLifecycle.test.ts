@@ -745,4 +745,109 @@ describe('useWasmLifecycle', () => {
       expect(mockInitializeSolver).toHaveBeenCalled()
     })
   })
+
+  describe('mutation-kill: callback dependency arrays', () => {
+    it('picks up a changed enableLogging prop in log/loadWasm/unloadWasm/cancelUnload (L40,L63,L93,L102)', async () => {
+      const loggerWarnSpy = logger.warn
+      loggerWarnSpy.mockClear()
+
+      setMockPathname('/')
+
+      // Mount with logging disabled; log captures enableLogging=false.
+      const { result, rerender } = renderHook(
+        ({ enableLogging }) => useWasmLifecycle({ enableLogging }),
+        { initialProps: { enableLogging: false } },
+      )
+
+      // Flip the prop: under the original deps arrays, log (and every callback
+      // that depends on it) must rebuild with enableLogging=true. The empty-deps
+      // mutant keeps the stale false value, so the calls below stay silent.
+      rerender({ enableLogging: true })
+
+      await act(async () => {
+        await result.current.loadWasm()
+      })
+      expect(loggerWarnSpy).toHaveBeenCalledWith('[WasmLifecycle] WASM loaded successfully')
+
+      loggerWarnSpy.mockClear()
+      await act(async () => {
+        await result.current.unloadWasm()
+      })
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        '[WasmLifecycle] WASM unloaded - freed ~4MB memory',
+      )
+
+      loggerWarnSpy.mockClear()
+      // cancelUnload only logs when a timeout is pending, so schedule one first
+      setPath('/game1')
+      rerender({ enableLogging: true })
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      setPath('/')
+      rerender({ enableLogging: true })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      // Now a timeout is pending; cancel it and observe the log
+      actCancelUnload(result)
+      // The mutant would keep enableLogging=false and skip this log
+      expect(loggerWarnSpy).toHaveBeenCalledWith('[WasmLifecycle] Cancelled scheduled WASM unload')
+    })
+
+    it('picks up a changed unloadDelay in scheduleUnload (L84)', async () => {
+      const loggerWarnSpy = logger.warn
+      loggerWarnSpy.mockClear()
+
+      setPath('/game1')
+      const { rerender } = renderHook(
+        ({ unloadDelay }) => useWasmLifecycle({ unloadDelay, enableLogging: true }),
+        { initialProps: { unloadDelay: 2000 } },
+      )
+
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+
+      // Flip unloadDelay: scheduleUnload must rebuild and use the new value.
+      rerender({ unloadDelay: 5000 })
+
+      // Navigate away to trigger scheduleUnload
+      setPath('/')
+      rerender({ unloadDelay: 5000 })
+
+      // The empty-deps mutant would log the stale "2000ms" message.
+      expect(loggerWarnSpy).toHaveBeenCalledWith('[WasmLifecycle] Scheduled WASM unload in 5000ms')
+    })
+
+    it('does not schedule an unload when navigating between two WASM routes (L114)', async () => {
+      const loggerWarnSpy = logger.warn
+      loggerWarnSpy.mockClear()
+
+      setPath('/game1')
+      const { rerender } = renderHook(() =>
+        useWasmLifecycle({ enableLogging: true, unloadDelay: 500 }),
+      )
+
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+
+      loggerWarnSpy.mockClear()
+
+      // Navigate WASM -> WASM. The original skips the else-if; the `true`/`||`
+      // mutants enter it and call scheduleUnload, which logs the schedule message.
+      setPath('/game2')
+      rerender()
+
+      // Advance past the unload delay to let any (mutant-spawned) timer fire its log.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+
+      expect(loggerWarnSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('Scheduled WASM unload'),
+      )
+    })
+  })
 })

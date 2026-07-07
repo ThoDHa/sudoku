@@ -1239,4 +1239,201 @@ describe('worker-client advanced scenarios', () => {
       }
     })
   })
+
+  describe('mutation-kill: lifecycle log and listener registration assertions', () => {
+    it('emits the idle-timeout debug log when terminating an idle worker (L94)', async () => {
+      const loggerMod = await import('../lib/logger')
+      const debugSpy = vi.spyOn(loggerMod.logger, 'debug').mockImplementation(() => {})
+
+      vi.useFakeTimers()
+      try {
+        const { initializeWorker, terminateWorker } = await import('./worker-client')
+        const initPromise = initializeWorker()
+        await vi.advanceTimersByTimeAsync(50)
+        await initPromise
+
+        debugSpy.mockClear()
+        // Advance past IDLE_TIMEOUT_MS (60s) to trigger the idle-termination log.
+        await vi.advanceTimersByTimeAsync(61000)
+
+        expect(debugSpy).toHaveBeenCalledWith(
+          '[WorkerClient] Idle timeout reached, terminating worker to save resources',
+        )
+      } finally {
+        vi.useRealTimers()
+        debugSpy.mockRestore()
+      }
+    })
+
+    it('returns false mid-initialization when worker is set but isInitialized is not yet true (L131)', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        // Install a worker that resolves 'loaded' but never responds to 'init',
+        // so createWorker resolves (worker set) but isInitialized stays false.
+        globalThis.Worker = class extends MockWorker {
+          postMessage(data: { type: string; id: string; payload?: unknown }): void {
+            if (data.type === 'init') return // leave init pending
+          }
+          constructor(url: URL | string, options?: WorkerOptions) {
+            super(url, options)
+            createdWorkers.push(this)
+          }
+        } as unknown as typeof Worker
+
+        const { initializeWorker, isWorkerReady, terminateWorker } = await import('./worker-client')
+
+        const initPromise = initializeWorker()
+        await vi.advanceTimersByTimeAsync(50)
+
+        // Worker was created (loaded message posted by mock) but init hasn't resolved.
+        // The `||` mutant would return true here because worker !== null.
+        expect(isWorkerReady()).toBe(false)
+
+        terminateWorker()
+        await initPromise.catch(() => {})
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('removeEventListener is called with the "message" event on worker creation (L158,L165)', async () => {
+      const removedEvents: string[] = []
+      const originalWorker = globalThis.Worker
+      class TrackingWorker extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          super(url, options)
+          const origRemove = this.removeEventListener.bind(this)
+          this.removeEventListener = (type: string) => {
+            removedEvents.push(type)
+            origRemove(type)
+          }
+          createdWorkers.push(this)
+        }
+      }
+      globalThis.Worker = TrackingWorker as unknown as typeof Worker
+
+      try {
+        const { initializeWorker, terminateWorker } = await import('./worker-client')
+        await initializeWorker()
+
+        // On the success path, the createWorker handler removes its 'message' listener.
+        expect(removedEvents).toContain('message')
+
+        terminateWorker()
+      } finally {
+        globalThis.Worker = originalWorker
+      }
+    })
+
+    it('removeEventListener is called with the "error" event when worker creation errors (L166)', async () => {
+      vi.resetModules()
+      const removedEvents: string[] = []
+      const originalWorker = globalThis.Worker
+      class ErrorWorker {
+        onmessage: ((event: MessageEvent) => void) | null = null
+        onerror: ((event: ErrorEvent) => void) | null = null
+        private eventListeners: Map<string, ((event: Event) => void)[]> = new Map()
+
+        constructor() {
+          setTimeout(() => {
+            const errorEvent = new ErrorEvent('error', { message: 'Worker load failed' })
+            const listeners = this.eventListeners.get('error') || []
+            for (const listener of listeners) {
+              listener(errorEvent)
+            }
+          }, 5)
+        }
+
+        postMessage(): void {}
+        terminate(): void {}
+
+        addEventListener(type: string, handler: (event: Event) => void): void {
+          const listeners = this.eventListeners.get(type) || []
+          listeners.push(handler)
+          this.eventListeners.set(type, listeners)
+        }
+
+        removeEventListener(type: string): void {
+          removedEvents.push(type)
+        }
+      }
+      globalThis.Worker = ErrorWorker as unknown as typeof Worker
+
+      try {
+        const { initializeWorker } = await import('./worker-client')
+
+        await expect(initializeWorker()).rejects.toThrow('Worker error: Worker load failed')
+
+        // The error handler removes both 'message' and 'error' listeners.
+        expect(removedEvents).toContain('error')
+        expect(removedEvents).toContain('message')
+      } finally {
+        globalThis.Worker = originalWorker
+        vi.resetModules()
+      }
+    })
+
+    it('emits the worker-error debug log when onerror fires (L229)', async () => {
+      vi.resetModules()
+      const loggerMod = await import('../lib/logger')
+      const debugSpy = vi.spyOn(loggerMod.logger, 'debug').mockImplementation(() => {})
+
+      vi.useFakeTimers()
+      try {
+        globalThis.Worker = class extends MockWorker {
+          postMessage(data: { type: string; id: string; payload?: unknown }): void {
+            if (data.type === 'findNextMove') return
+            super.postMessage(data)
+          }
+          constructor(url: URL | string, options?: WorkerOptions) {
+            super(url, options)
+            createdWorkers.push(this)
+          }
+        } as unknown as typeof Worker
+
+        const emptyGrid = (): number[] => new Array(81).fill(0)
+        const fullCandidates = (): number[][] =>
+          new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+        const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
+        const initPromise = initializeWorker()
+        await vi.advanceTimersByTimeAsync(50)
+        await initPromise
+
+        const worker = createdWorkers[0]
+        const findPromise = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
+        await vi.advanceTimersByTimeAsync(10)
+
+        // Fire onerror directly. The mutant would log "" instead of the message.
+        worker.onerror(new ErrorEvent('error', { message: 'crashed' }))
+
+        await expect(findPromise).rejects.toThrow('Worker error: crashed')
+        expect(debugSpy).toHaveBeenCalledWith(
+          '[WorkerClient] Worker error:',
+          expect.any(ErrorEvent),
+        )
+
+        terminateWorker()
+      } finally {
+        vi.useRealTimers()
+        debugSpy.mockRestore()
+        vi.resetModules()
+      }
+    })
+
+    it('emits the terminate debug log when terminateWorker is called after init (L311)', async () => {
+      const loggerMod = await import('../lib/logger')
+      const debugSpy = vi.spyOn(loggerMod.logger, 'debug').mockImplementation(() => {})
+
+      const { initializeWorker, terminateWorker } = await import('./worker-client')
+      await initializeWorker()
+
+      debugSpy.mockClear()
+      terminateWorker()
+
+      expect(debugSpy).toHaveBeenCalledWith('[WorkerClient] Worker terminated, resources freed')
+      debugSpy.mockRestore()
+    })
+  })
 })

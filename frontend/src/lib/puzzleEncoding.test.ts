@@ -1082,4 +1082,207 @@ describe('puzzleEncoding - mutation-killing boundary tests', () => {
       expect(decoded.every((c) => c === 0)).toBe(true)
     })
   })
+
+  // =========================================================================
+  // MUTATION-KILLING: encodeSparse zero-cell masking, decodeDigitChar range,
+  // decodeCandidates malformed bytes, length-34 boundary, URL-safe base64
+  // =========================================================================
+
+  describe('mutation-killing: encodeSparse conditional guards on cell value', () => {
+    it('does not set mask bits for zero-valued cells (forces L58 conditional to die)', () => {
+      // Build a board with a known mix of filled and empty cells. If the encoder
+      // treats `cell !== undefined && cell !== 0` as `true`, every empty cell
+      // contributes a bit to the mask and the encoded mask substring changes.
+      const board = empty()
+      board[0] = 5
+      board[40] = 9
+      board[80] = 1
+      const encoded = encodePuzzle(board)
+      // Exact expected encoding: 's' + 14-char mask (bits 80, 40, 0 set) + 'EIA'.
+      // Mask substring: E______Q_____B (E=bit80, Q=bit40, B=bit0).
+      expect(encoded).toBe('sEAAAAAAQAAAAABEIA')
+    })
+
+    it('does not append digit chars for zero-valued cells (forces L80 conditional to die)', () => {
+      // If the encoder treats the second-loop conditional as `true`, it appends
+      // ALPHABET[-1] (undefined) for every empty cell, corrupting the digit run.
+      const board = empty()
+      board[0] = 1
+      board[80] = 9
+      const encoded = encodePuzzle(board)
+      // Exact expected: 's' + mask (bits 80 and 0 set) + 'A' (digit 1) + 'I' (digit 9).
+      expect(encoded).toBe('sEAAAAAAAAAAAABAI')
+      expect(encoded).toHaveLength(1 + 14 + 2)
+      expect(encoded).not.toContain('undefined')
+    })
+  })
+
+  describe('mutation-killing: decodeDigitChar range ternary', () => {
+    it('returns 0 for ALPHABET[9] ("J") rather than 10 (forces L189 ternary to die)', () => {
+      // Craft a sparse-encoded puzzle where the digit char is 'J' (ALPHABET[9]).
+      // Original ternary `d>=0 && d<9 ? d+1 : 0` returns 0 for d=9; mutant `d+1` returns 10.
+      const board = empty()
+      board[0] = 1
+      const encoded = encodePuzzle(board)
+      // Replace the digit char 'A' at position 15 with 'J'.
+      const corrupted = encoded.slice(0, 15) + 'J' + encoded.slice(16)
+      expect(decodePuzzle(corrupted)[0]).toBe(0)
+      expect(decodePuzzle(corrupted)[0]).not.toBe(10)
+    })
+
+    it('returns 0 for chars far outside the valid range (e.g. "0" which is not in ALPHABET)', () => {
+      const board = empty()
+      board[0] = 1
+      const encoded = encodePuzzle(board)
+      // '0' is not in ALPHABET, so indexOf returns -1; ternary returns 0.
+      const corrupted = encoded.slice(0, 15) + '0' + encoded.slice(16)
+      expect(decodePuzzle(corrupted)[0]).toBe(0)
+    })
+  })
+
+  describe('mutation-killing: encodeCandidates digit-range filter', () => {
+    it('drops digit 100 so it does not bleed into bit 3 (forces L309 conditional to die)', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, () => [] as number[])
+      // 100 << 99 = 1 << (99 & 31) = 1 << 3 = bit 3, which decodes as digit 4.
+      // The L309 mutant (forced true) would set that bit and round-trip would
+      // surface an extra "4" in the decoded candidates.
+      candidates[1] = [1, 100]
+      const decoded = decodePuzzleWithState(encodePuzzleWithState(board, givens, candidates))!
+      expect(decoded.candidates![1]).toEqual([1])
+      expect(decoded.candidates![1]).not.toContain(4)
+    })
+
+    it('drops digit 0 so it does not bleed into bit 31 (forces L309 conditional to die)', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, () => [] as number[])
+      // 1 << -1 = 1 << 31 in 32-bit arithmetic. bitToCandidateDigits only
+      // checks bits 0..8, so bit 31 is never read; but the mutant would still
+      // execute the shift. We assert the decoded result is unaffected so the
+      // observable-behavior contract is pinned.
+      candidates[1] = [0, 2, 3]
+      const decoded = decodePuzzleWithState(encodePuzzleWithState(board, givens, candidates))!
+      expect(decoded.candidates![1]).toEqual([2, 3])
+    })
+  })
+
+  describe('mutation-killing: encodeCandidates base64 URL-safe escaping', () => {
+    it('round-trips candidates whose packed byte produces "+" in base64 (URL-safe "-")', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, () => [] as number[])
+      // [5,6,7,8,9] packs to 496 = 0b111110000. After 9-bit pack + 7-bit pad,
+      // high byte = 248 (0b11111000), which encodes to '+' (62) in base64.
+      // The encoder must emit '-' (URL-safe) and the decoder must convert back.
+      candidates[1] = [5, 6, 7, 8, 9]
+      const encoded = encodePuzzleWithState(board, givens, candidates)
+      // Confirm the encoder produced a '-' in the candidate section.
+      expect(encoded.slice(1 + 14 + 55)).toContain('-')
+      const decoded = decodePuzzleWithState(encoded)!
+      expect(decoded.candidates![1]).toEqual([5, 6, 7, 8, 9])
+    })
+
+    it('round-trips candidates whose packed byte produces "/" in base64 (URL-safe "_")', () => {
+      const board = empty()
+      const givens = empty()
+      board[0] = 5
+      givens[0] = 5
+      const candidates = Array.from({ length: 81 }, () => [] as number[])
+      // [4,5,6,7,8,9] = bits 3..8 set = 0b111111000 = 504. Packed + padded to
+      // 0b11111100_00000000 = bytes [252, 0]. btoa produces "/AA" (63 = '/').
+      candidates[1] = [4, 5, 6, 7, 8, 9]
+      const encoded = encodePuzzleWithState(board, givens, candidates)
+      expect(encoded.slice(1 + 14 + 55)).toContain('_')
+      const decoded = decodePuzzleWithState(encoded)!
+      expect(decoded.candidates![1]).toEqual([4, 5, 6, 7, 8, 9])
+    })
+  })
+
+  describe('mutation-killing: decodePuzzleWithState 34-char boundary', () => {
+    it('returns a non-null result for a 34-char data payload (e-length exactly 35)', () => {
+      // data.length === 34 must NOT be rejected. The original `<` lets it through;
+      // the `<=` mutant would return null here. We assert a non-null board.
+      const encoded = 'e' + 'A'.repeat(34)
+      const decoded = decodePuzzleWithState(encoded)
+      expect(decoded).not.toBeNull()
+      expect(decoded?.board).toHaveLength(81)
+    })
+
+    it('still rejects a 33-char data payload', () => {
+      const encoded = 'e' + 'A'.repeat(33)
+      expect(decodePuzzleWithState(encoded)).toBeNull()
+    })
+  })
+
+  describe('mutation-killing: decodeCandidates malformed candidate bytes', () => {
+    it('returns empty candidates without throwing when atob fails on the candidate payload', () => {
+      // Construct a c-prefixed puzzle whose candidates section has a valid 14-char
+      // mask with one bit set, followed by bytes that are NOT valid base64 ('!').
+      // base64UrlToBytes must catch the atob InvalidCharacterError and the function
+      // must return all-empty candidates rather than propagating the throw.
+      const mask = 'BAAAAAAAAAAAAA' // bit 78 set → 1 cell with candidates
+      const invalidBytes = '!!!!' // '!' is not in the base64 alphabet
+      const candidatesData = mask + invalidBytes
+      const encoded =
+        'c' + 'A'.repeat(14) + 'A'.repeat(55) + candidatesData
+      expect(() => decodePuzzleWithState(encoded)).not.toThrow()
+      const decoded = decodePuzzleWithState(encoded)!
+      expect(decoded.candidates).toBeDefined()
+      // No cell should have any candidate digits; the catch in base64UrlToBytes
+      // returned null and the !bytes guard fell back to all-empty candidates.
+      for (let i = 0; i < 81; i++) {
+        expect(decoded.candidates![i]).toEqual([])
+      }
+    })
+  })
+
+  describe('mutation-killing: decodeDense URL-safe base64 handling', () => {
+    it('decodes a dense payload containing "-" (URL-safe "+") with the correct cell values', () => {
+      // Manually-constructed URL-safe dense payload. Standard base64 '+AAA'
+      // decodes to bytes [248, 0, 0]. URL-safe form is '-AAA'. The decoder must
+      // convert '-' back to '+' before calling atob; mutating the replace to ''
+      // breaks atob and the decoded cells come back as all zeros.
+      const decoded = decodePuzzle('d-AAA')
+      expect(decoded).toHaveLength(81)
+      // Byte 248 unpacks: high nibble 15, low nibble 8.
+      expect(decoded[0]).toBe(15)
+      expect(decoded[1]).toBe(8)
+      // Subsequent bytes are 0.
+      expect(decoded[2]).toBe(0)
+      expect(decoded[3]).toBe(0)
+    })
+
+    it('decodes a dense payload containing "_" (URL-safe "/") with the correct cell values', () => {
+      // Standard base64 '/AAA' decodes to bytes [63, 0, 0] wait — '/' represents
+      // 63, so first byte = 0b111111 00 wait no. char1='/'=63=0b111111 takes the
+      // high 6 bits of byte1. byte1 = 0b11111100 = 252. Then '_AAA' is URL-safe.
+      const decoded = decodePuzzle('d_AAA')
+      expect(decoded).toHaveLength(81)
+      // First byte 252 unpacks: high nibble 15, low nibble 12.
+      expect(decoded[0]).toBe(15)
+      expect(decoded[1]).toBe(12)
+    })
+
+    it('decodes a dense payload whose length requires padding (3 chars -> padded to 4)', () => {
+      // 'ABC' is 3 chars; 3 % 4 = 3 ≠ 0. The decoder must pad with '=' before atob.
+      // Skipping the padding loop (mutant) makes atob throw and the cells go zero.
+      // 'ABC=' decodes to bytes [0, 16] (A=0,B=1,C=2 → 18 bits 000000 000001 000010,
+      // first byte 00000000=0, second byte 00010000=16).
+      const decoded = decodePuzzle('dABC')
+      expect(decoded).toHaveLength(81)
+      expect(decoded[0]).toBe(0)
+      expect(decoded[1]).toBe(0)
+      // byte 16 = 0b00010000 unpacks: high nibble 1, low nibble 0.
+      expect(decoded[2]).toBe(1)
+      expect(decoded[3]).toBe(0)
+    })
+  })
 })

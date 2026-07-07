@@ -986,3 +986,50 @@ describe('useHighlightState', () => {
     })
   })
 })
+// =============================================================================
+// Mutation-killing tests added for cluster F4 retry (iteration 2).
+// =============================================================================
+
+describe('mutation-killing: CLEAR_MOVE_HIGHLIGHT preserves highlightedDigit (L161 case)', () => {
+  it('keeps the digit highlight when only the move highlight is cleared', () => {
+    const { result } = renderHook(() => useHighlightState())
+
+    actSetDigitHighlight(result, 7)
+    actSetMoveHighlight(result, createMockMoveHighlight())
+
+    actClearMoveHighlight(result)
+
+    // CLEAR_MOVE_HIGHLIGHT must preserve highlightedDigit. If the case falls
+    // through to CLEAR_ALL, highlightedDigit is cleared instead.
+    expect(result.current.highlightedDigit).toBe(7)
+  })
+})
+
+describe('mutation-killing: CLICK_GIVEN_CELL populates selectedCells (L267 Set)', () => {
+  it('adds the clicked cell to the selectedCells set, not an empty set', () => {
+    const { result } = renderHook(() => useHighlightState())
+
+    actClickGivenCell(result, 5, 42)
+
+    expect(result.current.selectedCells).toEqual(new Set([42]))
+    expect(result.current.state.selectedCells.has(42)).toBe(true)
+  })
+})
+
+describe('mutation-killing: dispatch of an unknown action preserves state (L273 default)', () => {
+  it('returns the state unchanged for an unrecognized action type', () => {
+    const { result } = renderHook(() => useHighlightState())
+
+    actSelectCell(result, 10)
+    actSetDigitHighlight(result, 4)
+    const versionBefore = result.current.version
+
+    // The default case must return state unchanged. Removing it makes the
+    // reducer return undefined, collapsing state.
+    actDispatch(result, { type: 'UNKNOWN_ACTION' as never })
+
+    expect(result.current.selectedCell).toBe(10)
+    expect(result.current.highlightedDigit).toBe(4)
+    expect(result.current.version).toBe(versionBefore)
+  })
+})

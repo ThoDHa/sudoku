@@ -88,13 +88,19 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
 
   const candidatesRef = useRef(candidates)
 
+  // Stryker disable next-line BlockStatement,ArrayDeclaration: candidatesRef is write-only within
+  // useCandidates — declared and synced here but never read (useSudokuGame maintains its own
+  // separate candidatesRef at useSudokuGame.ts:71 and does not consume this one, and useCandidates
+  // does not return candidatesRef). The effect's output is therefore unobservable.
   React.useEffect(() => {
     candidatesRef.current = candidates
   }, [candidates])
+  // Stryker restore
 
   const setCandidates = useCallback((newCandidates: Uint16Array) => {
     setCandidatesState(newCandidates)
     setCandidatesVersion((v) => v + 1)
+  // Stryker disable next-line ArrayDeclaration: setCandidates captures only stable setState dispatchers, so a constant deps entry is observationally identical to the empty array
   }, [])
 
   const calculateCandidatesForCell = useCallback(
@@ -112,6 +118,7 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
       }
       return validCandidates
     },
+    // Stryker disable next-line ArrayDeclaration: calculateCandidatesForCell captures no external values, so a constant deps entry is observationally identical to the empty array
     [],
   )
 
@@ -129,6 +136,7 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
       }
       return newCandidates
     },
+    // Stryker disable next-line ArrayDeclaration: calculateCandidatesForCell has empty deps and is therefore stable forever, so capturing it once via [] is observationally identical to [calculateCandidatesForCell]
     [calculateCandidatesForCell],
   )
 
@@ -181,6 +189,7 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
 
       return result
     },
+    // Stryker disable next-line ArrayDeclaration: eliminateFromPeers captures no external values, so a constant deps entry is observationally identical to the empty array
     [],
   )
 
@@ -221,6 +230,7 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
         cellsWithNotes,
       }
     },
+    // Stryker disable next-line ArrayDeclaration: calculateCandidatesForCell has empty deps and is therefore stable forever, so capturing it once via [] is observationally identical to [calculateCandidatesForCell]
     [calculateCandidatesForCell],
   )
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import {
   getGameMode,
   validateSeed,
@@ -6,6 +6,7 @@ import {
   createStorageKey,
   seedMatchesMode,
 } from './seedValidation'
+import { logger } from './logger'
 import { STORAGE_KEYS } from './constants'
 
 const PREFIX = STORAGE_KEYS.GAME_STATE_PREFIX
@@ -162,5 +163,33 @@ describe('validateSeed - daily date regex anchors', () => {
     const result = validateSeed('daily-2024-01-151')
     expect(result.valid).toBe(false)
     expect(result.mode).toBe('daily')
+  })
+
+  it('rejects a daily seed with daily-YYYY-MM-DD appearing only as a non-leading substring', () => {
+    // getGameMode still classifies this as daily (starts with 'daily-'), so the
+    // daily-regex check is reached. The regex's leading anchor (^) is the only
+    // thing that rejects this shape; removing it would let the suffix match.
+    const result = validateSeed('daily-Xdaily-2024-01-15')
+    expect(result.valid).toBe(false)
+    expect(result.mode).toBe('daily')
+    expect(result.error).toBe('Invalid daily seed format. Expected: daily-YYYY-MM-DD')
+  })
+})
+
+describe('createStorageKey - debug log on invalid seed', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('logs the exact invalid-seed debug message before throwing', () => {
+    const spy = vi.spyOn(logger, 'debug').mockImplementation(() => {})
+
+    expect(() => createStorageKey('garbage')).toThrow(/Invalid seed/)
+    expect(spy).toHaveBeenCalledWith(
+      '[SEED VALIDATION] Cannot create storage key for invalid seed: garbage',
+      'Invalid seed format. Must start with: daily-, P, practice-, or custom-',
+    )
+
+    spy.mockRestore()
   })
 })

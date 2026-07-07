@@ -80,15 +80,19 @@ function collectSavedGames(includeComplete: boolean, warnLabel: string): SavedGa
   const prefix = STORAGE_KEYS.GAME_STATE_PREFIX
 
   try {
+    // Stryker disable next-line EqualityOperator: at i===localStorage.length, localStorage.key returns null; the optional-chaining guard on the next line then yields undefined and the body is skipped, so the extra iteration is a no-op
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
+      // Stryker disable next-line OptionalChaining: for valid i in [0,length-1], localStorage.key(i) always returns a string, so `key.startsWith` and `key?.startsWith` are observationally identical here
       if (key?.startsWith(prefix)) {
         const seed = key.slice(prefix.length)
         const data = localStorage.getItem(key)
+        // Stryker disable next-line ConditionalExpression: forcing `true` makes JSON.parse(null) yield null, whose `.board?.length` access then throws and is caught by the inner try/catch, producing the same skip-as-no-op behavior as the falsy path
         if (data) {
           try {
             const parsed = JSON.parse(data)
             // Validate it's a game state; completed games are kept only when requested
+            // Stryker disable next-line OptionalChaining: parsed.board is always an array for valid saved games; when it is missing, the original `?.length` returns undefined (!== 81, skip) and the mutant throws, which the surrounding try/catch swallows identically
             if (
               parsed.board?.length === 81 &&
               parsed.savedAt &&

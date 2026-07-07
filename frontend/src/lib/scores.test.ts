@@ -979,5 +979,149 @@ describe('scores', () => {
       // Should not increment again (already counted today per streak record)
       expect(saved.currentStreak).toBe(3)
     })
+
+    it('does not write to DAILY_COMPLETIONS when today is already in the completions set', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
+      const originalCompletions = JSON.stringify(['2024-06-15'])
+      mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = originalCompletions
+      mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = JSON.stringify({
+        currentStreak: 3,
+        longestStreak: 5,
+        lastCompletedDate: '2024-06-15',
+      })
+
+      localStorageMock.setItem.mockClear()
+      markDailyCompleted()
+
+      // The early-return guard must skip the completions write entirely.
+      const completionsWrites = localStorageMock.setItem.mock.calls.filter(
+        (c) => c[0] === STORAGE_KEYS.DAILY_COMPLETIONS,
+      )
+      expect(completionsWrites).toHaveLength(0)
+    })
+  })
+
+  // =========================================================================
+  // MUTATION-KILLING: exact assist text, URL plumbing, padding
+  // =========================================================================
+
+  describe('generateShareText - exact assist substrings', () => {
+    const base: Score = {
+      seed: 'P1',
+      difficulty: 'medium',
+      timeMs: 300000,
+      hintsUsed: 0,
+      mistakes: 0,
+      completedAt: '2024-01-15T12:00:00Z',
+    }
+
+    it('produces the exact multi-assist line with a comma-space join', () => {
+      const score: Score = { ...base, hintsUsed: 2, autoFillUsed: true }
+      const text = generateShareText(score, 'https://example.com')
+      expect(text).toContain('(💡 2 hints, 📝 auto-fill)')
+    })
+
+    it('produces the exact single-hint assist with the singular form and no trailing filler', () => {
+      const score: Score = { ...base, hintsUsed: 1 }
+      const text = generateShareText(score, 'https://example.com')
+      expect(text).toContain('(💡 1 hint)')
+      expect(text).not.toContain('hintStryker')
+    })
+
+    it('produces the exact plural-hint assist with the trailing s', () => {
+      const score: Score = { ...base, hintsUsed: 3 }
+      const text = generateShareText(score, 'https://example.com')
+      expect(text).toContain('(💡 3 hints)')
+    })
+
+    it('produces the exact single technique-hint assist with the singular form', () => {
+      const score: Score = { ...base, techniqueHintsUsed: 1 }
+      const text = generateShareText(score, 'https://example.com')
+      expect(text).toContain('(❓ 1 technique hint)')
+      expect(text).not.toContain('hintStryker')
+    })
+
+    it('produces the exact plural technique-hint assist with the trailing s', () => {
+      const score: Score = { ...base, techniqueHintsUsed: 2 }
+      const text = generateShareText(score, 'https://example.com')
+      expect(text).toContain('(❓ 2 technique hints)')
+    })
+
+    it('joins hints and technique hints with the exact comma-space separator', () => {
+      const score: Score = { ...base, hintsUsed: 1, techniqueHintsUsed: 1 }
+      const text = generateShareText(score, 'https://example.com')
+      expect(text).toContain('(💡 1 hint, ❓ 1 technique hint)')
+    })
+  })
+
+  describe('getTodayUTC - exact padding of single-digit days and months', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('left-pads day "5" with a single "0" (not any other fill character)', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2024-01-05T10:00:00Z'))
+      expect(getTodayUTC()).toBe('2024-01-05')
+    })
+
+    it('left-pads month "3" with a single "0"', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2024-03-15T10:00:00Z'))
+      expect(getTodayUTC()).toBe('2024-03-15')
+    })
+
+    it('does not pad two-digit days', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2024-12-15T10:00:00Z'))
+      expect(getTodayUTC()).toBe('2024-12-15')
+    })
+  })
+
+  describe('generatePuzzleUrl - BASE_URL fallback and trailing-slash handling', () => {
+    const baseScore: Score = {
+      seed: 'daily-2024-01-15',
+      difficulty: 'medium',
+      timeMs: 300000,
+      hintsUsed: 0,
+      mistakes: 0,
+      completedAt: '2024-01-15T12:00:00Z',
+    }
+
+    it('uses "/" as the fallback base when import.meta.env.BASE_URL is empty', () => {
+      const original = import.meta.env.BASE_URL
+      vi.stubEnv('BASE_URL', '')
+      try {
+        const url = generatePuzzleUrl(baseScore)
+        expect(url).toBe('https://example.com/daily-2024-01-15')
+      } finally {
+        vi.stubEnv('BASE_URL', original)
+      }
+    })
+
+    it('preserves a non-root BASE_URL (e.g. /sudoku/) without collapsing it to "/"', () => {
+      const original = import.meta.env.BASE_URL
+      vi.stubEnv('BASE_URL', '/sudoku/')
+      try {
+        const url = generatePuzzleUrl(baseScore)
+        expect(url).toBe('https://example.com/sudoku/daily-2024-01-15')
+      } finally {
+        vi.stubEnv('BASE_URL', original)
+      }
+    })
+
+    it('strips exactly one trailing slash from the base url', () => {
+      const original = import.meta.env.BASE_URL
+      vi.stubEnv('BASE_URL', '/sudoku/')
+      try {
+        const score: Score = { ...baseScore, difficulty: 'custom', encodedPuzzle: 'sABC' }
+        const url = generatePuzzleUrl(score)
+        expect(url).toBe('https://example.com/sudoku/c/sABC')
+        expect(url).not.toContain('//c/')
+      } finally {
+        vi.stubEnv('BASE_URL', original)
+      }
+    })
   })
 })

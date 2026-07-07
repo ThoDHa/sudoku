@@ -44,6 +44,7 @@ export function createStateDiff(
   }
 
   // Find candidate changes
+  // Stryker disable next-line EqualityOperator: idx===81 is out of bounds for the contractually 81-cell Uint16Array; oldCandidates[81] and newCandidates[81] are both undefined and coerce to 0 via the `|| 0` guard, so 0!==0 is false and the extra iteration is a no-op
   for (let idx = 0; idx < 81; idx++) {
     const oldMask = oldCandidates[idx] || 0
     const newMask = newCandidates[idx] || 0

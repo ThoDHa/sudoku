@@ -517,4 +517,34 @@ describe('puzzles-data', () => {
       expect(getPracticePuzzle('out-of-bounds')).toBeNull()
     })
   })
+
+  // ===========================================================================
+  // MUTATION-KILLING: empty-refs guard, technique-not-found guard, NoCoverage
+  // ===========================================================================
+
+  describe('getPracticePuzzle - empty-refs and missing-technique guards', () => {
+    let originalDateNow: () => number
+    beforeEach(() => {
+      originalDateNow = Date.now
+    })
+    afterEach(() => {
+      Date.now = originalDateNow
+    })
+
+    it('returns null (not throw) when the technique exists but refs is an empty array', () => {
+      // Forces the L128 guard on refs.length === 0; the function must return null
+      // rather than computing dayOfYear % 0 (NaN) and indexing into an empty list.
+      Date.now = () => 0
+      expect(() => getPracticePuzzle('empty-technique')).not.toThrow()
+      expect(getPracticePuzzle('empty-technique')).toBeNull()
+    })
+
+    it('returns null when the technique is missing entirely (refs is undefined)', () => {
+      // Forces the L128 guard on !refs; the function must short-circuit before
+      // reaching `refs.length` rather than throwing a TypeError.
+      Date.now = () => 0
+      expect(() => getPracticePuzzle('does-not-exist')).not.toThrow()
+      expect(getPracticePuzzle('does-not-exist')).toBeNull()
+    })
+  })
 })

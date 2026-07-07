@@ -365,3 +365,23 @@ describe('useCandidates eliminateFromPeers loop bounds stay inside the peer set'
     expect(hasCandidate(out[12], 1)).toBe(true) // non-peer, digit survives
   })
 })
+// =============================================================================
+// Mutation-killing tests added for cluster F4 retry (iteration 2).
+// =============================================================================
+
+describe('mutation-killing: diffCellNotes missing-list is exact (L53)', () => {
+  it('reports only the genuinely missing digits, not every digit', () => {
+    // Cell 2 of the Wikipedia board has validMask {1,2,4}. User notes {1,5}
+    // make 5 a wrong note and {2,4} the missing set. Forcing the L53 condition
+    // true (or &&->||) inflates the missing list; the original yields exactly 2.
+    const notes = new Uint16Array(TOTAL_CELLS)
+    notes[2] = addCandidate(addCandidate(0, 1), 5)
+    const { result } = renderHook(() => useCandidates(WIKIPEDIA_BOARD))
+    const out = result.current.checkNotes(WIKIPEDIA_BOARD, notes)
+    expect(out.missingNotes).toHaveLength(2)
+    expect(out.missingNotes).toEqual([
+      { idx: 2, digit: 2 },
+      { idx: 2, digit: 4 },
+    ])
+  })
+})

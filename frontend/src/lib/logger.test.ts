@@ -36,6 +36,20 @@ describe('logger', () => {
 
       spy.mockRestore()
     })
+
+    it('does not set window.DEBUG = true when localStorage.setItem throws (catch returns early)', async () => {
+      delete (window as { DEBUG?: boolean }).DEBUG
+      const { enableDebug } = await import('./logger')
+      const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('QuotaExceededError')
+      })
+
+      enableDebug()
+
+      expect((window as { DEBUG?: boolean }).DEBUG).toBeUndefined()
+
+      spy.mockRestore()
+    })
   })
 
   describe('disableDebug', () => {
@@ -58,6 +72,21 @@ describe('logger', () => {
       })
 
       expect(() => disableDebug()).not.toThrow()
+
+      spy.mockRestore()
+    })
+
+    it('does not set window.DEBUG = false when localStorage.removeItem throws (catch returns early)', async () => {
+      (window as { DEBUG?: boolean }).DEBUG = true
+      const { disableDebug } = await import('./logger')
+      const spy = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+        throw new Error('SecurityError')
+      })
+
+      disableDebug()
+
+      // Catch returns early; window.DEBUG remains true (not flipped to false)
+      expect((window as { DEBUG?: boolean }).DEBUG).toBe(true)
 
       spy.mockRestore()
     })
@@ -95,6 +124,21 @@ describe('logger', () => {
       })
 
       await expect(import('./logger')).resolves.toBeDefined()
+
+      spy.mockRestore()
+    })
+
+    it('does not enable debug mode at init when localStorage.getItem throws (catch returns false, not true)', async () => {
+      vi.resetModules()
+      const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('SecurityError')
+      })
+      const setLevelSpy = vi.spyOn(log, 'setLevel')
+      setLevelSpy.mockClear()
+
+      await import('./logger')
+
+      expect(setLevelSpy).not.toHaveBeenCalledWith('debug')
 
       spy.mockRestore()
     })

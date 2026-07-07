@@ -33,6 +33,7 @@ export function getGameMode(seed: string): 'daily' | 'practice' | 'custom' | nul
  * Validate seed format and provide detailed error if invalid
  */
 export function validateSeed(seed: string): SeedValidationResult {
+  // Stryker disable next-line LogicalOperator: for any string input, `!seed` is true only when seed==='' and `seed.length===0` is the same predicate, so AND and OR collapse to the same result; the right operand never throws because the type is `string`
   if (!seed || seed.length === 0) {
     return {
       valid: false,

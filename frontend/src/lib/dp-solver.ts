@@ -83,6 +83,7 @@ export function findConflicts(grid: number[]): Conflict[] {
       for (let j = i + 1; j < cells.length; j++) {
         const a = cells[i]
         const b = cells[j]
+        // Stryker disable next-line ConditionalExpression,LogicalOperator: cells comes from positions.get(val).arr (always defined numeric cell indices); both halves of this defensive guard are always true under the original outer loops, so every mutant here is observationally equivalent
         if (a !== undefined && b !== undefined) {
           addConflict(a, b, value, type)
         }
@@ -103,6 +104,7 @@ export function findConflicts(grid: number[]): Conflict[] {
       arr.push(idx)
     }
     for (const [val, cells] of positions) {
+      // Stryker disable next-line ConditionalExpression,EqualityOperator: positions entries always have length >= 1 (we only push when val !== 0); with length === 1 the inner nested loops in emitConflictingPairs emit zero pairs, so > 1, >= 1, and `true` all behave identically
       if (cells.length > 1) emitConflictingPairs(cells, val, type)
     }
   }
@@ -118,7 +120,7 @@ export function findConflicts(grid: number[]): Conflict[] {
   }
 
   // Columns
-  // Stryker disable next-line UpdateOperator: col-- from 0 is an infinite loop the harness times out on
+  // Stryker disable next-line UpdateOperator,EqualityOperator: col-- from 0 is an infinite loop the harness times out on; col <= BOARD_SIZE adds an extra iteration reading out-of-bounds cells (grid[81] ?? 0 = 0, skipped) and pair dedup via the shared `seen` set prevents re-reporting, so the mutant produces the same conflict list
   for (let col = 0; col < BOARD_SIZE; col++) {
     // Stryker disable next-line ArrayDeclaration: a seeded non-numeric first element maps to grid[undefined] ?? 0 and is skipped
     const indices: number[] = []

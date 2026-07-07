@@ -1090,3 +1090,141 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 })
+// =============================================================================
+// Mutation-killing tests added for cluster F4 retry (iteration 2).
+// =============================================================================
+
+describe('mutation-killing: pauseTimer after a visibility pause preserves the baseline (L94 guard)', () => {
+  let originalVisibilityState: PropertyDescriptor | undefined
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    if (originalVisibilityState) {
+      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
+    }
+  })
+
+  it('does not corrupt accumulatedRef when pausing a timer that is already visibility-paused', () => {
+    const visible = createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
+    const hidden = createMockBackgroundManager({ shouldPauseOperations: true, isHidden: true })
+    const { result, rerender } = renderHook(
+      ({ bg }) => useGameTimer({ backgroundManager: bg, autoStart: true }),
+      { initialProps: { bg: visible } },
+    )
+
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(result.current.elapsedMs).toBeGreaterThanOrEqual(1500)
+
+    // Hide: pauseForVisibility nulls startTimeRef while isRunning stays true.
+    rerender({ bg: hidden })
+
+    // User clicks pause while already visibility-paused. The L94 guard
+    // (isRunning && startTimeRef !== null) must skip because startTimeRef is
+    // null. Mutants that force the guard true (or || / force-true) compute
+    // Date.now() - null and corrupt accumulatedRef with ~Date.now().
+    act(() => {
+      result.current.pauseTimer()
+    })
+
+    // Restart and re-show so the corrupted baseline (if any) surfaces via a tick.
+    act(() => {
+      result.current.startTimer()
+    })
+    rerender({ bg: visible })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    // Original resumes near ~3000ms. Corrupted-baseline mutants land near
+    // Date.now() (~1.7 trillion).
+    expect(result.current.elapsedMs).toBeLessThan(10000)
+  })
+})
+
+describe('mutation-killing: visibility pause preserves a positive accumulated baseline (L173 +=)', () => {
+  let originalVisibilityState: PropertyDescriptor | undefined
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    if (originalVisibilityState) {
+      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
+    }
+  })
+
+  it('keeps elapsedMs non-negative after a hide/show cycle', () => {
+    const visible = createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
+    const hidden = createMockBackgroundManager({ shouldPauseOperations: true, isHidden: true })
+    const { result, rerender } = renderHook(
+      ({ bg }) => useGameTimer({ backgroundManager: bg, autoStart: true }),
+      { initialProps: { bg: visible } },
+    )
+
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    const beforeHide = result.current.elapsedMs
+    expect(beforeHide).toBeGreaterThanOrEqual(1500)
+
+    rerender({ bg: hidden })
+    rerender({ bg: visible })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    // Original: accumulatedRef += ~2000 then ~1000 more => ~3000.
+    // Subtraction mutant: accumulatedRef goes negative => elapsedMs negative.
+    expect(result.current.elapsedMs).toBeGreaterThanOrEqual(0)
+    expect(result.current.elapsedMs).toBeGreaterThanOrEqual(beforeHide - 100)
+  })
+})
+
+describe('mutation-killing: no resume when shouldPause false but page still hidden (L192 else-if)', () => {
+  let originalVisibilityState: PropertyDescriptor | undefined
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    if (originalVisibilityState) {
+      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
+    }
+  })
+
+  it('does not resume when shouldPauseOperations is false but isHidden is still true', () => {
+    const hidden = createMockBackgroundManager({ shouldPauseOperations: true, isHidden: true })
+    const { result, rerender } = renderHook(
+      ({ bg }) => useGameTimer({ backgroundManager: bg, autoStart: true }),
+      { initialProps: { bg: hidden } },
+    )
+
+    // Weird state: shouldPause flips false while isHidden stays true. The
+    // original else-if (!isHidden) is false (still hidden) so resumeFromVisibility
+    // does not run; startTimeRef stays null and the interval body skips. The
+    // force-true mutant resumes, seeds startTimeRef, and the interval ticks.
+    const weird = createMockBackgroundManager({ shouldPauseOperations: false, isHidden: true })
+    rerender({ bg: weird })
+
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(result.current.elapsedMs).toBe(0)
+  })
+})

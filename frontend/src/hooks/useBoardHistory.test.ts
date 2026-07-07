@@ -296,3 +296,103 @@ describe('useBoardHistory', () => {
     })
   })
 })
+// =============================================================================
+// Mutation-killing tests added for cluster F4 retry (iteration 2).
+// =============================================================================
+
+describe('mutation-killing: undo/redo use the latest injected setters (L109, L136 deps)', () => {
+  it('undo invokes the latest setBoard after the prop changes', () => {
+    const setBoard1 = vi.fn()
+    const setBoard2 = vi.fn()
+    const boardRef = { current: new Array(81).fill(0) }
+    const candidatesRef = { current: new Uint16Array(81) }
+    const { result, rerender } = renderHook(
+      ({ sb }) =>
+        useBoardHistory({
+          setBoard: sb,
+          setCandidates: vi.fn(),
+          boardRef,
+          candidatesRef,
+        }),
+      { initialProps: { sb: setBoard1 } },
+    )
+
+    const move = makeMove({ stateDiff: STATE_DIFF })
+    act(() => {
+      result.current.setHistory([move])
+      result.current.setHistoryIndex(0)
+    })
+
+    rerender({ sb: setBoard2 })
+    act(() => {
+      result.current.undo()
+    })
+
+    // Original (deps [setBoard, ...]) captured setBoard2. The [] mutant
+    // captured the initial setBoard1.
+    expect(setBoard2).toHaveBeenCalledTimes(1)
+    expect(setBoard1).not.toHaveBeenCalled()
+  })
+
+  it('redo invokes the latest setBoard after the prop changes', () => {
+    const setBoard1 = vi.fn()
+    const setBoard2 = vi.fn()
+    const boardRef = { current: new Array(81).fill(0) }
+    const candidatesRef = { current: new Uint16Array(81) }
+    const { result, rerender } = renderHook(
+      ({ sb }) =>
+        useBoardHistory({
+          setBoard: sb,
+          setCandidates: vi.fn(),
+          boardRef,
+          candidatesRef,
+        }),
+      { initialProps: { sb: setBoard1 } },
+    )
+
+    const move0 = makeMove()
+    const move1 = makeMove({ stateDiff: STATE_DIFF })
+    act(() => {
+      result.current.setHistory([move0, move1])
+      result.current.setHistoryIndex(0)
+    })
+
+    rerender({ sb: setBoard2 })
+    act(() => {
+      result.current.redo()
+    })
+
+    expect(setBoard2).toHaveBeenCalledTimes(1)
+    expect(setBoard1).not.toHaveBeenCalled()
+  })
+})
+
+describe('mutation-killing: undo with partial boardBefore and no candidatesBefore is a no-op (L96 &&)', () => {
+  it('does not throw and does not apply when only boardBefore is present', () => {
+    const prevBoard = new Array(81).fill(0)
+    prevBoard[3] = 9
+    // candidatesBefore intentionally omitted.
+    const move = makeMove({ boardBefore: prevBoard })
+    const setBoard = vi.fn()
+    const setCandidates = vi.fn()
+    const boardRef = { current: new Array(81).fill(0) }
+    const candidatesRef = { current: new Uint16Array(81) }
+    const { result } = renderHook(() =>
+      useBoardHistory({ setBoard, setCandidates, boardRef, candidatesRef }),
+    )
+    act(() => {
+      result.current.setHistory([move])
+      result.current.setHistoryIndex(0)
+    })
+
+    // The original && guard rejects the partial move. The || mutant enters the
+    // block and reads candidatesBefore.flat(), which throws on undefined.
+    expect(() =>
+      act(() => {
+        result.current.undo()
+      }),
+    ).not.toThrow()
+    expect(setBoard).not.toHaveBeenCalled()
+    expect(setCandidates).not.toHaveBeenCalled()
+  })
+})

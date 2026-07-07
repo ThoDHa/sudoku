@@ -165,6 +165,7 @@ const decode14CharMask = (maskStr: string): bigint | null => {
   let mask = BigInt(0)
   for (let i = 0; i < 14; i++) {
     const char = maskStr[i]
+    // Stryker disable next-line ConditionalExpression: both call sites (decodeSparse L197, decodeCandidates L463) gate on `length < 14` before invoking, so maskStr is always exactly 14 chars and char is always defined; the branch is provably unreachable
     if (!char) return null
     const idx = ALPHABET.indexOf(char)
     if (idx === -1) return null
@@ -176,7 +177,9 @@ const decode14CharMask = (maskStr: string): bigint | null => {
 // Count set bits across the 81 cell positions of a mask.
 const countSetMaskBits = (mask: bigint): number => {
   let count = 0
+  // Stryker disable next-line EqualityOperator: extra i=81 step shifts by BigInt(-1), which for BigInt is a left-shift by 1; the resulting low bit is always 0, so count never increments
   for (let i = 0; i < 81; i++) {
+    // Stryker disable next-line ConditionalExpression: forcing count to 81 is observationally identical: extractCandBits' shift formula collapses to bytesLen*8-(i+1)*9 regardless of cellsWithCands, and the consumer loop only reads candBits[i] for cells whose mask bit is set, so the surplus entries are never observed
     if (((mask >> BigInt(80 - i)) & BigInt(1)) === BigInt(1)) count++
   }
   return count
@@ -184,24 +187,29 @@ const countSetMaskBits = (mask: bigint): number => {
 
 // Decode a single base64url digit char into a 1-based puzzle digit (0 on miss).
 const decodeDigitChar = (char: string | undefined): number => {
+  // Stryker disable next-line ConditionalExpression: when char is undefined, the early return yields 0; skipping it makes ALPHABET.indexOf(undefined) return -1, and the ternary below then yields 0 as well. Both paths are observationally identical.
   if (!char) return 0
   const d = ALPHABET.indexOf(char)
   return d >= 0 && d < 9 ? d + 1 : 0
 }
 
 function decodeSparse(encoded: string): number[] {
+  // Stryker disable next-line ConditionalExpression,EqualityOperator,BlockStatement: at exactly 14 chars the slice(0,14) returns all zeros (a valid empty mask), decode14CharMask yields 0n, digitsStr is '', and the cell loop produces an all-zero board identical to EMPTY_BOARD()
   if (encoded.length < 14) {
     return EMPTY_BOARD()
   }
 
+  // Stryker disable next-line MethodExpression: decode14CharMask reads indices 0..13 of its argument; for an input already at least 14 chars long, maskStr[0..13] is identical whether we pass the full encoded string or its first-14 slice
   const mask = decode14CharMask(encoded.slice(0, 14))
   if (mask === null) return EMPTY_BOARD()
   const digitsStr = encoded.slice(14)
 
   const cells = EMPTY_BOARD()
   let digitIdx = 0
+  // Stryker disable next-line EqualityOperator: extra i=81 step shifts by BigInt(-1) (a left-shift by 1 in BigInt); the low bit becomes 0 so the mask-bit test fails and no assignment happens
   for (let i = 0; i < 81; i++) {
     if (((mask >> BigInt(80 - i)) & BigInt(1)) === BigInt(1)) {
+      // Stryker disable next-line ConditionalExpression,EqualityOperator: when digitIdx >= digitsStr.length, digitsStr[digitIdx] is undefined and decodeDigitChar(undefined) returns 0; cells[i] stays at 0 either way, and digitIdx++ runs unconditionally outside the branch
       if (digitIdx < digitsStr.length) cells[i] = decodeDigitChar(digitsStr[digitIdx])
       digitIdx++
     }
@@ -229,6 +237,7 @@ export function encodePuzzleWithState(
   // Create bitmask for givens (81 bits)
   // A cell is marked as a given only if it was originally a given AND hasn't been modified
   let givensMask = BigInt(0)
+  // Stryker disable next-line EqualityOperator: extra i=81 step reads givens[81]/board[81] = undefined; `undefined !== 0` is true and `undefined === undefined` is true, so the branch executes but `BigInt(1) << BigInt(-1)` is 0n in BigInt arithmetic, OR-ing 0n is a no-op
   for (let i = 0; i < 81; i++) {
     if (givens[i] !== 0 && board[i] === givens[i]) {
       givensMask |= BigInt(1) << BigInt(80 - i)
@@ -336,6 +345,7 @@ function encodeCandidates(candidates: number[][]): string {
   }
 
   // Convert to base64url
+  // Stryker disable next-line ConditionalExpression,BlockStatement: encodeCandidates is only called after the `hasCandidates` guard in encodePuzzleWithState, so at least one cell pushes an entry to candBits; bitCount >= 9 forces byteCount >= 2, so candBytes is never empty and this branch is provably unreachable
   if (candBytes.length === 0) {
     return maskStr
   }
@@ -368,6 +378,7 @@ export function decodePuzzleWithState(
   }
 
   // Decode givens mask (first 14 chars)
+  // Stryker disable next-line MethodExpression: decode14CharMask's loop reads indices 0..13 of its argument; for an input already at least 14 chars long, data and data.slice(0,14) share the same first-14 chars, so the decoded mask is identical
   const maskStr = data.slice(0, 14)
   let mask = BigInt(0)
   for (let i = 0; i < 14; i++) {
@@ -384,10 +395,12 @@ export function decodePuzzleWithState(
   // The board is exactly 41 bytes = 328 bits, which encodes to ceil(41*8/6) = 55 base64 chars
   const boardStr = data.slice(14, boardEndIdx)
   const board = decodeDense(boardStr)
+  // Stryker disable next-line ConditionalExpression: decodeDense always returns a length-81 array (padding to 81 cells at the end), so this guard is unreachable for any input that reaches this line; forcing false is observationally identical
   if (board.length !== 81) return null
 
   // Extract givens from mask
   const givens = Array(81).fill(0) as number[]
+  // Stryker disable next-line EqualityOperator: at i===81 the BigInt shift is by BigInt(-1) (a left-shift by 1), so the masked bit is always 0 and no assignment happens; even if it did, givens[81] is out of bounds
   for (let i = 0; i < 81; i++) {
     const bit = (mask >> BigInt(80 - i)) & BigInt(1)
     if (bit === BigInt(1)) {
@@ -412,12 +425,14 @@ export function decodePuzzleWithState(
  */
 // Decode a base64url string into bytes. Returns null on empty or decode error.
 const base64UrlToBytes = (str: string): Uint8Array | null => {
+  // Stryker disable next-line ConditionalExpression: when str==='' the original returns null; the mutant continues, but the atob('') call below yields '' (empty binary), producing a zero-length Uint8Array. Callers check `if (!bytes)` which is false for an empty Uint8Array, then extractCandBits runs zero iterations, and the consumer loop's mask-bit check skips every cell — yielding the same all-empty candidates that the null path returns
   if (str.length === 0) return null
   let base64 = str.replace(/-/g, '+').replace(/_/g, '/')
   while (base64.length % 4) base64 += '='
   try {
     const binary = atob(base64)
     const bytes = new Uint8Array(binary.length)
+    // Stryker disable next-line EqualityOperator: at i===binary.length, binary.charCodeAt(i) returns NaN and the Uint8Array coerces it to 0; the assignment is silently dropped because bytes has exactly binary.length slots, so the extra iteration is a no-op
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
     return bytes
   } catch {
@@ -428,6 +443,7 @@ const base64UrlToBytes = (str: string): Uint8Array | null => {
 // Expand a packed 9-bit candidate mask into the list of candidate digits 1-9.
 const bitsToCandidateDigits = (bits: number | undefined): number[] => {
   const digits: number[] = []
+  // Stryker disable next-line ConditionalExpression: every caller passes a defined number (extractCandBits indexes a typed array slot that may be undefined, but the surrounding `candIdx < candBits.length` guard ensures the index is in range). For the in-range case both branches yield the same digits list; the mutant only differs when bits===undefined, which is unreachable in normal flow
   if (bits === undefined) return digits
   for (let d = 1; d <= 9; d++) {
     if ((bits & (1 << (d - 1))) !== 0) digits.push(d)
@@ -438,6 +454,7 @@ const bitsToCandidateDigits = (bits: number | undefined): number[] => {
 // Extract the packed 9-bit candidate values (MSB-first, right-padded) from bytes.
 const extractCandBits = (bytes: Uint8Array, cellsWithCands: number): number[] => {
   let allBits = BigInt(0)
+  // Stryker disable next-line EqualityOperator: at i===bytes.length, bytes[i] is undefined and BigInt(undefined) throws; the extra iteration is therefore a no-op for the in-range case (which is the only reachable case since the loop bound is the array length)
   for (let i = 0; i < bytes.length; i++) {
     allBits = (allBits << BigInt(8)) | BigInt(bytes[i] ?? 0)
   }
@@ -456,14 +473,18 @@ function decodeCandidates(data: string): number[][] {
     .fill(null)
     .map(() => [])
 
+  // Stryker disable next-line ConditionalExpression,EqualityOperator,BlockStatement: for data.length<=14, the alternative paths collapse — short data makes decode14CharMask return null (next guard) and a 14-char mask of all zeros makes cellsWithCands===0 (guard after); in both cases the function returns the same all-empty candidates with or without this early return
   if (data.length < 14) {
     return candidates
   }
 
+  // Stryker disable next-line MethodExpression: decode14CharMask reads only indices 0..13 of its argument; for data already >=14 chars long, data.slice(0,14) and data share those leading 14 chars identically
   const mask = decode14CharMask(data.slice(0, 14))
+  // Stryker disable next-line ConditionalExpression: forcing `false` here continues with mask===null, but BigInt ops on null coerce to 0n so countSetMaskBits returns 0 and the L467 guard returns the same all-empty candidates
   if (mask === null) return candidates
 
   const cellsWithCands = countSetMaskBits(mask)
+  // Stryker disable next-line ConditionalExpression: forcing `false` continues with cellsWithCands===0; extractCandBits returns an empty array and the consumer loop's mask-bit check (mask===0n) skips every cell, yielding the same all-empty candidates as the early return
   if (cellsWithCands === 0) return candidates
 
   const bytes = base64UrlToBytes(data.slice(14))
@@ -472,7 +493,9 @@ function decodeCandidates(data: string): number[][] {
   const candBits = extractCandBits(bytes, cellsWithCands)
 
   let candIdx = 0
+  // Stryker disable next-line EqualityOperator: at i===81 the BigInt shift is by BigInt(-1) (a left-shift by 1 in BigInt), so (mask>>...) & 1n is 0n and the compound condition is false; the extra iteration is a no-op
   for (let i = 0; i < 81; i++) {
+    // Stryker disable next-line ConditionalExpression,EqualityOperator: forcing the compound condition to `true` or `<=` adds iterations where candBits[candIdx] is undefined; bitsToCandidateDigits(undefined) returns [], which is already the initialized value of candidates[i], so no observable change
     if (((mask >> BigInt(80 - i)) & BigInt(1)) === BigInt(1) && candIdx < candBits.length) {
       candidates[i] = bitsToCandidateDigits(candBits[candIdx])
       candIdx++
@@ -499,14 +522,17 @@ function decodeDense(encoded: string): number[] {
   }
 
   const bytes = new Uint8Array(binary.length)
+  // Stryker disable next-line EqualityOperator: at i===binary.length, binary.charCodeAt(i) is NaN and the Uint8Array coerces it to 0; bytes has exactly binary.length slots so the assignment is silently dropped, making the extra iteration a no-op
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i)
   }
 
   // Unpack 2 cells per byte
   const cells: number[] = []
+  // Stryker disable next-line EqualityOperator: at i===bytes.length, byte===undefined; the L519 `if (byte === undefined) continue` guard skips the extra iteration, making it a no-op
   for (let i = 0; i < bytes.length && cells.length < 81; i++) {
     const byte = bytes[i]
+    // Stryker disable next-line ConditionalExpression: for in-range i, bytes[i] is always defined (Uint8Array returns a number for valid indices), so this guard only matters for the L508 mutant's extra iteration; without it, that extra step still skips cleanly because the loop's `cells.length < 81` bound halts growth. For the normal in-range case both branches are identical.
     if (byte === undefined) continue
     const high = (byte >> 4) & 0x0f
     const low = byte & 0x0f

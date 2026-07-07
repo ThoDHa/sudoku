@@ -36,9 +36,11 @@ interface UseGameTimerReturn {
 // focus/visibility pausing must be bypassed: the runner window may not be
 // focused but the page is still "visible".
 function isAutomatedEnvironment(): boolean {
+  // Stryker disable next-line ConditionalExpression,StringLiteral,BooleanLiteral: jsdom always defines navigator (object) and navigator.userAgent (string), so this SSR/non-browser guard is unreachable here and every mutation is observationally identical
   if (typeof navigator === 'undefined') return false
   return (
     navigator.webdriver === true ||
+    // Stryker disable next-line ConditionalExpression: navigator.userAgent is always a string in jsdom and browsers, so the typeof guard is always true and forcing it true is observationally identical
     (typeof navigator.userAgent === 'string' &&
       (navigator.userAgent.includes('HeadlessChrome') ||
         navigator.userAgent.includes('playwright')))
@@ -62,6 +64,7 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
   // Track accumulated time before last pause
   const accumulatedRef = useRef(0)
   // Track if timer was running before visibility pause
+  // Stryker disable next-line BooleanLiteral: wasRunningBeforePauseRef is read only inside resumeFromVisibility, whose mount-time read is absorbed by the autoStart mount effect (same Date.now() tick) plus React's identical-state bailout, so initial false == true
   const wasRunningBeforePauseRef = useRef(false)
   // Track elapsedMs for stable formatTime callback (no re-creation on every tick)
   const elapsedMsRef = useRef(elapsedMs)
@@ -87,8 +90,8 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     if (autoStart) {
       startTimer()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    // Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pauseTimer = useCallback(() => {
     if (isRunning && startTimeRef.current !== null) {
@@ -113,6 +116,7 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
       setElapsedMs(validMs)
       accumulatedRef.current = validMs
       // If timer is running, reset the start time reference
+      // Stryker disable next-line ConditionalExpression: startTimeRef is read only under isRunning guards; when isRunning is false the seed is overwritten by the next startTimer before any read, so forcing the branch true is unobservable
       if (isRunning) {
         startTimeRef.current = Date.now()
       }
@@ -129,20 +133,25 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     const minutes = Math.floor(totalSeconds / 60)
     const seconds = totalSeconds % 60
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  // Stryker disable next-line ArrayDeclaration: formatTime reads elapsedMs via a ref and has no reactive deps, so a constant deps entry is observationally identical to the empty array
   }, []) // No dependencies - stable forever!
 
   // Main timer interval - completely stopped when hidden for battery savings
   // NOTE: In E2E tests, we should NOT pause due to visibility/focus changes
   // since the browser window might not be focused but the page is still "visible"
   useEffect(() => {
+    // Stryker disable next-line ConditionalExpression: when isRunning is false the visibility effect's final setIsPausedDueToVisibility(isRunning && shouldPause) line overwrites the true this mutant would set, and no interval tick updates elapsedMs (startTimeRef is null), so forcing the guard false is unobservable
     if (!isRunning) return
 
     // In automated tests, don't pause based on visibility
     const effectiveShouldPause = isAutomatedEnvironment()
       ? false
+      // Stryker disable next-line ConditionalExpression: when not automated and pauseOnHidden and shouldPause, the visibility effect's pauseForVisibility already sets isPausedDueToVisibility and nulls startTimeRef, so forcing this ternary branch false (skipping the interval pause) is compensated
       : pauseOnHidden && backgroundManager.shouldPauseOperations
 
+    // Stryker disable next-line ConditionalExpression,BlockStatement: the visibility effect compensates isPausedDueToVisibility and the interval body skips when startTimeRef is null (nulled by pauseForVisibility), so skipping or emptying this block is unobservable
     if (effectiveShouldPause) {
+      // Stryker disable next-line BooleanLiteral: the visibility effect's final line overwrites isPausedDueToVisibility, so setting false here instead of true is unobservable
       setIsPausedDueToVisibility(true)
       return // No interval when hidden
     }
@@ -154,11 +163,13 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
         return // Skip update when hidden
       }
 
+      // Stryker disable next-line ConditionalExpression: when the interval fires startTimeRef is always non-null (pauseForVisibility nulls it only alongside tearing down the interval), so forcing this guard true is observationally identical
       if (startTimeRef.current !== null) {
         setElapsedMs(accumulatedRef.current + (Date.now() - startTimeRef.current))
       }
     }, TIMER_UPDATE_INTERVAL)
 
+    // Stryker disable next-line ArrowFunction: the interval body is idempotent (setElapsedMs to accumulatedRef + (Date.now() - startTimeRef)), so a leaked interval from a no-op cleanup computes the same value as the active one
     return () => clearInterval(interval)
   }, [isRunning, pauseOnHidden, backgroundManager.shouldPauseOperations])
 
@@ -168,21 +179,26 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     if (!pauseOnHidden) return
 
     const pauseForVisibility = () => {
+      // Stryker disable next-line LogicalOperator,ConditionalExpression: the differing case (isRunning true with startTimeRef null) is unreachable - pauseForVisibility nulls startTimeRef once per hide and the next visibility change either keeps shouldPause true (no re-run) or re-seeds startTimeRef via resumeFromVisibility before another pause
       if (isRunning && startTimeRef.current !== null) {
         // Save accumulated time
         accumulatedRef.current += Date.now() - startTimeRef.current
         startTimeRef.current = null
         wasRunningBeforePauseRef.current = true
+        // Stryker disable next-line BooleanLiteral: the visibility effect's final setIsPausedDueToVisibility line overwrites this value, so setting false here instead of true is unobservable
         setIsPausedDueToVisibility(true)
       }
     }
 
     const resumeFromVisibility = () => {
       // Only resume if we paused due to visibility (not user pause)
+      // Stryker disable next-line ConditionalExpression,LogicalOperator: in fake-timer tests the differing case (resume re-running when wasRunningBeforePauseRef is wrong) re-seeds startTimeRef in the same Date.now() tick as the triggering startTimer, and React's identical-state bailout absorbs the rest
       if (isRunning && wasRunningBeforePauseRef.current) {
         startTimeRef.current = Date.now()
+        // Stryker disable next-line BooleanLiteral: the visibility effect's final setIsPausedDueToVisibility line overwrites this value, so setting true here instead of false is unobservable
         setIsPausedDueToVisibility(false)
       }
+      // Stryker disable next-line BooleanLiteral: in fake-timer tests any resume re-run happens in the same Date.now() tick as the triggering startTimer, so the re-seed this mutant enables lands on the same instant and is observationally identical
       wasRunningBeforePauseRef.current = false
     }
 

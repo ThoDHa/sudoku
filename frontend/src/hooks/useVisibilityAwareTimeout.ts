@@ -70,6 +70,7 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
       })
       timeoutsRef.clear()
     }
+  // Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way
   }, [])
 
   const setVisibilityAwareTimeout = useCallback(
@@ -82,6 +83,7 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
       const timeoutId = window.setTimeout(() => {
         activeTimeoutsRef.current.delete(timeoutId)
         // Only call if page is still visible
+        // Stryker disable next-line ConditionalExpression: isHiddenRef.current is true only via handlers that also clear every pending timeout, so a firing callback always sees it false; forcing the guard true is observationally identical
         if (!isHiddenRef.current) {
           callback()
         }
@@ -95,6 +97,7 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
         activeTimeoutsRef.current.delete(timeoutId)
       }
     },
+    // Stryker disable next-line ArrayDeclaration: setVisibilityAwareTimeout captures only stable refs (activeTimeoutsRef, isHiddenRef), so a constant deps entry is observationally identical to the empty array
     [],
   )
 
@@ -103,6 +106,7 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
       window.clearTimeout(id)
     })
     activeTimeoutsRef.current.clear()
+  // Stryker disable next-line ArrayDeclaration: cancelAll captures only the stable activeTimeoutsRef, so a constant deps entry is observationally identical to the empty array
   }, [])
 
   // CRITICAL: Memoize return object to prevent cascading re-renders.
@@ -112,6 +116,7 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
       setTimeout: setVisibilityAwareTimeout,
       cancelAll,
     }),
+    // Stryker disable next-line ArrayDeclaration: setVisibilityAwareTimeout and cancelAll are themselves stable (empty-dep useCallbacks), so the memo's [them] and [] capture the same values
     [setVisibilityAwareTimeout, cancelAll],
   )
 }

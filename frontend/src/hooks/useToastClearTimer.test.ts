@@ -88,3 +88,27 @@ describe('useToastClearTimer', () => {
     expect(clear).not.toHaveBeenCalled()
   })
 })
+// =============================================================================
+// Mutation-killing tests added for cluster F4 retry (iteration 2).
+// =============================================================================
+
+describe('mutation-killing: scheduleToastClear uses the latest visibilitySetTimeout (L35 deps)', () => {
+  it('routes through the latest visibilitySetTimeout after the prop changes', () => {
+    const visibilitySetTimeout1 = vi.fn(() => () => undefined)
+    const visibilitySetTimeout2 = vi.fn(() => () => undefined)
+    const { result, rerender } = renderHook(
+      ({ vst }) => useToastClearTimer(vst),
+      { initialProps: { vst: visibilitySetTimeout1 } },
+    )
+
+    rerender({ vst: visibilitySetTimeout2 })
+    act(() => {
+      result.current(1000, () => undefined)
+    })
+
+    // Original deps [visibilitySetTimeout] captured the second. The [] mutant
+    // captured the first.
+    expect(visibilitySetTimeout2).toHaveBeenCalledTimes(1)
+    expect(visibilitySetTimeout1).not.toHaveBeenCalled()
+  })
+})

@@ -509,5 +509,17 @@ describe('dp-solver', () => {
       expect(findConflicts(result!)).toEqual([])
       expect(result).toEqual(VALID_SOLVED_BOARD)
     })
+
+    it('enforces row and box constraints, not just column, when solving (L228)', () => {
+      // Sparse board with a single given (5 at idx 9 = row 1 col 0).
+      // The idx*9 mutant makes canPlace's row/box checks read out-of-bounds cells,
+      // so it only enforces the column constraint. The mutant therefore produces a
+      // board whose row 0 is all 1s (a row conflict), which isValid rejects.
+      const sparse = [...EMPTY_GRID]
+      sparse[9] = 5
+      const result = solve(sparse)
+      expect(result).not.toBeNull()
+      expect(isValid(result!)).toBe(true)
+    })
   })
 })

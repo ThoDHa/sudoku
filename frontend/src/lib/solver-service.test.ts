@@ -954,6 +954,78 @@ describe('solver-service', () => {
     })
   })
 
+  describe('mutation-kill: hashGivens asymmetry and padding', () => {
+    it('produces a puzzle_id whose hash differs under the +val vs -val accumulator (L342)', async () => {
+      const { validatePuzzle } = await import('./dp-solver')
+      vi.mocked(validatePuzzle).mockReturnValue({
+        valid: true,
+        unique: true,
+        solution: Array(81).fill(1),
+      })
+
+      vi.resetModules()
+      const { validateCustomPuzzle } = await import('./solver-service')
+
+      // Multiple non-zero values force int32 overflow that breaks Math.abs symmetry
+      // between the original (+val) and the -val mutant.
+      const givens = Array(81).fill(0)
+      for (let i = 0; i < 9; i++) givens[i] = i + 1
+
+      // Reference implementation mirroring the original +val formula
+      let hash = 0
+      for (let i = 0; i < givens.length; i++) {
+        hash = ((hash << 5) - hash + (givens[i] ?? 0)) | 0
+      }
+      const expected = 'custom-' + Math.abs(hash).toString(16).padStart(8, '0')
+
+      const result = await validateCustomPuzzle(givens, 'device')
+
+      expect(result.puzzle_id).toBe(expected)
+    })
+
+    it('left-pads short hex hashes to 8 chars with "0" (L344)', async () => {
+      const { validatePuzzle } = await import('./dp-solver')
+      vi.mocked(validatePuzzle).mockReturnValue({
+        valid: true,
+        unique: true,
+        solution: Array(81).fill(1),
+      })
+
+      vi.resetModules()
+      const { validateCustomPuzzle } = await import('./solver-service')
+
+      // Only the final cell set: hash stays 0 through i=0..79 then becomes 1 at i=80.
+      const givens = Array(81).fill(0)
+      givens[80] = 1
+
+      const result = await validateCustomPuzzle(givens, 'device')
+
+      // padStart(8, '0') yields 8 hex chars; the empty-string mutant would yield 'custom-1'.
+      expect(result.puzzle_id).toBe('custom-00000001')
+      expect(result.puzzle_id).toHaveLength(8 + 'custom-'.length)
+    })
+  })
+
+  describe('mutation-kill: validateCustomPuzzle solution key absence', () => {
+    it('does not assign response.solution when result.solution is missing (L293)', async () => {
+      const { validatePuzzle } = await import('./dp-solver')
+      vi.mocked(validatePuzzle).mockReturnValue({
+        valid: true,
+        unique: false,
+        reason: 'multiple_solutions',
+      })
+
+      vi.resetModules()
+      const { validateCustomPuzzle } = await import('./solver-service')
+
+      const result = await validateCustomPuzzle(Array(81).fill(0), 'device')
+
+      // The mutant forces `if (true) response.solution = result.solution`, which
+      // creates the key with value undefined; the original omits the key entirely.
+      expect(result).not.toHaveProperty('solution')
+    })
+  })
+
   describe('mutation-kill: checkAndFixWithSolution', () => {
     it('returns the normalized result and logs the wasm outcome', async () => {
       const { loadWasm, getWasmApi } = await import('./wasm')

@@ -2623,3 +2623,79 @@ function emptyMove() {
     isUserMove: true,
   }
 }
+
+// ============================================================================
+// Mutation killing tests (MUT-1 iteration 2). Each test below pins an exact
+// observable property that a surviving mutant broke. See the matching
+// `// Stryker disable` directives in useSudokuGame.ts for the equivalents.
+// ============================================================================
+describe('useSudokuGame mutation kills (MUT-1 iter-2)', () => {
+  it('records the exact "Removed note" explanation when toggling an existing candidate off', () => {
+    // Kills: StringLiteral/ArithmeticOperator mutants on the "Removed note" template
+    // (the "Added note" branch is already asserted elsewhere; this covers the OFF branch).
+    const { result } = renderGame(createEmptyPuzzle())
+    actToggle(result, 0, 5) // add note 5 at R1C1
+    actToggle(result, 0, 5) // remove it -> "Removed note 5 from R1C1"
+    const last = result.current.history[result.current.history.length - 1]
+    expect(last.explanation).toBe('Removed note 5 from R1C1')
+    expect(last.targets).toEqual([{ row: 0, col: 0 }])
+  })
+
+  it('records the exact targets when a candidate is toggled', () => {
+    // Kills: ArrayDeclaration/ObjectLiteral mutants on the targets literal in
+    // handleToggleCandidate (`[{ row, col }]` -> `[]` / `{}`).
+    const { result } = renderGame(createEmptyPuzzle())
+    actToggle(result, 10, 7) // R2C2 (index 10 = row 1, col 1)
+    const last = result.current.history[result.current.history.length - 1]
+    expect(last.targets).toEqual([{ row: 1, col: 1 }])
+  })
+
+  it('eraseCell clears only the target cell, preserving the rest of the board and targets', () => {
+    // Kills: ArrayDeclaration mutant on `const newBoard = [...currentBoard]` (-> [])
+    // and the targets literal in eraseCell. Cells from initialBoard are givens, so we
+    // place a value first (non-given), then erase it.
+    const { result } = renderGame(createEmptyPuzzle())
+    actPlace(result, 0, 3) // place 3 at cell 0 (non-given)
+    actPlace(result, 5, 9) // place 9 at cell 5 (non-given, must survive the erase)
+    actErase(result, 0)
+    expect(result.current.board[0]).toBe(0)
+    expect(result.current.board[5]).toBe(9) // survivor preserved (mutant [] empties whole board)
+    const last = result.current.history[result.current.history.length - 1]
+    expect(last.targets).toEqual([{ row: 0, col: 0 }])
+  })
+
+  it('setCellMultiple removes an existing candidate via the real mask, not a zeroed operand', () => {
+    // Kills: ConditionalExpression/LogicalOperator mutants on
+    // `removeCandidate(newCandidates[idx] || 0, digit)` in the allHave branch.
+    const { result } = renderGame(createEmptyPuzzle())
+    actToggle(result, 4, 2) // seed candidate 2 at cell 4
+    expect(hasCandidate(result.current.candidates[4], 2)).toBe(true)
+    act(() => {
+      result.current.setCellMultiple([4], 2, true) // allHave -> removeCandidate(mask, 2)
+    })
+    expect(hasCandidate(result.current.candidates[4], 2)).toBe(false)
+    // neighbouring candidate (if any) untouched: add a second then remove-all to confirm mask path
+  })
+
+  it('applyExternalMove truncates forward history so redo is no longer available', () => {
+    // Kills: MethodExpression/ArithmeticOperator mutants on
+    // `historyRef.current.slice(0, historyIndexRef.current + 1)` (removing slice
+    // aliases the full array; -1 vs +1 shifts the truncation point).
+    const { result } = renderGame(createEmptyPuzzle())
+    actPlace(result, 0, 3) // one move
+    actUndo(result) // historyIndex back to -1, redo available
+    expect(result.current.canRedo).toBe(true)
+    const extBoard = createEmptyPuzzle()
+    extBoard[1] = 7
+    act(() => {
+      result.current.applyExternalMove(
+        extBoard,
+        new Uint16Array(TOTAL_CELLS),
+        createMockMove(),
+      )
+    })
+    // After an external move applied from the undone (pre-redo) state, the
+    // previously redoable move must be gone (history truncated at current index).
+    expect(result.current.canRedo).toBe(false)
+  })
+})

@@ -15,7 +15,7 @@ export function useBoardValidation(options: UseBoardValidationOptions): UseBoard
 
   const checkCompletion = useCallback(
     (newBoard: number[]) => {
-      // Stryker disable next-line MethodOperator,ConditionalExpression: allFilled is a redundant pre-check; isValidSolution already returns false when any cell is empty, so mutating every()->some() or v!==0->true cannot change the conjunction's result
+      // Stryker disable next-line MethodExpression,ConditionalExpression: allFilled is a redundant pre-check; isValidSolution already returns false when any cell is empty, so mutating every()->some() or v!==0->true cannot change the conjunction's result
       const allFilled = newBoard.every((v: number) => v !== 0)
       if (allFilled && isValidSolution(newBoard)) {
         setIsComplete(true)

@@ -234,6 +234,7 @@ export function isTodayCompleted(): boolean {
 export function getDailyStreak(): DailyStreak {
   try {
     const data = localStorage.getItem(STORAGE_KEYS.DAILY_STREAK)
+    // Stryker disable next-line ConditionalExpression: forcing `true` makes JSON.parse(null) yield null, whose property access then throws and is caught below, returning the same default streak as the falsy path
     if (data) {
       const streak = JSON.parse(data) as DailyStreak
       // Check if streak is still valid (last completed was today or yesterday)
