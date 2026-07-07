@@ -31,6 +31,9 @@ import shutil
 #   copy:     "file" (self-contained HTML) or "dir" (report folder with assets)
 #   dest:     subpath under the out dir; for prefix rules, {} is the name suffix
 #   label:    link text; for prefix rules, {} is the name suffix
+#   extra:    optional list of {find, label} extra self-contained files from the
+#             same artifact, copied to the same dest and linked in the same
+#             section; each is skipped if absent (the main find must be present)
 COLLECTORS = [
     {"match": "mutation-frontend", "prefix": False, "find": "mutation.html",
      "copy": "file", "section": "Mutation testing", "dest": "mutation/frontend",
@@ -46,7 +49,8 @@ COLLECTORS = [
      "label": "Frontend (Vitest)"},
     {"match": "coverage-go", "prefix": False, "find": "coverage.html",
      "copy": "file", "section": "Coverage", "dest": "coverage/go",
-     "label": "Go (go tool cover)"},
+     "label": "Go (go tool cover)",
+     "extra": [{"find": "coverage.svg", "label": "Go (treemap)"}]},
 ]
 
 # Portal section order.
@@ -114,6 +118,16 @@ def collect_reports(artifacts_dir, out_dir):
                 techniques.append((suffix[len(TECHNIQUES_PREFIX):], href))
             else:
                 found.setdefault(rule["section"], []).append((label, href))
+
+            # Optional sibling files from the same artifact (e.g. a treemap SVG
+            # alongside the line-coverage HTML), each linked in the same section.
+            for ex in rule.get("extra", []):
+                ex_entry = find_file(artifact_path, ex["find"])
+                if not ex_entry:
+                    continue
+                shutil.copy2(ex_entry, os.path.join(dest_dir, ex["find"]))
+                found.setdefault(rule["section"], []).append(
+                    (ex["label"], f"{dest_rel}/{ex['find']}"))
             break
 
     if techniques:
