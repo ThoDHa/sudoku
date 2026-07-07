@@ -76,7 +76,12 @@ def main(argv=None):
               f"{args.reports_dir} (a shard likely timed out)", file=sys.stderr)
         return 2
 
-    killed_no_timeout, timeout, escaped, total = combine(reports)
+    try:
+        killed_no_timeout, timeout, escaped, total = combine(reports)
+    except (OSError, ValueError, KeyError) as err:
+        print(f"mutation-gate: FAIL {args.label} unreadable shard report: {err}",
+              file=sys.stderr)
+        return 2
     killed = killed_no_timeout + timeout
     eff = efficacy(killed, escaped)
     status = "OK" if eff >= args.floor else "FAIL"

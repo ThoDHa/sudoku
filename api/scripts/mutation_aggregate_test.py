@@ -71,6 +71,16 @@ class Gate(unittest.TestCase):
             # Only 1 of 2 expected shards present -> untrustworthy -> exit 2.
             self.assertEqual(self._run(85, 2, d), 2)
 
+    def test_corrupt_report_fails_as_untrustworthy(self):
+        with tempfile.TemporaryDirectory() as d:
+            write_report(os.path.join(d, "s1"), killed=90, escaped=5, total=100, timeout=0)
+            os.makedirs(os.path.join(d, "s2"), exist_ok=True)
+            # A present but truncated/malformed report is unreadable, not "below
+            # floor": it must exit 2, mirroring the missing-shard contract.
+            with open(os.path.join(d, "s2", "report.json"), "w") as f:
+                f.write("{ this is not valid json")
+            self.assertEqual(self._run(85, 2, d), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
