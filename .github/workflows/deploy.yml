@@ -198,6 +198,7 @@ jobs:
     continue-on-error: true
     outputs:
       e2e_failures: ${{ steps.e2e-summary.outputs.failures }}
+      e2e_ran: ${{ steps.e2e-summary.outputs.ran }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -222,11 +223,20 @@ jobs:
         id: e2e-summary
         if: always()
         run: |
-          # Playwright prints a summary line like "  3 failed, 497 passed".
-          failures=$(grep -oE '[0-9]+ failed' /tmp/e2e.log | head -1 | grep -oE '^[0-9]+' || true)
-          failures="${failures:-0}"
-          echo "failures=$failures" >> "$GITHUB_OUTPUT"
-          echo "E2E failures: $failures"
+          # Playwright prints a final summary like "  3 failed, 497 passed" (or
+          # just "497 passed" when green). If NEITHER a passed nor a failed count
+          # is present, the suite crashed or never ran: emit ran=false so the
+          # deploy gate blocks instead of reading a bogus "0 failures" and shipping.
+          failures=$(grep -oE '[0-9]+ failed' /tmp/e2e.log | tail -1 | grep -oE '^[0-9]+' || true)
+          passed=$(grep -oE '[0-9]+ passed' /tmp/e2e.log | tail -1 | grep -oE '^[0-9]+' || true)
+          if [ -z "$failures" ] && [ -z "$passed" ]; then
+            echo "ran=false" >> "$GITHUB_OUTPUT"
+            echo "E2E: no Playwright summary found; suite did not run to completion"
+          else
+            echo "ran=true" >> "$GITHUB_OUTPUT"
+            echo "failures=${failures:-0}" >> "$GITHUB_OUTPUT"
+            echo "E2E failures: ${failures:-0} (passed: ${passed:-0})"
+          fi
 
       - name: Upload Playwright test-results
         uses: actions/upload-artifact@v7
@@ -384,8 +394,9 @@ jobs:
 
       - name: Download previous Allure history
         run: |
-          # Find the most recent completed run with allure-history artifact
-          PREVIOUS_RUN=$(gh run list --workflow=deploy.yml --status=completed --limit 5 --json databaseId -q '.[0].databaseId' 2>/dev/null || echo "")
+          # Most recent successful run ON THIS BRANCH, so PR and cross-branch runs
+          # do not contaminate the trend lineage.
+          PREVIOUS_RUN=$(gh run list --workflow=deploy.yml --branch "${{ github.ref_name }}" --status=success --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || echo "")
           
           if [ -n "$PREVIOUS_RUN" ] && [ "$PREVIOUS_RUN" != "${{ github.run_id }}" ]; then
             if gh run download "$PREVIOUS_RUN" --name allure-history --dir allure-history 2>/dev/null; then
@@ -412,14 +423,6 @@ jobs:
         working-directory: frontend
         run: |
           npx allure generate ../allure-results -o ../allure-report --clean
-          
-      - name: Prune history to 5 runs (LRU)
-        run: |
-          if [ -d "allure-report/history" ]; then
-            cd allure-report/history
-            # Keep only  5 most recent history entries
-            ls -t | tail -n +6 | xargs rm -rf 2>/dev/null || true
-          fi
 
       - name: Save Allure history
         uses: actions/upload-artifact@v7
@@ -476,7 +479,9 @@ jobs:
           mkdir -p pages-artifact/test-report
           cp -r allure-report/* pages-artifact/test-report/
           cp -r frontend/dist/* pages-artifact/
-          # Copy WASM files from frontend (includes updated wasm_exec.js from build)
+          # Safety net: Vite already copies public/ (incl. these) into dist, but
+          # re-copy the WASM runtime explicitly so a build/PWA-precache change can
+          # never leave the deployed game without its wasm_exec.js or sudoku.wasm.
           cp frontend/public/wasm_exec.js pages-artifact/
           cp frontend/public/sudoku.wasm pages-artifact/
 
@@ -533,15 +538,19 @@ jobs:
   # ============================================
   deploy:
     # Deploy runs on main (production) or modernization (working branch) when the core gates
-    # pass (Go + unit tests) AND E2E failures are within tolerance. Not all-or-nothing: a flaky
-    # E2E test no longer blocks deploy. E2E_FAILURE_THRESHOLD is the max tolerated E2E failures
-    # (currently 5). If test-e2e was skipped, the empty output is treated as "within tolerance".
+    # pass (Go + unit tests), the Pages artifact was built (allure-report), AND E2E failures are
+    # within tolerance. Not all-or-nothing: a flaky E2E test no longer blocks deploy, but a
+    # tolerance of up to 5 failures applies only when E2E actually ran (e2e_ran == 'true'). A
+    # crashed/non-running suite (ran != 'true') blocks rather than reading a bogus 0 failures; a
+    # deliberately skipped E2E job (manual partial run) is still allowed through.
     if: |
       always() &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization') &&
+      needs.allure-report.result == 'success' &&
       needs.test-go.result == 'success' &&
       needs.test-frontend-unit.result == 'success' &&
-      (needs.test-e2e.outputs.e2e_failures == '' || needs.test-e2e.outputs.e2e_failures <= 5)
+      (needs.test-e2e.result == 'skipped' ||
+       (needs.test-e2e.outputs.e2e_ran == 'true' && needs.test-e2e.outputs.e2e_failures <= 5))
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
