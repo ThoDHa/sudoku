@@ -123,8 +123,8 @@ jobs:
           slug=$(echo "${{ matrix.pkg }}" | tr -d './' | tr '/' '-')
           report="reports/mutation/${slug}/report.json"
           if [ ! -f "$report" ]; then
-            echo "No report for ${{ matrix.pkg }} (run may have timed out)"
-            exit 0
+            echo "mutation-gate: FAIL ${{ matrix.pkg }} no report (run errored or timed out; efficacy unmeasured)" >&2
+            exit 1
           fi
           python3 -c "
           import json, sys
@@ -140,7 +140,6 @@ jobs:
           print(f'mutation-gate: {status} ${{ matrix.pkg }} {eff:.1f}% (floor {floor}%) [killed={killed} escaped={escaped} total={s[\"totalMutantsCount\"]}]')
           sys.exit(0 if eff >= floor else 1)
           "
-        continue-on-error: true
 
       - name: Upload Go mutation report
         if: always()
@@ -286,4 +285,3 @@ jobs:
         run: |
           python3 scripts/mutation_aggregate.py \
             --floor 85 --expected 22 --reports-dir ../shards
-        continue-on-error: true
