@@ -1,8 +1,9 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { locate, buildReport } from './go-mutesting-to-stryker.mjs'
+import { locate, buildReport, renderHtml } from './go-mutesting-to-stryker.mjs'
 
 describe('locate', () => {
   it('pins the exact changed token on a single-line change', () => {
@@ -42,6 +43,17 @@ describe('locate', () => {
       replacement: 'INSERTED',
     })
   })
+
+  it('falls back to line 1 when source and mutant are identical', () => {
+    expect(locate('a\nb', 'a\nb')).toEqual({
+      location: { start: { line: 1, column: 1 }, end: { line: 1, column: 1 } },
+      replacement: '',
+    })
+  })
+
+  it('accepts a pre-split source array (per-file caching)', () => {
+    expect(locate(['a', 'x+y', 'b'], 'a\nx-y\nb').replacement).toBe('-')
+  })
 })
 
 describe('buildReport', () => {
@@ -56,12 +68,13 @@ describe('buildReport', () => {
       ],
       // Missing originalFilePath: skipped, not crashed on.
       timeouted: [{ mutator: { mutatorName: 'm4', originalSourceCode: 'q', mutatedSourceCode: 'r' } }],
+      errored: [{ mutator: { mutatorName: 'm5', originalFilePath: 'f/b.go', originalSourceCode: 'a', mutatedSourceCode: 'c' } }],
     }))
 
     const { report, loaded, mutantCount } = buildReport([reportPath])
 
     expect(loaded).toBe(1)
-    expect(mutantCount).toBe(3)
+    expect(mutantCount).toBe(4)
     expect(report.schemaVersion).toBe('1')
     expect(Object.keys(report.files)).toEqual(['f/a.go', 'f/b.go'])
 
@@ -69,7 +82,8 @@ describe('buildReport', () => {
     expect(a.language).toBe('go')
     expect(a.source).toBe('x+y') // one deduped source for both of its mutants
     expect(a.mutants.map((m) => m.status)).toEqual(['Killed', 'Survived'])
-    expect(report.files['f/b.go'].mutants[0].status).toBe('Survived')
+    // escaped -> Survived, errored -> CompileError (excluded from efficacy).
+    expect(report.files['f/b.go'].mutants.map((m) => m.status)).toEqual(['Survived', 'CompileError'])
 
     fs.rmSync(dir, { recursive: true, force: true })
   })
@@ -78,5 +92,28 @@ describe('buildReport', () => {
     const { loaded, mutantCount } = buildReport(['/no/such/report.json'])
     expect(loaded).toBe(0)
     expect(mutantCount).toBe(0)
+  })
+})
+
+describe('renderHtml', () => {
+  const reportWith = (source, replacement) => ({
+    schemaVersion: '1', thresholds: { high: 90, low: 80 },
+    files: { 'x.go': { language: 'go', source, mutants: [
+      { id: '1', mutatorName: 'm', replacement, status: 'Killed',
+        location: { start: { line: 1, column: 1 }, end: { line: 1, column: 2 } } }] } },
+  })
+
+  it('escapes </script> so source text cannot break out of the inlined script', () => {
+    const html = renderHtml(reportWith('// </script><img src=x onerror=alert(1)>', '</script>'))
+    // Only our own two <script> blocks close; none injected from the data.
+    expect((html.match(/<\/script>/g) || []).length).toBe(2)
+    expect(html).not.toContain('</script><img src=x onerror=alert(1)>')
+    expect(html).toContain('\\u003c/script>')
+  })
+
+  it('escapes U+2028/U+2029 line separators (valid JSON, invalid JS string)', () => {
+    const html = renderHtml(reportWith('a' + String.fromCharCode(0x2028) + 'b', 'x'))
+    expect(html).not.toContain(String.fromCharCode(0x2028))
+    expect(html).toContain('\\u2028')
   })
 })

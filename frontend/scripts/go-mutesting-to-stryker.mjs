@@ -44,7 +44,9 @@ const firstNonWs = (line) => {
 // Recover a Stryker location + replacement from the original and mutated source
 // of one mutant. Returns { location, replacement }.
 function locate(original, mutated) {
-  const O = original.split('\n')
+  // `original` may be a pre-split line array (callers cache it per file) or a
+  // raw string; `mutated` differs per mutant so it is always split here.
+  const O = Array.isArray(original) ? original : original.split('\n')
   const M = mutated.split('\n')
 
   // Trim-aware front/back trimming isolates the changed region, skipping lines
@@ -90,7 +92,8 @@ function locate(original, mutated) {
 }
 
 // Merge every mutant from one go-mutesting report into the shared files map.
-function addReport(files, report, nextId) {
+// sourceLines caches each file's split source so it is split once, not per mutant.
+function addReport(files, sourceLines, report, nextId) {
   for (const [arrayName, status] of Object.entries(STATUS_BY_ARRAY)) {
     for (const entry of report[arrayName] || []) {
       const mutator = entry.mutator || {}
@@ -102,9 +105,10 @@ function addReport(files, report, nextId) {
       if (!file) {
         file = { language: 'go', source, mutants: [] }
         files.set(filePath, file)
+        sourceLines.set(filePath, source.split('\n'))
       }
 
-      const { location, replacement } = locate(source, mutator.mutatedSourceCode ?? source)
+      const { location, replacement } = locate(sourceLines.get(filePath), mutator.mutatedSourceCode ?? source)
       file.mutants.push({
         id: String(nextId()),
         mutatorName: mutator.mutatorName || 'Mutator',
@@ -118,6 +122,7 @@ function addReport(files, report, nextId) {
 
 function buildReport(reportPaths) {
   const files = new Map()
+  const sourceLines = new Map()
   let id = 0
   const nextId = () => ++id
   let loaded = 0
@@ -129,7 +134,7 @@ function buildReport(reportPaths) {
       console.error(`go-mutesting-to-stryker: skipping ${p}: ${err.message}`)
       continue
     }
-    addReport(files, report, nextId)
+    addReport(files, sourceLines, report, nextId)
     loaded++
   }
   return {
@@ -145,6 +150,15 @@ function buildReport(reportPaths) {
 
 function renderHtml(report) {
   const bundle = fs.readFileSync(ELEMENTS_BUNDLE, 'utf8')
+  // JSON.stringify escapes quotes but not `<`, so a Go source containing the
+  // literal `</script>` would close the inlined <script> at the HTML-parser level
+  // and break (or inject into) the page. Escaping `<` neutralizes `</script>`,
+  // `<!--`, and `<script`; escaping U+2028/U+2029 guards against line separators
+  // that are valid JSON but invalid inside a JS string literal.
+  const reportJson = JSON.stringify(report)
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029')
   // Match Stryker's own template: inline the self-registering bundle, then bind
   // the report to the <mutation-test-report-app> element and wire the theme.
   return `<!doctype html>
@@ -161,7 +175,7 @@ Please use a latest version of an evergreen browser (Firefox, Chrome, Safari, Op
 </mutation-test-report-app>
 <script>
 const app = document.querySelector('mutation-test-report-app');
-app.report = ${JSON.stringify(report)};
+app.report = ${reportJson};
 function updateTheme() { document.body.style.backgroundColor = app.themeBackgroundColor; }
 app.addEventListener('theme-changed', updateTheme);
 updateTheme();
@@ -190,7 +204,7 @@ function main(argv) {
 }
 
 // Exported for tests; run as a CLI otherwise.
-export { locate, buildReport }
+export { locate, buildReport, renderHtml }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   process.exit(main(process.argv.slice(2)))
