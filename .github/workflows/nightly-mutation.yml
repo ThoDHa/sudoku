@@ -12,11 +12,6 @@ on:
           - all
           - frontend
           - go
-      skip_techniques:
-        description: 'Skip the techniques package (7700 LOC, ~10-12h)'
-        required: false
-        default: false
-        type: boolean
   # schedule:
   #   # 04:00 UTC daily (one hour after nightly-profiling at 03:00 to avoid contention).
   #   # Temporarily disabled during active development to prevent cancel-in-progress
@@ -159,8 +154,7 @@ jobs:
   # sharding costs nothing. go-mutesting mutates only the targeted file but
   # type-checks against the whole package, so a single file is a valid,
   # self-contained target. A dependent aggregate job combines the per-shard
-  # reports into one efficacy number and enforces the floor. Shards can be
-  # skipped as a group via skip_techniques for fast iteration runs.
+  # reports into one efficacy number and enforces the floor.
   #
   # One matrix entry per non-test *.go file in the techniques package. When a
   # technique file is added or removed, add/remove its entry and update the
@@ -168,7 +162,7 @@ jobs:
   techniques-mutation:
     name: Go - techniques (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || (inputs.scope != 'frontend' && inputs.skip_techniques != true)
+    if: github.event_name == 'schedule' || inputs.scope != 'frontend'
     # Below GitHub's hard 6h (360m) cap so our timeout fires first in the
     # unlikely event a single file runs long; that shard's report goes missing
     # and the aggregate gate fails loudly rather than reporting a partial number.
@@ -269,7 +263,7 @@ jobs:
     name: Go - techniques (aggregate gate)
     runs-on: ubuntu-latest
     needs: techniques-mutation
-    if: always() && (github.event_name == 'schedule' || (inputs.scope != 'frontend' && inputs.skip_techniques != true))
+    if: always() && (github.event_name == 'schedule' || inputs.scope != 'frontend')
     steps:
       - name: Checkout
         uses: actions/checkout@v6
