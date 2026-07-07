@@ -1,24 +1,20 @@
-name: Nightly Profiling Gate
+name: Profiling Gate
 
-# Nightly gate for the profiling suite. PROF-001 moved the wasm-cpu-profile
-# verdict to an ASSERTED PASS/WARN/FAIL tier, making the suite safe for
-# unattended CI gating. This workflow is intentionally separate from
-# deploy.yml (per-commit gates): the profiling suite is slow (~15-20m for
-# memory, ~10m for wasm-cpu) and environment-sensitive, so it does not run
-# on every push/PR. See task INFRA-002 for design rationale (Option A).
+# Manual, on-demand gate for the profiling suite. PROF-001 moved the
+# wasm-cpu-profile verdict to an ASSERTED PASS/WARN/FAIL tier. This workflow
+# is intentionally separate from deploy.yml (per-commit gates): the profiling
+# suite is slow (~15-20m for memory, ~10m for wasm-cpu) and environment-
+# sensitive, so it is kicked off manually rather than on every push/PR or on a
+# schedule. See task INFRA-002 for design rationale (Option A).
 #
 # Fail policy (Option A):
 #   - Cycle 1 (hard gate): wasm-cpu-profile.spec.ts verdict FAIL fails the job.
 #   - Cycle 2 (informational, continue-on-error): env-sensitive thresholds
 #     (absolute-ms latency, heap growth) warn but do not fail the job.
 # Baselines are gitignored (frontend/e2e/profiling/results/), so uploaded
-# artifacts are the record of nightly runs.
+# artifacts are the record of each run.
 
 on:
-  schedule:
-    # 03:00 UTC daily. GitHub Actions cron is UTC-only; 03:00 UTC avoids
-    # typical commit activity and runner peak load.
-    - cron: '0 3 * * *'
   workflow_dispatch:
 
 permissions:
