@@ -2,9 +2,11 @@
 """Generate the unified test-report portal page for GitHub Pages.
 
 The deploy workflow publishes the Allure report to /test-report/ and the app to
-the Pages root. Other reports (frontend StrykerJS and Go go-mutesting mutation,
-and the profiling suite) are produced by separate nightly workflows and live in
-their artifacts. This script copies each report into the Pages `reports/` tree
+the Pages root. Other reports (frontend and Go mutation, and the profiling suite)
+are produced by separate nightly workflows and live in their artifacts. The Go
+mutation report is rendered as one unified mutation-testing-elements dashboard
+(matching the frontend) by an earlier deploy step. This script copies each report
+into the Pages `reports/` tree
 and writes a `reports/index.html` portal that opens each section with a
 health-colored banner (an overall figure) and breaks it down into per-report
 tiles, plus a per-device profiling dashboard. The page links a sibling
@@ -36,7 +38,6 @@ IDLE = {"ok": 98.0, "warn": 95.0}
 # Profiling memory overhead thresholds in MB (WARN at 10, FAIL at 30).
 MEM_WARN_MB, MEM_FAIL_MB = 10.0, 30.0
 
-TECHNIQUES_ARTIFACT_PREFIX = "mutation-go-techniques-shard-"
 GO_MUTATION_PREFIX = "mutation-go-"
 VERDICT_RANK = {"PASS": 0, "WARN": 1, "FAIL": 2}
 VERDICT_STATE = {"PASS": "ok", "WARN": "warn", "FAIL": "fail"}
@@ -95,13 +96,13 @@ def _efficacy(detected, survived):
 # --- Copying reports and collecting their hrefs ---
 
 def collect_reports(artifacts_dir, out_dir):
-    """Copy each present report into out_dir. Return (hrefs, techniques, go_scopes).
+    """Copy each present report into out_dir and return its hrefs.
 
-    hrefs maps a stable key to the report's relative href. techniques is a sorted
-    list of (name, href) for the per-shard techniques reports. go_scopes is the
-    sorted list of non-techniques Go mutation scope names present.
+    hrefs maps a stable key to the report's relative href. The Go mutation report
+    is not copied here: it is rendered as one unified mutation-testing-elements
+    dashboard (matching the frontend) by the portal build step before this runs.
     """
-    hrefs, techniques, go_scopes = {}, [], []
+    hrefs = {}
     for name in _artifact_names(artifacts_dir):
         art = os.path.join(artifacts_dir, name)
         if not os.path.isdir(art):
@@ -134,23 +135,12 @@ def collect_reports(artifacts_dir, out_dir):
             h = copy_file("mutation.html", "mutation/frontend")
             if h:
                 hrefs["mutation-frontend"] = h
-        elif name.startswith(TECHNIQUES_ARTIFACT_PREFIX):
-            scope = name[len(GO_MUTATION_PREFIX):]  # e.g. techniques-shard-aic
-            h = copy_file("go-mutesting-report.html", f"mutation/{scope}")
-            if h:
-                techniques.append((scope[len("techniques-shard-"):], h))
-        elif name.startswith(GO_MUTATION_PREFIX):
-            scope = name[len(GO_MUTATION_PREFIX):]  # dp / human / transport-http
-            h = copy_file("go-mutesting-report.html", f"mutation/{scope}")
-            if h:
-                hrefs[f"mutation-go:{scope}"] = h
-                go_scopes.append(scope)
         elif name == "nightly-playwright-report":
             h = copy_dir("index.html", "profiling/playwright")
             if h:
                 hrefs["playwright"] = h
 
-    return hrefs, sorted(techniques), sorted(go_scopes)
+    return hrefs
 
 
 def copy_assets(out_dir):
@@ -223,19 +213,20 @@ def _go_counts(artifacts_dir, artifact_name):
     return (stats.get("killedCount", 0) + stats.get("timeOutCount", 0), stats.get("escapedCount", 0))
 
 
-def _techniques_counts(artifacts_dir):
-    """(detected, survived, shard_count) summed across all techniques shards."""
-    detected = survived = shards = 0
+def _go_all_counts(artifacts_dir):
+    """(detected, survived) summed across every Go go-mutesting report (all
+    packages and technique shards), or None when no Go mutation report is present."""
+    detected = survived = seen = 0
     for name in _artifact_names(artifacts_dir):
-        if not name.startswith(TECHNIQUES_ARTIFACT_PREFIX):
+        if not name.startswith(GO_MUTATION_PREFIX):
             continue
         counts = _go_counts(artifacts_dir, name)
         if not counts:
             continue
         detected += counts[0]
         survived += counts[1]
-        shards += 1
-    return (detected, survived, shards)
+        seen += 1
+    return (detected, survived) if seen else None
 
 
 def profiling_reports(artifacts_dir):
@@ -328,7 +319,7 @@ def _device_card(report):
             f'      </div>')
 
 
-def build_sections(artifacts_dir, out_dir, allure_rel, hrefs, techniques, go_scopes):
+def build_sections(artifacts_dir, out_dir, allure_rel, hrefs):
     sections = []
 
     # Test results
@@ -372,33 +363,24 @@ def build_sections(artifacts_dir, out_dir, allure_rel, hrefs, techniques, go_sco
             all_surv += fe[1]
             mut_tiles.append(_tile("Frontend · StrykerJS", f"{score:.1f}%", "mutation efficacy",
                                    health(score, MUTATION), hrefs["mutation-frontend"]))
-    for scope in go_scopes:
-        counts = _go_counts(artifacts_dir, GO_MUTATION_PREFIX + scope)
-        score = _efficacy(*counts) if counts else None
+    # The Go mutation report is rendered as one unified mutation-testing-elements
+    # dashboard (every package and technique shard, matching the frontend) by the
+    # portal build before this runs.
+    go = _go_all_counts(artifacts_dir)
+    go_report = "mutation/go/mutation.html"
+    go_report_exists = os.path.exists(os.path.join(out_dir, go_report))
+    if go and go_report_exists:
+        score = _efficacy(*go)
         if score is not None:
-            all_det += counts[0]
-            all_surv += counts[1]
-            mut_tiles.append(_tile(f"Go · {scope}", f"{score:.1f}%", "go-mutesting",
-                                   health(score, MUTATION), hrefs.get(f"mutation-go:{scope}", "#mutation-testing")))
-    t_det, t_surv, t_shards = _techniques_counts(artifacts_dir)
-    tech_score = _efficacy(t_det, t_surv)
-    if tech_score is not None:
-        all_det += t_det
-        all_surv += t_surv
-        mut_tiles.append(_tile("Go · techniques", f"{tech_score:.1f}%", f"killed · {t_shards} shards",
-                               health(tech_score, MUTATION), "#mutation-testing"))
+            all_det += go[0]
+            all_surv += go[1]
+            mut_tiles.append(_tile("Go · mutation", f"{score:.1f}%", "mutation efficacy",
+                                   health(score, MUTATION), go_report))
     if mut_tiles:
         overall = _efficacy(all_det, all_surv)
         blocks = [_banner(health(overall, MUTATION), f"{overall:.1f}%", "score",
                           "Overall mutation efficacy, weighted by mutant count across all scopes."),
                   _tiles(mut_tiles)]
-        if techniques:
-            shard_links = "\n".join(
-                f'        <li><a class="rep" href="{_esc(h)}">{_esc(n)}</a></li>' for n, h in techniques)
-            blocks.append(
-                f'    <details>\n'
-                f'      <summary>Per-shard technique reports ({len(techniques)})</summary>\n'
-                f'      <ul>\n{shard_links}\n      </ul>\n    </details>')
         sections.append(_section("Mutation testing", f"{len(mut_tiles)} scopes", blocks))
 
     # Profiling
@@ -431,9 +413,8 @@ def main(argv=None):
 
     os.makedirs(args.out_dir, exist_ok=True)
     copy_assets(args.out_dir)
-    hrefs, techniques, go_scopes = collect_reports(args.artifacts_dir, args.out_dir)
-    sections = build_sections(args.artifacts_dir, args.out_dir, args.allure_rel,
-                              hrefs, techniques, go_scopes)
+    hrefs = collect_reports(args.artifacts_dir, args.out_dir)
+    sections = build_sections(args.artifacts_dir, args.out_dir, args.allure_rel, hrefs)
     with open(os.path.join(args.out_dir, "index.html"), "w") as f:
         f.write(render_page(sections))
     print(f"portal: wrote {args.out_dir}/index.html with {len(sections)} section(s)")

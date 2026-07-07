@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Tests for gen_report_portal.py. Run: python3 -m unittest gen_report_portal_test."""
 
+import json
 import os
 import tempfile
 import unittest
@@ -8,84 +9,110 @@ import unittest
 import gen_report_portal as portal
 
 
-def make_artifact(artifacts_dir, name, rel_html_path):
-    path = os.path.join(artifacts_dir, name, os.path.dirname(rel_html_path))
-    os.makedirs(path, exist_ok=True)
-    with open(os.path.join(artifacts_dir, name, rel_html_path), "w") as f:
-        f.write("<html>report</html>")
+def make_artifact(artifacts_dir, name, rel_path, body="<html>report</html>"):
+    """Write a file at artifacts_dir/name/rel_path, creating parent dirs."""
+    path = os.path.join(artifacts_dir, name, rel_path)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        f.write(body)
+
+
+def make_json_artifact(artifacts_dir, name, rel_path, data):
+    make_artifact(artifacts_dir, name, rel_path, json.dumps(data))
+
+
+def prerender(out_dir, rel_path, body="<html>report</html>"):
+    """Simulate a report rendered into the Pages tree by an earlier deploy step."""
+    path = os.path.join(out_dir, rel_path)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        f.write(body)
 
 
 class Portal(unittest.TestCase):
     def _gen(self, artifacts_dir, out_dir):
         return portal.main(["--artifacts-dir", artifacts_dir, "--out-dir", out_dir])
 
+    def _page(self, out_dir):
+        with open(os.path.join(out_dir, "index.html")) as fh:
+            return fh.read()
+
     def test_allure_link_always_present(self):
         with tempfile.TemporaryDirectory() as d:
             out = os.path.join(d, "reports")
             self._gen(os.path.join(d, "none"), out)  # no artifacts dir
-            with open(os.path.join(out, "index.html")) as fh:
-                page = fh.read()
+            page = self._page(out)
             self.assertIn("../test-report/", page)
             self.assertIn("Allure", page)
 
-    def test_copies_and_links_frontend_and_go_reports(self):
+    def test_links_frontend_mutation_report(self):
         with tempfile.TemporaryDirectory() as d:
             artifacts = os.path.join(d, "artifacts")
             make_artifact(artifacts, "mutation-frontend", "reports/mutation/mutation.html")
-            make_artifact(artifacts, "mutation-go-dp",
-                          "reports/mutation/internal-sudoku-dp/go-mutesting-report.html")
-            make_artifact(artifacts, "mutation-go-techniques-shard-1",
-                          "reports/mutation/techniques-shard-1/go-mutesting-report.html")
+            make_json_artifact(artifacts, "mutation-frontend", "reports/mutation/mutation.json",
+                               {"files": {"a.ts": {"mutants": [
+                                   {"status": "Killed"}, {"status": "Killed"}, {"status": "Survived"}]}}})
             out = os.path.join(d, "reports")
             self._gen(artifacts, out)
 
             self.assertTrue(os.path.exists(os.path.join(out, "mutation/frontend/mutation.html")))
-            self.assertTrue(os.path.exists(os.path.join(out, "mutation/dp/go-mutesting-report.html")))
-            self.assertTrue(os.path.exists(
-                os.path.join(out, "mutation/techniques-shard-1/go-mutesting-report.html")))
-
-            with open(os.path.join(out, "index.html")) as fh:
-                page = fh.read()
+            page = self._page(out)
             self.assertIn("mutation/frontend/mutation.html", page)
-            self.assertIn("mutation/dp/go-mutesting-report.html", page)
-            self.assertIn("Frontend (StrykerJS)", page)
-            self.assertIn("Go: dp", page)
+            self.assertIn("Frontend · StrykerJS", page)
 
-    def test_groups_techniques_shards_under_a_collapsible(self):
+    def test_links_unified_go_mutation_report(self):
         with tempfile.TemporaryDirectory() as d:
             artifacts = os.path.join(d, "artifacts")
-            make_artifact(artifacts, "mutation-go-dp",
-                          "reports/mutation/dp/go-mutesting-report.html")
-            for t in ("aic", "chains", "ur"):
-                make_artifact(artifacts, f"mutation-go-techniques-shard-{t}",
-                              f"reports/mutation/techniques-shard-{t}/go-mutesting-report.html")
+            # Every Go scope and technique shard contributes to one aggregated tile.
+            make_json_artifact(artifacts, "mutation-go-dp", "report.json",
+                               {"stats": {"killedCount": 9, "timeOutCount": 1, "escapedCount": 0}})
+            make_json_artifact(artifacts, "mutation-go-techniques-shard-aic", "report.json",
+                               {"stats": {"killedCount": 8, "timeOutCount": 0, "escapedCount": 2}})
+            out = os.path.join(d, "reports")
+            # The unified Stryker-style report is rendered into place by the deploy
+            # build step before the portal script runs; simulate that here.
+            prerender(out, "mutation/go/mutation.html")
+            self._gen(artifacts, out)
+
+            page = self._page(out)
+            self.assertIn("mutation/go/mutation.html", page)
+            self.assertIn("Go · mutation", page)
+            # One unified tile: no per-scope tiles, no go-mutesting pages.
+            self.assertNotIn("Go · dp", page)
+            self.assertNotIn("go-mutesting-report.html", page)
+            self.assertNotIn("<details>", page)
+            # Aggregated efficacy: 18 detected / 20 -> 90.0%.
+            self.assertIn("90.0%", page)
+
+    def test_go_mutation_tile_omitted_without_rendered_report(self):
+        with tempfile.TemporaryDirectory() as d:
+            artifacts = os.path.join(d, "artifacts")
+            # Stats present but the unified report was never rendered (e.g. the
+            # render step was skipped): the tile must not become a dead link.
+            make_json_artifact(artifacts, "mutation-go-dp", "report.json",
+                               {"stats": {"killedCount": 9, "escapedCount": 1}})
             out = os.path.join(d, "reports")
             self._gen(artifacts, out)
-            with open(os.path.join(out, "index.html")) as fh:
-                page = fh.read()
-            # dp stays a top-level flat link; techniques collapse into one group.
-            self.assertIn("Go: dp", page)
-            self.assertIn("<details>", page)
-            self.assertIn("Techniques (3 files)", page)
-            # Grouped links use the short technique name, not the shard label.
-            self.assertNotIn("Go: techniques-shard-aic", page)
-            self.assertIn("mutation/techniques-shard-aic/go-mutesting-report.html", page)
-            # Reports are still copied into place.
-            self.assertTrue(os.path.exists(
-                os.path.join(out, "mutation/techniques-shard-ur/go-mutesting-report.html")))
+            page = self._page(out)
+            self.assertNotIn("mutation/go/mutation.html", page)
+            self.assertNotIn("Go · mutation", page)
 
     def test_copies_profiling_playwright_report_dir_with_assets(self):
         with tempfile.TemporaryDirectory() as d:
             artifacts = os.path.join(d, "artifacts")
             make_artifact(artifacts, "nightly-playwright-report", "index.html")
             make_artifact(artifacts, "nightly-playwright-report", "data/trace.zip")
+            # The Profiling section renders from per-device comparison reports.
+            make_json_artifact(artifacts, "nightly-profiling-results", "chrome-comparison-report.json",
+                               {"deviceLabel": "chrome-desktop",
+                                "analysis": {"verdict": "PASS", "wasmIdlePercentage": 99.1,
+                                             "memoryOverheadMB": 3.2, "findings": []}})
             out = os.path.join(d, "reports")
             self._gen(artifacts, out)
             self.assertTrue(os.path.exists(os.path.join(out, "profiling/playwright/index.html")))
             # The whole report dir is copied, not just the entry file.
             self.assertTrue(os.path.exists(os.path.join(out, "profiling/playwright/data/trace.zip")))
-            with open(os.path.join(out, "index.html")) as fh:
-                page = fh.read()
+            page = self._page(out)
             self.assertIn("profiling/playwright/index.html", page)
             self.assertIn("Profiling", page)
 
@@ -94,28 +121,30 @@ class Portal(unittest.TestCase):
             artifacts = os.path.join(d, "artifacts")
             make_artifact(artifacts, "coverage-frontend", "index.html")
             make_artifact(artifacts, "coverage-frontend", "assets/style.css")
-            make_artifact(artifacts, "coverage-go", "coverage.html")
+            make_json_artifact(artifacts, "coverage-frontend", "coverage-summary.json",
+                               {"total": {"lines": {"pct": 91.2}}})
+            make_artifact(artifacts, "coverage-go", "coverage.func.txt", "total: (statements) 88.5%")
             out = os.path.join(d, "reports")
+            # Go coverage is pre-rendered as an istanbul report by the deploy step.
+            prerender(out, "coverage/go/index.html")
             self._gen(artifacts, out)
             self.assertTrue(os.path.exists(os.path.join(out, "coverage/frontend/index.html")))
             self.assertTrue(os.path.exists(os.path.join(out, "coverage/frontend/assets/style.css")))
-            self.assertTrue(os.path.exists(os.path.join(out, "coverage/go/coverage.html")))
-            with open(os.path.join(out, "index.html")) as fh:
-                page = fh.read()
+            page = self._page(out)
             self.assertIn("coverage/frontend/index.html", page)
-            self.assertIn("coverage/go/coverage.html", page)
+            self.assertIn("coverage/go/index.html", page)
             self.assertIn("Coverage", page)
 
     def test_omits_missing_reports_no_dead_links(self):
         with tempfile.TemporaryDirectory() as d:
             artifacts = os.path.join(d, "artifacts")
-            # An artifact dir with no recognizable HTML report inside.
+            # An artifact dir with no readable report.json inside.
             os.makedirs(os.path.join(artifacts, "mutation-go-human"), exist_ok=True)
             out = os.path.join(d, "reports")
             self._gen(artifacts, out)
-            with open(os.path.join(out, "index.html")) as fh:
-                page = fh.read()
+            page = self._page(out)
             self.assertNotIn("go-mutesting-report.html", page)
+            self.assertNotIn("mutation/go/mutation.html", page)
 
 
 if __name__ == "__main__":

@@ -29,7 +29,8 @@
     "mutation:incremental": "stryker run --incremental",
     "prepare": "husky install .husky",
     "gen:portal-themes": "tsx scripts/gen-portal-themes.mjs > ../.github/scripts/report_portal.themes.css",
-    "gen:go-coverage": "node scripts/lcov-to-istanbul.mjs"
+    "gen:go-coverage": "node scripts/lcov-to-istanbul.mjs",
+    "gen:go-mutation": "node scripts/go-mutesting-to-stryker.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.1",

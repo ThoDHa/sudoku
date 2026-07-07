@@ -494,6 +494,23 @@ jobs:
             echo "no coverage.lcov fetched; Go coverage report omitted"
           fi
 
+      # Render the Go mutation results (every package and technique shard) as one
+      # unified mutation-testing-elements dashboard, the same interactive report
+      # StrykerJS produces for the frontend, so the Go mutation report matches the
+      # frontend's exactly. Uses the frontend's already installed elements bundle.
+      - name: Render Go mutation report (Stryker elements, matches frontend)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        continue-on-error: true
+        run: |
+          mapfile -t go_mutation_reports < <(find nightly-artifacts -path '*mutation-go-*' -name report.json | sort)
+          if [ ${#go_mutation_reports[@]} -gt 0 ]; then
+            node frontend/scripts/go-mutesting-to-stryker.mjs \
+              pages-artifact/reports/mutation/go/mutation.html \
+              "${go_mutation_reports[@]}"
+          else
+            echo "no Go mutation report.json fetched; Go mutation report omitted"
+          fi
+
       # Unified report portal at /reports/ linking Allure + any fetched mutation
       # reports. Isolated and non-fatal so it can never break the app deploy.
       - name: Build unified report portal
