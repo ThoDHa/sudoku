@@ -31,8 +31,14 @@ import shutil
 # --- Health gates (from the project's real gates) ---
 # Coverage line gate is 85 (frontend vitest + Go floors sit at/below this).
 COVERAGE = {"ok": 85.0, "warn": 75.0}
-# Mutation efficacy: Stryker high/low is 90; the Go techniques floor is 85.
+# Mutation efficacy: Stryker high/low is 90 (used for the frontend and the pooled
+# overall banner). The Go tile instead honors each package's own floor below, so a
+# stricter package (dp) is not diluted by the pooled number.
 MUTATION = {"ok": 90.0, "warn": 80.0}
+# Per-package Go mutation floors, matching the nightly-mutation gates and the
+# api/Makefile. Technique shards aggregate into one "techniques" package.
+GO_MUTATION_FLOORS = {"dp": 95.0, "human": 85.0, "transport-http": 85.0, "techniques": 85.0}
+GO_MUTATION_DEFAULT_FLOOR = 85.0
 # Profiling idle-thread health (wasm-cpu-profile VERDICT_THRESHOLDS).
 IDLE = {"ok": 98.0, "warn": 95.0}
 # Profiling memory overhead thresholds in MB (WARN at 10, FAIL at 30).
@@ -213,20 +219,22 @@ def _go_counts(artifacts_dir, artifact_name):
     return (stats.get("killedCount", 0) + stats.get("timeOutCount", 0), stats.get("escapedCount", 0))
 
 
-def _go_all_counts(artifacts_dir):
-    """(detected, survived) summed across every Go go-mutesting report (all
-    packages and technique shards), or None when no Go mutation report is present."""
-    detected = survived = seen = 0
+def _go_package_counts(artifacts_dir):
+    """Map each Go package to its summed (detected, survived). Technique shards
+    aggregate into one 'techniques' entry; other scopes map by their own name.
+    Empty when no Go mutation report is present."""
+    packages = {}
     for name in _artifact_names(artifacts_dir):
         if not name.startswith(GO_MUTATION_PREFIX):
             continue
         counts = _go_counts(artifacts_dir, name)
         if not counts:
             continue
-        detected += counts[0]
-        survived += counts[1]
-        seen += 1
-    return (detected, survived) if seen else None
+        scope = name[len(GO_MUTATION_PREFIX):]
+        pkg = "techniques" if scope.startswith("techniques-shard-") else scope
+        det, surv = packages.get(pkg, (0, 0))
+        packages[pkg] = (det + counts[0], surv + counts[1])
+    return packages
 
 
 def profiling_reports(artifacts_dir):
@@ -365,20 +373,33 @@ def build_sections(artifacts_dir, out_dir, allure_rel, hrefs):
                                    health(score, MUTATION), hrefs["mutation-frontend"]))
     # The Go mutation report is rendered as one unified mutation-testing-elements
     # dashboard (every package and technique shard, matching the frontend) by the
-    # portal build before this runs.
-    go = _go_all_counts(artifacts_dir)
-    go_report = "mutation/go/mutation.html"
-    go_report_exists = os.path.exists(os.path.join(out_dir, go_report))
-    if go and go_report_exists:
-        score = _efficacy(*go)
+    # portal build before this runs. The tile's health reflects each package's own
+    # floor (dp is stricter at 95%), so one package's breach is not diluted across
+    # the thousands of technique mutants in the pooled number.
+    go_breach = False
+    packages = _go_package_counts(artifacts_dir)
+    if packages and os.path.exists(os.path.join(out_dir, "mutation/go/mutation.html")):
+        go_det = sum(det for det, _ in packages.values())
+        go_surv = sum(surv for _, surv in packages.values())
+        score = _efficacy(go_det, go_surv)
         if score is not None:
-            all_det += go[0]
-            all_surv += go[1]
-            mut_tiles.append(_tile("Go · mutation", f"{score:.1f}%", "mutation efficacy",
-                                   health(score, MUTATION), go_report))
+            all_det += go_det
+            all_surv += go_surv
+            breaches = []
+            for pkg, (det, surv) in sorted(packages.items()):
+                eff = _efficacy(det, surv)
+                floor = GO_MUTATION_FLOORS.get(pkg, GO_MUTATION_DEFAULT_FLOOR)
+                if eff is not None and eff < floor:
+                    breaches.append(f"{pkg} {eff:.0f}% < {floor:.0f}%")
+            go_breach = bool(breaches)
+            sub = "below floor: " + "; ".join(breaches) if breaches else "mutation efficacy"
+            mut_tiles.append(_tile("Go · mutation", f"{score:.1f}%", sub,
+                                   "fail" if go_breach else "ok", "mutation/go/mutation.html"))
     if mut_tiles:
         overall = _efficacy(all_det, all_surv)
-        blocks = [_banner(health(overall, MUTATION), f"{overall:.1f}%", "score",
+        # A per-package floor breach fails the overall banner too, not just the tile.
+        banner_state = "fail" if go_breach else health(overall, MUTATION)
+        blocks = [_banner(banner_state, f"{overall:.1f}%", "score",
                           "Overall mutation efficacy, weighted by mutant count across all scopes."),
                   _tiles(mut_tiles)]
         sections.append(_section("Mutation testing", f"{len(mut_tiles)} scopes", blocks))

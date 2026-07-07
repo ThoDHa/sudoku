@@ -63,11 +63,12 @@ class Portal(unittest.TestCase):
     def test_links_unified_go_mutation_report(self):
         with tempfile.TemporaryDirectory() as d:
             artifacts = os.path.join(d, "artifacts")
-            # Every Go scope and technique shard contributes to one aggregated tile.
+            # Every Go scope and technique shard contributes to one aggregated tile,
+            # each meeting its own floor (dp 100% >= 95, techniques 85% >= 85).
             make_json_artifact(artifacts, "mutation-go-dp", "report.json",
-                               {"stats": {"killedCount": 9, "timeOutCount": 1, "escapedCount": 0}})
+                               {"stats": {"killedCount": 20, "timeOutCount": 0, "escapedCount": 0}})
             make_json_artifact(artifacts, "mutation-go-techniques-shard-aic", "report.json",
-                               {"stats": {"killedCount": 8, "timeOutCount": 0, "escapedCount": 2}})
+                               {"stats": {"killedCount": 17, "timeOutCount": 0, "escapedCount": 3}})
             out = os.path.join(d, "reports")
             # The unified Stryker-style report is rendered into place by the deploy
             # build step before the portal script runs; simulate that here.
@@ -81,8 +82,41 @@ class Portal(unittest.TestCase):
             self.assertNotIn("Go · dp", page)
             self.assertNotIn("go-mutesting-report.html", page)
             self.assertNotIn("<details>", page)
-            # Aggregated efficacy: 18 detected / 20 -> 90.0%.
-            self.assertIn("90.0%", page)
+            # Aggregated efficacy: 37 detected / 40 -> 92.5%; all floors met.
+            self.assertIn("92.5%", page)
+            self.assertNotIn("below floor", page)
+
+    def test_go_tile_fails_when_a_package_breaches_its_own_floor(self):
+        with tempfile.TemporaryDirectory() as d:
+            artifacts = os.path.join(d, "artifacts")
+            # dp at 90% breaches its stricter 95 floor, even though the huge
+            # techniques package pools the overall efficacy up near 100%.
+            make_json_artifact(artifacts, "mutation-go-dp", "report.json",
+                               {"stats": {"killedCount": 90, "escapedCount": 10}})
+            make_json_artifact(artifacts, "mutation-go-techniques-shard-aic", "report.json",
+                               {"stats": {"killedCount": 9000, "escapedCount": 0}})
+            out = os.path.join(d, "reports")
+            prerender(out, "mutation/go/mutation.html")
+            self._gen(artifacts, out)
+            page = self._page(out)
+            # The pooled number stays high (~99.9%), but the dp breach is not
+            # diluted: the tile and the overall banner both go red.
+            self.assertIn("99.9%", page)
+            self.assertIn("below floor: dp 90%", page)  # < is HTML-escaped in the page
+            self.assertIn('class="tile fail"', page)
+            self.assertIn('class="banner fail"', page)
+
+    def test_coverage_below_gate_is_marked_fail(self):
+        with tempfile.TemporaryDirectory() as d:
+            artifacts = os.path.join(d, "artifacts")
+            make_artifact(artifacts, "coverage-frontend", "index.html")
+            make_json_artifact(artifacts, "coverage-frontend", "coverage-summary.json",
+                               {"total": {"lines": {"pct": 60.0}}})  # below the 75 warn / 85 ok gate
+            out = os.path.join(d, "reports")
+            self._gen(artifacts, out)
+            page = self._page(out)
+            self.assertIn("60.0%", page)
+            self.assertIn('class="tile fail"', page)
 
     def test_go_mutation_tile_omitted_without_rendered_report(self):
         with tempfile.TemporaryDirectory() as d:
