@@ -62,10 +62,6 @@ header .grow { flex: 1; }
 .legend .sw.fail { background: var(--fail); }
 .legend .arrow { color: var(--accent); font-weight: 600; }
 
-.also { margin: .7rem 0 0; font-size: .8rem; color: var(--muted); }
-.also a { color: var(--accent); text-decoration: none; }
-.also a:hover { text-decoration: underline; }
-
 /* Sections */
 section { margin: 2.3rem 0 0; }
 .h2row {
@@ -122,17 +118,6 @@ h2 { font-size: .72rem; text-transform: uppercase; letter-spacing: .09em; color:
 .tile.link { background: var(--surface-2); }
 .tile.link .name { font-size: 1.02rem; font-weight: 640; margin-top: auto; }
 .tile.link .name::after { content: " \2192"; color: var(--accent); }
-
-/* Collapsible per-shard list */
-details { margin-top: .9rem; }
-summary { cursor: pointer; font-size: .84rem; color: var(--muted); list-style: none; display: inline-flex; align-items: center; gap: .4rem; }
-summary::before { content: "\25B8"; font-size: .7rem; transition: transform .12s ease; }
-details[open] summary::before { transform: rotate(90deg); }
-summary::-webkit-details-marker { display: none; }
-details ul { margin: .6rem 0 0; padding-left: 1.15rem; columns: 3; font-size: .9rem; }
-details li { padding: .12rem 0; }
-a.rep { color: var(--accent); text-decoration: none; }
-a.rep:hover { text-decoration: underline; }
 
 /* Profiling device cards */
 .devices { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)); gap: .75rem; margin-top: .9rem; }
