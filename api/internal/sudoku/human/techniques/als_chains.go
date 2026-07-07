@@ -126,15 +126,6 @@ func DetectALSXYWing(b BoardInterface) *core.Move {
 //
 // This extends ALS-XY-Wing to chains of arbitrary length.
 func DetectALSXYChain(b BoardInterface) *core.Move {
-	// mutator-disable-next-line numbers/decrementer: reducing FindAllALS maxSize from 4 to 3
-	// excludes size-4 ALS (4 cells, 5 candidates) from the chain node set. A size-4 ALS is only
-	// *required* for an elimination when no size-1/2/3 sub-ALS can substitute — and because every
-	// bivalue cell inside a size-4 ALS is itself a size-1 ALS, the common chain shapes are covered
-	// by the smaller ALS the mutant still finds. Divergence requires a rare board where the
-	// elimination geometry provably needs all four cells' combined candidate union; no such board
-	// exists in the suite or the curated ALS-XY-chain fixtures. Tracked in the ALS-curation follow-up
-	// (see task ALS-FIX-1) for a genuine size-4-ALS-XZ fixture; the detectALSXYChain(b, maxSize)
-	// helper makes that one-call-verifiable.
 	return detectALSXYChain(b, 4)
 }
 
@@ -177,10 +168,18 @@ func detectALSXYChain(b BoardInterface, maxSize int) *core.Move {
 	// Use DFS to find chains
 	for startIdx := 0; startIdx < n; startIdx++ {
 		// Try to find chains starting from startIdx
-		// mutator-disable-next-line numbers/decrementer: dropping maxLen 6->5 excludes length-6 chains.
-		// A length-6 ALS chain (six nodes) only eliminates when no length 3-5 chain does; such chains
-		// are rare and none arise in the suite or curated fixtures. Tracked in ALS-FIX-1 for a
-		// genuine length-6-chain fixture.
+		// mutator-disable-next-line numbers/decrementer: dropping maxLen 6->5 excludes length-6
+		// ALS-XY chains. A length-6 chain only diverges from the mutant when no length 3-5 chain
+		// eliminates the same endpoint digit Z. PIsaacson's decomposition principle (EnjoySudoku
+		// forum t6642 p2: "Any ALS chain > length 2 can be decomposed into sub-chains") makes this
+		// chain-level substitution escape structurally hard to defeat. No length-6 board exists in
+		// any reachable source: Hodoku's ALS Chain catalog maxes at length-4 (ach01/ach02); the
+		// longest documented ALS chain anywhere is length-5 (hobiwan, t6642 puzzle #28367), and it
+		// requires overlapping ALSes and doubly-linked RCs, both forbidden here (the ALSShareCells
+		// rejection and the global RC-uniqueness check in searchALSChain, stricter than the
+		// literature's adjacency-only rule). Tracked in task ALS-FIX-1; a kill would need both a
+		// curated length-6 board that defeats substitution and a detectALSXYChainMaxLen helper to
+		// contrast maxLen 6 vs 5.
 		if move := searchALSChain(b, allALS, adjRC, startIdx, 6); move != nil {
 			return move
 		}

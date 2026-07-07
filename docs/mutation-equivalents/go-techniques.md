@@ -10,11 +10,11 @@ primary record; this file is a review index.
 - **Package:** `internal/sudoku/human/techniques`
 - **Scope of this pass:** 17 escaped mutants across `als_chains.go` (9),
   `grid.go` (3), `xcycles.go` (3), `chains.go` (1), `ur.go` (1).
-- **Killed by new tests:** 13 (see `techniques_advanced_test.go`)
+- **Killed by new tests:** 14 (see `techniques_advanced_test.go`)
 - **Annotated equivalents:** 0 (no genuine equivalents identified)
-- **Deferred (test gaps, NOT equivalent):** 5
+- **Deferred (test gaps, NOT equivalent):** 4
 
-## Killed mutants (13)
+## Killed mutants (14)
 
 Each killed by a targeted unit test in
 `api/internal/sudoku/human/techniques/techniques_advanced_test.go`:
@@ -33,11 +33,12 @@ Each killed by a targeted unit test in
 | als_chains L274 `branch/if` | `als_chains.go:274` | `TestCheckChainEliminationSkipsRCDigit` |
 | als_chains L274 `statement/remove` | `als_chains.go:274` | `TestCheckChainEliminationSkipsRCDigit` |
 | als_chains L279 `branch/if` | `als_chains.go:279` | `TestCheckChainEliminationSkipsRCDigit` |
+| als_chains L129 `numbers/decrementer` | `als_chains.go:129` | `TestDetectALSXYChainRequiresSizeFourALS` |
 
-(12 rows cover 13 mutants because `TestCheckChainEliminationSkipsRCDigit`
+(13 rows cover 14 mutants because `TestCheckChainEliminationSkipsRCDigit`
 kills four mutants at `als_chains.go:273-279` in a single assertion.)
 
-## Deferred mutants (5)
+## Deferred mutants (4)
 
 These are genuine test gaps, NOT equivalents. They survive because the
 constructible boards that make `DetectALSXYChain` fire also admit a shorter,
@@ -47,10 +48,7 @@ a specific shape, which could not be built and verified without running
 go-mutesting (out of scope for this pass). They are recorded here so a future
 pass can target them.
 
-- `als_chains.go:129` `numbers/decrementer` (`FindAllALS(b, 4)` -> `3`): needs a
-  fixture whose only firing chain contains a size-4 ALS. All constructible
-  chains fire on size-1/2 ALS, which `maxSize=3` still enumerates.
-- `als_chains.go:158` `numbers/decrementer` (chain `maxLen` 6 -> 5): needs a
+- `als_chains.go:171` `numbers/decrementer` (chain `maxLen` 6 -> 5): needs a
   fixture whose only firing chain has length exactly 6. Length-3/4 chains fire
   under both bounds.
 - `als_chains.go:139` `loop/break` (adjacency build `continue` -> `break`):

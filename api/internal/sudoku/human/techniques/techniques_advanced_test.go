@@ -228,3 +228,59 @@ func TestCheckChainEliminationSkipsRCDigit(t *testing.T) {
 		t.Errorf("expected nil because common digit 3 is an RC and must be skipped, got %+v", move)
 	}
 }
+
+// TestDetectALSXYChainRequiresSizeFourALS kills the numbers/decrementer
+// mutant on DetectALSXYChain's FindAllALS maxSize literal (4 -> 3). The
+// board sculpts the Hodoku ach01 ALS-XY-Chain firing state: a length-4
+// chain whose two end nodes are each a size-4 ALS (4 cells, 5 candidates).
+// Every size-3 subset of either end node unions to 5 candidates over 3
+// cells (not an ALS), and the sole size-3 ALS substitute of the first end
+// node ({r1c789}={2469}) lacks digit 5, so it cannot link to the bivalue
+// node2 via RC 5. No size-1/2/3 ALS on the board can substitute for either
+// end node, so maxSize=3 finds no firing chain while maxSize=4 does.
+//
+// The elimination target r1c3 carries {8,9}: digit 8 is inert (unique to
+// that cell), and the bivalue {8,9} does not form ALSes with any row-0,
+// col-2, or box-0 cell, preventing the substitution escape where a smaller
+// ALS containing the target cell takes over an end-node role.
+func TestDetectALSXYChainRequiresSizeFourALS(t *testing.T) {
+	var cells [constants.TotalCells]int
+	for i := range cells {
+		cells[i] = 1
+	}
+	for _, idx := range []int{
+		idxOf(0, 2),
+		idxOf(0, 3), idxOf(0, 6), idxOf(0, 7), idxOf(0, 8),
+		idxOf(7, 3),
+		idxOf(4, 2), idxOf(7, 2),
+		idxOf(1, 0), idxOf(1, 1), idxOf(1, 2), idxOf(2, 2),
+	} {
+		cells[idx] = 0
+	}
+	b := boardFromMap(cells, map[int][]int{
+		idxOf(0, 2): {8, 9},
+		idxOf(0, 3): {4, 5, 6},
+		idxOf(0, 6): {2, 4, 6, 9},
+		idxOf(0, 7): {2, 4, 6, 9},
+		idxOf(0, 8): {2, 6, 9},
+		idxOf(7, 3): {5, 6},
+		idxOf(4, 2): {2, 5},
+		idxOf(7, 2): {2, 5, 6},
+		idxOf(1, 0): {3, 4, 6, 9},
+		idxOf(1, 1): {3, 4, 6, 9},
+		idxOf(1, 2): {2, 3, 4},
+		idxOf(2, 2): {2, 6, 9},
+	})
+
+	// Exercise the public DetectALSXYChain so the numbers/decrementer mutant
+	// (als_chains.go:129, 4->3) is on the call path. Calling the helper with a
+	// literal 4 would bypass the mutated line and let the mutant survive.
+	if DetectALSXYChain(b) == nil {
+		t.Fatal("expected DetectALSXYChain to fire on a size-4-ALS-required board")
+	}
+	// detectALSXYChain(b, 3) documents WHY size-4 is required: maxSize 3 finds no
+	// firing chain because the {8,9} target design defeats the substitution escape.
+	if detectALSXYChain(b, 3) != nil {
+		t.Fatal("size-4 not actually required: chain fires at maxSize=3 (substitution escape)")
+	}
+}
