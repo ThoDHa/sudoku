@@ -1,4 +1,4 @@
-name: Test & Build
+name: Test & Deploy
 
 on:
   push:
@@ -22,17 +22,20 @@ on:
           - go
           - e2e
 
-# This workflow tests and builds the Pages site, then hands the assembled site
-# off as the `pages-site` artifact. The actual deploy runs in a decoupled
-# workflow (pages-deploy.yml) so a superseding push can cancel redundant test
-# work without ever cancelling an in-flight deployment.
 permissions:
   contents: read
+  pages: write
+  id-token: write
   actions: read
 
+# Deploy runs in this same run (GitHub Pages rejects deploy-pages from a
+# decoupled workflow_run trigger). So we must NOT cancel a run mid-flight or we
+# lose its deploy. Cancel only PR runs (which never deploy); branch pushes queue
+# and every one lands, which also serializes Pages deploys and avoids the
+# "multiple github-pages artifacts" race.
 concurrency:
   group: "deploy-${{ github.ref }}"
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # ============================================
@@ -251,10 +254,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test-frontend-unit, test-go, test-e2e]
     if: always()
-    # Max tolerated E2E failures before deploy is withheld. E2E is flaky and
-    # runs continue-on-error, so a handful of failures should not block deploy.
-    env:
-      E2E_FAILURE_THRESHOLD: "5"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -430,30 +429,12 @@ jobs:
           path: allure-report/
           retention-days: 30
 
-      # Single source of truth for whether this run should produce a deployable
-      # site. Encodes the full deploy gate: right branch, core test suites green,
-      # and E2E failures within tolerance. When false, the Pages build and upload
-      # below are skipped, so no `pages-site` artifact exists and pages-deploy.yml
-      # finds nothing to deploy.
-      - name: Compute deploy gate
-        id: gate
-        if: always()
-        run: |
-          should=false
-          ref="${{ github.ref }}"
-          if { [ "$ref" = "refs/heads/main" ] || [ "$ref" = "refs/heads/modernization" ]; } \
-             && [ "${{ needs.test-go.result }}" = "success" ] \
-             && [ "${{ needs.test-frontend-unit.result }}" = "success" ]; then
-            f="${{ needs.test-e2e.outputs.e2e_failures }}"
-            if [ -z "$f" ] || [ "$f" -le "$E2E_FAILURE_THRESHOLD" ]; then
-              should=true
-            fi
-          fi
-          echo "should_deploy=$should" >> "$GITHUB_OUTPUT"
-          echo "Deploy gate: should_deploy=$should"
+      - name: Setup Pages
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        uses: actions/configure-pages@v6
 
       - name: Setup Go for WASM build
-        if: steps.gate.outputs.should_deploy == 'true'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         uses: actions/setup-go@v6
         with:
           go-version: '1.26'
@@ -464,25 +445,25 @@ jobs:
       # Different TinyGo versions produce incompatible WASM binaries
       # See: https://github.com/tinygo-org/tinygo/releases
       - name: Install TinyGo for WASM build
-        if: steps.gate.outputs.should_deploy == 'true'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         run: |
           wget https://github.com/tinygo-org/tinygo/releases/download/v0.41.1/tinygo_0.41.1_amd64.deb
           sudo dpkg -i tinygo_0.41.1_amd64.deb
 
       - name: Build WASM for deployment
-        if: steps.gate.outputs.should_deploy == 'true'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         working-directory: api
         run: make wasm-all
 
       - name: Build frontend for deployment
-        if: steps.gate.outputs.should_deploy == 'true'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         working-directory: frontend
         run: npm run build
         env:
           VITE_BASE_PATH: /sudoku/
 
       - name: Prepare Pages artifact
-        if: steps.gate.outputs.should_deploy == 'true'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         run: |
           # Create directory structure for GitHub Pages
           # Main app goes to root, test report goes to /test-report/
@@ -496,7 +477,7 @@ jobs:
       # Unified report portal at /reports/ linking Allure + any fetched mutation
       # reports. Isolated and non-fatal so it can never break the app deploy.
       - name: Build unified report portal
-        if: steps.gate.outputs.should_deploy == 'true'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         continue-on-error: true
         run: |
           python3 .github/scripts/gen_report_portal.py \
@@ -504,14 +485,32 @@ jobs:
             --out-dir pages-artifact/reports \
             --allure-rel ../test-report/
 
-      # Hand the assembled site to the decoupled deploy workflow as a plain
-      # artifact. Its presence is the signal that this run is deployable; when
-      # the deploy gate is false, no artifact is produced and nothing deploys.
-      - name: Upload Pages site artifact
-        if: steps.gate.outputs.should_deploy == 'true'
-        uses: actions/upload-artifact@v7
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        uses: actions/upload-pages-artifact@v5
         with:
-          name: pages-site
           path: pages-artifact
-          retention-days: 7
-          if-no-files-found: error
+
+  # ============================================
+  # Deploy to GitHub Pages (Game + Test Report)
+  # ============================================
+  deploy:
+    # Deploy runs on main (production) or modernization (working branch) when the core gates
+    # pass (Go + unit tests) AND E2E failures are within tolerance. Not all-or-nothing: a flaky
+    # E2E test no longer blocks deploy. E2E_FAILURE_THRESHOLD is the max tolerated E2E failures
+    # (currently 5). If test-e2e was skipped, the empty output is treated as "within tolerance".
+    if: |
+      always() &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization') &&
+      needs.test-go.result == 'success' &&
+      needs.test-frontend-unit.result == 'success' &&
+      (needs.test-e2e.outputs.e2e_failures == '' || needs.test-e2e.outputs.e2e_failures <= 5)
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: [test-frontend-unit, test-go, test-e2e, allure-report]
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
