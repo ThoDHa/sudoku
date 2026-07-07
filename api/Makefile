@@ -243,14 +243,12 @@ vulncheck:
 		echo "vulncheck: installing govulncheck $(GOVULNCHECK_VERSION) to $(GOVULNCHECK_BIN)"; \
 		go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION); \
 	fi; \
-	out=$$($(GOVULNCHECK_BIN) ./... 2>&1); status=$$?; \
-	if [ $$status -eq 0 ]; then \
-		echo "vulncheck: OK no confirmed vulnerabilities."; \
-	else \
-		echo "vulncheck: FAIL govulncheck exited $$status" >&2; \
+	out=$$($(GOVULNCHECK_BIN) ./... 2>&1) || { \
+		echo "vulncheck: FAIL govulncheck reported findings or errored" >&2; \
 		echo "$$out" >&2; \
 		exit 1; \
-	fi
+	}; \
+	echo "vulncheck: OK no confirmed vulnerabilities."
 
 # Memory profiling tests
 test-memory:
