@@ -110,12 +110,11 @@ jobs:
           mkdir -p reports/mutation
           cat > /tmp/mutation-config.yml <<'YAML'
           json_output: true
-          html_output: true
           YAML
           go-mutesting --config=/tmp/mutation-config.yml ${{ matrix.pkg }}
           slug=$(echo "${{ matrix.pkg }}" | tr -d './' | tr '/' '-')
           mkdir -p "reports/mutation/${slug}"
-          mv report.json go-mutesting-report.html "reports/mutation/${slug}/" 2>/dev/null || true
+          mv report.json "reports/mutation/${slug}/" 2>/dev/null || true
         continue-on-error: true
 
       - name: Check efficacy gate
@@ -245,14 +244,13 @@ jobs:
           mkdir -p "$outdir"
           cat > /tmp/mutation-config.yml <<'YAML'
           json_output: true
-          html_output: true
           YAML
           targets=()
           for f in ${{ matrix.files }}; do
             targets+=("./internal/sudoku/human/techniques/$f")
           done
           go-mutesting --config=/tmp/mutation-config.yml "${targets[@]}"
-          mv report.json go-mutesting-report.html "$outdir/" 2>/dev/null || true
+          mv report.json "$outdir/" 2>/dev/null || true
         continue-on-error: true
 
       - name: Upload techniques shard report
