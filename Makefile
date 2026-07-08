@@ -1,7 +1,7 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-.PHONY: check check-fast check-full test test-go test-scripts test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck mutation-frontend mutation-go mutation-gate mutation-clean format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons wasm dev prod report serve-reports allure-report allure-serve allure-clean
+.PHONY: check check-fast check-full test test-go test-scripts test-unit test-e2e test-integration test-frontend lint lint-go tools-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck mutation-frontend mutation-go mutation-gate mutation-clean format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons wasm dev prod report serve-reports allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Development & Production
@@ -29,6 +29,11 @@ prod:
 # Linting
 #-----------------------------------------------------------------------
 
+# Pin golangci-lint to the exact version CI installs (deploy.yml) so the
+# local binary cannot drift from CI's binary and produce false failures.
+GOLANGCI_LINT_VERSION := v2.12.2
+GOLANGCI_LINT := $(shell go env GOPATH)/bin/golangci-lint
+
 # Run all linters
 lint: lint-go lint-frontend
 	@echo ""
@@ -36,11 +41,16 @@ lint: lint-go lint-frontend
 	@echo "  All linting passed!"
 	@echo "========================================"
 
+# Install the pinned golangci-lint binary into GOPATH/bin; matches CI so
+# local linting and CI linting run the same version.
+tools-go:
+	@cd api && go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+
 # Run Go linter
-lint-go:
+lint-go: tools-go
 	@echo ""
 	@echo "[Go] Running linter..."
-	@cd api && $(shell go env GOPATH)/bin/golangci-lint run ./...
+	@cd api && $(GOLANGCI_LINT) run ./...
 	@echo "[Go] Linting passed!"
 
 # Run Frontend linter
