@@ -40,9 +40,9 @@ func CreateSolverUpToTier(maxTier string) *Solver {
 	registry := NewTechniqueRegistry()
 	tierOrder := map[string]int{
 		// mutator-disable-next-line numbers/decrementer: CreateSolverUpToTier only uses tierOrder for `>` comparisons; shifting Simple preserves relative ordering since all tier values are distinct
-		constants.TierSimple:  0,
-		constants.TierMedium:  1,
-		constants.TierHard:    2,
+		constants.TierSimple: 0,
+		constants.TierMedium: 1,
+		constants.TierHard:   2,
 		// mutator-disable-next-line numbers/incrementer: same rationale as TierSimple above; shifting Extreme preserves all `>` comparisons
 		constants.TierExtreme: 3,
 	}

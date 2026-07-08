@@ -185,14 +185,14 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 			row, col := i/constants.GridSize, i%constants.GridSize
 
 			// Check if any digit could theoretically be placed here
-		anyValidPlacement := false
-		for d := 1; d <= constants.GridSize; d++ {
-			if b.canPlace(i, d) && !b.Eliminated[i].Has(d) {
-				anyValidPlacement = true
-				// mutator-disable-next-line loop/break: break vs continue produces the same anyValidPlacement=true; the loop has no other side effect
-				break
+			anyValidPlacement := false
+			for d := 1; d <= constants.GridSize; d++ {
+				if b.canPlace(i, d) && !b.Eliminated[i].Has(d) {
+					anyValidPlacement = true
+					// mutator-disable-next-line loop/break: break vs continue produces the same anyValidPlacement=true; the loop has no other side effect
+					break
+				}
 			}
-		}
 
 			// If no digit can be placed AND candidates are empty, it's a real contradiction
 			if !anyValidPlacement {
@@ -653,9 +653,9 @@ func (s *Solver) AnalyzePuzzleDifficulty(givens []int) (core.Difficulty, map[str
 
 	tierOrder := map[string]int{
 		// mutator-disable-next-line numbers/decrementer: shifting Simple from 0 to -1 preserves all strict-ordering comparisons since every tier maps to a distinct integer and only relative order matters
-		constants.TierSimple:  0,
-		constants.TierMedium:  1,
-		constants.TierHard:    2,
+		constants.TierSimple: 0,
+		constants.TierMedium: 1,
+		constants.TierHard:   2,
 		// mutator-disable-next-line numbers/incrementer: shifting Extreme from 3 to 4 preserves all strict-ordering comparisons for the same reason as Simple above
 		constants.TierExtreme: 3,
 	}

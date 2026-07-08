@@ -234,7 +234,7 @@ func searchALSChain(b BoardInterface, allALS []ALS, adjRC map[int]map[int][]int,
 		for nextIdx, rcs := range adjRC[currALSIdx] {
 			if curr.visited[nextIdx] {
 				// mutator-disable-next-line loop/break: break here would abandon the remaining
-				// (unvisited) neighbours on the first visited hit. Whether a visited neighbour
+				// (unvisited) neighbors on the first visited hit. Whether a visited neighbor
 				// appears before a productive one depends on Go map iteration order over
 				// adjRC[currALSIdx], which is non-deterministic, so the mutant's divergence
 				// is flaky and cannot be asserted by a deterministic test.
