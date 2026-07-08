@@ -1,7 +1,7 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-.PHONY: check check-fast check-full test test-go test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck mutation-frontend mutation-go mutation-gate mutation-clean format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons wasm dev prod report serve-reports allure-report allure-serve allure-clean
+.PHONY: check check-fast check-full test test-go test-scripts test-unit test-e2e test-integration test-frontend lint lint-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck mutation-frontend mutation-go mutation-gate mutation-clean format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons wasm dev prod report serve-reports allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Development & Production
@@ -94,6 +94,16 @@ test-go:
 	@echo "  Running Go Tests with Allure"
 	@echo "========================================"
 	@cd api && mkdir -p allure-results && $(shell go env GOPATH)/bin/gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./...
+
+# Run the report-portal script tests, including the drift guard that pins
+# api/Makefile and nightly-mutation.yml to the canonical mutation floors in
+# api/mutation-floors.json. Mirrors the test-go job's step in deploy.yml.
+test-scripts:
+	@echo ""
+	@echo "========================================"
+	@echo "  Running report-portal script tests"
+	@echo "========================================"
+	@cd .github/scripts && python3 -m unittest gen_report_portal_test
 
 # Run Frontend unit tests with Allure output (Docker)
 test-unit:
@@ -205,7 +215,7 @@ test: allure-clean
 # the coverage thresholds, the duplication gate, and govulncheck.
 # e2e/integration stay in `make check-full` and `make test`; e2e-green is
 # owned by TEST-001.F.
-check: lint-go lint-frontend typecheck-frontend test-go coverage-go vulncheck coverage-frontend dup-frontend
+check: lint-go lint-frontend typecheck-frontend test-go test-scripts coverage-go vulncheck coverage-frontend dup-frontend
 	@echo ""
 	@echo "========================================"
 	@echo "  Full gate passed (lint + go + frontend"
@@ -216,7 +226,7 @@ check: lint-go lint-frontend typecheck-frontend test-go coverage-go vulncheck co
 # Fast per-commit gate: lint + Go + frontend unit (no coverage/dup/vuln).
 # Use for tight dev loops; run `make check` before pushing to catch the
 # quality gates CI enforces.
-check-fast: lint-go lint-frontend typecheck-frontend test-go test-unit
+check-fast: lint-go lint-frontend typecheck-frontend test-go test-scripts test-unit
 	@echo ""
 	@echo "========================================"
 	@echo "  Fast gate passed (lint + go + unit)."

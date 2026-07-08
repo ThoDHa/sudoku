@@ -1,0 +1,9 @@
+{
+  "_comment": "Canonical Go per-package mutation efficacy floors (percent). Single source of truth. Read directly by .github/scripts/gen_report_portal.py; api/Makefile and .github/workflows/nightly-mutation.yml mirror these values and are drift-guarded against this file by gen_report_portal_test.py (a mismatch fails CI). Technique shards aggregate into the single 'techniques' scope.",
+  "floors": {
+    "dp": 95,
+    "human": 85,
+    "techniques": 85,
+    "transport-http": 85
+  }
+}

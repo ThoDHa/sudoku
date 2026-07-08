@@ -3,6 +3,7 @@
 
 import json
 import os
+import re
 import tempfile
 import unittest
 
@@ -179,6 +180,63 @@ class Portal(unittest.TestCase):
             page = self._page(out)
             self.assertNotIn("go-mutesting-report.html", page)
             self.assertNotIn("mutation/go/mutation.html", page)
+
+
+def _repo(*parts):
+    return os.path.join(portal._REPO_ROOT, *parts)
+
+
+class MutationFloorSources(unittest.TestCase):
+    """The mutation gate numbers have single sources of truth (Stryker config for
+    the frontend, api/mutation-floors.json for the Go per-package floors). The
+    portal reads them, and the api/Makefile + nightly-mutation workflow mirrors
+    are guarded against silent drift from the canonical file."""
+
+    def setUp(self):
+        with open(_repo("api", "mutation-floors.json")) as f:
+            self.floors = {k: float(v) for k, v in json.load(f)["floors"].items()}
+
+    def test_portal_loads_canonical_go_floors(self):
+        self.assertEqual(portal.GO_MUTATION_FLOORS, self.floors)
+
+    def test_portal_frontend_gate_matches_stryker_config(self):
+        with open(_repo("frontend", "stryker.config.json")) as f:
+            th = json.load(f)["thresholds"]
+        self.assertEqual(portal.MUTATION, {"ok": float(th["high"]), "warn": float(th["low"])})
+
+    def test_go_floor_loader_falls_back_on_missing_file(self):
+        self.assertEqual(portal._load_go_mutation_floors("/no/such/floors.json"),
+                         {"dp": 95.0, "human": 85.0, "techniques": 85.0, "transport-http": 85.0})
+
+    def test_frontend_gate_loader_falls_back_on_missing_file(self):
+        self.assertEqual(portal._load_frontend_mutation_gate("/no/such/config.json"),
+                         {"ok": 90.0, "warn": 90.0})
+
+    def test_makefile_floors_match_canonical(self):
+        with open(_repo("api", "Makefile")) as f:
+            text = f.read()
+        var_to_slug = {"DP": "dp", "HUMAN": "human", "TECHNIQUES": "techniques",
+                       "TRANSPORT_HTTP": "transport-http"}
+        found = {}
+        for var, slug in var_to_slug.items():
+            m = re.search(rf"^{var}_MUTATION_FLOOR\s*:=\s*(\d+)", text, re.M)
+            self.assertIsNotNone(m, f"{var}_MUTATION_FLOOR not found in api/Makefile")
+            found[slug] = float(m.group(1))
+        self.assertEqual(found, self.floors)
+
+    def test_nightly_matrix_floors_match_canonical(self):
+        with open(_repo(".github", "workflows", "nightly-mutation.yml")) as f:
+            text = f.read()
+        # Matrix entries are "- name: <slug>" then "pkg:" then "floor: <n>" on
+        # consecutive lines; step definitions (name -> uses/run) never match.
+        matrix = {name: float(fl) for name, fl in
+                  re.findall(r"-\s*name:\s*(\S+)\s*\n\s*pkg:[^\n]*\n\s*floor:\s*(\d+)", text)}
+        self.assertTrue(matrix, "no matrix floors parsed from nightly-mutation.yml")
+        # The nightly matrix runs a subset (techniques is sharded elsewhere), so
+        # every floor it declares must match the canonical file, not vice versa.
+        for name, floor in matrix.items():
+            self.assertIn(name, self.floors, f"matrix scope {name} missing from canonical floors")
+            self.assertEqual(floor, self.floors[name], f"{name} floor drifted from canonical")
 
 
 if __name__ == "__main__":

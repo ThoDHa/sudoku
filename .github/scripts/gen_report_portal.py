@@ -31,13 +31,42 @@ import shutil
 # --- Health gates (from the project's real gates) ---
 # Coverage line gate is 85 (frontend vitest + Go floors sit at/below this).
 COVERAGE = {"ok": 85.0, "warn": 75.0}
-# Mutation efficacy: Stryker high/low is 90 (used for the frontend and the pooled
-# overall banner). The Go tile instead honors each package's own floor below, so a
-# stricter package (dp) is not diluted by the pooled number.
-MUTATION = {"ok": 90.0, "warn": 80.0}
-# Per-package Go mutation floors, matching the nightly-mutation gates and the
-# api/Makefile. Technique shards aggregate into one "techniques" package.
-GO_MUTATION_FLOORS = {"dp": 95.0, "human": 85.0, "transport-http": 85.0, "techniques": 85.0}
+
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _load_frontend_mutation_gate(config_path=None):
+    """Frontend mutation gate read from Stryker's own thresholds (high -> ok,
+    low -> warn). Also drives the pooled overall mutation banner. Falls back to
+    90/90 if the config is unreadable so the portal build never breaks."""
+    path = config_path or os.path.join(_REPO_ROOT, "frontend", "stryker.config.json")
+    try:
+        with open(path) as f:
+            th = json.load(f)["thresholds"]
+        return {"ok": float(th["high"]), "warn": float(th["low"])}
+    except (OSError, KeyError, ValueError, TypeError):
+        return {"ok": 90.0, "warn": 90.0}
+
+
+def _load_go_mutation_floors(floors_path=None):
+    """Per-package Go mutation efficacy floors from the canonical
+    api/mutation-floors.json (technique shards aggregate into one "techniques"
+    scope). Falls back to the documented floors if the file is unreadable."""
+    path = floors_path or os.path.join(_REPO_ROOT, "api", "mutation-floors.json")
+    try:
+        with open(path) as f:
+            return {k: float(v) for k, v in json.load(f)["floors"].items()}
+    except (OSError, KeyError, ValueError, TypeError):
+        return {"dp": 95.0, "human": 85.0, "techniques": 85.0, "transport-http": 85.0}
+
+
+# Stryker high/low (used for the frontend tile and the pooled overall banner).
+# The Go tile instead honors each package's own floor below, so a stricter
+# package (dp) is not diluted by the pooled number.
+MUTATION = _load_frontend_mutation_gate()
+# Canonical in api/mutation-floors.json; api/Makefile and the nightly-mutation
+# workflow mirror it and are drift-guarded against it in the portal's tests.
+GO_MUTATION_FLOORS = _load_go_mutation_floors()
 GO_MUTATION_DEFAULT_FLOOR = 85.0
 # Profiling idle-thread health (wasm-cpu-profile VERDICT_THRESHOLDS).
 IDLE = {"ok": 98.0, "warn": 95.0}
