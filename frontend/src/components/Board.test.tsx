@@ -1,7 +1,7 @@
-import React from 'react'
-import { render, screen, within, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi, describe, it, expect, beforeEach, type Mock } from 'vitest'
+import { vi, describe, it, expect, type Mock } from 'vitest'
+import '@testing-library/jest-dom/vitest'
 import Board from './Board'
 import { addCandidate, removeCandidate, createCandidateMask } from '../lib/candidatesUtils'
 
@@ -37,6 +37,7 @@ function defaultProps(overrides: Partial<Parameters<typeof Board>[0]> = {}) {
     initialBoard: createEmptyBoard(),
     candidates: createEmptyCandidates(),
     selectedCell: null,
+    selectedCells: new Set<number>(),
     highlightedDigit: null,
     highlight: null,
     onCellClick: vi.fn(),
@@ -323,6 +324,7 @@ describe('Board', () => {
           initialBoard={initialBoard}
           candidates={candidates}
           selectedCell={null}
+          selectedCells={new Set<number>()}
           highlightedDigit={null}
           highlight={null}
           onCellClick={(idx) => onCellClick(idx)}
@@ -338,6 +340,7 @@ describe('Board', () => {
           initialBoard={initialBoard}
           candidates={candidates}
           selectedCell={null}
+          selectedCells={new Set<number>()}
           highlightedDigit={null}
           highlight={{
             step_index: 0,
@@ -1057,7 +1060,7 @@ describe('Board', () => {
 
       // At this point, trail is [0, 1, 2]
       const callBeforeBacktrack =
-        onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+        onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]!
       expect(callBeforeBacktrack[0]).toEqual([0, 1, 2])
 
       // Now backtrack: pointer returns to cell 1
@@ -1065,7 +1068,7 @@ describe('Board', () => {
 
       // Trail should be trimmed to [0, 1], cell 2 removed
       const callAfterBacktrack =
-        onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+        onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]!
       expect(callAfterBacktrack[0]).toEqual([0, 1])
     })
 
@@ -1079,7 +1082,7 @@ describe('Board', () => {
       // Backtrack all the way to cell 0
       simulateDragOver(boardEl, cells[0]!)
 
-      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]
+      const lastCall = onCellSelectMultiple.mock.calls[onCellSelectMultiple.mock.calls.length - 1]!
       expect(lastCall[0]).toEqual([0])
     })
 
