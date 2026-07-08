@@ -20,7 +20,6 @@ import {
   masksToSets,
   maskToString,
   maskToBinary,
-  type CandidateMask,
 } from './candidatesUtils'
 
 describe('candidatesUtils', () => {

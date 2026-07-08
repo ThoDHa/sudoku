@@ -114,7 +114,7 @@ describe('clipboard', () => {
 
         // Mock execCommand
         mockExecCommand = vi.fn().mockReturnValue(true)
-        document.execCommand = mockExecCommand
+        document.execCommand = mockExecCommand as unknown as typeof document.execCommand
       })
 
       afterEach(() => {
@@ -180,7 +180,7 @@ describe('clipboard', () => {
           return mockTextarea as unknown as HTMLElement
         })
 
-        appendChildSpy.mockImplementation((node) => {
+        appendChildSpy.mockImplementation((node: Node) => {
           callOrder.push('appendChild')
           return node
         })
@@ -194,7 +194,7 @@ describe('clipboard', () => {
           return true
         })
 
-        removeChildSpy.mockImplementation((node) => {
+        removeChildSpy.mockImplementation((node: Node) => {
           callOrder.push('removeChild')
           return node
         })

@@ -106,6 +106,7 @@ describe('validationUtils', () => {
         count++
         // Stop after 5 rows
         if (unitType === 'row' && index === 4) return false
+        return undefined
       })
       expect(count).toBe(5)
     })
@@ -116,6 +117,7 @@ describe('validationUtils', () => {
         count++
         // Stop at the first col unit so only 9 rows + 1 col are visited.
         if (unitType === 'col' && index === 0) return false
+        return undefined
       })
       expect(count).toBe(10)
     })
@@ -126,6 +128,7 @@ describe('validationUtils', () => {
         count++
         // Stop at the first box unit so rows + cols + 1 box are visited.
         if (unitType === 'box' && index === 0) return false
+        return undefined
       })
       expect(count).toBe(19)
     })

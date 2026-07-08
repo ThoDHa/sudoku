@@ -23,7 +23,6 @@ import {
   hasInProgressGame,
   clearInProgressGame,
   clearOtherGamesForMode,
-  type SavedGameInfo,
 } from './gameSettings'
 import { STORAGE_KEYS } from './constants'
 import { logger } from './logger'
@@ -169,12 +168,12 @@ describe('gameSettings', () => {
 
       const games = getInProgressGames()
       expect(games).toHaveLength(1)
-      expect(games[0].seed).toBe('test-seed-123')
-      expect(games[0].difficulty).toBe('medium')
-      expect(games[0].savedAt).toBe(1000)
-      expect(games[0].elapsedMs).toBe(0)
+      expect(games[0]!.seed).toBe('test-seed-123')
+      expect(games[0]!.difficulty).toBe('medium')
+      expect(games[0]!.savedAt).toBe(1000)
+      expect(games[0]!.elapsedMs).toBe(0)
       // 45/81 = 55.56%, rounds to 56%
-      expect(games[0].progress).toBe(56)
+      expect(games[0]!.progress).toBe(56)
     })
 
     it('should ignore items without correct prefix', () => {
@@ -187,7 +186,7 @@ describe('gameSettings', () => {
 
       const games = getInProgressGames()
       expect(games).toHaveLength(1)
-      expect(games[0].seed).toBe('valid-game')
+      expect(games[0]!.seed).toBe('valid-game')
     })
 
     it('should sort games by savedAt descending (most recent first)', () => {
@@ -203,9 +202,9 @@ describe('gameSettings', () => {
 
       const games = getInProgressGames()
       expect(games).toHaveLength(3)
-      expect(games[0].seed).toBe('new-game')
-      expect(games[1].seed).toBe('mid-game')
-      expect(games[2].seed).toBe('old-game')
+      expect(games[0]!.seed).toBe('new-game')
+      expect(games[1]!.seed).toBe('mid-game')
+      expect(games[2]!.seed).toBe('old-game')
     })
 
     it('should skip entries with invalid JSON', () => {
@@ -217,7 +216,7 @@ describe('gameSettings', () => {
 
       const games = getInProgressGames()
       expect(games).toHaveLength(1)
-      expect(games[0].seed).toBe('valid-game')
+      expect(games[0]!.seed).toBe('valid-game')
     })
 
     it('should skip entries without 81-cell board', () => {
@@ -231,7 +230,7 @@ describe('gameSettings', () => {
 
       const games = getInProgressGames()
       expect(games).toHaveLength(1)
-      expect(games[0].seed).toBe('valid-game')
+      expect(games[0]!.seed).toBe('valid-game')
     })
 
     it('should skip entries without savedAt', () => {
@@ -245,7 +244,7 @@ describe('gameSettings', () => {
 
       const games = getInProgressGames()
       expect(games).toHaveLength(1)
-      expect(games[0].seed).toBe('valid-game')
+      expect(games[0]!.seed).toBe('valid-game')
     })
 
     it('should handle missing difficulty gracefully', () => {
@@ -259,7 +258,7 @@ describe('gameSettings', () => {
 
       const games = getInProgressGames()
       expect(games).toHaveLength(1)
-      expect(games[0].difficulty).toBe('unknown')
+      expect(games[0]!.difficulty).toBe('unknown')
     })
 
     it('should handle missing elapsedMs gracefully', () => {
@@ -274,7 +273,7 @@ describe('gameSettings', () => {
 
       const games = getInProgressGames()
       expect(games).toHaveLength(1)
-      expect(games[0].elapsedMs).toBe(0)
+      expect(games[0]!.elapsedMs).toBe(0)
     })
 
     it('should calculate progress correctly', () => {
@@ -388,7 +387,8 @@ describe('gameSettings', () => {
         [`${prefix}daily-2024-01-15`]: JSON.stringify(dailyGame),
       })
 
-      expect(getMostRecentGameForMode('practice')).toBeNull()
+      // 'game' is the HomepageMode alias for practice puzzles (gameSettings.ts:142)
+      expect(getMostRecentGameForMode('game')).toBeNull()
     })
 
     it('should return daily games for daily mode', () => {
@@ -414,7 +414,8 @@ describe('gameSettings', () => {
         [`${prefix}P1234567890`]: JSON.stringify(practiceGame),
       })
 
-      const result = getMostRecentGameForMode('practice')
+      // 'game' is the HomepageMode alias for practice puzzles (gameSettings.ts:142)
+      const result = getMostRecentGameForMode('game')
       expect(result).not.toBeNull()
       expect(result?.seed).toBe('P1234567890')
     })
@@ -442,7 +443,8 @@ describe('gameSettings', () => {
         [`${prefix}P222`]: JSON.stringify(newPractice),
       })
 
-      const result = getMostRecentGameForMode('practice')
+      // 'game' is the HomepageMode alias for practice puzzles (gameSettings.ts:142)
+      const result = getMostRecentGameForMode('game')
       expect(result?.seed).toBe('P222')
       expect(result?.savedAt).toBe(3000)
     })
@@ -684,7 +686,7 @@ describe('gameSettings', () => {
 
       const games = getInProgressGames()
       expect(games).toHaveLength(1)
-      expect(games[0].seed).toBe('in-progress')
+      expect(games[0]!.seed).toBe('in-progress')
     })
   })
 

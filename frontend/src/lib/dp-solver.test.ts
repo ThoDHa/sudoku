@@ -1,10 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import {
   solve,
   isValid,
   findConflicts,
   validateBoardAgainstSolution,
-  hasUniqueSolution,
   validatePuzzle,
 } from './dp-solver'
 
@@ -447,7 +446,7 @@ describe('dp-solver', () => {
       board[9] = 5
       const conflicts = findConflicts(board)
       expect(conflicts).toHaveLength(1)
-      expect(conflicts[0].type).toBe('column')
+      expect(conflicts[0]!.type).toBe('column')
     })
 
     it('emits pairs from units (guards against inner-loop direction mutants)', () => {
@@ -476,7 +475,7 @@ describe('dp-solver', () => {
   describe('mutation-kill: validation guards', () => {
     it('rejects a conflicting full board before solving', () => {
       const conflicting = [...VALID_SOLVED_BOARD]
-      conflicting[1] = conflicting[0]
+      conflicting[1] = conflicting[0]!
       const result = validatePuzzle(conflicting)
       expect(result.valid).toBe(false)
       expect(result.reason).toBe('Puzzle has conflicting numbers')
@@ -490,7 +489,7 @@ describe('dp-solver', () => {
 
     it('uses singular wording for exactly one incorrect cell', () => {
       const incorrect = [...VALID_SOLVED_BOARD]
-      incorrect[5] = incorrect[0]
+      incorrect[5] = incorrect[0]!
       const result = validateBoardAgainstSolution(incorrect, VALID_SOLVED_BOARD)
       expect(result.incorrectCells).toHaveLength(1)
       expect(result.message).toBe('Found 1 incorrect cell')

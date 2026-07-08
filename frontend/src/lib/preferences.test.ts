@@ -83,16 +83,18 @@ describe('preferences', () => {
     })
 
     it('should return stored preferences', () => {
+      // 'game' is the HomepageMode alias for practice puzzles
       const stored: UserPreferences = {
-        homepageMode: 'practice',
+        homepageMode: 'game',
         autoSolveSpeed: 'slow',
         hideTimer: true,
+        showDailyReminder: false,
       }
       localStorageMock.setItem('sudoku_preferences', JSON.stringify(stored))
 
       const prefs = getPreferences()
 
-      expect(prefs.homepageMode).toBe('practice')
+      expect(prefs.homepageMode).toBe('game')
       expect(prefs.autoSolveSpeed).toBe('slow')
       expect(prefs.hideTimer).toBe(true)
     })
@@ -119,18 +121,20 @@ describe('preferences', () => {
 
   describe('setPreferences', () => {
     it('should update preferences', () => {
-      setPreferences({ homepageMode: 'practice' })
+      // 'game' is the HomepageMode alias for practice puzzles
+      setPreferences({ homepageMode: 'game' })
 
       const prefs = getPreferences()
-      expect(prefs.homepageMode).toBe('practice')
+      expect(prefs.homepageMode).toBe('game')
     })
 
     it('should merge with existing preferences', () => {
-      setPreferences({ homepageMode: 'practice' })
+      // 'game' is the HomepageMode alias for practice puzzles
+      setPreferences({ homepageMode: 'game' })
       setPreferences({ hideTimer: true })
 
       const prefs = getPreferences()
-      expect(prefs.homepageMode).toBe('practice')
+      expect(prefs.homepageMode).toBe('game')
       expect(prefs.hideTimer).toBe(true)
     })
   })
@@ -262,13 +266,13 @@ describe('preferences', () => {
     it('dispatches a CustomEvent carrying the new mode as detail', () => {
       setHomepageMode('game')
       expect(windowMock.dispatchEvent).toHaveBeenCalled()
-      const event = windowMock.dispatchEvent.mock.calls[0][0] as CustomEvent
+      const event = windowMock.dispatchEvent.mock.calls[0]![0] as CustomEvent
       expect(event.detail).toBe('game')
     })
 
     it('dispatches an event with the daily mode detail', () => {
       setHomepageMode('daily')
-      const event = windowMock.dispatchEvent.mock.calls[0][0] as CustomEvent
+      const event = windowMock.dispatchEvent.mock.calls[0]![0] as CustomEvent
       expect(event.detail).toBe('daily')
     })
   })

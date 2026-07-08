@@ -3,7 +3,6 @@ import {
   buildDebugInfo,
   formatDebugJson,
   isLocalStorageAvailable,
-  type DebugInfo,
 } from './debugInfo'
 
 vi.mock('./scores', () => ({

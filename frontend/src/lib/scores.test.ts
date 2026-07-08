@@ -296,7 +296,7 @@ describe('scores', () => {
 
       saveScore(newScore)
 
-      const savedData = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.SCORES])
+      const savedData = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.SCORES]!)
       expect(savedData[0].seed).toBe('new-seed')
       expect(savedData[1].seed).toBe('old-seed')
     })
@@ -311,7 +311,7 @@ describe('scores', () => {
 
       saveScore(newScore)
 
-      const savedData = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.SCORES])
+      const savedData = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.SCORES]!)
       expect(savedData.length).toBe(MAX_STORED_SCORES)
       expect(savedData[0].seed).toBe('newest-seed')
       // The last old score should be trimmed
@@ -423,7 +423,7 @@ describe('scores', () => {
 
       const result = getRecentScores()
       expect(result.length).toBe(10)
-      expect(result[0].seed).toBe('seed-0')
+      expect(result[0]!.seed).toBe('seed-0')
     })
 
     it('should return custom limit of scores', () => {
@@ -654,11 +654,11 @@ describe('scores', () => {
       markDailyCompleted()
 
       // Check completions were saved
-      const savedCompletions = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS])
+      const savedCompletions = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS]!)
       expect(savedCompletions).toContain('2024-06-15')
 
       // Check streak was saved
-      const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK])
+      const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK]!)
       expect(savedStreak.currentStreak).toBe(1)
       expect(savedStreak.lastCompletedDate).toBe('2024-06-15')
     })
@@ -678,7 +678,7 @@ describe('scores', () => {
       markDailyCompleted()
 
       // Check streak was incremented
-      const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK])
+      const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK]!)
       expect(savedStreak.currentStreak).toBe(4)
       expect(savedStreak.lastCompletedDate).toBe('2024-06-15')
     })
@@ -697,7 +697,7 @@ describe('scores', () => {
 
       markDailyCompleted()
 
-      const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK])
+      const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK]!)
       expect(savedStreak.currentStreak).toBe(6)
       expect(savedStreak.longestStreak).toBe(6)
     })
@@ -735,7 +735,7 @@ describe('scores', () => {
 
       markDailyCompleted()
 
-      const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK])
+      const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK]!)
       expect(savedStreak.currentStreak).toBe(1) // New streak started
       expect(savedStreak.longestStreak).toBe(10) // Preserved
     })
@@ -975,7 +975,7 @@ describe('scores', () => {
 
       markDailyCompleted()
 
-      const saved = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK])
+      const saved = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK]!)
       // Should not increment again (already counted today per streak record)
       expect(saved.currentStreak).toBe(3)
     })

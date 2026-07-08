@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
 import { commitCellAction } from './commitCellAction'
-import type { CommitCellActionOptions } from './commitCellAction'
 
 function makeGame() {
   return {
