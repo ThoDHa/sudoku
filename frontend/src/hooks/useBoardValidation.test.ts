@@ -34,7 +34,7 @@ describe('useBoardValidation', () => {
     const setIsComplete = vi.fn()
     const { result } = renderHook(() => useBoardValidation({ setIsComplete }))
     const invalid = [...SOLVED]
-    invalid[1] = invalid[0]
+    invalid[1] = invalid[0]!
 
     act(() => result.current.checkCompletion(invalid))
 

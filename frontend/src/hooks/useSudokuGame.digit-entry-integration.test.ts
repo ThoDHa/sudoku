@@ -7,7 +7,7 @@
  */
 
 import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest'
 import { useSudokuGame } from '../hooks/useSudokuGame'
 import { useHighlightState } from '../hooks/useHighlightState'
 
@@ -17,7 +17,7 @@ const EMPTY_PUZZLE = Array(81).fill(0)
 describe('Digit Entry Selection Integration - Regression Tests', () => {
   let gameHook: any
   let highlightHook: any
-  let mockOnComplete: ReturnType<typeof vi.fn>
+  let mockOnComplete: Mock<() => void>
 
   beforeEach(() => {
     mockOnComplete = vi.fn()

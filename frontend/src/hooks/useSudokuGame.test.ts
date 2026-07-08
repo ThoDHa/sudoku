@@ -12,12 +12,18 @@ import {
 } from '../test-utils'
 
 type GameHook = ReturnType<typeof useSudokuGame>
+// useSudokuGame returns toggleCandidate at runtime, but its declared return
+// type omits it; this augmented view lets tests exercise the real method.
+type GameHookWithToggle = GameHook & {
+  toggleCandidate: (idx: number, digit: number) => void
+}
 type GameResult = { current: GameHook }
 
 // Render the hook with a board. Most tests render with only initialBoard, so
 // this wraps the renderHook boilerplate they would otherwise repeat.
 function renderGame(initialBoard: number[]) {
-  return renderHook(() => useSudokuGame({ initialBoard }))
+  const rendered = renderHook(() => useSudokuGame({ initialBoard }))
+  return { ...rendered, result: rendered.result as { current: GameHookWithToggle } }
 }
 
 function actPlace(result: GameResult, cell: number, digit: number, isNote = false) {
@@ -32,7 +38,7 @@ function actErase(result: GameResult, cell: number) {
   })
 }
 
-function actToggle(result: GameResult, cell: number, digit: number) {
+function actToggle(result: { current: GameHookWithToggle }, cell: number, digit: number) {
   act(() => {
     result.current.toggleCandidate(cell, digit)
   })
@@ -240,7 +246,7 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
 
     // First fill candidates
     act(() => {
-      const filled = result.current.fillAllCandidates()
+      result.current.fillAllCandidates()
       // Manually trigger candidate update via setCell in notes mode first
       result.current.setCell(1, 5, true) // Add note 5 to cell 1
     })
@@ -250,7 +256,7 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
 
     // Candidates for 5 should be eliminated from row 1, col 1, and box 1
     // Cell 1 is in same row, so its candidate for 5 should be cleared
-    expect(hasCandidate(result.current.candidates[1], 5)).toBe(false)
+    expect(hasCandidate(result.current.candidates[1] || 0, 5)).toBe(false)
   })
 
   it('clears candidates for the placed cell', () => {
@@ -263,7 +269,7 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
       result.current.setCell(10, 2, true)
       result.current.setCell(10, 3, true)
     })
-    expect(countCandidates(result.current.candidates[10])).toBeGreaterThan(0)
+    expect(countCandidates(result.current.candidates[10] || 0)).toBeGreaterThan(0)
 
     // Place digit
     actPlace(result, 10, 5, false)
@@ -276,7 +282,7 @@ describe('useSudokuGame - setCell() (Digit Placement)', () => {
     const puzzle = createEmptyPuzzle()
     const { result } = renderGame(puzzle)
 
-    const initialCount = result.current.digitCounts[6] // Count of 7s (index 6)
+    const initialCount = result.current.digitCounts[6] ?? 0 // Count of 7s (index 6)
 
     actPlace(result, 40, 7, false)
 
@@ -333,7 +339,7 @@ describe('useSudokuGame - setCell() (Notes Mode)', () => {
     // Add candidate
     actPlace(result, 40, 5, true)
 
-    expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+    expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
   })
 
   it('removes candidate on second toggle using toggleCandidate', () => {
@@ -342,11 +348,11 @@ describe('useSudokuGame - setCell() (Notes Mode)', () => {
 
     // Add candidate using toggleCandidate (not affected by debounce guard)
     actToggle(result, 40, 5)
-    expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+    expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
 
     // Remove candidate (toggle off) - toggleCandidate doesn't have debounce
     actToggle(result, 40, 5)
-    expect(hasCandidate(result.current.candidates[40], 5)).toBe(false)
+    expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(false)
   })
 
   it('does not add notes to filled cells', () => {
@@ -406,7 +412,7 @@ describe('useSudokuGame - toggleCandidate()', () => {
 
     actToggle(result, 40, 7)
 
-    expect(hasCandidate(result.current.candidates[40], 7)).toBe(true)
+    expect(hasCandidate(result.current.candidates[40] || 0, 7)).toBe(true)
   })
 
   it('removes existing candidate', () => {
@@ -417,7 +423,7 @@ describe('useSudokuGame - toggleCandidate()', () => {
     actToggle(result, 40, 7)
     actToggle(result, 40, 7)
 
-    expect(hasCandidate(result.current.candidates[40], 7)).toBe(false)
+    expect(hasCandidate(result.current.candidates[40] || 0, 7)).toBe(false)
   })
 
   it('does not toggle candidate for given cells', () => {
@@ -500,7 +506,7 @@ describe('useSudokuGame - eraseCell()', () => {
       result.current.toggleCandidate(40, 2)
       result.current.toggleCandidate(40, 3)
     })
-    expect(countCandidates(result.current.candidates[40])).toBe(3)
+    expect(countCandidates(result.current.candidates[40] || 0)).toBe(3)
 
     // Erase (clears notes)
     actErase(result, 40)
@@ -534,7 +540,7 @@ describe('useSudokuGame - eraseCell()', () => {
     const { result } = renderGame(puzzle)
 
     actPlace(result, 40, 7, false)
-    const countBefore = result.current.digitCounts[6]
+    const countBefore = result.current.digitCounts[6] ?? 0
 
     actErase(result, 40)
 
@@ -564,11 +570,11 @@ describe('useSudokuGame - undo()', () => {
     const { result } = renderGame(puzzle)
 
     actToggle(result, 40, 5)
-    expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+    expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
 
     actUndo(result)
 
-    expect(hasCandidate(result.current.candidates[40], 5)).toBe(false)
+    expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(false)
   })
 
   it('does nothing when history is empty', () => {
@@ -666,11 +672,11 @@ describe('useSudokuGame - redo()', () => {
 
     actToggle(result, 40, 5)
     actUndo(result)
-    expect(hasCandidate(result.current.candidates[40], 5)).toBe(false)
+    expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(false)
 
     actRedo(result)
 
-    expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+    expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
   })
 
   it('does nothing when at end of history', () => {
@@ -925,7 +931,7 @@ describe('useSudokuGame - fillAllCandidates()', () => {
     })
 
     // Empty cells should have candidates
-    expect(countCandidates(filledCandidates![2])).toBeGreaterThan(0)
+    expect(countCandidates(filledCandidates![2] || 0)).toBeGreaterThan(0)
 
     // Given cells should have no candidates
     expect(filledCandidates![0]).toBe(0)
@@ -943,7 +949,7 @@ describe('useSudokuGame - fillAllCandidates()', () => {
     })
 
     // Cell 1 (same row) should not have 5 as candidate
-    expect(hasCandidate(filledCandidates![1], 5)).toBe(false)
+    expect(hasCandidate(filledCandidates![1] || 0, 5)).toBe(false)
   })
 
   it('respects column constraints', () => {
@@ -958,7 +964,7 @@ describe('useSudokuGame - fillAllCandidates()', () => {
     })
 
     // Cell 9 (same column) should not have 7 as candidate
-    expect(hasCandidate(filledCandidates![9], 7)).toBe(false)
+    expect(hasCandidate(filledCandidates![9] || 0, 7)).toBe(false)
   })
 
   it('respects box constraints', () => {
@@ -973,7 +979,7 @@ describe('useSudokuGame - fillAllCandidates()', () => {
     })
 
     // Cell 10 (same box) should not have 3 as candidate
-    expect(hasCandidate(filledCandidates![10], 3)).toBe(false)
+    expect(hasCandidate(filledCandidates![10] || 0, 3)).toBe(false)
   })
 })
 
@@ -1129,7 +1135,7 @@ describe('useSudokuGame - restoreState()', () => {
       result.current.restoreState(puzzle, savedCandidates, [])
     })
 
-    expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+    expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
   })
 
   it('restores saved history', () => {
@@ -1191,7 +1197,7 @@ describe('useSudokuGame - setBoardState()', () => {
       result.current.setBoardState(puzzle, newCandidates)
     })
 
-    expect(hasCandidate(result.current.candidates[40], 3)).toBe(true)
+    expect(hasCandidate(result.current.candidates[40] || 0, 3)).toBe(true)
     expect(result.current.history).toHaveLength(0)
   })
 })
@@ -1549,9 +1555,9 @@ describe('useSudokuGame - Candidate Elimination Edge Cases', () => {
     actPlace(result, 0, 5, false)
 
     // All peer cells should have candidate 5 eliminated
-    expect(hasCandidate(result.current.candidates[1], 5)).toBe(false)
-    expect(hasCandidate(result.current.candidates[9], 5)).toBe(false)
-    expect(hasCandidate(result.current.candidates[10], 5)).toBe(false)
+    expect(hasCandidate(result.current.candidates[1] || 0, 5)).toBe(false)
+    expect(hasCandidate(result.current.candidates[9] || 0, 5)).toBe(false)
+    expect(hasCandidate(result.current.candidates[10] || 0, 5)).toBe(false)
   })
 
   it('handles cell in corner of box for elimination', () => {
@@ -1564,7 +1570,7 @@ describe('useSudokuGame - Candidate Elimination Edge Cases', () => {
     // Place digit in same box (cell 60 - top-left of bottom-right box)
     actPlace(result, 60, 9, false)
 
-    expect(hasCandidate(result.current.candidates[80], 9)).toBe(false)
+    expect(hasCandidate(result.current.candidates[80] || 0, 9)).toBe(false)
   })
 })
 
@@ -1856,7 +1862,7 @@ describe('useSudokuGame - Memoization', () => {
       expect(history).toHaveLength(1)
 
       // Should be a note move (not place)
-      const noteMove = history[0]
+      const noteMove = history[0]!
       expect(noteMove.technique).toBe('User Input')
       expect(noteMove.action).toBe('note')
       expect(noteMove.targets).toHaveLength(2)
@@ -1955,21 +1961,21 @@ describe('useSudokuGame - Memoization', () => {
         result.current.setCellMultiple([10], 4, true)
       })
       expect(result.current.history).toHaveLength(1)
-      expect(result.current.history[0].action).toBe('note')
+      expect(result.current.history[0]!.action).toBe('note')
 
       // Select cells 10 and 11, press 4: cell 11 is missing it, so action is 'note' (fill)
       act(() => {
         result.current.setCellMultiple([10, 11], 4, true)
       })
       expect(result.current.history).toHaveLength(2)
-      expect(result.current.history[1].action).toBe('note')
+      expect(result.current.history[1]!.action).toBe('note')
 
       // Now both cells have candidate 4: pressing 4 should be 'eliminate'
       act(() => {
         result.current.setCellMultiple([10, 11], 4, true)
       })
       expect(result.current.history).toHaveLength(3)
-      expect(result.current.history[2].action).toBe('eliminate')
+      expect(result.current.history[2]!.action).toBe('eliminate')
     })
 
     it('should not modify cells that already have the candidate during fill phase', () => {
@@ -2011,7 +2017,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCell(40, 5, false)
       })
-      expect(result.current.history[0].refs).toEqual({ title: '', slug: '', url: '' })
+      expect(result.current.history[0]!.refs).toEqual({ title: '', slug: '', url: '' })
     })
 
     it('attaches an empty primary highlights array on every user move', () => {
@@ -2019,7 +2025,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCell(40, 5, false)
       })
-      expect(result.current.history[0].highlights).toEqual({ primary: [] })
+      expect(result.current.history[0]!.highlights).toEqual({ primary: [] })
     })
 
     it('marks user-initiated moves with isUserMove=true', () => {
@@ -2027,7 +2033,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCell(40, 5, false)
       })
-      expect(result.current.history[0].isUserMove).toBe(true)
+      expect(result.current.history[0]!.isUserMove).toBe(true)
     })
 
     it('records step_index as the current history length', () => {
@@ -2036,8 +2042,8 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
         result.current.setCell(10, 1, false)
         result.current.setCell(20, 2, false)
       })
-      expect(result.current.history[0].step_index).toBe(0)
-      expect(result.current.history[1].step_index).toBe(1)
+      expect(result.current.history[0]!.step_index).toBe(0)
+      expect(result.current.history[1]!.step_index).toBe(1)
     })
   })
 
@@ -2047,7 +2053,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCell(0, 5, false)
       })
-      const move = result.current.history[0]
+      const move = result.current.history[0]!
       expect(move.action).toBe('place')
       expect(move.technique).toBe('User Input')
       expect(move.digit).toBe(5)
@@ -2060,7 +2066,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCell(40, 7, false)
       })
-      expect(result.current.history[0].explanation).toBe('Placed 7 at R5C5')
+      expect(result.current.history[0]!.explanation).toBe('Placed 7 at R5C5')
     })
 
     it('records the exact "Placed" explanation for R9C9 (cell 80)', () => {
@@ -2068,8 +2074,8 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCell(80, 9, false)
       })
-      expect(result.current.history[0].explanation).toBe('Placed 9 at R9C9')
-      expect(result.current.history[0].targets).toEqual([{ row: 8, col: 8 }])
+      expect(result.current.history[0]!.explanation).toBe('Placed 9 at R9C9')
+      expect(result.current.history[0]!.targets).toEqual([{ row: 8, col: 8 }])
     })
   })
 
@@ -2079,7 +2085,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCell(40, 5, true)
       })
-      const move = result.current.history[0]
+      const move = result.current.history[0]!
       expect(move.action).toBe('note')
       expect(move.explanation).toBe('Added note 5 to R5C5')
       expect(move.digit).toBe(5)
@@ -2091,7 +2097,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCell(0, 1, true)
       })
-      expect(result.current.history[0].explanation).toBe('Added note 1 to R1C1')
+      expect(result.current.history[0]!.explanation).toBe('Added note 1 to R1C1')
     })
   })
 
@@ -2104,7 +2110,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.toggleCandidate(40, 5)
       })
-      const removeMove = result.current.history[1]
+      const removeMove = result.current.history[1]!
       expect(removeMove.action).toBe('eliminate')
       expect(removeMove.explanation).toBe('Removed note 5 from R5C5')
       expect(removeMove.digit).toBe(5)
@@ -2115,8 +2121,8 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.toggleCandidate(0, 9)
       })
-      expect(result.current.history[0].action).toBe('note')
-      expect(result.current.history[0].explanation).toBe('Added note 9 to R1C1')
+      expect(result.current.history[0]!.action).toBe('note')
+      expect(result.current.history[0]!.explanation).toBe('Added note 9 to R1C1')
     })
   })
 
@@ -2126,7 +2132,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCellMultiple([10, 11, 12], 7, true)
       })
-      const move = result.current.history[0]
+      const move = result.current.history[0]!
       expect(move.action).toBe('note')
       expect(move.explanation).toBe('Added note 7 to 3 cells')
       expect(move.targets).toHaveLength(3)
@@ -2140,7 +2146,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCellMultiple([10, 11, 12], 7, true)
       })
-      const move = result.current.history[1]
+      const move = result.current.history[1]!
       expect(move.action).toBe('eliminate')
       expect(move.explanation).toBe('Removed note 7 from 3 cells')
     })
@@ -2150,7 +2156,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCellMultiple([40], 3, true)
       })
-      expect(result.current.history[0].explanation).toBe('Added note 3 to 1 cells')
+      expect(result.current.history[0]!.explanation).toBe('Added note 3 to 1 cells')
     })
   })
 
@@ -2163,7 +2169,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.eraseCell(40)
       })
-      const move = result.current.history[1]
+      const move = result.current.history[1]!
       expect(move.action).toBe('erase')
       expect(move.digit).toBe(7)
       expect(move.explanation).toBe('Erased 7 from R5C5')
@@ -2177,7 +2183,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.eraseCell(40)
       })
-      const move = result.current.history[1]
+      const move = result.current.history[1]!
       expect(move.action).toBe('erase')
       expect(move.digit).toBe(0)
       expect(move.explanation).toBe('Cleared notes from R5C5')
@@ -2191,8 +2197,8 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.eraseCell(0)
       })
-      expect(result.current.history[1].digit).toBe(0)
-      expect(result.current.history[1].explanation).toBe('Cleared notes from R1C1')
+      expect(result.current.history[1]!.digit).toBe(0)
+      expect(result.current.history[1]!.explanation).toBe('Cleared notes from R1C1')
     })
   })
 
@@ -2217,7 +2223,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.clearCandidates()
       })
-      const move = result.current.history[1]
+      const move = result.current.history[1]!
       expect(move.technique).toBe('Clear Notes')
       expect(move.action).toBe('clear-candidates')
       expect(move.digit).toBe(0)
@@ -2275,14 +2281,14 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCell(40, 5, true)
       })
-      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
       expect(result.current.history).toHaveLength(1)
 
       // Immediate second toggle, same cell + digit, within 100ms -> debounced
       act(() => {
         result.current.setCell(40, 5, true)
       })
-      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
       expect(result.current.history).toHaveLength(1)
     })
 
@@ -2291,16 +2297,16 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCell(40, 5, true)
       })
-      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
 
       vi.advanceTimersByTime(101)
 
       act(() => {
         result.current.setCell(40, 5, true)
       })
-      expect(hasCandidate(result.current.candidates[40], 5)).toBe(false)
+      expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(false)
       expect(result.current.history).toHaveLength(2)
-      expect(result.current.history[1].action).toBe('eliminate')
+      expect(result.current.history[1]!.action).toBe('eliminate')
     })
 
     it('does not debounce a different digit on the same cell', () => {
@@ -2311,8 +2317,8 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCell(40, 6, true)
       })
-      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
-      expect(hasCandidate(result.current.candidates[40], 6)).toBe(true)
+      expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[40] || 0, 6)).toBe(true)
       expect(result.current.history).toHaveLength(2)
     })
 
@@ -2324,8 +2330,8 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.setCell(41, 5, true)
       })
-      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
-      expect(hasCandidate(result.current.candidates[41], 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[41] || 0, 5)).toBe(true)
       expect(result.current.history).toHaveLength(2)
     })
   })
@@ -2426,7 +2432,7 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       act(() => {
         result.current.applyExternalMove(newBoard, new Uint16Array(TOTAL_CELLS), emptyMove())
       })
-      const move = result.current.history[0]
+      const move = result.current.history[0]!
       expect(move.stateDiff).toBeDefined()
       expect(move.stateDiff?.boardChanges).toEqual([{ idx: 40, oldValue: 0, newValue: 7 }])
     })
@@ -2542,7 +2548,7 @@ describe('useSudokuGame - mutation-convergence (Pigsy)', () => {
       act(() => {
         result.current.setCell(40, 5, true)
       })
-      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
 
       // If the sync effect were dead (body {} or deps []), candidatesRef would
       // still hold the initial zeroed array; hadCandidate would be false and
@@ -2550,8 +2556,8 @@ describe('useSudokuGame - mutation-convergence (Pigsy)', () => {
       act(() => {
         result.current.toggleCandidate(40, 5)
       })
-      expect(hasCandidate(result.current.candidates[40], 5)).toBe(false)
-      expect(result.current.history[result.current.history.length - 1].action).toBe(
+      expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(false)
+      expect(result.current.history[result.current.history.length - 1]!.action).toBe(
         'eliminate',
       )
     })
@@ -2569,9 +2575,9 @@ describe('useSudokuGame - mutation-convergence (Pigsy)', () => {
         result.current.setCell(40, 5, true)
       })
 
-      expect(hasCandidate(result.current.candidates[40], 5)).toBe(true)
+      expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
       expect(result.current.history).toHaveLength(1)
-      expect(result.current.history[0].action).toBe('note')
+      expect(result.current.history[0]!.action).toBe('note')
     })
   })
 
@@ -2588,7 +2594,7 @@ describe('useSudokuGame - mutation-convergence (Pigsy)', () => {
         result.current.setCellMultiple([10, 11], 7, true)
       })
 
-      const move = result.current.history[result.current.history.length - 1]
+      const move = result.current.history[result.current.history.length - 1]!
       // Only cell 11 (still empty) is toggled; cell 10 has a placed digit.
       expect(move.targets).toEqual([{ row: 1, col: 2 }])
       expect(move.explanation).toBe('Added note 7 to 1 cells')
@@ -2636,7 +2642,7 @@ describe('useSudokuGame mutation kills (MUT-1 iter-2)', () => {
     const { result } = renderGame(createEmptyPuzzle())
     actToggle(result, 0, 5) // add note 5 at R1C1
     actToggle(result, 0, 5) // remove it -> "Removed note 5 from R1C1"
-    const last = result.current.history[result.current.history.length - 1]
+    const last = result.current.history[result.current.history.length - 1]!
     expect(last.explanation).toBe('Removed note 5 from R1C1')
     expect(last.targets).toEqual([{ row: 0, col: 0 }])
   })
@@ -2646,7 +2652,7 @@ describe('useSudokuGame mutation kills (MUT-1 iter-2)', () => {
     // handleToggleCandidate (`[{ row, col }]` -> `[]` / `{}`).
     const { result } = renderGame(createEmptyPuzzle())
     actToggle(result, 10, 7) // R2C2 (index 10 = row 1, col 1)
-    const last = result.current.history[result.current.history.length - 1]
+    const last = result.current.history[result.current.history.length - 1]!
     expect(last.targets).toEqual([{ row: 1, col: 1 }])
   })
 
@@ -2660,7 +2666,7 @@ describe('useSudokuGame mutation kills (MUT-1 iter-2)', () => {
     actErase(result, 0)
     expect(result.current.board[0]).toBe(0)
     expect(result.current.board[5]).toBe(9) // survivor preserved (mutant [] empties whole board)
-    const last = result.current.history[result.current.history.length - 1]
+    const last = result.current.history[result.current.history.length - 1]!
     expect(last.targets).toEqual([{ row: 0, col: 0 }])
   })
 
@@ -2669,11 +2675,11 @@ describe('useSudokuGame mutation kills (MUT-1 iter-2)', () => {
     // `removeCandidate(newCandidates[idx] || 0, digit)` in the allHave branch.
     const { result } = renderGame(createEmptyPuzzle())
     actToggle(result, 4, 2) // seed candidate 2 at cell 4
-    expect(hasCandidate(result.current.candidates[4], 2)).toBe(true)
+    expect(hasCandidate(result.current.candidates[4] || 0, 2)).toBe(true)
     act(() => {
       result.current.setCellMultiple([4], 2, true) // allHave -> removeCandidate(mask, 2)
     })
-    expect(hasCandidate(result.current.candidates[4], 2)).toBe(false)
+    expect(hasCandidate(result.current.candidates[4] || 0, 2)).toBe(false)
     // neighbouring candidate (if any) untouched: add a second then remove-all to confirm mask path
   })
 
