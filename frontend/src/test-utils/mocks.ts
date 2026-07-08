@@ -15,7 +15,7 @@ export const createMockBackgroundManager = (
     unregisterCallback: (...args: unknown[]) => void
     isWindowBlurred: boolean
     isInDeepPause: boolean
-    visibilityState: string
+    visibilityState: 'visible' | 'hidden'
     forceResume: (...args: unknown[]) => void
     forcePause: (...args: unknown[]) => void
   }>,
@@ -28,7 +28,7 @@ export const createMockBackgroundManager = (
   unregisterCallback: () => {},
   isWindowBlurred: false,
   isInDeepPause: false,
-  visibilityState: 'visible',
+  visibilityState: 'visible' as const,
   forceResume: () => {},
   forcePause: () => {},
   ...(overrides || {}),

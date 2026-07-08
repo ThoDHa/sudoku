@@ -4,6 +4,10 @@
     "types": ["vitest", "node"],
     "noEmit": true
   },
+  // Override base exclude: tsconfig.json excludes test files for production
+  // builds, and that exclude is inherited (not replaced) by include here,
+  // which would silently shadow every input this config targets (TS18003).
+  "exclude": [],
   "include": [
     "src/**/*.test.ts",
     "src/**/*.test.tsx",

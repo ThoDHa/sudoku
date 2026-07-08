@@ -1,21 +1,9 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useGameTimer } from './useGameTimer'
+import { createMockBackgroundManager } from '../test-utils/mocks'
 
 // TEST UTILITIES
-
-/**
- * Create a mock background manager for testing
- */
-const createMockBackgroundManager = (overrides?: {
-  isHidden?: boolean
-  shouldPauseOperations?: boolean
-}) => ({
-  isHidden: overrides?.isHidden ?? false,
-  shouldPauseOperations: overrides?.shouldPauseOperations ?? false,
-  registerCallback: vi.fn(),
-  unregisterCallback: vi.fn(),
-})
 
 // TESTS
 
@@ -1038,10 +1026,9 @@ describe('useGameTimer - mutation-killing branch tests', () => {
   })
 
   describe('mutation-killing: isAutomatedEnvironment UA branches', () => {
-    let originalUA: PropertyDescriptor | undefined
-
     beforeEach(() => {
-      originalUA = Object.getOwnPropertyDescriptor(navigator, 'userAgent')
+      // Each test shadows navigator.userAgent with its own configurable own
+      // property; afterEach removes that override via delete.
     })
 
     afterEach(() => {
