@@ -9,6 +9,7 @@
   // which would silently shadow every input this config targets (TS18003).
   "exclude": [],
   "include": [
+    "src/**/*.d.ts",
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
     "src/**/*.spec.ts",
