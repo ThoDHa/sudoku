@@ -25,6 +25,7 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 - **Daily Puzzles**: Fresh puzzle every day, synchronized globally
 - **Game Mode**: Play random puzzles at your chosen difficulty
 - **Custom Puzzles**: Enter, validate, and solve your own creations
+- **Share to a Friend**: Share either the bare puzzle or your exact current game (givens, your entries, and pencil notes) as a link. A friend opens a playable copy; if they already have progress on that puzzle, they choose whether to keep theirs or open the shared position.
 
 ### 🧠 **Intelligent Assistance**
 - **Educational Hints (💡)**: Step-by-step guidance with technique explanations
@@ -42,10 +43,9 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 
 ### ⚡ **Performance & Reliability**
 - **Fast Loading**: Initial bundle ~170KB (reduced from 770KB)
-- **Battery Efficient**: Automatic pause when backgrounded, extended suspension after 30s
+- **Battery Efficient**: Automatic pause when backgrounded, extended suspension after 15s
 - **Offline-First**: Complete functionality without internet after first load
 - **WASM Solver**: Go-based solver running in a dedicated Web Worker for non-blocking UI (~600KB cached)
-- **Progressive Enhancement**: Works with JavaScript disabled (basic functionality)
 
 ## 🎮 How to Play
 
@@ -82,7 +82,7 @@ The entire application runs locally in your browser with no server required afte
 
 ### 🔧 **Technical Stack**
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, PWA
-- **WASM Solver**: Go 1.22, TinyGo 0.40.1, WebAssembly, constraint propagation + backtracking
+- **WASM Solver**: Go 1.26, TinyGo 0.40.1, WebAssembly, constraint propagation + backtracking
 - **State Management**: React hooks, Context API, localStorage persistence
 - **Performance**: Route-based code splitting, lazy loading, WASM in dedicated Web Worker
 - **Testing**: Vitest unit tests, Playwright E2E, Go test suite (all via Docker)
@@ -300,7 +300,7 @@ The solver implements 39+ techniques across 4 tiers:
 
 ### Prerequisites
 
-- Go 1.22+
+- Go 1.26+
 - TinyGo 0.40.1 (for WASM builds only)
 - Node.js 24+
 - Docker (for E2E tests and CI/CD runs)
@@ -501,10 +501,11 @@ cd api && go run ./cmd/generate_practice \
 
 ### GitHub Pages (Automatic)
 
-Pushing to `main` triggers the full CI/CD pipeline:
-
-1. **Test Workflow** (`test.yml`): Runs all tests, generates Allure report
-2. **Deploy Workflow** (`deploy.yml`): Builds and deploys the app
+Pushing to `main` (or `modernization`) triggers the full CI/CD pipeline in a
+single **Test & Deploy** workflow (`deploy.yml`): it runs all tests (Go,
+frontend unit, E2E), builds the app, and deploys it alongside the unified
+report portal. Mutation and profiling run in separate nightly workflows
+(`nightly-mutation.yml`, `nightly-profiling.yml`).
 
 Both app and test report are deployed:
 - **App**: [https://thodha.github.io/sudoku/](https://thodha.github.io/sudoku/)

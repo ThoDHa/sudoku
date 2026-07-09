@@ -46,7 +46,7 @@ To reconstruct a puzzle at a given difficulty:
 ## Prerequisites
 
 - Docker (recommended) OR
-- Go 1.22+ installed locally
+- Go 1.26+ installed locally
 
 ## Usage
 
