@@ -336,14 +336,14 @@ describe('autoSolvePlayback', () => {
 
       expect(result).toBe(true)
       expect(mocks.applyMove).toHaveBeenCalledTimes(1)
-      const [, candidatesArg] = mocks.applyMove.mock.calls[0]
+      const [, candidatesArg] = mocks.applyMove.mock.calls[0]!
       expect(candidatesArg).toHaveLength(81)
       candidatesArg.forEach((set: Set<number>) => {
         expect(set).toBeInstanceOf(Set)
         expect(set.size).toBe(0)
       })
       expect(refs.stateHistoryRef.current).toHaveLength(1)
-      const snapshot = refs.stateHistoryRef.current[0]
+      const snapshot = refs.stateHistoryRef.current[0]!
       expect(snapshot.board).toEqual(board)
       expect(snapshot.candidates).toEqual([])
     })
@@ -363,7 +363,7 @@ describe('autoSolvePlayback', () => {
 
       handleMoveResult(moveResult, 1, context, playNextMoveSpy)
 
-      const [, candidatesArg] = mocks.applyMove.mock.calls[0]
+      const [, candidatesArg] = mocks.applyMove.mock.calls[0]!
       expect(candidatesArg[5]).toBeInstanceOf(Set)
       expect(candidatesArg[5].has(9)).toBe(true)
       expect(candidatesArg[10]).toBeInstanceOf(Set)
@@ -389,7 +389,7 @@ describe('autoSolvePlayback', () => {
 
       expect(result).toBe(true)
       expect(mocks.onErrorFixed).toHaveBeenCalledTimes(1)
-      const [msg, resume] = mocks.onErrorFixed.mock.calls[0]
+      const [msg, resume] = mocks.onErrorFixed.mock.calls[0]!
       expect(msg).toBe('Cell R1C1 corrected')
       expect(typeof resume).toBe('function')
       mocks.scheduleNextMove.mockClear()
@@ -407,7 +407,7 @@ describe('autoSolvePlayback', () => {
 
       handleMoveResult(moveResult, 1, context, playNextMoveSpy)
 
-      const [msg] = mocks.onErrorFixed.mock.calls[0]
+      const [msg] = mocks.onErrorFixed.mock.calls[0]!
       expect(msg).toBe('Found and fixed an error in your entries.')
     })
 
@@ -418,7 +418,7 @@ describe('autoSolvePlayback', () => {
       })
 
       handleMoveResult(moveResult, 1, context, playNextMoveSpy)
-      const resume = mocks.onErrorFixed.mock.calls[0][1] as () => void
+      const resume = mocks.onErrorFixed.mock.calls[0]![1] as () => void
       mocks.stopAutoSolve.mockClear()
       resume()
       expect(mocks.stopAutoSolve).toHaveBeenCalledTimes(1)
@@ -452,7 +452,7 @@ describe('autoSolvePlayback', () => {
 
       handleMoveResult(moveResult, 1, context, playNextMoveSpy)
 
-      const [, candidatesArg] = mocks.applyMove.mock.calls[0]
+      const [, candidatesArg] = mocks.applyMove.mock.calls[0]!
       candidatesArg.forEach((set: Set<number>) => {
         expect(set).toBeInstanceOf(Set)
       })
@@ -482,7 +482,7 @@ describe('autoSolvePlayback', () => {
       const result = handleMoveResult(moveResult, 1, context, playNextMoveSpy)
 
       expect(result).toBe(true)
-      const [, candidatesArg] = mocks.applyMove.mock.calls[0]
+      const [, candidatesArg] = mocks.applyMove.mock.calls[0]!
       expect(candidatesArg[0]).toBeInstanceOf(Set)
       expect(Array.from(candidatesArg[0] as Set<number>).sort()).toEqual([1, 2])
       expect(candidatesArg[1]).toBeInstanceOf(Set)
@@ -504,7 +504,7 @@ describe('autoSolvePlayback', () => {
 
       handleMoveResult(moveResult, 1, context, playNextMoveSpy)
 
-      const [, candidatesArg] = mocks.applyMove.mock.calls[0]
+      const [, candidatesArg] = mocks.applyMove.mock.calls[0]!
       candidatesArg.forEach((set: Set<number>) => {
         expect(set).toBeInstanceOf(Set)
         expect(Array.from(set).sort()).toEqual([7, 8, 9])
@@ -644,10 +644,10 @@ describe('autoSolvePlayback', () => {
       const sets = candidatesToSets(input)
       expect(sets).toHaveLength(3)
       expect(sets[0]).toBeInstanceOf(Set)
-      expect(sets[0].size).toBe(0)
+      expect(sets[0]!.size).toBe(0)
       expect(sets[1]).toBeInstanceOf(Set)
-      expect(Array.from(sets[1]).sort()).toEqual([1, 2])
-      expect(sets[2].size).toBe(0)
+      expect(Array.from(sets[1]!).sort()).toEqual([1, 2])
+      expect(sets[2]!.size).toBe(0)
     })
 
     it('converts Sets back to sorted arrays', () => {
@@ -699,7 +699,7 @@ describe('autoSolvePlayback', () => {
       expect(snapshot.candidates).toHaveLength(81)
       snapshot.candidates.forEach((arr, i) => {
         expect(Array.isArray(arr)).toBe(true)
-        expect(arr!.slice().sort()).toEqual(Array.from(fallbackSets[i]).sort())
+        expect(arr!.slice().sort()).toEqual(Array.from(fallbackSets[i]!).sort())
       })
     })
   })
@@ -747,7 +747,7 @@ describe('autoSolvePlayback', () => {
 
       handleMoveResult(moveResult, 1, context, playNextMoveSpy)
 
-      const [, candidatesArg] = mocks.applyMove.mock.calls[0]
+      const [, candidatesArg] = mocks.applyMove.mock.calls[0]!
       expect(candidatesArg[0]).toBeInstanceOf(Set)
       expect(Array.from(candidatesArg[0] as Set<number>).sort()).toEqual([1, 2, 3])
       expect(candidatesArg[1]).toBeInstanceOf(Set)

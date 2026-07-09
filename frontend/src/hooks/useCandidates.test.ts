@@ -4,10 +4,9 @@ import { useCandidates } from './useCandidates'
 import {
   hasCandidate,
   addCandidate,
-  removeCandidate,
   countCandidates,
 } from '../lib/candidatesUtils'
-import { BOARD_SIZE, SUBGRID_SIZE, TOTAL_CELLS, MIN_DIGIT, MAX_DIGIT } from '../lib/constants'
+import { TOTAL_CELLS, MIN_DIGIT, MAX_DIGIT } from '../lib/constants'
 
 const WIKIPEDIA_BOARD = [
   5, 3, 0, 0, 7, 0, 0, 0, 0, 6, 0, 0, 1, 9, 5, 0, 0, 0, 0, 9, 8, 0, 0, 0, 0, 6, 0, 8, 0, 0, 0, 6, 0,
@@ -254,7 +253,7 @@ describe('useCandidates', () => {
       // excluded. Under the stale-board mutant (deps []), fillAllCandidates
       // would use the initial empty board and return fullMask 1022 here.
       expect(filled[1]).toBe(990)
-      expect(hasCandidate(filled[1], 5)).toBe(false)
+      expect(hasCandidate(filled[1]!, 5)).toBe(false)
       expect(result.current.areCandidatesFilled()).toBe(true)
     })
 
@@ -308,7 +307,7 @@ describe('useCandidates guard against off-by-one peer elimination (L163:23, L167
     expect(out[5]).toBe(4) // {2} after removing 1
     expect(out[13]).toBe(4)
     expect(out[50]).toBe(1022)
-    expect(countCandidates(out[5])).toBe(1)
+    expect(countCandidates(out[5]!)).toBe(1)
   })
 })
 
@@ -323,9 +322,9 @@ describe('useCandidates eliminateFromPeers loop bounds stay inside the peer set'
     const out = result.current.eliminateFromPeers(initial, 13, 1)
 
     // cell 18 is not a peer of cell 13; digit 1 must survive there.
-    expect(hasCandidate(out[18], 1)).toBe(true)
+    expect(hasCandidate(out[18]!, 1)).toBe(true)
     // sanity: a real row peer (cell 10) does lose digit 1.
-    expect(hasCandidate(out[10], 1)).toBe(false)
+    expect(hasCandidate(out[10]!, 1)).toBe(false)
   })
 
   it('row index is row*BOARD_SIZE+c, not row/BOARD_SIZE+c, for row>0 (L164 ArithmeticOperator)', () => {
@@ -337,8 +336,8 @@ describe('useCandidates eliminateFromPeers loop bounds stay inside the peer set'
 
     const out = result.current.eliminateFromPeers(initial, 13, 1)
 
-    expect(hasCandidate(out[9], 1)).toBe(false) // row peer of cell 13
-    expect(hasCandidate(out[17], 1)).toBe(false) // row peer of cell 13
+    expect(hasCandidate(out[9]!, 1)).toBe(false) // row peer of cell 13
+    expect(hasCandidate(out[17]!, 1)).toBe(false) // row peer of cell 13
   })
 
   it('box-row bound is exclusive of the next box row (L171 r<=boxRow+SUBGRID_SIZE)', () => {
@@ -350,7 +349,7 @@ describe('useCandidates eliminateFromPeers loop bounds stay inside the peer set'
 
     const out = result.current.eliminateFromPeers(initial, 0, 1)
 
-    expect(hasCandidate(out[28], 1)).toBe(true) // non-peer, digit survives
+    expect(hasCandidate(out[28]!, 1)).toBe(true) // non-peer, digit survives
   })
 
   it('box-col bound is exclusive of the next box col (L172 c<=boxCol+SUBGRID_SIZE)', () => {
@@ -362,7 +361,7 @@ describe('useCandidates eliminateFromPeers loop bounds stay inside the peer set'
 
     const out = result.current.eliminateFromPeers(initial, 0, 1)
 
-    expect(hasCandidate(out[12], 1)).toBe(true) // non-peer, digit survives
+    expect(hasCandidate(out[12]!, 1)).toBe(true) // non-peer, digit survives
   })
 })
 // =============================================================================

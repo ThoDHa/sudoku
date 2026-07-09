@@ -1,6 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useAutoSolve } from './useAutoSolve'
+import type { MoveResult } from './autoSolvePlayback'
 import {
   createMockBackgroundManager,
   createDefaultAutoSolveOptions,
@@ -12,9 +13,26 @@ vi.mock('../lib/solver-service', () => ({
   solveAll: vi.fn(),
 }))
 
-import { solveAll } from '../lib/solver-service'
+import { solveAll, type SolveAllResult } from '../lib/solver-service'
 
 type HookResult = { current: ReturnType<typeof useAutoSolve> }
+
+// Build a fully-typed SolveAllResult from the shared mock factory, filling in
+// the required `finalBoard` field that createMockSolveResponse omits.
+function makeSolveAllResult(
+  movesOrCount: number | MoveResult[] = 3,
+  overrides?: { solved?: boolean },
+): SolveAllResult {
+  const moves: MoveResult[] =
+    typeof movesOrCount === 'number'
+      ? createMockSolveResponse(movesOrCount, overrides).moves
+      : movesOrCount
+  return {
+    solved: overrides?.solved ?? true,
+    moves,
+    finalBoard: Array(81).fill(0),
+  }
+}
 
 function actStartAutoSolve(result: HookResult) {
   act(() => {
@@ -54,7 +72,7 @@ type AutoSolveOptions = Parameters<typeof useAutoSolve>[0]
 
 // Common setup: mock the solve response, render the hook, and start auto-solving.
 async function startAutoSolveWith(moveCount: number, overrides?: Partial<AutoSolveOptions>) {
-  mockSolveAll.mockResolvedValue(createMockSolveResponse(moveCount))
+  mockSolveAll.mockResolvedValue(makeSolveAllResult(moveCount))
   const options = createDefaultOptions(overrides)
   const { result } = renderHook(() => useAutoSolve(options))
   await act(async () => {
@@ -142,7 +160,7 @@ describe('useAutoSolve', () => {
   // startAutoSolve() - HAPPY PATH
   describe('startAutoSolve() - Happy Path', () => {
     it('sets isAutoSolving=true when called', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const options = createDefaultOptions()
       const { result } = renderHook(() => useAutoSolve(options))
 
@@ -154,7 +172,7 @@ describe('useAutoSolve', () => {
     })
 
     it('sets isFetching=true while fetching solution', async () => {
-      let resolveFetch: (value: ReturnType<typeof createMockSolveResponse>) => void
+      let resolveFetch: (value: SolveAllResult) => void
       mockSolveAll.mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -172,7 +190,7 @@ describe('useAutoSolve', () => {
 
       // Resolve the API call
       await act(async () => {
-        resolveFetch!(createMockSolveResponse(3))
+        resolveFetch!(makeSolveAllResult(3))
       })
 
       // Should no longer be fetching
@@ -180,7 +198,7 @@ describe('useAutoSolve', () => {
     })
 
     it('calls solveAll with current board, candidates, and givens', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const mockBoard = [1, 2, 3, ...Array(78).fill(0)]
       const mockCandidates = Array(81)
         .fill(null)
@@ -208,7 +226,7 @@ describe('useAutoSolve', () => {
     })
 
     it('applies moves sequentially with delays', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const applyMove = vi.fn()
       const options = createDefaultOptions({ applyMove, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -324,7 +342,7 @@ describe('useAutoSolve', () => {
     })
 
     it('clears pending timers', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(10))
       const applyMove = vi.fn()
       const options = createDefaultOptions({ applyMove, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -381,7 +399,7 @@ describe('useAutoSolve', () => {
     })
 
     it('pauses move playback when paused', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(10))
       const applyMove = vi.fn()
       const options = createDefaultOptions({ applyMove, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -404,7 +422,7 @@ describe('useAutoSolve', () => {
     })
 
     it('resumes move playback when unpaused', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(10))
       const applyMove = vi.fn()
       const options = createDefaultOptions({ applyMove, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -448,7 +466,7 @@ describe('useAutoSolve', () => {
     })
 
     it('calls applyState with previous snapshot', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const applyState = vi.fn()
       const options = createDefaultOptions({ applyState, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -483,7 +501,7 @@ describe('useAutoSolve', () => {
     })
 
     it('calls onStepNavigate with direction "back"', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const onStepNavigate = vi.fn()
       const options = createDefaultOptions({ onStepNavigate, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -503,7 +521,7 @@ describe('useAutoSolve', () => {
     })
 
     it('does nothing if currentIndex is 0', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const applyState = vi.fn()
       const options = createDefaultOptions({ applyState, stepDelay: 1000 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -553,7 +571,7 @@ describe('useAutoSolve', () => {
     })
 
     it('calls onStepNavigate with direction "forward"', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const onStepNavigate = vi.fn()
       const options = createDefaultOptions({ onStepNavigate, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -712,7 +730,7 @@ describe('useAutoSolve', () => {
     })
 
     it('calls onError when no moves returned and not solved', async () => {
-      mockSolveAll.mockResolvedValue({ solved: false, moves: [] })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult([], { solved: false }))
       const onError = vi.fn()
       const options = createDefaultOptions({ onError })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -727,7 +745,7 @@ describe('useAutoSolve', () => {
     })
 
     it('does not call onError when no moves but solved=true', async () => {
-      mockSolveAll.mockResolvedValue({ solved: true, moves: [] })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult([], { solved: true }))
       const onError = vi.fn()
       const options = createDefaultOptions({ onError })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -743,7 +761,7 @@ describe('useAutoSolve', () => {
   // TIMER CLEANUP ON UNMOUNT
   describe('Timer Cleanup on Unmount', () => {
     it('clears timers when component unmounts', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(10))
       const applyMove = vi.fn()
       const options = createDefaultOptions({ applyMove, stepDelay: 100 })
       const { result, unmount } = renderHook(() => useAutoSolve(options))
@@ -767,7 +785,7 @@ describe('useAutoSolve', () => {
     })
 
     it('does not throw when unmounting while fetching', async () => {
-      let resolveFetch: (value: ReturnType<typeof createMockSolveResponse>) => void
+      let resolveFetch: (value: SolveAllResult) => void
       mockSolveAll.mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -785,7 +803,7 @@ describe('useAutoSolve', () => {
 
       // Resolve after unmount (should not cause issues)
       await act(async () => {
-        resolveFetch!(createMockSolveResponse(3))
+        resolveFetch!(makeSolveAllResult(3))
       })
     })
   })
@@ -793,7 +811,7 @@ describe('useAutoSolve', () => {
   // BACKGROUND/VISIBILITY HANDLING
   describe('Background/Visibility Handling', () => {
     it('pauses when backgroundManager.shouldPauseOperations becomes true', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(10))
       const bgManager = createMockBackgroundManager({ shouldPauseOperations: false })
       const options = createDefaultOptions({ backgroundManager: bgManager, stepDelay: 100 })
       const { result, rerender } = renderHook(({ opts }) => useAutoSolve(opts), {
@@ -818,7 +836,7 @@ describe('useAutoSolve', () => {
     })
 
     it('resumes when backgroundManager.shouldPauseOperations becomes false', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(10))
       const hiddenBgManager = createMockBackgroundManager({ shouldPauseOperations: true })
       const options = createDefaultOptions({ backgroundManager: hiddenBgManager, stepDelay: 100 })
       const { result, rerender } = renderHook(({ opts }) => useAutoSolve(opts), {
@@ -853,7 +871,7 @@ describe('useAutoSolve', () => {
         createMockAutoSolveMove({ action: 'contradiction', explanation: 'Found contradiction' }),
         createMockAutoSolveMove({ action: 'place' }),
       ]
-      mockSolveAll.mockResolvedValue({ solved: true, moves })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(moves, { solved: true }))
 
       const applyMove = vi.fn()
       const options = createDefaultOptions({ applyMove, stepDelay: 50 })
@@ -880,7 +898,7 @@ describe('useAutoSolve', () => {
           userEntryCount: 5,
         }),
       ]
-      mockSolveAll.mockResolvedValue({ solved: false, moves })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(moves, { solved: false }))
 
       const onUnpinpointableError = vi.fn()
       const options = createDefaultOptions({ onUnpinpointableError, stepDelay: 50 })
@@ -898,7 +916,7 @@ describe('useAutoSolve', () => {
         createMockAutoSolveMove({ action: 'diagnostic', explanation: 'Taking another look...' }),
         createMockAutoSolveMove({ action: 'place' }),
       ]
-      mockSolveAll.mockResolvedValue({ solved: true, moves })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(moves, { solved: true }))
 
       const onStatus = vi.fn()
       const options = createDefaultOptions({ onStatus, stepDelay: 50 })
@@ -916,7 +934,7 @@ describe('useAutoSolve', () => {
         createMockAutoSolveMove({ action: 'fix-error', explanation: 'Fixed cell at R1C1' }),
         createMockAutoSolveMove({ action: 'place' }),
       ]
-      mockSolveAll.mockResolvedValue({ solved: true, moves })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(moves, { solved: true }))
 
       const onErrorFixed = vi.fn()
       const options = createDefaultOptions({ onErrorFixed, stepDelay: 50 })
@@ -1007,7 +1025,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('stopAutoSolve finalSteps boundary at currentIndex === 0', () => {
     it('sets lastCompletedSteps to 0 when currentIndex is 0', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const options = createDefaultAutoSolveOptions({ stepDelay: 1000 })
       const { result } = renderHook(() => useAutoSolve(options))
 
@@ -1027,7 +1045,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('preserves the actual index as lastCompletedSteps when currentIndex > 0', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(10))
       const options = createDefaultAutoSolveOptions({ stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
 
@@ -1047,7 +1065,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('sets lastCompletedSteps to 0 when stopping before any move plays', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const options = createDefaultAutoSolveOptions({ stepDelay: 1000 })
       const { result } = renderHook(() => useAutoSolve(options))
 
@@ -1068,7 +1086,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('scheduleNextMove document.visibilityState safety net', () => {
     it('does not apply the next move when the tab is hidden between ticks', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const applyMove = vi.fn()
       const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1095,7 +1113,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('drops the pending tick without crashing when hidden, then stays dormant', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const applyMove = vi.fn()
       const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1125,7 +1143,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('background manager resumes playback after a hidden-tab tick drop', () => {
     it('resumes via playNextMoveRef when the background manager transitions back to visible after a scheduled tick was dropped on hidden', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const applyMove = vi.fn()
       const visibleBgManager = createMockBackgroundManager({ shouldPauseOperations: false })
       const options = createDefaultAutoSolveOptions({
@@ -1181,7 +1199,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
   describe('togglePause board-change detection on resume', () => {
     it('stops auto-solve when the board was modified while paused', async () => {
       let board = Array(81).fill(0)
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(10))
       const getBoard = vi.fn(() => board)
       const options = createDefaultAutoSolveOptions({ getBoard, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1210,7 +1228,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
     it('resumes auto-solve when the board is unchanged while paused', async () => {
       const board = Array(81).fill(0)
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(10))
       const getBoard = vi.fn(() => board)
       const applyMove = vi.fn()
       const options = createDefaultAutoSolveOptions({
@@ -1302,7 +1320,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('solveFromGivens', () => {
     it('fetches a solution using only the givens and plays moves', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const applyMove = vi.fn()
       const givens = Array(81).fill(0)
       givens[0] = 5
@@ -1326,7 +1344,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('sets currentIndex to 0 and seeds state history from givens', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(2))
       const givens = Array(81).fill(0)
       givens[0] = 5
       const options = createDefaultAutoSolveOptions({
@@ -1342,7 +1360,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('does nothing when already auto-solving', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const options = createDefaultAutoSolveOptions({ stepDelay: 1000 })
       const { result } = renderHook(() => useAutoSolve(options))
 
@@ -1358,7 +1376,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('calls onError with the dedicated message when puzzle is not solved', async () => {
-      mockSolveAll.mockResolvedValue({ solved: false, moves: [] })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult([], { solved: false }))
       const onError = vi.fn()
       const options = createDefaultAutoSolveOptions({ onError })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1372,7 +1390,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('silently stops when puzzle already solved with no moves', async () => {
-      mockSolveAll.mockResolvedValue({ solved: true, moves: [] })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult([], { solved: true }))
       const onError = vi.fn()
       const options = createDefaultAutoSolveOptions({ onError })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1413,7 +1431,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('restartAutoSolve startPaused handling', () => {
     it('starts in the paused state when startPaused is true', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const applyMove = vi.fn()
       const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1435,7 +1453,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('starts playing immediately when startPaused is false', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const applyMove = vi.fn()
       const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1451,7 +1469,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('stepForward new-territory branch (no snapshot)', () => {
     it('applies a fresh move when stepping forward beyond visited snapshots', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const applyMove = vi.fn()
       const applyState = vi.fn()
       const options = createDefaultAutoSolveOptions({
@@ -1493,7 +1511,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('keeps playback paused after stepping forward into new territory', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const options = createDefaultAutoSolveOptions({ stepDelay: 1000 })
       const { result } = renderHook(() => useAutoSolve(options))
 
@@ -1518,7 +1536,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('stepBack early-return boundary at index 0', () => {
     it('does not move below index 0 and does not call applyState', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const applyState = vi.fn()
       const options = createDefaultAutoSolveOptions({ applyState, stepDelay: 1000 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1542,7 +1560,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('stepForward early-return boundary at the end', () => {
     it('does not advance beyond the last visited snapshot when no fresh moves remain', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(2))
       const applyMove = vi.fn()
       const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1566,7 +1584,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('startAutoSolve guards', () => {
     it('does not start when isComplete() returns true', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const options = createDefaultAutoSolveOptions({ isComplete: vi.fn(() => true) })
       const { result } = renderHook(() => useAutoSolve(options))
 
@@ -1578,7 +1596,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('does not start when already auto-solving', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const options = createDefaultAutoSolveOptions({ stepDelay: 1000 })
       const { result } = renderHook(() => useAutoSolve(options))
 
@@ -1596,7 +1614,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('startAutoSolve no-moves error path', () => {
     it('calls onError with the advanced-techniques message and stops', async () => {
-      mockSolveAll.mockResolvedValue({ solved: false, moves: [] })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult([], { solved: false }))
       const onError = vi.fn()
       const options = createDefaultAutoSolveOptions({ onError })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1611,7 +1629,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('does not call onError when solved=true with no moves', async () => {
-      mockSolveAll.mockResolvedValue({ solved: true, moves: [] })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult([], { solved: true }))
       const onError = vi.fn()
       const options = createDefaultAutoSolveOptions({ onError })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1626,7 +1644,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('canStepBack / canStepForward computed boundaries', () => {
     it('canStepBack is false when currentIndex is 0 even while auto-solving', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const options = createDefaultAutoSolveOptions({ stepDelay: 1000 })
       const { result } = renderHook(() => useAutoSolve(options))
 
@@ -1642,7 +1660,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('canStepForward is true while index < totalMoves and auto-solving', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const options = createDefaultAutoSolveOptions({ stepDelay: 1000 })
       const { result } = renderHook(() => useAutoSolve(options))
 
@@ -1658,7 +1676,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('pause via gamePaused prop', () => {
     it('pauses when gamePaused prop becomes true during playback', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(10))
       const applyMove = vi.fn()
       const options = createDefaultAutoSolveOptions({
         applyMove,
@@ -1704,7 +1722,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('stepDelay prop dynamic sync', () => {
     it('applies the updated stepDelay after the prop changes between renders', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(5))
       const applyMove = vi.fn()
       const initialOpts = createDefaultAutoSolveOptions({ applyMove, stepDelay: 1000 })
       const { result, rerender } = renderHook(({ opts }) => useAutoSolve(opts), {
@@ -1749,7 +1767,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
   describe('togglePause single-cell board-change detection', () => {
     it('stops auto-solve when exactly one cell differs between snapshot and current board', async () => {
       let board = Array(81).fill(0)
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(10))
       const getBoard = vi.fn(() => board)
       const options = createDefaultAutoSolveOptions({ getBoard, stepDelay: 1000 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1792,7 +1810,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
   describe('clearActiveTimers prevents next scheduled move after stop', () => {
     it('does not fire any pending move after stopAutoSolve even with many queued', async () => {
       vi.useFakeTimers()
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(20))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(20))
       const applyMove = vi.fn()
       const options = createDefaultOptions({ applyMove, stepDelay: 50 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1814,7 +1832,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('optional callback absence is safe', () => {
     it('startAutoSolve no-moves path does not throw when onError is undefined', async () => {
-      mockSolveAll.mockResolvedValue({ solved: false, moves: [] })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult([], { solved: false }))
       const opts = createDefaultOptions({})
       delete (opts as Partial<typeof opts>).onError
       const { result } = renderHook(() => useAutoSolve(opts))
@@ -1842,7 +1860,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('solveFromGivens no-moves path does not throw when onError is undefined', async () => {
-      mockSolveAll.mockResolvedValue({ solved: false, moves: [] })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult([], { solved: false }))
       const opts = createDefaultOptions({})
       delete (opts as Partial<typeof opts>).onError
       const { result } = renderHook(() => useAutoSolve(opts))
@@ -1872,7 +1890,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('solveFromGivens seeds state history with the givens board', () => {
     it('applies the givens board when stepping back to the initial snapshot', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(2))
       const givens = Array(81).fill(0)
       givens[0] = 5
       givens[40] = 7
@@ -1891,14 +1909,14 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
       actStepBack(result)
       expect(result.current.currentIndex).toBe(0)
       expect(applyState).toHaveBeenCalled()
-      const [boardArg] = applyState.mock.calls[applyState.mock.calls.length - 1]
+      const [boardArg] = applyState.mock.calls[applyState.mock.calls.length - 1]!
       expect(boardArg[0]).toBe(5)
       expect(boardArg[40]).toBe(7)
     })
 
     it('does not invoke onError for a single contradiction move under skipSpecialMoves=true', async () => {
       const move = createMockAutoSolveMove({ action: 'contradiction', explanation: 'CTX' })
-      mockSolveAll.mockResolvedValue({ solved: true, moves: [move] })
+      mockSolveAll.mockResolvedValue(makeSolveAllResult([move], { solved: true }))
       const onError = vi.fn()
       const options = createDefaultAutoSolveOptions({ onError, stepDelay: 50 })
 
@@ -1914,7 +1932,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('restartAutoSolve startPaused toggles manualPaused correctly', () => {
     it('starts unpaused when startPaused=false and applies the first move', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const applyMove = vi.fn()
       const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1928,7 +1946,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('starts paused when startPaused=true and queues no moves until unpaused', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const applyMove = vi.fn()
       const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 100 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -1948,7 +1966,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('stepBack/stepForward onStepNavigate and snapshot applyState', () => {
     it('stepBack applies the snapshot at newIndex and notifies with direction "back"', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const applyState = vi.fn()
       const onStepNavigate = vi.fn()
       const options = createDefaultAutoSolveOptions({
@@ -1969,13 +1987,13 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
       expect(result.current.currentIndex).toBe(0)
       expect(applyState).toHaveBeenCalledTimes(1)
       // The applyState args are (board, candidates, move, index)
-      const args = applyState.mock.calls[0]
+      const args = applyState.mock.calls[0]!
       expect(args[3]).toBe(0)
       expect(onStepNavigate).toHaveBeenCalledWith(null, 'back')
     })
 
     it('stepForward into visited snapshot applies state and notifies with direction "forward"', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const applyState = vi.fn()
       const onStepNavigate = vi.fn()
       const options = createDefaultAutoSolveOptions({
@@ -1998,7 +2016,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('stepForward into new territory applies the move and updates the queue from allMovesRef', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const applyMove = vi.fn()
       const applyState = vi.fn()
       const options = createDefaultAutoSolveOptions({
@@ -2020,7 +2038,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
       expect(result.current.currentIndex).toBe(2)
       expect(applyMove).toHaveBeenCalledTimes(1)
       // Verify candidate Sets were derived from moveResult.candidates arrays.
-      const candidatesArg = applyMove.mock.calls[0][1] as Set<number>[]
+      const candidatesArg = applyMove.mock.calls[0]![1] as Set<number>[]
       expect(candidatesArg[0]).toBeInstanceOf(Set)
 
       // The new-territory branch must also push a real snapshot (board/candidates/move)
@@ -2029,7 +2047,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
       actStepBack(result)
       expect(result.current.currentIndex).toBe(1)
       expect(applyState).toHaveBeenCalledTimes(1)
-      const stateArgs = applyState.mock.calls[0]
+      const stateArgs = applyState.mock.calls[0]!
       // applyState(board, candidates, move, index) — board must be a real array, not undefined.
       expect(Array.isArray(stateArgs[0])).toBe(true)
       expect(stateArgs[0]).toHaveLength(81)
@@ -2040,7 +2058,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('canStepForward boundary at currentIndex === totalMoves', () => {
     it('canStepForward is false after stepping forward to the last move while still auto-solving', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const options = createDefaultAutoSolveOptions({ stepDelay: 1000 })
       const { result } = renderHook(() => useAutoSolve(options))
 
@@ -2145,7 +2163,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('solveFromGivens advanced path', () => {
     it('keeps autoSolveRef active while moves are still playing', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(3))
       const applyMove = vi.fn()
       const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 50 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -2163,7 +2181,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('sets isFetching=true while the givens solution is still pending', async () => {
-      let resolveFetch: (value: ReturnType<typeof createMockSolveResponse>) => void = () => {}
+      let resolveFetch: (value: SolveAllResult) => void = () => {}
       mockSolveAll.mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -2183,7 +2201,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
       expect(result.current.isFetching).toBe(true)
 
       await act(async () => {
-        resolveFetch(createMockSolveResponse(1))
+        resolveFetch(makeSolveAllResult(1))
       })
       expect(result.current.isFetching).toBe(false)
     })
@@ -2191,7 +2209,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 
   describe('applyFixesAndContinueSolving', () => {
     it('plays the fix moves and then resumes autosolving from the current board', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(2))
       const applyMove = vi.fn()
       const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 10 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -2209,8 +2227,8 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('stops an in-progress autosolve before applying the fixes', async () => {
-      mockSolveAll.mockResolvedValueOnce(createMockSolveResponse(3))
-      mockSolveAll.mockResolvedValueOnce(createMockSolveResponse(2))
+      mockSolveAll.mockResolvedValueOnce(makeSolveAllResult(3))
+      mockSolveAll.mockResolvedValueOnce(makeSolveAllResult(2))
       const applyMove = vi.fn()
       const options = createDefaultAutoSolveOptions({ applyMove, stepDelay: 1000 })
       const { result } = renderHook(() => useAutoSolve(options))
@@ -2233,7 +2251,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     })
 
     it('reports the failure when resuming autosolving throws synchronously', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(2))
       const onError = vi.fn()
       // getGivens is only read inside restartAutoSolve; throwing there makes the
       // resume throw synchronously, which applyFixesAndContinueSolving catches.
@@ -2259,7 +2277,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
     // runAutoSolveFetch: the index-0 snapshot must carry materialized candidate
     // arrays (not [] and not undefined), observable via stepBack -> applyState.
     it('stepBack to index 0 restores the full 81-cell candidate Sets seeded from the input candidates', async () => {
-      mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+      mockSolveAll.mockResolvedValue(makeSolveAllResult(2))
       const applyState = vi.fn()
       const seedCandidates = Array(81)
         .fill(null)
@@ -2279,7 +2297,7 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
       expect(result.current.currentIndex).toBe(0)
 
       expect(applyState).toHaveBeenCalled()
-      const candidatesArg = applyState.mock.calls[applyState.mock.calls.length - 1][1] as Set<
+      const candidatesArg = applyState.mock.calls[applyState.mock.calls.length - 1]![1] as Set<
         number
       >[]
       expect(candidatesArg).toHaveLength(81)
@@ -2309,7 +2327,7 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
   it('startAutoSolve on an unsolvable puzzle does not throw when onError is omitted', async () => {
     // Kills OptionalChaining mutants on `onError?.('This puzzle requires advanced techniques...')`
     // and the catch-block `onError?.(err...)` (L317, L358): removing ?. throws when onError is undefined.
-    mockSolveAll.mockResolvedValue(createMockSolveResponse(0, { solved: false }))
+    mockSolveAll.mockResolvedValue(makeSolveAllResult(0, { solved: false }))
     const opts = createDefaultOptions({ onError: undefined, onStepNavigate: undefined })
     const { result } = renderHook(() => useAutoSolve(opts))
     await expect(act(async () => { await result.current.startAutoSolve() })).resolves.toBeUndefined()
@@ -2327,7 +2345,7 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
 
   it('solveFromGivens on an unsolvable puzzle does not throw when onError is omitted', async () => {
     // Kills OptionalChaining `onError?.('Could not solve this puzzle.')` (L604) and catch (L642).
-    mockSolveAll.mockResolvedValue(createMockSolveResponse(0, { solved: false }))
+    mockSolveAll.mockResolvedValue(makeSolveAllResult(0, { solved: false }))
     const opts = createDefaultOptions({ onError: undefined })
     const { result } = renderHook(() => useAutoSolve(opts))
     await expect(act(async () => { await result.current.solveFromGivens() })).resolves.toBeUndefined()
@@ -2379,9 +2397,8 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
   it('stepForward new territory tolerates a null candidate cell without throwing', async () => {
     // Kills the LogicalOperator mutant on `(cellCands: number[] | null) => new Set(cellCands || [])`
     // (L467): `cellCands && []` yields null for a null cellCand, and `new Set(null)` throws.
-    mockSolveAll.mockResolvedValue({
-      solved: true,
-      moves: [
+    mockSolveAll.mockResolvedValue(makeSolveAllResult(
+      [
         {
           ...createMockAutoSolveMove(),
           candidates: Array(81).fill(null).map((_, i) => (i === 0 ? null : [1, 2, 3])),
@@ -2389,7 +2406,8 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
         },
         { ...createMockAutoSolveMove(), move: { ...createMockAutoSolveMove().move, step_index: 1 } },
       ],
-    })
+      { solved: true },
+    ))
     const opts = createDefaultOptions()
     const { result } = renderHook(() => useAutoSolve(opts))
     await act(async () => { await result.current.startAutoSolve() })
@@ -2421,7 +2439,7 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
     // Kills the NoCoverage ArithmeticOperator mutant on `Date.now() - start > TIMEOUT` (L695)
     // and the OptionalChaining `onError?.('Failed to resume...')` mutants at L687, L704:
     // forces the timeout branch to execute (covering L695) and asserts no-throw without onError.
-    mockSolveAll.mockResolvedValue(createMockSolveResponse(1))
+    mockSolveAll.mockResolvedValue(makeSolveAllResult(1))
     const opts = createDefaultOptions({
       applyMove: vi.fn(), // no-op applyMove so the fixes queue never drains -> timeout branch fires
       onError: undefined,
@@ -2443,13 +2461,13 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
     // `: getCandidates().map((set) => Array.from(set))` (L478): `() => undefined` stores
     // undefined entries in stateHistory, and a later stepBack restoring that snapshot calls
     // `new Set(undefined)` which throws.
-    mockSolveAll.mockResolvedValue({
-      solved: true,
-      moves: [
-        { ...createMockAutoSolveMove(), candidates: null, move: { ...createMockAutoSolveMove().move, step_index: 0 } },
+    mockSolveAll.mockResolvedValue(makeSolveAllResult(
+      [
+        { ...createMockAutoSolveMove(), candidates: null as unknown as (number[] | null)[], move: { ...createMockAutoSolveMove().move, step_index: 0 } },
         { ...createMockAutoSolveMove(), move: { ...createMockAutoSolveMove().move, step_index: 1 } },
       ],
-    })
+      { solved: true },
+    ))
     const opts = createDefaultOptions()
     const { result } = renderHook(() => useAutoSolve(opts))
     await act(async () => { await result.current.startAutoSolve() })

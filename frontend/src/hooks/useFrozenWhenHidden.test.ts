@@ -218,7 +218,9 @@ describe('useFrozenWhenHidden', () => {
       const { result } = renderHook(() => useFrozenWhenHidden())
 
       const callback = vi.fn((a: number, b: string) => `${b}-${a}`)
-      const wrappedCallback = result.current.skipWhenFrozen(callback)
+      const wrappedCallback = result.current.skipWhenFrozen(
+        callback as unknown as (...args: unknown[]) => unknown,
+      )
 
       const returnValue = wrappedCallback(42, 'test')
 
@@ -236,7 +238,9 @@ describe('useFrozenWhenHidden', () => {
       rerender()
 
       const callback = vi.fn((a: number, b: string) => `${b}-${a}`)
-      const wrappedCallback = result.current.skipWhenFrozen(callback)
+      const wrappedCallback = result.current.skipWhenFrozen(
+        callback as unknown as (...args: unknown[]) => unknown,
+      )
 
       const returnValue = wrappedCallback(42, 'test')
 

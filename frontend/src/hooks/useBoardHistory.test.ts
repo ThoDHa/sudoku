@@ -77,7 +77,7 @@ describe('useBoardHistory', () => {
   })
 
   describe('undo', () => {
-    function setupHistory(history: Move[], index: number, board: number[], candidates: Uint16Array) {
+    function setupHistory(history: Move[], index: number, board: number[] = new Array(81).fill(0), candidates: Uint16Array = new Uint16Array(81)) {
       const setBoard = vi.fn()
       const setCandidates = vi.fn()
       const boardRef = { current: board }
@@ -126,7 +126,7 @@ describe('useBoardHistory', () => {
 
       // unapplyStateDiff reverts idx 0 to oldValue 0 and idx 1 mask to oldMask 0
       expect(setBoard).toHaveBeenCalledTimes(1)
-      expect(setBoard.mock.calls[0][0][0]).toBe(0)
+      expect(setBoard.mock.calls[0]![0][0]).toBe(0)
       expect(setCandidates).toHaveBeenCalledTimes(1)
       expect(boardRef.current[0]).toBe(0)
       expect(candidatesRef.current[1]).toBe(0)
@@ -225,7 +225,7 @@ describe('useBoardHistory', () => {
 
       // applyStateDiff applies idx 0 -> 5 and idx 1 mask -> 2
       expect(setBoard).toHaveBeenCalledTimes(1)
-      expect(setBoard.mock.calls[0][0][0]).toBe(5)
+      expect(setBoard.mock.calls[0]![0][0]).toBe(5)
       expect(setCandidates).toHaveBeenCalledTimes(1)
       expect(boardRef.current[0]).toBe(5)
       expect(candidatesRef.current[1]).toBe(2)
