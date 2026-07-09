@@ -65,6 +65,7 @@ typecheck-frontend:
 	@echo ""
 	@echo "[Frontend] Running TypeScript type-check..."
 	@cd frontend && npx tsc --noEmit
+	@cd frontend && npx tsc --noEmit -p tsconfig.test.json
 	@echo "[Frontend] Type-check passed!"
 
 #-----------------------------------------------------------------------
