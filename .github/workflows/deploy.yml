@@ -118,13 +118,7 @@ jobs:
         run: python3 -m unittest gen_report_portal_test
 
       - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.26'
-          # Take the latest 1.26.x at run time so CI picks up Go security
-          # patches (fixes govulncheck GO-2026-5856, patched in go1.26.5).
-          check-latest: true
-          cache-dependency-path: api/go.sum
+        uses: ./.github/actions/setup-go
 
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@v1.13.0
@@ -457,13 +451,7 @@ jobs:
 
       - name: Setup Go for WASM build
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.26'
-          # Take the latest 1.26.x at run time so CI picks up Go security
-          # patches (fixes govulncheck GO-2026-5856, patched in go1.26.5).
-          check-latest: true
-          cache-dependency-path: api/go.sum
+        uses: ./.github/actions/setup-go
 
       # IMPORTANT: TinyGo version must match local development environment (0.41.1)
       # 0.41.1 is the first release supporting Go 1.26 (0.40.1 caps at Go 1.25)

@@ -1,0 +1,16 @@
+name: 'Setup Go'
+description: >-
+  Install the project's Go toolchain (latest 1.26.x patch) with module caching.
+  Single source of truth for the Go version across all workflows.
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-go@v6
+      with:
+        go-version: '1.26'
+        # Take the latest 1.26.x at run time so CI picks up Go security patches
+        # without a manual bump (fixes govulncheck GO-2026-5856, patched in
+        # go1.26.5).
+        check-latest: true
+        cache-dependency-path: api/go.sum
