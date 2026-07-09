@@ -53,7 +53,9 @@ export interface Conflict {
 
 export interface MoveResult {
   board: number[]
-  candidates: number[][]
+  // Per-cell candidates can be null at runtime (solver/WASM emit null for cells
+  // with no candidates), matching solver-service's SolveAllResult shape.
+  candidates: (number[] | null)[]
   move: Move | null
 }
 

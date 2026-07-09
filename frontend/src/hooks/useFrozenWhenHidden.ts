@@ -34,7 +34,11 @@ export function useFrozenWhenHidden() {
 
   // Wrap a callback to skip execution when frozen
   const skipWhenFrozen = useCallback(
-    <T extends (...args: unknown[]) => unknown>(callback: T): T => {
+    // `any[]` is the standard contravariant bound for a generic callback wrapper:
+    // `unknown[]` rejects callbacks with specific parameter types (contravariance),
+    // forcing `as unknown as` casts at call sites.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    <T extends (...args: any[]) => unknown>(callback: T): T => {
       return ((...args: Parameters<T>) => {
         if (isFrozenRef.current) {
           return undefined // Skip when frozen
