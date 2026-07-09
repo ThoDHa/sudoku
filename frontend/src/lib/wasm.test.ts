@@ -61,8 +61,18 @@ function createMockWasmApi() {
   }
 }
 
+// Structural shape every MockGo variant honors; keeps reassignments assignable
+// even when a test's ad-hoc class omits optional GoInstance fields like _inst.
+interface MockGoInstance {
+  importObject: WebAssembly.Imports
+  run(instance: WebAssembly.Instance): Promise<void>
+  exit?(code: number): void
+  _inst?: WebAssembly.Instance | null
+}
+type MockGoConstructor = new () => MockGoInstance
+
 // Create mock Go class
-function createMockGoClass() {
+function createMockGoClass(): MockGoConstructor {
   return class MockGo {
     importObject = { go: {} }
     _inst: WebAssembly.Instance | null = null
@@ -77,7 +87,7 @@ function createMockGoClass() {
 
 describe('wasm module', () => {
   // Drive loadWasm through its async ready handshake (shared by every load test).
-  const runLoadCycle = async (loadWasm: () => Promise<void>) => {
+  const runLoadCycle = async (loadWasm: () => Promise<unknown>) => {
     const loadPromise = loadWasm()
     await vi.waitFor(() => {
       if (wasmReadyHandler) {
@@ -87,7 +97,7 @@ describe('wasm module', () => {
     await loadPromise
   }
   let mockWasmApi: ReturnType<typeof createMockWasmApi>
-  let MockGoClass: ReturnType<typeof createMockGoClass>
+  let MockGoClass: MockGoConstructor
   let wasmReadyHandler: (() => void) | null = null
 
   beforeEach(() => {
@@ -129,7 +139,6 @@ describe('wasm module', () => {
       },
     }
 
-    // @ts-expect-error - Mocking document
     globalThis.document = {
       createElement: vi.fn().mockReturnValue(mockScript),
       head: {
@@ -145,7 +154,7 @@ describe('wasm module', () => {
           }, 0)
         }),
       },
-    }
+    } as unknown as Document
 
     // Mock fetch
     globalThis.fetch = vi.fn().mockResolvedValue({
@@ -416,9 +425,9 @@ describe('wasm module', () => {
 
         const loadPromise = loadWasm()
 
-        // Attach rejection handler BEFORE advancing time to prevent unhandled rejection
+        // Attach rejection handler before advancing time to prevent unhandled rejection
         // This catches the rejection when it happens during timer advancement
-        let error: Error | null = null
+        let error: Error | null = null as Error | null
         const catchPromise = loadPromise.catch((e) => {
           error = e as Error
         })
@@ -559,7 +568,7 @@ describe('wasm module', () => {
       vi.mocked(globalThis.fetch).mockImplementation(() => new Promise(() => {}))
 
       // Start loading
-      const loadPromise = loadWasm()
+      loadWasm()
 
       // Abort the load
       abortWasmLoad()
@@ -660,7 +669,6 @@ describe('wasm module', () => {
 
       unloadWasm()
 
-      // @ts-expect-error - Checking deletion
       expect(globalThis.window.SudokuWasm).toBeUndefined()
     })
 
@@ -668,7 +676,6 @@ describe('wasm module', () => {
       // @ts-expect-error - Mocking
       globalThis.window.SudokuWasm = mockWasmApi
       const gcMock = vi.fn()
-      // @ts-expect-error - Mocking
       globalThis.window.gc = gcMock
 
       const { loadWasm, unloadWasm } = await import('./wasm')
@@ -1195,8 +1202,8 @@ describe('wasm module', () => {
       await runLoadCycle(loadWasm)
 
       expect(createdScripts.length).toBe(1)
-      expect(createdScripts[0].src).toBe('/wasm_exec.js')
-      expect(createdScripts[0].async).toBe(true)
+      expect(createdScripts[0]?.src).toBe('/wasm_exec.js')
+      expect(createdScripts[0]?.async).toBe(true)
       expect(loggerMock).toHaveBeenCalledWith('[WASM] Loading wasm_exec.js from:', '/wasm_exec.js')
       expect(loggerMock).toHaveBeenCalledWith('[WASM] wasm_exec.js loaded successfully')
     })
@@ -1399,7 +1406,6 @@ describe('wasm module', () => {
       await runLoadCycle(loadWasm)
       unloadWasm()
 
-      // @ts-expect-error - Checking deletion
       expect(globalThis.window.Go).toBeUndefined()
     })
   })
@@ -1682,7 +1688,6 @@ describe('wasm module', () => {
       globalThis.window.SudokuWasm = mockWasmApi
       // Provide 'gc' as a non-function value. The original guard skips the call;
       // mutants that force the condition true would call undefined()/string and throw.
-      // @ts-expect-error - Mocking
       globalThis.window.gc = undefined
       // 'gc' in window must still be true for some mutants to enter
       Object.defineProperty(globalThis.window, 'gc', {
@@ -1717,14 +1722,13 @@ describe('wasm module', () => {
         expect(() => unloadWasm()).not.toThrow()
       } finally {
         // Restore a minimal window for afterEach cleanup.
-        // @ts-expect-error - Mocking
         globalThis.window = {
           Go: MockGoClass,
           SudokuWasm: undefined,
           addEventListener: vi.fn(),
           removeEventListener: vi.fn(),
           dispatchEvent: vi.fn(),
-        }
+        } as unknown as typeof globalThis.window
       }
     })
   })

@@ -359,7 +359,7 @@ describe('worker-client advanced scenarios', () => {
   const manuallyInitWorker = async (initializeWorker: () => Promise<void>) => {
     const initPromise = initializeWorker()
     await vi.advanceTimersByTimeAsync(10)
-    const worker = createdWorkers[0]
+    const worker = createdWorkers[0]!
     worker.simulateMessage({
       type: 'result',
       id: 'req-1-' + Date.now(),
@@ -456,7 +456,7 @@ describe('worker-client advanced scenarios', () => {
       expect(isWorkerReady()).toBe(true)
 
       // Send a message with type that should be ignored
-      const worker = createdWorkers[0]
+      const worker = createdWorkers[0]!
 
       // These should not throw and should not affect worker state
       expect(() => worker.simulateMessage({ type: 'loaded' })).not.toThrow() // Should be ignored after init
@@ -474,7 +474,7 @@ describe('worker-client advanced scenarios', () => {
       await initializeWorker()
       expect(isWorkerReady()).toBe(true)
 
-      const worker = createdWorkers[0]
+      const worker = createdWorkers[0]!
       // Message with type but no id - should be ignored
       expect(() =>
         worker.simulateMessage({ type: 'result', success: true, data: {} }),
@@ -492,7 +492,7 @@ describe('worker-client advanced scenarios', () => {
       await initializeWorker()
       expect(isWorkerReady()).toBe(true)
 
-      const worker = createdWorkers[0]
+      const worker = createdWorkers[0]!
       // Message with unknown id - should be ignored (no pending request)
       expect(() =>
         worker.simulateMessage({ type: 'result', id: 'unknown-id-12345', success: true, data: {} }),
@@ -838,7 +838,7 @@ describe('worker-client advanced scenarios', () => {
 
       // Attach rejection handler BEFORE advancing time to prevent unhandled rejection
       // This catches the rejection when it happens during timer advancement
-      let error: Error | null = null
+      let error: Error | null = null as Error | null
       const catchPromise = initPromise.catch((e) => {
         error = e as Error
       })
@@ -921,7 +921,7 @@ describe('worker-client advanced scenarios', () => {
 
       const posted = getPosted()
       expect(posted.length).toBeGreaterThan(0)
-      expect(posted[0].id).toMatch(/^req-1-\d+$/)
+      expect(posted[0]?.id).toMatch(/^req-1-\d+$/)
 
       terminateWorker()
     })
@@ -976,7 +976,7 @@ describe('worker-client advanced scenarios', () => {
 
       expect(createdWorkers[0]).toBeDefined()
       // terminate() nulls the onmessage/onerror handlers; under the mutant they stay set
-      expect(createdWorkers[0].onmessage).toBeNull()
+      expect(createdWorkers[0]!.onmessage).toBeNull()
     })
   })
 
@@ -1008,7 +1008,7 @@ describe('worker-client advanced scenarios', () => {
         // Resolve init with the exact id the client generated so isInitialized becomes true
         const initReq = posted.find((p) => p.type === 'init')
         expect(initReq).toBeDefined()
-        createdWorkers[0].simulateMessage({
+        createdWorkers[0]!.simulateMessage({
           type: 'result',
           id: initReq!.id,
           success: true,
@@ -1033,7 +1033,7 @@ describe('worker-client advanced scenarios', () => {
         expect(findReq).toBeDefined()
 
         // 'loaded' is a non-response type: must be ignored so the request stays pending
-        createdWorkers[0].simulateMessage({ type: 'loaded', id: findReq!.id })
+        createdWorkers[0]!.simulateMessage({ type: 'loaded', id: findReq!.id })
         await vi.advanceTimersByTimeAsync(10)
 
         expect(state).toBe('pending')
@@ -1158,13 +1158,13 @@ describe('worker-client advanced scenarios', () => {
         await vi.advanceTimersByTimeAsync(50)
         await initPromise
 
-        const worker = createdWorkers[0]
+        const worker = createdWorkers[0]!
         const findPromise = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
         await vi.advanceTimersByTimeAsync(10)
 
         // Call the client's onerror handler directly (the MockWorker's triggerEvent
         // would first hit a stale createWorker error listener that terminates the worker)
-        worker.onerror(new ErrorEvent('error', { message: 'crashed' }))
+        worker.onerror?.(new ErrorEvent('error', { message: 'crashed' }))
 
         await expect(findPromise).rejects.toThrow('Worker error: crashed')
         terminateWorker()
@@ -1202,7 +1202,7 @@ describe('worker-client advanced scenarios', () => {
         await vi.advanceTimersByTimeAsync(10)
 
         expect(findReqId).toBeDefined()
-        createdWorkers[0].simulateMessage({ type: 'error', id: findReqId, success: false, error: '' })
+        createdWorkers[0]!.simulateMessage({ type: 'error', id: findReqId, success: false, error: '' })
 
         await expect(findPromise).rejects.toThrow('Worker request failed')
         terminateWorker()
@@ -1247,7 +1247,7 @@ describe('worker-client advanced scenarios', () => {
 
       vi.useFakeTimers()
       try {
-        const { initializeWorker, terminateWorker } = await import('./worker-client')
+        const { initializeWorker } = await import('./worker-client')
         const initPromise = initializeWorker()
         await vi.advanceTimersByTimeAsync(50)
         await initPromise
@@ -1306,7 +1306,7 @@ describe('worker-client advanced scenarios', () => {
           const origRemove = this.removeEventListener.bind(this)
           this.removeEventListener = (type: string) => {
             removedEvents.push(type)
-            origRemove(type)
+            origRemove(type, () => {})
           }
           createdWorkers.push(this)
         }
@@ -1401,12 +1401,12 @@ describe('worker-client advanced scenarios', () => {
         await vi.advanceTimersByTimeAsync(50)
         await initPromise
 
-        const worker = createdWorkers[0]
+        const worker = createdWorkers[0]!
         const findPromise = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
         await vi.advanceTimersByTimeAsync(10)
 
         // Fire onerror directly. The mutant would log "" instead of the message.
-        worker.onerror(new ErrorEvent('error', { message: 'crashed' }))
+        worker.onerror?.(new ErrorEvent('error', { message: 'crashed' }))
 
         await expect(findPromise).rejects.toThrow('Worker error: crashed')
         expect(debugSpy).toHaveBeenCalledWith(

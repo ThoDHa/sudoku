@@ -1,5 +1,5 @@
-import { renderHook, act, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach, Mock } from 'vitest'
+import { renderHook, act } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // MOCKS
 
@@ -205,7 +205,7 @@ describe('useWasmLifecycle', () => {
 
     it('handles initialization errors gracefully', async () => {
       const consoleErrorSpy = logger.error
-      logger.error.mockClear()
+      vi.mocked(logger.error).mockClear()
       mockInitializeSolver.mockRejectedValueOnce(new Error('WASM load failed'))
 
       setMockPathname('/')
@@ -219,12 +219,12 @@ describe('useWasmLifecycle', () => {
         '[WasmLifecycle] Failed to initialize WASM solver:',
         expect.any(Error),
       )
-      logger.error.mockClear()
+      vi.mocked(logger.error).mockClear()
     })
 
     it('logs success when enableLogging is true', async () => {
       const loggerWarnSpy = logger.warn
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
       setMockPathname('/')
       const { result } = renderHook(() => useWasmLifecycle({ enableLogging: true }))
 
@@ -233,7 +233,7 @@ describe('useWasmLifecycle', () => {
       })
 
       expect(loggerWarnSpy).toHaveBeenCalledWith('[WasmLifecycle] WASM loaded successfully')
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
     })
   })
 
@@ -252,7 +252,7 @@ describe('useWasmLifecycle', () => {
 
     it('handles cleanup errors gracefully', async () => {
       const consoleErrorSpy = logger.error
-      logger.error.mockClear()
+      vi.mocked(logger.error).mockClear()
       mockCleanupSolver.mockImplementationOnce(() => {
         throw new Error('Cleanup failed')
       })
@@ -268,12 +268,12 @@ describe('useWasmLifecycle', () => {
         '[WasmLifecycle] Error during WASM cleanup:',
         expect.any(Error),
       )
-      logger.error.mockClear()
+      vi.mocked(logger.error).mockClear()
     })
 
     it('logs success when enableLogging is true', async () => {
       const loggerWarnSpy = logger.warn
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
       setMockPathname('/')
       const { result } = renderHook(() => useWasmLifecycle({ enableLogging: true }))
 
@@ -284,7 +284,7 @@ describe('useWasmLifecycle', () => {
       expect(loggerWarnSpy).toHaveBeenCalledWith(
         '[WasmLifecycle] WASM unloaded - freed ~4MB memory',
       )
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
     })
   })
 
@@ -318,7 +318,7 @@ describe('useWasmLifecycle', () => {
 
     it('logs cancellation when enableLogging is true', async () => {
       const loggerWarnSpy = logger.warn
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
 
       // Start on a WASM route
       setPath('/game123')
@@ -337,7 +337,7 @@ describe('useWasmLifecycle', () => {
       actCancelUnload(result)
 
       expect(loggerWarnSpy).toHaveBeenCalledWith('[WasmLifecycle] Cancelled scheduled WASM unload')
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
     })
 
     it('does nothing if no unload is scheduled', () => {
@@ -598,7 +598,7 @@ describe('useWasmLifecycle', () => {
   describe('Logging', () => {
     it('does not log when enableLogging is false', async () => {
       const loggerWarnSpy = logger.warn
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
 
       setMockPathname('/')
       const { result } = renderHook(() => useWasmLifecycle({ enableLogging: false }))
@@ -608,12 +608,12 @@ describe('useWasmLifecycle', () => {
       })
 
       expect(loggerWarnSpy).not.toHaveBeenCalled()
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
     })
 
     it('logs route entry when enableLogging is true', async () => {
       const loggerWarnSpy = logger.warn
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
 
       setMockPathname('/')
       const { rerender } = renderHook(() => useWasmLifecycle({ enableLogging: true }))
@@ -627,12 +627,12 @@ describe('useWasmLifecycle', () => {
       })
 
       expect(loggerWarnSpy).toHaveBeenCalledWith('[WasmLifecycle] Entering WASM route: /game123')
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
     })
 
     it('logs route exit when enableLogging is true', async () => {
       const loggerWarnSpy = logger.warn
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
 
       setPath('/game123')
       const { rerender } = renderHook(() => useWasmLifecycle({ enableLogging: true }))
@@ -646,12 +646,12 @@ describe('useWasmLifecycle', () => {
       rerender()
 
       expect(loggerWarnSpy).toHaveBeenCalledWith('[WasmLifecycle] Leaving WASM route: /')
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
     })
 
     it('logs scheduled unload when enableLogging is true', async () => {
       const loggerWarnSpy = logger.warn
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
 
       setPath('/game123')
       const { rerender } = renderHook(() =>
@@ -667,14 +667,14 @@ describe('useWasmLifecycle', () => {
       rerender()
 
       expect(loggerWarnSpy).toHaveBeenCalledWith('[WasmLifecycle] Scheduled WASM unload in 3000ms')
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
     })
   })
 
   describe('mutation-kill targets', () => {
     it('does not log route-entry by default (enableLogging defaults to false)', async () => {
       const loggerWarnSpy = logger.warn
-      logger.warn.mockClear()
+      vi.mocked(logger.warn).mockClear()
 
       setMockPathname('/')
       const { rerender } = renderHook(() => useWasmLifecycle())
@@ -749,7 +749,7 @@ describe('useWasmLifecycle', () => {
   describe('mutation-kill: callback dependency arrays', () => {
     it('picks up a changed enableLogging prop in log/loadWasm/unloadWasm/cancelUnload (L40,L63,L93,L102)', async () => {
       const loggerWarnSpy = logger.warn
-      loggerWarnSpy.mockClear()
+      vi.mocked(loggerWarnSpy).mockClear()
 
       setMockPathname('/')
 
@@ -769,7 +769,7 @@ describe('useWasmLifecycle', () => {
       })
       expect(loggerWarnSpy).toHaveBeenCalledWith('[WasmLifecycle] WASM loaded successfully')
 
-      loggerWarnSpy.mockClear()
+      vi.mocked(loggerWarnSpy).mockClear()
       await act(async () => {
         await result.current.unloadWasm()
       })
@@ -777,7 +777,7 @@ describe('useWasmLifecycle', () => {
         '[WasmLifecycle] WASM unloaded - freed ~4MB memory',
       )
 
-      loggerWarnSpy.mockClear()
+      vi.mocked(loggerWarnSpy).mockClear()
       // cancelUnload only logs when a timeout is pending, so schedule one first
       setPath('/game1')
       rerender({ enableLogging: true })
@@ -797,7 +797,7 @@ describe('useWasmLifecycle', () => {
 
     it('picks up a changed unloadDelay in scheduleUnload (L84)', async () => {
       const loggerWarnSpy = logger.warn
-      loggerWarnSpy.mockClear()
+      vi.mocked(loggerWarnSpy).mockClear()
 
       setPath('/game1')
       const { rerender } = renderHook(
@@ -822,7 +822,7 @@ describe('useWasmLifecycle', () => {
 
     it('does not schedule an unload when navigating between two WASM routes (L114)', async () => {
       const loggerWarnSpy = logger.warn
-      loggerWarnSpy.mockClear()
+      vi.mocked(loggerWarnSpy).mockClear()
 
       setPath('/game1')
       const { rerender } = renderHook(() =>
@@ -833,7 +833,7 @@ describe('useWasmLifecycle', () => {
         await vi.runAllTimersAsync()
       })
 
-      loggerWarnSpy.mockClear()
+      vi.mocked(loggerWarnSpy).mockClear()
 
       // Navigate WASM -> WASM. The original skips the else-if; the `true`/`||`
       // mutants enter it and call scheduleUnload, which logs the schedule message.

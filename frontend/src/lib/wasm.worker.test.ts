@@ -1,15 +1,21 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
-type PostMessage = (msg: unknown) => void
-
 interface WorkerGlobalMock {
   postMessage: ReturnType<typeof vi.fn>
   close: ReturnType<typeof vi.fn>
   onmessage: ((e: { data: unknown }) => void) | null
 }
 
+interface PostedMessage {
+  type: string
+  id?: string
+  success?: boolean
+  error?: string
+  data?: unknown
+}
+
 // Shared sink for worker -> main messages captured during each test.
-let posted: unknown[] = []
+let posted: PostedMessage[] = []
 let mockWasmApi: { findNextMove: ReturnType<typeof vi.fn>; solveAll: ReturnType<typeof vi.fn> }
 
 // Mutates the jsdom global (self === globalThis === window) so the worker
@@ -17,7 +23,7 @@ let mockWasmApi: { findNextMove: ReturnType<typeof vi.fn>; solveAll: ReturnType<
 function installWorkerGlobals(): WorkerGlobalMock {
   const sink: WorkerGlobalMock = {
     postMessage: vi.fn((msg: unknown) => {
-      posted.push(msg)
+      posted.push(msg as PostedMessage)
     }),
     close: vi.fn(),
     onmessage: null,
@@ -225,11 +231,9 @@ describe('wasm.worker message protocol', () => {
 })
 
 describe('wasm.worker init failure', () => {
-  let sink: WorkerGlobalMock
-
   beforeEach(() => {
     posted = []
-    sink = installWorkerGlobals()
+    installWorkerGlobals()
     installWasmRuntimeMocks()
     // Force the "Go runtime not available" branch: remove Go after the mocks
     // installed it, so the worker sees typeof Go === 'undefined'.
@@ -303,12 +307,11 @@ describe('wasm.worker init polling timeout', () => {
 })
 
 describe('wasm.worker mutation kills', () => {
-  let sink: WorkerGlobalMock
   let runtime: ReturnType<typeof installWasmRuntimeMocks>
 
   beforeEach(() => {
     posted = []
-    sink = installWorkerGlobals()
+    installWorkerGlobals()
     runtime = installWasmRuntimeMocks()
   })
 
@@ -444,12 +447,10 @@ describe('wasm.worker mutation kills', () => {
 })
 
 describe('wasm.worker polling timeout boundary', () => {
-  let sink: WorkerGlobalMock
-
   beforeEach(() => {
     posted = []
     vi.useFakeTimers()
-    sink = installWorkerGlobals()
+    installWorkerGlobals()
     installWasmRuntimeMocks()
 
     class SilentGoMock {
@@ -487,12 +488,11 @@ describe('wasm.worker polling timeout boundary', () => {
 })
 
 describe('wasm.worker mutation-kill: parallel init and edge paths', () => {
-  let sink: WorkerGlobalMock
   let runtime: ReturnType<typeof installWasmRuntimeMocks>
 
   beforeEach(() => {
     posted = []
-    sink = installWorkerGlobals()
+    installWorkerGlobals()
     runtime = installWasmRuntimeMocks()
   })
 

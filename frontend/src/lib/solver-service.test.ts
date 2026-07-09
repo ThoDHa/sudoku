@@ -345,7 +345,7 @@ describe('solver-service', () => {
 
       vi.mocked(isWorkerSupported).mockReturnValue(true)
       vi.mocked(initializeWorker).mockRejectedValue(new Error('Worker failed'))
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue({
         solveAll: vi.fn(),
         findNextMove: vi.fn(),
@@ -365,7 +365,7 @@ describe('solver-service', () => {
       const { loadWasm, getWasmApi } = await import('./wasm')
 
       vi.mocked(isWorkerSupported).mockReturnValue(true)
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue({
         solveAll: vi.fn(),
         findNextMove: vi.fn(),
@@ -414,7 +414,6 @@ describe('solver-service', () => {
 
     it('should handle errors during cleanup gracefully', async () => {
       const { isWorkerReady, terminateWorker } = await import('./worker-client')
-      const { unloadWasm } = await import('./wasm')
 
       vi.mocked(isWorkerReady).mockReturnValue(true)
       vi.mocked(terminateWorker).mockImplementation(() => {
@@ -429,7 +428,7 @@ describe('solver-service', () => {
     })
 
     it('should be safe to call multiple times', async () => {
-      const { isWorkerReady, terminateWorker } = await import('./worker-client')
+      const { isWorkerReady } = await import('./worker-client')
       const { unloadWasm } = await import('./wasm')
 
       vi.mocked(isWorkerReady).mockReturnValue(false)
@@ -484,7 +483,7 @@ describe('solver-service', () => {
 
       vi.mocked(isWorkerSupported).mockReturnValue(true)
       vi.mocked(workerSolveAll).mockRejectedValue(new Error('Worker failed'))
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
 
       vi.resetModules()
@@ -540,7 +539,7 @@ describe('solver-service', () => {
 
       vi.mocked(isWorkerSupported).mockReturnValue(true)
       vi.mocked(workerFindNextMove).mockRejectedValue(new Error('Worker failed'))
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
 
       vi.resetModules()
@@ -568,7 +567,7 @@ describe('solver-service', () => {
       }
 
       vi.mocked(isWorkerSupported).mockReturnValue(false)
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
 
       vi.resetModules()
@@ -619,9 +618,9 @@ describe('solver-service', () => {
       const result = await solveAll([0], [[]], [0])
 
       expect(result.moves).toHaveLength(1)
-      expect(result.moves[0].board).toEqual([1, 2, 3])
-      expect(result.moves[0].candidates).toEqual([[4], [5], [6]])
-      expect(result.moves[0].move).toEqual(expect.objectContaining({ technique: 'NakedSingle' }))
+      expect(result.moves[0]?.board).toEqual([1, 2, 3])
+      expect(result.moves[0]?.candidates).toEqual([[4], [5], [6]])
+      expect(result.moves[0]?.move).toEqual(expect.objectContaining({ technique: 'NakedSingle' }))
     })
   })
 
@@ -658,7 +657,7 @@ describe('solver-service', () => {
       const { isWorkerSupported } = await import('./worker-client')
 
       vi.mocked(isWorkerSupported).mockReturnValue(false)
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue(null)
 
       vi.resetModules()
@@ -677,7 +676,7 @@ describe('solver-service', () => {
         findNextMove: vi.fn(),
       }
       vi.mocked(isWorkerSupported).mockReturnValue(false)
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
 
       vi.resetModules()
@@ -699,7 +698,7 @@ describe('solver-service', () => {
 
       vi.mocked(isWorkerSupported).mockReturnValue(true)
       vi.mocked(initializeWorker).mockRejectedValue(new Error('Worker failed'))
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue({
         solveAll: vi.fn(),
         findNextMove: vi.fn(),
@@ -786,7 +785,7 @@ describe('solver-service', () => {
       }
       vi.mocked(isWorkerSupported).mockReturnValue(true)
       vi.mocked(workerSolveAll).mockRejectedValue(new Error('Worker failed'))
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
 
       vi.resetModules()
@@ -817,7 +816,7 @@ describe('solver-service', () => {
       }
       vi.mocked(isWorkerSupported).mockReturnValue(true)
       vi.mocked(workerFindNextMove).mockRejectedValue(new Error('Worker failed'))
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
 
       vi.resetModules()
@@ -842,7 +841,7 @@ describe('solver-service', () => {
         findNextMove: vi.fn(),
       }
       vi.mocked(isWorkerSupported).mockReturnValue(true)
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
 
       vi.resetModules()
@@ -1041,7 +1040,7 @@ describe('solver-service', () => {
         findNextMove: vi.fn(),
         checkAndFixWithSolution: vi.fn().mockReturnValue(mockResult),
       }
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
 
       vi.resetModules()
@@ -1051,7 +1050,7 @@ describe('solver-service', () => {
 
       expect(result.solved).toBe(true)
       expect(result.moves).toHaveLength(1)
-      expect(result.moves[0].board).toEqual([1])
+      expect(result.moves[0]?.board).toEqual([1])
       expect(result.finalBoard).toEqual([1, 2, 3])
       expect(logger.debug).toHaveBeenCalledWith('[Check&Fix] wasm result', {
         solved: true,
@@ -1074,7 +1073,7 @@ describe('solver-service', () => {
         findNextMove: vi.fn(),
         checkAndFixWithSolution: vi.fn().mockReturnValue(mockResult),
       }
-      vi.mocked(loadWasm).mockResolvedValue(undefined)
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
       vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
       vi.mocked(logger.debug).mockImplementation(() => {
         throw new Error('logger exploded')
