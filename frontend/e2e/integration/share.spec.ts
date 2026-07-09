@@ -112,6 +112,37 @@ test.describe('@integration Share to a friend', () => {
     await expect(cell).toHaveAttribute('aria-label', new RegExp(`value ${value}`))
   })
 
+  test('on a fresh device the shared entry sticks and the params are stripped', async ({
+    page,
+    browser,
+  }) => {
+    const { row, col, value } = await fillFirstEmptyCell(page, 5, '4')
+    const stateUrl = await shareVia(page, 'Share my current game')
+
+    // A genuinely fresh device: a separate context with no saved game for this
+    // seed. (A same-page localStorage.clear() is defeated by the old page's
+    // unload-save re-writing the saved game, which masked the wipe bug.)
+    const friend = await browser.newContext()
+    await friend.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {})
+    const friendPage = await friend.newPage()
+    await friendPage.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true')
+    })
+    await friendPage.goto(stateUrl)
+    await waitForBoard(friendPage)
+
+    // The shared entry must STICK (SHARE-2: it used to flash then wipe to givens)...
+    const cell = friendPage.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`)
+    await expect(cell).toHaveAttribute('aria-label', new RegExp(`value ${value}`))
+    // ...and stay put (not get wiped a moment later by a second load)...
+    await friendPage.waitForTimeout(500)
+    await expect(cell).toHaveAttribute('aria-label', new RegExp(`value ${value}`))
+    // ...and the one-time share params must be consumed from the URL.
+    await expect.poll(() => new URL(friendPage.url()).searchParams.has('s')).toBe(false)
+
+    await friend.close()
+  })
+
   test('reopening a shared link with local progress prompts, and Keep mine preserves it', async ({
     page,
   }) => {

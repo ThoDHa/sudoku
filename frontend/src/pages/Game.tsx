@@ -365,7 +365,7 @@ function parseSharedElapsedMs(sharedTimeParam: string | null): number | null {
  */
 function GameContent() {
   const { seed, encoded } = useParams<{ seed?: string; encoded?: string }>()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -980,17 +980,18 @@ function GameContent() {
 
   // Drop the one-time `s`/`t` share params from the URL so a later reload takes
   // the normal saved-state path instead of re-applying the sharer's snapshot.
+  // Uses history.replaceState rather than the router's setSearchParams, which did
+  // not persist when called from the initial-load effect; this cleans the address
+  // bar reliably without re-navigating (the shared state is already applied).
   const consumeShareParams = useCallback(() => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        next.delete('s')
-        next.delete('t')
-        return next
-      },
-      { replace: true },
-    )
-  }, [setSearchParams])
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has('s') && !url.searchParams.has('t')) {
+      return
+    }
+    url.searchParams.delete('s')
+    url.searchParams.delete('t')
+    window.history.replaceState(window.history.state, '', url.toString())
+  }, [])
 
   // Finalize a shared-URL load: mark restored, start the clock, and consume the
   // one-time share params so a later reload takes the normal saved-state path.
@@ -1000,17 +1001,10 @@ function GameContent() {
     if (!alreadyCompletedToday && !showDifficultyChooser) {
       timerControl.startTimer()
     }
-    if (sharedStateParam || sharedTimeParam) {
-      consumeShareParams()
-    }
-  }, [
-    alreadyCompletedToday,
-    showDifficultyChooser,
-    timerControl,
-    sharedStateParam,
-    sharedTimeParam,
-    consumeShareParams,
-  ])
+    // consumeShareParams self-guards on the actual URL, so call it unconditionally
+    // (a stale sharedStateParam closure was suppressing the strip).
+    consumeShareParams()
+  }, [alreadyCompletedToday, showDifficultyChooser, timerControl, consumeShareParams])
 
   // Share-conflict modal: recipient keeps their own in-progress game.
   const handleResumeOwnGame = useCallback(() => {
@@ -1160,9 +1154,13 @@ function GameContent() {
         loadedFromSharedUrl.current = true
         applySharedBoard(shared)
         shareResolvedRef.current = true
+        // Strip the one-time s/t params here, where the shared state is actually
+        // applied, so it is reliable across load paths (the finalize effect did
+        // not fire for daily seeds). See SHARE-2.
+        consumeShareParams()
       }
     },
-    [sharedTimeParam, loadSavedGameState, applySharedBoard],
+    [sharedTimeParam, loadSavedGameState, applySharedBoard, consumeShareParams],
   )
 
   // ============================================================
@@ -2322,6 +2320,10 @@ function GameContent() {
         }
         setLoading(false)
 
+        // This load owns loadedFromSharedUrl: default false, set true only when
+        // shared state is actually applied (restoreOrPromptSharedState). The
+        // seed-reset effect must not touch it (see SHARE-2).
+        loadedFromSharedUrl.current = false
         // Apply the shared board, or prompt when the recipient has their own progress.
         if (initialState) {
           restoreOrPromptSharedState(initialState, initialCandidates, puzzleData.seed)
@@ -2352,7 +2354,10 @@ function GameContent() {
   useEffect(() => {
     if (puzzle?.seed) {
       hasRestoredSavedState.current = false
-      loadedFromSharedUrl.current = false
+      // Do NOT reset loadedFromSharedUrl here. loadPuzzle owns it per load (false
+      // by default, true only when it applies shared state). Resetting it here
+      // raced ahead of the restore effect below and wiped the shared board back
+      // to bare givens on a share-link open (SHARE-2).
       logger.debug('[RESTORATION FLAG RESET] Seed changed to:', puzzle.seed, 'Flag reset to false')
     }
   }, [puzzle?.seed])
