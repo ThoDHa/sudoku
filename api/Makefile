@@ -83,8 +83,8 @@ test-coverage-verbose:
 
 # Per-package coverage floors. Kept below measured coverage to absorb minor
 # Go-version / test-ordering variance; see COVERAGE.md for the full policy.
-TECHNIQUES_COVERAGE_FLOOR := 88
-TRANSPORT_HTTP_COVERAGE_FLOOR := 80
+TECHNIQUES_COVERAGE_FLOOR := 85
+TRANSPORT_HTTP_COVERAGE_FLOOR := 95
 
 # Enforce per-package coverage floors. Runs `go test -cover` per gated package,
 # parses the reported percentage, and exits non-zero on breach. CI invokes this

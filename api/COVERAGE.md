@@ -23,8 +23,8 @@ own thresholds in `frontend/vite.config.ts`.
 
 | Package | Floor | Measured baseline | Headroom |
 |---------|-------|-------------------|----------|
-| `./internal/sudoku/human/techniques` | 88% | 92.1% | 4.1pp |
-| `./internal/transport/http` | 80% | 83.3% | 3.3pp |
+| `./internal/sudoku/human/techniques` | 85% | 93.3% | 8.3pp |
+| `./internal/transport/http` | 95% | 97.4% | 2.4pp |
 
 Floors are encoded as Make variables at the top of the `coverage-gate` target
 in `api/Makefile` (`TECHNIQUES_COVERAGE_FLOOR`, `TRANSPORT_HTTP_COVERAGE_FLOOR`).
@@ -34,15 +34,16 @@ in `api/Makefile` (`TECHNIQUES_COVERAGE_FLOOR`, `TRANSPORT_HTTP_COVERAGE_FLOOR`)
 Coverage percentages fluctuate slightly across Go versions, test ordering, and
 platforms. Setting a floor exactly at the measured value would flap: a 0.1pp
 drift on a toolchain upgrade would fail the build for no real regression. The
-floors sit roughly 3 to 4 percentage points below the measured baseline to
+floors sit a few percentage points below the measured baseline to
 absorb this variance while still catching genuine regressions. This mirrors the
 frontend philosophy in `frontend/vite.config.ts`, where floors sit about 4pp
 below measured coverage.
 
-The `transport/http` floor is 80%, not lower, because the acceptance criterion
-for this package is an explicit `>= 80%` contract. 80% is kept (rather than
-relaxing to 78% for extra headroom) so the gate enforces the stated contract
-literally while still retaining 3.3pp of safe headroom.
+The `transport/http` floor is a round 95%, a couple of points below the
+package's measured 97.4%. It supersedes the historical `>= 80%` acceptance
+contract: coverage has since climbed well above that minimum, so the floor was
+raised to reflect and protect the real coverage rather than a long-obsolete
+threshold, while keeping ~2.4pp of headroom against cross-platform variance.
 
 ## How to read a failure
 
@@ -50,7 +51,7 @@ When a package falls below its floor, the gate prints a line like this to
 stderr and exits non-zero:
 
 ```
-coverage-gate: FAIL ./internal/sudoku/human/techniques 86.4% < floor 88% (short by 1.6pp)
+coverage-gate: FAIL ./internal/sudoku/human/techniques 83.4% < floor 85% (short by 1.6pp)
 ```
 
 The line names the package, the measured coverage, the floor, and the shortfall
