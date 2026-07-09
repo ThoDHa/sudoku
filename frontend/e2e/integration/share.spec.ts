@@ -86,4 +86,57 @@ test.describe('@integration Share to a friend', () => {
     const cell = page.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`)
     await expect(cell).toHaveAttribute('aria-label', new RegExp(`value ${value}`))
   })
+
+  test('reopening a shared link with local progress prompts, and Keep mine preserves it', async ({
+    page,
+  }) => {
+    const shared = await fillFirstEmptyCell(page, 5, '4')
+    const stateUrl = await shareVia(page, 'Share my current game')
+
+    // A further move that exists only locally, after the link was created.
+    const later = await fillFirstEmptyCell(page, 6, '5')
+    // Let the debounced autosave persist the later move before we navigate away.
+    await page.waitForTimeout(700)
+
+    await page.goto(stateUrl)
+    await waitForBoard(page)
+
+    // The recipient has their own progress, so they are asked to choose.
+    await expect(page.getByText('Open shared position?')).toBeVisible()
+    await page.getByRole('button', { name: 'Keep mine' }).click()
+
+    // Their later, local-only move survives, and the one-time params are consumed.
+    const laterCell = page.locator(
+      `[role="gridcell"][aria-label^="Row ${later.row}, Column ${later.col}"]`,
+    )
+    await expect(laterCell).toHaveAttribute('aria-label', new RegExp(`value ${later.value}`))
+    expect(new URL(page.url()).searchParams.has('s')).toBe(false)
+    void shared
+  })
+
+  test('reopening a shared link and choosing Open shared discards local progress', async ({
+    page,
+  }) => {
+    const shared = await fillFirstEmptyCell(page, 5, '4')
+    const stateUrl = await shareVia(page, 'Share my current game')
+
+    const later = await fillFirstEmptyCell(page, 6, '5')
+    await page.waitForTimeout(700)
+
+    await page.goto(stateUrl)
+    await waitForBoard(page)
+
+    await expect(page.getByText('Open shared position?')).toBeVisible()
+    await page.getByRole('button', { name: 'Open shared' }).click()
+
+    // The shared move is present; the later local-only move is gone.
+    const sharedCell = page.locator(
+      `[role="gridcell"][aria-label^="Row ${shared.row}, Column ${shared.col}"]`,
+    )
+    await expect(sharedCell).toHaveAttribute('aria-label', new RegExp(`value ${shared.value}`))
+    const laterCell = page.locator(
+      `[role="gridcell"][aria-label^="Row ${later.row}, Column ${later.col}"]`,
+    )
+    await expect(laterCell).toHaveAttribute('aria-label', /empty/)
+  })
 })

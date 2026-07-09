@@ -365,7 +365,7 @@ function parseSharedElapsedMs(sharedTimeParam: string | null): number | null {
  */
 function GameContent() {
   const { seed, encoded } = useParams<{ seed?: string; encoded?: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -456,6 +456,16 @@ function GameContent() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [showInProgressConfirm, setShowInProgressConfirm] = useState(false)
   const [existingInProgressGame, setExistingInProgressGame] = useState<SavedGameInfo | null>(null)
+  // Shared state-link vs the recipient's own saved progress for the same puzzle:
+  // when both exist, the recipient chooses (resume mine / open shared) instead of
+  // one silently winning. Pending holds the shared board until they decide.
+  const [showShareConflict, setShowShareConflict] = useState(false)
+  const [pendingSharedState, setPendingSharedState] = useState<{
+    board: number[]
+    candidates: number[][] | null
+    elapsedMs: number | null
+  } | null>(null)
+  const shareResolvedRef = useRef(false)
   const [showDailyPrompt, setShowDailyPrompt] = useState(false)
   const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] = useState<{
     message: string
@@ -956,6 +966,81 @@ function GameContent() {
     setExistingInProgressGame(null)
   }, [existingInProgressGame])
 
+  // Overlay a shared board (from a state-link's `s`/`t`) onto the current game.
+  const applySharedBoard = useCallback(
+    (shared: { board: number[]; candidates: number[][] | null; elapsedMs: number | null }) => {
+      const candidatesArray = shared.candidates ?? Array.from({ length: 81 }, () => [] as number[])
+      game.restoreState(shared.board, arraysToCandidates(candidatesArray), [])
+      if (shared.elapsedMs !== null) {
+        timerControl.setElapsedMs(shared.elapsedMs)
+      }
+    },
+    [game, timerControl],
+  )
+
+  // Drop the one-time `s`/`t` share params from the URL so a later reload takes
+  // the normal saved-state path instead of re-applying the sharer's snapshot.
+  const consumeShareParams = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('s')
+        next.delete('t')
+        return next
+      },
+      { replace: true },
+    )
+  }, [setSearchParams])
+
+  // Finalize a shared-URL load: mark restored, start the clock, and consume the
+  // one-time share params so a later reload takes the normal saved-state path.
+  const finalizeSharedUrlLoad = useCallback(() => {
+    loadedFromSharedUrl.current = false
+    hasRestoredSavedState.current = true
+    if (!alreadyCompletedToday && !showDifficultyChooser) {
+      timerControl.startTimer()
+    }
+    if (sharedStateParam || sharedTimeParam) {
+      consumeShareParams()
+    }
+  }, [
+    alreadyCompletedToday,
+    showDifficultyChooser,
+    timerControl,
+    sharedStateParam,
+    sharedTimeParam,
+    consumeShareParams,
+  ])
+
+  // Share-conflict modal: recipient keeps their own in-progress game.
+  const handleResumeOwnGame = useCallback(() => {
+    shareResolvedRef.current = true
+    setShowShareConflict(false)
+    setPendingSharedState(null)
+    consumeShareParams()
+  }, [consumeShareParams])
+
+  // Share-conflict modal: recipient discards their progress for the shared position.
+  const handleStartFromShared = useCallback(() => {
+    if (pendingSharedState) {
+      applySharedBoard(pendingSharedState)
+      if (!alreadyCompletedToday && !showDifficultyChooser) {
+        timerControl.startTimer()
+      }
+    }
+    shareResolvedRef.current = true
+    setShowShareConflict(false)
+    setPendingSharedState(null)
+    consumeShareParams()
+  }, [
+    pendingSharedState,
+    applySharedBoard,
+    alreadyCompletedToday,
+    showDifficultyChooser,
+    timerControl,
+    consumeShareParams,
+  ])
+
   // Handlers for daily prompt modal
   const handleGoToDaily = useCallback(() => {
     setShowDailyPrompt(false)
@@ -1059,6 +1144,25 @@ function GameContent() {
       }
     },
     [getStorageKey],
+  )
+
+  // On a shared state-link: apply the shared board immediately, or defer it behind
+  // the conflict prompt when the recipient already has their own progress for this
+  // seed (they choose resume vs open-shared). Kept out of loadPuzzle for clarity.
+  const restoreOrPromptSharedState = useCallback(
+    (board: number[], candidates: number[][] | null, seed: string) => {
+      const shared = { board, candidates, elapsedMs: parseSharedElapsedMs(sharedTimeParam) }
+      const saved = loadSavedGameState(seed)
+      if (saved && saved.history.length > 0 && !shareResolvedRef.current) {
+        setPendingSharedState(shared)
+        setShowShareConflict(true)
+      } else {
+        loadedFromSharedUrl.current = true
+        applySharedBoard(shared)
+        shareResolvedRef.current = true
+      }
+    },
+    [sharedTimeParam, loadSavedGameState, applySharedBoard],
   )
 
   // ============================================================
@@ -1995,6 +2099,7 @@ function GameContent() {
         techniquesListOpen ||
         solveConfirmOpen ||
         showClearConfirm ||
+        showShareConflict ||
         menuOpen
       ) {
         return
@@ -2074,6 +2179,7 @@ function GameContent() {
     techniquesListOpen,
     solveConfirmOpen,
     showClearConfirm,
+    showShareConflict,
     menuOpen,
   ])
 
@@ -2216,22 +2322,9 @@ function GameContent() {
         }
         setLoading(false)
 
-        // Restore shared state if available
+        // Apply the shared board, or prompt when the recipient has their own progress.
         if (initialState) {
-          loadedFromSharedUrl.current = true
-          const candidatesArray =
-            initialCandidates ||
-            Array(81)
-              .fill(null)
-              .map(() => [])
-          const uint16Candidates = arraysToCandidates(candidatesArray)
-          game.restoreState(initialState, uint16Candidates, [])
-
-          // Carry over the sharer's elapsed time if the link included it.
-          const sharedMs = parseSharedElapsedMs(sharedTimeParam)
-          if (sharedMs !== null) {
-            timerControl.setElapsedMs(sharedMs)
-          }
+          restoreOrPromptSharedState(initialState, initialCandidates, puzzleData.seed)
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error')
@@ -2270,15 +2363,11 @@ function GameContent() {
       // Set restoration flag early so useSudokuGame doesn't overwrite restored state
       hasRestoredSavedState.current = true
 
-      // Skip if we already loaded from a shared URL (state is already restored)
+      // Skip if we already loaded from a shared URL (state is already restored).
+      // Finalizing here also consumes the share params; safe because
+      // hasRestoredSavedState is now set, so the re-triggered loadPuzzle early-returns.
       if (loadedFromSharedUrl.current) {
-        loadedFromSharedUrl.current = false
-        hasRestoredSavedState.current = true
-        // loadPuzzle restored the shared board (and any shared elapsed time) but
-        // did not start the clock; start it so a playable shared copy keeps time.
-        if (!alreadyCompletedToday && !showDifficultyChooser) {
-          timerControl.startTimer()
-        }
+        finalizeSharedUrlLoad()
         return
       }
 
@@ -2785,6 +2874,39 @@ function GameContent() {
                 className="flex-1 rounded-lg bg-accent px-4 py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
               >
                 Resume
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shared-Link Conflict Modal - recipient has their own progress for this seed */}
+      {showShareConflict && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          data-overlay-backdrop
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme"
+            data-modal
+          >
+            <h2 className="mb-2 text-lg font-semibold text-foreground">Open shared position?</h2>
+            <p className="mb-6 text-sm text-foreground-muted">
+              You have a game in progress for this puzzle. Keep your own progress, or open the
+              shared position instead?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleResumeOwnGame}
+                className="flex-1 rounded-lg border border-board-border-light px-4 py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
+              >
+                Keep mine
+              </button>
+              <button
+                onClick={handleStartFromShared}
+                className="flex-1 rounded-lg bg-accent px-4 py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
+              >
+                Open shared
               </button>
             </div>
           </div>
