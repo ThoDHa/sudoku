@@ -2274,6 +2274,11 @@ function GameContent() {
       if (loadedFromSharedUrl.current) {
         loadedFromSharedUrl.current = false
         hasRestoredSavedState.current = true
+        // loadPuzzle restored the shared board (and any shared elapsed time) but
+        // did not start the clock; start it so a playable shared copy keeps time.
+        if (!alreadyCompletedToday && !showDifficultyChooser) {
+          timerControl.startTimer()
+        }
         return
       }
 
