@@ -2,9 +2,10 @@ import { test, expect } from '@playwright/test'
 import { setupGameAndWaitForBoard, waitForBoard } from '../utils/board-wait'
 import { selectCell } from '../utils/selectCell'
 
-// The clipboard-read permission is Chromium-only; WebKit/mobile projects reject
-// it, so these tests are desktop-only. The receiving-side overlay they exercise
-// is browser-agnostic.
+// These tests capture the shared link through a clipboard stub (see beforeEach),
+// so they do not depend on the OS clipboard. They remain desktop-only because the
+// mobile projects have unrelated touch/viewport concerns; the receiving-side
+// overlay they exercise is browser-agnostic.
 const CLIPBOARD_UNSUPPORTED = ['pixel-5', 'iphone-12']
 
 async function readClipboard(page: import('@playwright/test').Page): Promise<string> {
@@ -54,6 +55,30 @@ test.describe('@integration Share to a friend', () => {
       'clipboard-read permission is unsupported on WebKit/mobile projects',
     )
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {})
+    // Headless/containerized Chromium may not expose navigator.clipboard even with
+    // permissions granted (the CI Docker sidecar does not), which makes the app
+    // fall back to execCommand and makes readText() throw. Install a capturing stub
+    // so the app's writeText and the test's readText work identically everywhere.
+    await page.addInitScript(() => {
+      let copied = ''
+      const stub = {
+        writeText: (text: string) => {
+          copied = String(text)
+          return Promise.resolve()
+        },
+        readText: () => Promise.resolve(copied),
+      }
+      try {
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: stub })
+      } catch {
+        try {
+          navigator.clipboard.writeText = stub.writeText
+          navigator.clipboard.readText = stub.readText
+        } catch {
+          /* leave as-is; the assertions will surface any failure */
+        }
+      }
+    })
     await setupGameAndWaitForBoard(page, { difficulty: 'easy' })
   })
 
