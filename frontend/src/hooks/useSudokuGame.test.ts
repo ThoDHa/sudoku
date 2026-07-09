@@ -12,18 +12,13 @@ import {
 } from '../test-utils'
 
 type GameHook = ReturnType<typeof useSudokuGame>
-// useSudokuGame returns toggleCandidate at runtime, but its declared return
-// type omits it; this augmented view lets tests exercise the real method.
-type GameHookWithToggle = GameHook & {
-  toggleCandidate: (idx: number, digit: number) => void
-}
 type GameResult = { current: GameHook }
 
 // Render the hook with a board. Most tests render with only initialBoard, so
 // this wraps the renderHook boilerplate they would otherwise repeat.
 function renderGame(initialBoard: number[]) {
   const rendered = renderHook(() => useSudokuGame({ initialBoard }))
-  return { ...rendered, result: rendered.result as { current: GameHookWithToggle } }
+  return rendered
 }
 
 function actPlace(result: GameResult, cell: number, digit: number, isNote = false) {
@@ -38,7 +33,7 @@ function actErase(result: GameResult, cell: number) {
   })
 }
 
-function actToggle(result: { current: GameHookWithToggle }, cell: number, digit: number) {
+function actToggle(result: GameResult, cell: number, digit: number) {
   act(() => {
     result.current.toggleCandidate(cell, digit)
   })

@@ -46,6 +46,7 @@ export interface UseSudokuGameReturn {
   resetGame: () => void
   clearAll: () => void
   clearCandidates: () => void
+  toggleCandidate: (idx: number, digit: number) => void
   applyExternalMove: (newBoard: number[], newCandidates: Uint16Array, move: Move) => void
   setIsComplete: (complete: boolean) => void
   restoreState: (savedBoard: number[], savedCandidates: Uint16Array, savedHistory: Move[]) => void
