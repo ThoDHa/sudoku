@@ -41,9 +41,20 @@ const VERDICT_THRESHOLDS = {
   // Below this baseline scriptDuration (seconds) the overhead RATIO is treated
   // as meaningless (near-zero div) and reported as null instead of a false 100%.
   NEAR_ZERO_BASELINE_S: 0.05,
+  // Below this absolute WASM overhead (MB) the cleanup-effectiveness RATIO is
+  // treated as meaningless (small-denominator noise — a few hundred KB of
+  // un-GC'd glue swings the percentage by tens of points) and reported as null,
+  // mirroring NEAR_ZERO_BASELINE_S for the CPU overhead ratio. PROF-4.
+  CLEANUP_DENOMINATOR_FLOOR_MB: 5,
 } as const;
 
-// Use port 5173 for dev server, or override with PLAYWRIGHT_BASE_URL for production
+// Base URL for the app under test. Left unset, Playwright's webServer starts a
+// real `vite dev` instance on :5173. When overriding via PLAYWRIGHT_BASE_URL,
+// point only at an app server that serves the SPA shell with a rewrite on every
+// route (`vite dev`, `vite preview`, or an equivalent) — NOT a static file
+// server like `serve`. A static server returns its own 404 for `/{seed}` (there
+// is no such file), which surfaces as a grid-selector timeout in scenario B
+// (PROF-5). The default flow (no override) is correct.
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
 
 // ES module compatible __dirname
@@ -100,7 +111,7 @@ interface ComparisonReport {
     wasmCpuOverhead: number | null; // % increase baseline→wasm-idle; null when baseline ≈ 0 (meaningless ratio, PROF-001-D4)
     wasmIdlePercentage: number;     // % of CPU samples in (idle) during wasm-idle — the real "is the thread idle" signal
     wasmIdleScriptSeconds: number;  // absolute scriptDuration during wasm-idle; a busy-loop regression pushes this to seconds
-    cleanupEffectiveness: number;   // memory-based: % of WASM heap overhead released after navigating away
+    cleanupEffectiveness: number | null; // memory-based: % of WASM heap overhead released after navigating away; null when overhead is below the noise floor (PROF-4)
     memoryOverheadMB: number;       // additional memory used by WASM at idle
     verdict: 'PASS' | 'WARN' | 'FAIL';
     findings: string[];
@@ -201,6 +212,15 @@ async function profileScenario(
   // Stop profiling
   const { profile } = await client.send('Profiler.stop');
 
+  // Force GC before the final heap read so the measurement reflects true
+  // retention rather than un-collected garbage. Without this the
+  // cleanup-effectiveness ratio is at the mercy of GC timing on a small
+  // (~2.5MB) denominator, which produced a persistent phantom WARN (PROF-4).
+  // Mirrors memory-profile.spec.ts, which forces GC before every heap read.
+  await client.send('HeapProfiler.collectGarbage').catch(() => {
+    /* GC unavailable in this context — fall through to the live reading */
+  });
+
   // Get metrics after profiling
   const metricsAfter = await client.send('Performance.getMetrics');
 
@@ -275,12 +295,16 @@ function generateComparisonReport(results: ProfileResult[], deviceName: string, 
   const wasmIdleHeap = wasmIdle.metrics.jsHeapUsedSize;
   const postCleanupHeap = postCleanup.metrics.jsHeapUsedSize;
   const memoryOverheadBytes = wasmIdleHeap - baselineHeap;
-  const cleanupEffectiveness =
-    memoryOverheadBytes > 0
-      ? ((wasmIdleHeap - postCleanupHeap) / memoryOverheadBytes) * 100
-      : 100;
-
   const memoryOverheadMB = memoryOverheadBytes / 1024 / 1024;
+
+  // Only compute the ratio when the overhead is non-trivial. Below the floor the
+  // ratio is small-denominator noise, so report null and keep it out of the
+  // verdict (mirrors NEAR_ZERO_BASELINE_S for the CPU overhead ratio). PROF-4.
+  // The MB floor also guarantees a non-zero denominator, so no separate > 0 guard.
+  const cleanupEffectiveness =
+    memoryOverheadMB >= VERDICT_THRESHOLDS.CLEANUP_DENOMINATOR_FLOOR_MB
+      ? ((wasmIdleHeap - postCleanupHeap) / memoryOverheadBytes) * 100
+      : null;
 
   const findings: string[] = [];
 
@@ -304,7 +328,11 @@ function generateComparisonReport(results: ProfileResult[], deviceName: string, 
     findings.push(`WASM adds ${memoryOverheadMB.toFixed(1)}MB memory overhead`);
   }
 
-  if (cleanupEffectiveness < VERDICT_THRESHOLDS.CLEANUP_EFFECTIVENESS_WARN) {
+  if (cleanupEffectiveness === null) {
+    findings.push(
+      `Cleanup effectiveness: N/A (overhead ${memoryOverheadMB.toFixed(1)}MB below the ${VERDICT_THRESHOLDS.CLEANUP_DENOMINATOR_FLOOR_MB}MB noise floor — ratio is small-denominator noise, PROF-4)`
+    );
+  } else if (cleanupEffectiveness < VERDICT_THRESHOLDS.CLEANUP_EFFECTIVENESS_WARN) {
     findings.push(
       `Cleanup only ${cleanupEffectiveness.toFixed(0)}% effective — WASM memory may not be fully released`
     );
@@ -344,7 +372,7 @@ function generateComparisonReport(results: ProfileResult[], deviceName: string, 
     wasmIdleScript > VERDICT_THRESHOLDS.SCRIPT_SECONDS_WARN ||
     wasmIdlePercentage < VERDICT_THRESHOLDS.IDLE_PCT_PASS ||
     memoryOverheadMB > VERDICT_THRESHOLDS.MEMORY_OVERHEAD_WARN_MB ||
-    cleanupEffectiveness < VERDICT_THRESHOLDS.CLEANUP_EFFECTIVENESS_WARN
+    (cleanupEffectiveness !== null && cleanupEffectiveness < VERDICT_THRESHOLDS.CLEANUP_EFFECTIVENESS_WARN)
   ) {
     verdict = 'WARN';
   }
@@ -431,7 +459,7 @@ function printReport(results: ProfileResult[], report: ComparisonReport): void {
   console.log(`   WASM Idle %:           ${a.wasmIdlePercentage.toFixed(2)}% (higher is better)`);
   console.log(`   WASM Idle Script:      ${a.wasmIdleScriptSeconds.toFixed(3)}s over ${PROFILE_DURATION_MS / 1000}s`);
   console.log(`   Memory Overhead:       ${a.memoryOverheadMB.toFixed(1)} MB`);
-  console.log(`   Cleanup Effectiveness: ${a.cleanupEffectiveness.toFixed(1)}%`);
+  console.log(`   Cleanup Effectiveness: ${a.cleanupEffectiveness === null ? 'N/A' : `${a.cleanupEffectiveness.toFixed(1)}%`}`);
   console.log(`   Verdict:               ${a.verdict}`);
   console.log(`\n   Findings:`);
   for (const finding of a.findings) {
@@ -464,6 +492,17 @@ async function runDeviceProfiling(
     ...devices[deviceId],
   });
 
+  // The profiling context must measure the app, not the PWA service worker.
+  // Under ENABLE_PWA_IN_DEV the SW registers on the first (baseline) navigation
+  // and then serves its offline fallback for the game-route navigation,
+  // breaking scenario B. Stub registration so the context stays SW-free (PROF-4).
+  await context.addInitScript(() => {
+    if ('serviceWorker' in navigator && navigator.serviceWorker) {
+      navigator.serviceWorker.register = () =>
+        Promise.reject(new Error('SW disabled in profiling context'));
+    }
+  });
+
   const page = await context.newPage();
 
   // Skip onboarding
@@ -477,6 +516,7 @@ async function runDeviceProfiling(
   // Enable Performance and Profiler domains
   await client.send('Performance.enable');
   await client.send('Profiler.enable');
+  await client.send('HeapProfiler.enable');
   await client.send('Profiler.setSamplingInterval', { interval: 100 }); // 100μs sampling
 
   const results: ProfileResult[] = [];
