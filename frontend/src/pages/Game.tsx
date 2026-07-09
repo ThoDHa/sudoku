@@ -76,12 +76,8 @@ import {
 import { shouldShowDailyPrompt, markDailyPromptShown } from '../lib/dailyPrompt'
 import { getGameMode } from '../lib/gameSettings'
 import { setShowDailyReminder } from '../lib/preferences'
-import {
-  decodePuzzle,
-  encodePuzzle,
-  decodePuzzleWithState,
-  encodePuzzleWithState,
-} from '../lib/puzzleEncoding'
+import { decodePuzzle, encodePuzzle, decodePuzzleWithState } from '../lib/puzzleEncoding'
+import { buildPuzzleShareUrl, buildStateShareUrl } from '../lib/shareLinks'
 import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/candidatesUtils'
 import { validateSeed, extractSeedFromStorageKey } from '../lib/seedValidation'
 import {
@@ -337,6 +333,32 @@ async function fetchPuzzleSource(params: {
   return resolveFetched(effectiveSeed, difficulty, setEncodedPuzzle)
 }
 
+// Overlay a portable-link `s` state param onto a resolved puzzle. The seed already
+// produced the givens; the param supplies the sharer's board and pencil notes.
+function applySharedStateParam(
+  resolved: ResolvedPuzzle,
+  sharedStateParam: string | null,
+): { initialState: number[] | null; initialCandidates: number[][] | null } {
+  let { initialState, initialCandidates } = resolved
+  if (!initialState && sharedStateParam) {
+    const decodedShared = decodePuzzleWithState(sharedStateParam)
+    if (decodedShared) {
+      initialState = decodedShared.board
+      initialCandidates = decodedShared.candidates ?? null
+    }
+  }
+  return { initialState, initialCandidates }
+}
+
+// Parse a shared `t` elapsed-time param into positive milliseconds, or null.
+function parseSharedElapsedMs(sharedTimeParam: string | null): number | null {
+  if (!sharedTimeParam) {
+    return null
+  }
+  const ms = parseInt(sharedTimeParam, 10)
+  return Number.isFinite(ms) && ms > 0 ? ms : null
+}
+
 /**
  * Inner component that contains all game logic.
  * Must be wrapped by TimerProvider (see Game component below).
@@ -348,6 +370,10 @@ function GameContent() {
   const navigate = useNavigate()
 
   const difficultyParam = searchParams.get('d')
+  // Shared progress on a portable seed link: `s` carries the player's board+notes,
+  // `t` the elapsed time. Overlaid onto the seed-resolved givens (see loadPuzzle).
+  const sharedStateParam = searchParams.get('s')
+  const sharedTimeParam = searchParams.get('t')
 
   const { effectiveSeed, isEncodedCustom, needsDifficultyChoice, alreadyCompletedToday, completedDailyScore } =
     resolvePuzzleSetup({ seed, encoded, pathname: location.pathname, difficultyParam })
@@ -1880,30 +1906,74 @@ function GameContent() {
     window.open('https://github.com/thodha/sudoku/issues', '_blank')
   }, [])
 
-  // Share puzzle handler - copies URL with current progress to clipboard
-  const handleShare = useCallback(async () => {
-    try {
-      // Convert candidates from Uint16Array to number[][] for encoding
-      const candidatesArray = candidatesToArrays(game.candidates)
-      // Encode full board state with givens marker and candidates
-      const encoded = encodePuzzleWithState(game.board, initialBoard, candidatesArray)
-      const url = `${window.location.origin}/c/${encoded}`
-
-      // Copy to clipboard
+  // Copy a share URL to the clipboard and surface the outcome as a toast.
+  const copyShareUrl = useCallback(
+    async (url: string, label: string) => {
       const success = await copyToClipboard(url)
       if (success) {
-        setValidationMessage({ type: 'success', message: 'Puzzle link copied to clipboard!' })
+        setValidationMessage({ type: 'success', message: `${label} link copied to clipboard!` })
         scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
       } else {
         setValidationMessage({ type: 'error', message: 'Failed to copy link' })
         scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
       }
-    } catch (err) {
+    },
+    [scheduleToastClear],
+  )
+
+  const handleShareError = useCallback(
+    (err: unknown) => {
       logger.error('Share error:', err)
       setValidationMessage({ type: 'error', message: 'Failed to create share link' })
       scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+    },
+    [scheduleToastClear],
+  )
+
+  // Share the bare puzzle (givens only): a short seed link for portable puzzles,
+  // an encoded /c/ link for localStorage-backed ones.
+  const handleSharePuzzle = useCallback(async () => {
+    try {
+      const url = buildPuzzleShareUrl({
+        isEncodedCustom,
+        seed: puzzle?.seed,
+        difficulty,
+        givens: initialBoard,
+      })
+      await copyShareUrl(url, 'Puzzle')
+    } catch (err) {
+      handleShareError(err)
     }
-  }, [game.board, game.candidates, initialBoard, scheduleToastClear])
+  }, [isEncodedCustom, puzzle?.seed, difficulty, initialBoard, copyShareUrl, handleShareError])
+
+  // Share the exact current position: givens plus the player's entries, notes,
+  // and elapsed time.
+  const handleShareState = useCallback(async () => {
+    try {
+      const url = buildStateShareUrl({
+        isEncodedCustom,
+        seed: puzzle?.seed,
+        difficulty,
+        givens: initialBoard,
+        board: game.board,
+        candidates: candidatesToArrays(game.candidates),
+        elapsedMs: timerControl.getElapsedMs(),
+      })
+      await copyShareUrl(url, 'Game')
+    } catch (err) {
+      handleShareError(err)
+    }
+  }, [
+    isEncodedCustom,
+    puzzle?.seed,
+    difficulty,
+    initialBoard,
+    game.board,
+    game.candidates,
+    timerControl,
+    copyShareUrl,
+    handleShareError,
+  ])
 
   // ============================================================
   // EFFECTS
@@ -2119,7 +2189,13 @@ function GameContent() {
           effectiveSeed,
           setEncodedPuzzle,
         })
-        const { givens, puzzleData, initialState, initialCandidates } = resolved
+        const { givens, puzzleData } = resolved
+        // Portable seed links carry the sharer's progress in the `s` param; overlay
+        // it so the shared-state path below (game.restoreState) applies board+notes.
+        const { initialState, initialCandidates } = applySharedStateParam(
+          resolved,
+          sharedStateParam,
+        )
 
         setPuzzle(puzzleData)
         // For shared state, use the provided full board
@@ -2150,6 +2226,12 @@ function GameContent() {
               .map(() => [])
           const uint16Candidates = arraysToCandidates(candidatesArray)
           game.restoreState(initialState, uint16Candidates, [])
+
+          // Carry over the sharer's elapsed time if the link included it.
+          const sharedMs = parseSharedElapsedMs(sharedTimeParam)
+          if (sharedMs !== null) {
+            timerControl.setElapsedMs(sharedMs)
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error')
@@ -2164,6 +2246,8 @@ function GameContent() {
     encoded,
     isEncodedCustom,
     difficulty,
+    sharedStateParam,
+    sharedTimeParam,
     alreadyCompletedToday,
     showDifficultyChooser,
     showOnboarding,
@@ -2451,7 +2535,8 @@ function GameContent() {
         hintDisabled={false}
         onHistoryOpen={() => setHistoryOpen(true)}
         onShowResult={() => setShowResultModal(true)}
-        onShare={handleShare}
+        onSharePuzzle={handleSharePuzzle}
+        onShareState={handleShareState}
         onAutoFillNotes={autoFillNotes}
         onCheckNotes={handleCheckNotes}
         onClearNotes={() => {

@@ -1,4 +1,5 @@
 import { STORAGE_KEYS, MAX_STORED_SCORES, SECONDS_PER_HOUR, MS_PER_SECOND } from './constants'
+import { getShareBaseUrl } from './shareLinks'
 
 export interface Score {
   seed: string
@@ -151,10 +152,7 @@ export function generateShareText(score: Score, puzzleUrl: string, streak?: numb
 // Generate puzzle URL for challenge
 // Note: We don't include difficulty in the URL - recipient chooses their own difficulty
 export function generatePuzzleUrl(score: Score): string {
-  // Use the current page URL's base (handles GitHub Pages /sudoku/ path)
-  const baseUrl = window.location.origin + (import.meta.env.BASE_URL || '/')
-  // Remove trailing slash if present to avoid double slashes
-  const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+  const base = getShareBaseUrl()
 
   // For custom puzzles with encoded data, use the /c/ route
   if (score.difficulty === 'custom' && score.encodedPuzzle) {

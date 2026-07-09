@@ -1,0 +1,124 @@
+import { describe, it, expect } from 'vitest'
+import {
+  isPortablePuzzle,
+  buildPuzzleShareUrl,
+  buildStateShareUrl,
+  getShareBaseUrl,
+} from './shareLinks'
+import { decodePuzzleWithState, decodePuzzle } from './puzzleEncoding'
+
+function makeGivens(): number[] {
+  const givens = Array<number>(81).fill(0)
+  givens[0] = 5
+  givens[1] = 3
+  givens[4] = 7
+  return givens
+}
+
+function makeState(): { board: number[]; givens: number[]; candidates: number[][] } {
+  const givens = makeGivens()
+  const board = [...givens]
+  board[2] = 4 // a user-filled cell
+  const candidates = Array.from({ length: 81 }, () => [] as number[])
+  candidates[3] = [1, 2, 9] // a pencil-marked cell
+  return { board, givens, candidates }
+}
+
+describe('isPortablePuzzle', () => {
+  it('treats daily and homepage-practice seeds as portable', () => {
+    expect(isPortablePuzzle({ isEncodedCustom: false, seed: 'daily-2026-07-08' })).toBe(true)
+    expect(isPortablePuzzle({ isEncodedCustom: false, seed: 'P1720000000000' })).toBe(true)
+  })
+
+  it('treats custom and technique-practice seeds as non-portable', () => {
+    expect(isPortablePuzzle({ isEncodedCustom: false, seed: 'custom-abc123' })).toBe(false)
+    expect(isPortablePuzzle({ isEncodedCustom: false, seed: 'practice-xwing-1' })).toBe(false)
+  })
+
+  it('treats encoded-custom links and missing seeds as non-portable', () => {
+    expect(isPortablePuzzle({ isEncodedCustom: true, seed: 'daily-2026-07-08' })).toBe(false)
+    expect(isPortablePuzzle({ isEncodedCustom: false, seed: undefined })).toBe(false)
+  })
+})
+
+describe('buildPuzzleShareUrl', () => {
+  const base = getShareBaseUrl()
+
+  it('uses a seed link with pinned difficulty for portable puzzles', () => {
+    const url = buildPuzzleShareUrl({
+      isEncodedCustom: false,
+      seed: 'P1720000000000',
+      difficulty: 'hard',
+      givens: makeGivens(),
+    })
+    expect(url).toBe(`${base}/P1720000000000?d=hard`)
+    expect(url).not.toContain('/c/')
+  })
+
+  it('falls back to an encoded givens link for non-portable puzzles', () => {
+    const givens = makeGivens()
+    const url = buildPuzzleShareUrl({
+      isEncodedCustom: false,
+      seed: 'custom-abc123',
+      difficulty: 'custom',
+      givens,
+    })
+    expect(url.startsWith(`${base}/c/`)).toBe(true)
+    const encoded = url.slice(`${base}/c/`.length)
+    expect(decodePuzzle(encoded)).toEqual(givens)
+  })
+})
+
+describe('buildStateShareUrl', () => {
+  it('overlays state on the seed link and round-trips the board and notes', () => {
+    const { board, givens, candidates } = makeState()
+    const url = buildStateShareUrl({
+      isEncodedCustom: false,
+      seed: 'P1720000000000',
+      difficulty: 'hard',
+      givens,
+      board,
+      candidates,
+      elapsedMs: 65_000,
+    })
+    const parsed = new URL(url)
+    expect(parsed.pathname.endsWith('/P1720000000000')).toBe(true)
+    expect(parsed.searchParams.get('d')).toBe('hard')
+    expect(parsed.searchParams.get('t')).toBe('65000')
+
+    const state = parsed.searchParams.get('s')
+    expect(state).toBeTruthy()
+    const decoded = decodePuzzleWithState(state as string)
+    expect(decoded?.board).toEqual(board)
+    expect(decoded?.candidates?.[3]).toEqual([1, 2, 9])
+  })
+
+  it('omits the time parameter when no elapsed time is given', () => {
+    const { board, givens, candidates } = makeState()
+    const url = buildStateShareUrl({
+      isEncodedCustom: false,
+      seed: 'daily-2026-07-08',
+      difficulty: 'medium',
+      givens,
+      board,
+      candidates,
+    })
+    expect(new URL(url).searchParams.get('t')).toBeNull()
+  })
+
+  it('uses an encoded /c/ link with a time query for non-portable puzzles', () => {
+    const { board, givens, candidates } = makeState()
+    const url = buildStateShareUrl({
+      isEncodedCustom: true,
+      seed: undefined,
+      difficulty: 'custom',
+      givens,
+      board,
+      candidates,
+      elapsedMs: 30_000,
+    })
+    const parsed = new URL(url)
+    expect(parsed.pathname).toContain('/c/')
+    expect(parsed.searchParams.get('t')).toBe('30000')
+  })
+})

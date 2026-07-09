@@ -4,6 +4,7 @@ import DifficultyBadge from './DifficultyBadge'
 import Menu from './Menu'
 import { TimerDisplay } from './TimerDisplay'
 import ThemeModeDropdown from './ThemeModeDropdown'
+import ShareDropdown from './ShareDropdown'
 import { Difficulty } from '../lib/hooks'
 import { ColorTheme, FontSize, ModePreference } from '../lib/ThemeContext'
 import { AutoSolveSpeed, setAutoSolveSpeed } from '../lib/preferences'
@@ -324,7 +325,8 @@ interface GameHeaderProps {
   hintDisabled: boolean
   onHistoryOpen: () => void
   onShowResult: () => void
-  onShare: () => void
+  onSharePuzzle: () => void
+  onShareState: () => void
   onAutoFillNotes: () => void
   onCheckNotes: () => void
   onClearNotes: () => void
@@ -375,7 +377,8 @@ export default memo(function GameHeader({
   hintDisabled,
   onHistoryOpen,
   onShowResult,
-  onShare,
+  onSharePuzzle,
+  onShareState,
   onAutoFillNotes,
   onCheckNotes,
   onClearNotes,
@@ -402,9 +405,12 @@ export default memo(function GameHeader({
 }: GameHeaderProps) {
   const [modeDropdownOpen, setModeDropdownOpen] = useState(false)
   const modeDropdownRef = useRef<HTMLDivElement>(null)
+  const [shareDropdownOpen, setShareDropdownOpen] = useState(false)
+  const shareDropdownRef = useRef<HTMLDivElement>(null)
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useClickOutside(modeDropdownRef, modeDropdownOpen, () => setModeDropdownOpen(false))
+  useClickOutside(shareDropdownRef, shareDropdownOpen, () => setShareDropdownOpen(false))
 
   const handleSpeedChange = (speed: AutoSolveSpeed) => {
     setAutoSolveSpeed(speed)
@@ -488,23 +494,33 @@ export default memo(function GameHeader({
               )}
             </button>
 
-            {/* Share button - shows result if complete, otherwise shares progress */}
-            <button
-              onClick={isComplete ? onShowResult : onShare}
-              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
-              title={isComplete ? 'Share your result' : 'Share puzzle with current progress'}
-              data-share-button
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                />
-              </svg>
-              <span className="hidden sm:inline">{isComplete ? 'Result' : 'Share'}</span>
-            </button>
+            {/* Complete: jump to the result. Otherwise: share puzzle or progress. */}
+            {isComplete ? (
+              <button
+                onClick={onShowResult}
+                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
+                title="Share your result"
+                data-share-button
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                  />
+                </svg>
+                <span className="hidden sm:inline">Result</span>
+              </button>
+            ) : (
+              <ShareDropdown
+                isOpen={shareDropdownOpen}
+                onToggle={() => setShareDropdownOpen(!shareDropdownOpen)}
+                onSharePuzzle={onSharePuzzle}
+                onShareState={onShareState}
+                dropdownRef={shareDropdownRef}
+              />
+            )}
 
             {/* Theme mode dropdown */}
             <ThemeModeDropdown
