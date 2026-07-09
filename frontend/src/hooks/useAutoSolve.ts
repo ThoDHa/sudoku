@@ -140,7 +140,6 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
   // Track active timers for cleanup - prevents battery drain from orphaned timers
   const activeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const activeIdleCallbackRef = useRef<number | null>(null)
 
   // Keep stepDelayRef in sync with prop so speed changes take effect dynamically
   useEffect(() => {
@@ -157,17 +156,6 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       clearTimeout(activeTimeoutRef.current)
       activeTimeoutRef.current = null
     }
-    // Stryker disable ConditionalExpression,EqualityOperator,BlockStatement,StringLiteral: activeIdleCallbackRef
-    // is never assigned a non-null value anywhere in the hook (scheduleNextMove only ever sets
-    // activeTimeoutRef), so this entire branch — condition, body, and the cancelIdleCallback guard —
-    // is unreachable dead code and every mutant inside is unobservable. Flagged for removal.
-    if (activeIdleCallbackRef.current !== null) {
-      if ('cancelIdleCallback' in window) {
-        cancelIdleCallback(activeIdleCallbackRef.current)
-      }
-      activeIdleCallbackRef.current = null
-    }
-    // Stryker restore
     // Stryker disable next-line ArrayDeclaration: clearActiveTimers captures no
     // external values; a stable-string mutant leaves the empty deps array
     // observationally unchanged

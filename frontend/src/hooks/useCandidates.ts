@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import {
   hasCandidate,
   addCandidate,
@@ -85,17 +85,6 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
   const [candidates, setCandidatesState] = useState<Uint16Array>(() => new Uint16Array(TOTAL_CELLS))
 
   const [candidatesVersion, setCandidatesVersion] = useState(0)
-
-  const candidatesRef = useRef(candidates)
-
-  // Stryker disable next-line BlockStatement,ArrayDeclaration: candidatesRef is write-only within
-  // useCandidates — declared and synced here but never read (useSudokuGame maintains its own
-  // separate candidatesRef at useSudokuGame.ts:71 and does not consume this one, and useCandidates
-  // does not return candidatesRef). The effect's output is therefore unobservable.
-  React.useEffect(() => {
-    candidatesRef.current = candidates
-  }, [candidates])
-  // Stryker restore
 
   const setCandidates = useCallback((newCandidates: Uint16Array) => {
     setCandidatesState(newCandidates)
