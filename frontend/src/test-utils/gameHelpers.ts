@@ -1,5 +1,6 @@
 import type { Move } from '../hooks/useSudokuGame'
 import type { MoveHighlight } from '../hooks/useHighlightState'
+import type { SolveAllResult } from '../lib/solver-service'
 import { createMockBackgroundManager } from './mocks'
 import { vi } from 'vitest'
 
@@ -62,21 +63,26 @@ export const createMockAutoSolveMove = (
   },
 })
 
+// Build a SolveAllResult mock from either a move count or an explicit moves
+// array. Returns the full runtime shape (including finalBoard) so callers do not
+// need a local wrapper.
 export const createMockSolveResponse = (
-  moveCount: number = 3,
+  movesOrCount: number | SolveAllResult['moves'] = 3,
   overrides?: { solved?: boolean },
-) => ({
+): SolveAllResult => ({
   solved: overrides?.solved ?? true,
-  moves: Array(moveCount)
-    .fill(null)
-    .map((_, i) => ({
-      ...createMockAutoSolveMove(),
-      move: {
-        ...createMockAutoSolveMove().move,
-        step_index: i,
-        explanation: `Move ${i + 1}`,
-      },
-    })),
+  moves:
+    typeof movesOrCount === 'number'
+      ? Array.from({ length: movesOrCount }, (_, i) => ({
+          ...createMockAutoSolveMove(),
+          move: {
+            ...createMockAutoSolveMove().move,
+            step_index: i,
+            explanation: `Move ${i + 1}`,
+          },
+        }))
+      : movesOrCount,
+  finalBoard: Array(81).fill(0),
 })
 
 export const createDefaultAutoSolveOptions = (
