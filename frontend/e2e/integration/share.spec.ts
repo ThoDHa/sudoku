@@ -103,9 +103,10 @@ test.describe('@integration Share to a friend', () => {
     const stateUrl = await shareVia(page, 'Share my current game')
     expect(stateUrl).toContain('&s=')
 
-    // Open the link as the recipient would.
+    // Open the link as the recipient would and load the shared game.
     await page.goto(stateUrl)
     await waitForBoard(page)
+    await page.getByRole('button', { name: 'Load shared game' }).click()
 
     // The cell the sharer filled is now filled with the same value on the copy.
     const cell = page.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`)
@@ -130,6 +131,11 @@ test.describe('@integration Share to a friend', () => {
     })
     await friendPage.goto(stateUrl)
     await waitForBoard(friendPage)
+    // No game in progress, so the modal offers only "Load shared game" (no resume).
+    await expect(
+      friendPage.getByRole('button', { name: 'Resume current game' }),
+    ).toHaveCount(0)
+    await friendPage.getByRole('button', { name: 'Load shared game' }).click()
 
     // The shared entry must STICK (SHARE-2: it used to flash then wipe to givens)...
     const cell = friendPage.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`)
@@ -143,7 +149,7 @@ test.describe('@integration Share to a friend', () => {
     await friend.close()
   })
 
-  test('reopening a shared link with local progress prompts, and Keep mine preserves it', async ({
+  test('reopening a shared link with local progress prompts, and dismissing preserves it', async ({
     page,
   }) => {
     const shared = await fillFirstEmptyCell(page, 5, '4')
@@ -157,9 +163,10 @@ test.describe('@integration Share to a friend', () => {
     await page.goto(stateUrl)
     await waitForBoard(page)
 
-    // The recipient has their own progress, so they are asked to choose.
-    await expect(page.getByText('Open shared position?')).toBeVisible()
-    await page.getByRole('button', { name: 'Keep mine' }).click()
+    // The recipient has their own progress, so they get the shared-game prompt.
+    // Dismissing it (the X) keeps their current game.
+    await expect(page.getByText('Load shared game?')).toBeVisible()
+    await page.getByRole('button', { name: 'Close' }).click()
 
     // Their later, local-only move survives, and the one-time params are consumed.
     const laterCell = page.locator(
@@ -170,7 +177,7 @@ test.describe('@integration Share to a friend', () => {
     void shared
   })
 
-  test('reopening a shared link and choosing Open shared discards local progress', async ({
+  test('reopening a shared link and choosing Load shared game discards local progress', async ({
     page,
   }) => {
     const shared = await fillFirstEmptyCell(page, 5, '4')
@@ -182,8 +189,8 @@ test.describe('@integration Share to a friend', () => {
     await page.goto(stateUrl)
     await waitForBoard(page)
 
-    await expect(page.getByText('Open shared position?')).toBeVisible()
-    await page.getByRole('button', { name: 'Open shared' }).click()
+    await expect(page.getByText('Load shared game?')).toBeVisible()
+    await page.getByRole('button', { name: 'Load shared game' }).click()
 
     // The shared move is present; the later local-only move is gone.
     const sharedCell = page.locator(
@@ -194,5 +201,49 @@ test.describe('@integration Share to a friend', () => {
       `[role="gridcell"][aria-label^="Row ${later.row}, Column ${later.col}"]`,
     )
     await expect(laterCell).toHaveAttribute('aria-label', /empty/)
+  })
+
+  test('opening a shared game while mid-game on a DIFFERENT puzzle prompts to resume or load', async ({
+    page,
+    browser,
+  }) => {
+    // The sharer shares their current game (puzzle B).
+    const shared = await fillFirstEmptyCell(page, 5, '4')
+    const stateUrl = await shareVia(page, 'Share my current game')
+    expect(stateUrl).toContain('&s=')
+
+    // A friend on a fresh device (no save for puzzle B) who is mid-game on a
+    // DIFFERENT puzzle when the link arrives.
+    const friend = await browser.newContext()
+    await friend.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {})
+    const friendPage = await friend.newPage()
+    await friendPage.addInitScript(() => {
+      localStorage.setItem('sudoku_onboarding_complete', 'true')
+    })
+    await setupGameAndWaitForBoard(friendPage, { difficulty: 'medium' })
+    const ownMove = await fillFirstEmptyCell(friendPage, 5, '4')
+    await friendPage.waitForTimeout(700) // let the autosave persist the in-progress game
+
+    // Opening the shared puzzle-B link must ask clearly (SHARE-2 follow-up): NOT
+    // silently switch, and NOT show the wrong generic "Start New / Resume" modal
+    // that would abandon the link and reload the unrelated game.
+    await friendPage.goto(stateUrl)
+    await waitForBoard(friendPage)
+
+    await expect(friendPage.getByText('Load shared game?')).toBeVisible()
+    await expect(friendPage.getByRole('button', { name: 'Load shared game' })).toBeVisible()
+    // The wrong modal (the generic in-progress check, whose "Start New" abandons the
+    // link and clears the other game) must not appear.
+    await expect(friendPage.getByRole('button', { name: 'Start New', exact: true })).toHaveCount(0)
+
+    // Loading the shared game replaces the board with the sharer's position.
+    await friendPage.getByRole('button', { name: 'Load shared game' }).click()
+    const cell = friendPage.locator(
+      `[role="gridcell"][aria-label^="Row ${shared.row}, Column ${shared.col}"]`,
+    )
+    await expect(cell).toHaveAttribute('aria-label', new RegExp(`value ${shared.value}`))
+    void ownMove
+
+    await friend.close()
   })
 })

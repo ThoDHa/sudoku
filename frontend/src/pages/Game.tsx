@@ -9,6 +9,7 @@ import { useParams, useSearchParams, useLocation, useNavigate } from 'react-rout
 import Board from '../components/Board'
 import Controls from '../components/Controls'
 import History from '../components/History'
+import { CloseIcon } from '../components/ui'
 import ResultModal from '../components/ResultModal'
 import TechniqueModal from '../components/TechniqueModal'
 import TechniquesListModal from '../components/TechniquesListModal'
@@ -465,6 +466,16 @@ function GameContent() {
     candidates: number[][] | null
     elapsedMs: number | null
   } | null>(null)
+  // When the shared-game modal is up and the game in progress is a DIFFERENT puzzle
+  // than the shared one, this holds where dismissing the modal navigates back to.
+  // Null means the in-progress game is this same puzzle (dismiss = keep the board).
+  const [resumeTarget, setResumeTarget] = useState<{ seed: string; difficulty: string } | null>(
+    null,
+  )
+  // Whether a game is in progress when the shared-game modal is shown. Drives the
+  // "Resume current game" button (shown only then) and the dismiss behavior:
+  // with a game, dismiss keeps it; without one, dismiss goes to the homepage.
+  const [shareHasCurrentGame, setShareHasCurrentGame] = useState(false)
   const shareResolvedRef = useRef(false)
   const [showDailyPrompt, setShowDailyPrompt] = useState(false)
   const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] = useState<{
@@ -924,6 +935,17 @@ function GameContent() {
       return
     }
 
+    // A shared-state link (?s=…) carries the sharer's position, and
+    // restoreOrPromptSharedState owns the resume-vs-open-shared choice. The generic
+    // "resume your other game" prompt must not race it (loadPuzzle is async, so this
+    // effect would otherwise fire first and its Resume would navigate away to an
+    // unrelated saved game). Mark navigation handled so it stays skipped after
+    // consumeShareParams strips the s param and this effect re-runs. See SHARE-2.
+    if (sharedStateParam) {
+      handledInitialNavigationRef.current = true
+      return
+    }
+
     const savedGame = getMostRecentGame()
     // Mark that we've handled initial navigation for this component mount
     handledInitialNavigationRef.current = true
@@ -954,7 +976,7 @@ function GameContent() {
     } else {
       logger.debug('[IN-PROGRESS CHECK] No modal needed (no existing game or same seed)')
     }
-  }, [seed, encoded])
+  }, [seed, encoded, sharedStateParam])
 
   // Handlers for in-progress game confirmation modal
   const handleResumeExistingGame = useCallback(() => {
@@ -1017,13 +1039,26 @@ function GameContent() {
     consumeShareParams()
   }, [alreadyCompletedToday, showDifficultyChooser, timerControl, consumeShareParams])
 
-  // Share-conflict modal: recipient keeps their own in-progress game.
+  // Shared-game modal dismissed (Resume current game, the X, or the backdrop):
+  // keep what the recipient was doing instead of loading the shared game.
   const handleResumeOwnGame = useCallback(() => {
     shareResolvedRef.current = true
     setShowShareConflict(false)
     setPendingSharedState(null)
     consumeShareParams()
-  }, [consumeShareParams])
+    if (resumeTarget) {
+      // Current game is a different puzzle: navigate back to it. The flag stops the
+      // in-progress check from re-prompting on arrival.
+      sessionStorage.setItem('skip_in_progress_check', 'true')
+      navigate(`/${resumeTarget.seed}?d=${resumeTarget.difficulty}`)
+      setResumeTarget(null)
+    } else if (!shareHasCurrentGame) {
+      // No game to keep: back out of the shared link to the homepage.
+      navigate('/')
+    }
+    // Otherwise the current game is this same puzzle: its saved board is already
+    // restored, so closing the modal keeps it.
+  }, [consumeShareParams, resumeTarget, shareHasCurrentGame, navigate])
 
   // Share-conflict modal: recipient discards their progress for the shared position.
   const handleStartFromShared = useCallback(() => {
@@ -1036,6 +1071,8 @@ function GameContent() {
     shareResolvedRef.current = true
     setShowShareConflict(false)
     setPendingSharedState(null)
+    setResumeTarget(null)
+    setShareHasCurrentGame(false)
     consumeShareParams()
   }, [
     pendingSharedState,
@@ -1151,27 +1188,34 @@ function GameContent() {
     [getStorageKey],
   )
 
-  // On a shared state-link: apply the shared board immediately, or defer it behind
-  // the conflict prompt when the recipient already has their own progress for this
-  // seed (they choose resume vs open-shared). Kept out of loadPuzzle for clarity.
+  // On a shared state-link, always prompt before loading the shared game (the
+  // recipient chooses "Load shared game", or dismisses to keep what they were
+  // doing / return home). Kept out of loadPuzzle for clarity.
   const restoreOrPromptSharedState = useCallback(
     (board: number[], candidates: number[][] | null, seed: string) => {
-      const shared = { board, candidates, elapsedMs: parseSharedElapsedMs(sharedTimeParam) }
-      const saved = loadSavedGameState(seed)
-      if (saved && saved.history.length > 0 && !shareResolvedRef.current) {
-        setPendingSharedState(shared)
-        setShowShareConflict(true)
-      } else {
-        loadedFromSharedUrl.current = true
-        applySharedBoard(shared)
-        shareResolvedRef.current = true
-        // Strip the one-time s/t params here, where the shared state is actually
-        // applied, so it is reliable across load paths (the finalize effect did
-        // not fire for daily seeds). See SHARE-2.
-        consumeShareParams()
+      if (shareResolvedRef.current) {
+        return
       }
+      const shared = { board, candidates, elapsedMs: parseSharedElapsedMs(sharedTimeParam) }
+      // Classify the recipient's current game: their own save for THIS puzzle, a
+      // game on a DIFFERENT puzzle, or none. It decides the modal's buttons and
+      // what dismissing does.
+      const saved = loadSavedGameState(seed)
+      const hasThisPuzzleProgress = !!(saved && saved.history.length > 0)
+      const otherGame = getMostRecentGame()
+      const otherInProgress =
+        !!otherGame && otherGame.seed !== seed && otherGame.seed !== encoded && otherGame.progress < 100
+      setPendingSharedState(shared)
+      // Different-puzzle game: dismiss = go back to it. Same-puzzle or none: no target.
+      setResumeTarget(
+        !hasThisPuzzleProgress && otherInProgress && otherGame
+          ? { seed: otherGame.seed, difficulty: otherGame.difficulty }
+          : null,
+      )
+      setShareHasCurrentGame(hasThisPuzzleProgress || otherInProgress)
+      setShowShareConflict(true)
     },
-    [sharedTimeParam, loadSavedGameState, applySharedBoard, consumeShareParams],
+    [sharedTimeParam, loadSavedGameState, encoded],
   )
 
   // ============================================================
@@ -2898,33 +2942,43 @@ function GameContent() {
         </div>
       )}
 
-      {/* Shared-Link Conflict Modal - recipient has their own progress for this seed */}
+      {/* Shared-link modal: offer to load the shared game. When a game is in
+          progress, a "Resume current game" button (and the X/backdrop) keeps it,
+          navigating back when the shared link is for a different puzzle. With no
+          game in progress, the X/backdrop backs out to the homepage. */}
       {showShareConflict && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           data-overlay-backdrop
+          onClick={handleResumeOwnGame}
         >
           <div
-            className="w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme"
+            className="relative w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme"
             data-modal
+            onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="mb-2 text-lg font-semibold text-foreground">Open shared position?</h2>
-            <p className="mb-6 text-sm text-foreground-muted">
-              You have a game in progress for this puzzle. Keep your own progress, or open the
-              shared position instead?
-            </p>
+            <button
+              onClick={handleResumeOwnGame}
+              className="absolute right-3 top-3 rounded p-1 text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
+              aria-label="Close"
+            >
+              <CloseIcon className="h-5 w-5" />
+            </button>
+            <h2 className="mb-6 pr-8 text-lg font-semibold text-foreground">Load shared game?</h2>
             <div className="flex gap-3">
-              <button
-                onClick={handleResumeOwnGame}
-                className="flex-1 rounded-lg border border-board-border-light px-4 py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
-              >
-                Keep mine
-              </button>
+              {shareHasCurrentGame && (
+                <button
+                  onClick={handleResumeOwnGame}
+                  className="flex-1 rounded-lg border border-board-border-light px-4 py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
+                >
+                  Resume current game
+                </button>
+              )}
               <button
                 onClick={handleStartFromShared}
                 className="flex-1 rounded-lg bg-accent px-4 py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
               >
-                Open shared
+                Load shared game
               </button>
             </div>
           </div>
