@@ -436,6 +436,15 @@ func TestCountSolutions(t *testing.T) {
 			maxCount: 1,
 			want:     1,
 		},
+		{
+			// maxCount 0 makes the helper short-circuit on its first-line
+			// guard (*count >= maxCount) before searching, so even a solvable
+			// grid reports 0 solutions.
+			name:     "solvable grid with maxCount 0 returns 0",
+			input:    validPuzzle,
+			maxCount: 0,
+			want:     0,
+		},
 	}
 
 	for _, tt := range tests {
@@ -458,6 +467,57 @@ func TestCountSolutions_DoesNotModifyInput(t *testing.T) {
 		if validPuzzle[i] != original[i] {
 			t.Errorf("CountSolutions modified input at position %d", i)
 		}
+	}
+}
+
+// TestConflictKey verifies the dedup key builder, including its normalization
+// of cell ordering so that a conflict is keyed identically regardless of which
+// cell is passed first.
+func TestConflictKey(t *testing.T) {
+	tests := []struct {
+		name  string
+		cell1 int
+		cell2 int
+		val   int
+		want  string
+	}{
+		{
+			name:  "already ordered cells keep their order",
+			cell1: 2,
+			cell2: 5,
+			val:   3,
+			want:  "2-5-3",
+		},
+		{
+			name:  "reversed cells are normalized to ascending order",
+			cell1: 5,
+			cell2: 2,
+			val:   3,
+			want:  "2-5-3",
+		},
+		{
+			name:  "equal cells produce identical endpoints",
+			cell1: 7,
+			cell2: 7,
+			val:   9,
+			want:  "7-7-9",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := conflictKey(tt.cell1, tt.cell2, tt.val); got != tt.want {
+				t.Errorf("conflictKey(%d, %d, %d) = %q, want %q", tt.cell1, tt.cell2, tt.val, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestConflictKey_OrderIndependence(t *testing.T) {
+	forward := conflictKey(4, 60, 8)
+	reversed := conflictKey(60, 4, 8)
+	if forward != reversed {
+		t.Errorf("conflictKey is not order-independent: %q != %q", forward, reversed)
 	}
 }
 

@@ -551,3 +551,36 @@ func TestFindCandidateMoveForUnitType_BoxReturnIsReturned(t *testing.T) {
 		t.Errorf("expected digit 1, got %d", move.Digit)
 	}
 }
+
+// --- solver.go: unit-type helper fallbacks for unrecognized UnitType ---
+
+// TestUnitCellIndices_UnrecognizedUnitTypeReturnsNil covers the default
+// fall-through in unitCellIndices. UnitType is defined only for UnitRow,
+// UnitCol, and UnitBox; any other value falls through the switch and the
+// function returns nil rather than indexing an unknown unit.
+func TestUnitCellIndices_UnrecognizedUnitTypeReturnsNil(t *testing.T) {
+	unknown := UnitType(99)
+	if got := unitCellIndices(unknown, 0); got != nil {
+		t.Errorf("expected nil indices for unrecognized unit type, got %v", got)
+	}
+}
+
+// TestUnitTypeName_UnrecognizedUnitTypeReturnsEmpty covers the default
+// fall-through in unitTypeName. An unrecognized UnitType has no human-readable
+// name, so the function returns the empty string.
+func TestUnitTypeName_UnrecognizedUnitTypeReturnsEmpty(t *testing.T) {
+	unknown := UnitType(99)
+	if got := unitTypeName(unknown); got != "" {
+		t.Errorf("expected empty name for unrecognized unit type, got %q", got)
+	}
+}
+
+// TestGetUnitCellRefs_UnrecognizedUnitTypeReturnsNil covers the default
+// fall-through in getUnitCellRefs. With no matching unit type, no cell refs
+// can be enumerated and the function returns nil.
+func TestGetUnitCellRefs_UnrecognizedUnitTypeReturnsNil(t *testing.T) {
+	unknown := UnitType(99)
+	if got := getUnitCellRefs(unknown, 0); got != nil {
+		t.Errorf("expected nil cell refs for unrecognized unit type, got %v", got)
+	}
+}
