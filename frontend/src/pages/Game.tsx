@@ -557,21 +557,23 @@ function GameContent() {
   // Frozen state hook - skips expensive operations when app is hidden
   const { isCurrentlyFrozen, shouldSkipStateUpdate } = useFrozenWhenHidden()
 
-  // Visibility-aware timeouts for toast messages - cancelled on background
+  // Visibility-aware timeout for background-sensitive delays that should pause
+  // while the tab is hidden (auto-resume after an error-fix, the debug-copied toast).
   const { setTimeout: visibilityAwareTimeout } = useVisibilityAwareTimeout()
 
-  // Single replaceable toast-clear timer. Scheduling a new clearer cancels the
-  // prior pending one so a stale auto-clear can never wipe a newer toast.
-  const scheduleToastClear = useToastClearTimer(visibilityAwareTimeout)
-
-  // A plain (non-visibility-aware) toast timer for feedback that MUST clear even
-  // if the tab was hidden mid-timeout. The visibility-aware timer cancels on hide
-  // and never re-arms, which left the share "link copied" toast stuck (SHARE-2 #1).
+  // A plain (non-visibility-aware) timeout: fires after its delay even if the tab
+  // was hidden mid-countdown. The visibility-aware timer cancels on hide and never
+  // re-arms, which left toasts stuck (SHARE-2 #1), so toast-clearing uses this.
   const plainToastTimeout = useCallback((cb: () => void, delay: number): (() => void) => {
     const id = window.setTimeout(cb, delay)
     return () => window.clearTimeout(id)
   }, [])
-  const scheduleShareToastClear = useToastClearTimer(plainToastTimeout)
+
+  // Single replaceable toast-clear timer over the shared validationMessage. Every
+  // clear (validation, info, and share) goes through this one instance, so
+  // scheduling a newer toast cancels the prior pending clearer and a stale timer
+  // can never wipe a live toast.
+  const scheduleToastClear = useToastClearTimer(plainToastTimeout)
 
   // Centralized highlight state management with atomic updates
   const {
@@ -2023,22 +2025,22 @@ function GameContent() {
       const success = await copyToClipboard(url)
       if (success) {
         setValidationMessage({ type: 'success', message: `${label} link copied to clipboard!` })
-        scheduleShareToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
+        scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
       } else {
         setValidationMessage({ type: 'error', message: 'Failed to copy link' })
-        scheduleShareToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
       }
     },
-    [scheduleShareToastClear],
+    [scheduleToastClear],
   )
 
   const handleShareError = useCallback(
     (err: unknown) => {
       logger.error('Share error:', err)
       setValidationMessage({ type: 'error', message: 'Failed to create share link' })
-      scheduleShareToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
     },
-    [scheduleShareToastClear],
+    [scheduleToastClear],
   )
 
   // Share the bare puzzle (givens only): a short seed link for portable puzzles,
