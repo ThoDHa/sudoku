@@ -30,6 +30,7 @@ export function enableDebug(): void {
   try {
     localStorage.setItem(DEBUG_STORAGE_KEY, 'true')
     window.DEBUG = true
+    // Stryker disable next-line BlockStatement: the catch body is a bare early `return` with no code after the try/catch, so emptying it falls through to the same implicit `undefined` return; observationally identical
   } catch {
     return
   }
@@ -40,6 +41,7 @@ export function disableDebug(): void {
   try {
     localStorage.removeItem(DEBUG_STORAGE_KEY)
     window.DEBUG = false
+    // Stryker disable next-line BlockStatement: the catch body is a bare early `return` with no code after the try/catch, so emptying it falls through to the same implicit `undefined` return; observationally identical
   } catch {
     return
   }

@@ -2635,3 +2635,194 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
     expect(restored[1]?.size).toBe(3)
   })
 })
+
+// ============================================================================
+// Mutation kills (MUT-1 iter-3): clearActiveTimers null-guard, the pause-sync
+// resume guard, and the playMoves seed-snapshot candidate materialization.
+// ============================================================================
+describe('useAutoSolve mutation kills (MUT-1 iter-3)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    mockSolveAll.mockReset()
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    })
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('clearActiveTimers clears the live scheduled timer when auto-solve stops', async () => {
+    // Kills the clearActiveTimers BlockStatement mutants (whole body and the if-body) and the
+    // `!== null` EqualityOperator mutant: each of those leaves the pending timer uncleared, so
+    // clearTimeout is never called when stopAutoSolve runs with a scheduled next move.
+    vi.useFakeTimers()
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(10))
+    const options = createDefaultOptions({ stepDelay: 100 })
+    const { result } = renderHook(() => useAutoSolve(options))
+    await act(async () => {
+      await result.current.startAutoSolve()
+    })
+    // A next-move timer is pending now (activeTimeoutRef is non-null).
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout')
+    act(() => {
+      result.current.stopAutoSolve()
+    })
+    expect(clearSpy).toHaveBeenCalled()
+    clearSpy.mockRestore()
+    vi.useRealTimers()
+  })
+
+  it('the pause-sync effect re-running while unpaused and auto-solving does not replay a move', async () => {
+    // Kills the ConditionalExpression `-> true` mutant on
+    // `if (wasPaused && autoSolveRef.current && playNextMoveRef.current)`: with the effect
+    // re-running unpaused (wasPaused === false), the real guard is false and must not resume.
+    // Forcing it true invokes playNextMoveRef.current() and applies an extra move here.
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(5))
+    const applyMove = vi.fn()
+    const bg1 = createMockBackgroundManager({ shouldPauseOperations: false })
+    const options = createDefaultOptions({ applyMove, backgroundManager: bg1, stepDelay: 1000 })
+    const { result, rerender } = renderHook(({ opts }) => useAutoSolve(opts), {
+      initialProps: { opts: options },
+    })
+    await act(async () => {
+      await result.current.startAutoSolve()
+    })
+    const callsAfterStart = applyMove.mock.calls.length
+    expect(callsAfterStart).toBe(1)
+
+    // Swapping the background-manager instance re-runs the pause-sync effect while still
+    // unpaused and auto-solving.
+    const bg2 = createMockBackgroundManager({ shouldPauseOperations: false })
+    await act(async () => {
+      rerender({ opts: { ...options, backgroundManager: bg2 } })
+    })
+    expect(applyMove.mock.calls.length).toBe(callsAfterStart)
+  })
+
+  it('playMoves seeds the initial-snapshot candidates per cell from moves[0].candidates', () => {
+    // Kills the L553 ArrowFunction (`() => undefined`), ConditionalExpression (both branches of
+    // `arr ? [...arr] : []`), and LogicalOperator (`|| -> &&`) mutants that build the seed
+    // snapshot candidates. The restored Sets must reflect moves[0].candidates exactly:
+    // a null cell -> empty Set, a [1,2,3] cell -> size 3 (not 0 from undefined/false, and not
+    // size 9 from the getCandidates fallback the `&&` mutant would select).
+    const base = createMockAutoSolveMove({ action: 'place' })
+    const firstCandidates = Array(81)
+      .fill(null)
+      .map((_, i) => (i === 0 ? null : [1, 2, 3]))
+    const moves = [
+      {
+        ...base,
+        candidates: firstCandidates as (number[] | null)[],
+        move: { ...base.move, step_index: 0 },
+      },
+      { ...createMockAutoSolveMove({ action: 'place' }), move: { ...base.move, step_index: 1 } },
+    ]
+    const applyState = vi.fn()
+    const getCandidates = vi.fn(() =>
+      Array(81)
+        .fill(null)
+        .map(() => new Set([1, 2, 3, 4, 5, 6, 7, 8, 9])),
+    )
+    const options = createDefaultOptions({ applyState, getCandidates, stepDelay: 1000 })
+    const { result } = renderHook(() => useAutoSolve(options))
+
+    act(() => {
+      result.current.playMoves(moves, false)
+    })
+    // move0 played synchronously -> index 1; rewind to the seed snapshot at index 0.
+    act(() => {
+      result.current.stepBack()
+    })
+    expect(result.current.currentIndex).toBe(0)
+
+    const restored = applyState.mock.calls.at(-1)?.[1] as Set<number>[]
+    expect(restored).toHaveLength(81)
+    expect(restored[0]?.size).toBe(0)
+    expect(restored[1]?.size).toBe(3)
+  })
+
+  it('restartAutoSolve(false) clears a prior manual pause', async () => {
+    // Kills the BlockStatement mutant on restartAutoSolve's `else` branch (`manualPausedRef = false;
+    // setManualPaused(false)`): emptying it leaves a prior manual pause engaged after an unpaused
+    // restart.
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+    const options = createDefaultOptions({ stepDelay: 1000 })
+    const { result } = renderHook(() => useAutoSolve(options))
+    await act(async () => {
+      await result.current.startAutoSolve()
+    })
+    act(() => {
+      result.current.togglePause()
+    })
+    expect(result.current.isPaused).toBe(true)
+
+    await act(async () => {
+      await result.current.restartAutoSolve(false)
+    })
+    expect(result.current.isPaused).toBe(false)
+  })
+
+  it('playMoves(startPaused=false) clears a prior manual pause', async () => {
+    // Kills the BlockStatement mutant on playMoves' `else` branch: emptying it leaves a prior
+    // manual pause engaged when a custom sequence is started unpaused.
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+    const options = createDefaultOptions({ stepDelay: 1000 })
+    const { result } = renderHook(() => useAutoSolve(options))
+    await act(async () => {
+      await result.current.startAutoSolve()
+    })
+    act(() => {
+      result.current.togglePause()
+    })
+    expect(result.current.isPaused).toBe(true)
+
+    act(() => {
+      result.current.playMoves([createMockAutoSolveMove({ action: 'place' })], false)
+    })
+    expect(result.current.isPaused).toBe(false)
+  })
+
+  it('stepForward does not engage manual pause when not auto-solving', () => {
+    // Kills the LogicalOperator mutant on the stepForward guard
+    // `if (!isAutoSolving || currentIndexRef.current >= allMovesRef.current.length) return`:
+    // flipping || to && lets the call proceed when not auto-solving, which engages manual pause.
+    const options = createDefaultOptions()
+    const { result } = renderHook(() => useAutoSolve(options))
+    expect(result.current.isAutoSolving).toBe(false)
+    expect(result.current.isPaused).toBe(false)
+
+    act(() => {
+      result.current.stepForward()
+    })
+    expect(result.current.isPaused).toBe(false)
+    expect(result.current.currentIndex).toBe(-1)
+  })
+
+  it('applyFixesAndContinueSolving queue-empty resume failure does not throw when onError is omitted', async () => {
+    // Kills the OptionalChaining mutant on the queue-empty branch's
+    // `onError?.('Failed to resume autosolving after applying fixes')`: with a single fix move the
+    // queue drains immediately, and a resume failure (getGivens throws) hits that catch. Removing
+    // the ?. calls undefined() and throws when onError is omitted.
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(1))
+    const getGivens = vi.fn(() => {
+      throw new Error('givens-unreadable')
+    })
+    const options = createDefaultOptions({
+      applyMove: vi.fn(),
+      getGivens,
+      onError: undefined,
+      stepDelay: 10,
+    })
+    const { result } = renderHook(() => useAutoSolve(options))
+
+    await expect(
+      act(async () => {
+        const p = result.current.applyFixesAndContinueSolving([
+          createMockAutoSolveMove({ action: 'place' }),
+        ])
+        await vi.advanceTimersByTimeAsync(500)
+        await p
+      }),
+    ).resolves.toBeUndefined()
+  })
+})

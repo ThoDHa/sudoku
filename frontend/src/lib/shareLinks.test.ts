@@ -155,4 +155,67 @@ describe('buildStateShareUrl', () => {
     expect(parsed.searchParams.get('t')).toBeNull()
     expect(url).not.toContain('?t=')
   })
+
+  it('omits the time param for zero or negative elapsed time on a seed link', () => {
+    const { board, givens, candidates } = makeState()
+    // Only elapsedMs > 0 produces a time param; the `&&` guard rejects 0, and
+    // negatives must be rejected too (a `||` mutant would let -1 through).
+    const url = buildStateShareUrl({
+      isEncodedCustom: false,
+      seed: 'daily-2026-07-08',
+      difficulty: 'medium',
+      givens,
+      board,
+      candidates,
+      elapsedMs: -100,
+    })
+    expect(new URL(url).searchParams.get('t')).toBeNull()
+    expect(url).not.toContain('t=')
+  })
+
+  it('appends no stray text to the seed link when elapsed time is absent', () => {
+    const { board, givens, candidates } = makeState()
+    const url = buildStateShareUrl({
+      isEncodedCustom: false,
+      seed: 'daily-2026-07-08',
+      difficulty: 'medium',
+      givens,
+      board,
+      candidates,
+    })
+    // The empty time-suffix branch must contribute nothing to the URL.
+    expect(new URL(url).searchParams.get('t')).toBeNull()
+    expect(url).not.toContain('Stryker')
+  })
+
+  it('appends no stray text to the /c/ link when elapsed time is absent', () => {
+    const { board, givens, candidates } = makeState()
+    const url = buildStateShareUrl({
+      isEncodedCustom: true,
+      seed: undefined,
+      difficulty: 'custom',
+      givens,
+      board,
+      candidates,
+    })
+    expect(url).not.toContain('Stryker')
+    expect(url).not.toContain('?t=')
+  })
+
+  it('uses an encoded /c/ link for a present but non-portable seed (custom-)', () => {
+    const { board, givens, candidates } = makeState()
+    // seed is present but non-portable: an `||` mutant of the `seed && isPortable`
+    // guard would wrongly route this to a bare seed link instead of /c/.
+    const url = buildStateShareUrl({
+      isEncodedCustom: false,
+      seed: 'custom-abc123',
+      difficulty: 'custom',
+      givens,
+      board,
+      candidates,
+      elapsedMs: 10_000,
+    })
+    expect(url).toContain('/c/')
+    expect(url).not.toContain('/custom-abc123?')
+  })
 })

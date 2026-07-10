@@ -340,6 +340,7 @@ function hashGivens(givens: number[]): string {
   for (let i = 0; i < givens.length; i++) {
     /* v8 ignore next -- givens is always a dense array at every call site; the `?? 0` only satisfies noUncheckedIndexedAccess and its fallback is unreachable at runtime */
     const val = givens[i] ?? 0
+    // Stryker disable next-line ArithmeticOperator: the recurrence is linear in val, so replacing `+ val` with `- val` negates the accumulated hash at every step (h' = -h). The result is passed through Math.abs() before being returned, which erases the sign, making the two variants produce identical output for every practical input.
     hash = ((hash << 5) - hash + val) | 0
   }
   return Math.abs(hash).toString(16).padStart(8, '0')

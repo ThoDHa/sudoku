@@ -449,6 +449,7 @@ const base64UrlToBytes = (str: string): Uint8Array | null => {
   if (str.length === 0) return null
   /* v8 ignore stop */
   let base64 = str.replace(/-/g, '+').replace(/_/g, '/')
+  // Stryker disable next-line ConditionalExpression: the runtime atob is forgiving of missing padding (a length%4 of 2 or 3 decodes identically with or without the '=' suffix, and length%4===1 never occurs for a validly-encoded payload and throws either way), so removing this padding loop yields identical bytes
   while (base64.length % 4) base64 += '='
   try {
     const binary = atob(base64)
@@ -456,6 +457,7 @@ const base64UrlToBytes = (str: string): Uint8Array | null => {
     // Stryker disable next-line EqualityOperator: at i===binary.length, binary.charCodeAt(i) returns NaN and the Uint8Array coerces it to 0; the assignment is silently dropped because bytes has exactly binary.length slots, so the extra iteration is a no-op
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
     return bytes
+    // Stryker disable next-line BlockStatement: emptying the catch returns undefined instead of null, but the sole consumer (`const bytes = base64UrlToBytes(...); if (!bytes) return candidates`) treats null and undefined identically, so the change is observationally equivalent
   } catch {
     return null
   }
@@ -487,6 +489,7 @@ const extractCandBits = (bytes: Uint8Array, cellsWithCands: number): number[] =>
   const totalBitsInBytes = bytes.length * 8
   const paddingBits = totalBitsInBytes - cellsWithCands * 9
   const candBits: number[] = []
+  // Stryker disable next-line EqualityOperator: widening to i <= cellsWithCands pushes one surplus candBits entry, but decodeCandidates reads candBits only for the exactly-cellsWithCands set mask bits (candIdx never reaches the surplus index), so the extra element is never observed
   for (let i = 0; i < cellsWithCands; i++) {
     const shiftAmount = paddingBits + (cellsWithCands - 1 - i) * 9
     candBits.push(Number((allBits >> BigInt(shiftAmount)) & BigInt(0x1ff)))
@@ -539,6 +542,7 @@ function decodeDense(encoded: string): number[] {
   // Convert from base64url to standard base64
   let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/')
   // Add padding if needed
+  // Stryker disable next-line ConditionalExpression: the runtime atob is forgiving of missing padding (a length%4 of 2 or 3 decodes identically with or without the '=' suffix, and length%4===1 never occurs for a validly-encoded payload and throws either way), so removing this padding loop yields identical bytes
   while (base64.length % 4) {
     base64 += '='
   }

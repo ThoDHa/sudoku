@@ -13,6 +13,7 @@ const PRACTICE_SEED_PREFIX = 'practice-'
 // Absolute base URL for shareable links, honoring the deploy sub-path (e.g. the
 // GitHub Pages /sudoku/ prefix). Mirrors what the app already trusts for links.
 export function getShareBaseUrl(): string {
+  // Stryker disable next-line StringLiteral: when BASE_URL is falsy the fallback runs, but origin + '/' is then stripped back to origin by the trailing-slash slice below, so replacing the '/' default with '' yields the identical result (window.location.origin never ends in a slash)
   const baseUrl = window.location.origin + (import.meta.env.BASE_URL || '/')
   return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
 }
@@ -57,6 +58,7 @@ export interface StateShareParams extends PuzzleShareParams {
 export function buildStateShareUrl(params: StateShareParams): string {
   const base = getShareBaseUrl()
   const state = encodePuzzleWithState(params.board, params.givens, params.candidates)
+  // Stryker disable next-line EqualityOperator: the `params.elapsedMs &&` guard short-circuits to a falsy result at elapsedMs === 0, the only value where `> 0` and `>= 0` differ, so the mutant is observationally identical
   const time = params.elapsedMs && params.elapsedMs > 0 ? Math.round(params.elapsedMs) : null
 
   if (params.seed && isPortablePuzzle(params)) {

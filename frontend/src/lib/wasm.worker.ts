@@ -151,6 +151,7 @@ async function initializeWasm(): Promise<void> {
         try {
           importScripts('/wasm_exec.js')
           loadedWasmExec = true
+          // Stryker disable next-line BlockStatement: the catch body sets loadedWasmExec=false, but the variable is already false when importScripts throws (the `loadedWasmExec = true` assignment only runs on success), so emptying the catch block is observationally identical (the subsequent `if (!loadedWasmExec)` still enters the fallback)
         } catch {
           // importScripts threw, likely because this is a module worker where importScripts is not allowed
           loadedWasmExec = false

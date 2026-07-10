@@ -485,6 +485,7 @@ export function wasmIsValid(grid: number[]): Promise<boolean> {
  * Returns null if WASM not loaded
  */
 export function getWasmVersion(): string | null {
+  // Stryker disable next-line ConditionalExpression: forcing the guard false is observationally identical. When wasmInstance is null the mutant skips the early return and calls wasmInstance.getVersion(), which throws a TypeError caught below and also returns null; when wasmInstance is set the guard is false in both variants.
   if (!wasmInstance) return null
   try {
     return wasmInstance.getVersion()

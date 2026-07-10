@@ -502,6 +502,8 @@ describe('wasm module', () => {
 
       const api = await loadWasm()
       expect(api).toBe(mockWasmApi)
+      // The already-ready branch must log its exact message (kills the L350 string mutant)
+      expect(loggerMock).toHaveBeenCalledWith('[WASM] SudokuWasm already available')
     })
 
     it('should not store abort error as wasmLoadError', async () => {

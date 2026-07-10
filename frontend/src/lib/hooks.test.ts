@@ -108,6 +108,16 @@ describe('useLastDailyDifficulty', () => {
     expect(result.current.difficulty).toBe('hard')
   })
 
+  it.each(RECOGNIZED_DIFFICULTIES)(
+    'initializes from each recognized stored difficulty "%s"',
+    async (d) => {
+      localStorage.setItem('lastDailyDifficulty', d)
+      const { useLastDailyDifficulty } = await import('./hooks')
+      const { result } = renderHook(() => useLastDailyDifficulty())
+      expect(result.current.difficulty).toBe(d)
+    },
+  )
+
   it('initializes to null when nothing is stored', async () => {
     const { useLastDailyDifficulty } = await import('./hooks')
     const { result } = renderHook(() => useLastDailyDifficulty())

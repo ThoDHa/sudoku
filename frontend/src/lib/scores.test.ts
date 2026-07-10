@@ -609,6 +609,25 @@ describe('scores', () => {
       expect(result).toEqual(streakData)
     })
 
+    it('should preserve streak when yesterday is a single-digit day (zero-padded)', () => {
+      // Today is the 2nd, so yesterday is the 1st: getUTCDate() returns 1, which
+      // must be zero-padded to '01' to match the stored 'YYYY-MM-01' date. Without
+      // the padStart('0'), yesterday would render as '2024-06-1' and never match,
+      // breaking the streak.
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2024-06-02T14:30:00Z'))
+
+      const streakData = {
+        currentStreak: 5,
+        longestStreak: 10,
+        lastCompletedDate: '2024-06-01',
+      }
+      mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = JSON.stringify(streakData)
+
+      const result = getDailyStreak()
+      expect(result).toEqual(streakData)
+    })
+
     it('should reset current streak when last completed is older than yesterday', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))

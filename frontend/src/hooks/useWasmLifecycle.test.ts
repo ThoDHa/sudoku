@@ -444,6 +444,31 @@ describe('useWasmLifecycle', () => {
       expect(mockInitializeSolver).not.toHaveBeenCalled()
     })
 
+    it('clears the previous unload timer so rapid non-WASM navigation unloads only once', async () => {
+      setPath('/game123')
+      const { rerender } = renderHook(() => useWasmLifecycle({ unloadDelay: 2000 }))
+
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+      vi.clearAllMocks()
+
+      // Leave to a non-WASM route (schedules the first unload timer)...
+      setPath('/')
+      rerender()
+      // ...then navigate to another non-WASM route before the delay elapses.
+      // scheduleUnload must clear the first timer; if it does not, both timers
+      // fire and cleanupSolver runs twice.
+      setPath('/techniques')
+      rerender()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500)
+      })
+
+      expect(mockCleanupSolver).toHaveBeenCalledTimes(1)
+    })
+
     it('does not unload WASM when navigating between WASM routes', async () => {
       setPath('/game123')
       const { rerender } = renderHook(() => useWasmLifecycle())

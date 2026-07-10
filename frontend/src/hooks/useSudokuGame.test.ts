@@ -2719,3 +2719,135 @@ describe('useSudokuGame mutation kills (MUT-1 iter-2)', () => {
     expect(result.current.canRedo).toBe(false)
   })
 })
+
+// =============================================================================
+// DEPENDENCY-ARRAY STALENESS + HISTORY-TRUNCATION MUTATION KILLS (fe-b)
+// These target useCallback dependency-array mutants that freeze a callback at
+// its first-render closure. Callbacks that read candidatesHook.candidates (via
+// createMove) produce a stale stateDiff when frozen: the "before" candidates are
+// the empty first-render mask, so undoing a later move wrongly clears notes that
+// belong to earlier cells. That difference is observable through undo.
+// =============================================================================
+describe('useSudokuGame - stale-closure candidate restoration', () => {
+  it('undo of a note toggle keeps an earlier cell note (createMove/toggleCandidate deps)', () => {
+    const { result } = renderGame(createEmptyPuzzle())
+    actToggle(result, 0, 3)
+    actToggle(result, 80, 5)
+    actUndo(result)
+    // The undo removes only the second toggle; the first cell's note survives.
+    expect(hasCandidate(result.current.candidates[0] || 0, 3)).toBe(true)
+    expect(hasCandidate(result.current.candidates[80] || 0, 5)).toBe(false)
+  })
+
+  it('undo of an erase keeps an unrelated cell note (eraseCell deps)', () => {
+    const { result } = renderGame(createEmptyPuzzle())
+    actToggle(result, 0, 3)
+    actPlace(result, 80, 7)
+    actErase(result, 80)
+    actUndo(result)
+    expect(result.current.board[80]).toBe(7)
+    expect(hasCandidate(result.current.candidates[0] || 0, 3)).toBe(true)
+  })
+
+  it('undo of clearCandidates restores the notes it cleared (clearCandidates deps)', () => {
+    const { result } = renderGame(createEmptyPuzzle())
+    actToggle(result, 0, 3)
+    act(() => {
+      result.current.clearCandidates()
+    })
+    expect(hasCandidate(result.current.candidates[0] || 0, 3)).toBe(false)
+    actUndo(result)
+    expect(hasCandidate(result.current.candidates[0] || 0, 3)).toBe(true)
+  })
+
+  it('undo of an external move keeps a pre-existing note (applyExternalMove deps)', () => {
+    const { result } = renderGame(createEmptyPuzzle())
+    actToggle(result, 0, 3)
+    const extBoard = createEmptyPuzzle()
+    extBoard[40] = 5
+    const extCandidates = new Uint16Array(result.current.candidates)
+    act(() => {
+      result.current.applyExternalMove(extBoard, extCandidates, createMockMove())
+    })
+    expect(result.current.board[40]).toBe(5)
+    actUndo(result)
+    expect(result.current.board[40]).toBe(0)
+    expect(hasCandidate(result.current.candidates[0] || 0, 3)).toBe(true)
+  })
+})
+
+describe('useSudokuGame - resetGame/clearAll honor the current initialBoard', () => {
+  it('resetGame resets to the current initialBoard prop, not the first render', () => {
+    const first = createEmptyPuzzle()
+    first[5] = 3
+    const second = createEmptyPuzzle()
+    second[5] = 9
+    const { result, rerender } = renderHook(
+      ({ initialBoard }) => useSudokuGame({ initialBoard }),
+      { initialProps: { initialBoard: first } },
+    )
+    rerender({ initialBoard: second })
+    act(() => {
+      result.current.resetGame()
+    })
+    expect(result.current.board[5]).toBe(9)
+  })
+
+  it('clearAll restores the current givens after the initialBoard prop changes', () => {
+    const first = createEmptyPuzzle()
+    first[5] = 3
+    const second = createEmptyPuzzle()
+    second[5] = 9
+    const { result, rerender } = renderHook(
+      ({ initialBoard }) => useSudokuGame({ initialBoard }),
+      { initialProps: { initialBoard: first } },
+    )
+    rerender({ initialBoard: second })
+    act(() => {
+      result.current.clearAll()
+    })
+    expect(result.current.board[5]).toBe(9)
+  })
+})
+
+describe('useSudokuGame - setCell notes "Removed note" explanation', () => {
+  it('records the exact "Removed note" explanation via setCell notes mode', () => {
+    const { result } = renderGame(createEmptyPuzzle())
+    // Add the note through toggleCandidate (which does not set the setCell
+    // debounce state), then remove it through setCell notes mode so the L183
+    // "Removed note" branch (row + 1 / col + 1 / template) is exercised.
+    actToggle(result, 10, 3)
+    actPlace(result, 10, 3, true)
+    const move = result.current.history[result.current.history.length - 1]!
+    expect(move.action).toBe('eliminate')
+    expect(move.explanation).toBe('Removed note 3 from R2C2')
+  })
+})
+
+describe('useSudokuGame - applyExternalMove history truncation exactness', () => {
+  it('keeps prior moves and sets the last index when applied without an undo', () => {
+    const { result } = renderGame(createEmptyPuzzle())
+    actPlace(result, 0, 1)
+    actPlace(result, 1, 2)
+    const extBoard = createEmptyPuzzle()
+    extBoard[2] = 3
+    act(() => {
+      result.current.applyExternalMove(extBoard, new Uint16Array(TOTAL_CELLS), createMockMove())
+    })
+    expect(result.current.history).toHaveLength(3)
+    expect(result.current.historyIndex).toBe(2)
+  })
+
+  it('truncates the redo tail when applied after an undo', () => {
+    const { result } = renderGame(createEmptyPuzzle())
+    actPlace(result, 0, 1)
+    actPlace(result, 1, 2)
+    actUndo(result)
+    const extBoard = createEmptyPuzzle()
+    extBoard[2] = 3
+    act(() => {
+      result.current.applyExternalMove(extBoard, new Uint16Array(TOTAL_CELLS), createMockMove())
+    })
+    expect(result.current.history).toHaveLength(2)
+  })
+})

@@ -141,6 +141,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       historyRef.current = limited
       historyIndexRef.current = index
     },
+    // Stryker disable next-line ArrayDeclaration: addToHistory reads only refs (historyRef, historyIndexRef) and stable callbacks/dispatchers (setHistory, setHistoryIndex, limitHistory), so the empty-deps mutant captures identical values
     [setHistory, setHistoryIndex, limitHistory, historyRef, historyIndexRef],
   )
 
@@ -398,6 +399,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       // Stryker disable next-line MethodExpression,ConditionalExpression: isValidSolution already rejects any board with an empty cell, so every()->some() and the every() predicate are observationally redundant here
       setIsComplete(savedBoard.every((v: number) => v !== 0) && isValidSolution(savedBoard))
     },
+    // Stryker disable next-line ArrayDeclaration: restoreState works on its arguments and stable values (updateBoard, candidatesHook.setCandidates, setHistory, setHistoryIndex, setIsComplete); it never reads candidatesHook.candidates, so the empty-deps mutant is observationally identical
     [updateBoard, candidatesHook, setHistory, setHistoryIndex, setIsComplete],
   )
 
@@ -406,6 +408,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       updateBoard(newBoard)
       candidatesHook.setCandidates(newCandidates)
     },
+    // Stryker disable next-line ArrayDeclaration: setBoardState only calls the stable updateBoard and candidatesHook.setCandidates, so a frozen callback behaves identically
     [updateBoard, candidatesHook],
   )
 
@@ -414,11 +417,13 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const newBoard = boardRef.current
     // Stryker disable next-line ConditionalExpression,LogicalOperator,BooleanLiteral,MethodExpression,ArrowFunction,EqualityOperator: isValidSolution(newBoard) is false whenever any cell is empty or duplicated, so the !every(v=>v!==0) clause is redundant; the whole condition collapses observationally to !isValidSolution(newBoard)
     if (!newBoard.every((v: number) => v !== 0) || !isValidSolution(newBoard)) setIsComplete(false)
+    // Stryker disable next-line ArrayDeclaration: handleUndo reads only the stable boardRef and calls stable historyUndo/setIsComplete, so the empty-deps mutant captures identical values
   }, [historyUndo, setIsComplete, boardRef])
 
   const handleRedo = useCallback(() => {
     historyRedo()
     checkCompletion(boardRef.current)
+    // Stryker disable next-line ArrayDeclaration: handleRedo reads only the stable boardRef and calls stable historyRedo/checkCompletion, so the empty-deps mutant captures identical values
   }, [historyRedo, checkCompletion, boardRef])
 
   const checkNotes = useCallback(
@@ -428,6 +433,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
   const fillAllCandidates = useCallback(
     (): Uint16Array => candidatesHook.calculateAllCandidatesForBoard(boardRef.current),
+    // Stryker disable next-line ArrayDeclaration: fillAllCandidates reads the stable boardRef and calls candidatesHook.calculateAllCandidatesForBoard, itself a stable empty-deps callback, so the empty-deps mutant captures identical values
     [candidatesHook, boardRef],
   )
 

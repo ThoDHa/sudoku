@@ -55,9 +55,9 @@ function getPuzzleByIndex(
     return null
   }
 
-  // Stryker disable next-line ConditionalExpression,BlockStatement: defensive guard. puzzlesData.puzzles is a JSON array with no holes, so for any in-range index puzzle is always defined and this branch is unreachable; if it were reached (bad index past L53), the original returns null and the mutant throws, but the throw is caught downstream. For the L53-mutant path where index is out of range, both branches ultimately return null observably
   const puzzle = puzzlesData.puzzles[index]
   /* v8 ignore start -- unreachable defensive guard: the puzzles JSON is a hole-free array, so any in-range index yields a defined puzzle and out-of-range indices are already caught above */
+  // Stryker disable next-line ConditionalExpression,BlockStatement: defensive guard. puzzlesData.puzzles is a hole-free JSON array, so any in-range index yields a defined puzzle and out-of-range indices are already caught by the bounds check above; this branch is unreachable for all reachable inputs, so forcing the condition false or emptying the block is observationally identical
   if (!puzzle) {
     return null
   }

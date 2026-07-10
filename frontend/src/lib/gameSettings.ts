@@ -92,8 +92,8 @@ function collectSavedGames(includeComplete: boolean, warnLabel: string): SavedGa
           try {
             const parsed = JSON.parse(data)
             // Validate it's a game state; completed games are kept only when requested
-            // Stryker disable next-line OptionalChaining: parsed.board is always an array for valid saved games; when it is missing, the original `?.length` returns undefined (!== 81, skip) and the mutant throws, which the surrounding try/catch swallows identically
             if (
+              // Stryker disable next-line OptionalChaining: parsed.board is always an array for valid saved games; when it is missing, the original `?.length` returns undefined (!== 81, skip) and the mutant throws, which the surrounding try/catch swallows identically
               parsed.board?.length === 81 &&
               parsed.savedAt &&
               (includeComplete || !parsed.isComplete)
