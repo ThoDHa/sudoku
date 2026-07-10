@@ -564,6 +564,15 @@ function GameContent() {
   // prior pending one so a stale auto-clear can never wipe a newer toast.
   const scheduleToastClear = useToastClearTimer(visibilityAwareTimeout)
 
+  // A plain (non-visibility-aware) toast timer for feedback that MUST clear even
+  // if the tab was hidden mid-timeout. The visibility-aware timer cancels on hide
+  // and never re-arms, which left the share "link copied" toast stuck (SHARE-2 #1).
+  const plainToastTimeout = useCallback((cb: () => void, delay: number): (() => void) => {
+    const id = window.setTimeout(cb, delay)
+    return () => window.clearTimeout(id)
+  }, [])
+  const scheduleShareToastClear = useToastClearTimer(plainToastTimeout)
+
   // Centralized highlight state management with atomic updates
   const {
     selectedCell,
@@ -2014,22 +2023,22 @@ function GameContent() {
       const success = await copyToClipboard(url)
       if (success) {
         setValidationMessage({ type: 'success', message: `${label} link copied to clipboard!` })
-        scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
+        scheduleShareToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
       } else {
         setValidationMessage({ type: 'error', message: 'Failed to copy link' })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+        scheduleShareToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
       }
     },
-    [scheduleToastClear],
+    [scheduleShareToastClear],
   )
 
   const handleShareError = useCallback(
     (err: unknown) => {
       logger.error('Share error:', err)
       setValidationMessage({ type: 'error', message: 'Failed to create share link' })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+      scheduleShareToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
     },
-    [scheduleToastClear],
+    [scheduleShareToastClear],
   )
 
   // Share the bare puzzle (givens only): a short seed link for portable puzzles,
@@ -2231,7 +2240,9 @@ function GameContent() {
   // Fetch puzzle
   useEffect(() => {
     // Check if we should show the daily prompt (for practice games only) - INDEPENDENT of onboarding!
-    if (getGameMode(effectiveSeed || '') === 'practice') {
+    // Suppress it when opening a shared current-state link (SHARE-2 #4): the
+    // recipient came to view a specific shared board, not to be nudged to the daily.
+    if (getGameMode(effectiveSeed || '') === 'practice' && !sharedStateParam) {
       if (shouldShowDailyPrompt()) {
         setShowDailyPrompt(true)
         markDailyPromptShown()
