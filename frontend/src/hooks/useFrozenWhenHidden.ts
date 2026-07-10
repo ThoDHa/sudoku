@@ -29,8 +29,7 @@ export function useFrozenWhenHidden() {
   // Check if currently frozen
   const isFrozen = useCallback(() => {
     return isFrozenRef.current
-  // Stryker disable next-line ArrayDeclaration: isFrozen captures only the stable isFrozenRef, so a constant deps entry is observationally identical to the empty array
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: isFrozen captures only the stable isFrozenRef, so a constant deps entry is observationally identical to the empty array */ [])
 
   // Wrap a callback to skip execution when frozen
   const skipWhenFrozen = useCallback(
@@ -53,8 +52,7 @@ export function useFrozenWhenHidden() {
   // For state updates that should be skipped when hidden
   const shouldSkipStateUpdate = useCallback(() => {
     return isFrozenRef.current
-  // Stryker disable next-line ArrayDeclaration: shouldSkipStateUpdate captures only the stable isFrozenRef, so a constant deps entry is observationally identical to the empty array
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: shouldSkipStateUpdate captures only the stable isFrozenRef, so a constant deps entry is observationally identical to the empty array */ [])
 
   // CRITICAL: Memoize return object to prevent cascading re-renders.
   // Without this, every render creates a new object reference.

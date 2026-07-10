@@ -417,14 +417,12 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
     const newBoard = boardRef.current
     // Stryker disable next-line ConditionalExpression,LogicalOperator,BooleanLiteral,MethodExpression,ArrowFunction,EqualityOperator: isValidSolution(newBoard) is false whenever any cell is empty or duplicated, so the !every(v=>v!==0) clause is redundant; the whole condition collapses observationally to !isValidSolution(newBoard)
     if (!newBoard.every((v: number) => v !== 0) || !isValidSolution(newBoard)) setIsComplete(false)
-    // Stryker disable next-line ArrayDeclaration: handleUndo reads only the stable boardRef and calls stable historyUndo/setIsComplete, so the empty-deps mutant captures identical values
-  }, [historyUndo, setIsComplete, boardRef])
+  }, /* Stryker disable next-line ArrayDeclaration: historyUndo (useBoardHistory undo, memoized on stable refs/dispatchers), setIsComplete, and boardRef never change identity, so dropping them to [] yields the same frozen callback that reads current state via boardRef.current; observationally identical */ [historyUndo, setIsComplete, boardRef])
 
   const handleRedo = useCallback(() => {
     historyRedo()
     checkCompletion(boardRef.current)
-    // Stryker disable next-line ArrayDeclaration: handleRedo reads only the stable boardRef and calls stable historyRedo/checkCompletion, so the empty-deps mutant captures identical values
-  }, [historyRedo, checkCompletion, boardRef])
+  }, /* Stryker disable next-line ArrayDeclaration: historyRedo (useBoardHistory redo, memoized on stable refs/dispatchers), checkCompletion (empty-deps useCallback), and boardRef never change identity, so dropping them to [] yields the same frozen callback that reads current state via boardRef.current; observationally identical */ [historyRedo, checkCompletion, boardRef])
 
   const checkNotes = useCallback(
     () => candidatesHook.checkNotes(board, candidatesHook.candidates),

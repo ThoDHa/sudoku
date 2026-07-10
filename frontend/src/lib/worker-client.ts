@@ -273,6 +273,7 @@ async function sendRequest(type: WorkerRequest['type'], payload: unknown): Promi
   /* v8 ignore start -- unreachable defensive guard: every public entry point awaits initializeWorker() before calling sendRequest, so worker is always non-null here */
   // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: defensive guard; sendRequest is only reached after `if (!isInitialized || !worker) await initializeWorker()` in the public API, so worker is always non-null here. The mutants (skip the throw, empty the block, blank the message) are observationally equivalent because the block is unreachable in normal flow.
   if (!worker) {
+    // Stryker disable next-line StringLiteral: unreachable defensive guard (every public entry point awaits initializeWorker() before sendRequest, so worker is always non-null here), so blanking the message is observationally equivalent; the enclosing `if` mutants are already ignored above
     throw new Error('Worker not initialized')
   }
   /* v8 ignore stop */

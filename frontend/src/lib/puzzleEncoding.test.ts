@@ -1286,3 +1286,46 @@ describe('puzzleEncoding - mutation-killing boundary tests', () => {
     })
   })
 })
+
+describe('puzzleEncoding - filled-cell and digit guards (mutation coverage)', () => {
+  it('round-trips a sparse board so empty cells are not marked filled', () => {
+    // If either sparse guard (`cell !== undefined && cell !== 0`) is forced true, empty
+    // cells get folded into the mask or the digit stream, corrupting the round-trip.
+    const cells = Array(81).fill(0)
+    cells[0] = 5
+    cells[10] = 3
+    cells[20] = 7
+    cells[30] = 1
+    cells[40] = 9
+    cells[80] = 2
+    expect(decodePuzzle(encodePuzzle(cells))).toEqual(cells)
+  })
+
+  it('decodes a digit char outside the 1-9 range (alphabet index >= 9) as empty', () => {
+    const cells = Array(81).fill(0)
+    cells[0] = 1
+    const encoded = encodePuzzle(cells) // 's' + 14-char mask + 'A' (digit 1)
+    // 'J' is alphabet index 9, outside the valid 0..8 digit range. decodeDigitChar must
+    // yield 0 for it; if the range guard is forced true it would yield index + 1 = 10.
+    const tampered = encoded.slice(0, -1) + 'J'
+    expect(decodePuzzle(tampered)[0]).toBe(0)
+  })
+
+  it('drops out-of-range candidate values instead of encoding a phantom digit', () => {
+    const board = Array(81).fill(0)
+    const givens = Array(81).fill(0)
+    board[0] = 5
+    givens[0] = 5
+    const candidates: number[][] = Array(81)
+      .fill(null)
+      .map(() => [])
+    candidates[1] = [10] // out of 1..9 range; must not be encoded
+    candidates[5] = [3] // in range; anchors a valid decode
+    const encoded = encodePuzzleWithState(board, givens, candidates)
+    const decoded = decodePuzzleWithState(encoded)
+    expect(decoded?.candidates?.[5]).toEqual([3])
+    // If the `d >= 1 && d <= 9` guard is forced true, digit 10 (bit 9) would be encoded
+    // and decode back as [10] for cell 1.
+    expect(decoded?.candidates?.[1]).toEqual([])
+  })
+})

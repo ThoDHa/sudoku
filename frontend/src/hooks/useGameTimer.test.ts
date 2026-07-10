@@ -1313,3 +1313,32 @@ describe('mutation-killing: pauseOnHidden opt-out honored by interval body inner
     expect(result.current.elapsedMs).toBe(0)
   })
 })
+
+describe('mutation-killing: no interval is scheduled while fully paused for visibility (L152)', () => {
+  // Real timers here so we observe the genuine global setInterval. isAutomatedEnvironment()
+  // is false in the default jsdom UA, so the `pauseOnHidden && shouldPauseOperations`
+  // branch is actually evaluated.
+  it('returns before setInterval when running but paused by the background manager', () => {
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval')
+    try {
+      const hidden = createMockBackgroundManager({
+        shouldPauseOperations: true,
+        isHidden: true,
+      })
+      const { result, unmount } = renderHook(() =>
+        useGameTimer({ backgroundManager: hidden, autoStart: true, pauseOnHidden: true }),
+      )
+
+      // We are running but should be fully paused for battery savings.
+      expect(result.current.isRunning).toBe(true)
+      expect(result.current.isPausedDueToVisibility).toBe(true)
+      // The effect must short-circuit before scheduling the tick interval. If the
+      // `effectiveShouldPause` computation is forced false, setInterval is called instead.
+      expect(setIntervalSpy).not.toHaveBeenCalled()
+
+      unmount()
+    } finally {
+      setIntervalSpy.mockRestore()
+    }
+  })
+})

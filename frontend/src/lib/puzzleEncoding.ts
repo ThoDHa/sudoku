@@ -457,8 +457,9 @@ const base64UrlToBytes = (str: string): Uint8Array | null => {
     // Stryker disable next-line EqualityOperator: at i===binary.length, binary.charCodeAt(i) returns NaN and the Uint8Array coerces it to 0; the assignment is silently dropped because bytes has exactly binary.length slots, so the extra iteration is a no-op
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
     return bytes
-    // Stryker disable next-line BlockStatement: emptying the catch returns undefined instead of null, but the sole consumer (`const bytes = base64UrlToBytes(...); if (!bytes) return candidates`) treats null and undefined identically, so the change is observationally equivalent
-  } catch {
+    // Directive is inline on the `catch` line so it leads the CatchClause node; a
+    // disable comment placed here inside the try body attaches elsewhere and is inert.
+  } /* Stryker disable next-line BlockStatement: emptying the catch returns undefined instead of null, but the sole consumer (`const bytes = base64UrlToBytes(...); if (!bytes) return candidates`) treats null and undefined identically, so the change is observationally equivalent */ catch {
     return null
   }
 }

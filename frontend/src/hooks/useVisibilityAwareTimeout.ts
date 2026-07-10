@@ -70,8 +70,7 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
       })
       timeoutsRef.clear()
     }
-  // Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way */ [])
 
   const setVisibilityAwareTimeout = useCallback(
     (callback: () => void, delay: number): (() => void) => {
@@ -108,8 +107,7 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
       window.clearTimeout(id)
     })
     activeTimeoutsRef.current.clear()
-  // Stryker disable next-line ArrayDeclaration: cancelAll captures only the stable activeTimeoutsRef, so a constant deps entry is observationally identical to the empty array
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: cancelAll captures only the stable activeTimeoutsRef, so a constant deps entry is observationally identical to the empty array */ [])
 
   // CRITICAL: Memoize return object to prevent cascading re-renders.
   // Without this, every render creates a new object reference.

@@ -561,3 +561,14 @@ describe('puzzles-data', () => {
     })
   })
 })
+
+describe('getPracticePuzzle - missing-refs guard (mutation coverage)', () => {
+  it('returns null without throwing when the technique has no puzzle refs', () => {
+    // If the `!refs` guard is bypassed, `refs.length` dereferences undefined and throws.
+    let result: ReturnType<typeof getPracticePuzzle>
+    expect(() => {
+      result = getPracticePuzzle('definitely-not-a-real-technique')
+    }).not.toThrow()
+    expect(result!).toBeNull()
+  })
+})

@@ -1,6 +1,8 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useAutoSolve } from './useAutoSolve'
+import { logger } from '../lib/logger'
+import type { MoveResult } from './autoSolvePlayback'
 import { AUTO_SOLVE_MAX_TIME } from '../lib/constants'
 import {
   createMockBackgroundManager,
@@ -2824,5 +2826,270 @@ describe('useAutoSolve mutation kills (MUT-1 iter-3)', () => {
         await p
       }),
     ).resolves.toBeUndefined()
+  })
+
+  // Distinct board per move (all cells = i+1) so applyMove/currentIndex reveal exactly
+  // which move ran and from which queue position.
+  function movesWithDistinctBoards(n: number): MoveResult[] {
+    return Array.from({ length: n }, (_, i) => ({
+      board: Array(81).fill(i + 1),
+      candidates: Array(81)
+        .fill(null)
+        .map(() => [1, 2, 3]),
+      move: {
+        step_index: i,
+        technique: 'NakedSingle',
+        action: 'place',
+        digit: 5,
+        targets: [{ row: 0, col: 0 }],
+        explanation: `Move ${i}`,
+        refs: { title: 'Test', slug: 'test', url: '/test' },
+        highlights: { primary: [] },
+        userEntryCount: undefined,
+      },
+    })) as unknown as MoveResult[]
+  }
+
+  describe('mutation coverage (survivor kills)', () => {
+    it('playMoves ignores an empty move list instead of starting a run', () => {
+      const options = createDefaultOptions()
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      act(() => {
+        result.current.playMoves([])
+      })
+
+      // With the empty-guard removed, playMoves would fall through and set isAutoSolving.
+      expect(result.current.isAutoSolving).toBe(false)
+    })
+
+    it('playMoves seeds from the current board when the first move is undefined', () => {
+      const getBoard = vi.fn(() => Array(81).fill(4))
+      const options = createDefaultOptions({ getBoard })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      // startPaused=true so only the seed snapshot is built (no playback). With the
+      // optional chain removed, `moves[0].board` dereferences undefined and throws.
+      expect(() => {
+        act(() => {
+          result.current.playMoves([undefined as unknown as MoveResult], true)
+        })
+      }).not.toThrow()
+    })
+
+    it('playMoves seeds the initial snapshot from the first move board, not the current board', () => {
+      const applyState = vi.fn()
+      const getBoard = vi.fn(() => Array(81).fill(9))
+      const options = createDefaultOptions({ applyState, getBoard, stepDelay: 100 })
+      const { result } = renderHook(() => useAutoSolve(options))
+      const moves = movesWithDistinctBoards(2) // move[0].board = all 1s
+
+      // Paused so nothing drains; only the seed snapshot (index 0) is built.
+      act(() => {
+        result.current.playMoves(moves, true)
+      })
+      // Advance into new territory (index 1) then step back to restore the seed snapshot.
+      act(() => {
+        result.current.stepForward()
+      })
+      act(() => {
+        result.current.stepBack()
+      })
+
+      // The seed snapshot board must be moves[0].board (all 1s). The `|| currentBoard`
+      // fallback flipped to `&& currentBoard` would restore the current board (all 9s).
+      const seedRestore = applyState.mock.calls.find(
+        (call) => Array.isArray(call[0]) && call[0][0] === 1,
+      )
+      const wrongRestore = applyState.mock.calls.find(
+        (call) => Array.isArray(call[0]) && call[0][0] === 9,
+      )
+      expect(seedRestore).toBeDefined()
+      expect(wrongRestore).toBeUndefined()
+    })
+
+    it('stepForward into new territory works without an onStepNavigate callback', async () => {
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(3))
+      const options = createDefaultOptions({ onStepNavigate: undefined })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      // Start paused: history holds only the seed, so the next stepForward enters new territory.
+      await act(async () => {
+        await result.current.restartAutoSolve(true)
+      })
+
+      // Removing the optional chain turns onStepNavigate?.(…) into a call on undefined.
+      expect(() => {
+        act(() => {
+          result.current.stepForward()
+        })
+      }).not.toThrow()
+    })
+
+    it('rebuilds the move queue from the new index after stepping into new territory', async () => {
+      const applyMove = vi.fn()
+      const options = createDefaultOptions({ applyMove, stepDelay: 100 })
+      const { result } = renderHook(() => useAutoSolve(options))
+      mockSolveAll.mockResolvedValue({
+        solved: true,
+        moves: movesWithDistinctBoards(3),
+        finalBoard: Array(81).fill(0),
+      } as unknown as ReturnType<typeof createMockSolveResponse>)
+
+      await act(async () => {
+        await result.current.restartAutoSolve(true) // paused, index 0
+      })
+
+      // New territory: applies move[0], index -> 1, queue must become slice(1) = [move1, move2].
+      act(() => {
+        result.current.stepForward()
+      })
+      expect(result.current.currentIndex).toBe(1)
+
+      applyMove.mockClear()
+
+      // Resume (manualPaused true -> false fires the resume effect, which plays one move
+      // synchronously from the head of the queue). The head must be move[1] (board all 2s);
+      // if the queue were reset to the full list, playback would replay move[0] (all 1s).
+      await act(async () => {
+        result.current.togglePause()
+      })
+
+      expect(applyMove).toHaveBeenCalled()
+      expect(applyMove.mock.calls[0][0][0]).toBe(2)
+    })
+
+    it('rebuilds the move queue from the index when revisiting a cached snapshot', async () => {
+      const applyMove = vi.fn()
+      const options = createDefaultOptions({ applyMove, stepDelay: 100 })
+      const { result } = renderHook(() => useAutoSolve(options))
+      mockSolveAll.mockResolvedValue({
+        solved: true,
+        moves: movesWithDistinctBoards(4),
+        finalBoard: Array(81).fill(0),
+      } as unknown as ReturnType<typeof createMockSolveResponse>)
+
+      await act(async () => {
+        await result.current.restartAutoSolve(true) // paused, index 0
+      })
+
+      // Build history out to index 2 (new territory twice).
+      act(() => {
+        result.current.stepForward()
+      })
+      act(() => {
+        result.current.stepForward()
+      })
+      expect(result.current.currentIndex).toBe(2)
+
+      // Step back to a cached snapshot, then forward again: this hits the cached-snapshot
+      // branch, which must set the queue to slice(2) = [move2, move3].
+      act(() => {
+        result.current.stepBack()
+      })
+      act(() => {
+        result.current.stepForward()
+      })
+      expect(result.current.currentIndex).toBe(2)
+
+      applyMove.mockClear()
+
+      // Resume: the head of the queue must be move[2] (board all 3s). A full-list queue
+      // would replay move[0] (all 1s) instead.
+      await act(async () => {
+        result.current.togglePause()
+      })
+
+      expect(applyMove).toHaveBeenCalled()
+      expect(applyMove.mock.calls[0][0][0]).toBe(3)
+    })
+
+    it('does not log an auto-solve error when startAutoSolve finds no solution without an onError callback', async () => {
+      const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
+      try {
+        mockSolveAll.mockResolvedValue({
+          solved: false,
+          moves: [],
+          finalBoard: Array(81).fill(0),
+        } as unknown as ReturnType<typeof createMockSolveResponse>)
+        const options = createDefaultOptions({ onError: undefined })
+        const { result } = renderHook(() => useAutoSolve(options))
+
+        await act(async () => {
+          await result.current.startAutoSolve()
+        })
+
+        // With the optional chain removed, onError(…) throws on the undefined callback and
+        // the catch block logs "Auto-solve error"; the clean no-solution path logs nothing.
+        expect(errorSpy).not.toHaveBeenCalled()
+        expect(result.current.isAutoSolving).toBe(false)
+      } finally {
+        errorSpy.mockRestore()
+      }
+    })
+
+    it('does not log an error when solveFromGivens finds no solution without an onError callback', async () => {
+      const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
+      try {
+        mockSolveAll.mockResolvedValue({
+          solved: false,
+          moves: [],
+          finalBoard: Array(81).fill(0),
+        } as unknown as ReturnType<typeof createMockSolveResponse>)
+        const options = createDefaultOptions({ onError: undefined })
+        const { result } = renderHook(() => useAutoSolve(options))
+
+        await act(async () => {
+          await result.current.solveFromGivens()
+        })
+
+        expect(errorSpy).not.toHaveBeenCalled()
+        expect(result.current.isAutoSolving).toBe(false)
+      } finally {
+        errorSpy.mockRestore()
+      }
+    })
+
+    it('resolves when the safety-timeout restart throws and onError is omitted', async () => {
+      // Drives the timeout-branch catch (useAutoSolve L758-761): playback stalls into the
+      // safety timeout, the recovery restartAutoSolve reads getGivens and throws. With the
+      // optional chain removed, onError(...) throws on the undefined callback, so resolve()
+      // never runs and the awaited promise hangs.
+      mockSolveAll.mockResolvedValue(createMockSolveResponse(1))
+      const getGivens = vi.fn(() => {
+        throw new Error('givens-unreadable')
+      })
+      const options = createDefaultOptions({
+        applyMove: vi.fn(),
+        onError: undefined,
+        getGivens,
+        stepDelay: 100,
+      })
+      const { result } = renderHook(() => useAutoSolve(options))
+
+      const fixMoves = [
+        createMockAutoSolveMove({ action: 'place' }),
+        createMockAutoSolveMove({ action: 'place' }),
+      ]
+
+      await expect(
+        act(async () => {
+          const p = result.current.applyFixesAndContinueSolving(fixMoves)
+          // Hide the page so scheduled playback is skipped and the queue never drains,
+          // forcing the elapsed-time timeout branch rather than the queue-empty branch.
+          Object.defineProperty(document, 'visibilityState', {
+            configurable: true,
+            get: () => 'hidden',
+          })
+          await vi.advanceTimersByTimeAsync(AUTO_SOLVE_MAX_TIME + 1000)
+          await p
+        }),
+      ).resolves.toBeUndefined()
+
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'visible',
+      })
+    })
   })
 })

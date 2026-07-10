@@ -117,37 +117,30 @@ export function useBackgroundManager(
       setForcePaused(false)
       setIsInDeepPause(false)
     }
-    // Stryker disable next-line ArrayDeclaration: handleVisibilityChange captures no
-    // external values (only stable setState setters); a constant-string mutant in the
-    // empty deps array leaves the callback referentially stable and behavior identical
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: handleVisibilityChange captures no external values (only stable setState setters); a constant-string deps mutant leaves the callback referentially stable and behavior identical */ [])
 
   // Separate handlers for window blur/focus (app switching on desktop)
   // These set isWindowBlurred but NOT isHidden - so timer pauses but frozen state doesn't trigger
-  // Stryker disable next-line ArrayDeclaration: captures only stable setState; constant-string deps mutant is observationally identical
   const handleWindowBlur = useCallback(() => {
     setIsWindowBlurred(true)
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: captures only stable setState; constant-string deps mutant is observationally identical */ [])
 
-  // Stryker disable next-line ArrayDeclaration: same reasoning as handleWindowBlur
   const handleWindowFocus = useCallback(() => {
     setIsWindowBlurred(false)
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: same reasoning as handleWindowBlur; captures only stable setState */ [])
 
-  // Stryker disable next-line ArrayDeclaration: captures only stable setState; constant-string deps mutant is observationally identical
   const forceResume = useCallback(() => {
     // Stryker disable next-line BooleanLiteral: forceResumed is observably dead (see state-declaration note)
     setForceResumed(true)
     setForcePaused(false)
     setIsInDeepPause(false)
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: captures only stable setState; constant-string deps mutant is observationally identical */ [])
 
-  // Stryker disable next-line ArrayDeclaration: captures only stable setState; constant-string deps mutant is observationally identical
   const forcePause = useCallback(() => {
     setForcePaused(true)
     // Stryker disable next-line BooleanLiteral: forceResumed is observably dead (see state-declaration note)
     setForceResumed(false)
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: captures only stable setState; constant-string deps mutant is observationally identical */ [])
 
   // Register visibility change listeners
   useEffect(() => {
@@ -238,9 +231,6 @@ export function useBackgroundManager(
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
-    // Stryker disable next-line ArrayDeclaration: enabled is constant across every
-    // render in the test suite, and the effect's only output is event-driven state
-    // setters, so the [enabled] vs [] re-subscription difference is not observable
   }, [enabled])
 
   // CRITICAL: Memoize return object to prevent cascading re-renders.

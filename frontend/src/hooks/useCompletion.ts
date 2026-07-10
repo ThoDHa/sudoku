@@ -30,8 +30,7 @@ export function useCompletion(options: UseCompletionOptions): UseCompletionRetur
     } else {
       setIsComplete(false)
     }
-    // Stryker disable next-line ArrayDeclaration: checkCompletion captures no external values; the empty deps array has no observable effect
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: checkCompletion captures no external values; the empty deps array has no observable effect */ [])
 
   return {
     isComplete,

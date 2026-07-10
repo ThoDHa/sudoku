@@ -52,8 +52,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
     // If not a known route and not homepage, it's a game route (/:seed)
     // Stryker disable next-line ConditionalExpression, StringLiteral: isKnownRoute is always true for '/', so the pathname !== '/' clause is redundant
     return !isKnownRoute && pathname !== '/'
-    // Stryker disable next-line ArrayDeclaration: isWasmRoute is a pure function over its pathname argument with no closure captures, so the empty deps array has no observable effect
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: isWasmRoute is a pure function over its pathname argument with no closure captures, so the empty deps array has no observable effect */ [])
 
   const unloadWasm = useCallback(async () => {
     try {
@@ -133,8 +132,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
         clearTimeout(unloadTimeoutRef.current)
       }
     }
-    // Stryker disable next-line ArrayDeclaration: the unmount cleanup captures no values; the constant `["Stryker was here"]` mutant never changes so the effect never re-runs, matching the original empty array
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: the unmount cleanup captures no values; the constant `["Stryker was here"]` mutant never changes so the effect never re-runs, matching the original empty array */ [])
 
   return {
     isWasmRoute: isWasmRoute(location.pathname),

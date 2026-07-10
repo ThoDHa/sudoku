@@ -92,8 +92,7 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     if (autoStart) {
       startTimer()
     }
-    // Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way */ []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pauseTimer = useCallback(() => {
     if (isRunning && startTimeRef.current !== null) {
@@ -135,8 +134,7 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     const minutes = Math.floor(totalSeconds / 60)
     const seconds = totalSeconds % 60
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
-  // Stryker disable next-line ArrayDeclaration: formatTime reads elapsedMs via a ref and has no reactive deps, so a constant deps entry is observationally identical to the empty array
-  }, []) // No dependencies - stable forever!
+  }, /* Stryker disable next-line ArrayDeclaration: formatTime reads elapsedMs via a ref and has no reactive deps, so a constant deps entry is observationally identical to the empty array */ []) // No dependencies - stable forever!
 
   // Main timer interval - completely stopped when hidden for battery savings
   // NOTE: In E2E tests, we should NOT pause due to visibility/focus changes

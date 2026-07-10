@@ -42,8 +42,7 @@ export function useToastClearTimer(visibilitySetTimeout: VisibilitySetTimeout) {
         cancelRef.current = null
       }
     }
-  // Stryker disable next-line ArrayDeclaration: the unmount cleanup runs once on mount either way, so a constant deps entry is observationally identical to the empty array
-  }, [])
+  }, /* Stryker disable next-line ArrayDeclaration: the unmount cleanup runs once on mount either way, so a constant deps entry is observationally identical to the empty array */ [])
 
   return scheduleToastClear
 }

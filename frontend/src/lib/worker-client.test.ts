@@ -1460,3 +1460,72 @@ describe('worker-client advanced scenarios', () => {
     })
   })
 })
+
+describe('worker-client - response-type guard (mutation coverage)', () => {
+  const OriginalWorkerRef = globalThis.Worker
+
+  afterEach(() => {
+    globalThis.Worker = OriginalWorkerRef
+    vi.resetModules()
+  })
+
+  it('routes a valid result message to its pending request instead of dropping it', async () => {
+    // A synchronously-responding worker: postMessage immediately dispatches the matching
+    // 'result'. The onmessage handler therefore runs inside this test (attributable) and,
+    // if the `type !== 'ready' && ...` guard is forced true, every response (init and
+    // findNextMove) is discarded, so neither promise ever settles and the test times out.
+    class SyncMock {
+      onmessage: ((e: MessageEvent) => void) | null = null
+      onerror: ((e: ErrorEvent) => void) | null = null
+      private listeners = new Map<string, ((e: Event) => void)[]>()
+      constructor() {
+        setTimeout(() => this.dispatch({ type: 'loaded' }), 0)
+      }
+      addEventListener(type: string, fn: (e: Event) => void): void {
+        const arr = this.listeners.get(type) ?? []
+        arr.push(fn)
+        this.listeners.set(type, arr)
+      }
+      removeEventListener(type: string, fn: (e: Event) => void): void {
+        this.listeners.set(type, (this.listeners.get(type) ?? []).filter((f) => f !== fn))
+      }
+      private dispatch(data: unknown): void {
+        const ev = new MessageEvent('message', { data })
+        for (const fn of this.listeners.get('message') ?? []) fn(ev)
+        if (this.onmessage) this.onmessage(ev)
+      }
+      postMessage(data: { type?: string; id?: string }): void {
+        if (data?.type === 'init') {
+          this.dispatch({ type: 'result', id: data.id, success: true, data: null })
+        } else if (data?.type === 'findNextMove') {
+          this.dispatch({
+            type: 'result',
+            id: data.id,
+            success: true,
+            data: {
+              move: { technique: 'NakedSingle', placement: { row: 0, col: 0, digit: 5 } },
+              board: new Array(81).fill(0),
+              candidates: new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+              solved: false,
+            },
+          })
+        }
+      }
+      terminate(): void {
+        this.onmessage = null
+        this.onerror = null
+      }
+    }
+    globalThis.Worker = SyncMock as unknown as typeof Worker
+    vi.resetModules()
+    const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
+    await initializeWorker()
+    const result = await findNextMove(
+      new Array(81).fill(0),
+      new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+      new Array(81).fill(0),
+    )
+    expect(result).toHaveProperty('move')
+    terminateWorker()
+  }, 3000)
+})

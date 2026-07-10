@@ -697,3 +697,25 @@ describe('useBackgroundManager', () => {
     })
   })
 })
+
+describe('useBackgroundManager - enabled-dependency re-subscription (mutation coverage)', () => {
+  it('subscribes the beforeunload handler after enabled flips false -> true', () => {
+    const { result, rerender } = renderHook(
+      (props: { enabled: boolean }) => useBackgroundManager(props),
+      { initialProps: { enabled: false } },
+    )
+
+    // Mounted disabled: the beforeunload effect returned early, so nothing is subscribed.
+    expect(result.current.isHidden).toBe(false)
+
+    // Enabling must re-run the effect (its deps track `enabled`). If the deps array is
+    // dropped to [], the effect never re-runs and no beforeunload listener is registered.
+    rerender({ enabled: true })
+
+    act(() => {
+      window.dispatchEvent(new Event('beforeunload'))
+    })
+
+    expect(result.current.isHidden).toBe(true)
+  })
+})

@@ -151,8 +151,9 @@ async function initializeWasm(): Promise<void> {
         try {
           importScripts('/wasm_exec.js')
           loadedWasmExec = true
-          // Stryker disable next-line BlockStatement: the catch body sets loadedWasmExec=false, but the variable is already false when importScripts throws (the `loadedWasmExec = true` assignment only runs on success), so emptying the catch block is observationally identical (the subsequent `if (!loadedWasmExec)` still enters the fallback)
-        } catch {
+          // Directive is inline on the `catch` line so it leads the CatchClause node; a
+          // disable comment placed here inside the try body attaches elsewhere and is inert.
+        } /* Stryker disable next-line BlockStatement: the catch body sets loadedWasmExec=false, but the variable is already false when importScripts throws (the `loadedWasmExec = true` assignment only runs on success), so emptying the catch block is observationally identical (the subsequent `if (!loadedWasmExec)` still enters the fallback) */ catch {
           // importScripts threw, likely because this is a module worker where importScripts is not allowed
           loadedWasmExec = false
         }
@@ -229,6 +230,7 @@ async function initializeWasm(): Promise<void> {
       /* v8 ignore start -- unreachable defensive guard: the polling promise only resolves once SudokuWasm is truthy, so this can never throw */
       // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: this is a defensive guard that is unreachable when the polling promise resolves (SudokuWasm must be truthy for resolve() to have been called); the mutants are observationally equivalent
       if (!SudokuWasm) {
+        // Stryker disable next-line StringLiteral: unreachable defensive guard (the polling promise only resolves once SudokuWasm is truthy), so blanking the message is observationally equivalent; the enclosing `if` mutants are already ignored above
         throw new Error('SudokuWasm not available after initialization')
       }
       /* v8 ignore stop */
@@ -271,6 +273,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         /* v8 ignore start -- unreachable defensive guard: initializeWasm either sets wasmApi or throws (caught by the outer try/catch), so wasmApi is always set once the await returns */
         // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: this defensive guard is unreachable in normal flow — initializeWasm either sets wasmApi or throws (caught by the outer onmessage try/catch), so after `await initializeWasm()` completes successfully wasmApi is always set. The mutants are observationally equivalent dead-code guards.
         if (!wasmApi) {
+          // Stryker disable next-line StringLiteral: unreachable defensive guard (initializeWasm either sets wasmApi or throws), so blanking the message is observationally equivalent; the enclosing `if` mutants are already ignored above
           throw new Error('WASM API not available after initialization')
         }
         /* v8 ignore stop */
@@ -304,6 +307,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         /* v8 ignore start -- unreachable defensive guard: initializeWasm either sets wasmApi or throws (caught by the outer try/catch), so wasmApi is always set once the await returns */
         // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: this defensive guard is unreachable in normal flow — initializeWasm either sets wasmApi or throws (caught by the outer onmessage try/catch), so after `await initializeWasm()` completes successfully wasmApi is always set. The mutants are observationally equivalent dead-code guards.
         if (!wasmApi) {
+          // Stryker disable next-line StringLiteral: unreachable defensive guard (initializeWasm either sets wasmApi or throws), so blanking the message is observationally equivalent; the enclosing `if` mutants are already ignored above
           throw new Error('WASM API not available after initialization')
         }
         /* v8 ignore stop */

@@ -193,3 +193,14 @@ describe('createStorageKey - debug log on invalid seed', () => {
     spy.mockRestore()
   })
 })
+
+describe('validateSeed - empty-seed guard (mutation coverage)', () => {
+  it('returns the empty-seed error for an empty string rather than falling through to format validation', () => {
+    const result = validateSeed('')
+    expect(result.valid).toBe(false)
+    expect(result.mode).toBeNull()
+    // The empty-seed guard must short-circuit here. If it is skipped, getGameMode('')
+    // returns null and the function yields the "Invalid seed format" error instead.
+    expect(result.error).toBe('Seed cannot be empty')
+  })
+})

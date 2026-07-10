@@ -1144,3 +1144,27 @@ describe('scores', () => {
     })
   })
 })
+
+describe('generatePuzzleUrl - custom-route guard (mutation coverage)', () => {
+  const nonCustomScore: Score = {
+    seed: 'daily-2024-01-15',
+    difficulty: 'medium',
+    timeMs: 300000,
+    hintsUsed: 0,
+    mistakes: 0,
+    completedAt: '2024-01-15T12:00:00Z',
+  }
+
+  it('does not build the /c/ encoded route for a non-custom score', () => {
+    // If the `difficulty === 'custom' && encodedPuzzle` guard is forced true, every
+    // score would route through /c/${encodedPuzzle}, yielding /c/undefined here.
+    const url = generatePuzzleUrl(nonCustomScore)
+    expect(url).toBe('https://example.com/daily-2024-01-15')
+    expect(url).not.toContain('/c/')
+  })
+
+  it('builds the /custom route (not /c/undefined) for a custom score lacking encoded data', () => {
+    const url = generatePuzzleUrl({ ...nonCustomScore, difficulty: 'custom' })
+    expect(url).toBe('https://example.com/custom')
+  })
+})

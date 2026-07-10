@@ -238,6 +238,7 @@ async function loadWasmExec(): Promise<void> {
  */
 export async function loadWasm(): Promise<SudokuWasmAPI> {
   // Return cached instance if already loaded
+  // Stryker disable next-line ConditionalExpression,BlockStatement: masked by the in-flight-promise guard below. wasmInstance is non-null exactly when wasmLoadPromise is non-null (both are set together on a successful load and cleared together on unload/error); no reachable state has wasmInstance set while wasmLoadPromise is null. Bypassing this guard therefore falls through to `if (wasmLoadPromise) return wasmLoadPromise`, which resolves to the same cached instance with no extra fetch, so the mutants are observationally equivalent.
   if (wasmInstance) {
     return wasmInstance
   }

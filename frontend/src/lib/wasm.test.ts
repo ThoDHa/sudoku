@@ -1767,4 +1767,121 @@ describe('wasm module', () => {
       }
     })
   })
+
+  // ==================== Mutation-Kill: attributable (perTest) ====================
+
+  describe('mutation-kill: in-flight load dedup (attributable)', () => {
+    it('reuses the in-flight promise for a concurrent call instead of starting a second load (L246)', async () => {
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      const { loadWasm } = await import('./wasm')
+
+      // Two synchronous calls: the second hits the in-flight-promise guard immediately
+      // (synchronous top of loadWasm), so it is attributable to this test.
+      const p1 = loadWasm()
+      const p2 = loadWasm()
+      const [a, b] = await Promise.all([p1, p2])
+
+      expect(a).toBe(b)
+      // Original returns the same in-flight promise -> exactly one fetch. If the guard is
+      // forced false or emptied, the second call kicks off a fresh load and fetches twice.
+      expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('mutation-kill: loadWasmExec Go guard and script-URL log (attributable)', () => {
+    it('creates the wasm_exec.js script when Go is absent and logs the URL twice (L210,L218)', async () => {
+      // @ts-expect-error - Removing Go forces the script-creation branch
+      globalThis.window.Go = undefined
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      const created: { src: string; async: boolean }[] = []
+      // @ts-expect-error - Mocking
+      globalThis.document.createElement = vi.fn(() => {
+        const s = { src: '', async: false, onload: null as null | (() => void), onerror: null }
+        created.push(s)
+        return s
+      })
+      // @ts-expect-error - Mocking
+      globalThis.document.head.appendChild = vi.fn((script: { onload: () => void }) => {
+        setTimeout(() => {
+          // @ts-expect-error - Mocking
+          globalThis.window.Go = MockGoClass
+          script.onload()
+        }, 0)
+      })
+
+      const { loadWasm } = await import('./wasm')
+      await runLoadCycle(loadWasm)
+
+      // L210: when Go is absent the guard is false, so loadWasmExec builds a script.
+      // Forcing the guard true early-returns, no script is created (and loadWasm then
+      // throws 'Go runtime not available').
+      expect(created.length).toBe(1)
+
+      // L218: loadWasmExec logs the script URL. loadWasm already logs the same message
+      // once unconditionally (its own pre-log), so on the script path the message must
+      // appear exactly twice. Blanking L218's literal drops the count to one.
+      const loadingLogs = loggerMock.mock.calls.filter(
+        (c) => c[0] === '[WASM] Loading wasm_exec.js from:',
+      )
+      expect(loadingLogs.length).toBe(2)
+    })
+  })
+
+  describe('mutation-kill: rapid-reload delay scheduling (attributable)', () => {
+    it('schedules the reload-delay timer on a reload after unload (L173,L275)', async () => {
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      const { loadWasm, unloadWasm } = await import('./wasm')
+
+      await runLoadCycle(loadWasm)
+      unloadWasm() // sets wasmRecentlyUnloaded = true (L173); also clears window.SudokuWasm/Go
+      // @ts-expect-error - restore SudokuWasm so the reload's ready check resolves
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+      try {
+        await runLoadCycle(loadWasm)
+        // The reload path awaits setTimeout(_, WASM_RELOAD_DELAY_MS=100). If L173 fails to
+        // set the flag, or L275's guard is forced false/emptied, that timer is never scheduled.
+        const delayCall = setTimeoutSpy.mock.calls.find((c) => c[1] === 100)
+        expect(delayCall).toBeDefined()
+      } finally {
+        setTimeoutSpy.mockRestore()
+      }
+    }, 15000)
+
+    it('clears the recently-unloaded flag after the delay so a later retry does not re-delay (L277)', async () => {
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      const { loadWasm, unloadWasm } = await import('./wasm')
+
+      await runLoadCycle(loadWasm)
+      unloadWasm() // wasmRecentlyUnloaded = true; also clears window.SudokuWasm/Go
+
+      // Reload attempt whose fetch fails AFTER the reload-delay block runs (which clears the
+      // flag at L277). The failure leaves wasmInstance null and wasmLoadPromise null.
+      vi.mocked(globalThis.fetch).mockRejectedValueOnce(new Error('reload fetch failed'))
+      await expect(loadWasm()).rejects.toThrow('reload fetch failed')
+
+      // @ts-expect-error - restore SudokuWasm so the retry's ready check resolves
+      globalThis.window.SudokuWasm = mockWasmApi
+
+      // Now retry. The flag was cleared to false at L277, so this retry must NOT schedule the
+      // 100ms reload delay. If L277 pins the flag true instead, the retry re-delays.
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+      try {
+        await runLoadCycle(loadWasm)
+        const delayCall = setTimeoutSpy.mock.calls.find((c) => c[1] === 100)
+        expect(delayCall).toBeUndefined()
+      } finally {
+        setTimeoutSpy.mockRestore()
+      }
+    }, 15000)
+  })
 })
