@@ -304,10 +304,10 @@ func MakeElimination(cell, digit int) core.Candidate {
 
 // DedupeEliminations removes duplicate eliminations
 func DedupeEliminations(elims []core.Candidate) []core.Candidate {
-	// Decrementing the len<=1 fast path to len<=0 is unobservable: on a single
-	// entry the dedupe loop below produces a slice with identical content, only a
-	// different backing array, which no caller inspects.
-	// mutator-disable-next-line numbers/decrementer
+	// Weakening the len<=1 fast path (to len<=0, or <= to <) is unobservable: on a
+	// single entry the dedupe loop below produces a slice with identical content,
+	// only a different backing array, which no caller inspects.
+	// mutator-disable-next-line numbers/decrementer,expression/comparison
 	if len(elims) <= 1 {
 		return elims
 	}
