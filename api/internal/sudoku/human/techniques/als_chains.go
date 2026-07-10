@@ -143,12 +143,14 @@ func detectALSXYChain(b BoardInterface, maxSize int) *core.Move {
 	for i := 0; i < n; i++ {
 		adjRC[i] = make(map[int][]int)
 		for j := 0; j < n; j++ {
-			// mutator-disable-next-line loop/break: break exits the inner loop at j==i, leaving
-			// adjRC[i] populated only for j<i. The reverse edges adjRC[j][i] (for j<i) are computed
-			// when the outer loop visited j, and DetectALSXYChain tries every startIdx, so any
-			// chain i->j->k is also discovered as its reverse k->j->i from a different start.
-			// checkChainElimination is path-symmetric, so the same elimination is found.
+			// Equivalent-mutant rationale (loop/break, continue->break): break exits the inner loop
+			// at j==i, leaving adjRC[i] populated only for j<i. The reverse edges adjRC[j][i] (for
+			// j<i) are computed when the outer loop visited j, and DetectALSXYChain tries every
+			// startIdx, so any chain i->j->k is also discovered as its reverse k->j->i from a
+			// different start. checkChainElimination is path-symmetric, so the same elimination is found.
 			if i == j {
+				// see equivalent-mutant rationale above
+				// mutator-disable-next-line loop/break
 				continue
 			}
 			if ALSShareCells(allALS[i], allALS[j]) {
@@ -168,7 +170,7 @@ func detectALSXYChain(b BoardInterface, maxSize int) *core.Move {
 	// Use DFS to find chains
 	for startIdx := 0; startIdx < n; startIdx++ {
 		// Try to find chains starting from startIdx
-		// mutator-disable-next-line numbers/decrementer: dropping maxLen 6->5 excludes length-6
+		// Equivalent-mutant rationale (numbers/decrementer, maxLen 6->5): dropping maxLen 6->5 excludes length-6
 		// ALS-XY chains. A length-6 chain only diverges from the mutant when no length 3-5 chain
 		// eliminates the same endpoint digit Z. PIsaacson's decomposition principle (EnjoySudoku
 		// forum t6642 p2: "Any ALS chain > length 2 can be decomposed into sub-chains") makes this
@@ -180,6 +182,8 @@ func detectALSXYChain(b BoardInterface, maxSize int) *core.Move {
 		// literature's adjacency-only rule). Tracked in task ALS-FIX-1; a kill would need both a
 		// curated length-6 board that defeats substitution and a detectALSXYChainMaxLen helper to
 		// contrast maxLen 6 vs 5.
+		// see equivalent-mutant rationale above
+		// mutator-disable-next-line numbers/decrementer
 		if move := searchALSChain(b, allALS, adjRC, startIdx, 6); move != nil {
 			return move
 		}
@@ -222,22 +226,26 @@ func searchALSChain(b BoardInterface, allALS []ALS, adjRC map[int]map[int][]int,
 
 		// Don't extend beyond max length
 		if len(curr.path) >= maxLen {
-			// mutator-disable-next-line loop/break: break here would abandon the rest of the
-			// DFS stack when a maxed-out chain is popped. Whether a valid elimination lives
-			// earlier or later in the stack depends on Go map iteration order
+			// Equivalent-mutant rationale (loop/break, continue->break): break here would abandon
+			// the rest of the DFS stack when a maxed-out chain is popped. Whether a valid
+			// elimination lives earlier or later in the stack depends on Go map iteration order
 			// (for nextIdx, rcs := range adjRC[...] below), which is non-deterministic, so the
 			// mutant's divergence is flaky and cannot be asserted by a deterministic test.
+			// see equivalent-mutant rationale above
+			// mutator-disable-next-line loop/break
 			continue
 		}
 
 		// Extend the chain
 		for nextIdx, rcs := range adjRC[currALSIdx] {
 			if curr.visited[nextIdx] {
-				// mutator-disable-next-line loop/break: break here would abandon the remaining
-				// (unvisited) neighbors on the first visited hit. Whether a visited neighbor
-				// appears before a productive one depends on Go map iteration order over
+				// Equivalent-mutant rationale (loop/break, continue->break): break here would abandon
+				// the remaining (unvisited) neighbors on the first visited hit. Whether a visited
+				// neighbor appears before a productive one depends on Go map iteration order over
 				// adjRC[currALSIdx], which is non-deterministic, so the mutant's divergence
 				// is flaky and cannot be asserted by a deterministic test.
+				// see equivalent-mutant rationale above
+				// mutator-disable-next-line loop/break
 				continue
 			}
 

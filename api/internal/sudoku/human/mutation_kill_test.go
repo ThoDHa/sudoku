@@ -584,3 +584,90 @@ func TestGetUnitCellRefs_UnrecognizedUnitTypeReturnsNil(t *testing.T) {
 		t.Errorf("expected nil cell refs for unrecognized unit type, got %v", got)
 	}
 }
+
+// =============================================================================
+// Iteration-3 mutation kill tests (solver.go)
+// =============================================================================
+
+// makeAllTwosBoard builds a board filled entirely with digit 2 except at the
+// given empty cell indices, each of which is assigned candidate digit 1. Filling
+// with a single non-1 digit makes digit 1 the only unresolved digit and silences
+// the candidate-fill phase (every empty cell already holds candidate 1), which
+// isolates the hidden-single sweep ordering inside findNextCandidateMove.
+func makeAllTwosBoard(empties []int) *Board {
+	var cells [81]int
+	for i := range cells {
+		cells[i] = 2
+	}
+	cands := map[int][]int{}
+	for _, e := range empties {
+		cells[e] = 0
+		cands[e] = []int{1}
+	}
+	return makeTestBoard(cells, cands)
+}
+
+// TestFindNextCandidateMove_ColumnReturnIsReturned kills the branch/if mutant on
+// the `return mv` after the Column sweep in findNextCandidateMove. Candidate 1 is
+// placeable only at (0,0),(0,1),(1,1),(1,2): every row holding it has two such
+// cells (no row hidden single) and box 0 holds all four (no box hidden single),
+// but column 0 holds only (0,0), a column hidden single. The original returns that
+// Column-sweep move; dropping the return lets the (nil) Box sweep fall through and
+// the mutant returns a later digit's fill-candidate move instead.
+func TestFindNextCandidateMove_ColumnReturnIsReturned(t *testing.T) {
+	b := makeAllTwosBoard([]int{cellIdx(0, 0), cellIdx(0, 1), cellIdx(1, 1), cellIdx(1, 2)})
+	move := NewSolver().findNextCandidateMove(b)
+	if move == nil {
+		t.Fatal("expected a move from the Column sweep, got nil")
+	}
+	if move.Technique != "hidden-single" || move.Digit != 1 ||
+		move.Targets[0].Row != 0 || move.Targets[0].Col != 0 {
+		t.Errorf("expected hidden-single digit 1 at R0C0 (column sweep), got %s digit %d at R%dC%d",
+			move.Technique, move.Digit, move.Targets[0].Row, move.Targets[0].Col)
+	}
+}
+
+// TestFindNextCandidateMove_BoxReturnIsReturned kills the branch/if mutant on the
+// `return mv` after the Box sweep in findNextCandidateMove. Candidate 1 sits at the
+// four rectangle corners (0,0),(0,4),(4,0),(4,4): each row and each column holding
+// it has two such cells (no row or column hidden single), but each corner is alone
+// in its box, so box 0 yields a box hidden single at (0,0). The original returns
+// that Box-sweep move; dropping the return makes the mutant skip every box single
+// and return a later digit's fill-candidate move instead.
+func TestFindNextCandidateMove_BoxReturnIsReturned(t *testing.T) {
+	b := makeAllTwosBoard([]int{cellIdx(0, 0), cellIdx(0, 4), cellIdx(4, 0), cellIdx(4, 4)})
+	move := NewSolver().findNextCandidateMove(b)
+	if move == nil {
+		t.Fatal("expected a move from the Box sweep, got nil")
+	}
+	if move.Technique != "hidden-single" || move.Digit != 1 ||
+		move.Targets[0].Row != 0 || move.Targets[0].Col != 0 {
+		t.Errorf("expected hidden-single digit 1 at R0C0 (box sweep), got %s digit %d at R%dC%d",
+			move.Technique, move.Digit, move.Targets[0].Row, move.Targets[0].Col)
+	}
+}
+
+// TestFindNextMove_ResetsGenerationStateAfterStall kills the statement/remove
+// mutant on the `s.generationState = StateNotStarted` reset taken when no single
+// is found. A solver first stalls on an empty board, which advances the state to
+// StateCandidatesComplete and then runs the reset. Reusing the same solver on a
+// solvable puzzle must still solve it. Without the reset the state stays
+// StateApplyingTechniques, so FindNextMove short-circuits to nil and the second
+// puzzle wrongly stalls.
+func TestFindNextMove_ResetsGenerationStateAfterStall(t *testing.T) {
+	s := NewSolver()
+
+	_, status := s.SolveWithSteps(NewBoard(make([]int, 81)), constants.MaxSolverSteps)
+	if status != constants.StatusStalled {
+		t.Fatalf("expected empty board to stall, got %q", status)
+	}
+
+	givens := make([]int, 81)
+	copy(givens, solvedGrid[:])
+	givens[0] = 0  // solution 5
+	givens[40] = 0 // solution 3
+	_, status2 := s.SolveWithSteps(NewBoard(givens), constants.MaxSolverSteps)
+	if status2 != constants.StatusCompleted {
+		t.Errorf("reused solver must reset state and solve the puzzle, got %q", status2)
+	}
+}

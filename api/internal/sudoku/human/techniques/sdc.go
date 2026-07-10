@@ -315,6 +315,8 @@ func findALSInCells(b BoardInterface, cells []int, intersectionDigits []int) []A
 	}
 
 	// Try ALS of size 3 (3 cells with 4 candidates total) - less common but possible
+	// i<=len is harmless; the inner j/k loops never dereference cells[i] at i==len
+	// mutator-disable-next-line expression/comparison
 	for i := 0; i < len(cells); i++ {
 		for j := i + 1; j < len(cells); j++ {
 			for k := j + 1; k < len(cells); k++ {

@@ -186,10 +186,15 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 
 			// Check if any digit could theoretically be placed here
 			anyValidPlacement := false
+			// Starting at 0 is a no-op: canPlace(i,0) is always false because the
+			// empty cell i sits in its own row and equals digit 0.
+			// mutator-disable-next-line numbers/decrementer
 			for d := 1; d <= constants.GridSize; d++ {
 				if b.canPlace(i, d) && !b.Eliminated[i].Has(d) {
 					anyValidPlacement = true
-					// mutator-disable-next-line loop/break: break vs continue produces the same anyValidPlacement=true; the loop has no other side effect
+					// break vs continue is equivalent here: both leave
+					// anyValidPlacement true and the loop has no other side effect.
+					// mutator-disable-next-line loop/break
 					break
 				}
 			}
@@ -211,7 +216,10 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 
 		row, col := i/constants.GridSize, i%constants.GridSize
 
-		// Check each candidate against the board state
+		// Check each candidate against the board state.
+		// Starting at 0 is a no-op: Candidates.Has(0) is always false, so the d=0
+		// iteration immediately continues without inspecting anything.
+		// mutator-disable-next-line numbers/decrementer
 		for d := 1; d <= constants.GridSize; d++ {
 			if !b.Candidates[i].Has(d) {
 				continue
@@ -290,7 +298,10 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 		// Try to fill a candidate move
 		candidateMove := s.findNextCandidateMove(b)
 		if candidateMove != nil {
-			// mutator-disable-next-line statement/remove: setting CollectingCandidates vs leaving NotStarted both re-enter the same branch next call; findNextCandidateMove scans board state directly
+			// Setting CollectingCandidates vs leaving NotStarted is equivalent: the
+			// next call re-enters the same phase-1 branch either way, and
+			// findNextCandidateMove scans board state directly.
+			// mutator-disable-next-line statement/remove
 			s.generationState = StateCollectingCandidates
 			return candidateMove
 		}
@@ -302,15 +313,17 @@ func (s *Solver) FindNextMove(b *Board) *core.Move {
 	// Phase 2: Check for singles ONLY after ALL candidate generation is complete
 	// Only check for singles if we've completed candidate generation for ALL digits
 	if s.generationState == StateCandidatesComplete {
-		// mutator-disable-next-line statement/remove: ApplyingTechniques is overwritten by StateNotStarted at L306/L310 within the same block, so the assignment is dead
+		// This assignment is dead: ApplyingTechniques is overwritten by
+		// StateNotStarted later in this same block before it is ever read.
+		// mutator-disable-next-line statement/remove
 		s.generationState = StateApplyingTechniques
 		if singleMove := s.checkForSingles(b); singleMove != nil {
 			// reset state back to NotStarted after entering technique application
 			s.generationState = StateNotStarted
 			return singleMove
 		}
-		// No technique found. Reset generation state to allow normal solver flow
-		// mutator-disable-next-line statement/remove: when checkForSingles returns nil the function returns nil at L318 either way; StateNotStarted reset only matters across separate SolveWithSteps runs which always start fresh
+		// No technique found. Reset generation state so a reused solver starts
+		// fresh on its next run.
 		s.generationState = StateNotStarted
 	}
 
@@ -330,6 +343,10 @@ func (s *Solver) findNextCandidateMove(b *Board) *core.Move {
 	// Process by digit first (all 1s, then all 2s, etc.)
 	// This creates a visual effect where each digit "sweeps" across the board
 
+	// Starting at 0 is a no-op: for digit 0, fillCandidatesForUnit finds no fill
+	// (empty cells make digitExistsInCells(...,0) true) and checkHiddenSingleInUnit
+	// returns nil at the first empty cell, so the d=0 sweep yields nothing.
+	// mutator-disable-next-line numbers/decrementer
 	for d := 1; d <= constants.GridSize; d++ {
 		// Sweep rows, then columns, then boxes: for each unit type we first
 		// fill candidates across all units of that type, then look for hidden
@@ -652,18 +669,23 @@ func (s *Solver) AnalyzePuzzleDifficulty(givens []int) (core.Difficulty, map[str
 	highestTier := constants.TierSimple
 
 	tierOrder := map[string]int{
-		// mutator-disable-next-line numbers/decrementer: shifting Simple from 0 to -1 preserves all strict-ordering comparisons since every tier maps to a distinct integer and only relative order matters
+		// Only relative order matters here and every tier maps to a distinct
+		// integer, so shifting Simple from 0 to -1 preserves all comparisons.
+		// mutator-disable-next-line numbers/decrementer
 		constants.TierSimple: 0,
 		constants.TierMedium: 1,
 		constants.TierHard:   2,
-		// mutator-disable-next-line numbers/incrementer: shifting Extreme from 3 to 4 preserves all strict-ordering comparisons for the same reason as Simple above
+		// Same reasoning: shifting Extreme from 3 to 4 preserves all comparisons.
+		// mutator-disable-next-line numbers/incrementer
 		constants.TierExtreme: 3,
 	}
 
 	for _, move := range moves {
 		techniqueCounts[move.Technique]++
 		tier := s.GetTechniqueTier(move.Technique)
-		// mutator-disable-next-line expression/comparison: >= vs > - since tierOrder values are distinct per tier, equality never holds for different tiers, so >= behaves identically to >
+		// tierOrder values are distinct per tier, so equality never holds for two
+		// different tiers and >= would behave identically to >.
+		// mutator-disable-next-line expression/comparison
 		if tierOrder[tier] > tierOrder[highestTier] {
 			highestTier = tier
 		}

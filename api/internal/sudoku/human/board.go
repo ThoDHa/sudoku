@@ -46,7 +46,10 @@ func NewBoardWithCandidates(cells []int, candidates [][]int) *Board {
 	b := &Board{}
 	for i := 0; i < constants.TotalCells; i++ {
 		b.Cells[i] = cells[i]
-		// mutator-disable-next-line expression/remove: nil guards are dead defense - NewCandidates(nil)==0 (default) and markMissingAsEliminated early-returns on len(cands)==0
+		// The nil guards are dead defense: NewCandidates(nil) is 0 (the zero value
+		// already stored) and markMissingAsEliminated early-returns on an empty
+		// candidate list, so removing either guard changes nothing.
+		// mutator-disable-next-line expression/remove
 		if candidates != nil && i < len(candidates) && candidates[i] != nil {
 			b.Candidates[i] = NewCandidates(candidates[i])
 			b.markMissingAsEliminated(i, cells[i], candidates[i])
@@ -62,6 +65,10 @@ func (b *Board) markMissingAsEliminated(idx, cell int, cands []int) {
 	if cell != 0 || len(cands) == 0 {
 		return
 	}
+	// Starting at 0 is a no-op: canPlace(idx,0) is always false because the empty
+	// cell idx sits in its own row and equals digit 0, and Candidates.Has/Set(0)
+	// are no-ops, so the d=0 iteration can never touch Eliminated.
+	// mutator-disable-next-line numbers/decrementer
 	for d := 1; d <= constants.GridSize; d++ {
 		if b.canPlace(idx, d) && !b.Candidates[idx].Has(d) {
 			b.Eliminated[idx] = b.Eliminated[idx].Set(d)
@@ -78,6 +85,10 @@ func (b *Board) InitCandidates() {
 	for i := 0; i < constants.TotalCells; i++ {
 		if b.Cells[i] == 0 {
 			var cands Candidates
+			// Starting at 0 is a no-op: canPlace(i,0) is always false because the
+			// empty cell i sits in its own row and equals digit 0, and Set(0) is a
+			// no-op, so the d=0 iteration adds nothing.
+			// mutator-disable-next-line numbers/decrementer
 			for d := 1; d <= constants.GridSize; d++ {
 				if b.canPlace(i, d) {
 					cands = cands.Set(d)
@@ -169,6 +180,10 @@ func (b *Board) ClearCell(idx int) {
 	b.Eliminated[idx] = 0
 
 	var cands Candidates
+	// Starting at 0 is a no-op: canPlace(idx,0) is always false because the empty
+	// cell idx sits in its own row and equals digit 0, and Set(0) is a no-op, so
+	// the d=0 iteration adds nothing.
+	// mutator-disable-next-line numbers/decrementer
 	for d := 1; d <= constants.GridSize; d++ {
 		if b.canPlace(idx, d) {
 			cands = cands.Set(d)

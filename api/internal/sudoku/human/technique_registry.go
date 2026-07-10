@@ -505,13 +505,17 @@ func (r *TechniqueRegistry) register(desc TechniqueDescriptor) {
 func (r *TechniqueRegistry) GetByTier(tier string) []TechniqueDescriptor {
 	var result []TechniqueDescriptor
 	for _, slug := range r.tierOrder[tier] {
-		// mutator-disable-next-line expression/remove: nil guard - tierOrder only contains slugs added via Register, which simultaneously populates r.techniques, so tech is never nil here
+		// The nil guard is dead: tierOrder only holds slugs added via register,
+		// which populates r.techniques in the same call, so tech is never nil.
+		// mutator-disable-next-line expression/remove
 		if tech := r.techniques[slug]; tech != nil && tech.Enabled {
 			result = append(result, *tech)
 		}
 	}
 	sort.Slice(result, func(i, j int) bool {
-		// mutator-disable-next-line expression/comparison: Order values are 1..39 distinct per registration, so < and <= produce identical comparisons for any pair
+		// Order values are 1..39 and distinct per registration, so no two elements
+		// ever compare equal and < behaves identically to <= for every pair.
+		// mutator-disable-next-line expression/comparison
 		return result[i].Order < result[j].Order
 	})
 	return result
@@ -529,7 +533,9 @@ func (r *TechniqueRegistry) GetAll() []TechniqueDescriptor {
 		result = append(result, *tech)
 	}
 	sort.Slice(result, func(i, j int) bool {
-		// mutator-disable-next-line expression/comparison: Order values are 1..39 distinct per registration, so < and <= produce identical comparisons for any pair
+		// Order values are 1..39 and distinct per registration, so no two elements
+		// ever compare equal and < behaves identically to <= for every pair.
+		// mutator-disable-next-line expression/comparison
 		return result[i].Order < result[j].Order
 	})
 	return result
@@ -549,7 +555,9 @@ func (r *TechniqueRegistry) GetEnabledTechniques() map[string][]TechniqueDescrip
 	result := make(map[string][]TechniqueDescriptor)
 	for tier, slugs := range r.tierOrder {
 		for _, slug := range slugs {
-			// mutator-disable-next-line expression/remove: nil guard - tierOrder only contains slugs added via Register, which simultaneously populates r.techniques, so tech is never nil here
+			// The nil guard is dead: tierOrder only holds slugs added via register,
+			// which populates r.techniques in the same call, so tech is never nil.
+			// mutator-disable-next-line expression/remove
 			if tech := r.techniques[slug]; tech != nil && tech.Enabled {
 				result[tier] = append(result[tier], *tech)
 			}

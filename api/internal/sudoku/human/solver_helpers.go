@@ -39,11 +39,14 @@ func CreateSolverWithTierOnly(tier string) *Solver {
 func CreateSolverUpToTier(maxTier string) *Solver {
 	registry := NewTechniqueRegistry()
 	tierOrder := map[string]int{
-		// mutator-disable-next-line numbers/decrementer: CreateSolverUpToTier only uses tierOrder for `>` comparisons; shifting Simple preserves relative ordering since all tier values are distinct
+		// tierOrder is only used for `>` comparisons and every tier maps to a
+		// distinct integer, so shifting Simple from 0 to -1 preserves the ordering.
+		// mutator-disable-next-line numbers/decrementer
 		constants.TierSimple: 0,
 		constants.TierMedium: 1,
 		constants.TierHard:   2,
-		// mutator-disable-next-line numbers/incrementer: same rationale as TierSimple above; shifting Extreme preserves all `>` comparisons
+		// Same reasoning: shifting Extreme from 3 to 4 preserves all comparisons.
+		// mutator-disable-next-line numbers/incrementer
 		constants.TierExtreme: 3,
 	}
 	maxTierOrder, ok := tierOrder[maxTier]

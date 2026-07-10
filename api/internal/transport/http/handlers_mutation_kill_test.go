@@ -704,3 +704,173 @@ func TestMutation_AutosolveFixCountCap_Decrementer(t *testing.T) {
 		t.Fatalf("expected exactly 2 fives remaining in row 0 after hitting the maxFixes=5 cap, got %d", count5)
 	}
 }
+
+// TestMutation_DailyHandler_PuzzleIndexIsNonZeroFromLoader kills the branch/if
+// mutant that empties `puzzleIndex = loader.GetDailyPuzzle(...)` in dailyHandler,
+// leaving puzzle_index stuck at 0. A loader is built whose puzzle count makes
+// today's daily index deterministically non-zero, so the response must echo that
+// exact non-zero index; the mutant would return 0.
+func TestMutation_DailyHandler_PuzzleIndexIsNonZeroFromLoader(t *testing.T) {
+	original := puzzles.Global()
+	defer puzzles.SetGlobal(original)
+
+	var loader *puzzles.Loader
+	var expected int
+	for n := 3; n <= 300; n++ {
+		reps := make([]puzzles.CompactPuzzle, 0, n)
+		for i := 0; i < n; i++ {
+			reps = append(reps, testPuzzles[0])
+		}
+		cand := puzzles.NewLoaderFromPuzzles(reps)
+		_, _, idx, err := cand.GetDailyPuzzle(time.Now(), "medium")
+		if err == nil && idx != 0 {
+			loader = cand
+			expected = idx
+			break
+		}
+	}
+	if loader == nil {
+		t.Fatal("could not build a loader whose daily index is non-zero for today")
+	}
+	puzzles.SetGlobal(loader)
+
+	router := setupRouter()
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/daily", nil)
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", w.Code, w.Body.String())
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	got, _ := resp["puzzle_index"].(float64)
+	if int(got) != expected {
+		t.Fatalf("expected puzzle_index=%d (non-zero, from loader), got %v; the puzzleIndex assignment was dropped", expected, int(got))
+	}
+}
+
+// TestMutation_CustomValidate_StopsAfterOutOfRangeGiven kills the branch/if
+// mutant that empties the `if !requireBoardValues { return }` guard in
+// customValidateHandler. With the return intact the response body is exactly the
+// out-of-range validation error. Without it, the handler keeps running and
+// appends the downstream "need at least 17 givens" response, which this test
+// asserts is absent.
+func TestMutation_CustomValidate_StopsAfterOutOfRangeGiven(t *testing.T) {
+	router := setupRouter()
+	givens := make([]int, 81)
+	givens[0] = 50 // out of legal range 0-9
+
+	body, _ := json.Marshal(map[string]interface{}{"givens": givens, "device_id": "dev-1"})
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/custom/validate", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for out-of-range given, got %d body=%s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "out of range") {
+		t.Fatalf("expected out-of-range error body, got %q", w.Body.String())
+	}
+	if strings.Contains(w.Body.String(), "need at least") {
+		t.Fatalf("handler continued past requireBoardValues; the guard return was dropped: %q", w.Body.String())
+	}
+}
+
+// TestMutation_FindPracticePuzzle_ContinuesPastLoaderError kills the loop/break
+// mutant that turns the loader-error `continue` into `break`. The single puzzle
+// has ONLY its extreme ("x") difficulty populated, so GetPuzzle for the earlier
+// "medium" difficulty errors. The scanner must continue to the extreme
+// difficulty (which exhibits x-wing); a break would abandon the index and, with
+// one puzzle, never reach the match.
+func TestMutation_FindPracticePuzzle_ContinuesPastLoaderError(t *testing.T) {
+	loader := puzzles.NewLoaderFromPuzzles([]puzzles.CompactPuzzle{
+		{S: testPuzzles[0].S, G: map[string][]int{"x": testPuzzles[0].G["x"]}},
+	})
+	solver := human.NewSolver()
+	_, _, diff, ok := findPracticePuzzle(loader, solver, "x-wing", []string{"medium", "extreme"}, loader.Count(), 5)
+	if !ok {
+		t.Fatal("expected x-wing found at extreme after skipping the erroring medium difficulty; loader-error branch broke instead of continued")
+	}
+	if diff != "extreme" {
+		t.Fatalf("expected match at extreme difficulty, got %q", diff)
+	}
+}
+
+// TestMutation_FindPracticePuzzle_ContinuesPastUnsolvedDifficulty kills the
+// loop/break mutant that turns the status!=completed `continue` into `break`.
+// The single puzzle's "medium" difficulty carries only 2 givens (the human
+// solver stalls, status != completed) while its extreme ("x") difficulty
+// exhibits x-wing. The scanner must continue past the unsolved medium to the
+// extreme match; a break would abandon the index before reaching it.
+func TestMutation_FindPracticePuzzle_ContinuesPastUnsolvedDifficulty(t *testing.T) {
+	loader := puzzles.NewLoaderFromPuzzles([]puzzles.CompactPuzzle{
+		{S: testPuzzles[0].S, G: map[string][]int{
+			"m": {0, 1},
+			"x": testPuzzles[0].G["x"],
+		}},
+	})
+	solver := human.NewSolver()
+	_, _, diff, ok := findPracticePuzzle(loader, solver, "x-wing", []string{"medium", "extreme"}, loader.Count(), 5)
+	if !ok {
+		t.Fatal("expected x-wing found at extreme after skipping the unsolved medium difficulty; status!=completed branch broke instead of continued")
+	}
+	if diff != "extreme" {
+		t.Fatalf("expected match at extreme difficulty, got %q", diff)
+	}
+}
+
+// TestMutation_SolveAll_Step2FixCountStartsAtZero kills both numeric mutants on
+// solveAllHandler's STEP 2 call `runAutosolveLoop(..., nil, 0)`: the incrementer
+// (0 -> 1) and the decrementer (0 -> -1). The board carries no direct conflicts
+// (so STEP 2 is taken) but 10 attributable user errors, more than the maxFixes=5
+// cap. Starting fixCount at 0, the loop emits exactly 5 fix-error moves before
+// the cap; seeding it at 1 caps at 4, and at -1 caps at 6. Pinning the count to
+// exactly 5 fails on either mutant.
+func TestMutation_SolveAll_Step2FixCountStartsAtZero(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	board := []int{5, 0, 6, 0, 0, 2, 0, 0, 8, 0, 8, 0, 9, 0, 3, 4, 5, 6, 0, 7, 4, 5, 0, 0, 1, 2, 0, 0, 0, 0, 0, 9, 6, 0, 4, 2, 4, 5, 9, 2, 0, 1, 6, 0, 7, 8, 0, 3, 4, 7, 0, 9, 1, 0, 2, 0, 0, 0, 1, 8, 3, 7, 4, 9, 1, 8, 3, 6, 5, 0, 0, 0, 7, 4, 5, 0, 0, 0, 0, 6, 1}
+	givens := []int{0, 0, 0, 0, 0, 2, 0, 0, 8, 0, 0, 0, 9, 0, 3, 4, 5, 6, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 9, 6, 0, 4, 0, 4, 5, 9, 2, 0, 1, 6, 0, 7, 8, 0, 0, 4, 7, 0, 9, 1, 0, 2, 0, 0, 0, 1, 8, 3, 0, 4, 9, 1, 8, 3, 6, 0, 0, 0, 0, 0, 4, 5, 0, 0, 0, 0, 6, 1}
+
+	code, resp := postSolveAll(t, router, map[string]interface{}{
+		"token":  token,
+		"board":  board,
+		"givens": givens,
+	})
+	if code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%v", code, resp)
+	}
+
+	techs := solveAllTechniques(resp)
+	fixErrors := 0
+	for _, tc := range techs {
+		if tc == "fix-error" {
+			fixErrors++
+		}
+	}
+	if fixErrors != 5 {
+		t.Fatalf("expected exactly 5 fix-error moves (maxFixes cap from fixCount=0), got %d; sequence=%v", fixErrors, techs)
+	}
+}
+
+// TestMutation_CreateToken_ReturnsErrorOnUnmarshalableSession kills the branch/if
+// mutant that empties createToken's `if err != nil { return "", err }` guard.
+// json.Marshal fails when a time.Time year falls outside [0,9999], so a session
+// whose ExpiresAt is year 10000 makes marshaling fail. createToken must surface
+// the error and return an empty token; the mutant would fall through and return a
+// bogus token with a nil error.
+func TestMutation_CreateToken_ReturnsErrorOnUnmarshalableSession(t *testing.T) {
+	session := SessionToken{
+		DeviceID:  "dev-1",
+		ExpiresAt: time.Date(10000, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	tok, err := createToken("secret", session)
+	if err == nil {
+		t.Fatalf("expected an error for an unmarshalable session time, got token=%q with nil error", tok)
+	}
+	if tok != "" {
+		t.Fatalf("expected empty token on marshal error, got %q", tok)
+	}
+}

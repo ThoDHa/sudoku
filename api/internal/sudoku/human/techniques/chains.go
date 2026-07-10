@@ -157,6 +157,8 @@ func DetectXChain(b BoardInterface) *core.Move {
 		// Build conjugate pair graph
 		conjugates := buildConjugateGraph(b, digit)
 		if len(conjugates) == 0 {
+			// redundant guard; ranging the empty conjugates map below is already a no-op
+			// mutator-disable-next-line branch/if
 			continue
 		}
 
@@ -405,6 +407,8 @@ func findXYChainFrom(b BoardInterface, start int, adj map[int][]struct {
 			// Extend chain
 			for _, neighbor := range adj[n.cell] {
 				if visited[neighbor.cell] {
+					// dropping the guard only re-queues visited nodes, which are discarded on pop
+					// mutator-disable-next-line branch/if
 					continue
 				}
 				// The shared candidate must be the current endCand
@@ -415,6 +419,8 @@ func findXYChainFrom(b BoardInterface, start int, adj map[int][]struct {
 				// New end candidate is the other candidate of the neighbor cell
 				neighborCands := b.GetCandidatesAt(neighbor.cell).ToSlice()
 				if len(neighborCands) != 2 {
+					// dead guard; adj holds only bivalue cells, so neighborCands always has length 2
+					// mutator-disable-next-line loop/break
 					continue
 				}
 				newEndCand := neighborCands[0]
@@ -455,6 +461,8 @@ func DetectWWing(b BoardInterface) *core.Move {
 	}
 
 	// Look for pairs with same candidates
+	// i<=len is harmless; the inner j-loop guard prevents any bivalue[i] access at i==len
+	// mutator-disable-next-line expression/comparison
 	for i := 0; i < len(bivalue); i++ {
 		for j := i + 1; j < len(bivalue); j++ {
 			bv1, bv2 := bivalue[i], bivalue[j]
@@ -489,6 +497,8 @@ func DetectWWing(b BoardInterface) *core.Move {
 						}
 
 						// Check if one cell sees bv1 and the other sees bv2
+						// link2's -1 init is dead; link1 (not link2) gates the branch and both are reassigned together before use
+						// mutator-disable-next-line numbers/decrementer
 						link1, link2 := -1, -1
 						if ArePeers(cells[0], bv1.idx) && ArePeers(cells[1], bv2.idx) {
 							link1, link2 = cells[0], cells[1]
@@ -577,7 +587,11 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 			rowCount := make(map[int]int)
 			colCount := make(map[int]int)
 			for _, pos := range positions {
+				// rowCount is a dead store, never read below
+				// mutator-disable-next-line arithmetic/base
 				rowCount[pos/9]++
+				// colCount is a dead store, never read below
+				// mutator-disable-next-line numbers/incrementer
 				colCount[pos%9]++
 			}
 

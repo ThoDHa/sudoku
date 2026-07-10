@@ -265,7 +265,10 @@ func IntersectInts(a, b []int) []int {
 
 // Combinations generates all k-element combinations of slice
 func Combinations(slice []int, k int) [][]int {
-	// mutator-disable-next-line expression/remove: the k>len(slice) guard - combinationsHelper returns nil when the loop bound len(slice)-(k-len(current)) goes negative, so the guard is redundant
+	// The k>len(slice) guard is redundant: combinationsHelper returns nil when its
+	// loop bound len(slice)-(k-len(current)) goes negative, which is exactly the
+	// k>len(slice) case, so removing the guard yields the same nil.
+	// mutator-disable-next-line expression/remove
 	if k <= 0 || k > len(slice) {
 		return nil
 	}
@@ -301,7 +304,10 @@ func MakeElimination(cell, digit int) core.Candidate {
 
 // DedupeEliminations removes duplicate eliminations
 func DedupeEliminations(elims []core.Candidate) []core.Candidate {
-	// mutator-disable-next-line expression/comparison,numbers/decrementer: the len<=1 fast path - dedupe loop on 0 or 1 entries produces the same content (only nil-vs-empty identity differs, unobserved by callers)
+	// Decrementing the len<=1 fast path to len<=0 is unobservable: on a single
+	// entry the dedupe loop below produces a slice with identical content, only a
+	// different backing array, which no caller inspects.
+	// mutator-disable-next-line numbers/decrementer
 	if len(elims) <= 1 {
 		return elims
 	}

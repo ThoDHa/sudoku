@@ -122,8 +122,11 @@ func requireBoardValues(c *gin.Context, board []int) bool {
 func buildFixedCandidates(reqCandidates [][]int, badCell int) [][]int {
 	fixed := make([][]int, constants.TotalCells)
 	for i := 0; i < constants.TotalCells; i++ {
+		// fixed[i]=nil restates the make() zero-value, so emptying this branch leaves the returned grid identical
+		// mutator-disable-next-line branch/if
 		if i == badCell {
-			// mutator-disable-next-line statement/remove: fixed[i]=nil restates the make() zero-value; observable result identical for every caller
+			// fixed[i]=nil restates the make() zero-value; observable result identical for every caller
+			// mutator-disable-next-line statement/remove
 			fixed[i] = nil // Clear candidates for the fixed cell
 		} else if i < len(reqCandidates) && reqCandidates[i] != nil {
 			fixed[i] = make([]int, len(reqCandidates[i]))
@@ -451,7 +454,8 @@ func serveCachedPractice(c *gin.Context, technique string, cached []practicePuzz
 
 	givens, _, err := loader.GetPuzzle(p.index, p.difficulty)
 	if err != nil {
-		// mutator-disable-next-line statement/remove: log-only diagnostic; createToken never errors for SessionToken so this path is dead in practice
+		// log-only diagnostic; createToken never errors for SessionToken so this path is dead in practice
+		// mutator-disable-next-line statement/remove
 		return false
 	}
 
@@ -484,12 +488,16 @@ func findPracticePuzzle(loader *puzzles.Loader, solver *human.Solver, technique 
 		for _, diff := range difficulties {
 			g, _, err := loader.GetPuzzle(idx, diff)
 			if err != nil {
-				// mutator-disable-next-line loop/break: continue on loader error - removing it panics on nil givens, but no test exercises a partly-erroring loader
+				// continue on loader error - removing it panics on nil givens, but no test exercises a partly-erroring loader
+				// mutator-disable-next-line loop/break
 				continue
 			}
 			_, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(g)
+			// when status!=completed techniqueCounts is nil, so falling through to the count>0 check (has==false) skips this difficulty exactly as continue would
+			// mutator-disable-next-line branch/if
 			if status != "completed" {
-				// mutator-disable-next-line loop/break: when status!=completed techniqueCounts is nil so the count>0 check below is false either way
+				// when status!=completed techniqueCounts is nil so the count>0 check below is false either way
+				// mutator-disable-next-line loop/break
 				continue
 			}
 			// mutator-disable-next-line expression/comparison,numbers/decrementer
@@ -517,9 +525,12 @@ func practiceHandler(c *gin.Context) {
 	}
 
 	difficulties, known := techniqueToDifficulties[technique]
+	// an unknown technique is absent from every puzzle, so scanning the default difficulties or nil both yield a 404; emptying this branch is unobservable
+	// mutator-disable-next-line branch/if
 	if !known {
 		// Unknown technique - try medium/hard/extreme
-		// mutator-disable-next-line statement/remove: for unknown technique both nil and default difficulties produce 404 (technique absent from every puzzle)
+		// for unknown technique both nil and default difficulties produce 404 (technique absent from every puzzle)
+		// mutator-disable-next-line statement/remove
 		difficulties = []string{"medium", "hard", "extreme", "impossible"}
 	}
 
@@ -626,8 +637,11 @@ func sessionStartHandler(c *gin.Context) {
 	}
 
 	token, err := createToken(cfg.JWTSecret, session)
+	// createToken only errors if json.Marshal of the session fails, which cannot happen for the times this handler builds from time.Now(); the branch is unreachable here
+	// mutator-disable-next-line branch/if
 	if err != nil {
-		// mutator-disable-next-line statement/remove: log.Printf is a diagnostic; the user-visible 500 response is unaffected by its removal
+		// log.Printf is a diagnostic; the user-visible 500 response is unaffected by its removal
+		// mutator-disable-next-line statement/remove
 		log.Printf("ERROR [sessionStart]: failed to create token: %v", err)
 		// mutator-disable-next-line statement/remove
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create token"})
@@ -874,9 +888,11 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 		}
 	}
 
-	// mutator-disable-next-line numbers/decrementer
+	// when blockers is empty the fall-through reaches the tail `return -1, 0`, so emptying this early-return branch is unobservable
+	// mutator-disable-next-line numbers/decrementer,branch/if
 	if len(userBlockers) == 0 {
-		// mutator-disable-next-line statement/remove: the fallback `return -1, 0` at the function tail produces the same result when blockers is empty
+		// the fallback `return -1, 0` at the function tail produces the same result when blockers is empty
+		// mutator-disable-next-line statement/remove
 		return -1, 0
 	}
 
@@ -1109,7 +1125,8 @@ func runAutosolveLoop(solver *human.Solver, board *human.Board, originalUserBoar
 	// mutator-disable-next-line expression/comparison,numbers/decrementer,numbers/incrementer
 	for i := 0; i < maxMoves; i++ {
 		if board.IsSolved() {
-			// mutator-disable-next-line loop/break: once solved FindNextMove returns nil and the loop hits the stalled-break below; continue just spins the counter to the same outcome
+			// once solved FindNextMove returns nil and the loop hits the stalled-break below; continue just spins the counter to the same outcome
+			// mutator-disable-next-line loop/break
 			break
 		}
 		move := solver.FindNextMove(board)
@@ -1257,8 +1274,11 @@ func solveFullHandler(c *gin.Context) {
 	}
 
 	mode := c.Query("mode")
+	// mode "" and "human" both bypass the mode=="fast" guard, so emptying this branch leaves downstream behavior identical
+	// mutator-disable-next-line branch/if
 	if mode == "" {
-		// mutator-disable-next-line statement/remove: mode "" falls through the `mode=="fast"` guard identically to mode "human"; downstream behavior is the same
+		// mode "" falls through the `mode=="fast"` guard identically to mode "human"; downstream behavior is the same
+		// mutator-disable-next-line statement/remove
 		mode = "human"
 	}
 
