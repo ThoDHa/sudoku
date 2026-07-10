@@ -81,10 +81,15 @@ test-coverage-verbose:
 	$(GO) test -v -coverprofile=coverage.out -covermode=atomic ./...
 	$(GO) tool cover -func=coverage.out
 
-# Per-package coverage floors. Kept below measured coverage to absorb minor
-# Go-version / test-ordering variance; see COVERAGE.md for the full policy.
-TECHNIQUES_COVERAGE_FLOOR := 85
-TRANSPORT_HTTP_COVERAGE_FLOOR := 95
+# Per-package coverage floors. Kept just below measured coverage to absorb minor
+# Go-version / test-ordering variance; see COVERAGE.md for the full policy. COV-1
+# drove every gated package to an honest ceiling (measured: dp 99.4%, human 100%,
+# techniques 99.1%, transport/http 99.1%), with the residual sub-100 being
+# genuinely unreachable defensive code documented in COVERAGE.md. Floors sit at 99.
+DP_COVERAGE_FLOOR := 99
+HUMAN_COVERAGE_FLOOR := 99
+TECHNIQUES_COVERAGE_FLOOR := 99
+TRANSPORT_HTTP_COVERAGE_FLOOR := 99
 
 # Enforce per-package coverage floors. Runs `go test -cover` per gated package,
 # parses the reported percentage, and exits non-zero on breach. CI invokes this
@@ -113,6 +118,8 @@ coverage-gate:
 			exit 1; \
 		fi; \
 	}; \
+	check_pkg ./internal/sudoku/dp $(DP_COVERAGE_FLOOR); \
+	check_pkg ./internal/sudoku/human $(HUMAN_COVERAGE_FLOOR); \
 	check_pkg ./internal/sudoku/human/techniques $(TECHNIQUES_COVERAGE_FLOOR); \
 	check_pkg ./internal/transport/http $(TRANSPORT_HTTP_COVERAGE_FLOOR); \
 	echo "coverage-gate: all gated packages met their floors."

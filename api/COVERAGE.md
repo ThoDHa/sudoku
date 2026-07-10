@@ -23,27 +23,37 @@ own thresholds in `frontend/vite.config.ts`.
 
 | Package | Floor | Measured baseline | Headroom |
 |---------|-------|-------------------|----------|
-| `./internal/sudoku/human/techniques` | 85% | 93.3% | 8.3pp |
-| `./internal/transport/http` | 95% | 97.4% | 2.4pp |
+| `./internal/sudoku/dp` | 99% | 99.4% | 0.4pp |
+| `./internal/sudoku/human` | 99% | 100.0% | 1.0pp |
+| `./internal/sudoku/human/techniques` | 99% | 99.1% | 0.1pp |
+| `./internal/transport/http` | 99% | 99.1% | 0.1pp |
 
 Floors are encoded as Make variables at the top of the `coverage-gate` target
-in `api/Makefile` (`TECHNIQUES_COVERAGE_FLOOR`, `TRANSPORT_HTTP_COVERAGE_FLOOR`).
+in `api/Makefile` (`DP_COVERAGE_FLOOR`, `HUMAN_COVERAGE_FLOOR`,
+`TECHNIQUES_COVERAGE_FLOOR`, `TRANSPORT_HTTP_COVERAGE_FLOOR`).
 
-### Why the floors sit below the measured baselines
+### Why the floors sit just below the measured baselines
 
-Coverage percentages fluctuate slightly across Go versions, test ordering, and
-platforms. Setting a floor exactly at the measured value would flap: a 0.1pp
-drift on a toolchain upgrade would fail the build for no real regression. The
-floors sit a few percentage points below the measured baseline to
-absorb this variance while still catching genuine regressions. This mirrors the
-frontend philosophy in `frontend/vite.config.ts`, where floors sit about 4pp
-below measured coverage.
+COV-1 drove every gated package to an honest ceiling: `human` reaches a full
+100%, `dp` 99.4%, `techniques` 99.1%, and `transport/http` 99.1%. The residual
+sub-100 in each of the latter three is genuinely unreachable defensive code, not
+a testing gap: `len(...) == 0` guards behind invariants that guarantee
+non-empty slices, bivalue-mask length checks that are always exactly 2,
+ascending-index swaps that never fire, `json.Marshal` error paths on
+all-string structs that cannot fail, and a greedy-carve floor `break` that
+empirical probing never reaches. These are conceded honestly rather than
+covered with contrived tests or by deleting the guards.
 
-The `transport/http` floor is a round 95%, a couple of points below the
-package's measured 97.4%. It supersedes the historical `>= 80%` acceptance
-contract: coverage has since climbed well above that minimum, so the floor was
-raised to reflect and protect the real coverage rather than a long-obsolete
-threshold, while keeping ~2.4pp of headroom against cross-platform variance.
+Coverage percentages can still drift a fraction across Go versions, test
+ordering, and platforms, so the floors sit one point below the measured
+baseline (99% vs. the 99.1-100% measured). This absorbs that variance while
+still catching genuine regressions, mirroring the frontend philosophy in
+`frontend/vite.config.ts`, whose deterministic vitest coverage is now pinned at
+a hard 100% contract.
+
+`dp` and `human` are newly gated by COV-1; `techniques` (was 85%) and
+`transport/http` (was 95%) had their floors raised to reflect and protect the
+coverage the package now genuinely carries.
 
 ## How to read a failure
 
