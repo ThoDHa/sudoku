@@ -2,7 +2,8 @@ package techniques
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -28,10 +29,8 @@ func DetectXWing(b BoardInterface) *core.Move {
 // possible along those perpendicular lines.
 func findXWingInAxis(b BoardInterface, digit int, byRow bool) *core.Move {
 	lineToPerps := xwingLinePositions(b, digit, byRow)
-	var lines []int
-	for l := range lineToPerps {
-		lines = append(lines, l)
-	}
+	// Sorted so the first X-Wing found is deterministic (Go randomizes map range).
+	lines := slices.Sorted(maps.Keys(lineToPerps))
 	for i := 0; i < len(lines); i++ {
 		for j := i + 1; j < len(lines); j++ {
 			l1, l2 := lines[i], lines[j]
@@ -335,12 +334,8 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 			continue
 		}
 
-		// Get sorted list of starting cells for deterministic iteration
-		var startCells []int
-		for cell := range conjugates {
-			startCells = append(startCells, cell)
-		}
-		sort.Ints(startCells)
+		// Sorted list of starting cells for deterministic iteration.
+		startCells := slices.Sorted(maps.Keys(conjugates))
 
 		// Color each connected component separately
 		colors := make(map[int]int) // cell -> color (1 or 2)

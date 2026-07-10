@@ -2,6 +2,8 @@ package techniques
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -103,10 +105,11 @@ func findHiddenPairInUnit(b BoardInterface, indices []int, unitType string, unit
 		}
 	}
 
-	// Find digits that appear in exactly 2 cells
+	// Find digits that appear in exactly 2 cells, in sorted order so the
+	// hidden pair returned is deterministic across runs.
 	var twoDigits []int
-	for digit, positions := range digitPositions {
-		if len(positions) == 2 {
+	for _, digit := range slices.Sorted(maps.Keys(digitPositions)) {
+		if len(digitPositions[digit]) == 2 {
 			twoDigits = append(twoDigits, digit)
 		}
 	}

@@ -2,6 +2,8 @@ package techniques
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -247,12 +249,14 @@ func findCommonElimination(b BoardInterface, digit int, positions []int, results
 		return nil
 	}
 
-	// Collect all eliminations from the first result
-	for idx, digits := range results[0].eliminations {
+	// Collect all eliminations from the first result. Iterate in sorted key
+	// order so the first common elimination returned is deterministic across runs.
+	elims := results[0].eliminations
+	for _, idx := range slices.Sorted(maps.Keys(elims)) {
 		if isStartPosition(idx, positions) {
 			continue
 		}
-		for elimDigit := range digits {
+		for _, elimDigit := range slices.Sorted(maps.Keys(elims[idx])) {
 			if !b.GetCandidatesAt(idx).Has(elimDigit) {
 				continue
 			}

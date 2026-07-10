@@ -2,7 +2,8 @@ package techniques
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -76,9 +77,11 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 		}
 	}
 
-	// Add strong link connections: same digit, conjugate pair in unit
-	for digit, pairs := range conjugatePairs {
-		for _, pair := range pairs {
+	// Add strong link connections: same digit, conjugate pair in unit.
+	// Iterate digits in sorted order so neighbour lists are built in a
+	// reproducible order across runs (Go randomizes map iteration otherwise).
+	for _, digit := range slices.Sorted(maps.Keys(conjugatePairs)) {
+		for _, pair := range conjugatePairs[digit] {
 			p1 := candidatePair{pair[0], digit}
 			p2 := candidatePair{pair[1], digit}
 			adj[p1.key()] = append(adj[p1.key()], p2)
@@ -90,16 +93,8 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 		return nil
 	}
 
-	// Get all starting points sorted for deterministic behavior
-	var startKeys []int
-	seenKeys := make(map[int]bool)
-	for key := range adj {
-		if !seenKeys[key] {
-			startKeys = append(startKeys, key)
-			seenKeys[key] = true
-		}
-	}
-	sort.Ints(startKeys)
+	// Iterate starting points in sorted order for deterministic coloring.
+	startKeys := slices.Sorted(maps.Keys(adj))
 
 	// Color each connected component
 	colors := make(map[int]int) // pair.key() -> color (1 or 2)
@@ -229,7 +224,8 @@ func checkSameCellContradiction(b BoardInterface, colorToCheck, otherColor []can
 		cellPairs[cp.cell] = append(cellPairs[cp.cell], cp)
 	}
 
-	for cell, pairs := range cellPairs {
+	for _, cell := range slices.Sorted(maps.Keys(cellPairs)) {
+		pairs := cellPairs[cell]
 		if len(pairs) >= 2 {
 			// Contradiction: two candidates of the same color in the same cell
 			// This color is false, eliminate all candidates of this color
@@ -270,7 +266,8 @@ func checkSameUnitContradiction(b BoardInterface, colorToCheck, otherColor []can
 		digitPairs[cp.digit] = append(digitPairs[cp.digit], cp)
 	}
 
-	for digit, pairs := range digitPairs {
+	for _, digit := range slices.Sorted(maps.Keys(digitPairs)) {
+		pairs := digitPairs[digit]
 		// Check if any two cells with this digit see each other
 		for i := 0; i < len(pairs); i++ {
 			for j := i + 1; j < len(pairs); j++ {
@@ -457,8 +454,9 @@ func checkUncoloredInBicoloredCell(b BoardInterface, color1, color2 []candidateP
 		color2Cells[cp.cell] = true
 	}
 
-	// Check each cell that has both colors
-	for cell := range color1Cells {
+	// Check each cell that has both colors, in sorted order so the first
+	// eliminated candidate is chosen deterministically across runs.
+	for _, cell := range slices.Sorted(maps.Keys(color1Cells)) {
 		if !color2Cells[cell] {
 			continue
 		}

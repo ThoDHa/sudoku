@@ -2,6 +2,8 @@ package techniques
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -43,10 +45,8 @@ func detectSwordfishInCols(b BoardInterface, digit int) *core.Move {
 // outside the three source lines.
 func detectSwordfishInAxis(b BoardInterface, digit int, byRow bool) *core.Move {
 	lineToPerps := swordfishLinePositions(b, digit, byRow)
-	var lines []int
-	for l := range lineToPerps {
-		lines = append(lines, l)
-	}
+	// Sorted so the first Swordfish found is deterministic (Go randomizes map range).
+	lines := slices.Sorted(maps.Keys(lineToPerps))
 	if len(lines) < 3 {
 		return nil
 	}
@@ -106,10 +106,8 @@ func unionInts(slices ...[]int) map[int]bool {
 // lines whose perpendicular projections cover exactly perpSet.
 func buildSwordfishMove(b BoardInterface, digit, l1, l2, l3 int, lineToPerps map[int][]int, perpSet map[int]bool, byRow bool) *core.Move {
 	lines := []int{l1, l2, l3}
-	var perps []int
-	for p := range perpSet {
-		perps = append(perps, p)
-	}
+	// Sorted so the explanation text and elimination order are deterministic.
+	perps := slices.Sorted(maps.Keys(perpSet))
 	eliminations := collectSwordfishElims(b, digit, lines, perps, byRow)
 	if len(eliminations) == 0 {
 		return nil

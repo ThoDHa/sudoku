@@ -2,6 +2,7 @@ package techniques
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 
 	"sudoku-api/internal/core"
@@ -226,25 +227,27 @@ func searchALSChain(b BoardInterface, allALS []ALS, adjRC map[int]map[int][]int,
 
 		// Don't extend beyond max length
 		if len(curr.path) >= maxLen {
-			// Equivalent-mutant rationale (loop/break, continue->break): break here would abandon
-			// the rest of the DFS stack when a maxed-out chain is popped. Whether a valid
-			// elimination lives earlier or later in the stack depends on Go map iteration order
-			// (for nextIdx, rcs := range adjRC[...] below), which is non-deterministic, so the
-			// mutant's divergence is flaky and cannot be asserted by a deterministic test.
-			// see equivalent-mutant rationale above
+			// Deferred test gap (loop/break, continue->break): break here would abandon
+			// the rest of the DFS stack when a maxed-out chain is popped. The sorted neighbour
+			// iteration below makes the divergence deterministic, but a kill still needs a board
+			// whose only firing chain is discovered after a length-maxLen state is popped, which
+			// no available fixture produces (see docs/mutation-equivalents/go-techniques.md).
 			// mutator-disable-next-line loop/break
 			continue
 		}
 
-		// Extend the chain
-		for nextIdx, rcs := range adjRC[currALSIdx] {
+		// Extend the chain. Iterate neighbours in a fixed sorted-key order so the
+		// DFS is reproducible across runs instead of following Go's randomized map
+		// order (the LIFO stack then pops them in a deterministic order).
+		neighbors := adjRC[currALSIdx]
+		for _, nextIdx := range slices.Sorted(maps.Keys(neighbors)) {
+			rcs := neighbors[nextIdx]
 			if curr.visited[nextIdx] {
-				// Equivalent-mutant rationale (loop/break, continue->break): break here would abandon
-				// the remaining (unvisited) neighbors on the first visited hit. Whether a visited
-				// neighbor appears before a productive one depends on Go map iteration order over
-				// adjRC[currALSIdx], which is non-deterministic, so the mutant's divergence
-				// is flaky and cannot be asserted by a deterministic test.
-				// see equivalent-mutant rationale above
+				// Deferred test gap (loop/break, continue->break): break here would abandon the
+				// remaining unvisited neighbours on the first already-visited hit. The sorted
+				// neighbour iteration makes the order deterministic, but a kill needs a board where
+				// a visited neighbour sorts before the only productive unvisited one, which no
+				// available fixture produces (see docs/mutation-equivalents/go-techniques.md).
 				// mutator-disable-next-line loop/break
 				continue
 			}

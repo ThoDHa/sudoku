@@ -2,6 +2,8 @@ package techniques
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -40,10 +42,8 @@ func detectJellyfishInDirection(b BoardInterface, digit int, dir UnitType) *core
 		}
 	}
 
-	var units []int
-	for unit := range unitPositions {
-		units = append(units, unit)
-	}
+	// Sorted for deterministic iteration order (Go randomizes map range).
+	units := slices.Sorted(maps.Keys(unitPositions))
 
 	if len(units) < 4 {
 		return nil
@@ -75,10 +75,8 @@ func detectJellyfishInDirection(b BoardInterface, digit int, dir UnitType) *core
 						continue
 					}
 
-					var secondaries []int
-					for s := range secondarySet {
-						secondaries = append(secondaries, s)
-					}
+					// Sorted so the returned Eliminations array order is deterministic.
+					secondaries := slices.Sorted(maps.Keys(secondarySet))
 
 					// Find eliminations in secondary lines outside the 4 primary units
 					var eliminations []core.Candidate
@@ -162,8 +160,9 @@ func DetectXChain(b BoardInterface) *core.Move {
 			continue
 		}
 
-		// Find chains of length 4+ (even length required for elimination)
-		for start := range conjugates {
+		// Find chains of length 4+ (even length required for elimination).
+		// Sorted so the first chain found and returned is deterministic.
+		for _, start := range slices.Sorted(maps.Keys(conjugates)) {
 			if move := findXChainFrom(b, digit, start, conjugates); move != nil {
 				return move
 			}

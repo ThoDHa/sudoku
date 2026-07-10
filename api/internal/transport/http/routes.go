@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"hash/fnv"
 	"log"
+	"maps"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -1340,10 +1342,8 @@ func validateBoardHandler(c *gin.Context) {
 			conflictCells[conflict.Cell1] = true
 			conflictCells[conflict.Cell2] = true
 		}
-		cellList := make([]int, 0, len(conflictCells))
-		for cell := range conflictCells {
-			cellList = append(cellList, cell)
-		}
+		// Sorted so the JSON conflictCells array order is deterministic across runs.
+		cellList := slices.Sorted(maps.Keys(conflictCells))
 
 		c.JSON(http.StatusOK, gin.H{
 			"valid":         false,

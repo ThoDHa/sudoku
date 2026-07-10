@@ -48,16 +48,23 @@ a specific shape, which could not be built and verified without running
 go-mutesting (out of scope for this pass). They are recorded here so a future
 pass can target them.
 
-- `als_chains.go:171` `numbers/decrementer` (chain `maxLen` 6 -> 5): needs a
+MUT-3 note: the DFS now visits `adjRC` neighbours in sorted index order
+(`slices.Sorted(maps.Keys(...))`), so every entry below is deterministic. That
+removes the earlier "cannot be killed because iteration is random" objection:
+each mutant is now stably killed or stably escaped, and the ones below stably
+escape only because no available fixture forces the required chain shape.
+
+- `als_chains.go:188` `numbers/decrementer` (chain `maxLen` 6 -> 5): needs a
   fixture whose only firing chain has length exactly 6. Length-3/4 chains fire
   under both bounds.
-- `als_chains.go:139` `loop/break` (adjacency build `continue` -> `break`):
+- `als_chains.go:155` `loop/break` (adjacency build `continue` -> `break`):
   every chain found by the original is also discoverable reversed, so the
   half-built (lower-triangular) adjacency still yields the same elimination on
   the boards examined; a kill requires a non-monotonically-indexed unique chain.
-- `als_chains.go:200` `loop/break` (`maxLen` guard `continue` -> `break`): only
+- `als_chains.go:236` `loop/break` (`maxLen` guard `continue` -> `break`): only
   triggers when a length-`maxLen` state is popped before the firing chain; the
   constructible boards never reach `maxLen` before the chain is found.
-- `als_chains.go:206` `loop/break` (visited-neighbor `continue` -> `break`):
-  depends on Go map iteration order over `adjRC`, so the mutant is
-  non-deterministic and cannot be killed by a reliable deterministic test.
+- `als_chains.go:252` `loop/break` (visited-neighbor `continue` -> `break`): now
+  deterministic under sorted neighbour iteration; a kill needs a board where a
+  visited neighbour sorts before the only productive unvisited one, which no
+  available fixture produces.

@@ -2,6 +2,8 @@ package techniques
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -183,8 +185,10 @@ func findHiddenSubsetInUnit(b BoardInterface, subsetSize int, name string, indic
 			}
 		}
 	}
+	// Sorted so the subset combination tried first is deterministic across runs.
 	var smallDigits []int
-	for digit, positions := range digitPositions {
+	for _, digit := range slices.Sorted(maps.Keys(digitPositions)) {
+		positions := digitPositions[digit]
 		if len(positions) >= 2 && len(positions) <= subsetSize {
 			smallDigits = append(smallDigits, digit)
 		}
@@ -217,10 +221,8 @@ func tryHiddenSubset(b BoardInterface, subsetDigits []int, digitPositions map[in
 	if len(posUnion) != len(subsetDigits) {
 		return nil
 	}
-	cells := make([]int, 0, len(posUnion))
-	for idx := range posUnion {
-		cells = append(cells, idx)
-	}
+	// Sorted so the returned Eliminations and Targets arrays are deterministic.
+	cells := slices.Sorted(maps.Keys(posUnion))
 	digitSet := NewCandidates(subsetDigits)
 	var eliminations []core.Candidate
 	for _, idx := range cells {
