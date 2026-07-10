@@ -521,4 +521,20 @@ describe('dp-solver', () => {
       expect(isValid(result!)).toBe(true)
     })
   })
+
+  describe('findConflicts on shorter-than-81 grids', () => {
+    it('treats absent trailing cells as empty and still reports present conflicts', () => {
+      // A grid shorter than 81 leaves grid[idx] undefined for the absent indices,
+      // exercising the `grid[idx] ?? 0` empty-cell fallback.
+      const shortGrid = [5, 5]
+      const conflicts = findConflicts(shortGrid)
+      expect(conflicts).toHaveLength(1)
+      expect(conflicts[0]).toMatchObject({ cell1: 0, cell2: 1, value: 5, type: 'row' })
+    })
+
+    it('reports no conflicts when the present cells do not clash', () => {
+      const shortGrid = [1, 2, 3]
+      expect(findConflicts(shortGrid)).toEqual([])
+    })
+  })
 })

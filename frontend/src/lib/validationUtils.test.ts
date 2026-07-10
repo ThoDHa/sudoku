@@ -222,6 +222,14 @@ describe('validationUtils', () => {
       expect(duplicates.has(8)).toBe(true)
       expect(duplicates.size).toBe(3)
     })
+
+    it('should treat undefined cells as empty and report no duplicates', () => {
+      // Sparse board with undefined entries exercises the `board[idx] ?? 0` fallback;
+      // undefined cells are treated as empty, so no duplicates are found.
+      const sparseBoard: (number | undefined)[] = Array(81).fill(undefined)
+      // @ts-expect-error - Testing edge case with undefined values
+      expect(findDuplicates(sparseBoard).size).toBe(0)
+    })
   })
 
   describe('isValidSolution', () => {

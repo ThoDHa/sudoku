@@ -620,6 +620,25 @@ describe('useSudokuGame - undo()', () => {
     expect(result.current.isComplete).toBe(false)
   })
 
+  it('keeps isComplete true when undo restores a fully solved board', () => {
+    const nearlyComplete = createNearlyCompletePuzzle()
+    const { result } = renderHook(() => useSudokuGame({ initialBoard: nearlyComplete }))
+
+    // Complete the puzzle, then erase the final cell so the last recorded move,
+    // when undone, lands back on the fully solved board.
+    actPlace(result, 80, 9, false)
+    expect(result.current.isComplete).toBe(true)
+    actErase(result, 80)
+    expect(result.current.board[80]).toBe(0)
+
+    // Undo the erase: the board is complete and valid again, so handleUndo takes
+    // the branch that leaves completion untouched instead of resetting it.
+    actUndo(result)
+
+    expect(result.current.board[80]).toBe(9)
+    expect(result.current.isComplete).toBe(true)
+  })
+
   it('supports multiple undos', () => {
     const puzzle = createEmptyPuzzle()
     const { result } = renderGame(puzzle)

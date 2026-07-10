@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   isPortablePuzzle,
   buildPuzzleShareUrl,
@@ -23,6 +23,24 @@ function makeState(): { board: number[]; givens: number[]; candidates: number[][
   candidates[3] = [1, 2, 9] // a pencil-marked cell
   return { board, givens, candidates }
 }
+
+describe('getShareBaseUrl', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('strips the trailing slash when the deploy base path ends with one', () => {
+    // The default test BASE_URL is '/', so origin + '/' ends with a slash.
+    vi.stubEnv('BASE_URL', '/')
+    expect(getShareBaseUrl()).toBe(window.location.origin)
+    expect(getShareBaseUrl().endsWith('/')).toBe(false)
+  })
+
+  it('leaves the base URL untouched when it has no trailing slash', () => {
+    vi.stubEnv('BASE_URL', '/app')
+    expect(getShareBaseUrl()).toBe(`${window.location.origin}/app`)
+  })
+})
 
 describe('isPortablePuzzle', () => {
   it('treats daily and homepage-practice seeds as portable', () => {
@@ -120,5 +138,21 @@ describe('buildStateShareUrl', () => {
     const parsed = new URL(url)
     expect(parsed.pathname).toContain('/c/')
     expect(parsed.searchParams.get('t')).toBe('30000')
+  })
+
+  it('omits the time query on the encoded /c/ link when no elapsed time is given', () => {
+    const { board, givens, candidates } = makeState()
+    const url = buildStateShareUrl({
+      isEncodedCustom: true,
+      seed: undefined,
+      difficulty: 'custom',
+      givens,
+      board,
+      candidates,
+    })
+    const parsed = new URL(url)
+    expect(parsed.pathname).toContain('/c/')
+    expect(parsed.searchParams.get('t')).toBeNull()
+    expect(url).not.toContain('?t=')
   })
 })

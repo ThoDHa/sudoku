@@ -74,7 +74,9 @@ export function useBackgroundManager(
       navigator.webdriver === true ||
       // Modern Playwright Chrome uses "Chrome/XXX" without explicit headless marker
       // but has webdriver enabled. Check for webdriver property existence.
+      /* v8 ignore start -- redundant automation probe: when webdriver is present in jsdom/browsers it is `=== true` and already caught above, so this final operand's truthy read is unreachable */
       ('webdriver' in navigator && (navigator as { webdriver?: unknown }).webdriver))
+  /* v8 ignore stop */
   // Stryker restore
 
   // In headless mode OR when visibilityState is 'visible', don't pause operations
@@ -91,11 +93,13 @@ export function useBackgroundManager(
       effectiveIsWindowBlurred ||
       forcePaused ||
       isInDeepPause ||
+      /* v8 ignore start -- redundant with isHidden above: this operand is only reached when the page is visible (isHidden false), so visibilityState is never 'hidden' here and the !forceResumed read is unreachable */
       // Stryker disable next-line ConditionalExpression,StringLiteral: redundant with
       // isHidden above: handleVisibilityChange sets isHidden=true in the same event that
       // sets visibilityState to 'hidden', so this operand is true only when isHidden is
       // already true and the OR result is unchanged by any mutation here
       (visibilityState === 'hidden' && !forceResumed))
+  /* v8 ignore stop */
 
   const handleVisibilityChange = useCallback(() => {
     const newVisibilityState = document.visibilityState as 'visible' | 'hidden'

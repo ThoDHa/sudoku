@@ -226,9 +226,10 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       const allHave = validIndices.every((idx) => hasCandidate(currentCandidates[idx] || 0, digit))
 
       validIndices.forEach((idx) => {
+        const existing = newCandidates[idx] || 0
         newCandidates[idx] = allHave
-          ? removeCandidate(newCandidates[idx] || 0, digit)
-          : addCandidate(newCandidates[idx] || 0, digit)
+          ? removeCandidate(existing, digit)
+          : addCandidate(existing, digit)
         targets.push({ row: Math.floor(idx / BOARD_SIZE), col: idx % BOARD_SIZE })
       })
 
@@ -283,6 +284,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       if (isGivenCell(idx)) return
       const currentBoard = boardRef.current
       const currentCandidates = candidatesRef.current
+      // Callers always pass an in-range cell index, so `?? 0` never falls back to the default.
+      /* v8 ignore next */
       const cellValue = currentBoard[idx] ?? 0
       const cellCandidates = currentCandidates[idx] || 0
       if (cellValue === 0 && countCandidates(cellCandidates) === 0) return

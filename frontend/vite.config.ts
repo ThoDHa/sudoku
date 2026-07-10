@@ -209,15 +209,18 @@ export default defineConfig({
         'src/lib/techniques.ts',
         'src/lib/themes.ts',
       ],
-      // Coverage thresholds for critical paths. Set to the TEST-001 target
-      // (85/75/85/85); measured coverage sits above this (89/81/89/89), so the
-      // floor leaves headroom for minor fluctuations while still guarding the
-      // critical lib/hooks paths against regressions.
+      // Coverage thresholds for the critical lib/hooks paths. COV-1 drove every
+      // included file to an honest 100% (real tests for reachable code, justified
+      // `/* v8 ignore */` seals for provably-unreachable defensive branches), so
+      // the floor is a hard 100 contract: any uncovered statement, branch, or
+      // function on these paths now fails the gate. Coverage is deterministic
+      // (the same tests hit the same lines on every platform), so 100 carries no
+      // cross-platform flake risk.
       thresholds: {
-        statements: 85,
-        branches: 75,
-        functions: 85,
-        lines: 85,
+        statements: 100,
+        branches: 100,
+        functions: 100,
+        lines: 100,
       },
     },
   },

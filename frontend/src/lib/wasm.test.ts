@@ -697,6 +697,39 @@ describe('wasm module', () => {
       // unloadWasm should abort the fetch
       expect(() => unloadWasm()).not.toThrow()
     })
+
+    it('skips deleting window.Go during unload when it is already absent', async () => {
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+      // @ts-expect-error - Force the false branch of the `if (window.Go)` guard
+      globalThis.window.Go = undefined
+
+      const { unloadWasm } = await import('./wasm')
+
+      expect(() => unloadWasm()).not.toThrow()
+      // SudokuWasm is still removed even though Go was already gone.
+      expect(globalThis.window.SudokuWasm).toBeUndefined()
+    })
+  })
+
+  // ==================== Load Error Handling ====================
+
+  describe('loadWasm() error wrapping', () => {
+    it('wraps a non-Error rejection into an Error and stores it as the load error', async () => {
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+      // Reject the WASM fetch with a bare string (not an Error instance) so the
+      // `error instanceof Error ? error : new Error(String(error))` false branch runs.
+      globalThis.fetch = vi.fn().mockRejectedValue('network-blew-up')
+
+      const { loadWasm, getWasmError, hasWasmError } = await import('./wasm')
+
+      await expect(loadWasm()).rejects.toThrow('network-blew-up')
+      expect(hasWasmError()).toBe(true)
+      const err = getWasmError()
+      expect(err).toBeInstanceOf(Error)
+      expect(err?.message).toBe('network-blew-up')
+    })
   })
 
   // ==================== API Wrapper Functions ====================

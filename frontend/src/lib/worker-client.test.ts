@@ -717,6 +717,29 @@ describe('worker-client advanced scenarios', () => {
       terminateWorker()
     })
 
+    it('reuses an already-initialized worker without re-initializing', async () => {
+      const { solveAll, initializeWorker, terminateWorker, isWorkerReady } = await import(
+        './worker-client'
+      )
+
+      // Initialize up front so the solveAll call takes the skip-init branch.
+      await initializeWorker()
+      expect(isWorkerReady()).toBe(true)
+
+      const cells = new Array(81).fill(0)
+      const candidates = new Array(81).fill([])
+      const givens = new Array(81).fill(0)
+
+      const result = await solveAll(cells, candidates, givens)
+
+      expect(isWorkerReady()).toBe(true)
+      expect(result).toHaveProperty('moves')
+      expect(result).toHaveProperty('solved')
+      expect(result).toHaveProperty('finalBoard')
+
+      terminateWorker()
+    })
+
     it('should return the result from worker', async () => {
       vi.resetModules()
 

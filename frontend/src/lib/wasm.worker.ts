@@ -225,10 +225,12 @@ async function initializeWasm(): Promise<void> {
       })
 
       // SudokuWasm is guaranteed to be defined after the Promise resolves
+      /* v8 ignore start -- unreachable defensive guard: the polling promise only resolves once SudokuWasm is truthy, so this can never throw */
       // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: this is a defensive guard that is unreachable when the polling promise resolves (SudokuWasm must be truthy for resolve() to have been called); the mutants are observationally equivalent
       if (!SudokuWasm) {
         throw new Error('SudokuWasm not available after initialization')
       }
+      /* v8 ignore stop */
       wasmApi = SudokuWasm
       // Stryker disable next-line BooleanLiteral: leaving isInitializing=true after success is harmless because the `if (wasmApi) return` guard at the top of initializeWasm short-circuits all subsequent callers
       isInitializing = false
@@ -265,10 +267,12 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         }
 
         // wasmApi is guaranteed after initializeWasm()
+        /* v8 ignore start -- unreachable defensive guard: initializeWasm either sets wasmApi or throws (caught by the outer try/catch), so wasmApi is always set once the await returns */
         // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: this defensive guard is unreachable in normal flow — initializeWasm either sets wasmApi or throws (caught by the outer onmessage try/catch), so after `await initializeWasm()` completes successfully wasmApi is always set. The mutants are observationally equivalent dead-code guards.
         if (!wasmApi) {
           throw new Error('WASM API not available after initialization')
         }
+        /* v8 ignore stop */
 
         const { cells, candidates, givens } = payload as FindNextMovePayload
         const result = wasmApi.findNextMove(cells, candidates, givens)
@@ -296,10 +300,12 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         }
 
         // wasmApi is guaranteed after initializeWasm()
+        /* v8 ignore start -- unreachable defensive guard: initializeWasm either sets wasmApi or throws (caught by the outer try/catch), so wasmApi is always set once the await returns */
         // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: this defensive guard is unreachable in normal flow — initializeWasm either sets wasmApi or throws (caught by the outer onmessage try/catch), so after `await initializeWasm()` completes successfully wasmApi is always set. The mutants are observationally equivalent dead-code guards.
         if (!wasmApi) {
           throw new Error('WASM API not available after initialization')
         }
+        /* v8 ignore stop */
 
         const { cells, candidates, givens } = payload as SolveAllPayload
         const result = wasmApi.solveAll(cells, candidates, givens)

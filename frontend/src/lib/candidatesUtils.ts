@@ -158,6 +158,9 @@ export const difference = (mask1: CandidateMask, mask2: CandidateMask): Candidat
 export const candidatesToArrays = (candidates: Uint16Array): number[][] => {
   const result: number[][] = []
   for (let i = 0; i < candidates.length; i++) {
+    // A Uint16Array yields a number for every in-range index, so the ?? 0 fallback
+    // is an unreachable defensive default.
+    /* v8 ignore next */
     result.push(getCandidatesArray(candidates[i] ?? 0))
   }
   return result
@@ -199,6 +202,9 @@ export const setsToMasks = (sets: Set<number>[]): Uint16Array => {
 export const masksToSets = (masks: Uint16Array): Set<number>[] => {
   const result: Set<number>[] = []
   for (let i = 0; i < masks.length; i++) {
+    // A Uint16Array yields a number for every in-range index, so the ?? 0 fallback
+    // is an unreachable defensive default.
+    /* v8 ignore next */
     result.push(new Set(getCandidatesArray(masks[i] ?? 0)))
   }
   return result

@@ -90,11 +90,13 @@ function resetIdleTimer(): void {
 
   // Set new timer to terminate worker after idle period
   idleTimeoutId = setTimeout(() => {
+    /* v8 ignore start -- the idle timer only fires while armed, which happens with no request in flight (sendRequest clears it first) and a live worker (terminateWorker clears it), so the guard's false branch is unreachable */
     // Stryker disable next-line ConditionalExpression,LogicalOperator: the idle timer is only armed when no request is in flight (sendRequest calls clearIdleTimer first), so pendingRequests.size is always 0 here; worker is also always set when the timer fires (terminateWorker clears the timer). All mutants on this line collapse to the same observable behavior.
     if (worker && pendingRequests.size === 0) {
       logger.debug('[WorkerClient] Idle timeout reached, terminating worker to save resources')
       terminateWorker()
     }
+    /* v8 ignore stop */
   }, IDLE_TIMEOUT_MS)
 }
 
@@ -268,10 +270,12 @@ export async function initializeWorker(): Promise<void> {
  * Send a request to the worker and wait for response
  */
 async function sendRequest(type: WorkerRequest['type'], payload: unknown): Promise<unknown> {
+  /* v8 ignore start -- unreachable defensive guard: every public entry point awaits initializeWorker() before calling sendRequest, so worker is always non-null here */
   // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: defensive guard; sendRequest is only reached after `if (!isInitialized || !worker) await initializeWorker()` in the public API, so worker is always non-null here. The mutants (skip the throw, empty the block, blank the message) are observationally equivalent because the block is unreachable in normal flow.
   if (!worker) {
     throw new Error('Worker not initialized')
   }
+  /* v8 ignore stop */
 
   // Capture worker reference after null check for use in Promise callback
   const workerRef = worker

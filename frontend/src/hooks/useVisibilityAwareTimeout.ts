@@ -83,10 +83,12 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
       const timeoutId = window.setTimeout(() => {
         activeTimeoutsRef.current.delete(timeoutId)
         // Only call if page is still visible
+        /* v8 ignore start -- defensive re-check: isHiddenRef.current is true only via handlers that also clear every pending timeout, so a firing callback always sees it false and the skip path is unreachable */
         // Stryker disable next-line ConditionalExpression: isHiddenRef.current is true only via handlers that also clear every pending timeout, so a firing callback always sees it false; forcing the guard true is observationally identical
         if (!isHiddenRef.current) {
           callback()
         }
+        /* v8 ignore stop */
       }, delay)
 
       activeTimeoutsRef.current.add(timeoutId)

@@ -316,6 +316,21 @@ describe('gameSettings', () => {
       )
     })
 
+    it('should skip a prefixed key whose stored value is null', () => {
+      // A key can be enumerated by localStorage.key() yet return null from
+      // getItem() if the value vanished between the two calls (a TOCTOU race
+      // across tabs). The `if (data)` guard must skip such an entry gracefully.
+      const gameState = createGameState({ savedAt: 1000 })
+      localStorageMock._setStore({
+        [`${prefix}ghost-game`]: JSON.stringify(gameState),
+      })
+      // Enumeration still sees the key, but its value reads back as null.
+      localStorageMock.getItem.mockReturnValue(null)
+
+      const games = getInProgressGames()
+      expect(games).toEqual([])
+    })
+
     it('should handle null key from localStorage.key()', () => {
       // Set up store but make key() return null for one index
       const gameState = createGameState({ savedAt: 1000 })

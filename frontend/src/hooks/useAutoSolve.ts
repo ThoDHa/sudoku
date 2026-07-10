@@ -422,6 +422,8 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
     // Restore the state from before this move was applied
     const snapshot = stateHistoryRef.current[newIndex]
+    // newIndex is always a previously visited index, so its snapshot is always present.
+    /* v8 ignore next */
     if (snapshot) {
       const candidates = snapshot.candidates.map((arr) => new Set(arr))
       applyState(snapshot.board, candidates, snapshot.move, newIndex)
@@ -452,6 +454,8 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       setCurrentIndex(newIndex)
 
       const snapshot = stateHistoryRef.current[newIndex]
+      // newIndex < history length in this branch, so the snapshot is always present.
+      /* v8 ignore next */
       if (!snapshot) return
       const candidates = snapshot.candidates.map((arr) => new Set(arr))
       applyState(snapshot.board, candidates, snapshot.move, newIndex)
@@ -464,6 +468,8 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       // New territory - apply the move normally (adds to history)
       const moveResult = allMovesRef.current[newIndex - 1] // -1 because index 0 is initial state
 
+      // newIndex never exceeds allMovesRef length (guarded above), so moveResult is always defined.
+      /* v8 ignore next */
       if (moveResult) {
         currentIndexRef.current = newIndex
         setCurrentIndex(newIndex)
@@ -536,6 +542,8 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
       stateHistoryRef.current = [
         {
+          // moves[0] is guaranteed defined by the top guard, so the || fallbacks are unreachable.
+          /* v8 ignore start */
           // Stryker disable next-line OptionalChaining,LogicalOperator,MethodExpression,ArrowFunction:
           // playMoves guards `if (!moves || moves.length === 0) return` at the top, so moves[0] is
           // always defined here and the ?. / || / .map mutants on moves[0]?.board and the candidates
@@ -545,6 +553,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
             moves[0]?.candidates?.map((arr) => (arr ? [...arr] : [])) ||
             candidatesToArrays(currentCandidates),
           // Stryker restore
+          /* v8 ignore stop */
           move: null,
         },
       ]

@@ -83,10 +83,14 @@ export function findConflicts(grid: number[]): Conflict[] {
       for (let j = i + 1; j < cells.length; j++) {
         const a = cells[i]
         const b = cells[j]
+        // cells only ever holds defined numeric cell indices (pushed in findInUnit),
+        // so the undefined guard's false branch can never be taken.
+        /* v8 ignore start */
         // Stryker disable next-line ConditionalExpression,LogicalOperator: cells comes from positions.get(val).arr (always defined numeric cell indices); both halves of this defensive guard are always true under the original outer loops, so every mutant here is observationally equivalent
         if (a !== undefined && b !== undefined) {
           addConflict(a, b, value, type)
         }
+        /* v8 ignore stop */
       }
     }
   }
@@ -191,8 +195,12 @@ export function validateBoardAgainstSolution(
   const incorrectCells: number[] = []
   // Stryker disable next-line EqualityOperator, UpdateOperator: i === 81 yields undefined (coerced to 0 by ?? 0, boardVal 0 is ignored); i-- from 0 is an infinite loop the harness times out on
   for (let i = 0; i < 81; i++) {
+    // board and solution are both exactly length 81 (guarded above), so for every
+    // in-range i the ?? 0 fallbacks are unreachable defensive defaults.
+    /* v8 ignore start */
     const boardVal = board[i] ?? 0
     const solutionVal = solution[i] ?? 0
+    /* v8 ignore stop */
     if (boardVal !== 0 && boardVal !== solutionVal) {
       incorrectCells.push(i)
     }
@@ -251,8 +259,13 @@ function countSolutions(grid: number[], maxCount: number): number {
   let count = 0
 
   function countHelper(): void {
+    // The L282 prune breaks every ancestor digit loop the moment count reaches
+    // maxCount, so countHelper is never re-entered with count already maxed: this
+    // top-of-function prune is an unreachable performance guard.
+    /* v8 ignore start */
     // Stryker disable next-line ConditionalExpression, EqualityOperator: early pruning at maxCount is a performance optimization; hasUniqueSolution only checks count === 1
     if (count >= maxCount) return
+    /* v8 ignore stop */
 
     // Find next empty cell
     let idx = -1

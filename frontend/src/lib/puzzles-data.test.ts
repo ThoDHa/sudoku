@@ -74,6 +74,9 @@ vi.mock('../../practice_puzzles.json', () => ({
       'x-wing': [{ i: 1, d: 'x' }],
       'empty-technique': [],
       'out-of-bounds': [{ i: 99, d: 'e' }],
+      // Ref whose difficulty is a full name, not a short key, so the
+      // `KeyToDifficulty[ref.d] ?? ref.d` fallback path is exercised.
+      'fullname-diff': [{ i: 0, d: 'easy' }],
     },
   },
 }))
@@ -545,6 +548,16 @@ describe('puzzles-data', () => {
       Date.now = () => 0
       expect(() => getPracticePuzzle('does-not-exist')).not.toThrow()
       expect(getPracticePuzzle('does-not-exist')).toBeNull()
+    })
+
+    it('resolves a ref whose difficulty is a full name via the key fallback', () => {
+      // ref.d is 'easy' (not a short key), so KeyToDifficulty['easy'] is
+      // undefined and the `?? ref.d` fallback yields 'easy', which still maps
+      // to a valid puzzle. This exercises the fallback branch honestly.
+      Date.now = () => 0
+      const result = getPracticePuzzle('fullname-diff')
+      expect(result).not.toBeNull()
+      expect(result!.difficulty).toBe('easy')
     })
   })
 })

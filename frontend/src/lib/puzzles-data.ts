@@ -57,9 +57,11 @@ function getPuzzleByIndex(
 
   // Stryker disable next-line ConditionalExpression,BlockStatement: defensive guard. puzzlesData.puzzles is a JSON array with no holes, so for any in-range index puzzle is always defined and this branch is unreachable; if it were reached (bad index past L53), the original returns null and the mutant throws, but the throw is caught downstream. For the L53-mutant path where index is out of range, both branches ultimately return null observably
   const puzzle = puzzlesData.puzzles[index]
+  /* v8 ignore start -- unreachable defensive guard: the puzzles JSON is a hole-free array, so any in-range index yields a defined puzzle and out-of-range indices are already caught above */
   if (!puzzle) {
     return null
   }
+  /* v8 ignore stop */
   const diffKey = DifficultyKey[difficulty] ?? difficulty
 
   // Parse solution
@@ -134,10 +136,12 @@ export function getPracticePuzzle(
   // Pick one deterministically based on current date (so it changes daily)
   const dayOfYear = Math.floor(Date.now() / (1000 * 60 * 60 * 24))
   const ref = refs[dayOfYear % refs.length]
+  /* v8 ignore start -- unreachable defensive guard: refs is non-empty past the guard above, so `dayOfYear % refs.length` is always a valid index and ref is always defined */
   // Stryker disable next-line ConditionalExpression,BlockStatement: defensive guard. After the L128 check, refs is a non-empty array, so `dayOfYear % refs.length` is in [0, length-1] and ref is always defined; this branch is unreachable in normal flow
   if (!ref) {
     return null
   }
+  /* v8 ignore stop */
 
   const difficulty = KeyToDifficulty[ref.d] ?? ref.d
   const result = getPuzzleByIndex(ref.i, difficulty)

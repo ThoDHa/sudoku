@@ -1260,6 +1260,35 @@ describe('mutation-killing: pauseOnHidden opt-out honored by interval body inner
     expect(result.current.isPausedDueToVisibility).toBe(false)
   })
 
+  it('skips the elapsed update on a live interval tick when shouldPauseOperations flips true mid-flight', () => {
+    // The interval is created while shouldPauseOperations is false, so the
+    // outer effect gate lets it start. We then flip the SAME background-manager
+    // object to paused WITHOUT re-rendering, so the effect never re-runs and
+    // the interval stays alive. The interval body's inner guard must re-read
+    // shouldPauseOperations each tick and skip the update, freezing elapsedMs.
+    const bg = createMockBackgroundManager({ shouldPauseOperations: false })
+    const { result } = renderHook(() =>
+      useGameTimer({ backgroundManager: bg, autoStart: true }),
+    )
+
+    act(() => {
+      vi.advanceTimersByTime(1100)
+    })
+    const afterFirstTick = result.current.elapsedMs
+    expect(afterFirstTick).toBeGreaterThan(0)
+
+    // Mutate the live object in place: no rerender, so the interval survives
+    // with its stale closure and hits the inner guard on the next tick.
+    bg.shouldPauseOperations = true
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+
+    // Every post-flip tick returned early at the inner guard, so elapsedMs is
+    // frozen at exactly its pre-flip value rather than advancing by ~3000ms.
+    expect(result.current.elapsedMs).toBe(afterFirstTick)
+  })
+
   it('still freezes elapsedMs when pauseOnHidden is true and shouldPauseOperations is true', () => {
     const hidden = createMockBackgroundManager({
       shouldPauseOperations: true,

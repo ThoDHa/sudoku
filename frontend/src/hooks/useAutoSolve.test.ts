@@ -1,6 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useAutoSolve } from './useAutoSolve'
+import { AUTO_SOLVE_MAX_TIME } from '../lib/constants'
 import {
   createMockBackgroundManager,
   createDefaultAutoSolveOptions,
@@ -2456,5 +2457,181 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
     act(() => result.current.stepBack()) // to index 0
     act(() => result.current.stepForward()) // index 1 -> new territory, move.candidates null -> L478 branch
     expect(() => act(() => result.current.stepBack())).not.toThrow() // restore that snapshot
+  })
+
+  it('stepForward into unvisited territory with a null-candidate move seeds candidates from getCandidates()', async () => {
+    // Covers the else-branch of the new-territory push (useAutoSolve L471-475 and L480-484):
+    // when the applied move carries no candidates, both the Sets passed to applyMove and the
+    // arrays stored in the snapshot are materialized from getCandidates().
+    const baseMove = createMockAutoSolveMove({ action: 'place' })
+    const moves = [
+      baseMove,
+      {
+        ...createMockAutoSolveMove({ action: 'place' }),
+        candidates: null as unknown as (number[] | null)[],
+        move: { ...baseMove.move, step_index: 1 },
+      },
+    ]
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(moves, { solved: true }))
+    const applyMove = vi.fn()
+    const applyState = vi.fn()
+    // getCandidates defaults to 81 Sets of {1..9}: each restored candidate Set must have size 9.
+    const options = createDefaultAutoSolveOptions({ applyMove, applyState, stepDelay: 1000 })
+    const { result } = renderHook(() => useAutoSolve(options))
+
+    await act(async () => {
+      await result.current.startAutoSolve()
+    })
+    // Only the first move played synchronously: index 1, snapshots [seed, move0].
+    expect(result.current.currentIndex).toBe(1)
+
+    actStepBack(result) // 1 -> 0
+    actStepForward(result) // 0 -> 1, existing snapshot
+    applyMove.mockClear()
+    actStepForward(result) // 1 -> 2, new territory; move1.candidates is null -> getCandidates() fallback
+    expect(result.current.currentIndex).toBe(2)
+
+    const appliedCandidates = applyMove.mock.calls.at(-1)?.[1] as Set<number>[]
+    expect(appliedCandidates).toHaveLength(81)
+    expect(appliedCandidates.every((s) => s instanceof Set && s.size === 9)).toBe(true)
+
+    // The snapshot pushed for index 2 must carry the same materialized candidates:
+    // re-entering index 2 restores them via applyState.
+    actStepBack(result) // 2 -> 1, existing snapshot
+    applyState.mockClear()
+    actStepForward(result) // 1 -> 2, existing snapshot built by the else-branch push
+    const restoredCandidates = applyState.mock.calls.at(-1)?.[1] as Set<number>[]
+    expect(restoredCandidates).toHaveLength(81)
+    expect(restoredCandidates.every((s) => s instanceof Set && s.size === 9)).toBe(true)
+  })
+
+  it('applyFixesAndContinueSolving hits the safety timeout and resumes when fix playback stalls', async () => {
+    // Covers the timeout guard in checkDone (useAutoSolve L706-721): when the fix-move queue
+    // never drains (the tab goes hidden, so scheduled ticks are dropped), the elapsed-time guard
+    // fires and restartAutoSolve is invoked to recover.
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(1))
+    const options = createDefaultOptions({ applyMove: vi.fn(), stepDelay: 100 })
+    const { result } = renderHook(() => useAutoSolve(options))
+
+    // Two fix moves: the first plays synchronously, the second is scheduled. Hiding the tab
+    // drops that scheduled tick, so the queue keeps one move and never empties.
+    const fixMoves = [
+      createMockAutoSolveMove({ action: 'place' }),
+      createMockAutoSolveMove({ action: 'place' }),
+    ]
+
+    await act(async () => {
+      const p = result.current.applyFixesAndContinueSolving(fixMoves)
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'hidden',
+      })
+      // Advance past the safety timeout so the stalled-queue guard fires.
+      await vi.advanceTimersByTimeAsync(AUTO_SOLVE_MAX_TIME + 1000)
+      await p
+    })
+
+    // The queue-empty path could never run (queue stayed non-empty), so this restart proves the
+    // timeout branch executed.
+    expect(mockSolveAll).toHaveBeenCalled()
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    })
+  })
+
+  it('reports the failure when the safety-timeout restart itself throws', async () => {
+    // Covers the inner catch of the timeout guard (useAutoSolve L713-716): the fix playback
+    // stalls into the timeout branch, and the recovery restartAutoSolve throws (getGivens is
+    // read inside it), so onError fires with the resume-failure message.
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(1))
+    const onError = vi.fn()
+    const getGivens = vi.fn(() => {
+      throw new Error('givens-unreadable')
+    })
+    const options = createDefaultOptions({ applyMove: vi.fn(), onError, getGivens, stepDelay: 100 })
+    const { result } = renderHook(() => useAutoSolve(options))
+
+    const fixMoves = [
+      createMockAutoSolveMove({ action: 'place' }),
+      createMockAutoSolveMove({ action: 'place' }),
+    ]
+
+    await act(async () => {
+      const p = result.current.applyFixesAndContinueSolving(fixMoves)
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'hidden',
+      })
+      await vi.advanceTimersByTimeAsync(AUTO_SOLVE_MAX_TIME + 1000)
+      await p
+    })
+
+    expect(onError).toHaveBeenCalledWith('Failed to resume autosolving after applying fixes')
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    })
+  })
+
+  it('creates its own background manager when none is provided in options', () => {
+    // Covers the `providedBackgroundManager || defaultBackgroundManager` fallback (useAutoSolve L103):
+    // omitting backgroundManager exercises the right operand (the hook-created default).
+    const options = createDefaultOptions({ backgroundManager: undefined })
+    const { result } = renderHook(() => useAutoSolve(options))
+
+    // The hook still initializes correctly against its own default background manager.
+    expect(result.current.isAutoSolving).toBe(false)
+    expect(result.current.isPaused).toBe(false)
+  })
+
+  it('stepForward into new territory materializes candidates per cell, tolerating null cells', async () => {
+    // Covers the per-cell candidate mapping in the new-territory branch (useAutoSolve L473 `cellCands || []`
+    // and L483 `arr ? [...arr] : []`): a move whose candidates array mixes null and populated cells.
+    const baseMove = createMockAutoSolveMove({ action: 'place' })
+    const mixedCandidates = Array(81)
+      .fill(null)
+      .map((_, i) => (i % 2 === 0 ? null : [1, 2, 3]))
+    const moves = [
+      baseMove,
+      {
+        ...createMockAutoSolveMove({ action: 'place' }),
+        candidates: mixedCandidates as (number[] | null)[],
+        move: { ...baseMove.move, step_index: 1 },
+      },
+    ]
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(moves, { solved: true }))
+    const applyMove = vi.fn()
+    const applyState = vi.fn()
+    const options = createDefaultOptions({ applyMove, applyState, stepDelay: 1000 })
+    const { result } = renderHook(() => useAutoSolve(options))
+
+    await act(async () => {
+      await result.current.startAutoSolve()
+    })
+    expect(result.current.currentIndex).toBe(1)
+
+    actStepBack(result) // 1 -> 0
+    actStepForward(result) // 0 -> 1, existing snapshot
+    applyMove.mockClear()
+    actStepForward(result) // 1 -> 2, new territory with mixed candidates
+    expect(result.current.currentIndex).toBe(2)
+
+    // L473: null cells become empty Sets, populated cells keep their digits.
+    const applied = applyMove.mock.calls.at(-1)?.[1] as Set<number>[]
+    expect(applied).toHaveLength(81)
+    expect(applied[0]?.size).toBe(0)
+    expect(applied[1]?.size).toBe(3)
+
+    // L483: the snapshot stores the same per-cell shape; re-entering index 2 restores it.
+    actStepBack(result) // 2 -> 1
+    applyState.mockClear()
+    actStepForward(result) // 1 -> 2, existing snapshot built by the new-territory push
+    const restored = applyState.mock.calls.at(-1)?.[1] as Set<number>[]
+    expect(restored).toHaveLength(81)
+    expect(restored[0]?.size).toBe(0)
+    expect(restored[1]?.size).toBe(3)
   })
 })

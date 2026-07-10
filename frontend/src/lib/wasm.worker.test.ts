@@ -444,6 +444,34 @@ describe('wasm.worker mutation kills', () => {
     })
     expect(posted.find((m) => m.type === 'error')).toBeUndefined()
   })
+
+  it('stringifies a non-Error thrown by the WASM call into the error response', async () => {
+    await load()
+    post({ type: 'init', id: 'nonerr-init' })
+    await waitForReady('nonerr-init')
+
+    // Throw a bare string (not an Error) from the WASM call so the handler's
+    // `error instanceof Error ? error.message : String(error)` false branch runs.
+    mockWasmApi.findNextMove.mockImplementation(() => {
+      throw 'raw-string-failure'
+    })
+    posted.length = 0
+
+    post({
+      type: 'findNextMove',
+      id: 'nonerr-1',
+      payload: { cells: [0], candidates: [[]], givens: [0] },
+    })
+
+    await vi.waitFor(() => {
+      expect(posted).toContainEqual({
+        type: 'error',
+        id: 'nonerr-1',
+        success: false,
+        error: 'raw-string-failure',
+      })
+    })
+  })
 })
 
 describe('wasm.worker polling timeout boundary', () => {
@@ -484,6 +512,58 @@ describe('wasm.worker polling timeout boundary', () => {
       success: false,
       error: 'WASM initialization timeout',
     })
+  })
+})
+
+describe('wasm.worker init readiness during polling', () => {
+  beforeEach(() => {
+    posted = []
+    vi.useFakeTimers()
+    installWorkerGlobals()
+    installWasmRuntimeMocks()
+
+    // A Go runtime that publishes SudokuWasm asynchronously, AFTER the worker's
+    // immediate readiness check, so the polling interval is what observes it.
+    class DeferredGoMock {
+      importObject = {}
+      run() {
+        setTimeout(() => {
+          Object.defineProperty(globalThis, 'SudokuWasm', {
+            value: mockWasmApi,
+            configurable: true,
+            writable: true,
+          })
+        }, 250)
+      }
+    }
+    Object.defineProperty(globalThis, 'Go', {
+      value: DeferredGoMock,
+      configurable: true,
+      writable: true,
+    })
+    Object.defineProperty(globalThis, 'SudokuWasm', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    clearWorkerGlobals()
+  })
+
+  it('reports ready when SudokuWasm appears on a later poll tick, not the immediate check', async () => {
+    await import('./wasm.worker')
+    posted.length = 0
+
+    post({ type: 'init', id: 'poll-ready' })
+
+    // Immediate check saw nothing; advance past the deferred publish (250ms) and
+    // the following poll tick (300ms) so the interval clears itself and resolves.
+    await vi.advanceTimersByTimeAsync(350)
+
+    expect(posted).toContainEqual({ type: 'ready', id: 'poll-ready' })
   })
 })
 

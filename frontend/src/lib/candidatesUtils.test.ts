@@ -182,6 +182,19 @@ describe('candidatesUtils', () => {
 
       expect(roundtripArrays).toEqual(originalArrays)
     })
+
+    it('maps a missing (hole) subarray to an empty mask', () => {
+      // A sparse array leaves index 1 as a hole, so arrays[1] is undefined and the
+      // `arr ? ... : 0` fallback yields an empty mask.
+      const sparse: number[][] = [[1, 2]]
+      sparse[2] = [4]
+
+      const candidates = arraysToCandidates(sparse)
+      expect(candidates).toHaveLength(3)
+      expect(candidates[0]).toBe(0b0000000110)
+      expect(candidates[1]).toBe(0)
+      expect(candidates[2]).toBe(0b0000010000)
+    })
   })
 
   describe('Set conversion', () => {
@@ -220,6 +233,19 @@ describe('candidatesUtils', () => {
       const roundtripSets = masksToSets(masks)
 
       expect(roundtripSets).toEqual(originalSets)
+    })
+
+    it('maps a missing (hole) set to an empty mask', () => {
+      // A sparse array leaves index 1 as a hole, so sets[1] is undefined and the
+      // `set ? ... : 0` fallback yields an empty mask.
+      const sparse: Set<number>[] = [new Set<number>([1, 2])]
+      sparse[2] = new Set<number>([4])
+
+      const masks = setsToMasks(sparse)
+      expect(masks).toHaveLength(3)
+      expect(masks[0]).toBe(0b0000000110)
+      expect(masks[1]).toBe(0)
+      expect(masks[2]).toBe(0b0000010000)
     })
   })
 
