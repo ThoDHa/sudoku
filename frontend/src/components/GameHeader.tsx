@@ -4,7 +4,7 @@ import DifficultyBadge from './DifficultyBadge'
 import Menu from './Menu'
 import { TimerDisplay } from './TimerDisplay'
 import ThemeModeDropdown from './ThemeModeDropdown'
-import ShareDropdown from './ShareDropdown'
+import ShareModal from './ShareModal'
 import { ShareIcon } from './ui'
 import { Difficulty } from '../lib/hooks'
 import { ColorTheme, FontSize, ModePreference } from '../lib/ThemeContext'
@@ -406,12 +406,11 @@ export default memo(function GameHeader({
 }: GameHeaderProps) {
   const [modeDropdownOpen, setModeDropdownOpen] = useState(false)
   const modeDropdownRef = useRef<HTMLDivElement>(null)
-  const [shareDropdownOpen, setShareDropdownOpen] = useState(false)
-  const shareDropdownRef = useRef<HTMLDivElement>(null)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
 
-  // Close dropdowns when clicking outside
+  // Close the theme dropdown when clicking outside (the share modal manages its
+  // own backdrop/Escape close).
   useClickOutside(modeDropdownRef, modeDropdownOpen, () => setModeDropdownOpen(false))
-  useClickOutside(shareDropdownRef, shareDropdownOpen, () => setShareDropdownOpen(false))
 
   const handleSpeedChange = (speed: AutoSolveSpeed) => {
     setAutoSolveSpeed(speed)
@@ -507,14 +506,22 @@ export default memo(function GameHeader({
                 <span className="hidden sm:inline">Result</span>
               </button>
             ) : (
-              <ShareDropdown
-                isOpen={shareDropdownOpen}
-                onToggle={() => setShareDropdownOpen(!shareDropdownOpen)}
-                onSharePuzzle={onSharePuzzle}
-                onShareState={onShareState}
-                dropdownRef={shareDropdownRef}
-              />
+              <button
+                onClick={() => setShareModalOpen(true)}
+                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
+                title="Share the puzzle or your current game"
+                data-share-button
+              >
+                <ShareIcon />
+                <span className="hidden sm:inline">Share</span>
+              </button>
             )}
+            <ShareModal
+              isOpen={shareModalOpen}
+              onClose={() => setShareModalOpen(false)}
+              onSharePuzzle={onSharePuzzle}
+              onShareState={onShareState}
+            />
 
             {/* Theme mode dropdown */}
             <ThemeModeDropdown

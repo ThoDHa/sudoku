@@ -42,7 +42,7 @@ async function fillFirstEmptyCell(
 }
 
 async function shareVia(page: import('@playwright/test').Page, option: string): Promise<string> {
-  await page.locator('[data-share-button] button').first().click()
+  await page.locator('[title="Share the puzzle or your current game"]').click()
   await page.getByText(option, { exact: true }).click()
   await expect(page.locator('.validation-message')).toContainText('copied to clipboard')
   return readClipboard(page)
