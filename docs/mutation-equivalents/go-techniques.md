@@ -1,20 +1,23 @@
 # Mutation Equivalents: Go `internal/sudoku/human/techniques`
 
-Index of inline `// mutator-disable-*` annotations in the techniques package
-(`api/internal/sudoku/human/techniques/`). Each entry records the line, the
-excluded mutators, and the equivalence rationale. The inline annotation is the
-primary record; this file is a review index.
+Record of which test kills each go-mutesting mutant covered by this pass in the
+techniques package (`api/internal/sudoku/human/techniques/`). As of MUT-4,
+`als_chains.go` carries **no `// mutator-disable-*` annotations**: every mutant
+this document tracks is now killed by a targeted test, so each entry below maps
+a mutant to its killing test rather than to a suppression. (Other files in the
+package, such as `chains.go` and `sdc.go`, carry their own suppressions from
+separate passes, outside this document's scope.)
 
 ## Summary
 
 - **Package:** `internal/sudoku/human/techniques`
 - **Scope of this pass:** 17 escaped mutants across `als_chains.go` (9),
   `grid.go` (3), `xcycles.go` (3), `chains.go` (1), `ur.go` (1).
-- **Killed by new tests:** 14 (see `techniques_advanced_test.go`)
+- **Killed by new tests:** 18 (see `techniques_advanced_test.go`)
 - **Annotated equivalents:** 0 (no genuine equivalents identified)
-- **Deferred (test gaps, NOT equivalent):** 4
+- **Deferred (test gaps, NOT equivalent):** 0 (all four killed by MUT-4)
 
-## Killed mutants (14)
+## Killed mutants (18)
 
 Each killed by a targeted unit test in
 `api/internal/sudoku/human/techniques/techniques_advanced_test.go`:
@@ -34,37 +37,33 @@ Each killed by a targeted unit test in
 | als_chains L274 `statement/remove` | `als_chains.go:274` | `TestCheckChainEliminationSkipsRCDigit` |
 | als_chains L279 `branch/if` | `als_chains.go:279` | `TestCheckChainEliminationSkipsRCDigit` |
 | als_chains L129 `numbers/decrementer` | `als_chains.go:129` | `TestDetectALSXYChainRequiresSizeFourALS` |
+| als_chains `i==j` `loop/break` (adjacency `continue`->`break`) | `detectALSXYChain` adjacency build | `TestDetectALSXYChainAdjacencyIsSymmetric` |
+| als_chains `startIdx, 6` `numbers/decrementer` (`maxLen` 6->5) | `detectALSXYChain` DFS launch | `TestDetectALSXYChainMaxLenSixRequiredForLengthSixChain` |
+| als_chains `maxLen`-guard `loop/break` (`continue`->`break`) | `searchALSChain` maxLen guard | `TestSearchALSChainMaxLenGuardSkipsSingleState` |
+| als_chains visited `loop/break` (`continue`->`break`) | `searchALSChain` visited-neighbour skip | `TestSearchALSChainVisitedNeighbourSkipsOneNeighbour` |
 
-(13 rows cover 14 mutants because `TestCheckChainEliminationSkipsRCDigit`
+(16 rows cover 18 mutants because `TestCheckChainEliminationSkipsRCDigit`
 kills four mutants at `als_chains.go:273-279` in a single assertion.)
 
-## Deferred mutants (4)
+## Formerly deferred mutants (now killed by MUT-4)
 
-These are genuine test gaps, NOT equivalents. They survive because the
-constructible boards that make `DetectALSXYChain` fire also admit a shorter,
-smaller, or index-reversed chain that produces the identical elimination under
-the mutant. Killing them requires fixtures that force a unique firing chain of
-a specific shape, which could not be built and verified without running
-go-mutesting (out of scope for this pass). They are recorded here so a future
-pass can target them.
+The four DFS mutants below were deferred by MUT-2/MUT-3 as "test gaps" on the
+belief that every constructible firing board admits a shorter, smaller, or
+index-reversed chain reproducing the identical elimination. MUT-4 disproved
+that: a randomized search over branchy and length-6 ALS-XY chains (rather than
+the simple chains examined earlier) produced boards where the mutant diverges,
+each minimized to a small all-givens fixture and verified against the real
+source mutation. All four pragmas have been removed.
 
-MUT-3 note: the DFS now visits `adjRC` neighbours in sorted index order
-(`slices.Sorted(maps.Keys(...))`), so every entry below is deterministic. That
-removes the earlier "cannot be killed because iteration is random" objection:
-each mutant is now stably killed or stably escaped, and the ones below stably
-escape only because no available fixture forces the required chain shape.
-
-- `als_chains.go:188` `numbers/decrementer` (chain `maxLen` 6 -> 5): needs a
-  fixture whose only firing chain has length exactly 6. Length-3/4 chains fire
-  under both bounds.
-- `als_chains.go:155` `loop/break` (adjacency build `continue` -> `break`):
-  every chain found by the original is also discoverable reversed, so the
-  half-built (lower-triangular) adjacency still yields the same elimination on
-  the boards examined; a kill requires a non-monotonically-indexed unique chain.
-- `als_chains.go:236` `loop/break` (`maxLen` guard `continue` -> `break`): only
-  triggers when a length-`maxLen` state is popped before the firing chain; the
-  constructible boards never reach `maxLen` before the chain is found.
-- `als_chains.go:252` `loop/break` (visited-neighbor `continue` -> `break`): now
-  deterministic under sorted neighbour iteration; a kill needs a board where a
-  visited neighbour sorts before the only productive unvisited one, which no
-  available fixture produces.
+- adjacency build `continue` -> `break` (lower-triangular adjacency): killed by
+  a 3-ALS chain that is not index-monotonic along its path, so no strictly
+  decreasing traversal reconstructs it. The mutant finds no chain.
+- chain `maxLen` 6 -> 5: killed by a board whose minimal firing chain has
+  length 6; at `maxLen` 5 the DFS fires a different chain with an extra
+  elimination.
+- `maxLen`-guard `continue` -> `break`: killed by a board where a length-`maxLen`
+  state is popped before the firing chain is examined, so `break` discards the
+  firing chain.
+- visited-neighbour `continue` -> `break`: killed by a board where breaking on a
+  visited neighbour abandons the only productive extension, changing the
+  eliminated digit.

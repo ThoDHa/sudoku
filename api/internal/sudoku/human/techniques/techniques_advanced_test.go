@@ -284,3 +284,144 @@ func TestDetectALSXYChainRequiresSizeFourALS(t *testing.T) {
 		t.Fatal("size-4 not actually required: chain fires at maxSize=3 (substitution escape)")
 	}
 }
+
+// sparseCandidateBoard solves every cell except those in overrides, so
+// FindAllALS sees only the sculpted candidate geometry. Used by the DFS
+// mutation-kill fixtures below, where a small, fully-controlled ALS set is
+// required so no spurious alternate chain can reproduce the elimination.
+func sparseCandidateBoard(overrides map[int][]int) *testBoard {
+	var cells [constants.TotalCells]int
+	for i := range cells {
+		cells[i] = 1
+	}
+	for idx := range overrides {
+		cells[idx] = 0
+	}
+	return boardFromMap(cells, overrides)
+}
+
+// TestDetectALSXYChainAdjacencyIsSymmetric kills the loop/break mutant on the
+// adjacency-build `continue` at the `i == j` guard in detectALSXYChain.
+// Replacing that `continue` with `break` stops the inner j-loop at j==i, so
+// adjRC[i] is populated only for j<i: a lower-triangular adjacency where node i
+// can reach only lower-indexed nodes. On this board the sole firing
+// ALS-XY-Chain is a 3-ALS chain that is not index-monotonic along its path, so
+// no strictly decreasing traversal reconstructs it and the mutant finds no
+// chain, while the full symmetric adjacency eliminates 5 from r3c2.
+//
+// The board keeps every cell solved except six, so FindAllALS yields a small
+// ALS set with no spurious alternate chain that could reproduce the elimination
+// under the lower-triangular adjacency.
+func TestDetectALSXYChainAdjacencyIsSymmetric(t *testing.T) {
+	b := sparseCandidateBoard(map[int][]int{
+		idxOf(2, 1): {5, 9},
+		idxOf(2, 3): {2, 5},
+		idxOf(3, 5): {6, 7},
+		idxOf(4, 1): {1, 5},
+		idxOf(4, 3): {2, 7},
+		idxOf(4, 4): {1, 6},
+	})
+
+	move := DetectALSXYChain(b)
+	if move == nil {
+		t.Fatal("expected ALS-XY-Chain to fire under the full symmetric adjacency")
+	}
+	if move.Digit != 5 {
+		t.Errorf("expected eliminated digit 5, got %d", move.Digit)
+	}
+	if !hasElimination(move.Eliminations, 2, 1, 5) {
+		t.Errorf("expected elimination of 5 at r3c2, got %v", move.Eliminations)
+	}
+}
+
+// TestSearchALSChainMaxLenGuardSkipsSingleState kills the loop/break mutant on
+// the maxLen-guard `continue` in searchALSChain. When a DFS state reaches
+// maxLen it must be abandoned on its own (continue to the next stack item); the
+// mutant breaks the whole DFS loop, discarding every remaining stack state. On
+// this board a length-maxLen state is popped before the firing length-5 chain
+// is examined, so the mutant discards the firing chain and finds no move, while
+// the original eliminates 3 from r9c9.
+func TestSearchALSChainMaxLenGuardSkipsSingleState(t *testing.T) {
+	b := sparseCandidateBoard(map[int][]int{
+		idxOf(4, 6): {5, 9},
+		idxOf(4, 7): {7, 5},
+		idxOf(6, 6): {9, 3},
+		idxOf(7, 0): {4, 1},
+		idxOf(7, 6): {3, 4},
+		idxOf(7, 7): {1, 7},
+		idxOf(8, 8): {3, 8},
+	})
+	move := DetectALSXYChain(b)
+	if move == nil {
+		t.Fatal("expected ALS-XY-Chain to fire; breaking the DFS at a maxLen state must not discard it")
+	}
+	if move.Digit != 3 {
+		t.Errorf("expected eliminated digit 3, got %d", move.Digit)
+	}
+	if !hasElimination(move.Eliminations, 8, 8, 3) {
+		t.Errorf("expected elimination of 3 at r9c9, got %v", move.Eliminations)
+	}
+}
+
+// TestSearchALSChainVisitedNeighbourSkipsOneNeighbour kills the loop/break
+// mutant on the visited-neighbour `continue` in searchALSChain. An
+// already-visited neighbour must be skipped so higher-sorted neighbours are
+// still tried; the mutant breaks, abandoning every remaining neighbour on the
+// first visited hit. On this board that abandons the only productive extension
+// of the firing branch, so the mutant reaches a different chain that eliminates
+// 7 from r9c1 instead of the correct 9 from r9c2.
+func TestSearchALSChainVisitedNeighbourSkipsOneNeighbour(t *testing.T) {
+	b := sparseCandidateBoard(map[int][]int{
+		idxOf(5, 1): {2, 9},
+		idxOf(5, 6): {4, 2},
+		idxOf(6, 1): {9, 7},
+		idxOf(7, 0): {7, 5},
+		idxOf(7, 2): {5, 6},
+		idxOf(7, 6): {6, 4},
+		idxOf(8, 0): {7, 1},
+		idxOf(8, 1): {9, 8},
+	})
+	move := DetectALSXYChain(b)
+	if move == nil {
+		t.Fatal("expected ALS-XY-Chain to fire on the visited-neighbour geometry")
+	}
+	if move.Digit != 9 {
+		t.Errorf("expected eliminated digit 9, got %d", move.Digit)
+	}
+	if !hasElimination(move.Eliminations, 8, 1, 9) {
+		t.Errorf("expected elimination of 9 at r9c2, got %v", move.Eliminations)
+	}
+}
+
+// TestDetectALSXYChainMaxLenSixRequiredForLengthSixChain kills the
+// numbers/decrementer mutant on searchALSChain's maxLen literal (6 -> 5). The
+// sole minimal firing chain here has length 6; with maxLen dropped to 5 that
+// chain cannot form, so the DFS fires a different chain that eliminates 7 from
+// both r8c1 and r9c1. The length-6 chain eliminates 7 from r8c1 only, so the
+// single-elimination assertion fails under the mutant.
+func TestDetectALSXYChainMaxLenSixRequiredForLengthSixChain(t *testing.T) {
+	b := sparseCandidateBoard(map[int][]int{
+		idxOf(4, 0): {5, 7},
+		idxOf(4, 8): {6, 5},
+		idxOf(5, 1): {8, 2},
+		idxOf(5, 8): {2, 3},
+		idxOf(6, 1): {7, 8},
+		idxOf(7, 0): {7, 9},
+		idxOf(7, 8): {3, 6},
+		idxOf(8, 0): {7, 1},
+	})
+	move := DetectALSXYChain(b)
+	if move == nil {
+		t.Fatal("expected the length-6 ALS-XY-Chain to fire at maxLen 6")
+	}
+	if move.Digit != 7 {
+		t.Errorf("expected eliminated digit 7, got %d", move.Digit)
+	}
+	if len(move.Eliminations) != 1 {
+		t.Fatalf("expected exactly one elimination (length-6 chain), got %v", move.Eliminations)
+	}
+	e := move.Eliminations[0]
+	if e.Row != 7 || e.Col != 0 || e.Digit != 7 {
+		t.Errorf("expected elimination of 7 at r8c1, got %v", move.Eliminations)
+	}
+}

@@ -144,14 +144,10 @@ func detectALSXYChain(b BoardInterface, maxSize int) *core.Move {
 	for i := 0; i < n; i++ {
 		adjRC[i] = make(map[int][]int)
 		for j := 0; j < n; j++ {
-			// Equivalent-mutant rationale (loop/break, continue->break): break exits the inner loop
-			// at j==i, leaving adjRC[i] populated only for j<i. The reverse edges adjRC[j][i] (for
-			// j<i) are computed when the outer loop visited j, and DetectALSXYChain tries every
-			// startIdx, so any chain i->j->k is also discovered as its reverse k->j->i from a
-			// different start. checkChainElimination is path-symmetric, so the same elimination is found.
+			// Skip self-pairs but keep building the rest of the row: the
+			// adjacency must stay symmetric. TestDetectALSXYChainAdjacencyIsSymmetric
+			// fails if this becomes a break (lower-triangular adjacency).
 			if i == j {
-				// see equivalent-mutant rationale above
-				// mutator-disable-next-line loop/break
 				continue
 			}
 			if ALSShareCells(allALS[i], allALS[j]) {
@@ -168,23 +164,10 @@ func detectALSXYChain(b BoardInterface, maxSize int) *core.Move {
 	// Chain: ALS[0] --(RC1)--> ALS[1] --(RC2)--> ... --(RCn)--> ALS[n]
 	// Each RC must be different from the previous to maintain the chain logic
 
-	// Use DFS to find chains
+	// Use DFS to find chains. maxLen 6 admits length-6 chains: dropping it to 5
+	// changes the result on boards where a length-6 chain is the minimal one
+	// (TestDetectALSXYChainMaxLenSixRequiredForLengthSixChain).
 	for startIdx := 0; startIdx < n; startIdx++ {
-		// Try to find chains starting from startIdx
-		// Equivalent-mutant rationale (numbers/decrementer, maxLen 6->5): dropping maxLen 6->5 excludes length-6
-		// ALS-XY chains. A length-6 chain only diverges from the mutant when no length 3-5 chain
-		// eliminates the same endpoint digit Z. PIsaacson's decomposition principle (EnjoySudoku
-		// forum t6642 p2: "Any ALS chain > length 2 can be decomposed into sub-chains") makes this
-		// chain-level substitution escape structurally hard to defeat. No length-6 board exists in
-		// any reachable source: Hodoku's ALS Chain catalog maxes at length-4 (ach01/ach02); the
-		// longest documented ALS chain anywhere is length-5 (hobiwan, t6642 puzzle #28367), and it
-		// requires overlapping ALSes and doubly-linked RCs, both forbidden here (the ALSShareCells
-		// rejection and the global RC-uniqueness check in searchALSChain, stricter than the
-		// literature's adjacency-only rule). Tracked in task ALS-FIX-1; a kill would need both a
-		// curated length-6 board that defeats substitution and a detectALSXYChainMaxLen helper to
-		// contrast maxLen 6 vs 5.
-		// see equivalent-mutant rationale above
-		// mutator-disable-next-line numbers/decrementer
 		if move := searchALSChain(b, allALS, adjRC, startIdx, 6); move != nil {
 			return move
 		}
@@ -225,14 +208,10 @@ func searchALSChain(b BoardInterface, allALS []ALS, adjRC map[int]map[int][]int,
 			}
 		}
 
-		// Don't extend beyond max length
+		// Don't extend this state past maxLen, but keep processing the rest of
+		// the stack: a break here would discard other pending chains
+		// (TestSearchALSChainMaxLenGuardSkipsSingleState).
 		if len(curr.path) >= maxLen {
-			// Deferred test gap (loop/break, continue->break): break here would abandon
-			// the rest of the DFS stack when a maxed-out chain is popped. The sorted neighbour
-			// iteration below makes the divergence deterministic, but a kill still needs a board
-			// whose only firing chain is discovered after a length-maxLen state is popped, which
-			// no available fixture produces (see docs/mutation-equivalents/go-techniques.md).
-			// mutator-disable-next-line loop/break
 			continue
 		}
 
@@ -243,12 +222,10 @@ func searchALSChain(b BoardInterface, allALS []ALS, adjRC map[int]map[int][]int,
 		for _, nextIdx := range slices.Sorted(maps.Keys(neighbors)) {
 			rcs := neighbors[nextIdx]
 			if curr.visited[nextIdx] {
-				// Deferred test gap (loop/break, continue->break): break here would abandon the
-				// remaining unvisited neighbours on the first already-visited hit. The sorted
-				// neighbour iteration makes the order deterministic, but a kill needs a board where
-				// a visited neighbour sorts before the only productive unvisited one, which no
-				// available fixture produces (see docs/mutation-equivalents/go-techniques.md).
-				// mutator-disable-next-line loop/break
+				// Skip a visited neighbour but keep trying the remaining ones: a
+				// break here would abandon later neighbours that may be the only
+				// productive extension
+				// (TestSearchALSChainVisitedNeighbourSkipsOneNeighbour).
 				continue
 			}
 
