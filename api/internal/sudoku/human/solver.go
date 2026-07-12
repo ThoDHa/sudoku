@@ -662,7 +662,7 @@ func (s *Solver) AnalyzePuzzleDifficulty(givens []int) (core.Difficulty, map[str
 	moves, status := s.SolveWithSteps(b, constants.MaxSolverSteps)
 
 	if status != constants.StatusCompleted {
-		return "", nil, status
+		return core.DifficultyImpossible, nil, status
 	}
 
 	techniqueCounts := make(map[string]int)
@@ -698,9 +698,9 @@ func (s *Solver) AnalyzePuzzleDifficulty(givens []int) (core.Difficulty, map[str
 	case constants.TierMedium:
 		requiredDifficulty = core.DifficultyMedium
 	case constants.TierHard:
-		requiredDifficulty = core.DifficultyExtreme
+		requiredDifficulty = core.DifficultyHard
 	case constants.TierExtreme:
-		requiredDifficulty = core.DifficultyImpossible
+		requiredDifficulty = core.DifficultyExtreme
 	}
 
 	return requiredDifficulty, techniqueCounts, constants.StatusCompleted

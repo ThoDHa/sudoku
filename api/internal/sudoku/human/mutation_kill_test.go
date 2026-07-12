@@ -273,10 +273,10 @@ func TestSolveWithSteps_ReturnsStalledOnContradiction(t *testing.T) {
 
 // --- AnalyzePuzzleDifficulty (solver.go) ---
 
-// TestAnalyzePuzzleDifficulty_UnsolvableReturnsEmpty kills HUMAN-42: when the
-// puzzle cannot be completed, the function must short-circuit and return an
-// empty difficulty. The removed-return mutant proceeds and computes a tier.
-func TestAnalyzePuzzleDifficulty_UnsolvableReturnsEmpty(t *testing.T) {
+// TestAnalyzePuzzleDifficulty_UnsolvableShortCircuits kills HUMAN-42: when the
+// puzzle cannot be completed, the function must short-circuit and return
+// DifficultyImpossible. The removed-return mutant proceeds and computes a tier.
+func TestAnalyzePuzzleDifficulty_UnsolvableShortCircuits(t *testing.T) {
 	givens := make([]int, 81)
 	copy(givens, solvedGrid[:])
 	givens[1] = 5 // duplicate 5 in row 0 with cell 0
@@ -286,8 +286,8 @@ func TestAnalyzePuzzleDifficulty_UnsolvableReturnsEmpty(t *testing.T) {
 	if status == constants.StatusCompleted {
 		t.Fatal("expected non-completed status for the contradiction board")
 	}
-	if difficulty != "" {
-		t.Errorf("expected empty difficulty for unsolvable puzzle, got %q", difficulty)
+	if difficulty != core.DifficultyImpossible {
+		t.Errorf("expected impossible difficulty for unsolvable puzzle, got %q", difficulty)
 	}
 }
 
@@ -320,29 +320,31 @@ func TestAnalyzePuzzleDifficulty_MediumPuzzle(t *testing.T) {
 	}
 }
 
-// TestAnalyzePuzzleDifficulty_ExtremeDifficulty kills HUMAN-46, HUMAN-47
+// TestAnalyzePuzzleDifficulty_HardTierPuzzle kills HUMAN-46, HUMAN-47
 // (Medium/Hard tier collapse) and HUMAN-54 (Hard-tier switch case removed).
-func TestAnalyzePuzzleDifficulty_ExtremeDifficulty(t *testing.T) {
+// Fixture 6 resolves to TierHard, which maps to DifficultyHard.
+func TestAnalyzePuzzleDifficulty_HardTierPuzzle(t *testing.T) {
 	givens := loadGivens(t, 6, "extreme")
+	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(givens)
+	if status != constants.StatusCompleted {
+		t.Skipf("fixture did not solve: %q", status)
+	}
+	if difficulty != core.DifficultyHard {
+		t.Errorf("expected hard, got %q", difficulty)
+	}
+}
+
+// TestAnalyzePuzzleDifficulty_ExtremeTierPuzzle kills HUMAN-48, HUMAN-49
+// (Hard/Extreme tier collapse) and HUMAN-55 (Extreme-tier switch case removed).
+// Fixture 23 resolves to TierExtreme, which maps to DifficultyExtreme.
+func TestAnalyzePuzzleDifficulty_ExtremeTierPuzzle(t *testing.T) {
+	givens := loadGivens(t, 23, "extreme")
 	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(givens)
 	if status != constants.StatusCompleted {
 		t.Skipf("fixture did not solve: %q", status)
 	}
 	if difficulty != core.DifficultyExtreme {
 		t.Errorf("expected extreme, got %q", difficulty)
-	}
-}
-
-// TestAnalyzePuzzleDifficulty_ImpossibleDifficulty kills HUMAN-48, HUMAN-49
-// (Hard/Extreme tier collapse) and HUMAN-55 (Extreme-tier switch case removed).
-func TestAnalyzePuzzleDifficulty_ImpossibleDifficulty(t *testing.T) {
-	givens := loadGivens(t, 23, "extreme")
-	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(givens)
-	if status != constants.StatusCompleted {
-		t.Skipf("fixture did not solve: %q", status)
-	}
-	if difficulty != core.DifficultyImpossible {
-		t.Errorf("expected impossible, got %q", difficulty)
 	}
 }
 

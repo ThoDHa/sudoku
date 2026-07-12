@@ -357,7 +357,8 @@ func CarveGivens(fullGrid []int, targetGivens int, seed int64) []int {
 // CarveGivensWithSubset generates puzzles for all difficulty levels ensuring subset property.
 // Returns a map of difficulty -> givens where impossible ⊂ extreme ⊂ hard ⊂ medium ⊂ easy.
 // The approach: carve to the minimum (impossible), then record which cells to restore for easier levels.
-// Also verifies that techniques required match the difficulty level.
+// Difficulty is assigned by givens count alone: fewer givens yield harder labels. No technique
+// verification is performed.
 func CarveGivensWithSubset(fullGrid []int, seed int64) map[string][]int {
 	// Target givens for each difficulty (fewer givens = harder puzzle)
 	targets := map[string]int{

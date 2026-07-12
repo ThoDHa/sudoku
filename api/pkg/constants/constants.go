@@ -39,15 +39,6 @@ var DifficultyKeys = map[string]string{
 	DifficultyImpossible: "i",
 }
 
-// Target givens by difficulty (for 9x9 puzzles)
-var TargetGivens = map[string]int{
-	DifficultyEasy:       35,
-	DifficultyMedium:     30,
-	DifficultyHard:       25,
-	DifficultyExtreme:    22,
-	DifficultyImpossible: 17,
-}
-
 // Technique tiers
 const (
 	TierSimple  = "simple"
