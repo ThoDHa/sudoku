@@ -614,7 +614,7 @@ func (s *Solver) SolveWithSteps(b *Board, maxSteps int) ([]core.Move, string) {
 		s.ApplyMove(b, move)
 		moves = append(moves, *move)
 
-		if move.Technique == "contradiction" {
+		if move.Action == "contradiction" {
 			return moves, constants.StatusStalled
 		}
 
