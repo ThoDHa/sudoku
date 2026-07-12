@@ -70,7 +70,6 @@ fi
      exit 1
    fi
 
-   cd ..
    echo "✅ golangci-lint passed!"
  fi
 
