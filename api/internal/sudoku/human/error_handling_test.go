@@ -2,6 +2,8 @@ package human
 
 import (
 	"testing"
+
+	"sudoku-api/pkg/constants"
 )
 
 // =============================================================================
@@ -68,19 +70,13 @@ func TestSolverHandlesInvalidCellInRow(t *testing.T) {
 		}
 	}
 
-	if status != "stalled" && !hasContradiction {
-		// If it somehow "completed", the solution would be wrong
-		// Check that it didn't falsely complete
-		if status == "completed" {
-			t.Errorf("Solver incorrectly completed a puzzle with an invalid cell placement")
-		}
+	if !hasContradiction {
+		t.Errorf("Solver should detect a contradiction from an invalid cell placement; got status=%q, %d moves, no contradiction", status, len(moves))
+	}
+	if status == constants.StatusCompleted {
+		t.Errorf("Solver must not report an unsolvable puzzle as completed")
 	}
 
-	// The test passes if:
-	// 1. Status is "stalled" (solver got stuck), OR
-	// 2. We found a contradiction move, OR
-	// 3. Status is something other than "completed"
-	// This is the expected behavior for an invalid puzzle
 	t.Logf("Status: %s, Moves: %d, HasContradiction: %v", status, len(moves), hasContradiction)
 }
 
@@ -106,15 +102,11 @@ func TestSolverHandlesInvalidCellInColumn(t *testing.T) {
 		}
 	}
 
-	// The puzzle should not complete correctly
-	if status == "completed" && !hasContradiction {
-		// Verify the solution is actually wrong
-		// Cell R3C1 has value 2 instead of 1
-		if board.Cells[18] == 2 {
-			// The solver continued with the wrong digit - this is the user's mistake,
-			// but the solver shouldn't have found a valid solution
-			t.Logf("Solver accepted user's wrong input at R3C1; puzzle may be unsolvable or stalled later")
-		}
+	if !hasContradiction {
+		t.Errorf("Solver should detect a contradiction from an invalid cell placement; got status=%q, %d moves, no contradiction", status, len(moves))
+	}
+	if status == constants.StatusCompleted {
+		t.Errorf("Solver must not report an unsolvable puzzle as completed")
 	}
 
 	t.Logf("Status: %s, Moves: %d, HasContradiction: %v", status, len(moves), hasContradiction)
@@ -143,10 +135,11 @@ func TestSolverHandlesInvalidCellInBox(t *testing.T) {
 		}
 	}
 
-	// Puzzle should not complete successfully with wrong digit
-	if status == "completed" {
-		// Even if completed, the answer is wrong - this tests graceful handling
-		t.Logf("Solver completed with wrong digit - solution will be incorrect")
+	if !hasContradiction {
+		t.Errorf("Solver should detect a contradiction from an invalid cell placement; got status=%q, %d moves, no contradiction", status, len(moves))
+	}
+	if status == constants.StatusCompleted {
+		t.Errorf("Solver must not report an unsolvable puzzle as completed")
 	}
 
 	t.Logf("Status: %s, Moves: %d, HasContradiction: %v", status, len(moves), hasContradiction)
@@ -181,10 +174,11 @@ func TestSolverHandlesDuplicateInRow(t *testing.T) {
 		}
 	}
 
-	// With a duplicate, the solver should stall or detect contradiction
-	// It cannot complete a valid Sudoku
-	if status == "completed" && !hasContradiction {
-		t.Errorf("Solver incorrectly completed a puzzle with duplicate in row")
+	if !hasContradiction {
+		t.Errorf("Solver should detect a duplicate in a row as a contradiction; got status=%q, %d moves", status, len(moves))
+	}
+	if status != constants.StatusStalled {
+		t.Errorf("Solver must stall on a duplicate-in-row contradiction instead of looping; got status=%q over %d moves (contradiction detected=%v)", status, len(moves), hasContradiction)
 	}
 
 	t.Logf("Status: %s, Moves: %d, HasContradiction: %v", status, len(moves), hasContradiction)
@@ -213,9 +207,11 @@ func TestSolverHandlesDuplicateInColumn(t *testing.T) {
 		}
 	}
 
-	// With a duplicate, solver should stall or detect contradiction
-	if status == "completed" && !hasContradiction {
-		t.Errorf("Solver incorrectly completed a puzzle with duplicate in column")
+	if !hasContradiction {
+		t.Errorf("Solver should detect a duplicate in a column as a contradiction; got status=%q, %d moves", status, len(moves))
+	}
+	if status != constants.StatusStalled {
+		t.Errorf("Solver must stall on a duplicate-in-column contradiction instead of looping; got status=%q over %d moves (contradiction detected=%v)", status, len(moves), hasContradiction)
 	}
 
 	t.Logf("Status: %s, Moves: %d, HasContradiction: %v", status, len(moves), hasContradiction)
@@ -244,9 +240,11 @@ func TestSolverHandlesDuplicateInBox(t *testing.T) {
 		}
 	}
 
-	// With a duplicate in box, solver should stall or detect contradiction
-	if status == "completed" && !hasContradiction {
-		t.Errorf("Solver incorrectly completed a puzzle with duplicate in box")
+	if !hasContradiction {
+		t.Errorf("Solver should detect a duplicate in a box as a contradiction; got status=%q, %d moves", status, len(moves))
+	}
+	if status != constants.StatusStalled {
+		t.Errorf("Solver must stall on a duplicate-in-box contradiction instead of looping; got status=%q over %d moves (contradiction detected=%v)", status, len(moves), hasContradiction)
 	}
 
 	t.Logf("Status: %s, Moves: %d, HasContradiction: %v", status, len(moves), hasContradiction)
@@ -287,11 +285,11 @@ func TestSolverHandlesInvalidCandidates(t *testing.T) {
 		}
 	}
 
-	// With the correct candidate eliminated, the puzzle becomes unsolvable
-	// Solver should stall or detect contradiction
-	if status == "completed" {
-		// If it completed, check that it didn't use an invalid value
-		t.Logf("Solver completed even with missing candidate - checking validity")
+	if !hasContradiction {
+		t.Errorf("Solver should detect the contradiction from eliminating the only valid candidate; got status=%q, %d moves, no contradiction", status, len(moves))
+	}
+	if status == constants.StatusCompleted {
+		t.Errorf("Solver must not report a puzzle whose only valid candidate was removed as completed")
 	}
 
 	t.Logf("Status: %s, Moves: %d, HasContradiction: %v", status, len(moves), hasContradiction)
@@ -365,9 +363,11 @@ func TestSolverHandlesMultipleDuplicates(t *testing.T) {
 		}
 	}
 
-	// Should definitely not complete with multiple duplicates
-	if status == "completed" && !hasContradiction {
-		t.Errorf("Solver incorrectly completed a puzzle with multiple duplicates")
+	if !hasContradiction {
+		t.Errorf("Solver should detect multiple duplicates as a contradiction; got status=%q, %d moves", status, len(moves))
+	}
+	if status != constants.StatusStalled {
+		t.Errorf("Solver must stall on a multiple-duplicates contradiction instead of looping; got status=%q over %d moves (contradiction detected=%v)", status, len(moves), hasContradiction)
 	}
 
 	t.Logf("Status: %s, HasContradiction: %v", status, hasContradiction)
@@ -441,25 +441,13 @@ func TestSolverHandlesPartialCandidatesStillSolvable(t *testing.T) {
 	board.RemoveCandidate(2, 2)
 	board.RemoveCandidate(2, 6)
 
-	// The puzzle should still be solvable
 	moves, status := solver.SolveWithSteps(board, 500)
 
-	if status != "completed" {
-		// Check if we hit contradiction or stalled
-		hasContradiction := false
-		for _, move := range moves {
-			if move.Action == "contradiction" {
-				hasContradiction = true
-				break
-			}
-		}
-		if hasContradiction {
-			t.Errorf("Unexpected contradiction when only wrong candidates were removed")
-		} else {
-			t.Logf("Solver stalled, but no contradiction - may need more steps. Status: %s", status)
-		}
-	} else {
-		t.Logf("Puzzle solved successfully with partial candidates removed")
+	if status != constants.StatusCompleted {
+		t.Errorf("Puzzle should remain solvable after removing only wrong candidates; got status=%q, %d moves", status, len(moves))
+	}
+	if !board.IsSolved() {
+		t.Errorf("Board should be fully solved after removing only wrong candidates; status=%q", status)
 	}
 }
 
