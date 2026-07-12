@@ -1,7 +1,7 @@
 import React from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render } from '@testing-library/react'
-import { ThemeProvider, getValidFontSize } from './ThemeContext'
+import { render, act } from '@testing-library/react'
+import { ThemeProvider, getValidFontSize, useTheme } from './ThemeContext'
 
 describe('getValidFontSize', () => {
   it('passes each valid font size through unchanged', () => {
@@ -71,5 +71,71 @@ describe('ThemeProvider fontSize restore safety', () => {
 
     expect(document.documentElement.classList.contains('font-small')).toBe(true)
     expect(document.documentElement.style.getPropertyValue('--cell-font-size')).toBe('1rem')
+  })
+})
+
+describe('ThemeProvider mode controls', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    stubMatchMedia()
+  })
+
+  it('toggleMode cycles through all three modes', () => {
+    let ctx: ReturnType<typeof useTheme> | null = null
+    const Consumer = () => {
+      ctx = useTheme()
+      return null
+    }
+
+    const { unmount } = render(
+      <ThemeProvider>
+        <Consumer />
+      </ThemeProvider>,
+    )
+
+    expect(ctx!.modePreference).toBe('system')
+
+    act(() => ctx!.toggleMode())
+    expect(ctx!.modePreference).toBe('light')
+
+    act(() => ctx!.toggleMode())
+    expect(ctx!.modePreference).toBe('dark')
+
+    act(() => ctx!.toggleMode())
+    expect(ctx!.modePreference).toBe('system')
+
+    unmount()
+  })
+
+  it('setMode sets the mode preference directly', () => {
+    let ctx: ReturnType<typeof useTheme> | null = null
+    const Consumer = () => {
+      ctx = useTheme()
+      return null
+    }
+
+    const { unmount } = render(
+      <ThemeProvider>
+        <Consumer />
+      </ThemeProvider>,
+    )
+
+    act(() => ctx!.setMode('dark'))
+    expect(ctx!.modePreference).toBe('dark')
+
+    unmount()
+  })
+})
+
+describe('useTheme', () => {
+  it('throws when used outside a ThemeProvider', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const Consumer = () => {
+      useTheme()
+      return null
+    }
+
+    expect(() => render(<Consumer />)).toThrow('useTheme must be used within a ThemeProvider')
+    spy.mockRestore()
   })
 })
