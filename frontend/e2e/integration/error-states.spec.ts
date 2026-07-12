@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures';
+import type { Page } from '@playwright/test';
 
 /**
  * Error States and Recovery Tests
@@ -20,100 +21,63 @@ import { test, expect } from '../fixtures';
 const VALID_PUZZLE = '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
 const VALID_PUZZLE_ALT = '003020600900305001001806400008102900700000008006708200002609500800203009005010300';
 
+// The /custom page has no <input>/<textarea>; full puzzle strings are entered
+// via the clipboard-driven Paste button. The error notice is a Tailwind-styled
+// div (class bg-red-100) with no role="alert".
+const CUSTOM_ERROR = '.bg-red-100';
+const PASTE_BUTTON = 'button:has-text("Paste")';
+const VALIDATE_BUTTON = 'button:has-text("Validate & Play")';
+
+async function pastePuzzle(page: Page, puzzle: string): Promise<void> {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.evaluate(async (text) => {
+    await navigator.clipboard.writeText(text);
+  }, puzzle);
+  await page.locator(PASTE_BUTTON).click();
+}
+
 // ============================================================================
 // Invalid Puzzle String Handling
 // ============================================================================
 
 test.describe('@integration Error States - Invalid Puzzle Strings', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/custom');
+    await expect(page.locator(PASTE_BUTTON)).toBeVisible({ timeout: 10000 });
+  });
+
   test('displays error for puzzle string that is too short', async ({ page }) => {
-    // Navigate with 50-character puzzle (should be 81)
-    const shortPuzzle = '1'.repeat(50);
-    await page.goto(`/custom?puzzle=${shortPuzzle}`);
+    await pastePuzzle(page, '1'.repeat(50));
 
-    // Wait for page to process the invalid input
-    await page.waitForLoadState('networkidle');
-
-    // Should show error state OR stay on custom page without crashing
-    const hasError = await page.locator('text=/invalid|error|must be 81/i').isVisible().catch(() => false);
-    const hasBoard = await page.locator('[role="grid"]').isVisible().catch(() => false);
-    const url = page.url();
-
-    // Either shows an error message, shows the board (allowing user to fix), or stays on custom page
-    expect(hasError || hasBoard || url.includes('/custom')).toBeTruthy();
-
-    // Page should NOT have crashed - verify body is still interactive
-    await expect(page.locator('body')).toBeVisible();
+    await expect(page.getByText(/Expected 81 digits/i)).toBeVisible({ timeout: 5000 });
   });
 
   test('displays error for puzzle string that is too long', async ({ page }) => {
-    // Navigate with 100-character puzzle (should be 81)
-    const longPuzzle = '1'.repeat(100);
-    await page.goto(`/custom?puzzle=${longPuzzle}`);
+    await pastePuzzle(page, '1'.repeat(100));
 
-    await page.waitForLoadState('networkidle');
-
-    // Should show error state OR handle gracefully
-    const hasError = await page.locator('text=/invalid|error|must be 81|too long/i').isVisible().catch(() => false);
-    const hasBoard = await page.locator('[role="grid"]').isVisible().catch(() => false);
-    const url = page.url();
-
-    // App should handle gracefully
-    expect(hasError || hasBoard || url.includes('/custom')).toBeTruthy();
-
-    // Verify app didn't crash
-    await expect(page.locator('body')).toBeVisible();
+    await expect(page.getByText(/Expected 81 digits/i)).toBeVisible({ timeout: 5000 });
   });
 
   test('displays error for puzzle with invalid characters', async ({ page }) => {
-    // Puzzle with letters and special characters
-    const invalidCharsPuzzle = 'abc070000600195000098000060800060003400803001700020006060000280000419005000080xyz';
-    await page.goto(`/custom?puzzle=${invalidCharsPuzzle}`);
+    await pastePuzzle(page, 'abc070000600195000098000060800060003400803001700020006060000280000419005000080xyz');
 
-    await page.waitForLoadState('networkidle');
-
-    // Should show error about invalid characters
-    const hasError = await page.locator('text=/invalid|error|character/i').isVisible().catch(() => false);
-    const hasBoard = await page.locator('[role="grid"]').isVisible().catch(() => false);
-    const url = page.url();
-
-    // App should handle gracefully
-    expect(hasError || hasBoard || url.includes('/custom')).toBeTruthy();
-
-    // Verify no crash
-    await expect(page.locator('body')).toBeVisible();
+    await expect(page.getByText(/Expected 81 digits/i)).toBeVisible({ timeout: 5000 });
   });
 
   test('displays error for puzzle with duplicate in row/col/box', async ({ page }) => {
-    // Puzzle with obvious duplicate in first row (two 5s)
     const duplicatePuzzle = '550070000600195000098000060800060003400803001700020006060000280000419005000080079';
-    await page.goto(`/custom?puzzle=${duplicatePuzzle}`);
+    await pastePuzzle(page, duplicatePuzzle);
 
-    await page.waitForLoadState('networkidle');
+    await page.locator(VALIDATE_BUTTON).click();
 
-    // Should either show error about duplicates/invalid state
-    // OR load the puzzle and highlight conflicts visually
-    const hasError = await page.locator('text=/invalid|error|duplicate|conflict/i').isVisible().catch(() => false);
-    const hasBoard = await page.locator('[role="grid"]').isVisible().catch(() => false);
-    const hasConflictHighlight = await page.locator('[class*="conflict"], [class*="error"], [class*="invalid"]').first().isVisible().catch(() => false);
-
-    // App should indicate the problem somehow
-    expect(hasError || hasBoard || hasConflictHighlight).toBeTruthy();
-
-    // Verify no crash
-    await expect(page.locator('body')).toBeVisible();
+    await expect(page).toHaveURL(/\/custom/, { timeout: 10000 });
+    await expect(page.locator(CUSTOM_ERROR)).toBeVisible({ timeout: 10000 });
   });
 
   test('handles empty puzzle string gracefully', async ({ page }) => {
-    await page.goto('/custom?puzzle=');
-
-    await page.waitForLoadState('networkidle');
-
-    // Should show custom page with empty/editable board OR error
-    const hasBoard = await page.locator('[role="grid"]').isVisible().catch(() => false);
-    const hasCustomUI = await page.locator('text=/Custom/i').isVisible().catch(() => false);
-
-    expect(hasBoard || hasCustomUI).toBeTruthy();
-    await expect(page.locator('body')).toBeVisible();
+    await expect(page.locator('[role="grid"]')).toBeVisible();
+    await expect(page.locator('[role="gridcell"]')).toHaveCount(81);
+    await expect(page.locator(VALIDATE_BUTTON)).toBeVisible();
   });
 });
 
