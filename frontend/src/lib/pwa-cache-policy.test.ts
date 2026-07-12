@@ -23,4 +23,20 @@ describe('PWA cache policy', () => {
   it('does not fall back to a stale cache after a 1-second network timeout', () => {
     expect(config).not.toMatch(/networkTimeoutSeconds:\s*1\b/)
   })
+
+  it('precacheaches the app shell (HTML/JS/CSS), not just the wasm (PWA-1)', () => {
+    const globLine = config.match(/globPatterns:\s*\[([^\]]*)\]/)
+    expect(globLine).not.toBeNull()
+    expect(globLine?.[1]).toContain('html')
+    expect(globLine?.[1]).toContain('js')
+    expect(globLine?.[1]).toContain('css')
+    expect(globLine?.[1]).toContain('wasm')
+  })
+
+  it('serves the precached shell for offline SPA navigations with /api/ denied (PWA-1)', () => {
+    expect(config).toMatch(/navigateFallback:\s*'index\.html'/)
+    const denyLine = config.match(/navigateFallbackDenylist:\s*\[([^\]]*)\]/)
+    expect(denyLine).not.toBeNull()
+    expect(denyLine?.[1]).toContain('api')
+  })
 })

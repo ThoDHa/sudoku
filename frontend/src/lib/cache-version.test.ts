@@ -43,37 +43,41 @@ describe('cache-version', () => {
     expect(localStorage.getItem(CACHE_KEY)).toBe(CACHE_VERSION)
   })
 
-  it('deletes every Cache Storage entry when the version changed and the caches API exists', async () => {
+  it('does NOT delete Cache Storage entries when the version changes (workbox precache is left intact)', async () => {
     const deleted: string[] = []
+    const deleteMock = vi.fn((name: string) => {
+      deleted.push(name)
+      return Promise.resolve(true)
+    })
     vi.stubGlobal('caches', {
-      keys: vi.fn().mockResolvedValue(['app-assets', 'images-cache']),
-      delete: vi.fn((name: string) => {
-        deleted.push(name)
-        return Promise.resolve(true)
-      }),
+      keys: vi.fn().mockResolvedValue(['workbox-precache-v2-/', 'app-assets', 'images-cache']),
+      delete: deleteMock,
     })
     localStorage.setItem(CACHE_KEY, 'a-stale-version')
 
     const cleared = await checkCacheVersion()
 
     expect(cleared).toBe(true)
-    expect(deleted).toEqual(['app-assets', 'images-cache'])
+    expect(deleted).toEqual([])
+    expect(deleteMock).not.toHaveBeenCalled()
   })
 
-  it('logs the version transition and the cache-clear messages with their full text', async () => {
+  it('logs the version transition but does not log a cache-clear message', async () => {
     const { logger } = await import('./logger')
+    const deleteMock = vi.fn().mockResolvedValue(true)
     vi.stubGlobal('caches', {
-      keys: vi.fn().mockResolvedValue(['app-assets']),
-      delete: vi.fn().mockResolvedValue(true),
+      keys: vi.fn().mockResolvedValue(['workbox-precache-v2-/']),
+      delete: deleteMock,
     })
     localStorage.setItem(CACHE_KEY, 'a-stale-version')
 
     await checkCacheVersion()
 
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Cache version changed'))
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Cleared all caches due to version change'),
+    expect(logger.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining('Cleared all caches'),
     )
+    expect(deleteMock).not.toHaveBeenCalled()
   })
 
   it('returns false and logs a warning when localStorage throws during the version check', async () => {

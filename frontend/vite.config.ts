@@ -62,8 +62,10 @@ const pwaPlugins = [VitePWA({
     // Force immediate activation of new service worker
     skipWaiting: true,
     clientsClaim: true,
-    // Only precache WASM files (large, rarely change, needed for offline)
-    globPatterns: ['**/*.wasm', 'wasm_exec.js'],
+    // Precache the app shell (HTML/JS/CSS/icons) plus the WASM solver so an
+    // installed PWA boots fully offline. autoUpdate + revisioned precache
+    // handles invalidation, so no manual cache wipe is needed on deploy.
+    globPatterns: ['**/*.{js,css,html,ico,png,svg,wasm}'],
     // Allow larger files to be precached (for WASM - ~4MB)
     maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
     // Cache strategies - NetworkFirst for app, CacheFirst for static assets
@@ -130,7 +132,9 @@ const pwaPlugins = [VitePWA({
         }
       }
     ],
-    // Don't cache API calls
+    // Serve the precached shell for offline SPA navigations (/, /daily-..., /c/<encoded>).
+    // Keep API requests out of the fallback so they fail clean when offline.
+    navigateFallback: 'index.html',
     navigateFallbackDenylist: [/^\/api\//]
   }
 })];
