@@ -139,3 +139,88 @@ describe('useTheme', () => {
     spy.mockRestore()
   })
 })
+
+describe('ThemeProvider preference restore', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    stubMatchMedia()
+  })
+
+  it('restores a valid modePreference from localStorage', () => {
+    localStorage.setItem('modePreference', 'dark')
+
+    let ctx: ReturnType<typeof useTheme> | null = null
+    const Consumer = () => {
+      ctx = useTheme()
+      return null
+    }
+
+    const { unmount } = render(
+      <ThemeProvider>
+        <Consumer />
+      </ThemeProvider>,
+    )
+
+    expect(ctx!.modePreference).toBe('dark')
+    unmount()
+  })
+
+  it('migrates the legacy mode key to modePreference', () => {
+    localStorage.setItem('mode', 'light')
+
+    let ctx: ReturnType<typeof useTheme> | null = null
+    const Consumer = () => {
+      ctx = useTheme()
+      return null
+    }
+
+    const { unmount } = render(
+      <ThemeProvider>
+        <Consumer />
+      </ThemeProvider>,
+    )
+
+    expect(ctx!.modePreference).toBe('light')
+    unmount()
+  })
+
+  it('responds to system color-scheme changes', () => {
+    let trigger: ((e: MediaQueryListEvent) => void) | null = null
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn((event: string, cb: (e: MediaQueryListEvent) => void) => {
+          if (event === 'change') trigger = cb
+        }),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    })
+
+    let ctx: ReturnType<typeof useTheme> | null = null
+    const Consumer = () => {
+      ctx = useTheme()
+      return null
+    }
+
+    const { unmount } = render(
+      <ThemeProvider>
+        <Consumer />
+      </ThemeProvider>,
+    )
+
+    expect(ctx!.mode).toBe('light')
+
+    act(() => {
+      trigger!({ matches: true } as MediaQueryListEvent)
+    })
+
+    expect(ctx!.mode).toBe('dark')
+    unmount()
+  })
+})
