@@ -7,24 +7,11 @@ import (
 	"sudoku-api/pkg/constants"
 )
 
-// ============================================================================
-// BUG (Bivalue Universal Grave) Detection
-// ============================================================================
-//
-// A BUG is a pattern where all unsolved cells have exactly 2 candidates,
-// creating multiple possible solutions (a "deadly pattern"). A valid puzzle
-// must have exactly one solution, so if we're one cell away from a BUG
-// (BUG+1), we can determine what that cell must be.
-//
-// BUG+1: All cells except one have exactly 2 candidates, and that one cell
-// has 3 candidates. The "extra" digit (the one that appears 3 times in its
-// row, column, or box) must be the solution for that cell.
-
-// DetectBUG finds BUG (Bivalue Universal Grave) patterns
-//
-//nolint:gocyclo // BUG detection requires three sequential pattern variants (BUG+1, classic BUG, bi-value-plus-extra) sharing the cell-scan and candidate-count state; each variant depends on counts accumulated in the same scan.
+// DetectBUG finds a BUG+1 (Bivalue Universal Grave + 1): a board one tri-value
+// cell away from a deadly pattern. Because a valid puzzle has a unique solution,
+// the one candidate of that cell which appears three times in its row, column,
+// and box must be the solution.
 func DetectBUG(b BoardInterface) *core.Move {
-	// Count cells with !=2 candidates
 	var extraCells []int
 	for i := 0; i < constants.TotalCells; i++ {
 		if b.GetCell(i) != 0 {
@@ -35,7 +22,6 @@ func DetectBUG(b BoardInterface) *core.Move {
 		}
 	}
 
-	// BUG+1: exactly one cell with 3 candidates
 	if len(extraCells) != 1 {
 		return nil
 	}
@@ -45,55 +31,77 @@ func DetectBUG(b BoardInterface) *core.Move {
 		return nil
 	}
 
-	// Check if all bi-value cells would form a BUG
-	// In a BUG, every unsolved cell has exactly 2 candidates,
-	// and each candidate appears exactly twice in every row, column, and box
+	if !bugInvariantHolds(b, bugCell) {
+		return nil
+	}
 
-	// Find the "extra" digit that appears 3 times in its row/col/box
-	row, col := bugCell/constants.GridSize, bugCell%constants.GridSize
-	box := (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize
+	bugRow, bugCol := RowOf(bugCell), ColOf(bugCell)
+	bugBox := BoxOf(bugCell)
 
+	var restoreDigit, restoreHits int
 	for _, digit := range b.GetCandidatesAt(bugCell).ToSlice() {
-		// Count occurrences in row
-		rowCount := 0
-		for c := 0; c < constants.GridSize; c++ {
-			if b.GetCandidatesAt(row*constants.GridSize + c).Has(digit) {
-				rowCount++
-			}
-		}
-
-		// Count occurrences in column
-		colCount := 0
-		for r := 0; r < constants.GridSize; r++ {
-			if b.GetCandidatesAt(r*constants.GridSize + col).Has(digit) {
-				colCount++
-			}
-		}
-
-		// Count occurrences in box
-		boxCount := 0
-		boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
-		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-			for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-				if b.GetCandidatesAt(r*constants.GridSize + c).Has(digit) {
-					boxCount++
-				}
-			}
-		}
-
-		// If this digit appears 3 times in row, col, or box, it's the BUG digit
-		if rowCount == 3 || colCount == 3 || boxCount == 3 {
-			return &core.Move{
-				Action:      "assign",
-				Digit:       digit,
-				Targets:     []core.CellRef{{Row: row, Col: col}},
-				Explanation: fmt.Sprintf("BUG+1: All other cells are bi-value; R%dC%d must be %d to avoid multiple solutions", row+1, col+1, digit),
-				Highlights: core.Highlights{
-					Primary: []core.CellRef{{Row: row, Col: col}},
-				},
-			}
+		rowCount := countDigitInUnit(b, RowIndices[bugRow], digit)
+		colCount := countDigitInUnit(b, ColIndices[bugCol], digit)
+		boxCount := countDigitInUnit(b, BoxIndices[bugBox], digit)
+		if rowCount == 3 && colCount == 3 && boxCount == 3 {
+			restoreHits++
+			restoreDigit = digit
 		}
 	}
 
-	return nil
+	if restoreHits != 1 {
+		return nil
+	}
+
+	return &core.Move{
+		Action:      "assign",
+		Digit:       restoreDigit,
+		Targets:     []core.CellRef{{Row: bugRow, Col: bugCol}},
+		Explanation: fmt.Sprintf("BUG+1: All other cells are bi-value; R%dC%d must be %d to avoid multiple solutions", bugRow+1, bugCol+1, restoreDigit),
+		Highlights: core.Highlights{
+			Primary: []core.CellRef{{Row: bugRow, Col: bugCol}},
+		},
+	}
+}
+
+// countDigitInUnit counts the empty cells of a unit holding digit as a candidate.
+func countDigitInUnit(b BoardInterface, cells []int, digit int) int {
+	count := 0
+	for _, idx := range cells {
+		if b.GetCell(idx) != 0 {
+			continue
+		}
+		if b.GetCandidatesAt(idx).Has(digit) {
+			count++
+		}
+	}
+	return count
+}
+
+// bugInvariantHolds verifies the pre-BUG deadly-pattern invariant across all 27
+// units. A unit without the bug cell must carry every digit 0 or 2 times. The
+// bug cell's own row, column, and box may additionally let a bug-cell candidate
+// reach 3 (the restore overshoot); any other count there means this is not a
+// true BUG+1 state.
+func bugInvariantHolds(b BoardInterface, bugCell int) bool {
+	bugRow, bugCol, bugBox := RowOf(bugCell), ColOf(bugCell), BoxOf(bugCell)
+	bugCands := b.GetCandidatesAt(bugCell)
+	unitKinds := [3][constants.GridSize][]int{RowIndices, ColIndices, BoxIndices}
+	bugUnitKeys := [3]int{bugRow, bugCol, bugBox}
+
+	for kind := 0; kind < 3; kind++ {
+		for u := 0; u < constants.GridSize; u++ {
+			containsBug := u == bugUnitKeys[kind]
+			for digit := 1; digit <= constants.GridSize; digit++ {
+				count := countDigitInUnit(b, unitKinds[kind][u], digit)
+				switch {
+				case count == 0, count == 2:
+				case count == 3 && containsBug && bugCands.Has(digit):
+				default:
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
