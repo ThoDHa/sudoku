@@ -215,15 +215,15 @@ func searchALSChain(b BoardInterface, allALS []ALS, adjRC map[int]map[int][]int,
 			continue
 		}
 
-		// Extend the chain. Iterate neighbours in a fixed sorted-key order so the
+		// Extend the chain. Iterate neighbors in a fixed sorted-key order so the
 		// DFS is reproducible across runs instead of following Go's randomized map
 		// order (the LIFO stack then pops them in a deterministic order).
 		neighbors := adjRC[currALSIdx]
 		for _, nextIdx := range slices.Sorted(maps.Keys(neighbors)) {
 			rcs := neighbors[nextIdx]
 			if curr.visited[nextIdx] {
-				// Skip a visited neighbour but keep trying the remaining ones: a
-				// break here would abandon later neighbours that may be the only
+				// Skip a visited neighbor but keep trying the remaining ones: a
+				// break here would abandon later neighbors that may be the only
 				// productive extension
 				// (TestSearchALSChainVisitedNeighbourSkipsOneNeighbour).
 				continue

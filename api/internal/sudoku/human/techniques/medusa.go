@@ -78,7 +78,7 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 	}
 
 	// Add strong link connections: same digit, conjugate pair in unit.
-	// Iterate digits in sorted order so neighbour lists are built in a
+	// Iterate digits in sorted order so neighbor lists are built in a
 	// reproducible order across runs (Go randomizes map iteration otherwise).
 	for _, digit := range slices.Sorted(maps.Keys(conjugatePairs)) {
 		for _, pair := range conjugatePairs[digit] {

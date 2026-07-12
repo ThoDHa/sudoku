@@ -11,6 +11,8 @@ import (
 // cell away from a deadly pattern. Because a valid puzzle has a unique solution,
 // the one candidate of that cell which appears three times in its row, column,
 // and box must be the solution.
+//
+//nolint:gocyclo // BUG+1 detection combines the structural gate, the 27-unit invariant scan, and the restore-digit search in a single sequential pass
 func DetectBUG(b BoardInterface) *core.Move {
 	var extraCells []int
 	for i := 0; i < constants.TotalCells; i++ {

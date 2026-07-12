@@ -364,9 +364,9 @@ func TestSearchALSChainMaxLenGuardSkipsSingleState(t *testing.T) {
 }
 
 // TestSearchALSChainVisitedNeighbourSkipsOneNeighbour kills the loop/break
-// mutant on the visited-neighbour `continue` in searchALSChain. An
-// already-visited neighbour must be skipped so higher-sorted neighbours are
-// still tried; the mutant breaks, abandoning every remaining neighbour on the
+// mutant on the visited-neighbor `continue` in searchALSChain. An
+// already-visited neighbor must be skipped so higher-sorted neighbors are
+// still tried; the mutant breaks, abandoning every remaining neighbor on the
 // first visited hit. On this board that abandons the only productive extension
 // of the firing branch, so the mutant reaches a different chain that eliminates
 // 7 from r9c1 instead of the correct 9 from r9c2.
@@ -383,7 +383,7 @@ func TestSearchALSChainVisitedNeighbourSkipsOneNeighbour(t *testing.T) {
 	})
 	move := DetectALSXYChain(b)
 	if move == nil {
-		t.Fatal("expected ALS-XY-Chain to fire on the visited-neighbour geometry")
+		t.Fatal("expected ALS-XY-Chain to fire on the visited-neighbor geometry")
 	}
 	if move.Digit != 9 {
 		t.Errorf("expected eliminated digit 9, got %d", move.Digit)
