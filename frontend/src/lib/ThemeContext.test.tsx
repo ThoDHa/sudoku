@@ -221,6 +221,102 @@ describe('ThemeProvider preference restore', () => {
     })
 
     expect(ctx!.mode).toBe('dark')
+
+    act(() => {
+      trigger!({ matches: false } as MediaQueryListEvent)
+    })
+
+    expect(ctx!.mode).toBe('light')
+    unmount()
+  })
+
+  it('defaults to system mode when modePreference holds an unrecognized string', () => {
+    localStorage.setItem('modePreference', 'banana')
+
+    let ctx: ReturnType<typeof useTheme> | null = null
+    const Consumer = () => {
+      ctx = useTheme()
+      return null
+    }
+
+    const { unmount } = render(
+      <ThemeProvider>
+        <Consumer />
+      </ThemeProvider>,
+    )
+
+    expect(ctx!.modePreference).toBe('system')
+    unmount()
+  })
+
+  it('defaults to system when the legacy mode key holds an unrecognized string', () => {
+    localStorage.setItem('mode', 'banana')
+
+    let ctx: ReturnType<typeof useTheme> | null = null
+    const Consumer = () => {
+      ctx = useTheme()
+      return null
+    }
+
+    const { unmount } = render(
+      <ThemeProvider>
+        <Consumer />
+      </ThemeProvider>,
+    )
+
+    expect(ctx!.modePreference).toBe('system')
+    unmount()
+  })
+
+  it('resolves the system mode as dark when matchMedia reports dark', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    })
+
+    let ctx: ReturnType<typeof useTheme> | null = null
+    const Consumer = () => {
+      ctx = useTheme()
+      return null
+    }
+
+    const { unmount } = render(
+      <ThemeProvider>
+        <Consumer />
+      </ThemeProvider>,
+    )
+
+    expect(ctx!.mode).toBe('dark')
+    unmount()
+  })
+
+  it('falls back to the default font var set when setFontSize receives an unrecognized value', () => {
+    let ctx: ReturnType<typeof useTheme> | null = null
+    const Consumer = () => {
+      ctx = useTheme()
+      return null
+    }
+
+    const { unmount } = render(
+      <ThemeProvider>
+        <Consumer />
+      </ThemeProvider>,
+    )
+
+    expect(() =>
+      act(() => ctx!.setFontSize('nonexistent' as never)),
+    ).not.toThrow()
+
+    expect(document.documentElement.style.getPropertyValue('--cell-font-size')).toBe('1.625rem')
     unmount()
   })
 })
