@@ -4,6 +4,8 @@ import { isDigitComplete } from '../lib/digitCompletion'
 import { buildFreshTrackingState } from '../lib/gameStateReset'
 import { shouldIncrementHintCounter } from '../lib/hintLifecycle'
 import { shouldSuppressAutoSave } from '../lib/autoSaveGuard'
+import { resolveCompletionAction } from '../lib/completionGate'
+import { isValidSolution } from '../lib/validationUtils'
 import { createHintRequestGate, type HintRequestGate } from '../lib/hintRequestGate'
 import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import Board from '../components/Board'
@@ -507,6 +509,8 @@ function GameContent() {
   const hasRestoredSavedState = useRef(false)
   // Track whether we loaded from a shared URL (to prevent resetGame from wiping shared state)
   const loadedFromSharedUrl = useRef(false)
+  // True when a restore/shared-apply delivered an already-solved board; suppresses re-recording that completion.
+  const restoredAsCompleteRef = useRef(false)
   // Track isComplete at execution time (to prevent race condition with debounced saves)
   const isCompleteRef = useRef(false)
   // Guard to prevent concurrent hint requests. Held in a ref so the
@@ -846,9 +850,20 @@ function GameContent() {
 
   // Handle game completion when board is full and valid
   useEffect(() => {
-    if (game.isComplete) {
-      handleGameComplete()
+    const action = resolveCompletionAction({
+      isComplete: game.isComplete,
+      restoredAsComplete: restoredAsCompleteRef.current,
+    })
+    if (action === 'none') {
+      restoredAsCompleteRef.current = false
+      return
     }
+    if (action === 'show-only') {
+      timerControlRef.current?.pauseTimer()
+      setShowResultModal(true)
+      return
+    }
+    handleGameComplete()
   }, [game.isComplete, handleGameComplete])
 
   // Keep game ref updated for stable callbacks
@@ -1003,6 +1018,7 @@ function GameContent() {
   const applySharedBoard = useCallback(
     (shared: { board: number[]; candidates: number[][] | null; elapsedMs: number | null }) => {
       const candidatesArray = shared.candidates ?? Array.from({ length: 81 }, () => [] as number[])
+      restoredAsCompleteRef.current = isValidSolution(shared.board)
       game.restoreState(shared.board, arraysToCandidates(candidatesArray), [])
       if (shared.elapsedMs !== null) {
         timerControl.setElapsedMs(shared.elapsedMs)
@@ -2439,6 +2455,7 @@ function GameContent() {
       if (savedState) {
         // Restore saved state
         const restoredCandidates = arraysToCandidates(savedState.candidates)
+        restoredAsCompleteRef.current = isValidSolution(savedState.board)
         game.restoreState(savedState.board, restoredCandidates, savedState.history)
         timerControl.setElapsedMs(savedState.elapsedMs)
         // Start timer (resume from saved time) - only if puzzle is playable
@@ -2540,6 +2557,7 @@ function GameContent() {
         const savedState = loadSavedGameState(puzzle.seed)
         if (savedState) {
           const restoredCandidates = arraysToCandidates(savedState.candidates)
+          restoredAsCompleteRef.current = isValidSolution(savedState.board)
           game.restoreState(savedState.board, restoredCandidates, savedState.history)
           timerControl.setElapsedMs(savedState.elapsedMs)
           setAutoFillUsed(savedState.autoFillUsed)
