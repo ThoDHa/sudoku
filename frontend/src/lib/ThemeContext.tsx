@@ -75,6 +75,16 @@ const FONT_SIZE_VARS: Record<FontSize, Record<string, string>> = {
   },
 }
 
+const VALID_FONT_SIZES: FontSize[] = ['xs', 'small', 'medium', 'large', 'xl']
+
+export function getValidFontSize(saved: string | null): FontSize {
+  if (!saved) return 'xl'
+  if (VALID_FONT_SIZES.includes(saved as FontSize)) {
+    return saved as FontSize
+  }
+  return 'xl'
+}
+
 // Helper to get system preference
 function getSystemMode(): Mode {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
@@ -106,7 +116,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const [fontSize, setFontSize] = useState<FontSize>(() => {
     const saved = localStorage.getItem('fontSize')
-    return (saved as FontSize) || 'xl'
+    return getValidFontSize(saved)
   })
 
   // Listen for system preference changes
@@ -131,7 +141,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Get theme colors from centralized themes.ts and convert to CSS vars
     const themeColors = THEMES[colorTheme][mode]
     const cssVars = themeToCssVars(themeColors)
-    const fontSizeVars = FONT_SIZE_VARS[fontSize]
+    const fontSizeVars = FONT_SIZE_VARS[fontSize] ?? FONT_SIZE_VARS['xl']
     const root = document.documentElement
 
     // Apply color theme
