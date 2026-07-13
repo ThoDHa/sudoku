@@ -156,6 +156,13 @@ func applyIsolationStrategy(registry *TechniqueRegistry, targetSlug string, targ
 			}
 		}
 	}
+
+	// Honor the per-technique isolation config on top of the strategy: some
+	// same- or lower-tier techniques preempt the target on its curated board and
+	// must be disabled regardless of the tier-based strategy above.
+	for _, slug := range techniqueIsolationConfig[targetSlug] {
+		registry.SetEnabled(slug, false)
+	}
 }
 
 // parsePuzzleString converts an 81-character puzzle string to a cell array

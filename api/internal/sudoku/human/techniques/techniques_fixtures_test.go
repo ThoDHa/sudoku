@@ -229,6 +229,7 @@ func TestCuratedFixturesSolveBoard(t *testing.T) {
 var targetIsolation = map[string]map[string]bool{
 	"bug":       {"xy-wing": true},
 	"jellyfish": {"medusa-3d": true},
+	"x-chain":   {"skyscraper": true},
 	"unique-rectangle-type-2": {
 		"aic": true, "medusa-3d": true, "x-chain": true, "xy-chain": true,
 		"grouped-x-cycles": true, "simple-coloring": true, "w-wing": true,

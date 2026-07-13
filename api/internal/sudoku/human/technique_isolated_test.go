@@ -31,6 +31,7 @@ import (
 var techniqueIsolationConfig = map[string][]string{
 	"bug":       {"xy-wing"},
 	"jellyfish": {"medusa-3d"},
+	"x-chain":   {"skyscraper"},
 	"unique-rectangle-type-2": {
 		"aic", "medusa-3d", "x-chain", "xy-chain", "grouped-x-cycles", "simple-coloring",
 		"w-wing", "wxyz-wing", "skyscraper", "empty-rectangle",

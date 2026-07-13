@@ -1,6 +1,7 @@
 package techniques
 
 import (
+	"strings"
 	"testing"
 
 	"sudoku-api/internal/core"
@@ -503,6 +504,66 @@ func TestDetectPointingPairEliminatesFromRowOutsideBox(t *testing.T) {
 	}
 	if move.Digit != 5 {
 		t.Errorf("expected digit 5, got %d", move.Digit)
+	}
+}
+
+// TestDetectSkyscraperFindsColumnOrientedPattern exercises the column strong-link
+// scan. Digit 5 forms conjugate pairs in columns 0 and 3: column 0 holds 5 at
+// (0,0) and (3,0), column 3 holds 5 at (0,3) and (5,3). The base cells (0,0)
+// and (0,3) share row 0; the tops (3,0) and (5,3) sit in boxes 3 and 4. The
+// cell (5,1) sees both tops (box 3 with (3,0), row 5 with (5,3)), so its 5 is
+// eliminated. The extra cell (5,5) keeps row 5 at three candidates so no row
+// conjugate pair forms: without a second row link, no row skyscraper can fire,
+// so a nil result here would mean the column scan is missing.
+func TestDetectSkyscraperFindsColumnOrientedPattern(t *testing.T) {
+	const solved = "534678912672195348198342567859761423426853791713924856961537284287419635345286179"
+	var cells [constants.TotalCells]int
+	for i := 0; i < constants.TotalCells; i++ {
+		cells[i] = int(solved[i] - '0')
+	}
+	// Punch out the pattern + victim + decoy cells so they carry candidates.
+	for _, idx := range []int{idxOf(0, 0), idxOf(0, 3), idxOf(3, 0), idxOf(5, 1), idxOf(5, 3), idxOf(5, 5)} {
+		cells[idx] = 0
+	}
+	b := boardFromMap(cells, map[int][]int{
+		idxOf(0, 0): {5},    // base1
+		idxOf(0, 3): {5},    // base2 (shares row 0 with base1)
+		idxOf(3, 0): {5},    // top1
+		idxOf(5, 3): {5},    // top2
+		idxOf(5, 1): {5, 6}, // victim: sees top1 (box 3) and top2 (row 5)
+		idxOf(5, 5): {5},    // decoy: makes row 5 a non-pair so no row skyscraper forms
+	})
+
+	move := DetectSkyscraper(b)
+	if move == nil {
+		t.Fatal("expected a column-oriented skyscraper move, got nil")
+	}
+	if move.Digit != 5 {
+		t.Fatalf("expected digit 5, got %d", move.Digit)
+	}
+	if move.Action != "eliminate" {
+		t.Fatalf("expected eliminate action, got %q", move.Action)
+	}
+	if !strings.Contains(move.Explanation, "base in row") {
+		t.Fatalf("expected column-scan explanation mentioning 'base in row', got %q", move.Explanation)
+	}
+	patternCells := map[[2]int]bool{
+		{0, 0}: true, {3, 0}: true, {0, 3}: true, {5, 3}: true,
+	}
+	var eliminatedAtVictim bool
+	for _, e := range move.Eliminations {
+		if e.Digit != 5 {
+			t.Errorf("expected only digit 5 eliminated, got %d at (%d,%d)", e.Digit, e.Row, e.Col)
+		}
+		if e.Row == 5 && e.Col == 1 {
+			eliminatedAtVictim = true
+		}
+		if patternCells[[2]int{e.Row, e.Col}] {
+			t.Errorf("skyscraper over-eliminated a pattern cell at (%d,%d)", e.Row, e.Col)
+		}
+	}
+	if !eliminatedAtVictim {
+		t.Errorf("expected 5 eliminated at victim (5,1), eliminations=%+v", move.Eliminations)
 	}
 }
 

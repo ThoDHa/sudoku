@@ -160,7 +160,7 @@ func (u UnitType) String() string {
 // Unit represents a single row, column, or box
 type Unit struct {
 	Type  UnitType
-	Index int   // 0-15, which row/col/box
+	Index int   // 0-8, which row/col/box
 	Cells []int // The GridSize cell indices
 }
 
@@ -171,7 +171,7 @@ type Unit struct {
 // BoardInterface defines the board operations needed by solving techniques
 type BoardInterface interface {
 	// Cell state queries
-	GetCell(idx int) int                // Returns 0 for empty, 1-16 for filled
+	GetCell(idx int) int                // Returns 0 for empty, 1-9 for filled
 	GetCandidatesAt(idx int) Candidates // Returns candidate bitmask for cell
 
 	// Unit queries

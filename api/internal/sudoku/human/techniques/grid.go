@@ -98,17 +98,17 @@ func initializePeers() {
 // Coordinate Helpers
 // ============================================================================
 
-// RowOf returns the row number (0-15) for a cell index
+// RowOf returns the row number (0-8) for a cell index
 func RowOf(idx int) int {
 	return idx / constants.GridSize
 }
 
-// ColOf returns the column number (0-15) for a cell index
+// ColOf returns the column number (0-8) for a cell index
 func ColOf(idx int) int {
 	return idx % constants.GridSize
 }
 
-// BoxOf returns the box number (0-15) for a cell index
+// BoxOf returns the box number (0-8) for a cell index
 func BoxOf(idx int) int {
 	row, col := idx/constants.GridSize, idx%constants.GridSize
 	return (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize

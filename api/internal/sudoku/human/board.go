@@ -10,7 +10,7 @@ import (
 // ============================================================================
 //
 // Board represents the current state of a Sudoku puzzle, including:
-// : Cell values (0 = empty, 1-16 = filled)
+// : Cell values (0 = empty, 1-9 = filled)
 // : Candidate digits for each cell (as bitmask)
 // : Eliminated candidates (to prevent re-adding)
 //
@@ -21,7 +21,7 @@ import (
 
 // Board represents the Sudoku board state with candidates
 type Board struct {
-	Cells      [constants.TotalCells]int        // 0 for empty, 1-16 for filled
+	Cells      [constants.TotalCells]int        // 0 for empty, 1-9 for filled
 	Candidates [constants.TotalCells]Candidates // possible values for each cell (bitmask)
 	Eliminated [constants.TotalCells]Candidates // candidates that have been eliminated (don't re-add)
 }
@@ -320,7 +320,7 @@ func (b *Board) CellsWithDigitInUnit(unit Unit, digit int) []int {
 // BoardInterface Implementation
 // ============================================================================
 
-// GetCell returns the digit at the given cell index (0 = empty, 1-16 = filled)
+// GetCell returns the digit at the given cell index (0 = empty, 1-9 = filled)
 func (b *Board) GetCell(idx int) int {
 	return b.Cells[idx]
 }
