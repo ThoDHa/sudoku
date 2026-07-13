@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { getPuzzleCount, getPuzzleForSeed, getPracticePuzzle } from './puzzles-data'
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
+import { getPuzzleCount, getPuzzleForSeed, getPracticePuzzle, ensurePuzzleBank } from './puzzles-data'
 
 // Mock the JSON imports
 vi.mock('../../puzzles.json', () => {
@@ -82,10 +82,24 @@ vi.mock('../../practice_puzzles.json', () => ({
 }))
 
 describe('puzzles-data', () => {
+  beforeAll(async () => {
+    await ensurePuzzleBank()
+  })
+
   describe('getPuzzleCount', () => {
     it('should return the number of puzzles in the pool', () => {
       const count = getPuzzleCount()
       expect(count).toBe(3) // Our mock has 3 puzzles
+    })
+  })
+
+  describe('ensurePuzzleBank', () => {
+    it('resolves immediately and returns the cached promise on subsequent calls', async () => {
+      const first = ensurePuzzleBank()
+      const second = ensurePuzzleBank()
+      await first
+      // Same cached promise: the bank loads once, never re-fetches
+      expect(second).toBe(first)
     })
   })
 
@@ -563,6 +577,10 @@ describe('puzzles-data', () => {
 })
 
 describe('getPracticePuzzle - missing-refs guard (mutation coverage)', () => {
+  beforeAll(async () => {
+    await ensurePuzzleBank()
+  })
+
   it('returns null without throwing when the technique has no puzzle refs', () => {
     // If the `!refs` guard is bypassed, `refs.length` dereferences undefined and throws.
     let result: ReturnType<typeof getPracticePuzzle>

@@ -293,12 +293,12 @@ async function resolvePractice(
 }
 
 // Resolve a puzzle fetched from the static pool.
-function resolveFetched(
+async function resolveFetched(
   effectiveSeed: string | undefined,
   difficulty: Difficulty,
   setEncodedPuzzle: (value: string | null) => void,
-): ResolvedPuzzle {
-  const fetchedPuzzle = getPuzzle(effectiveSeed ?? '', difficulty)
+): Promise<ResolvedPuzzle> {
+  const fetchedPuzzle = await getPuzzle(effectiveSeed ?? '', difficulty)
   setEncodedPuzzle(null)
   return {
     givens: fetchedPuzzle.givens,
@@ -956,7 +956,11 @@ function GameContent() {
     // Skip if user already confirmed navigation (from Homepage or Menu)
     // Both Homepage and Menu handle their own in-progress confirmations
     // Also skip if we've already handled initial navigation (to prevent check after seed changes)
-    if (sessionStorage.getItem('skip_in_progress_check') || handledInitialNavigationRef.current) {
+    const skipInProgressCheck = sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
+    if (skipInProgressCheck) {
+      sessionStorage.removeItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
+    }
+    if (skipInProgressCheck || handledInitialNavigationRef.current) {
       return
     }
 
@@ -1007,7 +1011,7 @@ function GameContent() {
   const handleResumeExistingGame = useCallback(() => {
     if (existingInProgressGame) {
       // Set flag so we don't show modal again when navigating to resumed game
-      sessionStorage.setItem('skip_in_progress_check', 'true')
+      sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
       const targetUrl = `/${existingInProgressGame.seed}?d=${existingInProgressGame.difficulty}`
       navigate(targetUrl)
     }
@@ -1019,7 +1023,7 @@ function GameContent() {
       clearInProgressGame(existingInProgressGame.seed)
     }
     // Set flag so we don't check for in-progress games again after user explicitly chose "Start New"
-    sessionStorage.setItem('skip_in_progress_check', 'true')
+    sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
     setShowInProgressConfirm(false)
     setExistingInProgressGame(null)
   }, [existingInProgressGame])
@@ -1075,7 +1079,7 @@ function GameContent() {
     if (resumeTarget) {
       // Current game is a different puzzle: navigate back to it. The flag stops the
       // in-progress check from re-prompting on arrival.
-      sessionStorage.setItem('skip_in_progress_check', 'true')
+      sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
       navigate(`/${resumeTarget.seed}?d=${resumeTarget.difficulty}`)
       setResumeTarget(null)
     } else if (!shareHasCurrentGame) {

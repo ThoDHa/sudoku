@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   buildSavedState,
   restoreHintCounters,
   type SavedGameState,
 } from '../lib/savedGameState'
+import { STORAGE_KEYS } from '../lib/constants'
 
 describe('SavedGameState hint-counter persistence', () => {
   const baseSaveInput = {
@@ -52,5 +53,30 @@ describe('SavedGameState hint-counter persistence', () => {
 
     expect(restored.hintsUsed).toBe(0)
     expect(restored.techniqueHintsUsed).toBe(0)
+  })
+})
+
+describe('skip_in_progress_check flag (BUG-13)', () => {
+  beforeEach(() => {
+    sessionStorage.clear()
+  })
+
+  it('clears the flag on first read so the resume prompt can reappear on a later navigation', () => {
+    sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
+
+    const readAndConsume = () => {
+      const value = sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
+      if (value) {
+        sessionStorage.removeItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
+      }
+      return value
+    }
+
+    const firstRead = readAndConsume()
+    expect(firstRead).toBe('true')
+    expect(sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)).toBeNull()
+
+    const secondRead = readAndConsume()
+    expect(secondRead).toBeNull()
   })
 })

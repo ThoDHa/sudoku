@@ -15,6 +15,7 @@ import {
 } from '../lib/preferences'
 import { getMostRecentGameForMode, clearInProgressGame } from '../lib/gameSettings'
 import { getDailySeed } from '../lib/solver-service'
+import { STORAGE_KEYS } from '../lib/constants'
 import { useTheme } from '../lib/ThemeContext'
 import DifficultyGrid from '../components/DifficultyGrid'
 
@@ -65,7 +66,7 @@ export default function Homepage() {
 
     if (practiceGame) {
       // Resume existing practice game
-      sessionStorage.setItem('skip_in_progress_check', 'true')
+      sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
       navigate(`/${practiceGame.seed}?d=${practiceGame.difficulty}`)
     } else {
       // Switch to game mode to let user select difficulty
@@ -90,7 +91,7 @@ export default function Homepage() {
     }
     if (pendingNavigation) {
       // Signal to Game component that we've already handled in-progress game check
-      sessionStorage.setItem('skip_in_progress_check', 'true')
+      sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
       navigate(pendingNavigation)
     }
     setShowNewGameConfirm(false)
@@ -230,7 +231,7 @@ export default function Homepage() {
                     return false
                   }
                   // Signal to Game component that we've already handled in-progress game check
-                  sessionStorage.setItem('skip_in_progress_check', 'true')
+                  sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
                   return true
                 }}
               />
@@ -274,7 +275,7 @@ export default function Homepage() {
                     return false
                   }
                   // Signal to Game component that we've already handled in-progress game check
-                  sessionStorage.setItem('skip_in_progress_check', 'true')
+                  sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
                   return true
                 }}
               />

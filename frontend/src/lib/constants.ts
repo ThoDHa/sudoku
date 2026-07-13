@@ -100,6 +100,7 @@ export const STORAGE_KEYS = {
   DAILY_COMPLETIONS: 'sudoku_daily_completions',
   DAILY_STREAK: 'sudoku_daily_streak',
   DAILY_PROMPT_LAST_SHOWN: 'sudoku_daily_prompt_last_shown',
+  SKIP_IN_PROGRESS_CHECK: 'skip_in_progress_check',
 } as const
 
 // =============================================================================

@@ -1,10 +1,3 @@
-/**
- * Static puzzle data - embedded at build time
- *
- * This file is auto-generated from puzzles.json and practice_puzzles.json
- * Run: npm run generate-puzzles (or equivalent) to regenerate
- */
-
 // Difficulty key mapping (internal use)
 const DifficultyKey: Record<string, string> = {
   easy: 'e',
@@ -34,13 +27,28 @@ export interface PracticePuzzleRef {
   d: string // difficulty key
 }
 
-// Import the JSON data
-import puzzlesJson from '../../puzzles.json' with { type: 'json' }
-import practiceJson from '../../practice_puzzles.json' with { type: 'json' }
+let puzzlesData!: { puzzles: CompactPuzzle[] }
+let practiceData!: { techniques: Record<string, PracticePuzzleRef[]> }
 
-// Type the imported data
-const puzzlesData = puzzlesJson as { puzzles: CompactPuzzle[] }
-const practiceData = practiceJson as { techniques: Record<string, PracticePuzzleRef[]> }
+let bankPromise: Promise<void> | null = null
+
+async function loadBank(): Promise<void> {
+  const [puzzlesModule, practiceModule] = await Promise.all([
+    import('../../puzzles.json'),
+    import('../../practice_puzzles.json'),
+  ])
+  puzzlesData = puzzlesModule.default as { puzzles: CompactPuzzle[] }
+  practiceData = practiceModule.default as {
+    techniques: Record<string, PracticePuzzleRef[]>
+  }
+}
+
+export function ensurePuzzleBank(): Promise<void> {
+  if (!bankPromise) {
+    bankPromise = loadBank()
+  }
+  return bankPromise
+}
 
 /**
  * Get a puzzle by index and difficulty (internal use)

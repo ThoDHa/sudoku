@@ -26,6 +26,7 @@ vi.mock('./worker-client', () => ({
 
 vi.mock('./puzzles-data', () => ({
   getPuzzleForSeed: vi.fn(),
+  ensurePuzzleBank: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('./dp-solver', () => ({
@@ -187,7 +188,7 @@ describe('solver-service', () => {
       vi.mocked(getPuzzleForSeed).mockReturnValue(mockPuzzle)
 
       const { getPuzzle } = await import('./solver-service')
-      const result = getPuzzle('test-seed', 'medium')
+      const result = await getPuzzle('test-seed', 'medium')
 
       expect(getPuzzleForSeed).toHaveBeenCalledWith('test-seed', 'medium')
       expect(result.puzzle_id).toBe('static-42')
@@ -204,7 +205,7 @@ describe('solver-service', () => {
 
       const { getPuzzle } = await import('./solver-service')
 
-      expect(() => getPuzzle('invalid-seed', 'easy')).toThrow(
+      await expect(getPuzzle('invalid-seed', 'easy')).rejects.toThrow(
         'Failed to load puzzle for seed "invalid-seed" with difficulty "easy"',
       )
     })
@@ -222,7 +223,7 @@ describe('solver-service', () => {
 
       const difficulties = ['easy', 'medium', 'hard', 'expert']
       for (const difficulty of difficulties) {
-        const result = getPuzzle('seed', difficulty)
+        const result = await getPuzzle('seed', difficulty)
         expect(result.difficulty).toBe(difficulty)
       }
     })

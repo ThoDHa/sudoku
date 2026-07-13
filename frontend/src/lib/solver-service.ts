@@ -18,7 +18,7 @@ import {
   solveAll as workerSolveAll,
 } from './worker-client'
 
-import { getPuzzleForSeed as getStaticPuzzle } from './puzzles-data'
+import { getPuzzleForSeed as getStaticPuzzle, ensurePuzzleBank } from './puzzles-data'
 import { logger } from './logger'
 import {
   validatePuzzle as dpValidatePuzzle,
@@ -294,7 +294,8 @@ export async function validateCustomPuzzle(
   return response
 }
 
-export function getPuzzle(seed: string, difficulty: string): PuzzleResult {
+export async function getPuzzle(seed: string, difficulty: string): Promise<PuzzleResult> {
+  await ensurePuzzleBank()
   // All puzzles come from the static pool - no WASM needed!
   // The seed is hashed to deterministically select a puzzle index
   const staticPuzzle = getStaticPuzzle(seed, difficulty)

@@ -12,7 +12,13 @@ import {
 import { getShowDailyReminder, setShowDailyReminder } from '../lib/preferences'
 import { getDailySeed } from '../lib/solver-service'
 import { getLastDailyDifficulty } from '../lib/hooks'
-import { createGameRoute, SPEED_OPTIONS, COLOR_THEMES, TOAST_DURATION_INFO } from '../lib/constants'
+import {
+  createGameRoute,
+  SPEED_OPTIONS,
+  COLOR_THEMES,
+  TOAST_DURATION_INFO,
+  STORAGE_KEYS,
+} from '../lib/constants'
 import { logger } from '../lib/logger'
 
 const ACCENT_ACTIVE = 'bg-accent text-btn-active-text'
@@ -212,7 +218,7 @@ function ModeSwitchSection({ onClose, currentSeed }: ModeSwitchSectionProps) {
     const { seed } = getDailySeed()
     const difficulty = getLastDailyDifficulty()
     // Skip in-progress check: user explicitly chose to switch modes
-    sessionStorage.setItem('skip_in_progress_check', 'true')
+    sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
     // Navigate to daily puzzle with difficulty if available, otherwise Game will show chooser
     navigate(difficulty ? `/${seed}?d=${difficulty}` : `/${seed}`)
     onClose()
@@ -222,7 +228,7 @@ function ModeSwitchSection({ onClose, currentSeed }: ModeSwitchSectionProps) {
     // Check if there's an in-progress practice game
     const inProgressGame = getMostRecentGameForMode('game')
     // Skip in-progress check: user explicitly chose to switch modes
-    sessionStorage.setItem('skip_in_progress_check', 'true')
+    sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
 
     if (inProgressGame) {
       // Resume existing practice game
@@ -760,7 +766,7 @@ export default function Menu({
     } else {
       // Set flag so Game.tsx knows user already confirmed navigation
       // and won't show its own in-progress check prompt
-      sessionStorage.setItem('skip_in_progress_check', 'true')
+      sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
       if (difficulty === 'custom') {
         navigate('/custom')
       } else {
@@ -775,7 +781,7 @@ export default function Menu({
     if (confirmNewPuzzle) {
       // Set flag so Game.tsx knows user already confirmed navigation
       // and won't show its own in-progress check prompt
-      sessionStorage.setItem('skip_in_progress_check', 'true')
+      sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
       const targetRoute =
         confirmNewPuzzle === 'custom' ? '/custom' : createGameRoute(confirmNewPuzzle)
       logger.warn(

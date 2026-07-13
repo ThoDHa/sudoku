@@ -5,7 +5,7 @@ import { ChevronRightIcon } from './ui'
 import TechniqueDiagramView, { TechniqueDiagramLegend } from './TechniqueDiagram'
 import AnimatedDiagramView from './AnimatedDiagramView'
 import GlossaryLinkedText from './GlossaryLinkedText'
-import { getPracticePuzzle } from '../lib/puzzles-data'
+import { getPracticePuzzle, ensurePuzzleBank } from '../lib/puzzles-data'
 import { STORAGE_KEYS } from '../lib/constants'
 
 interface TechniqueDetailViewProps {
@@ -77,8 +77,10 @@ export default function TechniqueDetailView({
   // Only show practice for implemented techniques (not 'NotImplemented' tier)
   const canPractice = technique.tier !== 'NotImplemented' && technique.tier !== 'Auto'
 
-  const handlePractice = () => {
+  const handlePractice = async () => {
     setPracticeError(null)
+
+    await ensurePuzzleBank()
 
     // Get a practice puzzle that uses this technique
     const puzzle = getPracticePuzzle(technique.slug)
