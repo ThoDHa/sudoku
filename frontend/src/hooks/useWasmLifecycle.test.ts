@@ -735,8 +735,8 @@ describe('useWasmLifecycle', () => {
         await vi.advanceTimersByTimeAsync(6000)
       })
 
-      // Cleanup happened (exactly once, not twice from a stale timeout)
-      expect(mockCleanupSolver.mock.calls.length).toBeGreaterThanOrEqual(1)
+      // Cleanup happened exactly once, not twice from a stale timeout
+      expect(mockCleanupSolver).toHaveBeenCalledTimes(1)
     })
 
     it('reloads WASM when re-entering a game route after unload fires', async () => {

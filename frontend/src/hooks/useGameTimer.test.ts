@@ -203,8 +203,13 @@ describe('useGameTimer', () => {
         vi.advanceTimersByTime(2000)
       })
 
-      // Should have accumulated time
-      expect(result.current.elapsedMs).toBeGreaterThanOrEqual(5000)
+      // The timer must accumulate real play time on top of the 5000ms baseline.
+      // A no-op startTimer (startTimeRef never seeded) leaves elapsedMs frozen
+      // at exactly 5000; a corrupted baseline (adding Date.now() instead of the
+      // delta) produces astronomically large values. Advancing 2000ms should
+      // land elapsedMs near 7000.
+      expect(result.current.elapsedMs).toBeGreaterThanOrEqual(6000)
+      expect(result.current.elapsedMs).toBeLessThan(9000)
     })
   })
 
