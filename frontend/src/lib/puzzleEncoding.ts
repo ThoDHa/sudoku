@@ -573,9 +573,9 @@ function decodeDense(encoded: string): number[] {
     /* v8 ignore stop */
     const high = (byte >> 4) & 0x0f
     const low = byte & 0x0f
-    cells.push(high)
+    cells.push(high > 9 ? 0 : high)
     if (cells.length < 81) {
-      cells.push(low)
+      cells.push(low > 9 ? 0 : low)
     }
   }
 

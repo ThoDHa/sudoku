@@ -34,12 +34,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Set up Docker buildx
         # buildx cache lets the built `sudoku` image be reused across both
         # compose cycles, so the second `up` does not rebuild the app image.
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
       - name: Show Docker Compose version
         run: docker compose version
@@ -99,7 +99,7 @@ jobs:
       # ============================================================
       - name: Upload profiling baselines (results JSON)
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: nightly-profiling-results
           path: frontend/e2e/profiling/results/
@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: nightly-playwright-report
           path: frontend/playwright-report/
@@ -115,7 +115,7 @@ jobs:
 
       - name: Upload Playwright test-results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: nightly-test-results
           path: frontend/test-results/
@@ -127,7 +127,7 @@ jobs:
 
       - name: Upload Allure results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: nightly-allure-results
           path: frontend/allure-results/

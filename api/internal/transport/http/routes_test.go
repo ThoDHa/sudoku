@@ -567,11 +567,12 @@ func TestHTTPRoutes(t *testing.T) {
 		router := setupRouter()
 		token := getValidToken(router)
 
-		// A solvable board
+		// A solvable board with enough givens for both modes
+		solved := dp.GenerateFullGrid(42)
 		board := make([]int, 81)
-		board[0] = 5
-		board[1] = 3
-		board[4] = 7
+		copy(board, solved)
+		board[0] = 0
+		board[40] = 0
 
 		tests := []struct {
 			name       string
@@ -628,12 +629,17 @@ func TestHTTPRoutes(t *testing.T) {
 	})
 
 	t.Run("SolveEmptyBoardAutosolve", func(t *testing.T) {
-		// Verify the fast autosolve mode can solve a clean new (empty) board
+		// Verify the fast autosolve mode can solve a partially-filled board
 		router := setupRouter()
 		token := getValidToken(router)
 
-		// Empty board (all zeros)
+		// Partially-filled board with enough givens (≥ MinGivens)
+		solved := dp.GenerateFullGrid(77)
 		board := make([]int, 81)
+		copy(board, solved)
+		for i := 0; i < 20; i++ {
+			board[i] = 0
+		}
 
 		body := map[string]interface{}{
 			"token": token,

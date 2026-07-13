@@ -2,7 +2,9 @@
 # frontend/Dockerfile, which ends on nginx:alpine with no node at runtime.
 # Build context is frontend/ (see Makefile test-unit target), so COPY paths
 # are relative to frontend/, not to the repo root.
-FROM node:24-alpine
+# Digest-pinned so the floating 24.x line cannot shift under us; renovate
+# proposes digest bumps under review. Matches frontend/Dockerfile's build stage.
+FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci

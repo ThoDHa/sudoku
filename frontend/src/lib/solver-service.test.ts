@@ -22,6 +22,12 @@ vi.mock('./worker-client', () => ({
   isWorkerReady: vi.fn().mockReturnValue(false),
   findNextMove: vi.fn(),
   solveAll: vi.fn(),
+  WorkerTerminatedError: class WorkerTerminatedError extends Error {
+    constructor() {
+      super('Worker terminated')
+      this.name = 'WorkerTerminatedError'
+    }
+  },
 }))
 
 vi.mock('./puzzles-data', () => ({
@@ -643,7 +649,8 @@ describe('solver-service', () => {
       vi.mocked(isWorkerSupported).mockReturnValue(true)
 
       vi.resetModules()
-      const { setWorkerMode, enableWorkerMode, isUsingWorkerMode } = await import('./solver-service')
+      const { setWorkerMode, enableWorkerMode, isUsingWorkerMode } =
+        await import('./solver-service')
       setWorkerMode(false)
       expect(isUsingWorkerMode()).toBe(false)
 
@@ -803,7 +810,8 @@ describe('solver-service', () => {
     })
 
     it('logs findNextMove worker fallback and uses main thread', async () => {
-      const { isWorkerSupported, findNextMove: workerFindNextMove } = await import('./worker-client')
+      const { isWorkerSupported, findNextMove: workerFindNextMove } =
+        await import('./worker-client')
       const { loadWasm, getWasmApi } = await import('./wasm')
       const { logger } = await import('./logger')
 
@@ -1086,6 +1094,119 @@ describe('solver-service', () => {
       const result = await checkAndFixWithSolution([0], [[]], [0], [1])
       expect(result).toBeDefined()
       expect(result.solved).toBe(false)
+    })
+  })
+
+  describe('BUG-14: tab-hide worker termination must not trigger main-thread WASM fallback', () => {
+    const mockBoard = Array(81).fill(0)
+    const mockCandidates = Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    const mockGivens = Array(81).fill(0)
+
+    beforeEach(async () => {
+      const { logger } = await import('./logger')
+      vi.mocked(logger.debug).mockReset()
+      vi.mocked(logger.debug).mockImplementation(() => {})
+    })
+
+    it('solveAll rethrows WorkerTerminatedError and does not load main-thread WASM', async () => {
+      const {
+        isWorkerSupported,
+        solveAll: workerSolveAll,
+        WorkerTerminatedError,
+      } = await import('./worker-client')
+      const { loadWasm, getWasmApi } = await import('./wasm')
+
+      vi.mocked(isWorkerSupported).mockReturnValue(true)
+      vi.mocked(workerSolveAll).mockRejectedValue(new WorkerTerminatedError())
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
+      vi.mocked(getWasmApi).mockReturnValue({ solveAll: vi.fn(), findNextMove: vi.fn() } as never)
+
+      vi.resetModules()
+      const { solveAll, setWorkerMode } = await import('./solver-service')
+      setWorkerMode(true)
+
+      await expect(solveAll(mockBoard, mockCandidates, mockGivens)).rejects.toBeInstanceOf(
+        WorkerTerminatedError,
+      )
+
+      expect(loadWasm).not.toHaveBeenCalled()
+      expect(getWasmApi).not.toHaveBeenCalled()
+    })
+
+    it('findNextMove rethrows WorkerTerminatedError and does not load main-thread WASM', async () => {
+      const {
+        isWorkerSupported,
+        findNextMove: workerFindNextMove,
+        WorkerTerminatedError,
+      } = await import('./worker-client')
+      const { loadWasm, getWasmApi } = await import('./wasm')
+
+      vi.mocked(isWorkerSupported).mockReturnValue(true)
+      vi.mocked(workerFindNextMove).mockRejectedValue(new WorkerTerminatedError())
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
+      vi.mocked(getWasmApi).mockReturnValue({ solveAll: vi.fn(), findNextMove: vi.fn() } as never)
+
+      vi.resetModules()
+      const { findNextMove, setWorkerMode } = await import('./solver-service')
+      setWorkerMode(true)
+
+      await expect(findNextMove(mockBoard, mockCandidates, mockGivens)).rejects.toBeInstanceOf(
+        WorkerTerminatedError,
+      )
+
+      expect(loadWasm).not.toHaveBeenCalled()
+      expect(getWasmApi).not.toHaveBeenCalled()
+    })
+
+    it('solveAll still falls back to main thread on a genuine worker failure', async () => {
+      const { isWorkerSupported, solveAll: workerSolveAll } = await import('./worker-client')
+      const { loadWasm, getWasmApi } = await import('./wasm')
+
+      const mockApi = {
+        solveAll: vi.fn().mockReturnValue({ moves: [], solved: true, finalBoard: mockBoard }),
+        findNextMove: vi.fn(),
+      }
+      vi.mocked(isWorkerSupported).mockReturnValue(true)
+      vi.mocked(workerSolveAll).mockRejectedValue(new Error('Worker crashed'))
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
+      vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
+
+      vi.resetModules()
+      const { solveAll, setWorkerMode } = await import('./solver-service')
+      setWorkerMode(true)
+
+      const result = await solveAll(mockBoard, mockCandidates, mockGivens)
+
+      expect(result.solved).toBe(true)
+      expect(mockApi.solveAll).toHaveBeenCalled()
+    })
+
+    it('findNextMove still falls back to main thread on a genuine worker failure', async () => {
+      const { isWorkerSupported, findNextMove: workerFindNextMove } =
+        await import('./worker-client')
+      const { loadWasm, getWasmApi } = await import('./wasm')
+
+      const mockApi = {
+        solveAll: vi.fn(),
+        findNextMove: vi.fn().mockReturnValue({
+          move: null,
+          board: { cells: mockBoard, candidates: mockCandidates },
+          solved: false,
+        }),
+      }
+      vi.mocked(isWorkerSupported).mockReturnValue(true)
+      vi.mocked(workerFindNextMove).mockRejectedValue(new Error('Worker crashed'))
+      vi.mocked(loadWasm).mockResolvedValue(undefined as never)
+      vi.mocked(getWasmApi).mockReturnValue(mockApi as never)
+
+      vi.resetModules()
+      const { findNextMove, setWorkerMode } = await import('./solver-service')
+      setWorkerMode(true)
+
+      const result = await findNextMove(mockBoard, mockCandidates, mockGivens)
+
+      expect(result.move).toBeNull()
+      expect(mockApi.findNextMove).toHaveBeenCalled()
     })
   })
 })

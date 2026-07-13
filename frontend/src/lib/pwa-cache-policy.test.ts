@@ -16,10 +16,17 @@ describe('PWA cache policy', () => {
     expect(config).not.toMatch(/registerType:\s*'prompt'/)
   })
 
+  // Source-text guard: vite-plugin-pwa generates the SW at build time and the
+  // built artifact is never loaded in unit tests, so this catches the BUG-8
+  // regression (a 'wasm-cache' CacheFirst runtime rule) at the config level.
+  // The complementary positive assertion (wasm in globPatterns) is the test below.
   it('does not pin the wasm behind a CacheFirst runtime rule (precache handles offline)', () => {
     expect(config).not.toMatch(/cacheName:\s*'wasm-cache'/)
   })
 
+  // Source-text guard: asserts the NetworkFirst timeout was raised from the
+  // BUG-8 1s value. Built-SW timeout behavior under a real network is not
+  // tested here; a build-time integration test would be needed for that.
   it('does not fall back to a stale cache after a 1-second network timeout', () => {
     expect(config).not.toMatch(/networkTimeoutSeconds:\s*1\b/)
   })

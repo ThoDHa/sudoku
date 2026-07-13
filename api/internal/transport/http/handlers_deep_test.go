@@ -1257,7 +1257,7 @@ func TestMutation_CustomValidate_NoSolutionExactReason(t *testing.T) {
 	if !dp.IsValid(context.Background(), board) {
 		t.Fatalf("setup: board must be conflict-free to reach the solvability check, conflicts=%v", dp.FindConflicts(board))
 	}
-	if dp.CountSolutions(context.Background(), board, 1) != 0 {
+	if count, _ := dp.CountSolutions(context.Background(), board, 1); count != 0 {
 		t.Fatalf("setup: board must have zero solutions to reach the no-solution branch")
 	}
 	code, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{
@@ -1285,7 +1285,7 @@ func TestMutation_CustomValidate_MultipleSolutionsExactReason(t *testing.T) {
 	if !dp.IsValid(context.Background(), givens) {
 		t.Fatalf("setup: givens must be conflict-free")
 	}
-	if n := dp.CountSolutions(context.Background(), givens, 2); n < 2 {
+	if n, _ := dp.CountSolutions(context.Background(), givens, 2); n < 2 {
 		t.Skipf("setup: this 17-given board has %d solution(s); cannot exercise multiple-solutions branch", n)
 	}
 	code, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{
@@ -1367,6 +1367,15 @@ func TestMutation_ValidateBoard_UnsolvableExactMessage(t *testing.T) {
 		unsolvable[d] = d
 	}
 	unsolvable[9] = 9
+	unsolvable[27] = 8
+	unsolvable[28] = 9
+	unsolvable[29] = 1
+	unsolvable[30] = 2
+	unsolvable[31] = 3
+	unsolvable[32] = 4
+	unsolvable[33] = 5
+	unsolvable[34] = 6
+	unsolvable[35] = 7
 	_, resp := postJSON(t, router, "/api/validate", map[string]interface{}{
 		"token": token, "board": unsolvable,
 	})
@@ -1451,6 +1460,15 @@ func TestMutation_SolveFull_FastModeUnsolvableExactError(t *testing.T) {
 		unsolvable[d] = d
 	}
 	unsolvable[9] = 9
+	unsolvable[27] = 8
+	unsolvable[28] = 9
+	unsolvable[29] = 1
+	unsolvable[30] = 2
+	unsolvable[31] = 3
+	unsolvable[32] = 4
+	unsolvable[33] = 5
+	unsolvable[34] = 6
+	unsolvable[35] = 7
 	code, resp := postJSON(t, router, "/api/solve/full?mode=fast", map[string]interface{}{
 		"token": token, "board": unsolvable,
 	})

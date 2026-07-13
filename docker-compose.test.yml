@@ -32,7 +32,10 @@ services:
   # users who want non-root artifact ownership can add a docker-compose.override.yml
   # with `user: "${UID}:${GID}"`.
   playwright:
-    image: mcr.microsoft.com/playwright:v1.61.1-noble
+    # Digest-pinned so a rebuilt :v1.61.1-noble cannot shift under us; the
+    # pre-installed browsers at /ms-playwright must match the Playwright npm
+    # version. Renovate proposes digest bumps under review.
+    image: mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48
     working_dir: /app
     volumes:
       - ./frontend:/app

@@ -118,6 +118,25 @@ func requireBoardValues(c *gin.Context, board []int) bool {
 	return true
 }
 
+// requireMinGivens writes a 400 and returns false when the board has fewer than
+// MinGivens non-empty cells. Boards below the minimum cannot have a unique
+// solution and are rejected before reaching the unbounded DP backtracker.
+func requireMinGivens(c *gin.Context, board []int) bool {
+	givenCount := 0
+	for _, v := range board {
+		if v != 0 {
+			givenCount++
+		}
+	}
+	if givenCount < constants.MinGivens {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("need at least %d givens", constants.MinGivens),
+		})
+		return false
+	}
+	return true
+}
+
 // buildFixedCandidates clones the user's candidate grid for a fix response,
 // clearing the candidates of the cell being removed (badCell). It always
 // returns a full TotalCells-length grid so downstream code can index safely
@@ -1286,8 +1305,15 @@ func solveFullHandler(c *gin.Context) {
 	}
 
 	if mode == "fast" {
+		if !requireMinGivens(c, req.Board) {
+			return
+		}
 		// Use DP solver
-		solution := dp.Solve(c.Request.Context(), req.Board)
+		solution, err := dp.Solve(c.Request.Context(), req.Board)
+		if err != nil {
+			c.JSON(http.StatusRequestTimeout, gin.H{"error": "solver timeout"})
+			return
+		}
 		if solution == nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "no solution found"})
 			return
@@ -1358,7 +1384,11 @@ func validateBoardHandler(c *gin.Context) {
 
 	// Check if puzzle is solvable from current state
 	// mutator-disable-next-line numbers/incrementer
-	solutions := dp.CountSolutions(c.Request.Context(), req.Board, 1)
+	solutions, err := dp.CountSolutions(c.Request.Context(), req.Board, 1)
+	if err != nil {
+		c.JSON(http.StatusRequestTimeout, gin.H{"error": "solver timeout"})
+		return
+	}
 	if solutions == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"valid":   false,
@@ -1380,6 +1410,7 @@ type CustomValidateRequest struct {
 	DeviceID string `json:"device_id" binding:"required"`
 }
 
+//nolint:gocyclo // validates givens count, range-checks cells, and dispatches the solver in one sequential guard chain
 func customValidateHandler(c *gin.Context) {
 	var req CustomValidateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -1421,7 +1452,11 @@ func customValidateHandler(c *gin.Context) {
 	}
 
 	// Check solvability and uniqueness using DP
-	solutions := dp.CountSolutions(c.Request.Context(), req.Givens, constants.SolutionCountLimit)
+	solutions, err := dp.CountSolutions(c.Request.Context(), req.Givens, constants.SolutionCountLimit)
+	if err != nil {
+		c.JSON(http.StatusRequestTimeout, gin.H{"error": "solver timeout"})
+		return
+	}
 
 	if solutions == 0 {
 		c.JSON(http.StatusOK, gin.H{

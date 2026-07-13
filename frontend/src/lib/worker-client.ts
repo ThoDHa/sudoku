@@ -15,6 +15,13 @@ import { logger } from './logger'
 
 // ==================== Types ====================
 
+export class WorkerTerminatedError extends Error {
+  constructor() {
+    super('Worker terminated')
+    this.name = 'WorkerTerminatedError'
+  }
+}
+
 export interface WorkerFindNextMoveResult {
   move: Move | null
   board: number[]
@@ -308,7 +315,7 @@ export function terminateWorker(): void {
     // Clear all pending requests
     for (const [id, pending] of pendingRequests) {
       clearTimeout(pending.timeoutId)
-      pending.reject(new Error('Worker terminated'))
+      pending.reject(new WorkerTerminatedError())
       pendingRequests.delete(id)
     }
 

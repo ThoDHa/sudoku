@@ -916,9 +916,7 @@ describe('puzzleEncoding - mutation-killing boundary tests', () => {
       board[0] = 5
       givens[0] = 5
       const encoded = encodePuzzleWithState(board, givens)
-      expect(encoded).toBe(
-        'eEAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-      )
+      expect(encoded).toBe('eEAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
       expect(encoded).toHaveLength(70)
     })
   })
@@ -1231,8 +1229,7 @@ describe('puzzleEncoding - mutation-killing boundary tests', () => {
       const mask = 'BAAAAAAAAAAAAA' // bit 78 set → 1 cell with candidates
       const invalidBytes = '!!!!' // '!' is not in the base64 alphabet
       const candidatesData = mask + invalidBytes
-      const encoded =
-        'c' + 'A'.repeat(14) + 'A'.repeat(55) + candidatesData
+      const encoded = 'c' + 'A'.repeat(14) + 'A'.repeat(55) + candidatesData
       expect(() => decodePuzzleWithState(encoded)).not.toThrow()
       const decoded = decodePuzzleWithState(encoded)!
       expect(decoded.candidates).toBeDefined()
@@ -1253,7 +1250,7 @@ describe('puzzleEncoding - mutation-killing boundary tests', () => {
       const decoded = decodePuzzle('d-AAA')
       expect(decoded).toHaveLength(81)
       // Byte 248 unpacks: high nibble 15, low nibble 8.
-      expect(decoded[0]).toBe(15)
+      expect(decoded[0]).toBe(0)
       expect(decoded[1]).toBe(8)
       // Subsequent bytes are 0.
       expect(decoded[2]).toBe(0)
@@ -1267,8 +1264,8 @@ describe('puzzleEncoding - mutation-killing boundary tests', () => {
       const decoded = decodePuzzle('d_AAA')
       expect(decoded).toHaveLength(81)
       // First byte 252 unpacks: high nibble 15, low nibble 12.
-      expect(decoded[0]).toBe(15)
-      expect(decoded[1]).toBe(12)
+      expect(decoded[0]).toBe(0)
+      expect(decoded[1]).toBe(0)
     })
 
     it('decodes a dense payload whose length requires padding (3 chars -> padded to 4)', () => {
@@ -1327,5 +1324,46 @@ describe('puzzleEncoding - filled-cell and digit guards (mutation coverage)', ()
     // If the `d >= 1 && d <= 9` guard is forced true, digit 10 (bit 9) would be encoded
     // and decode back as [10] for cell 1.
     expect(decoded?.candidates?.[1]).toEqual([])
+  })
+})
+
+describe('BUG-21: decodeDense clamps out-of-range nibbles to valid digits', () => {
+  it('zeros decoded cell values when nibbles exceed 9', () => {
+    // '_wAA' is URL-safe base64 for '/wAA', which decodes to bytes [255, 0, 0].
+    // Byte 255: high nibble 15, low nibble 15. Both exceed the valid 0-9 range.
+    const decoded = decodePuzzle('d_wAA')
+    expect(decoded).toHaveLength(81)
+    expect(decoded[0]).toBe(0)
+    expect(decoded[1]).toBe(0)
+    expect(decoded.every((c) => c >= 0 && c <= 9)).toBe(true)
+  })
+
+  it('clamps only the out-of-range nibble while preserving valid neighbors', () => {
+    // '-AAA' decodes to bytes [248, 0, 0]. Byte 248: high nibble 15 (>9), low nibble 8 (valid).
+    const decoded = decodePuzzle('d-AAA')
+    expect(decoded[0]).toBe(0)
+    expect(decoded[1]).toBe(8)
+  })
+
+  it('preserves valid digits (0-9) through dense round-trip', () => {
+    const board = Array.from({ length: 81 }, (_, i) => (i % 9) + 1)
+    const decoded = decodePuzzle(encodePuzzle(board))
+    expect(decoded).toEqual(board)
+    expect(decoded.every((c) => c >= 0 && c <= 9)).toBe(true)
+  })
+
+  it('clamps out-of-range board values in decoded shared state', () => {
+    // Encode a valid state, then corrupt the board bytes to inject nibble 15.
+    const board = Array(81).fill(0)
+    const givens = Array(81).fill(0)
+    board[0] = 5
+    givens[0] = 5
+    const encoded = encodePuzzleWithState(board, givens)
+    // Replace the first board byte (after 'e' + 14-char mask = position 15) with '-'
+    // which is URL-safe base64 for '+', producing byte 248 (high nibble 15).
+    const corrupted = encoded.slice(0, 15) + '-' + encoded.slice(16)
+    const decoded = decodePuzzleWithState(corrupted)
+    expect(decoded).not.toBeNull()
+    expect(decoded!.board.every((c) => c >= 0 && c <= 9)).toBe(true)
   })
 })

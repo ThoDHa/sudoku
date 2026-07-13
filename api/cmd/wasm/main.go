@@ -561,8 +561,8 @@ func solve(this js.Value, args []js.Value) interface{} {
 		return js.Null()
 	}
 
-	solution := dp.Solve(context.Background(), grid)
-	if solution == nil {
+	solution, err := dp.Solve(context.Background(), grid)
+	if err != nil || solution == nil {
 		return js.Null()
 	}
 
@@ -582,7 +582,11 @@ func hasUniqueSolution(this js.Value, args []js.Value) interface{} {
 		return js.ValueOf(false)
 	}
 
-	return js.ValueOf(dp.HasUniqueSolution(context.Background(), grid))
+	unique, err := dp.HasUniqueSolution(context.Background(), grid)
+	if err != nil {
+		return js.ValueOf(false)
+	}
+	return js.ValueOf(unique)
 }
 
 // isValid checks if the grid has no conflicts
@@ -1464,7 +1468,7 @@ func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 		}
 	}
 
-	if givenCount < 17 {
+	if givenCount < constants.MinGivens {
 		return validationResultToJS(false, "need at least 17 givens")
 	}
 
@@ -1474,7 +1478,10 @@ func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 	}
 
 	// Check solvability
-	solutions := dp.CountSolutions(context.Background(), givens, 2)
+	solutions, err := dp.CountSolutions(context.Background(), givens, 2)
+	if err != nil {
+		return validationResultToJS(false, "puzzle too complex to validate")
+	}
 
 	if solutions == 0 {
 		return validationResultToJS(false, "puzzle has no solution")
@@ -1485,7 +1492,10 @@ func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 	}
 
 	// Solve to get the solution
-	solution := dp.Solve(context.Background(), givens)
+	solution, solveErr := dp.Solve(context.Background(), givens)
+	if solveErr != nil || solution == nil {
+		return validationResultToJS(false, "puzzle too complex to solve")
+	}
 
 	return validationResultWithSolutionToJS(true, true, solution)
 }

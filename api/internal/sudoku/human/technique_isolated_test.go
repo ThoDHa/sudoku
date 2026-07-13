@@ -86,8 +86,8 @@ func loadTestPuzzle(t *testing.T, data techniquetest.PuzzleData) ([]int, []int) 
 	}
 
 	// Get solution from DP solver
-	solution := dp.Solve(context.Background(), givens)
-	if solution == nil {
+	solution, err := dp.Solve(context.Background(), givens)
+	if err != nil || solution == nil {
 		t.Fatalf("DP solver cannot solve puzzle: %s", data.PuzzleString)
 	}
 
@@ -136,7 +136,7 @@ func runIsolatedTechniqueTest(t *testing.T, slug string) {
 	givens, solution := loadTestPuzzle(t, data)
 
 	// Verify puzzle has unique solution
-	if !dp.HasUniqueSolution(context.Background(), givens) {
+	if unique, err := dp.HasUniqueSolution(context.Background(), givens); err != nil || !unique {
 		t.Fatalf("Puzzle does not have unique solution")
 	}
 
@@ -182,109 +182,6 @@ func runIsolatedTechniqueTest(t *testing.T, slug string) {
 		slug, result.TechniquesUsed[slug], result.Status, result.TotalMoves)
 }
 
-// runFullSolverTechniqueTest is for rare techniques that require the full solver
-// to fire. Some techniques like jellyfish are so rare that they need higher-tier
-// techniques to set up the board state before they can be applied.
-//
-//nolint:unused // Reserved for future tests
-func runFullSolverTechniqueTest(t *testing.T, slug string) {
-	t.Helper()
-
-	// Get puzzle data
-	data, ok := techniquetest.Get(slug)
-	if !ok {
-		t.Fatalf("No puzzle data for technique: %s", slug)
-	}
-
-	// Load puzzle
-	givens, solution := loadTestPuzzle(t, data)
-
-	// Verify puzzle has unique solution
-	if !dp.HasUniqueSolution(context.Background(), givens) {
-		t.Fatalf("Puzzle does not have unique solution")
-	}
-
-	// Use full solver
-	board := NewBoard(givens)
-	solver := NewSolver()
-	moves, status := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
-
-	// Check if technique was used
-	techniqueCount := 0
-	for _, move := range moves {
-		if move.Technique == slug {
-			techniqueCount++
-		}
-	}
-
-	if techniqueCount == 0 {
-		usedTechniques := make(map[string]int)
-		for _, move := range moves {
-			usedTechniques[move.Technique]++
-		}
-		t.Errorf("Technique %s was never used (full solver). Status: %s, Moves: %d, Used: %v",
-			slug, status, len(moves), usedTechniques)
-		return
-	}
-
-	// Validate final board state against solution
-	validateMoveAgainstSolution(t, board, solution, slug)
-
-	t.Logf("SUCCESS: %s used %d times, status: %s, total moves: %d",
-		slug, techniqueCount, status, len(moves))
-}
-
-// runDirectDetectionTest tests that the technique detector fires immediately on
-// the given partial solve state. This is the fastest test mode - it only calls
-// the detector once and validates the move. Use this for expensive techniques
-// where we have a partial state that triggers the technique on the first move.
-//
-//nolint:unused // Reserved for future tests
-func runDirectDetectionTest(t *testing.T, slug string) {
-	t.Helper()
-
-	// Get puzzle data
-	data, ok := techniquetest.Get(slug)
-	if !ok {
-		t.Fatalf("No puzzle data for technique: %s", slug)
-	}
-
-	// Load puzzle
-	givens, solution := loadTestPuzzle(t, data)
-
-	// Verify puzzle has unique solution
-	if !dp.HasUniqueSolution(context.Background(), givens) {
-		t.Fatalf("Puzzle does not have unique solution")
-	}
-
-	// Create board and test direct detection
-	board := NewBoard(givens)
-	move := DetectTechniqueDirect(board, slug)
-
-	if move == nil {
-		// Try with solver's FindNextMove as fallback
-		solver := NewSolver()
-		move = solver.FindNextMove(context.Background(), board)
-		if move == nil || move.Technique != slug {
-			t.Errorf("Technique %s was not detected on first move (got: %v)", slug, move)
-			return
-		}
-	}
-
-	if move.Technique != slug {
-		t.Errorf("Expected technique %s but got %s", slug, move.Technique)
-		return
-	}
-
-	// Validate the move against the solution
-	// Apply the move and check validity
-	solver := NewSolver()
-	solver.ApplyMove(board, move)
-	validateMoveAgainstSolution(t, board, solution, slug)
-
-	t.Logf("SUCCESS: %s detected directly", slug)
-}
-
 // runEarlyStopTechniqueTest runs until the target technique fires, then stops.
 // This is faster than runIsolatedTechniqueTest for expensive techniques because
 // it doesn't continue solving after the technique is detected.
@@ -320,7 +217,7 @@ func tryEarlyStopTechniqueTest(t *testing.T, slug string) bool {
 	givens, solution := loadTestPuzzle(t, data)
 
 	// Verify puzzle has unique solution
-	if !dp.HasUniqueSolution(context.Background(), givens) {
+	if unique, err := dp.HasUniqueSolution(context.Background(), givens); err != nil || !unique {
 		return false // Let the fallback handle the error
 	}
 
@@ -364,7 +261,7 @@ func runEarlyStopWithDisabledTechniques(t *testing.T, slug string, disabledTechn
 	givens, solution := loadTestPuzzle(t, data)
 
 	// Verify puzzle has unique solution
-	if !dp.HasUniqueSolution(context.Background(), givens) {
+	if unique, err := dp.HasUniqueSolution(context.Background(), givens); err != nil || !unique {
 		t.Fatalf("Puzzle does not have unique solution")
 	}
 
@@ -658,14 +555,14 @@ func TestAllPuzzlesAreValid(t *testing.T) {
 			}
 
 			// Check DP solver can solve it
-			solution := dp.Solve(context.Background(), givens)
-			if solution == nil {
+			solution, solveErr := dp.Solve(context.Background(), givens)
+			if solveErr != nil || solution == nil {
 				t.Errorf("Puzzle for %s is invalid (DP solver cannot solve)", data.Slug)
 				return
 			}
 
 			// Check uniqueness
-			if !dp.HasUniqueSolution(context.Background(), givens) {
+			if unique, err := dp.HasUniqueSolution(context.Background(), givens); err != nil || !unique {
 				t.Errorf("Puzzle for %s has multiple solutions", data.Slug)
 			}
 		})

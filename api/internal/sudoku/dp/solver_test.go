@@ -2,8 +2,12 @@ package dp
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
+	"time"
+
+	"sudoku-api/pkg/constants"
 )
 
 // Test Data
@@ -154,7 +158,10 @@ func TestSolve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := Solve(context.Background(), tt.input)
+			result, err := Solve(context.Background(), tt.input)
+			if err != nil {
+				t.Fatalf("Solve returned error: %v", err)
+			}
 
 			if tt.wantNil {
 				if result != nil {
@@ -196,7 +203,7 @@ func TestSolve_DoesNotModifyInput(t *testing.T) {
 	original := make([]int, len(validPuzzle))
 	copy(original, validPuzzle)
 
-	Solve(context.Background(), validPuzzle)
+	_, _ = Solve(context.Background(), validPuzzle)
 
 	for i := range validPuzzle {
 		if validPuzzle[i] != original[i] {
@@ -238,7 +245,10 @@ func TestHasUniqueSolution(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := HasUniqueSolution(context.Background(), tt.input)
+			got, err := HasUniqueSolution(context.Background(), tt.input)
+			if err != nil {
+				t.Fatalf("HasUniqueSolution returned error: %v", err)
+			}
 			if got != tt.want {
 				t.Errorf("HasUniqueSolution(context.Background(), ) = %v, want %v", got, tt.want)
 			}
@@ -450,7 +460,10 @@ func TestCountSolutions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CountSolutions(context.Background(), tt.input, tt.maxCount)
+			got, err := CountSolutions(context.Background(), tt.input, tt.maxCount)
+			if err != nil {
+				t.Fatalf("CountSolutions returned error: %v", err)
+			}
 			if got != tt.want {
 				t.Errorf("CountSolutions(context.Background(), ) = %d, want %d", got, tt.want)
 			}
@@ -462,7 +475,7 @@ func TestCountSolutions_DoesNotModifyInput(t *testing.T) {
 	original := make([]int, len(validPuzzle))
 	copy(original, validPuzzle)
 
-	CountSolutions(context.Background(), validPuzzle, 10)
+	_, _ = CountSolutions(context.Background(), validPuzzle, 10)
 
 	for i := range validPuzzle {
 		if validPuzzle[i] != original[i] {
@@ -574,7 +587,11 @@ func TestGenerateFullGrid(t *testing.T) {
 
 	t.Run("generated grid has exactly one solution", func(t *testing.T) {
 		grid := GenerateFullGrid(99999)
-		if !HasUniqueSolution(context.Background(), grid) {
+		unique, err := HasUniqueSolution(context.Background(), grid)
+		if err != nil {
+			t.Fatalf("HasUniqueSolution returned error: %v", err)
+		}
+		if !unique {
 			t.Error("generated grid does not have unique solution")
 		}
 	})
@@ -596,7 +613,11 @@ func TestCarveGivens(t *testing.T) {
 		fullGrid := GenerateFullGrid(789)
 		puzzle := CarveGivens(context.Background(), fullGrid, 35, 101)
 
-		if !HasUniqueSolution(context.Background(), puzzle) {
+		unique, err := HasUniqueSolution(context.Background(), puzzle)
+		if err != nil {
+			t.Fatalf("HasUniqueSolution returned error: %v", err)
+		}
+		if !unique {
 			t.Error("carved puzzle does not have unique solution")
 		}
 	})
@@ -605,7 +626,10 @@ func TestCarveGivens(t *testing.T) {
 		fullGrid := GenerateFullGrid(111)
 		puzzle := CarveGivens(context.Background(), fullGrid, 40, 222)
 
-		solution := Solve(context.Background(), puzzle)
+		solution, err := Solve(context.Background(), puzzle)
+		if err != nil {
+			t.Fatalf("Solve returned error: %v", err)
+		}
 		if solution == nil {
 			t.Fatal("puzzle is unsolvable")
 		}
@@ -693,7 +717,12 @@ func TestCarveGivensWithSubset(t *testing.T) {
 
 	t.Run("all puzzles have unique solutions", func(t *testing.T) {
 		for diff, puzzle := range puzzles {
-			if !HasUniqueSolution(context.Background(), puzzle) {
+			unique, err := HasUniqueSolution(context.Background(), puzzle)
+			if err != nil {
+				t.Errorf("%s puzzle: HasUniqueSolution error: %v", diff, err)
+				continue
+			}
+			if !unique {
 				t.Errorf("%s puzzle does not have unique solution", diff)
 			}
 		}
@@ -701,7 +730,11 @@ func TestCarveGivensWithSubset(t *testing.T) {
 
 	t.Run("all puzzles solve to same grid", func(t *testing.T) {
 		for diff, puzzle := range puzzles {
-			solution := Solve(context.Background(), puzzle)
+			solution, err := Solve(context.Background(), puzzle)
+			if err != nil {
+				t.Errorf("%s puzzle: Solve error: %v", diff, err)
+				continue
+			}
 			if solution == nil {
 				t.Errorf("%s puzzle is unsolvable", diff)
 				continue
@@ -756,7 +789,10 @@ func TestEdgeCases(t *testing.T) {
 		// Note: The implementation assumes 81-element grids
 		// This test documents expected behavior with correct size
 		grid := make([]int, 81)
-		result := Solve(context.Background(), grid)
+		result, err := Solve(context.Background(), grid)
+		if err != nil {
+			t.Fatalf("Solve returned error: %v", err)
+		}
 		if result == nil {
 			t.Error("empty 81-element grid should be solvable")
 		}
@@ -768,7 +804,10 @@ func TestEdgeCases(t *testing.T) {
 		copy(grid, solvedGrid)
 		grid[0] = 0 // Remove first cell
 
-		result := Solve(context.Background(), grid)
+		result, err := Solve(context.Background(), grid)
+		if err != nil {
+			t.Fatalf("Solve returned error: %v", err)
+		}
 		if result == nil {
 			t.Error("grid with single empty cell should be solvable")
 		}
@@ -797,13 +836,13 @@ func BenchmarkSolve(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		puzzle := make([]int, 81)
 		copy(puzzle, validPuzzle)
-		Solve(context.Background(), puzzle)
+		_, _ = Solve(context.Background(), puzzle)
 	}
 }
 
 func BenchmarkHasUniqueSolution(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		HasUniqueSolution(context.Background(), validPuzzle)
+		_, _ = HasUniqueSolution(context.Background(), validPuzzle)
 	}
 }
 
@@ -985,11 +1024,17 @@ func TestMutation_CarveGivens_DifferentSeedsProduceDifferentPuzzles(t *testing.T
 // --- CountSolutions: boundary maxCount behavior ---
 
 func TestMutation_CountSolutions_RespectsMaxCountBoundary(t *testing.T) {
-	count := CountSolutions(context.Background(), emptyGrid, 2)
+	count, err := CountSolutions(context.Background(), emptyGrid, 2)
+	if err != nil {
+		t.Fatalf("CountSolutions error: %v", err)
+	}
 	if count != 2 {
 		t.Errorf("empty grid with maxCount=2: expected 2, got %d", count)
 	}
-	count3 := CountSolutions(context.Background(), emptyGrid, 3)
+	count3, err := CountSolutions(context.Background(), emptyGrid, 3)
+	if err != nil {
+		t.Fatalf("CountSolutions error: %v", err)
+	}
 	if count3 != 3 {
 		t.Errorf("empty grid with maxCount=3: expected 3, got %d", count3)
 	}
@@ -999,7 +1044,10 @@ func TestMutation_CountSolutions_NearlyFullPuzzle(t *testing.T) {
 	grid := make([]int, 81)
 	copy(grid, solvedGrid)
 	grid[80] = 0
-	count := CountSolutions(context.Background(), grid, 2)
+	count, err := CountSolutions(context.Background(), grid, 2)
+	if err != nil {
+		t.Fatalf("CountSolutions error: %v", err)
+	}
 	if count != 1 {
 		t.Errorf("nearly-full puzzle: expected 1 solution, got %d", count)
 	}
@@ -1011,11 +1059,67 @@ func TestMutation_Solve_NearlyFullPuzzle(t *testing.T) {
 	grid := make([]int, 81)
 	copy(grid, solvedGrid)
 	grid[80] = 0
-	solution := Solve(context.Background(), grid)
+	solution, err := Solve(context.Background(), grid)
+	if err != nil {
+		t.Fatalf("Solve error: %v", err)
+	}
 	if solution == nil {
 		t.Fatal("expected solution for nearly-full puzzle")
 	}
 	if !reflect.DeepEqual(solution, solvedGrid) {
 		t.Errorf("solution does not match expected solved grid")
+	}
+}
+
+// --- SEC-1: Budget enforcement on pathological sparse boards ---
+
+func TestSolve_BudgetEnforcedDirectly(t *testing.T) {
+	board := make([]int, constants.TotalCells)
+	copy(board, validPuzzle)
+	budget := &nodeBudget{max: 10}
+	_, err := solve(context.Background(), board, budget)
+	if !errors.Is(err, ErrBudgetExceeded) {
+		t.Errorf("expected ErrBudgetExceeded with max=10, got %v", err)
+	}
+}
+
+func TestCountSolutions_BudgetEnforcedDirectly(t *testing.T) {
+	board := make([]int, constants.TotalCells)
+	copy(board, validPuzzle)
+	count := 0
+	budget := &nodeBudget{max: 10}
+	err := countSolutionsHelper(context.Background(), board, &count, 2, budget)
+	if !errors.Is(err, ErrBudgetExceeded) {
+		t.Errorf("expected ErrBudgetExceeded with max=10, got %v", err)
+	}
+}
+
+func TestSolve_SparseBoardReturnsQuickly(t *testing.T) {
+	board := make([]int, 81)
+	board[0] = 1
+	board[8] = 9
+
+	start := time.Now()
+	_, err := Solve(context.Background(), board)
+	elapsed := time.Since(start)
+
+	if elapsed > time.Second {
+		t.Errorf("Solve took %v; expected under 1s", elapsed)
+	}
+	if err != nil && !errors.Is(err, ErrBudgetExceeded) {
+		t.Errorf("expected nil or ErrBudgetExceeded, got %v", err)
+	}
+}
+
+func TestSolve_ContextCancellationStopsBacktrack(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	board := make([]int, constants.TotalCells)
+	copy(board, validPuzzle)
+	budget := &nodeBudget{max: constants.MaxSolverNodes}
+	_, err := solve(ctx, board, budget)
+	if err == nil {
+		t.Error("expected error from canceled context, got nil")
 	}
 }

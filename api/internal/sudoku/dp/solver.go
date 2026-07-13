@@ -2,6 +2,7 @@ package dp
 
 import (
 	"context"
+	"errors"
 	"strconv"
 
 	"sudoku-api/internal/core"
@@ -11,23 +12,56 @@ import (
 // Solver provides DP/backtracking based Sudoku solving for verification
 // and uniqueness checks. Not used for hints or educational gameplay.
 
-// Solve finds a solution using backtracking. Returns the solved grid or nil if unsolvable.
-func Solve(ctx context.Context, grid []int) []int {
-	board := make([]int, constants.TotalCells)
-	copy(board, grid)
-	if solve(ctx, board) {
-		return board
+var ErrBudgetExceeded = errors.New("solver exceeded node budget")
+
+const budgetCheckInterval = 1000
+
+type nodeBudget struct {
+	nodes int
+	max   int
+}
+
+func (b *nodeBudget) tick(ctx context.Context) error {
+	b.nodes++
+	if b.nodes%budgetCheckInterval == 0 {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		if b.nodes > b.max {
+			return ErrBudgetExceeded
+		}
 	}
 	return nil
 }
 
+// Solve finds a solution using backtracking. Returns the solved grid, or nil if
+// unsolvable. Returns ErrBudgetExceeded if the node budget is exhausted.
+func Solve(ctx context.Context, grid []int) ([]int, error) {
+	board := make([]int, constants.TotalCells)
+	copy(board, grid)
+	budget := &nodeBudget{max: constants.MaxSolverNodes}
+	solved, err := solve(ctx, board, budget)
+	if err != nil {
+		return nil, err
+	}
+	if !solved {
+		return nil, nil
+	}
+	return board, nil
+}
+
 // HasUniqueSolution checks if the puzzle has exactly one solution.
-func HasUniqueSolution(ctx context.Context, grid []int) bool {
+func HasUniqueSolution(ctx context.Context, grid []int) (bool, error) {
 	// maxCount=2 suffices: we only distinguish 0, 1, or 2+ solutions. maxCount=3
 	// would yield the same HasUniqueSolution result for every possible puzzle.
 	// mutator-disable-next-line numbers/incrementer
-	count := CountSolutions(ctx, grid, 2)
-	return count == 1
+	count, err := CountSolutions(ctx, grid, 2)
+	if err != nil {
+		return false, err
+	}
+	return count == 1, nil
 }
 
 // Conflict represents a pair of cells that have the same value where they shouldn't
@@ -150,27 +184,36 @@ func findEmptyCell(board []int) int {
 }
 
 // CountSolutions counts solutions up to maxCount. Exported for custom puzzle validation.
-func CountSolutions(ctx context.Context, grid []int, maxCount int) int {
+// Returns ErrBudgetExceeded if the node budget is exhausted.
+func CountSolutions(ctx context.Context, grid []int, maxCount int) (int, error) {
 	board := make([]int, constants.TotalCells)
 	copy(board, grid)
 	count := 0
-	countSolutionsHelper(ctx, board, &count, maxCount)
-	return count
+	budget := &nodeBudget{max: constants.MaxSolverNodes}
+	err := countSolutionsHelper(ctx, board, &count, maxCount, budget)
+	if err != nil {
+		return count, err
+	}
+	return count, nil
 }
 
-func countSolutionsHelper(ctx context.Context, board []int, count *int, maxCount int) {
+func countSolutionsHelper(ctx context.Context, board []int, count *int, maxCount int, budget *nodeBudget) error {
+	if err := budget.tick(ctx); err != nil {
+		return err
+	}
+
 	// Redundant guard: the inner guard (L176) also caps counting. Mutating either
 	// guard alone does not change the observable count returned by CountSolutions.
 	// mutator-disable-next-line expression/comparison,branch/if
 	if *count >= maxCount {
-		return
+		return nil
 	}
 
 	idx := findEmptyCell(board)
 
 	if idx == -1 {
 		*count++
-		return
+		return nil
 	}
 
 	row, col := idx/constants.GridSize, idx%constants.GridSize
@@ -181,22 +224,29 @@ func countSolutionsHelper(ctx context.Context, board []int, count *int, maxCount
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		if isValid(board, row, col, digit) {
 			board[idx] = digit
-			countSolutionsHelper(ctx, board, count, maxCount)
+			if err := countSolutionsHelper(ctx, board, count, maxCount, budget); err != nil {
+				return err
+			}
 			board[idx] = 0
-			// Redundant guard: the outer guard (L158) also caps counting.
+			// Redundant guard: the outer guard also caps counting.
 			// mutator-disable-next-line expression/comparison,branch/if
 			if *count >= maxCount {
-				return
+				return nil
 			}
 		}
 	}
+	return nil
 }
 
-func solve(ctx context.Context, board []int) bool {
+func solve(ctx context.Context, board []int, budget *nodeBudget) (bool, error) {
+	if err := budget.tick(ctx); err != nil {
+		return false, err
+	}
+
 	idx := findEmptyCell(board)
 
 	if idx == -1 {
-		return true
+		return true, nil
 	}
 
 	row, col := idx/constants.GridSize, idx%constants.GridSize
@@ -206,14 +256,18 @@ func solve(ctx context.Context, board []int) bool {
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		if isValid(board, row, col, digit) {
 			board[idx] = digit
-			if solve(ctx, board) {
-				return true
+			solved, err := solve(ctx, board, budget)
+			if err != nil {
+				return false, err
+			}
+			if solved {
+				return true, nil
 			}
 			board[idx] = 0
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 func isValid(board []int, row, col, digit int) bool {
@@ -345,7 +399,7 @@ func CarveGivens(ctx context.Context, fullGrid []int, targetGivens int, seed int
 		oldVal := puzzle[pos]
 		puzzle[pos] = 0
 
-		if HasUniqueSolution(ctx, puzzle) {
+		if unique, _ := HasUniqueSolution(ctx, puzzle); unique {
 			removed++
 		} else {
 			puzzle[pos] = oldVal
@@ -413,7 +467,7 @@ func CarveGivensWithSubset(ctx context.Context, fullGrid []int, seed int64) map[
 		oldVal := puzzle[pos]
 		puzzle[pos] = 0
 
-		if HasUniqueSolution(ctx, puzzle) {
+		if unique, _ := HasUniqueSolution(ctx, puzzle); unique {
 			removalOrder = append(removalOrder, pos)
 		} else {
 			puzzle[pos] = oldVal

@@ -5,15 +5,20 @@ import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 import ResultSummary from '../components/ResultSummary'
 import { ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline'
 
+function parseNumericParam(value: string | null): number {
+  const n = parseInt(value ?? '0', 10)
+  return Number.isFinite(n) ? n : 0
+}
+
 export default function Result() {
   const [searchParams] = useSearchParams()
   const [copied, setCopied] = useState(false)
 
   const seed = searchParams.get('s')
   const difficulty = searchParams.get('d')
-  const timeMs = parseInt(searchParams.get('t') || '0', 10)
-  const hintsUsed = parseInt(searchParams.get('h') || '0', 10)
-  const techniqueHintsUsed = parseInt(searchParams.get('th') || '0', 10)
+  const timeMs = parseNumericParam(searchParams.get('t'))
+  const hintsUsed = parseNumericParam(searchParams.get('h'))
+  const techniqueHintsUsed = parseNumericParam(searchParams.get('th'))
   const autoSolveUsed = searchParams.get('a') === '1'
 
   if (!seed || !difficulty) {

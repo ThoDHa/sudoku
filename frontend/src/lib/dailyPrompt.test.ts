@@ -8,25 +8,25 @@ vi.mock('./preferences', () => ({
 
 vi.mock('./scores', () => ({
   isTodayCompleted: vi.fn(() => false),
-  getTodayLocal: vi.fn(() => '2024-03-15'),
+  getTodayUTC: vi.fn(() => '2024-03-15'),
 }))
 
 import { getShowDailyReminder } from './preferences'
-import { isTodayCompleted, getTodayLocal } from './scores'
+import { isTodayCompleted, getTodayUTC } from './scores'
 
 const mockedGetShowDailyReminder = vi.mocked(getShowDailyReminder)
 const mockedIsTodayCompleted = vi.mocked(isTodayCompleted)
-const mockedGetTodayLocal = vi.mocked(getTodayLocal)
+const mockedGetTodayUTC = vi.mocked(getTodayUTC)
 
 describe('shouldShowDailyPrompt', () => {
   beforeEach(() => {
     localStorage.clear()
     mockedGetShowDailyReminder.mockReset()
     mockedIsTodayCompleted.mockReset()
-    mockedGetTodayLocal.mockReset()
+    mockedGetTodayUTC.mockReset()
     mockedGetShowDailyReminder.mockReturnValue(true)
     mockedIsTodayCompleted.mockReturnValue(false)
-    mockedGetTodayLocal.mockReturnValue('2024-03-15')
+    mockedGetTodayUTC.mockReturnValue('2024-03-15')
   })
 
   it('returns false when the user has disabled daily reminders', () => {
@@ -65,11 +65,11 @@ describe('shouldShowDailyPrompt', () => {
 describe('markDailyPromptShown', () => {
   beforeEach(() => {
     localStorage.clear()
-    mockedGetTodayLocal.mockReset()
-    mockedGetTodayLocal.mockReturnValue('2024-03-15')
+    mockedGetTodayUTC.mockReset()
+    mockedGetTodayUTC.mockReturnValue('2024-03-15')
   })
 
-  it("persists today's local date under the daily-prompt key", () => {
+  it("persists today's UTC date under the daily-prompt key", () => {
     markDailyPromptShown()
     expect(localStorage.getItem(STORAGE_KEYS.DAILY_PROMPT_LAST_SHOWN)).toBe('2024-03-15')
   })
@@ -80,5 +80,35 @@ describe('markDailyPromptShown', () => {
     })
     expect(() => markDailyPromptShown()).not.toThrow()
     spy.mockRestore()
+  })
+})
+
+describe('BUG-20: daily prompt uses UTC basis matching isTodayCompleted', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    mockedGetShowDailyReminder.mockReset()
+    mockedIsTodayCompleted.mockReset()
+    mockedGetTodayUTC.mockReset()
+    mockedGetShowDailyReminder.mockReturnValue(true)
+    mockedIsTodayCompleted.mockReturnValue(false)
+    mockedGetTodayUTC.mockReturnValue('2024-03-15')
+  })
+
+  it('prompt dedupe key equals the completion check date basis', () => {
+    expect(shouldShowDailyPrompt()).toBe(true)
+    markDailyPromptShown()
+    expect(localStorage.getItem(STORAGE_KEYS.DAILY_PROMPT_LAST_SHOWN)).toBe('2024-03-15')
+    expect(shouldShowDailyPrompt()).toBe(false)
+  })
+
+  it('prompt and completion check agree across the UTC midnight boundary', () => {
+    mockedGetTodayUTC.mockReturnValue('2024-03-15')
+    mockedIsTodayCompleted.mockReturnValue(true)
+    expect(shouldShowDailyPrompt()).toBe(false)
+
+    mockedGetTodayUTC.mockReturnValue('2024-03-16')
+    mockedIsTodayCompleted.mockReturnValue(false)
+    localStorage.setItem(STORAGE_KEYS.DAILY_PROMPT_LAST_SHOWN, '2024-03-15')
+    expect(shouldShowDailyPrompt()).toBe(true)
   })
 })

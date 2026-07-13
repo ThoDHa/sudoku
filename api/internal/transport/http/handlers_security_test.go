@@ -86,6 +86,24 @@ func dup(b []int) []int {
 	return out
 }
 
+// TestSolveFullFastMode_RejectsSparseBoard verifies that /solve/full?mode=fast
+// rejects a board with fewer than MinGivens non-empty cells before the DP solver.
+func TestSolveFullFastMode_RejectsSparseBoard(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+	board := make([]int, 81)
+	board[0] = 1
+	board[1] = 2
+
+	code, resp := postJSON(t, router, "/api/solve/full?mode=fast", map[string]interface{}{
+		"token": token,
+		"board": board,
+	})
+	if code != http.StatusBadRequest {
+		t.Errorf("expected 400 for 2-given board in fast mode, got %d: %v", code, resp)
+	}
+}
+
 // setFirstCell mutates the first cell of the board or givens slice in a JSON
 // body so an out-of-range value reaches the handler intact.
 func setFirstCell(body map[string]interface{}, value int) {

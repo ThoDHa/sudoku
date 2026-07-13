@@ -16,6 +16,7 @@ import {
   isWorkerReady,
   findNextMove as workerFindNextMove,
   solveAll as workerSolveAll,
+  WorkerTerminatedError,
 } from './worker-client'
 
 import { getPuzzleForSeed as getStaticPuzzle, ensurePuzzleBank } from './puzzles-data'
@@ -205,6 +206,9 @@ export async function solveAll(
     try {
       return toSolveAllResult(await workerSolveAll(board, candidates, givens))
     } catch (error) {
+      if (error instanceof WorkerTerminatedError) {
+        throw error
+      }
       logger.debug('[SolverService] Worker solveAll failed, falling back:', error)
       // Fall through to main thread
     }
@@ -243,6 +247,9 @@ export async function findNextMove(
         solved: result.solved,
       }
     } catch (error) {
+      if (error instanceof WorkerTerminatedError) {
+        throw error
+      }
       logger.debug('[SolverService] Worker findNextMove failed, falling back:', error)
       // Fall through to main thread
     }

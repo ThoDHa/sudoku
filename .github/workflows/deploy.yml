@@ -22,11 +22,12 @@ on:
           - go
           - e2e
 
+# Least-privilege baseline: every job gets only contents: read. The deploy and
+# allure-report jobs widen their own scopes below (pages/id-token and actions
+# respectively). No job inherits the broad token a compromised test dependency
+# could otherwise abuse.
 permissions:
   contents: read
-  pages: write
-  id-token: write
-  actions: read
 
 # Deploy runs in this same run (GitHub Pages rejects deploy-pages from a
 # decoupled workflow_run trigger). So we must NOT cancel a run mid-flight or we
@@ -46,10 +47,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: '24'
           cache: 'npm'
@@ -58,6 +59,18 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
+
+      - name: Type-check (production config)
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      # Transitional: Prettier drift exists in the tree, so this surfaces the
+      # gap without blocking. Flip continue-on-error off once the tree is
+      # reformatted. Matches `make format-check-frontend`.
+      - name: Check formatting (Prettier)
+        working-directory: frontend
+        continue-on-error: true
+        run: npx prettier --check "src/**/*.{ts,tsx,css}"
 
       - name: Run linting
         working-directory: frontend
@@ -83,7 +96,7 @@ jobs:
           echo "test.type=unit" >> allure-results/environment.properties
 
       - name: Upload Allure results
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: allure-results-unit
@@ -92,7 +105,7 @@ jobs:
 
       # Vitest coverage HTML (produced by test:coverage) for the report portal.
       - name: Upload frontend coverage
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: coverage-frontend
@@ -108,7 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       # Report-portal script tests, including the drift guard that pins
       # api/Makefile and nightly-mutation.yml to the canonical mutation floors
@@ -119,6 +132,10 @@ jobs:
 
       - name: Setup Go
         uses: ./.github/actions/setup-go
+
+      # Matches `make format-check-go`; blocks on drift since the Go tree is clean.
+      - name: Check Go formatting (gofmt)
+        run: make format-check-go
 
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@v1.13.0
@@ -161,7 +178,7 @@ jobs:
           gcov2lcov -infile=coverage.lib.out -outfile=coverage.lcov || echo "no coverage profile"
 
       - name: Upload Go coverage
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: coverage-go
@@ -186,7 +203,7 @@ jobs:
           echo "run.url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> allure-results/environment.properties
 
       - name: Upload Allure results
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: allure-results-go
@@ -208,10 +225,10 @@ jobs:
       e2e_ran: ${{ steps.e2e-summary.outputs.ran }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Set up Docker buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
       - name: Show Docker Compose version
         run: docker compose version
@@ -246,7 +263,7 @@ jobs:
           fi
 
       - name: Upload Playwright test-results
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: playwright-test-results
@@ -255,7 +272,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: playwright-report
@@ -263,7 +280,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Allure results (if present)
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: allure-results-e2e
@@ -277,12 +294,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test-frontend-unit, test-go, test-e2e]
     if: always()
+    # Widens the workflow baseline: gh run list / gh run download (nightly fold
+    # + allure-history) query the Actions API, which needs actions: read.
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: '24'
           cache: 'npm'
@@ -293,7 +315,7 @@ jobs:
         run: npm ci
 
       - name: Download all Allure results
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         continue-on-error: false
         with:
           pattern: allure-results-*
@@ -335,7 +357,7 @@ jobs:
       - name: Download coverage reports
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         continue-on-error: true
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: coverage-*
           path: nightly-artifacts
@@ -432,14 +454,14 @@ jobs:
           npx allure generate ../allure-results -o ../allure-report --clean
 
       - name: Save Allure history
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: allure-history
           path: allure-report/history/
           retention-days: 90
 
       - name: Upload Allure report artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: allure-report
           path: allure-report/
@@ -447,7 +469,7 @@ jobs:
 
       - name: Setup Pages
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
-        uses: actions/configure-pages@v6
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
 
       - name: Setup Go for WASM build
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
@@ -533,7 +555,7 @@ jobs:
 
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: pages-artifact
 
@@ -559,8 +581,14 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    # Widens the workflow baseline: deploy-pages mints an OIDC token
+    # (id-token: write) and publishes to GitHub Pages (pages: write).
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     needs: [test-frontend-unit, test-go, test-e2e, allure-report]
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5

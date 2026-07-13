@@ -9,6 +9,7 @@ export const BOARD_SIZE = 9
 export const SUBGRID_SIZE = 3
 export const TOTAL_CELLS = 81
 export const MIN_GIVENS = 17
+export const MAX_SOLVER_NODES = 5000000
 export const DIFFICULTY_EASY = "easy"
 export const DIFFICULTY_MEDIUM = "medium"
 export const DIFFICULTY_HARD = "hard"

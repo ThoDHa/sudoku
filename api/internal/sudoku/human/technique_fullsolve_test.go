@@ -47,8 +47,8 @@ func TestFullSolve_Puzzle(t *testing.T) {
 			}
 
 			// Verify puzzle has unique solution (sanity check)
-			dpSolution := dp.Solve(context.Background(), givens)
-			if dpSolution == nil {
+			dpSolution, solveErr := dp.Solve(context.Background(), givens)
+			if solveErr != nil || dpSolution == nil {
 				t.Fatalf("Puzzle %d has no solution", idx)
 			}
 
