@@ -2,6 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      Content-Security-Policy (mirrors the nginx header in nginx.conf).
+      GitHub Pages cannot set HTTP response headers, so the CSP is delivered
+      via this meta tag on the Pages deploy. Place it before any script/style
+      so it governs everything below.
+
+      The 'sha256-...' source permits the inline BFCache recovery script
+      further down in <head>. If that script is edited, recompute its sha256
+      over the trimmed text of the inline script element and update the hash
+      here AND in frontend/nginx.conf ($csp), or the browser will block it.
+
+      Note: <meta> CSP cannot enforce frame-ancestors, sandbox, or report-uri
+      (browsers ignore those directives here). Clickjacking protection on the
+      Pages path is therefore unavailable; the nginx path uses both this CSP
+      and X-Frame-Options: DENY.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-dI7xLIU6obeGaPmZiZ6105Ydj3dU4aA70kKVivsclzc='; worker-src 'self' blob:; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" />
     <link rel="icon" type="image/png" href="/pwa-192x192.png" />
     <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
