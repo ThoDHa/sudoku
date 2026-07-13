@@ -271,6 +271,29 @@ func TestGetPuzzle_MalformedSolutionStringReturnsError(t *testing.T) {
 	}
 }
 
+func TestGetPuzzle_GivensIndexOutOfBoundsReturnsError(t *testing.T) {
+	validSolution := "157924638362158974498736512531279486926483157784615293273561849619847325845392761"
+	cases := []struct {
+		name  string
+		index int
+	}{
+		{"equal to total cells", constants.TotalCells},
+		{"greater than total cells", constants.TotalCells + 5},
+		{"negative", -1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			loader := NewLoaderFromPuzzles([]CompactPuzzle{
+				{S: validSolution, G: map[string][]int{"e": {0, tc.index}}},
+			})
+			_, _, err := loader.GetPuzzle(0, "easy")
+			if err == nil {
+				t.Fatal("GetPuzzle() should return an error for an out-of-range givens index")
+			}
+		})
+	}
+}
+
 func TestGetPuzzle_DifferentPuzzles(t *testing.T) {
 	path := createTempPuzzleFile(t, validPuzzleJSON)
 	loader, err := Load(path)

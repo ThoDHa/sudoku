@@ -130,6 +130,9 @@ func (l *Loader) GetPuzzle(index int, difficulty string) (givens []int, solution
 	// Build givens array (0 for empty cells)
 	givens = make([]int, constants.TotalCells)
 	for _, idx := range indices {
+		if idx < 0 || idx >= constants.TotalCells {
+			return nil, nil, fmt.Errorf("puzzle index %d: givens index %d out of range (0-%d)", index, idx, constants.TotalCells-1)
+		}
 		givens[idx] = solution[idx]
 	}
 
