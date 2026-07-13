@@ -313,7 +313,7 @@ func TestAnalyzePuzzleDifficulty_MediumPuzzle(t *testing.T) {
 	givens := loadGivens(t, 0, "extreme")
 	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(givens)
 	if status != constants.StatusCompleted {
-		t.Skipf("fixture did not solve: %q", status)
+		t.Fatalf("fixture puzzle 0/extreme must solve to exercise the medium-tier assertion; got status=%q (a solver regression would be silently masked by a skip here)", status)
 	}
 	if difficulty != core.DifficultyMedium {
 		t.Errorf("expected medium, got %q", difficulty)
@@ -327,7 +327,7 @@ func TestAnalyzePuzzleDifficulty_HardTierPuzzle(t *testing.T) {
 	givens := loadGivens(t, 6, "extreme")
 	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(givens)
 	if status != constants.StatusCompleted {
-		t.Skipf("fixture did not solve: %q", status)
+		t.Fatalf("fixture puzzle 6/extreme must solve to exercise the hard-tier assertion; got status=%q (a solver regression would be silently masked by a skip here)", status)
 	}
 	if difficulty != core.DifficultyHard {
 		t.Errorf("expected hard, got %q", difficulty)
@@ -341,7 +341,7 @@ func TestAnalyzePuzzleDifficulty_ExtremeTierPuzzle(t *testing.T) {
 	givens := loadGivens(t, 23, "extreme")
 	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(givens)
 	if status != constants.StatusCompleted {
-		t.Skipf("fixture did not solve: %q", status)
+		t.Fatalf("fixture puzzle 23/extreme must solve to exercise the extreme-tier assertion; got status=%q (a solver regression would be silently masked by a skip here)", status)
 	}
 	if difficulty != core.DifficultyExtreme {
 		t.Errorf("expected extreme, got %q", difficulty)

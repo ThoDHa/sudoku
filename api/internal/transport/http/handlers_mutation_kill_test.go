@@ -548,38 +548,13 @@ func TestMutation_VerifyToken_InvalidBase64ReturnsDecodeError(t *testing.T) {
 	}
 }
 
-// TestMutation_DailyHandler_ReflectsLoaderDailyIndex pins that the daily
-// endpoint's puzzle_index mirrors what puzzles.Global().GetDailyPuzzle returns
-// for today. The branch/if mutant that drops `puzzleIndex = ...` leaves the
-// field stuck at its zero value. When today's daily index (FNV hash of the UTC
-// date string modulo puzzleCount) is non-zero, the mutant observably diverges.
-// The test asserts equality, so it passes on the original regardless of today's
-// index and fails on the mutant whenever today's index is non-zero.
-func TestMutation_DailyHandler_ReflectsLoaderDailyIndex(t *testing.T) {
-	router := setupRouter()
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/daily", nil)
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-	var resp map[string]interface{}
-	_ = json.Unmarshal(w.Body.Bytes(), &resp)
-
-	loader := puzzles.Global()
-	if loader == nil {
-		t.Skip("no global loader configured; daily index is not meaningful")
-	}
-	_, _, expected, err := loader.GetDailyPuzzle(time.Now(), "medium")
-	if err != nil {
-		t.Skipf("loader cannot resolve today's daily puzzle: %v", err)
-	}
-	got, _ := resp["puzzle_index"].(float64)
-	if int(got) != expected {
-		t.Errorf("expected puzzle_index=%d (from loader.GetDailyPuzzle), got %v", expected, got)
-	}
-}
+// TestMutation_DailyHandler_PuzzleIndexIsNonZeroFromLoader (below) kills the
+// `puzzleIndex = ...` drop mutant deterministically. The earlier
+// TestMutation_DailyHandler_ReflectsLoaderDailyIndex was removed because it
+// compared the response against the live loader's GetDailyPuzzle(time.Now()),
+// which only killed the mutant on days whose daily index is non-zero (it passed
+// green on the mutant whenever today's index wrapped to 0, e.g. on the 1st of a
+// month). The non-zero-loader variant replaces it hermetically.
 
 // TestMutation_FindPracticePuzzle_FindsSingleOccurrenceTechnique kills the
 // numbers/incrementer mutant that tightens `count > 0` to `count > 1` in
@@ -597,20 +572,26 @@ func TestMutation_FindPracticePuzzle_FindsSingleOccurrenceTechnique(t *testing.T
 }
 
 // TestMutation_FindPracticePuzzle_IndexArithmeticReachesNonZeroPuzzle kills the
-// arithmetic/base mutants on `idx := (startIdx + i) % puzzleCount` (line 483).
-// The `% -> *` mutant produces out-of-range indices for every i when
-// startIdx != 0, and only ever visits index 0 when startIdx == 0; the
-// `(startIdx + i) -> (startIdx - i)` mutant visits the same index set in a
-// time-dependent order. By swapping the loader so the searched technique
-// ("x-wing") lives ONLY in puzzle index 1 (never index 0), every original
-// iteration finds the match while mutant iterations either always miss
-// (`% -> *`) or miss on every startIdx == 0 tick (`+ -> -`). Looping 30x
-// amortizes the time-based startIdx so at least one iteration hits the
-// distinguishing case for the `+ -> -` mutant.
+// arithmetic/base mutant that turns `idx := (startIdx + i) % puzzleCount` into
+// `(startIdx + i) * puzzleCount` in findPracticePuzzle (routes.go). The swapped
+// loader puts x-wing ONLY in puzzle index 1, so the original visits every index
+// (maxSamples >= puzzleCount) and always finds it, while the `% -> *` mutant
+// produces only index 0 (startIdx==0, i==0) or out-of-range indices and returns
+// not-found. A single call is hermetic: the kill does not depend on the
+// wall-clock startIdx seeded by time.Now().UnixNano().
+//
+// The `(startIdx + i) -> (startIdx - i)` mutant is intentionally NOT claimed
+// here. Go's `%` preserves the dividend sign, so that mutant's visited index set
+// is {startIdx, startIdx-1, ..., 0} and it only misses index 1 when startIdx==0.
+// No fixture can kill it deterministically while startIdx is wall-clock-seeded
+// (startIdx==1 lets the mutant reach index 1 and coincidentally pass). The
+// previous 30-iteration loop was a probabilistic workaround for this; it was
+// flaky under CI load and has been replaced by the hermetic single-call kill of
+// the mutant that is genuinely catchable.
 func TestMutation_FindPracticePuzzle_IndexArithmeticReachesNonZeroPuzzle(t *testing.T) {
 	original := puzzles.Global()
 	// testPuzzles[1] carries only hidden-single; testPuzzles[0] carries x-wing.
-	// Putting testPuzzles[1] first means x-wing lives in puzzle index 1.
+	// Putting testPuzzles[1] first means x-wing lives only in puzzle index 1.
 	swapped := puzzles.NewLoaderFromPuzzles([]puzzles.CompactPuzzle{
 		testPuzzles[1], testPuzzles[0],
 	})
@@ -619,12 +600,9 @@ func TestMutation_FindPracticePuzzle_IndexArithmeticReachesNonZeroPuzzle(t *test
 
 	loader := puzzles.Global()
 	solver := human.NewSolver()
-	for i := 0; i < 30; i++ {
-		_, _, _, ok := findPracticePuzzle(loader, solver, "x-wing", techniqueToDifficulties["x-wing"], loader.Count(), 50)
-		if !ok {
-			t.Errorf("iteration %d: expected findPracticePuzzle to reach puzzle 1 and find x-wing; index-arithmetic mutant likely only scanned puzzle 0", i)
-			return
-		}
+	_, _, _, ok := findPracticePuzzle(loader, solver, "x-wing", techniqueToDifficulties["x-wing"], loader.Count(), 50)
+	if !ok {
+		t.Fatalf("expected findPracticePuzzle to reach puzzle index 1 and find x-wing; the `%% -> *` index-arithmetic mutant only ever scanned index 0")
 	}
 }
 
