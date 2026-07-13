@@ -19,9 +19,19 @@ const VALIDATE_BUTTON = 'button:has-text("Validate & Play")';
 const CLEAR_BUTTON = 'button:has-text("Clear All")';
 
 async function pastePuzzle(page: Page, puzzle: string): Promise<void> {
-  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.evaluate(async (text) => {
-    await navigator.clipboard.writeText(text);
+  await page.evaluate((text) => {
+    if (!navigator.clipboard) {
+      const store = { text };
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: async (t: string) => { store.text = t; },
+          readText: async () => store.text,
+        },
+        configurable: true,
+      });
+    } else {
+      navigator.clipboard.writeText(text);
+    }
   }, puzzle);
   await page.locator(PASTE_BUTTON).click();
 }
@@ -30,6 +40,16 @@ test.describe('@integration Custom Puzzle - Page Load', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
+      if (!('clipboard' in navigator)) {
+        const store: { text: string } = { text: '' };
+        Object.defineProperty(navigator, 'clipboard', {
+          value: {
+            writeText: async (t: string) => { store.text = t; },
+            readText: async () => store.text,
+          },
+          configurable: true,
+        });
+      }
     });
   });
 
@@ -56,6 +76,16 @@ test.describe('@integration Custom Puzzle - Input', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
+      if (!('clipboard' in navigator)) {
+        const store: { text: string } = { text: '' };
+        Object.defineProperty(navigator, 'clipboard', {
+          value: {
+            writeText: async (t: string) => { store.text = t; },
+            readText: async () => store.text,
+          },
+          configurable: true,
+        });
+      }
     });
     await page.goto('/custom');
 
@@ -103,6 +133,16 @@ test.describe('@integration Custom Puzzle - Validation', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('sudoku_onboarding_complete', 'true');
+      if (!('clipboard' in navigator)) {
+        const store: { text: string } = { text: '' };
+        Object.defineProperty(navigator, 'clipboard', {
+          value: {
+            writeText: async (t: string) => { store.text = t; },
+            readText: async () => store.text,
+          },
+          configurable: true,
+        });
+      }
     });
     await page.goto('/custom');
 
