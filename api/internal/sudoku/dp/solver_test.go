@@ -1123,3 +1123,45 @@ func TestSolve_ContextCancellationStopsBacktrack(t *testing.T) {
 		t.Error("expected error from canceled context, got nil")
 	}
 }
+
+func TestSolve_PublicReturnsErrorOnCancelledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := Solve(ctx, validPuzzle)
+	if err == nil {
+		t.Error("expected error from Solve with canceled context")
+	}
+}
+
+func TestHasUniqueSolution_ReturnsErrorOnCancelledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := HasUniqueSolution(ctx, validPuzzle)
+	if err == nil {
+		t.Error("expected error from HasUniqueSolution with canceled context")
+	}
+}
+
+func TestCountSolutions_ReturnsErrorOnCancelledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := CountSolutions(ctx, validPuzzle, 2)
+	if err == nil {
+		t.Error("expected error from CountSolutions with canceled context")
+	}
+}
+
+func TestSolve_ReturnsNilForUnsolvableBoard(t *testing.T) {
+	board := make([]int, constants.TotalCells)
+	for d := 1; d <= 8; d++ {
+		board[d] = d
+	}
+	board[9] = 9
+	solution, err := Solve(context.Background(), board)
+	if err != nil {
+		t.Errorf("expected nil error for unsolvable board, got %v", err)
+	}
+	if solution != nil {
+		t.Errorf("expected nil solution for unsolvable board, got %v", solution)
+	}
+}
