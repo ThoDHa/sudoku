@@ -14,6 +14,13 @@ updates:
     groups:
       npm:
         patterns: ["*"]
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      docker:
+        patterns: ["*"]
   - package-ecosystem: gomod
     directory: /api
     schedule:
