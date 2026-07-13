@@ -2,7 +2,7 @@
 
 **🎮 [Play Game](https://thodha.github.io/sudoku/) | 📊 [Test Reports](https://thodha.github.io/sudoku/reports/)**
 
-[![CI/CD Pipeline](https://github.com/thodha/sudoku/actions/workflows/deploy.yml/badge.svg)](https://github.com/thodha/sudoku/actions/workflows/deploy.yml)
+[![CI/CD Pipeline](https://github.com/ThoDHa/sudoku/actions/workflows/deploy.yml/badge.svg)](https://github.com/ThoDHa/sudoku/actions/workflows/deploy.yml)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 An advanced educational Sudoku web application that teaches solving techniques through human-like hints and intelligent assistance features.
@@ -234,7 +234,7 @@ sudoku/
 │   │   └── generate_practice/  # Practice puzzle generator
 │   └── internal/
 │       ├── sudoku/
-│       │   ├── dp/         # Dancing Links constraint solver
+│       │   ├── dp/         # DP/backtracking solver for verification and uniqueness
 │       │   └── human/      # Human-like solver with 39+ techniques
 │       └── transport/http/ # API routes with error correction
 ├── frontend/               # React + Vite + TypeScript + Tailwind
@@ -547,4 +547,4 @@ The game's "Check & Fix" button now strictly applies user-entry corrections only
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE) for the full text.
