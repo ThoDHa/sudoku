@@ -1,6 +1,7 @@
 package human
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"testing"
@@ -85,7 +86,7 @@ func loadTestPuzzle(t *testing.T, data techniquetest.PuzzleData) ([]int, []int) 
 	}
 
 	// Get solution from DP solver
-	solution := dp.Solve(givens)
+	solution := dp.Solve(context.Background(), givens)
 	if solution == nil {
 		t.Fatalf("DP solver cannot solve puzzle: %s", data.PuzzleString)
 	}
@@ -135,7 +136,7 @@ func runIsolatedTechniqueTest(t *testing.T, slug string) {
 	givens, solution := loadTestPuzzle(t, data)
 
 	// Verify puzzle has unique solution
-	if !dp.HasUniqueSolution(givens) {
+	if !dp.HasUniqueSolution(context.Background(), givens) {
 		t.Fatalf("Puzzle does not have unique solution")
 	}
 
@@ -172,7 +173,7 @@ func runIsolatedTechniqueTest(t *testing.T, slug string) {
 		applyIsolationStrategy(registry, slug, targetTech, DisableHigherTiers)
 	}
 	solver := NewSolverWithRegistry(registry)
-	solver.SolveWithSteps(board, constants.MaxSolverSteps)
+	solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 
 	// Validate final board state against solution
 	validateMoveAgainstSolution(t, board, solution, slug)
@@ -199,14 +200,14 @@ func runFullSolverTechniqueTest(t *testing.T, slug string) {
 	givens, solution := loadTestPuzzle(t, data)
 
 	// Verify puzzle has unique solution
-	if !dp.HasUniqueSolution(givens) {
+	if !dp.HasUniqueSolution(context.Background(), givens) {
 		t.Fatalf("Puzzle does not have unique solution")
 	}
 
 	// Use full solver
 	board := NewBoard(givens)
 	solver := NewSolver()
-	moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+	moves, status := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 
 	// Check if technique was used
 	techniqueCount := 0
@@ -252,7 +253,7 @@ func runDirectDetectionTest(t *testing.T, slug string) {
 	givens, solution := loadTestPuzzle(t, data)
 
 	// Verify puzzle has unique solution
-	if !dp.HasUniqueSolution(givens) {
+	if !dp.HasUniqueSolution(context.Background(), givens) {
 		t.Fatalf("Puzzle does not have unique solution")
 	}
 
@@ -263,7 +264,7 @@ func runDirectDetectionTest(t *testing.T, slug string) {
 	if move == nil {
 		// Try with solver's FindNextMove as fallback
 		solver := NewSolver()
-		move = solver.FindNextMove(board)
+		move = solver.FindNextMove(context.Background(), board)
 		if move == nil || move.Technique != slug {
 			t.Errorf("Technique %s was not detected on first move (got: %v)", slug, move)
 			return
@@ -319,7 +320,7 @@ func tryEarlyStopTechniqueTest(t *testing.T, slug string) bool {
 	givens, solution := loadTestPuzzle(t, data)
 
 	// Verify puzzle has unique solution
-	if !dp.HasUniqueSolution(givens) {
+	if !dp.HasUniqueSolution(context.Background(), givens) {
 		return false // Let the fallback handle the error
 	}
 
@@ -329,7 +330,7 @@ func tryEarlyStopTechniqueTest(t *testing.T, slug string) bool {
 
 	// Solve step by step until technique fires
 	for step := 0; step < constants.MaxSolverSteps; step++ {
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			return false // Stalled - try fallback
 		}
@@ -363,7 +364,7 @@ func runEarlyStopWithDisabledTechniques(t *testing.T, slug string, disabledTechn
 	givens, solution := loadTestPuzzle(t, data)
 
 	// Verify puzzle has unique solution
-	if !dp.HasUniqueSolution(givens) {
+	if !dp.HasUniqueSolution(context.Background(), givens) {
 		t.Fatalf("Puzzle does not have unique solution")
 	}
 
@@ -373,7 +374,7 @@ func runEarlyStopWithDisabledTechniques(t *testing.T, slug string, disabledTechn
 
 	// Solve step by step until technique fires
 	for step := 0; step < constants.MaxSolverSteps; step++ {
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			t.Errorf("Stalled at step %d without firing %s", step, slug)
 			return
@@ -657,14 +658,14 @@ func TestAllPuzzlesAreValid(t *testing.T) {
 			}
 
 			// Check DP solver can solve it
-			solution := dp.Solve(givens)
+			solution := dp.Solve(context.Background(), givens)
 			if solution == nil {
 				t.Errorf("Puzzle for %s is invalid (DP solver cannot solve)", data.Slug)
 				return
 			}
 
 			// Check uniqueness
-			if !dp.HasUniqueSolution(givens) {
+			if !dp.HasUniqueSolution(context.Background(), givens) {
 				t.Errorf("Puzzle for %s has multiple solutions", data.Slug)
 			}
 		})
@@ -735,7 +736,7 @@ func TestDiagnosticTechniqueUsage(t *testing.T) {
 
 			// Run step-by-step until target technique fires or puzzle completes
 			for step := 0; step < constants.MaxSolverSteps; step++ {
-				move := solver.FindNextMove(board)
+				move := solver.FindNextMove(context.Background(), board)
 				if move == nil {
 					status = "stalled"
 					break
@@ -768,7 +769,7 @@ func TestDiagnosticTechniqueUsage(t *testing.T) {
 		} else {
 			// Use natural solving (no isolation needed)
 			solver := NewSolver()
-			moves, solveStatus := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+			moves, solveStatus := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 			status = solveStatus
 
 			techCounts = make(map[string]int)

@@ -1,6 +1,7 @@
 package dp
 
 import (
+	"context"
 	"reflect"
 	"testing"
 )
@@ -153,7 +154,7 @@ func TestSolve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := Solve(tt.input)
+			result := Solve(context.Background(), tt.input)
 
 			if tt.wantNil {
 				if result != nil {
@@ -168,7 +169,7 @@ func TestSolve(t *testing.T) {
 			}
 
 			// Check solution is valid
-			if !IsValid(result) {
+			if !IsValid(context.Background(), result) {
 				t.Errorf("solution is not valid")
 			}
 
@@ -195,7 +196,7 @@ func TestSolve_DoesNotModifyInput(t *testing.T) {
 	original := make([]int, len(validPuzzle))
 	copy(original, validPuzzle)
 
-	Solve(validPuzzle)
+	Solve(context.Background(), validPuzzle)
 
 	for i := range validPuzzle {
 		if validPuzzle[i] != original[i] {
@@ -237,9 +238,9 @@ func TestHasUniqueSolution(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := HasUniqueSolution(tt.input)
+			got := HasUniqueSolution(context.Background(), tt.input)
 			if got != tt.want {
-				t.Errorf("HasUniqueSolution() = %v, want %v", got, tt.want)
+				t.Errorf("HasUniqueSolution(context.Background(), ) = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -287,9 +288,9 @@ func TestIsValid(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := IsValid(tt.input)
+			got := IsValid(context.Background(), tt.input)
 			if got != tt.want {
-				t.Errorf("IsValid() = %v, want %v", got, tt.want)
+				t.Errorf("IsValid(context.Background(), ) = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -449,9 +450,9 @@ func TestCountSolutions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CountSolutions(tt.input, tt.maxCount)
+			got := CountSolutions(context.Background(), tt.input, tt.maxCount)
 			if got != tt.want {
-				t.Errorf("CountSolutions() = %d, want %d", got, tt.want)
+				t.Errorf("CountSolutions(context.Background(), ) = %d, want %d", got, tt.want)
 			}
 		})
 	}
@@ -461,7 +462,7 @@ func TestCountSolutions_DoesNotModifyInput(t *testing.T) {
 	original := make([]int, len(validPuzzle))
 	copy(original, validPuzzle)
 
-	CountSolutions(validPuzzle, 10)
+	CountSolutions(context.Background(), validPuzzle, 10)
 
 	for i := range validPuzzle {
 		if validPuzzle[i] != original[i] {
@@ -528,7 +529,7 @@ func TestGenerateFullGrid(t *testing.T) {
 		grid := GenerateFullGrid(12345)
 
 		// Check it's valid
-		if !IsValid(grid) {
+		if !IsValid(context.Background(), grid) {
 			t.Error("generated grid is not valid")
 		}
 
@@ -573,7 +574,7 @@ func TestGenerateFullGrid(t *testing.T) {
 
 	t.Run("generated grid has exactly one solution", func(t *testing.T) {
 		grid := GenerateFullGrid(99999)
-		if !HasUniqueSolution(grid) {
+		if !HasUniqueSolution(context.Background(), grid) {
 			t.Error("generated grid does not have unique solution")
 		}
 	})
@@ -584,27 +585,27 @@ func TestGenerateFullGrid(t *testing.T) {
 func TestCarveGivens(t *testing.T) {
 	t.Run("produces valid puzzle", func(t *testing.T) {
 		fullGrid := GenerateFullGrid(123)
-		puzzle := CarveGivens(fullGrid, 30, 456)
+		puzzle := CarveGivens(context.Background(), fullGrid, 30, 456)
 
-		if !IsValid(puzzle) {
+		if !IsValid(context.Background(), puzzle) {
 			t.Error("carved puzzle is not valid")
 		}
 	})
 
 	t.Run("puzzle has unique solution", func(t *testing.T) {
 		fullGrid := GenerateFullGrid(789)
-		puzzle := CarveGivens(fullGrid, 35, 101)
+		puzzle := CarveGivens(context.Background(), fullGrid, 35, 101)
 
-		if !HasUniqueSolution(puzzle) {
+		if !HasUniqueSolution(context.Background(), puzzle) {
 			t.Error("carved puzzle does not have unique solution")
 		}
 	})
 
 	t.Run("puzzle solution matches original grid", func(t *testing.T) {
 		fullGrid := GenerateFullGrid(111)
-		puzzle := CarveGivens(fullGrid, 40, 222)
+		puzzle := CarveGivens(context.Background(), fullGrid, 40, 222)
 
-		solution := Solve(puzzle)
+		solution := Solve(context.Background(), puzzle)
 		if solution == nil {
 			t.Fatal("puzzle is unsolvable")
 		}
@@ -618,7 +619,7 @@ func TestCarveGivens(t *testing.T) {
 
 	t.Run("preserves filled cells from original", func(t *testing.T) {
 		fullGrid := GenerateFullGrid(333)
-		puzzle := CarveGivens(fullGrid, 25, 444)
+		puzzle := CarveGivens(context.Background(), fullGrid, 25, 444)
 
 		for i := range puzzle {
 			if puzzle[i] != 0 && puzzle[i] != fullGrid[i] {
@@ -630,8 +631,8 @@ func TestCarveGivens(t *testing.T) {
 
 	t.Run("same seeds produce same puzzle", func(t *testing.T) {
 		fullGrid := GenerateFullGrid(555)
-		puzzle1 := CarveGivens(fullGrid, 30, 666)
-		puzzle2 := CarveGivens(fullGrid, 30, 666)
+		puzzle1 := CarveGivens(context.Background(), fullGrid, 30, 666)
+		puzzle2 := CarveGivens(context.Background(), fullGrid, 30, 666)
 
 		for i := range puzzle1 {
 			if puzzle1[i] != puzzle2[i] {
@@ -643,8 +644,8 @@ func TestCarveGivens(t *testing.T) {
 	t.Run("fewer target givens produces harder puzzle", func(t *testing.T) {
 		fullGrid := GenerateFullGrid(777)
 
-		easyPuzzle := CarveGivens(fullGrid, 45, 888)
-		hardPuzzle := CarveGivens(fullGrid, 25, 888)
+		easyPuzzle := CarveGivens(context.Background(), fullGrid, 45, 888)
+		hardPuzzle := CarveGivens(context.Background(), fullGrid, 25, 888)
 
 		easyGivens := countGivens(easyPuzzle)
 		hardGivens := countGivens(hardPuzzle)
@@ -670,7 +671,7 @@ func countGivens(grid []int) int {
 
 func TestCarveGivensWithSubset(t *testing.T) {
 	fullGrid := GenerateFullGrid(12345)
-	puzzles := CarveGivensWithSubset(fullGrid, 67890)
+	puzzles := CarveGivensWithSubset(context.Background(), fullGrid, 67890)
 
 	difficulties := []string{"easy", "medium", "hard", "extreme", "impossible"}
 
@@ -684,7 +685,7 @@ func TestCarveGivensWithSubset(t *testing.T) {
 
 	t.Run("all puzzles are valid", func(t *testing.T) {
 		for diff, puzzle := range puzzles {
-			if !IsValid(puzzle) {
+			if !IsValid(context.Background(), puzzle) {
 				t.Errorf("%s puzzle is not valid", diff)
 			}
 		}
@@ -692,7 +693,7 @@ func TestCarveGivensWithSubset(t *testing.T) {
 
 	t.Run("all puzzles have unique solutions", func(t *testing.T) {
 		for diff, puzzle := range puzzles {
-			if !HasUniqueSolution(puzzle) {
+			if !HasUniqueSolution(context.Background(), puzzle) {
 				t.Errorf("%s puzzle does not have unique solution", diff)
 			}
 		}
@@ -700,7 +701,7 @@ func TestCarveGivensWithSubset(t *testing.T) {
 
 	t.Run("all puzzles solve to same grid", func(t *testing.T) {
 		for diff, puzzle := range puzzles {
-			solution := Solve(puzzle)
+			solution := Solve(context.Background(), puzzle)
 			if solution == nil {
 				t.Errorf("%s puzzle is unsolvable", diff)
 				continue
@@ -755,7 +756,7 @@ func TestEdgeCases(t *testing.T) {
 		// Note: The implementation assumes 81-element grids
 		// This test documents expected behavior with correct size
 		grid := make([]int, 81)
-		result := Solve(grid)
+		result := Solve(context.Background(), grid)
 		if result == nil {
 			t.Error("empty 81-element grid should be solvable")
 		}
@@ -767,7 +768,7 @@ func TestEdgeCases(t *testing.T) {
 		copy(grid, solvedGrid)
 		grid[0] = 0 // Remove first cell
 
-		result := Solve(grid)
+		result := Solve(context.Background(), grid)
 		if result == nil {
 			t.Error("grid with single empty cell should be solvable")
 		}
@@ -796,13 +797,13 @@ func BenchmarkSolve(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		puzzle := make([]int, 81)
 		copy(puzzle, validPuzzle)
-		Solve(puzzle)
+		Solve(context.Background(), puzzle)
 	}
 }
 
 func BenchmarkHasUniqueSolution(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		HasUniqueSolution(validPuzzle)
+		HasUniqueSolution(context.Background(), validPuzzle)
 	}
 }
 
@@ -910,7 +911,7 @@ func TestMutation_FindConflicts_DedupAndAllPairsFromTripleGroup(t *testing.T) {
 
 func TestMutation_CarveGivensWithSubset_ExactGivensPerDifficulty(t *testing.T) {
 	fullGrid := GenerateFullGrid(12345)
-	puzzles := CarveGivensWithSubset(fullGrid, 67890)
+	puzzles := CarveGivensWithSubset(context.Background(), fullGrid, 67890)
 
 	expectedGivens := map[string]int{
 		"easy":       40,
@@ -929,7 +930,7 @@ func TestMutation_CarveGivensWithSubset_ExactGivensPerDifficulty(t *testing.T) {
 
 func TestMutation_CarveGivensWithSubset_SubsetPropertyStrict(t *testing.T) {
 	fullGrid := GenerateFullGrid(12345)
-	puzzles := CarveGivensWithSubset(fullGrid, 67890)
+	puzzles := CarveGivensWithSubset(context.Background(), fullGrid, 67890)
 
 	difficulties := []string{"easy", "medium", "hard", "extreme", "impossible"}
 	for i := 0; i < len(difficulties)-1; i++ {
@@ -949,7 +950,7 @@ func TestMutation_CarveGivensWithSubset_SubsetPropertyStrict(t *testing.T) {
 func TestMutation_CarveGivens_ExactGivensCount(t *testing.T) {
 	fullGrid := GenerateFullGrid(123)
 	for _, target := range []int{30, 40} {
-		puzzle := CarveGivens(fullGrid, target, 456)
+		puzzle := CarveGivens(context.Background(), fullGrid, target, 456)
 		got := countGivens(puzzle)
 		if got != target {
 			t.Errorf("target=%d: expected %d givens, got %d", target, target, got)
@@ -966,8 +967,8 @@ func TestMutation_CarveGivens_ExactGivensCount(t *testing.T) {
 func TestMutation_CarveGivens_DifferentSeedsProduceDifferentPuzzles(t *testing.T) {
 	fullGrid := GenerateFullGrid(2024)
 
-	puzzleA := CarveGivens(fullGrid, 30, 100)
-	puzzleB := CarveGivens(fullGrid, 30, 900)
+	puzzleA := CarveGivens(context.Background(), fullGrid, 30, 100)
+	puzzleB := CarveGivens(context.Background(), fullGrid, 30, 900)
 
 	differ := false
 	for i := range puzzleA {
@@ -984,11 +985,11 @@ func TestMutation_CarveGivens_DifferentSeedsProduceDifferentPuzzles(t *testing.T
 // --- CountSolutions: boundary maxCount behavior ---
 
 func TestMutation_CountSolutions_RespectsMaxCountBoundary(t *testing.T) {
-	count := CountSolutions(emptyGrid, 2)
+	count := CountSolutions(context.Background(), emptyGrid, 2)
 	if count != 2 {
 		t.Errorf("empty grid with maxCount=2: expected 2, got %d", count)
 	}
-	count3 := CountSolutions(emptyGrid, 3)
+	count3 := CountSolutions(context.Background(), emptyGrid, 3)
 	if count3 != 3 {
 		t.Errorf("empty grid with maxCount=3: expected 3, got %d", count3)
 	}
@@ -998,7 +999,7 @@ func TestMutation_CountSolutions_NearlyFullPuzzle(t *testing.T) {
 	grid := make([]int, 81)
 	copy(grid, solvedGrid)
 	grid[80] = 0
-	count := CountSolutions(grid, 2)
+	count := CountSolutions(context.Background(), grid, 2)
 	if count != 1 {
 		t.Errorf("nearly-full puzzle: expected 1 solution, got %d", count)
 	}
@@ -1010,7 +1011,7 @@ func TestMutation_Solve_NearlyFullPuzzle(t *testing.T) {
 	grid := make([]int, 81)
 	copy(grid, solvedGrid)
 	grid[80] = 0
-	solution := Solve(grid)
+	solution := Solve(context.Background(), grid)
 	if solution == nil {
 		t.Fatal("expected solution for nearly-full puzzle")
 	}

@@ -1,6 +1,7 @@
 package human
 
 import (
+	"context"
 	"testing"
 
 	"sudoku-api/internal/core"
@@ -12,7 +13,7 @@ import (
 // DifficultyExtreme. The tier-to-difficulty mapping must not skip the hard tier.
 func TestAnalyzePuzzleDifficulty_HardTierReturnsHard(t *testing.T) {
 	givens := loadGivens(t, 6, "extreme")
-	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(givens)
+	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(context.Background(), givens)
 	if status != constants.StatusCompleted {
 		t.Skipf("fixture did not solve: %q", status)
 	}
@@ -39,7 +40,7 @@ func TestAnalyzePuzzleDifficulty_FullRangeReachable(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(tc.givens)
+		difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(context.Background(), tc.givens)
 		if tc.name != "impossible" && status != constants.StatusCompleted {
 			t.Skipf("fixture %s did not solve: %q", tc.name, status)
 		}
@@ -67,7 +68,7 @@ func TestAnalyzePuzzleDifficulty_FullRangeReachable(t *testing.T) {
 // analysis reports DifficultyImpossible rather than an empty string.
 func TestAnalyzePuzzleDifficulty_UnsolvableReturnsImpossible(t *testing.T) {
 	givens := unsolvableContradictionGivens()
-	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(givens)
+	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(context.Background(), givens)
 	if status == constants.StatusCompleted {
 		t.Fatal("expected non-completed status for the unsolvable puzzle")
 	}

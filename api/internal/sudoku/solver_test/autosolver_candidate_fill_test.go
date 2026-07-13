@@ -1,6 +1,7 @@
 package solver_test
 
 import (
+	"context"
 	"testing"
 
 	"sudoku-api/internal/core"
@@ -48,7 +49,7 @@ func TestAutosolverWithNoCandidatesFilled(t *testing.T) {
 	assignMoves := 0
 
 	for moveCount < 1000 {
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			break
 		}
@@ -115,7 +116,7 @@ func TestEmptyCandidatesNotTreatedAsContradiction(t *testing.T) {
 
 	// Now call FindNextMove - it should NOT return a contradiction
 	// Instead, it should return a fill-candidate move to start filling candidates
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 	if move == nil {
 		t.Fatal("Expected a move, but got nil")
 	}
@@ -174,7 +175,7 @@ func TestAutosolverCandidateFillPreventsIncorrectPlacement(t *testing.T) {
 
 			// Execute moves one by one to verify sequence
 			for i := 0; i < 100; i++ { // Safety limit
-				move := solver.FindNextMove(board)
+				move := solver.FindNextMove(context.Background(), board)
 				if move == nil {
 					break
 				}
@@ -252,7 +253,7 @@ func TestFindNextMoveTwoPhaseApproach(t *testing.T) {
 
 	// Collect first 50 moves to analyze pattern (need more due to 9x9)
 	for i := 0; i < 50; i++ {
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			break
 		}
@@ -296,7 +297,7 @@ func TestNoIncorrectCellPlacementsDuringCandidateFill(t *testing.T) {
 	moveCount := 0
 
 	for moveCount < 50 { // Limit to prevent infinite loops
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			break
 		}
@@ -339,7 +340,7 @@ func TestOnlyProperSinglesAfterCandidateFilling(t *testing.T) {
 	properSinglesFound := 0
 
 	for i := 0; i < 100; i++ {
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			break
 		}
@@ -518,7 +519,7 @@ func TestHiddenSinglesDetectedDuringCandidateFilling(t *testing.T) {
 	var lastMove *core.Move
 
 	for i := 0; i < 1000; i++ {
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			t.Logf("No more moves after %d iterations, lastMove=%v", i, lastMove)
 			break

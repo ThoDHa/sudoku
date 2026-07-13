@@ -1,6 +1,7 @@
 package human
 
 import (
+	"context"
 	"testing"
 
 	"sudoku-api/pkg/constants"
@@ -59,7 +60,7 @@ func TestSolverHandlesInvalidCellInRow(t *testing.T) {
 
 	// The solver should eventually detect a contradiction or stall
 	// because the puzzle becomes unsolvable with the wrong digit
-	moves, status := solver.SolveWithSteps(board, 500)
+	moves, status := solver.SolveWithSteps(context.Background(), board, 500)
 
 	// Either status is "stalled" (detected contradiction) or we got a contradiction move
 	hasContradiction := false
@@ -92,7 +93,7 @@ func TestSolverHandlesInvalidCellInColumn(t *testing.T) {
 	board := NewBoard(givens)
 	solver := NewSolver()
 
-	moves, status := solver.SolveWithSteps(board, 500)
+	moves, status := solver.SolveWithSteps(context.Background(), board, 500)
 
 	hasContradiction := false
 	for _, move := range moves {
@@ -125,7 +126,7 @@ func TestSolverHandlesInvalidCellInBox(t *testing.T) {
 	board := NewBoard(givens)
 	solver := NewSolver()
 
-	moves, status := solver.SolveWithSteps(board, 500)
+	moves, status := solver.SolveWithSteps(context.Background(), board, 500)
 
 	hasContradiction := false
 	for _, move := range moves {
@@ -163,7 +164,7 @@ func TestSolverHandlesDuplicateInRow(t *testing.T) {
 
 	// The solver should detect a contradiction since no valid placement for 5 exists
 	// in the remaining cells of row 1
-	moves, status := solver.SolveWithSteps(board, 500)
+	moves, status := solver.SolveWithSteps(context.Background(), board, 500)
 
 	hasContradiction := false
 	for _, move := range moves {
@@ -196,7 +197,7 @@ func TestSolverHandlesDuplicateInColumn(t *testing.T) {
 	board := NewBoard(givens)
 	solver := NewSolver()
 
-	moves, status := solver.SolveWithSteps(board, 500)
+	moves, status := solver.SolveWithSteps(context.Background(), board, 500)
 
 	hasContradiction := false
 	for _, move := range moves {
@@ -229,7 +230,7 @@ func TestSolverHandlesDuplicateInBox(t *testing.T) {
 	board := NewBoard(givens)
 	solver := NewSolver()
 
-	moves, status := solver.SolveWithSteps(board, 500)
+	moves, status := solver.SolveWithSteps(context.Background(), board, 500)
 
 	hasContradiction := false
 	for _, move := range moves {
@@ -274,7 +275,7 @@ func TestSolverHandlesInvalidCandidates(t *testing.T) {
 
 	// The solver should eventually detect a contradiction
 	// because R1C3 can no longer be filled correctly
-	moves, status := solver.SolveWithSteps(board, 500)
+	moves, status := solver.SolveWithSteps(context.Background(), board, 500)
 
 	hasContradiction := false
 	for _, move := range moves {
@@ -316,7 +317,7 @@ func TestSolverHandlesAllCandidatesRemoved(t *testing.T) {
 	}
 
 	// The solver should detect a contradiction at R1C3
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 
 	if move == nil {
 		t.Fatalf("Expected a move (contradiction), got nil")
@@ -353,7 +354,7 @@ func TestSolverHandlesMultipleDuplicates(t *testing.T) {
 	board := NewBoard(givens)
 	solver := NewSolver()
 
-	moves, status := solver.SolveWithSteps(board, 500)
+	moves, status := solver.SolveWithSteps(context.Background(), board, 500)
 
 	hasContradiction := false
 	for _, move := range moves {
@@ -402,7 +403,7 @@ func TestSolverHandlesImmediateContradiction(t *testing.T) {
 	board := NewBoard(cells[:])
 	solver := NewSolver()
 
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 
 	if move == nil {
 		t.Fatalf("Expected contradiction move, got nil")
@@ -441,7 +442,7 @@ func TestSolverHandlesPartialCandidatesStillSolvable(t *testing.T) {
 	board.RemoveCandidate(2, 2)
 	board.RemoveCandidate(2, 6)
 
-	moves, status := solver.SolveWithSteps(board, 500)
+	moves, status := solver.SolveWithSteps(context.Background(), board, 500)
 
 	if status != constants.StatusCompleted {
 		t.Errorf("Puzzle should remain solvable after removing only wrong candidates; got status=%q, %d moves", status, len(moves))
@@ -466,7 +467,7 @@ func TestSolveWithStepsReturnsOnContradiction(t *testing.T) {
 	board := NewBoard(givens)
 	solver := NewSolver()
 
-	moves, status := solver.SolveWithSteps(board, 100)
+	moves, status := solver.SolveWithSteps(context.Background(), board, 100)
 
 	// When contradiction is found, status should be "stalled"
 	// and the last move (or one of the moves) should be a contradiction
@@ -512,7 +513,7 @@ func TestContradictionMoveStructure(t *testing.T) {
 	board := NewBoard(cells[:])
 	solver := NewSolver()
 
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 
 	if move == nil {
 		t.Fatalf("Expected move, got nil")

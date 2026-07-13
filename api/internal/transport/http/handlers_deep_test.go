@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -1253,10 +1254,10 @@ func TestMutation_CustomValidate_NoSolutionExactReason(t *testing.T) {
 			board[r*9+c] = v
 		}
 	}
-	if !dp.IsValid(board) {
+	if !dp.IsValid(context.Background(), board) {
 		t.Fatalf("setup: board must be conflict-free to reach the solvability check, conflicts=%v", dp.FindConflicts(board))
 	}
-	if dp.CountSolutions(board, 1) != 0 {
+	if dp.CountSolutions(context.Background(), board, 1) != 0 {
 		t.Fatalf("setup: board must have zero solutions to reach the no-solution branch")
 	}
 	code, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{
@@ -1281,10 +1282,10 @@ func TestMutation_CustomValidate_MultipleSolutionsExactReason(t *testing.T) {
 	for _, i := range keep {
 		givens[i] = solved[i]
 	}
-	if !dp.IsValid(givens) {
+	if !dp.IsValid(context.Background(), givens) {
 		t.Fatalf("setup: givens must be conflict-free")
 	}
-	if n := dp.CountSolutions(givens, 2); n < 2 {
+	if n := dp.CountSolutions(context.Background(), givens, 2); n < 2 {
 		t.Skipf("setup: this 17-given board has %d solution(s); cannot exercise multiple-solutions branch", n)
 	}
 	code, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{
@@ -1741,7 +1742,7 @@ func TestMutation_CustomValidate_ExactlySixteenGivensTriggersMinCheck(t *testing
 	for i := 0; i < drop; i++ {
 		givens[i] = 0
 	}
-	if !dp.IsValid(givens) {
+	if !dp.IsValid(context.Background(), givens) {
 		t.Skipf("setup: 16-given board has conflicts, cannot exercise min-givens check")
 	}
 	code, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{

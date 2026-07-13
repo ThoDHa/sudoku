@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -28,7 +29,7 @@ func TestResolveGivens_GeneratesOnDemandWhenLoaderUnavailable(t *testing.T) {
 		Difficulty: "medium",
 	}
 
-	givens := resolveGivens(session, []int{1, 2, 3})
+	givens := resolveGivens(context.Background(), session, []int{1, 2, 3})
 
 	if len(givens) != constants.TotalCells {
 		t.Fatalf("expected on-demand generation to produce %d givens, got %d", constants.TotalCells, len(givens))
@@ -63,7 +64,7 @@ func TestFindPracticePuzzle_ContinuesPastLoaderError(t *testing.T) {
 	loader := brokenGLoader()
 	solver := human.NewSolver()
 
-	givens, _, _, ok := findPracticePuzzle(loader, solver, "hidden-single", []string{"medium"}, 1, 1)
+	givens, _, _, ok := findPracticePuzzle(context.Background(), loader, solver, "hidden-single", []string{"medium"}, 1, 1)
 
 	if ok {
 		t.Fatalf("expected not-found when every loader index errors, got givens=%v", givens)
@@ -80,7 +81,7 @@ func TestFindPracticePuzzle_SkipsIncompleteAnalysis(t *testing.T) {
 	})
 	solver := human.NewSolver()
 
-	givens, _, _, ok := findPracticePuzzle(sparse, solver, "hidden-single", []string{"medium"}, 1, 1)
+	givens, _, _, ok := findPracticePuzzle(context.Background(), sparse, solver, "hidden-single", []string{"medium"}, 1, 1)
 
 	if ok {
 		t.Fatalf("expected not-found for a puzzle whose analysis never completes, got givens=%v", givens)

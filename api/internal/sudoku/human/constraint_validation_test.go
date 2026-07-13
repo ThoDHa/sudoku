@@ -1,6 +1,7 @@
 package human
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -13,7 +14,7 @@ func TestConstraintViolation_DuplicateInRow(t *testing.T) {
 
 	solver := NewSolver()
 	board := NewBoard(givens)
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 
 	if move == nil {
 		t.Fatal("Expected constraint violation move, got nil")
@@ -58,7 +59,7 @@ func TestConstraintViolation_DuplicateInColumn(t *testing.T) {
 
 	solver := NewSolver()
 	board := NewBoard(givens)
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 
 	if move == nil {
 		t.Fatal("Expected constraint violation move, got nil")
@@ -99,7 +100,7 @@ func TestConstraintViolation_DuplicateInBox(t *testing.T) {
 
 	solver := NewSolver()
 	board := NewBoard(givens)
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 
 	if move == nil {
 		t.Fatal("Expected constraint violation move, got nil")
@@ -157,7 +158,7 @@ func TestConstraintViolation_InvalidCandidate(t *testing.T) {
 	solver := NewSolver()
 	board := NewBoardWithCandidates(givens, candidates)
 
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 
 	if move == nil {
 		t.Fatal("Expected constraint violation move, got nil")
@@ -196,7 +197,7 @@ func TestNoConstraintViolation_ValidBoard(t *testing.T) {
 	solver := NewSolver()
 	board := NewBoard(givens)
 
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 
 	// A valid puzzle should return SOME move (candidate filling, singles, etc.)
 	// It just shouldn't be a constraint violation
@@ -225,7 +226,7 @@ func TestConstraintViolation_PriorityOverOtherMoves(t *testing.T) {
 	solver := NewSolver()
 	board := NewBoard(givens)
 
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 
 	if move == nil {
 		t.Fatal("Expected move, got nil")
@@ -248,7 +249,7 @@ func TestConstraintViolation_InvalidCandidate_SecondaryExact(t *testing.T) {
 
 	board := NewBoardWithCandidates(cells, cands)
 	solver := NewSolver()
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 
 	if move == nil {
 		t.Fatal("expected constraint-violation-invalid-candidate move, got nil")
@@ -313,7 +314,7 @@ func TestContradictionMove_ExactFields(t *testing.T) {
 	}
 	board := NewBoard(cells[:])
 	solver := NewSolver()
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 	if move == nil {
 		t.Fatal("expected contradiction move, got nil")
 	}

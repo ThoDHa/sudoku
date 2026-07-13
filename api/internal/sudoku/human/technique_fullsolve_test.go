@@ -1,6 +1,7 @@
 package human
 
 import (
+	"context"
 	"testing"
 
 	"sudoku-api/internal/core"
@@ -46,14 +47,14 @@ func TestFullSolve_Puzzle(t *testing.T) {
 			}
 
 			// Verify puzzle has unique solution (sanity check)
-			dpSolution := dp.Solve(givens)
+			dpSolution := dp.Solve(context.Background(), givens)
 			if dpSolution == nil {
 				t.Fatalf("Puzzle %d has no solution", idx)
 			}
 
 			// Solve with human solver
 			board := NewBoard(givens)
-			moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+			moves, status := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 
 			// Check completion
 			if status != constants.StatusCompleted {
@@ -118,7 +119,7 @@ func TestFullSolve_First100(t *testing.T) {
 		}
 
 		board := NewBoard(givens)
-		moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+		moves, status := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 
 		if status != constants.StatusCompleted {
 			t.Logf("Puzzle %d: FAILED (status=%s, moves=%d)", idx, status, len(moves))
@@ -172,7 +173,7 @@ func TestFullSolve_DifficultyProgression(t *testing.T) {
 				}
 
 				board := NewBoard(givens)
-				moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+				moves, status := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 
 				if status == constants.StatusCompleted {
 					// Verify solution
@@ -228,7 +229,7 @@ func TestFullSolve_ValidateMoves(t *testing.T) {
 				}
 
 				// Get next move
-				move := solver.FindNextMove(board)
+				move := solver.FindNextMove(context.Background(), board)
 				if move == nil {
 					t.Errorf("Puzzle %d stalled at step %d", idx, step)
 					break
@@ -279,7 +280,7 @@ func TestSolver_NoInfiniteLoop(t *testing.T) {
 		}
 
 		board := NewBoard(givens)
-		moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+		moves, status := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 
 		// Should either complete or stall, not hit max steps on valid puzzles
 		if status == constants.StatusMaxStepsReached {
@@ -308,7 +309,7 @@ func TestSolver_Deterministic(t *testing.T) {
 
 	for run := 0; run < 3; run++ {
 		board := NewBoard(givens)
-		moves, _ := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+		moves, _ := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 
 		// Extract technique sequence
 		var techniques []string
@@ -363,7 +364,7 @@ func BenchmarkFullSolve(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				board := NewBoard(givens)
-				solver.SolveWithSteps(board, constants.MaxSolverSteps)
+				solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 			}
 		})
 	}
@@ -389,7 +390,7 @@ func BenchmarkFullSolve_Impossible(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				board := NewBoard(givens)
-				solver.SolveWithSteps(board, constants.MaxSolverSteps)
+				solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 			}
 		})
 	}

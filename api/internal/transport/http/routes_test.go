@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -682,7 +683,7 @@ func TestHTTPRoutes(t *testing.T) {
 		}
 
 		// Validate the board is a legal completed solution
-		if !dp.IsValid(finalInts) {
+		if !dp.IsValid(context.Background(), finalInts) {
 			t.Fatalf("autosolve returned an invalid completed board: %v", finalInts)
 		}
 
@@ -769,7 +770,7 @@ func TestHTTPRoutes(t *testing.T) {
 			}
 		}
 
-		if !dp.IsValid(finalInts) {
+		if !dp.IsValid(context.Background(), finalInts) {
 			t.Fatalf("autosolve returned an invalid completed board for impossible puzzle: %v", finalInts)
 		}
 
@@ -784,7 +785,7 @@ func TestHTTPRoutes(t *testing.T) {
 		// Build a deterministic full grid and carved givens
 		seed := int64(424242)
 		fullGrid := dp.GenerateFullGrid(seed)
-		allPuzzles := dp.CarveGivensWithSubset(fullGrid, seed)
+		allPuzzles := dp.CarveGivensWithSubset(context.Background(), fullGrid, seed)
 		givens := allPuzzles["easy"]
 		if len(givens) != 81 {
 			t.Fatalf("expected givens length 81, got %d", len(givens))
@@ -940,7 +941,7 @@ func TestHTTPRoutes(t *testing.T) {
 			}
 		}
 
-		if !dp.IsValid(finalInts) {
+		if !dp.IsValid(context.Background(), finalInts) {
 			t.Fatalf("Autosolve produced invalid final board after fixing user error: %v", finalInts)
 		}
 

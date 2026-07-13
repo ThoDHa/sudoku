@@ -1,6 +1,7 @@
 package human
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -306,7 +307,7 @@ func TestSolver_FindNextMove_ExactCandidateMove(t *testing.T) {
 	}
 
 	for i := 0; i < constants.TotalCells; i++ {
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move != nil && move.Action == "assign" && move.Digit == 5 {
 			if len(move.Targets) != 1 {
 				t.Fatalf("expected 1 target, got %d", len(move.Targets))
@@ -375,7 +376,7 @@ func TestAnalyzePuzzleDifficulty_EasyPuzzle(t *testing.T) {
 	givens[80] = 0
 
 	solver := NewSolver()
-	difficulty, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(givens)
+	difficulty, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(context.Background(), givens)
 
 	if status != constants.StatusCompleted {
 		t.Errorf("expected status 'completed', got %q", status)
@@ -412,7 +413,7 @@ func TestSolver_HiddenSingleDetection_ExactMove(t *testing.T) {
 	solver := NewSolver()
 
 	for i := 0; i < 100; i++ {
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			t.Fatal("solver stalled")
 		}
@@ -434,7 +435,7 @@ func TestSolver_FillCandidateMove_ExactContent(t *testing.T) {
 	board := NewBoardWithCandidates(make([]int, 81), nil)
 	solver := NewSolver()
 
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 	if move == nil {
 		t.Fatal("expected a fill-candidate move on empty board, got nil")
 	}
@@ -472,7 +473,7 @@ func TestSolver_InvalidCandidateDetection_ExactMove(t *testing.T) {
 	solver := NewSolver()
 
 	for i := 0; i < 200; i++ {
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			t.Fatal("solver stalled")
 		}
@@ -523,7 +524,7 @@ func TestSolver_HiddenSingleAtMidGrid_ExactTarget(t *testing.T) {
 	solver := NewSolver()
 
 	for i := 0; i < 200; i++ {
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			t.Fatal("solver stalled")
 		}
@@ -735,7 +736,7 @@ func TestCreateDuplicateViolationMove_ExactFields(t *testing.T) {
 func TestSolver_FillCandidateMove_RefsExact(t *testing.T) {
 	board := NewBoardWithCandidates(make([]int, 81), nil)
 	solver := NewSolver()
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 	if move == nil {
 		t.Fatal("expected fill-candidate move, got nil")
 	}
@@ -927,7 +928,7 @@ func TestBoard_Accessors_Exact(t *testing.T) {
 func TestSolver_FillCandidate_ExactExplanation(t *testing.T) {
 	board := NewBoardWithCandidates(make([]int, 81), nil)
 	solver := NewSolver()
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 	if move == nil {
 		t.Fatal("expected fill-candidate move on empty board, got nil")
 	}
@@ -943,7 +944,7 @@ func TestSolver_ConstraintViolation_DuplicateDigitOne(t *testing.T) {
 	givens[1] = 1
 	board := NewBoard(givens)
 	solver := NewSolver()
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 	if move == nil {
 		t.Fatal("expected constraint-violation move for duplicate 1s in row 0, got nil")
 	}
@@ -969,7 +970,7 @@ func TestSolver_InvalidCandidate_ConflictCellsCoverAllUnits(t *testing.T) {
 			board := makeTestBoard(cells, candidateMap)
 			solver := NewSolver()
 
-			move := solver.FindNextMove(board)
+			move := solver.FindNextMove(context.Background(), board)
 			if move == nil {
 				t.Fatal("expected invalid-candidate move at cell 0")
 			}
@@ -1039,7 +1040,7 @@ func TestSolver_SolveWithSteps_StepIndexSequence(t *testing.T) {
 
 	board := NewBoard(givens)
 	solver := NewSolver()
-	moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+	moves, status := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 	if status != constants.StatusCompleted {
 		t.Fatalf("status = %q, want completed", status)
 	}
@@ -1065,7 +1066,7 @@ func TestSolver_CandidateSweep_IncludesBoundaryDigits(t *testing.T) {
 	solver := NewSolver()
 	seen := map[int]bool{}
 	for i := 0; i < 1500; i++ {
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			break
 		}
@@ -1090,7 +1091,7 @@ func TestSolver_Reset_ClearsGenerationState(t *testing.T) {
 		t.Errorf("after Reset, generationState = %v, want StateNotStarted", solver.generationState)
 	}
 	board := NewBoardWithCandidates(make([]int, 81), nil)
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(context.Background(), board)
 	if move == nil || move.Technique != "fill-candidate" {
 		t.Errorf("after Reset, FindNextMove on empty board should return fill-candidate, got %+v", move)
 	}

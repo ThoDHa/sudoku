@@ -1,6 +1,7 @@
 package solver_test
 
 import (
+	"context"
 	"testing"
 
 	"sudoku-api/internal/sudoku/human"
@@ -35,7 +36,7 @@ func TestWASMEmptyCandidatesScenario(t *testing.T) {
 		board := human.NewBoardWithCandidates(cells, emptyCandidates)
 		solver := human.NewSolver()
 
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 
 		if move == nil {
 			t.Log("FindNextMove returned nil (stalled) - this was the old buggy behavior")
@@ -54,7 +55,7 @@ func TestWASMEmptyCandidatesScenario(t *testing.T) {
 		board.InitCandidates()
 		solver := human.NewSolver()
 
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 
 		if move == nil {
 			t.Fatal("FindNextMove returned nil even after InitCandidates")
@@ -76,7 +77,7 @@ func TestWASMEmptyCandidatesScenario(t *testing.T) {
 
 		moveCount1 := 0
 		for moveCount1 < 500 {
-			move := solver1.FindNextMove(board1)
+			move := solver1.FindNextMove(context.Background(), board1)
 			if move == nil {
 				break
 			}
@@ -101,7 +102,7 @@ func TestWASMEmptyCandidatesScenario(t *testing.T) {
 
 		moveCount2 := 0
 		for moveCount2 < 500 {
-			move := solver2.FindNextMove(board2)
+			move := solver2.FindNextMove(context.Background(), board2)
 			if move == nil {
 				break
 			}

@@ -1,6 +1,7 @@
 package human
 
 import (
+	"context"
 	"slices"
 	"testing"
 
@@ -56,7 +57,7 @@ func detectCuratedTechniqueMove(t *testing.T, slug string) *core.Move {
 	}
 
 	for step := 0; step < constants.MaxSolverSteps; step++ {
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			break
 		}

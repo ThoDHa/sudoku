@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -103,7 +104,7 @@ func TestMutation_FindPracticePuzzle_FindsKnownTechnique(t *testing.T) {
 	solver := human.NewSolver()
 	diffs := techniqueToDifficulties["hidden-single"]
 
-	givens, _, _, ok := findPracticePuzzle(loader, solver, "hidden-single", diffs, loader.Count(), 50)
+	givens, _, _, ok := findPracticePuzzle(context.Background(), loader, solver, "hidden-single", diffs, loader.Count(), 50)
 
 	if !ok {
 		t.Fatalf("expected to find a hidden-single puzzle, got not-found; givens=%v", givens)
@@ -345,7 +346,7 @@ func TestMutation_SolveAll_BreakOnSolvedNoStalledMove(t *testing.T) {
 	token := getValidToken(router)
 
 	solved := dp.GenerateFullGrid(4242)
-	givens := dp.CarveGivensWithSubset(solved, 4242)["easy"]
+	givens := dp.CarveGivensWithSubset(context.Background(), solved, 4242)["easy"]
 	// Add one correct user entry at a non-given cell so userEntryCount > 0 at solve.
 	board := make([]int, 81)
 	copy(board, givens)
@@ -389,7 +390,7 @@ func TestMutation_SolveAll_ConflictFixMoveCarriesPopulatedCandidates(t *testing.
 	// Use a real solvable puzzle so the autosolve loop has work to do after the
 	// conflict is fixed; a near-empty board would stall regardless.
 	solved := dp.GenerateFullGrid(4242)
-	givens := dp.CarveGivensWithSubset(solved, 4242)["easy"]
+	givens := dp.CarveGivensWithSubset(context.Background(), solved, 4242)["easy"]
 	board := make([]int, 81)
 	copy(board, givens)
 
@@ -447,7 +448,7 @@ func TestMutation_SolveAll_NoCandidatesRequestPopulatesFirstMove(t *testing.T) {
 	token := getValidToken(router)
 
 	solved := dp.GenerateFullGrid(31337)
-	givens := dp.CarveGivensWithSubset(solved, 31337)["medium"]
+	givens := dp.CarveGivensWithSubset(context.Background(), solved, 31337)["medium"]
 
 	bodyBytes, _ := json.Marshal(map[string]interface{}{
 		"token": token, "board": givens, "givens": givens,
@@ -565,7 +566,7 @@ func TestMutation_VerifyToken_InvalidBase64ReturnsDecodeError(t *testing.T) {
 func TestMutation_FindPracticePuzzle_FindsSingleOccurrenceTechnique(t *testing.T) {
 	loader := puzzles.Global()
 	solver := human.NewSolver()
-	_, _, _, ok := findPracticePuzzle(loader, solver, "x-wing", techniqueToDifficulties["x-wing"], loader.Count(), 50)
+	_, _, _, ok := findPracticePuzzle(context.Background(), loader, solver, "x-wing", techniqueToDifficulties["x-wing"], loader.Count(), 50)
 	if !ok {
 		t.Errorf("expected findPracticePuzzle to find a technique that appears exactly once; mutant count>1 likely skipped it")
 	}
@@ -600,7 +601,7 @@ func TestMutation_FindPracticePuzzle_IndexArithmeticReachesNonZeroPuzzle(t *test
 
 	loader := puzzles.Global()
 	solver := human.NewSolver()
-	_, _, _, ok := findPracticePuzzle(loader, solver, "x-wing", techniqueToDifficulties["x-wing"], loader.Count(), 50)
+	_, _, _, ok := findPracticePuzzle(context.Background(), loader, solver, "x-wing", techniqueToDifficulties["x-wing"], loader.Count(), 50)
 	if !ok {
 		t.Fatalf("expected findPracticePuzzle to reach puzzle index 1 and find x-wing; the `%% -> *` index-arithmetic mutant only ever scanned index 0")
 	}
@@ -644,7 +645,7 @@ func TestMutation_AutosolveFixCountCap_Incrementer(t *testing.T) {
 	origUser := make([]int, constants.TotalCells)
 	copy(origUser, board)
 	solver := human.NewSolver()
-	_, finalBoard := runAutosolveLoop(solver, b, origUser, givens, nil, 0)
+	_, finalBoard := runAutosolveLoop(context.Background(), solver, b, origUser, givens, nil, 0)
 	cells := finalBoard.GetCells()
 	count5 := 0
 	for c := 0; c < constants.GridSize; c++ {
@@ -670,7 +671,7 @@ func TestMutation_AutosolveFixCountCap_Decrementer(t *testing.T) {
 	origUser := make([]int, constants.TotalCells)
 	copy(origUser, board)
 	solver := human.NewSolver()
-	_, finalBoard := runAutosolveLoop(solver, b, origUser, givens, nil, 0)
+	_, finalBoard := runAutosolveLoop(context.Background(), solver, b, origUser, givens, nil, 0)
 	cells := finalBoard.GetCells()
 	count5 := 0
 	for c := 0; c < constants.GridSize; c++ {
@@ -766,7 +767,7 @@ func TestMutation_FindPracticePuzzle_ContinuesPastLoaderError(t *testing.T) {
 		{S: testPuzzles[0].S, G: map[string][]int{"x": testPuzzles[0].G["x"]}},
 	})
 	solver := human.NewSolver()
-	_, _, diff, ok := findPracticePuzzle(loader, solver, "x-wing", []string{"medium", "extreme"}, loader.Count(), 5)
+	_, _, diff, ok := findPracticePuzzle(context.Background(), loader, solver, "x-wing", []string{"medium", "extreme"}, loader.Count(), 5)
 	if !ok {
 		t.Fatal("expected x-wing found at extreme after skipping the erroring medium difficulty; loader-error branch broke instead of continued")
 	}
@@ -789,7 +790,7 @@ func TestMutation_FindPracticePuzzle_ContinuesPastUnsolvedDifficulty(t *testing.
 		}},
 	})
 	solver := human.NewSolver()
-	_, _, diff, ok := findPracticePuzzle(loader, solver, "x-wing", []string{"medium", "extreme"}, loader.Count(), 5)
+	_, _, diff, ok := findPracticePuzzle(context.Background(), loader, solver, "x-wing", []string{"medium", "extreme"}, loader.Count(), 5)
 	if !ok {
 		t.Fatal("expected x-wing found at extreme after skipping the unsolved medium difficulty; status!=completed branch broke instead of continued")
 	}
@@ -799,7 +800,7 @@ func TestMutation_FindPracticePuzzle_ContinuesPastUnsolvedDifficulty(t *testing.
 }
 
 // TestMutation_SolveAll_Step2FixCountStartsAtZero kills both numeric mutants on
-// solveAllHandler's STEP 2 call `runAutosolveLoop(..., nil, 0)`: the incrementer
+// solveAllHandler's STEP 2 call `runAutosolveLoop(context.Background(), ..., nil, 0)`: the incrementer
 // (0 -> 1) and the decrementer (0 -> -1). The board carries no direct conflicts
 // (so STEP 2 is taken) but 10 attributable user errors, more than the maxFixes=5
 // cap. Starting fixCount at 0, the loop emits exactly 5 fix-error moves before

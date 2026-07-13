@@ -1,6 +1,7 @@
 package solver_test
 
 import (
+	"context"
 	"testing"
 
 	"sudoku-api/internal/sudoku/dp"
@@ -26,10 +27,10 @@ func TestSolverHandlesAllDifficulties(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			fullGrid := dp.GenerateFullGrid(tc.seed)
-			givens := dp.CarveGivens(fullGrid, tc.givens, tc.seed)
+			givens := dp.CarveGivens(context.Background(), fullGrid, tc.givens, tc.seed)
 
 			board := human.NewBoard(givens)
-			moves, status := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+			moves, status := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 
 			// Easy and medium should always complete
 			if tc.name == "easy" || tc.name == "medium" {
@@ -60,10 +61,10 @@ func TestSolverUsesMultipleTechniques(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		seed := int64(i * 7919) // Prime multiplier for variety
 		fullGrid := dp.GenerateFullGrid(seed)
-		givens := dp.CarveGivens(fullGrid, 30, seed) // Medium-hard difficulty
+		givens := dp.CarveGivens(context.Background(), fullGrid, 30, seed) // Medium-hard difficulty
 
 		board := human.NewBoard(givens)
-		moves, _ := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+		moves, _ := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 
 		for _, move := range moves {
 			techniqueUsage[move.Technique]++
@@ -105,7 +106,7 @@ func BenchmarkSolver(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				seed := int64(i)
 				fullGrid := dp.GenerateFullGrid(seed)
-				puzzles[i] = dp.CarveGivens(fullGrid, diff.givens, seed)
+				puzzles[i] = dp.CarveGivens(context.Background(), fullGrid, diff.givens, seed)
 			}
 
 			solver := human.NewSolver()
@@ -113,7 +114,7 @@ func BenchmarkSolver(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				board := human.NewBoard(puzzles[i])
-				solver.SolveWithSteps(board, constants.MaxSolverSteps)
+				solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 			}
 		})
 	}

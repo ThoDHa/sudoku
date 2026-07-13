@@ -1,6 +1,7 @@
 package human
 
 import (
+	"context"
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
 )
@@ -82,7 +83,7 @@ func RunTechniqueDetection(puzzle string, targetSlug string, config TechniqueTes
 		maxSteps = 200
 	}
 
-	moves, status := solver.SolveWithSteps(board, maxSteps)
+	moves, status := solver.SolveWithSteps(context.Background(), board, maxSteps)
 	result.Status = status
 	result.TotalMoves = len(moves)
 

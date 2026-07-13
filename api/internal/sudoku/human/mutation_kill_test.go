@@ -1,6 +1,7 @@
 package human
 
 import (
+	"context"
 	"testing"
 
 	"sudoku-api/internal/core"
@@ -71,7 +72,7 @@ var contradictionBoard = [81]int{
 func TestContradiction_AllPeersFilled_NoDigitPlaceable(t *testing.T) {
 	b := makeTestBoard(contradictionBoard, nil)
 
-	move := NewSolver().FindNextMove(b)
+	move := NewSolver().FindNextMove(context.Background(), b)
 	if move == nil || move.Technique != "contradiction" {
 		t.Fatalf("expected contradiction move, got %+v", move)
 	}
@@ -86,7 +87,7 @@ func TestContradiction_OnlyDigitNinePlaceable(t *testing.T) {
 	cells[cellIdx(0, 6)] = 0 // cell whose solution digit is 9
 	b := makeTestBoard(cells, nil)
 
-	move := NewSolver().FindNextMove(b)
+	move := NewSolver().FindNextMove(context.Background(), b)
 	if move == nil || move.Technique != "fill-candidate" || move.Digit != 9 {
 		t.Fatalf("expected fill-candidate digit 9, got %+v", move)
 	}
@@ -100,7 +101,7 @@ func TestContradiction_OnlyDigitOnePlaceable(t *testing.T) {
 	cells[cellIdx(0, 7)] = 0 // cell whose solution digit is 1
 	b := makeTestBoard(cells, nil)
 
-	move := NewSolver().FindNextMove(b)
+	move := NewSolver().FindNextMove(context.Background(), b)
 	if move == nil || move.Technique != "fill-candidate" || move.Digit != 1 {
 		t.Fatalf("expected fill-candidate digit 1, got %+v", move)
 	}
@@ -117,7 +118,7 @@ func TestInvalidCandidate_Row8_ColumnZeroConflict(t *testing.T) {
 	cells[cellIdx(8, 0)] = 5 // the conflicting 5 in row 8
 	b := makeTestBoard(cells, map[int][]int{cellIdx(8, 5): {5}})
 
-	move := NewSolver().FindNextMove(b)
+	move := NewSolver().FindNextMove(context.Background(), b)
 	if move == nil || move.Technique != "constraint-violation-invalid-candidate" {
 		t.Fatalf("expected invalid-candidate move, got %+v", move)
 	}
@@ -135,7 +136,7 @@ func TestInvalidCandidate_ColumnConflictAtRowZero(t *testing.T) {
 	cells[cellIdx(0, 3)] = 7
 	b := makeTestBoard(cells, map[int][]int{cellIdx(5, 3): {7}})
 
-	move := NewSolver().FindNextMove(b)
+	move := NewSolver().FindNextMove(context.Background(), b)
 	if move == nil || move.Technique != "constraint-violation-invalid-candidate" {
 		t.Fatalf("expected invalid-candidate move, got %+v", move)
 	}
@@ -160,7 +161,7 @@ func TestInvalidCandidate_BoxConflictExactSecondary(t *testing.T) {
 	cells[cellIdx(8, 8)] = 9
 	b := makeTestBoard(cells, map[int][]int{cellIdx(7, 7): {9}})
 
-	move := NewSolver().FindNextMove(b)
+	move := NewSolver().FindNextMove(context.Background(), b)
 	if move == nil || move.Technique != "constraint-violation-invalid-candidate" {
 		t.Fatalf("expected invalid-candidate move, got %+v", move)
 	}
@@ -196,7 +197,7 @@ func TestFindNextCandidateMove_RowSweepBeatsColumnSweep(t *testing.T) {
 	cells[cellIdx(2, 2)] = 1 // blocks all of box 0 for digit 1, but not (0,3) or (3,0)
 	b := makeTestBoard(cells, nil)
 
-	move := NewSolver().FindNextMove(b)
+	move := NewSolver().FindNextMove(context.Background(), b)
 	if move == nil || move.Technique != "fill-candidate" || move.Digit != 1 {
 		t.Fatalf("expected fill-candidate digit 1, got %+v", move)
 	}
@@ -250,7 +251,7 @@ func TestSolveWithSteps_MaxStepsBoundary(t *testing.T) {
 	givens[0] = 0  // solution 5
 	givens[40] = 0 // solution 3
 
-	moves, status := NewSolver().SolveWithSteps(NewBoard(givens), 1)
+	moves, status := NewSolver().SolveWithSteps(context.Background(), NewBoard(givens), 1)
 	if status != constants.StatusMaxStepsReached {
 		t.Fatalf("expected max_steps_reached with maxSteps=1, got %q (moves=%d)", status, len(moves))
 	}
@@ -262,7 +263,7 @@ func TestSolveWithSteps_MaxStepsBoundary(t *testing.T) {
 func TestSolveWithSteps_ReturnsStalledOnContradiction(t *testing.T) {
 	b := makeTestBoard(contradictionBoard, nil)
 
-	moves, status := NewSolver().SolveWithSteps(b, 5)
+	moves, status := NewSolver().SolveWithSteps(context.Background(), b, 5)
 	if status != constants.StatusStalled {
 		t.Errorf("expected stalled on contradiction, got %q", status)
 	}
@@ -282,7 +283,7 @@ func TestAnalyzePuzzleDifficulty_UnsolvableShortCircuits(t *testing.T) {
 	givens[1] = 5 // duplicate 5 in row 0 with cell 0
 	givens[0] = 0
 
-	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(givens)
+	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(context.Background(), givens)
 	if status == constants.StatusCompleted {
 		t.Fatal("expected non-completed status for the contradiction board")
 	}
@@ -311,7 +312,7 @@ func loadGivens(t *testing.T, idx int, diff string) []int {
 // case removed). A genuine Medium puzzle is misclassified by each of those mutants.
 func TestAnalyzePuzzleDifficulty_MediumPuzzle(t *testing.T) {
 	givens := loadGivens(t, 0, "extreme")
-	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(givens)
+	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(context.Background(), givens)
 	if status != constants.StatusCompleted {
 		t.Fatalf("fixture puzzle 0/extreme must solve to exercise the medium-tier assertion; got status=%q (a solver regression would be silently masked by a skip here)", status)
 	}
@@ -325,7 +326,7 @@ func TestAnalyzePuzzleDifficulty_MediumPuzzle(t *testing.T) {
 // Fixture 6 resolves to TierHard, which maps to DifficultyHard.
 func TestAnalyzePuzzleDifficulty_HardTierPuzzle(t *testing.T) {
 	givens := loadGivens(t, 6, "extreme")
-	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(givens)
+	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(context.Background(), givens)
 	if status != constants.StatusCompleted {
 		t.Fatalf("fixture puzzle 6/extreme must solve to exercise the hard-tier assertion; got status=%q (a solver regression would be silently masked by a skip here)", status)
 	}
@@ -339,7 +340,7 @@ func TestAnalyzePuzzleDifficulty_HardTierPuzzle(t *testing.T) {
 // Fixture 23 resolves to TierExtreme, which maps to DifficultyExtreme.
 func TestAnalyzePuzzleDifficulty_ExtremeTierPuzzle(t *testing.T) {
 	givens := loadGivens(t, 23, "extreme")
-	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(givens)
+	difficulty, _, status := NewSolver().AnalyzePuzzleDifficulty(context.Background(), givens)
 	if status != constants.StatusCompleted {
 		t.Fatalf("fixture puzzle 23/extreme must solve to exercise the extreme-tier assertion; got status=%q (a solver regression would be silently masked by a skip here)", status)
 	}
@@ -438,7 +439,7 @@ func TestDedupeEliminations_NilInputReturnsNil(t *testing.T) {
 // placeable at cell 0, so the original flags a contradiction.
 func TestContradiction_DoesNotTreatDigitZeroAsPlaceable(t *testing.T) {
 	b := makeTestBoard(contradictionBoard, nil)
-	move := NewSolver().FindNextMove(b)
+	move := NewSolver().FindNextMove(context.Background(), b)
 	if move == nil || move.Technique != "contradiction" {
 		t.Fatalf("expected contradiction move (no digit 1-9 placeable), got %+v", move)
 	}
@@ -453,7 +454,7 @@ func TestInvalidCandidate_LoopStartsAtDigitOne(t *testing.T) {
 	var cells [81]int
 	cells[cellIdx(8, 0)] = 5
 	b := makeTestBoard(cells, map[int][]int{cellIdx(8, 5): {5}})
-	move := NewSolver().FindNextMove(b)
+	move := NewSolver().FindNextMove(context.Background(), b)
 	if move == nil || move.Technique != "constraint-violation-invalid-candidate" {
 		t.Fatalf("expected invalid-candidate move, got %+v", move)
 	}
@@ -473,7 +474,7 @@ func TestFindNextCandidateMove_LoopStartsAtDigitOne(t *testing.T) {
 	cells[cellIdx(2, 2)] = 1 // blocks box 0 for digit 1 but leaves (0,3) open
 	b := makeTestBoard(cells, nil)
 
-	move := NewSolver().FindNextMove(b)
+	move := NewSolver().FindNextMove(context.Background(), b)
 	if move == nil {
 		t.Fatal("expected a fill-candidate move, got nil")
 	}
@@ -659,7 +660,7 @@ func TestFindNextCandidateMove_BoxReturnIsReturned(t *testing.T) {
 func TestFindNextMove_ResetsGenerationStateAfterStall(t *testing.T) {
 	s := NewSolver()
 
-	_, status := s.SolveWithSteps(NewBoard(make([]int, 81)), constants.MaxSolverSteps)
+	_, status := s.SolveWithSteps(context.Background(), NewBoard(make([]int, 81)), constants.MaxSolverSteps)
 	if status != constants.StatusStalled {
 		t.Fatalf("expected empty board to stall, got %q", status)
 	}
@@ -668,7 +669,7 @@ func TestFindNextMove_ResetsGenerationStateAfterStall(t *testing.T) {
 	copy(givens, solvedGrid[:])
 	givens[0] = 0  // solution 5
 	givens[40] = 0 // solution 3
-	_, status2 := s.SolveWithSteps(NewBoard(givens), constants.MaxSolverSteps)
+	_, status2 := s.SolveWithSteps(context.Background(), NewBoard(givens), constants.MaxSolverSteps)
 	if status2 != constants.StatusCompleted {
 		t.Errorf("reused solver must reset state and solve the puzzle, got %q", status2)
 	}
