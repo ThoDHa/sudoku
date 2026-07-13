@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -80,7 +81,7 @@ func analyzeWorker(loader *puzzles.Loader, work <-chan workItem, results chan<- 
 			atomic.AddInt64(analyzed, 1)
 			continue
 		}
-		_, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(givens)
+		_, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(context.Background(), givens)
 		if status != "completed" {
 			atomic.AddInt64(analyzed, 1)
 			continue

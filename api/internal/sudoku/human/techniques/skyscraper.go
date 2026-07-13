@@ -76,6 +76,8 @@ func findSkyscraperInLinks(b BoardInterface, digit int, links [][2]int, baseUnit
 // skyscraper. It tries each way of matching one end of each link as the shared
 // base; the remaining ends are the tops. It returns the eliminate move when the
 // tops sit in different rows, columns, and boxes and at least one cell sees both.
+//
+//nolint:gocyclo // evaluates four base-pairing permutations with sequential geometry guards sharing the same digit/cell state
 func buildSkyscraperMove(b BoardInterface, digit int, a, c [2]int, baseUnit string) *core.Move {
 	for _, p := range [4][2]int{{0, 0}, {0, 1}, {1, 0}, {1, 1}} {
 		base1, top1 := a[p[0]], a[1-p[0]]

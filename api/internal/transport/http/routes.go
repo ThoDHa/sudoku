@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -204,7 +205,7 @@ func buildConflictFix(board []int, candidates [][]int, givens []int, conflict dp
 // resolveGivens returns the puzzle's original givens, preferring the value
 // supplied in the request and falling back to the loader or on-demand
 // generation from the session seed when it is not the right length.
-func resolveGivens(session *SessionToken, reqGivens []int) []int {
+func resolveGivens(ctx context.Context, session *SessionToken, reqGivens []int) []int {
 	givens := reqGivens
 	if len(givens) == constants.TotalCells {
 		return givens
@@ -220,7 +221,7 @@ func resolveGivens(session *SessionToken, reqGivens []int) []int {
 
 	seedHash := hashSeed(session.Seed)
 	fullGrid := dp.GenerateFullGrid(seedHash)
-	allPuzzles := dp.CarveGivensWithSubset(fullGrid, seedHash)
+	allPuzzles := dp.CarveGivensWithSubset(ctx, fullGrid, seedHash)
 	return allPuzzles[session.Difficulty]
 }
 
@@ -276,7 +277,7 @@ func puzzleHandler(c *gin.Context) {
 	if loader == nil {
 		seedHash := hashSeed(seed)
 		fullGrid := dp.GenerateFullGrid(seedHash)
-		allPuzzles := dp.CarveGivensWithSubset(fullGrid, seedHash)
+		allPuzzles := dp.CarveGivensWithSubset(c.Request.Context(), fullGrid, seedHash)
 		givens = allPuzzles[string(difficulty)]
 		puzzleIndex = -1 // Indicates generated, not pre-loaded
 	}
@@ -324,13 +325,13 @@ func puzzleAnalyzeHandler(c *gin.Context) {
 	if loader == nil {
 		seedHash := hashSeed(seed)
 		fullGrid := dp.GenerateFullGrid(seedHash)
-		allPuzzles := dp.CarveGivensWithSubset(fullGrid, seedHash)
+		allPuzzles := dp.CarveGivensWithSubset(c.Request.Context(), fullGrid, seedHash)
 		givens = allPuzzles[string(difficulty)]
 	}
 
 	// Analyze with human solver
 	solver := human.NewSolver()
-	requiredDiff, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(givens)
+	requiredDiff, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(c.Request.Context(), givens)
 
 	givensCount := 0
 	for _, v := range givens {
@@ -477,7 +478,7 @@ func serveCachedPractice(c *gin.Context, technique string, cached []practicePuzz
 // returning the first puzzle whose analysis uses technique. The scan starts at
 // a time-seeded offset so repeated requests surface different candidates. An
 // empty result (ok=false) means no match was found.
-func findPracticePuzzle(loader *puzzles.Loader, solver *human.Solver, technique string, difficulties []string, puzzleCount, maxSamples int) (givens []int, idx int, difficulty string, ok bool) {
+func findPracticePuzzle(ctx context.Context, loader *puzzles.Loader, solver *human.Solver, technique string, difficulties []string, puzzleCount, maxSamples int) (givens []int, idx int, difficulty string, ok bool) {
 	if puzzleCount == 0 {
 		// mutator-disable-next-line numbers/decrementer,numbers/incrementer
 		return nil, 0, "", false
@@ -494,7 +495,7 @@ func findPracticePuzzle(loader *puzzles.Loader, solver *human.Solver, technique 
 				// mutator-disable-next-line loop/break
 				continue
 			}
-			_, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(g)
+			_, techniqueCounts, status := solver.AnalyzePuzzleDifficulty(ctx, g)
 			// when status!=completed techniqueCounts is nil, so falling through to the count>0 check (has==false) skips this difficulty exactly as continue would
 			// mutator-disable-next-line branch/if
 			if status != "completed" {
@@ -548,7 +549,7 @@ func practiceHandler(c *gin.Context) {
 	// Not in cache - search for a puzzle that uses the requested technique.
 	solver := human.NewSolver()
 	// mutator-disable-next-line numbers/decrementer,numbers/incrementer
-	givens, idx, diff, ok := findPracticePuzzle(loader, solver, technique, difficulties, loader.Count(), 50)
+	givens, idx, diff, ok := findPracticePuzzle(c.Request.Context(), loader, solver, technique, difficulties, loader.Count(), 50)
 	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error":     "no puzzle found",
@@ -765,7 +766,7 @@ func solveNextHandler(c *gin.Context) {
 		return
 	}
 
-	givens := resolveGivens(session, req.Givens)
+	givens := resolveGivens(c.Request.Context(), session, req.Givens)
 
 	// STEP 1: Check for direct conflicts FIRST (before running solver).
 	// These are immediate rule violations: same digit twice in a row/column/box.
@@ -790,7 +791,7 @@ func solveNextHandler(c *gin.Context) {
 	// STEP 2: No direct conflicts - proceed with normal solver.
 	board := human.NewBoardWithCandidates(req.Board, req.Candidates)
 	solver := human.NewSolver()
-	move := solver.FindNextMove(board)
+	move := solver.FindNextMove(c.Request.Context(), board)
 
 	if move == nil {
 		c.JSON(http.StatusOK, gin.H{"move": nil})
@@ -1120,7 +1121,7 @@ func handleAutosolveContradiction(moves []moveResult, board *human.Board, move *
 // It returns the accumulated move snapshots and the final board. fixCount is
 // the number of user-error fixes already applied before the loop starts (1 when
 // continuing from an already-applied conflict fix, 0 otherwise).
-func runAutosolveLoop(solver *human.Solver, board *human.Board, originalUserBoard, givens []int, moves []moveResult, fixCount int) ([]moveResult, *human.Board) {
+func runAutosolveLoop(ctx context.Context, solver *human.Solver, board *human.Board, originalUserBoard, givens []int, moves []moveResult, fixCount int) ([]moveResult, *human.Board) {
 	// mutator-disable-next-line numbers/decrementer,numbers/incrementer
 	const maxMoves = 2000
 	const maxFixes = 5
@@ -1131,7 +1132,7 @@ func runAutosolveLoop(solver *human.Solver, board *human.Board, originalUserBoar
 			// mutator-disable-next-line loop/break
 			break
 		}
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(ctx, board)
 		if move == nil {
 			moves = appendStalledMove(moves, board, originalUserBoard, givens)
 			break
@@ -1181,7 +1182,7 @@ func serveSolveAllFromConflictFix(c *gin.Context, req SolveAllRequest, givens []
 		solver := human.NewSolver()
 
 		// fixCount starts at 1: the conflict fix above already corrected one cell.
-		moves, board = runAutosolveLoop(solver, board, originalUserBoard, givens, moves, 1)
+		moves, board = runAutosolveLoop(c.Request.Context(), solver, board, originalUserBoard, givens, moves, 1)
 
 		c.JSON(http.StatusOK, gin.H{
 			"moves":      moves,
@@ -1219,7 +1220,7 @@ func solveAllHandler(c *gin.Context) {
 		return
 	}
 
-	givens := resolveGivens(session, req.Givens)
+	givens := resolveGivens(c.Request.Context(), session, req.Givens)
 
 	// STEP 1: direct conflicts get fixed first, then solving continues from
 	// the corrected board. Falls through when no conflict is user-fixable.
@@ -1241,7 +1242,7 @@ func solveAllHandler(c *gin.Context) {
 	copy(originalUserBoard, req.Board)
 
 	solver := human.NewSolver()
-	moves, board := runAutosolveLoop(solver, board, originalUserBoard, givens, nil, 0)
+	moves, board := runAutosolveLoop(c.Request.Context(), solver, board, originalUserBoard, givens, nil, 0)
 
 	c.JSON(http.StatusOK, gin.H{
 		"moves":      moves,
@@ -1286,7 +1287,7 @@ func solveFullHandler(c *gin.Context) {
 
 	if mode == "fast" {
 		// Use DP solver
-		solution := dp.Solve(req.Board)
+		solution := dp.Solve(c.Request.Context(), req.Board)
 		if solution == nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "no solution found"})
 			return
@@ -1298,7 +1299,7 @@ func solveFullHandler(c *gin.Context) {
 	// Human mode
 	board := human.NewBoard(req.Board)
 	solver := human.NewSolver()
-	moves, reason := solver.SolveWithSteps(board, constants.MaxSolverSteps)
+	moves, reason := solver.SolveWithSteps(c.Request.Context(), board, constants.MaxSolverSteps)
 
 	c.JSON(http.StatusOK, gin.H{
 		"moves":          moves,
@@ -1357,7 +1358,7 @@ func validateBoardHandler(c *gin.Context) {
 
 	// Check if puzzle is solvable from current state
 	// mutator-disable-next-line numbers/incrementer
-	solutions := dp.CountSolutions(req.Board, 1)
+	solutions := dp.CountSolutions(c.Request.Context(), req.Board, 1)
 	if solutions == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"valid":   false,
@@ -1411,7 +1412,7 @@ func customValidateHandler(c *gin.Context) {
 	}
 
 	// Validate: check for conflicts
-	if !dp.IsValid(req.Givens) {
+	if !dp.IsValid(c.Request.Context(), req.Givens) {
 		c.JSON(http.StatusOK, gin.H{
 			"valid":  false,
 			"reason": "puzzle contains conflicts",
@@ -1420,7 +1421,7 @@ func customValidateHandler(c *gin.Context) {
 	}
 
 	// Check solvability and uniqueness using DP
-	solutions := dp.CountSolutions(req.Givens, constants.SolutionCountLimit)
+	solutions := dp.CountSolutions(c.Request.Context(), req.Givens, constants.SolutionCountLimit)
 
 	if solutions == 0 {
 		c.JSON(http.StatusOK, gin.H{

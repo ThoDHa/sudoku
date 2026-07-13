@@ -1,6 +1,7 @@
 package human
 
 import (
+	"context"
 	"fmt"
 
 	"sudoku-api/internal/core"
@@ -280,7 +281,7 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 }
 
 // FindNextMove finds the next applicable move using simple-first strategy
-func (s *Solver) FindNextMove(b *Board) *core.Move {
+func (s *Solver) FindNextMove(ctx context.Context, b *Board) *core.Move {
 	// FIRST: Check for constraint violations before attempting any other moves
 	if violation := s.checkConstraintViolations(b); violation != nil {
 		return violation
@@ -600,12 +601,12 @@ func (s *Solver) ApplyMove(b *Board, move *core.Move) {
 // ============================================================================
 
 // SolveWithSteps attempts to solve using human techniques, returning all moves
-func (s *Solver) SolveWithSteps(b *Board, maxSteps int) ([]core.Move, string) {
+func (s *Solver) SolveWithSteps(ctx context.Context, b *Board, maxSteps int) ([]core.Move, string) {
 	var moves []core.Move
 	step := 0
 
 	for step < maxSteps && !b.IsSolved() {
-		move := s.FindNextMove(b)
+		move := s.FindNextMove(ctx, b)
 		if move == nil {
 			return moves, constants.StatusStalled
 		}
@@ -657,9 +658,9 @@ func (s *Solver) SetTechniqueEnabled(slug string, enabled bool) bool {
 // ============================================================================
 
 // AnalyzePuzzleDifficulty solves the puzzle and returns the required difficulty level
-func (s *Solver) AnalyzePuzzleDifficulty(givens []int) (core.Difficulty, map[string]int, string) {
+func (s *Solver) AnalyzePuzzleDifficulty(ctx context.Context, givens []int) (core.Difficulty, map[string]int, string) {
 	b := NewBoard(givens)
-	moves, status := s.SolveWithSteps(b, constants.MaxSolverSteps)
+	moves, status := s.SolveWithSteps(ctx, b, constants.MaxSolverSteps)
 
 	if status != constants.StatusCompleted {
 		return core.DifficultyImpossible, nil, status

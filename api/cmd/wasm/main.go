@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"syscall/js"
 
@@ -513,7 +514,7 @@ func solveWithSteps(this js.Value, args []js.Value) interface{} {
 	}
 
 	board := human.NewBoard(givens)
-	moves, status := solver.SolveWithSteps(board, maxSteps)
+	moves, status := solver.SolveWithSteps(context.Background(), board, maxSteps)
 
 	obj := js.Global().Get("Object").New()
 	obj.Set("moves", moveSliceToJS(moves))
@@ -536,7 +537,7 @@ func analyzePuzzle(this js.Value, args []js.Value) interface{} {
 		return errorToJS(fmt.Sprintf("givens must have %d elements", constants.TotalCells))
 	}
 
-	difficulty, techniques, status := solver.AnalyzePuzzleDifficulty(givens)
+	difficulty, techniques, status := solver.AnalyzePuzzleDifficulty(context.Background(), givens)
 
 	obj := js.Global().Get("Object").New()
 	obj.Set("difficulty", difficulty)
@@ -560,7 +561,7 @@ func solve(this js.Value, args []js.Value) interface{} {
 		return js.Null()
 	}
 
-	solution := dp.Solve(grid)
+	solution := dp.Solve(context.Background(), grid)
 	if solution == nil {
 		return js.Null()
 	}
@@ -581,7 +582,7 @@ func hasUniqueSolution(this js.Value, args []js.Value) interface{} {
 		return js.ValueOf(false)
 	}
 
-	return js.ValueOf(dp.HasUniqueSolution(grid))
+	return js.ValueOf(dp.HasUniqueSolution(context.Background(), grid))
 }
 
 // isValid checks if the grid has no conflicts
@@ -597,7 +598,7 @@ func isValid(this js.Value, args []js.Value) interface{} {
 		return js.ValueOf(false)
 	}
 
-	return js.ValueOf(dp.IsValid(grid))
+	return js.ValueOf(dp.IsValid(context.Background(), grid))
 }
 
 // findConflicts returns all conflicting cell pairs
@@ -646,7 +647,7 @@ func carveGivens(this js.Value, args []js.Value) interface{} {
 	targetGivens := args[1].Int()
 	seed := int64(args[2].Float())
 
-	puzzle := dp.CarveGivens(fullGrid, targetGivens, seed)
+	puzzle := dp.CarveGivens(context.Background(), fullGrid, targetGivens, seed)
 	return intSliceToJSArray(puzzle)
 }
 
@@ -665,7 +666,7 @@ func carveGivensWithSubset(this js.Value, args []js.Value) interface{} {
 
 	seed := int64(args[1].Float())
 
-	puzzles := dp.CarveGivensWithSubset(fullGrid, seed)
+	puzzles := dp.CarveGivensWithSubset(context.Background(), fullGrid, seed)
 
 	// Build JS object explicitly
 	obj := js.Global().Get("Object").New()
@@ -806,7 +807,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 			break
 		}
 
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			// Solver stalled: no technique works and no contradiction detected yet.
 			// This often means user has incorrect entries that prevent progress.
@@ -1072,7 +1073,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 
 	return solveResult{
 		moves:           moves,
-		solved:          board.IsSolved() && dp.IsValid(finalCells),
+		solved:          board.IsSolved() && dp.IsValid(context.Background(), finalCells),
 		finalBoard:      finalCells,
 		finalCandidates: board.GetCandidates(),
 	}
@@ -1249,7 +1250,7 @@ func findErrorByTrialRemoval(originalUserBoard []int, givens []int, solver *huma
 		board := human.NewBoard(testBoard)
 
 		// Check if solver can now find a move
-		move := solver.FindNextMove(board)
+		move := solver.FindNextMove(context.Background(), board)
 		if move != nil && move.Action != "contradiction" {
 			// Removing this cell allowed progress!
 			return cellIdx, digit
@@ -1309,7 +1310,7 @@ func findMissingCandidates(cells []int, userCandidates [][]int, solver *human.So
 				testBoard := human.NewBoardWithCandidates(cells, userCandidates)
 				testBoard.Candidates[idx] = testBoard.Candidates[idx].Set(digit)
 
-				move := solver.FindNextMove(testBoard)
+				move := solver.FindNextMove(context.Background(), testBoard)
 				if move != nil && move.Action != "contradiction" {
 					// Restoring this candidate allowed progress!
 					return idx, digit, true
@@ -1468,12 +1469,12 @@ func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 	}
 
 	// Check for conflicts
-	if !dp.IsValid(givens) {
+	if !dp.IsValid(context.Background(), givens) {
 		return validationResultToJS(false, "puzzle contains conflicts")
 	}
 
 	// Check solvability
-	solutions := dp.CountSolutions(givens, 2)
+	solutions := dp.CountSolutions(context.Background(), givens, 2)
 
 	if solutions == 0 {
 		return validationResultToJS(false, "puzzle has no solution")
@@ -1484,7 +1485,7 @@ func validateCustomPuzzle(this js.Value, args []js.Value) interface{} {
 	}
 
 	// Solve to get the solution
-	solution := dp.Solve(givens)
+	solution := dp.Solve(context.Background(), givens)
 
 	return validationResultWithSolutionToJS(true, true, solution)
 }
@@ -1560,7 +1561,7 @@ func getPuzzleForSeed(this js.Value, args []js.Value) interface{} {
 	// Generate deterministic seed hash
 	seedHash := hashSeed(seed)
 	fullGrid := dp.GenerateFullGrid(seedHash)
-	allPuzzles := dp.CarveGivensWithSubset(fullGrid, seedHash)
+	allPuzzles := dp.CarveGivensWithSubset(context.Background(), fullGrid, seedHash)
 	givens := allPuzzles[difficulty]
 
 	puzzleID := seed + "-" + difficulty

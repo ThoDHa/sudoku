@@ -1,6 +1,7 @@
 package dp
 
 import (
+	"context"
 	"strconv"
 
 	"sudoku-api/internal/core"
@@ -11,21 +12,21 @@ import (
 // and uniqueness checks. Not used for hints or educational gameplay.
 
 // Solve finds a solution using backtracking. Returns the solved grid or nil if unsolvable.
-func Solve(grid []int) []int {
+func Solve(ctx context.Context, grid []int) []int {
 	board := make([]int, constants.TotalCells)
 	copy(board, grid)
-	if solve(board) {
+	if solve(ctx, board) {
 		return board
 	}
 	return nil
 }
 
 // HasUniqueSolution checks if the puzzle has exactly one solution.
-func HasUniqueSolution(grid []int) bool {
+func HasUniqueSolution(ctx context.Context, grid []int) bool {
 	// maxCount=2 suffices: we only distinguish 0, 1, or 2+ solutions. maxCount=3
 	// would yield the same HasUniqueSolution result for every possible puzzle.
 	// mutator-disable-next-line numbers/incrementer
-	count := CountSolutions(grid, 2)
+	count := CountSolutions(ctx, grid, 2)
 	return count == 1
 }
 
@@ -38,7 +39,7 @@ type Conflict struct {
 }
 
 // IsValid checks if the given grid has no conflicts (no duplicate values in rows, columns, or boxes).
-func IsValid(grid []int) bool {
+func IsValid(ctx context.Context, grid []int) bool {
 	conflicts := FindConflicts(grid)
 	return len(conflicts) == 0
 }
@@ -149,15 +150,15 @@ func findEmptyCell(board []int) int {
 }
 
 // CountSolutions counts solutions up to maxCount. Exported for custom puzzle validation.
-func CountSolutions(grid []int, maxCount int) int {
+func CountSolutions(ctx context.Context, grid []int, maxCount int) int {
 	board := make([]int, constants.TotalCells)
 	copy(board, grid)
 	count := 0
-	countSolutionsHelper(board, &count, maxCount)
+	countSolutionsHelper(ctx, board, &count, maxCount)
 	return count
 }
 
-func countSolutionsHelper(board []int, count *int, maxCount int) {
+func countSolutionsHelper(ctx context.Context, board []int, count *int, maxCount int) {
 	// Redundant guard: the inner guard (L176) also caps counting. Mutating either
 	// guard alone does not change the observable count returned by CountSolutions.
 	// mutator-disable-next-line expression/comparison,branch/if
@@ -180,7 +181,7 @@ func countSolutionsHelper(board []int, count *int, maxCount int) {
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		if isValid(board, row, col, digit) {
 			board[idx] = digit
-			countSolutionsHelper(board, count, maxCount)
+			countSolutionsHelper(ctx, board, count, maxCount)
 			board[idx] = 0
 			// Redundant guard: the outer guard (L158) also caps counting.
 			// mutator-disable-next-line expression/comparison,branch/if
@@ -191,7 +192,7 @@ func countSolutionsHelper(board []int, count *int, maxCount int) {
 	}
 }
 
-func solve(board []int) bool {
+func solve(ctx context.Context, board []int) bool {
 	idx := findEmptyCell(board)
 
 	if idx == -1 {
@@ -205,7 +206,7 @@ func solve(board []int) bool {
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		if isValid(board, row, col, digit) {
 			board[idx] = digit
-			if solve(board) {
+			if solve(ctx, board) {
 				return true
 			}
 			board[idx] = 0
@@ -311,7 +312,7 @@ func fillGrid(board []int, rng *rng) bool {
 // CarveGivens removes cells from a complete grid to create a puzzle.
 // targetGivens is the desired number of clues to remain.
 // Returns the puzzle grid with zeros for empty cells.
-func CarveGivens(fullGrid []int, targetGivens int, seed int64) []int {
+func CarveGivens(ctx context.Context, fullGrid []int, targetGivens int, seed int64) []int {
 	puzzle := make([]int, constants.TotalCells)
 	copy(puzzle, fullGrid)
 
@@ -344,7 +345,7 @@ func CarveGivens(fullGrid []int, targetGivens int, seed int64) []int {
 		oldVal := puzzle[pos]
 		puzzle[pos] = 0
 
-		if HasUniqueSolution(puzzle) {
+		if HasUniqueSolution(ctx, puzzle) {
 			removed++
 		} else {
 			puzzle[pos] = oldVal
@@ -359,7 +360,7 @@ func CarveGivens(fullGrid []int, targetGivens int, seed int64) []int {
 // The approach: carve to the minimum (impossible), then record which cells to restore for easier levels.
 // Difficulty is assigned by givens count alone: fewer givens yield harder labels. No technique
 // verification is performed.
-func CarveGivensWithSubset(fullGrid []int, seed int64) map[string][]int {
+func CarveGivensWithSubset(ctx context.Context, fullGrid []int, seed int64) map[string][]int {
 	// Target givens for each difficulty (fewer givens = harder puzzle)
 	targets := map[string]int{
 		"easy":   40,
@@ -412,7 +413,7 @@ func CarveGivensWithSubset(fullGrid []int, seed int64) map[string][]int {
 		oldVal := puzzle[pos]
 		puzzle[pos] = 0
 
-		if HasUniqueSolution(puzzle) {
+		if HasUniqueSolution(ctx, puzzle) {
 			removalOrder = append(removalOrder, pos)
 		} else {
 			puzzle[pos] = oldVal

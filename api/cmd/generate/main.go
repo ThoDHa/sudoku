@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -129,7 +130,7 @@ func generatePuzzle(seed int64) CompactPuzzle {
 	}
 
 	// Generate puzzles for all difficulties with subset property
-	allPuzzles := dp.CarveGivensWithSubset(fullGrid, seed)
+	allPuzzles := dp.CarveGivensWithSubset(context.Background(), fullGrid, seed)
 
 	// Extract indices for each difficulty
 	givens := make(map[string][]int)
