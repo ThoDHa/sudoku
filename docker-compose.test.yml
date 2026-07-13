@@ -46,6 +46,6 @@ services:
     command: >
       sh -c "
         mkdir -p /app/allure-results &&
-        npm ci --legacy-peer-deps &&
+        npm ci &&
         npx playwright test --project=chrome-desktop --grep-invert @profiling --grep-invert @slow --grep-invert @performance
       "

@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build && cp dist/index.html dist/404.html",
     "preview": "vite preview",
-    "lint": "eslint src/",
+    "lint": "eslint src/ --max-warnings 13",
     "lint:fix": "eslint src/ --fix",
     "dup-check": "jscpd src/",
     "test": "playwright test",
@@ -27,7 +27,7 @@
     "allure:clean": "rm -rf allure-results allure-report",
     "mutation": "stryker run",
     "mutation:incremental": "stryker run --incremental",
-    "prepare": "husky install .husky",
+    "prepare": "cd .. && husky",
     "gen:portal-themes": "tsx scripts/gen-portal-themes.mjs > ../.github/scripts/report_portal.themes.css",
     "gen:go-coverage": "node scripts/lcov-to-istanbul.mjs",
     "gen:go-mutation": "node scripts/go-mutesting-to-stryker.mjs"

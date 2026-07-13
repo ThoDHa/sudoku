@@ -186,8 +186,8 @@ test-e2e:
 	@echo "========================================"
 	@echo "  Running E2E Tests with Allure (Docker)"
 	@echo "========================================"
-	@docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from playwright
-	@docker compose -f docker-compose.test.yml down
+	@trap 'docker compose -f docker-compose.test.yml down' EXIT; \
+	docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from playwright
 
 # Run integration tests with Allure output (Docker Compose)
 test-integration:
@@ -195,10 +195,9 @@ test-integration:
 	@echo "========================================"
 	@echo "  Running Integration Tests with Allure (Docker)"
 	@echo "========================================"
-	@docker compose -f docker-compose.test.yml up sudoku -d --build
-	@sleep 15
-	@docker compose -f docker-compose.test.yml run --rm playwright npx playwright test --grep @integration
-	@docker compose -f docker-compose.test.yml down
+	@trap 'docker compose -f docker-compose.test.yml down' EXIT; \
+	docker compose -f docker-compose.test.yml up sudoku -d --build --wait && \
+	docker compose -f docker-compose.test.yml run --rm playwright npx playwright test --grep @integration
 
 # Run all Frontend tests (unit + E2E) with Allure output
 test-frontend: test-unit test-e2e

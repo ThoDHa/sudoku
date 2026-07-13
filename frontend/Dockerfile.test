@@ -5,10 +5,7 @@
 FROM node:24-alpine
 WORKDIR /app
 COPY package*.json ./
-# --legacy-peer-deps matches the repo install convention used locally and in
-# docker-compose.test.yml. @testing-library/dom is declared as a direct
-# devDependency so it resolves under both legacy and modern peer resolution.
-RUN npm ci --legacy-peer-deps
+RUN npm ci
 COPY . .
 # Make write targets world-writable so the container can run as an arbitrary
 # host UID/GID (Makefile passes --user $(id -u):$(id -g)). /app is root-owned

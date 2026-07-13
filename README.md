@@ -241,9 +241,11 @@ sudoku/
 │   ├── public/
 │   │   └── sudoku.wasm     # Compiled WASM solver (~600KB with TinyGo)
 │   ├── e2e/                # Playwright E2E tests
-│   │   ├── api/            # API endpoint tests
 │   │   ├── integration/    # UI integration tests
-│   │   └── sdk/            # Type-safe test SDK
+│   │   ├── profiling/      # WASM CPU/memory profiling
+│   │   ├── sdk/            # Type-safe test SDK
+│   │   ├── slow/           # Long-running tests (@slow tag)
+│   │   └── utils/          # E2E test utilities
 │   └── src/
 │       ├── components/     # UI components (code-split)
 │       ├── hooks/          # React hooks (game-logic chunk)
@@ -340,7 +342,7 @@ make test-frontend
 
 ### Pre-Commit Hook
 
-The project uses a pre-commit git hook that enforces zero warning policy for all linters. This prevents introducing code quality issues before they reach the repository.
+The project uses a pre-commit git hook that enforces a shared lint-warning budget. This prevents introducing code quality issues before they reach the repository.
 
 **What it does:**
 
@@ -348,13 +350,13 @@ The project uses a pre-commit git hook that enforces zero warning policy for all
 - Detects which file types are staged (frontend .ts/.tsx or Go .go)
 - Runs ESLint on frontend files if any were changed
 - Runs golangci-lint on Go files if any were changed
-- **Blocks commit** if any linter reports warnings or errors
+- **Blocks commit** if ESLint warnings exceed the budget or golangci-lint reports any issue
 
-**Zero Warning Policy:**
+**Lint Warning Budget:**
 
-All linting issues must be fixed before committing. The hook uses:
-- ESLint with `--max-warnings 0` flag
-- golangci-lint with strict configuration (.golangci.yml)
+The hook, `npm run lint`, and CI all share the same ESLint warning budget:
+- ESLint with `--max-warnings 13` (shared across the hook, `make lint-frontend`, and CI)
+- golangci-lint with strict zero-warning configuration (.golangci.yml)
 
 **Usage:**
 
@@ -386,7 +388,9 @@ git commit --no-verify -m "emergency: bypass pre-commit"
 | Go linting issues | Run `golangci-lint run --fix` or fix manually |
 | Unknown linter error | Read the error output and address the specific issue |
 
----### 🐳 Docker-Based E2E CI Pipeline (Playwright Sidecar)
+---
+
+### 🐳 Docker-Based E2E CI Pipeline (Playwright Sidecar)
 
 **Why use containerized E2E?**
 

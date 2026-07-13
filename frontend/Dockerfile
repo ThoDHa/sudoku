@@ -6,7 +6,7 @@ WORKDIR /go-app
 
 # Copy Go source files
 COPY api/go.mod api/go.sum ./
-RUN go mod download || true
+RUN go mod download
 
 COPY api/ .
 
