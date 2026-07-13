@@ -4,6 +4,7 @@ import { isDigitComplete } from '../lib/digitCompletion'
 import { buildFreshTrackingState } from '../lib/gameStateReset'
 import { shouldIncrementHintCounter } from '../lib/hintLifecycle'
 import { shouldSuppressAutoSave } from '../lib/autoSaveGuard'
+import { shouldAllowStaleSave } from '../lib/autoSaveSeedGuard'
 import { resolveCompletionAction } from '../lib/completionGate'
 import { isValidSolution } from '../lib/validationUtils'
 import { createHintRequestGate, type HintRequestGate } from '../lib/hintRequestGate'
@@ -513,6 +514,9 @@ function GameContent() {
   const restoredAsCompleteRef = useRef(false)
   // Track isComplete at execution time (to prevent race condition with debounced saves)
   const isCompleteRef = useRef(false)
+  // Tracks the currently active puzzle seed so a stale debounced save can detect
+  // that the active seed changed between schedule time and fire time.
+  const currentSeedRef = useRef<string | null>(null)
   // Guard to prevent concurrent hint requests. Held in a ref so the
   // in-progress flag persists across renders (lazily initialized once).
   const hintGateRef = useRef<HintRequestGate | null>(null)
@@ -940,6 +944,12 @@ function GameContent() {
   useEffect(() => {
     isCompleteRef.current = game.isComplete
   }, [game.isComplete])
+
+  // Keep currentSeedRef in sync with the active puzzle seed so a fire-time
+  // guard inside the debounced auto-save can reject stale writes.
+  useEffect(() => {
+    currentSeedRef.current = puzzle ? puzzle.seed : null
+  }, [puzzle])
 
   // Check for existing in-progress game when navigating to a different puzzle
   useEffect(() => {
@@ -2498,11 +2508,22 @@ function GameContent() {
     }
 
     // Use requestIdleCallback when available for better battery performance
+    const scheduledSeed = puzzle ? puzzle.seed : null
+    let idleHandle: number | null = null
+    let innerTimeoutId: ReturnType<typeof setTimeout> | null = null
+
     const scheduleAutoSave = () => {
       if ('requestIdleCallback' in window) {
-        requestIdleCallback(
+        idleHandle = requestIdleCallback(
           () => {
-            if (!backgroundManager.shouldPauseOperations) {
+            idleHandle = null
+            if (
+              !backgroundManager.shouldPauseOperations &&
+              shouldAllowStaleSave({
+                scheduledSeed,
+                currentSeed: currentSeedRef.current,
+              })
+            ) {
               saveGameState()
               hasUnsavedChanges.current = false
             }
@@ -2511,8 +2532,15 @@ function GameContent() {
         )
       } else {
         // Fallback to setTimeout for older browsers
-        setTimeout(() => {
-          if (!backgroundManager.shouldPauseOperations) {
+        innerTimeoutId = setTimeout(() => {
+          innerTimeoutId = null
+          if (
+            !backgroundManager.shouldPauseOperations &&
+            shouldAllowStaleSave({
+              scheduledSeed,
+              currentSeed: currentSeedRef.current,
+            })
+          ) {
             saveGameState()
             hasUnsavedChanges.current = false
           }
@@ -2522,7 +2550,17 @@ function GameContent() {
 
     // Debounce saves to avoid excessive localStorage writes
     const timeoutId = setTimeout(scheduleAutoSave, 500)
-    return () => clearTimeout(timeoutId)
+    return () => {
+      clearTimeout(timeoutId)
+      if (idleHandle !== null) {
+        cancelIdleCallback(idleHandle)
+        idleHandle = null
+      }
+      if (innerTimeoutId !== null) {
+        clearTimeout(innerTimeoutId)
+        innerTimeoutId = null
+      }
+    }
   }, [
     game.board,
     game.candidates,
