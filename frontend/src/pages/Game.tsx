@@ -3,8 +3,6 @@ import { commitCellAction } from '../lib/commitCellAction'
 import { isDigitComplete } from '../lib/digitCompletion'
 import { buildFreshTrackingState } from '../lib/gameStateReset'
 import { shouldIncrementHintCounter } from '../lib/hintLifecycle'
-import { shouldSuppressAutoSave } from '../lib/autoSaveGuard'
-import { shouldAllowStaleSave } from '../lib/autoSaveSeedGuard'
 import { resolveCompletionAction } from '../lib/completionGate'
 import { isValidSolution } from '../lib/validationUtils'
 import { createHintRequestGate, type HintRequestGate } from '../lib/hintRequestGate'
@@ -28,6 +26,8 @@ import { useGameContext } from '../lib/GameContext'
 import { TimerProvider, useTimerControl } from '../lib/TimerContext'
 import { useSudokuGame } from '../hooks/useSudokuGame'
 import { useAutoSolve } from '../hooks/useAutoSolve'
+import { useGamePersistence } from '../hooks/useGamePersistence'
+import { usePuzzleLoader } from '../hooks/usePuzzleLoader'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import { useHighlightState } from '../hooks/useHighlightState'
 import type { MoveHighlight } from '../hooks/useHighlightState'
@@ -51,18 +51,10 @@ import {
   getHideTimer,
   setHideTimer,
 } from '../lib/preferences'
-import {
-  getAutoSaveEnabled,
-  getMostRecentGame,
-  clearInProgressGame,
-  clearOtherGamesForMode,
-  type SavedGameInfo,
-} from '../lib/gameSettings'
+import { getMostRecentGame, clearInProgressGame, type SavedGameInfo } from '../lib/gameSettings'
 import {
   validateBoard,
-  validateCustomPuzzle,
   findNextMove,
-  getPuzzle,
   cleanupSolver,
   checkAndFixWithSolution,
   getDailySeed,
@@ -77,26 +69,10 @@ import {
   getScores,
   type Score,
 } from '../lib/scores'
-import { shouldShowDailyPrompt, markDailyPromptShown } from '../lib/dailyPrompt'
-import { getGameMode } from '../lib/gameSettings'
 import { setShowDailyReminder } from '../lib/preferences'
-import { decodePuzzle, encodePuzzle, decodePuzzleWithState } from '../lib/puzzleEncoding'
 import { buildPuzzleShareUrl, buildStateShareUrl } from '../lib/shareLinks'
 import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/candidatesUtils'
-import { validateSeed, extractSeedFromStorageKey } from '../lib/seedValidation'
-import {
-  buildSavedState,
-  restoreHintCounters,
-  type SavedGameState,
-} from '../lib/savedGameState'
-
-interface PuzzleData {
-  puzzle_id: string
-  seed: string
-  difficulty: string
-  givens: number[]
-  solution: number[]
-}
+import { restoreHintCounters } from '../lib/savedGameState'
 
 /**
  * Generate a unique signature for a hint move to detect duplicates.
@@ -155,203 +131,13 @@ function resolvePuzzleSetup(params: {
   const completedDailyScore = alreadyCompletedToday
     ? getScores().find((s) => s.seed === effectiveSeed)
     : undefined
-  return { effectiveSeed, isEncodedCustom, needsDifficultyChoice, alreadyCompletedToday, completedDailyScore }
-}
-
-// Result of resolving where the puzzle comes from for the current route.
-interface ResolvedPuzzle {
-  givens: number[]
-  solution: number[]
-  puzzleData: PuzzleData
-  initialState: number[] | null
-  initialCandidates: number[][] | null
-}
-
-// Validate custom givens and build the puzzleData payload shared by the
-// full-state and legacy custom-puzzle link branches.
-async function validateAndBuildCustom(
-  customGivens: number[],
-  encoded: string,
-  setEncodedPuzzle: (value: string) => void,
-): Promise<{ solution: number[]; puzzleData: PuzzleData }> {
-  const validation = await validateCustomPuzzle(customGivens, '')
-  if (!validation.valid) {
-    throw new Error(`Invalid puzzle: ${validation.reason || 'unknown error'}`)
-  }
-  if (!validation.unique) {
-    throw new Error('Invalid puzzle: has multiple solutions')
-  }
-  if (!validation.solution) {
-    throw new Error('Invalid puzzle: could not compute solution')
-  }
-  setEncodedPuzzle(encoded)
   return {
-    solution: validation.solution,
-    puzzleData: {
-      puzzle_id: `custom-${encoded.substring(0, 8)}`,
-      seed: `custom-${encoded.substring(0, 8)}`,
-      difficulty: 'custom',
-      givens: customGivens,
-      solution: validation.solution,
-    },
+    effectiveSeed,
+    isEncodedCustom,
+    needsDifficultyChoice,
+    alreadyCompletedToday,
+    completedDailyScore,
   }
-}
-
-// Resolve an encoded custom-puzzle link (full-state or legacy givens-only).
-async function resolveEncodedCustom(
-  encoded: string,
-  setEncodedPuzzle: (value: string) => void,
-): Promise<ResolvedPuzzle> {
-  let givens: number[]
-  let initialState: number[] | null = null
-  let initialCandidates: number[][] | null = null
-
-  if (encoded.startsWith('e') || encoded.startsWith('c')) {
-    const decoded = decodePuzzleWithState(encoded)
-    if (!decoded) {
-      throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
-    }
-    givens = decoded.givens
-    initialState = decoded.board
-    if (decoded.candidates) {
-      initialCandidates = decoded.candidates
-    }
-  } else {
-    try {
-      givens = decodePuzzle(encoded)
-      if (givens.length !== 81) {
-        throw new Error('Invalid puzzle encoding')
-      }
-    } catch {
-      throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
-    }
-  }
-
-  const { solution, puzzleData } = await validateAndBuildCustom(givens, encoded, setEncodedPuzzle)
-  return { givens, solution, puzzleData, initialState, initialCandidates }
-}
-
-// Resolve a custom puzzle previously saved to localStorage by its seed.
-async function resolveStoredCustom(
-  effectiveSeed: string,
-  setEncodedPuzzle: (value: string | null) => void,
-): Promise<ResolvedPuzzle> {
-  const storedGivens = localStorage.getItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${effectiveSeed}`)
-  if (!storedGivens) {
-    throw new Error('Custom puzzle not found. Please re-enter the puzzle.')
-  }
-  const givens: number[] = JSON.parse(storedGivens)
-  const validation = await validateCustomPuzzle(givens, '')
-  if (!validation.valid || !validation.unique || !validation.solution) {
-    throw new Error('Stored puzzle is invalid')
-  }
-  setEncodedPuzzle(encodePuzzle(givens))
-  return {
-    givens,
-    solution: validation.solution,
-    puzzleData: {
-      puzzle_id: effectiveSeed,
-      seed: effectiveSeed,
-      difficulty: 'custom',
-      givens,
-      solution: validation.solution,
-    },
-    initialState: null,
-    initialCandidates: null,
-  }
-}
-
-// Resolve a practice puzzle saved to localStorage by TechniqueDetailView.
-async function resolvePractice(
-  effectiveSeed: string,
-  difficulty: Difficulty,
-  setEncodedPuzzle: (value: string | null) => void,
-): Promise<ResolvedPuzzle> {
-  const storedGivens = localStorage.getItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${effectiveSeed}`)
-  if (!storedGivens) {
-    throw new Error('Practice puzzle not found. Please try again from the technique page.')
-  }
-  const givens: number[] = JSON.parse(storedGivens)
-  const validation = await validateCustomPuzzle(givens, '')
-  if (!validation.valid || !validation.unique || !validation.solution) {
-    throw new Error('Practice puzzle is invalid')
-  }
-  setEncodedPuzzle(null)
-  return {
-    givens,
-    solution: validation.solution,
-    puzzleData: {
-      puzzle_id: effectiveSeed,
-      seed: effectiveSeed,
-      difficulty,
-      givens,
-      solution: validation.solution,
-    },
-    initialState: null,
-    initialCandidates: null,
-  }
-}
-
-// Resolve a puzzle fetched from the static pool.
-async function resolveFetched(
-  effectiveSeed: string | undefined,
-  difficulty: Difficulty,
-  setEncodedPuzzle: (value: string | null) => void,
-): Promise<ResolvedPuzzle> {
-  const fetchedPuzzle = await getPuzzle(effectiveSeed ?? '', difficulty)
-  setEncodedPuzzle(null)
-  return {
-    givens: fetchedPuzzle.givens,
-    solution: fetchedPuzzle.solution,
-    puzzleData: {
-      puzzle_id: fetchedPuzzle.puzzle_id,
-      seed: fetchedPuzzle.seed,
-      difficulty: fetchedPuzzle.difficulty,
-      givens: fetchedPuzzle.givens,
-      solution: fetchedPuzzle.solution,
-    },
-    initialState: null,
-    initialCandidates: null,
-  }
-}
-
-// Dispatch to the correct puzzle source for the current route: encoded custom
-// link, stored custom/practice puzzle, or a fetched puzzle from the static pool.
-async function fetchPuzzleSource(params: {
-  isEncodedCustom: boolean
-  encoded: string | undefined
-  difficulty: Difficulty
-  effectiveSeed: string | undefined
-  setEncodedPuzzle: (value: string | null) => void
-}): Promise<ResolvedPuzzle> {
-  const { isEncodedCustom, encoded, difficulty, effectiveSeed, setEncodedPuzzle } = params
-  if (isEncodedCustom && encoded) {
-    return resolveEncodedCustom(encoded, setEncodedPuzzle)
-  }
-  if (difficulty === 'custom' && effectiveSeed?.startsWith('custom-')) {
-    return resolveStoredCustom(effectiveSeed, setEncodedPuzzle)
-  }
-  if (effectiveSeed?.startsWith('practice-')) {
-    return resolvePractice(effectiveSeed, difficulty, setEncodedPuzzle)
-  }
-  return resolveFetched(effectiveSeed, difficulty, setEncodedPuzzle)
-}
-
-// Overlay a portable-link `s` state param onto a resolved puzzle. The seed already
-// produced the givens; the param supplies the sharer's board and pencil notes.
-function applySharedStateParam(
-  resolved: ResolvedPuzzle,
-  sharedStateParam: string | null,
-): { initialState: number[] | null; initialCandidates: number[][] | null } {
-  let { initialState, initialCandidates } = resolved
-  if (!initialState && sharedStateParam) {
-    const decodedShared = decodePuzzleWithState(sharedStateParam)
-    if (decodedShared) {
-      initialState = decodedShared.board
-      initialCandidates = decodedShared.candidates ?? null
-    }
-  }
-  return { initialState, initialCandidates }
 }
 
 // Parse a shared `t` elapsed-time param into positive milliseconds, or null.
@@ -379,8 +165,13 @@ function GameContent() {
   const sharedStateParam = searchParams.get('s')
   const sharedTimeParam = searchParams.get('t')
 
-  const { effectiveSeed, isEncodedCustom, needsDifficultyChoice, alreadyCompletedToday, completedDailyScore } =
-    resolvePuzzleSetup({ seed, encoded, pathname: location.pathname, difficultyParam })
+  const {
+    effectiveSeed,
+    isEncodedCustom,
+    needsDifficultyChoice,
+    alreadyCompletedToday,
+    completedDailyScore,
+  } = resolvePuzzleSetup({ seed, encoded, pathname: location.pathname, difficultyParam })
 
   // Check if difficulty was provided in URL - if not, we need to show chooser
 
@@ -435,15 +226,6 @@ function GameContent() {
     }
   }
 
-  // Store the encoded string for sharing custom puzzles
-  const [encodedPuzzle, setEncodedPuzzle] = useState<string | null>(encoded || null)
-
-  // Puzzle loading state
-  const [puzzle, setPuzzle] = useState<PuzzleData | null>(null)
-  const [initialBoard, setInitialBoard] = useState<number[]>([])
-  const [solution, setSolution] = useState<number[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [incorrectCells, setIncorrectCells] = useState<number[]>([])
 
   // UI state (not game logic)
@@ -510,13 +292,6 @@ function GameContent() {
   const hasRestoredSavedState = useRef(false)
   // Track whether we loaded from a shared URL (to prevent resetGame from wiping shared state)
   const loadedFromSharedUrl = useRef(false)
-  // True when a restore/shared-apply delivered an already-solved board; suppresses re-recording that completion.
-  const restoredAsCompleteRef = useRef(false)
-  // Track isComplete at execution time (to prevent race condition with debounced saves)
-  const isCompleteRef = useRef(false)
-  // Tracks the currently active puzzle seed so a stale debounced save can detect
-  // that the active seed changed between schedule time and fire time.
-  const currentSeedRef = useRef<string | null>(null)
   // Guard to prevent concurrent hint requests. Held in a ref so the
   // in-progress flag persists across renders (lazily initialized once).
   const hintGateRef = useRef<HintRequestGate | null>(null)
@@ -532,10 +307,6 @@ function GameContent() {
     boardSignature: string
     data: Awaited<ReturnType<typeof findNextMove>>
   } | null>(null)
-  // Track if there are unsaved changes when backgrounded
-  const hasUnsavedChanges = useRef(false)
-  // Track the last time we were hidden
-  const wasHiddenRef = useRef(false)
 
   // Refs for click-outside detection (deselect cell when clicking outside game interface)
   const boardContainerRef = useRef<HTMLDivElement>(null)
@@ -637,9 +408,6 @@ function GameContent() {
   useEffect(() => {
     highlightedDigitRef.current = highlightedDigit
   }, [highlightedDigit])
-  useEffect(() => {
-    initialBoardRef.current = initialBoard
-  }, [initialBoard])
 
   // ============================================================
   // CLICK OUTSIDE TO DESELECT (UX Enhancement)
@@ -719,6 +487,43 @@ function GameContent() {
 
   // Keep timerControl ref updated for stable callbacks
   timerControlRef.current = timerControl
+
+  // restoreOrPromptSharedState is defined later (it needs loadSavedGameState from
+  // the persistence hook below), but usePuzzleLoader must run before useSudokuGame
+  // so initialBoard is available. Bridge the ordering with a stable ref wrapper so
+  // the loader always invokes the latest version when its fetch effect fires.
+  const restoreOrPromptSharedStateRef = useRef<
+    (board: number[], candidates: number[][] | null, seed: string) => void
+  >(() => {})
+  const invokeRestoreOrPromptSharedState = useCallback(
+    (board: number[], candidates: number[][] | null, seed: string) => {
+      restoreOrPromptSharedStateRef.current(board, candidates, seed)
+    },
+    [],
+  )
+
+  const { loading, error, puzzle, initialBoard, solution, encodedPuzzle } = usePuzzleLoader({
+    effectiveSeed,
+    isEncodedCustom,
+    encoded,
+    difficulty,
+    sharedStateParam,
+    alreadyCompletedToday,
+    showDifficultyChooser,
+    showOnboarding,
+    onboardingComplete,
+    backgroundManager,
+    hasRestoredSavedState,
+    loadedFromSharedUrl,
+    restoreOrPromptSharedState: invokeRestoreOrPromptSharedState,
+    setIncorrectCells,
+    setShowDailyPrompt,
+    timerControl,
+  })
+
+  useEffect(() => {
+    initialBoardRef.current = initialBoard
+  }, [initialBoard])
 
   // ============================================================
   // STABLE CALLBACKS FOR HOOKS (Performance Optimization)
@@ -852,6 +657,17 @@ function GameContent() {
     initialBoard: initialBoard.length === 81 ? initialBoard : Array(81).fill(0),
   })
 
+  const { clearSavedGameState, loadSavedGameState, restoredAsCompleteRef } = useGamePersistence({
+    puzzle,
+    game,
+    timerControl,
+    backgroundManager,
+    autoFillUsed,
+    hintsUsed,
+    techniqueHintsUsed,
+    hasRestoredSavedState,
+  })
+
   // Handle game completion when board is full and valid
   useEffect(() => {
     const action = resolveCompletionAction({
@@ -868,7 +684,7 @@ function GameContent() {
       return
     }
     handleGameComplete()
-  }, [game.isComplete, handleGameComplete])
+  }, [game.isComplete, handleGameComplete, restoredAsCompleteRef])
 
   // Keep game ref updated for stable callbacks
   gameRef.current = game
@@ -939,17 +755,6 @@ function GameContent() {
       setSolveConfirmOpen(false)
     }
   }, [solveConfirmOpen, autoSolve.isFetching, autoSolve.isAutoSolving])
-
-  // Keep isCompleteRef in sync with game.isComplete for use in debounced callbacks
-  useEffect(() => {
-    isCompleteRef.current = game.isComplete
-  }, [game.isComplete])
-
-  // Keep currentSeedRef in sync with the active puzzle seed so a fire-time
-  // guard inside the debounced auto-save can reject stale writes.
-  useEffect(() => {
-    currentSeedRef.current = puzzle ? puzzle.seed : null
-  }, [puzzle])
 
   // Check for existing in-progress game when navigating to a different puzzle
   useEffect(() => {
@@ -1038,7 +843,7 @@ function GameContent() {
         timerControl.setElapsedMs(shared.elapsedMs)
       }
     },
-    [game, timerControl],
+    [game, timerControl, restoredAsCompleteRef],
   )
 
   // Drop the one-time `s`/`t` share params from the URL so a later reload takes
@@ -1133,91 +938,6 @@ function GameContent() {
   // HELPER FUNCTIONS
   // ============================================================
 
-  const getStorageKey = useCallback((puzzleSeed: string) => {
-    const validation = validateSeed(puzzleSeed)
-    if (!validation.valid) {
-      logger.error(`[SEED VALIDATION] Invalid seed: ${puzzleSeed}`, validation.error)
-      throw new Error(`Cannot create storage key for invalid seed: ${validation.error}`)
-    }
-    return `${STORAGE_KEYS.GAME_STATE_PREFIX}${validation.seed}`
-  }, [])
-
-  // Save game state to localStorage
-  const saveGameState = useCallback(() => {
-    // Use ref to check isComplete at execution time (not closure time)
-    // Skip if puzzle not loaded yet or we haven't restored saved state yet
-    if (!puzzle || !hasRestoredSavedState.current) return
-
-    // Clear other games in the same mode (daily or practice) to ensure only ONE save per mode
-    clearOtherGamesForMode(puzzle.seed)
-
-    const storageKey = getStorageKey(puzzle.seed)
-    const savedState: SavedGameState = buildSavedState({
-      board: game.board,
-      candidates: candidatesToArrays(game.candidates),
-      elapsedMs: timerControl.getElapsedMs(),
-      history: game.history,
-      autoFillUsed,
-      difficulty: puzzle.difficulty,
-      isComplete: isCompleteRef.current,
-      hintsUsed,
-      techniqueHintsUsed,
-    })
-
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(savedState))
-    } catch (e) {
-      logger.warn('Failed to save game state:', e)
-    }
-    // Note: We use isCompleteRef instead of game.isComplete to avoid stale closure issues
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
-  }, [puzzle, game.board, game.candidates, game.history, autoFillUsed, hintsUsed, techniqueHintsUsed, getStorageKey])
-
-  // Clear saved game state from localStorage
-  const clearSavedGameState = useCallback(() => {
-    if (!puzzle) return
-    const storageKey = getStorageKey(puzzle.seed)
-    try {
-      localStorage.removeItem(storageKey)
-    } catch (e) {
-      logger.warn('Failed to clear saved game state:', e)
-    }
-  }, [puzzle, getStorageKey])
-
-  // Load saved game state from localStorage
-  const loadSavedGameState = useCallback(
-    (puzzleSeed: string): SavedGameState | null => {
-      const storageKey = getStorageKey(puzzleSeed)
-      try {
-        const saved = localStorage.getItem(storageKey)
-        if (!saved) return null
-
-        const parsed = JSON.parse(saved) as SavedGameState
-        const extractedSeed = extractSeedFromStorageKey(storageKey)
-
-        if (!extractedSeed.valid) {
-          logger.error(
-            `[STORAGE ERROR] Cannot load game with invalid seed: ${puzzleSeed} (stored seed: ${extractedSeed.seed}, error: ${extractedSeed.error})`,
-          )
-          return null
-        }
-
-        if (parsed.board?.length === 81 && parsed.candidates?.length === 81) {
-          return parsed
-        } else {
-          logger.warn(
-            `[STORAGE ERROR] Corrupted saved state for seed: ${extractedSeed.seed} - board: ${parsed.board?.length}, candidates: ${parsed.candidates?.length}`,
-          )
-          return null
-        }
-      } catch (e) {
-        logger.error(`[STORAGE ERROR] Failed to load saved game for seed: ${puzzleSeed}`, e)
-        return null
-      }
-    },
-    [getStorageKey],
-  )
-
   // On a shared state-link, always prompt before loading the shared game (the
   // recipient chooses "Load shared game", or dismisses to keep what they were
   // doing / return home). Kept out of loadPuzzle for clarity.
@@ -1234,7 +954,10 @@ function GameContent() {
       const hasThisPuzzleProgress = !!(saved && saved.history.length > 0)
       const otherGame = getMostRecentGame()
       const otherInProgress =
-        !!otherGame && otherGame.seed !== seed && otherGame.seed !== encoded && otherGame.progress < 100
+        !!otherGame &&
+        otherGame.seed !== seed &&
+        otherGame.seed !== encoded &&
+        otherGame.progress < 100
       setPendingSharedState(shared)
       // Different-puzzle game: dismiss = go back to it. Same-puzzle or none: no target.
       setResumeTarget(
@@ -1247,6 +970,10 @@ function GameContent() {
     },
     [sharedTimeParam, loadSavedGameState, encoded],
   )
+  // Publish the latest restoreOrPromptSharedState to the ref usePuzzleLoader
+  // holds, so its fetch effect (which runs before this callback is defined)
+  // always invokes the current version.
+  restoreOrPromptSharedStateRef.current = restoreOrPromptSharedState
 
   // ============================================================
   // GAME ACTIONS (using hooks)
@@ -2313,129 +2040,6 @@ function GameContent() {
     }
   }, [autoSolve.isAutoSolving, autoSolve.lastCompletedSteps, game.history])
 
-  // Fetch puzzle
-  useEffect(() => {
-    // Check if we should show the daily prompt (for practice games only) - INDEPENDENT of onboarding!
-    // Suppress it when opening a shared current-state link (SHARE-2 #4): the
-    // recipient came to view a specific shared board, not to be nudged to the daily.
-    if (getGameMode(effectiveSeed || '') === 'practice' && !sharedStateParam) {
-      if (shouldShowDailyPrompt()) {
-        setShowDailyPrompt(true)
-        markDailyPromptShown()
-      }
-    }
-
-    // Don't load puzzle while onboarding is showing
-    if (showOnboarding) {
-      setLoading(false) // Show empty board behind modal, not loading spinner
-      return
-    }
-    // Don't load puzzle until difficulty is chosen (for shared links without ?d= param)
-    if (showDifficultyChooser) {
-      setLoading(false)
-      return
-    }
-    // For new users, wait for onboarding to appear first (500ms delay in useOnboarding)
-    // This prevents the puzzle from loading before onboarding shows
-    if (!onboardingComplete) {
-      setLoading(false)
-      return
-    }
-
-    if (!effectiveSeed && !isEncodedCustom) {
-      return
-    }
-
-    // DEFINE loadPuzzle function BEFORE calling it
-    const loadPuzzle = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        if (showDifficultyChooser || showOnboarding) {
-          setLoading(false)
-          return
-        }
-
-        // Early return if puzzle already loaded and state restored
-        if (puzzle && hasRestoredSavedState.current) {
-          setLoading(false)
-          return
-        }
-
-        if (backgroundManager.shouldPauseOperations) {
-          setLoading(false)
-          return
-        }
-
-        // Note: WASM is NOT loaded here. It loads on-demand when user requests hints/solve.
-        // Puzzles come from static pool (getPuzzle) or are validated with pure TypeScript (validateCustomPuzzle).
-
-        setIncorrectCells([])
-
-        const resolved = await fetchPuzzleSource({
-          isEncodedCustom,
-          encoded,
-          difficulty,
-          effectiveSeed,
-          setEncodedPuzzle,
-        })
-        const { givens, puzzleData } = resolved
-        // Portable seed links carry the sharer's progress in the `s` param; overlay
-        // it so the shared-state path below (game.restoreState) applies board+notes.
-        const { initialState, initialCandidates } = applySharedStateParam(
-          resolved,
-          sharedStateParam,
-        )
-
-        setPuzzle(puzzleData)
-        // For shared state, use the provided full board
-        // For completed daily puzzles, show solved board (solution)
-        // Otherwise show initial givens
-        if (initialState) {
-          setInitialBoard([...givens]) // Givens for marking non-editable cells
-        } else if (alreadyCompletedToday) {
-          setInitialBoard([...puzzleData.solution])
-        } else {
-          setInitialBoard([...givens])
-        }
-        setSolution([...puzzleData.solution])
-
-        // Reset timer for non-completed puzzles (timer will be started later by initialBoard effect)
-        if (!alreadyCompletedToday && !showDifficultyChooser) {
-          timerControl.resetTimer()
-        }
-        setLoading(false)
-
-        // This load owns loadedFromSharedUrl: default false, set true only when
-        // shared state is actually applied (restoreOrPromptSharedState). The
-        // seed-reset effect must not touch it (see SHARE-2).
-        loadedFromSharedUrl.current = false
-        // Apply the shared board, or prompt when the recipient has their own progress.
-        if (initialState) {
-          restoreOrPromptSharedState(initialState, initialCandidates, puzzleData.seed)
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error')
-        setLoading(false)
-      }
-    }
-
-    loadPuzzle()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl excluded: adding it would re-fetch puzzle when timer running/paused state changes. We only want to fetch when the actual puzzle params change.
-  }, [
-    effectiveSeed,
-    encoded,
-    isEncodedCustom,
-    difficulty,
-    sharedStateParam,
-    sharedTimeParam,
-    alreadyCompletedToday,
-    showDifficultyChooser,
-    showOnboarding,
-    clearAllAndDeselect,
-  ])
-
   // Reset restoration flags when puzzle seed changes
   // This ensures clean state for new games when switching difficulties/modes
   useEffect(() => {
@@ -2492,103 +2096,6 @@ function GameContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- game.restoreState, resetAllGameState, and timerControl.setElapsedMs are stable callbacks. We intentionally only trigger this when initialBoard or puzzle changes to prevent re-initialization loops.
   }, [initialBoard, puzzle, loadSavedGameState])
 
-  // Auto-save game state when board or candidates change (but not when hidden)
-  // Enhanced with requestIdleCallback for better battery performance
-  useEffect(() => {
-    if (
-      shouldSuppressAutoSave({
-        hasPuzzle: !!puzzle,
-        hasRestoredSavedState: hasRestoredSavedState.current,
-        isComplete: game.isComplete,
-        autoSaveEnabled: getAutoSaveEnabled(),
-      })
-    )
-      return
-
-    // Don't save when app is hidden to reduce battery usage
-    if (backgroundManager.shouldPauseOperations) {
-      hasUnsavedChanges.current = true
-      return
-    }
-
-    // Use requestIdleCallback when available for better battery performance
-    const scheduledSeed = puzzle ? puzzle.seed : null
-    let idleHandle: number | null = null
-    let innerTimeoutId: ReturnType<typeof setTimeout> | null = null
-
-    const scheduleAutoSave = () => {
-      if ('requestIdleCallback' in window) {
-        idleHandle = requestIdleCallback(
-          () => {
-            idleHandle = null
-            if (
-              !backgroundManager.shouldPauseOperations &&
-              shouldAllowStaleSave({
-                scheduledSeed,
-                currentSeed: currentSeedRef.current,
-              })
-            ) {
-              saveGameState()
-              hasUnsavedChanges.current = false
-            }
-          },
-          { timeout: 1000 },
-        )
-      } else {
-        // Fallback to setTimeout for older browsers
-        innerTimeoutId = setTimeout(() => {
-          innerTimeoutId = null
-          if (
-            !backgroundManager.shouldPauseOperations &&
-            shouldAllowStaleSave({
-              scheduledSeed,
-              currentSeed: currentSeedRef.current,
-            })
-          ) {
-            saveGameState()
-            hasUnsavedChanges.current = false
-          }
-        }, 500)
-      }
-    }
-
-    // Debounce saves to avoid excessive localStorage writes
-    const timeoutId = setTimeout(scheduleAutoSave, 500)
-    return () => {
-      clearTimeout(timeoutId)
-      if (idleHandle !== null) {
-        cancelIdleCallback(idleHandle)
-        idleHandle = null
-      }
-      if (innerTimeoutId !== null) {
-        clearTimeout(innerTimeoutId)
-        innerTimeoutId = null
-      }
-    }
-  }, [
-    game.board,
-    game.candidates,
-    game.history,
-    puzzle,
-    game.isComplete,
-    saveGameState,
-    backgroundManager.shouldPauseOperations,
-  ])
-
-  // Save when returning from background if there are unsaved changes
-  useEffect(() => {
-    const wasHidden = wasHiddenRef.current
-    const isNowVisible = !backgroundManager.isHidden
-
-    wasHiddenRef.current = backgroundManager.isHidden
-
-    // If we just became visible and had unsaved changes, save immediately
-    if (wasHidden && isNowVisible && hasUnsavedChanges.current && getAutoSaveEnabled()) {
-      saveGameState()
-      hasUnsavedChanges.current = false
-    }
-  }, [backgroundManager.isHidden, saveGameState])
-
   // Handle BFCache restore (back button navigation)
   // When page is restored from BFCache, React hooks don't re-run, so we need to
   // manually reload state from localStorage to get the latest saved state
@@ -2612,59 +2119,7 @@ function GameContent() {
 
     window.addEventListener('pageshow', handlePageShow)
     return () => window.removeEventListener('pageshow', handlePageShow)
-  }, [puzzle, loadSavedGameState, game, timerControl])
-
-  // Save game state before page unloads (browser close, refresh, navigate away)
-  // This ensures timer accuracy even if the user closes the browser suddenly
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (
-        puzzle &&
-        !shouldSuppressAutoSave({
-          hasPuzzle: true,
-          hasRestoredSavedState: hasRestoredSavedState.current,
-          isComplete: game.isComplete,
-          autoSaveEnabled: getAutoSaveEnabled(),
-        })
-      ) {
-        // Synchronous save - must complete before page unloads
-        const storageKey = `${STORAGE_KEYS.GAME_STATE_PREFIX}${puzzle.seed}`
-        // Pass isComplete from the ref (not game.isComplete) so this save site
-        // matches saveGameState: a beforeunload save that drops the completion
-        // flag would overwrite a completion-marked autosave on close/refresh,
-        // and the resumed game would incorrectly show as in-progress.
-        const savedState: SavedGameState = buildSavedState({
-          board: game.board,
-          candidates: candidatesToArrays(game.candidates),
-          elapsedMs: timerControl.getElapsedMs(),
-          history: game.history,
-          autoFillUsed,
-          difficulty: puzzle.difficulty,
-          isComplete: isCompleteRef.current,
-          hintsUsed,
-          techniqueHintsUsed,
-        })
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(savedState))
-        } catch {
-          // Can't do much here - page is closing
-        }
-      }
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [
-    puzzle,
-    game.isComplete,
-    game.board,
-    game.candidates,
-    game.history,
-    autoFillUsed,
-    hintsUsed,
-    techniqueHintsUsed,
-    timerControl,
-  ])
+  }, [puzzle, loadSavedGameState, game, timerControl, restoredAsCompleteRef])
 
   // NOTE: We do NOT auto-clear saved games on completion anymore!
   // - Daily games: Keep saved state until next day (cleared by date change logic)
@@ -2677,20 +2132,6 @@ function GameContent() {
       timerControl.pauseTimer()
     }
   }, [game.isComplete, timerControl])
-
-  // Immediate save when puzzle is completed (vanquish delay demon!)
-  // Saves game result instantly for correct tracking of completions
-  const hasSavedOnCompleteRef = useRef(false)
-  useEffect(() => {
-    if (game.isComplete && hasRestoredSavedState.current && !hasSavedOnCompleteRef.current) {
-      saveGameState()
-      hasSavedOnCompleteRef.current = true
-    }
-    // Reset if a new game starts
-    if (!game.isComplete) {
-      hasSavedOnCompleteRef.current = false
-    }
-  }, [game.isComplete, saveGameState])
 
   // ============================================================
   // RENDER
@@ -2975,8 +2416,14 @@ function GameContent() {
 
       {/* In-Progress Game Confirmation Modal */}
       {showInProgressConfirm && existingInProgressGame && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-overlay-backdrop>
-          <div className="w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme" data-modal>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          data-overlay-backdrop
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme"
+            data-modal
+          >
             <h2 className="mb-2 text-lg font-semibold text-foreground">Game In Progress</h2>
             <p className="mb-6 text-sm text-foreground-muted">
               You have a{' '}
@@ -3047,7 +2494,10 @@ function GameContent() {
 
       {/* Difficulty Chooser Modal - shown when opening shared link without difficulty */}
       {showDifficultyChooser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-overlay-backdrop>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          data-overlay-backdrop
+        >
           <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-theme" data-modal>
             <h2 className="text-xl font-semibold text-foreground text-center mb-2">
               Choose Difficulty

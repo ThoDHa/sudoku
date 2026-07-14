@@ -14,7 +14,7 @@ const (
 const (
 	MaxSolverSteps     = 5000
 	SolutionCountLimit = 2
-	MaxSolverNodes     = 5000000
+	MaxSolverNodes     = 10000000
 )
 
 // Session

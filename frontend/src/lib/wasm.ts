@@ -8,6 +8,7 @@
 /// <reference types="vite/client" />
 
 import { logger } from './logger'
+import { instantiateSudokuWasm, type GoInstance } from './wasm-bootstrap'
 import type {
   CellRef,
   Candidate,
@@ -71,13 +72,6 @@ declare global {
     SudokuWasm: SudokuWasmAPI
     gc?: () => void // For manual garbage collection in development
   }
-}
-
-interface GoInstance {
-  importObject: WebAssembly.Imports
-  run(instance: WebAssembly.Instance): Promise<void>
-  exit?: (code: number) => void
-  _inst?: WebAssembly.Instance
 }
 
 // ==================== Loader Functions ====================
@@ -283,87 +277,22 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       // Create AbortController for the fetch
       wasmAbortController = new AbortController()
 
-      // Fetch and instantiate the WASM module
+      // Fetch, instantiate, boot Go, and wait for readiness via the shared
+      // bootstrap. The readiness strategy (wasmReady event listener) and the
+      // API global reader (window.SudokuWasm) are main-thread-specific.
       logger.debug('[WASM] Fetching WASM from:', `${getBaseUrl()}sudoku.wasm`)
-      const wasmResponse = await fetch(`${getBaseUrl()}sudoku.wasm`, {
+      wasmInstance = await instantiateSudokuWasm({
+        wasmUrl: `${getBaseUrl()}sudoku.wasm`,
+        go,
         signal: wasmAbortController.signal,
+        waitForReadiness: waitForWasmReadyEvent,
+        getApi: () => window.SudokuWasm,
+        logger,
       })
-      if (!wasmResponse.ok) {
-        throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`)
-      }
-      logger.debug('[WASM] WASM fetched, instantiating...')
 
       // Clear the abort controller since fetch completed
       wasmAbortController = null
 
-      let result: WebAssembly.WebAssemblyInstantiatedSource
-      if (WebAssembly.instantiateStreaming) {
-        logger.debug('[WASM] Using streaming instantiation')
-        result = await WebAssembly.instantiateStreaming(wasmResponse, go.importObject)
-      } else {
-        // Fallback for older browsers
-        logger.debug('[WASM] Falling back to buffer instantiation')
-        const wasmBuffer = await wasmResponse.arrayBuffer()
-        result = await WebAssembly.instantiate(wasmBuffer, go.importObject)
-      }
-      logger.debug('[WASM] WASM instantiated, running Go...')
-
-      // Run the Go program (this sets up window.SudokuWasm)
-      // Don't await this - it blocks forever (intentionally)
-      logger.debug('[WASM] Starting Go program...')
-      try {
-        const goPromise = go.run(result.instance)
-        // Check if go.run returns a promise and handle errors
-        // Stryker disable next-line ConditionalExpression,LogicalOperator: the Go mock and the real Go runtime both return a thenable promise (always truthy with a .catch method), so widening `&&` to `||` or forcing either operand to `true` enters the same branch and attaches the same catch handler
-        if (goPromise && typeof goPromise.catch === 'function') {
-          goPromise.catch((error) => {
-            logger.error('[WASM] Go program error:', error)
-          })
-        }
-      } catch (error) {
-        logger.error('[WASM] Immediate Go program error:', error)
-        throw error
-      }
-
-      // Wait for the WASM to signal it's ready
-      logger.debug('[WASM] Waiting for wasmReady event...')
-      await new Promise<void>((resolve, reject) => {
-        // Wait for the wasmReady event
-        const handler = () => {
-          logger.debug('[WASM] wasmReady event received successfully!')
-          clearTimeout(timeout)
-          window.removeEventListener('wasmReady', handler)
-          resolve()
-        }
-
-        const timeout = setTimeout(() => {
-          logger.error('[WASM] Timeout waiting for wasmReady event after 5 seconds')
-          logger.debug('[WASM] window.SudokuWasm available:', !!window.SudokuWasm)
-          if (window.SudokuWasm) {
-            logger.debug('[WASM] SudokuWasm object keys:', Object.keys(window.SudokuWasm))
-          }
-          window.removeEventListener('wasmReady', handler)
-          reject(new Error('WASM initialization timeout'))
-        }, WASM_READY_TIMEOUT_MS)
-
-        // Check if already ready
-        if (window.SudokuWasm) {
-          logger.debug('[WASM] SudokuWasm already available')
-          clearTimeout(timeout)
-          window.removeEventListener('wasmReady', handler)
-          resolve()
-          return
-        }
-
-        window.addEventListener('wasmReady', handler)
-      })
-
-      // Verify the API is available
-      if (!window.SudokuWasm) {
-        throw new Error('SudokuWasm not available after initialization')
-      }
-
-      wasmInstance = window.SudokuWasm
       return wasmInstance
     } catch (error) {
       // Clean up abort controller on any error
@@ -383,6 +312,44 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
   })()
 
   return wasmLoadPromise
+}
+
+/**
+ * Main-thread readiness strategy: wait for the Go runtime to publish
+ * SudokuWasm via the 'wasmReady' window event, with a 5-second timeout.
+ * Resolves immediately if SudokuWasm is already set when called.
+ */
+function waitForWasmReadyEvent(): Promise<void> {
+  logger.debug('[WASM] Waiting for wasmReady event...')
+  return new Promise<void>((resolve, reject) => {
+    const handler = () => {
+      logger.debug('[WASM] wasmReady event received successfully!')
+      clearTimeout(timeout)
+      window.removeEventListener('wasmReady', handler)
+      resolve()
+    }
+
+    const timeout = setTimeout(() => {
+      logger.error('[WASM] Timeout waiting for wasmReady event after 5 seconds')
+      logger.debug('[WASM] window.SudokuWasm available:', !!window.SudokuWasm)
+      if (window.SudokuWasm) {
+        logger.debug('[WASM] SudokuWasm object keys:', Object.keys(window.SudokuWasm))
+      }
+      window.removeEventListener('wasmReady', handler)
+      reject(new Error('WASM initialization timeout'))
+    }, WASM_READY_TIMEOUT_MS)
+
+    // Check if already ready
+    if (window.SudokuWasm) {
+      logger.debug('[WASM] SudokuWasm already available')
+      clearTimeout(timeout)
+      window.removeEventListener('wasmReady', handler)
+      resolve()
+      return
+    }
+
+    window.addEventListener('wasmReady', handler)
+  })
 }
 
 /**

@@ -7,86 +7,13 @@
 
 /// <reference lib="webworker" />
 
-// Type definitions for the Go runtime
-interface GoInstance {
-  importObject: WebAssembly.Imports
-  run(instance: WebAssembly.Instance): Promise<void>
-  exit?: (code: number) => void
-}
+import { instantiateSudokuWasm, type GoInstance } from './wasm-bootstrap'
+import type { SudokuWasmAPI } from '../types/sudoku'
 
 // Extend the worker global scope
 declare global {
   var Go: new () => GoInstance
   var SudokuWasm: SudokuWasmAPI | undefined
-}
-
-// The WASM API interface (mirrors wasm.ts types)
-interface CellRef {
-  row: number
-  col: number
-}
-
-interface Candidate {
-  row: number
-  col: number
-  digit: number
-}
-
-interface TechniqueRef {
-  title: string
-  slug: string
-  url: string
-}
-
-interface Highlights {
-  primary: CellRef[]
-  secondary?: CellRef[]
-}
-
-interface Move {
-  step_index: number
-  technique: string
-  action: string
-  digit: number
-  targets: CellRef[]
-  eliminations?: Candidate[]
-  explanation: string
-  refs: TechniqueRef
-  highlights: Highlights
-}
-
-interface BoardState {
-  cells: number[]
-  candidates: number[][]
-}
-
-interface MoveResult {
-  board: number[]
-  candidates: number[][]
-  move: Move | null
-}
-
-interface SolveAllResult {
-  moves: MoveResult[]
-  solved: boolean
-  finalBoard: number[]
-}
-
-interface FindNextMoveResult {
-  move: Move | null
-  board: BoardState
-  solved: boolean
-}
-
-interface SudokuWasmAPI {
-  // Human solver (the methods we use in the worker)
-  createBoard(givens: number[]): BoardState
-  createBoardWithCandidates(cells: number[], candidates: number[][]): BoardState
-  findNextMove(cells: number[], candidates: number[][], givens: number[]): FindNextMoveResult
-  solveAll(cells: number[], candidates: number[][], givens: number[]): SolveAllResult
-
-  // Other methods (for potential future use)
-  getVersion(): string
 }
 
 // ==================== Message Types ====================
@@ -176,65 +103,15 @@ async function initializeWasm(): Promise<void> {
 
       const go = new Go()
 
-      // Fetch the WASM file
-      const wasmResponse = await fetch('/sudoku.wasm')
-      if (!wasmResponse.ok) {
-        throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`)
-      }
-
-      // Instantiate the WASM module
-      let result: WebAssembly.WebAssemblyInstantiatedSource
-      if (WebAssembly.instantiateStreaming) {
-        result = await WebAssembly.instantiateStreaming(wasmResponse, go.importObject)
-      } else {
-        // Fallback for older browsers
-        const wasmBuffer = await wasmResponse.arrayBuffer()
-        result = await WebAssembly.instantiate(wasmBuffer, go.importObject)
-      }
-
-      // Run the Go program (sets up globalThis.SudokuWasm)
-      // This doesn't return - it runs forever (intentionally)
-      go.run(result.instance)
-
-      // Wait for WASM to signal it's ready
-      await new Promise<void>((resolve, reject) => {
-        const checkReady = () => {
-          if (SudokuWasm) {
-            resolve()
-            // Stryker disable next-line BooleanLiteral: returning false here leaks the polling interval but the promise is already resolved, so ready is still posted; no test-observable difference
-            return true
-          }
-          return false
-        }
-
-        // Check immediately
-        // Stryker disable next-line ConditionalExpression: skipping the immediate check just defers to the polling interval, which calls checkReady on the next tick; same promise outcome
-        if (checkReady()) return
-
-        // Poll for SudokuWasm to become available
-        const maxAttempts = 50 // 5 seconds max
-        let attempts = 0
-        const interval = setInterval(() => {
-          attempts++
-          // Stryker disable next-line ConditionalExpression,BlockStatement: clearing the interval is a cleanup optimization; even if it stays running, the promise is already resolved by checkReady and subsequent rejects are no-ops, and the polling never runs when the Go mock sets SudokuWasm synchronously
-          if (checkReady()) {
-            clearInterval(interval)
-          } else if (attempts >= maxAttempts) {
-            clearInterval(interval)
-            reject(new Error('WASM initialization timeout'))
-          }
-        }, 100)
+      // Fetch, instantiate, boot Go, and wait for readiness via the shared
+      // bootstrap. The readiness strategy (polling) and the API global reader
+      // are worker-specific.
+      wasmApi = await instantiateSudokuWasm({
+        wasmUrl: '/sudoku.wasm',
+        go,
+        waitForReadiness: waitForWasmReadyPoll,
+        getApi: () => SudokuWasm,
       })
-
-      // SudokuWasm is guaranteed to be defined after the Promise resolves
-      /* v8 ignore start -- unreachable defensive guard: the polling promise only resolves once SudokuWasm is truthy, so this can never throw */
-      // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: this is a defensive guard that is unreachable when the polling promise resolves (SudokuWasm must be truthy for resolve() to have been called); the mutants are observationally equivalent
-      if (!SudokuWasm) {
-        // Stryker disable next-line StringLiteral: unreachable defensive guard (the polling promise only resolves once SudokuWasm is truthy), so blanking the message is observationally equivalent; the enclosing `if` mutants are already ignored above
-        throw new Error('SudokuWasm not available after initialization')
-      }
-      /* v8 ignore stop */
-      wasmApi = SudokuWasm
       // Stryker disable next-line BooleanLiteral: leaving isInitializing=true after success is harmless because the `if (wasmApi) return` guard at the top of initializeWasm short-circuits all subsequent callers
       isInitializing = false
     } catch (error) {
@@ -246,6 +123,41 @@ async function initializeWasm(): Promise<void> {
   })()
 
   return initPromise
+}
+
+/**
+ * Worker readiness strategy: poll globalThis.SudokuWasm every 100ms for up
+ * to 5 seconds. Resolves immediately if SudokuWasm is already set when called.
+ */
+function waitForWasmReadyPoll(): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const checkReady = () => {
+      if (SudokuWasm) {
+        resolve()
+        // Stryker disable next-line BooleanLiteral: returning false here leaks the polling interval but the promise is already resolved, so ready is still posted; no test-observable difference
+        return true
+      }
+      return false
+    }
+
+    // Check immediately
+    // Stryker disable next-line ConditionalExpression: skipping the immediate check just defers to the polling interval, which calls checkReady on the next tick; same promise outcome
+    if (checkReady()) return
+
+    // Poll for SudokuWasm to become available
+    const maxAttempts = 50 // 5 seconds max
+    let attempts = 0
+    const interval = setInterval(() => {
+      attempts++
+      // Stryker disable next-line ConditionalExpression,BlockStatement: clearing the interval is a cleanup optimization; even if it stays running, the promise is already resolved by checkReady and subsequent rejects are no-ops, and the polling never runs when the Go mock sets SudokuWasm synchronously
+      if (checkReady()) {
+        clearInterval(interval)
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval)
+        reject(new Error('WASM initialization timeout'))
+      }
+    }, 100)
+  })
 }
 
 // ==================== Message Handler ====================
