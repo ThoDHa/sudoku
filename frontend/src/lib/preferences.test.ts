@@ -300,4 +300,17 @@ describe('preferences', () => {
       expect(callback).toHaveBeenCalledWith('daily')
     })
   })
+
+  describe('envelope migration edge cases', () => {
+    it('returns defaults when the stored data is JSON null', () => {
+      localStorage.setItem('sudoku_preferences', 'null')
+      const result = getPreferences()
+      expect(result).toEqual({
+        homepageMode: 'daily',
+        autoSolveSpeed: 'fast',
+        hideTimer: false,
+        showDailyReminder: true,
+      })
+    })
+  })
 })
