@@ -28,6 +28,8 @@ import { useSudokuGame } from '../hooks/useSudokuGame'
 import { useAutoSolve } from '../hooks/useAutoSolve'
 import { useGamePersistence } from '../hooks/useGamePersistence'
 import { usePuzzleLoader } from '../hooks/usePuzzleLoader'
+import { useShareConflict } from '../hooks/useShareConflict'
+import { useGameKeyboardShortcuts } from '../hooks/useGameKeyboardShortcuts'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import { useHighlightState } from '../hooks/useHighlightState'
 import type { MoveHighlight } from '../hooks/useHighlightState'
@@ -140,15 +142,6 @@ function resolvePuzzleSetup(params: {
   }
 }
 
-// Parse a shared `t` elapsed-time param into positive milliseconds, or null.
-function parseSharedElapsedMs(sharedTimeParam: string | null): number | null {
-  if (!sharedTimeParam) {
-    return null
-  }
-  const ms = parseInt(sharedTimeParam, 10)
-  return Number.isFinite(ms) && ms > 0 ? ms : null
-}
-
 /**
  * Inner component that contains all game logic.
  * Must be wrapped by TimerProvider (see Game component below).
@@ -242,26 +235,6 @@ function GameContent() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [showInProgressConfirm, setShowInProgressConfirm] = useState(false)
   const [existingInProgressGame, setExistingInProgressGame] = useState<SavedGameInfo | null>(null)
-  // Shared state-link vs the recipient's own saved progress for the same puzzle:
-  // when both exist, the recipient chooses (resume mine / open shared) instead of
-  // one silently winning. Pending holds the shared board until they decide.
-  const [showShareConflict, setShowShareConflict] = useState(false)
-  const [pendingSharedState, setPendingSharedState] = useState<{
-    board: number[]
-    candidates: number[][] | null
-    elapsedMs: number | null
-  } | null>(null)
-  // When the shared-game modal is up and the game in progress is a DIFFERENT puzzle
-  // than the shared one, this holds where dismissing the modal navigates back to.
-  // Null means the in-progress game is this same puzzle (dismiss = keep the board).
-  const [resumeTarget, setResumeTarget] = useState<{ seed: string; difficulty: string } | null>(
-    null,
-  )
-  // Whether a game is in progress when the shared-game modal is shown. Drives the
-  // "Resume current game" button (shown only then) and the dismiss behavior:
-  // with a game, dismiss keeps it; without one, dismiss goes to the homepage.
-  const [shareHasCurrentGame, setShareHasCurrentGame] = useState(false)
-  const shareResolvedRef = useRef(false)
   const [showDailyPrompt, setShowDailyPrompt] = useState(false)
   const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] = useState<{
     message: string
@@ -833,90 +806,26 @@ function GameContent() {
     setExistingInProgressGame(null)
   }, [existingInProgressGame])
 
-  // Overlay a shared board (from a state-link's `s`/`t`) onto the current game.
-  const applySharedBoard = useCallback(
-    (shared: { board: number[]; candidates: number[][] | null; elapsedMs: number | null }) => {
-      const candidatesArray = shared.candidates ?? Array.from({ length: 81 }, () => [] as number[])
-      restoredAsCompleteRef.current = isValidSolution(shared.board)
-      game.restoreState(shared.board, arraysToCandidates(candidatesArray), [])
-      if (shared.elapsedMs !== null) {
-        timerControl.setElapsedMs(shared.elapsedMs)
-      }
-    },
-    [game, timerControl, restoredAsCompleteRef],
-  )
-
-  // Drop the one-time `s`/`t` share params from the URL so a later reload takes
-  // the normal saved-state path instead of re-applying the sharer's snapshot.
-  // Uses history.replaceState rather than the router's setSearchParams, which did
-  // not persist when called from the initial-load effect; this cleans the address
-  // bar reliably without re-navigating (the shared state is already applied).
-  const consumeShareParams = useCallback(() => {
-    const url = new URL(window.location.href)
-    if (!url.searchParams.has('s') && !url.searchParams.has('t')) {
-      return
-    }
-    url.searchParams.delete('s')
-    url.searchParams.delete('t')
-    window.history.replaceState(window.history.state, '', url.toString())
-  }, [])
-
-  // Finalize a shared-URL load: mark restored, start the clock, and consume the
-  // one-time share params so a later reload takes the normal saved-state path.
-  const finalizeSharedUrlLoad = useCallback(() => {
-    loadedFromSharedUrl.current = false
-    hasRestoredSavedState.current = true
-    if (!alreadyCompletedToday && !showDifficultyChooser) {
-      timerControl.startTimer()
-    }
-    // consumeShareParams self-guards on the actual URL, so call it unconditionally
-    // (a stale sharedStateParam closure was suppressing the strip).
-    consumeShareParams()
-  }, [alreadyCompletedToday, showDifficultyChooser, timerControl, consumeShareParams])
-
-  // Shared-game modal dismissed (Resume current game, the X, or the backdrop):
-  // keep what the recipient was doing instead of loading the shared game.
-  const handleResumeOwnGame = useCallback(() => {
-    shareResolvedRef.current = true
-    setShowShareConflict(false)
-    setPendingSharedState(null)
-    consumeShareParams()
-    if (resumeTarget) {
-      // Current game is a different puzzle: navigate back to it. The flag stops the
-      // in-progress check from re-prompting on arrival.
-      sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
-      navigate(`/${resumeTarget.seed}?d=${resumeTarget.difficulty}`)
-      setResumeTarget(null)
-    } else if (!shareHasCurrentGame) {
-      // No game to keep: back out of the shared link to the homepage.
-      navigate('/')
-    }
-    // Otherwise the current game is this same puzzle: its saved board is already
-    // restored, so closing the modal keeps it.
-  }, [consumeShareParams, resumeTarget, shareHasCurrentGame, navigate])
-
-  // Share-conflict modal: recipient discards their progress for the shared position.
-  const handleStartFromShared = useCallback(() => {
-    if (pendingSharedState) {
-      applySharedBoard(pendingSharedState)
-      if (!alreadyCompletedToday && !showDifficultyChooser) {
-        timerControl.startTimer()
-      }
-    }
-    shareResolvedRef.current = true
-    setShowShareConflict(false)
-    setPendingSharedState(null)
-    setResumeTarget(null)
-    setShareHasCurrentGame(false)
-    consumeShareParams()
-  }, [
-    pendingSharedState,
-    applySharedBoard,
+  const {
+    showShareConflict,
+    shareHasCurrentGame,
+    finalizeSharedUrlLoad,
+    handleResumeOwnGame,
+    handleStartFromShared,
+    restoreOrPromptSharedState,
+  } = useShareConflict({
+    game,
+    timerControl,
+    restoredAsCompleteRef,
+    hasRestoredSavedState,
+    loadedFromSharedUrl,
     alreadyCompletedToday,
     showDifficultyChooser,
-    timerControl,
-    consumeShareParams,
-  ])
+    sharedTimeParam,
+    encoded,
+    loadSavedGameState,
+    navigate,
+  })
 
   // Handlers for daily prompt modal
   const handleGoToDaily = useCallback(() => {
@@ -938,41 +847,9 @@ function GameContent() {
   // HELPER FUNCTIONS
   // ============================================================
 
-  // On a shared state-link, always prompt before loading the shared game (the
-  // recipient chooses "Load shared game", or dismisses to keep what they were
-  // doing / return home). Kept out of loadPuzzle for clarity.
-  const restoreOrPromptSharedState = useCallback(
-    (board: number[], candidates: number[][] | null, seed: string) => {
-      if (shareResolvedRef.current) {
-        return
-      }
-      const shared = { board, candidates, elapsedMs: parseSharedElapsedMs(sharedTimeParam) }
-      // Classify the recipient's current game: their own save for THIS puzzle, a
-      // game on a DIFFERENT puzzle, or none. It decides the modal's buttons and
-      // what dismissing does.
-      const saved = loadSavedGameState(seed)
-      const hasThisPuzzleProgress = !!(saved && saved.history.length > 0)
-      const otherGame = getMostRecentGame()
-      const otherInProgress =
-        !!otherGame &&
-        otherGame.seed !== seed &&
-        otherGame.seed !== encoded &&
-        otherGame.progress < 100
-      setPendingSharedState(shared)
-      // Different-puzzle game: dismiss = go back to it. Same-puzzle or none: no target.
-      setResumeTarget(
-        !hasThisPuzzleProgress && otherInProgress && otherGame
-          ? { seed: otherGame.seed, difficulty: otherGame.difficulty }
-          : null,
-      )
-      setShareHasCurrentGame(hasThisPuzzleProgress || otherInProgress)
-      setShowShareConflict(true)
-    },
-    [sharedTimeParam, loadSavedGameState, encoded],
-  )
-  // Publish the latest restoreOrPromptSharedState to the ref usePuzzleLoader
-  // holds, so its fetch effect (which runs before this callback is defined)
-  // always invokes the current version.
+  // Publish the latest restoreOrPromptSharedState (from useShareConflict) to the
+  // ref usePuzzleLoader holds, so its fetch effect (which runs before the share
+  // hook) always invokes the current version.
   restoreOrPromptSharedStateRef.current = restoreOrPromptSharedState
 
   // ============================================================
@@ -1894,104 +1771,23 @@ function GameContent() {
   // ============================================================
 
   // Global keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in input fields
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return
-      }
-
-      // Don't trigger shortcuts when modals are open
-      if (
-        showResultModal ||
-        historyOpen ||
-        techniqueModal ||
-        techniquesListOpen ||
-        solveConfirmOpen ||
-        showClearConfirm ||
-        showShareConflict ||
-        menuOpen
-      ) {
-        return
-      }
-
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
-      const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey
-
-      // Ctrl/Cmd + Z = Undo
-      if (ctrlOrCmd && !e.shiftKey && e.key.toLowerCase() === 'z') {
-        e.preventDefault()
-        handleUndo()
-        return
-      }
-
-      // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y = Redo
-      if (
-        (ctrlOrCmd && e.shiftKey && e.key.toLowerCase() === 'z') ||
-        (ctrlOrCmd && e.key.toLowerCase() === 'y')
-      ) {
-        e.preventDefault()
-        handleRedo()
-        return
-      }
-
-      // H = Hint
-      if (e.key.toLowerCase() === 'h' && !ctrlOrCmd && !e.altKey) {
-        e.preventDefault()
-        handleNext()
-        return
-      }
-
-      // N = Toggle Notes mode
-      if (e.key.toLowerCase() === 'n' && !ctrlOrCmd && !e.altKey) {
-        e.preventDefault()
-        setNotesMode((prev) => !prev)
-        return
-      }
-
-      // V = Validate
-      if (e.key.toLowerCase() === 'v' && !ctrlOrCmd && !e.altKey) {
-        e.preventDefault()
-        handleValidate()
-        return
-      }
-
-      // Escape = Deselect cell and clear highlights
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        clearAllAndDeselect()
-        return
-      }
-
-      // Space = Toggle notes mode (alternative)
-      if (e.key === ' ' && !ctrlOrCmd) {
-        // Only if not on a focusable element that uses space
-        const activeTag = document.activeElement?.tagName
-        if (activeTag !== 'BUTTON' && activeTag !== 'A') {
-          e.preventDefault()
-          setNotesMode((prev) => !prev)
-        }
-        return
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [
+  useGameKeyboardShortcuts({
     handleUndo,
     handleRedo,
     handleNext,
     handleValidate,
     clearAllAndDeselect,
-    showResultModal,
-    historyOpen,
-    techniqueModal,
-    techniquesListOpen,
-    solveConfirmOpen,
-    showClearConfirm,
-    showShareConflict,
-    menuOpen,
-  ])
+    setNotesMode,
+    isModalOpen:
+      showResultModal ||
+      historyOpen ||
+      !!techniqueModal ||
+      techniquesListOpen ||
+      solveConfirmOpen ||
+      showClearConfirm ||
+      showShareConflict ||
+      menuOpen,
+  })
 
   // Sync game state to global context for header
   useEffect(() => {

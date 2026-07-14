@@ -57,7 +57,7 @@ def _load_go_mutation_floors(floors_path=None):
         with open(path) as f:
             return {k: float(v) for k, v in json.load(f)["floors"].items()}
     except (OSError, KeyError, ValueError, TypeError):
-        return {"dp": 95.0, "human": 85.0, "techniques": 85.0, "transport-http": 85.0}
+        return {"dp": 95.0, "human": 85.0, "techniques": 85.0}
 
 
 # Stryker high/low (used for the frontend tile and the pooled overall banner).

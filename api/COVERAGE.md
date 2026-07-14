@@ -26,23 +26,27 @@ own thresholds in `frontend/vite.config.ts`.
 | `./internal/sudoku/dp` | 99% | 99.4% | 0.4pp |
 | `./internal/sudoku/human` | 99% | 100.0% | 1.0pp |
 | `./internal/sudoku/human/techniques` | 99% | 99.1% | 0.1pp |
-| `./internal/transport/http` | 99% | 99.1% | 0.1pp |
 
 Floors are encoded as Make variables at the top of the `coverage-gate` target
 in `api/Makefile` (`DP_COVERAGE_FLOOR`, `HUMAN_COVERAGE_FLOOR`,
-`TECHNIQUES_COVERAGE_FLOOR`, `TRANSPORT_HTTP_COVERAGE_FLOOR`).
+`TECHNIQUES_COVERAGE_FLOOR`).
+
+`./internal/transport/http` is intentionally NOT gated: it is a dev-only HTTP
+harness (ARCH-2; see `internal/transport/http/doc.go`) that is never built for
+production, so it carries no production coverage floor. Its tests still run
+under `go test ./...`.
 
 ### Why the floors sit just below the measured baselines
 
 COV-1 drove every gated package to an honest ceiling: `human` reaches a full
-100%, `dp` 99.4%, `techniques` 99.1%, and `transport/http` 99.1%. The residual
-sub-100 in each of the latter three is genuinely unreachable defensive code, not
-a testing gap: `len(...) == 0` guards behind invariants that guarantee
-non-empty slices, bivalue-mask length checks that are always exactly 2,
-ascending-index swaps that never fire, `json.Marshal` error paths on
-all-string structs that cannot fail, and a greedy-carve floor `break` that
-empirical probing never reaches. These are conceded honestly rather than
-covered with contrived tests or by deleting the guards.
+100%, `dp` 99.4%, and `techniques` 99.1%. The residual sub-100 in each of the
+latter two is genuinely unreachable defensive code, not a testing gap:
+`len(...) == 0` guards behind invariants that guarantee non-empty slices,
+bivalue-mask length checks that are always exactly 2, ascending-index swaps
+that never fire, `json.Marshal` error paths on all-string structs that cannot
+fail, and a greedy-carve floor `break` that empirical probing never reaches.
+These are conceded honestly rather than covered with contrived tests or by
+deleting the guards.
 
 Coverage percentages can still drift a fraction across Go versions, test
 ordering, and platforms, so the floors sit one point below the measured
@@ -51,9 +55,10 @@ still catching genuine regressions, mirroring the frontend philosophy in
 `frontend/vite.config.ts`, whose deterministic vitest coverage is now pinned at
 a hard 100% contract.
 
-`dp` and `human` are newly gated by COV-1; `techniques` (was 85%) and
-`transport/http` (was 95%) had their floors raised to reflect and protect the
-coverage the package now genuinely carries.
+`dp` and `human` are newly gated by COV-1; `techniques` (was 85%) had its
+floor raised to reflect and protect the coverage the package now genuinely
+carries. `transport/http` (was 95%) was removed from the gate by ARCH-2 when
+the package was quarantined as a dev-only harness.
 
 ## How to read a failure
 
@@ -81,7 +86,6 @@ tests, or after a deliberate reduction in tested surface):
 1. Re-measure the package from the `api/` directory:
    ```
    go test -cover ./internal/sudoku/human/techniques/
-   go test -cover ./internal/transport/http/
    ```
 2. Set the floor in `api/Makefile` to a value 3 to 4 percentage points below
    the new measured baseline, following the headroom practice above.

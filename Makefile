@@ -145,7 +145,8 @@ dup-frontend:
 	@echo "========================================"
 	@cd frontend && npm run dup-check
 
-# Run Go per-package coverage floors (techniques 88%, transport/http 80%).
+# Run Go per-package coverage floors (dp, human, techniques at 99%).
+# transport/http is exempt (dev-only harness, ARCH-2).
 coverage-go:
 	@cd api && make coverage-gate
 

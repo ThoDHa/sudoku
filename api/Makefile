@@ -84,12 +84,14 @@ test-coverage-verbose:
 # Per-package coverage floors. Kept just below measured coverage to absorb minor
 # Go-version / test-ordering variance; see COVERAGE.md for the full policy. COV-1
 # drove every gated package to an honest ceiling (measured: dp 99.4%, human 100%,
-# techniques 99.1%, transport/http 99.1%), with the residual sub-100 being
-# genuinely unreachable defensive code documented in COVERAGE.md. Floors sit at 99.
+# techniques 99.1%), with the residual sub-100 being genuinely unreachable
+# defensive code documented in COVERAGE.md. Floors sit at 99. Note:
+# transport/http is intentionally NOT gated here. It is a dev-only HTTP harness
+# (ARCH-2; see internal/transport/http/doc.go) never built for production, so it
+# carries no production coverage floor. Its tests still run under "go test ./...".
 DP_COVERAGE_FLOOR := 99
 HUMAN_COVERAGE_FLOOR := 99
 TECHNIQUES_COVERAGE_FLOOR := 99
-TRANSPORT_HTTP_COVERAGE_FLOOR := 99
 
 # Enforce per-package coverage floors. Runs `go test -cover` per gated package,
 # parses the reported percentage, and exits non-zero on breach. CI invokes this
@@ -121,7 +123,6 @@ coverage-gate:
 	check_pkg ./internal/sudoku/dp $(DP_COVERAGE_FLOOR); \
 	check_pkg ./internal/sudoku/human $(HUMAN_COVERAGE_FLOOR); \
 	check_pkg ./internal/sudoku/human/techniques $(TECHNIQUES_COVERAGE_FLOOR); \
-	check_pkg ./internal/transport/http $(TRANSPORT_HTTP_COVERAGE_FLOOR); \
 	echo "coverage-gate: all gated packages met their floors."
 
 # Per-package mutation efficacy floors (MUT-1-2; Decisions 4 + 9). The Go
@@ -130,7 +131,6 @@ coverage-gate:
 DP_MUTATION_FLOOR := 98
 HUMAN_MUTATION_FLOOR := 95
 TECHNIQUES_MUTATION_FLOOR := 95
-TRANSPORT_HTTP_MUTATION_FLOOR := 95
 
 # go-mutesting binary. avito-tech/go-mutesting v2.3.1 carries an upstream
 # packaging defect: its go.mod declares `module github.com/avito-tech/go-mutesting`
@@ -171,7 +171,6 @@ mutation-go: mutation-install
 		"./internal/sudoku/dp|$(DP_MUTATION_FLOOR)" \
 		"./internal/sudoku/human|$(HUMAN_MUTATION_FLOOR)" \
 		"./internal/sudoku/human/techniques|$(TECHNIQUES_MUTATION_FLOOR)" \
-		"./internal/transport/http|$(TRANSPORT_HTTP_MUTATION_FLOOR)" \
 	; do \
 		pkg=$${entry%%|*}; \
 		slug=$$(echo "$$pkg" | sed 's|^\./||; s|/|-|g'); \
@@ -227,7 +226,6 @@ mutation-gate:
 	check_pkg ./internal/sudoku/dp $(DP_MUTATION_FLOOR); \
 	check_pkg ./internal/sudoku/human $(HUMAN_MUTATION_FLOOR); \
 	check_pkg ./internal/sudoku/human/techniques $(TECHNIQUES_MUTATION_FLOOR); \
-	check_pkg ./internal/transport/http $(TRANSPORT_HTTP_MUTATION_FLOOR); \
 	if [ "$$failed" = "1" ]; then exit 1; fi; \
 	echo "mutation-gate: all in-scope packages met their floors."
 

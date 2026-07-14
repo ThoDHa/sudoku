@@ -1,9 +1,8 @@
 {
-  "_comment": "Canonical Go per-package mutation efficacy floors (percent). Single source of truth. Read directly by .github/scripts/gen_report_portal.py; api/Makefile and .github/workflows/nightly-mutation.yml mirror these values and are drift-guarded against this file by gen_report_portal_test.py (a mismatch fails CI). Technique shards aggregate into the single 'techniques' scope.",
+  "_comment": "Canonical Go per-package mutation efficacy floors (percent). Single source of truth. Read directly by .github/scripts/gen_report_portal.py; api/Makefile and .github/workflows/nightly-mutation.yml mirror these values and are drift-guarded against this file by gen_report_portal_test.py (a mismatch fails CI). Technique shards aggregate into the single 'techniques' scope. Note: transport/http was removed (ARCH-2); it is a dev-only harness (see api/internal/transport/http/doc.go) and is no longer held to a production mutation floor.",
   "floors": {
     "dp": 98,
     "human": 95,
-    "techniques": 95,
-    "transport-http": 95
+    "techniques": 95
   }
 }

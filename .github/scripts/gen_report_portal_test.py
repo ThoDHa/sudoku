@@ -206,7 +206,7 @@ class MutationFloorSources(unittest.TestCase):
 
     def test_go_floor_loader_falls_back_on_missing_file(self):
         self.assertEqual(portal._load_go_mutation_floors("/no/such/floors.json"),
-                         {"dp": 95.0, "human": 85.0, "techniques": 85.0, "transport-http": 85.0})
+                         {"dp": 95.0, "human": 85.0, "techniques": 85.0})
 
     def test_frontend_gate_loader_falls_back_on_missing_file(self):
         self.assertEqual(portal._load_frontend_mutation_gate("/no/such/config.json"),
@@ -215,8 +215,7 @@ class MutationFloorSources(unittest.TestCase):
     def test_makefile_floors_match_canonical(self):
         with open(_repo("api", "Makefile")) as f:
             text = f.read()
-        var_to_slug = {"DP": "dp", "HUMAN": "human", "TECHNIQUES": "techniques",
-                       "TRANSPORT_HTTP": "transport-http"}
+        var_to_slug = {"DP": "dp", "HUMAN": "human", "TECHNIQUES": "techniques"}
         found = {}
         for var, slug in var_to_slug.items():
             m = re.search(rf"^{var}_MUTATION_FLOOR\s*:=\s*(\d+)", text, re.M)
