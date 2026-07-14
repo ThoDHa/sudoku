@@ -38,7 +38,12 @@ func (b *nodeBudget) tick(ctx context.Context) error {
 
 // Solve finds a solution using backtracking. Returns the solved grid, or nil if
 // unsolvable. Returns ErrBudgetExceeded if the node budget is exhausted.
+// A grid whose givens already conflict is rejected up front: backtracking from
+// conflicting givens cannot remove them, so it would echo the invalid board.
 func Solve(ctx context.Context, grid []int) ([]int, error) {
+	if !IsValid(ctx, grid) {
+		return nil, nil
+	}
 	board := make([]int, constants.TotalCells)
 	copy(board, grid)
 	budget := &nodeBudget{max: constants.MaxSolverNodes}
@@ -185,7 +190,11 @@ func findEmptyCell(board []int) int {
 
 // CountSolutions counts solutions up to maxCount. Exported for custom puzzle validation.
 // Returns ErrBudgetExceeded if the node budget is exhausted.
+// A grid whose givens already conflict is rejected up front and reports 0 solutions.
 func CountSolutions(ctx context.Context, grid []int, maxCount int) (int, error) {
+	if !IsValid(ctx, grid) {
+		return 0, nil
+	}
 	board := make([]int, constants.TotalCells)
 	copy(board, grid)
 	count := 0

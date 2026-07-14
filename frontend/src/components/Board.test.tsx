@@ -68,9 +68,7 @@ function makeHighlight(overrides: Partial<Highlight> = {}): Highlight {
 // handles every drag test queries in the same order.
 function setupDrag(overrides: Partial<Parameters<typeof Board>[0]> = {}) {
   const onCellSelectMultiple = vi.fn()
-  const { container } = render(
-    <Board {...defaultProps({ onCellSelectMultiple, ...overrides })} />,
-  )
+  const { container } = render(<Board {...defaultProps({ onCellSelectMultiple, ...overrides })} />)
   return {
     cells: container.querySelectorAll('.sudoku-cell'),
     boardEl: screen.getByRole('grid'),
@@ -836,6 +834,171 @@ describe('Board', () => {
       await user.keyboard('7')
 
       expect(onCellChange).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('keyboard reachability (Tab into grid)', () => {
+    it('Tab into an empty grid focuses the first cell', async () => {
+      const user = userEvent.setup()
+      render(<Board {...defaultProps()} />)
+
+      await user.tab()
+
+      const cells = screen.getAllByRole('gridcell')
+      expect(cells[0]).toHaveFocus()
+    })
+
+    it('Tab into the grid focuses the first non-given cell', async () => {
+      const user = userEvent.setup()
+      const { board, initialBoard } = createBoardWithGivens()
+      // Cell 0 is a given (value 5); first non-given is cell 1
+      render(<Board {...defaultProps({ board, initialBoard })} />)
+
+      await user.tab()
+
+      const cells = screen.getAllByRole('gridcell')
+      expect(cells[0]).not.toHaveFocus()
+      expect(cells[1]).toHaveFocus()
+    })
+
+    it('exactly one resting tab stop exists when no cell is selected', () => {
+      const { board, initialBoard } = createBoardWithGivens()
+      render(<Board {...defaultProps({ board, initialBoard })} />)
+
+      const cells = screen.getAllByRole('gridcell')
+      const tabStops = cells.filter((c) => c.getAttribute('tabIndex') === '0')
+      expect(tabStops).toHaveLength(1)
+      // First non-given cell (cell 0 is given, so cell 1) is the resting stop
+      expect(tabStops[0]).toBe(cells[1])
+    })
+
+    it('ArrowRight moves focus to the adjacent cell', async () => {
+      const user = userEvent.setup()
+      const onCellClick = vi.fn()
+      render(<Board {...defaultProps({ onCellClick })} />)
+
+      await user.tab()
+      await user.keyboard('{ArrowRight}')
+
+      const cells = screen.getAllByRole('gridcell')
+      expect(cells[1]).toHaveFocus()
+    })
+
+    it('ArrowDown moves focus to the cell below', async () => {
+      const user = userEvent.setup()
+      const onCellClick = vi.fn()
+      render(<Board {...defaultProps({ onCellClick })} />)
+
+      await user.tab()
+      await user.keyboard('{ArrowDown}')
+
+      const cells = screen.getAllByRole('gridcell')
+      expect(cells[9]).toHaveFocus()
+    })
+
+    it('ArrowLeft moves focus back to the previous cell', async () => {
+      const user = userEvent.setup()
+      const onCellClick = vi.fn()
+      render(<Board {...defaultProps({ onCellClick })} />)
+
+      await user.tab()
+      await user.keyboard('{ArrowRight}')
+      await user.keyboard('{ArrowLeft}')
+
+      const cells = screen.getAllByRole('gridcell')
+      expect(cells[0]).toHaveFocus()
+    })
+
+    it('ArrowUp moves focus back to the cell above', async () => {
+      const user = userEvent.setup()
+      const onCellClick = vi.fn()
+      render(<Board {...defaultProps({ onCellClick })} />)
+
+      await user.tab()
+      await user.keyboard('{ArrowDown}')
+      await user.keyboard('{ArrowUp}')
+
+      const cells = screen.getAllByRole('gridcell')
+      expect(cells[0]).toHaveFocus()
+    })
+
+    it('number key press enters a digit into the focused cell', async () => {
+      const user = userEvent.setup()
+      const onCellChange = vi.fn()
+      render(<Board {...defaultProps({ onCellChange })} />)
+
+      await user.tab()
+      await user.keyboard('5')
+
+      expect(onCellChange).toHaveBeenCalledWith(0, 5)
+    })
+
+    it('Backspace clears the focused cell', async () => {
+      const user = userEvent.setup()
+      const onCellChange = vi.fn()
+      render(<Board {...defaultProps({ onCellChange })} />)
+
+      await user.tab()
+      await user.keyboard('{Backspace}')
+
+      expect(onCellChange).toHaveBeenCalledWith(0, 0)
+    })
+
+    it('Enter selects (activates) the focused cell', async () => {
+      const user = userEvent.setup()
+      const onCellClick = vi.fn()
+      render(<Board {...defaultProps({ onCellClick })} />)
+
+      await user.tab()
+      await user.keyboard('{Enter}')
+
+      expect(onCellClick).toHaveBeenCalledWith(0)
+    })
+
+    it('Space selects (activates) the focused cell', async () => {
+      const user = userEvent.setup()
+      const onCellClick = vi.fn()
+      render(<Board {...defaultProps({ onCellClick })} />)
+
+      await user.tab()
+      await user.keyboard(' ')
+
+      expect(onCellClick).toHaveBeenCalledWith(0)
+    })
+
+    it('the focus indicator class is applied to the focused cell', async () => {
+      const user = userEvent.setup()
+      render(<Board {...defaultProps()} />)
+
+      await user.tab()
+
+      const cells = screen.getAllByRole('gridcell')
+      expect(cells[0]?.className).toContain('cell-focused')
+    })
+
+    it('the focus indicator moves with focus after an arrow press', async () => {
+      const user = userEvent.setup()
+      const onCellClick = vi.fn()
+      render(<Board {...defaultProps({ onCellClick })} />)
+
+      await user.tab()
+      await user.keyboard('{ArrowRight}')
+
+      const cells = screen.getAllByRole('gridcell')
+      expect(cells[0]?.className).not.toContain('cell-focused')
+      expect(cells[1]?.className).toContain('cell-focused')
+    })
+
+    it('Tab out of the grid clears the focus indicator', async () => {
+      const user = userEvent.setup()
+      render(<Board {...defaultProps()} />)
+
+      await user.tab() // into grid
+      const cells = screen.getAllByRole('gridcell')
+      expect(cells[0]?.className).toContain('cell-focused')
+
+      await user.tab() // out of grid (no more tabbable elements)
+      expect(cells[0]?.className).not.toContain('cell-focused')
     })
   })
 

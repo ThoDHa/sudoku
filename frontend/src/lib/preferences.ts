@@ -1,5 +1,12 @@
 // User preferences stored in localStorage
 
+import {
+  STORAGE_SCHEMA_VERSION,
+  migrateVersionedEnvelope,
+  wrapVersionedEnvelope,
+  type MigrationMap,
+} from './storageMigration'
+
 const PREFERENCES_KEY = 'sudoku_preferences'
 const HOMEPAGE_MODE_CHANGE_EVENT = 'homepageModeChange'
 
@@ -42,13 +49,19 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   showDailyReminder: true,
 }
 
+const PREFERENCES_MIGRATIONS: MigrationMap<UserPreferences> = {}
+
 export function getPreferences(): UserPreferences {
   try {
-    const data = localStorage.getItem(PREFERENCES_KEY)
-    // Stryker disable next-line ConditionalExpression: JSON.parse(null) coerces to JSON.parse("null") which yields null, and spreading null into an object literal is a no-op, so the merged result equals DEFAULT_PREFERENCES identical to taking the falsy branch
-    if (data) {
-      return { ...DEFAULT_PREFERENCES, ...JSON.parse(data) }
-    }
+    const raw = localStorage.getItem(PREFERENCES_KEY)
+    if (!raw) return DEFAULT_PREFERENCES
+    const parsed: unknown = JSON.parse(raw)
+    const migrated = migrateVersionedEnvelope<UserPreferences>(
+      parsed,
+      PREFERENCES_MIGRATIONS,
+      STORAGE_SCHEMA_VERSION,
+    )
+    return migrated ? { ...DEFAULT_PREFERENCES, ...migrated } : DEFAULT_PREFERENCES
   } catch {
     // Ignore parse errors
   }
@@ -58,7 +71,10 @@ export function getPreferences(): UserPreferences {
 export function setPreferences(prefs: Partial<UserPreferences>): void {
   const current = getPreferences()
   const updated = { ...current, ...prefs }
-  localStorage.setItem(PREFERENCES_KEY, JSON.stringify(updated))
+  localStorage.setItem(
+    PREFERENCES_KEY,
+    JSON.stringify(wrapVersionedEnvelope(updated, STORAGE_SCHEMA_VERSION)),
+  )
 }
 
 export function getHomepageMode(): HomepageMode {

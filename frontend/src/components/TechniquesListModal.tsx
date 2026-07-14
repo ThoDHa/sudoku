@@ -11,6 +11,7 @@ import {
 } from './ui'
 import TechniqueDetailView from './TechniqueDetailView'
 import GlossaryModal from './GlossaryModal'
+import { Dialog } from './Dialog'
 
 interface TechniquesListModalProps {
   isOpen: boolean
@@ -35,12 +36,13 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
   const selectedTechnique = typeof view === 'object' ? view : null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-modal>
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} data-overlay-backdrop />
-
-      {/* Modal */}
-      <div className="relative z-10 flex h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-background shadow-2xl">
+    <>
+      <Dialog
+        isOpen={isOpen}
+        onClose={onClose}
+        titleId="techniques-list-modal-title"
+        panelClassName="flex h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-background shadow-2xl"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-board-border-light p-4">
           <div className="flex items-center gap-3">
@@ -52,7 +54,7 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
                 <ChevronLeftIcon />
               </button>
             ) : null}
-            <h2 className="text-lg font-bold text-foreground">
+            <h2 id="techniques-list-modal-title" className="text-lg font-bold text-foreground">
               {view === 'overview'
                 ? 'How to Play Sudoku'
                 : selectedTechnique
@@ -176,10 +178,10 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
             Close
           </button>
         </div>
-      </div>
+      </Dialog>
 
       {/* Glossary Modal */}
       <GlossaryModal isOpen={showGlossary} onClose={() => setShowGlossary(false)} />
-    </div>
+    </>
   )
 }

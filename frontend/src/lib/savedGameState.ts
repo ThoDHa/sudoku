@@ -4,9 +4,14 @@
 // centralizes the legacy-save defaults (counters default to 0).
 
 import type { Move } from '../hooks/useSudokuGame'
+import {
+  STORAGE_SCHEMA_VERSION,
+  migrateVersionedRecord,
+  type MigrationMap,
+} from './storageMigration'
 
-// Type for saved game state in localStorage
 export interface SavedGameState {
+  schemaVersion?: number
   board: number[]
   candidates: number[][] // Serialized from Set<number>[]
   elapsedMs: number
@@ -20,6 +25,8 @@ export interface SavedGameState {
   hintsUsed?: number
   techniqueHintsUsed?: number
 }
+
+const SAVED_GAME_MIGRATIONS: MigrationMap<SavedGameState> = {}
 
 // Build the persisted shape from live game values. Shared by the autosave and
 // beforeunload save sites so the persisted fields cannot drift between them.
@@ -35,6 +42,7 @@ export function buildSavedState(input: {
   techniqueHintsUsed: number
 }): SavedGameState {
   return {
+    schemaVersion: STORAGE_SCHEMA_VERSION,
     board: input.board,
     candidates: input.candidates,
     elapsedMs: input.elapsedMs,
@@ -45,6 +53,23 @@ export function buildSavedState(input: {
     isComplete: input.isComplete,
     hintsUsed: input.hintsUsed,
     techniqueHintsUsed: input.techniqueHintsUsed,
+  }
+}
+
+// Read and migrate a raw localStorage JSON string into a SavedGameState. A
+// legacy entry without a schemaVersion field is treated as version 0 and
+// migrated forward to STORAGE_SCHEMA_VERSION. Returns null on a parse failure
+// or non-object payload so callers can discard the entry.
+export function loadSavedGameState(rawJson: string): SavedGameState | null {
+  try {
+    const parsed: unknown = JSON.parse(rawJson)
+    return migrateVersionedRecord<SavedGameState>(
+      parsed,
+      SAVED_GAME_MIGRATIONS,
+      STORAGE_SCHEMA_VERSION,
+    )
+  } catch {
+    return null
   }
 }
 

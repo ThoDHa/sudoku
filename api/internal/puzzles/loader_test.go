@@ -580,6 +580,113 @@ func TestGetTodayPuzzle_InvalidDifficulty(t *testing.T) {
 	}
 }
 
+// --- BUG-15: daily seed and index must agree ---
+
+// TestDailySeed_CanonicalForm pins the exact seed string both dailyHandler and
+// GetDailyPuzzle derive their index from. A client fetching /puzzle/<seed>
+// receives the puzzle at GetPuzzleBySeed(<seed>); if the seed format drifts
+// from what GetDailyPuzzle hashes, the advertised index and the served puzzle
+// silently diverge.
+func TestDailySeed_CanonicalForm(t *testing.T) {
+	cases := []struct {
+		name string
+		date time.Time
+		want string
+	}{
+		{"UTC date", time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC), "D2026-07-10"},
+		{"timezone normalized to UTC", tzDate(t, 2026, 7, 10, 4, 0, "America/Los_Angeles"), "D2026-07-10"},
+		{"year boundary", time.Date(2027, 1, 1, 23, 59, 0, 0, time.UTC), "D2027-01-01"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := DailySeed(tc.date); got != tc.want {
+				t.Errorf("DailySeed(%v) = %q, want %q", tc.date, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestGetDailyPuzzle_IndexMatchesGetPuzzleBySeed is the core BUG-15 regression
+// assertion: the index returned by GetDailyPuzzle must equal the index a client
+// gets by calling GetPuzzleBySeed with the advertised daily seed string. Before
+// the fix the two hashed different strings ("daily:<date>" vs "D<date>") and
+// landed on different puzzles for the same day.
+func TestGetDailyPuzzle_IndexMatchesGetPuzzleBySeed(t *testing.T) {
+	path := createTempPuzzleFile(t, validPuzzleJSON)
+	loader, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	dates := []time.Time{
+		time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 7, 11, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+		time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC),
+	}
+
+	for _, date := range dates {
+		seed := DailySeed(date)
+		_, _, dailyIdx, err := loader.GetDailyPuzzle(date, "medium")
+		if err != nil {
+			t.Fatalf("GetDailyPuzzle(%v): %v", date, err)
+		}
+		_, _, fetchIdx, err := loader.GetPuzzleBySeed(seed, "medium")
+		if err != nil {
+			t.Fatalf("GetPuzzleBySeed(%v): %v", seed, err)
+		}
+		if dailyIdx != fetchIdx {
+			t.Errorf("date %v: daily index %d != seed-fetched index %d (seed=%q)",
+				date.UTC().Format("2006-01-02"), dailyIdx, fetchIdx, seed)
+		}
+	}
+}
+
+// TestGetDailyPuzzle_IndexMatchesGetPuzzleBySeedLargeLoader repeats the
+// consistency check against a larger pool so a collision at count==2 cannot
+// mask a real divergence (with 2 puzzles the index space is [0,1] and a
+// mismatch is only detectable on roughly half of dates).
+func TestGetDailyPuzzle_IndexMatchesGetPuzzleBySeedLargeLoader(t *testing.T) {
+	const n = 1000
+	reps := make([]CompactPuzzle, 0, n)
+	for i := 0; i < n; i++ {
+		reps = append(reps, CompactPuzzle{
+			S: "157924638362158974498736512531279486926483157784615293273561849619847325845392761",
+			G: map[string][]int{"m": {0, 1, 2}},
+		})
+	}
+	loader := NewLoaderFromPuzzles(reps)
+
+	for d := 1; d <= 28; d++ {
+		date := time.Date(2026, 7, d, 0, 0, 0, 0, time.UTC)
+		seed := DailySeed(date)
+		_, _, dailyIdx, err := loader.GetDailyPuzzle(date, "medium")
+		if err != nil {
+			t.Fatalf("GetDailyPuzzle(%v): %v", date, err)
+		}
+		_, _, fetchIdx, err := loader.GetPuzzleBySeed(seed, "medium")
+		if err != nil {
+			t.Fatalf("GetPuzzleBySeed(%v): %v", seed, err)
+		}
+		if dailyIdx != fetchIdx {
+			t.Fatalf("date %v: daily index %d != seed-fetched index %d (seed=%q)",
+				date.UTC().Format("2006-01-02"), dailyIdx, fetchIdx, seed)
+		}
+	}
+}
+
+// tzDate builds a time.Time in the named location, failing the test if the
+// location cannot be loaded. Used by DailySeed timezone-normalization cases.
+func tzDate(t *testing.T, year, month, day, hour int, min int, locName string) time.Time {
+	t.Helper()
+	loc, err := time.LoadLocation(locName)
+	if err != nil {
+		t.Fatalf("LoadLocation(%q): %v", locName, err)
+	}
+	return time.Date(year, time.Month(month), day, hour, min, 0, 0, loc)
+}
+
 // DifficultyKey Mapping Tests
 
 func TestDifficultyKeyMapping(t *testing.T) {

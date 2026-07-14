@@ -2461,3 +2461,103 @@ func TestCustomValidate_Returns408OnCanceledContext(t *testing.T) {
 		t.Errorf("expected 408 on canceled context, got %d", w.Code)
 	}
 }
+
+// --- BUG-15 regression tests ---
+
+// TestSolveFullFastMode_ConflictingBoardReturnsConflicts pins BUG-15 bug 1 at
+// the HTTP boundary: a full-but-invalid board sent to /solve/full?mode=fast
+// previously returned 200 with the invalid board echoed as final_board. The
+// fast path must now run FindConflicts up front and respond with the specific
+// conflicting cells, not a 200 "solution" and not a generic "no solution".
+func TestSolveFullFastMode_ConflictingBoardReturnsConflicts(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	// Build a completely-filled but invalid board: duplicate value in row 0.
+	fullButInvalid := make([]int, constants.TotalCells)
+	copy(fullButInvalid, dp.GenerateFullGrid(42))
+	fullButInvalid[1] = fullButInvalid[0]
+	if dp.IsValid(context.Background(), fullButInvalid) {
+		t.Fatal("test setup error: expected fullButInvalid to fail IsValid")
+	}
+
+	code, resp := postJSON(t, router, "/api/solve/full?mode=fast", map[string]interface{}{
+		"token": token,
+		"board": fullButInvalid,
+	})
+
+	if code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for conflicting full board, got %d: %v", code, resp)
+	}
+	if reason, _ := resp["error"].(string); !strings.Contains(reason, "conflict") {
+		t.Errorf("expected error body to mention conflicts, got %q", reason)
+	}
+	conflicts, ok := resp["conflicts"].([]interface{})
+	if !ok || len(conflicts) == 0 {
+		t.Errorf("expected non-empty conflicts slice in response, got: %v", resp["conflicts"])
+	}
+	cells, ok := resp["conflictCells"].([]interface{})
+	if !ok || len(cells) == 0 {
+		t.Errorf("expected non-empty conflictCells slice in response, got: %v", resp["conflictCells"])
+	}
+	// The two colliding cells (index 0 and index 1) must both be reported.
+	cellSet := make(map[int]bool)
+	for _, c := range cells {
+		if n, ok := c.(float64); ok {
+			cellSet[int(n)] = true
+		}
+	}
+	if !cellSet[0] || !cellSet[1] {
+		t.Errorf("expected conflictCells to include 0 and 1, got %v", cellSet)
+	}
+	// And the response must NOT carry a fake solution.
+	if _, present := resp["final_board"]; present {
+		t.Errorf("expected no final_board in conflict response, got: %v", resp["final_board"])
+	}
+}
+
+// TestDailyHandler_SeedAndPuzzleIndexAgree pins BUG-15 bug 2 at the HTTP
+// boundary: the seed returned by /daily must hash to the same puzzle_index the
+// handler reports, so a client fetching /puzzle/<seed> gets the puzzle it was
+// told. Before the fix the handler derived the index from "daily:<date>" while
+// advertising the seed "D<date>", and the two hashed to different indices.
+func TestDailyHandler_SeedAndPuzzleIndexAgree(t *testing.T) {
+	original := puzzles.Global()
+	defer puzzles.SetGlobal(original)
+
+	// Use a larger loader so the index space is non-trivial; with the default
+	// small fixture a mismatch can hide behind index collisions.
+	const n = 1000
+	reps := make([]puzzles.CompactPuzzle, 0, n)
+	for i := 0; i < n; i++ {
+		reps = append(reps, testPuzzles[0])
+	}
+	puzzles.SetGlobal(puzzles.NewLoaderFromPuzzles(reps))
+
+	router := setupRouter()
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/api/daily", nil)
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", w.Code, w.Body.String())
+	}
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+
+	seed, _ := resp["seed"].(string)
+	idxF, ok := resp["puzzle_index"].(float64)
+	if !ok || seed == "" {
+		t.Fatalf("missing seed/puzzle_index in daily response: %v", resp)
+	}
+	advertisedIdx := int(idxF)
+
+	loader := puzzles.Global()
+	_, _, fetchIdx, err := loader.GetPuzzleBySeed(seed, "medium")
+	if err != nil {
+		t.Fatalf("GetPuzzleBySeed(%q): %v", seed, err)
+	}
+	if advertisedIdx != fetchIdx {
+		t.Errorf("seed %q: advertised puzzle_index=%d but GetPuzzleBySeed hashes to %d",
+			seed, advertisedIdx, fetchIdx)
+	}
+}

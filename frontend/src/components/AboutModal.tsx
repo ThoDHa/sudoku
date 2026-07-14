@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { STORAGE_KEYS } from '../lib/constants'
+import { Dialog } from './Dialog'
 
 // Combined content: About info + Tutorial steps
 const ABOUT_SECTIONS = [
@@ -218,67 +219,72 @@ export default function AboutModal({ isOpen, onClose, isOnboarding = false }: Ab
   const isLastStep = currentStep === ABOUT_SECTIONS.length - 1
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-modal>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleSkip} data-overlay-backdrop />
-      <div className="relative z-10 w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-background p-6 shadow-2xl">
-        {/* Progress dots */}
-        <div className="flex justify-center gap-2 mb-6">
-          {ABOUT_SECTIONS.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setCurrentStep(idx)}
-              className={`w-2 h-2 rounded-full transition-all ${
-                idx === currentStep
-                  ? 'bg-accent w-6'
-                  : idx < currentStep
-                    ? 'bg-accent'
-                    : 'bg-board-border-light'
-              }`}
-              aria-label={`Go to step ${idx + 1}`}
-            />
-          ))}
-        </div>
-
-        {/* Icon */}
-        <div className="text-center text-5xl mb-4">{section.icon}</div>
-
-        {/* Title */}
-        <h2 className="text-xl font-bold text-center text-foreground mb-4">{section.title}</h2>
-
-        {/* Content */}
-        <div className="mb-6">{section.content}</div>
-
-        {/* Navigation buttons */}
-        <div className="flex gap-3">
-          {currentStep > 0 ? (
-            <button
-              onClick={handlePrev}
-              className="flex-1 rounded-lg border border-board-border-light py-2.5 font-medium text-foreground transition-colors hover:bg-btn-hover"
-            >
-              Back
-            </button>
-          ) : (
-            <button
-              onClick={handleSkip}
-              className="flex-1 rounded-lg border border-board-border-light py-2.5 font-medium text-foreground-muted transition-colors hover:bg-btn-hover"
-            >
-              {isOnboarding ? 'Skip' : 'Close'}
-            </button>
-          )}
+    <Dialog
+      isOpen={isOpen}
+      onClose={handleSkip}
+      titleId="about-modal-title"
+      panelClassName="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-background p-6 shadow-2xl"
+      backdropClassName="bg-black/60 backdrop-blur-sm"
+    >
+      {/* Progress dots */}
+      <div className="flex justify-center gap-2 mb-6">
+        {ABOUT_SECTIONS.map((_, idx) => (
           <button
-            onClick={handleNext}
-            className="flex-1 rounded-lg bg-accent py-2.5 font-medium text-btn-active-text transition-colors hover:opacity-90"
-          >
-            {isLastStep ? (isOnboarding ? "Let's Play!" : 'Done') : 'Next'}
-          </button>
-        </div>
-
-        {/* Step counter */}
-        <p className="text-center text-xs text-foreground-muted mt-4">
-          {currentStep + 1} of {ABOUT_SECTIONS.length}
-        </p>
+            key={idx}
+            onClick={() => setCurrentStep(idx)}
+            className={`w-2 h-2 rounded-full transition-all ${
+              idx === currentStep
+                ? 'bg-accent w-6'
+                : idx < currentStep
+                  ? 'bg-accent'
+                  : 'bg-board-border-light'
+            }`}
+            aria-label={`Go to step ${idx + 1}`}
+          />
+        ))}
       </div>
-    </div>
+
+      {/* Icon */}
+      <div className="text-center text-5xl mb-4">{section.icon}</div>
+
+      {/* Title */}
+      <h2 id="about-modal-title" className="text-xl font-bold text-center text-foreground mb-4">
+        {section.title}
+      </h2>
+
+      {/* Content */}
+      <div className="mb-6">{section.content}</div>
+
+      {/* Navigation buttons */}
+      <div className="flex gap-3">
+        {currentStep > 0 ? (
+          <button
+            onClick={handlePrev}
+            className="flex-1 rounded-lg border border-board-border-light py-2.5 font-medium text-foreground transition-colors hover:bg-btn-hover"
+          >
+            Back
+          </button>
+        ) : (
+          <button
+            onClick={handleSkip}
+            className="flex-1 rounded-lg border border-board-border-light py-2.5 font-medium text-foreground-muted transition-colors hover:bg-btn-hover"
+          >
+            {isOnboarding ? 'Skip' : 'Close'}
+          </button>
+        )}
+        <button
+          onClick={handleNext}
+          className="flex-1 rounded-lg bg-accent py-2.5 font-medium text-btn-active-text transition-colors hover:opacity-90"
+        >
+          {isLastStep ? (isOnboarding ? "Let's Play!" : 'Done') : 'Next'}
+        </button>
+      </div>
+
+      {/* Step counter */}
+      <p className="text-center text-xs text-foreground-muted mt-4">
+        {currentStep + 1} of {ABOUT_SECTIONS.length}
+      </p>
+    </Dialog>
   )
 }
 

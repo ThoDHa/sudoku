@@ -92,7 +92,14 @@ describe('scores', () => {
   })
 
   describe('generateShareText', () => {
-    const baseScore: Score = { seed: 'daily-2024-01-15', difficulty: 'medium', timeMs: 300000, hintsUsed: 0, mistakes: 0, completedAt: '2024-01-15T12:00:00Z' }
+    const baseScore: Score = {
+      seed: 'daily-2024-01-15',
+      difficulty: 'medium',
+      timeMs: 300000,
+      hintsUsed: 0,
+      mistakes: 0,
+      completedAt: '2024-01-15T12:00:00Z',
+    }
 
     it('should generate text for daily puzzle', () => {
       const text = generateShareText(baseScore, 'https://example.com')
@@ -202,7 +209,14 @@ describe('scores', () => {
   })
 
   describe('generatePuzzleUrl', () => {
-    const baseScore: Score = { seed: '2024-01-15', difficulty: 'medium', timeMs: 300000, hintsUsed: 0, mistakes: 0, completedAt: '2024-01-15T12:00:00Z' }
+    const baseScore: Score = {
+      seed: '2024-01-15',
+      difficulty: 'medium',
+      timeMs: 300000,
+      hintsUsed: 0,
+      mistakes: 0,
+      completedAt: '2024-01-15T12:00:00Z',
+    }
 
     it('should generate URL for daily/practice puzzle', () => {
       const url = generatePuzzleUrl(baseScore)
@@ -258,7 +272,14 @@ describe('scores', () => {
 
     it('should return parsed scores from localStorage', () => {
       const mockScores: Score[] = [
-        { seed: 'test-seed', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '2024-01-15T12:00:00Z' },
+        {
+          seed: 'test-seed',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '2024-01-15T12:00:00Z',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(mockScores)
 
@@ -275,7 +296,14 @@ describe('scores', () => {
 
   describe('saveScore', () => {
     it('should save a new score to localStorage', () => {
-      const newScore: Score = { seed: 'new-seed', difficulty: 'medium', timeMs: 120000, hintsUsed: 1, mistakes: 2, completedAt: '2024-01-16T12:00:00Z' }
+      const newScore: Score = {
+        seed: 'new-seed',
+        difficulty: 'medium',
+        timeMs: 120000,
+        hintsUsed: 1,
+        mistakes: 2,
+        completedAt: '2024-01-16T12:00:00Z',
+      }
 
       saveScore(newScore)
 
@@ -287,35 +315,131 @@ describe('scores', () => {
 
     it('should prepend new score to existing scores', () => {
       const existingScores: Score[] = [
-        { seed: 'old-seed', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '2024-01-15T12:00:00Z' },
+        {
+          seed: 'old-seed',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '2024-01-15T12:00:00Z',
+        },
       ]
-      // Pre-populate the store
+      // Pre-populate the store with a legacy (un-versioned) array
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(existingScores)
 
-      const newScore: Score = { seed: 'new-seed', difficulty: 'medium', timeMs: 120000, hintsUsed: 0, mistakes: 0, completedAt: '2024-01-16T12:00:00Z' }
+      const newScore: Score = {
+        seed: 'new-seed',
+        difficulty: 'medium',
+        timeMs: 120000,
+        hintsUsed: 0,
+        mistakes: 0,
+        completedAt: '2024-01-16T12:00:00Z',
+      }
 
       saveScore(newScore)
 
       const savedData = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.SCORES]!)
-      expect(savedData[0].seed).toBe('new-seed')
-      expect(savedData[1].seed).toBe('old-seed')
+      expect(savedData.schemaVersion).toBe(1)
+      expect(savedData.data[0].seed).toBe('new-seed')
+      expect(savedData.data[1].seed).toBe('old-seed')
     })
 
     it('should trim scores to MAX_STORED_SCORES', () => {
       // Create array of MAX_STORED_SCORES existing scores
-      const existingScores: Score[] = Array.from({ length: MAX_STORED_SCORES }, (_, i) => ({ seed: `seed-${i}`, difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '2024-01-15T12:00:00Z' }))
-      // Pre-populate the store
+      const existingScores: Score[] = Array.from({ length: MAX_STORED_SCORES }, (_, i) => ({
+        seed: `seed-${i}`,
+        difficulty: 'easy',
+        timeMs: 60000,
+        hintsUsed: 0,
+        mistakes: 0,
+        completedAt: '2024-01-15T12:00:00Z',
+      }))
+      // Pre-populate the store with a legacy (un-versioned) array
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(existingScores)
 
-      const newScore: Score = { seed: 'newest-seed', difficulty: 'hard', timeMs: 180000, hintsUsed: 0, mistakes: 0, completedAt: '2024-01-17T12:00:00Z' }
+      const newScore: Score = {
+        seed: 'newest-seed',
+        difficulty: 'hard',
+        timeMs: 180000,
+        hintsUsed: 0,
+        mistakes: 0,
+        completedAt: '2024-01-17T12:00:00Z',
+      }
 
       saveScore(newScore)
 
       const savedData = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.SCORES]!)
-      expect(savedData.length).toBe(MAX_STORED_SCORES)
-      expect(savedData[0].seed).toBe('newest-seed')
+      expect(savedData.schemaVersion).toBe(1)
+      expect(savedData.data.length).toBe(MAX_STORED_SCORES)
+      expect(savedData.data[0].seed).toBe('newest-seed')
       // The last old score should be trimmed
-      expect(savedData[MAX_STORED_SCORES - 1].seed).toBe(`seed-${MAX_STORED_SCORES - 2}`)
+      expect(savedData.data[MAX_STORED_SCORES - 1].seed).toBe(`seed-${MAX_STORED_SCORES - 2}`)
+    })
+  })
+
+  describe('getScores - schema versioning', () => {
+    it('migrates a legacy un-versioned array (v0) to the current schema on read', () => {
+      const legacy: Score[] = [
+        {
+          seed: 'old',
+          difficulty: 'easy',
+          timeMs: 1000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '2024-01-01T00:00:00Z',
+        },
+      ]
+      mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(legacy)
+
+      expect(getScores()).toEqual(legacy)
+    })
+
+    it('reads a versioned envelope and returns its data array', () => {
+      const scores: Score[] = [
+        {
+          seed: 'v1',
+          difficulty: 'easy',
+          timeMs: 2000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '2024-01-02T00:00:00Z',
+        },
+      ]
+      mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify({
+        schemaVersion: 1,
+        data: scores,
+      })
+
+      expect(getScores()).toEqual(scores)
+    })
+
+    it('returns an empty array when the envelope data is not an array', () => {
+      mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify({
+        schemaVersion: 1,
+        data: { not: 'array' },
+      })
+
+      expect(getScores()).toEqual([])
+    })
+  })
+
+  describe('saveScore - schema versioning', () => {
+    it('writes the current schema version alongside the saved scores', () => {
+      const score: Score = {
+        seed: 'v',
+        difficulty: 'easy',
+        timeMs: 1000,
+        hintsUsed: 0,
+        mistakes: 0,
+        completedAt: '2024-01-01T00:00:00Z',
+      }
+
+      saveScore(score)
+
+      const saved = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.SCORES]!)
+      expect(saved.schemaVersion).toBe(1)
+      expect(Array.isArray(saved.data)).toBe(true)
+      expect(saved.data[0].seed).toBe('v')
     })
   })
 
@@ -326,9 +450,30 @@ describe('scores', () => {
 
     it('should return best score per difficulty without assists', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 120000, hintsUsed: 0, mistakes: 0, completedAt: '' },
-        { seed: 's2', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' }, // Best easy
-        { seed: 's3', difficulty: 'medium', timeMs: 180000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 120000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 's2',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        }, // Best easy
+        {
+          seed: 's3',
+          difficulty: 'medium',
+          timeMs: 180000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
 
@@ -339,8 +484,22 @@ describe('scores', () => {
 
     it('should exclude scores with hints used', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 30000, hintsUsed: 1, mistakes: 0, completedAt: '' }, // Has hints
-        { seed: 's2', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' }, // Pure
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 30000,
+          hintsUsed: 1,
+          mistakes: 0,
+          completedAt: '',
+        }, // Has hints
+        {
+          seed: 's2',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        }, // Pure
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
 
@@ -350,8 +509,23 @@ describe('scores', () => {
 
     it('should exclude scores with technique hints used', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 30000, hintsUsed: 0, techniqueHintsUsed: 2, mistakes: 0, completedAt: '' },
-        { seed: 's2', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 30000,
+          hintsUsed: 0,
+          techniqueHintsUsed: 2,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 's2',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
 
@@ -361,8 +535,23 @@ describe('scores', () => {
 
     it('should exclude scores with auto-solve used', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 10000, hintsUsed: 0, autoSolveUsed: true, mistakes: 0, completedAt: '' },
-        { seed: 's2', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 10000,
+          hintsUsed: 0,
+          autoSolveUsed: true,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 's2',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
 
@@ -378,9 +567,31 @@ describe('scores', () => {
 
     it('should only include assisted scores', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' }, // Pure - excluded
-        { seed: 's2', difficulty: 'easy', timeMs: 90000, hintsUsed: 2, mistakes: 0, completedAt: '' }, // Assisted
-        { seed: 's3', difficulty: 'medium', timeMs: 120000, hintsUsed: 0, autoSolveUsed: true, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        }, // Pure - excluded
+        {
+          seed: 's2',
+          difficulty: 'easy',
+          timeMs: 90000,
+          hintsUsed: 2,
+          mistakes: 0,
+          completedAt: '',
+        }, // Assisted
+        {
+          seed: 's3',
+          difficulty: 'medium',
+          timeMs: 120000,
+          hintsUsed: 0,
+          autoSolveUsed: true,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
 
@@ -391,9 +602,30 @@ describe('scores', () => {
 
     it('should return best assisted score per difficulty', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'hard', timeMs: 300000, hintsUsed: 5, mistakes: 0, completedAt: '' },
-        { seed: 's2', difficulty: 'hard', timeMs: 200000, hintsUsed: 3, mistakes: 0, completedAt: '' }, // Best
-        { seed: 's3', difficulty: 'hard', timeMs: 250000, hintsUsed: 1, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'hard',
+          timeMs: 300000,
+          hintsUsed: 5,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 's2',
+          difficulty: 'hard',
+          timeMs: 200000,
+          hintsUsed: 3,
+          mistakes: 0,
+          completedAt: '',
+        }, // Best
+        {
+          seed: 's3',
+          difficulty: 'hard',
+          timeMs: 250000,
+          hintsUsed: 1,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
 
@@ -403,7 +635,15 @@ describe('scores', () => {
 
     it('should include scores with technique hints', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, techniqueHintsUsed: 1, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          techniqueHintsUsed: 1,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
 
@@ -418,7 +658,14 @@ describe('scores', () => {
     })
 
     it('should return default 10 scores', () => {
-      const scores: Score[] = Array.from({ length: 15 }, (_, i) => ({ seed: `seed-${i}`, difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' }))
+      const scores: Score[] = Array.from({ length: 15 }, (_, i) => ({
+        seed: `seed-${i}`,
+        difficulty: 'easy',
+        timeMs: 60000,
+        hintsUsed: 0,
+        mistakes: 0,
+        completedAt: '',
+      }))
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
 
       const result = getRecentScores()
@@ -427,7 +674,14 @@ describe('scores', () => {
     })
 
     it('should return custom limit of scores', () => {
-      const scores: Score[] = Array.from({ length: 15 }, (_, i) => ({ seed: `seed-${i}`, difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' }))
+      const scores: Score[] = Array.from({ length: 15 }, (_, i) => ({
+        seed: `seed-${i}`,
+        difficulty: 'easy',
+        timeMs: 60000,
+        hintsUsed: 0,
+        mistakes: 0,
+        completedAt: '',
+      }))
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
 
       const result = getRecentScores(5)
@@ -436,8 +690,22 @@ describe('scores', () => {
 
     it('should return all scores if less than limit', () => {
       const scores: Score[] = [
-        { seed: 's1', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
-        { seed: 's2', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        {
+          seed: 's1',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 's2',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
 
@@ -776,9 +1044,7 @@ describe('scores', () => {
 
     it('produces the exact share text for a daily puzzle with no assists', () => {
       const text = generateShareText(base, 'https://example.com')
-      expect(text).toBe(
-        'Daily Sudoku 2024-01-15\nMedium ⏱️ 5:00\n\nhttps://example.com',
-      )
+      expect(text).toBe('Daily Sudoku 2024-01-15\nMedium ⏱️ 5:00\n\nhttps://example.com')
     })
 
     it('capitalizes only the first letter of the difficulty', () => {
@@ -898,8 +1164,22 @@ describe('scores', () => {
   describe('getBestScoresPure - tie-keeping and slower-replacement', () => {
     it('keeps the first score when a later score has equal timeMs', () => {
       const scores: Score[] = [
-        { seed: 'first', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
-        { seed: 'second', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        {
+          seed: 'first',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 'second',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
       expect(getBestScoresPure()['easy']?.seed).toBe('first')
@@ -907,8 +1187,22 @@ describe('scores', () => {
 
     it('does not replace the best score with a slower one', () => {
       const scores: Score[] = [
-        { seed: 'fast', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
-        { seed: 'slow', difficulty: 'easy', timeMs: 120000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        {
+          seed: 'fast',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 'slow',
+          difficulty: 'easy',
+          timeMs: 120000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
       expect(getBestScoresPure()['easy']?.seed).toBe('fast')
@@ -917,8 +1211,22 @@ describe('scores', () => {
 
     it('replaces the best score when a strictly faster one arrives', () => {
       const scores: Score[] = [
-        { seed: 'slow', difficulty: 'easy', timeMs: 120000, hintsUsed: 0, mistakes: 0, completedAt: '' },
-        { seed: 'fast', difficulty: 'easy', timeMs: 60000, hintsUsed: 0, mistakes: 0, completedAt: '' },
+        {
+          seed: 'slow',
+          difficulty: 'easy',
+          timeMs: 120000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 'fast',
+          difficulty: 'easy',
+          timeMs: 60000,
+          hintsUsed: 0,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
       expect(getBestScoresPure()['easy']?.seed).toBe('fast')
@@ -928,8 +1236,22 @@ describe('scores', () => {
   describe('getBestScoresAssisted - tie-keeping', () => {
     it('keeps the first score when a later assisted score has equal timeMs', () => {
       const scores: Score[] = [
-        { seed: 'first', difficulty: 'hard', timeMs: 200000, hintsUsed: 2, mistakes: 0, completedAt: '' },
-        { seed: 'second', difficulty: 'hard', timeMs: 200000, hintsUsed: 3, mistakes: 0, completedAt: '' },
+        {
+          seed: 'first',
+          difficulty: 'hard',
+          timeMs: 200000,
+          hintsUsed: 2,
+          mistakes: 0,
+          completedAt: '',
+        },
+        {
+          seed: 'second',
+          difficulty: 'hard',
+          timeMs: 200000,
+          hintsUsed: 3,
+          mistakes: 0,
+          completedAt: '',
+        },
       ]
       mockStoreWrapper.store[STORAGE_KEYS.SCORES] = JSON.stringify(scores)
       expect(getBestScoresAssisted()['hard']?.seed).toBe('first')

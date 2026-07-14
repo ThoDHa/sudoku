@@ -20,6 +20,7 @@ import {
   STORAGE_KEYS,
 } from '../lib/constants'
 import { logger } from '../lib/logger'
+import { useDialog } from './Dialog'
 
 const ACCENT_ACTIVE = 'bg-accent text-btn-active-text'
 
@@ -740,6 +741,23 @@ export default function Menu({
     return () => document.removeEventListener('keydown', handleEscapeKey)
   }, [isOpen])
 
+  // Dialog semantics + focus trap for the menu panel and its nested confirm
+  // dialog. Escape is handled by the effect above (and inherited by the
+  // confirm), so the trap's own Escape handling is disabled to avoid firing
+  // onClose twice.
+  const menuPanel = useDialog({
+    open: isOpen,
+    onClose,
+    titleId: 'menu-modal-title',
+    closeOnEscape: false,
+  })
+  const confirmPanel = useDialog({
+    open: !!confirmNewPuzzle,
+    onClose: () => setConfirmNewPuzzle(null),
+    titleId: 'menu-confirm-title',
+    closeOnEscape: false,
+  })
+
   const handleSpeedChange = (speed: AutoSolveSpeed) => {
     if (gameActions) {
       setAutoSolveSpeed(speed)
@@ -815,16 +833,23 @@ export default function Menu({
       <div className="fixed inset-0 bg-black/50 z-[99]" onClick={onClose} data-overlay-backdrop />
 
       {/* Modal - centered in viewport */}
-      <div className="fixed inset-0 z-[100] overflow-hidden" onClick={onClose} data-overlay-backdrop>
+      <div
+        className="fixed inset-0 z-[100] overflow-hidden"
+        onClick={onClose}
+        data-overlay-backdrop
+      >
         <div className="min-h-full flex items-center justify-center p-4">
           <div
+            {...menuPanel}
             className="w-full max-w-md max-h-[95vh] overflow-auto rounded-xl border border-board-border-light bg-background shadow-2xl text-base"
             onClick={(e) => e.stopPropagation()}
             data-modal
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-board-border-light">
-              <span className="text-lg font-semibold text-foreground">Menu</span>
+              <span id="menu-modal-title" className="text-lg font-semibold text-foreground">
+                Menu
+              </span>
               <button
                 onClick={onClose}
                 className="p-1.5 rounded-lg text-foreground-muted hover:text-foreground hover:bg-btn-hover"
@@ -1107,10 +1132,13 @@ export default function Menu({
           />
           <div className="fixed inset-0 z-[102] flex items-center justify-center p-4" data-modal>
             <div
+              {...confirmPanel}
               className="w-full max-w-xs rounded-xl border border-board-border-light bg-background shadow-2xl p-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-semibold text-foreground mb-2">Start New Game?</h3>
+              <h3 id="menu-confirm-title" className="text-lg font-semibold text-foreground mb-2">
+                Start New Game?
+              </h3>
               <p className="text-sm text-foreground-muted mb-4">
                 You have a game in progress. Starting a new puzzle will abandon your current
                 progress.

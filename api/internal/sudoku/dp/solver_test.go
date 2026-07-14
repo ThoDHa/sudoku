@@ -1165,3 +1165,87 @@ func TestSolve_ReturnsNilForUnsolvableBoard(t *testing.T) {
 		t.Errorf("expected nil solution for unsolvable board, got %v", solution)
 	}
 }
+
+// --- BUG-15: invalid grids must not be blessed as solutions ---
+
+// TestSolve_RejectsGridWithConflictingGivens pins the front validity guard:
+// a board whose pre-filled givens conflict (two 5s in row 0) must return nil
+// rather than backtracking from the conflicting givens and echoing the board.
+func TestSolve_RejectsGridWithConflictingGivens(t *testing.T) {
+	solution, err := Solve(context.Background(), rowConflictGrid)
+	if err != nil {
+		t.Fatalf("expected nil error for conflicting board, got %v", err)
+	}
+	if solution != nil {
+		t.Errorf("expected nil solution for grid with conflicting givens, got %v", solution)
+	}
+}
+
+// TestSolve_RejectsFullButInvalidGrid is the exact BUG-15 scenario: a
+// completely-filled but invalid board (duplicate in row 0) used to reach
+// findEmptyCell==-1 and be echoed verbatim as a "solution". The guard must
+// reject it up front.
+func TestSolve_RejectsFullButInvalidGrid(t *testing.T) {
+	fullButInvalid := make([]int, constants.TotalCells)
+	copy(fullButInvalid, solvedGrid)
+	// Introduce a duplicate: overwrite cell 1 with solvedGrid[0]'s value,
+	// creating two equal values in row 0.
+	fullButInvalid[1] = fullButInvalid[0]
+	if IsValid(context.Background(), fullButInvalid) {
+		t.Fatal("test setup error: expected fullButInvalid to fail IsValid")
+	}
+
+	solution, err := Solve(context.Background(), fullButInvalid)
+	if err != nil {
+		t.Fatalf("expected nil error for full-but-invalid board, got %v", err)
+	}
+	if solution != nil {
+		t.Errorf("expected nil solution for full-but-invalid board, got %v", solution)
+	}
+}
+
+// TestSolve_ValidPuzzleStillSolvedAfterGuard confirms the new guard does not
+// reject a legitimate sparse puzzle: the canonical validPuzzle must still
+// solve to its known solution.
+func TestSolve_ValidPuzzleStillSolvedAfterGuard(t *testing.T) {
+	solution, err := Solve(context.Background(), validPuzzle)
+	if err != nil {
+		t.Fatalf("Solve error: %v", err)
+	}
+	if solution == nil {
+		t.Fatal("expected solution for valid puzzle")
+	}
+	if !IsValid(context.Background(), solution) {
+		t.Error("returned solution is not valid")
+	}
+}
+
+// TestCountSolutions_RejectsConflictingGrid pins the matching guard in
+// CountSolutions: a conflicting board reports 0 solutions instead of counting
+// the spurious solutions reachable from invalid givens.
+func TestCountSolutions_RejectsConflictingGrid(t *testing.T) {
+	count, err := CountSolutions(context.Background(), rowConflictGrid, 2)
+	if err != nil {
+		t.Fatalf("expected nil error for conflicting board, got %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 solutions for conflicting grid, got %d", count)
+	}
+}
+
+// TestCountSolutions_ConflictingFullGridReportsZero pins the full-but-invalid
+// scenario for the counting path: an invalid complete board used to count as
+// one solution (findEmptyCell==-1 increments the counter). The guard rejects it.
+func TestCountSolutions_ConflictingFullGridReportsZero(t *testing.T) {
+	fullButInvalid := make([]int, constants.TotalCells)
+	copy(fullButInvalid, solvedGrid)
+	fullButInvalid[1] = fullButInvalid[0]
+
+	count, err := CountSolutions(context.Background(), fullButInvalid, 2)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 solutions for full-but-invalid grid, got %d", count)
+	}
+}

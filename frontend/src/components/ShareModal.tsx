@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
 import { CloseIcon, ShareIcon } from './ui'
+import { Dialog } from './Dialog'
 
 const SHARE_OPTIONS = [
   { key: 'puzzle', label: 'Share puzzle', description: 'Just the puzzle, nothing filled in' },
@@ -23,19 +23,6 @@ export default function ShareModal({
   onSharePuzzle,
   onShareState,
 }: ShareModalProps) {
-  useEffect(() => {
-    if (!isOpen) {
-      return
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [isOpen, onClose])
-
   if (!isOpen) {
     return null
   }
@@ -50,46 +37,43 @@ export default function ShareModal({
   }
 
   return (
-    // data-share-button on the backdrop so the board's outside-click deselect
+    // shareGuard adds data-share-button so the board's outside-click deselect
     // guard ignores every click within the share modal.
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      data-overlay-backdrop
-      data-share-button
-      onClick={onClose}
+    <Dialog
+      isOpen={isOpen}
+      onClose={onClose}
+      titleId="share-modal-title"
+      panelClassName="w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme"
+      backdropClassName="bg-black/50"
+      shareGuard
     >
-      <div
-        className="relative w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme"
-        data-modal
-        onClick={(e) => e.stopPropagation()}
+      <button
+        onClick={onClose}
+        className="absolute right-3 top-3 rounded p-1 text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
+        aria-label="Close"
       >
-        <button
-          onClick={onClose}
-          className="absolute right-3 top-3 rounded p-1 text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
-          aria-label="Close"
-        >
-          <CloseIcon className="h-5 w-5" />
-        </button>
-        <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-foreground">
-          <ShareIcon />
-          Share
-        </h2>
-        <p className="mb-5 text-sm text-foreground-muted">
-          Send a link a friend can open and play.
-        </p>
-        <div className="flex flex-col gap-2">
-          {SHARE_OPTIONS.map(({ key, label, description }) => (
-            <button
-              key={key}
-              onClick={() => handleSelect(key)}
-              className="w-full flex flex-col items-start gap-0.5 rounded-lg border border-board-border-light px-4 py-3 text-left transition-colors text-foreground hover:bg-btn-hover"
-            >
-              <span className="text-sm font-medium">{label}</span>
-              <span className="text-xs text-foreground-muted">{description}</span>
-            </button>
-          ))}
-        </div>
+        <CloseIcon className="h-5 w-5" />
+      </button>
+      <h2
+        id="share-modal-title"
+        className="mb-1 flex items-center gap-2 text-lg font-semibold text-foreground"
+      >
+        <ShareIcon />
+        Share
+      </h2>
+      <p className="mb-5 text-sm text-foreground-muted">Send a link a friend can open and play.</p>
+      <div className="flex flex-col gap-2">
+        {SHARE_OPTIONS.map(({ key, label, description }) => (
+          <button
+            key={key}
+            onClick={() => handleSelect(key)}
+            className="w-full flex flex-col items-start gap-0.5 rounded-lg border border-board-border-light px-4 py-3 text-left transition-colors text-foreground hover:bg-btn-hover"
+          >
+            <span className="text-sm font-medium">{label}</span>
+            <span className="text-xs text-foreground-muted">{description}</span>
+          </button>
+        ))}
       </div>
-    </div>
+    </Dialog>
   )
 }

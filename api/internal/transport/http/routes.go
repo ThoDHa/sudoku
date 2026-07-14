@@ -247,8 +247,9 @@ func resolveGivens(ctx context.Context, session *SessionToken, reqGivens []int) 
 func dailyHandler(c *gin.Context) {
 	dateUTC := TodayUTC()
 
-	// Deterministic seed from date
-	seed := constants.DailyPuzzlePrefix + dateUTC
+	// Canonical daily seed: this exact string is what GetDailyPuzzle hashes to
+	// pick puzzle_index, so the seed and index returned to the client always agree.
+	seed := puzzles.DailySeed(time.Now())
 
 	// Get puzzle index for today if puzzles are loaded
 	var puzzleIndex int
@@ -1275,6 +1276,7 @@ type SolveFullRequest struct {
 	Board []int  `json:"board" binding:"required"`
 }
 
+//nolint:gocyclo // handles mode branching, min-givens guard, conflict pre-check, budget error, and response assembly in one sequential chain
 func solveFullHandler(c *gin.Context) {
 	var req SolveFullRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -1306,6 +1308,25 @@ func solveFullHandler(c *gin.Context) {
 
 	if mode == "fast" {
 		if !requireMinGivens(c, req.Board) {
+			return
+		}
+		// Reject conflicting givens before solving: backtracking cannot remove
+		// the user's givens, so without this guard an invalid board would reach
+		// the solver and surface as a generic "no solution" instead of the
+		// specific cells at fault.
+		conflicts := dp.FindConflicts(req.Board)
+		if len(conflicts) > 0 {
+			conflictCells := make(map[int]bool)
+			for _, conflict := range conflicts {
+				conflictCells[conflict.Cell1] = true
+				conflictCells[conflict.Cell2] = true
+			}
+			cellList := slices.Sorted(maps.Keys(conflictCells))
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":         "board contains conflicts",
+				"conflicts":     conflicts,
+				"conflictCells": cellList,
+			})
 			return
 		}
 		// Use DP solver

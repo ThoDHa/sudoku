@@ -6,6 +6,7 @@ import ThemeModeDropdown from './ThemeModeDropdown'
 import { getHomepageMode, setHomepageMode, HomepageMode } from '../lib/preferences'
 import { buildDebugInfo, formatDebugJson } from '../lib/debugInfo'
 import Menu from './Menu'
+import { Toast } from './Toast'
 import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
 function MenuIcon({ className = 'h-5 w-5' }: { className?: string }) {
@@ -188,9 +189,9 @@ export default function Header() {
 
       {/* Toast notification */}
       {toastMessage && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 bg-foreground text-background rounded-lg shadow-lg text-sm font-medium">
+        <Toast className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 bg-foreground text-background rounded-lg shadow-lg text-sm font-medium">
           {toastMessage}
-        </div>
+        </Toast>
       )}
     </>
   )

@@ -179,12 +179,16 @@ func (l *Loader) GetPuzzleBySeed(seed string, difficulty string) (givens []int, 
 	return
 }
 
+// DailySeed returns the canonical seed string for a given UTC date.
+// Both dailyHandler and GetDailyPuzzle MUST derive the puzzle index from this
+// exact string so the seed advertised to clients matches the index they receive.
+func DailySeed(date time.Time) string {
+	return constants.DailyPuzzlePrefix + date.UTC().Format(constants.DailyDateFormat)
+}
+
 // GetDailyPuzzle returns the puzzle for a given UTC date
 func (l *Loader) GetDailyPuzzle(date time.Time, difficulty string) (givens []int, solution []int, puzzleIndex int, err error) {
-	// Use UTC date string as seed
-	dateStr := date.UTC().Format("2006-01-02")
-	seed := "daily:" + dateStr
-	return l.GetPuzzleBySeed(seed, difficulty)
+	return l.GetPuzzleBySeed(DailySeed(date), difficulty)
 }
 
 // GetTodayPuzzle returns the puzzle for today (UTC)

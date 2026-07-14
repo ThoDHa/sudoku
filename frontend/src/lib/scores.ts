@@ -1,5 +1,11 @@
 import { STORAGE_KEYS, MAX_STORED_SCORES, SECONDS_PER_HOUR, MS_PER_SECOND } from './constants'
 import { getShareBaseUrl } from './shareLinks'
+import {
+  STORAGE_SCHEMA_VERSION,
+  migrateVersionedEnvelope,
+  wrapVersionedEnvelope,
+  type MigrationMap,
+} from './storageMigration'
 
 export interface Score {
   seed: string
@@ -14,10 +20,19 @@ export interface Score {
   autoSolveUsed?: boolean // Whether auto-solve was used (solves entire puzzle)
 }
 
+const SCORE_MIGRATIONS: MigrationMap<Score[]> = {}
+
 export function getScores(): Score[] {
   try {
-    const data = localStorage.getItem(STORAGE_KEYS.SCORES)
-    return data ? JSON.parse(data) : []
+    const raw = localStorage.getItem(STORAGE_KEYS.SCORES)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    const migrated = migrateVersionedEnvelope<Score[]>(
+      parsed,
+      SCORE_MIGRATIONS,
+      STORAGE_SCHEMA_VERSION,
+    )
+    return Array.isArray(migrated) ? migrated : []
   } catch {
     return []
   }
@@ -28,7 +43,10 @@ export function saveScore(score: Score): void {
   scores.unshift(score) // Add to beginning (most recent first)
   // Keep only last MAX_STORED_SCORES scores
   const trimmed = scores.slice(0, MAX_STORED_SCORES)
-  localStorage.setItem(STORAGE_KEYS.SCORES, JSON.stringify(trimmed))
+  localStorage.setItem(
+    STORAGE_KEYS.SCORES,
+    JSON.stringify(wrapVersionedEnvelope(trimmed, STORAGE_SCHEMA_VERSION)),
+  )
 }
 
 // Helper to check if a score used any assists (hints, technique hints, or auto-solve)

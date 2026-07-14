@@ -2,6 +2,9 @@ import React, { memo, useCallback, useMemo, useRef } from 'react'
 import { hasCandidate, countCandidates } from '../lib/candidatesUtils'
 import { calculatePathCells } from '../lib/pathUtils'
 
+const DATA_CELL_IDX = 'data-cell-idx'
+const CELL_SELECTOR = `[${DATA_CELL_IDX}]`
+
 // Trim a drag trail back to a revisited cell, dropping everything after it.
 const backtrackTrail = (trail: number[], trailSet: Set<number>, idx: number): void => {
   const backtrackIdx = trail.indexOf(idx)
@@ -136,6 +139,7 @@ interface CellData {
   cellCandidates: number
   isGiven: boolean
   isSelected: boolean
+  tabIndex: number
   isMultiSelected: boolean
   className: string
   ariaLabel: string
@@ -171,7 +175,7 @@ const Cell = memo(
       value,
       cellCandidates,
       isGiven,
-      isSelected,
+      tabIndex,
       className,
       ariaLabel,
       highlightedDigit,
@@ -285,7 +289,7 @@ const Cell = memo(
       <div
         ref={setRefs}
         role="gridcell"
-        tabIndex={isSelected ? 0 : -1}
+        tabIndex={tabIndex}
         aria-label={ariaLabel}
         className={className}
         data-cell-idx={idx}
@@ -316,6 +320,7 @@ const Cell = memo(
       prevData.cellCandidates === nextData.cellCandidates &&
       prevData.isGiven === nextData.isGiven &&
       prevData.isSelected === nextData.isSelected &&
+      prevData.tabIndex === nextData.tabIndex &&
       prevData.className === nextData.className &&
       prevData.ariaLabel === nextData.ariaLabel &&
       prevData.highlightedDigit === nextData.highlightedDigit &&
@@ -352,6 +357,16 @@ const Board = memo(function Board({
   className = '',
 }: BoardProps) {
   const cellRefs = React.useRef<(HTMLDivElement | null)[]>([])
+
+  const [focusedCell, setFocusedCell] = React.useState<number | null>(null)
+
+  const tabStopCell = useMemo(() => {
+    if (selectedCell !== null) return selectedCell
+    for (let i = 0; i < 81; i++) {
+      if (initialBoard[i] === 0) return i
+    }
+    return 0
+  }, [selectedCell, initialBoard])
 
   // Drag state for multi-select feature
   // Refs updated synchronously so drag callbacks always read the latest value
@@ -539,6 +554,11 @@ const Board = memo(function Board({
           }
           break
         }
+        case 'Enter':
+        case ' ':
+          e.preventDefault()
+          onCellClick(idx)
+          break
       }
     },
     [findNextNonGivenCell, onCellClick, onCellChange],
@@ -786,6 +806,10 @@ const Board = memo(function Board({
     )
     classes.push(textClass(isIncorrect, isDuplicate, isPrimary, isSecondary, isGiven))
 
+    if (idx === focusedCell) {
+      classes.push('cell-focused outline outline-2 outline-offset-[-1px] outline-accent')
+    }
+
     return classes.join(' ')
   }
 
@@ -810,6 +834,7 @@ const Board = memo(function Board({
         cellCandidates: candidates[idx] || 0,
         isGiven,
         isSelected: selectedCell === idx,
+        tabIndex: idx === tabStopCell ? 0 : -1,
         isMultiSelected: selectedCells.has(idx) && selectedCell !== idx,
         className: getCellClass(idx),
         ariaLabel: getCellAriaLabel(idx),
@@ -836,6 +861,8 @@ const Board = memo(function Board({
     duplicates,
     incorrectCellsSet,
     cellsWithHighlightedDigit,
+    focusedCell,
+    tabStopCell,
   ])
 
   // Stable callback for cell clicks - doesn't change between renders
@@ -942,10 +969,10 @@ const Board = memo(function Board({
       if (!el) return
 
       // Walk up to find the cell element with data-cell-idx
-      const cellEl = (el as HTMLElement).closest('[data-cell-idx]')
+      const cellEl = (el as HTMLElement).closest(CELL_SELECTOR)
       if (!cellEl) return
 
-      const idx = Number(cellEl.getAttribute('data-cell-idx'))
+      const idx = Number(cellEl.getAttribute(DATA_CELL_IDX))
       if (Number.isNaN(idx) || idx === lastEnteredCellRef.current) return
 
       // handleDragEnter reads lastEnteredCellRef to bridge from the previous
@@ -960,6 +987,21 @@ const Board = memo(function Board({
   const handleBoardPointerUp = useCallback(() => {
     handleDragEnd()
   }, [handleDragEnd])
+
+  const handleGridFocus = useCallback((e: React.FocusEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement
+    if (target.hasAttribute(DATA_CELL_IDX)) {
+      const idx = Number(target.getAttribute(DATA_CELL_IDX))
+      if (!Number.isNaN(idx)) setFocusedCell(idx)
+    }
+  }, [])
+
+  const handleGridBlur = useCallback((e: React.FocusEvent<HTMLDivElement>) => {
+    const related = e.relatedTarget as HTMLElement | null
+    if (!related || !related.hasAttribute(DATA_CELL_IDX)) {
+      setFocusedCell(null)
+    }
+  }, [])
 
   // Stable ref callback factory - returns the same function for each cell index
   const cellRefCallbacks = useMemo(() => {
@@ -981,6 +1023,8 @@ const Board = memo(function Board({
       onPointerMove={handleBoardPointerMove}
       onPointerUp={handleBoardPointerUp}
       onPointerCancel={handleBoardPointerUp}
+      onFocus={handleGridFocus}
+      onBlur={handleGridBlur}
     >
       {Array.from({ length: 9 }, (_, rowIdx) => (
         <div key={rowIdx} role="row" className="contents">
