@@ -2397,3 +2397,67 @@ func TestVerifyToken_RejectsInvalidBase64Payload(t *testing.T) {
 		t.Errorf("expected a base64/JSON error before expiry check, got %q", err.Error())
 	}
 }
+
+var aiEscargot = []int{
+	1, 0, 0, 0, 0, 7, 0, 9, 0,
+	0, 3, 0, 0, 2, 0, 0, 0, 8,
+	0, 0, 9, 6, 0, 0, 5, 0, 0,
+	0, 0, 5, 3, 0, 0, 9, 0, 0,
+	0, 1, 0, 0, 8, 0, 0, 0, 2,
+	6, 0, 0, 0, 0, 4, 0, 0, 0,
+	3, 0, 0, 0, 0, 0, 1, 0, 0,
+	0, 4, 0, 0, 0, 0, 0, 0, 7,
+	0, 0, 7, 0, 0, 0, 3, 0, 0,
+}
+
+func postWithCanceledContext(t *testing.T, router *gin.Engine, path string, body map[string]interface{}) *httptest.ResponseRecorder {
+	t.Helper()
+	bodyBytes, _ := json.Marshal(body)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	req, _ := http.NewRequestWithContext(ctx, "POST", path, bytes.NewReader(bodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	return w
+}
+
+func TestSolveFullFastMode_Returns408OnCanceledContext(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	w := postWithCanceledContext(t, router, "/api/solve/full?mode=fast", map[string]interface{}{
+		"token": token,
+		"board": aiEscargot,
+	})
+	if w.Code != http.StatusRequestTimeout {
+		t.Errorf("expected 408 on canceled context, got %d", w.Code)
+	}
+}
+
+func TestValidateBoard_Returns408OnCanceledContext(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	w := postWithCanceledContext(t, router, "/api/validate", map[string]interface{}{
+		"token": token,
+		"board": aiEscargot,
+	})
+	if w.Code != http.StatusRequestTimeout {
+		t.Errorf("expected 408 on canceled context, got %d", w.Code)
+	}
+}
+
+func TestCustomValidate_Returns408OnCanceledContext(t *testing.T) {
+	router := setupRouter()
+	token := getValidToken(router)
+
+	w := postWithCanceledContext(t, router, "/api/custom/validate", map[string]interface{}{
+		"token":     token,
+		"givens":    aiEscargot,
+		"device_id": "test-device",
+	})
+	if w.Code != http.StatusRequestTimeout {
+		t.Errorf("expected 408 on canceled context, got %d", w.Code)
+	}
+}
