@@ -25,8 +25,34 @@ import (
 
 var cfg *config.Config
 
+// maxRequestBodyBytes caps the size of any request body the API will decode.
+// 1 MiB is comfortably above the largest legal Sudoku payload (81 cells plus
+// per-cell candidate lists) while bounding memory use on oversized input.
+const maxRequestBodyBytes int64 = 1 << 20
+
+// bodyLimitMiddleware wraps each request body in an http.MaxBytesReader so a
+// payload larger than maxRequestBodyBytes fails during decode instead of being
+// buffered fully into memory.
+func bodyLimitMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxRequestBodyBytes)
+		c.Next()
+	}
+}
+
 func RegisterRoutes(r *gin.Engine, c *config.Config) {
 	cfg = c
+
+	// Run quietly and trust no forwarding headers unless explicitly behind a
+	// proxy. Tests set gin.TestMode before calling RegisterRoutes, so keep that.
+	if gin.Mode() != gin.TestMode {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	if err := r.SetTrustedProxies(nil); err != nil {
+		log.Printf("failed to set trusted proxies: %v", err)
+	}
+
+	r.Use(bodyLimitMiddleware())
 
 	r.GET(constants.RouteHealth, healthHandler)
 
