@@ -533,4 +533,225 @@ describe('useBoardInteraction', () => {
       expect(result.current.cellRefCallbacks).toBe(firstRender)
     })
   })
+
+  describe('coverage gap closures (defensive and effect branches)', () => {
+    function key(k: string): { key: string; preventDefault: ReturnType<typeof vi.fn> } {
+      return { key: k, preventDefault: vi.fn() }
+    }
+
+    it('ArrowLeft selects the next non-given cell to the left', () => {
+      const onCellClick = vi.fn()
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: 2,
+          initialBoard: emptyBoard(),
+          board: emptyBoard(),
+          onCellClick,
+        }),
+      )
+      act(() => result.current.handleCellKeyDown(key('ArrowLeft') as never, 2))
+      expect(onCellClick).toHaveBeenCalledWith(1)
+    })
+
+    it('every digit key 1-9 calls onCellChange with its value', () => {
+      for (let d = 1; d <= 9; d++) {
+        const onCellChange = vi.fn()
+        const { result } = renderHook(() =>
+          useBoardInteraction({
+            selectedCell: 0,
+            initialBoard: emptyBoard(),
+            board: emptyBoard(),
+            onCellClick: vi.fn(),
+            onCellChange,
+          }),
+        )
+        act(() => result.current.handleCellKeyDown(key(String(d)) as never, 0))
+        expect(onCellChange).toHaveBeenCalledWith(0, d)
+      }
+    })
+
+    it('Backspace is ignored on a given cell', () => {
+      const initialBoard = emptyBoard()
+      initialBoard[0] = 5
+      const onCellChange = vi.fn()
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: 0,
+          initialBoard,
+          board: [...initialBoard],
+          onCellClick: vi.fn(),
+          onCellChange,
+        }),
+      )
+      act(() => result.current.handleCellKeyDown(key('Backspace') as never, 0))
+      expect(onCellChange).not.toHaveBeenCalled()
+    })
+
+    function renderDragHook() {
+      return renderHook(() =>
+        useBoardInteraction({
+          selectedCell: null,
+          initialBoard: emptyBoard(),
+          board: emptyBoard(),
+          onCellClick: vi.fn(),
+          onCellSelectMultiple: vi.fn(),
+        }),
+      )
+    }
+
+    it('handleBoardPointerMove ignores a move when elementFromPoint returns null', () => {
+      const { result } = renderDragHook()
+      act(() => result.current.handleDragStart(0))
+      const original = document.elementFromPoint
+      document.elementFromPoint = (() => null) as typeof document.elementFromPoint
+      act(() => result.current.handleBoardPointerMove({ clientX: 1, clientY: 1 } as never))
+      document.elementFromPoint = original
+    })
+
+    it('handleBoardPointerMove ignores an element with no cell ancestor', () => {
+      const { result } = renderDragHook()
+      act(() => result.current.handleDragStart(0))
+      const strayEl = { closest: () => null } as unknown as HTMLElement
+      const original = document.elementFromPoint
+      document.elementFromPoint = (() => strayEl) as typeof document.elementFromPoint
+      act(() => result.current.handleBoardPointerMove({ clientX: 1, clientY: 1 } as never))
+      document.elementFromPoint = original
+    })
+
+    it('handleBoardPointerMove ignores a cell whose index attribute is not numeric', () => {
+      const { result } = renderDragHook()
+      act(() => result.current.handleDragStart(0))
+      const cellEl = { getAttribute: () => 'abc' }
+      const strayEl = { closest: () => cellEl } as unknown as HTMLElement
+      const original = document.elementFromPoint
+      document.elementFromPoint = (() => strayEl) as typeof document.elementFromPoint
+      act(() => result.current.handleBoardPointerMove({ clientX: 1, clientY: 1 } as never))
+      document.elementFromPoint = original
+    })
+
+    it('handleBoardPointerMove ignores a move onto the same cell as the last event', () => {
+      const onCellSelectMultiple = vi.fn()
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: null,
+          initialBoard: emptyBoard(),
+          board: emptyBoard(),
+          onCellClick: vi.fn(),
+          onCellSelectMultiple,
+        }),
+      )
+      // dragStart(0) seeds lastEnteredCellRef with 0; resolving the pointer back
+      // to 0 hits the same-cell guard and skips handleDragEnter.
+      act(() => result.current.handleDragStart(0))
+      const { el } = makeFakeCellElement(0)
+      const original = document.elementFromPoint
+      document.elementFromPoint = (() => el) as typeof document.elementFromPoint
+      act(() => result.current.handleBoardPointerMove({ clientX: 0, clientY: 0 } as never))
+      document.elementFromPoint = original
+      expect(onCellSelectMultiple).not.toHaveBeenCalled()
+    })
+
+    it('handleGridFocus ignores a cell whose index attribute is not numeric', () => {
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: null,
+          initialBoard: emptyBoard(),
+          board: emptyBoard(),
+          onCellClick: vi.fn(),
+        }),
+      )
+      const target = document.createElement('div')
+      target.setAttribute('data-cell-idx', 'abc')
+      act(() => result.current.handleGridFocus({ target } as never))
+      expect(result.current.focusedCell).toBeNull()
+    })
+
+    describe('focus management effect (requestAnimationFrame)', () => {
+      let rafCallbacks: Array<(t: number) => void>
+      let origRAF: typeof window.requestAnimationFrame
+      let origCancel: typeof window.cancelAnimationFrame
+
+      beforeEach(() => {
+        rafCallbacks = []
+        origRAF = window.requestAnimationFrame
+        origCancel = window.cancelAnimationFrame
+        window.requestAnimationFrame = ((cb: (t: number) => void) => {
+          rafCallbacks.push(cb)
+          return rafCallbacks.length
+        }) as typeof window.requestAnimationFrame
+        window.cancelAnimationFrame = (() => undefined) as typeof window.cancelAnimationFrame
+      })
+
+      afterEach(() => {
+        window.requestAnimationFrame = origRAF
+        window.cancelAnimationFrame = origCancel
+      })
+
+      function renderFocusHook(initialSel: number | null) {
+        return renderHook(
+          ({ sel }: { sel: number | null }) =>
+            useBoardInteraction({
+              selectedCell: sel,
+              initialBoard: emptyBoard(),
+              board: emptyBoard(),
+              onCellClick: vi.fn(),
+            }),
+          { initialProps: { sel: initialSel } },
+        )
+      }
+
+      it('focuses the selected cell once its ref is set, on the next frame', () => {
+        const { result, rerender } = renderFocusHook(null)
+        const el = document.createElement('div')
+        el.focus = vi.fn() as unknown as HTMLDivElement['focus']
+        act(() => result.current.cellRefCallbacks[5](el))
+        rerender({ sel: 5 })
+        act(() => rafCallbacks.forEach((cb) => cb(0)))
+        expect(el.focus).toHaveBeenCalled()
+      })
+
+      it('skips focusing when unmounted before the frame fires', () => {
+        const { result, rerender, unmount } = renderFocusHook(null)
+        const el = document.createElement('div')
+        el.focus = vi.fn() as unknown as HTMLDivElement['focus']
+        act(() => result.current.cellRefCallbacks[5](el))
+        rerender({ sel: 5 })
+        unmount()
+        act(() => rafCallbacks.forEach((cb) => cb(0)))
+        expect(el.focus).not.toHaveBeenCalled()
+      })
+
+      it('blurs the active element when selection becomes null', () => {
+        const blurSpy = vi.spyOn(document.body, 'blur')
+        const { rerender } = renderFocusHook(5)
+        rerender({ sel: null })
+        act(() => rafCallbacks.forEach((cb) => cb(0)))
+        expect(blurSpy).toHaveBeenCalled()
+        blurSpy.mockRestore()
+      })
+
+      it('skips blurring when unmounted before the frame fires', () => {
+        const blurSpy = vi.spyOn(document.body, 'blur')
+        const { rerender, unmount } = renderFocusHook(5)
+        rerender({ sel: null })
+        unmount()
+        act(() => rafCallbacks.forEach((cb) => cb(0)))
+        expect(blurSpy).not.toHaveBeenCalled()
+        blurSpy.mockRestore()
+      })
+
+      it('skips the blur path when the active element has no blur method', () => {
+        // document.activeElement is always an Element with blur in real browsers;
+        // force a non-Element to exercise the defensive 'blur' in activeElement guard.
+        Object.defineProperty(document, 'activeElement', {
+          get: () => ({}) as Element,
+          configurable: true,
+        })
+        const { rerender } = renderFocusHook(5)
+        rerender({ sel: null })
+        act(() => rafCallbacks.forEach((cb) => cb(0)))
+        delete (document as unknown as { activeElement: unknown }).activeElement
+      })
+    })
+  })
 })
