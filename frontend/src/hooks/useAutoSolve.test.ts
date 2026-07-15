@@ -587,18 +587,23 @@ describe('useAutoSolve', () => {
     })
 
     it('does nothing if at end of moves', async () => {
-      const result = await startAutoSolveWith(2, { stepDelay: 100 })
+      const applyMove = vi.fn()
+      const result = await startAutoSolveWith(2, { stepDelay: 100, applyMove })
 
       // Let all moves play out
       await act(async () => {
         vi.advanceTimersByTime(500)
       })
 
-      // At this point we've completed so isAutoSolving is false
-      // stepForward should do nothing
+      expect(result.current.isAutoSolving).toBe(false)
+      const indexAtEnd = result.current.currentIndex
+      applyMove.mockClear()
+
+      // stepForward at the completed boundary must not advance or apply anything
       actStepForward(result)
 
-      // Nothing should crash
+      expect(result.current.currentIndex).toBe(indexAtEnd)
+      expect(applyMove).not.toHaveBeenCalled()
     })
 
     it('does nothing if not auto-solving', () => {

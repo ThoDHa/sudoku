@@ -563,23 +563,6 @@ describe('wasm module', () => {
       expect(() => abortWasmLoad()).not.toThrow()
     })
 
-    it('should abort an in-progress fetch', async () => {
-      const { loadWasm, abortWasmLoad } = await import('./wasm')
-
-      // Make fetch hang
-      vi.mocked(globalThis.fetch).mockImplementation(() => new Promise(() => {}))
-
-      // Start loading
-      loadWasm()
-
-      // Abort the load
-      abortWasmLoad()
-
-      // The promise should be rejected with abort
-      // Note: The actual abort happens via AbortController, which we're mocking
-      // In real code, this would throw an AbortError
-    })
-
     it('should clear wasmLoadPromise after abort', async () => {
       const { loadWasm, abortWasmLoad, isWasmReady } = await import('./wasm')
 
@@ -613,20 +596,6 @@ describe('wasm module', () => {
       expect(getWasmApi()).toBe(null)
     })
 
-    it('should call Go exit if available', async () => {
-      // @ts-expect-error - Mocking
-      globalThis.window.SudokuWasm = mockWasmApi
-
-      const { loadWasm, unloadWasm } = await import('./wasm')
-
-      await runLoadCycle(loadWasm)
-
-      unloadWasm()
-
-      // The exit function should have been called
-      // We can't easily verify this without more complex mocking
-    })
-
     it('should handle Go exit error gracefully', async () => {
       // @ts-expect-error - Mocking
       globalThis.window.SudokuWasm = mockWasmApi
@@ -646,19 +615,6 @@ describe('wasm module', () => {
 
       // Should not throw
       expect(() => unloadWasm()).not.toThrow()
-    })
-
-    it('should remove script element from DOM', async () => {
-      // @ts-expect-error - Mocking
-      globalThis.window.SudokuWasm = mockWasmApi
-
-      const { loadWasm, unloadWasm } = await import('./wasm')
-
-      await runLoadCycle(loadWasm)
-
-      unloadWasm()
-
-      // Script's parentNode.removeChild should have been called
     })
 
     it('should delete global SudokuWasm and Go references', async () => {
@@ -1676,7 +1632,10 @@ describe('wasm module', () => {
       const { loadWasm } = await import('./wasm')
 
       await expect(loadWasm()).rejects.toThrow('go boom sync')
-      expect(errorMock).toHaveBeenCalledWith('[WASM] Immediate Go program error:', expect.any(Error))
+      expect(errorMock).toHaveBeenCalledWith(
+        '[WASM] Immediate Go program error:',
+        expect.any(Error),
+      )
     })
   })
 
@@ -1707,10 +1666,7 @@ describe('wasm module', () => {
 
         // Original enters the block and logs keys; the `if (false)` mutant and the
         // empty-block mutant skip the log entirely.
-        expect(loggerMock).toHaveBeenCalledWith(
-          '[WASM] SudokuWasm object keys:',
-          expect.any(Array),
-        )
+        expect(loggerMock).toHaveBeenCalledWith('[WASM] SudokuWasm object keys:', expect.any(Array))
       } finally {
         vi.useRealTimers()
       }

@@ -227,8 +227,7 @@ describe('worker-client advanced scenarios', () => {
     private autoRespondDelay = 5
     private initShouldFail = false
     private responseOverride:
-      | ((request: { type: string; id: string; payload?: unknown }) => unknown)
-      | null = null
+      ((request: { type: string; id: string; payload?: unknown }) => unknown) | null = null
 
     constructor(_url: URL | string, _options?: WorkerOptions) {
       // Simulate the worker sending 'loaded' message after construction
@@ -586,23 +585,56 @@ describe('worker-client advanced scenarios', () => {
     it('should reject all pending requests when worker errors', async () => {
       vi.resetModules()
       vi.useFakeTimers()
+      try {
+        // Worker that answers `init` (so initialization completes cleanly via
+        // the real auto-response, which echoes the actual request id) but leaves
+        // every other request pending, so onerror is the only way they settle.
+        globalThis.Worker = class extends MockWorker {
+          postMessage(data: { type: string; id: string; payload?: unknown }): void {
+            if (data.type !== 'init') return // leave findNextMove/solveAll pending
+            super.postMessage(data)
+          }
+          constructor(url: URL | string, options?: WorkerOptions) {
+            super(url, options)
+            createdWorkers.push(this)
+          }
+        } as unknown as typeof Worker
 
-      installNoRespondWorker()
+        const { initializeWorker, findNextMove, solveAll, terminateWorker } =
+          await import('./worker-client')
 
-      const { initializeWorker, terminateWorker } = await import('./worker-client')
+        const initPromise = initializeWorker()
+        await vi.advanceTimersByTimeAsync(50)
+        await initPromise
+        const worker = createdWorkers[0]!
 
-      // Manually construct worker and set up for init to succeed
-      const { worker, initPromise } = await manuallyInitWorker(initializeWorker)
+        // Queue multiple pending requests: onerror must reject every one
+        const cells = new Array(81).fill(0)
+        const candidates = new Array(81).fill([])
+        const givens = new Array(81).fill(0)
+        const findPromise = findNextMove(cells, candidates, givens)
+        const solvePromise = solveAll(cells, candidates, givens)
+        await vi.advanceTimersByTimeAsync(10)
 
-      // Simulate a worker error
-      worker.simulateError('Worker crashed!')
+        // Attach catch handlers BEFORE firing onerror (its synchronous
+        // rejections need handlers in place to avoid being flagged unhandled).
+        const errors: string[] = []
+        findPromise.catch((e: Error) => errors.push(e.message))
+        solvePromise.catch((e: Error) => errors.push(e.message))
 
-      terminateWorker()
+        // Fire onerror directly: the MockWorker's triggerEvent would first hit
+        // a stale createWorker error listener that terminates the worker and
+        // nulls onerror. The handler iterates pendingRequests and rejects each,
+        // so both pending requests must reject with the worker-error message.
+        worker.onerror?.(new ErrorEvent('error', { message: 'Worker crashed!' }))
+        await vi.advanceTimersByTimeAsync(10)
 
-      // The init promise may or may not have resolved, but we've tested the error path
-      await initPromise.catch(() => {})
+        expect(errors).toEqual(['Worker error: Worker crashed!', 'Worker error: Worker crashed!'])
 
-      vi.useRealTimers()
+        terminateWorker()
+      } finally {
+        vi.useRealTimers()
+      }
     })
   })
 
@@ -718,9 +750,8 @@ describe('worker-client advanced scenarios', () => {
     })
 
     it('reuses an already-initialized worker without re-initializing', async () => {
-      const { solveAll, initializeWorker, terminateWorker, isWorkerReady } = await import(
-        './worker-client'
-      )
+      const { solveAll, initializeWorker, terminateWorker, isWorkerReady } =
+        await import('./worker-client')
 
       // Initialize up front so the solveAll call takes the skip-init branch.
       await initializeWorker()
@@ -1225,7 +1256,12 @@ describe('worker-client advanced scenarios', () => {
         await vi.advanceTimersByTimeAsync(10)
 
         expect(findReqId).toBeDefined()
-        createdWorkers[0]!.simulateMessage({ type: 'error', id: findReqId, success: false, error: '' })
+        createdWorkers[0]!.simulateMessage({
+          type: 'error',
+          id: findReqId,
+          success: false,
+          error: '',
+        })
 
         await expect(findPromise).rejects.toThrow('Worker request failed')
         terminateWorker()
@@ -1250,7 +1286,9 @@ describe('worker-client advanced scenarios', () => {
 
         // Attach the rejection handler BEFORE advancing past REQUEST_TIMEOUT so the
         // timer-fired rejection always has a waiter (avoids an unhandled-rejection race).
-        const assertion = expect(findPromise).rejects.toThrow('Worker request timeout: findNextMove')
+        const assertion = expect(findPromise).rejects.toThrow(
+          'Worker request timeout: findNextMove',
+        )
 
         // Advance past REQUEST_TIMEOUT (30s)
         await vi.advanceTimersByTimeAsync(31000)
@@ -1416,8 +1454,7 @@ describe('worker-client advanced scenarios', () => {
         } as unknown as typeof Worker
 
         const emptyGrid = (): number[] => new Array(81).fill(0)
-        const fullCandidates = (): number[][] =>
-          new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
+        const fullCandidates = (): number[][] => new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
 
         const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
         const initPromise = initializeWorker()
@@ -1487,7 +1524,10 @@ describe('worker-client - response-type guard (mutation coverage)', () => {
         this.listeners.set(type, arr)
       }
       removeEventListener(type: string, fn: (e: Event) => void): void {
-        this.listeners.set(type, (this.listeners.get(type) ?? []).filter((f) => f !== fn))
+        this.listeners.set(
+          type,
+          (this.listeners.get(type) ?? []).filter((f) => f !== fn),
+        )
       }
       private dispatch(data: unknown): void {
         const ev = new MessageEvent('message', { data })
