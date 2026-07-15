@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 
 	"sudoku-api/internal/puzzles"
@@ -141,14 +142,15 @@ func runIsolatedTechniqueTest(t *testing.T, slug string) {
 	}
 
 	// Convert givens to puzzle string for RunTechniqueDetection
-	puzzleString := ""
+	var puzzleSB strings.Builder
 	for _, v := range givens {
 		if v == 0 {
-			puzzleString += "0"
+			puzzleSB.WriteByte('0')
 		} else {
-			puzzleString += string(rune('0' + v))
+			puzzleSB.WriteRune(rune('0' + v))
 		}
 	}
+	puzzleString := puzzleSB.String()
 
 	// Use DisableHigherTiers strategy - allows techniques in same tier and below
 	config := TechniqueTestConfig{

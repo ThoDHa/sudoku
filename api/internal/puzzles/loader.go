@@ -2,6 +2,7 @@ package puzzles
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"os"
@@ -167,7 +168,7 @@ func (l *Loader) GetPuzzleBySeed(seed string, difficulty string) (givens []int, 
 	l.mu.RUnlock()
 
 	if count == 0 {
-		return nil, nil, 0, fmt.Errorf("no puzzles loaded")
+		return nil, nil, 0, errors.New("no puzzles loaded")
 	}
 
 	// Hash seed to get puzzle index

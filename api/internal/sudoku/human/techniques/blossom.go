@@ -2,6 +2,7 @@ package techniques
 
 import (
 	"fmt"
+	"slices"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -111,12 +112,12 @@ func findPetalsForCandidate(b BoardInterface, stem int, cand int, allALS []ALS) 
 
 	for _, als := range allALS {
 		// ALS must not contain the stem cell
-		if ContainsInt(als.Cells, stem) {
+		if slices.Contains(als.Cells, stem) {
 			continue
 		}
 
 		// ALS must have the candidate as one of its digits
-		if !ContainsInt(als.Digits, cand) {
+		if !slices.Contains(als.Digits, cand) {
 			continue
 		}
 

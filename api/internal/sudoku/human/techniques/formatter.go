@@ -2,6 +2,7 @@ package techniques
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"sudoku-api/internal/core"
@@ -47,7 +48,7 @@ func FormatRefs(refs []core.CellRef) string {
 
 // FormatDigit formats a digit
 func FormatDigit(digit int) string {
-	return fmt.Sprintf("%d", digit)
+	return strconv.Itoa(digit)
 }
 
 // FormatDigits formats digits as comma-separated
@@ -57,7 +58,7 @@ func FormatDigits(digits []int) string {
 	}
 	parts := make([]string, len(digits))
 	for i, d := range digits {
-		parts[i] = fmt.Sprintf("%d", d)
+		parts[i] = strconv.Itoa(d)
 	}
 	return strings.Join(parts, ", ")
 }

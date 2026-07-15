@@ -1,6 +1,7 @@
 package human
 
 import (
+	"slices"
 	"sudoku-api/internal/core"
 	"testing"
 )
@@ -468,19 +469,19 @@ func TestAllUnits_ExactIndexType(t *testing.T) {
 }
 
 func TestContainsInt_Exact(t *testing.T) {
-	if !ContainsInt([]int{1, 3, 5, 7}, 5) {
+	if !slices.Contains([]int{1, 3, 5, 7}, 5) {
 		t.Error("ContainsInt({1,3,5,7}, 5) should be true")
 	}
-	if ContainsInt([]int{1, 3, 5, 7}, 4) {
+	if slices.Contains([]int{1, 3, 5, 7}, 4) {
 		t.Error("ContainsInt({1,3,5,7}, 4) should be false")
 	}
-	if ContainsInt(nil, 1) {
+	if slices.Contains([]int(nil), 1) {
 		t.Error("ContainsInt(nil, 1) should be false")
 	}
-	if ContainsInt([]int{}, 1) {
+	if slices.Contains([]int{}, 1) {
 		t.Error("ContainsInt([], 1) should be false")
 	}
-	if !ContainsInt([]int{9}, 9) {
+	if !slices.Contains([]int{9}, 9) {
 		t.Error("ContainsInt({9}, 9) should be true")
 	}
 }

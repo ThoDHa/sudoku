@@ -1,6 +1,7 @@
 package techniques
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -289,7 +290,7 @@ func TestUnitAccessors(t *testing.T) {
 }
 
 func TestSliceUtilities(t *testing.T) {
-	if !ContainsInt([]int{1, 2, 3}, 2) || ContainsInt([]int{1, 2, 3}, 9) {
+	if !slices.Contains([]int{1, 2, 3}, 2) || slices.Contains([]int{1, 2, 3}, 9) {
 		t.Error("ContainsInt wrong")
 	}
 	got := IntersectInts([]int{1, 2, 3, 4}, []int{2, 4, 6})

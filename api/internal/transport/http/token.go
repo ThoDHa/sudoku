@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -74,7 +75,7 @@ func createToken(secret string, session SessionToken) (string, error) {
 func verifyToken(secret, token string) (*SessionToken, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid token format")
+		return nil, errors.New("invalid token format")
 	}
 
 	encoded := parts[0]
@@ -86,7 +87,7 @@ func verifyToken(secret, token string) (*SessionToken, error) {
 
 	// Use constant-time comparison to prevent timing attacks
 	if subtle.ConstantTimeCompare([]byte(sig), []byte(expectedSig)) != 1 {
-		return nil, fmt.Errorf("invalid signature: token payload or HMAC is malformed")
+		return nil, errors.New("invalid signature: token payload or HMAC is malformed")
 	}
 
 	payload, err := base64.URLEncoding.DecodeString(encoded)
@@ -100,7 +101,7 @@ func verifyToken(secret, token string) (*SessionToken, error) {
 	}
 
 	if time.Now().After(session.ExpiresAt) {
-		return nil, fmt.Errorf("token expired")
+		return nil, errors.New("token expired")
 	}
 
 	return &session, nil

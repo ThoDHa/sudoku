@@ -191,7 +191,7 @@ func buildFixedCandidates(reqCandidates [][]int, badCell int) [][]int {
 // ok is false so the caller skips it. fixedBoard/fixedCandidates are returned
 // alongside the move so callers that continue solving (solveAll) can seed the
 // autosolve loop from the same corrected state the move reports.
-func buildConflictFix(board []int, candidates [][]int, givens []int, conflict dp.Conflict) (move map[string]interface{}, fixedBoard []int, fixedCandidates [][]int, ok bool) {
+func buildConflictFix(board []int, candidates [][]int, givens []int, conflict dp.Conflict) (move map[string]any, fixedBoard []int, fixedCandidates [][]int, ok bool) {
 	cell1IsGiven := givens[conflict.Cell1] != 0
 	cell2IsGiven := givens[conflict.Cell2] != 0
 
@@ -233,13 +233,13 @@ func buildConflictFix(board []int, candidates [][]int, givens []int, conflict dp
 			badRow+1, badCol+1, otherRow+1, otherCol+1, badDigit, badDigit, badRow+1, badCol+1)
 	}
 
-	move = map[string]interface{}{
+	move = map[string]any{
 		"technique":   "fix-conflict",
 		"action":      "fix-conflict",
 		"digit":       badDigit,
 		"explanation": explanation,
 		"targets":     []map[string]int{{"row": badRow, "col": badCol}},
-		"highlights": map[string]interface{}{
+		"highlights": map[string]any{
 			"primary":   []map[string]int{{"row": badRow, "col": badCol}},
 			"secondary": []map[string]int{{"row": otherRow, "col": otherCol}},
 		},
@@ -729,13 +729,13 @@ func respondSolveNextFix(c *gin.Context, reqBoard []int, reqCandidates [][]int, 
 	c.JSON(http.StatusOK, gin.H{
 		"board":      newBoard.GetCells(),
 		"candidates": newBoard.GetCandidates(),
-		"move": map[string]interface{}{
+		"move": map[string]any{
 			"technique":   "fix-error",
 			"action":      "fix-error",
 			"digit":       badDigit,
 			"explanation": explanation,
 			"targets":     []map[string]int{{"row": badRow, "col": badCol}},
-			"highlights": map[string]interface{}{
+			"highlights": map[string]any{
 				"primary":   []map[string]int{{"row": badRow, "col": badCol}},
 				"secondary": []map[string]int{{"row": secondaryRow, "col": secondaryCol}},
 			},
@@ -782,7 +782,7 @@ func handleSolveNextContradiction(c *gin.Context, board *human.Board, move *core
 	c.JSON(http.StatusOK, gin.H{
 		"board":      board.GetCells(),
 		"candidates": board.GetCandidates(),
-		"move": map[string]interface{}{
+		"move": map[string]any{
 			"technique":      "unpinpointable-error",
 			"action":         "unpinpointable-error",
 			"explanation":    fmt.Sprintf("Hmm, I couldn't pinpoint the error. One of your %d entries might need checking.", userEntryCount),
@@ -1032,9 +1032,9 @@ func countUserEntries(board []int, givens []int) int {
 // moveResult is a single move snapshot returned in a solveAll response. It is
 // the JSON shape the frontend consumes per step.
 type moveResult struct {
-	Board      []int       `json:"board"`
-	Candidates [][]int     `json:"candidates"`
-	Move       interface{} `json:"move"`
+	Board      []int   `json:"board"`
+	Candidates [][]int `json:"candidates"`
+	Move       any     `json:"move"`
 }
 
 func appendStalledMove(moves []moveResult, board *human.Board, originalUserBoard, givens []int) []moveResult {
@@ -1045,7 +1045,7 @@ func appendStalledMove(moves []moveResult, board *human.Board, originalUserBoard
 	return append(moves, moveResult{
 		Board:      board.GetCells(),
 		Candidates: board.GetCandidates(),
-		Move: map[string]interface{}{
+		Move: map[string]any{
 			"technique":      "stalled",
 			"action":         "stalled",
 			"explanation":    "I'm stuck. There might be another error in your entries.",
@@ -1059,7 +1059,7 @@ func appendErrorLimitMove(moves []moveResult, board *human.Board, originalUserBo
 	return append(moves, moveResult{
 		Board:      board.GetCells(),
 		Candidates: board.GetCandidates(),
-		Move: map[string]interface{}{
+		Move: map[string]any{
 			"technique":      "error",
 			"action":         "error",
 			"explanation":    "Too many incorrect entries to fix automatically.",
@@ -1072,7 +1072,7 @@ func appendDiagnosticMove(moves []moveResult, board *human.Board) []moveResult {
 	return append(moves, moveResult{
 		Board:      board.GetCells(),
 		Candidates: board.GetCandidates(),
-		Move: map[string]interface{}{
+		Move: map[string]any{
 			"technique":   "diagnostic",
 			"action":      "diagnostic",
 			"explanation": "Taking another look at the candidates...",
@@ -1085,7 +1085,7 @@ func appendUnpinpointableMove(moves []moveResult, board *human.Board, originalUs
 	return append(moves, moveResult{
 		Board:      board.GetCells(),
 		Candidates: board.GetCandidates(),
-		Move: map[string]interface{}{
+		Move: map[string]any{
 			"technique":      "unpinpointable-error",
 			"action":         "unpinpointable-error",
 			"explanation":    fmt.Sprintf("Hmm, I couldn't pinpoint the error. One of your %d entries might need checking.", userEntryCount),
@@ -1102,13 +1102,13 @@ func appendFixErrorMove(moves []moveResult, board *human.Board, badCell, badDigi
 	return append(moves, moveResult{
 		Board:      board.GetCells(),
 		Candidates: board.GetCandidates(),
-		Move: map[string]interface{}{
+		Move: map[string]any{
 			"technique":   "fix-error",
 			"action":      "fix-error",
 			"digit":       badDigit,
 			"explanation": fmt.Sprintf("Removing incorrect %d from R%dC%d.", badDigit, badRow+1, badCol+1),
 			"targets":     []map[string]int{{"row": badRow, "col": badCol}},
-			"highlights": map[string]interface{}{
+			"highlights": map[string]any{
 				"primary":   []map[string]int{{"row": badRow, "col": badCol}},
 				"secondary": []map[string]int{{"row": secondaryRow, "col": secondaryCol}},
 			},

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -152,7 +153,7 @@ func formatDigitsBraced(digits []int) string {
 		if i > 0 {
 			b = append(b, ',')
 		}
-		b = append(b, fmt.Sprintf("%d", d)...)
+		b = append(b, strconv.Itoa(d)...)
 	}
 	b = append(b, '}')
 	return string(b)

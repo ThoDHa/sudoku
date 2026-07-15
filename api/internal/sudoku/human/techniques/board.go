@@ -4,7 +4,11 @@
 // This allows for better testability and flexibility.
 package techniques
 
-import "sudoku-api/pkg/constants"
+import (
+	"strings"
+
+	"sudoku-api/pkg/constants"
+)
 
 // Candidates represents a bitmask of possible digits (1-N) for a Sudoku cell.
 // Bit positions 1-N correspond to digits 1-N. Bit 0 is unused.
@@ -121,15 +125,16 @@ func (c Candidates) String() string {
 		return "{}"
 	}
 	digits := c.ToSlice()
-	result := "{"
+	var sb strings.Builder
+	sb.WriteByte('{')
 	for i, d := range digits {
 		if i > 0 {
-			result += ","
+			sb.WriteByte(',')
 		}
-		result += string('0' + rune(d))
+		sb.WriteRune('0' + rune(d))
 	}
-	result += "}"
-	return result
+	sb.WriteByte('}')
+	return sb.String()
 }
 
 // ============================================================================

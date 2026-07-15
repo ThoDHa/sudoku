@@ -16,6 +16,9 @@ linters:
     - gocritic
     - gocyclo
     - dupl
+    - errorlint
+    - copyloopvar
+    - perfsprint
   settings:
     misspell:
       locale: US

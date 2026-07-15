@@ -210,16 +210,6 @@ func (u UnitType) BoxIndexFromPos(pos core.CellRef) int {
 // Slice Utilities
 // ============================================================================
 
-// ContainsInt returns true if slice contains val
-func ContainsInt(slice []int, val int) bool {
-	for _, v := range slice {
-		if v == val {
-			return true
-		}
-	}
-	return false
-}
-
 // IntersectInts returns intersection of two slices
 func IntersectInts(a, b []int) []int {
 	bSet := make(map[int]bool)

@@ -471,7 +471,7 @@ func (s *Solver) checkForSingles(b *Board) *core.Move {
 				move.Refs = core.TechniqueRef{
 					Title: t.Name,
 					Slug:  t.Slug,
-					URL:   fmt.Sprintf("/technique/%s", t.Slug),
+					URL:   "/technique/" + t.Slug,
 				}
 				return move
 			}
