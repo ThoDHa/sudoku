@@ -1694,7 +1694,7 @@ function GameContent() {
   // Feature request handler - opens GitHub issue for new features
   const handleFeatureRequest = useCallback(() => {
     // Open GitHub issues page with enhancement label (short URL for desktop compatibility)
-    window.open('https://github.com/thodha/sudoku/issues', '_blank')
+    window.open('https://github.com/thodha/sudoku/issues', '_blank', 'noopener,noreferrer')
   }, [])
 
   // Copy a share URL to the clipboard and surface the outcome as a toast.

@@ -84,7 +84,7 @@ export default function Header() {
   // Feature request handler
   const handleFeatureRequest = useCallback(() => {
     // Open GitHub issues page (short URL for desktop compatibility)
-    window.open('https://github.com/thodha/sudoku/issues', '_blank')
+    window.open('https://github.com/thodha/sudoku/issues', '_blank', 'noopener,noreferrer')
   }, [])
 
   // Handle homepage mode change

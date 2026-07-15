@@ -42,7 +42,12 @@ export function useGameKeyboardShortcuts({
         return
       }
 
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+      // Prefer the modern userAgentData API; fall back to the deprecated
+      // navigator.platform where userAgentData is unavailable (Firefox/Safari).
+      const userAgentData = (navigator as Navigator & { userAgentData?: { platform: string } })
+        .userAgentData
+      const platform = userAgentData?.platform ?? navigator.platform
+      const isMac = platform.toUpperCase().indexOf('MAC') >= 0
       const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey
 
       // Ctrl/Cmd + Z = Undo

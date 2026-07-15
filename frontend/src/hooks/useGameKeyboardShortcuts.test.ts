@@ -33,6 +33,17 @@ function setPlatform(value: string): void {
   Object.defineProperty(navigator, 'platform', { value, configurable: true })
 }
 
+function setUserAgentData(platform: string | undefined): void {
+  if (platform === undefined) {
+    delete (navigator as Navigator & { userAgentData?: unknown }).userAgentData
+  } else {
+    Object.defineProperty(navigator, 'userAgentData', {
+      value: { platform },
+      configurable: true,
+    })
+  }
+}
+
 describe('useGameKeyboardShortcuts', () => {
   let originalPlatform: string
 
@@ -43,6 +54,7 @@ describe('useGameKeyboardShortcuts', () => {
 
   afterEach(() => {
     setPlatform(originalPlatform)
+    setUserAgentData(undefined)
     document.body.innerHTML = ''
   })
 
@@ -99,6 +111,18 @@ describe('useGameKeyboardShortcuts', () => {
 
     it('fires handleUndo on Cmd+Z on a Mac platform', () => {
       setPlatform('MacIntel')
+      const options = makeOptions()
+      renderHook(() => useGameKeyboardShortcuts(options))
+
+      dispatchKeyDown('z', { metaKey: true })
+
+      expect(options.handleUndo).toHaveBeenCalledTimes(1)
+    })
+
+    it('prefers userAgentData.platform over navigator.platform for Mac detection', () => {
+      // navigator.platform stays Win32 (from beforeEach) but userAgentData
+      // reports macOS, so the modern API must win and Cmd+Z fires undo.
+      setUserAgentData('macOS')
       const options = makeOptions()
       renderHook(() => useGameKeyboardShortcuts(options))
 
