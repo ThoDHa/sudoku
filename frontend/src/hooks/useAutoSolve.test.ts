@@ -2282,9 +2282,9 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
       expect(result.current.currentIndex).toBe(0)
 
       expect(applyState).toHaveBeenCalled()
-      const candidatesArg = applyState.mock.calls[applyState.mock.calls.length - 1]![1] as Set<
-        number
-      >[]
+      const candidatesArg = applyState.mock.calls[
+        applyState.mock.calls.length - 1
+      ]![1] as Set<number>[]
       expect(candidatesArg).toHaveLength(81)
       candidatesArg.forEach((set) => {
         expect(set).toBeInstanceOf(Set)
@@ -2315,7 +2315,11 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
     mockSolveAll.mockResolvedValue(createMockSolveResponse(0, { solved: false }))
     const opts = createDefaultOptions({ onError: undefined, onStepNavigate: undefined })
     const { result } = renderHook(() => useAutoSolve(opts))
-    await expect(act(async () => { await result.current.startAutoSolve() })).resolves.toBeUndefined()
+    await expect(
+      act(async () => {
+        await result.current.startAutoSolve()
+      }),
+    ).resolves.toBeUndefined()
     expect(result.current.isAutoSolving).toBe(false)
   })
 
@@ -2324,7 +2328,11 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
     mockSolveAll.mockRejectedValue(new Error('boom'))
     const opts = createDefaultOptions({ onError: undefined })
     const { result } = renderHook(() => useAutoSolve(opts))
-    await expect(act(async () => { await result.current.startAutoSolve() })).resolves.toBeUndefined()
+    await expect(
+      act(async () => {
+        await result.current.startAutoSolve()
+      }),
+    ).resolves.toBeUndefined()
     expect(result.current.isAutoSolving).toBe(false)
   })
 
@@ -2333,7 +2341,11 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
     mockSolveAll.mockResolvedValue(createMockSolveResponse(0, { solved: false }))
     const opts = createDefaultOptions({ onError: undefined })
     const { result } = renderHook(() => useAutoSolve(opts))
-    await expect(act(async () => { await result.current.solveFromGivens() })).resolves.toBeUndefined()
+    await expect(
+      act(async () => {
+        await result.current.solveFromGivens()
+      }),
+    ).resolves.toBeUndefined()
   })
 
   it('solveFromGivens when solveAll rejects does not throw when onError is omitted', async () => {
@@ -2341,7 +2353,11 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
     mockSolveAll.mockRejectedValue(new Error('boom'))
     const opts = createDefaultOptions({ onError: undefined })
     const { result } = renderHook(() => useAutoSolve(opts))
-    await expect(act(async () => { await result.current.solveFromGivens() })).resolves.toBeUndefined()
+    await expect(
+      act(async () => {
+        await result.current.solveFromGivens()
+      }),
+    ).resolves.toBeUndefined()
   })
 
   it('stepBack/stepForward do not throw when onStepNavigate is omitted', async () => {
@@ -2382,20 +2398,29 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
   it('stepForward new territory tolerates a null candidate cell without throwing', async () => {
     // Kills the LogicalOperator mutant on `(cellCands: number[] | null) => new Set(cellCands || [])`
     // (L467): `cellCands && []` yields null for a null cellCand, and `new Set(null)` throws.
-    mockSolveAll.mockResolvedValue(createMockSolveResponse(
-      [
-        {
-          ...createMockAutoSolveMove(),
-          candidates: Array(81).fill(null).map((_, i) => (i === 0 ? null : [1, 2, 3])),
-          move: { ...createMockAutoSolveMove().move, step_index: 0 },
-        },
-        { ...createMockAutoSolveMove(), move: { ...createMockAutoSolveMove().move, step_index: 1 } },
-      ],
-      { solved: true },
-    ))
+    mockSolveAll.mockResolvedValue(
+      createMockSolveResponse(
+        [
+          {
+            ...createMockAutoSolveMove(),
+            candidates: Array(81)
+              .fill(null)
+              .map((_, i) => (i === 0 ? null : [1, 2, 3])),
+            move: { ...createMockAutoSolveMove().move, step_index: 0 },
+          },
+          {
+            ...createMockAutoSolveMove(),
+            move: { ...createMockAutoSolveMove().move, step_index: 1 },
+          },
+        ],
+        { solved: true },
+      ),
+    )
     const opts = createDefaultOptions()
     const { result } = renderHook(() => useAutoSolve(opts))
-    await act(async () => { await result.current.startAutoSolve() })
+    await act(async () => {
+      await result.current.startAutoSolve()
+    })
     act(() => result.current.stepBack())
     expect(() => act(() => result.current.stepForward())).not.toThrow()
   })
@@ -2411,7 +2436,9 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
     // Resume auto-playback (shifts the queue). Under the aliasing mutant, allMovesRef shrinks.
     act(() => result.current.togglePause())
     act(() => result.current.togglePause()) // resume
-    await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50)
+    })
     // After resume, we should still be able to step forward through every move to the end.
     // The mutant corrupts allMovesRef via shift() aliasing and stalls short of index 3.
     for (let i = 0; i < 5; i++) {
@@ -2430,7 +2457,9 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
       onError: undefined,
     })
     const { result } = renderHook(() => useAutoSolve(opts))
-    await act(async () => { await result.current.startAutoSolve() })
+    await act(async () => {
+      await result.current.startAutoSolve()
+    })
     // Now drive applyFixesAndContinueSolving and advance past the safety timeout.
     await expect(
       act(async () => {
@@ -2446,16 +2475,27 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
     // `: getCandidates().map((set) => Array.from(set))` (L478): `() => undefined` stores
     // undefined entries in stateHistory, and a later stepBack restoring that snapshot calls
     // `new Set(undefined)` which throws.
-    mockSolveAll.mockResolvedValue(createMockSolveResponse(
-      [
-        { ...createMockAutoSolveMove(), candidates: null as unknown as (number[] | null)[], move: { ...createMockAutoSolveMove().move, step_index: 0 } },
-        { ...createMockAutoSolveMove(), move: { ...createMockAutoSolveMove().move, step_index: 1 } },
-      ],
-      { solved: true },
-    ))
+    mockSolveAll.mockResolvedValue(
+      createMockSolveResponse(
+        [
+          {
+            ...createMockAutoSolveMove(),
+            candidates: null as unknown as (number[] | null)[],
+            move: { ...createMockAutoSolveMove().move, step_index: 0 },
+          },
+          {
+            ...createMockAutoSolveMove(),
+            move: { ...createMockAutoSolveMove().move, step_index: 1 },
+          },
+        ],
+        { solved: true },
+      ),
+    )
     const opts = createDefaultOptions()
     const { result } = renderHook(() => useAutoSolve(opts))
-    await act(async () => { await result.current.startAutoSolve() })
+    await act(async () => {
+      await result.current.startAutoSolve()
+    })
     act(() => result.current.stepBack()) // to index 0
     act(() => result.current.stepForward()) // index 1 -> new territory, move.candidates null -> L478 branch
     expect(() => act(() => result.current.stepBack())).not.toThrow() // restore that snapshot
@@ -2956,7 +2996,7 @@ describe('useAutoSolve mutation kills (MUT-1 iter-3)', () => {
       })
 
       expect(applyMove).toHaveBeenCalled()
-      expect(applyMove.mock.calls[0][0][0]).toBe(2)
+      expect(applyMove.mock.calls[0]![0][0]).toBe(2)
     })
 
     it('rebuilds the move queue from the index when revisiting a cached snapshot', async () => {
@@ -3001,7 +3041,7 @@ describe('useAutoSolve mutation kills (MUT-1 iter-3)', () => {
       })
 
       expect(applyMove).toHaveBeenCalled()
-      expect(applyMove.mock.calls[0][0][0]).toBe(3)
+      expect(applyMove.mock.calls[0]![0][0]).toBe(3)
     })
 
     it('does not log an auto-solve error when startAutoSolve finds no solution without an onError callback', async () => {

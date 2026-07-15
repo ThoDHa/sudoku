@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import {
   useGameKeyboardShortcuts,
   type UseGameKeyboardShortcutsOptions,
@@ -7,14 +7,7 @@ import {
 
 function makeOptions(
   overrides: Partial<UseGameKeyboardShortcutsOptions> = {},
-): UseGameKeyboardShortcutsOptions & {
-  handleUndo: ReturnType<typeof vi.fn>
-  handleRedo: ReturnType<typeof vi.fn>
-  handleNext: ReturnType<typeof vi.fn>
-  handleValidate: ReturnType<typeof vi.fn>
-  clearAllAndDeselect: ReturnType<typeof vi.fn>
-  setNotesMode: ReturnType<typeof vi.fn>
-} {
+): UseGameKeyboardShortcutsOptions {
   return {
     handleUndo: vi.fn(),
     handleRedo: vi.fn(),
@@ -201,7 +194,7 @@ describe('useGameKeyboardShortcuts', () => {
       dispatchKeyDown('n')
 
       expect(options.setNotesMode).toHaveBeenCalledTimes(1)
-      const updater = options.setNotesMode.mock.calls[0][0] as (prev: boolean) => boolean
+      const updater = (options.setNotesMode as Mock).mock.calls[0]![0] as (prev: boolean) => boolean
       expect(updater(true)).toBe(false)
       expect(updater(false)).toBe(true)
     })
@@ -291,7 +284,7 @@ describe('useGameKeyboardShortcuts', () => {
       dispatchKeyDown(' ')
 
       expect(options.setNotesMode).toHaveBeenCalledTimes(1)
-      const updater = options.setNotesMode.mock.calls[0][0] as (prev: boolean) => boolean
+      const updater = (options.setNotesMode as Mock).mock.calls[0]![0] as (prev: boolean) => boolean
       expect(updater(true)).toBe(false)
       expect(updater(false)).toBe(true)
     })

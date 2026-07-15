@@ -704,7 +704,7 @@ describe('useBoardInteraction', () => {
         const { result, rerender } = renderFocusHook(null)
         const el = document.createElement('div')
         el.focus = vi.fn() as unknown as HTMLDivElement['focus']
-        act(() => result.current.cellRefCallbacks[5](el))
+        act(() => result.current.cellRefCallbacks[5]!(el))
         rerender({ sel: 5 })
         act(() => rafCallbacks.forEach((cb) => cb(0)))
         expect(el.focus).toHaveBeenCalled()
@@ -714,7 +714,7 @@ describe('useBoardInteraction', () => {
         const { result, rerender, unmount } = renderFocusHook(null)
         const el = document.createElement('div')
         el.focus = vi.fn() as unknown as HTMLDivElement['focus']
-        act(() => result.current.cellRefCallbacks[5](el))
+        act(() => result.current.cellRefCallbacks[5]!(el))
         rerender({ sel: 5 })
         unmount()
         act(() => rafCallbacks.forEach((cb) => cb(0)))

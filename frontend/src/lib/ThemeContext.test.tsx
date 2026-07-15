@@ -1,4 +1,3 @@
-import React from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, act } from '@testing-library/react'
 import { ThemeProvider, getValidFontSize, useTheme } from './ThemeContext'
@@ -312,9 +311,7 @@ describe('ThemeProvider preference restore', () => {
       </ThemeProvider>,
     )
 
-    expect(() =>
-      act(() => ctx!.setFontSize('nonexistent' as never)),
-    ).not.toThrow()
+    expect(() => act(() => ctx!.setFontSize('nonexistent' as never))).not.toThrow()
 
     expect(document.documentElement.style.getPropertyValue('--cell-font-size')).toBe('1.625rem')
     unmount()

@@ -19,6 +19,7 @@ import { isValidSolution } from '../lib/validationUtils'
 import { arraysToCandidates } from '../lib/candidatesUtils'
 import { getMostRecentGame } from '../lib/gameSettings'
 import { STORAGE_KEYS } from '../lib/constants'
+import type { SavedGameState } from '../lib/savedGameState'
 
 type UseShareConflictOptions = Parameters<typeof useShareConflict>[0]
 
@@ -211,15 +212,18 @@ describe('useShareConflict', () => {
 
     it('keeps the current game (no navigate) when the recipient has this-puzzle progress', () => {
       const opts = buildOptions({
-        loadSavedGameState: vi.fn(() => ({
-          board: [1],
-          candidates: [],
-          elapsedMs: 0,
-          history: [{ idx: 0, prev: 0, next: 5 }],
-          autoFillUsed: false,
-          savedAt: 0,
-          difficulty: 'easy',
-        })),
+        loadSavedGameState: vi.fn(
+          () =>
+            ({
+              board: [1],
+              candidates: [],
+              elapsedMs: 0,
+              history: [{ idx: 0, prev: 0, next: 5 }],
+              autoFillUsed: false,
+              savedAt: 0,
+              difficulty: 'easy',
+            }) as unknown as SavedGameState,
+        ),
       })
       const { result } = renderHook(() => useShareConflict(opts))
 
@@ -317,15 +321,18 @@ describe('useShareConflict', () => {
 
     it('classifies a same-puzzle save (history non-empty) as no-resume-target with a current game', () => {
       const opts = buildOptions({
-        loadSavedGameState: vi.fn(() => ({
-          board: [1],
-          candidates: [],
-          elapsedMs: 0,
-          history: [{ idx: 0, prev: 0, next: 5 }],
-          autoFillUsed: false,
-          savedAt: 0,
-          difficulty: 'easy',
-        })),
+        loadSavedGameState: vi.fn(
+          () =>
+            ({
+              board: [1],
+              candidates: [],
+              elapsedMs: 0,
+              history: [{ idx: 0, prev: 0, next: 5 }],
+              autoFillUsed: false,
+              savedAt: 0,
+              difficulty: 'easy',
+            }) as unknown as SavedGameState,
+        ),
       })
       const { result } = renderHook(() => useShareConflict(opts))
 

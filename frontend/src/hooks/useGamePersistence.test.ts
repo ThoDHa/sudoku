@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll, type Mock } from 'vitest'
 
 // =============================================================================
 // MODULE MOCKS
@@ -23,7 +23,7 @@ vi.mock('../lib/seedValidation', () => ({
   extractSeedFromStorageKey: vi.fn(() => ({ valid: true, seed: 'seed1' })),
 }))
 vi.mock('../lib/savedGameState', () => ({
-  buildSavedState: vi.fn((x: unknown) => ({ ...x })),
+  buildSavedState: vi.fn((x: unknown) => ({ ...(x as Record<string, unknown>) })),
 }))
 vi.mock('../lib/candidatesUtils', () => ({
   candidatesToArrays: vi.fn(() => []),
@@ -177,7 +177,7 @@ describe('useGamePersistence', () => {
       mode: 'practice',
     })
     ;(buildSavedState as unknown as Mock).mockImplementation((x: unknown) => ({
-      ...x,
+      ...(x as Record<string, unknown>),
     }))
     ;(candidatesToArrays as unknown as Mock).mockReturnValue([])
     ;(clearOtherGamesForMode as Mock).mockImplementation(() => {})

@@ -57,15 +57,15 @@ describe('storageMigration', () => {
       }
       const calls: number[] = []
       const migrations: MigrationMap<Shape> = {
-        0: (d) => {
+        0: () => {
           calls.push(0)
           return { v: 1 }
         },
-        1: (d) => {
+        1: () => {
           calls.push(1)
           return { v: 2 }
         },
-        2: (d) => {
+        2: () => {
           calls.push(2)
           return { v: 3 }
         },
