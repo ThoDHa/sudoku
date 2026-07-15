@@ -68,12 +68,10 @@ jobs:
         working-directory: frontend
         run: npx tsc --noEmit -p tsconfig.test.json
 
-      # Transitional: Prettier drift exists in the tree, so this surfaces the
-      # gap without blocking. Flip continue-on-error off once the tree is
-      # reformatted. Matches `make format-check-frontend`.
+      # Hard format gate: the tree is fully prettier-clean, so drift now fails
+      # CI. Matches `make format-check-frontend`.
       - name: Check formatting (Prettier)
         working-directory: frontend
-        continue-on-error: true
         run: npx prettier --check "src/**/*.{ts,tsx,css}"
 
       - name: Run linting

@@ -4,3 +4,6 @@
 
 # LINT-001.C: project-wide format pass
 87c5bfd3cc3ab1b482c3307350d0233f7f5698a5
+
+# INFRA-13-5: clear remaining prettier drift so the format check is a hard gate
+2084be0df5a4e7dd4cf229c90f12a1e87d51ff49
