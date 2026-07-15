@@ -744,7 +744,7 @@ func TestPracticePuzzlesAlignment(t *testing.T) {
 		t.Run(td.Slug, func(t *testing.T) {
 			entries, ok := ppFile.Techniques[td.Slug]
 			if !ok {
-				t.Logf("Technique %s not found in practice_puzzles.json", td.Slug)
+				t.Errorf("Technique %s not found in practice_puzzles.json", td.Slug)
 				return
 			}
 
@@ -764,7 +764,7 @@ func TestPracticePuzzlesAlignment(t *testing.T) {
 			}
 
 			if !found {
-				t.Logf("Puzzle index %d not found in practice_puzzles.json for %s (entries: %v)",
+				t.Errorf("Puzzle index %d not found in practice_puzzles.json for %s (entries: %v)",
 					td.PuzzleIndex, td.Slug, entries)
 			}
 		})
