@@ -12,11 +12,10 @@ on:
           - all
           - frontend
           - go
-  # schedule:
-  #   # 04:00 UTC daily (one hour after nightly-profiling at 03:00 to avoid contention).
-  #   # Temporarily disabled during active development to prevent cancel-in-progress
-  #   # from killing long-running human/techniques jobs. Re-enable once baselines converge.
-  #   - cron: '0 4 * * *'
+  schedule:
+    # 04:00 UTC daily (one hour after nightly-profiling at 03:00 to avoid contention).
+    # Re-enabled: ARCH-2 quarantined transport/http and coverage/mutation baselines are green.
+    - cron: '0 4 * * *'
 
 permissions:
   contents: read

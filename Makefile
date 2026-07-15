@@ -245,11 +245,11 @@ check-fast: lint-go lint-frontend typecheck-frontend test-go test-scripts test-u
 	@echo "  full quality gate (coverage/dup/vuln)."
 	@echo "========================================"
 
-# Full gate incl. E2E + integration. Slow; e2e currently hangs (E2E-001).
-check-full: lint-go lint-frontend test
+# Full gate incl. E2E + integration. Slow; a true superset of `check`.
+check-full: check test-e2e test-integration
 	@echo ""
 	@echo "========================================"
-	@echo "  Full gate passed (lint + go + unit + e2e)."
+	@echo "  Full gate passed (check + e2e + integration)."
 	@echo "========================================"
 
 #-----------------------------------------------------------------------
@@ -288,8 +288,9 @@ help:
 	@echo "  format-go       - Format Go source only (gofmt -w, excl cmd/wasm)"
 	@echo ""
 	@echo "Testing (Allure-Enabled):"
-	@echo "  check            - Fast per-commit gate (lint + go + unit)"
-	@echo "  check-full       - Full gate incl. e2e (lint + go + unit + e2e)"
+	@echo "  check-fast       - Fast per-commit gate (lint + go + unit, no coverage)"
+	@echo "  check            - Full non-e2e gate (lint + typecheck + go + coverage + dup + vuln)"
+	@echo "  check-full       - Full gate incl. e2e + integration (= check + e2e + integration)"
 	@echo "  test             - Full test run incl. e2e (Go + unit + E2E)"
 	@echo "  test-go          - Run Go tests with Allure output"
 	@echo "  test-unit        - Run Frontend unit tests with Allure output (Docker)"

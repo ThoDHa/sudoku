@@ -1,7 +1,7 @@
 # WASM build stage - compile Go solver to WebAssembly with TinyGo
 # Must match local dev environment (TinyGo 0.41.1) and CI deploy.
 # Image pinned by digest so a rebuilt :0.41.1 cannot silently change behavior;
-# renovate proposes digest bumps under review.
+# Dependabot proposes digest bumps under review.
 FROM tinygo/tinygo:0.41.1@sha256:b216f534ddbf277444407b014a3328b5c1ade403cc397f3ab48a14789bf99d0e AS wasm-builder
 
 WORKDIR /go-app
@@ -19,7 +19,7 @@ RUN tinygo build -target=wasm -no-debug -opt=z -o /go-app/sudoku.wasm ./cmd/wasm
 RUN cp "$(tinygo env TINYGOROOT)/targets/wasm_exec.js" /go-app/wasm_exec.js
 
 # Frontend build stage. Digest-pinned so the floating 24.x line cannot shift
-# under us; renovate proposes digest bumps under review.
+# under us; Dependabot proposes digest bumps under review.
 FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS builder
 
 WORKDIR /app
