@@ -88,11 +88,14 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
 
   // On mount, if autoStart is set, kick off accumulation. startTimer()'s
   // recovery branch (isRunning true but startTimeRef null) seeds startTimeRef.
-  useEffect(() => {
-    if (autoStart) {
-      startTimer()
-    }
-  }, /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way */ []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(
+    () => {
+      if (autoStart) {
+        startTimer()
+      }
+    },
+    /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way */ [],
+  ) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pauseTimer = useCallback(() => {
     if (isRunning && startTimeRef.current !== null) {
@@ -128,13 +131,16 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
   // STABLE formatTime - reads from ref instead of closure to avoid recreation every tick
   // This is critical: if formatTime changes every second, TimerControlContext updates,
   // which causes Game.tsx to re-render, which re-renders 81 cells!
-  const formatTime = useCallback((ms?: number): string => {
-    const time = ms ?? elapsedMsRef.current
-    const totalSeconds = Math.floor(time / MS_PER_SECOND)
-    const minutes = Math.floor(totalSeconds / 60)
-    const seconds = totalSeconds % 60
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`
-  }, /* Stryker disable next-line ArrayDeclaration: formatTime reads elapsedMs via a ref and has no reactive deps, so a constant deps entry is observationally identical to the empty array */ []) // No dependencies - stable forever!
+  const formatTime = useCallback(
+    (ms?: number): string => {
+      const time = ms ?? elapsedMsRef.current
+      const totalSeconds = Math.floor(time / MS_PER_SECOND)
+      const minutes = Math.floor(totalSeconds / 60)
+      const seconds = totalSeconds % 60
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`
+    },
+    /* Stryker disable next-line ArrayDeclaration: formatTime reads elapsedMs via a ref and has no reactive deps, so a constant deps entry is observationally identical to the empty array */ [],
+  ) // No dependencies - stable forever!
 
   // Main timer interval - completely stopped when hidden for battery savings
   // NOTE: In E2E tests, we should NOT pause due to visibility/focus changes
@@ -146,8 +152,8 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     // In automated tests, don't pause based on visibility
     const effectiveShouldPause = isAutomatedEnvironment()
       ? false
-      // Stryker disable next-line ConditionalExpression: when not automated and pauseOnHidden and shouldPause, the visibility effect's pauseForVisibility already sets isPausedDueToVisibility and nulls startTimeRef, so forcing this ternary branch false (skipping the interval pause) is compensated
-      : pauseOnHidden && backgroundManager.shouldPauseOperations
+      : // Stryker disable next-line ConditionalExpression: when not automated and pauseOnHidden and shouldPause, the visibility effect's pauseForVisibility already sets isPausedDueToVisibility and nulls startTimeRef, so forcing this ternary branch false (skipping the interval pause) is compensated
+        pauseOnHidden && backgroundManager.shouldPauseOperations
 
     // Stryker disable next-line ConditionalExpression,BlockStatement: the visibility effect compensates isPausedDueToVisibility and the interval body skips when startTimeRef is null (nulled by pauseForVisibility), so skipping or emptying this block is unobservable
     if (effectiveShouldPause) {

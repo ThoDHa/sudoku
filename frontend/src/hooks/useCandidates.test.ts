@@ -1,11 +1,7 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
 import { useCandidates } from './useCandidates'
-import {
-  hasCandidate,
-  addCandidate,
-  countCandidates,
-} from '../lib/candidatesUtils'
+import { hasCandidate, addCandidate, countCandidates } from '../lib/candidatesUtils'
 import { TOTAL_CELLS, MIN_DIGIT, MAX_DIGIT } from '../lib/constants'
 
 const WIKIPEDIA_BOARD = [

@@ -310,73 +310,73 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       givens: number[],
       shouldPlay: boolean,
     ) => {
-    stateHistoryRef.current = [
-      {
-        board: [...currentBoard],
-        candidates: candidatesArray.map((arr) => [...arr]),
-        move: null,
-      },
-    ]
-    currentIndexRef.current = 0
-    setCurrentIndex(0)
+      stateHistoryRef.current = [
+        {
+          board: [...currentBoard],
+          candidates: candidatesArray.map((arr) => [...arr]),
+          move: null,
+        },
+      ]
+      currentIndexRef.current = 0
+      setCurrentIndex(0)
 
-    setIsFetching(true)
-    try {
-      const data = await solveAll(currentBoard, candidatesArray, givens)
-      setIsFetching(false)
+      setIsFetching(true)
+      try {
+        const data = await solveAll(currentBoard, candidatesArray, givens)
+        setIsFetching(false)
 
-      if (!data.moves || data.moves.length === 0) {
-        if (!data.solved) {
-          onError?.('This puzzle requires advanced techniques beyond our solver.')
+        if (!data.moves || data.moves.length === 0) {
+          if (!data.solved) {
+            onError?.('This puzzle requires advanced techniques beyond our solver.')
+          }
+          stopAutoSolve()
+          return
         }
+
+        allMovesRef.current = data.moves
+        movesQueueRef.current = [...data.moves]
+        setTotalMoves(data.moves.length)
+
+        const context: MoveHandlerContext = {
+          autoSolveRef,
+          pausedRef,
+          movesQueueRef,
+          allMovesRef,
+          stateHistoryRef,
+          currentIndexRef,
+          setCurrentIndex,
+          scheduleNextMove,
+          stopAutoSolve,
+          stepDelayRef,
+          applyMove,
+          getCandidates,
+          onError,
+          onUnpinpointableError,
+          onStatus,
+          onErrorFixed,
+          initialCandidates: currentCandidates,
+          skipSpecialMoves: false,
+        }
+
+        const playNextMove = createPlayNextMove(context)
+        playNextMoveRef.current = playNextMove
+
+        // shouldPlay is false only on a startPaused restart, where manualPaused (and thus
+        // pausedRef) is already set before the async solve resolves, so playNextMove's own pause
+        // guard blocks the forced first play. The false-forcing variant (skip playback entirely)
+        // is covered by the sequential-playback tests, which fail if moves stop advancing.
+        // Stryker disable next-line ConditionalExpression: forcing this guard is unobservable (see note above)
+        if (shouldPlay) {
+          playNextMove()
+        }
+      } catch (err) {
+        setIsFetching(false)
+        // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
+        logger.error('Auto-solve error:', err)
+        onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
         stopAutoSolve()
-        return
       }
-
-      allMovesRef.current = data.moves
-      movesQueueRef.current = [...data.moves]
-      setTotalMoves(data.moves.length)
-
-      const context: MoveHandlerContext = {
-        autoSolveRef,
-        pausedRef,
-        movesQueueRef,
-        allMovesRef,
-        stateHistoryRef,
-        currentIndexRef,
-        setCurrentIndex,
-        scheduleNextMove,
-        stopAutoSolve,
-        stepDelayRef,
-        applyMove,
-        getCandidates,
-        onError,
-        onUnpinpointableError,
-        onStatus,
-        onErrorFixed,
-        initialCandidates: currentCandidates,
-        skipSpecialMoves: false,
-      }
-
-      const playNextMove = createPlayNextMove(context)
-      playNextMoveRef.current = playNextMove
-
-      // shouldPlay is false only on a startPaused restart, where manualPaused (and thus
-      // pausedRef) is already set before the async solve resolves, so playNextMove's own pause
-      // guard blocks the forced first play. The false-forcing variant (skip playback entirely)
-      // is covered by the sequential-playback tests, which fail if moves stop advancing.
-      // Stryker disable next-line ConditionalExpression: forcing this guard is unobservable (see note above)
-      if (shouldPlay) {
-        playNextMove()
-      }
-    } catch (err) {
-      setIsFetching(false)
-      // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
-      logger.error('Auto-solve error:', err)
-      onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
-      stopAutoSolve()
-    }
-  },
+    },
     [
       setCurrentIndex,
       scheduleNextMove,
@@ -408,14 +408,15 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         setManualPaused(false)
       }
 
-      await runAutoSolveFetch(currentBoard, candidatesArray, currentCandidates, givens, !startPaused)
+      await runAutoSolveFetch(
+        currentBoard,
+        candidatesArray,
+        currentCandidates,
+        givens,
+        !startPaused,
+      )
     },
-    [
-      getBoard,
-      getCandidates,
-      getGivens,
-      runAutoSolveFetch,
-    ],
+    [getBoard, getCandidates, getGivens, runAutoSolveFetch],
   )
 
   // Step backward one move
@@ -538,14 +539,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     autoSolveRef.current = true
 
     await runAutoSolveFetch(currentBoard, candidatesArray, currentCandidates, givens, true)
-  }, [
-    isAutoSolving,
-    isComplete,
-    getBoard,
-    getCandidates,
-    getGivens,
-    runAutoSolveFetch,
-  ])
+  }, [isAutoSolving, isComplete, getBoard, getCandidates, getGivens, runAutoSolveFetch])
 
   // Play a custom move sequence (for Check & Fix, etc)
   const playMoves = useCallback(

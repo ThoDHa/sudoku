@@ -33,11 +33,14 @@ describe('getLastDailyDifficulty', () => {
     expect(getLastDailyDifficulty()).toBeNull()
   })
 
-  it.each(RECOGNIZED_DIFFICULTIES)('returns the stored value when it is the recognized difficulty "%s"', async (d) => {
-    const { getLastDailyDifficulty } = await import('./hooks')
-    localStorage.setItem('lastDailyDifficulty', d)
-    expect(getLastDailyDifficulty()).toBe(d)
-  })
+  it.each(RECOGNIZED_DIFFICULTIES)(
+    'returns the stored value when it is the recognized difficulty "%s"',
+    async (d) => {
+      const { getLastDailyDifficulty } = await import('./hooks')
+      localStorage.setItem('lastDailyDifficulty', d)
+      expect(getLastDailyDifficulty()).toBe(d)
+    },
+  )
 
   it('returns null for an unrecognized stored value so custom games do not leak in', async () => {
     const { getLastDailyDifficulty } = await import('./hooks')

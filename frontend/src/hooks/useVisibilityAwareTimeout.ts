@@ -23,54 +23,57 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
   const isHiddenRef = useRef(document.visibilityState === 'hidden')
 
   // Track visibility state
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      const isNowHidden = document.visibilityState === 'hidden'
-      isHiddenRef.current = isNowHidden
+  useEffect(
+    () => {
+      const handleVisibilityChange = () => {
+        const isNowHidden = document.visibilityState === 'hidden'
+        isHiddenRef.current = isNowHidden
 
-      // Cancel all active timeouts when page becomes hidden
-      if (isNowHidden) {
+        // Cancel all active timeouts when page becomes hidden
+        if (isNowHidden) {
+          activeTimeoutsRef.current.forEach((id) => {
+            window.clearTimeout(id)
+          })
+          activeTimeoutsRef.current.clear()
+        }
+      }
+
+      // Handle pagehide for mobile (fires more reliably than visibilitychange)
+      const handlePageHide = () => {
+        isHiddenRef.current = true
         activeTimeoutsRef.current.forEach((id) => {
           window.clearTimeout(id)
         })
         activeTimeoutsRef.current.clear()
       }
-    }
 
-    // Handle pagehide for mobile (fires more reliably than visibilitychange)
-    const handlePageHide = () => {
-      isHiddenRef.current = true
-      activeTimeoutsRef.current.forEach((id) => {
-        window.clearTimeout(id)
-      })
-      activeTimeoutsRef.current.clear()
-    }
+      // Handle freeze event for Chrome/Android Page Lifecycle API
+      const handleFreeze = () => {
+        isHiddenRef.current = true
+        activeTimeoutsRef.current.forEach((id) => {
+          window.clearTimeout(id)
+        })
+        activeTimeoutsRef.current.clear()
+      }
 
-    // Handle freeze event for Chrome/Android Page Lifecycle API
-    const handleFreeze = () => {
-      isHiddenRef.current = true
-      activeTimeoutsRef.current.forEach((id) => {
-        window.clearTimeout(id)
-      })
-      activeTimeoutsRef.current.clear()
-    }
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      window.addEventListener('pagehide', handlePageHide)
+      document.addEventListener('freeze', handleFreeze)
 
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('pagehide', handlePageHide)
-    document.addEventListener('freeze', handleFreeze)
-
-    const timeoutsRef = activeTimeoutsRef.current
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('pagehide', handlePageHide)
-      document.removeEventListener('freeze', handleFreeze)
-      // Clean up all timeouts on unmount
-      timeoutsRef.forEach((id) => {
-        window.clearTimeout(id)
-      })
-      timeoutsRef.clear()
-    }
-  }, /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way */ [])
+      const timeoutsRef = activeTimeoutsRef.current
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+        window.removeEventListener('pagehide', handlePageHide)
+        document.removeEventListener('freeze', handleFreeze)
+        // Clean up all timeouts on unmount
+        timeoutsRef.forEach((id) => {
+          window.clearTimeout(id)
+        })
+        timeoutsRef.clear()
+      }
+    },
+    /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way */ [],
+  )
 
   const setVisibilityAwareTimeout = useCallback(
     (callback: () => void, delay: number): (() => void) => {
@@ -102,12 +105,15 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
     [],
   )
 
-  const cancelAll = useCallback(() => {
-    activeTimeoutsRef.current.forEach((id) => {
-      window.clearTimeout(id)
-    })
-    activeTimeoutsRef.current.clear()
-  }, /* Stryker disable next-line ArrayDeclaration: cancelAll captures only the stable activeTimeoutsRef, so a constant deps entry is observationally identical to the empty array */ [])
+  const cancelAll = useCallback(
+    () => {
+      activeTimeoutsRef.current.forEach((id) => {
+        window.clearTimeout(id)
+      })
+      activeTimeoutsRef.current.clear()
+    },
+    /* Stryker disable next-line ArrayDeclaration: cancelAll captures only the stable activeTimeoutsRef, so a constant deps entry is observationally identical to the empty array */ [],
+  )
 
   // CRITICAL: Memoize return object to prevent cascading re-renders.
   // Without this, every render creates a new object reference.

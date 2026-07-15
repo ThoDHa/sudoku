@@ -734,7 +734,7 @@ describe('autoSolvePlayback', () => {
     })
   })
 
-  describe("fix-error - candidate materialization (applyMove + history)", () => {
+  describe('fix-error - candidate materialization (applyMove + history)', () => {
     it('builds Sets from non-null candidate entries and empty Sets from null entries', () => {
       const { context, mocks } = buildContext({ movesQueue: [buildMoveResult()] })
       const candidates: (number[] | null)[] = Array(81).fill(null)

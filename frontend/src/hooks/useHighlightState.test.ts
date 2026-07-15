@@ -6,19 +6,28 @@ import { createMockMoveHighlight } from '../test-utils'
 type HookResult = { current: ReturnType<typeof useHighlightState> }
 type Api = HookResult['current']
 
-function actClearAfterCellSelection(result: HookResult, ...args: Parameters<Api['clearAfterCellSelection']>) {
+function actClearAfterCellSelection(
+  result: HookResult,
+  ...args: Parameters<Api['clearAfterCellSelection']>
+) {
   act(() => {
     result.current.clearAfterCellSelection(...args)
   })
 }
 
-function actClearAfterDigitPlacement(result: HookResult, ...args: Parameters<Api['clearAfterDigitPlacement']>) {
+function actClearAfterDigitPlacement(
+  result: HookResult,
+  ...args: Parameters<Api['clearAfterDigitPlacement']>
+) {
   act(() => {
     result.current.clearAfterDigitPlacement(...args)
   })
 }
 
-function actClearAfterDigitToggle(result: HookResult, ...args: Parameters<Api['clearAfterDigitToggle']>) {
+function actClearAfterDigitToggle(
+  result: HookResult,
+  ...args: Parameters<Api['clearAfterDigitToggle']>
+) {
   act(() => {
     result.current.clearAfterDigitToggle(...args)
   })
@@ -30,7 +39,10 @@ function actClearAfterErase(result: HookResult, ...args: Parameters<Api['clearAf
   })
 }
 
-function actClearAfterUserCandidateOp(result: HookResult, ...args: Parameters<Api['clearAfterUserCandidateOp']>) {
+function actClearAfterUserCandidateOp(
+  result: HookResult,
+  ...args: Parameters<Api['clearAfterUserCandidateOp']>
+) {
   act(() => {
     result.current.clearAfterUserCandidateOp(...args)
   })
@@ -42,19 +54,28 @@ function actClearAll(result: HookResult, ...args: Parameters<Api['clearAll']>) {
   })
 }
 
-function actClearAllAndDeselect(result: HookResult, ...args: Parameters<Api['clearAllAndDeselect']>) {
+function actClearAllAndDeselect(
+  result: HookResult,
+  ...args: Parameters<Api['clearAllAndDeselect']>
+) {
   act(() => {
     result.current.clearAllAndDeselect(...args)
   })
 }
 
-function actClearDigitHighlight(result: HookResult, ...args: Parameters<Api['clearDigitHighlight']>) {
+function actClearDigitHighlight(
+  result: HookResult,
+  ...args: Parameters<Api['clearDigitHighlight']>
+) {
   act(() => {
     result.current.clearDigitHighlight(...args)
   })
 }
 
-function actClearHighlightsKeepSelection(result: HookResult, ...args: Parameters<Api['clearHighlightsKeepSelection']>) {
+function actClearHighlightsKeepSelection(
+  result: HookResult,
+  ...args: Parameters<Api['clearHighlightsKeepSelection']>
+) {
   act(() => {
     result.current.clearHighlightsKeepSelection(...args)
   })
@@ -96,7 +117,10 @@ function actSelectCell(result: HookResult, ...args: Parameters<Api['selectCell']
   })
 }
 
-function actSelectMultipleCells(result: HookResult, ...args: Parameters<Api['selectMultipleCells']>) {
+function actSelectMultipleCells(
+  result: HookResult,
+  ...args: Parameters<Api['selectMultipleCells']>
+) {
   act(() => {
     result.current.selectMultipleCells(...args)
   })
@@ -114,13 +138,14 @@ function actSetMoveHighlight(result: HookResult, ...args: Parameters<Api['setMov
   })
 }
 
-function actToggleDigitHighlight(result: HookResult, ...args: Parameters<Api['toggleDigitHighlight']>) {
+function actToggleDigitHighlight(
+  result: HookResult,
+  ...args: Parameters<Api['toggleDigitHighlight']>
+) {
   act(() => {
     result.current.toggleDigitHighlight(...args)
   })
 }
-
-
 
 // =============================================================================
 // TESTS

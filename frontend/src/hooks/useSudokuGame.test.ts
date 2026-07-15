@@ -2571,9 +2571,7 @@ describe('useSudokuGame - mutation-convergence (Pigsy)', () => {
         result.current.toggleCandidate(40, 5)
       })
       expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(false)
-      expect(result.current.history[result.current.history.length - 1]!.action).toBe(
-        'eliminate',
-      )
+      expect(result.current.history[result.current.history.length - 1]!.action).toBe('eliminate')
     })
   })
 
@@ -2708,11 +2706,7 @@ describe('useSudokuGame mutation kills (MUT-1 iter-2)', () => {
     const extBoard = createEmptyPuzzle()
     extBoard[1] = 7
     act(() => {
-      result.current.applyExternalMove(
-        extBoard,
-        new Uint16Array(TOTAL_CELLS),
-        createMockMove(),
-      )
+      result.current.applyExternalMove(extBoard, new Uint16Array(TOTAL_CELLS), createMockMove())
     })
     // After an external move applied from the undone (pre-redo) state, the
     // previously redoable move must be gone (history truncated at current index).
@@ -2782,10 +2776,9 @@ describe('useSudokuGame - resetGame/clearAll honor the current initialBoard', ()
     first[5] = 3
     const second = createEmptyPuzzle()
     second[5] = 9
-    const { result, rerender } = renderHook(
-      ({ initialBoard }) => useSudokuGame({ initialBoard }),
-      { initialProps: { initialBoard: first } },
-    )
+    const { result, rerender } = renderHook(({ initialBoard }) => useSudokuGame({ initialBoard }), {
+      initialProps: { initialBoard: first },
+    })
     rerender({ initialBoard: second })
     act(() => {
       result.current.resetGame()
@@ -2798,10 +2791,9 @@ describe('useSudokuGame - resetGame/clearAll honor the current initialBoard', ()
     first[5] = 3
     const second = createEmptyPuzzle()
     second[5] = 9
-    const { result, rerender } = renderHook(
-      ({ initialBoard }) => useSudokuGame({ initialBoard }),
-      { initialProps: { initialBoard: first } },
-    )
+    const { result, rerender } = renderHook(({ initialBoard }) => useSudokuGame({ initialBoard }), {
+      initialProps: { initialBoard: first },
+    })
     rerender({ initialBoard: second })
     act(() => {
       result.current.clearAll()

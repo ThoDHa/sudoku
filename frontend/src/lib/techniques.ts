@@ -58,7 +58,11 @@ export interface TechniqueInfo {
 // so animated steps can apply per-step overrides without aliasing.
 type Highlight = NonNullable<DiagramCell['highlight']>
 const v = (row: number, col: number, value: number): DiagramCell => ({ row, col, value })
-const c = (row: number, col: number, candidates: number[]): DiagramCell => ({ row, col, candidates })
+const c = (row: number, col: number, candidates: number[]): DiagramCell => ({
+  row,
+  col,
+  candidates,
+})
 const hc = (row: number, col: number, candidates: number[], highlight: Highlight): DiagramCell => ({
   row,
   col,
@@ -491,10 +495,22 @@ export const TECHNIQUES: TechniqueInfo[] = [
     diagram: {
       cells: [
         v(0, 0, 1),
-        { row: 0, col: 1, candidates: [2, 3, 5, 7], highlight: 'primary', eliminatedCandidates: [2, 5] },
+        {
+          row: 0,
+          col: 1,
+          candidates: [2, 3, 5, 7],
+          highlight: 'primary',
+          eliminatedCandidates: [2, 5],
+        },
         c(0, 2, [2, 4]),
         v(0, 3, 6),
-        { row: 0, col: 4, candidates: [3, 4, 7, 9], highlight: 'primary', eliminatedCandidates: [4, 9] },
+        {
+          row: 0,
+          col: 4,
+          candidates: [3, 4, 7, 9],
+          highlight: 'primary',
+          eliminatedCandidates: [4, 9],
+        },
         v(0, 5, 8),
         c(0, 6, [2, 4, 5]),
         c(0, 7, [2, 9]),
@@ -926,8 +942,16 @@ export const TECHNIQUES: TechniqueInfo[] = [
       return {
         steps: [
           step('Look at these cells with candidate 7', base),
-          step('Find digit 7 in 2-3 positions per row across 3 rows', base, fishHighlight('secondary')),
-          step('Digit 7 in rows 3, 6, 9 spans only columns 2, 5, 9', base, fishHighlight('primary')),
+          step(
+            'Find digit 7 in 2-3 positions per row across 3 rows',
+            base,
+            fishHighlight('secondary'),
+          ),
+          step(
+            'Digit 7 in rows 3, 6, 9 spans only columns 2, 5, 9',
+            base,
+            fishHighlight('primary'),
+          ),
           step('Eliminate 7 from those columns in other rows', base, {
             ...fishHighlight('primary'),
             '0,1': { highlight: 'elimination', eliminatedCandidates: [7] },
@@ -1146,7 +1170,11 @@ export const TECHNIQUES: TechniqueInfo[] = [
             '6,8': { highlight: 'primary' },
           }),
           step('A strong link on 3 connects them via column 5', base, fullPattern),
-          step('If both bivalue cells are 7, the strong link breaks - impossible!', base, fullPattern),
+          step(
+            'If both bivalue cells are 7, the strong link breaks - impossible!',
+            base,
+            fullPattern,
+          ),
           step('Cells seeing both bivalue cells can eliminate 7', base, {
             ...fullPattern,
             '0,8': { highlight: 'elimination', eliminatedCandidates: [7] },

@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import {
-  buildSavedState,
-  restoreHintCounters,
-  type SavedGameState,
-} from '../lib/savedGameState'
+import { buildSavedState, restoreHintCounters, type SavedGameState } from '../lib/savedGameState'
 import { STORAGE_KEYS } from '../lib/constants'
 
 describe('SavedGameState hint-counter persistence', () => {

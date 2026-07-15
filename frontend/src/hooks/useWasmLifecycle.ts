@@ -41,18 +41,21 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
     [enableLogging],
   )
 
-  const isWasmRoute = useCallback((pathname: string): boolean => {
-    // Custom puzzles always need WASM (for validation during creation)
-    // Stryker disable next-line ConditionalExpression, MethodExpression: '/c/...' paths also return true via the unknown-route fallback below
-    if (pathname.startsWith('/c/')) return true
-    // Check if it's a known non-game route
-    const isKnownRoute = KNOWN_NON_GAME_ROUTES.some(
-      (route) => pathname === route || pathname.startsWith(route + '/'),
-    )
-    // If not a known route and not homepage, it's a game route (/:seed)
-    // Stryker disable next-line ConditionalExpression, StringLiteral: isKnownRoute is always true for '/', so the pathname !== '/' clause is redundant
-    return !isKnownRoute && pathname !== '/'
-  }, /* Stryker disable next-line ArrayDeclaration: isWasmRoute is a pure function over its pathname argument with no closure captures, so the empty deps array has no observable effect */ [])
+  const isWasmRoute = useCallback(
+    (pathname: string): boolean => {
+      // Custom puzzles always need WASM (for validation during creation)
+      // Stryker disable next-line ConditionalExpression, MethodExpression: '/c/...' paths also return true via the unknown-route fallback below
+      if (pathname.startsWith('/c/')) return true
+      // Check if it's a known non-game route
+      const isKnownRoute = KNOWN_NON_GAME_ROUTES.some(
+        (route) => pathname === route || pathname.startsWith(route + '/'),
+      )
+      // If not a known route and not homepage, it's a game route (/:seed)
+      // Stryker disable next-line ConditionalExpression, StringLiteral: isKnownRoute is always true for '/', so the pathname !== '/' clause is redundant
+      return !isKnownRoute && pathname !== '/'
+    },
+    /* Stryker disable next-line ArrayDeclaration: isWasmRoute is a pure function over its pathname argument with no closure captures, so the empty deps array has no observable effect */ [],
+  )
 
   const unloadWasm = useCallback(async () => {
     try {
@@ -125,14 +128,17 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   }, [location.pathname, isWasmRoute, scheduleUnload, cancelUnload, log, loadWasm])
 
   // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      // Stryker disable next-line ConditionalExpression: clearTimeout(null/undefined) is a safe no-op
-      if (unloadTimeoutRef.current) {
-        clearTimeout(unloadTimeoutRef.current)
+  useEffect(
+    () => {
+      return () => {
+        // Stryker disable next-line ConditionalExpression: clearTimeout(null/undefined) is a safe no-op
+        if (unloadTimeoutRef.current) {
+          clearTimeout(unloadTimeoutRef.current)
+        }
       }
-    }
-  }, /* Stryker disable next-line ArrayDeclaration: the unmount cleanup captures no values; the constant `["Stryker was here"]` mutant never changes so the effect never re-runs, matching the original empty array */ [])
+    },
+    /* Stryker disable next-line ArrayDeclaration: the unmount cleanup captures no values; the constant `["Stryker was here"]` mutant never changes so the effect never re-runs, matching the original empty array */ [],
+  )
 
   return {
     isWasmRoute: isWasmRoute(location.pathname),

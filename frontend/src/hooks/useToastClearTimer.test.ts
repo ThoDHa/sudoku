@@ -76,9 +76,7 @@ describe('useToastClearTimer', () => {
   })
 
   it('cancels the pending clearer on unmount', () => {
-    const { result, unmount } = renderHook(() =>
-      useToastClearTimer(makeVisibilitySetTimeout()),
-    )
+    const { result, unmount } = renderHook(() => useToastClearTimer(makeVisibilitySetTimeout()))
     const clear = vi.fn()
 
     act(() => result.current(1000, clear))
@@ -96,10 +94,9 @@ describe('mutation-killing: scheduleToastClear uses the latest visibilitySetTime
   it('routes through the latest visibilitySetTimeout after the prop changes', () => {
     const visibilitySetTimeout1 = vi.fn(() => () => undefined)
     const visibilitySetTimeout2 = vi.fn(() => () => undefined)
-    const { result, rerender } = renderHook(
-      ({ vst }) => useToastClearTimer(vst),
-      { initialProps: { vst: visibilitySetTimeout1 } },
-    )
+    const { result, rerender } = renderHook(({ vst }) => useToastClearTimer(vst), {
+      initialProps: { vst: visibilitySetTimeout1 },
+    })
 
     rerender({ vst: visibilitySetTimeout2 })
     act(() => {

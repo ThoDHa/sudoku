@@ -86,10 +86,13 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
 
   const [candidatesVersion, setCandidatesVersion] = useState(0)
 
-  const setCandidates = useCallback((newCandidates: Uint16Array) => {
-    setCandidatesState(newCandidates)
-    setCandidatesVersion((v) => v + 1)
-  }, /* Stryker disable next-line ArrayDeclaration: setCandidates captures only stable setState dispatchers, so a constant deps entry is observationally identical to the empty array */ [])
+  const setCandidates = useCallback(
+    (newCandidates: Uint16Array) => {
+      setCandidatesState(newCandidates)
+      setCandidatesVersion((v) => v + 1)
+    },
+    /* Stryker disable next-line ArrayDeclaration: setCandidates captures only stable setState dispatchers, so a constant deps entry is observationally identical to the empty array */ [],
+  )
 
   const calculateCandidatesForCell = useCallback(
     (idx: number, currentBoard: number[]): CandidateMask => {

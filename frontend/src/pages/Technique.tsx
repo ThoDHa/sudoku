@@ -191,7 +191,10 @@ export default function Technique() {
 
         <div className="mt-8 border-t border-board-border-light pt-6">
           <p className="mb-4 text-sm text-foreground-muted">Ready to learn specific techniques?</p>
-          <TechniqueCtaLinks primaryTo="/technique/naked-single" primaryLabel="Start with Naked Single" />
+          <TechniqueCtaLinks
+            primaryTo="/technique/naked-single"
+            primaryLabel="Start with Naked Single"
+          />
         </div>
       </div>
     )

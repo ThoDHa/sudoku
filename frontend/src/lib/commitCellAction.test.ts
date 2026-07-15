@@ -98,9 +98,7 @@ describe('commitCellAction tolerates missing optional callbacks', () => {
   // (`()`) would throw "is not a function". Asserting no throw kills all of them.
   it('erase succeeds with no optional callbacks supplied', () => {
     const game = makeGame()
-    expect(() =>
-      commitCellAction('erase', { idx: 3, game: game as never }),
-    ).not.toThrow()
+    expect(() => commitCellAction('erase', { idx: 3, game: game as never })).not.toThrow()
     expect(game.eraseCell).toHaveBeenCalledWith(3)
   })
 

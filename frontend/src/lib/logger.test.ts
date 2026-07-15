@@ -77,7 +77,7 @@ describe('logger', () => {
     })
 
     it('does not set window.DEBUG = false when localStorage.removeItem throws (catch returns early)', async () => {
-      (window as { DEBUG?: boolean }).DEBUG = true
+      ;(window as { DEBUG?: boolean }).DEBUG = true
       const { disableDebug } = await import('./logger')
       const spy = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
         throw new Error('SecurityError')

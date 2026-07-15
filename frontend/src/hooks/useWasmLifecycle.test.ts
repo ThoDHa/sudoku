@@ -42,8 +42,6 @@ function actCancelUnload(result: HookResult) {
   })
 }
 
-
-
 // UTILITIES
 
 /**

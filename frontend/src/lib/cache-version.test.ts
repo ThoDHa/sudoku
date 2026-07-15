@@ -74,9 +74,7 @@ describe('cache-version', () => {
     await checkCacheVersion()
 
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Cache version changed'))
-    expect(logger.warn).not.toHaveBeenCalledWith(
-      expect.stringContaining('Cleared all caches'),
-    )
+    expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('Cleared all caches'))
     expect(deleteMock).not.toHaveBeenCalled()
   })
 
@@ -116,10 +114,12 @@ describe('clearAllCaches', () => {
     const unregistered: string[] = []
     vi.stubGlobal('navigator', {
       serviceWorker: {
-        getRegistrations: vi.fn().mockResolvedValue([
-          { unregister: () => Promise.resolve(unregistered.push('sw-a') && true) },
-          { unregister: () => Promise.resolve(unregistered.push('sw-b') && true) },
-        ]),
+        getRegistrations: vi
+          .fn()
+          .mockResolvedValue([
+            { unregister: () => Promise.resolve(unregistered.push('sw-a') && true) },
+            { unregister: () => Promise.resolve(unregistered.push('sw-b') && true) },
+          ]),
       },
     })
     localStorage.setItem(CACHE_KEY, 'stale')

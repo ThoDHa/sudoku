@@ -48,11 +48,14 @@ export function useBoardState(options: UseBoardStateOptions): UseBoardStateRetur
     }
   }, [initialBoard])
 
-  const updateBoard = useCallback((newBoard: number[]) => {
-    // Stryker disable next-line BooleanLiteral: firstInitRef is write-only (never read), so assigning true vs false is unobservable
-    firstInitRef.current = true
-    setBoard(newBoard)
-  }, /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since updateBoard's only captured value is the stable setBoard dispatcher */ [])
+  const updateBoard = useCallback(
+    (newBoard: number[]) => {
+      // Stryker disable next-line BooleanLiteral: firstInitRef is write-only (never read), so assigning true vs false is unobservable
+      firstInitRef.current = true
+      setBoard(newBoard)
+    },
+    /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since updateBoard's only captured value is the stable setBoard dispatcher */ [],
+  )
 
   const isGivenCell = useCallback(
     (idx: number): boolean => {

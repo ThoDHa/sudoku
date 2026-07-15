@@ -814,10 +814,9 @@ describe('useWasmSolver', () => {
       mockIsWasmReady.mockReturnValue(false)
       mockPreloadWasm.mockClear()
 
-      const { rerender } = renderHook(
-        ({ preloadOnMount }) => useWasmSolver({ preloadOnMount }),
-        { initialProps: { preloadOnMount: false } },
-      )
+      const { rerender } = renderHook(({ preloadOnMount }) => useWasmSolver({ preloadOnMount }), {
+        initialProps: { preloadOnMount: false },
+      })
 
       expect(mockPreloadWasm).not.toHaveBeenCalled()
 
@@ -845,7 +844,9 @@ describe('useWasmSolver', () => {
         // Under the original deps array, the effect cleanup runs and removeEventListener
         // is invoked for 'wasmReady'. The empty-deps mutant never re-runs the effect,
         // so no cleanup happens between mount and unmount.
-        expect(removeSpy.mock.calls.filter((c) => (c[0] as string) === 'wasmReady').length).toBeGreaterThan(0)
+        expect(
+          removeSpy.mock.calls.filter((c) => (c[0] as string) === 'wasmReady').length,
+        ).toBeGreaterThan(0)
 
         unmount()
       } finally {

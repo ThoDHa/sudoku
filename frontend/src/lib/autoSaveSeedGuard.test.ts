@@ -4,9 +4,7 @@ import { shouldAllowStaleSave, type AutoSaveSeedGuardInputs } from './autoSaveSe
 describe('shouldAllowStaleSave', () => {
   describe('allowing a legitimate in-flight save for the active puzzle', () => {
     it('allows the save when the scheduled seed still matches the current seed', () => {
-      expect(
-        shouldAllowStaleSave({ scheduledSeed: 'P123', currentSeed: 'P123' }),
-      ).toBe(true)
+      expect(shouldAllowStaleSave({ scheduledSeed: 'P123', currentSeed: 'P123' })).toBe(true)
     })
 
     it('allows a daily seed save that has not been navigated away from', () => {
@@ -21,9 +19,7 @@ describe('shouldAllowStaleSave', () => {
 
   describe('BUG-12 scenario 2: blocking a stale save after navigating to a new puzzle', () => {
     it('blocks the stale save so clearOtherGamesForMode cannot delete the new puzzle save', () => {
-      expect(
-        shouldAllowStaleSave({ scheduledSeed: 'P123', currentSeed: 'P456' }),
-      ).toBe(false)
+      expect(shouldAllowStaleSave({ scheduledSeed: 'P123', currentSeed: 'P456' })).toBe(false)
     })
 
     it('blocks the stale save when navigating between daily puzzles of different dates', () => {
@@ -36,9 +32,9 @@ describe('shouldAllowStaleSave', () => {
     })
 
     it('blocks the stale save when moving from a practice puzzle to a daily puzzle', () => {
-      expect(
-        shouldAllowStaleSave({ scheduledSeed: 'P123', currentSeed: 'daily-2026-07-10' }),
-      ).toBe(false)
+      expect(shouldAllowStaleSave({ scheduledSeed: 'P123', currentSeed: 'daily-2026-07-10' })).toBe(
+        false,
+      )
     })
   })
 

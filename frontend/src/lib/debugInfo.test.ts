@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import {
-  buildDebugInfo,
-  formatDebugJson,
-  isLocalStorageAvailable,
-} from './debugInfo'
+import { buildDebugInfo, formatDebugJson, isLocalStorageAvailable } from './debugInfo'
 
 vi.mock('./scores', () => ({
   getScores: vi.fn(() => [

@@ -1272,9 +1272,7 @@ describe('mutation-killing: pauseOnHidden opt-out honored by interval body inner
     // the interval stays alive. The interval body's inner guard must re-read
     // shouldPauseOperations each tick and skip the update, freezing elapsedMs.
     const bg = createMockBackgroundManager({ shouldPauseOperations: false })
-    const { result } = renderHook(() =>
-      useGameTimer({ backgroundManager: bg, autoStart: true }),
-    )
+    const { result } = renderHook(() => useGameTimer({ backgroundManager: bg, autoStart: true }))
 
     act(() => {
       vi.advanceTimersByTime(1100)

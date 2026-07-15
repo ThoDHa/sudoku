@@ -683,7 +683,11 @@ describe('wasm.worker mutation-kill: parallel init and edge paths', () => {
 
     await load()
     posted.length = 0
-    post({ type: 'findNextMove', id: 'fnm-fail', payload: { cells: [0], candidates: [[]], givens: [0] } })
+    post({
+      type: 'findNextMove',
+      id: 'fnm-fail',
+      payload: { cells: [0], candidates: [[]], givens: [0] },
+    })
 
     await vi.waitFor(() => {
       const err = posted.find((m) => m.type === 'error' && m.id === 'fnm-fail')
@@ -705,7 +709,11 @@ describe('wasm.worker mutation-kill: parallel init and edge paths', () => {
 
     await load()
     posted.length = 0
-    post({ type: 'solveAll', id: 'sa-fail', payload: { cells: [0], candidates: [[]], givens: [0] } })
+    post({
+      type: 'solveAll',
+      id: 'sa-fail',
+      payload: { cells: [0], candidates: [[]], givens: [0] },
+    })
 
     await vi.waitFor(() => {
       const err = posted.find((m) => m.type === 'error' && m.id === 'sa-fail')

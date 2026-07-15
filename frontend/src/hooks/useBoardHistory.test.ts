@@ -77,7 +77,12 @@ describe('useBoardHistory', () => {
   })
 
   describe('undo', () => {
-    function setupHistory(history: Move[], index: number, board: number[] = new Array(81).fill(0), candidates: Uint16Array = new Uint16Array(81)) {
+    function setupHistory(
+      history: Move[],
+      index: number,
+      board: number[] = new Array(81).fill(0),
+      candidates: Uint16Array = new Uint16Array(81),
+    ) {
       const setBoard = vi.fn()
       const setCandidates = vi.fn()
       const boardRef = { current: board }
@@ -157,7 +162,12 @@ describe('useBoardHistory', () => {
 
     it('does nothing when the prior move has neither stateDiff nor boardBefore', () => {
       const move = makeMove()
-      const { result, setBoard } = setupHistory([move], 0, new Array(81).fill(0), new Uint16Array(81))
+      const { result, setBoard } = setupHistory(
+        [move],
+        0,
+        new Array(81).fill(0),
+        new Uint16Array(81),
+      )
 
       act(() => result.current.undo())
 
@@ -167,7 +177,12 @@ describe('useBoardHistory', () => {
   })
 
   describe('redo', () => {
-    function setupHistory(history: Move[], index: number, board: number[], candidates: Uint16Array) {
+    function setupHistory(
+      history: Move[],
+      index: number,
+      board: number[],
+      candidates: Uint16Array,
+    ) {
       const setBoard = vi.fn()
       const setCandidates = vi.fn()
       const boardRef = { current: board }
