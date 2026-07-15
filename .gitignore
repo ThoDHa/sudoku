@@ -17,6 +17,7 @@ api/server
 # WASM binaries (built by CI/CD)
 frontend/public/sudoku.wasm
 api/sudoku.wasm
+api/wasm
 frontend/public/sudoku.wasm.backup
 frontend/public/solver.wasm
 frontend/public/wasm_exec.js
@@ -42,6 +43,7 @@ api/go-mutesting-report.html
 
 # Task management (opencode task files — local only)
 .tasks/
+.future_task/
 
 # Environment files
 .env
