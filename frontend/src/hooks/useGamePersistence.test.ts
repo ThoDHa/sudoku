@@ -367,13 +367,16 @@ describe('useGamePersistence', () => {
       )
     })
 
-    it('propagates the getStorageKey error for an invalid seed (outside the try)', () => {
+    it('returns null and logs when the seed is invalid (never throws)', () => {
       ;(validateSeed as Mock).mockReturnValue({ valid: false, seed: 'bad', error: 'bad seed' })
       const { result } = renderPersistence(makeOptions())
-      // loadSavedGameState calls getStorageKey before entering its try/catch,
-      // so the invalid-seed error propagates rather than being swallowed.
-      expect(() => result.current.loadSavedGameState('bad')).toThrow(
-        /Cannot create storage key for invalid seed/,
+      // loadSavedGameState resolves the storage key inside its try/catch, so an
+      // invalid seed is swallowed into a null return plus an error log rather
+      // than propagating (the declared SavedGameState | null contract).
+      expect(result.current.loadSavedGameState('bad')).toBeNull()
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to load saved game'),
+        expect.any(Error),
       )
     })
   })

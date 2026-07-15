@@ -142,8 +142,11 @@ export function useGamePersistence({
 
   const loadSavedGameState = useCallback(
     (puzzleSeed: string): SavedGameState | null => {
-      const storageKey = getStorageKey(puzzleSeed)
       try {
+        // Resolve the storage key inside the try so an invalid seed honors the
+        // declared SavedGameState | null contract (returns null + logs) rather
+        // than throwing out of loadSavedGameState.
+        const storageKey = getStorageKey(puzzleSeed)
         const saved = localStorage.getItem(storageKey)
         if (!saved) return null
 
