@@ -501,6 +501,11 @@ jobs:
         env:
           VITE_BASE_PATH: /sudoku/
 
+      - name: Enforce bundle-size budget
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        working-directory: frontend
+        run: npm run size
+
       - name: Prepare Pages artifact
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         run: |
