@@ -379,6 +379,29 @@ describe('useGamePersistence', () => {
         expect.any(Error),
       )
     })
+
+    it('warns and returns null when the parsed payload is null', () => {
+      localStorage.setItem(STORAGE_KEY, 'null')
+      const { result } = renderPersistence(makeOptions())
+      expect(result.current.loadSavedGameState('seed1')).toBeNull()
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Corrupted saved state'))
+    })
+
+    it('warns and returns null when the parsed payload is a primitive (non-object)', () => {
+      localStorage.setItem(STORAGE_KEY, '5')
+      const { result } = renderPersistence(makeOptions())
+      expect(result.current.loadSavedGameState('seed1')).toBeNull()
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Corrupted saved state'))
+    })
+
+    it('warns and returns null when board contains a non-number element', () => {
+      const board: unknown[] = Array(81).fill(0)
+      board[80] = 'x'
+      seedStore({ board, candidates: Array.from({ length: 81 }, () => []) })
+      const { result } = renderPersistence(makeOptions())
+      expect(result.current.loadSavedGameState('seed1')).toBeNull()
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Corrupted saved state'))
+    })
   })
 
   // ---------------------------------------------------------------------------

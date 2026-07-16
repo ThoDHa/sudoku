@@ -223,13 +223,23 @@ function getYesterdayUTC(): string {
   return `${year}-${month}-${day}`
 }
 
+// Narrow an unknown JSON.parse result into a string[] for the completions set,
+// so a corrupted entry returns an empty set instead of seeding it with
+// non-string values (or, for a string payload, its individual characters).
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((v) => typeof v === 'string')
+}
+
 /**
  * Get the set of completed daily dates
  */
 export function getDailyCompletions(): Set<string> {
   try {
     const data = localStorage.getItem(STORAGE_KEYS.DAILY_COMPLETIONS)
-    return data ? new Set(JSON.parse(data)) : new Set()
+    if (!data) return new Set()
+    const parsed: unknown = JSON.parse(data)
+    if (!isStringArray(parsed)) return new Set()
+    return new Set(parsed)
   } catch {
     return new Set()
   }

@@ -559,6 +559,18 @@ describe('usePuzzleLoader', () => {
       await flushLoading(result)
       expect(result.current.error).toBe('Stored puzzle is invalid')
     })
+
+    it('throws "Stored puzzle data is malformed" when the stored value is not an array', async () => {
+      localStorage.setItem(
+        `${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}custom-malformed`,
+        JSON.stringify('not-an-array'),
+      )
+      const { result } = renderHook(() =>
+        usePuzzleLoader(makeOptions({ difficulty: 'custom', effectiveSeed: 'custom-malformed' })),
+      )
+      await flushLoading(result)
+      expect(result.current.error).toBe('Stored puzzle data is malformed')
+    })
   })
 
   describe('fetchPuzzleSource: resolvePractice', () => {
@@ -599,6 +611,20 @@ describe('usePuzzleLoader', () => {
       )
       await flushLoading(result)
       expect(result.current.error).toBe('Practice puzzle is invalid')
+    })
+
+    it('throws "Stored puzzle data is malformed" when the stored givens contain a non-numeric value', async () => {
+      const bad: unknown[] = [...givens81()]
+      bad[0] = 'x'
+      localStorage.setItem(
+        `${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}practice-malformed`,
+        JSON.stringify(bad),
+      )
+      const { result } = renderHook(() =>
+        usePuzzleLoader(makeOptions({ effectiveSeed: 'practice-malformed' })),
+      )
+      await flushLoading(result)
+      expect(result.current.error).toBe('Stored puzzle data is malformed')
     })
   })
 

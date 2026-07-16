@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { MutableRefObject } from 'react'
-import { STORAGE_KEYS } from '../lib/constants'
+import { STORAGE_KEYS, MAX_DIGIT } from '../lib/constants'
 import { getGameMode } from '../lib/gameSettings'
 import { shouldShowDailyPrompt, markDailyPromptShown } from '../lib/dailyPrompt'
 import { getPuzzle, validateCustomPuzzle } from '../lib/solver-service'
@@ -27,6 +27,21 @@ interface ResolvedPuzzle {
   puzzleData: PuzzleData
   initialState: number[] | null
   initialCandidates: number[][] | null
+}
+
+// Read a givens array previously written with JSON.stringify(number[]). Narrows
+// the parsed value to an integer array in digit range (0..MAX_DIGIT, where 0 is
+// an empty cell) so a corrupted localStorage entry fails here instead of being
+// passed to the solver as an untyped value.
+function parseStoredGivens(raw: string): number[] {
+  const parsed: unknown = JSON.parse(raw)
+  if (
+    !Array.isArray(parsed) ||
+    !parsed.every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= MAX_DIGIT)
+  ) {
+    throw new Error('Stored puzzle data is malformed')
+  }
+  return parsed
 }
 
 // Validate custom givens and build the puzzleData payload shared by the
@@ -102,7 +117,7 @@ async function resolveStoredCustom(
   if (!storedGivens) {
     throw new Error('Custom puzzle not found. Please re-enter the puzzle.')
   }
-  const givens: number[] = JSON.parse(storedGivens)
+  const givens = parseStoredGivens(storedGivens)
   const validation = await validateCustomPuzzle(givens, '')
   if (!validation.valid || !validation.unique || !validation.solution) {
     throw new Error('Stored puzzle is invalid')
@@ -133,7 +148,7 @@ async function resolvePractice(
   if (!storedGivens) {
     throw new Error('Practice puzzle not found. Please try again from the technique page.')
   }
-  const givens: number[] = JSON.parse(storedGivens)
+  const givens = parseStoredGivens(storedGivens)
   const validation = await validateCustomPuzzle(givens, '')
   if (!validation.valid || !validation.unique || !validation.solution) {
     throw new Error('Practice puzzle is invalid')

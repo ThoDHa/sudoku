@@ -798,6 +798,20 @@ describe('scores', () => {
       const result = getDailyCompletions()
       expect(result.size).toBe(0)
     })
+
+    it('should return empty set when the stored value is not an array', () => {
+      mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = JSON.stringify('2024-01-15')
+
+      const result = getDailyCompletions()
+      expect(result.size).toBe(0)
+    })
+
+    it('should return empty set when the stored array contains a non-string element', () => {
+      mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = JSON.stringify(['2024-01-15', 42])
+
+      const result = getDailyCompletions()
+      expect(result.size).toBe(0)
+    })
   })
 
   describe('isTodayCompleted', () => {
