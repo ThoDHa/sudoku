@@ -38,6 +38,7 @@ export default function ThemeModeDropdown({
         onClick={onToggle}
         className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
         title={`Theme: ${modePreference === 'system' ? `System (${mode})` : modePreference}`}
+        aria-label={`Theme: ${modePreference === 'system' ? `System (${mode})` : modePreference}`}
       >
         {mode === 'dark' ? <MoonIcon /> : <SunIcon />}
       </button>

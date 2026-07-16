@@ -111,6 +111,7 @@ function AutoSolveControls({
               key={speed}
               onClick={() => onSpeedChange(speed)}
               title={label}
+              aria-label={`Auto-solve speed ${label}`}
               className={`px-2 py-1.5 transition-colors ${
                 autoSolveSpeed === speed
                   ? 'bg-accent text-btn-active-text'
@@ -129,6 +130,7 @@ function AutoSolveControls({
               : 'bg-btn-bg text-foreground hover:bg-btn-hover border border-board-border-light'
           }`}
           title={isPaused ? 'Resume' : 'Pause'}
+          aria-label={isPaused ? 'Resume' : 'Pause'}
         >
           {isPaused ? (
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -145,6 +147,7 @@ function AutoSolveControls({
           onClick={onStopAutoSolve}
           className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm bg-red-500 text-white hover:bg-red-600 transition-colors"
           title="Stop solving"
+          aria-label="Stop solving"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -177,6 +180,7 @@ function AutoSolveControls({
             key={speed}
             onClick={() => onSpeedChange(speed)}
             title={label}
+            aria-label={`Auto-solve speed ${label}`}
             className={`px-3 py-2 transition-colors ${
               autoSolveSpeed === speed
                 ? 'bg-accent text-btn-active-text'
@@ -195,6 +199,7 @@ function AutoSolveControls({
             : 'bg-btn-bg text-foreground hover:bg-btn-hover border border-board-border-light'
         }`}
         title={isPaused ? 'Resume' : 'Pause'}
+        aria-label={isPaused ? 'Resume' : 'Pause'}
       >
         {isPaused ? (
           <>
@@ -217,6 +222,7 @@ function AutoSolveControls({
         onClick={onStopAutoSolve}
         className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors"
         title="Stop solving"
+        aria-label="Stop solving"
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
@@ -269,6 +275,13 @@ function HintButtons({
               ? 'Make a move to use again'
               : 'Learn which technique to use'
         }
+        aria-label={
+          techniqueHintLoading
+            ? 'Loading...'
+            : techniqueHintDisabled
+              ? 'Make a move to use again'
+              : 'Learn which technique to use'
+        }
       >
         {techniqueHintLoading ? (
           <ButtonSpinner className="h-4 w-4" />
@@ -286,6 +299,9 @@ function HintButtons({
             : 'text-foreground-muted hover:text-accent hover:bg-btn-hover'
         }`}
         title={
+          hintLoading ? 'Loading...' : hintDisabled ? 'Make a move to use again' : 'Get a hint'
+        }
+        aria-label={
           hintLoading ? 'Loading...' : hintDisabled ? 'Make a move to use again' : 'Get a hint'
         }
       >
@@ -474,6 +490,7 @@ export default memo(function GameHeader({
               onClick={onHistoryOpen}
               className="relative flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
               title="View move history"
+              aria-label="View move history"
               data-history-button
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -500,6 +517,7 @@ export default memo(function GameHeader({
                 onClick={onShowResult}
                 className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
                 title="Share your result"
+                aria-label="Share your result"
                 data-share-button
               >
                 <ShareIcon />
@@ -510,6 +528,7 @@ export default memo(function GameHeader({
                 onClick={() => setShareModalOpen(true)}
                 className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
                 title="Share the puzzle or your current game"
+                aria-label="Share the puzzle or your current game"
                 aria-haspopup="dialog"
                 aria-expanded={shareModalOpen}
                 data-share-button

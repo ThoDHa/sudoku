@@ -463,6 +463,7 @@ function GameActionsSection({
                 gameActions.onSolve()
               }}
               title={`${label} - Click to start`}
+              aria-label={`Auto-solve speed ${label}`}
               className={`p-1 rounded ${
                 gameActions.autoSolveSpeed === speed
                   ? ACCENT_ACTIVE
@@ -652,6 +653,7 @@ function SettingsSection({
                       : 'hover:scale-110'
                   }`}
                   title={theme.label}
+                  aria-label={theme.label}
                 />
               ))}
             </div>

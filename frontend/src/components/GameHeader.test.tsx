@@ -104,3 +104,32 @@ describe('GameHeader menu open-state contract', () => {
     expect(onMenuOpenChange).not.toHaveBeenCalled()
   })
 })
+
+describe('GameHeader icon-only button accessibility', () => {
+  it('exposes an accessible name on the history, share, hint, and menu buttons', () => {
+    const { getByRole } = renderGameHeader()
+
+    // Icon-only (their visible labels are hidden below the sm breakpoint via
+    // `hidden sm:inline`), so the accessible name must come from aria-label.
+    expect(getByRole('button', { name: 'View move history' })).toBeInTheDocument()
+    expect(
+      getByRole('button', { name: 'Share the puzzle or your current game' }),
+    ).toBeInTheDocument()
+    expect(getByRole('button', { name: 'Get a hint' })).toBeInTheDocument()
+    expect(getByRole('button', { name: 'Learn which technique to use' })).toBeInTheDocument()
+    expect(getByRole('button', { name: 'Menu' })).toBeInTheDocument()
+  })
+
+  it('exposes an accessible name on the auto-solve speed, pause, and stop buttons', () => {
+    // AutoSolveControls renders twice: a desktop variant (`hidden sm:flex`) and a
+    // mobile variant (`sm:hidden`). The test environment does not load the
+    // Tailwind CSS that hides one of them, so both appear in the accessibility
+    // tree. Asserting two matches therefore verifies BOTH variants are labeled.
+    const { getAllByRole } = renderGameHeader({ isAutoSolving: true })
+
+    expect(getAllByRole('button', { name: 'Auto-solve speed 1x' })).toHaveLength(2)
+    expect(getAllByRole('button', { name: 'Auto-solve speed Skip' })).toHaveLength(2)
+    expect(getAllByRole('button', { name: 'Pause' })).toHaveLength(2)
+    expect(getAllByRole('button', { name: 'Stop solving' })).toHaveLength(2)
+  })
+})

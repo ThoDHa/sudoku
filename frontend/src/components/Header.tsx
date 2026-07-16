@@ -160,6 +160,7 @@ export default function Header() {
                 onClick={() => setMenuOpen(true)}
                 className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
                 title="Menu"
+                aria-label="Menu"
               >
                 <MenuIcon />
               </button>
