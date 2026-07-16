@@ -638,6 +638,12 @@ test.describe('@integration Persistence - Preferences', () => {
   })
 
   test('auto-solve speed preference persists', async ({ page }) => {
+    // The beforeEach starts an easy game, so navigating to the P13 seed would
+    // trigger the "Game In Progress" modal whose backdrop intercepts the menu
+    // click. Set the skip flag so the seeded game loads without the prompt.
+    await page.evaluate(() => {
+      sessionStorage.setItem('skip_in_progress_check', 'true')
+    })
     await setupGameAndWaitForBoard(page, { seed: 'P13' })
 
     // Set a speed preference via the menu
@@ -670,7 +676,10 @@ test.describe('@integration Persistence - Preferences', () => {
     const prefs = await getLocalStorageItem(page, PREFERENCES_KEY)
     expect(prefs).toBeTruthy()
     const parsed = JSON.parse(prefs!)
-    expect(parsed.autoSolveSpeed).toBeDefined()
+    // Preferences are stored in a versioned envelope ({ schemaVersion, data });
+    // read through the envelope so the assertion is robust to the wrapper.
+    const storedPrefs = parsed.data ?? parsed
+    expect(storedPrefs.autoSolveSpeed).toBeDefined()
   })
 
   test('homepage mode preference persists', async ({ page }) => {
