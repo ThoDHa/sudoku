@@ -176,6 +176,11 @@ export default defineConfig({
         'src/lib/constants.ts',
         'src/lib/hooks.ts',
         'src/lib/cache-version.ts',
+        // Browser service-worker/Cache-API integration shim (registerSW,
+        // unregister + cache wipe). Mirrors cache-version.ts: a thin wrapper
+        // over browser-only APIs whose real behavior is proven by the
+        // pwa-offline e2e, not jsdom unit tests.
+        'src/lib/pwaRegistration.ts',
         // Pure re-export barrel (no logic; delegates to solver-service)
         'src/lib/api.ts',
         // Context providers (tested via integration)

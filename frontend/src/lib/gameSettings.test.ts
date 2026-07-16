@@ -14,6 +14,8 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import {
   getAutoSaveEnabled,
   setAutoSaveEnabled,
+  getOfflineModeEnabled,
+  setOfflineModeEnabled,
   getGameMode,
   isDailyPuzzle,
   isPracticePuzzle,
@@ -145,6 +147,71 @@ describe('gameSettings', () => {
       expect(() => setAutoSaveEnabled(true)).not.toThrow()
       expect(loggerWarnSpy).toHaveBeenCalledWith(
         'Failed to save auto-save preference:',
+        expect.any(Error),
+      )
+    })
+  })
+
+  // ===========================================================================
+  // getOfflineModeEnabled
+  // ===========================================================================
+  describe('getOfflineModeEnabled', () => {
+    it('should return false by default when no value stored (default OFF)', () => {
+      expect(getOfflineModeEnabled()).toBe(false)
+    })
+
+    it('should return true when stored as true', () => {
+      localStorageMock.setItem('sudoku_offline_mode_enabled', 'true')
+      expect(getOfflineModeEnabled()).toBe(true)
+    })
+
+    it('should return false when stored as false', () => {
+      localStorageMock.setItem('sudoku_offline_mode_enabled', 'false')
+      expect(getOfflineModeEnabled()).toBe(false)
+    })
+
+    it('should return false for a non-boolean JSON value (boolean narrowing, not truthiness)', () => {
+      // A truthy non-boolean (1) must NOT be coerced to true. This is the
+      // FE-3 boundary pattern: parse-to-unknown then narrow with `=== true`,
+      // rather than `JSON.parse(x) as boolean` or `Boolean(parsed)`.
+      localStorageMock.setItem('sudoku_offline_mode_enabled', '1')
+      expect(getOfflineModeEnabled()).toBe(false)
+    })
+
+    it('should return false on malformed JSON', () => {
+      localStorageMock.setItem('sudoku_offline_mode_enabled', 'not json {{')
+      expect(getOfflineModeEnabled()).toBe(false)
+    })
+
+    it('should return false when localStorage throws', () => {
+      localStorageMock.getItem.mockImplementation(() => {
+        throw new Error('localStorage access denied')
+      })
+      expect(getOfflineModeEnabled()).toBe(false)
+    })
+  })
+
+  // ===========================================================================
+  // setOfflineModeEnabled
+  // ===========================================================================
+  describe('setOfflineModeEnabled', () => {
+    it('should store true value', () => {
+      setOfflineModeEnabled(true)
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('sudoku_offline_mode_enabled', 'true')
+    })
+
+    it('should store false value', () => {
+      setOfflineModeEnabled(false)
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('sudoku_offline_mode_enabled', 'false')
+    })
+
+    it('should handle localStorage errors gracefully', () => {
+      localStorageMock.setItem.mockImplementation(() => {
+        throw new Error('QuotaExceededError')
+      })
+      expect(() => setOfflineModeEnabled(true)).not.toThrow()
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        'Failed to save offline-mode preference:',
         expect.any(Error),
       )
     })

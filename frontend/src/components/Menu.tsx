@@ -6,9 +6,12 @@ import { clearAllCaches, CACHE_VERSION } from '../lib/cache-version'
 import {
   getAutoSaveEnabled,
   setAutoSaveEnabled,
+  getOfflineModeEnabled,
+  setOfflineModeEnabled,
   getGameMode,
   getMostRecentGameForMode,
 } from '../lib/gameSettings'
+import { registerOfflineMode, unregisterOfflineMode } from '../lib/pwaRegistration'
 import { getShowDailyReminder, setShowDailyReminder } from '../lib/preferences'
 import { getDailySeed } from '../lib/solver-service'
 import { getLastDailyDifficulty } from '../lib/hooks'
@@ -35,6 +38,48 @@ function ToggleSwitch({ checked }: { checked: boolean }) {
         className={`w-5 h-5 rounded-full bg-background shadow transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}`}
       />
     </div>
+  )
+}
+
+// Self-contained offline-mode toggle (available everywhere, like the Daily
+// Reminder toggle). Manages its own state so no preference plumbing is threaded
+// through SettingsSection/Menu. ON registers the service worker immediately;
+// OFF unregisters every service worker and deletes every cache so the offline
+// artifacts are fully removed.
+function OfflineModeToggle() {
+  const [enabled, setEnabled] = useState(getOfflineModeEnabled)
+
+  const handleToggle = () => {
+    const next = !enabled
+    setEnabled(next)
+    setOfflineModeEnabled(next)
+    if (next) {
+      registerOfflineMode()
+    } else {
+      unregisterOfflineMode().catch((error) =>
+        logger.error('Failed to disable offline mode:', error),
+      )
+    }
+  }
+
+  return (
+    <button
+      onClick={handleToggle}
+      className="flex w-full items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-btn-hover rounded-lg"
+    >
+      <span className="flex items-center gap-3">
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-5l-4 4m0 0l-4-4m4 4V4"
+          />
+        </svg>
+        Enable Offline Mode
+      </span>
+      <ToggleSwitch checked={enabled} />
+    </button>
   )
 }
 
@@ -630,6 +675,9 @@ function SettingsSection({
             </span>
             <ToggleSwitch checked={showDailyReminder} />
           </button>
+
+          {/* Offline Mode toggle (available everywhere) */}
+          <OfflineModeToggle />
 
           {/* Timer + Auto-save + Step-by-step toggles (game only) */}
           {gameActions && (
