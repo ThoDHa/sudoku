@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { waitForWasmReady } from '../utils/board-wait'
 
 /**
  * Custom Puzzle Integration Tests
@@ -157,6 +158,11 @@ test.describe('@integration Custom Puzzle - Validation', () => {
     await expect(page.locator('[role="gridcell"][aria-label*="Row 1, Column 2"]')).toContainText(
       '3',
     )
+
+    // Validation is WASM-first (validateCustomPuzzle), so the solver must be
+    // ready before Validate or slower CI environments race the WASM load and
+    // the puzzle never navigates to /c/<encoded>.
+    await waitForWasmReady(page)
 
     await page.locator(VALIDATE_BUTTON).click()
 
