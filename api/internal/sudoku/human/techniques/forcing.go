@@ -41,7 +41,7 @@ func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int)
 	result.placements[startCell] = startDigit
 
 	// Track which eliminations were caused by this chain
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if i != startCell && b.GetCandidatesAt(i).Has(startDigit) && !sim.GetCandidatesAt(i).Has(startDigit) {
 			if result.eliminations[i] == nil {
 				result.eliminations[i] = make(map[int]bool)
@@ -51,11 +51,11 @@ func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int)
 	}
 
 	// Propagate singles up to maxSteps
-	for step := 0; step < maxSteps; step++ {
+	for range maxSteps {
 		progress := false
 
 		// Check for naked singles
-		for i := 0; i < constants.TotalCells; i++ {
+		for i := range constants.TotalCells {
 			if sim.GetCell(i) != 0 {
 				continue
 			}
@@ -164,7 +164,7 @@ func DetectForcingChain(b BoardInterface) *core.Move {
 func detectCellForcingChain(b BoardInterface) *core.Move {
 	// Find bivalue cells first (most likely to yield results), then trivalue
 	for numCands := 2; numCands <= 3; numCands++ {
-		for cell := 0; cell < constants.TotalCells; cell++ {
+		for cell := range constants.TotalCells {
 			if b.GetCell(cell) != 0 || b.GetCandidatesAt(cell).Count() != numCands {
 				continue
 			}
@@ -214,7 +214,7 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 			}
 
 			// Find common placements across all branches
-			for targetCell := 0; targetCell < constants.TotalCells; targetCell++ {
+			for targetCell := range constants.TotalCells {
 				if targetCell == cell || b.GetCell(targetCell) != 0 {
 					continue
 				}
@@ -253,7 +253,7 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 			}
 
 			// Find common eliminations across all branches
-			for targetCell := 0; targetCell < constants.TotalCells; targetCell++ {
+			for targetCell := range constants.TotalCells {
 				if targetCell == cell || b.GetCell(targetCell) != 0 {
 					continue
 				}
@@ -371,7 +371,7 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 	}
 
 	// Find common placements
-	for targetCell := 0; targetCell < constants.TotalCells; targetCell++ {
+	for targetCell := range constants.TotalCells {
 		if b.GetCell(targetCell) != 0 {
 			continue
 		}
@@ -425,7 +425,7 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 	}
 
 	// Find common eliminations
-	for targetCell := 0; targetCell < constants.TotalCells; targetCell++ {
+	for targetCell := range constants.TotalCells {
 		if b.GetCell(targetCell) != 0 {
 			continue
 		}

@@ -38,9 +38,9 @@ func DetectSkyscraper(b BoardInterface) *core.Move {
 // for the digit.
 func collectSkyscraperLinks(b BoardInterface, digit int, byRow bool) [][2]int {
 	var links [][2]int
-	for outer := 0; outer < constants.GridSize; outer++ {
+	for outer := range constants.GridSize {
 		var cells []int
-		for inner := 0; inner < constants.GridSize; inner++ {
+		for inner := range constants.GridSize {
 			var idx int
 			if byRow {
 				idx = outer*constants.GridSize + inner
@@ -62,7 +62,7 @@ func collectSkyscraperLinks(b BoardInterface, digit int, byRow bool) [][2]int {
 // same-orientation links. baseUnit is "column" for row links (base cells share
 // a column) and "row" for column links, used in the explanation.
 func findSkyscraperInLinks(b BoardInterface, digit int, links [][2]int, baseUnit string) *core.Move {
-	for i := 0; i < len(links); i++ {
+	for i := range links {
 		for j := i + 1; j < len(links); j++ {
 			if mv := buildSkyscraperMove(b, digit, links[i], links[j], baseUnit); mv != nil {
 				return mv
@@ -97,7 +97,7 @@ func buildSkyscraperMove(b BoardInterface, digit int, a, c [2]int, baseUnit stri
 		}
 
 		var eliminations []core.Candidate
-		for idx := 0; idx < constants.TotalCells; idx++ {
+		for idx := range constants.TotalCells {
 			if !b.GetCandidatesAt(idx).Has(digit) || idx == top1 || idx == top2 {
 				continue
 			}

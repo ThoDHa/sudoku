@@ -56,7 +56,7 @@ func (b *testBoard) RemoveCandidate(idx, digit int) bool {
 func boardFromMap(cells [constants.TotalCells]int, overrides map[int][]int) *testBoard {
 	b := &testBoard{}
 	b.cells = cells
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		b.candidates[i] = 0
 		if cells[i] == 0 {
 			for d := 1; d <= constants.GridSize; d++ {
@@ -426,7 +426,7 @@ func TestDetectNakedSingleAbsentWhenNoSoleCandidate(t *testing.T) {
 
 func TestDetectHiddenSingleInRow(t *testing.T) {
 	overrides := map[int][]int{}
-	for c := 0; c < constants.GridSize; c++ {
+	for c := range constants.GridSize {
 		if c == 3 {
 			overrides[idxOf(0, c)] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 		} else {
@@ -519,7 +519,7 @@ func TestDetectPointingPairEliminatesFromRowOutsideBox(t *testing.T) {
 func TestDetectSkyscraperFindsColumnOrientedPattern(t *testing.T) {
 	const solved = "534678912672195348198342567859761423426853791713924856961537284287419635345286179"
 	var cells [constants.TotalCells]int
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		cells[i] = int(solved[i] - '0')
 	}
 	// Punch out the pattern + victim + decoy cells so they carry candidates.

@@ -303,7 +303,7 @@ func TestSolveAllRespectsMaxFixesCap(t *testing.T) {
 
 	solved := dp.GenerateFullGrid(1)
 	corruptions := map[int]int{}
-	for i := 0; i < 9; i++ { // all of row 0
+	for i := range 9 { // all of row 0
 		if solved[i] == 9 {
 			corruptions[i] = 1
 		} else {

@@ -11,7 +11,7 @@ import (
 // candidateMap maps cell index (0-80) to a slice of candidate digits.
 func makeTestBoard(cells [81]int, candidateMap map[int][]int) *Board {
 	b := &Board{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		b.Cells[i] = cells[i]
 		b.Candidates[i] = 0 // Empty bitmask
 	}
@@ -33,7 +33,7 @@ func cellIdx(row, col int) int {
 // This ensures no false positives from empty candidate sets.
 func makeFullCandidateBoard(cells [81]int, candidateMap map[int][]int) *Board {
 	b := &Board{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		b.Cells[i] = cells[i]
 		b.Candidates[i] = 0 // Empty bitmask
 		// If cell is empty, populate with all 9 candidates by default
@@ -89,7 +89,7 @@ func applyTechniqueIsolation(b *Board, technique string) {
 
 	case "hidden_single":
 		// For hidden single test: eliminate digit 7 from all cells in row 1 except R1C2
-		for col := 0; col < 9; col++ {
+		for col := range 9 {
 			idx := 0*9 + col // row 1
 			if col != 1 {    // except R1C2
 				b.Candidates[idx] = b.Candidates[idx].Clear(7)
@@ -125,7 +125,7 @@ func applyTechniqueIsolation(b *Board, technique string) {
 		// Remove 1,4 from all other cells in row 1
 		pairCells := []int{0, 3} // R1C1, R1C4
 		pairDigits := []int{1, 4}
-		for col := 0; col < 9; col++ {
+		for col := range 9 {
 			idx := 0*9 + col
 			isPairCell := false
 			for _, pairIdx := range pairCells {
@@ -146,7 +146,7 @@ func applyTechniqueIsolation(b *Board, technique string) {
 		// For pointing pair test: ensure digit 2 in box 1 appears only in row 1
 		// Remove 2 from rows 2,3 in box 1
 		for row := 1; row < 3; row++ { // rows 2,3 of box 1
-			for col := 0; col < 3; col++ {
+			for col := range 3 {
 				idx := row*9 + col
 				b.Candidates[idx] = b.Candidates[idx].Clear(2)
 				b.Eliminated[idx] = b.Eliminated[idx].Set(2)
@@ -171,7 +171,7 @@ func applyTechniqueIsolation(b *Board, technique string) {
 
 		// Remove digit from non-X-Wing positions in these rows
 		for _, row := range xWingRows {
-			for col := 0; col < 9; col++ {
+			for col := range 9 {
 				isXWingCol := false
 				for _, xCol := range xWingCols {
 					if col == xCol {
@@ -230,7 +230,7 @@ func applyTechniqueIsolation(b *Board, technique string) {
 
 		// Remove digit from non-swordfish positions in these rows
 		for _, row := range fishRows {
-			for col := 0; col < 9; col++ {
+			for col := range 9 {
 				isFishCol := false
 				for _, fCol := range fishCols {
 					if col == fCol {

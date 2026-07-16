@@ -637,7 +637,7 @@ func TestHTTPRoutes(t *testing.T) {
 		solved := dp.GenerateFullGrid(77)
 		board := make([]int, 81)
 		copy(board, solved)
-		for i := 0; i < 20; i++ {
+		for i := range 20 {
 			board[i] = 0
 		}
 
@@ -812,7 +812,7 @@ func TestHTTPRoutes(t *testing.T) {
 			col := j % 9
 
 			// Try to find a non-given cell in the same row
-			for c := 0; c < 9; c++ {
+			for c := range 9 {
 				p := row*9 + c
 				if givens[p] == 0 {
 					idx = p
@@ -825,7 +825,7 @@ func TestHTTPRoutes(t *testing.T) {
 			}
 
 			// Try same column
-			for r := 0; r < 9; r++ {
+			for r := range 9 {
 				p := r*9 + col
 				if givens[p] == 0 {
 					idx = p
@@ -854,7 +854,7 @@ func TestHTTPRoutes(t *testing.T) {
 
 		// Fallback: if not found, pick first non-given and set wrong digit to any incorrect value
 		if idx < 0 {
-			for i := 0; i < 81; i++ {
+			for i := range 81 {
 				if givens[i] == 0 {
 					idx = i
 					// pick a digit different from true solution
@@ -936,7 +936,7 @@ func TestHTTPRoutes(t *testing.T) {
 		if !solved {
 			// Sometimes the handler returns solved=false but final board is complete; check completeness
 			complete := true
-			for i := 0; i < 81; i++ {
+			for i := range 81 {
 				if finalInts[i] == 0 {
 					complete = false
 					break
@@ -979,7 +979,7 @@ func TestHTTPRoutes(t *testing.T) {
 		givens2 := response2["givens"].([]interface{})
 
 		// Compare
-		for i := 0; i < 81; i++ {
+		for i := range 81 {
 			if givens1[i] != givens2[i] {
 				t.Errorf("Puzzle not deterministic at index %d: %v != %v", i, givens1[i], givens2[i])
 			}

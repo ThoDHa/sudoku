@@ -21,7 +21,7 @@ import (
 func DetectXYZWing(b BoardInterface) *core.Move {
 	// Find cells with exactly 3 candidates (potential pivots)
 	var trivalues []int
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.GetCandidatesAt(i).Count() == 3 {
 			trivalues = append(trivalues, i)
 		}
@@ -29,7 +29,7 @@ func DetectXYZWing(b BoardInterface) *core.Move {
 
 	// Find cells with exactly 2 candidates (potential wings)
 	var bivalues []int
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.GetCandidatesAt(i).Count() == 2 {
 			bivalues = append(bivalues, i)
 		}
@@ -90,7 +90,7 @@ func DetectXYZWing(b BoardInterface) *core.Move {
 					// Find cells that see ALL THREE cells (pivot, xzWing, yzWing)
 					// and have zDigit as a candidate
 					var eliminations []core.Candidate
-					for i := 0; i < constants.TotalCells; i++ {
+					for i := range constants.TotalCells {
 						if i == pivot || i == xzWing || i == yzWing {
 							continue
 						}
@@ -153,7 +153,7 @@ func DetectXYZWing(b BoardInterface) *core.Move {
 func DetectWXYZWing(b BoardInterface) *core.Move {
 	// Find all empty cells with 2-4 candidates
 	var cells []int
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		n := b.GetCandidatesAt(i).Count()
 		if n >= 2 && n <= 4 {
 			cells = append(cells, i)
@@ -165,7 +165,7 @@ func DetectWXYZWing(b BoardInterface) *core.Move {
 	}
 
 	// Try all combinations of 4 cells
-	for i := 0; i < len(cells); i++ {
+	for i := range cells {
 		for j := i + 1; j < len(cells); j++ {
 			for k := j + 1; k < len(cells); k++ {
 				for l := k + 1; l < len(cells); l++ {
@@ -298,7 +298,7 @@ func isDigitRestricted(b BoardInterface, quad [4]int, digit int) bool {
 	}
 
 	// All pairs must see each other
-	for i := 0; i < len(digitCells); i++ {
+	for i := range digitCells {
 		for j := i + 1; j < len(digitCells); j++ {
 			if !ArePeers(digitCells[i], digitCells[j]) {
 				return false // Found a pair that can't see each other
@@ -318,7 +318,7 @@ func DetectALSXZ(b BoardInterface) *core.Move {
 	allALS := FindAllALS(b, 4)
 
 	// Try all pairs of ALS
-	for i := 0; i < len(allALS); i++ {
+	for i := range allALS {
 		for j := i + 1; j < len(allALS); j++ {
 			alsA := allALS[i]
 			alsB := allALS[j]

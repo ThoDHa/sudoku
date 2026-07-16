@@ -31,7 +31,7 @@ func findXWingInAxis(b BoardInterface, digit int, byRow bool) *core.Move {
 	lineToPerps := xwingLinePositions(b, digit, byRow)
 	// Sorted so the first X-Wing found is deterministic (Go randomizes map range).
 	lines := slices.Sorted(maps.Keys(lineToPerps))
-	for i := 0; i < len(lines); i++ {
+	for i := range lines {
 		for j := i + 1; j < len(lines); j++ {
 			l1, l2 := lines[i], lines[j]
 			p1, p2 := lineToPerps[l1], lineToPerps[l2]
@@ -51,9 +51,9 @@ func findXWingInAxis(b BoardInterface, digit int, byRow bool) *core.Move {
 // those cells.
 func xwingLinePositions(b BoardInterface, digit int, byRow bool) map[int][]int {
 	result := map[int][]int{}
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		var perps []int
-		for j := 0; j < constants.GridSize; j++ {
+		for j := range constants.GridSize {
 			var idx int
 			if byRow {
 				idx = i*constants.GridSize + j
@@ -101,7 +101,7 @@ func buildXWingMove(b BoardInterface, digit, l1, l2, p1, p2 int, byRow bool) *co
 // (outside lines l1 and l2) that hold digit as a candidate.
 func collectXWingElims(b BoardInterface, digit, l1, l2, p1, p2 int, byRow bool) []core.Candidate {
 	var eliminations []core.Candidate
-	for k := 0; k < constants.GridSize; k++ {
+	for k := range constants.GridSize {
 		if k == l1 || k == l2 {
 			continue
 		}
@@ -137,7 +137,7 @@ func xwingPerpCells(k, p1, p2, digit int, byRow bool) (int, int, core.Candidate,
 // display as secondary highlights.
 func xwingSecondaryCells(l1, l2 int, byRow bool) []int {
 	var cells []int
-	for k := 0; k < constants.GridSize; k++ {
+	for k := range constants.GridSize {
 		if byRow {
 			cells = append(cells, l1*constants.GridSize+k, l2*constants.GridSize+k)
 		} else {
@@ -171,7 +171,7 @@ func xwingExplanation(digit, r1, r2, c1, c2 int, byRow bool) string {
 func DetectXYWing(b BoardInterface) *core.Move {
 	// Find cells with exactly 2 candidates (potential pivots or wings)
 	var bivalues []int
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.GetCandidatesAt(i).Count() == 2 {
 			bivalues = append(bivalues, i)
 		}
@@ -236,7 +236,7 @@ func DetectXYWing(b BoardInterface) *core.Move {
 
 				// Find cells that see both wings and have z as candidate
 				var eliminations []core.Candidate
-				for i := 0; i < constants.TotalCells; i++ {
+				for i := range constants.TotalCells {
 					if i == pivot || i == xzWing || i == yzWing {
 						continue
 					}
@@ -286,9 +286,9 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 		conjugates := make(map[int][]int) // cell -> connected cells
 
 		// Check rows
-		for row := 0; row < constants.GridSize; row++ {
+		for row := range constants.GridSize {
 			var cells []int
-			for col := 0; col < constants.GridSize; col++ {
+			for col := range constants.GridSize {
 				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 					cells = append(cells, row*constants.GridSize+col)
 				}
@@ -300,9 +300,9 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 		}
 
 		// Check columns
-		for col := 0; col < constants.GridSize; col++ {
+		for col := range constants.GridSize {
 			var cells []int
-			for row := 0; row < constants.GridSize; row++ {
+			for row := range constants.GridSize {
 				if b.GetCandidatesAt(row*constants.GridSize + col).Has(digit) {
 					cells = append(cells, row*constants.GridSize+col)
 				}
@@ -314,7 +314,7 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 		}
 
 		// Check boxes
-		for box := 0; box < constants.GridSize; box++ {
+		for box := range constants.GridSize {
 			var cells []int
 			boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
 			for r := boxRow; r < boxRow+constants.BoxSize; r++ {
@@ -376,7 +376,7 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 			}
 
 			// Check for eliminations: cells that see both colors OF THIS COMPONENT
-			for i := 0; i < constants.TotalCells; i++ {
+			for i := range constants.TotalCells {
 				if !b.GetCandidatesAt(i).Has(digit) || colors[i] != 0 {
 					continue
 				}

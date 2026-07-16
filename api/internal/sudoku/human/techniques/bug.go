@@ -15,7 +15,7 @@ import (
 //nolint:gocyclo // BUG+1 detection combines the structural gate, the 27-unit invariant scan, and the restore-digit search in a single sequential pass
 func DetectBUG(b BoardInterface) *core.Move {
 	var extraCells []int
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.GetCell(i) != 0 {
 			continue
 		}
@@ -91,8 +91,8 @@ func bugInvariantHolds(b BoardInterface, bugCell int) bool {
 	unitKinds := [3][constants.GridSize][]int{RowIndices, ColIndices, BoxIndices}
 	bugUnitKeys := [3]int{bugRow, bugCol, bugBox}
 
-	for kind := 0; kind < 3; kind++ {
-		for u := 0; u < constants.GridSize; u++ {
+	for kind := range 3 {
+		for u := range constants.GridSize {
 			containsBug := u == bugUnitKeys[kind]
 			for digit := 1; digit <= constants.GridSize; digit++ {
 				count := countDigitInUnit(b, unitKinds[kind][u], digit)

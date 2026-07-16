@@ -147,7 +147,7 @@ func toTSConstantName(name string) string {
 	}
 
 	result := strings.Builder{}
-	for i := 0; i < len(name); i++ {
+	for i := range len(name) {
 		if shouldInsertUnderscore(name, i) {
 			result.WriteRune('_')
 		}

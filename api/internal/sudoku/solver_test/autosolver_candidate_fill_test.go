@@ -38,7 +38,7 @@ func TestAutosolverWithNoCandidatesFilled(t *testing.T) {
 	board := human.NewBoardWithCandidates(cells, emptyCandidates)
 
 	// Verify candidates are truly empty
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if cells[i] == 0 && !board.Candidates[i].IsEmpty() {
 			t.Fatalf("Expected empty candidates at cell %d, but found candidates", i)
 		}
@@ -75,7 +75,7 @@ func TestAutosolverWithNoCandidatesFilled(t *testing.T) {
 	// The puzzle MUST be solved
 	if !board.IsSolved() {
 		empty := 0
-		for i := 0; i < constants.TotalCells; i++ {
+		for i := range constants.TotalCells {
 			if board.Cells[i] == 0 {
 				empty++
 			}
@@ -108,7 +108,7 @@ func TestEmptyCandidatesNotTreatedAsContradiction(t *testing.T) {
 	board := human.NewBoardWithCandidates(cells, emptyCandidates)
 
 	// Verify that candidates are indeed empty
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if cells[i] == 0 && !board.Candidates[i].IsEmpty() {
 			t.Fatalf("Expected empty candidates at cell %d, but found candidates", i)
 		}
@@ -174,7 +174,7 @@ func TestAutosolverCandidateFillPreventsIncorrectPlacement(t *testing.T) {
 			candidateFillingComplete := false
 
 			// Execute moves one by one to verify sequence
-			for i := 0; i < 100; i++ { // Safety limit
+			for range 100 { // Safety limit
 				move := solver.FindNextMove(context.Background(), board)
 				if move == nil {
 					break
@@ -252,7 +252,7 @@ func TestFindNextMoveTwoPhaseApproach(t *testing.T) {
 	assignmentMoves := 0
 
 	// Collect first 50 moves to analyze pattern (need more due to 9x9)
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			break
@@ -339,7 +339,7 @@ func TestOnlyProperSinglesAfterCandidateFilling(t *testing.T) {
 	// Track proper singles found
 	properSinglesFound := 0
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			break
@@ -518,7 +518,7 @@ func TestHiddenSinglesDetectedDuringCandidateFilling(t *testing.T) {
 	var hiddenSingleMove *core.Move
 	var lastMove *core.Move
 
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			t.Logf("No more moves after %d iterations, lastMove=%v", i, lastMove)

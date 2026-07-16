@@ -351,7 +351,7 @@ func TestMutation_SolveAll_BreakOnSolvedNoStalledMove(t *testing.T) {
 	board := make([]int, 81)
 	copy(board, givens)
 	addedIdx := -1
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		if givens[i] == 0 {
 			board[i] = solved[i]
 			addedIdx = i
@@ -403,7 +403,7 @@ func TestMutation_SolveAll_ConflictFixMoveCarriesPopulatedCandidates(t *testing.
 			continue
 		}
 		row := i / constants.GridSize
-		for c := 0; c < constants.GridSize; c++ {
+		for c := range constants.GridSize {
 			j := row*constants.GridSize + c
 			if j != i && givens[j] == 0 {
 				board[j] = board[i]
@@ -637,7 +637,7 @@ func TestMutation_CustomValidate_RejectsOverNineGivens(t *testing.T) {
 // (leaving 1 valid five); the mutant (effective cap 4) leaves 2 fives, a conflict.
 func TestMutation_AutosolveFixCountCap_Incrementer(t *testing.T) {
 	board := make([]int, constants.TotalCells)
-	for c := 0; c < 6; c++ {
+	for c := range 6 {
 		board[c] = 5 // row 0: six user-entered 5s (givens all zero, so all are fixable)
 	}
 	givens := make([]int, constants.TotalCells)
@@ -648,7 +648,7 @@ func TestMutation_AutosolveFixCountCap_Incrementer(t *testing.T) {
 	_, finalBoard := runAutosolveLoop(context.Background(), solver, b, origUser, givens, nil, 0)
 	cells := finalBoard.GetCells()
 	count5 := 0
-	for c := 0; c < constants.GridSize; c++ {
+	for c := range constants.GridSize {
 		if cells[c] == 5 {
 			count5++
 		}
@@ -663,7 +663,7 @@ func TestMutation_AutosolveFixCountCap_Incrementer(t *testing.T) {
 // (leaving 2 fives, still conflicting); the mutant (effective cap 6) performs 6, leaving 1.
 func TestMutation_AutosolveFixCountCap_Decrementer(t *testing.T) {
 	board := make([]int, constants.TotalCells)
-	for c := 0; c < 7; c++ {
+	for c := range 7 {
 		board[c] = 5 // row 0: seven user-entered 5s
 	}
 	givens := make([]int, constants.TotalCells)
@@ -674,7 +674,7 @@ func TestMutation_AutosolveFixCountCap_Decrementer(t *testing.T) {
 	_, finalBoard := runAutosolveLoop(context.Background(), solver, b, origUser, givens, nil, 0)
 	cells := finalBoard.GetCells()
 	count5 := 0
-	for c := 0; c < constants.GridSize; c++ {
+	for c := range constants.GridSize {
 		if cells[c] == 5 {
 			count5++
 		}
@@ -697,7 +697,7 @@ func TestMutation_DailyHandler_PuzzleIndexIsNonZeroFromLoader(t *testing.T) {
 	var expected int
 	for n := 3; n <= 300; n++ {
 		reps := make([]puzzles.CompactPuzzle, 0, n)
-		for i := 0; i < n; i++ {
+		for range n {
 			reps = append(reps, testPuzzles[0])
 		}
 		cand := puzzles.NewLoaderFromPuzzles(reps)

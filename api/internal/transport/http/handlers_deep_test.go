@@ -119,7 +119,7 @@ func TestSolveNextPinpointsUserErrorOnContradiction(t *testing.T) {
 	}
 
 	clearedIdx := -1
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		if board[i] != 0 {
 			if v, _ := fixedBoard[i].(float64); int(v) == 0 {
 				clearedIdx = i
@@ -1246,7 +1246,7 @@ func TestMutation_CustomValidate_NoSolutionExactReason(t *testing.T) {
 	// Add givens in rows 3..8 (disjoint boxes/rows from the core) drawn from a
 	// valid solution, skipping the one value per column that would collide.
 	for r := 3; r <= 8; r++ {
-		for c := 0; c <= 8; c++ {
+		for c := range 9 {
 			v := solved[r*9+c]
 			if v == coreColDigit(c) {
 				continue
@@ -1500,7 +1500,7 @@ func TestMutation_SolveAll_ErrorMoveExactExplanation(t *testing.T) {
 	token := getValidToken(router)
 	solved := dp.GenerateFullGrid(1)
 	corruptions := map[int]int{}
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		if solved[i] == 9 {
 			corruptions[i] = 1
 		} else {
@@ -1757,7 +1757,7 @@ func TestMutation_CustomValidate_ExactlySixteenGivensTriggersMinCheck(t *testing
 	givens := make([]int, 81)
 	copy(givens, solved)
 	drop := 81 - 16
-	for i := 0; i < drop; i++ {
+	for i := range drop {
 		givens[i] = 0
 	}
 	if !dp.IsValid(context.Background(), givens) {
@@ -2080,7 +2080,7 @@ func TestMutation_SolveAll_FiveErrorsSolvedUnderCap(t *testing.T) {
 
 	solved := dp.GenerateFullGrid(777)
 	corruptions := map[int]int{}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		corruptions[i] = wrongDigit(solved[i])
 	}
 	board, givens := boardWithUserErrors(solved, corruptions)
@@ -2103,7 +2103,7 @@ func TestMutation_SolveAll_SixErrorsHitCap(t *testing.T) {
 
 	solved := dp.GenerateFullGrid(888)
 	corruptions := map[int]int{}
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		corruptions[i] = wrongDigit(solved[i])
 	}
 	board, givens := boardWithUserErrors(solved, corruptions)
@@ -2529,7 +2529,7 @@ func TestDailyHandler_SeedAndPuzzleIndexAgree(t *testing.T) {
 	// small fixture a mismatch can hide behind index collisions.
 	const n = 1000
 	reps := make([]puzzles.CompactPuzzle, 0, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		reps = append(reps, testPuzzles[0])
 	}
 	puzzles.SetGlobal(puzzles.NewLoaderFromPuzzles(reps))

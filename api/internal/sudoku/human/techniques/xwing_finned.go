@@ -45,8 +45,8 @@ func detectFinnedXWingInCols(b BoardInterface, digit int) *core.Move {
 // within the fin's box.
 func detectFinnedXWingInAxis(b BoardInterface, digit int, byRow bool) *core.Move {
 	lines := xwingFinnedLines(b, digit, byRow)
-	for i := 0; i < len(lines); i++ {
-		for j := 0; j < len(lines); j++ {
+	for i := range lines {
+		for j := range lines {
 			if i == j {
 				continue
 			}
@@ -66,9 +66,9 @@ func detectFinnedXWingInAxis(b BoardInterface, digit int, byRow bool) *core.Move
 // appears in 2 or 3 perpendicular positions.
 func xwingFinnedLines(b BoardInterface, digit int, byRow bool) []finnedLineInfo {
 	var lines []finnedLineInfo
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		var perps []int
-		for j := 0; j < constants.GridSize; j++ {
+		for j := range constants.GridSize {
 			var idx int
 			if byRow {
 				idx = i*constants.GridSize + j

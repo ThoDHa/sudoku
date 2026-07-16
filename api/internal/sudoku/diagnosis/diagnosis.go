@@ -23,7 +23,7 @@ import (
 func FindErrorByCandidateRefill(originalUserBoard, givens []int) (badCell, badDigit, zeroCandidateCell int) {
 	freshBoard := human.NewBoard(originalUserBoard)
 
-	for idx := 0; idx < constants.TotalCells; idx++ {
+	for idx := range constants.TotalCells {
 		if originalUserBoard[idx] != 0 {
 			continue
 		}
@@ -53,14 +53,14 @@ func FindErrorByCandidateRefill(originalUserBoard, givens []int) (badCell, badDi
 // the first match is deterministic.
 func firstBlockingUserPeer(originalUserBoard, givens []int, row, col, digit int) (int, bool) {
 	// Row peers (left to right).
-	for c := 0; c < constants.GridSize; c++ {
+	for c := range constants.GridSize {
 		cellIdx := row*constants.GridSize + c
 		if userHoldsDigit(originalUserBoard, givens, cellIdx, digit) {
 			return cellIdx, true
 		}
 	}
 	// Column peers (top to bottom).
-	for r := 0; r < constants.GridSize; r++ {
+	for r := range constants.GridSize {
 		cellIdx := r*constants.GridSize + col
 		if userHoldsDigit(originalUserBoard, givens, cellIdx, digit) {
 			return cellIdx, true

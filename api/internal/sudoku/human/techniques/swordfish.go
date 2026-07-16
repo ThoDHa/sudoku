@@ -50,7 +50,7 @@ func detectSwordfishInAxis(b BoardInterface, digit int, byRow bool) *core.Move {
 	if len(lines) < 3 {
 		return nil
 	}
-	for i := 0; i < len(lines); i++ {
+	for i := range lines {
 		for j := i + 1; j < len(lines); j++ {
 			for k := j + 1; k < len(lines); k++ {
 				l1, l2, l3 := lines[i], lines[j], lines[k]
@@ -71,9 +71,9 @@ func detectSwordfishInAxis(b BoardInterface, digit int, byRow bool) *core.Move {
 // positions, the perpendicular coordinates of those positions.
 func swordfishLinePositions(b BoardInterface, digit int, byRow bool) map[int][]int {
 	result := map[int][]int{}
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		var perps []int
-		for j := 0; j < constants.GridSize; j++ {
+		for j := range constants.GridSize {
 			var idx int
 			if byRow {
 				idx = i*constants.GridSize + j
@@ -132,7 +132,7 @@ func collectSwordfishElims(b BoardInterface, digit int, lines, perps []int, byRo
 	}
 	var eliminations []core.Candidate
 	for _, perp := range perps {
-		for k := 0; k < constants.GridSize; k++ {
+		for k := range constants.GridSize {
 			if inLines[k] {
 				continue
 			}
@@ -229,7 +229,7 @@ func detectFinnedSwordfishInAxis(b BoardInterface, digit int, byRow bool) *core.
 	if len(lines) < 3 {
 		return nil
 	}
-	for i := 0; i < len(lines); i++ {
+	for i := range lines {
 		for j := i + 1; j < len(lines); j++ {
 			for k := j + 1; k < len(lines); k++ {
 				l1, l2, l3 := lines[i], lines[j], lines[k]
@@ -253,9 +253,9 @@ func detectFinnedSwordfishInAxis(b BoardInterface, digit int, byRow bool) *core.
 // positions, in source-line order.
 func collectFinnedLines(b BoardInterface, digit int, byRow bool) []finnedLineInfo {
 	var lines []finnedLineInfo
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		var perps []int
-		for j := 0; j < constants.GridSize; j++ {
+		for j := range constants.GridSize {
 			var idx int
 			if byRow {
 				idx = i*constants.GridSize + j

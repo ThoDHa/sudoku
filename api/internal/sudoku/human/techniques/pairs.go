@@ -29,7 +29,7 @@ func findNakedPairInUnit(b BoardInterface, indices []int, unitType string, unitN
 	}
 
 	// Check for matching pairs
-	for i := 0; i < len(pairs); i++ {
+	for i := range pairs {
 		for j := i + 1; j < len(pairs); j++ {
 			idx1, idx2 := pairs[i], pairs[j]
 			if b.GetCandidatesAt(idx1) != b.GetCandidatesAt(idx2) {
@@ -115,7 +115,7 @@ func findHiddenPairInUnit(b BoardInterface, indices []int, unitType string, unit
 	}
 
 	// Check for pairs
-	for i := 0; i < len(twoDigits); i++ {
+	for i := range twoDigits {
 		for j := i + 1; j < len(twoDigits); j++ {
 			d1, d2 := twoDigits[i], twoDigits[j]
 			pos1, pos2 := digitPositions[d1], digitPositions[d2]

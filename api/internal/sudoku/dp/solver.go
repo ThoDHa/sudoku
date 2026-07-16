@@ -89,9 +89,9 @@ func FindConflicts(grid []int) []Conflict {
 	var conflicts []Conflict
 	seen := make(map[string]bool) // Track already-reported conflicts to avoid duplicates
 
-	for row := 0; row < constants.GridSize; row++ {
+	for row := range constants.GridSize {
 		positions := map[int][]int{}
-		for col := 0; col < constants.GridSize; col++ {
+		for col := range constants.GridSize {
 			val := grid[row*constants.GridSize+col]
 			if val == 0 {
 				continue
@@ -101,9 +101,9 @@ func FindConflicts(grid []int) []Conflict {
 		conflicts = appendUnitConflicts(positions, "row", seen, conflicts)
 	}
 
-	for col := 0; col < constants.GridSize; col++ {
+	for col := range constants.GridSize {
 		positions := map[int][]int{}
-		for row := 0; row < constants.GridSize; row++ {
+		for row := range constants.GridSize {
 			val := grid[row*constants.GridSize+col]
 			if val == 0 {
 				continue
@@ -113,7 +113,7 @@ func FindConflicts(grid []int) []Conflict {
 		conflicts = appendUnitConflicts(positions, "column", seen, conflicts)
 	}
 
-	for box := 0; box < constants.GridSize; box++ {
+	for box := range constants.GridSize {
 		conflicts = appendBoxConflicts(grid, box, seen, conflicts)
 	}
 
@@ -130,9 +130,7 @@ func appendUnitConflicts(positions map[int][]int, conflictType string, seen map[
 		if len(group) < 2 {
 			continue
 		}
-		// i <= len(group) adds one no-op outer iteration (inner j loop is immediately false).
-		// mutator-disable-next-line expression/comparison
-		for i := 0; i < len(group); i++ {
+		for i := range group {
 			for j := i + 1; j < len(group); j++ {
 				key := conflictKey(group[i], group[j], val)
 				// Redundant scanning: row/column/box each independently detect conflicts.
@@ -180,7 +178,7 @@ func conflictKey(cell1, cell2, val int) string {
 
 // findEmptyCell returns the index of the first empty (0) cell, or -1 if the board is full.
 func findEmptyCell(board []int) int {
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if board[i] == 0 {
 			return i
 		}
@@ -280,13 +278,13 @@ func solve(ctx context.Context, board []int, budget *nodeBudget) (bool, error) {
 }
 
 func isValid(board []int, row, col, digit int) bool {
-	for c := 0; c < constants.GridSize; c++ {
+	for c := range constants.GridSize {
 		if board[row*constants.GridSize+c] == digit {
 			return false
 		}
 	}
 
-	for r := 0; r < constants.GridSize; r++ {
+	for r := range constants.GridSize {
 		if board[r*constants.GridSize+col] == digit {
 			return false
 		}
@@ -354,7 +352,7 @@ func fillGrid(board []int, rng *rng) bool {
 
 	// Try digits in random order
 	digits := make([]int, constants.GridSize)
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		digits[i] = i + 1
 	}
 	rng.shuffle(digits)
@@ -386,9 +384,7 @@ func CarveGivens(ctx context.Context, fullGrid []int, targetGivens int, seed int
 
 	// Create list of filled positions
 	positions := make([]int, constants.TotalCells)
-	// positions[0] is already 0 from make(), so starting at i=1 yields the same array.
-	// mutator-disable-next-line numbers/incrementer
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		positions[i] = i
 	}
 	rng.shuffle(positions)
@@ -448,9 +444,7 @@ func CarveGivensWithSubset(ctx context.Context, fullGrid []int, seed int64) map[
 
 	// Create list of filled positions in deterministic random order
 	positions := make([]int, constants.TotalCells)
-	// positions[0] is already 0 from make(), so starting at i=1 yields the same array.
-	// mutator-disable-next-line numbers/incrementer
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		positions[i] = i
 	}
 	rng.shuffle(positions)

@@ -26,7 +26,7 @@ func DetectAIC(b BoardInterface) *core.Move {
 	weakLinks := buildWeakLinks(b)
 
 	// Try starting from each candidate in each cell
-	for cell := 0; cell < constants.TotalCells; cell++ {
+	for cell := range constants.TotalCells {
 		if b.GetCell(cell) != 0 {
 			continue
 		}
@@ -65,7 +65,7 @@ func buildStrongLinks(b BoardInterface) map[candidateNode][]candidateNode {
 	}
 
 	// Strong links from bivalue cells (cells with exactly 2 candidates)
-	for cell := 0; cell < constants.TotalCells; cell++ {
+	for cell := range constants.TotalCells {
 		if b.GetCell(cell) != 0 {
 			continue
 		}
@@ -90,12 +90,12 @@ func buildWeakLinks(b BoardInterface) map[candidateNode][]candidateNode {
 	// Weak links: same digit in cells that see each other
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		cells := []int{}
-		for cell := 0; cell < constants.TotalCells; cell++ {
+		for cell := range constants.TotalCells {
 			if b.GetCell(cell) == 0 && b.GetCandidatesAt(cell).Has(digit) {
 				cells = append(cells, cell)
 			}
 		}
-		for i := 0; i < len(cells); i++ {
+		for i := range cells {
 			for j := i + 1; j < len(cells); j++ {
 				if ArePeers(cells[i], cells[j]) {
 					n1 := candidateNode{cell: cells[i], digit: digit}
@@ -108,12 +108,12 @@ func buildWeakLinks(b BoardInterface) map[candidateNode][]candidateNode {
 	}
 
 	// Weak links: different digits in the same cell
-	for cell := 0; cell < constants.TotalCells; cell++ {
+	for cell := range constants.TotalCells {
 		if b.GetCell(cell) != 0 {
 			continue
 		}
 		cands := b.GetCandidatesAt(cell).ToSlice()
-		for i := 0; i < len(cands); i++ {
+		for i := range cands {
 			for j := i + 1; j < len(cands); j++ {
 				n1 := candidateNode{cell: cell, digit: cands[i]}
 				n2 := candidateNode{cell: cell, digit: cands[j]}

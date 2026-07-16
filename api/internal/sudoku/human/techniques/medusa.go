@@ -56,7 +56,7 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 
 	// Find all bivalue cells
 	var bivalueCells []int
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.GetCandidatesAt(i).Count() == 2 {
 			bivalueCells = append(bivalueCells, i)
 		}
@@ -269,7 +269,7 @@ func checkSameUnitContradiction(b BoardInterface, colorToCheck, otherColor []can
 	for _, digit := range slices.Sorted(maps.Keys(digitPairs)) {
 		pairs := digitPairs[digit]
 		// Check if any two cells with this digit see each other
-		for i := 0; i < len(pairs); i++ {
+		for i := range pairs {
 			for j := i + 1; j < len(pairs); j++ {
 				if ArePeers(pairs[i].cell, pairs[j].cell) {
 					// Contradiction: two same-digit candidates of the same color in the same unit
@@ -342,7 +342,7 @@ func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePa
 		}
 
 		// Check each uncolored cell with this digit
-		for cell := 0; cell < constants.TotalCells; cell++ {
+		for cell := range constants.TotalCells {
 			if !b.GetCandidatesAt(cell).Has(digit) {
 				continue
 			}
@@ -531,7 +531,7 @@ func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 [
 	}
 
 	// Check each uncolored candidate
-	for cell := 0; cell < constants.TotalCells; cell++ {
+	for cell := range constants.TotalCells {
 		cands := b.GetCandidatesAt(cell)
 		for _, digit := range cands.ToSlice() {
 			cp := candidatePair{cell, digit}
@@ -609,7 +609,7 @@ func checkAllCandidatesSameColor(b BoardInterface, colorToCheck, otherColor []ca
 	}
 
 	// Check each cell
-	for cell := 0; cell < constants.TotalCells; cell++ {
+	for cell := range constants.TotalCells {
 		cands := b.GetCandidatesAt(cell)
 
 		// Skip cells with less than 2 candidates (can't have "all" colored if fewer)
