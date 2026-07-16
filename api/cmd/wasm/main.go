@@ -8,6 +8,7 @@ import (
 	"syscall/js"
 
 	"sudoku-api/internal/core"
+	"sudoku-api/internal/sudoku/diagnosis"
 	"sudoku-api/internal/sudoku/dp"
 	"sudoku-api/internal/sudoku/human"
 	"sudoku-api/pkg/constants"
@@ -827,7 +828,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 			}
 
 			// Method 1: Check for cells with zero candidates (indicates error)
-			badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(originalUserBoard, givens)
+			badCell, badDigit, zeroCandCell := diagnosis.FindErrorByCandidateRefill(originalUserBoard, givens)
 			if badCell >= 0 {
 				badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
 				zeroCandRow, zeroCandCol := zeroCandCell/constants.GridSize, zeroCandCell%constants.GridSize
@@ -962,7 +963,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 			}
 
 			// Couldn't find the error with primary method - try fallback
-			badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(originalUserBoard, givens)
+			badCell, badDigit, zeroCandCell := diagnosis.FindErrorByCandidateRefill(originalUserBoard, givens)
 			if badCell >= 0 {
 				badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
 				zeroCandRow, zeroCandCol := zeroCandCell/constants.GridSize, zeroCandCell%constants.GridSize
@@ -1083,7 +1084,29 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 	}
 }
 
-// findBlockingUserCell finds which user-entered cell is blocking candidates
+// findBlockingUserCell finds which user-entered cell is blocking candidates.
+//
+// INTENTIONALLY DUPLICATED: a near-twin lives in internal/transport/http/routes.go.
+// The two are NOT unified because they diverge in two semantics that matter:
+//
+//  1. Tie-break among equally-blocking cells: this WASM copy iterates a Go map
+//     (cellCount), whose iteration order is randomized, so the winner among
+//     tied cells is non-deterministic. The HTTP copy iterates cells in index
+//     order and uses strict ">", so the lowest-index cell deterministically
+//     wins.
+//  2. Per-region scan: this copy continues scanning past given/peer cells that
+//     hold the digit (it only appends and breaks on a USER entry), while the
+//     HTTP copy stops on the first cell holding the digit via firstUserBlocker,
+//     so it will not find a user blocker sitting behind a given in the same
+//     region.
+//
+// Unifying would either change this transport's production behavior (adopting
+// the deterministic tie-break and stop-on-first-digit semantics) or change the
+// HTTP transport's behavior. The HTTP copy's semantics are pinned by
+// mutation-kill tests (see internal/transport/http/pure_helpers_test.go and
+// handlers_mutation_kill_test.go), so it cannot move; and adopting its rules
+// here would alter what the compiled WASM reports to players. They are left
+// duplicated on purpose.
 func findBlockingUserCell(board *human.Board, contradictionCell int, originalUserBoard []int, givens []int) (int, int) {
 	row, col := contradictionCell/constants.GridSize, contradictionCell%constants.GridSize
 	boxRow, boxCol := (row/3)*3, (col/3)*3
@@ -1150,67 +1173,6 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 		return maxCell, cellDigit[maxCell]
 	}
 	return -1, 0
-}
-
-// findErrorByCandidateRefill clears all candidates, refills them, and looks for cells with zero candidates.
-// This is the "human-like" approach: when stuck, clear your pencil marks and start fresh.
-// If a cell has zero candidates, trace back to find which user-entered cell is blocking it.
-// Returns the cell index, digit, and the zero-candidate cell index, or -1 if no error found.
-func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int, int) {
-	// Create a fresh board with candidates properly initialized
-	freshBoard := human.NewBoard(originalUserBoard)
-
-	// Find any cell with zero candidates
-	for idx := 0; idx < constants.TotalCells; idx++ {
-		if originalUserBoard[idx] != 0 {
-			continue // Skip filled cells
-		}
-
-		candidates := freshBoard.Candidates[idx]
-		if candidates.IsEmpty() {
-			// Found a cell with no candidates - this points to an error
-			row, col := idx/constants.GridSize, idx%constants.GridSize
-			boxRow, boxCol := (row/3)*3, (col/3)*3
-
-			type blocker struct {
-				cellIdx int
-				digit   int
-			}
-			var userBlockers []blocker
-
-			for digit := 1; digit <= 9; digit++ {
-				// Check row
-				for c := 0; c < 9; c++ {
-					cellIdx := row*constants.GridSize + c
-					if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
-						userBlockers = append(userBlockers, blocker{cellIdx, digit})
-					}
-				}
-				// Check column
-				for r := 0; r < 9; r++ {
-					cellIdx := r*constants.GridSize + col
-					if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
-						userBlockers = append(userBlockers, blocker{cellIdx, digit})
-					}
-				}
-				// Check box
-				for r := boxRow; r < boxRow+3; r++ {
-					for c := boxCol; c < boxCol+3; c++ {
-						cellIdx := r*constants.GridSize + c
-						if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
-							userBlockers = append(userBlockers, blocker{cellIdx, digit})
-						}
-					}
-				}
-			}
-
-			if len(userBlockers) > 0 {
-				return userBlockers[0].cellIdx, userBlockers[0].digit, idx
-			}
-		}
-	}
-
-	return -1, 0, -1
 }
 
 // findErrorByTrialRemoval uses brute-force trial removal to identify user errors

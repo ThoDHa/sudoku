@@ -15,6 +15,7 @@ import (
 
 	"sudoku-api/internal/core"
 	"sudoku-api/internal/puzzles"
+	"sudoku-api/internal/sudoku/diagnosis"
 	"sudoku-api/internal/sudoku/dp"
 	"sudoku-api/internal/sudoku/human"
 	"sudoku-api/pkg/config"
@@ -767,7 +768,7 @@ func handleSolveNextContradiction(c *gin.Context, board *human.Board, move *core
 		}
 	}
 
-	badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(reqBoard, givens)
+	badCell, badDigit, zeroCandCell := diagnosis.FindErrorByCandidateRefill(reqBoard, givens)
 	if badCell >= 0 {
 		zeroCandRow, zeroCandCol := zeroCandCell/constants.GridSize, zeroCandCell%constants.GridSize
 		badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
@@ -917,6 +918,25 @@ func firstUserBlocker(cells []int, board *human.Board, digit int, originalUserBo
 // givens, not solver placements) are considered. The user cell blocking the
 // most candidates is reported as most likely wrong.
 //
+// INTENTIONALLY DUPLICATED: a near-twin lives in cmd/wasm/main.go. The two
+// are NOT unified because they diverge in two semantics that matter:
+//
+//  1. Tie-break among equally-blocking cells: this HTTP copy iterates cells in
+//     index order with strict ">", so the lowest-index cell deterministically
+//     wins. The WASM copy iterates a Go map (cellCount), whose iteration order
+//     is randomized, so the winner among tied cells is non-deterministic.
+//  2. Per-region scan: this copy uses firstUserBlocker, which stops on the
+//     first cell holding the digit (even a given), so it will not find a user
+//     blocker sitting behind a given in the same region. The WASM copy
+//     continues scanning past such cells and only appends/breaks on a USER
+//     entry.
+//
+// This copy's semantics are pinned by mutation-kill tests
+// (pure_helpers_test.go, handlers_mutation_kill_test.go). Unifying would
+// either change HTTP behavior (which the kill tests forbid) or change the
+// compiled WASM's reported results to players. They are left duplicated on
+// purpose.
+//
 // Returns: Cell index and blocking digit, or (-1, 0) if no user error found.
 func findBlockingUserCell(board *human.Board, contradictionCell int, originalUserBoard []int, givens []int) (int, int) {
 	row, col := contradictionCell/constants.GridSize, contradictionCell%constants.GridSize
@@ -972,43 +992,6 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 	}
 	// mutator-disable-next-line numbers/decrementer,numbers/incrementer
 	return -1, 0
-}
-
-// findErrorByCandidateRefill uses the "clear and recalculate" strategy to find
-// user errors: rebuild candidates from the current board, then for any cell
-// that ends up with zero candidates, scan its peers for a user-entered cell
-// blocking some digit. The first such blocker is returned.
-//
-// Returns: (badCell, badDigit, zeroCandidateCell) or (-1, 0, -1) if no error found.
-func findErrorByCandidateRefill(originalUserBoard []int, givens []int) (int, int, int) {
-	freshBoard := human.NewBoard(originalUserBoard)
-
-	for idx := 0; idx < constants.TotalCells; idx++ {
-		if originalUserBoard[idx] != 0 {
-			continue
-		}
-		if !freshBoard.Candidates[idx].IsEmpty() {
-			continue
-		}
-
-		// Cell has no candidates: scan its peers for the first user-entered
-		// cell blocking some digit. Scan order is row, column, box (left to
-		// right, top to bottom) with digit as the outer loop, so the first
-		// match is deterministic.
-		row, col := idx/constants.GridSize, idx%constants.GridSize
-		rowCells, colCells, boxCells := peerCellIndices(row, col)
-		for digit := 1; digit <= constants.GridSize; digit++ {
-			for _, region := range [][]int{rowCells, colCells, boxCells} {
-				for _, cellIdx := range region {
-					if originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0 {
-						return cellIdx, digit, idx
-					}
-				}
-			}
-		}
-	}
-
-	return -1, 0, -1
 }
 
 // countUserEntries counts how many cells contain user-entered digits (excluding original givens)
@@ -1147,7 +1130,7 @@ func handleAutosolveContradiction(moves []moveResult, board *human.Board, move *
 	// Direct analysis failed; try the candidate-refill diagnostic. This clears
 	// notes, refills candidates, and looks for a zero-candidate cell.
 	moves = appendDiagnosticMove(moves, board)
-	badCell, badDigit, zeroCandCell := findErrorByCandidateRefill(originalUserBoard, givens)
+	badCell, badDigit, zeroCandCell := diagnosis.FindErrorByCandidateRefill(originalUserBoard, givens)
 	if badCell >= 0 {
 		fixCount++
 		originalUserBoard[badCell] = 0
