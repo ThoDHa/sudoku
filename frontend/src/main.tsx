@@ -4,6 +4,8 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import { checkCacheVersion } from './lib/cache-version'
+import { getOfflineModeEnabled } from './lib/gameSettings'
+import { registerOfflineMode } from './lib/pwaRegistration'
 import { logger } from './lib/logger'
 import './index.css'
 
@@ -30,6 +32,14 @@ checkCacheVersion().then((cacheCleared) => {
     logger.warn('Cache was cleared due to version update - fresh content loaded')
   }
 })
+
+// Register the PWA service worker only when the user has opted into offline mode
+// (default OFF). Default visitors get no service worker; toggling it on in the
+// menu calls registerOfflineMode() directly, and toggling off unregisters the
+// worker and wipes the caches (see pwaRegistration.ts).
+if (getOfflineModeEnabled()) {
+  registerOfflineMode()
+}
 
 const rootElement = document.getElementById('root')
 if (!rootElement) {

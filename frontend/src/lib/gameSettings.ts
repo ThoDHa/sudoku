@@ -60,6 +60,35 @@ export function setAutoSaveEnabled(enabled: boolean): void {
 }
 
 // =============================================================================
+// OFFLINE MODE SETTINGS
+// =============================================================================
+// PWA/offline caching is opt-in (default OFF). main.tsx registers the service
+// worker only when this is true; toggling off unregisters the SW and wipes the
+// caches (see pwaRegistration.ts). Stored separately from the versioned
+// preferences envelope so a malformed value here cannot corrupt other prefs.
+
+const OFFLINE_MODE_KEY = 'sudoku_offline_mode_enabled'
+
+export function getOfflineModeEnabled(): boolean {
+  try {
+    const value = localStorage.getItem(OFFLINE_MODE_KEY)
+    if (value === null) return false
+    const parsed: unknown = JSON.parse(value)
+    return parsed === true
+  } catch {
+    return false
+  }
+}
+
+export function setOfflineModeEnabled(enabled: boolean): void {
+  try {
+    localStorage.setItem(OFFLINE_MODE_KEY, JSON.stringify(enabled))
+  } catch (e) {
+    logger.warn('Failed to save offline-mode preference:', e)
+  }
+}
+
+// =============================================================================
 // IN-PROGRESS GAME DETECTION
 // =============================================================================
 
