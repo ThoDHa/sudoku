@@ -1,6 +1,6 @@
-import { test, expect } from '../fixtures';
-import { selectCell } from '../utils/selectCell';
-import { setupGameAndWaitForBoard } from '../utils/board-wait';
+import { test, expect } from '../fixtures'
+import { selectCell } from '../utils/selectCell'
+import { setupGameAndWaitForBoard } from '../utils/board-wait'
 
 /**
  * Persistence Integration Tests
@@ -12,96 +12,104 @@ import { setupGameAndWaitForBoard } from '../utils/board-wait';
  */
 
 // Storage key constants (matching src/lib/constants.ts)
-const GAME_STATE_PREFIX = 'sudoku_game_';
-const PREFERENCES_KEY = 'sudoku_preferences';
-const AUTO_SAVE_KEY = 'sudoku_autosave_enabled';
+const GAME_STATE_PREFIX = 'sudoku_game_'
+const PREFERENCES_KEY = 'sudoku_preferences'
+const AUTO_SAVE_KEY = 'sudoku_autosave_enabled'
 
 // Helper to get a cell by row and column (1-indexed)
 function getCellLocator(page: any, row: number, col: number) {
-  return page.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`);
+  return page.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`)
 }
 
 // Helper to check if a cell has a specific value
 async function expectCellValue(page: any, row: number, col: number, value: number | 'empty') {
-  const cell = getCellLocator(page, row, col);
+  const cell = getCellLocator(page, row, col)
   if (value === 'empty') {
-    await expect(cell).toHaveAttribute('aria-label', new RegExp(`Row ${row}, Column ${col}, empty`));
+    await expect(cell).toHaveAttribute('aria-label', new RegExp(`Row ${row}, Column ${col}, empty`))
   } else {
-    await expect(cell).toHaveAttribute('aria-label', new RegExp(`Row ${row}, Column ${col}, value ${value}`));
+    await expect(cell).toHaveAttribute(
+      'aria-label',
+      new RegExp(`Row ${row}, Column ${col}, value ${value}`),
+    )
   }
 }
 
 // Helper to find first empty cell and get its position
-async function findEmptyCell(page: any, preferredRow = 5): Promise<{ cell: any; row: number; col: number }> {
-  const emptyCell = page.locator(`[role="gridcell"][aria-label*="Row ${preferredRow}"][aria-label*="empty"]`).first();
-  const ariaLabel = await emptyCell.getAttribute('aria-label');
-  const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
-  const row = match ? parseInt(match[1]) : preferredRow;
-  const col = match ? parseInt(match[2]) : 1;
-  return { cell: emptyCell, row, col };
+async function findEmptyCell(
+  page: any,
+  preferredRow = 5,
+): Promise<{ cell: any; row: number; col: number }> {
+  const emptyCell = page
+    .locator(`[role="gridcell"][aria-label*="Row ${preferredRow}"][aria-label*="empty"]`)
+    .first()
+  const ariaLabel = await emptyCell.getAttribute('aria-label')
+  const match = ariaLabel?.match(/Row (\d+), Column (\d+)/)
+  const row = match ? parseInt(match[1]) : preferredRow
+  const col = match ? parseInt(match[2]) : 1
+  return { cell: emptyCell, row, col }
 }
 
 // Helper to get localStorage item via page.evaluate
 async function getLocalStorageItem(page: any, key: string): Promise<string | null> {
-  return page.evaluate((k: string) => localStorage.getItem(k), key);
+  return page.evaluate((k: string) => localStorage.getItem(k), key)
 }
 
 // Helper to set localStorage item via page.evaluate
 async function setLocalStorageItem(page: any, key: string, value: string): Promise<void> {
-  await page.evaluate(([k, v]: [string, string]) => localStorage.setItem(k, v), [key, value]);
+  await page.evaluate(([k, v]: [string, string]) => localStorage.setItem(k, v), [key, value])
 }
 
 // Helper to prevent "Game In Progress" modal from appearing
 // This sets a sessionStorage flag that the app checks to skip the modal
 async function preventInProgressModal(page: any): Promise<void> {
   await page.evaluate(() => {
-    sessionStorage.setItem('from_homepage', 'true');
-  });
+    sessionStorage.setItem('from_homepage', 'true')
+  })
 }
 
 // Helper to remove localStorage item via page.evaluate
 async function removeLocalStorageItem(page: any, key: string): Promise<void> {
-  await page.evaluate((k: string) => localStorage.removeItem(k), key);
+  await page.evaluate((k: string) => localStorage.removeItem(k), key)
 }
 
 // Helper to clear all game state keys from localStorage
 async function clearAllGameStates(page: any): Promise<void> {
   await page.evaluate((prefix: string) => {
-    const keysToRemove: string[] = [];
+    const keysToRemove: string[] = []
     for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
+      const key = localStorage.key(i)
       if (key?.startsWith(prefix)) {
-        keysToRemove.push(key);
+        keysToRemove.push(key)
       }
     }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-  }, GAME_STATE_PREFIX);
+    keysToRemove.forEach((key) => localStorage.removeItem(key))
+  }, GAME_STATE_PREFIX)
 }
 
 // Helper to wait for auto-save to complete by detecting localStorage changes
 // This replaces arbitrary timeout waits with efficient state change detection
 async function waitForAutoSave(
-  page: any, 
-  storageKey: string, 
+  page: any,
+  storageKey: string,
   expectedChange?: (savedState: any) => boolean,
-  timeout = 3000
+  timeout = 3000,
 ): Promise<void> {
   try {
     await expect(async () => {
-      const savedState = await getLocalStorageItem(page, storageKey);
-      expect(savedState).toBeTruthy();
-      
+      const savedState = await getLocalStorageItem(page, storageKey)
+      expect(savedState).toBeTruthy()
+
       if (expectedChange) {
-        const parsed = JSON.parse(savedState!);
-        expect(expectedChange(parsed)).toBe(true);
+        const parsed = JSON.parse(savedState!)
+        expect(expectedChange(parsed)).toBe(true)
       }
-    }).toPass({ timeout });
+    }).toPass({ timeout })
   } catch (error) {
     // If specific change check fails, fall back to basic existence check
     await expect(async () => {
-      const savedState = await getLocalStorageItem(page, storageKey);
-      expect(savedState).toBeTruthy();
-    }).toPass({ timeout });
+      const savedState = await getLocalStorageItem(page, storageKey)
+      expect(savedState).toBeTruthy()
+    }).toPass({ timeout })
   }
 }
 
@@ -109,589 +117,604 @@ async function waitForAutoSave(
 // Replaces short arbitrary timeouts with element state verification
 async function waitForUIReady(page: any, timeout = 1000): Promise<void> {
   // Wait for any loading indicators to disappear and UI to stabilize
-  await page.waitForLoadState('networkidle', { timeout });
+  await page.waitForLoadState('networkidle', { timeout })
 }
 
 // Helper to wait for menu interactions and modal appearances
 // Replaces 200ms delays with actual element visibility checks
 async function waitForMenuOrModal(page: any, selector: string, timeout = 2000): Promise<void> {
-  const element = page.locator(selector);
-  await expect(element).toBeVisible({ timeout });
+  const element = page.locator(selector)
+  await expect(element).toBeVisible({ timeout })
 }
 
 // Helper to wait for element state changes (like aria attributes)
 // Replaces delays when waiting for UI state updates
 async function waitForElementState(
-  page: any, 
-  selector: string, 
-  attribute: string, 
+  page: any,
+  selector: string,
+  attribute: string,
   expectedValue: string | RegExp,
-  timeout = 2000
+  timeout = 2000,
 ): Promise<void> {
-  const element = page.locator(selector);
-  await expect(element).toHaveAttribute(attribute, expectedValue, { timeout });
+  const element = page.locator(selector)
+  await expect(element).toHaveAttribute(attribute, expectedValue, { timeout })
 }
 
 test.describe('@integration Persistence - Auto-save on Cell Change', () => {
-  const TEST_SEED = 'P0';
+  const TEST_SEED = 'P0'
 
   test.beforeEach(async ({ page }) => {
     // Clear any existing game state for this seed and prevent in-progress modal
     await page.addInitScript((seed: string) => {
       // Clear ALL game saves to prevent "Game In Progress" modal
-      const keysToRemove: string[] = [];
+      const keysToRemove: string[] = []
       for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+        const key = localStorage.key(i)
         if (key?.startsWith('sudoku_game_')) {
-          keysToRemove.push(key);
+          keysToRemove.push(key)
         }
       }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-      
+      keysToRemove.forEach((key) => localStorage.removeItem(key))
+
       // Also set session flag to skip in-progress check
-      sessionStorage.setItem('skip_in_progress_check', 'true');
-    }, TEST_SEED);
-  });
+      sessionStorage.setItem('skip_in_progress_check', 'true')
+    }, TEST_SEED)
+  })
 
   test('entering a digit auto-saves to localStorage', async ({ page }) => {
-    await setupGameAndWaitForBoard(page, { seed: TEST_SEED });
+    await setupGameAndWaitForBoard(page, { seed: TEST_SEED })
 
     // Find an empty cell
-    const { cell, row, col } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    await page.keyboard.press('5');
+    const { cell, row, col } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+    await page.keyboard.press('5')
 
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
     await waitForAutoSave(page, storageKey, (parsed) => {
-      const cellIndex = (row - 1) * 9 + (col - 1);
-      return parsed.board[cellIndex] === 5;
-    });
+      const cellIndex = (row - 1) * 9 + (col - 1)
+      return parsed.board[cellIndex] === 5
+    })
 
     // Check localStorage
-    const savedState = await getLocalStorageItem(page, storageKey);
-    expect(savedState).toBeTruthy();
+    const savedState = await getLocalStorageItem(page, storageKey)
+    expect(savedState).toBeTruthy()
 
-    const parsed = JSON.parse(savedState!);
-    expect(parsed.board).toBeDefined();
-    expect(parsed.board.length).toBe(81);
+    const parsed = JSON.parse(savedState!)
+    expect(parsed.board).toBeDefined()
+    expect(parsed.board.length).toBe(81)
     // The cell should have value 5
-    const cellIndex = (row - 1) * 9 + (col - 1);
-    expect(parsed.board[cellIndex]).toBe(5);
-  });
+    const cellIndex = (row - 1) * 9 + (col - 1)
+    expect(parsed.board[cellIndex]).toBe(5)
+  })
 
   test('entering multiple digits saves all to localStorage', async ({ page }) => {
-    await setupGameAndWaitForBoard(page, { seed: TEST_SEED });
+    await setupGameAndWaitForBoard(page, { seed: TEST_SEED })
 
     // Find first empty cell and enter digit - use selectCell for proper focus
-    const { row: row1, col: col1 } = await findEmptyCell(page, 5);
-    await selectCell(page, row1, col1);
-    await page.keyboard.press('3');
-    
+    const { row: row1, col: col1 } = await findEmptyCell(page, 5)
+    await selectCell(page, row1, col1)
+    await page.keyboard.press('3')
+
     // Wait for digit to appear in UI before proceeding
-    const cell1 = getCellLocator(page, row1, col1);
-    await expect(cell1).toContainText('3');
+    const cell1 = getCellLocator(page, row1, col1)
+    await expect(cell1).toContainText('3')
 
     // Find another empty cell and enter digit
-    const { row: row2, col: col2 } = await findEmptyCell(page, 6);
-    await selectCell(page, row2, col2);
-    await page.keyboard.press('7');
+    const { row: row2, col: col2 } = await findEmptyCell(page, 6)
+    await selectCell(page, row2, col2)
+    await page.keyboard.press('7')
 
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
     await waitForAutoSave(page, storageKey, (parsed) => {
-      const cellIndex1 = (row1 - 1) * 9 + (col1 - 1);
-      const cellIndex2 = (row2 - 1) * 9 + (col2 - 1);
-      return parsed.board[cellIndex1] === 3 && parsed.board[cellIndex2] === 7;
-    });
+      const cellIndex1 = (row1 - 1) * 9 + (col1 - 1)
+      const cellIndex2 = (row2 - 1) * 9 + (col2 - 1)
+      return parsed.board[cellIndex1] === 3 && parsed.board[cellIndex2] === 7
+    })
 
     // Check localStorage
-    const savedState = await getLocalStorageItem(page, storageKey);
-    expect(savedState).toBeTruthy();
+    const savedState = await getLocalStorageItem(page, storageKey)
+    expect(savedState).toBeTruthy()
 
-    const parsed = JSON.parse(savedState!);
-    const cellIndex1 = (row1 - 1) * 9 + (col1 - 1);
-    const cellIndex2 = (row2 - 1) * 9 + (col2 - 1);
-    expect(parsed.board[cellIndex1]).toBe(3);
-    expect(parsed.board[cellIndex2]).toBe(7);
-  });
+    const parsed = JSON.parse(savedState!)
+    const cellIndex1 = (row1 - 1) * 9 + (col1 - 1)
+    const cellIndex2 = (row2 - 1) * 9 + (col2 - 1)
+    expect(parsed.board[cellIndex1]).toBe(3)
+    expect(parsed.board[cellIndex2]).toBe(7)
+  })
 
   test('clearing a digit updates saved state', async ({ page }) => {
-    await setupGameAndWaitForBoard(page, { seed: TEST_SEED });
+    await setupGameAndWaitForBoard(page, { seed: TEST_SEED })
 
     // Enter and then clear a digit
-    const { cell, row, col } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    await page.keyboard.press('9');
-    
+    const { cell, row, col } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+    await page.keyboard.press('9')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
-    const cellIndex = (row - 1) * 9 + (col - 1);
-    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 9);
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
+    const cellIndex = (row - 1) * 9 + (col - 1)
+    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 9)
 
     // Verify digit was saved
-    let savedState = await getLocalStorageItem(page, storageKey);
-    let parsed = JSON.parse(savedState!);
-    expect(parsed.board[cellIndex]).toBe(9);
+    let savedState = await getLocalStorageItem(page, storageKey)
+    let parsed = JSON.parse(savedState!)
+    expect(parsed.board[cellIndex]).toBe(9)
 
     // Clear the digit
     // Use shared helper to select and focus the cell before sending keys
-    const focusedCell = await selectCell(page, row, col);
-    await page.keyboard.press('Backspace');
-    
+    const focusedCell = await selectCell(page, row, col)
+    await page.keyboard.press('Backspace')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 0);
+    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 0)
 
     // Verify saved state is updated
-    savedState = await getLocalStorageItem(page, storageKey);
-    parsed = JSON.parse(savedState!);
-    expect(parsed.board[cellIndex]).toBe(0);
-  });
-});
+    savedState = await getLocalStorageItem(page, storageKey)
+    parsed = JSON.parse(savedState!)
+    expect(parsed.board[cellIndex]).toBe(0)
+  })
+})
 
 test.describe('@integration Persistence - Restore Game on Reload', () => {
-  const TEST_SEED = 'P1';
+  const TEST_SEED = 'P1'
 
   // Note: We don't use addInitScript here because it runs on EVERY navigation including reload,
   // which would clear saved state before we can test restoration.
 
   test('digits persist after page reload', async ({ page }) => {
-    await setupGameAndWaitForBoard(page, { seed: TEST_SEED });
-    
+    await setupGameAndWaitForBoard(page, { seed: TEST_SEED })
+
     // Clear any existing game state AFTER initial load (not via addInitScript which runs on reload too)
-    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`)
 
     // Enter a digit
-    const { cell, row, col } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    await page.keyboard.press('4');
-    
+    const { cell, row, col } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+    await page.keyboard.press('4')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
-    const cellIndex = (row - 1) * 9 + (col - 1);
-    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 4);
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
+    const cellIndex = (row - 1) * 9 + (col - 1)
+    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 4)
 
     // Reload the page
-    await page.reload();
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await page.reload()
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Verify the digit is restored
-    await expectCellValue(page, row, col, 4);
-  });
+    await expectCellValue(page, row, col, 4)
+  })
 
   test('notes persist after page reload', async ({ page }) => {
-    await setupGameAndWaitForBoard(page, { seed: TEST_SEED });
-    
+    await setupGameAndWaitForBoard(page, { seed: TEST_SEED })
+
     // Clear any existing game state AFTER initial load
-    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`)
 
     // Enable notes mode
-    const notesButton = page.locator('button[title="Notes mode"]');
-    await notesButton.click();
-    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+    const notesButton = page.locator('button[title="Notes mode"]')
+    await notesButton.click()
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true')
 
     // Add notes to a cell - capture the row/col so we can find the same cell after reload
-    const { cell, row, col } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    await page.keyboard.press('1');
-    await page.keyboard.press('2');
-    await page.keyboard.press('3');
-    
+    const { cell, row, col } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+    await page.keyboard.press('1')
+    await page.keyboard.press('2')
+    await page.keyboard.press('3')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
     await waitForAutoSave(page, storageKey, (parsed) => {
       // Check if candidates were saved (notes create candidate entries)
-      return parsed.candidates && parsed.candidates.length > 0;
-    });
+      return parsed.candidates && parsed.candidates.length > 0
+    })
 
     // Verify notes are visible
-    let cellContent = await cell.textContent();
-    expect(cellContent).toContain('1');
-    expect(cellContent).toContain('2');
-    expect(cellContent).toContain('3');
+    let cellContent = await cell.textContent()
+    expect(cellContent).toContain('1')
+    expect(cellContent).toContain('2')
+    expect(cellContent).toContain('3')
 
     // Reload the page
-    await page.reload();
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await page.reload()
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Find the SAME cell by row/col (notes should be restored)
-    const cellAfterReload = getCellLocator(page, row, col);
-    cellContent = await cellAfterReload.textContent();
+    const cellAfterReload = getCellLocator(page, row, col)
+    cellContent = await cellAfterReload.textContent()
     // Notes should persist
-    expect(cellContent).toContain('1');
-    expect(cellContent).toContain('2');
-    expect(cellContent).toContain('3');
-  });
+    expect(cellContent).toContain('1')
+    expect(cellContent).toContain('2')
+    expect(cellContent).toContain('3')
+  })
 
   test('partial game state restores exactly on reload', async ({ page }) => {
-    await setupGameAndWaitForBoard(page, { seed: TEST_SEED });
-    
+    await setupGameAndWaitForBoard(page, { seed: TEST_SEED })
+
     // Clear any existing game state AFTER initial load
-    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`)
 
     // Make multiple moves - use selectCell for proper focus
-    const { row: row1, col: col1 } = await findEmptyCell(page, 5);
-    await selectCell(page, row1, col1);
-    await page.keyboard.press('8');
-    
-    // Wait for digit to appear in UI before proceeding
-    const cell1 = getCellLocator(page, row1, col1);
-    await expect(cell1).toContainText('8');
+    const { row: row1, col: col1 } = await findEmptyCell(page, 5)
+    await selectCell(page, row1, col1)
+    await page.keyboard.press('8')
 
-    const { row: row2, col: col2 } = await findEmptyCell(page, 6);
-    await selectCell(page, row2, col2);
-    await page.keyboard.press('2');
-    
+    // Wait for digit to appear in UI before proceeding
+    const cell1 = getCellLocator(page, row1, col1)
+    await expect(cell1).toContainText('8')
+
+    const { row: row2, col: col2 } = await findEmptyCell(page, 6)
+    await selectCell(page, row2, col2)
+    await page.keyboard.press('2')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
     await waitForAutoSave(page, storageKey, (parsed) => {
-      const cellIndex1 = (row1 - 1) * 9 + (col1 - 1);
-      const cellIndex2 = (row2 - 1) * 9 + (col2 - 1);
-      return parsed.board[cellIndex1] === 8 && parsed.board[cellIndex2] === 2;
-    });
+      const cellIndex1 = (row1 - 1) * 9 + (col1 - 1)
+      const cellIndex2 = (row2 - 1) * 9 + (col2 - 1)
+      return parsed.board[cellIndex1] === 8 && parsed.board[cellIndex2] === 2
+    })
 
     // Reload
-    await page.reload();
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await page.reload()
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Verify both digits are restored
-    await expectCellValue(page, row1, col1, 8);
-    await expectCellValue(page, row2, col2, 2);
-  });
+    await expectCellValue(page, row1, col1, 8)
+    await expectCellValue(page, row2, col2, 2)
+  })
 
   test('notes and digits persist after back button navigation (BFCache)', async ({ page }) => {
-    await setupGameAndWaitForBoard(page, { seed: TEST_SEED });
-    
+    await setupGameAndWaitForBoard(page, { seed: TEST_SEED })
+
     // Clear any existing game state AFTER initial load
-    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`)
 
     // Enable notes mode and add notes
-    const notesButton = page.locator('button[title="Notes mode"]');
-    await notesButton.click();
-    await expect(notesButton).toHaveAttribute('aria-pressed', 'true');
+    const notesButton = page.locator('button[title="Notes mode"]')
+    await notesButton.click()
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'true')
 
-    const { cell, row, col } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    await page.keyboard.press('1');
-    await page.keyboard.press('2');
+    const { cell, row, col } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+    await page.keyboard.press('1')
+    await page.keyboard.press('2')
 
     // Disable notes mode and add a digit
-    await notesButton.click();
-    await expect(notesButton).toHaveAttribute('aria-pressed', 'false');
+    await notesButton.click()
+    await expect(notesButton).toHaveAttribute('aria-pressed', 'false')
 
-    const { row: row2, col: col2 } = await findEmptyCell(page, 6);
-    await selectCell(page, row2, col2);
-    await page.keyboard.press('5');
+    const { row: row2, col: col2 } = await findEmptyCell(page, 6)
+    await selectCell(page, row2, col2)
+    await page.keyboard.press('5')
 
     // Wait for auto-save to complete
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
     await waitForAutoSave(page, storageKey, (parsed) => {
-      const cellIndex2 = (row2 - 1) * 9 + (col2 - 1);
-      return parsed.board[cellIndex2] === 5 && parsed.candidates && parsed.candidates.length > 0;
-    });
+      const cellIndex2 = (row2 - 1) * 9 + (col2 - 1)
+      return parsed.board[cellIndex2] === 5 && parsed.candidates && parsed.candidates.length > 0
+    })
 
     // Navigate away to homepage
-    await page.goto('/');
-    await expect(page.locator('body')).toBeVisible();
+    await page.goto('/')
+    await expect(page.locator('body')).toBeVisible()
 
     // Navigate back (this should trigger BFCache restore)
-    await page.goBack();
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await page.goBack()
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Verify notes are restored
-    const cellAfterBack = getCellLocator(page, row, col);
-    const cellContent = await cellAfterBack.textContent();
-    expect(cellContent).toContain('1');
-    expect(cellContent).toContain('2');
+    const cellAfterBack = getCellLocator(page, row, col)
+    const cellContent = await cellAfterBack.textContent()
+    expect(cellContent).toContain('1')
+    expect(cellContent).toContain('2')
 
     // Verify digit is restored
-    await expectCellValue(page, row2, col2, 5);
-  });
-});
+    await expectCellValue(page, row2, col2, 5)
+  })
+})
 
 test.describe('@integration Persistence - Timer Persistence', () => {
-  const TEST_SEED = 'P2';
+  const TEST_SEED = 'P2'
 
   // Note: We don't use addInitScript here because it runs on EVERY navigation including reload,
   // which would clear saved state before we can test restoration.
 
   test('timer continues from saved time after reload', async ({ page }) => {
-    await setupGameAndWaitForBoard(page, { seed: TEST_SEED });
-    
+    await setupGameAndWaitForBoard(page, { seed: TEST_SEED })
+
     // Clear any existing game state AFTER initial load (not via addInitScript which runs on reload too)
-    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`)
 
     // Make a move to trigger auto-save (and start tracking time)
-    const { cell } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    await page.keyboard.press('1');
+    const { cell } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+    await page.keyboard.press('1')
 
     // Wait for auto-save to complete AND timer to accumulate (replaces 3000ms timeout)
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
-    await waitForAutoSave(page, storageKey, (parsed) => {
-      // Verify both board state AND timer state are saved
-      const cellIndex = 0; // First cell
-      return parsed.board && parsed.elapsedMs && parsed.elapsedMs > 0;
-    }, 5000); // Allow extra time for timer accumulation
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
+    await waitForAutoSave(
+      page,
+      storageKey,
+      (parsed) => {
+        // Verify both board state AND timer state are saved
+        const cellIndex = 0 // First cell
+        return parsed.board && parsed.elapsedMs && parsed.elapsedMs > 0
+      },
+      5000,
+    ) // Allow extra time for timer accumulation
 
     // Get timer value before reload
-    const timerElement = page.locator('[class*="timer"], [data-testid="timer"], header').filter({ hasText: /\d:\d\d/ }).first();
-    const timerTextBefore = await timerElement.textContent().catch(() => '');
+    const timerElement = page
+      .locator('[class*="timer"], [data-testid="timer"], header')
+      .filter({ hasText: /\d:\d\d/ })
+      .first()
+    const timerTextBefore = await timerElement.textContent().catch(() => '')
 
     // Reload
-    await page.reload();
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await page.reload()
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Get timer value after reload
-    const timerAfterReload = page.locator('[class*="timer"], [data-testid="timer"], header').filter({ hasText: /\d:\d\d/ }).first();
-    const timerTextAfter = await timerAfterReload.textContent().catch(() => '');
+    const timerAfterReload = page
+      .locator('[class*="timer"], [data-testid="timer"], header')
+      .filter({ hasText: /\d:\d\d/ })
+      .first()
+    const timerTextAfter = await timerAfterReload.textContent().catch(() => '')
 
     // Timer should be at least as much as before (not reset to 0:00)
     // We check that elapsedMs was saved
-    const savedState = await getLocalStorageItem(page, storageKey);
-    expect(savedState).toBeTruthy();
-    const parsed = JSON.parse(savedState!);
-    expect(parsed.elapsedMs).toBeGreaterThan(0);
-  });
-});
+    const savedState = await getLocalStorageItem(page, storageKey)
+    expect(savedState).toBeTruthy()
+    const parsed = JSON.parse(savedState!)
+    expect(parsed.elapsedMs).toBeGreaterThan(0)
+  })
+})
 
 test.describe('@integration Persistence - Clear Game Functionality', () => {
-  const TEST_SEED = 'P3';
+  const TEST_SEED = 'P3'
 
   test('starting a new game clears the board', async ({ page }) => {
-    await page.goto(`/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`)
     // Clear storage AFTER initial load to avoid addInitScript running on every navigation
     await page.evaluate((seed: string) => {
-      localStorage.removeItem(`sudoku_game_${seed}`);
-    }, TEST_SEED);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+      localStorage.removeItem(`sudoku_game_${seed}`)
+    }, TEST_SEED)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Make some moves
-    const { cell, row, col } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    await page.keyboard.press('6');
-    
+    const { cell, row, col } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+    await page.keyboard.press('6')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
-    const cellIndex = (row - 1) * 9 + (col - 1);
-    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 6);
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
+    const cellIndex = (row - 1) * 9 + (col - 1)
+    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 6)
 
     // Verify the move was made
-    await expectCellValue(page, row, col, 6);
+    await expectCellValue(page, row, col, 6)
 
     // Click the menu button and find the Clear All button
-    const menuButton = page.locator('button[aria-label="Menu"]');
-    await menuButton.click();
-    
+    const menuButton = page.locator('button[aria-label="Menu"]')
+    await menuButton.click()
+
     // Wait for menu to appear (replaces arbitrary 200ms timeout)
-    await waitForMenuOrModal(page, 'button:has-text("Clear All")');
+    await waitForMenuOrModal(page, 'button:has-text("Clear All")')
 
     // Click "Clear All" to clear user entries (menu auto-closes on click)
-    const clearAllButton = page.locator('button').filter({ hasText: 'Clear All' });
-    await clearAllButton.click();
-    
+    const clearAllButton = page.locator('button').filter({ hasText: 'Clear All' })
+    await clearAllButton.click()
+
     // A confirmation modal appears - click Confirm
-    const confirmButton = page.locator('button').filter({ hasText: 'Confirm' });
-    await confirmButton.click();
-    
+    const confirmButton = page.locator('button').filter({ hasText: 'Confirm' })
+    await confirmButton.click()
+
     // Wait for UI to process the clear action (replaces arbitrary 500ms timeout)
-    await waitForUIReady(page);
+    await waitForUIReady(page)
 
     // The cell should now be empty again
-    await expectCellValue(page, row, col, 'empty');
-  });
+    await expectCellValue(page, row, col, 'empty')
+  })
 
   test('reset clears user moves from saved state', async ({ page }) => {
-    await page.goto(`/${TEST_SEED}?d=easy`);
+    await page.goto(`/${TEST_SEED}?d=easy`)
     // Clear storage AFTER initial load
     await page.evaluate((seed: string) => {
-      localStorage.removeItem(`sudoku_game_${seed}`);
-    }, TEST_SEED);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+      localStorage.removeItem(`sudoku_game_${seed}`)
+    }, TEST_SEED)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Make a move to trigger save
-    const { cell, row, col } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    await page.keyboard.press('5');
-    
+    const { cell, row, col } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+    await page.keyboard.press('5')
+
     // Wait for auto-save to complete (replaces massive 2500ms timeout)
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
-    const cellIndex = (row - 1) * 9 + (col - 1);
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
+    const cellIndex = (row - 1) * 9 + (col - 1)
     await waitForAutoSave(page, storageKey, (parsed) => {
       // Verify both board state AND history are saved
-      return parsed.board[cellIndex] === 5 && parsed.history && parsed.history.length > 0;
-    });
+      return parsed.board[cellIndex] === 5 && parsed.history && parsed.history.length > 0
+    })
 
     // Convert 1-indexed row/col to 0-indexed array position
     // (cellIndex already defined above)
 
     // Verify save exists with our move in history
     // (storageKey already defined above)
-    let savedState = await getLocalStorageItem(page, storageKey);
-    expect(savedState).toBeTruthy();
-    let parsed = JSON.parse(savedState!);
-    expect(parsed.history.length).toBeGreaterThan(0);
-    expect(parsed.board[cellIndex]).toBe(5);
+    let savedState = await getLocalStorageItem(page, storageKey)
+    expect(savedState).toBeTruthy()
+    let parsed = JSON.parse(savedState!)
+    expect(parsed.history.length).toBeGreaterThan(0)
+    expect(parsed.board[cellIndex]).toBe(5)
 
     // Click menu and use Clear All
-    const menuButton = page.locator('button[aria-label="Menu"]');
-    await menuButton.click();
-    
-    // Wait for menu to appear (replaces arbitrary 200ms timeout)
-    await waitForMenuOrModal(page, 'button:has-text("Clear All")');
+    const menuButton = page.locator('button[aria-label="Menu"]')
+    await menuButton.click()
 
-    const clearAllButton = page.locator('button').filter({ hasText: 'Clear All' });
-    await clearAllButton.click();
-    
+    // Wait for menu to appear (replaces arbitrary 200ms timeout)
+    await waitForMenuOrModal(page, 'button:has-text("Clear All")')
+
+    const clearAllButton = page.locator('button').filter({ hasText: 'Clear All' })
+    await clearAllButton.click()
+
     // A confirmation modal appears - click Confirm
-    const confirmButton = page.locator('button').filter({ hasText: 'Confirm' });
-    await confirmButton.click();
-    
+    const confirmButton = page.locator('button').filter({ hasText: 'Confirm' })
+    await confirmButton.click()
+
     // Wait for the UI to show the cell is cleared (the digit we entered should be gone)
-    const clearedCell = getCellLocator(page, row, col);
-    await expect(clearedCell).toHaveAttribute('aria-label', /empty/, { timeout: 5000 });
-    
+    const clearedCell = getCellLocator(page, row, col)
+    await expect(clearedCell).toHaveAttribute('aria-label', /empty/, { timeout: 5000 })
+
     // The UI is cleared - verify the cell on screen is empty
-    await expectCellValue(page, row, col, 'empty');
+    await expectCellValue(page, row, col, 'empty')
 
     // Poll localStorage until the cleared state is saved (auto-save has debounce + idle callback)
     await expect(async () => {
-      const state = await getLocalStorageItem(page, storageKey);
-      expect(state).toBeTruthy();
-      const data = JSON.parse(state!);
-      expect(data.history.length).toBe(0);
-      expect(data.board[cellIndex]).toBe(0);
-    }).toPass({ timeout: 5000 });
-  });
-});
+      const state = await getLocalStorageItem(page, storageKey)
+      expect(state).toBeTruthy()
+      const data = JSON.parse(state!)
+      expect(data.history.length).toBe(0)
+      expect(data.board[cellIndex]).toBe(0)
+    }).toPass({ timeout: 5000 })
+  })
+})
 
 test.describe('@integration Persistence - Preferences', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
-  });
+    await page.goto('/')
+    await page.getByRole('button', { name: /easy Play/i }).click()
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
+  })
 
   test('preferences persist after page reload', async ({ page }) => {
-
     // Open settings/menu and toggle a preference (e.g., hide timer)
-    const menuButton = page.locator('header button[aria-label*="Menu"], header button:has(svg)').last();
-    await menuButton.click();
-    
+    const menuButton = page.locator('[data-menu-button]')
+    await menuButton.click()
+
     // Wait for menu to appear - look for a menu item
-    await expect(page.locator('button:has-text("Hide Timer"), button:has-text("Clear All")')).toBeVisible({ timeout: 2000 });
+    await expect(
+      page.locator('button:has-text("Hide Timer"), button:has-text("Clear All")'),
+    ).toBeVisible({ timeout: 2000 })
 
     // Look for timer toggle or theme option
-    const hideTimerToggle = page.locator('button:has-text("Hide Timer"), [aria-label*="timer"]').first();
+    const hideTimerToggle = page
+      .locator('button:has-text("Hide Timer"), [aria-label*="timer"]')
+      .first()
     if (await hideTimerToggle.isVisible()) {
-      await hideTimerToggle.click();
-      
+      await hideTimerToggle.click()
+
       // Wait for preference change to process (replaces arbitrary 500ms timeout)
-      await waitForUIReady(page);
+      await waitForUIReady(page)
 
       // Close menu by pressing escape
-      await page.keyboard.press('Escape');
-      
+      await page.keyboard.press('Escape')
+
       // Wait for menu to close (replaces arbitrary 200ms timeout)
-      await expect(hideTimerToggle).not.toBeVisible({ timeout: 1000 });
+      await expect(hideTimerToggle).not.toBeVisible({ timeout: 1000 })
 
       // Reload
-      await page.reload();
-      await setupGameAndWaitForBoard(page, { skipNavigation: true });
+      await page.reload()
+      await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
       // Check preferences are saved
-      const prefs = await getLocalStorageItem(page, PREFERENCES_KEY);
-      expect(prefs).toBeTruthy();
-      const parsed = JSON.parse(prefs!);
-      expect(parsed.hideTimer).toBe(true);
+      const prefs = await getLocalStorageItem(page, PREFERENCES_KEY)
+      expect(prefs).toBeTruthy()
+      const parsed = JSON.parse(prefs!)
+      expect(parsed.hideTimer).toBe(true)
     }
-  });
+  })
 
   test('auto-solve speed preference persists', async ({ page }) => {
-    await setupGameAndWaitForBoard(page, { seed: 'P13' });
+    await setupGameAndWaitForBoard(page, { seed: 'P13' })
 
     // Set a speed preference via the menu
-    const menuButton = page.locator('header button[aria-label*="Menu"], header button:has(svg)').last();
-    await menuButton.click();
-    
+    const menuButton = page.locator('[data-menu-button]')
+    await menuButton.click()
+
     // Wait for menu to appear - look for a menu item
-    await expect(page.locator('button:has-text("Clear All"), button:has-text("Hide Timer")')).toBeVisible({ timeout: 2000 });
+    await expect(
+      page.locator('button:has-text("Clear All"), button:has-text("Hide Timer")'),
+    ).toBeVisible({ timeout: 2000 })
 
     // Look for speed controls
-    const speedButton = page.locator('button[aria-label*="speed"], button:has-text("1x"), button:has-text("2x")').first();
-    if (await speedButton.isVisible()) {
-      await speedButton.click();
-      
-      // Wait for speed preference to process (replaces arbitrary 300ms timeout)
-      await waitForUIReady(page);
+    const speedButton = page.getByTitle('2x - Click to start')
+    await expect(speedButton).toBeVisible({ timeout: 2000 })
+    await speedButton.click()
 
-      // Close menu
-      await page.keyboard.press('Escape');
-      
-      // Wait for menu to close (replaces arbitrary 200ms timeout)
-      await expect(speedButton).not.toBeVisible({ timeout: 1000 });
+    // Wait for speed preference to process (replaces arbitrary 300ms timeout)
+    await waitForUIReady(page)
 
-      // Reload and check preferences
-      await page.reload();
-      await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    // Close menu
+    await page.keyboard.press('Escape')
 
-      const prefs = await getLocalStorageItem(page, PREFERENCES_KEY);
-      expect(prefs).toBeTruthy();
-      const parsed = JSON.parse(prefs!);
-      expect(parsed.autoSolveSpeed).toBeDefined();
-    }
-  });
+    // Wait for menu to close (replaces arbitrary 200ms timeout)
+    await expect(speedButton).not.toBeVisible({ timeout: 1000 })
+
+    // Reload and check preferences
+    await page.reload()
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
+
+    const prefs = await getLocalStorageItem(page, PREFERENCES_KEY)
+    expect(prefs).toBeTruthy()
+    const parsed = JSON.parse(prefs!)
+    expect(parsed.autoSolveSpeed).toBeDefined()
+  })
 
   test('homepage mode preference persists', async ({ page }) => {
     // Navigate to homepage first
-    await page.goto('/');
-    await page.waitForSelector('a[href*="game"], button', { timeout: 15000 });
+    await page.goto('/')
+    await page.waitForSelector('a[href*="game"], button', { timeout: 15000 })
 
     // Check for mode toggle (daily vs practice)
-    const modeToggle = page.locator('button:has-text("Practice"), button:has-text("Daily")').first();
+    const modeToggle = page.locator('button:has-text("Practice"), button:has-text("Daily")').first()
     if (await modeToggle.isVisible()) {
-      await modeToggle.click();
-      
+      await modeToggle.click()
+
       // Wait for mode preference to process (replaces arbitrary 500ms timeout)
-      await waitForUIReady(page);
+      await waitForUIReady(page)
 
       // Reload
-      await page.reload();
-      
+      await page.reload()
+
       // Wait for page reload to complete (replaces arbitrary 500ms timeout)
-      await waitForUIReady(page);
+      await waitForUIReady(page)
 
       // Check preferences
-      const prefs = await getLocalStorageItem(page, PREFERENCES_KEY);
+      const prefs = await getLocalStorageItem(page, PREFERENCES_KEY)
       if (prefs) {
-        const parsed = JSON.parse(prefs);
-        expect(parsed.homepageMode).toBeDefined();
+        const parsed = JSON.parse(prefs)
+        expect(parsed.homepageMode).toBeDefined()
       }
     }
-  });
-});
+  })
+})
 
 test.describe('@integration Persistence - Multiple Games Tracked', () => {
-  // NOTE: Testing with two DIFFERENT MODES (practice vs daily) to verify 
+  // NOTE: Testing with two DIFFERENT MODES (practice vs daily) to verify
   // that different modes have separate save states.
   // The app is designed to only keep ONE save per mode, so we use different modes.
-  const GAME_SEED_1 = 'P11';  // Practice game
-  const GAME_SEED_2 = 'daily-2024-01-15';  // Daily game (different mode, use past date)
+  const GAME_SEED_1 = 'P11' // Practice game
+  const GAME_SEED_2 = 'daily-2024-01-15' // Daily game (different mode, use past date)
 
   // Helper to set skip_in_progress_check before navigation
   // This bypasses the "Game In Progress" modal entirely, allowing each game to load its own saved state
   async function setSkipInProgressCheck(page: any) {
     await page.evaluate(() => {
-      sessionStorage.setItem('skip_in_progress_check', 'true');
-    });
+      sessionStorage.setItem('skip_in_progress_check', 'true')
+    })
   }
 
   test('different games have separate save states', async ({ page }) => {
@@ -700,211 +723,211 @@ test.describe('@integration Persistence - Multiple Games Tracked', () => {
       // Only clear storage on the very first load (when flag is not set)
       if (!sessionStorage.getItem('test_initialized')) {
         // Clear ALL game saves to prevent "Game In Progress" modal on initial load
-        const keysToRemove: string[] = [];
+        const keysToRemove: string[] = []
         for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
+          const key = localStorage.key(i)
           if (key?.startsWith('sudoku_game_')) {
-            keysToRemove.push(key);
+            keysToRemove.push(key)
           }
         }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
+        keysToRemove.forEach((key) => localStorage.removeItem(key))
         // Mark that initialization is complete so we don't clear again
-        sessionStorage.setItem('test_initialized', 'true');
+        sessionStorage.setItem('test_initialized', 'true')
       }
       // Skip the in-progress check modal for all navigations
-      sessionStorage.setItem('skip_in_progress_check', 'true');
-    });
-    
-    await page.goto(`/${GAME_SEED_1}?d=easy`);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+      sessionStorage.setItem('skip_in_progress_check', 'true')
+    })
 
-    const { row: game1Row, col: game1Col } = await findEmptyCell(page, 5);
-    await selectCell(page, game1Row, game1Col);
-    await page.keyboard.press('1');
-    
+    await page.goto(`/${GAME_SEED_1}?d=easy`)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
+
+    const { row: game1Row, col: game1Col } = await findEmptyCell(page, 5)
+    await selectCell(page, game1Row, game1Col)
+    await page.keyboard.press('1')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const game1StorageKey = `${GAME_STATE_PREFIX}${GAME_SEED_1}`;
-    const game1CellIndex = (game1Row - 1) * 9 + (game1Col - 1);
-    await waitForAutoSave(page, game1StorageKey, (parsed) => parsed.board[game1CellIndex] === 1);
+    const game1StorageKey = `${GAME_STATE_PREFIX}${GAME_SEED_1}`
+    const game1CellIndex = (game1Row - 1) * 9 + (game1Col - 1)
+    await waitForAutoSave(page, game1StorageKey, (parsed) => parsed.board[game1CellIndex] === 1)
 
     // Navigate to second game (different seed, so first game state should persist)
     // Set skip flag BEFORE navigating to bypass the modal and let the game load its own saved state
-    await setSkipInProgressCheck(page);
-    await page.goto(`/${GAME_SEED_2}?d=medium`);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await setSkipInProgressCheck(page)
+    await page.goto(`/${GAME_SEED_2}?d=medium`)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
-    const { row: game2Row, col: game2Col } = await findEmptyCell(page, 6);
-    await selectCell(page, game2Row, game2Col);
-    await page.keyboard.press('9');
-    
+    const { row: game2Row, col: game2Col } = await findEmptyCell(page, 6)
+    await selectCell(page, game2Row, game2Col)
+    await page.keyboard.press('9')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const game2StorageKey = `${GAME_STATE_PREFIX}${GAME_SEED_2}`;
-    const game2CellIndex = (game2Row - 1) * 9 + (game2Col - 1);
-    await waitForAutoSave(page, game2StorageKey, (parsed) => parsed.board[game2CellIndex] === 9);
+    const game2StorageKey = `${GAME_STATE_PREFIX}${GAME_SEED_2}`
+    const game2CellIndex = (game2Row - 1) * 9 + (game2Col - 1)
+    await waitForAutoSave(page, game2StorageKey, (parsed) => parsed.board[game2CellIndex] === 9)
 
     // Return to first game
     // Set skip flag BEFORE navigating to bypass the modal and let the game load its own saved state
-    await setSkipInProgressCheck(page);
-    await page.goto(`/${GAME_SEED_1}?d=easy`);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await setSkipInProgressCheck(page)
+    await page.goto(`/${GAME_SEED_1}?d=easy`)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // First game should have its own state preserved
-    await expectCellValue(page, game1Row, game1Col, 1);
+    await expectCellValue(page, game1Row, game1Col, 1)
 
     // Verify both save states exist
-    const game1State = await getLocalStorageItem(page, `${GAME_STATE_PREFIX}${GAME_SEED_1}`);
-    const game2State = await getLocalStorageItem(page, `${GAME_STATE_PREFIX}${GAME_SEED_2}`);
+    const game1State = await getLocalStorageItem(page, `${GAME_STATE_PREFIX}${GAME_SEED_1}`)
+    const game2State = await getLocalStorageItem(page, `${GAME_STATE_PREFIX}${GAME_SEED_2}`)
 
-    expect(game1State).toBeTruthy();
-    expect(game2State).toBeTruthy();
+    expect(game1State).toBeTruthy()
+    expect(game2State).toBeTruthy()
 
-    const game1Parsed = JSON.parse(game1State!);
-    const game2Parsed = JSON.parse(game2State!);
+    const game1Parsed = JSON.parse(game1State!)
+    const game2Parsed = JSON.parse(game2State!)
 
-    expect(game1Parsed.difficulty).toBe('easy');
-    expect(game2Parsed.difficulty).toBe('medium');
-  });
+    expect(game1Parsed.difficulty).toBe('easy')
+    expect(game2Parsed.difficulty).toBe('medium')
+  })
 
   test('navigating between games preserves each state independently', async ({ page }) => {
     // Clear storage ONCE before the test starts, then set skip flag for all navigations
     await page.addInitScript(() => {
       // Only clear storage on the very first load (when flag is not set)
       if (!sessionStorage.getItem('test_initialized')) {
-        const keysToRemove: string[] = [];
+        const keysToRemove: string[] = []
         for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
+          const key = localStorage.key(i)
           if (key?.startsWith('sudoku_game_')) {
-            keysToRemove.push(key);
+            keysToRemove.push(key)
           }
         }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
+        keysToRemove.forEach((key) => localStorage.removeItem(key))
         // Mark that initialization is complete so we don't clear again
-        sessionStorage.setItem('test_initialized', 'true');
+        sessionStorage.setItem('test_initialized', 'true')
       }
       // Skip the in-progress check modal for all navigations
-      sessionStorage.setItem('skip_in_progress_check', 'true');
-    });
-    
-    // Setup first game with moves
-    await page.goto(`/${GAME_SEED_1}?d=easy`);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+      sessionStorage.setItem('skip_in_progress_check', 'true')
+    })
 
-    const { row: row1, col: col1 } = await findEmptyCell(page, 5);
-    await selectCell(page, row1, col1);
-    await page.keyboard.press('3');
-    
+    // Setup first game with moves
+    await page.goto(`/${GAME_SEED_1}?d=easy`)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
+
+    const { row: row1, col: col1 } = await findEmptyCell(page, 5)
+    await selectCell(page, row1, col1)
+    await page.keyboard.press('3')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const game1StorageKey = `${GAME_STATE_PREFIX}${GAME_SEED_1}`;
+    const game1StorageKey = `${GAME_STATE_PREFIX}${GAME_SEED_1}`
     await waitForAutoSave(page, game1StorageKey, (parsed) => {
       // Look for any cell with value 3
-      return parsed.board && parsed.board.includes(3);
-    });
+      return parsed.board && parsed.board.includes(3)
+    })
 
     // Setup second game with different moves
     // Set skip flag BEFORE navigating to bypass the modal
-    await setSkipInProgressCheck(page);
-    await page.goto(`/${GAME_SEED_2}?d=medium`);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await setSkipInProgressCheck(page)
+    await page.goto(`/${GAME_SEED_2}?d=medium`)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
-    const { row: row2, col: col2 } = await findEmptyCell(page, 7);
-    await selectCell(page, row2, col2);
-    await page.keyboard.press('7');
-    
+    const { row: row2, col: col2 } = await findEmptyCell(page, 7)
+    await selectCell(page, row2, col2)
+    await page.keyboard.press('7')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const game2StorageKey = `${GAME_STATE_PREFIX}${GAME_SEED_2}`;
-    const game2CellIndex = (row2 - 1) * 9 + (col2 - 1);
-    await waitForAutoSave(page, game2StorageKey, (parsed) => parsed.board[game2CellIndex] === 7);
+    const game2StorageKey = `${GAME_STATE_PREFIX}${GAME_SEED_2}`
+    const game2CellIndex = (row2 - 1) * 9 + (col2 - 1)
+    await waitForAutoSave(page, game2StorageKey, (parsed) => parsed.board[game2CellIndex] === 7)
 
     // Go back to first game, make another move
     // Set skip flag BEFORE navigating to bypass the modal
-    await setSkipInProgressCheck(page);
-    await page.goto(`/${GAME_SEED_1}?d=easy`);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await setSkipInProgressCheck(page)
+    await page.goto(`/${GAME_SEED_1}?d=easy`)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
-    const { row: row3, col: col3 } = await findEmptyCell(page, 8);
-    await selectCell(page, row3, col3);
-    await page.keyboard.press('5');
-    
+    const { row: row3, col: col3 } = await findEmptyCell(page, 8)
+    await selectCell(page, row3, col3)
+    await page.keyboard.press('5')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
     await waitForAutoSave(page, game1StorageKey, (parsed) => {
-      const cellIndex = (row3 - 1) * 9 + (col3 - 1);
-      return parsed.board[cellIndex] === 5;
-    });
+      const cellIndex = (row3 - 1) * 9 + (col3 - 1)
+      return parsed.board[cellIndex] === 5
+    })
 
     // Return to second game - should still have only one move (7)
     // Set skip flag BEFORE navigating to bypass the modal
-    await setSkipInProgressCheck(page);
-    await page.goto(`/${GAME_SEED_2}?d=medium`);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await setSkipInProgressCheck(page)
+    await page.goto(`/${GAME_SEED_2}?d=medium`)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
-    await expectCellValue(page, row2, col2, 7);
+    await expectCellValue(page, row2, col2, 7)
 
     // The cell where we put 5 in first game should not have 5 here
-    const game2Cell = getCellLocator(page, row3, col3);
-    const ariaLabel = await game2Cell.getAttribute('aria-label');
-    expect(ariaLabel).not.toContain('value 5');
-  });
-});
+    const game2Cell = getCellLocator(page, row3, col3)
+    const ariaLabel = await game2Cell.getAttribute('aria-label')
+    expect(ariaLabel).not.toContain('value 5')
+  })
+})
 
 test.describe('@integration Persistence - Edge Cases', () => {
   test('corrupted localStorage is handled gracefully', async ({ page }) => {
-    const CORRUPT_SEED = 'P5';  // Practice mode (starts with 'P' prefix)
+    const CORRUPT_SEED = 'P5' // Practice mode (starts with 'P' prefix)
 
     // Set corrupted data before navigation
     await page.addInitScript((seed: string) => {
-      localStorage.setItem(`sudoku_game_${seed}`, 'not-valid-json{{{{');
-    }, CORRUPT_SEED);
+      localStorage.setItem(`sudoku_game_${seed}`, 'not-valid-json{{{{')
+    }, CORRUPT_SEED)
 
     // App should load without crashing
-    await page.goto(`/${CORRUPT_SEED}?d=easy`);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await page.goto(`/${CORRUPT_SEED}?d=easy`)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Board should be visible and functional
-    const board = page.locator('.sudoku-board');
-    await expect(board).toBeVisible();
+    const board = page.locator('.sudoku-board')
+    await expect(board).toBeVisible()
 
     // Should be able to make moves
-    const { cell, row, col } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    
+    const { cell, row, col } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+
     // Ensure cell is focused before typing
-    await expect(cell).toBeFocused();
-    await page.keyboard.press('4');
-    
+    await expect(cell).toBeFocused()
+    await page.keyboard.press('4')
+
     // Wait for the cell value to update using proper assertion with timeout
     // This is more reliable than waitForUIReady for verifying specific state changes
-    await expectCellValue(page, row, col, 4);
-  });
+    await expectCellValue(page, row, col, 4)
+  })
 
   test('empty localStorage starts fresh game', async ({ page }) => {
-    const FRESH_SEED = 'P6';  // Practice mode (starts with 'P' prefix)
+    const FRESH_SEED = 'P6' // Practice mode (starts with 'P' prefix)
 
     // Ensure no saved state exists
     await page.addInitScript((seed: string) => {
-      localStorage.removeItem(`sudoku_game_${seed}`);
-    }, FRESH_SEED);
+      localStorage.removeItem(`sudoku_game_${seed}`)
+    }, FRESH_SEED)
 
-    await page.goto(`/${FRESH_SEED}?d=easy`);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await page.goto(`/${FRESH_SEED}?d=easy`)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Board should be at initial state (no localStorage item yet)
-    const storageKey = `${GAME_STATE_PREFIX}${FRESH_SEED}`;
-    const savedState = await getLocalStorageItem(page, storageKey);
+    const storageKey = `${GAME_STATE_PREFIX}${FRESH_SEED}`
+    const savedState = await getLocalStorageItem(page, storageKey)
 
     // Either null or very fresh state
     if (savedState) {
-      const parsed = JSON.parse(savedState);
-      expect(parsed.history?.length || 0).toBe(0);
+      const parsed = JSON.parse(savedState)
+      expect(parsed.history?.length || 0).toBe(0)
     }
 
     // Cells should be in initial puzzle state
-    const givenCell = page.locator('[role="gridcell"][aria-label*="given"]').first();
-    await expect(givenCell).toBeVisible();
-  });
+    const givenCell = page.locator('[role="gridcell"][aria-label*="given"]').first()
+    await expect(givenCell).toBeVisible()
+  })
 
   test('invalid board length in saved state is handled gracefully', async ({ page }) => {
-    const INVALID_SEED = 'P7';  // Practice mode (starts with 'P' prefix)
+    const INVALID_SEED = 'P7' // Practice mode (starts with 'P' prefix)
 
     // Set invalid board data (wrong length)
     await page.addInitScript((seed: string) => {
@@ -915,362 +938,363 @@ test.describe('@integration Persistence - Edge Cases', () => {
         history: [],
         savedAt: Date.now(),
         difficulty: 'easy',
-      };
-      localStorage.setItem(`sudoku_game_${seed}`, JSON.stringify(invalidState));
-    }, INVALID_SEED);
+      }
+      localStorage.setItem(`sudoku_game_${seed}`, JSON.stringify(invalidState))
+    }, INVALID_SEED)
 
     // App should load without crashing
-    await page.goto(`/${INVALID_SEED}?d=easy`);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await page.goto(`/${INVALID_SEED}?d=easy`)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Board should be visible
-    const board = page.locator('.sudoku-board');
-    await expect(board).toBeVisible();
+    const board = page.locator('.sudoku-board')
+    await expect(board).toBeVisible()
 
     // Should be able to interact
-    const { cell } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const { cell } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
 
     // No crash means success
-    await expect(cell).toBeVisible();
-  });
+    await expect(cell).toBeVisible()
+  })
 
   test('game completion clears saved state', async ({ page }) => {
     // This test uses a nearly-complete puzzle seed if available
     // For now, we'll test that completing a puzzle removes the saved state
-    const COMPLETE_TEST_SEED = 'P8';  // Practice mode (starts with 'P' prefix)
+    const COMPLETE_TEST_SEED = 'P8' // Practice mode (starts with 'P' prefix)
 
     await page.addInitScript((seed: string) => {
-      localStorage.removeItem(`sudoku_game_${seed}`);
-    }, COMPLETE_TEST_SEED);
+      localStorage.removeItem(`sudoku_game_${seed}`)
+    }, COMPLETE_TEST_SEED)
 
-    await page.goto(`/${COMPLETE_TEST_SEED}?d=easy`);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await page.goto(`/${COMPLETE_TEST_SEED}?d=easy`)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Make a move to create save state
-    const { cell } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    await page.keyboard.press('1');
-    
+    const { cell } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+    await page.keyboard.press('1')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_TEST_SEED}`;
+    const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_TEST_SEED}`
     await waitForAutoSave(page, storageKey, (parsed) => {
       // Look for the move we just made
-      return parsed.board && parsed.board.includes(1);
-    });
+      return parsed.board && parsed.board.includes(1)
+    })
 
     // Verify save exists
     // (storageKey already defined above)
-    const savedState = await getLocalStorageItem(page, storageKey);
-    expect(savedState).toBeTruthy();
+    const savedState = await getLocalStorageItem(page, storageKey)
+    expect(savedState).toBeTruthy()
 
     // Note: Completed games now persist in localStorage with isComplete: true
     // They are no longer auto-cleared on completion (behavior changed)
-  });
-});
+  })
+})
 
 test.describe('@integration Persistence - Auto-save Toggle', () => {
   test('disabling auto-save prevents localStorage updates', async ({ page }) => {
     // Use static seed for consistent puzzle
-    const TEST_SEED = 'Pautosavetest';
-    
+    const TEST_SEED = 'Pautosavetest'
+
     // Pre-set auto-save disabled BEFORE navigation
     await page.addInitScript(() => {
-      localStorage.setItem('sudoku_autosave_enabled', 'false');
-    });
-    
+      localStorage.setItem('sudoku_autosave_enabled', 'false')
+    })
+
     // Navigate to game
-    await page.goto(`/${TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { state: 'visible', timeout: 15000 });
-    
+    await page.goto(`/${TEST_SEED}?d=easy`)
+    await page.waitForSelector('.sudoku-board', { state: 'visible', timeout: 15000 })
+
     // Wait for puzzle to load (cells with values appear)
-    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', { state: 'visible', timeout: 10000 });
-    
+    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', {
+      state: 'visible',
+      timeout: 10000,
+    })
+
     // Clear any existing state that might have been created
-    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`)
 
     // Make a move
-    const { cell, row, col } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    await page.keyboard.press('8');
-    
+    const { cell, row, col } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+    await page.keyboard.press('8')
+
     // Wait for the value to appear in the UI
-    await expectCellValue(page, row, col, 8);
+    await expectCellValue(page, row, col, 8)
 
     // Since auto-save is disabled, verify no save occurs after waiting
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
-    await page.waitForTimeout(1000); // Wait longer than typical auto-save delay
-    
-    const savedState = await getLocalStorageItem(page, storageKey);
-    expect(savedState).toBeNull();
-  });
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
+    await page.waitForTimeout(1000) // Wait longer than typical auto-save delay
+
+    const savedState = await getLocalStorageItem(page, storageKey)
+    expect(savedState).toBeNull()
+  })
 
   test('enabling auto-save resumes saving', async ({ page }) => {
     // Use unique seed to avoid conflicts with parallel tests
-    const TEST_SEED = `Pauto2-${Date.now()}`;
-    
+    const TEST_SEED = `Pauto2-${Date.now()}`
+
     // Start with auto-save enabled and clear existing save in single init script
     await page.addInitScript((seed: string) => {
-      localStorage.setItem('sudoku_autosave_enabled', 'true');
-      localStorage.removeItem(`sudoku_game_${seed}`);
-    }, TEST_SEED);
+      localStorage.setItem('sudoku_autosave_enabled', 'true')
+      localStorage.removeItem(`sudoku_game_${seed}`)
+    }, TEST_SEED)
 
-    await page.goto(`/${TEST_SEED}?d=easy`);
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await page.goto(`/${TEST_SEED}?d=easy`)
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Make a move
-    const { cell, row, col } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    await page.keyboard.press('2');
-    
+    const { cell, row, col } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+    await page.keyboard.press('2')
+
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
-    const cellIndex = (row - 1) * 9 + (col - 1);
-    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 2);
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
+    const cellIndex = (row - 1) * 9 + (col - 1)
+    await waitForAutoSave(page, storageKey, (parsed) => parsed.board[cellIndex] === 2)
 
     // Verify save was created
     // (storageKey already defined above)
-    const savedState = await getLocalStorageItem(page, storageKey);
-    expect(savedState).toBeTruthy();
+    const savedState = await getLocalStorageItem(page, storageKey)
+    expect(savedState).toBeTruthy()
 
-    const parsed = JSON.parse(savedState!);
+    const parsed = JSON.parse(savedState!)
     // (cellIndex already defined above)
-    expect(parsed.board[cellIndex]).toBe(2);
-  });
-});
+    expect(parsed.board[cellIndex]).toBe(2)
+  })
+})
 
 test.describe('@integration Persistence - History Persistence', () => {
   test('move history is saved and restored', async ({ page }) => {
-    test.skip(test.info().project.name === 'iphone-12', 'Known flaky on iPhone 12 due to timing-sensitive auto-save');
-    
+    test.skip(
+      test.info().project.name === 'iphone-12',
+      'Known flaky on iPhone 12 due to timing-sensitive auto-save',
+    )
+
     // Use static seed for consistent puzzle
-    const TEST_SEED = 'Phisttest';
-    
+    const TEST_SEED = 'Phisttest'
+
     // Navigate to game and wait for board
-    await page.goto(`/${TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { state: 'visible', timeout: 15000 });
-    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', { state: 'visible', timeout: 10000 });
-    
+    await page.goto(`/${TEST_SEED}?d=easy`)
+    await page.waitForSelector('.sudoku-board', { state: 'visible', timeout: 15000 })
+    await page.waitForSelector('[role="gridcell"][aria-label*="value"]', {
+      state: 'visible',
+      timeout: 10000,
+    })
+
     // Clear any existing state AFTER initial load
-    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`)
 
     // Make multiple moves - find any empty cell, not specific rows
-    const { cell: cell1, row: row1, col: col1 } = await findEmptyCell(page);
-    await cell1.scrollIntoViewIfNeeded();
-    await cell1.click();
-    await page.keyboard.press('4');
-    
+    const { cell: cell1, row: row1, col: col1 } = await findEmptyCell(page)
+    await cell1.scrollIntoViewIfNeeded()
+    await cell1.click()
+    await page.keyboard.press('4')
+
     // Wait for first value to appear
-    await expectCellValue(page, row1, col1, 4);
+    await expectCellValue(page, row1, col1, 4)
 
     // Find a different empty cell for second move
-    const { cell: cell2, row: row2, col: col2 } = await findEmptyCell(page);
+    const { cell: cell2, row: row2, col: col2 } = await findEmptyCell(page)
     // Make sure it's a different cell
     if (row2 === row1 && col2 === col1) {
       // Skip this test if we can't find a second empty cell
-      test.skip(true, 'Could not find a second empty cell');
+      test.skip(true, 'Could not find a second empty cell')
     }
-    await cell2.scrollIntoViewIfNeeded();
-    await cell2.click();
-    await page.keyboard.press('6');
-    
+    await cell2.scrollIntoViewIfNeeded()
+    await cell2.click()
+    await page.keyboard.press('6')
+
     // Wait for second value to appear
-    await expectCellValue(page, row2, col2, 6);
-    
+    await expectCellValue(page, row2, col2, 6)
+
     // Wait for auto-save to complete
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
-    const cell1Index = (row1 - 1) * 9 + (col1 - 1);
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
+    const cell1Index = (row1 - 1) * 9 + (col1 - 1)
     await waitForAutoSave(page, storageKey, (parsed) => {
-      return parsed.board[cell1Index] === 4 && 
-             parsed.history && 
-             parsed.history.length >= 2;
-    });
+      return parsed.board[cell1Index] === 4 && parsed.history && parsed.history.length >= 2
+    })
 
     // Check localStorage
-    const savedState = await getLocalStorageItem(page, storageKey);
-    expect(savedState).toBeTruthy();
+    const savedState = await getLocalStorageItem(page, storageKey)
+    expect(savedState).toBeTruthy()
 
-    const parsed = JSON.parse(savedState!);
-    expect(parsed.history).toBeDefined();
-    expect(parsed.history.length).toBeGreaterThanOrEqual(2);
-  });
+    const parsed = JSON.parse(savedState!)
+    expect(parsed.history).toBeDefined()
+    expect(parsed.history.length).toBeGreaterThanOrEqual(2)
+  })
 
   test('undo works after page reload using saved history', async ({ page }) => {
     test.skip(
       ['iphone-12', 'pixel-5'].includes(test.info().project.name),
-      'Undo button click timing issues on mobile after page reload - requires investigation'
-    );
+      'Undo button click timing issues on mobile after page reload - requires investigation',
+    )
 
     // Use static seed for consistent puzzle
-    const TEST_SEED = 'Pundotest';
-    
+    const TEST_SEED = 'Pundotest'
+
     // Navigate and setup game first
-    await setupGameAndWaitForBoard(page, { seed: TEST_SEED });
-    
+    await setupGameAndWaitForBoard(page, { seed: TEST_SEED })
+
     // Clear any existing state AFTER initial load (same pattern as other reload tests)
-    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`);
+    await removeLocalStorageItem(page, `${GAME_STATE_PREFIX}${TEST_SEED}`)
 
     // Enter a value
-    const { cell, row, col } = await findEmptyCell(page);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
-    await page.keyboard.press('7');
-    
+    const { cell, row, col } = await findEmptyCell(page)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+    await page.keyboard.press('7')
+
     // Wait for value to appear
-    await expectCellValue(page, row, col, 7);
+    await expectCellValue(page, row, col, 7)
 
     // Wait for auto-save to complete with history
-    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`;
-    const cellIndex = (row - 1) * 9 + (col - 1);
+    const storageKey = `${GAME_STATE_PREFIX}${TEST_SEED}`
+    const cellIndex = (row - 1) * 9 + (col - 1)
     await waitForAutoSave(page, storageKey, (parsed) => {
-      return parsed.board[cellIndex] === 7 && parsed.history && parsed.history.length > 0;
-    });
+      return parsed.board[cellIndex] === 7 && parsed.history && parsed.history.length > 0
+    })
 
     // Reload the page
-    await page.reload();
-    await setupGameAndWaitForBoard(page, { skipNavigation: true });
+    await page.reload()
+    await setupGameAndWaitForBoard(page, { skipNavigation: true })
 
     // Verify the digit is restored (same pattern as digits persist test)
-    await expectCellValue(page, row, col, 7);
+    await expectCellValue(page, row, col, 7)
 
     // Now click undo
-    const undoButton = page.locator('button[title="Undo"]');
-    await expect(undoButton).toBeEnabled({ timeout: 5000 });
-    await undoButton.click();
+    const undoButton = page.locator('button[title="Undo"]')
+    await expect(undoButton).toBeEnabled({ timeout: 5000 })
+    await undoButton.click()
 
     // Verify cell is now empty after undo
-    await expectCellValue(page, row, col, 'empty');
-  });
-});
+    await expectCellValue(page, row, col, 'empty')
+  })
+})
 
 test.describe('@integration Persistence - Completed Game State', () => {
   test('completed game persists isComplete flag in localStorage', async ({ page }) => {
     // Regression test for feature: completed games now persist with isComplete flag
     // instead of being cleared, allowing users to return to completed games
-    
+
     // Use static seed for consistent puzzle
-    const COMPLETE_TEST_SEED = 'Pcomptest';
+    const COMPLETE_TEST_SEED = 'Pcomptest'
     const COMPLETED_BOARD = [
-      5, 3, 4, 6, 7, 8, 9, 1, 2,
-      6, 7, 2, 1, 9, 5, 3, 4, 8,
-      1, 9, 8, 3, 4, 2, 5, 6, 7,
-      8, 5, 9, 7, 6, 1, 4, 2, 3,
-      4, 2, 6, 8, 5, 3, 7, 9, 1,
-      7, 1, 3, 9, 2, 4, 8, 5, 6,
-      9, 6, 1, 5, 3, 7, 2, 8, 4,
-      2, 8, 7, 4, 1, 9, 6, 3, 5,
-      3, 4, 5, 2, 8, 6, 1, 7, 9
-    ];
-    
+      5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7, 8, 5, 9, 7,
+      6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8,
+      4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9,
+    ]
+
     // Pre-populate localStorage with a completed game state using addInitScript
-    await page.addInitScript(({ seed, prefix, board }: { seed: string; prefix: string; board: number[] }) => {
-      const completedGameState = {
-        board: board,
-        candidates: new Array(81).fill(0),
-        history: [],
-        elapsedMs: 120000,
-        autoFillUsed: false,
-        savedAt: Date.now(),
-        difficulty: 'easy',
-        isComplete: true
-      };
-      localStorage.setItem(`${prefix}${seed}`, JSON.stringify(completedGameState));
-    }, { seed: COMPLETE_TEST_SEED, prefix: GAME_STATE_PREFIX, board: COMPLETED_BOARD });
+    await page.addInitScript(
+      ({ seed, prefix, board }: { seed: string; prefix: string; board: number[] }) => {
+        const completedGameState = {
+          board: board,
+          candidates: new Array(81).fill(0),
+          history: [],
+          elapsedMs: 120000,
+          autoFillUsed: false,
+          savedAt: Date.now(),
+          difficulty: 'easy',
+          isComplete: true,
+        }
+        localStorage.setItem(`${prefix}${seed}`, JSON.stringify(completedGameState))
+      },
+      { seed: COMPLETE_TEST_SEED, prefix: GAME_STATE_PREFIX, board: COMPLETED_BOARD },
+    )
 
     // Navigate to the completed game
-    await page.goto(`/${COMPLETE_TEST_SEED}?d=easy`);
-    
+    await page.goto(`/${COMPLETE_TEST_SEED}?d=easy`)
+
     // Wait for board to be visible
-    await page.waitForSelector('.sudoku-board', { state: 'visible', timeout: 15000 });
-    
+    await page.waitForSelector('.sudoku-board', { state: 'visible', timeout: 15000 })
+
     // CRITICAL: Wait for the completed board to be fully rendered
     // This ensures React has finished restoring state from localStorage
     // We check that NO empty cells exist (completed board has all values)
     await expect(async () => {
-      const emptyCells = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
-      expect(emptyCells).toBe(0);
-    }).toPass({ timeout: 10000 });
+      const emptyCells = await page.locator('[role="gridcell"][aria-label*="empty"]').count()
+      expect(emptyCells).toBe(0)
+    }).toPass({ timeout: 10000 })
 
-    const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_TEST_SEED}`;
-    
+    const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_TEST_SEED}`
+
     // Now check localStorage - it should have isComplete: true
     // We poll because React might trigger a re-save after state restoration
     await expect(async () => {
-      const savedState = await getLocalStorageItem(page, storageKey);
-      expect(savedState).toBeTruthy();
-      
-      const parsed = JSON.parse(savedState!);
-      expect(parsed.isComplete).toBe(true);
-      expect(parsed.board.every((val: number) => val !== 0)).toBe(true);
-    }).toPass({ timeout: 5000 });
-  });
+      const savedState = await getLocalStorageItem(page, storageKey)
+      expect(savedState).toBeTruthy()
+
+      const parsed = JSON.parse(savedState!)
+      expect(parsed.isComplete).toBe(true)
+      expect(parsed.board.every((val: number) => val !== 0)).toBe(true)
+    }).toPass({ timeout: 5000 })
+  })
 
   test('completed game state persists across page reload', async ({ page }) => {
     // Verify that completed games remain accessible after refresh
-    
+
     // Use static seed for consistent puzzle
-    const COMPLETE_TEST_SEED = 'Pcomptest2';
+    const COMPLETE_TEST_SEED = 'Pcomptest2'
     const COMPLETED_BOARD = [
-      5, 3, 4, 6, 7, 8, 9, 1, 2,
-      6, 7, 2, 1, 9, 5, 3, 4, 8,
-      1, 9, 8, 3, 4, 2, 5, 6, 7,
-      8, 5, 9, 7, 6, 1, 4, 2, 3,
-      4, 2, 6, 8, 5, 3, 7, 9, 1,
-      7, 1, 3, 9, 2, 4, 8, 5, 6,
-      9, 6, 1, 5, 3, 7, 2, 8, 4,
-      2, 8, 7, 4, 1, 9, 6, 3, 5,
-      3, 4, 5, 2, 8, 6, 1, 7, 9
-    ];
-    
+      5, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7, 8, 5, 9, 7,
+      6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6, 9, 6, 1, 5, 3, 7, 2, 8,
+      4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9,
+    ]
+
     // Pre-populate localStorage with a completed game state
-    await page.addInitScript(({ seed, prefix, board }: { seed: string; prefix: string; board: number[] }) => {
-      const completedGameState = {
-        board: board,
-        candidates: new Array(81).fill(0),
-        history: [],
-        elapsedMs: 180000,
-        autoFillUsed: false,
-        savedAt: Date.now(),
-        difficulty: 'easy',
-        isComplete: true
-      };
-      localStorage.setItem(`${prefix}${seed}`, JSON.stringify(completedGameState));
-    }, { seed: COMPLETE_TEST_SEED, prefix: GAME_STATE_PREFIX, board: COMPLETED_BOARD });
+    await page.addInitScript(
+      ({ seed, prefix, board }: { seed: string; prefix: string; board: number[] }) => {
+        const completedGameState = {
+          board: board,
+          candidates: new Array(81).fill(0),
+          history: [],
+          elapsedMs: 180000,
+          autoFillUsed: false,
+          savedAt: Date.now(),
+          difficulty: 'easy',
+          isComplete: true,
+        }
+        localStorage.setItem(`${prefix}${seed}`, JSON.stringify(completedGameState))
+      },
+      { seed: COMPLETE_TEST_SEED, prefix: GAME_STATE_PREFIX, board: COMPLETED_BOARD },
+    )
 
     // Navigate to the completed game
-    await page.goto(`/${COMPLETE_TEST_SEED}?d=easy`);
-    await page.waitForSelector('.sudoku-board', { state: 'visible', timeout: 15000 });
-    
+    await page.goto(`/${COMPLETE_TEST_SEED}?d=easy`)
+    await page.waitForSelector('.sudoku-board', { state: 'visible', timeout: 15000 })
+
     // Wait for completed board to be fully rendered (no empty cells)
     await expect(async () => {
-      const emptyCells = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
-      expect(emptyCells).toBe(0);
-    }).toPass({ timeout: 10000 });
+      const emptyCells = await page.locator('[role="gridcell"][aria-label*="empty"]').count()
+      expect(emptyCells).toBe(0)
+    }).toPass({ timeout: 10000 })
 
     // Reload the page
-    await page.reload();
-    await page.waitForSelector('.sudoku-board', { state: 'visible', timeout: 15000 });
-    
+    await page.reload()
+    await page.waitForSelector('.sudoku-board', { state: 'visible', timeout: 15000 })
+
     // Wait for completed board to be restored after reload
     await expect(async () => {
-      const emptyCells = await page.locator('[role="gridcell"][aria-label*="empty"]').count();
-      expect(emptyCells).toBe(0);
-    }).toPass({ timeout: 10000 });
+      const emptyCells = await page.locator('[role="gridcell"][aria-label*="empty"]').count()
+      expect(emptyCells).toBe(0)
+    }).toPass({ timeout: 10000 })
 
     // Verify the saved state persists after reload
-    const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_TEST_SEED}`;
-    
+    const storageKey = `${GAME_STATE_PREFIX}${COMPLETE_TEST_SEED}`
+
     await expect(async () => {
-      const savedState = await getLocalStorageItem(page, storageKey);
-      expect(savedState).toBeTruthy();
-      
-      const parsed = JSON.parse(savedState!);
-      expect(parsed.isComplete).toBe(true);
-      expect(parsed.board.every((val: number) => val !== 0)).toBe(true);
-    }).toPass({ timeout: 5000 });
-  });
-});
+      const savedState = await getLocalStorageItem(page, storageKey)
+      expect(savedState).toBeTruthy()
+
+      const parsed = JSON.parse(savedState!)
+      expect(parsed.isComplete).toBe(true)
+      expect(parsed.board.every((val: number) => val !== 0)).toBe(true)
+    }).toPass({ timeout: 5000 })
+  })
+})
