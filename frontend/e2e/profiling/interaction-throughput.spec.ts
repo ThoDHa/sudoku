@@ -52,11 +52,13 @@ function getCellLocator(page: Page, row: number, col: number): Locator {
   ).first();
 }
 
-// Stable selection contract: a non-selected cell has tabindex != 0 (Board.tsx
-// emits tabIndex={isSelected ? 0 : -1}). After a digit entry the cell
-// deselects, so this is the "entry committed" signal. Holds for overwrites.
+// Stable selection contract: a non-selected cell has no ring-accent class.
+// (Board.tsx uses the roving tabindex pattern — tabIndex is 0 for the tab-stop
+// cell and -1 for the rest, independent of selection — so tabindex is NOT a
+// selection signal. ring-accent is the visual selection marker.) After a digit
+// entry the cell deselects, so this is the "entry committed" signal. Holds for overwrites.
 async function expectCellDeselected(page: Page, row: number, col: number): Promise<void> {
-  await expect(getCellLocator(page, row, col)).not.toHaveAttribute('tabindex', '0');
+  await expect(getCellLocator(page, row, col)).not.toHaveClass(/ring-accent/);
 }
 
 async function enableNotesMode(page: Page): Promise<void> {
