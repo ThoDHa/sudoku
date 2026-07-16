@@ -13,19 +13,38 @@ export default function Custom() {
   const [validating, setValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Generate device ID for validation
+  // Generate device ID for validation. crypto.randomUUID() is only available
+  // in secure contexts (HTTPS or localhost); on a plain-HTTP deploy it is
+  // undefined and calling it throws, which previously aborted validation
+  // entirely. Fall back to getRandomValues / Math.random so an insecure-context
+  // visitor can still validate a custom puzzle.
   const getDeviceId = useCallback(() => {
+    const makeId = (): string => {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID()
+      }
+      if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+        const b = crypto.getRandomValues(new Uint8Array(16))
+        b[6] = (b[6] & 0x0f) | 0x40
+        b[8] = (b[8] & 0x3f) | 0x80
+        const h = Array.from(b, (x) => x.toString(16).padStart(2, '0'))
+        return `${h.slice(0, 4).join('')}-${h.slice(4, 6).join('')}-${h
+          .slice(6, 8)
+          .join('')}-${h.slice(8, 10).join('')}-${h.slice(10, 16).join('')}`
+      }
+      return `id-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`
+    }
     try {
       let deviceId = localStorage.getItem(STORAGE_KEYS.DEVICE_ID)
       if (!deviceId) {
-        deviceId = crypto.randomUUID()
+        deviceId = makeId()
         localStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId)
       }
       return deviceId
     } catch {
       // localStorage not available (private mode, storage full, etc.)
       // Return a session-only ID
-      return crypto.randomUUID()
+      return makeId()
     }
   }, [])
 
