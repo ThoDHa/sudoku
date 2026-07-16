@@ -10,15 +10,14 @@ import { useParams, useSearchParams, useLocation, useNavigate } from 'react-rout
 import Board from '../components/Board'
 import Controls from '../components/Controls'
 import History from '../components/History'
-import { CloseIcon } from '../components/ui'
 import ResultModal from '../components/ResultModal'
 import TechniqueModal from '../components/TechniqueModal'
 import TechniquesListModal from '../components/TechniquesListModal'
 import GameHeader from '../components/GameHeader'
 import GameModals from '../components/GameModals'
+import GameOverlays from '../components/GameOverlays'
 import AboutModal, { useAboutModal } from '../components/AboutModal'
 import DailyPromptModal from '../components/DailyPromptModal'
-import DifficultyGrid from '../components/DifficultyGrid'
 import { PauseOverlayTimer } from '../components/TimerDisplay'
 import { Difficulty } from '../lib/hooks'
 import { useTheme } from '../lib/ThemeContext'
@@ -2210,119 +2209,21 @@ function GameContent() {
         onDontShowAgain={handleDontShowDailyPromptAgain}
       />
 
-      {/* In-Progress Game Confirmation Modal */}
-      {showInProgressConfirm && existingInProgressGame && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          data-overlay-backdrop
-        >
-          <div
-            className="w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme"
-            data-modal
-          >
-            <h2 className="mb-2 text-lg font-semibold text-foreground">Game In Progress</h2>
-            <p className="mb-6 text-sm text-foreground-muted">
-              You have a{' '}
-              <span className="capitalize font-medium">{existingInProgressGame.difficulty}</span>{' '}
-              game in progress ({existingInProgressGame.progress}% complete). Do you want to
-              continue that game or start a new one?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={handleStartNewGame}
-                className="flex-1 rounded-lg border border-board-border-light px-4 py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
-              >
-                Start New
-              </button>
-              <button
-                onClick={handleResumeExistingGame}
-                className="flex-1 rounded-lg bg-accent px-4 py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
-              >
-                Resume
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Shared-link modal: offer to load the shared game. When a game is in
-          progress, a "Resume current game" button (and the X/backdrop) keeps it,
-          navigating back when the shared link is for a different puzzle. With no
-          game in progress, the X/backdrop backs out to the homepage. */}
-      {showShareConflict && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          data-overlay-backdrop
-          onClick={handleResumeOwnGame}
-        >
-          <div
-            className="relative w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme"
-            data-modal
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={handleResumeOwnGame}
-              className="absolute right-3 top-3 rounded p-1 text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
-              aria-label="Close"
-            >
-              <CloseIcon className="h-5 w-5" />
-            </button>
-            <h2 className="mb-6 pr-8 text-lg font-semibold text-foreground">Load shared game?</h2>
-            <div className="flex gap-3">
-              {shareHasCurrentGame && (
-                <button
-                  onClick={handleResumeOwnGame}
-                  className="flex-1 rounded-lg border border-board-border-light px-4 py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
-                >
-                  Resume current game
-                </button>
-              )}
-              <button
-                onClick={handleStartFromShared}
-                className="flex-1 rounded-lg bg-accent px-4 py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
-              >
-                Load shared game
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Difficulty Chooser Modal - shown when opening shared link without difficulty */}
-      {showDifficultyChooser && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          data-overlay-backdrop
-        >
-          <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-theme" data-modal>
-            <h2 className="text-xl font-semibold text-foreground text-center mb-2">
-              Choose Difficulty
-            </h2>
-            <p className="text-sm text-foreground-muted text-center mb-6">
-              Select a difficulty level to start the puzzle
-            </p>
-            <div className="flex justify-center">
-              <DifficultyGrid
-                seed={seed || ''}
-                lastSelected={null}
-                onSelect={() => {}}
-                onBeforeNavigate={(path) => {
-                  // Extract difficulty from path (e.g., "/?d=medium" -> "medium")
-                  const match = path.match(/d=(\w+)/)
-                  if (match && match[1]) {
-                    const diff = match[1] as Difficulty
-                    setSelectedDifficulty(diff)
-                    setShowDifficultyChooser(false)
-                    // Update URL without triggering navigation/re-render
-                    window.history.replaceState(null, '', `${location.pathname}?d=${diff}`)
-                  }
-                  return false // Prevent grid's own navigation
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <GameOverlays
+        showInProgressConfirm={showInProgressConfirm}
+        existingInProgressGame={existingInProgressGame}
+        onStartNewGame={handleStartNewGame}
+        onResumeExistingGame={handleResumeExistingGame}
+        showShareConflict={showShareConflict}
+        shareHasCurrentGame={shareHasCurrentGame}
+        onResumeOwnGame={handleResumeOwnGame}
+        onStartFromShared={handleStartFromShared}
+        showDifficultyChooser={showDifficultyChooser}
+        seed={seed || ''}
+        onSelectDifficulty={setSelectedDifficulty}
+        onCloseDifficultyChooser={() => setShowDifficultyChooser(false)}
+        pathname={location.pathname}
+      />
     </div>
   )
 }
