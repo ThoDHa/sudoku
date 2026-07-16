@@ -52,6 +52,28 @@ export interface UseGamePersistenceReturn {
   restoredAsCompleteRef: MutableRefObject<boolean>
 }
 
+// Length of value when it is an array, otherwise undefined. Lets the corruption
+// log report observed lengths without casting the unknown parsed payload.
+function arrayLengthOf(value: unknown): number | undefined {
+  return Array.isArray(value) ? value.length : undefined
+}
+
+// Narrow an unknown JSON.parse result into a SavedGameState whose board is a
+// length-81 number[] and candidates a length-81 array, so a malformed
+// localStorage entry fails here and falls through to the corruption log rather
+// than being trusted as typed data downstream.
+function isValidSavedGameState(value: unknown): value is SavedGameState {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as { board?: unknown; candidates?: unknown }
+  return (
+    Array.isArray(v.board) &&
+    v.board.length === 81 &&
+    v.board.every((n) => typeof n === 'number') &&
+    Array.isArray(v.candidates) &&
+    v.candidates.length === 81
+  )
+}
+
 /**
  * Owns localStorage persistence for an in-progress game: the storage primitives
  * (save / clear / load), the seed-guarded debounced auto-save, the beforeunload
@@ -150,7 +172,7 @@ export function useGamePersistence({
         const saved = localStorage.getItem(storageKey)
         if (!saved) return null
 
-        const parsed = JSON.parse(saved) as SavedGameState
+        const parsed: unknown = JSON.parse(saved)
         const extractedSeed = extractSeedFromStorageKey(storageKey)
 
         if (!extractedSeed.valid) {
@@ -160,14 +182,15 @@ export function useGamePersistence({
           return null
         }
 
-        if (parsed.board?.length === 81 && parsed.candidates?.length === 81) {
+        if (isValidSavedGameState(parsed)) {
           return parsed
-        } else {
-          logger.warn(
-            `[STORAGE ERROR] Corrupted saved state for seed: ${extractedSeed.seed} - board: ${parsed.board?.length}, candidates: ${parsed.candidates?.length}`,
-          )
-          return null
         }
+
+        const partial = parsed as { board?: unknown; candidates?: unknown } | null
+        logger.warn(
+          `[STORAGE ERROR] Corrupted saved state for seed: ${extractedSeed.seed} - board: ${arrayLengthOf(partial?.board)}, candidates: ${arrayLengthOf(partial?.candidates)}`,
+        )
+        return null
       } catch (e) {
         logger.error(`[STORAGE ERROR] Failed to load saved game for seed: ${puzzleSeed}`, e)
         return null
