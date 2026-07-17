@@ -2,10 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { commitCellAction } from '../lib/commitCellAction'
 import { isDigitComplete } from '../lib/digitCompletion'
 import { buildFreshTrackingState } from '../lib/gameStateReset'
-import { shouldIncrementHintCounter } from '../lib/hintLifecycle'
 import { resolveCompletionAction } from '../lib/completionGate'
 import { isValidSolution } from '../lib/validationUtils'
-import { createHintRequestGate, type HintRequestGate } from '../lib/hintRequestGate'
 import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import Board from '../components/Board'
 import Controls from '../components/Controls'
@@ -32,6 +30,7 @@ import { useGameKeyboardShortcuts } from '../hooks/useGameKeyboardShortcuts'
 import { useDeselectOnOutsideClick } from '../hooks/useDeselectOnOutsideClick'
 import { useInProgressGameCheck } from '../hooks/useInProgressGameCheck'
 import { useShareActions } from '../hooks/useShareActions'
+import { useHints } from '../hooks/useHints'
 import { useGameModals } from '../hooks/useGameModals'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import { useHighlightState } from '../hooks/useHighlightState'
@@ -59,7 +58,6 @@ import {
 
 import {
   validateBoard,
-  findNextMove,
   cleanupSolver,
   checkAndFixWithSolution,
   getDailySeed,
@@ -70,7 +68,6 @@ import { saveScore, markDailyCompleted, type Score } from '../lib/scores'
 import { setShowDailyReminder } from '../lib/preferences'
 import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/candidatesUtils'
 import { restoreHintCounters } from '../lib/savedGameState'
-import { getHintSignature, getBoardSignature, formatTechniqueName } from '../lib/hintSignatures'
 import { resolvePuzzleSetup } from '../lib/puzzleSetup'
 
 /**
@@ -184,8 +181,6 @@ function GameContent() {
   const [autoSolveErrorsFixed, setAutoSolveErrorsFixed] = useState(0)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [techniqueHintsUsed, setTechniqueHintsUsed] = useState(0)
-  const [hintLoading, setHintLoading] = useState(false) // Loading spinner for hint button
-  const [techniqueHintLoading, setTechniqueHintLoading] = useState(false) // Loading spinner for technique hint button
   const [validationMessage, setValidationMessage] = useState<{
     type: 'success' | 'error' | 'info'
     message: string
@@ -199,21 +194,6 @@ function GameContent() {
   const hasRestoredSavedState = useRef(false)
   // Track whether we loaded from a shared URL (to prevent resetGame from wiping shared state)
   const loadedFromSharedUrl = useRef(false)
-  // Guard to prevent concurrent hint requests. Held in a ref so the
-  // in-progress flag persists across renders (lazily initialized once).
-  const hintGateRef = useRef<HintRequestGate | null>(null)
-  if (hintGateRef.current === null) {
-    hintGateRef.current = createHintRequestGate()
-  }
-  // Track last hint shown to avoid counting duplicate hints
-  const lastTechniqueHintRef = useRef<string | null>(null)
-  const lastRegularHintRef = useRef<string | null>(null)
-  // Cache hint result to ensure Technique Hint and Regular Hint show same move
-  // Invalidated when board state changes
-  const cachedHintRef = useRef<{
-    boardSignature: string
-    data: Awaited<ReturnType<typeof findNextMove>>
-  } | null>(null)
 
   // Refs for click-outside detection (deselect cell when clicking outside game interface)
   const boardContainerRef = useRef<HTMLDivElement>(null)
@@ -797,215 +777,25 @@ function GameContent() {
     })
   }, [game.board, solution, scheduleToastClear])
 
-  // Resolve the next hint move, using the cached hint when the board signature is unchanged.
-  // Returns null (after surfacing an error toast) when there is no next move.
-  const fetchCachedHint = useCallback(async (): Promise<Move | null> => {
-    const boardSnapshot = [...game.board]
-    const currentSignature = getBoardSignature(game.board, game.candidates)
-
-    let data: Awaited<ReturnType<typeof findNextMove>>
-
-    if (cachedHintRef.current && cachedHintRef.current.boardSignature === currentSignature) {
-      data = cachedHintRef.current.data
-    } else {
-      const candidatesArray = candidatesToArrays(game.candidates)
-      data = await findNextMove(boardSnapshot, candidatesArray, initialBoard)
-      cachedHintRef.current = { boardSignature: currentSignature, data }
-    }
-
-    if (!data.move) {
-      setValidationMessage({
-        type: 'error',
-        message: data.solved
-          ? 'Puzzle is already complete!'
-          : 'This puzzle requires advanced techniques beyond our hint system.',
-      })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-      return null
-    }
-
-    return data.move
-  }, [game.board, game.candidates, initialBoard, scheduleToastClear])
-
-  // Handle hint button - shows the next move with full answer (eliminations + additions visible)
-  const handleNext = useCallback(async () => {
-    // Prevent concurrent hint requests (spam protection)
-    const gate = hintGateRef.current
-    if (!gate || !gate.canStart()) {
-      return
-    }
-    gate.begin()
-    setHintLoading(true)
-
-    try {
-      // Deselect any highlighted digit when using hint
-      clearAllAndDeselect()
-
-      const move = await fetchCachedHint()
-      if (!move) return
-
-      // Handle special moves
-      if (move.action === 'unpinpointable-error') {
-        setUnpinpointableErrorInfo({
-          message: move.explanation || `Couldn't pinpoint the error.`,
-          count: (move as unknown as { userEntryCount?: number }).userEntryCount || 0,
-        })
-        setShowSolutionConfirm(true)
-        return
-      }
-
-      if (move.action === 'contradiction' || move.action === 'error') {
-        const currentGame = gameRef.current
-        if (currentGame?.canUndo) {
-          commitCellAction('undo', { game: currentGame, clearMoveHighlight })
-          setValidationMessage({
-            type: 'error',
-            message: move.explanation || 'Contradiction found - undoing last move',
-          })
-          scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-          return
-        } else {
-          setValidationMessage({
-            type: 'error',
-            message: 'The puzzle cannot be solved - initial state has errors.',
-          })
-          scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-          return
-        }
-      }
-
-      // Show the hint highlight WITH the answer (showAnswer defaults to true)
-      // User sees red eliminations and green additions
-      setMoveHighlight(move as MoveHighlight, game.history.length)
-
-      // Show toast with technique explanation
-      setValidationMessage({
-        type: 'success',
-        message: move.explanation || move.technique || 'Hint',
-      })
-      scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
-
-      // Only increment counter if this is a NEW hint (different from last shown)
-      const signature = getHintSignature(move)
-      if (shouldIncrementHintCounter(signature, lastRegularHintRef.current)) {
-        setHintsUsed((prev) => prev + 1)
-        lastRegularHintRef.current = signature
-      }
-      // Note: Button stays enabled - no setHintPending(true)
-    } catch (err) {
-      logger.error('Hint error:', err)
-      setValidationMessage({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Failed to get hint',
-      })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-    } finally {
-      gate.end()
-      setHintLoading(false)
-    }
-  }, [
-    game.history.length,
-    clearAllAndDeselect,
-    fetchCachedHint,
-    scheduleToastClear,
-    setMoveHighlight,
-    clearMoveHighlight,
-  ])
-
-  // Handle technique hint button - shows technique name and highlights cells without revealing the answer
-  const handleTechniqueHint = useCallback(async () => {
-    // Prevent concurrent requests
-    const gate = hintGateRef.current
-    if (!gate || !gate.canStart()) return
-    gate.begin()
-    setTechniqueHintLoading(true)
-
-    try {
-      // Deselect any highlighted digit when using technique hint
-      clearAllAndDeselect()
-
-      const move = await fetchCachedHint()
-      if (!move) return
-
-      // If the next move is just filling candidates, show a helpful message
-      if (move.technique === 'fill-candidate') {
-        setValidationMessage({
-          type: 'info',
-          message: 'Fill in some candidates first, or use 💡 Hint to get started',
-        })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-        return
-      }
-
-      // Handle unpinpointable errors separately - no highlighting to show
-      if (move.action === 'unpinpointable-error') {
-        setValidationMessage({
-          type: 'error',
-          message: 'There seems to be an error in the puzzle. Try using 💡 Hint to fix it.',
-        })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-        return
-      }
-
-      // Handle constraint violations and errors - show WITH highlighting
-      if (move.action === 'contradiction' || move.action === 'error') {
-        // Show the constraint violation highlights (shows which cells conflict)
-        setMoveHighlight({ ...move, showAnswer: false } as MoveHighlight, game.history.length)
-
-        // Show the error message
-        setValidationMessage({
-          type: 'error',
-          message: move.explanation || 'Constraint violation detected',
-        })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-        return
-      }
-
-      // Get the technique info
-      const techniqueName = formatTechniqueName(move.technique || 'Unknown Technique')
-      const techniqueSlug =
-        move.technique?.toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-') || 'unknown'
-
-      // Show highlight WITHOUT the answer (showAnswer: false)
-      // This shows primary/secondary cell highlighting but hides eliminations and target additions
-      setMoveHighlight({ ...move, showAnswer: false } as MoveHighlight, game.history.length)
-
-      // Show toast with technique name and "Learn more" action
-      setValidationMessage({
-        type: 'info',
-        message: `Try: ${techniqueName}`,
-        action: {
-          label: 'Learn more',
-          onClick: () => setTechniqueModal({ title: techniqueName, slug: techniqueSlug }),
-        },
-      })
-      scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
-
-      // Only increment counter if this is a NEW hint (different from last shown)
-      const signature = getHintSignature(move)
-      if (shouldIncrementHintCounter(signature, lastTechniqueHintRef.current)) {
-        setTechniqueHintsUsed((prev) => prev + 1)
-        lastTechniqueHintRef.current = signature
-      }
-      // Note: Button stays enabled - no setTechniqueHintPending(true)
-    } catch (err) {
-      logger.error('Technique hint error:', err)
-      setValidationMessage({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Failed to get technique',
-      })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-    } finally {
-      gate.end()
-      setTechniqueHintLoading(false)
-    }
-  }, [
-    game.history.length,
-    clearAllAndDeselect,
-    fetchCachedHint,
-    scheduleToastClear,
-    setMoveHighlight,
-  ])
+  // Next-move hint resolution and the two hint-button handlers live in
+  // useHints; resetHintTracking is returned so the input handlers below can
+  // invalidate the cache after any user action that changes the board.
+  const { handleNext, handleTechniqueHint, resetHintTracking, hintLoading, techniqueHintLoading } =
+    useHints({
+      game,
+      gameRef,
+      initialBoard,
+      clearAllAndDeselect,
+      setMoveHighlight,
+      clearMoveHighlight,
+      scheduleToastClear,
+      setValidationMessage,
+      setHintsUsed,
+      setTechniqueHintsUsed,
+      setUnpinpointableErrorInfo,
+      setShowSolutionConfirm,
+      setTechniqueModal,
+    })
 
   // Resume from extended pause on user interaction
   const resumeFromExtendedPause = useCallback(() => {
@@ -1048,9 +838,7 @@ function GameContent() {
         }
       }
 
-      lastTechniqueHintRef.current = null
-      lastRegularHintRef.current = null
-      cachedHintRef.current = null
+      resetHintTracking()
     },
     [clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell, clearDigitHighlight],
   )
@@ -1074,14 +862,6 @@ function GameContent() {
     if (cells.length === 0) return
 
     currentGame.setCellMultiple(cells, currentHighlightedDigit, true)
-  }, [])
-
-  // Shared reset for hint tracking caches, invoked after any user action that
-  // changes the board and therefore invalidates the cached next hint.
-  const resetHintTracking = useCallback(() => {
-    lastTechniqueHintRef.current = null
-    lastRegularHintRef.current = null
-    cachedHintRef.current = null
   }, [])
 
   type GameApi = NonNullable<ReturnType<typeof useSudokuGame>>
@@ -1268,9 +1048,7 @@ function GameContent() {
           setAutoSolveStepsUsed,
           setAutoSolveErrorsFixed,
         })
-        lastTechniqueHintRef.current = null
-        lastRegularHintRef.current = null
-        cachedHintRef.current = null
+        resetHintTracking()
         return
       }
 
@@ -1286,6 +1064,7 @@ function GameContent() {
       placeDigitAndClear,
       deselectCell,
       resumeFromExtendedPause,
+      resetHintTracking,
     ],
   )
 
@@ -1311,9 +1090,7 @@ function GameContent() {
           setAutoSolveStepsUsed,
           setAutoSolveErrorsFixed,
         })
-        lastTechniqueHintRef.current = null
-        lastRegularHintRef.current = null
-        cachedHintRef.current = null
+        resetHintTracking()
       } else {
         if (currentNotesMode) {
           currentGame.setCell(idx, value, currentNotesMode)
@@ -1326,9 +1103,7 @@ function GameContent() {
           deselectCell()
         }
         // Reset last hint tracking so next hint counts as new
-        lastTechniqueHintRef.current = null
-        lastRegularHintRef.current = null
-        cachedHintRef.current = null
+        resetHintTracking()
       }
       // All deps are now stable callbacks - state accessed via refs
     },
@@ -1338,6 +1113,7 @@ function GameContent() {
       clearAfterErase,
       clearAfterUserCandidateOp,
       resumeFromExtendedPause,
+      resetHintTracking,
     ],
   )
 
