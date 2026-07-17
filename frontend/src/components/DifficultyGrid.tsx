@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import DailyCard from './DailyCard'
-import { Difficulty } from '../lib/hooks'
+import { type Difficulty } from '../lib/hooks'
 
 interface DifficultyGridProps {
   seed: string

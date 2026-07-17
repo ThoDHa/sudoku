@@ -119,8 +119,8 @@ export function useDialog({
     ref: panelRef,
     role: 'dialog',
     'aria-modal': true,
-    'aria-labelledby': titleId,
     tabIndex: -1,
+    ...(titleId !== undefined ? { 'aria-labelledby': titleId } : {}),
   }
 }
 
@@ -153,7 +153,13 @@ export function Dialog({
   initialFocusRef,
   shareGuard = false,
 }: DialogProps) {
-  const panel = useDialog({ open: isOpen, onClose, titleId, closeOnEscape, initialFocusRef })
+  const panel = useDialog({
+    open: isOpen,
+    onClose,
+    closeOnEscape,
+    ...(initialFocusRef !== undefined ? { initialFocusRef } : {}),
+    ...(titleId !== undefined ? { titleId } : {}),
+  })
 
   if (!isOpen) return null
 

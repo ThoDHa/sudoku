@@ -4,9 +4,9 @@ import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, it, expect } from 'vitest'
 import GameHeader from './GameHeader'
 import { dispatchKeyDown } from '../test-utils'
-import { Difficulty } from '../lib/hooks'
-import { ColorTheme, FontSize, ModePreference } from '../lib/ThemeContext'
-import { AutoSolveSpeed } from '../lib/preferences'
+import { type Difficulty } from '../lib/hooks'
+import { type ColorTheme, type FontSize, type ModePreference } from '../lib/ThemeContext'
+import { type AutoSolveSpeed } from '../lib/preferences'
 
 // TimerDisplay pulls in timer/background-manager contexts that are irrelevant
 // to the menu open-state contract under test. Stub it to keep the harness flat.

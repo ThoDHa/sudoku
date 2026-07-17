@@ -1,5 +1,5 @@
 import { getScores, getDailyStreak, getDailyCompletions } from './scores'
-import { HomepageMode } from './preferences'
+import { type HomepageMode } from './preferences'
 
 export interface DebugInfo {
   timestamp: string

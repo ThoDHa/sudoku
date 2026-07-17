@@ -287,9 +287,9 @@ const Board = memo(function Board({
     initialBoard,
     board,
     onCellClick,
-    onCellChange,
-    onCellSelectMultiple,
-    onDragEnd,
+    ...(onCellChange !== undefined ? { onCellChange } : {}),
+    ...(onCellSelectMultiple !== undefined ? { onCellSelectMultiple } : {}),
+    ...(onDragEnd !== undefined ? { onDragEnd } : {}),
   })
 
   // Memoize the set of incorrect cells for efficient lookup
@@ -587,7 +587,8 @@ const Board = memo(function Board({
       const isSecondary = isHighlightedSecondary(row, col)
       const isTarget = highlight?.targets?.some((t) => t.row === row && t.col === col) ?? false
 
-      result.push({
+      const targetDigit = highlight?.digit
+      const cellData: CellData = {
         idx,
         value: board[idx] ?? 0,
         cellCandidates: candidates[idx] || 0,
@@ -603,8 +604,11 @@ const Board = memo(function Board({
         isTarget,
         eliminations: highlight?.eliminations,
         showAnswer: highlight?.showAnswer !== false, // Default to true for backward compatibility
-        targetDigit: highlight?.digit, // Pass the hint's digit for candidate highlighting
-      })
+      }
+      if (targetDigit !== undefined) {
+        cellData.targetDigit = targetDigit // Pass the hint's digit for candidate highlighting
+      }
+      result.push(cellData)
     }
     return result
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Helper functions (getCellClass, etc.) read from state vars already in deps; adding them would cause unnecessary recreations

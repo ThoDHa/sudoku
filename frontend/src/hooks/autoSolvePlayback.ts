@@ -27,10 +27,10 @@ export interface MoveHandlerContext {
   stepDelayRef: { current: number }
   applyMove: (board: number[], candidates: Set<number>[], move: Move, index: number) => void
   getCandidates: () => Set<number>[]
-  onError?: (message: string) => void
-  onUnpinpointableError?: (message: string, userEntryCount: number) => void
-  onStatus?: (message: string) => void
-  onErrorFixed?: (message: string, resumeCallback: () => void) => void
+  onError?: ((message: string) => void) | undefined
+  onUnpinpointableError?: ((message: string, userEntryCount: number) => void) | undefined
+  onStatus?: ((message: string) => void) | undefined
+  onErrorFixed?: ((message: string, resumeCallback: () => void) => void) | undefined
   initialCandidates: Set<number>[]
   skipSpecialMoves: boolean
 }

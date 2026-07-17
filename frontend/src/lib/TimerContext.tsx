@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useRef, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useMemo, useRef, useCallback, type ReactNode } from 'react'
 import { useGameTimer } from '../hooks/useGameTimer'
 import { useBackgroundManagerContext } from './BackgroundManagerContext'
 

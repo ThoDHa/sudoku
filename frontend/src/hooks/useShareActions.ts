@@ -73,7 +73,7 @@ export function useShareActions(options: UseShareActionsOptions): UseShareAction
     try {
       const url = buildPuzzleShareUrl({
         isEncodedCustom,
-        seed,
+        ...(seed !== undefined ? { seed } : {}),
         difficulty,
         givens,
       })
@@ -89,7 +89,7 @@ export function useShareActions(options: UseShareActionsOptions): UseShareAction
     try {
       const url = buildStateShareUrl({
         isEncodedCustom,
-        seed,
+        ...(seed !== undefined ? { seed } : {}),
         difficulty,
         givens,
         board,

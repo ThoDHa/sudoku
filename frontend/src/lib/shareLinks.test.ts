@@ -55,7 +55,7 @@ describe('isPortablePuzzle', () => {
 
   it('treats encoded-custom links and missing seeds as non-portable', () => {
     expect(isPortablePuzzle({ isEncodedCustom: true, seed: 'daily-2026-07-08' })).toBe(false)
-    expect(isPortablePuzzle({ isEncodedCustom: false, seed: undefined })).toBe(false)
+    expect(isPortablePuzzle({ isEncodedCustom: false })).toBe(false)
   })
 })
 
@@ -128,7 +128,6 @@ describe('buildStateShareUrl', () => {
     const { board, givens, candidates } = makeState()
     const url = buildStateShareUrl({
       isEncodedCustom: true,
-      seed: undefined,
       difficulty: 'custom',
       givens,
       board,
@@ -144,7 +143,6 @@ describe('buildStateShareUrl', () => {
     const { board, givens, candidates } = makeState()
     const url = buildStateShareUrl({
       isEncodedCustom: true,
-      seed: undefined,
       difficulty: 'custom',
       givens,
       board,
@@ -192,7 +190,6 @@ describe('buildStateShareUrl', () => {
     const { board, givens, candidates } = makeState()
     const url = buildStateShareUrl({
       isEncodedCustom: true,
-      seed: undefined,
       difficulty: 'custom',
       givens,
       board,

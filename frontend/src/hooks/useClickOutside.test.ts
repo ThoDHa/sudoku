@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { useRef, RefObject } from 'react'
+import { useRef, type RefObject } from 'react'
 import { useClickOutside } from './useClickOutside'
 
 function createDOMElement(tagName: string = 'div'): HTMLElement {

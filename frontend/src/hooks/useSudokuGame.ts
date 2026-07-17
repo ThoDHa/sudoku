@@ -73,7 +73,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   React.useEffect(() => {
     candidatesRef.current = candidatesHook.candidates
   }, [candidatesHook.candidates])
-  const { isComplete, setIsComplete, checkCompletion } = useCompletion({ onComplete })
+  const { isComplete, setIsComplete, checkCompletion } = useCompletion(
+    onComplete !== undefined ? { onComplete } : {},
+  )
   const {
     history,
     historyIndex,

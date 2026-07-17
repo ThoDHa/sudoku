@@ -1,4 +1,4 @@
-import { Component, ReactNode } from 'react'
+import { Component, type ReactNode } from 'react'
 import { logger } from '../lib/logger'
 
 interface ErrorBoundaryProps {
@@ -23,7 +23,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     logger.error('ErrorBoundary caught an error:', error, errorInfo)
   }
 
@@ -31,7 +31,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     window.location.reload()
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div className="h-full bg-[var(--bg)] flex items-center justify-center p-4">

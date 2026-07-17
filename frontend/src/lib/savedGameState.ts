@@ -37,7 +37,7 @@ export function buildSavedState(input: {
   history: Move[]
   autoFillUsed: boolean
   difficulty: string
-  isComplete?: boolean
+  isComplete: boolean
   hintsUsed: number
   techniqueHintsUsed: number
 }): SavedGameState {

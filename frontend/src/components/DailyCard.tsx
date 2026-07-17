@@ -1,4 +1,4 @@
-import { Difficulty } from '../lib/hooks'
+import { type Difficulty } from '../lib/hooks'
 import DifficultyBadge from './DifficultyBadge'
 
 interface DailyCardProps {

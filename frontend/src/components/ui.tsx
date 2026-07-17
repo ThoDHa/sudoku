@@ -1,6 +1,6 @@
 // Shared UI components
 
-import { ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { getTierColor } from '../lib/constants'
 
 // ============ Icons ============

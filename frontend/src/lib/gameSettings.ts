@@ -1,7 +1,7 @@
 // Game-specific settings (separate from theme preferences)
 
 import { STORAGE_KEYS } from './constants'
-import { HomepageMode } from './preferences'
+import { type HomepageMode } from './preferences'
 import { logger } from './logger'
 import { getGameMode as getGameModeFromSeed } from './seedValidation'
 

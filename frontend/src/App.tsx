@@ -29,7 +29,7 @@ function AppContent() {
   // Disable unloading during E2E tests to speed up test execution (prevents ~4MB reloads)
   useWasmLifecycle({
     enableLogging: false,
-    unloadDelay: import.meta.env['VITE_E2E_TESTS'] === 'true' ? Infinity : undefined,
+    ...(import.meta.env['VITE_E2E_TESTS'] === 'true' ? { unloadDelay: Infinity } : {}),
   })
 
   // Game pages need less padding (slim header)

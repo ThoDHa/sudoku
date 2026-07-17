@@ -71,7 +71,6 @@ export function validateSeed(seed: string): SeedValidationResult {
     valid: true,
     seed,
     mode,
-    error: undefined,
   }
 }
 
@@ -81,7 +80,7 @@ export function validateSeed(seed: string): SeedValidationResult {
 export function extractSeedFromStorageKey(storageKey: string): {
   seed: string
   valid: boolean
-  error?: string
+  error?: string | undefined
   mode?: SeedValidationResult['mode']
 } {
   const prefix = STORAGE_KEYS.GAME_STATE_PREFIX

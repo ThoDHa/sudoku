@@ -47,9 +47,7 @@ export const createMockAutoSolveMove = (
   }>,
 ) => ({
   board: Array(81).fill(0),
-  candidates: Array(81)
-    .fill(null)
-    .map(() => [1, 2, 3]),
+  candidates: Array.from({ length: 81 }, () => [1, 2, 3]),
   move: {
     step_index: 0,
     technique: overrides?.technique ?? NAKED_SINGLE,
@@ -59,7 +57,9 @@ export const createMockAutoSolveMove = (
     explanation: overrides?.explanation ?? 'Test move',
     refs: { title: 'Test', slug: 'test', url: '/test' },
     highlights: { primary: [] },
-    userEntryCount: overrides?.userEntryCount,
+    ...(overrides?.userEntryCount !== undefined
+      ? { userEntryCount: overrides.userEntryCount }
+      : {}),
   },
 })
 
@@ -85,25 +85,42 @@ export const createMockSolveResponse = (
   finalBoard: Array(81).fill(0),
 })
 
+type AutoSolveOptions = Parameters<typeof import('../hooks/useAutoSolve').useAutoSolve>[0]
+
 export const createDefaultAutoSolveOptions = (
-  overrides?: Partial<Parameters<typeof import('../hooks/useAutoSolve').useAutoSolve>[0]>,
-) => ({
-  getBoard: vi.fn(() => Array(81).fill(0)),
-  getCandidates: vi.fn(() =>
-    Array(81)
-      .fill(null)
-      .map(() => new Set([1, 2, 3, 4, 5, 6, 7, 8, 9])),
-  ),
-  getGivens: vi.fn(() => Array(81).fill(0)),
-  applyMove: vi.fn(),
-  applyState: vi.fn(),
-  isComplete: vi.fn(() => false),
-  onError: vi.fn(),
-  onUnpinpointableError: vi.fn(),
-  onStatus: vi.fn(),
-  onErrorFixed: vi.fn(),
-  onStepNavigate: vi.fn(),
-  backgroundManager: createMockBackgroundManager(),
-  stepDelay: 10,
-  ...overrides,
-})
+  // Overrides may pass `undefined` to UNSET a defaulted callback: the
+  // autoSolve tests kill optional-chaining mutants by exercising the
+  // absent-callback path, so undefined values are dropped from the result
+  // (key genuinely absent) rather than left as `key: undefined`.
+  overrides?: { [K in keyof AutoSolveOptions]?: AutoSolveOptions[K] | undefined },
+) => {
+  const options = {
+    getBoard: vi.fn(() => Array(81).fill(0)),
+    getCandidates: vi.fn(() =>
+      Array(81)
+        .fill(null)
+        .map(() => new Set([1, 2, 3, 4, 5, 6, 7, 8, 9])),
+    ),
+    getGivens: vi.fn(() => Array(81).fill(0)),
+    applyMove: vi.fn(),
+    applyState: vi.fn(),
+    isComplete: vi.fn(() => false),
+    onError: vi.fn(),
+    onUnpinpointableError: vi.fn(),
+    onStatus: vi.fn(),
+    onErrorFixed: vi.fn(),
+    onStepNavigate: vi.fn(),
+    backgroundManager: createMockBackgroundManager(),
+    stepDelay: 10,
+  }
+  if (overrides) {
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value === undefined) {
+        delete (options as Record<string, unknown>)[key]
+      } else {
+        Object.assign(options, { [key]: value })
+      }
+    }
+  }
+  return options
+}

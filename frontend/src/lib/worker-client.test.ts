@@ -590,7 +590,7 @@ describe('worker-client advanced scenarios', () => {
         // the real auto-response, which echoes the actual request id) but leaves
         // every other request pending, so onerror is the only way they settle.
         globalThis.Worker = class extends MockWorker {
-          postMessage(data: { type: string; id: string; payload?: unknown }): void {
+          override postMessage(data: { type: string; id: string; payload?: unknown }): void {
             if (data.type !== 'init') return // leave findNextMove/solveAll pending
             super.postMessage(data)
           }
@@ -955,7 +955,7 @@ describe('worker-client advanced scenarios', () => {
     const installRecordingWorker = () => {
       const posted: { type: string; id: string; payload?: unknown }[] = []
       globalThis.Worker = class extends MockWorker {
-        postMessage(data: { type: string; id: string; payload?: unknown }): void {
+        override postMessage(data: { type: string; id: string; payload?: unknown }): void {
           posted.push(data)
           super.postMessage(data)
         }
@@ -1044,7 +1044,7 @@ describe('worker-client advanced scenarios', () => {
       try {
         const posted: { type: string; id: string; payload?: unknown }[] = []
         globalThis.Worker = class extends MockWorker {
-          postMessage(data: { type: string; id: string; payload?: unknown }): void {
+          override postMessage(data: { type: string; id: string; payload?: unknown }): void {
             posted.push(data)
           }
           constructor(url: URL | string, options?: WorkerOptions) {
@@ -1190,7 +1190,7 @@ describe('worker-client advanced scenarios', () => {
     // Install a worker that auto-responds to init but swallows findNextMove
     const installInitOnlyWorker = () => {
       globalThis.Worker = class extends MockWorker {
-        postMessage(data: { type: string; id: string; payload?: unknown }): void {
+        override postMessage(data: { type: string; id: string; payload?: unknown }): void {
           if (data.type === 'findNextMove') return // leave pending
           super.postMessage(data)
         }
@@ -1233,7 +1233,7 @@ describe('worker-client advanced scenarios', () => {
       try {
         let findReqId: string | undefined
         globalThis.Worker = class extends MockWorker {
-          postMessage(data: { type: string; id: string; payload?: unknown }): void {
+          override postMessage(data: { type: string; id: string; payload?: unknown }): void {
             if (data.type === 'findNextMove') {
               findReqId = data.id
               return
@@ -1333,7 +1333,7 @@ describe('worker-client advanced scenarios', () => {
         // Install a worker that resolves 'loaded' but never responds to 'init',
         // so createWorker resolves (worker set) but isInitialized stays false.
         globalThis.Worker = class extends MockWorker {
-          postMessage(data: { type: string; id: string; payload?: unknown }): void {
+          override postMessage(data: { type: string; id: string; payload?: unknown }): void {
             if (data.type === 'init') return // leave init pending
           }
           constructor(url: URL | string, options?: WorkerOptions) {
@@ -1443,7 +1443,7 @@ describe('worker-client advanced scenarios', () => {
       vi.useFakeTimers()
       try {
         globalThis.Worker = class extends MockWorker {
-          postMessage(data: { type: string; id: string; payload?: unknown }): void {
+          override postMessage(data: { type: string; id: string; payload?: unknown }): void {
             if (data.type === 'findNextMove') return
             super.postMessage(data)
           }

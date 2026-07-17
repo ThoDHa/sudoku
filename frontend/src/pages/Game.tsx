@@ -17,7 +17,7 @@ import GameOverlays from '../components/GameOverlays'
 import AboutModal, { useAboutModal } from '../components/AboutModal'
 import DailyPromptModal from '../components/DailyPromptModal'
 import { PauseOverlayTimer } from '../components/TimerDisplay'
-import { Difficulty } from '../lib/hooks'
+import { type Difficulty } from '../lib/hooks'
 import { useTheme } from '../lib/ThemeContext'
 import { useGameContext } from '../lib/GameContext'
 import { TimerProvider, useTimerControl } from '../lib/TimerContext'
@@ -50,7 +50,7 @@ import {
 } from '../lib/constants'
 import {
   getAutoSolveSpeed,
-  AutoSolveSpeed,
+  type AutoSolveSpeed,
   AUTO_SOLVE_SPEEDS,
   getHideTimer,
   setHideTimer,
@@ -1675,9 +1675,13 @@ function GameContent() {
         onMoveClick={(move, index) => {
           const moveHighlight: MoveHighlight = move as MoveHighlight
           if (!moveHighlight.highlights || moveHighlight.highlights.primary.length === 0) {
+            const eliminations = moveHighlight.eliminations?.map((e) => ({
+              row: e.row,
+              col: e.col,
+            }))
             moveHighlight.highlights = {
               primary: moveHighlight.targets,
-              secondary: moveHighlight.eliminations?.map((e) => ({ row: e.row, col: e.col })),
+              ...(eliminations !== undefined ? { secondary: eliminations } : {}),
             }
           }
           setMoveHighlight(moveHighlight, index)

@@ -10,7 +10,7 @@
 
 import { CloseIcon } from './ui'
 import DifficultyGrid from './DifficultyGrid'
-import { Difficulty } from '../lib/hooks'
+import { type Difficulty } from '../lib/hooks'
 import { type SavedGameInfo } from '../lib/gameSettings'
 
 interface GameOverlaysProps {

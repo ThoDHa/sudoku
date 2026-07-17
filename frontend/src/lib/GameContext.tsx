@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo, ReactNode } from 'react'
+import { createContext, useContext, useState, useMemo, type ReactNode } from 'react'
 
 interface GameState {
   isPlaying: boolean

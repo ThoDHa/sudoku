@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getBestScoresPure, getBestScoresAssisted, Score, formatTime } from '../lib/scores'
+import { getBestScoresPure, getBestScoresAssisted, type Score, formatTime } from '../lib/scores'
 
 const difficultyColors: Record<string, { bg: string; border: string; text: string }> = {
   easy: {

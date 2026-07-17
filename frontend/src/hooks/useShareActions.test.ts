@@ -184,6 +184,34 @@ describe('useShareActions', () => {
     })
   })
 
+  describe('seed omission', () => {
+    it('builds both URLs without a seed field when seed is undefined', async () => {
+      mockedCopyToClipboard.mockResolvedValue(true)
+      const { result } = renderShareHook({ seed: undefined })
+
+      await act(async () => {
+        await result.current.onSharePuzzle()
+      })
+      expect(mockedBuildPuzzleShareUrl).toHaveBeenCalledWith({
+        isEncodedCustom: false,
+        difficulty: 'medium',
+        givens: [1, 2, 3],
+      })
+
+      await act(async () => {
+        await result.current.onShareState()
+      })
+      expect(mockedBuildStateShareUrl).toHaveBeenCalledWith({
+        isEncodedCustom: false,
+        difficulty: 'medium',
+        givens: [1, 2, 3],
+        board: [1, 2, 3],
+        candidates: [[], []],
+        elapsedMs: 44000,
+      })
+    })
+  })
+
   describe('toast clear callback clears the message', () => {
     it('invokes the scheduled clearer with a function that nulls the validation message', async () => {
       mockedCopyToClipboard.mockResolvedValue(true)

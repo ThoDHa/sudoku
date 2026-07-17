@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react'
 import { THEMES, themeToCssVars, getValidTheme, type ColorTheme } from './themes'
 
 // Re-export types from themes.ts for backwards compatibility

@@ -105,12 +105,7 @@ function buildContext(
     onStatus: vi.fn(),
     onErrorFixed: vi.fn(),
   }
-
   const omit = new Set(overrides.omitCallbacks ?? [])
-  const maybe = <T>(
-    name: 'onError' | 'onUnpinpointableError' | 'onStatus' | 'onErrorFixed',
-    value: T,
-  ): T | undefined => (omit.has(name) ? undefined : value)
 
   const context: MoveHandlerContext = {
     autoSolveRef: refs.autoSolveRef,
@@ -125,13 +120,16 @@ function buildContext(
     stepDelayRef: refs.stepDelayRef,
     applyMove: mocks.applyMove,
     getCandidates: mocks.getCandidates,
-    onError: maybe('onError', mocks.onError),
-    onUnpinpointableError: maybe('onUnpinpointableError', mocks.onUnpinpointableError),
-    onStatus: maybe('onStatus', mocks.onStatus),
-    onErrorFixed: maybe('onErrorFixed', mocks.onErrorFixed),
     initialCandidates,
     skipSpecialMoves: overrides.skipSpecialMoves ?? false,
   }
+  // `omitCallbacks` exercises the absent-callback code paths: leave each key
+  // genuinely absent rather than `undefined` (exactOptionalPropertyTypes).
+  if (!omit.has('onError')) context.onError = mocks.onError
+  if (!omit.has('onUnpinpointableError'))
+    context.onUnpinpointableError = mocks.onUnpinpointableError
+  if (!omit.has('onStatus')) context.onStatus = mocks.onStatus
+  if (!omit.has('onErrorFixed')) context.onErrorFixed = mocks.onErrorFixed
 
   return { context, refs, mocks }
 }

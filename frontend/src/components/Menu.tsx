@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ColorTheme, FontSize } from '../lib/ThemeContext'
-import { AutoSolveSpeed, setAutoSolveSpeed, HomepageMode } from '../lib/preferences'
+import { type ColorTheme, type FontSize } from '../lib/ThemeContext'
+import { type AutoSolveSpeed, setAutoSolveSpeed, type HomepageMode } from '../lib/preferences'
 import { clearAllCaches, CACHE_VERSION } from '../lib/cache-version'
 import {
   getAutoSaveEnabled,

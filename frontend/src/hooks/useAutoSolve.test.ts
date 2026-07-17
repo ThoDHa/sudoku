@@ -56,7 +56,10 @@ const createDefaultOptions = createDefaultAutoSolveOptions
 type AutoSolveOptions = Parameters<typeof useAutoSolve>[0]
 
 // Common setup: mock the solve response, render the hook, and start auto-solving.
-async function startAutoSolveWith(moveCount: number, overrides?: Partial<AutoSolveOptions>) {
+async function startAutoSolveWith(
+  moveCount: number,
+  overrides?: { [K in keyof AutoSolveOptions]?: AutoSolveOptions[K] | undefined },
+) {
   mockSolveAll.mockResolvedValue(createMockSolveResponse(moveCount))
   const options = createDefaultOptions(overrides)
   const { result } = renderHook(() => useAutoSolve(options))

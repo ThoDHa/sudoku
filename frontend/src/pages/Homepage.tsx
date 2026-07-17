@@ -4,14 +4,14 @@ import {
   useDailySeed,
   useLastDailyDifficulty,
   getLastDailyDifficulty,
-  Difficulty,
+  type Difficulty,
 } from '../lib/hooks'
 import { isTodayCompleted, getDailyStreak } from '../lib/scores'
 import {
   getHomepageMode,
   setHomepageMode,
   onHomepageModeChange,
-  HomepageMode,
+  type HomepageMode,
 } from '../lib/preferences'
 import { getMostRecentGameForMode, clearInProgressGame } from '../lib/gameSettings'
 import { getDailySeed } from '../lib/solver-service'

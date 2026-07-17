@@ -15,8 +15,10 @@
     /* Strict Type-Checking Options */
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": false,
+    "exactOptionalPropertyTypes": true,
     "noPropertyAccessFromIndexSignature": true,
+    "noImplicitOverride": true,
+    "verbatimModuleSyntax": true,
 
     /* Additional Checks */
     "noUnusedLocals": true,

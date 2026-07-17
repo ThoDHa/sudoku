@@ -602,7 +602,7 @@ describe('wasm module', () => {
 
       // Make Go.exit throw
       MockGoClass = class extends MockGoClass {
-        exit = vi.fn().mockImplementation(() => {
+        override exit = vi.fn().mockImplementation(() => {
           throw new Error('Exit error')
         })
       }
@@ -1224,7 +1224,7 @@ describe('wasm module', () => {
       globalThis.window.SudokuWasm = mockWasmApi
 
       MockGoClass = class extends MockGoClass {
-        run = vi.fn().mockReturnValue(Promise.reject(new Error('go boom')))
+        override run = vi.fn().mockReturnValue(Promise.reject(new Error('go boom')))
       }
       // @ts-expect-error - Mocking
       globalThis.window.Go = MockGoClass
@@ -1622,7 +1622,7 @@ describe('wasm module', () => {
       globalThis.window.SudokuWasm = mockWasmApi
 
       MockGoClass = class extends MockGoClass {
-        run = vi.fn(() => {
+        override run = vi.fn(() => {
           throw new Error('go boom sync')
         })
       }
@@ -1679,7 +1679,6 @@ describe('wasm module', () => {
       globalThis.window.SudokuWasm = mockWasmApi
       // Provide 'gc' as a non-function value. The original guard skips the call;
       // mutants that force the condition true would call undefined()/string and throw.
-      globalThis.window.gc = undefined
       // 'gc' in window must still be true for some mutants to enter
       Object.defineProperty(globalThis.window, 'gc', {
         value: undefined,
