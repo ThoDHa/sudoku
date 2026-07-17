@@ -29,6 +29,7 @@ import { useGamePersistence } from '../hooks/useGamePersistence'
 import { usePuzzleLoader } from '../hooks/usePuzzleLoader'
 import { useShareConflict } from '../hooks/useShareConflict'
 import { useGameKeyboardShortcuts } from '../hooks/useGameKeyboardShortcuts'
+import { useDeselectOnOutsideClick } from '../hooks/useDeselectOnOutsideClick'
 import { useGameModals } from '../hooks/useGameModals'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import { useHighlightState } from '../hooks/useHighlightState'
@@ -318,62 +319,15 @@ function GameContent() {
     highlightedDigitRef.current = highlightedDigit
   }, [highlightedDigit])
 
-  // ============================================================
-  // CLICK OUTSIDE TO DESELECT (UX Enhancement)
-  // ============================================================
-  // When user clicks/taps outside of game interface, deselects the current cell
-  useEffect(() => {
-    const handleInteraction = (event: Event) => {
-      // Only process if a cell or multi-select is active
-      if (selectedCellRef.current === null && selectedCellsRef.current.size === 0) return
-
-      const target = event.target as Element | null
-      if (!target) return
-
-      // Check for actual modals AND overlay backdrops (not toasts/notifications).
-      // [data-overlay-backdrop] covers all three backdrop structural patterns; [data-modal]
-      // revives the panel-interior guard (panel wrappers carry the attribute).
-      const clickedInsideModal = target.closest(
-        '[role="dialog"], .modal, [data-modal], [data-overlay-backdrop]',
-      )
-
-      // Check if click is on interactive game elements that should NOT trigger deselection
-      const clickedOnCell = target.closest('.sudoku-cell') !== null
-      const clickedOnBoard = target.closest('.sudoku-board') !== null
-      const clickedOnDigitButton = target.closest('.control-digit-btn') !== null
-      const clickedOnActionButton = target.closest('.control-action-btn-compact') !== null
-      // Opening an overlay should not wipe the board selection. Each overlay opener button
-      // carries a data-*-button attribute; they are grouped here as one concept.
-      const clickedOnOverlayOpener =
-        target.closest('[data-menu-button], [data-history-button], [data-share-button]') !== null
-
-      // Deselect if click is NOT on a cell/board, NOT on digit/action buttons, NOT on an
-      // overlay opener, and NOT inside an overlay (panel or backdrop). This leaves only
-      // genuine empty-space clicks triggering deselection.
-      // The board check prevents deselection from synthetic clicks after multi-select drags.
-      if (
-        !clickedOnCell &&
-        !clickedOnBoard &&
-        !clickedOnDigitButton &&
-        !clickedOnActionButton &&
-        !clickedOnOverlayOpener &&
-        !clickedInsideModal
-      ) {
-        deselectCell()
-        setEraseMode(false)
-        clearMoveHighlight()
-      }
-    }
-
-    // Listen to both click and touchstart for mobile compatibility
-    // Use capture phase to ensure we get the event before other handlers
-    document.addEventListener('click', handleInteraction, { capture: true })
-    document.addEventListener('touchstart', handleInteraction, { capture: true })
-    return () => {
-      document.removeEventListener('click', handleInteraction, true)
-      document.removeEventListener('touchstart', handleInteraction, true)
-    }
-  }, [deselectCell, clearMoveHighlight, setEraseMode])
+  // Deselect the active cell when the user clicks/taps genuine empty space
+  // outside the board, controls, and any overlay. See useDeselectOnOutsideClick.
+  useDeselectOnOutsideClick({
+    selectedCellRef,
+    selectedCellsRef,
+    deselectCell,
+    clearMoveHighlight,
+    setEraseMode,
+  })
 
   // Extended background pause - completely suspend operations after 30 seconds hidden
   const [isExtendedPaused, setIsExtendedPaused] = useState(false)
