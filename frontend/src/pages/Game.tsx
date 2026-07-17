@@ -30,6 +30,7 @@ import { usePuzzleLoader } from '../hooks/usePuzzleLoader'
 import { useShareConflict } from '../hooks/useShareConflict'
 import { useGameKeyboardShortcuts } from '../hooks/useGameKeyboardShortcuts'
 import { useDeselectOnOutsideClick } from '../hooks/useDeselectOnOutsideClick'
+import { useInProgressGameCheck } from '../hooks/useInProgressGameCheck'
 import { useGameModals } from '../hooks/useGameModals'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import { useHighlightState } from '../hooks/useHighlightState'
@@ -54,7 +55,7 @@ import {
   getHideTimer,
   setHideTimer,
 } from '../lib/preferences'
-import { getMostRecentGame, clearInProgressGame, type SavedGameInfo } from '../lib/gameSettings'
+
 import {
   validateBoard,
   findNextMove,
@@ -174,8 +175,6 @@ function GameContent() {
     setUnpinpointableErrorInfo,
   } = useGameModals()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [showInProgressConfirm, setShowInProgressConfirm] = useState(false)
-  const [existingInProgressGame, setExistingInProgressGame] = useState<SavedGameInfo | null>(null)
   const [showDailyPrompt, setShowDailyPrompt] = useState(false)
   const [debugInfoCopied, setDebugInfoCopied] = useState(false)
   const [autoFillUsed, setAutoFillUsed] = useState(false)
@@ -183,8 +182,6 @@ function GameContent() {
   const autoSolveUsedRef = useRef(false) // Ref for immediate access in callbacks
   const [autoSolveStepsUsed, setAutoSolveStepsUsed] = useState(0)
   const [autoSolveErrorsFixed, setAutoSolveErrorsFixed] = useState(0)
-  // Track if we've handled initial navigation (to prevent in-progress check after seed changes)
-  const handledInitialNavigationRef = useRef(false)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [techniqueHintsUsed, setTechniqueHintsUsed] = useState(0)
   const [hintLoading, setHintLoading] = useState(false) // Loading spinner for hint button
@@ -622,82 +619,14 @@ function GameContent() {
     }
   }, [solveConfirmOpen, autoSolve.isFetching, autoSolve.isAutoSolving, setSolveConfirmOpen])
 
-  // Check for existing in-progress game when navigating to a different puzzle
-  useEffect(() => {
-    // Skip if user already confirmed navigation (from Homepage or Menu)
-    // Both Homepage and Menu handle their own in-progress confirmations
-    // Also skip if we've already handled initial navigation (to prevent check after seed changes)
-    const skipInProgressCheck = sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
-    if (skipInProgressCheck) {
-      sessionStorage.removeItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
-    }
-    if (skipInProgressCheck || handledInitialNavigationRef.current) {
-      return
-    }
-
-    // A shared-state link (?s=…) carries the sharer's position, and
-    // restoreOrPromptSharedState owns the resume-vs-open-shared choice. The generic
-    // "resume your other game" prompt must not race it (loadPuzzle is async, so this
-    // effect would otherwise fire first and its Resume would navigate away to an
-    // unrelated saved game). Mark navigation handled so it stays skipped after
-    // consumeShareParams strips the s param and this effect re-runs. See SHARE-2.
-    if (sharedStateParam) {
-      handledInitialNavigationRef.current = true
-      return
-    }
-
-    const savedGame = getMostRecentGame()
-    // Mark that we've handled initial navigation for this component mount
-    handledInitialNavigationRef.current = true
-    logger.debug(
-      '[IN-PROGRESS CHECK] Current URL seed:',
-      seed,
-      'Saved game found:',
-      savedGame ? savedGame.seed : 'none',
-    )
-    // Show prompt if:
-    // - There's a saved game
-    // - It's for a DIFFERENT seed than what we're trying to load
-    // - It's not complete (progress < 100%)
-    if (
-      savedGame &&
-      savedGame.seed !== seed &&
-      savedGame.seed !== encoded &&
-      savedGame.progress < 100
-    ) {
-      logger.debug(
-        '[IN-PROGRESS CHECK] Showing modal: Existing game found',
-        savedGame.seed,
-        'vs current:',
-        seed,
-      )
-      setExistingInProgressGame(savedGame)
-      setShowInProgressConfirm(true)
-    } else {
-      logger.debug('[IN-PROGRESS CHECK] No modal needed (no existing game or same seed)')
-    }
-  }, [seed, encoded, sharedStateParam])
-
-  // Handlers for in-progress game confirmation modal
-  const handleResumeExistingGame = useCallback(() => {
-    if (existingInProgressGame) {
-      // Set flag so we don't show modal again when navigating to resumed game
-      sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
-      const targetUrl = `/${existingInProgressGame.seed}?d=${existingInProgressGame.difficulty}`
-      navigate(targetUrl)
-    }
-    setShowInProgressConfirm(false)
-  }, [existingInProgressGame, navigate])
-
-  const handleStartNewGame = useCallback(() => {
-    if (existingInProgressGame) {
-      clearInProgressGame(existingInProgressGame.seed)
-    }
-    // Set flag so we don't check for in-progress games again after user explicitly chose "Start New"
-    sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
-    setShowInProgressConfirm(false)
-    setExistingInProgressGame(null)
-  }, [existingInProgressGame])
+  // Check for an existing in-progress game (different seed) and surface the
+  // resume-vs-new confirmation. Self-contained in useInProgressGameCheck.
+  const {
+    showInProgressConfirm,
+    existingInProgressGame,
+    onResumeExistingGame: handleResumeExistingGame,
+    onStartNewGame: handleStartNewGame,
+  } = useInProgressGameCheck({ seed, encoded, sharedStateParam, navigate })
 
   const {
     showShareConflict,
