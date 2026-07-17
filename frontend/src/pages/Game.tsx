@@ -31,6 +31,7 @@ import { useShareConflict } from '../hooks/useShareConflict'
 import { useGameKeyboardShortcuts } from '../hooks/useGameKeyboardShortcuts'
 import { useDeselectOnOutsideClick } from '../hooks/useDeselectOnOutsideClick'
 import { useInProgressGameCheck } from '../hooks/useInProgressGameCheck'
+import { useShareActions } from '../hooks/useShareActions'
 import { useGameModals } from '../hooks/useGameModals'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import { useHighlightState } from '../hooks/useHighlightState'
@@ -67,7 +68,6 @@ import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
 import { saveScore, markDailyCompleted, type Score } from '../lib/scores'
 import { setShowDailyReminder } from '../lib/preferences'
-import { buildPuzzleShareUrl, buildStateShareUrl } from '../lib/shareLinks'
 import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/candidatesUtils'
 import { restoreHintCounters } from '../lib/savedGameState'
 import { getHintSignature, getBoardSignature, formatTechniqueName } from '../lib/hintSignatures'
@@ -1519,74 +1519,19 @@ function GameContent() {
     window.open('https://github.com/thodha/sudoku/issues', '_blank', 'noopener,noreferrer')
   }, [])
 
-  // Copy a share URL to the clipboard and surface the outcome as a toast.
-  const copyShareUrl = useCallback(
-    async (url: string, label: string) => {
-      const success = await copyToClipboard(url)
-      if (success) {
-        setValidationMessage({ type: 'success', message: `${label} link copied to clipboard!` })
-        scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
-      } else {
-        setValidationMessage({ type: 'error', message: 'Failed to copy link' })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-      }
-    },
-    [scheduleToastClear],
-  )
-
-  const handleShareError = useCallback(
-    (err: unknown) => {
-      logger.error('Share error:', err)
-      setValidationMessage({ type: 'error', message: 'Failed to create share link' })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-    },
-    [scheduleToastClear],
-  )
-
-  // Share the bare puzzle (givens only): a short seed link for portable puzzles,
-  // an encoded /c/ link for localStorage-backed ones.
-  const handleSharePuzzle = useCallback(async () => {
-    try {
-      const url = buildPuzzleShareUrl({
-        isEncodedCustom,
-        seed: puzzle?.seed,
-        difficulty,
-        givens: initialBoard,
-      })
-      await copyShareUrl(url, 'Puzzle')
-    } catch (err) {
-      handleShareError(err)
-    }
-  }, [isEncodedCustom, puzzle?.seed, difficulty, initialBoard, copyShareUrl, handleShareError])
-
-  // Share the exact current position: givens plus the player's entries, notes,
-  // and elapsed time.
-  const handleShareState = useCallback(async () => {
-    try {
-      const url = buildStateShareUrl({
-        isEncodedCustom,
-        seed: puzzle?.seed,
-        difficulty,
-        givens: initialBoard,
-        board: game.board,
-        candidates: candidatesToArrays(game.candidates),
-        elapsedMs: timerControl.getElapsedMs(),
-      })
-      await copyShareUrl(url, 'Game')
-    } catch (err) {
-      handleShareError(err)
-    }
-  }, [
+  // Share-link actions live in useShareActions; only the two public handlers
+  // are consumed by the GameHeader share buttons.
+  const { onSharePuzzle: handleSharePuzzle, onShareState: handleShareState } = useShareActions({
     isEncodedCustom,
-    puzzle?.seed,
+    seed: puzzle?.seed,
     difficulty,
-    initialBoard,
-    game.board,
-    game.candidates,
-    timerControl,
-    copyShareUrl,
-    handleShareError,
-  ])
+    givens: initialBoard,
+    board: game.board,
+    candidates: candidatesToArrays(game.candidates),
+    elapsedMs: timerControl.getElapsedMs(),
+    scheduleToastClear,
+    setValidationMessage,
+  })
 
   // ============================================================
   // EFFECTS
