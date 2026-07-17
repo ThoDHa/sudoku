@@ -306,7 +306,7 @@ func TestSolver_FindNextMove_ExactCandidateMove(t *testing.T) {
 		t.Fatalf("setup: cell 0 should be a naked single (only candidate 5), got %v", board.Candidates[0].ToSlice())
 	}
 
-	for i := 0; i < constants.TotalCells; i++ {
+	for range constants.TotalCells {
 		move := solver.FindNextMove(context.Background(), board)
 		if move != nil && move.Action == "assign" && move.Digit == 5 {
 			if len(move.Targets) != 1 {
@@ -412,7 +412,7 @@ func TestSolver_HiddenSingleDetection_ExactMove(t *testing.T) {
 	board := NewBoard(givens)
 	solver := NewSolver()
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			t.Fatal("solver stalled")
@@ -464,7 +464,7 @@ func TestSolver_InvalidCandidateDetection_ExactMove(t *testing.T) {
 	cells[1] = 5
 
 	candidateMap := map[int][]int{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		candidateMap[i] = []int{1, 2, 3, 4, 6, 7, 8, 9}
 	}
 	candidateMap[0] = []int{3, 5}
@@ -472,7 +472,7 @@ func TestSolver_InvalidCandidateDetection_ExactMove(t *testing.T) {
 	board := makeTestBoard(cells, candidateMap)
 	solver := NewSolver()
 
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			t.Fatal("solver stalled")
@@ -523,7 +523,7 @@ func TestSolver_HiddenSingleAtMidGrid_ExactTarget(t *testing.T) {
 	board := NewBoard(givens)
 	solver := NewSolver()
 
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			t.Fatal("solver stalled")
@@ -1065,7 +1065,7 @@ func TestSolver_CandidateSweep_IncludesBoundaryDigits(t *testing.T) {
 	board := NewBoardWithCandidates(make([]int, 81), nil)
 	solver := NewSolver()
 	seen := map[int]bool{}
-	for i := 0; i < 1500; i++ {
+	for range 1500 {
 		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			break

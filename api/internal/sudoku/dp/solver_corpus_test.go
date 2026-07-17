@@ -144,7 +144,7 @@ func buildCorpusBoard(solution, givenIndices []int) []int {
 }
 
 func gridsMatch(a, b []int) bool {
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if a[i] != b[i] {
 			return false
 		}

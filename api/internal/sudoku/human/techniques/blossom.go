@@ -60,7 +60,7 @@ func DetectDeathBlossom(b BoardInterface) *core.Move {
 
 	// Find potential stem cells (2-3 candidates)
 	var stems []int
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		n := b.GetCandidatesAt(i).Count()
 		if n >= 2 && n <= 3 {
 			stems = append(stems, i)

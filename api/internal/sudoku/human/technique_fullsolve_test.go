@@ -66,7 +66,7 @@ func TestFullSolve_Puzzle(t *testing.T) {
 			}
 
 			// Verify final solution matches expected
-			for i := 0; i < 81; i++ {
+			for i := range 81 {
 				if board.Cells[i] != expectedSolution[i] {
 					t.Errorf("Puzzle %d cell %d: got %d, expected %d",
 						idx, i, board.Cells[i], expectedSolution[i])
@@ -104,7 +104,7 @@ func TestFullSolve_First100(t *testing.T) {
 	failing := 0
 	skipped := 0
 
-	for idx := 0; idx < 100; idx++ {
+	for idx := range 100 {
 		if knownUnsolvable[idx] {
 			t.Logf("Puzzle %d: SKIPPED (known unsolvable)", idx)
 			skipped++
@@ -129,7 +129,7 @@ func TestFullSolve_First100(t *testing.T) {
 
 		// Verify solution
 		correct := true
-		for i := 0; i < 81; i++ {
+		for i := range 81 {
 			if board.Cells[i] != expectedSolution[i] {
 				correct = false
 				break
@@ -165,7 +165,7 @@ func TestFullSolve_DifficultyProgression(t *testing.T) {
 		t.Run(diff, func(t *testing.T) {
 			// Test first 5 puzzles at each difficulty
 			passing := 0
-			for idx := 0; idx < 5; idx++ {
+			for idx := range 5 {
 				givens, expectedSolution, err := loader.GetPuzzle(idx, diff)
 				if err != nil {
 					t.Logf("Puzzle %d at %s: Failed to load: %v", idx, diff, err)
@@ -178,7 +178,7 @@ func TestFullSolve_DifficultyProgression(t *testing.T) {
 				if status == constants.StatusCompleted {
 					// Verify solution
 					correct := true
-					for i := 0; i < 81; i++ {
+					for i := range 81 {
 						if board.Cells[i] != expectedSolution[i] {
 							correct = false
 							break
@@ -221,7 +221,7 @@ func TestFullSolve_ValidateMoves(t *testing.T) {
 			maxSteps := 1000
 			moveCount := 0
 
-			for step := 0; step < maxSteps; step++ {
+			for step := range maxSteps {
 				// Check if solved
 				if board.IsSolved() {
 					t.Logf("Puzzle %d solved in %d moves", idx, moveCount)
@@ -240,7 +240,7 @@ func TestFullSolve_ValidateMoves(t *testing.T) {
 				moveCount++
 
 				// Validate: solution digits must still be candidates (or placed correctly)
-				for i := 0; i < 81; i++ {
+				for i := range 81 {
 					if board.Cells[i] != 0 {
 						if board.Cells[i] != solution[i] {
 							t.Errorf("Step %d (%s): Cell %d has wrong value %d (expected %d)",
@@ -273,7 +273,7 @@ func TestSolver_NoInfiniteLoop(t *testing.T) {
 	solver := NewSolver()
 
 	// Test a variety of puzzles
-	for idx := 0; idx < 20; idx++ {
+	for idx := range 20 {
 		givens, _, err := loader.GetPuzzle(idx, "impossible")
 		if err != nil {
 			continue
@@ -307,7 +307,7 @@ func TestSolver_Deterministic(t *testing.T) {
 	var firstMoves []string
 	solver := NewSolver()
 
-	for run := 0; run < 3; run++ {
+	for run := range 3 {
 		board := NewBoard(givens)
 		moves, _ := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 
@@ -362,7 +362,7 @@ func BenchmarkFullSolve(b *testing.B) {
 			solver := NewSolver()
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				board := NewBoard(givens)
 				solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 			}
@@ -388,7 +388,7 @@ func BenchmarkFullSolve_Impossible(b *testing.B) {
 			}
 
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				board := NewBoard(givens)
 				solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 			}

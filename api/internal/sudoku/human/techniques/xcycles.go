@@ -33,7 +33,7 @@ func DetectGroupedXCycles(b BoardInterface) *core.Move {
 func findGroupedXCycleForDigit(b BoardInterface, digit int) *core.Move {
 	// Build list of cells with this candidate
 	var cells []int
-	for idx := 0; idx < constants.TotalCells; idx++ {
+	for idx := range constants.TotalCells {
 		if b.GetCandidatesAt(idx).Has(digit) {
 			cells = append(cells, idx)
 		}
@@ -61,7 +61,7 @@ func buildStrongLinksXC(b BoardInterface, digit int, cells []int) []strongLinkXC
 	var links []strongLinkXC
 
 	// Check rows
-	for row := 0; row < constants.GridSize; row++ {
+	for row := range constants.GridSize {
 		var rowCells []int
 		for _, idx := range cells {
 			if idx/constants.GridSize == row {
@@ -74,7 +74,7 @@ func buildStrongLinksXC(b BoardInterface, digit int, cells []int) []strongLinkXC
 	}
 
 	// Check columns
-	for col := 0; col < constants.GridSize; col++ {
+	for col := range constants.GridSize {
 		var colCells []int
 		for _, idx := range cells {
 			if idx%constants.GridSize == col {
@@ -87,7 +87,7 @@ func buildStrongLinksXC(b BoardInterface, digit int, cells []int) []strongLinkXC
 	}
 
 	// Check boxes
-	for box := 0; box < constants.GridSize; box++ {
+	for box := range constants.GridSize {
 		boxRowStart := (box / constants.BoxSize) * constants.BoxSize
 		boxColStart := (box % constants.BoxSize) * constants.BoxSize
 		var boxCells []int
@@ -253,7 +253,7 @@ func analyzeCycleFixed(b BoardInterface, digit int, path []int, linkStrong []boo
 	// At node i:
 	//   - Link coming IN is linkStrong[(i-1+n)%n] (from path[i-1] to path[i])
 	//   - Link going OUT is linkStrong[i] (from path[i] to path[i+1])
-	for i := 0; i < n; i++ {
+	for i := range n {
 		linkIn := linkStrong[(i-1+n)%n]
 		linkOut := linkStrong[i]
 
@@ -305,13 +305,13 @@ func findNiceLoopEliminationsFixed(b BoardInterface, digit int, path []int, link
 	var eliminations []core.Candidate
 
 	// Find weak links and look for eliminations
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if !linkStrong[i] { // This is a weak link
 			cell1 := path[i]
 			cell2 := path[(i+1)%n]
 
 			// Cells that see BOTH ends of this weak link can eliminate the digit
-			for idx := 0; idx < constants.TotalCells; idx++ {
+			for idx := range constants.TotalCells {
 				if !b.GetCandidatesAt(idx).Has(digit) {
 					continue
 				}

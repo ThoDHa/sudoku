@@ -27,10 +27,10 @@ func DetectALSXYWing(b BoardInterface) *core.Move {
 
 	// Try all combinations of 3 ALS for A, B, C
 	n := len(allALS)
-	for ai := 0; ai < n; ai++ {
+	for ai := range n {
 		alsA := allALS[ai]
 
-		for bi := 0; bi < n; bi++ {
+		for bi := range n {
 			if bi == ai {
 				continue
 			}
@@ -47,7 +47,7 @@ func DetectALSXYWing(b BoardInterface) *core.Move {
 				continue
 			}
 
-			for ci := 0; ci < n; ci++ {
+			for ci := range n {
 				if ci == ai || ci == bi {
 					continue
 				}
@@ -141,9 +141,9 @@ func detectALSXYChain(b BoardInterface, maxSize int) *core.Move {
 	n := len(allALS)
 	adjRC := make(map[int]map[int][]int) // alsIdx -> alsIdx -> []RC digits
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		adjRC[i] = make(map[int][]int)
-		for j := 0; j < n; j++ {
+		for j := range n {
 			// Skip self-pairs but keep building the rest of the row: the
 			// adjacency must stay symmetric. TestDetectALSXYChainAdjacencyIsSymmetric
 			// fails if this becomes a break (lower-triangular adjacency).
@@ -167,7 +167,7 @@ func detectALSXYChain(b BoardInterface, maxSize int) *core.Move {
 	// Use DFS to find chains. maxLen 6 admits length-6 chains: dropping it to 5
 	// changes the result on boards where a length-6 chain is the minimal one
 	// (TestDetectALSXYChainMaxLenSixRequiredForLengthSixChain).
-	for startIdx := 0; startIdx < n; startIdx++ {
+	for startIdx := range n {
 		if move := searchALSChain(b, allALS, adjRC, startIdx, 6); move != nil {
 			return move
 		}

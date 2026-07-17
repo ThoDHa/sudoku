@@ -765,14 +765,14 @@ func TestCarveGivensWithSubset(t *testing.T) {
 
 	t.Run("subset property holds", func(t *testing.T) {
 		// Each harder puzzle should have a subset of the easier puzzle's givens
-		for i := 0; i < len(difficulties)-1; i++ {
+		for i := range len(difficulties) - 1 {
 			easier := difficulties[i]
 			harder := difficulties[i+1]
 
 			easierPuzzle := puzzles[easier]
 			harderPuzzle := puzzles[harder]
 
-			for pos := 0; pos < 81; pos++ {
+			for pos := range 81 {
 				if harderPuzzle[pos] != 0 && easierPuzzle[pos] == 0 {
 					t.Errorf("subset property violated: %s has given at %d but %s doesn't",
 						harder, pos, easier)
@@ -819,7 +819,7 @@ func TestEdgeCases(t *testing.T) {
 	t.Run("all cells same valid value in row causes conflict", func(t *testing.T) {
 		grid := make([]int, 81)
 		// Fill first row with all 1s
-		for i := 0; i < 9; i++ {
+		for i := range 9 {
 			grid[i] = 1
 		}
 
@@ -833,7 +833,7 @@ func TestEdgeCases(t *testing.T) {
 // Benchmark Tests
 
 func BenchmarkSolve(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		puzzle := make([]int, 81)
 		copy(puzzle, validPuzzle)
 		_, _ = Solve(context.Background(), puzzle)
@@ -841,19 +841,19 @@ func BenchmarkSolve(b *testing.B) {
 }
 
 func BenchmarkHasUniqueSolution(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = HasUniqueSolution(context.Background(), validPuzzle)
 	}
 }
 
 func BenchmarkGenerateFullGrid(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		GenerateFullGrid(int64(i))
 	}
 }
 
 func BenchmarkFindConflicts(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		FindConflicts(validPuzzle)
 	}
 }
@@ -972,10 +972,10 @@ func TestMutation_CarveGivensWithSubset_SubsetPropertyStrict(t *testing.T) {
 	puzzles := CarveGivensWithSubset(context.Background(), fullGrid, 67890)
 
 	difficulties := []string{"easy", "medium", "hard", "extreme", "impossible"}
-	for i := 0; i < len(difficulties)-1; i++ {
+	for i := range len(difficulties) - 1 {
 		easier := puzzles[difficulties[i]]
 		harder := puzzles[difficulties[i+1]]
-		for pos := 0; pos < 81; pos++ {
+		for pos := range 81 {
 			if harder[pos] != 0 && easier[pos] == 0 {
 				t.Errorf("subset violated: %s has given at %d but %s doesn't",
 					difficulties[i+1], pos, difficulties[i])

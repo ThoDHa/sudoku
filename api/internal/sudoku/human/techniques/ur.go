@@ -49,7 +49,7 @@ var urFloorRoofPairs = [][2][2]int{
 func findURRectangles(b BoardInterface, d1, d2 int) []urRectangle {
 	// Find all cells that have both d1 and d2 as candidates
 	var cells []int
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.GetCandidatesAt(i).Has(d1) && b.GetCandidatesAt(i).Has(d2) {
 			cells = append(cells, i)
 		}
@@ -62,7 +62,7 @@ func findURRectangles(b BoardInterface, d1, d2 int) []urRectangle {
 	var rectangles []urRectangle
 
 	// Try all combinations of 4 cells that form a rectangle spanning exactly 2 boxes
-	for i := 0; i < len(cells); i++ {
+	for i := range cells {
 		for j := i + 1; j < len(cells); j++ {
 			r1, c1 := cells[i]/constants.GridSize, cells[i]%constants.GridSize
 			r2, c2 := cells[j]/constants.GridSize, cells[j]%constants.GridSize
@@ -415,7 +415,7 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 							// For naked triple, we need exactly 2 more cells (pseudo-cell counts as 1)
 							if len(extraSlice) == 3 && len(candidateCells) >= 2 {
 								// Try pairs of candidate cells
-								for ci := 0; ci < len(candidateCells); ci++ {
+								for ci := range candidateCells {
 									for cj := ci + 1; cj < len(candidateCells); cj++ {
 										idx1, idx2 := candidateCells[ci], candidateCells[cj]
 
@@ -546,7 +546,7 @@ func tryURType4LineElimination(b BoardInterface, d1, d2, ex0, ex1 int, corners [
 // digitConfinedToCells reports whether digit appears only at ex0 or ex1 within
 // the line at lineIdx (a row when byRow=true, a column otherwise).
 func digitConfinedToCells(b BoardInterface, digit, lineIdx, ex0, ex1 int, byRow bool) bool {
-	for k := 0; k < constants.GridSize; k++ {
+	for k := range constants.GridSize {
 		var idx int
 		if byRow {
 			idx = lineIdx*constants.GridSize + k

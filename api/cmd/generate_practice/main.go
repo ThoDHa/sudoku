@@ -155,7 +155,7 @@ func analyzePuzzles(loader *puzzles.Loader, workers, maxPerTechnique int) map[st
 	}
 
 	work := make(chan workItem, puzzleCount*5)
-	for i := 0; i < puzzleCount; i++ {
+	for i := range puzzleCount {
 		for _, d := range difficulties {
 			work <- workItem{Index: i, Difficulty: d.name, DiffKey: d.key}
 		}
@@ -163,7 +163,7 @@ func analyzePuzzles(loader *puzzles.Loader, workers, maxPerTechnique int) map[st
 	close(work)
 
 	var wg sync.WaitGroup
-	for w := 0; w < workers; w++ {
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

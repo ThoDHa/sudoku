@@ -148,7 +148,7 @@ func (s *Solver) createDuplicateViolationMove(digit int, idx1, idx2 int, unitTyp
 //
 //nolint:gocyclo // checkConstraintViolations walks rows, columns, and boxes to detect duplicate-digit conflicts and produce a single elimination move; the three unit iterations share the per-move accumulator and digit-position state.
 func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.Cells[i] == 0 {
 			continue
 		}
@@ -169,7 +169,7 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 	}
 
 	// Check for invalid candidates (candidates that conflict with existing values)
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		// If the cell is already filled, skip.
 		if b.Cells[i] != 0 {
 			continue
@@ -232,14 +232,14 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 				var conflictCells []core.CellRef
 
 				// Check row
-				for c := 0; c < constants.GridSize; c++ {
+				for c := range constants.GridSize {
 					if b.Cells[row*constants.GridSize+c] == d {
 						conflictCells = append(conflictCells, core.CellRef{Row: row, Col: c})
 					}
 				}
 
 				// Check column
-				for r := 0; r < constants.GridSize; r++ {
+				for r := range constants.GridSize {
 					if b.Cells[r*constants.GridSize+col] == d {
 						conflictCells = append(conflictCells, core.CellRef{Row: r, Col: col})
 					}
@@ -370,12 +370,12 @@ func (s *Solver) findNextCandidateMove(b *Board) *core.Move {
 // candidates across every unit of the type, then re-checks each unit for a
 // hidden single. Returns the first move found, or nil.
 func (s *Solver) findCandidateMoveForUnitType(b *Board, unitType UnitType, d int) *core.Move {
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		if mv := s.fillCandidatesForUnit(b, unitType, i, d); mv != nil {
 			return mv
 		}
 	}
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		if mv := s.checkHiddenSingleInUnit(b, unitType, i, d); mv != nil {
 			return mv
 		}
@@ -515,13 +515,13 @@ func getUnitCellRefs(unitType UnitType, unitIndex int) []core.CellRef {
 	switch unitType {
 	case UnitRow:
 		cells := make([]core.CellRef, constants.GridSize)
-		for c := 0; c < constants.GridSize; c++ {
+		for c := range constants.GridSize {
 			cells[c] = core.CellRef{Row: unitIndex, Col: c}
 		}
 		return cells
 	case UnitCol:
 		cells := make([]core.CellRef, constants.GridSize)
-		for r := 0; r < constants.GridSize; r++ {
+		for r := range constants.GridSize {
 			cells[r] = core.CellRef{Row: r, Col: unitIndex}
 		}
 		return cells
@@ -551,12 +551,12 @@ func getBoxCellRefs(box int) []core.CellRef {
 }
 
 func digitExistsInCells(b *Board, row, col, digit int) bool {
-	for c := 0; c < constants.GridSize; c++ {
+	for c := range constants.GridSize {
 		if b.Cells[row*constants.GridSize+c] == digit {
 			return true
 		}
 	}
-	for r := 0; r < constants.GridSize; r++ {
+	for r := range constants.GridSize {
 		if b.Cells[r*constants.GridSize+col] == digit {
 			return true
 		}

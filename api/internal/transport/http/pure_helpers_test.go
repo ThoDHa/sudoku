@@ -176,7 +176,7 @@ func TestBuildFixedCandidates_HandlesShortRequestAndNilInput(t *testing.T) {
 	if len(empty) != 81 {
 		t.Fatalf("nil req: expected length 81, got %d", len(empty))
 	}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		if empty[i] != nil {
 			t.Errorf("nil req: cell %d expected nil, got %v", i, empty[i])
 		}
@@ -199,7 +199,7 @@ func TestCountUserEntries_ExcludesGivensAndZeros(t *testing.T) {
 func TestCountUserEntries_ZeroWhenAllCellsAreGivens(t *testing.T) {
 	board := make([]int, 81)
 	givens := make([]int, 81)
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		board[i] = (i % 9) + 1
 		givens[i] = board[i]
 	}

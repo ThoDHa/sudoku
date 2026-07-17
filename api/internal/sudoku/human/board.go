@@ -33,7 +33,7 @@ type Board struct {
 // NewBoard creates a board from givens and initializes candidates
 func NewBoard(givens []int) *Board {
 	b := &Board{}
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		b.Cells[i] = givens[i]
 	}
 	b.InitCandidates()
@@ -44,7 +44,7 @@ func NewBoard(givens []int) *Board {
 // Does NOT auto-fill candidates - let FindNextMove handle that one at a time
 func NewBoardWithCandidates(cells []int, candidates [][]int) *Board {
 	b := &Board{}
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		b.Cells[i] = cells[i]
 		// The nil guards are dead defense: NewCandidates(nil) is 0 (the zero value
 		// already stored) and markMissingAsEliminated early-returns on an empty
@@ -82,7 +82,7 @@ func (b *Board) markMissingAsEliminated(idx, cell int, cands []int) {
 
 // InitCandidates populates candidates for empty cells based on current board state
 func (b *Board) InitCandidates() {
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.Cells[i] == 0 {
 			var cands Candidates
 			// Starting at 0 is a no-op: canPlace(i,0) is always false because the
@@ -105,13 +105,13 @@ func (b *Board) InitCandidates() {
 func (b *Board) canPlace(idx, digit int) bool {
 	row, col := idx/constants.GridSize, idx%constants.GridSize
 
-	for c := 0; c < constants.GridSize; c++ {
+	for c := range constants.GridSize {
 		if b.Cells[row*constants.GridSize+c] == digit {
 			return false
 		}
 	}
 
-	for r := 0; r < constants.GridSize; r++ {
+	for r := range constants.GridSize {
 		if b.Cells[r*constants.GridSize+col] == digit {
 			return false
 		}
@@ -141,7 +141,7 @@ func (b *Board) SetCell(idx, digit int) {
 
 	row, col := idx/constants.GridSize, idx%constants.GridSize
 
-	for c := 0; c < constants.GridSize; c++ {
+	for c := range constants.GridSize {
 		peerIdx := row*constants.GridSize + c
 		if b.Candidates[peerIdx].Has(digit) {
 			b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
@@ -149,7 +149,7 @@ func (b *Board) SetCell(idx, digit int) {
 		}
 	}
 
-	for r := 0; r < constants.GridSize; r++ {
+	for r := range constants.GridSize {
 		peerIdx := r*constants.GridSize + col
 		if b.Candidates[peerIdx].Has(digit) {
 			b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
@@ -213,7 +213,7 @@ func (b *Board) AddCandidate(idx, digit int) {
 
 // IsSolved returns true if all cells are filled AND the solution is valid
 func (b *Board) IsSolved() bool {
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.Cells[i] == 0 {
 			return false
 		}
@@ -223,7 +223,7 @@ func (b *Board) IsSolved() bool {
 
 // IsValid checks if the current board state has no conflicts (duplicates in row/col/box)
 func (b *Board) IsValid() bool {
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		if !unitIsValid(b.Cells[:], techniques.RowIndices[i]) ||
 			!unitIsValid(b.Cells[:], techniques.ColIndices[i]) ||
 			!unitIsValid(b.Cells[:], techniques.BoxIndices[i]) {
@@ -272,7 +272,7 @@ func (b *Board) GetCells() []int {
 // GetCandidates returns candidates as a 2D slice (for API responses)
 func (b *Board) GetCandidates() [][]int {
 	result := make([][]int, constants.TotalCells)
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		result[i] = b.Candidates[i].ToSlice()
 	}
 	return result
@@ -285,7 +285,7 @@ func (b *Board) GetCandidates() [][]int {
 // CellsWithNCandidates returns all cells with exactly n candidates
 func (b *Board) CellsWithNCandidates(n int) []int {
 	var cells []int
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.Candidates[i].Count() == n {
 			cells = append(cells, i)
 		}
@@ -296,7 +296,7 @@ func (b *Board) CellsWithNCandidates(n int) []int {
 // CellsWithCandidateRange returns all cells with min to max candidates (inclusive)
 func (b *Board) CellsWithCandidateRange(min, max int) []int {
 	var cells []int
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		count := b.Candidates[i].Count()
 		if count >= min && count <= max {
 			cells = append(cells, i)

@@ -19,6 +19,7 @@ linters:
     - errorlint
     - copyloopvar
     - perfsprint
+    - intrange
   settings:
     misspell:
       locale: US

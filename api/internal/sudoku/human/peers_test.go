@@ -149,7 +149,7 @@ func TestArePeers(t *testing.T) {
 
 func TestRowPeersCount(t *testing.T) {
 	// Each cell should have exactly 8 row peers
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		if len(RowPeers[i]) != 8 {
 			t.Errorf("Cell %d has %d row peers, want 8", i, len(RowPeers[i]))
 		}
@@ -158,7 +158,7 @@ func TestRowPeersCount(t *testing.T) {
 
 func TestColPeersCount(t *testing.T) {
 	// Each cell should have exactly 8 column peers
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		if len(ColPeers[i]) != 8 {
 			t.Errorf("Cell %d has %d column peers, want 8", i, len(ColPeers[i]))
 		}
@@ -167,7 +167,7 @@ func TestColPeersCount(t *testing.T) {
 
 func TestBoxPeersCount(t *testing.T) {
 	// Each cell should have exactly 8 box peers
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		if len(BoxPeers[i]) != 8 {
 			t.Errorf("Cell %d has %d box peers, want 8", i, len(BoxPeers[i]))
 		}
@@ -179,7 +179,7 @@ func TestTotalPeersCount(t *testing.T) {
 	// Corner cells: 8 (row) + 8 (col) + 8 (box) - 4 (overlaps) = 20
 	// Edge cells: 8 + 8 + 8 - 4 = 20
 	// Center cells: 8 + 8 + 8 - 4 = 20
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		if len(Peers[i]) != 20 {
 			t.Errorf("Cell %d has %d total peers, want 20", i, len(Peers[i]))
 		}
@@ -325,11 +325,11 @@ func TestRowIndices_ExactCells(t *testing.T) {
 	if len(RowIndices) != 9 {
 		t.Fatalf("expected 9 row indices, got %d", len(RowIndices))
 	}
-	for r := 0; r < 9; r++ {
+	for r := range 9 {
 		if len(RowIndices[r]) != 9 {
 			t.Fatalf("row %d: expected 9 cells, got %d", r, len(RowIndices[r]))
 		}
-		for c := 0; c < 9; c++ {
+		for c := range 9 {
 			expected := r*9 + c
 			if RowIndices[r][c] != expected {
 				t.Errorf("RowIndices[%d][%d] = %d, expected %d", r, c, RowIndices[r][c], expected)
@@ -342,11 +342,11 @@ func TestColIndices_ExactCells(t *testing.T) {
 	if len(ColIndices) != 9 {
 		t.Fatalf("expected 9 column indices, got %d", len(ColIndices))
 	}
-	for c := 0; c < 9; c++ {
+	for c := range 9 {
 		if len(ColIndices[c]) != 9 {
 			t.Fatalf("col %d: expected 9 cells, got %d", c, len(ColIndices[c]))
 		}
-		for r := 0; r < 9; r++ {
+		for r := range 9 {
 			expected := r*9 + c
 			if ColIndices[c][r] != expected {
 				t.Errorf("ColIndices[%d][%d] = %d, expected %d", c, r, ColIndices[c][r], expected)
@@ -359,7 +359,7 @@ func TestBoxIndices_ExactCells(t *testing.T) {
 	if len(BoxIndices) != 9 {
 		t.Fatalf("expected 9 box indices, got %d", len(BoxIndices))
 	}
-	for b := 0; b < 9; b++ {
+	for b := range 9 {
 		if len(BoxIndices[b]) != 9 {
 			t.Fatalf("box %d: expected 9 cells, got %d", b, len(BoxIndices[b]))
 		}

@@ -42,7 +42,7 @@ func TestSolverHandlesAllDifficulties(t *testing.T) {
 
 			// Verify the solution is valid if completed
 			if status == constants.StatusCompleted {
-				for i := 0; i < 81; i++ {
+				for i := range 81 {
 					if board.Cells[i] == 0 {
 						t.Errorf("Cell %d is still empty after 'completed' status", i)
 					}
@@ -58,7 +58,7 @@ func TestSolverUsesMultipleTechniques(t *testing.T) {
 	techniqueUsage := make(map[string]int)
 
 	// Generate and solve puzzles to collect technique usage
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		seed := int64(i * 7919) // Prime multiplier for variety
 		fullGrid := dp.GenerateFullGrid(seed)
 		givens := dp.CarveGivens(context.Background(), fullGrid, 30, seed) // Medium-hard difficulty
@@ -103,7 +103,7 @@ func BenchmarkSolver(b *testing.B) {
 		b.Run(diff.name, func(b *testing.B) {
 			// Pre-generate puzzles
 			puzzles := make([][]int, b.N)
-			for i := 0; i < b.N; i++ {
+			for i := range b.N {
 				seed := int64(i)
 				fullGrid := dp.GenerateFullGrid(seed)
 				puzzles[i] = dp.CarveGivens(context.Background(), fullGrid, diff.givens, seed)
@@ -112,7 +112,7 @@ func BenchmarkSolver(b *testing.B) {
 			solver := human.NewSolver()
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for i := range b.N {
 				board := human.NewBoard(puzzles[i])
 				solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 			}

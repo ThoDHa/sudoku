@@ -19,7 +19,7 @@ import (
 //   - Eliminate ALS-B candidates from rest of line
 func DetectSueDeCoq(b BoardInterface) *core.Move {
 	// Try each box
-	for box := 0; box < constants.GridSize; box++ {
+	for box := range constants.GridSize {
 		boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
 
 		// Try rows intersecting this box
@@ -198,7 +198,7 @@ func sdcLineEliminations(b BoardInterface, boxRow, boxCol, lineIdx int, isRow bo
 		boxStart, boxEnd = boxRow, boxRow+constants.BoxSize
 	}
 	var eliminations []core.Candidate
-	for k := 0; k < constants.GridSize; k++ {
+	for k := range constants.GridSize {
 		if k >= boxStart && k < boxEnd {
 			continue
 		}
@@ -278,7 +278,7 @@ func sdcLineRemainder(b BoardInterface, boxRow, boxCol, lineIdx int, isRow bool)
 		boxStart, boxEnd = boxRow, boxRow+constants.BoxSize
 	}
 	var cells []int
-	for k := 0; k < constants.GridSize; k++ {
+	for k := range constants.GridSize {
 		if k >= boxStart && k < boxEnd {
 			continue
 		}
@@ -308,16 +308,14 @@ func findALSInCells(b BoardInterface, cells []int, intersectionDigits []int) []A
 	}
 
 	// Try ALS of size 2 (2 cells with 3 candidates total)
-	for i := 0; i < len(cells); i++ {
+	for i := range cells {
 		for j := i + 1; j < len(cells); j++ {
 			result = append(result, alsFromCells(b, []int{cells[i], cells[j]}, intersectionSet)...)
 		}
 	}
 
 	// Try ALS of size 3 (3 cells with 4 candidates total) - less common but possible
-	// i<=len is harmless; the inner j/k loops never dereference cells[i] at i==len
-	// mutator-disable-next-line expression/comparison
-	for i := 0; i < len(cells); i++ {
+	for i := range cells {
 		for j := i + 1; j < len(cells); j++ {
 			for k := j + 1; k < len(cells); k++ {
 				result = append(result, alsFromCells(b, []int{cells[i], cells[j], cells[k]}, intersectionSet)...)

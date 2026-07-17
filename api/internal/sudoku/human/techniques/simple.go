@@ -9,7 +9,7 @@ import (
 
 // DetectNakedSingle finds a cell with only one candidate
 func DetectNakedSingle(b BoardInterface) *core.Move {
-	for i := 0; i < constants.GridSize*constants.GridSize; i++ {
+	for i := range constants.GridSize * constants.GridSize {
 		if b.GetCell(i) == 0 && b.GetCandidatesAt(i).Count() == 1 {
 			digit, _ := b.GetCandidatesAt(i).Only()
 			row, col := i/constants.GridSize, i%constants.GridSize
@@ -30,17 +30,17 @@ func DetectNakedSingle(b BoardInterface) *core.Move {
 
 // DetectHiddenSingle finds a digit that can only go in one cell within a unit
 func DetectHiddenSingle(b BoardInterface) *core.Move {
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		if m := findHiddenSingleInUnit(b, i, RowIndices[i], "row"); m != nil {
 			return m
 		}
 	}
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		if m := findHiddenSingleInUnit(b, i, ColIndices[i], "column"); m != nil {
 			return m
 		}
 	}
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		if m := findHiddenSingleInUnit(b, i, BoxIndices[i], "box"); m != nil {
 			return m
 		}
@@ -103,7 +103,7 @@ func buildHiddenSingleMove(row, col, digit, unitIdx int, desc string, cells []in
 
 // DetectPointingPair finds candidates in a box that are confined to one row/column
 func DetectPointingPair(b BoardInterface) *core.Move {
-	for box := 0; box < constants.GridSize; box++ {
+	for box := range constants.GridSize {
 		boxRow, boxCol := (box/3)*3, (box%3)*3
 		for digit := 1; digit <= constants.GridSize; digit++ {
 			positions := scanBoxCandidates(b, boxRow, boxCol, digit)
@@ -178,7 +178,7 @@ func sharedLine(positions []core.CellRef, byRow bool) (int, bool) {
 // cells holding digit as a candidate, returning the elimination move.
 func buildPointingLineMove(b BoardInterface, box, digit int, positions []core.CellRef, lineIdx, boxLo int, byRow bool) *core.Move {
 	var eliminations []core.Candidate
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		if i >= boxLo && i < boxLo+3 {
 			continue
 		}
@@ -219,12 +219,12 @@ func buildPointingLineMove(b BoardInterface, box, digit int, positions []core.Ce
 
 // DetectBoxLineReduction finds candidates in a row/column confined to one box
 func DetectBoxLineReduction(b BoardInterface) *core.Move {
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		if m := findBoxLineReductionInLine(b, i, true); m != nil {
 			return m
 		}
 	}
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		if m := findBoxLineReductionInLine(b, i, false); m != nil {
 			return m
 		}
@@ -256,7 +256,7 @@ func findBoxLineReductionInLine(b BoardInterface, lineIdx int, byRow bool) *core
 // column (byRow=false).
 func scanLineCandidates(b BoardInterface, lineIdx int, byRow bool, digit int) []core.CellRef {
 	var positions []core.CellRef
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		var idx int
 		var ref core.CellRef
 		if byRow {

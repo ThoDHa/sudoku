@@ -48,7 +48,7 @@ func main() {
 
 	// Create work channel
 	work := make(chan int, *count)
-	for i := 0; i < *count; i++ {
+	for i := range *count {
 		work <- i
 	}
 	close(work)
@@ -74,7 +74,7 @@ func main() {
 
 	// Worker pool
 	var wg sync.WaitGroup
-	for w := 0; w < *workers; w++ {
+	for w := range *workers {
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()

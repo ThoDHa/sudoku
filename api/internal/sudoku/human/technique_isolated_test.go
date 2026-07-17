@@ -100,7 +100,7 @@ func validateMoveAgainstSolution(t *testing.T, board *Board, solution []int, tec
 	t.Helper()
 
 	// Check all cells after the move
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		// If cell has a value, it must match the solution
 		if board.Cells[i] != 0 {
 			if board.Cells[i] != solution[i] {
@@ -228,7 +228,7 @@ func tryEarlyStopTechniqueTest(t *testing.T, slug string) bool {
 	solver := NewSolver()
 
 	// Solve step by step until technique fires
-	for step := 0; step < constants.MaxSolverSteps; step++ {
+	for step := range constants.MaxSolverSteps {
 		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			return false // Stalled - try fallback
@@ -272,7 +272,7 @@ func runEarlyStopWithDisabledTechniques(t *testing.T, slug string, disabledTechn
 	solver := CreateSolverWithoutTechniques(disabledTechniques...)
 
 	// Solve step by step until technique fires
-	for step := 0; step < constants.MaxSolverSteps; step++ {
+	for step := range constants.MaxSolverSteps {
 		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			t.Errorf("Stalled at step %d without firing %s", step, slug)
@@ -634,7 +634,7 @@ func TestDiagnosticTechniqueUsage(t *testing.T) {
 			targetCount = 0
 
 			// Run step-by-step until target technique fires or puzzle completes
-			for step := 0; step < constants.MaxSolverSteps; step++ {
+			for range constants.MaxSolverSteps {
 				move := solver.FindNextMove(context.Background(), board)
 				if move == nil {
 					status = "stalled"

@@ -44,7 +44,7 @@ func applyMove(b *testBoard, move *core.Move) {
 
 // isSolved reports whether every cell is filled.
 func isSolved(b *testBoard) bool {
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.cells[i] == 0 {
 			return false
 		}
@@ -60,7 +60,7 @@ func isSolved(b *testBoard) bool {
 func solveBoard(t *testing.T, b *testBoard, disabled map[string]bool) map[string]bool {
 	t.Helper()
 	fired := map[string]bool{}
-	for step := 0; step < constants.MaxSolverSteps; step++ {
+	for range constants.MaxSolverSteps {
 		if isSolved(b) {
 			return fired
 		}
@@ -113,7 +113,7 @@ func boardForFixture(t *testing.T, data techniquetest.PuzzleData) *testBoard {
 // removals through SetCell).
 func boardFromGivens(givens []int) *testBoard {
 	b := &testBoard{}
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		b.candidates[i] = AllCandidates()
 	}
 	for i := 0; i < constants.TotalCells && i < len(givens); i++ {
@@ -131,7 +131,7 @@ func boardFromGivens(givens []int) *testBoard {
 // detector coverage without importing the human package (which would cycle).
 func boardFromPuzzleString(s string) *testBoard {
 	b := &testBoard{}
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		b.candidates[i] = AllCandidates()
 	}
 	for i, c := range s {

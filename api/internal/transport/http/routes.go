@@ -170,7 +170,7 @@ func requireMinGivens(c *gin.Context, board []int) bool {
 // even when reqCandidates is shorter or empty.
 func buildFixedCandidates(reqCandidates [][]int, badCell int) [][]int {
 	fixed := make([][]int, constants.TotalCells)
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		// fixed[i]=nil restates the make() zero-value, so emptying this branch leaves the returned grid identical
 		// mutator-disable-next-line branch/if
 		if i == badCell {
@@ -532,8 +532,7 @@ func findPracticePuzzle(ctx context.Context, loader *puzzles.Loader, solver *hum
 	}
 	// mutator-disable-next-line arithmetic/base
 	startIdx := int(time.Now().UnixNano()) % puzzleCount
-	// mutator-disable-next-line expression/comparison,numbers/decrementer,numbers/incrementer
-	for i := 0; i < maxSamples; i++ {
+	for i := range maxSamples {
 		idx := (startIdx + i) % puzzleCount
 		for _, diff := range difficulties {
 			g, _, err := loader.GetPuzzle(idx, diff)
@@ -875,7 +874,7 @@ type SolveAllRequest struct {
 func peerCellIndices(row, col int) (rowCells, colCells, boxCells []int) {
 	rowCells = make([]int, constants.GridSize)
 	colCells = make([]int, constants.GridSize)
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		rowCells[i] = row*constants.GridSize + i
 		colCells[i] = i*constants.GridSize + col
 	}
@@ -978,8 +977,7 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 	maxCount := 0
 	// mutator-disable-next-line numbers/decrementer,numbers/incrementer
 	maxCell := -1
-	// mutator-disable-next-line expression/comparison,numbers/decrementer
-	for idx := 0; idx < constants.TotalCells; idx++ {
+	for idx := range constants.TotalCells {
 		if cellCount[idx] > maxCount {
 			maxCount = cellCount[idx]
 			maxCell = idx
@@ -1004,7 +1002,7 @@ func findBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 // Returns: Number of non-zero cells that are not original givens
 func countUserEntries(board []int, givens []int) int {
 	count := 0
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if board[i] != 0 && givens[i] == 0 {
 			count++
 		}
@@ -1154,8 +1152,7 @@ func runAutosolveLoop(ctx context.Context, solver *human.Solver, board *human.Bo
 	// mutator-disable-next-line numbers/decrementer,numbers/incrementer
 	const maxMoves = 2000
 	const maxFixes = 5
-	// mutator-disable-next-line expression/comparison,numbers/decrementer,numbers/incrementer
-	for i := 0; i < maxMoves; i++ {
+	for range maxMoves {
 		if board.IsSolved() {
 			// once solved FindNextMove returns nil and the loop hits the stalled-break below; continue just spins the counter to the same outcome
 			// mutator-disable-next-line loop/break

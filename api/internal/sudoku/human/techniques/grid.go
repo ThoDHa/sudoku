@@ -44,8 +44,8 @@ func init() {
 //nolint:gocyclo // initializePeers runs once at package init to populate three peer-index tables by walking each cell's row, column, and box and excluding the cell itself; the three walks share the cell-pair enumeration and would only duplicate it if split.
 func initializePeers() {
 	// Initialize row/col/box indices first
-	for r := 0; r < constants.GridSize; r++ {
-		for c := 0; c < constants.GridSize; c++ {
+	for r := range constants.GridSize {
+		for c := range constants.GridSize {
 			idx := r*constants.GridSize + c
 			RowIndices[r] = append(RowIndices[r], idx)
 			ColIndices[c] = append(ColIndices[c], idx)
@@ -56,7 +56,7 @@ func initializePeers() {
 	}
 
 	// For each cell, compute its peers
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		row, col := i/constants.GridSize, i%constants.GridSize
 		boxNum := (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize
 
@@ -182,7 +182,7 @@ func (u Unit) GetCellRefs() []core.CellRef {
 // AllUnits returns all units (16 rows + 16 cols + 16 boxes = 48 total)
 func AllUnits() []Unit {
 	units := make([]Unit, 0, constants.GridSize*3)
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		units = append(units, Unit{Type: UnitRow, Index: i, Cells: RowIndices[i]})
 		units = append(units, Unit{Type: UnitCol, Index: i, Cells: ColIndices[i]})
 		units = append(units, Unit{Type: UnitBox, Index: i, Cells: BoxIndices[i]})
@@ -327,7 +327,7 @@ func FindEliminationsSeeing(b BoardInterface, digit int, exclude []int, mustSee 
 	}
 
 	var eliminations []core.Candidate
-	for idx := 0; idx < constants.TotalCells; idx++ {
+	for idx := range constants.TotalCells {
 		if excludeSet[idx] {
 			continue
 		}
@@ -376,13 +376,13 @@ func FindAllALS(b BoardInterface, maxSize int) []ALS {
 	// Build unit list in specific order: all rows, then all cols, then all boxes.
 	// This order affects which ALS are found first and can impact technique results.
 	units := make([][]int, 0, constants.GridSize*3)
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		units = append(units, RowIndices[i])
 	}
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		units = append(units, ColIndices[i])
 	}
-	for i := 0; i < constants.GridSize; i++ {
+	for i := range constants.GridSize {
 		units = append(units, BoxIndices[i])
 	}
 

@@ -19,7 +19,7 @@ func medusaDigitOnlyBoard(digit int, cells []int) *testBoard {
 			base = append(base, d)
 		}
 	}
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		b.candidates[i] = NewCandidates(base)
 	}
 	for _, idx := range cells {

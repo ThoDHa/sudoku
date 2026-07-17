@@ -650,7 +650,7 @@ func TestGetDailyPuzzle_IndexMatchesGetPuzzleBySeed(t *testing.T) {
 func TestGetDailyPuzzle_IndexMatchesGetPuzzleBySeedLargeLoader(t *testing.T) {
 	const n = 1000
 	reps := make([]CompactPuzzle, 0, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		reps = append(reps, CompactPuzzle{
 			S: "157924638362158974498736512531279486926483157784615293273561849619847325845392761",
 			G: map[string][]int{"m": {0, 1, 2}},

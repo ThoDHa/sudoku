@@ -101,7 +101,7 @@ func combinationsSizeK(items []int, k int, fn func(combo []int) bool) {
 		return
 	}
 	indices := make([]int, k)
-	for i := 0; i < k; i++ {
+	for i := range k {
 		indices[i] = i
 	}
 	combo := make([]int, k)

@@ -29,9 +29,9 @@ func DetectJellyfish(b BoardInterface) *core.Move {
 func detectJellyfishInDirection(b BoardInterface, digit int, dir UnitType) *core.Move {
 	// Build map of primary unit -> secondary positions where digit appears
 	unitPositions := make(map[int][]int)
-	for primary := 0; primary < constants.GridSize; primary++ {
+	for primary := range constants.GridSize {
 		var secondaries []int
-		for secondary := 0; secondary < constants.GridSize; secondary++ {
+		for secondary := range constants.GridSize {
 			idx := cellIndexForDirection(dir, primary, secondary)
 			if b.GetCandidatesAt(idx).Has(digit) {
 				secondaries = append(secondaries, secondary)
@@ -50,7 +50,7 @@ func detectJellyfishInDirection(b BoardInterface, digit int, dir UnitType) *core
 	}
 
 	// Try all combinations of 4 units
-	for i := 0; i < len(units); i++ {
+	for i := range units {
 		for j := i + 1; j < len(units); j++ {
 			for k := j + 1; k < len(units); k++ {
 				for l := k + 1; l < len(units); l++ {
@@ -81,7 +81,7 @@ func detectJellyfishInDirection(b BoardInterface, digit int, dir UnitType) *core
 					// Find eliminations in secondary lines outside the 4 primary units
 					var eliminations []core.Candidate
 					for _, sec := range secondaries {
-						for pri := 0; pri < constants.GridSize; pri++ {
+						for pri := range constants.GridSize {
 							if pri == u1 || pri == u2 || pri == u3 || pri == u4 {
 								continue
 							}
@@ -177,9 +177,9 @@ func buildConjugateGraph(b BoardInterface, digit int) map[int][]int {
 
 	// Check rows and columns using UnitType abstraction
 	for _, dir := range []UnitType{UnitRow, UnitCol} {
-		for primary := 0; primary < constants.GridSize; primary++ {
+		for primary := range constants.GridSize {
 			var cells []int
-			for secondary := 0; secondary < constants.GridSize; secondary++ {
+			for secondary := range constants.GridSize {
 				idx := cellIndexForDirection(dir, primary, secondary)
 				if b.GetCandidatesAt(idx).Has(digit) {
 					cells = append(cells, idx)
@@ -193,7 +193,7 @@ func buildConjugateGraph(b BoardInterface, digit int) map[int][]int {
 	}
 
 	// Check boxes
-	for box := 0; box < constants.GridSize; box++ {
+	for box := range constants.GridSize {
 		var cells []int
 		boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
 		for r := boxRow; r < boxRow+constants.BoxSize; r++ {
@@ -268,7 +268,7 @@ func findChainEndpointElimination(b BoardInterface, digit int, path []int, expla
 		pathSet[c] = true
 	}
 	targets := pathCellRefs(path)
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if !b.GetCandidatesAt(i).Has(digit) {
 			continue
 		}
@@ -311,7 +311,7 @@ func pathCellRefs(path []int) []core.CellRef {
 func DetectXYChain(b BoardInterface) *core.Move {
 	// Find all bivalue cells
 	var bivalue []int
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.GetCandidatesAt(i).Count() == 2 {
 			bivalue = append(bivalue, i)
 		}
@@ -449,7 +449,7 @@ func DetectWWing(b BoardInterface) *core.Move {
 		digits [2]int
 	}
 
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if b.GetCandidatesAt(i).Count() == 2 {
 			cands := b.GetCandidatesAt(i).ToSlice()
 			bivalue = append(bivalue, struct {
@@ -460,9 +460,7 @@ func DetectWWing(b BoardInterface) *core.Move {
 	}
 
 	// Look for pairs with same candidates
-	// i<=len is harmless; the inner j-loop guard prevents any bivalue[i] access at i==len
-	// mutator-disable-next-line expression/comparison
-	for i := 0; i < len(bivalue); i++ {
+	for i := range bivalue {
 		for j := i + 1; j < len(bivalue); j++ {
 			bv1, bv2 := bivalue[i], bivalue[j]
 			if bv1.digits != bv2.digits {
@@ -483,9 +481,9 @@ func DetectWWing(b BoardInterface) *core.Move {
 
 				// Check rows and columns for strong links using UnitType abstraction
 				for _, dir := range []UnitType{UnitRow, UnitCol} {
-					for primary := 0; primary < constants.GridSize; primary++ {
+					for primary := range constants.GridSize {
 						var cells []int
-						for secondary := 0; secondary < constants.GridSize; secondary++ {
+						for secondary := range constants.GridSize {
 							idx := cellIndexForDirection(dir, primary, secondary)
 							if b.GetCandidatesAt(idx).Has(linkDigit) {
 								cells = append(cells, idx)
@@ -508,7 +506,7 @@ func DetectWWing(b BoardInterface) *core.Move {
 						if link1 != -1 {
 							// W-Wing found! Eliminate elimDigit from cells seeing both bv1 and bv2
 							var eliminations []core.Candidate
-							for idx := 0; idx < constants.TotalCells; idx++ {
+							for idx := range constants.TotalCells {
 								if !b.GetCandidatesAt(idx).Has(elimDigit) {
 									continue
 								}
@@ -564,7 +562,7 @@ func DetectWWing(b BoardInterface) *core.Move {
 //nolint:gocyclo // Empty Rectangle detection spans a 5-level nested search (digit × box × ER row/col × perpendicular cells × conjugate-pair strategies). The two strategies share box/row/col state computed at outer levels; splitting them apart would duplicate that derivation or require a wide intermediate-state struct.
 func DetectEmptyRectangle(b BoardInterface) *core.Move {
 	for digit := 1; digit <= constants.GridSize; digit++ {
-		for box := 0; box < constants.GridSize; box++ {
+		for box := range constants.GridSize {
 			boxRowStart, boxColStart := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
 
 			// Find positions of digit in this box
@@ -634,7 +632,7 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 					// Strategy 1: Find a conjugate pair in a COLUMN outside the box
 					// where one end is in erRow, and eliminate from the other end's row
 					// intersecting with erCol
-					for linkCol := 0; linkCol < constants.GridSize; linkCol++ {
+					for linkCol := range constants.GridSize {
 						if linkCol >= boxColStart && linkCol < boxColStart+constants.BoxSize {
 							continue
 						}
@@ -654,7 +652,7 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 					// Strategy 2: Find a conjugate pair in a ROW outside the box
 					// where one end is in erCol, and eliminate from the other end's column
 					// intersecting with erRow
-					for linkRow := 0; linkRow < constants.GridSize; linkRow++ {
+					for linkRow := range constants.GridSize {
 						if linkRow >= boxRowStart && linkRow < boxRowStart+constants.BoxSize {
 							continue
 						}
@@ -683,7 +681,7 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 // line at index lineIdx.
 func digitPositionsInLine(b BoardInterface, digit, lineIdx int, byRow bool) []int {
 	var positions []int
-	for k := 0; k < constants.GridSize; k++ {
+	for k := range constants.GridSize {
 		var idx int
 		if byRow {
 			idx = lineIdx*constants.GridSize + k

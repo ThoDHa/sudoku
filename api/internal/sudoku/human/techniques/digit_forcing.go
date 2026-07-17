@@ -88,7 +88,7 @@ func propagateFromPlacement(b BoardInterface, idx, digit int) *digitForcingResul
 	result := newDigitForcingResult()
 	placeAndRecordForcing(b, simBoard, result, idx, digit)
 
-	for step := 0; step < maxDigitForcingPropagation; step++ {
+	for range maxDigitForcingPropagation {
 		if !propagateOneForcingStep(b, simBoard, result) {
 			break
 		}
@@ -116,7 +116,7 @@ func propagateOneForcingStep(b, simBoard BoardInterface, result *digitForcingRes
 // findNakedSingleForcing returns the lowest-indexed empty cell with exactly one
 // candidate, plus that candidate.
 func findNakedSingleForcing(simBoard BoardInterface) (int, int, bool) {
-	for i := 0; i < constants.TotalCells; i++ {
+	for i := range constants.TotalCells {
 		if simBoard.GetCell(i) == 0 && simBoard.GetCandidatesAt(i).Count() == 1 {
 			d, _ := simBoard.GetCandidatesAt(i).Only()
 			return i, d, true

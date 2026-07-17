@@ -56,7 +56,7 @@ func detectCuratedTechniqueMove(t *testing.T, slug string) *core.Move {
 		solver = CreateSolverWithoutTechniques(disabled...)
 	}
 
-	for step := 0; step < constants.MaxSolverSteps; step++ {
+	for range constants.MaxSolverSteps {
 		move := solver.FindNextMove(context.Background(), board)
 		if move == nil {
 			break
@@ -106,11 +106,11 @@ func TestNakedSingleHighlights(t *testing.T) {
 func TestHiddenSingleHighlights(t *testing.T) {
 	cells := [81]int{}
 	candidateMap := map[int][]int{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		candidateMap[i] = []int{1, 2, 3, 4, 5, 6, 8, 9}
 	}
 
-	for col := 0; col < 9; col++ {
+	for col := range 9 {
 		if col != 1 {
 			candidateMap[col] = []int{1, 2, 3, 4, 5, 6, 8, 9}
 		}
@@ -141,7 +141,7 @@ func TestHiddenSingleHighlights(t *testing.T) {
 func TestNakedPairHighlights(t *testing.T) {
 	cells := [81]int{}
 	candidateMap := map[int][]int{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		candidateMap[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	}
 
@@ -185,11 +185,11 @@ func TestNakedPairHighlights(t *testing.T) {
 func TestHiddenPairHighlights(t *testing.T) {
 	cells := [81]int{}
 	candidateMap := map[int][]int{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		candidateMap[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	}
 
-	for col := 0; col < 9; col++ {
+	for col := range 9 {
 		if col != 0 && col != 3 {
 			candidateMap[col] = []int{2, 3, 5, 6, 7, 8, 9}
 		}
@@ -218,12 +218,12 @@ func TestHiddenPairHighlights(t *testing.T) {
 func TestPointingPairHighlights(t *testing.T) {
 	cells := [81]int{}
 	candidateMap := map[int][]int{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		candidateMap[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	}
 
 	for row := 1; row < 3; row++ {
-		for col := 0; col < 3; col++ {
+		for col := range 3 {
 			idx := row*9 + col
 			candidateMap[idx] = []int{1, 3, 4, 5, 6, 7, 8, 9}
 		}
@@ -252,7 +252,7 @@ func TestPointingPairHighlights(t *testing.T) {
 func TestBoxLineReductionHighlights(t *testing.T) {
 	cells := [81]int{}
 	candidateMap := map[int][]int{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		candidateMap[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	}
 
@@ -284,7 +284,7 @@ func TestBoxLineReductionHighlights(t *testing.T) {
 func TestXWingHighlights(t *testing.T) {
 	cells := [81]int{}
 	candidateMap := map[int][]int{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		candidateMap[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	}
 
@@ -293,7 +293,7 @@ func TestXWingHighlights(t *testing.T) {
 	digit := 1
 
 	for _, row := range xWingRows {
-		for col := 0; col < 9; col++ {
+		for col := range 9 {
 			idx := row*9 + col
 			if !slices.Contains(xWingCols, col) {
 				candidateMap[idx] = []int{2, 3, 4, 5, 6, 7, 8, 9}
@@ -350,7 +350,7 @@ func TestXWingHighlights(t *testing.T) {
 func TestXYWingHighlights(t *testing.T) {
 	cells := [81]int{}
 	candidateMap := map[int][]int{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		candidateMap[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	}
 
@@ -423,7 +423,7 @@ func TestSimpleColoringHighlights(t *testing.T) {
 func TestNakedTripleHighlights(t *testing.T) {
 	cells := [81]int{}
 	candidateMap := map[int][]int{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		candidateMap[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	}
 
@@ -461,7 +461,7 @@ func TestNakedTripleHighlights(t *testing.T) {
 func TestSwordfishHighlights(t *testing.T) {
 	cells := [81]int{}
 	candidateMap := map[int][]int{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		candidateMap[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	}
 
@@ -470,7 +470,7 @@ func TestSwordfishHighlights(t *testing.T) {
 	digit := 1
 
 	for _, row := range fishRows {
-		for col := 0; col < 9; col++ {
+		for col := range 9 {
 			idx := row*9 + col
 			if !slices.Contains(fishCols, col) {
 				candidateMap[idx] = []int{2, 3, 4, 5, 6, 7, 8, 9}
@@ -509,7 +509,7 @@ func TestHighlightConsistency(t *testing.T) {
 		{"NakedSingle", techniques.DetectNakedSingle, func() ([81]int, map[int][]int) {
 			cells := [81]int{}
 			cm := map[int][]int{}
-			for i := 0; i < 81; i++ {
+			for i := range 81 {
 				cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 			}
 			cm[0] = []int{5}
@@ -518,10 +518,10 @@ func TestHighlightConsistency(t *testing.T) {
 		{"HiddenSingle", techniques.DetectHiddenSingle, func() ([81]int, map[int][]int) {
 			cells := [81]int{}
 			cm := map[int][]int{}
-			for i := 0; i < 81; i++ {
+			for i := range 81 {
 				cm[i] = []int{1, 2, 3, 4, 5, 6, 8, 9}
 			}
-			for col := 0; col < 9; col++ {
+			for col := range 9 {
 				if col != 1 {
 					cm[col] = []int{1, 2, 3, 4, 5, 6, 8, 9}
 				}
@@ -532,7 +532,7 @@ func TestHighlightConsistency(t *testing.T) {
 		{"NakedPair", techniques.DetectNakedPair, func() ([81]int, map[int][]int) {
 			cells := [81]int{}
 			cm := map[int][]int{}
-			for i := 0; i < 81; i++ {
+			for i := range 81 {
 				cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 			}
 			cm[0] = []int{1, 2}
@@ -542,11 +542,11 @@ func TestHighlightConsistency(t *testing.T) {
 		{"XWing", techniques.DetectXWing, func() ([81]int, map[int][]int) {
 			cells := [81]int{}
 			cm := map[int][]int{}
-			for i := 0; i < 81; i++ {
+			for i := range 81 {
 				cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 			}
 			for _, row := range []int{0, 7} {
-				for col := 0; col < 9; col++ {
+				for col := range 9 {
 					if col != 0 && col != 6 {
 						cm[row*9+col] = []int{2, 3, 4, 5, 6, 7, 8, 9}
 					} else {
@@ -603,7 +603,7 @@ func TestHighlightConsistency(t *testing.T) {
 func TestHiddenTripleHighlights(t *testing.T) {
 	cells := [81]int{}
 	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	}
 	for col := 3; col < 9; col++ {
@@ -630,7 +630,7 @@ func TestHiddenTripleHighlights(t *testing.T) {
 func TestNakedQuadHighlights(t *testing.T) {
 	cells := [81]int{}
 	cm := map[int][]int{}
-	for i := 0; i < 81; i++ {
+	for i := range 81 {
 		cm[i] = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	}
 	cm[0] = []int{1, 2, 3, 4}
