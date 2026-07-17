@@ -2,10 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { commitCellAction } from '../lib/commitCellAction'
 import { isDigitComplete } from '../lib/digitCompletion'
 import { buildFreshTrackingState } from '../lib/gameStateReset'
-import { shouldIncrementHintCounter } from '../lib/hintLifecycle'
 import { resolveCompletionAction } from '../lib/completionGate'
 import { isValidSolution } from '../lib/validationUtils'
-import { createHintRequestGate, type HintRequestGate } from '../lib/hintRequestGate'
 import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import Board from '../components/Board'
 import Controls from '../components/Controls'
@@ -29,6 +27,11 @@ import { useGamePersistence } from '../hooks/useGamePersistence'
 import { usePuzzleLoader } from '../hooks/usePuzzleLoader'
 import { useShareConflict } from '../hooks/useShareConflict'
 import { useGameKeyboardShortcuts } from '../hooks/useGameKeyboardShortcuts'
+import { useDeselectOnOutsideClick } from '../hooks/useDeselectOnOutsideClick'
+import { useInProgressGameCheck } from '../hooks/useInProgressGameCheck'
+import { useShareActions } from '../hooks/useShareActions'
+import { useHints } from '../hooks/useHints'
+import { useGameModals } from '../hooks/useGameModals'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import { useHighlightState } from '../hooks/useHighlightState'
 import type { MoveHighlight } from '../hooks/useHighlightState'
@@ -52,94 +55,20 @@ import {
   getHideTimer,
   setHideTimer,
 } from '../lib/preferences'
-import { getMostRecentGame, clearInProgressGame, type SavedGameInfo } from '../lib/gameSettings'
+
 import {
   validateBoard,
-  findNextMove,
   cleanupSolver,
   checkAndFixWithSolution,
   getDailySeed,
 } from '../lib/solver-service'
 import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
-import {
-  saveScore,
-  markDailyCompleted,
-  isTodayCompleted,
-  getTodayUTC,
-  getScores,
-  type Score,
-} from '../lib/scores'
+import { saveScore, markDailyCompleted, type Score } from '../lib/scores'
 import { setShowDailyReminder } from '../lib/preferences'
-import { buildPuzzleShareUrl, buildStateShareUrl } from '../lib/shareLinks'
 import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/candidatesUtils'
 import { restoreHintCounters } from '../lib/savedGameState'
-
-/**
- * Generate a unique signature for a hint move to detect duplicates.
- * Used to avoid counting the same hint multiple times.
- */
-function getHintSignature(move: {
-  technique: string
-  action: string
-  digit: number
-  targets: { row: number; col: number }[]
-}): string {
-  return `${move.technique}-${move.action}-${move.digit}-${JSON.stringify(move.targets)}`
-}
-
-/**
- * Generate a signature for the current board state (cells + candidates).
- * Used to invalidate hint cache when board changes.
- * Candidates are stored as Uint16Array where each element is a bitmask.
- */
-function getBoardSignature(board: number[], candidates: Uint16Array): string {
-  const candidatesStr = Array.from(candidates).join(',')
-  return `${board.join(',')}-${candidatesStr}`
-}
-
-/**
- * Format technique name for display (convert slug to title case)
- */
-function formatTechniqueName(technique: string): string {
-  return technique.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-interface PuzzleSetup {
-  effectiveSeed: string | undefined
-  isEncodedCustom: boolean
-  needsDifficultyChoice: boolean
-  alreadyCompletedToday: boolean
-  completedDailyScore: Score | undefined
-}
-
-function resolvePuzzleSetup(params: {
-  seed: string | undefined
-  encoded: string | undefined
-  pathname: string
-  difficultyParam: string | null
-}): PuzzleSetup {
-  const { seed, encoded, pathname, difficultyParam } = params
-  const effectiveSeed = seed || undefined
-  const isEncodedCustom = pathname.startsWith('/c/') && !!encoded
-  const needsDifficultyChoice =
-    !difficultyParam &&
-    !isEncodedCustom &&
-    !effectiveSeed?.startsWith('custom-') &&
-    !effectiveSeed?.startsWith('practice-')
-  const isTodaysDailyPuzzle = effectiveSeed === `daily-${getTodayUTC()}`
-  const alreadyCompletedToday = isTodaysDailyPuzzle && isTodayCompleted()
-  const completedDailyScore = alreadyCompletedToday
-    ? getScores().find((s) => s.seed === effectiveSeed)
-    : undefined
-  return {
-    effectiveSeed,
-    isEncodedCustom,
-    needsDifficultyChoice,
-    alreadyCompletedToday,
-    completedDailyScore,
-  }
-}
+import { resolvePuzzleSetup } from '../lib/puzzleSetup'
 
 /**
  * Inner component that contains all game logic.
@@ -225,32 +154,33 @@ function GameContent() {
   const [eraseMode, setEraseMode] = useState(false)
   const [notesMode, setNotesMode] = useState(false)
   const [showResultModal, setShowResultModal] = useState(alreadyCompletedToday) // Show result if already completed today
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const [techniqueModal, setTechniqueModal] = useState<{ title: string; slug: string } | null>(null)
-  const [techniquesListOpen, setTechniquesListOpen] = useState(false)
-  const [solveConfirmOpen, setSolveConfirmOpen] = useState(false)
-  const [showClearConfirm, setShowClearConfirm] = useState(false)
-  const [showSolutionConfirm, setShowSolutionConfirm] = useState(false)
+  const {
+    historyOpen,
+    techniqueModal,
+    techniquesListOpen,
+    solveConfirmOpen,
+    showClearConfirm,
+    showSolutionConfirm,
+    unpinpointableErrorInfo,
+    isAnyModalOpen,
+    setHistoryOpen,
+    setTechniqueModal,
+    setTechniquesListOpen,
+    setSolveConfirmOpen,
+    setShowClearConfirm,
+    setShowSolutionConfirm,
+    setUnpinpointableErrorInfo,
+  } = useGameModals()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [showInProgressConfirm, setShowInProgressConfirm] = useState(false)
-  const [existingInProgressGame, setExistingInProgressGame] = useState<SavedGameInfo | null>(null)
   const [showDailyPrompt, setShowDailyPrompt] = useState(false)
-  const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] = useState<{
-    message: string
-    count: number
-  } | null>(null)
   const [debugInfoCopied, setDebugInfoCopied] = useState(false)
   const [autoFillUsed, setAutoFillUsed] = useState(false)
   const [autoSolveUsed, setAutoSolveUsed] = useState(false)
   const autoSolveUsedRef = useRef(false) // Ref for immediate access in callbacks
   const [autoSolveStepsUsed, setAutoSolveStepsUsed] = useState(0)
   const [autoSolveErrorsFixed, setAutoSolveErrorsFixed] = useState(0)
-  // Track if we've handled initial navigation (to prevent in-progress check after seed changes)
-  const handledInitialNavigationRef = useRef(false)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [techniqueHintsUsed, setTechniqueHintsUsed] = useState(0)
-  const [hintLoading, setHintLoading] = useState(false) // Loading spinner for hint button
-  const [techniqueHintLoading, setTechniqueHintLoading] = useState(false) // Loading spinner for technique hint button
   const [validationMessage, setValidationMessage] = useState<{
     type: 'success' | 'error' | 'info'
     message: string
@@ -264,21 +194,6 @@ function GameContent() {
   const hasRestoredSavedState = useRef(false)
   // Track whether we loaded from a shared URL (to prevent resetGame from wiping shared state)
   const loadedFromSharedUrl = useRef(false)
-  // Guard to prevent concurrent hint requests. Held in a ref so the
-  // in-progress flag persists across renders (lazily initialized once).
-  const hintGateRef = useRef<HintRequestGate | null>(null)
-  if (hintGateRef.current === null) {
-    hintGateRef.current = createHintRequestGate()
-  }
-  // Track last hint shown to avoid counting duplicate hints
-  const lastTechniqueHintRef = useRef<string | null>(null)
-  const lastRegularHintRef = useRef<string | null>(null)
-  // Cache hint result to ensure Technique Hint and Regular Hint show same move
-  // Invalidated when board state changes
-  const cachedHintRef = useRef<{
-    boardSignature: string
-    data: Awaited<ReturnType<typeof findNextMove>>
-  } | null>(null)
 
   // Refs for click-outside detection (deselect cell when clicking outside game interface)
   const boardContainerRef = useRef<HTMLDivElement>(null)
@@ -381,62 +296,15 @@ function GameContent() {
     highlightedDigitRef.current = highlightedDigit
   }, [highlightedDigit])
 
-  // ============================================================
-  // CLICK OUTSIDE TO DESELECT (UX Enhancement)
-  // ============================================================
-  // When user clicks/taps outside of game interface, deselects the current cell
-  useEffect(() => {
-    const handleInteraction = (event: Event) => {
-      // Only process if a cell or multi-select is active
-      if (selectedCellRef.current === null && selectedCellsRef.current.size === 0) return
-
-      const target = event.target as Element | null
-      if (!target) return
-
-      // Check for actual modals AND overlay backdrops (not toasts/notifications).
-      // [data-overlay-backdrop] covers all three backdrop structural patterns; [data-modal]
-      // revives the panel-interior guard (panel wrappers carry the attribute).
-      const clickedInsideModal = target.closest(
-        '[role="dialog"], .modal, [data-modal], [data-overlay-backdrop]',
-      )
-
-      // Check if click is on interactive game elements that should NOT trigger deselection
-      const clickedOnCell = target.closest('.sudoku-cell') !== null
-      const clickedOnBoard = target.closest('.sudoku-board') !== null
-      const clickedOnDigitButton = target.closest('.control-digit-btn') !== null
-      const clickedOnActionButton = target.closest('.control-action-btn-compact') !== null
-      // Opening an overlay should not wipe the board selection. Each overlay opener button
-      // carries a data-*-button attribute; they are grouped here as one concept.
-      const clickedOnOverlayOpener =
-        target.closest('[data-menu-button], [data-history-button], [data-share-button]') !== null
-
-      // Deselect if click is NOT on a cell/board, NOT on digit/action buttons, NOT on an
-      // overlay opener, and NOT inside an overlay (panel or backdrop). This leaves only
-      // genuine empty-space clicks triggering deselection.
-      // The board check prevents deselection from synthetic clicks after multi-select drags.
-      if (
-        !clickedOnCell &&
-        !clickedOnBoard &&
-        !clickedOnDigitButton &&
-        !clickedOnActionButton &&
-        !clickedOnOverlayOpener &&
-        !clickedInsideModal
-      ) {
-        deselectCell()
-        setEraseMode(false)
-        clearMoveHighlight()
-      }
-    }
-
-    // Listen to both click and touchstart for mobile compatibility
-    // Use capture phase to ensure we get the event before other handlers
-    document.addEventListener('click', handleInteraction, { capture: true })
-    document.addEventListener('touchstart', handleInteraction, { capture: true })
-    return () => {
-      document.removeEventListener('click', handleInteraction, true)
-      document.removeEventListener('touchstart', handleInteraction, true)
-    }
-  }, [deselectCell, clearMoveHighlight, setEraseMode])
+  // Deselect the active cell when the user clicks/taps genuine empty space
+  // outside the board, controls, and any overlay. See useDeselectOnOutsideClick.
+  useDeselectOnOutsideClick({
+    selectedCellRef,
+    selectedCellsRef,
+    deselectCell,
+    clearMoveHighlight,
+    setEraseMode,
+  })
 
   // Extended background pause - completely suspend operations after 30 seconds hidden
   const [isExtendedPaused, setIsExtendedPaused] = useState(false)
@@ -588,10 +456,13 @@ function GameContent() {
     [scheduleToastClear],
   )
 
-  const handleUnpinpointableError = useCallback((message: string, count: number) => {
-    setUnpinpointableErrorInfo({ message, count })
-    setShowSolutionConfirm(true)
-  }, [])
+  const handleUnpinpointableError = useCallback(
+    (message: string, count: number) => {
+      setUnpinpointableErrorInfo({ message, count })
+      setShowSolutionConfirm(true)
+    },
+    [setUnpinpointableErrorInfo, setShowSolutionConfirm],
+  )
 
   const handleAutoSolveStatus = useCallback(
     (message: string) => {
@@ -726,84 +597,16 @@ function GameContent() {
       // Solution has been fetched, auto-solve is now playing back - close modal
       setSolveConfirmOpen(false)
     }
-  }, [solveConfirmOpen, autoSolve.isFetching, autoSolve.isAutoSolving])
+  }, [solveConfirmOpen, autoSolve.isFetching, autoSolve.isAutoSolving, setSolveConfirmOpen])
 
-  // Check for existing in-progress game when navigating to a different puzzle
-  useEffect(() => {
-    // Skip if user already confirmed navigation (from Homepage or Menu)
-    // Both Homepage and Menu handle their own in-progress confirmations
-    // Also skip if we've already handled initial navigation (to prevent check after seed changes)
-    const skipInProgressCheck = sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
-    if (skipInProgressCheck) {
-      sessionStorage.removeItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
-    }
-    if (skipInProgressCheck || handledInitialNavigationRef.current) {
-      return
-    }
-
-    // A shared-state link (?s=…) carries the sharer's position, and
-    // restoreOrPromptSharedState owns the resume-vs-open-shared choice. The generic
-    // "resume your other game" prompt must not race it (loadPuzzle is async, so this
-    // effect would otherwise fire first and its Resume would navigate away to an
-    // unrelated saved game). Mark navigation handled so it stays skipped after
-    // consumeShareParams strips the s param and this effect re-runs. See SHARE-2.
-    if (sharedStateParam) {
-      handledInitialNavigationRef.current = true
-      return
-    }
-
-    const savedGame = getMostRecentGame()
-    // Mark that we've handled initial navigation for this component mount
-    handledInitialNavigationRef.current = true
-    logger.debug(
-      '[IN-PROGRESS CHECK] Current URL seed:',
-      seed,
-      'Saved game found:',
-      savedGame ? savedGame.seed : 'none',
-    )
-    // Show prompt if:
-    // - There's a saved game
-    // - It's for a DIFFERENT seed than what we're trying to load
-    // - It's not complete (progress < 100%)
-    if (
-      savedGame &&
-      savedGame.seed !== seed &&
-      savedGame.seed !== encoded &&
-      savedGame.progress < 100
-    ) {
-      logger.debug(
-        '[IN-PROGRESS CHECK] Showing modal: Existing game found',
-        savedGame.seed,
-        'vs current:',
-        seed,
-      )
-      setExistingInProgressGame(savedGame)
-      setShowInProgressConfirm(true)
-    } else {
-      logger.debug('[IN-PROGRESS CHECK] No modal needed (no existing game or same seed)')
-    }
-  }, [seed, encoded, sharedStateParam])
-
-  // Handlers for in-progress game confirmation modal
-  const handleResumeExistingGame = useCallback(() => {
-    if (existingInProgressGame) {
-      // Set flag so we don't show modal again when navigating to resumed game
-      sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
-      const targetUrl = `/${existingInProgressGame.seed}?d=${existingInProgressGame.difficulty}`
-      navigate(targetUrl)
-    }
-    setShowInProgressConfirm(false)
-  }, [existingInProgressGame, navigate])
-
-  const handleStartNewGame = useCallback(() => {
-    if (existingInProgressGame) {
-      clearInProgressGame(existingInProgressGame.seed)
-    }
-    // Set flag so we don't check for in-progress games again after user explicitly chose "Start New"
-    sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
-    setShowInProgressConfirm(false)
-    setExistingInProgressGame(null)
-  }, [existingInProgressGame])
+  // Check for an existing in-progress game (different seed) and surface the
+  // resume-vs-new confirmation. Self-contained in useInProgressGameCheck.
+  const {
+    showInProgressConfirm,
+    existingInProgressGame,
+    onResumeExistingGame: handleResumeExistingGame,
+    onStartNewGame: handleStartNewGame,
+  } = useInProgressGameCheck({ seed, encoded, sharedStateParam, navigate })
 
   const {
     showShareConflict,
@@ -974,215 +777,25 @@ function GameContent() {
     })
   }, [game.board, solution, scheduleToastClear])
 
-  // Resolve the next hint move, using the cached hint when the board signature is unchanged.
-  // Returns null (after surfacing an error toast) when there is no next move.
-  const fetchCachedHint = useCallback(async (): Promise<Move | null> => {
-    const boardSnapshot = [...game.board]
-    const currentSignature = getBoardSignature(game.board, game.candidates)
-
-    let data: Awaited<ReturnType<typeof findNextMove>>
-
-    if (cachedHintRef.current && cachedHintRef.current.boardSignature === currentSignature) {
-      data = cachedHintRef.current.data
-    } else {
-      const candidatesArray = candidatesToArrays(game.candidates)
-      data = await findNextMove(boardSnapshot, candidatesArray, initialBoard)
-      cachedHintRef.current = { boardSignature: currentSignature, data }
-    }
-
-    if (!data.move) {
-      setValidationMessage({
-        type: 'error',
-        message: data.solved
-          ? 'Puzzle is already complete!'
-          : 'This puzzle requires advanced techniques beyond our hint system.',
-      })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-      return null
-    }
-
-    return data.move
-  }, [game.board, game.candidates, initialBoard, scheduleToastClear])
-
-  // Handle hint button - shows the next move with full answer (eliminations + additions visible)
-  const handleNext = useCallback(async () => {
-    // Prevent concurrent hint requests (spam protection)
-    const gate = hintGateRef.current
-    if (!gate || !gate.canStart()) {
-      return
-    }
-    gate.begin()
-    setHintLoading(true)
-
-    try {
-      // Deselect any highlighted digit when using hint
-      clearAllAndDeselect()
-
-      const move = await fetchCachedHint()
-      if (!move) return
-
-      // Handle special moves
-      if (move.action === 'unpinpointable-error') {
-        setUnpinpointableErrorInfo({
-          message: move.explanation || `Couldn't pinpoint the error.`,
-          count: (move as unknown as { userEntryCount?: number }).userEntryCount || 0,
-        })
-        setShowSolutionConfirm(true)
-        return
-      }
-
-      if (move.action === 'contradiction' || move.action === 'error') {
-        const currentGame = gameRef.current
-        if (currentGame?.canUndo) {
-          commitCellAction('undo', { game: currentGame, clearMoveHighlight })
-          setValidationMessage({
-            type: 'error',
-            message: move.explanation || 'Contradiction found - undoing last move',
-          })
-          scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-          return
-        } else {
-          setValidationMessage({
-            type: 'error',
-            message: 'The puzzle cannot be solved - initial state has errors.',
-          })
-          scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-          return
-        }
-      }
-
-      // Show the hint highlight WITH the answer (showAnswer defaults to true)
-      // User sees red eliminations and green additions
-      setMoveHighlight(move as MoveHighlight, game.history.length)
-
-      // Show toast with technique explanation
-      setValidationMessage({
-        type: 'success',
-        message: move.explanation || move.technique || 'Hint',
-      })
-      scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
-
-      // Only increment counter if this is a NEW hint (different from last shown)
-      const signature = getHintSignature(move)
-      if (shouldIncrementHintCounter(signature, lastRegularHintRef.current)) {
-        setHintsUsed((prev) => prev + 1)
-        lastRegularHintRef.current = signature
-      }
-      // Note: Button stays enabled - no setHintPending(true)
-    } catch (err) {
-      logger.error('Hint error:', err)
-      setValidationMessage({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Failed to get hint',
-      })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-    } finally {
-      gate.end()
-      setHintLoading(false)
-    }
-  }, [
-    game.history.length,
-    clearAllAndDeselect,
-    fetchCachedHint,
-    scheduleToastClear,
-    setMoveHighlight,
-    clearMoveHighlight,
-  ])
-
-  // Handle technique hint button - shows technique name and highlights cells without revealing the answer
-  const handleTechniqueHint = useCallback(async () => {
-    // Prevent concurrent requests
-    const gate = hintGateRef.current
-    if (!gate || !gate.canStart()) return
-    gate.begin()
-    setTechniqueHintLoading(true)
-
-    try {
-      // Deselect any highlighted digit when using technique hint
-      clearAllAndDeselect()
-
-      const move = await fetchCachedHint()
-      if (!move) return
-
-      // If the next move is just filling candidates, show a helpful message
-      if (move.technique === 'fill-candidate') {
-        setValidationMessage({
-          type: 'info',
-          message: 'Fill in some candidates first, or use 💡 Hint to get started',
-        })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-        return
-      }
-
-      // Handle unpinpointable errors separately - no highlighting to show
-      if (move.action === 'unpinpointable-error') {
-        setValidationMessage({
-          type: 'error',
-          message: 'There seems to be an error in the puzzle. Try using 💡 Hint to fix it.',
-        })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-        return
-      }
-
-      // Handle constraint violations and errors - show WITH highlighting
-      if (move.action === 'contradiction' || move.action === 'error') {
-        // Show the constraint violation highlights (shows which cells conflict)
-        setMoveHighlight({ ...move, showAnswer: false } as MoveHighlight, game.history.length)
-
-        // Show the error message
-        setValidationMessage({
-          type: 'error',
-          message: move.explanation || 'Constraint violation detected',
-        })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-        return
-      }
-
-      // Get the technique info
-      const techniqueName = formatTechniqueName(move.technique || 'Unknown Technique')
-      const techniqueSlug =
-        move.technique?.toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-') || 'unknown'
-
-      // Show highlight WITHOUT the answer (showAnswer: false)
-      // This shows primary/secondary cell highlighting but hides eliminations and target additions
-      setMoveHighlight({ ...move, showAnswer: false } as MoveHighlight, game.history.length)
-
-      // Show toast with technique name and "Learn more" action
-      setValidationMessage({
-        type: 'info',
-        message: `Try: ${techniqueName}`,
-        action: {
-          label: 'Learn more',
-          onClick: () => setTechniqueModal({ title: techniqueName, slug: techniqueSlug }),
-        },
-      })
-      scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
-
-      // Only increment counter if this is a NEW hint (different from last shown)
-      const signature = getHintSignature(move)
-      if (shouldIncrementHintCounter(signature, lastTechniqueHintRef.current)) {
-        setTechniqueHintsUsed((prev) => prev + 1)
-        lastTechniqueHintRef.current = signature
-      }
-      // Note: Button stays enabled - no setTechniqueHintPending(true)
-    } catch (err) {
-      logger.error('Technique hint error:', err)
-      setValidationMessage({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Failed to get technique',
-      })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-    } finally {
-      gate.end()
-      setTechniqueHintLoading(false)
-    }
-  }, [
-    game.history.length,
-    clearAllAndDeselect,
-    fetchCachedHint,
-    scheduleToastClear,
-    setMoveHighlight,
-  ])
+  // Next-move hint resolution and the two hint-button handlers live in
+  // useHints; resetHintTracking is returned so the input handlers below can
+  // invalidate the cache after any user action that changes the board.
+  const { handleNext, handleTechniqueHint, resetHintTracking, hintLoading, techniqueHintLoading } =
+    useHints({
+      game,
+      gameRef,
+      initialBoard,
+      clearAllAndDeselect,
+      setMoveHighlight,
+      clearMoveHighlight,
+      scheduleToastClear,
+      setValidationMessage,
+      setHintsUsed,
+      setTechniqueHintsUsed,
+      setUnpinpointableErrorInfo,
+      setShowSolutionConfirm,
+      setTechniqueModal,
+    })
 
   // Resume from extended pause on user interaction
   const resumeFromExtendedPause = useCallback(() => {
@@ -1225,9 +838,7 @@ function GameContent() {
         }
       }
 
-      lastTechniqueHintRef.current = null
-      lastRegularHintRef.current = null
-      cachedHintRef.current = null
+      resetHintTracking()
     },
     [clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell, clearDigitHighlight],
   )
@@ -1251,14 +862,6 @@ function GameContent() {
     if (cells.length === 0) return
 
     currentGame.setCellMultiple(cells, currentHighlightedDigit, true)
-  }, [])
-
-  // Shared reset for hint tracking caches, invoked after any user action that
-  // changes the board and therefore invalidates the cached next hint.
-  const resetHintTracking = useCallback(() => {
-    lastTechniqueHintRef.current = null
-    lastRegularHintRef.current = null
-    cachedHintRef.current = null
   }, [])
 
   type GameApi = NonNullable<ReturnType<typeof useSudokuGame>>
@@ -1445,9 +1048,7 @@ function GameContent() {
           setAutoSolveStepsUsed,
           setAutoSolveErrorsFixed,
         })
-        lastTechniqueHintRef.current = null
-        lastRegularHintRef.current = null
-        cachedHintRef.current = null
+        resetHintTracking()
         return
       }
 
@@ -1463,6 +1064,7 @@ function GameContent() {
       placeDigitAndClear,
       deselectCell,
       resumeFromExtendedPause,
+      resetHintTracking,
     ],
   )
 
@@ -1488,9 +1090,7 @@ function GameContent() {
           setAutoSolveStepsUsed,
           setAutoSolveErrorsFixed,
         })
-        lastTechniqueHintRef.current = null
-        lastRegularHintRef.current = null
-        cachedHintRef.current = null
+        resetHintTracking()
       } else {
         if (currentNotesMode) {
           currentGame.setCell(idx, value, currentNotesMode)
@@ -1503,9 +1103,7 @@ function GameContent() {
           deselectCell()
         }
         // Reset last hint tracking so next hint counts as new
-        lastTechniqueHintRef.current = null
-        lastRegularHintRef.current = null
-        cachedHintRef.current = null
+        resetHintTracking()
       }
       // All deps are now stable callbacks - state accessed via refs
     },
@@ -1515,6 +1113,7 @@ function GameContent() {
       clearAfterErase,
       clearAfterUserCandidateOp,
       resumeFromExtendedPause,
+      resetHintTracking,
     ],
   )
 
@@ -1696,74 +1295,19 @@ function GameContent() {
     window.open('https://github.com/thodha/sudoku/issues', '_blank', 'noopener,noreferrer')
   }, [])
 
-  // Copy a share URL to the clipboard and surface the outcome as a toast.
-  const copyShareUrl = useCallback(
-    async (url: string, label: string) => {
-      const success = await copyToClipboard(url)
-      if (success) {
-        setValidationMessage({ type: 'success', message: `${label} link copied to clipboard!` })
-        scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
-      } else {
-        setValidationMessage({ type: 'error', message: 'Failed to copy link' })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-      }
-    },
-    [scheduleToastClear],
-  )
-
-  const handleShareError = useCallback(
-    (err: unknown) => {
-      logger.error('Share error:', err)
-      setValidationMessage({ type: 'error', message: 'Failed to create share link' })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-    },
-    [scheduleToastClear],
-  )
-
-  // Share the bare puzzle (givens only): a short seed link for portable puzzles,
-  // an encoded /c/ link for localStorage-backed ones.
-  const handleSharePuzzle = useCallback(async () => {
-    try {
-      const url = buildPuzzleShareUrl({
-        isEncodedCustom,
-        seed: puzzle?.seed,
-        difficulty,
-        givens: initialBoard,
-      })
-      await copyShareUrl(url, 'Puzzle')
-    } catch (err) {
-      handleShareError(err)
-    }
-  }, [isEncodedCustom, puzzle?.seed, difficulty, initialBoard, copyShareUrl, handleShareError])
-
-  // Share the exact current position: givens plus the player's entries, notes,
-  // and elapsed time.
-  const handleShareState = useCallback(async () => {
-    try {
-      const url = buildStateShareUrl({
-        isEncodedCustom,
-        seed: puzzle?.seed,
-        difficulty,
-        givens: initialBoard,
-        board: game.board,
-        candidates: candidatesToArrays(game.candidates),
-        elapsedMs: timerControl.getElapsedMs(),
-      })
-      await copyShareUrl(url, 'Game')
-    } catch (err) {
-      handleShareError(err)
-    }
-  }, [
+  // Share-link actions live in useShareActions; only the two public handlers
+  // are consumed by the GameHeader share buttons.
+  const { onSharePuzzle: handleSharePuzzle, onShareState: handleShareState } = useShareActions({
     isEncodedCustom,
-    puzzle?.seed,
+    seed: puzzle?.seed,
     difficulty,
-    initialBoard,
-    game.board,
-    game.candidates,
-    timerControl,
-    copyShareUrl,
-    handleShareError,
-  ])
+    givens: initialBoard,
+    board: game.board,
+    candidates: candidatesToArrays(game.candidates),
+    elapsedMs: timerControl.getElapsedMs(),
+    scheduleToastClear,
+    setValidationMessage,
+  })
 
   // ============================================================
   // EFFECTS
@@ -1777,15 +1321,7 @@ function GameContent() {
     handleValidate,
     clearAllAndDeselect,
     setNotesMode,
-    isModalOpen:
-      showResultModal ||
-      historyOpen ||
-      !!techniqueModal ||
-      techniquesListOpen ||
-      solveConfirmOpen ||
-      showClearConfirm ||
-      showShareConflict ||
-      menuOpen,
+    isModalOpen: showResultModal || isAnyModalOpen || showShareConflict || menuOpen,
   })
 
   // Sync game state to global context for header
