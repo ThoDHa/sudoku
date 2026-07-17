@@ -29,6 +29,7 @@ import { useGamePersistence } from '../hooks/useGamePersistence'
 import { usePuzzleLoader } from '../hooks/usePuzzleLoader'
 import { useShareConflict } from '../hooks/useShareConflict'
 import { useGameKeyboardShortcuts } from '../hooks/useGameKeyboardShortcuts'
+import { useGameModals } from '../hooks/useGameModals'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import { useHighlightState } from '../hooks/useHighlightState'
 import type { MoveHighlight } from '../hooks/useHighlightState'
@@ -62,84 +63,13 @@ import {
 } from '../lib/solver-service'
 import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 
-import {
-  saveScore,
-  markDailyCompleted,
-  isTodayCompleted,
-  getTodayUTC,
-  getScores,
-  type Score,
-} from '../lib/scores'
+import { saveScore, markDailyCompleted, type Score } from '../lib/scores'
 import { setShowDailyReminder } from '../lib/preferences'
 import { buildPuzzleShareUrl, buildStateShareUrl } from '../lib/shareLinks'
 import { candidatesToArrays, arraysToCandidates, countCandidates } from '../lib/candidatesUtils'
 import { restoreHintCounters } from '../lib/savedGameState'
-
-/**
- * Generate a unique signature for a hint move to detect duplicates.
- * Used to avoid counting the same hint multiple times.
- */
-function getHintSignature(move: {
-  technique: string
-  action: string
-  digit: number
-  targets: { row: number; col: number }[]
-}): string {
-  return `${move.technique}-${move.action}-${move.digit}-${JSON.stringify(move.targets)}`
-}
-
-/**
- * Generate a signature for the current board state (cells + candidates).
- * Used to invalidate hint cache when board changes.
- * Candidates are stored as Uint16Array where each element is a bitmask.
- */
-function getBoardSignature(board: number[], candidates: Uint16Array): string {
-  const candidatesStr = Array.from(candidates).join(',')
-  return `${board.join(',')}-${candidatesStr}`
-}
-
-/**
- * Format technique name for display (convert slug to title case)
- */
-function formatTechniqueName(technique: string): string {
-  return technique.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-interface PuzzleSetup {
-  effectiveSeed: string | undefined
-  isEncodedCustom: boolean
-  needsDifficultyChoice: boolean
-  alreadyCompletedToday: boolean
-  completedDailyScore: Score | undefined
-}
-
-function resolvePuzzleSetup(params: {
-  seed: string | undefined
-  encoded: string | undefined
-  pathname: string
-  difficultyParam: string | null
-}): PuzzleSetup {
-  const { seed, encoded, pathname, difficultyParam } = params
-  const effectiveSeed = seed || undefined
-  const isEncodedCustom = pathname.startsWith('/c/') && !!encoded
-  const needsDifficultyChoice =
-    !difficultyParam &&
-    !isEncodedCustom &&
-    !effectiveSeed?.startsWith('custom-') &&
-    !effectiveSeed?.startsWith('practice-')
-  const isTodaysDailyPuzzle = effectiveSeed === `daily-${getTodayUTC()}`
-  const alreadyCompletedToday = isTodaysDailyPuzzle && isTodayCompleted()
-  const completedDailyScore = alreadyCompletedToday
-    ? getScores().find((s) => s.seed === effectiveSeed)
-    : undefined
-  return {
-    effectiveSeed,
-    isEncodedCustom,
-    needsDifficultyChoice,
-    alreadyCompletedToday,
-    completedDailyScore,
-  }
-}
+import { getHintSignature, getBoardSignature, formatTechniqueName } from '../lib/hintSignatures'
+import { resolvePuzzleSetup } from '../lib/puzzleSetup'
 
 /**
  * Inner component that contains all game logic.
@@ -225,20 +155,27 @@ function GameContent() {
   const [eraseMode, setEraseMode] = useState(false)
   const [notesMode, setNotesMode] = useState(false)
   const [showResultModal, setShowResultModal] = useState(alreadyCompletedToday) // Show result if already completed today
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const [techniqueModal, setTechniqueModal] = useState<{ title: string; slug: string } | null>(null)
-  const [techniquesListOpen, setTechniquesListOpen] = useState(false)
-  const [solveConfirmOpen, setSolveConfirmOpen] = useState(false)
-  const [showClearConfirm, setShowClearConfirm] = useState(false)
-  const [showSolutionConfirm, setShowSolutionConfirm] = useState(false)
+  const {
+    historyOpen,
+    techniqueModal,
+    techniquesListOpen,
+    solveConfirmOpen,
+    showClearConfirm,
+    showSolutionConfirm,
+    unpinpointableErrorInfo,
+    isAnyModalOpen,
+    setHistoryOpen,
+    setTechniqueModal,
+    setTechniquesListOpen,
+    setSolveConfirmOpen,
+    setShowClearConfirm,
+    setShowSolutionConfirm,
+    setUnpinpointableErrorInfo,
+  } = useGameModals()
   const [menuOpen, setMenuOpen] = useState(false)
   const [showInProgressConfirm, setShowInProgressConfirm] = useState(false)
   const [existingInProgressGame, setExistingInProgressGame] = useState<SavedGameInfo | null>(null)
   const [showDailyPrompt, setShowDailyPrompt] = useState(false)
-  const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] = useState<{
-    message: string
-    count: number
-  } | null>(null)
   const [debugInfoCopied, setDebugInfoCopied] = useState(false)
   const [autoFillUsed, setAutoFillUsed] = useState(false)
   const [autoSolveUsed, setAutoSolveUsed] = useState(false)
@@ -588,10 +525,13 @@ function GameContent() {
     [scheduleToastClear],
   )
 
-  const handleUnpinpointableError = useCallback((message: string, count: number) => {
-    setUnpinpointableErrorInfo({ message, count })
-    setShowSolutionConfirm(true)
-  }, [])
+  const handleUnpinpointableError = useCallback(
+    (message: string, count: number) => {
+      setUnpinpointableErrorInfo({ message, count })
+      setShowSolutionConfirm(true)
+    },
+    [setUnpinpointableErrorInfo, setShowSolutionConfirm],
+  )
 
   const handleAutoSolveStatus = useCallback(
     (message: string) => {
@@ -726,7 +666,7 @@ function GameContent() {
       // Solution has been fetched, auto-solve is now playing back - close modal
       setSolveConfirmOpen(false)
     }
-  }, [solveConfirmOpen, autoSolve.isFetching, autoSolve.isAutoSolving])
+  }, [solveConfirmOpen, autoSolve.isFetching, autoSolve.isAutoSolving, setSolveConfirmOpen])
 
   // Check for existing in-progress game when navigating to a different puzzle
   useEffect(() => {
@@ -1777,15 +1717,7 @@ function GameContent() {
     handleValidate,
     clearAllAndDeselect,
     setNotesMode,
-    isModalOpen:
-      showResultModal ||
-      historyOpen ||
-      !!techniqueModal ||
-      techniquesListOpen ||
-      solveConfirmOpen ||
-      showClearConfirm ||
-      showShareConflict ||
-      menuOpen,
+    isModalOpen: showResultModal || isAnyModalOpen || showShareConflict || menuOpen,
   })
 
   // Sync game state to global context for header
