@@ -8,6 +8,7 @@ import (
 	"hash/fnv"
 	"log"
 	"maps"
+	"math/rand/v2"
 	"net/http"
 	"slices"
 	"sync"
@@ -25,6 +26,31 @@ import (
 )
 
 var cfg *config.Config
+
+// practiceRand is the package-seeded PRNG for practice-puzzle selection. The
+// fixed seed makes the selection sequence reproducible across runs (useful for
+// tests and for diagnosing which puzzle a player got); the mutex guards it for
+// concurrent handler use, since *rand.Rand is not concurrency-safe. Weak
+// randomness is intentional here: practice selection is not security-sensitive
+// and reproducibility-per-seed is the contracted behavior.
+var (
+	practiceRand   = rand.New(rand.NewPCG(practiceRandSeedLo, practiceRandSeedHi)) //nolint:gosec // G404: weak RNG is intentional for reproducible practice selection
+	practiceRandMu sync.Mutex
+)
+
+const (
+	practiceRandSeedLo uint64 = 0x4C55_4B4F_4E47_B9EE
+	practiceRandSeedHi uint64 = 0x0D5A_EA07_1979_0718
+)
+
+// practiceIntN returns a non-negative pseudo-random int in [0, n) from the
+// package-seeded practice PRNG. n must be > 0; the caller guards the
+// puzzleCount == 0 and len(cached) == 0 cases before reaching here.
+func practiceIntN(n int) int {
+	practiceRandMu.Lock()
+	defer practiceRandMu.Unlock()
+	return practiceRand.IntN(n)
+}
 
 // maxRequestBodyBytes caps the size of any request body the API will decode.
 // 1 MiB is comfortably above the largest legal Sudoku payload (81 cells plus
@@ -499,7 +525,7 @@ func serveCachedPractice(c *gin.Context, technique string, cached []practicePuzz
 	if len(cached) == 0 {
 		return false
 	}
-	idx := int(time.Now().UnixNano()) % len(cached)
+	idx := practiceIntN(len(cached))
 	p := cached[idx]
 
 	givens, _, err := loader.GetPuzzle(p.index, p.difficulty)
@@ -531,7 +557,7 @@ func findPracticePuzzle(ctx context.Context, loader *puzzles.Loader, solver *hum
 		return nil, 0, "", false
 	}
 	// mutator-disable-next-line arithmetic/base
-	startIdx := int(time.Now().UnixNano()) % puzzleCount
+	startIdx := practiceIntN(puzzleCount)
 	for i := range maxSamples {
 		idx := (startIdx + i) % puzzleCount
 		for _, diff := range difficulties {

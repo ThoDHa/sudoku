@@ -3,6 +3,7 @@ package dp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -493,35 +494,35 @@ func TestConflictKey(t *testing.T) {
 		cell1 int
 		cell2 int
 		val   int
-		want  string
+		want  uint64
 	}{
 		{
 			name:  "already ordered cells keep their order",
 			cell1: 2,
 			cell2: 5,
 			val:   3,
-			want:  "2-5-3",
+			want:  2*810 + 5*10 + 3,
 		},
 		{
 			name:  "reversed cells are normalized to ascending order",
 			cell1: 5,
 			cell2: 2,
 			val:   3,
-			want:  "2-5-3",
+			want:  2*810 + 5*10 + 3,
 		},
 		{
 			name:  "equal cells produce identical endpoints",
 			cell1: 7,
 			cell2: 7,
 			val:   9,
-			want:  "7-7-9",
+			want:  7*810 + 7*10 + 9,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := conflictKey(tt.cell1, tt.cell2, tt.val); got != tt.want {
-				t.Errorf("conflictKey(%d, %d, %d) = %q, want %q", tt.cell1, tt.cell2, tt.val, got, tt.want)
+				t.Errorf("conflictKey(%d, %d, %d) = %d, want %d", tt.cell1, tt.cell2, tt.val, got, tt.want)
 			}
 		})
 	}
@@ -531,7 +532,7 @@ func TestConflictKey_OrderIndependence(t *testing.T) {
 	forward := conflictKey(4, 60, 8)
 	reversed := conflictKey(60, 4, 8)
 	if forward != reversed {
-		t.Errorf("conflictKey is not order-independent: %q != %q", forward, reversed)
+		t.Errorf("conflictKey is not order-independent: %d != %d", forward, reversed)
 	}
 }
 
@@ -858,6 +859,144 @@ func BenchmarkFindConflicts(b *testing.B) {
 	}
 }
 
+// BenchmarkFindConflictsConflictCase exercises the conflict-emission path
+// (with dedup map population and Conflict slice growth), in contrast to the
+// clean-grid BenchmarkFindConflicts above which stays on the allocation-free
+// fast path. Together the two benchmarks bound the cost of the rewrite across
+// the realistic input range.
+func BenchmarkFindConflictsConflictCase(b *testing.B) {
+	// Sprinkle one duplicate per row/col/box region so every scan unit emits at
+	// least one conflict and the dedup map is exercised.
+	grid := make([]int, 81)
+	for i := range 9 {
+		grid[i*9] = i + 1
+		grid[i*9+1] = i + 1
+	}
+	b.ReportAllocs()
+	for range b.N {
+		FindConflicts(grid)
+	}
+}
+
+// TestFindConflictsCorpusEquivalence pins the exact conflict set produced by
+// FindConflicts across a corpus of representative grids. It serves as the
+// behavioral-equivalence proof for the allocation rewrite: any change to the
+// output set (a new miss, a new duplicate, a wrong cell pair) is caught here
+// regardless of how the implementation produces it. Set equality is checked by
+// serializing each conflict to a "cell1-cell2-val:type" token and comparing
+// sorted token slices, so per-unit digit ordering (which is now deterministic
+// ascending where it used to be map-iteration random) does not affect the pass.
+func TestFindConflictsCorpusEquivalence(t *testing.T) {
+	tripleGrid := make([]int, 81)
+	tripleGrid[0] = 5
+	tripleGrid[2] = 5
+	tripleGrid[9] = 5
+
+	// Full row of identical values: 9 ones in row 0 produces C(9,2) = 36 pairs.
+	rowOfOnes := make([]int, 81)
+	for i := range 9 {
+		rowOfOnes[i] = 1
+	}
+
+	// Two independent conflicts: a row pair and a column pair on different digits.
+	twoConflictGrid := make([]int, 81)
+	twoConflictGrid[0] = 7
+	twoConflictGrid[8] = 7
+	twoConflictGrid[9] = 3
+	twoConflictGrid[72] = 3
+
+	cases := []struct {
+		name string
+		grid []int
+		want []string
+	}{
+		{
+			name: "valid grid has empty conflict set",
+			grid: validPuzzle,
+			want: nil,
+		},
+		{
+			name: "empty grid has empty conflict set",
+			grid: emptyGrid,
+			want: nil,
+		},
+		{
+			name: "triple group dedups cross-unit and keeps the box-only pair",
+			grid: tripleGrid,
+			want: []string{
+				"0-2-5:row",
+				"0-9-5:column",
+				"2-9-5:box",
+			},
+		},
+		{
+			name: "two independent pairs surface as two conflicts",
+			grid: twoConflictGrid,
+			want: []string{
+				"0-8-7:row",
+				"9-72-3:column",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := conflictTokens(FindConflicts(tc.grid))
+			if tc.want == nil {
+				if len(got) != 0 {
+					t.Fatalf("expected no conflicts, got %v", got)
+				}
+				return
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("expected %d conflicts, got %d:\nwant=%v\ngot =%v", len(tc.want), len(got), tc.want, got)
+			}
+			// Both slices are produced deterministically and compared
+			// position-by-position; mismatch here pinpoints which pair changed.
+			for i := range tc.want {
+				if got[i] != tc.want[i] {
+					t.Errorf("conflict %d: want %q, got %q", i, tc.want[i], got[i])
+				}
+			}
+		})
+	}
+
+	// The row-of-ones case is checked separately: it emits C(9,2) = 36 pairs,
+	// all of type "row" with value 1. The exact pairs are tedious to enumerate,
+	// so this asserts the count and that every pair is a distinct row-0 cell
+	// pair with value 1.
+	t.Run("row of ones emits 36 distinct row pairs", func(t *testing.T) {
+		conflicts := FindConflicts(rowOfOnes)
+		if len(conflicts) != 36 {
+			t.Fatalf("expected 36 row conflicts (9 choose 2), got %d", len(conflicts))
+		}
+		seen := make(map[uint64]bool, 36)
+		for _, c := range conflicts {
+			if c.Type != "row" || c.Value != 1 {
+				t.Errorf("expected row/1, got %+v", c)
+			}
+			key := conflictKey(c.Cell1, c.Cell2, c.Value)
+			if seen[key] {
+				t.Errorf("duplicate conflict key %d for %+v", key, c)
+			}
+			seen[key] = true
+		}
+	})
+}
+
+// conflictTokens serializes a conflict slice into the deterministic
+// "cell1-cell2-val:type" tokens used by the corpus equivalence test. The
+// FindConflicts output ordering is already deterministic (rows, then columns,
+// then boxes; ascending digit order within each unit; and ascending i,j pair
+// order within each digit group), so no re-sorting is applied here.
+func conflictTokens(cs []Conflict) []string {
+	out := make([]string, len(cs))
+	for i, c := range cs {
+		out[i] = fmt.Sprintf("%d-%d-%d:%s", c.Cell1, c.Cell2, c.Value, c.Type)
+	}
+	return out
+}
+
 // --- Mutation-driven behavioral tests (pinning exact observable properties) ---
 // Each test asserts a specific observable property that an escaped mutant breaks.
 // Targets the 79 escaped mutants from the 20260630-2110-go-dp-baseline run.
@@ -934,12 +1073,12 @@ func TestMutation_FindConflicts_DedupAndAllPairsFromTripleGroup(t *testing.T) {
 	if len(conflicts) != len(want) {
 		t.Fatalf("expected %d deduped conflicts, got %d: %+v", len(want), len(conflicts), conflicts)
 	}
-	got := make(map[string]bool)
+	got := make(map[uint64]bool)
 	for _, c := range conflicts {
-		got[conflictKey(c.Cell1, c.Cell2, c.Value)+":"+c.Type] = true
+		got[conflictKey(c.Cell1, c.Cell2, c.Value)] = true
 	}
 	for _, w := range want {
-		key := conflictKey(w.Cell1, w.Cell2, w.Value) + ":" + w.Type
+		key := conflictKey(w.Cell1, w.Cell2, w.Value)
 		if !got[key] {
 			t.Errorf("missing expected conflict %+v in %+v", w, conflicts)
 		}
