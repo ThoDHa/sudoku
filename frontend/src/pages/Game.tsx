@@ -23,6 +23,7 @@ import { TimerProvider, useTimerControl } from '../lib/TimerContext'
 import { useSudokuGame } from '../hooks/useSudokuGame'
 import { useAutoSolve } from '../hooks/useAutoSolve'
 import { useGameInput } from '../hooks/useGameInput'
+import { useAutoSolveAdapters } from '../hooks/useAutoSolveAdapters'
 import { useGamePersistence } from '../hooks/useGamePersistence'
 import { usePuzzleLoader } from '../hooks/usePuzzleLoader'
 import { useShareConflict } from '../hooks/useShareConflict'
@@ -40,14 +41,7 @@ import { useToastClearTimer } from '../hooks/useToastClearTimer'
 import { useFrozenWhenHidden } from '../hooks/useFrozenWhenHidden'
 import type { Move } from '../hooks/useSudokuGame'
 import { logger } from '../lib/logger'
-import {
-  TOAST_DURATION_INFO,
-  TOAST_DURATION_ERROR,
-  TOAST_DURATION_FIX_ERROR,
-  ERROR_FIX_RESUME_DELAY,
-  EXTENDED_PAUSE_DELAY,
-  STORAGE_KEYS,
-} from '../lib/constants'
+import { TOAST_DURATION_INFO, EXTENDED_PAUSE_DELAY, STORAGE_KEYS } from '../lib/constants'
 import {
   getAutoSolveSpeed,
   type AutoSolveSpeed,
@@ -373,127 +367,48 @@ function GameContent() {
   // internal useMemo from recalculating on every render.
 
   // Stable onComplete callback for useSudokuGame
-  // Uses refs to break circular dependency: handleSubmit needs game, but onComplete is passed to game
+  // Uses refs to break circular dependency: handleSubmit needs game, but onComplete is passed to game.
+  // handleGameComplete stays in Game (not in useAutoSolveAdapters) because it
+  // reads timerControlRef + handleSubmitRef, the circular-dep breaker between
+  // useSudokuGame's onComplete and handleSubmit itself.
   const handleGameComplete = useCallback(() => {
     timerControlRef.current?.pauseTimer()
     handleSubmitRef.current?.()
   }, [])
 
-  // Stable callbacks for useAutoSolve
-  const getBoard = useCallback(() => gameRef.current?.board ?? [], [])
-
-  const getCandidates = useCallback(() => {
-    const game = gameRef.current
-    if (!game) return []
-    // Convert Uint16Array to Set<number>[] for legacy API compatibility
-    const arrays = candidatesToArrays(game.candidates)
-    return arrays.map((arr) => new Set(arr))
-  }, [])
-
-  const getGivens = useCallback(() => initialBoardRef.current, [])
-
-  const handleApplyMove = useCallback(
-    (newBoard: number[], newCandidates: Set<number>[], move: Move, index: number) => {
-      const game = gameRef.current
-      if (!game) return
-      // Convert Set<number>[] back to Uint16Array
-      const candidatesArray = newCandidates.map((set) => Array.from(set))
-      const uint16Candidates = arraysToCandidates(candidatesArray)
-      game.applyExternalMove(newBoard, uint16Candidates, move)
-      setMoveHighlight(move as MoveHighlight, index)
-
-      // Highlight the digit being placed/modified
-      if (move.digit && move.digit > 0) {
-        setDigitHighlight(move.digit)
-      }
-
-      // Show notes mode if it's a candidate operation
-      if (move.action === 'eliminate' || move.action === 'candidate') {
-        setNotesMode(true)
-      } else if (move.action === 'assign' || move.action === 'place') {
-        setNotesMode(false)
-      }
-    },
-    [setMoveHighlight, setDigitHighlight],
-  )
-
-  const handleApplyState = useCallback(
-    (board: number[], candidates: Set<number>[], move: Move | null, index: number) => {
-      const game = gameRef.current
-      if (!game) return
-      // Convert Set<number>[] back to Uint16Array
-      const candidatesArray = candidates.map((set) => Array.from(set))
-      const uint16Candidates = arraysToCandidates(candidatesArray)
-      game.setBoardState(board, uint16Candidates)
-      setMoveHighlight(move as MoveHighlight, index)
-
-      // Update digit highlight based on move
-      if (move && move.digit && move.digit > 0) {
-        setDigitHighlight(move.digit)
-      } else {
-        clearDigitHighlight()
-      }
-
-      // Update notes mode based on move action
-      if (move) {
-        if (move.action === 'eliminate' || move.action === 'candidate') {
-          setNotesMode(true)
-        } else if (move.action === 'assign' || move.action === 'place') {
-          setNotesMode(false)
-        }
-      }
-    },
-    [setMoveHighlight, setDigitHighlight, clearDigitHighlight],
-  )
-
-  const handleIsComplete = useCallback(() => gameRef.current?.isComplete ?? false, [])
-
-  const handleAutoSolveError = useCallback(
-    (message: string) => {
-      setValidationMessage({ type: 'error', message })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
-    },
-    [scheduleToastClear],
-  )
-
-  const handleUnpinpointableError = useCallback(
-    (message: string, count: number) => {
-      setUnpinpointableErrorInfo({ message, count })
-      setShowSolutionConfirm(true)
-    },
-    [setUnpinpointableErrorInfo, setShowSolutionConfirm],
-  )
-
-  const handleAutoSolveStatus = useCallback(
-    (message: string) => {
-      throttledSetValidationMessage({ type: 'success', message })
-      scheduleToastClear(2000, () => setValidationMessage(null))
-    },
-    [throttledSetValidationMessage, scheduleToastClear],
-  )
-
-  const handleErrorFixed = useCallback(
-    (message: string, resumeCallback: () => void) => {
-      // Show toast for fix-error (longer duration than normal hints)
-      setValidationMessage({ type: 'error', message: `Fixed: ${message}` })
-      // Clear toast after full duration
-      scheduleToastClear(TOAST_DURATION_FIX_ERROR, () => setValidationMessage(null))
-      // But resume solving sooner for better UX
-      visibilityAwareTimeout(resumeCallback, ERROR_FIX_RESUME_DELAY)
-    },
-    [visibilityAwareTimeout, scheduleToastClear],
-  )
-
-  const handleStepNavigate = useCallback((move: Move | null) => {
-    // Show toast with move explanation when stepping through autosolve
-    // Toast persists until next step or autosolve stops (no timeout)
-    if (move) {
-      setValidationMessage({ type: 'success', message: move.explanation })
-    } else {
-      // Stepped back to initial state
-      setValidationMessage({ type: 'success', message: 'Initial state' })
-    }
-  }, [])
+  // Adapter callbacks for useAutoSolve live in useAutoSolveAdapters. The hook
+  // takes the gameRef / initialBoardRef refs, the highlight-state callbacks,
+  // the validation-message setter, and the toast helpers as inputs and
+  // returns the eleven stable callbacks (getBoard, getCandidates, getGivens,
+  // handleApplyMove, handleApplyState, handleIsComplete, handleAutoSolveError,
+  // handleUnpinpointableError, handleAutoSolveStatus, handleErrorFixed,
+  // handleStepNavigate) the auto-solve hook consumes.
+  const {
+    getBoard,
+    getCandidates,
+    getGivens,
+    handleApplyMove,
+    handleApplyState,
+    handleIsComplete,
+    handleAutoSolveError,
+    handleUnpinpointableError,
+    handleAutoSolveStatus,
+    handleErrorFixed,
+    handleStepNavigate,
+  } = useAutoSolveAdapters({
+    gameRef,
+    initialBoardRef,
+    setMoveHighlight,
+    setDigitHighlight,
+    clearDigitHighlight,
+    setNotesMode,
+    setValidationMessage,
+    throttledSetValidationMessage,
+    scheduleToastClear,
+    visibilityAwareTimeout,
+    setUnpinpointableErrorInfo,
+    setShowSolutionConfirm,
+  })
 
   // Game state hook - only initialize after we have the initial board
   const game = useSudokuGame({
