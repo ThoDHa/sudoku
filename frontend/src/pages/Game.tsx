@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { commitCellAction } from '../lib/commitCellAction'
-import { isDigitComplete } from '../lib/digitCompletion'
 import { buildFreshTrackingState } from '../lib/gameStateReset'
 import { resolveCompletionAction } from '../lib/completionGate'
 import { isValidSolution } from '../lib/validationUtils'
@@ -23,6 +22,7 @@ import { useGameContext } from '../lib/GameContext'
 import { TimerProvider, useTimerControl } from '../lib/TimerContext'
 import { useSudokuGame } from '../hooks/useSudokuGame'
 import { useAutoSolve } from '../hooks/useAutoSolve'
+import { useGameInput } from '../hooks/useGameInput'
 import { useGamePersistence } from '../hooks/useGamePersistence'
 import { usePuzzleLoader } from '../hooks/usePuzzleLoader'
 import { useShareConflict } from '../hooks/useShareConflict'
@@ -797,365 +797,50 @@ function GameContent() {
       setTechniqueModal,
     })
 
-  // Resume from extended pause on user interaction
-  const resumeFromExtendedPause = useCallback(() => {
-    if (isExtendedPaused) {
-      setIsExtendedPaused(false)
-    }
-  }, [isExtendedPaused])
-
-  // Shared digit placement logic - unifies mobile and desktop behavior
-  const placeDigitAndClear = useCallback(
-    (cellIndex: number, digit: number, notesMode: boolean) => {
-      if (!gameRef.current) return
-
-      // Use setCellMultiple when multiple cells selected AND in notes mode
-      const currentSelectedCells = selectedCellsRef.current
-      const isMultiSelect = notesMode && currentSelectedCells.size > 1
-
-      if (isMultiSelect) {
-        // Convert Set to array for setCellMultiple
-        const selectedCellsArray = Array.from(currentSelectedCells)
-        gameRef.current.setCellMultiple(selectedCellsArray, digit, notesMode)
-      } else {
-        // Single cell: use original setCell logic
-        gameRef.current.setCell(cellIndex, digit, notesMode)
-      }
-
-      if (notesMode) {
-        clearAfterUserCandidateOp()
-      } else {
-        clearAfterDigitPlacement()
-        deselectCell()
-      }
-
-      // Fix 1: Clear highlight when digit becomes complete
-      // Check if the digit we just placed is now complete (all 9 instances on board)
-      if (!notesMode) {
-        const digitCounts = gameRef.current.digitCounts
-        if (isDigitComplete(digit, digitCounts)) {
-          clearDigitHighlight()
-        }
-      }
-
-      resetHintTracking()
-    },
-    [clearAfterUserCandidateOp, clearAfterDigitPlacement, deselectCell, clearDigitHighlight],
-  )
-
-  // Multi-select callback for drag selection on Board
-  const handleCellSelectMultiple = useCallback(
-    (cells: number[]) => {
-      selectMultipleCells(cells)
-    },
-    [selectMultipleCells],
-  )
-
-  // Drag end callback: when a multi-cell drag completes and a digit is highlighted
-  // in notes mode, auto-insert/toggle that candidate on all selected cells.
-  const handleDragEnd = useCallback((cells: number[]) => {
-    const currentHighlightedDigit = highlightedDigitRef.current
-    const currentNotesMode = notesModeRef.current
-    const currentGame = gameRef.current
-
-    if (!currentGame || !currentNotesMode || currentHighlightedDigit === null) return
-    if (cells.length === 0) return
-
-    currentGame.setCellMultiple(cells, currentHighlightedDigit, true)
-  }, [])
-
-  type GameApi = NonNullable<ReturnType<typeof useSudokuGame>>
-
-  // Erase-mode click: if active and the cell is erasable, erase it (keeping
-  // erase mode on); otherwise just select the cell and exit erase mode.
-  const handleEraseClick = useCallback(
-    (idx: number, game: GameApi): boolean => {
-      if (!eraseModeRef.current) return false
-      if (game.board[idx] !== 0 && !game.isGivenCell(idx)) {
-        commitCellAction('erase', {
-          idx,
-          game,
-          clearAfterErase,
-          deselectCell,
-          setEraseMode,
-          setAutoSolveStepsUsed,
-          setAutoSolveErrorsFixed,
-        })
-        resetHintTracking()
-        return true
-      }
-      selectCell(idx)
-      setEraseMode(false)
-      return true
-    },
-    [clearAfterErase, deselectCell, selectCell, resetHintTracking],
-  )
-
-  // Place (or toggle) the highlighted digit on a cell. In notes mode toggles
-  // the candidate; otherwise places the digit, or erases if the cell already
-  // holds that digit.
-  const handleHighlightedPlacement = useCallback(
-    (idx: number, game: GameApi, highlightedDigit: number, notesMode: boolean): void => {
-      if (isDigitComplete(highlightedDigit, game.digitCounts)) {
-        clearDigitHighlight()
-        return
-      }
-      if (notesMode) {
-        if (game.board[idx] === 0) {
-          placeDigitAndClear(idx, highlightedDigit, notesMode)
-        }
-        return
-      }
-      if (game.board[idx] === highlightedDigit) {
-        commitCellAction('erase', {
-          idx,
-          game,
-          clearAfterErase,
-          deselectCell,
-          setEraseMode,
-          setAutoSolveStepsUsed,
-          setAutoSolveErrorsFixed,
-        })
-        resetHintTracking()
-      } else {
-        placeDigitAndClear(idx, highlightedDigit, notesMode)
-      }
-    },
-    [clearDigitHighlight, placeDigitAndClear, clearAfterErase, deselectCell, resetHintTracking],
-  )
-
-  // Cell click handler - STABLE: reads from refs to avoid recreating on state changes
-  // This is critical because Cell memo doesn't compare callback props for performance
-  const handleCellClick = useCallback(
-    (idx: number) => {
-      resumeFromExtendedPause()
-
-      // Read current state from refs for stable callback
-      const currentHighlightedDigit = highlightedDigitRef.current
-      const currentSelectedCell = selectedCellRef.current
-      const currentNotesMode = notesModeRef.current
-      const currentGame = gameRef.current
-
-      if (!currentGame) return
-
-      if (handleEraseClick(idx, currentGame)) return
-
-      // If a digit is already highlighted and we're clicking a given cell,
-      // only block if we're NOT coming from another given cell (allow given-to-given navigation)
-      if (currentHighlightedDigit !== null && currentGame.isGivenCell(idx)) {
-        if (currentSelectedCell === null || !currentGame.isGivenCell(currentSelectedCell)) {
-          return
-        }
-      }
-
-      // Given cells: highlight the digit AND select the cell for peer highlighting
-      if (currentGame.isGivenCell(idx)) {
-        const cellDigit = currentGame.board[idx]
-        if (cellDigit && cellDigit > 0) {
-          if (currentSelectedCell === idx) {
-            clearAllAndDeselect()
-          } else {
-            clickGivenCell(cellDigit, idx)
-          }
-        }
-        setEraseMode(false)
-        return
-      }
-
-      // Toggle selection: clicking the same cell again deselects it.
-      // In notes mode with a highlighted digit, instead toggle that candidate.
-      if (currentSelectedCell === idx) {
-        if (currentNotesMode && currentHighlightedDigit !== null && currentGame.board[idx] === 0) {
-          currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
-          clearAfterUserCandidateOp()
-          resetHintTracking()
-          return
-        }
-        clearAllAndDeselect()
-        return
-      }
-
-      if (currentHighlightedDigit !== null) {
-        handleHighlightedPlacement(idx, currentGame, currentHighlightedDigit, currentNotesMode)
-        return
-      }
-
-      // Select the cell (works for both empty and user-filled cells)
-      // selectCell atomically selects and clears highlights
-      selectCell(idx)
-      setEraseMode(false)
-      // All deps are now stable callbacks - state accessed via refs
-    },
-    [
-      selectCell,
-      clearAllAndDeselect,
-      clickGivenCell,
-      resumeFromExtendedPause,
-      clearAfterUserCandidateOp,
-      resetHintTracking,
-      handleEraseClick,
-      handleHighlightedPlacement,
-    ],
-  )
-
-  // Digit input handler - STABLE: reads from refs to avoid recreating on state changes
-  const handleDigitInput = useCallback(
-    (digit: number) => {
-      resumeFromExtendedPause()
-      // Clear erase mode when selecting a digit
-      setEraseMode(false)
-
-      const currentSelectedCell = selectedCellRef.current
-      const currentNotesMode = notesModeRef.current
-      const currentGame = gameRef.current
-
-      if (!currentGame) return
-
-      // Fix 2: Block selection of complete digits
-      // Don't allow selecting/placing digits that have all 9 instances on the board
-      if (isDigitComplete(digit, currentGame.digitCounts)) {
-        return
-      }
-
-      // Multi-select in notes mode: route to bulk note entry
-      // selectedCell is null during multi-select (by design), so check selectedCells directly
-      const currentSelectedCells = selectedCellsRef.current
-      if (currentNotesMode && currentSelectedCells.size > 1) {
-        placeDigitAndClear(0, digit, currentNotesMode)
-        return
-      }
-
-      if (currentSelectedCell === null) {
-        toggleDigitHighlight(digit)
-        return
-      }
-
-      // If a given cell is selected, deselect it and toggle digit highlight for multi-fill mode
-      if (currentGame.isGivenCell(currentSelectedCell)) {
-        deselectCell()
-        toggleDigitHighlight(digit)
-        return
-      }
-
-      // If cell already has this digit, erase it
-      if (currentGame.board[currentSelectedCell] === digit) {
-        commitCellAction('erase', {
-          idx: currentSelectedCell,
-          game: currentGame,
-          clearAfterErase: clearAfterDigitToggle,
-          deselectCell,
-          setEraseMode,
-          setAutoSolveStepsUsed,
-          setAutoSolveErrorsFixed,
-        })
-        resetHintTracking()
-        return
-      }
-
-      placeDigitAndClear(currentSelectedCell, digit, currentNotesMode)
-
-      // Cell deselects after digit entry (per requirements)
-      // Keep digit highlighted for adding candidates (multi-fill)
-      // All deps are now stable callbacks - game accessed via ref
-    },
-    [
-      toggleDigitHighlight,
-      clearAfterDigitToggle,
-      placeDigitAndClear,
-      deselectCell,
-      resumeFromExtendedPause,
-      resetHintTracking,
-    ],
-  )
-
-  // Keyboard cell change handler (from Board component)
-  // STABLE: reads from refs to avoid recreation on state changes (like handleCellClick)
-  const handleCellChange = useCallback(
-    (idx: number, value: number) => {
-      resumeFromExtendedPause()
-
-      const currentGame = gameRef.current
-      const currentNotesMode = notesModeRef.current
-
-      if (!currentGame) return
-      if (currentGame.isGivenCell(idx)) return
-
-      if (value === 0) {
-        commitCellAction('erase', {
-          idx,
-          game: currentGame,
-          clearAfterErase,
-          deselectCell,
-          setEraseMode,
-          setAutoSolveStepsUsed,
-          setAutoSolveErrorsFixed,
-        })
-        resetHintTracking()
-      } else {
-        if (currentNotesMode) {
-          currentGame.setCell(idx, value, currentNotesMode)
-
-          // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
-          clearAfterUserCandidateOp()
-        } else {
-          currentGame.setCell(idx, value, currentNotesMode)
-          clearAfterDigitPlacement()
-          deselectCell()
-        }
-        // Reset last hint tracking so next hint counts as new
-        resetHintTracking()
-      }
-      // All deps are now stable callbacks - state accessed via refs
-    },
-    [
-      clearAfterDigitPlacement,
-      deselectCell,
-      clearAfterErase,
-      clearAfterUserCandidateOp,
-      resumeFromExtendedPause,
-      resetHintTracking,
-    ],
-  )
-
-  // Toggle notes mode handler
-  const handleNotesToggle = useCallback(() => {
-    setNotesMode((prev) => !prev)
-  }, [])
-
-  // Toggle erase mode handler
-  const handleEraseMode = useCallback(() => {
-    setEraseMode((prev) => !prev)
-    // DO NOT call clearOnModeChange - preserve selection during mode toggle
-  }, [])
-
-  // Undo handler - STABLE: reads from refs to avoid recreation on state changes
-  const handleUndo = useCallback(() => {
-    const currentAutoSolve = autoSolveRef.current
-    const currentGame = gameRef.current
-    if (currentAutoSolve?.isAutoSolving) {
-      currentAutoSolve.stepBack()
-    } else if (currentGame) {
-      commitCellAction('undo', {
-        game: currentGame,
-        deselectCell,
-        clearMoveHighlight,
-      })
-    }
-  }, [deselectCell, clearMoveHighlight])
-
-  // Redo handler - STABLE: reads from refs to avoid recreation on state changes
-  const handleRedo = useCallback(() => {
-    const currentAutoSolve = autoSolveRef.current
-    const currentGame = gameRef.current
-    if (currentAutoSolve?.isAutoSolving) {
-      currentAutoSolve.stepForward()
-    } else if (currentGame) {
-      commitCellAction('redo', {
-        game: currentGame,
-        clearAllAndDeselect,
-      })
-    }
-  }, [clearAllAndDeselect])
+  // All cell-click, digit-entry, keyboard-cell-change, drag, mode-toggle,
+  // undo, and redo handlers live in useGameInput. The hook takes the mirror
+  // refs and the stable highlight-state callbacks as inputs and returns the
+  // stable handlers Cell/Board/Controls memoization depends on. Behavior is
+  // identical to the inline implementation that lived here previously; the
+  // hook preserves every deps array exactly.
+  const {
+    handleCellClick,
+    handleCellChange,
+    handleDigitInput,
+    handleCellSelectMultiple,
+    handleDragEnd,
+    handleNotesToggle,
+    handleEraseMode,
+    handleUndo,
+    handleRedo,
+  } = useGameInput({
+    selectedCellRef,
+    selectedCellsRef,
+    notesModeRef,
+    eraseModeRef,
+    highlightedDigitRef,
+    gameRef,
+    autoSolveRef,
+    selectCell,
+    deselectCell,
+    clearAllAndDeselect,
+    clickGivenCell,
+    selectMultipleCells,
+    toggleDigitHighlight,
+    clearAfterUserCandidateOp,
+    clearAfterDigitPlacement,
+    clearAfterErase,
+    clearAfterDigitToggle,
+    clearDigitHighlight,
+    clearMoveHighlight,
+    setNotesMode,
+    setEraseMode,
+    setAutoSolveStepsUsed,
+    setAutoSolveErrorsFixed,
+    resetHintTracking,
+    isExtendedPaused,
+    setIsExtendedPaused,
+  })
 
   // Submit handler
   const handleSubmit = useCallback(async () => {
