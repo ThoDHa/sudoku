@@ -8,6 +8,7 @@ import (
 	"hash/fnv"
 	"log"
 	"maps"
+	"math/rand/v2"
 	"net/http"
 	"slices"
 	"sync"
@@ -25,6 +26,31 @@ import (
 )
 
 var cfg *config.Config
+
+// practiceRand is the package-seeded PRNG for practice-puzzle selection. The
+// fixed seed makes the selection sequence reproducible across runs (useful for
+// tests and for diagnosing which puzzle a player got); the mutex guards it for
+// concurrent handler use, since *rand.Rand is not concurrency-safe. Weak
+// randomness is intentional here: practice selection is not security-sensitive
+// and reproducibility-per-seed is the contracted behavior.
+var (
+	practiceRand   = rand.New(rand.NewPCG(practiceRandSeedLo, practiceRandSeedHi)) //nolint:gosec // G404: weak RNG is intentional for reproducible practice selection
+	practiceRandMu sync.Mutex
+)
+
+const (
+	practiceRandSeedLo uint64 = 0x4C55_4B4F_4E47_B9EE
+	practiceRandSeedHi uint64 = 0x0D5A_EA07_1979_0718
+)
+
+// practiceIntN returns a non-negative pseudo-random int in [0, n) from the
+// package-seeded practice PRNG. n must be > 0; the caller guards the
+// puzzleCount == 0 and len(cached) == 0 cases before reaching here.
+func practiceIntN(n int) int {
+	practiceRandMu.Lock()
+	defer practiceRandMu.Unlock()
+	return practiceRand.IntN(n)
+}
 
 // maxRequestBodyBytes caps the size of any request body the API will decode.
 // 1 MiB is comfortably above the largest legal Sudoku payload (81 cells plus
@@ -499,7 +525,7 @@ func serveCachedPractice(c *gin.Context, technique string, cached []practicePuzz
 	if len(cached) == 0 {
 		return false
 	}
-	idx := int(time.Now().UnixNano()) % len(cached)
+	idx := practiceIntN(len(cached))
 	p := cached[idx]
 
 	givens, _, err := loader.GetPuzzle(p.index, p.difficulty)
@@ -531,7 +557,7 @@ func findPracticePuzzle(ctx context.Context, loader *puzzles.Loader, solver *hum
 		return nil, 0, "", false
 	}
 	// mutator-disable-next-line arithmetic/base
-	startIdx := int(time.Now().UnixNano()) % puzzleCount
+	startIdx := practiceIntN(puzzleCount)
 	for i := range maxSamples {
 		idx := (startIdx + i) % puzzleCount
 		for _, diff := range difficulties {
@@ -756,7 +782,7 @@ func handleSolveNextContradiction(c *gin.Context, board *human.Board, move *core
 	// mutator-disable-next-line expression/comparison,numbers/decrementer
 	if len(move.Targets) > 0 {
 		contradictionCell := move.Targets[0].Row*constants.GridSize + move.Targets[0].Col
-		badCell, badDigit := findBlockingUserCell(board, contradictionCell, reqBoard, givens)
+		badCell, badDigit := diagnosis.FindBlockingUserCell(board, contradictionCell, reqBoard, givens)
 		if badCell >= 0 {
 			badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
 			respondSolveNextFix(c, reqBoard, reqCandidates, badCell, badDigit,
@@ -864,132 +890,6 @@ type SolveAllRequest struct {
 	Board      []int   `json:"board" binding:"required"`
 	Candidates [][]int `json:"candidates"`
 	Givens     []int   `json:"givens"` // Original puzzle givens (to identify user-entered cells)
-}
-
-// peerCellIndices returns the cell indices of the row, column, and 3x3 box
-// peers of the cell at (row, col). Row peers come first (left to right), then
-// column peers (top to bottom), then box peers in row-major order. The
-// error-detection helpers below scan peers in this exact order, so reordering
-// the returned slices would change which cell is reported as the blocker.
-func peerCellIndices(row, col int) (rowCells, colCells, boxCells []int) {
-	rowCells = make([]int, constants.GridSize)
-	colCells = make([]int, constants.GridSize)
-	for i := range constants.GridSize {
-		rowCells[i] = row*constants.GridSize + i
-		colCells[i] = i*constants.GridSize + col
-	}
-	boxRow := (row / constants.BoxSize) * constants.BoxSize
-	boxCol := (col / constants.BoxSize) * constants.BoxSize
-	// mutator-disable-next-line statement/remove
-	boxCells = make([]int, 0, constants.GridSize)
-	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-			boxCells = append(boxCells, r*constants.GridSize+c)
-		}
-	}
-	return rowCells, colCells, boxCells
-}
-
-// firstUserBlocker scans cells in order for the first one holding digit. It
-// returns that cell's index and true when the cell is a user entry (present in
-// originalUserBoard) and not a given. It returns false on the first non-user
-// match or when no cell holds digit, mirroring the per-region break semantics
-// of the original inline scan: once a digit is found in a region, no other
-// cell in that region is considered even if it is not a user entry.
-func firstUserBlocker(cells []int, board *human.Board, digit int, originalUserBoard, givens []int) (int, bool) {
-	for _, idx := range cells {
-		if board.Cells[idx] != digit {
-			continue
-		}
-		if originalUserBoard[idx] != 0 && givens[idx] == 0 {
-			return idx, true
-		}
-		return -1, false
-	}
-	return -1, false
-}
-
-// findBlockingUserCell analyzes a contradiction and identifies which
-// user-entered cell is causing it.
-//
-// For each digit 1-9 it asks what is blocking it from contradictionCell, in
-// turn scanning the cell's row, column, and box. Only user-entered cells (not
-// givens, not solver placements) are considered. The user cell blocking the
-// most candidates is reported as most likely wrong.
-//
-// INTENTIONALLY DUPLICATED: a near-twin lives in cmd/wasm/main.go. The two
-// are NOT unified because they diverge in two semantics that matter:
-//
-//  1. Tie-break among equally-blocking cells: this HTTP copy iterates cells in
-//     index order with strict ">", so the lowest-index cell deterministically
-//     wins. The WASM copy iterates a Go map (cellCount), whose iteration order
-//     is randomized, so the winner among tied cells is non-deterministic.
-//  2. Per-region scan: this copy uses firstUserBlocker, which stops on the
-//     first cell holding the digit (even a given), so it will not find a user
-//     blocker sitting behind a given in the same region. The WASM copy
-//     continues scanning past such cells and only appends/breaks on a USER
-//     entry.
-//
-// This copy's semantics are pinned by mutation-kill tests
-// (pure_helpers_test.go, handlers_mutation_kill_test.go). Unifying would
-// either change HTTP behavior (which the kill tests forbid) or change the
-// compiled WASM's reported results to players. They are left duplicated on
-// purpose.
-//
-// Returns: Cell index and blocking digit, or (-1, 0) if no user error found.
-func findBlockingUserCell(board *human.Board, contradictionCell int, originalUserBoard []int, givens []int) (int, int) {
-	row, col := contradictionCell/constants.GridSize, contradictionCell%constants.GridSize
-	rowCells, colCells, boxCells := peerCellIndices(row, col)
-
-	type blockingCell struct {
-		idx   int
-		digit int
-	}
-	var userBlockers []blockingCell
-
-	// mutator-disable-next-line numbers/decrementer
-	for digit := 1; digit <= constants.GridSize; digit++ {
-		for _, region := range [][]int{rowCells, colCells, boxCells} {
-			if idx, ok := firstUserBlocker(region, board, digit, originalUserBoard, givens); ok {
-				userBlockers = append(userBlockers, blockingCell{idx, digit})
-			}
-		}
-	}
-
-	// when blockers is empty the fall-through reaches the tail `return -1, 0`, so emptying this early-return branch is unobservable
-	// mutator-disable-next-line numbers/decrementer,branch/if
-	if len(userBlockers) == 0 {
-		// the fallback `return -1, 0` at the function tail produces the same result when blockers is empty
-		// mutator-disable-next-line statement/remove
-		return -1, 0
-	}
-
-	// Count how many times each user cell appears as a blocker; the cell
-	// blocking the most candidates is most likely wrong.
-	cellCount := make(map[int]int)
-	cellDigit := make(map[int]int)
-	for _, b := range userBlockers {
-		cellCount[b.idx]++
-		cellDigit[b.idx] = b.digit
-	}
-
-	// mutator-disable-next-line numbers/decrementer
-	maxCount := 0
-	// mutator-disable-next-line numbers/decrementer,numbers/incrementer
-	maxCell := -1
-	for idx := range constants.TotalCells {
-		if cellCount[idx] > maxCount {
-			maxCount = cellCount[idx]
-			maxCell = idx
-		}
-	}
-
-	// mutator-disable-next-line numbers/decrementer
-	if maxCell >= 0 {
-		return maxCell, cellDigit[maxCell]
-	}
-	// mutator-disable-next-line numbers/decrementer,numbers/incrementer
-	return -1, 0
 }
 
 // countUserEntries counts how many cells contain user-entered digits (excluding original givens)
@@ -1111,7 +1011,7 @@ func handleAutosolveContradiction(moves []moveResult, board *human.Board, move *
 	// mutator-disable-next-line expression/comparison,numbers/decrementer
 	if len(move.Targets) > 0 {
 		contradictionCell := move.Targets[0].Row*constants.GridSize + move.Targets[0].Col
-		badCell, badDigit := findBlockingUserCell(board, contradictionCell, originalUserBoard, givens)
+		badCell, badDigit := diagnosis.FindBlockingUserCell(board, contradictionCell, originalUserBoard, givens)
 		if badCell >= 0 {
 			fixCount++
 			originalUserBoard[badCell] = 0

@@ -85,3 +85,115 @@ func firstBlockingUserPeer(originalUserBoard, givens []int, row, col, digit int)
 func userHoldsDigit(originalUserBoard, givens []int, cellIdx, digit int) bool {
 	return originalUserBoard[cellIdx] == digit && givens[cellIdx] == 0
 }
+
+// peerCellIndices returns the cell indices of the row, column, and 3x3 box
+// peers of the cell at (row, col). Row peers come first (left to right), then
+// column peers (top to bottom), then box peers in row-major order. The
+// diagnosis helpers below scan peers in this exact order, so reordering the
+// returned slices would change which cell is reported as the blocker.
+func peerCellIndices(row, col int) (rowCells, colCells, boxCells []int) {
+	rowCells = make([]int, constants.GridSize)
+	colCells = make([]int, constants.GridSize)
+	for i := range constants.GridSize {
+		rowCells[i] = row*constants.GridSize + i
+		colCells[i] = i*constants.GridSize + col
+	}
+	boxRow := (row / constants.BoxSize) * constants.BoxSize
+	boxCol := (col / constants.BoxSize) * constants.BoxSize
+	boxCells = make([]int, 0, constants.GridSize)
+	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
+		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
+			boxCells = append(boxCells, r*constants.GridSize+c)
+		}
+	}
+	return rowCells, colCells, boxCells
+}
+
+// firstUserBlocker scans cells in order for the first one holding digit. It
+// returns that cell's index and true when the cell is a user entry (present in
+// originalUserBoard) and not a given. It returns false on the first non-user
+// match or when no cell holds digit: once a digit is found in a region, no
+// other cell in that region is considered even if it is not a user entry. This
+// stop-on-first-digit rule is what makes FindBlockingUserCell deterministic
+// across the row/column/box regions.
+func firstUserBlocker(cells []int, board *human.Board, digit int, originalUserBoard, givens []int) (int, bool) {
+	for _, idx := range cells {
+		if board.Cells[idx] != digit {
+			continue
+		}
+		if originalUserBoard[idx] != 0 && givens[idx] == 0 {
+			return idx, true
+		}
+		return -1, false
+	}
+	return -1, false
+}
+
+// FindBlockingUserCell analyzes a contradiction reported by the solver and
+// identifies which user-entered cell is most likely causing it.
+//
+// For each digit 1-9 it asks what is blocking it from contradictionCell, in
+// turn scanning the cell's row, column, and box via firstUserBlocker. Only
+// user-entered cells (not givens, not solver placements) are considered, and
+// each region contributes at most one blocker (the first cell holding the
+// digit). The user cell blocking the most candidates is reported as most
+// likely wrong; ties resolve to the lowest-index cell, so the result is
+// deterministic.
+//
+// This is the unified source of truth for both the WASM client (production)
+// and the HTTP transport (dev/test). Adopting the deterministic lowest-index
+// form here normalizes a prior latent non-determinism in the WASM path; the
+// fix only affects the autosolve fix-path, not the solver's solution or
+// user-facing correctness.
+//
+// Returns: Cell index and blocking digit, or (-1, 0) if no user error found.
+func FindBlockingUserCell(board *human.Board, contradictionCell int, originalUserBoard, givens []int) (int, int) {
+	row, col := contradictionCell/constants.GridSize, contradictionCell%constants.GridSize
+	rowCells, colCells, boxCells := peerCellIndices(row, col)
+
+	type blockingCell struct {
+		idx   int
+		digit int
+	}
+	var userBlockers []blockingCell
+
+	for digit := 1; digit <= constants.GridSize; digit++ {
+		for _, region := range [][]int{rowCells, colCells, boxCells} {
+			if idx, ok := firstUserBlocker(region, board, digit, originalUserBoard, givens); ok {
+				userBlockers = append(userBlockers, blockingCell{idx, digit})
+			}
+		}
+	}
+
+	// The tail `return -1, 0` produces the same result when blockers is empty,
+	// so dropping this early-return would be observably safe. It is kept for
+	// clarity and as an explicit fast-path.
+	if len(userBlockers) == 0 {
+		return -1, 0
+	}
+
+	// Count how many times each user cell appears as a blocker; the cell
+	// blocking the most candidates is most likely wrong. Iterating in cell-index
+	// order with a strict ">" comparison makes ties resolve to the lowest-index
+	// cell, keeping the result deterministic.
+	cellCount := make(map[int]int)
+	cellDigit := make(map[int]int)
+	for _, b := range userBlockers {
+		cellCount[b.idx]++
+		cellDigit[b.idx] = b.digit
+	}
+
+	maxCount := 0
+	maxCell := -1
+	for idx := range constants.TotalCells {
+		if cellCount[idx] > maxCount {
+			maxCount = cellCount[idx]
+			maxCell = idx
+		}
+	}
+
+	if maxCell >= 0 {
+		return maxCell, cellDigit[maxCell]
+	}
+	return -1, 0
+}

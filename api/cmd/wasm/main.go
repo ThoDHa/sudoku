@@ -936,7 +936,7 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 			// Try to find the blocking user cell
 			if len(move.Targets) > 0 {
 				contradictionCell := move.Targets[0].Row*constants.GridSize + move.Targets[0].Col
-				badCell, badDigit := findBlockingUserCell(board, contradictionCell, originalUserBoard, givens)
+				badCell, badDigit := diagnosis.FindBlockingUserCell(board, contradictionCell, originalUserBoard, givens)
 
 				if badCell >= 0 {
 					badRow, badCol := badCell/constants.GridSize, badCell%constants.GridSize
@@ -1082,97 +1082,6 @@ func solveAllInternal(cells []int, candidates [][]int, givens []int, maxMovesLim
 		finalBoard:      finalCells,
 		finalCandidates: board.GetCandidates(),
 	}
-}
-
-// findBlockingUserCell finds which user-entered cell is blocking candidates.
-//
-// INTENTIONALLY DUPLICATED: a near-twin lives in internal/transport/http/routes.go.
-// The two are NOT unified because they diverge in two semantics that matter:
-//
-//  1. Tie-break among equally-blocking cells: this WASM copy iterates a Go map
-//     (cellCount), whose iteration order is randomized, so the winner among
-//     tied cells is non-deterministic. The HTTP copy iterates cells in index
-//     order and uses strict ">", so the lowest-index cell deterministically
-//     wins.
-//  2. Per-region scan: this copy continues scanning past given/peer cells that
-//     hold the digit (it only appends and breaks on a USER entry), while the
-//     HTTP copy stops on the first cell holding the digit via firstUserBlocker,
-//     so it will not find a user blocker sitting behind a given in the same
-//     region.
-//
-// Unifying would either change this transport's production behavior (adopting
-// the deterministic tie-break and stop-on-first-digit semantics) or change the
-// HTTP transport's behavior. The HTTP copy's semantics are pinned by
-// mutation-kill tests (see internal/transport/http/pure_helpers_test.go and
-// handlers_mutation_kill_test.go), so it cannot move; and adopting its rules
-// here would alter what the compiled WASM reports to players. They are left
-// duplicated on purpose.
-func findBlockingUserCell(board *human.Board, contradictionCell int, originalUserBoard []int, givens []int) (int, int) {
-	row, col := contradictionCell/constants.GridSize, contradictionCell%constants.GridSize
-	boxRow, boxCol := (row/3)*3, (col/3)*3
-
-	type blockingCell struct {
-		idx   int
-		digit int
-	}
-	var userBlockers []blockingCell
-
-	for digit := 1; digit <= 9; digit++ {
-		// Check row
-		for c := 0; c < 9; c++ {
-			idx := row*constants.GridSize + c
-			if board.Cells[idx] == digit && originalUserBoard[idx] != 0 && givens[idx] == 0 {
-				userBlockers = append(userBlockers, blockingCell{idx, digit})
-				break
-			}
-		}
-
-		// Check column
-		for r := 0; r < 9; r++ {
-			idx := r*constants.GridSize + col
-			if board.Cells[idx] == digit && originalUserBoard[idx] != 0 && givens[idx] == 0 {
-				userBlockers = append(userBlockers, blockingCell{idx, digit})
-				break
-			}
-		}
-
-		// Check box
-		for r := boxRow; r < boxRow+3; r++ {
-			for c := boxCol; c < boxCol+3; c++ {
-				idx := r*constants.GridSize + c
-				if board.Cells[idx] == digit && originalUserBoard[idx] != 0 && givens[idx] == 0 {
-					userBlockers = append(userBlockers, blockingCell{idx, digit})
-					break
-				}
-			}
-		}
-	}
-
-	if len(userBlockers) == 0 {
-		return -1, 0
-	}
-
-	// Find cell blocking the most candidates
-	cellCount := make(map[int]int)
-	cellDigit := make(map[int]int)
-	for _, b := range userBlockers {
-		cellCount[b.idx]++
-		cellDigit[b.idx] = b.digit
-	}
-
-	maxCount := 0
-	maxCell := -1
-	for idx, count := range cellCount {
-		if count > maxCount {
-			maxCount = count
-			maxCell = idx
-		}
-	}
-
-	if maxCell >= 0 {
-		return maxCell, cellDigit[maxCell]
-	}
-	return -1, 0
 }
 
 // findErrorByTrialRemoval uses brute-force trial removal to identify user errors

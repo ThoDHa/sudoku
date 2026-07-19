@@ -27,9 +27,11 @@ import (
 //
 // Each test here pins an observable value that a specific escaped mutant changes.
 // Tests are driven through the public HTTP endpoints where possible, and via
-// direct package-private helper calls (findBlockingUserCell,
-// handleSolveNextContradiction, handleAutosolveContradiction, findPracticePuzzle)
-// when the mutated branch is only reachable from a crafted solver state.
+// direct package-private helper calls (handleSolveNextContradiction,
+// handleAutosolveContradiction, findPracticePuzzle) when the mutated branch is
+// only reachable from a crafted solver state. The cell-zero blocker case for
+// what was findBlockingUserCell is now pinned in the diagnosis package, which
+// owns the shared helper.
 // =============================================================================
 
 // brokenGLoader returns a non-nil loader whose single puzzle has no difficulty
@@ -111,27 +113,6 @@ func TestMutation_FindPracticePuzzle_FindsKnownTechnique(t *testing.T) {
 	}
 	if len(givens) != constants.TotalCells {
 		t.Errorf("returned givens must be %d cells, got %d", constants.TotalCells, len(givens))
-	}
-}
-
-// TestMutation_FindBlockingUserCell_ReturnsCellZeroAsBlocker pins that cell 0 is
-// a valid blocker result. It kills the counting-loop incrementer that starts the
-// scan at idx=1 (skipping cell 0) and the `maxCell >= 0` comparison/incrementer
-// mutants that drop a maxCell==0 result.
-func TestMutation_FindBlockingUserCell_ReturnsCellZeroAsBlocker(t *testing.T) {
-	cells := make([]int, 81)
-	cells[0] = 5 // user entry at cell 0; peer of cell 4 (same row)
-	board := human.NewBoard(cells)
-	original := make([]int, 81)
-	original[0] = 5
-	givens := make([]int, 81)
-
-	idx, digit := findBlockingUserCell(board, 4, original, givens)
-	if idx != 0 {
-		t.Errorf("expected blocker cell 0, got %d", idx)
-	}
-	if digit != 5 {
-		t.Errorf("expected digit 5 held at cell 0, got %d", digit)
 	}
 }
 

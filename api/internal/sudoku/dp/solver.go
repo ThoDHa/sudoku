@@ -3,7 +3,6 @@ package dp
 import (
 	"context"
 	"errors"
-	"strconv"
 
 	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
@@ -85,46 +84,60 @@ func IsValid(ctx context.Context, grid []int) bool {
 
 // FindConflicts returns all conflicting cell pairs in the grid.
 // Each conflict identifies two cells with the same value in the same row, column, or box.
+//
+// Allocation profile: per-unit position tracking uses stack-allocated [10][9]int
+// arrays (no per-unit heap maps), the dedup map is lazily allocated only when a
+// conflict is actually found, and the dedup key is integer arithmetic rather
+// than string concatenation. A grid with no conflicts therefore allocates only
+// the returned (nil) slice header.
 func FindConflicts(grid []int) []Conflict {
 	var conflicts []Conflict
-	seen := make(map[string]bool) // Track already-reported conflicts to avoid duplicates
+	var seen map[uint64]bool
 
 	for row := range constants.GridSize {
-		positions := map[int][]int{}
+		var positions [10][9]int
+		var counts [10]int
+		base := row * constants.GridSize
 		for col := range constants.GridSize {
-			val := grid[row*constants.GridSize+col]
+			val := grid[base+col]
 			if val == 0 {
 				continue
 			}
-			positions[val] = append(positions[val], row*constants.GridSize+col)
+			positions[val][counts[val]] = base + col
+			counts[val]++
 		}
-		conflicts = appendUnitConflicts(positions, "row", seen, conflicts)
+		conflicts = appendUnitConflicts(positions, counts, "row", &seen, conflicts)
 	}
 
 	for col := range constants.GridSize {
-		positions := map[int][]int{}
+		var positions [10][9]int
+		var counts [10]int
 		for row := range constants.GridSize {
 			val := grid[row*constants.GridSize+col]
 			if val == 0 {
 				continue
 			}
-			positions[val] = append(positions[val], row*constants.GridSize+col)
+			positions[val][counts[val]] = row*constants.GridSize + col
+			counts[val]++
 		}
-		conflicts = appendUnitConflicts(positions, "column", seen, conflicts)
+		conflicts = appendUnitConflicts(positions, counts, "column", &seen, conflicts)
 	}
 
 	for box := range constants.GridSize {
-		conflicts = appendBoxConflicts(grid, box, seen, conflicts)
+		conflicts = appendBoxConflicts(grid, box, &seen, conflicts)
 	}
 
 	return conflicts
 }
 
-// appendUnitConflicts scans a value-to-positions map for duplicates and appends
-// any new conflicts of the given type.
-func appendUnitConflicts(positions map[int][]int, conflictType string, seen map[string]bool, conflicts []Conflict) []Conflict {
-	for val, group := range positions {
-		// < 1 vs < 2 is moot: the inner j=i+1 loop yields no pairs for groups of size < 2.
+// appendUnitConflicts scans the position groups for a single unit and appends
+// any newly-seen conflicts of the given type. positions[v][:counts[v]] holds the
+// cell indices in this unit holding value v. The seen map is lazily allocated
+// on the first conflict so a clean unit costs nothing.
+func appendUnitConflicts(positions [10][9]int, counts [10]int, conflictType string, seen *map[uint64]bool, conflicts []Conflict) []Conflict {
+	for val := 1; val <= 9; val++ {
+		group := positions[val][:counts[val]]
+		// < 2 vs <= 1 is moot: the inner j=i+1 loop yields no pairs for groups of size < 2.
 		// branch/if (removing the continue) is also moot for the same reason.
 		// mutator-disable-next-line numbers/decrementer, branch/if
 		if len(group) < 2 {
@@ -136,11 +149,14 @@ func appendUnitConflicts(positions map[int][]int, conflictType string, seen map[
 				// Redundant scanning: row/column/box each independently detect conflicts.
 				// Mutating this dedup guard or its continue is compensated by other scans.
 				// mutator-disable-next-line branch/if
-				if seen[key] {
+				if _, ok := (*seen)[key]; ok {
 					// mutator-disable-next-line loop/break
 					continue
 				}
-				seen[key] = true
+				if *seen == nil {
+					*seen = make(map[uint64]bool)
+				}
+				(*seen)[key] = true
 				conflicts = append(conflicts, Conflict{Cell1: group[i], Cell2: group[j], Value: val, Type: conflictType})
 			}
 		}
@@ -150,30 +166,35 @@ func appendUnitConflicts(positions map[int][]int, conflictType string, seen map[
 
 // appendBoxConflicts scans one 3x3 box for duplicate values and appends any new
 // conflicts of type "box".
-func appendBoxConflicts(grid []int, box int, seen map[string]bool, conflicts []Conflict) []Conflict {
+func appendBoxConflicts(grid []int, box int, seen *map[uint64]bool, conflicts []Conflict) []Conflict {
 	boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
-	positions := map[int][]int{}
+	var positions [10][9]int
+	var counts [10]int
 	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
 		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
 			val := grid[r*constants.GridSize+c]
 			if val == 0 {
 				continue
 			}
-			positions[val] = append(positions[val], r*constants.GridSize+c)
+			positions[val][counts[val]] = r*constants.GridSize + c
+			counts[val]++
 		}
 	}
-	return appendUnitConflicts(positions, "box", seen, conflicts)
+	return appendUnitConflicts(positions, counts, "box", seen, conflicts)
 }
 
-// conflictKey builds a dedup key. cell1 < cell2 always (caller iterates i < j over
-// sorted groups), so the normalization branch is dead code. Disable all mutators.
+// conflictKey builds an integer dedup key from (cell1, cell2, val). cell1 < cell2
+// always in the caller (i < j over index-ascending groups), so the normalization
+// branch is dead code; it is retained defensively. Cell indices are bounded 0-80
+// and val 1-9, so cell1*810 + cell2*10 + val uniquely identifies the triple and
+// cannot overflow int (max 65609) before the uint64 conversion.
 // mutator-disable-func
-func conflictKey(cell1, cell2, val int) string {
+func conflictKey(cell1, cell2, val int) uint64 {
 	if cell1 > cell2 {
 		cell1, cell2 = cell2, cell1
 	}
-	// Decimal keys: cell indices are bounded 0-80 and val 1-9 by Sudoku grid constants.
-	return strconv.Itoa(cell1) + "-" + strconv.Itoa(cell2) + "-" + strconv.Itoa(val)
+	// cell1, cell2 are validated Sudoku cell indices (0-80); val is a digit (1-9).
+	return uint64(cell1*810 + cell2*10 + val) //nolint:gosec // G115: bounded inputs, see doc comment
 }
 
 // findEmptyCell returns the index of the first empty (0) cell, or -1 if the board is full.
