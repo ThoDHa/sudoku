@@ -958,8 +958,9 @@ describe('scores', () => {
       const savedCompletions = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS]!)
       expect(savedCompletions).toContain('2024-06-15')
 
-      // Check streak was saved
-      const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK]!)
+      // Check streak was saved (read back through the same API to verify the round-trip;
+      // the storage shape is a versioned envelope as of FE-5, asserted separately)
+      const savedStreak = getDailyStreak()
       expect(savedStreak.currentStreak).toBe(1)
       expect(savedStreak.lastCompletedDate).toBe('2024-06-15')
     })
@@ -978,8 +979,8 @@ describe('scores', () => {
 
       markDailyCompleted()
 
-      // Check streak was incremented
-      const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK]!)
+      // Check streak was incremented (round-trip via getDailyStreak)
+      const savedStreak = getDailyStreak()
       expect(savedStreak.currentStreak).toBe(4)
       expect(savedStreak.lastCompletedDate).toBe('2024-06-15')
     })
@@ -998,7 +999,7 @@ describe('scores', () => {
 
       markDailyCompleted()
 
-      const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK]!)
+      const savedStreak = getDailyStreak()
       expect(savedStreak.currentStreak).toBe(6)
       expect(savedStreak.longestStreak).toBe(6)
     })
@@ -1036,9 +1037,61 @@ describe('scores', () => {
 
       markDailyCompleted()
 
-      const savedStreak = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK]!)
+      const savedStreak = getDailyStreak()
       expect(savedStreak.currentStreak).toBe(1) // New streak started
       expect(savedStreak.longestStreak).toBe(10) // Preserved
+    })
+
+    it('FE-5: writes a versioned envelope with the current schema version', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
+
+      markDailyCompleted()
+
+      // The storage shape is a versioned envelope: { schemaVersion, data }.
+      // Reading via getDailyStreak exercises the migration path; this test
+      // pins the on-disk shape so a future migration can be written against it.
+      const stored = JSON.parse(mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK]!)
+      expect(stored.schemaVersion).toBe(1)
+      expect(stored.data).toEqual({
+        currentStreak: 1,
+        longestStreak: 1,
+        lastCompletedDate: '2024-06-15',
+      })
+    })
+
+    it('FE-5: reads legacy unversioned (bare-object) streak data through the migration path', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
+
+      // Legacy shape: bare object, no schemaVersion envelope. Pre-FE-5 clients
+      // wrote this shape; the migration helper treats it as version 0 and
+      // passes it through (empty migrations map for now).
+      mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = JSON.stringify({
+        currentStreak: 5,
+        longestStreak: 10,
+        lastCompletedDate: '2024-06-15',
+      })
+
+      const result = getDailyStreak()
+      expect(result).toEqual({
+        currentStreak: 5,
+        longestStreak: 10,
+        lastCompletedDate: '2024-06-15',
+      })
+    })
+
+    it('FE-5: returns the default streak when stored value is JSON null', () => {
+      // migrateVersionedEnvelope returns null when the parsed value is null;
+      // getDailyStreak maps that to the default streak.
+      mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = 'null'
+
+      const result = getDailyStreak()
+      expect(result).toEqual({
+        currentStreak: 0,
+        longestStreak: 0,
+        lastCompletedDate: null,
+      })
     })
   })
 

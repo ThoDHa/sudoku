@@ -192,6 +192,14 @@ interface DailyStreak {
   lastCompletedDate: string | null // YYYY-MM-DD format
 }
 
+const DAILY_STREAK_MIGRATIONS: MigrationMap<DailyStreak> = {}
+
+const DEFAULT_DAILY_STREAK: DailyStreak = {
+  currentStreak: 0,
+  longestStreak: 0,
+  lastCompletedDate: null,
+}
+
 /**
  * Get the current UTC date as YYYY-MM-DD string
  */
@@ -259,9 +267,16 @@ export function isTodayCompleted(): boolean {
 export function getDailyStreak(): DailyStreak {
   try {
     const data = localStorage.getItem(STORAGE_KEYS.DAILY_STREAK)
-    // Stryker disable next-line ConditionalExpression: forcing `true` makes JSON.parse(null) yield null, whose property access then throws and is caught below, returning the same default streak as the falsy path
+    // Stryker disable next-line ConditionalExpression: forcing `true` makes JSON.parse(null) yield null, which migrateVersionedEnvelope returns as-is; the subsequent `=== null` check then returns the default streak — the same outcome as the falsy path
     if (data) {
-      const streak = JSON.parse(data) as DailyStreak
+      const parsed: unknown = JSON.parse(data)
+      const migrated = migrateVersionedEnvelope<DailyStreak>(
+        parsed,
+        DAILY_STREAK_MIGRATIONS,
+        STORAGE_SCHEMA_VERSION,
+      )
+      if (migrated === null) return { ...DEFAULT_DAILY_STREAK }
+      const streak = migrated
       // Check if streak is still valid (last completed was today or yesterday)
       const today = getTodayUTC()
       const yesterday = getYesterdayUTC()
@@ -278,7 +293,7 @@ export function getDailyStreak(): DailyStreak {
   } catch {
     // Ignore errors
   }
-  return { currentStreak: 0, longestStreak: 0, lastCompletedDate: null }
+  return { ...DEFAULT_DAILY_STREAK }
 }
 
 /**
@@ -316,10 +331,11 @@ export function markDailyCompleted(): void {
 
   localStorage.setItem(
     STORAGE_KEYS.DAILY_STREAK,
-    JSON.stringify({
-      currentStreak: newStreak,
-      longestStreak: newLongest,
-      lastCompletedDate: today,
-    }),
+    JSON.stringify(
+      wrapVersionedEnvelope(
+        { currentStreak: newStreak, longestStreak: newLongest, lastCompletedDate: today },
+        STORAGE_SCHEMA_VERSION,
+      ),
+    ),
   )
 }
