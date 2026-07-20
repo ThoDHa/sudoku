@@ -130,7 +130,7 @@ coverage-gate:
 # strictest floor. Efficacy is defined in the mutation-gate target below.
 DP_MUTATION_FLOOR := 100
 HUMAN_MUTATION_FLOOR := 100
-TECHNIQUES_MUTATION_FLOOR := 99.9
+TECHNIQUES_MUTATION_FLOOR := 100
 
 # go-mutesting binary. avito-tech/go-mutesting v2.3.1 carries an upstream
 # packaging defect: its go.mod declares `module github.com/avito-tech/go-mutesting`

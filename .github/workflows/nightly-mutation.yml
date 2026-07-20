@@ -267,4 +267,4 @@ jobs:
         working-directory: api
         run: |
           python3 scripts/mutation_aggregate.py \
-            --floor 99.9 --expected 22 --reports-dir ../shards
+            --floor 100 --expected 22 --reports-dir ../shards
