@@ -51,6 +51,7 @@ linters:
         - name: errorf
         - name: superfluous-else
         - name: unreachable-code
+        - name: use-any
   exclusions:
     generated: lax
     presets:
