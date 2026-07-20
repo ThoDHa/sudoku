@@ -112,6 +112,14 @@ describe('gameSettings', () => {
       expect(getAutoSaveEnabled()).toBe(false)
     })
 
+    it('should return false for a non-boolean JSON value (boolean narrowing, not truthiness)', () => {
+      // A truthy non-boolean (1) must NOT be coerced to true. Mirrors the
+      // getOfflineModeEnabled boundary test: parse-to-unknown then narrow
+      // with `=== true`, rather than `JSON.parse(x) as boolean`.
+      localStorageMock.setItem('sudoku_autosave_enabled', '1')
+      expect(getAutoSaveEnabled()).toBe(false)
+    })
+
     it('should return true on JSON parse error', () => {
       localStorageMock.setItem('sudoku_autosave_enabled', 'invalid json')
       expect(getAutoSaveEnabled()).toBe(true)
