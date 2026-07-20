@@ -403,8 +403,8 @@ def build_sections(artifacts_dir, out_dir, allure_rel, hrefs):
     # The Go mutation report is rendered as one unified mutation-testing-elements
     # dashboard (every package and technique shard, matching the frontend) by the
     # portal build before this runs. The tile's health reflects each package's own
-    # floor (dp is stricter at 95%), so one package's breach is not diluted across
-    # the thousands of technique mutants in the pooled number.
+    # floor (all Go packages now at 100), so one package's breach is not diluted
+    # across the thousands of technique mutants in the pooled number.
     go_breach = False
     packages = _go_package_counts(artifacts_dir)
     if packages and os.path.exists(os.path.join(out_dir, "mutation/go/mutation.html")):

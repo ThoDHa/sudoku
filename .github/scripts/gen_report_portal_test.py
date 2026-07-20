@@ -65,11 +65,11 @@ class Portal(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             artifacts = os.path.join(d, "artifacts")
             # Every Go scope and technique shard contributes to one aggregated tile,
-            # each meeting its own floor (dp 100% >= 98, techniques 95% >= 95).
+            # each meeting its own floor (dp 100% >= 100, techniques 100% >= 100).
             make_json_artifact(artifacts, "mutation-go-dp", "report.json",
                                {"stats": {"killedCount": 20, "timeOutCount": 0, "escapedCount": 0}})
             make_json_artifact(artifacts, "mutation-go-techniques-shard-aic", "report.json",
-                               {"stats": {"killedCount": 19, "timeOutCount": 0, "escapedCount": 1}})
+                               {"stats": {"killedCount": 20, "timeOutCount": 0, "escapedCount": 0}})
             out = os.path.join(d, "reports")
             # The unified Stryker-style report is rendered into place by the deploy
             # build step before the portal script runs; simulate that here.
@@ -83,14 +83,14 @@ class Portal(unittest.TestCase):
             self.assertNotIn("Go · dp", page)
             self.assertNotIn("go-mutesting-report.html", page)
             self.assertNotIn("<details>", page)
-            # Aggregated efficacy: 39 detected / 40 -> 97.5%; all floors met.
-            self.assertIn("97.5%", page)
+            # Aggregated efficacy: 40 detected / 40 -> 100%; all floors met.
+            self.assertIn("100.0%", page)
             self.assertNotIn("below floor", page)
 
     def test_go_tile_fails_when_a_package_breaches_its_own_floor(self):
         with tempfile.TemporaryDirectory() as d:
             artifacts = os.path.join(d, "artifacts")
-            # dp at 90% breaches its stricter 95 floor, even though the huge
+            # dp at 90% breaches its stricter 100 floor, even though the huge
             # techniques package pools the overall efficacy up near 100%.
             make_json_artifact(artifacts, "mutation-go-dp", "report.json",
                                {"stats": {"killedCount": 90, "escapedCount": 10}})

@@ -128,9 +128,9 @@ coverage-gate:
 # Per-package mutation efficacy floors (MUT-1-2; Decisions 4 + 9). The Go
 # solver is the source of truth for game correctness, so it carries the
 # strictest floor. Efficacy is defined in the mutation-gate target below.
-DP_MUTATION_FLOOR := 98
-HUMAN_MUTATION_FLOOR := 95
-TECHNIQUES_MUTATION_FLOOR := 95
+DP_MUTATION_FLOOR := 100
+HUMAN_MUTATION_FLOOR := 100
+TECHNIQUES_MUTATION_FLOOR := 100
 
 # go-mutesting binary. avito-tech/go-mutesting v2.3.1 carries an upstream
 # packaging defect: its go.mod declares `module github.com/avito-tech/go-mutesting`

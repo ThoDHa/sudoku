@@ -1,8 +1,8 @@
 {
-  "_comment": "Canonical Go per-package mutation efficacy floors (percent). Single source of truth. Read directly by .github/scripts/gen_report_portal.py; api/Makefile and .github/workflows/nightly-mutation.yml mirror these values and are drift-guarded against this file by gen_report_portal_test.py (a mismatch fails CI). Technique shards aggregate into the single 'techniques' scope. Note: transport/http was removed (ARCH-2); it is a dev-only harness (see api/internal/transport/http/doc.go) and is no longer held to a production mutation floor.",
+  "_comment": "Canonical Go per-package mutation efficacy floors (percent). Single source of truth. Read directly by .github/scripts/gen_report_portal.py; api/Makefile and .github/workflows/nightly-mutation.yml mirror these values and are drift-guarded against this file by gen_report_portal_test.py (a mismatch fails CI). Technique shards aggregate into the single 'techniques' scope. Note: transport/http was removed (ARCH-2); it is a dev-only harness (see api/internal/transport/http/doc.go) and is no longer held to a production mutation floor. Floors raised to 100 (MUT-3): the determinism fix (3272dcc) eliminated the map-order flakiness that previously held these at 95/98, verified by four consecutive nightly runs (2026-07-16 through 2026-07-19) all reporting 1.000000 efficacy across dp, human, and every techniques shard.",
   "floors": {
-    "dp": 98,
-    "human": 95,
-    "techniques": 95
+    "dp": 100,
+    "human": 100,
+    "techniques": 100
   }
 }

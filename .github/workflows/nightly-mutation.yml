@@ -74,11 +74,11 @@ jobs:
         include:
           - name: dp
             pkg: ./internal/sudoku/dp
-            floor: 98
+            floor: 100
             timeout: 360
           - name: human
             pkg: ./internal/sudoku/human
-            floor: 95
+            floor: 100
             timeout: 360
     steps:
       - name: Checkout
@@ -267,4 +267,4 @@ jobs:
         working-directory: api
         run: |
           python3 scripts/mutation_aggregate.py \
-            --floor 95 --expected 22 --reports-dir ../shards
+            --floor 100 --expected 22 --reports-dir ../shards
