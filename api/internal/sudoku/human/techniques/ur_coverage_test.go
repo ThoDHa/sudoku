@@ -98,6 +98,49 @@ func TestURType4BivalueRoofReturnsNil(t *testing.T) {
 	}
 }
 
+// TestURType2RowPairFloor1SecondCellNonBivalueReturnsNil covers the row-pair
+// floor check in DetectUniqueRectangleType2 for entry 1 of urFloorRoofPairs
+// ({{0,1},{2,3}}) when the second floor cell is non-bivalue. The floor guard
+// must skip entry 1 because corners[1] is not bivalue. A mutant that rewrites
+// the floor pair to {0,0} would check corners[0] twice and incorrectly pass,
+// then proceed to find the shared roof extra and emit a Type 2 elimination
+// (target cell in row 1 holds candidate 3) that the original correctly never
+// produces.
+func TestURType2RowPairFloor1SecondCellNonBivalueReturnsNil(t *testing.T) {
+	// Row-pair floor (entry 1): corners[0] bivalue, corners[1] non-bivalue.
+	// Roof (entry 1): corners[2], corners[3] both carry the same single extra.
+	b := urRectangleCorners([]int{1, 2}, []int{1, 2, 3}, []int{1, 2, 3}, []int{1, 2, 3})
+	// Elimination target in row 1: a peer of both roof corners (cells (1,0) and
+	// (1,3)) that holds the shared extra digit 3. The original never reaches
+	// the elimination search; the mutant would, and would emit this elimination.
+	b.candidates[idxOf(1, 1)] = NewCandidates([]int{3, 7})
+
+	if move := DetectUniqueRectangleType2(b); move != nil {
+		t.Errorf("expected nil (row-pair floor corners[1] not bivalue), got %+v", move)
+	}
+}
+
+// TestURType2RowPairFloor2FirstCellNonBivalueReturnsNil covers the symmetric
+// row-pair floor check for entry 2 of urFloorRoofPairs ({{2,3},{0,1}}) when
+// the first floor cell is non-bivalue. The floor guard must skip entry 2
+// because corners[2] is not bivalue. A mutant that rewrites the floor pair to
+// {3,3} would check corners[3] twice and incorrectly pass, then proceed to
+// find the shared roof extra and emit a Type 2 elimination (target cell in
+// row 0 holds candidate 3) that the original never produces.
+func TestURType2RowPairFloor2FirstCellNonBivalueReturnsNil(t *testing.T) {
+	// Row-pair floor (entry 2): corners[2] non-bivalue, corners[3] bivalue.
+	// Roof (entry 2): corners[0], corners[1] both carry the same single extra.
+	b := urRectangleCorners([]int{1, 2, 3}, []int{1, 2, 3}, []int{1, 2, 3, 4}, []int{1, 2})
+	// Elimination target in row 0: a peer of both roof corners (cells (0,0) and
+	// (0,3)) that holds the shared extra digit 3. The original never reaches
+	// the elimination search; the mutant would, and would emit this elimination.
+	b.candidates[idxOf(0, 1)] = NewCandidates([]int{3, 7})
+
+	if move := DetectUniqueRectangleType2(b); move != nil {
+		t.Errorf("expected nil (row-pair floor corners[2] not bivalue), got %+v", move)
+	}
+}
+
 // TestURType4RowConfinedEliminatesOtherDigit covers the row-shared branch of
 // DetectUniqueRectangleType4 together with the "d1 confined" case of
 // tryURType4LineElimination. The roof corners share row 1; digit 1 is confined to
