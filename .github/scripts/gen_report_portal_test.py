@@ -218,7 +218,7 @@ class MutationFloorSources(unittest.TestCase):
         var_to_slug = {"DP": "dp", "HUMAN": "human", "TECHNIQUES": "techniques"}
         found = {}
         for var, slug in var_to_slug.items():
-            m = re.search(rf"^{var}_MUTATION_FLOOR\s*:=\s*(\d+)", text, re.M)
+            m = re.search(rf"^{var}_MUTATION_FLOOR\s*:=\s*(\d+(?:\.\d+)?)", text, re.M)
             self.assertIsNotNone(m, f"{var}_MUTATION_FLOOR not found in api/Makefile")
             found[slug] = float(m.group(1))
         self.assertEqual(found, self.floors)
