@@ -3,6 +3,7 @@ package human
 import (
 	"context"
 	"sudoku-api/internal/core"
+	"sudoku-api/internal/sudoku/human/techniquetest"
 	"sudoku-api/pkg/constants"
 )
 
@@ -161,7 +162,7 @@ func applyIsolationStrategy(registry *TechniqueRegistry, targetSlug string, targ
 	// Honor the per-technique isolation config on top of the strategy: some
 	// same- or lower-tier techniques preempt the target on its curated board and
 	// must be disabled regardless of the tier-based strategy above.
-	for _, slug := range techniqueIsolationConfig[targetSlug] {
+	for _, slug := range techniquetest.TechniqueIsolationConfig[targetSlug] {
 		registry.SetEnabled(slug, false)
 	}
 }

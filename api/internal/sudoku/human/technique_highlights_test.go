@@ -26,7 +26,7 @@ func cellRefIn(ref core.CellRef, refs []core.CellRef) bool {
 // It first asks the detector directly on the initial board (the fast path used
 // by partial-solve-state fixtures that fire immediately). When that yields no
 // move, it steps the solver until the target technique fires, disabling the
-// preempting techniques listed in techniqueIsolationConfig so advanced
+// preempting techniques listed in techniquetest.TechniqueIsolationConfig so advanced
 // detectors are not crowded out. This mirrors the proven pattern in
 // technique_isolated_test.go and the TestDiagnosticTechniqueUsage run.
 //
@@ -52,7 +52,7 @@ func detectCuratedTechniqueMove(t *testing.T, slug string) *core.Move {
 	}
 
 	solver := NewSolver()
-	if disabled, has := techniqueIsolationConfig[slug]; has && len(disabled) > 0 {
+	if disabled, has := techniquetest.TechniqueIsolationConfig[slug]; has && len(disabled) > 0 {
 		solver = CreateSolverWithoutTechniques(disabled...)
 	}
 

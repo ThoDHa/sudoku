@@ -27,31 +27,9 @@ import (
 // - Eliminations do not remove the solution digit from any cell
 // =============================================================================
 
-// techniqueIsolationConfig maps technique slug -> list of techniques to disable
-// This ensures rare/advanced techniques can fire without being preempted by
-// more common techniques that solve the puzzle first.
-var techniqueIsolationConfig = map[string][]string{
-	"bug":       {"xy-wing"},
-	"jellyfish": {"medusa-3d"},
-	"x-chain":   {"skyscraper"},
-	"unique-rectangle-type-2": {
-		"aic", "medusa-3d", "x-chain", "xy-chain", "grouped-x-cycles", "simple-coloring",
-		"w-wing", "wxyz-wing", "skyscraper", "empty-rectangle",
-	},
-	"unique-rectangle-type-3": {
-		"aic", "medusa-3d", "x-chain", "xy-chain", "grouped-x-cycles", "simple-coloring",
-		"skyscraper", "empty-rectangle", "w-wing", "wxyz-wing", "finned-x-wing", "finned-swordfish",
-		"jellyfish",
-	},
-	"unique-rectangle-type-4": {"medusa-3d"},
-	"als-xz":                  {"aic"},
-	"als-xy-wing":             {"aic"},
-	"als-xy-chain":            {"aic", "medusa-3d"},
-	"sue-de-coq":              {"aic", "als-xz", "als-xy-wing", "als-xy-chain", "digit-forcing-chain", "forcing-chain"},
-	"digit-forcing-chain":     {"aic", "als-xz", "als-xy-wing", "als-xy-chain", "sue-de-coq", "death-blossom"},
-	"forcing-chain":           {"aic", "als-xz", "als-xy-wing", "als-xy-chain", "sue-de-coq", "death-blossom", "digit-forcing-chain"},
-	"death-blossom":           {"aic", "als-xz", "als-xy-wing", "als-xy-chain", "digit-forcing-chain", "forcing-chain", "medusa-3d"},
-}
+// The technique-isolation map lives in the techniquetest package
+// (techniquetest.TechniqueIsolationConfig) so the practice-puzzle generator
+// can import the same source of truth. See FIXTURE-2 slice 1.
 
 // loadTestPuzzle loads a puzzle for testing, either from puzzles.json or from a string
 func loadTestPuzzle(t *testing.T, data techniquetest.PuzzleData) ([]int, []int) {
@@ -333,7 +311,7 @@ func TestTechniqueIsolated_HiddenTriple(t *testing.T) {
 // =============================================================================
 
 func TestTechniqueIsolated_Bug(t *testing.T) {
-	runEarlyStopWithDisabledTechniques(t, "bug", techniqueIsolationConfig["bug"])
+	runEarlyStopWithDisabledTechniques(t, "bug", techniquetest.TechniqueIsolationConfig["bug"])
 }
 
 func TestTechniqueIsolated_XWing(t *testing.T) {
@@ -389,19 +367,19 @@ func TestTechniqueIsolated_Medusa3D(t *testing.T) {
 }
 
 func TestTechniqueIsolated_Jellyfish(t *testing.T) {
-	runEarlyStopWithDisabledTechniques(t, "jellyfish", techniqueIsolationConfig["jellyfish"])
+	runEarlyStopWithDisabledTechniques(t, "jellyfish", techniquetest.TechniqueIsolationConfig["jellyfish"])
 }
 
 func TestTechniqueIsolated_UniqueRectangleType2(t *testing.T) {
-	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-2", techniqueIsolationConfig["unique-rectangle-type-2"])
+	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-2", techniquetest.TechniqueIsolationConfig["unique-rectangle-type-2"])
 }
 
 func TestTechniqueIsolated_UniqueRectangleType3(t *testing.T) {
-	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-3", techniqueIsolationConfig["unique-rectangle-type-3"])
+	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-3", techniquetest.TechniqueIsolationConfig["unique-rectangle-type-3"])
 }
 
 func TestTechniqueIsolated_UniqueRectangleType4(t *testing.T) {
-	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-4", techniqueIsolationConfig["unique-rectangle-type-4"])
+	runEarlyStopWithDisabledTechniques(t, "unique-rectangle-type-4", techniquetest.TechniqueIsolationConfig["unique-rectangle-type-4"])
 }
 
 func TestTechniqueIsolated_WXYZWing(t *testing.T) {
@@ -443,31 +421,31 @@ func TestTechniqueIsolated_AIC(t *testing.T) {
 }
 
 func TestTechniqueIsolated_ALSXZ(t *testing.T) {
-	runEarlyStopWithDisabledTechniques(t, "als-xz", techniqueIsolationConfig["als-xz"])
+	runEarlyStopWithDisabledTechniques(t, "als-xz", techniquetest.TechniqueIsolationConfig["als-xz"])
 }
 
 func TestTechniqueIsolated_ALSXYWing(t *testing.T) {
-	runEarlyStopWithDisabledTechniques(t, "als-xy-wing", techniqueIsolationConfig["als-xy-wing"])
+	runEarlyStopWithDisabledTechniques(t, "als-xy-wing", techniquetest.TechniqueIsolationConfig["als-xy-wing"])
 }
 
 func TestTechniqueIsolated_ALSXYChain(t *testing.T) {
-	runEarlyStopWithDisabledTechniques(t, "als-xy-chain", techniqueIsolationConfig["als-xy-chain"])
+	runEarlyStopWithDisabledTechniques(t, "als-xy-chain", techniquetest.TechniqueIsolationConfig["als-xy-chain"])
 }
 
 func TestTechniqueIsolated_SueDeCoq(t *testing.T) {
-	runEarlyStopWithDisabledTechniques(t, "sue-de-coq", techniqueIsolationConfig["sue-de-coq"])
+	runEarlyStopWithDisabledTechniques(t, "sue-de-coq", techniquetest.TechniqueIsolationConfig["sue-de-coq"])
 }
 
 func TestTechniqueIsolated_DigitForcingChain(t *testing.T) {
-	runEarlyStopWithDisabledTechniques(t, "digit-forcing-chain", techniqueIsolationConfig["digit-forcing-chain"])
+	runEarlyStopWithDisabledTechniques(t, "digit-forcing-chain", techniquetest.TechniqueIsolationConfig["digit-forcing-chain"])
 }
 
 func TestTechniqueIsolated_ForcingChain(t *testing.T) {
-	runEarlyStopWithDisabledTechniques(t, "forcing-chain", techniqueIsolationConfig["forcing-chain"])
+	runEarlyStopWithDisabledTechniques(t, "forcing-chain", techniquetest.TechniqueIsolationConfig["forcing-chain"])
 }
 
 func TestTechniqueIsolated_DeathBlossom(t *testing.T) {
-	runEarlyStopWithDisabledTechniques(t, "death-blossom", techniqueIsolationConfig["death-blossom"])
+	runEarlyStopWithDisabledTechniques(t, "death-blossom", techniquetest.TechniqueIsolationConfig["death-blossom"])
 }
 
 // =============================================================================
@@ -621,7 +599,7 @@ func TestDiagnosticTechniqueUsage(t *testing.T) {
 		board := NewBoard(givens)
 
 		// Check if this technique requires isolation
-		disabledTechs, needsIsolation := techniqueIsolationConfig[data.Slug]
+		disabledTechs, needsIsolation := techniquetest.TechniqueIsolationConfig[data.Slug]
 
 		var techCounts map[string]int
 		var targetCount int
