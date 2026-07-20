@@ -105,7 +105,7 @@ func TestPracticeHandler_UnknownTechniqueUsesDefaultDifficulties(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for an unknown technique, got %d: %s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["technique"] != technique {
 		t.Errorf("expected technique %q echoed in 404 body, got %v", technique, resp["technique"])
@@ -133,7 +133,7 @@ func TestSolveAll_WithCandidatesReachesAutosolveLoop(t *testing.T) {
 		candidates[i] = []int{}
 	}
 
-	code, resp := postJSON(t, router, "/api/solve/all", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/solve/all", map[string]any{
 		"token":      token,
 		"board":      givens,
 		"givens":     givens,
@@ -143,10 +143,10 @@ func TestSolveAll_WithCandidatesReachesAutosolveLoop(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("expected 200 from solve/all with candidates, got %d: %v", code, resp)
 	}
-	if _, ok := resp["moves"].([]interface{}); !ok {
+	if _, ok := resp["moves"].([]any); !ok {
 		t.Errorf("expected a moves array in the response, got %v", resp["moves"])
 	}
-	if _, ok := resp["finalBoard"].([]interface{}); !ok {
+	if _, ok := resp["finalBoard"].([]any); !ok {
 		t.Errorf("expected a finalBoard in the response, got %v", resp["finalBoard"])
 	}
 }

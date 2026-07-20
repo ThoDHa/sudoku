@@ -25,19 +25,19 @@ func TestSolverEndpointsRejectOutOfRangeCellValues(t *testing.T) {
 	cases := []struct {
 		name     string
 		path     string
-		body     map[string]interface{}
+		body     map[string]any
 		badValue int
 	}{
-		{"solveNext/negative", "/api/solve/next", map[string]interface{}{"board": dup(solved), "givens": dup(solved)}, -1},
-		{"solveNext/overNine", "/api/solve/next", map[string]interface{}{"board": dup(solved), "givens": dup(solved)}, 10},
-		{"solveAll/negative", "/api/solve/all", map[string]interface{}{"board": dup(solved), "givens": dup(solved)}, -5},
-		{"solveAll/overNine", "/api/solve/all", map[string]interface{}{"board": dup(solved), "givens": dup(solved)}, 99},
-		{"solveFull/negative", "/api/solve/full", map[string]interface{}{"board": dup(solved)}, -1},
-		{"solveFull/overNine", "/api/solve/full", map[string]interface{}{"board": dup(solved)}, 12},
-		{"validate/negative", "/api/validate", map[string]interface{}{"board": dup(solved)}, -1},
-		{"validate/overNine", "/api/validate", map[string]interface{}{"board": dup(solved)}, 42},
-		{"customValidate/negative", "/api/custom/validate", map[string]interface{}{"givens": dup(solved), "device_id": "dev-1"}, -1},
-		{"customValidate/overNine", "/api/custom/validate", map[string]interface{}{"givens": dup(solved), "device_id": "dev-1"}, 50},
+		{"solveNext/negative", "/api/solve/next", map[string]any{"board": dup(solved), "givens": dup(solved)}, -1},
+		{"solveNext/overNine", "/api/solve/next", map[string]any{"board": dup(solved), "givens": dup(solved)}, 10},
+		{"solveAll/negative", "/api/solve/all", map[string]any{"board": dup(solved), "givens": dup(solved)}, -5},
+		{"solveAll/overNine", "/api/solve/all", map[string]any{"board": dup(solved), "givens": dup(solved)}, 99},
+		{"solveFull/negative", "/api/solve/full", map[string]any{"board": dup(solved)}, -1},
+		{"solveFull/overNine", "/api/solve/full", map[string]any{"board": dup(solved)}, 12},
+		{"validate/negative", "/api/validate", map[string]any{"board": dup(solved)}, -1},
+		{"validate/overNine", "/api/validate", map[string]any{"board": dup(solved)}, 42},
+		{"customValidate/negative", "/api/custom/validate", map[string]any{"givens": dup(solved), "device_id": "dev-1"}, -1},
+		{"customValidate/overNine", "/api/custom/validate", map[string]any{"givens": dup(solved), "device_id": "dev-1"}, 50},
 	}
 
 	for _, tc := range cases {
@@ -68,7 +68,7 @@ func TestSolverEndpointsAcceptValidRangeCellValues(t *testing.T) {
 		t.Run(ep, func(t *testing.T) {
 			router := setupRouter()
 			token := getValidToken(router)
-			code, resp := postJSON(t, router, ep, map[string]interface{}{
+			code, resp := postJSON(t, router, ep, map[string]any{
 				"token":  token,
 				"board":  solved,
 				"givens": solved,
@@ -95,7 +95,7 @@ func TestSolveFullFastMode_RejectsSparseBoard(t *testing.T) {
 	board[0] = 1
 	board[1] = 2
 
-	code, resp := postJSON(t, router, "/api/solve/full?mode=fast", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/solve/full?mode=fast", map[string]any{
 		"token": token,
 		"board": board,
 	})
@@ -106,7 +106,7 @@ func TestSolveFullFastMode_RejectsSparseBoard(t *testing.T) {
 
 // setFirstCell mutates the first cell of the board or givens slice in a JSON
 // body so an out-of-range value reaches the handler intact.
-func setFirstCell(body map[string]interface{}, value int) {
+func setFirstCell(body map[string]any, value int) {
 	if b, ok := body["board"].([]int); ok && len(b) > 0 {
 		b[0] = value
 		body["board"] = b

@@ -27,7 +27,7 @@ func TestVersionHandlerReturnsApiAndSolverVersions(t *testing.T) {
 		t.Fatalf("expected status 200, got %d. body: %s", w.Code, w.Body.String())
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestPuzzleAnalyzeHandlerReturnsAnalysisForValidRequest(t *testing.T) {
 		t.Fatalf("expected status 200, got %d. body: %s", w.Code, w.Body.String())
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestPuzzleAnalyzeHandlerDefaultsToMediumDifficulty(t *testing.T) {
 		t.Fatalf("expected status 200, got %d. body: %s", w.Code, w.Body.String())
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &response)
 
 	if response["difficulty"] != "medium" {
@@ -114,7 +114,7 @@ func TestPracticeHandlerFindsAndCachesPuzzleForCommonTechnique(t *testing.T) {
 		t.Fatalf("expected status 200 for hidden-single, got %d. body: %s", w.Code, w.Body.String())
 	}
 
-	var first map[string]interface{}
+	var first map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &first); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestPracticeHandlerFindsAndCachesPuzzleForCommonTechnique(t *testing.T) {
 		t.Fatalf("expected status 200 on cached lookup, got %d. body: %s", w2.Code, w2.Body.String())
 	}
 
-	var second map[string]interface{}
+	var second map[string]any
 	_ = json.Unmarshal(w2.Body.Bytes(), &second)
 
 	if second["cached"] != true {
@@ -162,7 +162,7 @@ func TestPracticeHandlerReturnsNotFoundForRareTechnique(t *testing.T) {
 		t.Fatalf("expected status 404 for unfound technique, got %d. body: %s", w.Code, w.Body.String())
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &response)
 
 	if response["technique"] != "als-xy-chain" {

@@ -15,7 +15,7 @@ import (
 const maxMovesCap = 2000
 
 // postJSON posts a JSON body and returns the status code and decoded body.
-func postJSON(t *testing.T, router *gin.Engine, path string, body map[string]interface{}) (int, map[string]interface{}) {
+func postJSON(t *testing.T, router *gin.Engine, path string, body map[string]any) (int, map[string]any) {
 	t.Helper()
 	bodyBytes, _ := json.Marshal(body)
 	w := httptest.NewRecorder()
@@ -23,30 +23,30 @@ func postJSON(t *testing.T, router *gin.Engine, path string, body map[string]int
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	return w.Code, resp
 }
 
-func postSolveAll(t *testing.T, router *gin.Engine, body map[string]interface{}) (int, map[string]interface{}) {
+func postSolveAll(t *testing.T, router *gin.Engine, body map[string]any) (int, map[string]any) {
 	return postJSON(t, router, "/api/solve/all", body)
 }
 
 // solveAllTechniques returns the ordered list of move "technique" values from a
 // solve/all response. Each element of the moves array wraps its move under a
 // nested "move" key, so the technique is read one level down.
-func solveAllTechniques(resp map[string]interface{}) []string {
-	moves, ok := resp["moves"].([]interface{})
+func solveAllTechniques(resp map[string]any) []string {
+	moves, ok := resp["moves"].([]any)
 	if !ok {
 		return nil
 	}
 	out := make([]string, 0, len(moves))
 	for _, m := range moves {
-		wrapper, ok := m.(map[string]interface{})
+		wrapper, ok := m.(map[string]any)
 		if !ok {
 			continue
 		}
-		if mv, ok := wrapper["move"].(map[string]interface{}); ok {
+		if mv, ok := wrapper["move"].(map[string]any); ok {
 			if tech, ok := mv["technique"].(string); ok {
 				out = append(out, tech)
 			}
@@ -57,17 +57,17 @@ func solveAllTechniques(resp map[string]interface{}) []string {
 
 // solveAllMoveByTechnique returns the first move wrapper carrying the given
 // technique, or nil when absent. Used to pin exact move shapes.
-func solveAllMoveByTechnique(resp map[string]interface{}, want string) map[string]interface{} {
-	moves, ok := resp["moves"].([]interface{})
+func solveAllMoveByTechnique(resp map[string]any, want string) map[string]any {
+	moves, ok := resp["moves"].([]any)
 	if !ok {
 		return nil
 	}
 	for _, m := range moves {
-		wrapper, ok := m.(map[string]interface{})
+		wrapper, ok := m.(map[string]any)
 		if !ok {
 			continue
 		}
-		if mv, ok := wrapper["move"].(map[string]interface{}); ok {
+		if mv, ok := wrapper["move"].(map[string]any); ok {
 			if tech, _ := mv["technique"].(string); tech == want {
 				return mv
 			}
@@ -89,17 +89,17 @@ func hasTechnique(techniques []string, want string) bool {
 // element of the moves array carrying board/candidates/move) whose inner move
 // carries the given technique, or nil when absent. Used to inspect the
 // board/candidates snapshot attached to a specific move.
-func solveAllMoveWrapperByTechnique(resp map[string]interface{}, want string) map[string]interface{} {
-	moves, ok := resp["moves"].([]interface{})
+func solveAllMoveWrapperByTechnique(resp map[string]any, want string) map[string]any {
+	moves, ok := resp["moves"].([]any)
 	if !ok {
 		return nil
 	}
 	for _, m := range moves {
-		wrapper, ok := m.(map[string]interface{})
+		wrapper, ok := m.(map[string]any)
 		if !ok {
 			continue
 		}
-		if mv, ok := wrapper["move"].(map[string]interface{}); ok {
+		if mv, ok := wrapper["move"].(map[string]any); ok {
 			if tech, _ := mv["technique"].(string); tech == want {
 				return wrapper
 			}
@@ -108,10 +108,10 @@ func solveAllMoveWrapperByTechnique(resp map[string]interface{}, want string) ma
 	return nil
 }
 
-// ifaceToIntBoard converts the []interface{} returned by JSON decoding back to
+// ifaceToIntBoard converts the []any returned by JSON decoding back to
 // an []int board. Missing/non-number entries become 0.
-func ifaceToIntBoard(from interface{}) []int {
-	arr, ok := from.([]interface{})
+func ifaceToIntBoard(from any) []int {
+	arr, ok := from.([]any)
 	if !ok {
 		return nil
 	}
@@ -167,7 +167,7 @@ func TestSolveAllCompletesAfterFixingDirectConflict(t *testing.T) {
 	// direct row conflict, treated as a user entry.
 	board, givens := boardWithUserErrors(solved, map[int]int{1: solved[0]})
 
-	code, resp := postSolveAll(t, router, map[string]interface{}{
+	code, resp := postSolveAll(t, router, map[string]any{
 		"token":  token,
 		"board":  board,
 		"givens": givens,
@@ -225,7 +225,7 @@ func TestSolveAllContradictionLoopEmitsFixErrorThenStall(t *testing.T) {
 	board[9] = 9
 	givens := make([]int, 81) // all entries are user-entered
 
-	code, resp := postSolveAll(t, router, map[string]interface{}{
+	code, resp := postSolveAll(t, router, map[string]any{
 		"token":  token,
 		"board":  board,
 		"givens": givens,
@@ -275,7 +275,7 @@ func TestSolveAllEmitsDiagnosticAndUnpinpointableOnUncorrelatedErrors(t *testing
 	}
 	board, givens := boardWithUserErrors(solved, corruptions)
 
-	code, resp := postSolveAll(t, router, map[string]interface{}{
+	code, resp := postSolveAll(t, router, map[string]any{
 		"token":  token,
 		"board":  board,
 		"givens": givens,
@@ -312,7 +312,7 @@ func TestSolveAllRespectsMaxFixesCap(t *testing.T) {
 	}
 	board, givens := boardWithUserErrors(solved, corruptions)
 
-	code, resp := postSolveAll(t, router, map[string]interface{}{
+	code, resp := postSolveAll(t, router, map[string]any{
 		"token":  token,
 		"board":  board,
 		"givens": givens,
@@ -349,7 +349,7 @@ func TestSolveAllCharacterizationPinsMoveShapes(t *testing.T) {
 	// fix-conflict move: a direct row conflict between cells 0 and 1.
 	solved := dp.GenerateFullGrid(987654)
 	conflictBoard, conflictGivens := boardWithUserErrors(solved, map[int]int{1: solved[0]})
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": conflictBoard, "givens": conflictGivens,
 	})
 	fixConflict := solveAllMoveByTechnique(resp, "fix-conflict")
@@ -372,7 +372,7 @@ func TestSolveAllCharacterizationPinsMoveShapes(t *testing.T) {
 		contradictionBoard[d] = d
 	}
 	contradictionBoard[9] = 9
-	_, resp2 := postSolveAll(t, router, map[string]interface{}{
+	_, resp2 := postSolveAll(t, router, map[string]any{
 		"token": token, "board": contradictionBoard, "givens": make([]int, 81),
 	})
 	fixError := solveAllMoveByTechnique(resp2, "fix-error")

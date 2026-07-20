@@ -298,7 +298,7 @@ func TestBuildConflictFix_RowConflictExactOutput(t *testing.T) {
 	if targets[0]["row"] != 0 || targets[0]["col"] != 8 {
 		t.Errorf("target: expected (row=0,col=8) for badCell=8, got %v", targets[0])
 	}
-	highlights := move["highlights"].(map[string]interface{})
+	highlights := move["highlights"].(map[string]any)
 	primary := highlights["primary"].([]map[string]int)
 	if primary[0]["row"] != 0 || primary[0]["col"] != 8 {
 		t.Errorf("primary: expected (0,8), got %v", primary[0])
@@ -356,7 +356,7 @@ func TestBuildConflictFix_ColumnConflictExactOutput(t *testing.T) {
 	if targets[0]["row"] != 1 || targets[0]["col"] != 8 {
 		t.Errorf("target: expected (1,8) for badCell=Cell1=17, got %v", targets[0])
 	}
-	secondary := move["highlights"].(map[string]interface{})["secondary"].([]map[string]int)
+	secondary := move["highlights"].(map[string]any)["secondary"].([]map[string]int)
 	if secondary[0]["row"] != 0 || secondary[0]["col"] != 8 {
 		t.Errorf("secondary: expected (0,8) for otherCell=Cell2=8, got %v", secondary[0])
 	}
@@ -395,7 +395,7 @@ func TestBuildConflictFix_BoxConflictExactOutput(t *testing.T) {
 	if targets[0]["row"] != 1 || targets[0]["col"] != 0 {
 		t.Errorf("target: expected (1,0) for badCell=Cell2=9, got %v", targets[0])
 	}
-	secondary := move["highlights"].(map[string]interface{})["secondary"].([]map[string]int)
+	secondary := move["highlights"].(map[string]any)["secondary"].([]map[string]int)
 	if secondary[0]["row"] != 0 || secondary[0]["col"] != 1 {
 		t.Errorf("secondary: expected (0,1) for otherCell=Cell1=1, got %v", secondary[0])
 	}

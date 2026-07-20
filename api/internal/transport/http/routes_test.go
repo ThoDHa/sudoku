@@ -62,7 +62,7 @@ func setupRouter() *gin.Engine {
 }
 
 func getValidToken(router *gin.Engine) string {
-	body := map[string]interface{}{
+	body := map[string]any{
 		"seed":       "test-seed",
 		"difficulty": "medium",
 		"device_id":  "test-device-123",
@@ -73,7 +73,7 @@ func getValidToken(router *gin.Engine) string {
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
-	var response map[string]interface{}
+	var response map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &response)
 	if token, ok := response["token"].(string); ok {
 		return token
@@ -88,7 +88,7 @@ func boolPtr(b bool) *bool {
 func testConflictDetection(t *testing.T, router http.Handler, token string, board []int, expectedConflictType string, testName string) {
 	t.Helper()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token": token,
 		"board": board,
 	}
@@ -103,13 +103,13 @@ func testConflictDetection(t *testing.T, router http.Handler, token string, boar
 		return
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	if err != nil {
 		t.Fatalf("[%s] Failed to parse response: %v", testName, err)
 	}
 
-	move, ok := response["move"].(map[string]interface{})
+	move, ok := response["move"].(map[string]any)
 	if !ok {
 		t.Fatalf("[%s] Expected move in response, got: %v", testName, response)
 	}
@@ -153,7 +153,7 @@ func TestHTTPRoutes(t *testing.T) {
 			t.Errorf("Expected status 200, got %d", w.Code)
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		if err != nil {
 			t.Fatalf("Failed to parse response: %v", err)
@@ -179,7 +179,7 @@ func TestHTTPRoutes(t *testing.T) {
 			t.Errorf("Expected status 200, got %d", w.Code)
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		if err != nil {
 			t.Fatalf("Failed to parse response: %v", err)
@@ -246,7 +246,7 @@ func TestHTTPRoutes(t *testing.T) {
 				}
 
 				if w.Code == http.StatusOK {
-					var response map[string]interface{}
+					var response map[string]any
 					err := json.Unmarshal(w.Body.Bytes(), &response)
 					if err != nil {
 						t.Fatalf("Failed to parse response: %v", err)
@@ -256,7 +256,7 @@ func TestHTTPRoutes(t *testing.T) {
 						t.Error("Expected givens in response")
 					}
 
-					givens, ok := response["givens"].([]interface{})
+					givens, ok := response["givens"].([]any)
 					if !ok {
 						t.Error("Expected givens to be an array")
 					} else if len(givens) != 81 {
@@ -272,12 +272,12 @@ func TestHTTPRoutes(t *testing.T) {
 
 		tests := []struct {
 			name       string
-			body       map[string]interface{}
+			body       map[string]any
 			wantStatus int
 		}{
 			{
 				name: "Valid session start",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"seed":       "test-seed",
 					"difficulty": "medium",
 					"device_id":  "test-device-123",
@@ -286,7 +286,7 @@ func TestHTTPRoutes(t *testing.T) {
 			},
 			{
 				name: "Missing seed",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"difficulty": "medium",
 					"device_id":  "test-device-123",
 				},
@@ -294,7 +294,7 @@ func TestHTTPRoutes(t *testing.T) {
 			},
 			{
 				name: "Missing device_id",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"seed":       "test-seed",
 					"difficulty": "medium",
 				},
@@ -315,7 +315,7 @@ func TestHTTPRoutes(t *testing.T) {
 				}
 
 				if tt.wantStatus == http.StatusOK {
-					var response map[string]interface{}
+					var response map[string]any
 					err := json.Unmarshal(w.Body.Bytes(), &response)
 					if err != nil {
 						t.Fatalf("Failed to parse response: %v", err)
@@ -341,12 +341,12 @@ func TestHTTPRoutes(t *testing.T) {
 
 		tests := []struct {
 			name       string
-			body       map[string]interface{}
+			body       map[string]any
 			wantStatus int
 		}{
 			{
 				name: "Valid solve next request",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"token": token,
 					"board": board,
 				},
@@ -354,7 +354,7 @@ func TestHTTPRoutes(t *testing.T) {
 			},
 			{
 				name: "Invalid token",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"token": "invalid-token",
 					"board": board,
 				},
@@ -362,14 +362,14 @@ func TestHTTPRoutes(t *testing.T) {
 			},
 			{
 				name: "Missing token",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"board": board,
 				},
 				wantStatus: http.StatusBadRequest,
 			},
 			{
 				name: "Invalid board size",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"token": token,
 					"board": []int{1, 2, 3},
 				},
@@ -409,13 +409,13 @@ func TestHTTPRoutes(t *testing.T) {
 
 		tests := []struct {
 			name       string
-			body       map[string]interface{}
+			body       map[string]any
 			wantStatus int
 			wantValid  *bool
 		}{
 			{
 				name: "Valid board",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"token": token,
 					"board": validBoard,
 				},
@@ -424,7 +424,7 @@ func TestHTTPRoutes(t *testing.T) {
 			},
 			{
 				name: "Board with conflicts",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"token": token,
 					"board": conflictBoard,
 				},
@@ -433,7 +433,7 @@ func TestHTTPRoutes(t *testing.T) {
 			},
 			{
 				name: "Invalid token",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"token": "invalid-token",
 					"board": validBoard,
 				},
@@ -454,7 +454,7 @@ func TestHTTPRoutes(t *testing.T) {
 				}
 
 				if tt.wantValid != nil && w.Code == http.StatusOK {
-					var response map[string]interface{}
+					var response map[string]any
 					err := json.Unmarshal(w.Body.Bytes(), &response)
 					if err != nil {
 						t.Fatalf("Failed to parse response: %v", err)
@@ -502,13 +502,13 @@ func TestHTTPRoutes(t *testing.T) {
 
 		tests := []struct {
 			name       string
-			body       map[string]interface{}
+			body       map[string]any
 			wantStatus int
 			wantValid  *bool
 		}{
 			{
 				name: "Valid custom puzzle",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"givens":    validGivens,
 					"device_id": "test-device",
 				},
@@ -517,7 +517,7 @@ func TestHTTPRoutes(t *testing.T) {
 			},
 			{
 				name: "Too few givens",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"givens":    fewGivens,
 					"device_id": "test-device",
 				},
@@ -526,7 +526,7 @@ func TestHTTPRoutes(t *testing.T) {
 			},
 			{
 				name: "Missing device_id",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"givens": validGivens,
 				},
 				wantStatus: http.StatusBadRequest,
@@ -546,7 +546,7 @@ func TestHTTPRoutes(t *testing.T) {
 				}
 
 				if tt.wantValid != nil && w.Code == http.StatusOK {
-					var response map[string]interface{}
+					var response map[string]any
 					err := json.Unmarshal(w.Body.Bytes(), &response)
 					if err != nil {
 						t.Fatalf("Failed to parse response: %v", err)
@@ -576,13 +576,13 @@ func TestHTTPRoutes(t *testing.T) {
 
 		tests := []struct {
 			name       string
-			body       map[string]interface{}
+			body       map[string]any
 			mode       string
 			wantStatus int
 		}{
 			{
 				name: "Valid solve full request - human mode",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"token": token,
 					"board": board,
 				},
@@ -591,7 +591,7 @@ func TestHTTPRoutes(t *testing.T) {
 			},
 			{
 				name: "Valid solve full request - fast mode",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"token": token,
 					"board": board,
 				},
@@ -600,7 +600,7 @@ func TestHTTPRoutes(t *testing.T) {
 			},
 			{
 				name: "Invalid token",
-				body: map[string]interface{}{
+				body: map[string]any{
 					"token": "invalid-token",
 					"board": board,
 				},
@@ -641,7 +641,7 @@ func TestHTTPRoutes(t *testing.T) {
 			board[i] = 0
 		}
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"token": token,
 			"board": board,
 		}
@@ -656,7 +656,7 @@ func TestHTTPRoutes(t *testing.T) {
 			t.Fatalf("Expected status 200 from autosolve, got %d. Body: %s", w.Code, w.Body.String())
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 			t.Fatalf("Failed to parse autosolve response: %v", err)
 		}
@@ -666,7 +666,7 @@ func TestHTTPRoutes(t *testing.T) {
 			t.Fatalf("Expected final_board in response, got: %v", response)
 		}
 
-		finalArr, ok := finalIface.([]interface{})
+		finalArr, ok := finalIface.([]any)
 		if !ok {
 			t.Fatalf("final_board has unexpected type: %T", finalIface)
 		}
@@ -709,7 +709,7 @@ func TestHTTPRoutes(t *testing.T) {
 			t.Fatalf("Expected status 200 from puzzle endpoint, got %d. Body: %s", w.Code, w.Body.String())
 		}
 
-		var puzzleResp map[string]interface{}
+		var puzzleResp map[string]any
 		if err := json.Unmarshal(w.Body.Bytes(), &puzzleResp); err != nil {
 			t.Fatalf("Failed to parse puzzle response: %v", err)
 		}
@@ -719,7 +719,7 @@ func TestHTTPRoutes(t *testing.T) {
 			t.Fatalf("puzzle response missing givens: %v", puzzleResp)
 		}
 
-		givensArr, ok := givensIface.([]interface{})
+		givensArr, ok := givensIface.([]any)
 		if !ok || len(givensArr) != 81 {
 			t.Fatalf("unexpected givens format/length: %T len=%d", givensIface, len(givensArr))
 		}
@@ -735,7 +735,7 @@ func TestHTTPRoutes(t *testing.T) {
 
 		token := getValidToken(router)
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"token": token,
 			"board": board,
 		}
@@ -749,7 +749,7 @@ func TestHTTPRoutes(t *testing.T) {
 			t.Fatalf("Expected status 200 from autosolve, got %d. Body: %s", w2.Code, w2.Body.String())
 		}
 
-		var resp map[string]interface{}
+		var resp map[string]any
 		if err := json.Unmarshal(w2.Body.Bytes(), &resp); err != nil {
 			t.Fatalf("Failed to parse autosolve response: %v", err)
 		}
@@ -759,7 +759,7 @@ func TestHTTPRoutes(t *testing.T) {
 			t.Fatalf("Expected final_board in response, got: %v", resp)
 		}
 
-		finalArr, ok := finalIface.([]interface{})
+		finalArr, ok := finalIface.([]any)
 		if !ok || len(finalArr) != 81 {
 			t.Fatalf("final_board has unexpected type/length: %T len=%d", finalIface, len(finalArr))
 		}
@@ -880,7 +880,7 @@ func TestHTTPRoutes(t *testing.T) {
 
 		token := getValidToken(router)
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"token":  token,
 			"board":  board,
 			"givens": givens,
@@ -895,7 +895,7 @@ func TestHTTPRoutes(t *testing.T) {
 			t.Fatalf("Expected status 200 from autosolve, got %d. Body: %s", w.Code, w.Body.String())
 		}
 
-		var resp map[string]interface{}
+		var resp map[string]any
 		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 			t.Fatalf("Failed to parse autosolve response: %v", err)
 		}
@@ -904,18 +904,18 @@ func TestHTTPRoutes(t *testing.T) {
 		finalIface := resp["finalBoard"]
 
 		// If finalBoard not returned, try inspecting last move's board
-		var finalArr []interface{}
+		var finalArr []any
 		if finalIface == nil {
 			// Try to extract last move board
-			movesIface, _ := resp["moves"].([]interface{})
+			movesIface, _ := resp["moves"].([]any)
 			if len(movesIface) > 0 {
-				last := movesIface[len(movesIface)-1].(map[string]interface{})
-				if b, ok := last["board"].([]interface{}); ok {
+				last := movesIface[len(movesIface)-1].(map[string]any)
+				if b, ok := last["board"].([]any); ok {
 					finalArr = b
 				}
 			}
 		} else {
-			if b, ok := finalIface.([]interface{}); ok {
+			if b, ok := finalIface.([]any); ok {
 				finalArr = b
 			}
 		}
@@ -965,18 +965,18 @@ func TestHTTPRoutes(t *testing.T) {
 		req1, _ := http.NewRequest("GET", "/api/puzzle/"+seed+"?d="+difficulty, nil)
 		router.ServeHTTP(w1, req1)
 
-		var response1 map[string]interface{}
+		var response1 map[string]any
 		_ = json.Unmarshal(w1.Body.Bytes(), &response1)
-		givens1 := response1["givens"].([]interface{})
+		givens1 := response1["givens"].([]any)
 
 		// Get second puzzle with same seed
 		w2 := httptest.NewRecorder()
 		req2, _ := http.NewRequest("GET", "/api/puzzle/"+seed+"?d="+difficulty, nil)
 		router.ServeHTTP(w2, req2)
 
-		var response2 map[string]interface{}
+		var response2 map[string]any
 		_ = json.Unmarshal(w2.Body.Bytes(), &response2)
-		givens2 := response2["givens"].([]interface{})
+		givens2 := response2["givens"].([]any)
 
 		// Compare
 		for i := range 81 {
@@ -999,9 +999,9 @@ func TestHTTPRoutes(t *testing.T) {
 			req, _ := http.NewRequest("GET", "/api/puzzle/"+seed+"?d="+diff, nil)
 			router.ServeHTTP(w, req)
 
-			var response map[string]interface{}
+			var response map[string]any
 			_ = json.Unmarshal(w.Body.Bytes(), &response)
-			givens := response["givens"].([]interface{})
+			givens := response["givens"].([]any)
 
 			count := 0
 			for _, v := range givens {
@@ -1034,7 +1034,7 @@ func TestConflictDetection(t *testing.T) {
 		boardWithConflict[4] = 7
 		boardWithConflict[8] = 5 // Conflict! 5 already at position 0 in same row
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"token": token,
 			"board": boardWithConflict,
 		}
@@ -1049,13 +1049,13 @@ func TestConflictDetection(t *testing.T) {
 			return
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		if err != nil {
 			t.Fatalf("Failed to parse response: %v", err)
 		}
 
-		move, ok := response["move"].(map[string]interface{})
+		move, ok := response["move"].(map[string]any)
 		if !ok {
 			t.Fatalf("Expected move in response, got: %v", response)
 		}
@@ -1092,7 +1092,7 @@ func TestConflictDetection(t *testing.T) {
 		boardWithConflict[1] = 3
 		boardWithConflict[4] = 7
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"token": token,
 			"board": boardWithConflict,
 		}
@@ -1107,10 +1107,10 @@ func TestConflictDetection(t *testing.T) {
 			return
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		_ = json.Unmarshal(w.Body.Bytes(), &response)
 
-		move, ok := response["move"].(map[string]interface{})
+		move, ok := response["move"].(map[string]any)
 		if !ok {
 			t.Fatalf("Expected move in response")
 		}
@@ -1138,7 +1138,7 @@ func TestConflictDetection(t *testing.T) {
 		boardWithConflict[1] = 3
 		boardWithConflict[4] = 7
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"token": token,
 			"board": boardWithConflict,
 		}
@@ -1153,10 +1153,10 @@ func TestConflictDetection(t *testing.T) {
 			return
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		_ = json.Unmarshal(w.Body.Bytes(), &response)
 
-		move, ok := response["move"].(map[string]interface{})
+		move, ok := response["move"].(map[string]any)
 		if !ok {
 			t.Fatalf("Expected move in response")
 		}
@@ -1291,7 +1291,7 @@ func TestConflictDetection(t *testing.T) {
 		board[36] = 7
 		board[44] = 7 // Row conflict with [36]
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"token": token,
 			"board": board,
 		}
@@ -1306,10 +1306,10 @@ func TestConflictDetection(t *testing.T) {
 			return
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		_ = json.Unmarshal(w.Body.Bytes(), &response)
 
-		move, ok := response["move"].(map[string]interface{})
+		move, ok := response["move"].(map[string]any)
 		if !ok {
 			t.Fatalf("Expected move in response")
 		}
@@ -1319,7 +1319,7 @@ func TestConflictDetection(t *testing.T) {
 			t.Errorf("Expected 'fix-conflict', got %q", technique)
 		}
 
-		targets, ok := move["targets"].([]interface{})
+		targets, ok := move["targets"].([]any)
 		if !ok || len(targets) != 1 {
 			t.Logf("Note: targets has %d entries (expected 1)", len(targets))
 		}
@@ -1394,7 +1394,7 @@ func TestConflictDetection(t *testing.T) {
 		board[0] = 5
 		board[7] = 5 // Row conflict
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"token": token,
 			"board": board,
 		}
@@ -1409,7 +1409,7 @@ func TestConflictDetection(t *testing.T) {
 			return
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 			t.Fatalf("Failed to parse response: %v", err)
 		}
@@ -1419,17 +1419,17 @@ func TestConflictDetection(t *testing.T) {
 			t.Logf("Note: status is %q (expected 'conflict_found')", status)
 		}
 
-		moves, ok := response["moves"].([]interface{})
+		moves, ok := response["moves"].([]any)
 		if !ok || len(moves) == 0 {
 			t.Fatalf("Expected moves array in response, got: %v", response)
 		}
 
-		firstMoveWrapper, ok := moves[0].(map[string]interface{})
+		firstMoveWrapper, ok := moves[0].(map[string]any)
 		if !ok {
 			t.Fatalf("Expected first move wrapper to be a map, got: %T", moves[0])
 		}
 
-		firstMove, ok := firstMoveWrapper["move"].(map[string]interface{})
+		firstMove, ok := firstMoveWrapper["move"].(map[string]any)
 		if !ok {
 			t.Fatalf("Expected nested 'move' in first move, got: %v", firstMoveWrapper)
 		}
@@ -1456,7 +1456,7 @@ func TestConflictDetection(t *testing.T) {
 		board[18] = 3
 		board[26] = 3 // Row conflict 2
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"token": token,
 			"board": board,
 		}
@@ -1471,7 +1471,7 @@ func TestConflictDetection(t *testing.T) {
 			return
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 			t.Fatalf("Failed to parse response: %v", err)
 		}
@@ -1481,7 +1481,7 @@ func TestConflictDetection(t *testing.T) {
 			t.Logf("Note: status is %q (expected 'conflict_found')", status)
 		}
 
-		moves, ok := response["moves"].([]interface{})
+		moves, ok := response["moves"].([]any)
 		if !ok || len(moves) == 0 {
 			t.Fatalf("Expected moves array in response, got: %v", response)
 		}
@@ -1490,12 +1490,12 @@ func TestConflictDetection(t *testing.T) {
 			t.Logf("Note: got %d moves (expected 1 for first conflict fix)", len(moves))
 		}
 
-		firstMoveWrapper, ok := moves[0].(map[string]interface{})
+		firstMoveWrapper, ok := moves[0].(map[string]any)
 		if !ok {
 			t.Fatalf("Expected first move to be a map")
 		}
 
-		firstMove, ok := firstMoveWrapper["move"].(map[string]interface{})
+		firstMove, ok := firstMoveWrapper["move"].(map[string]any)
 		if !ok {
 			t.Fatalf("Expected nested 'move' in first move wrapper")
 		}
@@ -1529,7 +1529,7 @@ func TestConflictDetection(t *testing.T) {
 		board[72] = 5 // Column conflict
 		board[10] = 5 // Box conflict
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"token": token,
 			"board": board,
 		}
@@ -1544,10 +1544,10 @@ func TestConflictDetection(t *testing.T) {
 			return
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		_ = json.Unmarshal(w.Body.Bytes(), &response)
 
-		move, ok := response["move"].(map[string]interface{})
+		move, ok := response["move"].(map[string]any)
 		if !ok {
 			t.Fatalf("Expected move in response")
 		}
@@ -1570,7 +1570,7 @@ func TestConflictDetection(t *testing.T) {
 		board[2] = 3
 		board[9] = 4
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"token": token,
 			"board": board,
 		}
@@ -1585,10 +1585,10 @@ func TestConflictDetection(t *testing.T) {
 			return
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		_ = json.Unmarshal(w.Body.Bytes(), &response)
 
-		move, ok := response["move"].(map[string]interface{})
+		move, ok := response["move"].(map[string]any)
 		if !ok {
 			t.Logf("Response: %v", response)
 			return
@@ -1614,7 +1614,7 @@ func TestBoardValidation(t *testing.T) {
 		unsolvableBoard[1] = 2
 		unsolvableBoard[9] = 1 // Same column as [0], same value = conflict
 
-		body := map[string]interface{}{
+		body := map[string]any{
 			"token": token,
 			"board": unsolvableBoard,
 		}
@@ -1628,7 +1628,7 @@ func TestBoardValidation(t *testing.T) {
 			t.Errorf("Expected status 200, got %d", w.Code)
 		}
 
-		var response map[string]interface{}
+		var response map[string]any
 		_ = json.Unmarshal(w.Body.Bytes(), &response)
 
 		if response["valid"] != false {

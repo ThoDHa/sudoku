@@ -61,7 +61,7 @@ func TestMutation_PuzzleHandler_FallbackFiresWhenLoaderErrors(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 
 	givens := ifaceToIntBoard(resp["givens"])
@@ -87,7 +87,7 @@ func TestMutation_PuzzleAnalyze_FallbackFiresWhenLoaderErrors(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 
 	got, _ := resp["givens_count"].(float64)
@@ -121,7 +121,7 @@ func TestMutation_FindPracticePuzzle_FindsKnownTechnique(t *testing.T) {
 // response's "move" key). handleSolveNextContradiction writes a top-level JSON
 // object {"move":{...}, "board":..., "candidates":...}; callers want the inner
 // move to inspect technique/targets/highlights.
-func callSolveNextContradiction(t *testing.T, board *human.Board, targets []core.CellRef, reqBoard, givens []int) map[string]interface{} {
+func callSolveNextContradiction(t *testing.T, board *human.Board, targets []core.CellRef, reqBoard, givens []int) map[string]any {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
@@ -132,11 +132,11 @@ func callSolveNextContradiction(t *testing.T, board *human.Board, targets []core
 	if !handleSolveNextContradiction(c, board, move, reqBoard, nil, givens) {
 		t.Fatalf("expected handleSolveNextContradiction to handle the contradiction (return true)")
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to parse response %q: %v", w.Body.String(), err)
 	}
-	inner, ok := resp["move"].(map[string]interface{})
+	inner, ok := resp["move"].(map[string]any)
 	if !ok {
 		t.Fatalf("response missing inner move object: %v", resp)
 	}
@@ -161,11 +161,11 @@ func TestMutation_SolveNextContradiction_TargetsPathFixesCellZero(t *testing.T) 
 	if technique != "fix-error" {
 		t.Fatalf("expected fix-error at cell 0, got technique=%q (full move=%v)", technique, move)
 	}
-	targets, _ := move["targets"].([]interface{})
+	targets, _ := move["targets"].([]any)
 	if len(targets) != 1 {
 		t.Fatalf("expected 1 target, got %d", len(targets))
 	}
-	target, _ := targets[0].(map[string]interface{})
+	target, _ := targets[0].(map[string]any)
 	if int(target["row"].(float64)) != 0 || int(target["col"].(float64)) != 0 {
 		t.Errorf("expected target (0,0) for badCell=0, got %v", target)
 	}
@@ -198,11 +198,11 @@ func TestMutation_SolveNextContradiction_RefillPathFixesCellZero(t *testing.T) {
 	if technique != "fix-error" {
 		t.Fatalf("expected fix-error from refill path at cell 0, got technique=%q (full move=%v)", technique, move)
 	}
-	targets, _ := move["targets"].([]interface{})
+	targets, _ := move["targets"].([]any)
 	if len(targets) != 1 {
 		t.Fatalf("expected 1 target, got %d", len(targets))
 	}
-	target, _ := targets[0].(map[string]interface{})
+	target, _ := targets[0].(map[string]any)
 	if int(target["row"].(float64)) != 0 || int(target["col"].(float64)) != 0 {
 		t.Errorf("expected target (0,0) for badCell=0, got %v", target)
 	}
@@ -245,7 +245,7 @@ func TestMutation_AutosolveContradiction_TargetsPathFixesCellZero(t *testing.T) 
 	}
 	// moveResult.Move is the in-memory map (not JSON-roundtripped), so targets
 	// retains its concrete []map[string]int type from appendFixErrorMove.
-	targets, _ := fix.Move.(map[string]interface{})["targets"].([]map[string]int)
+	targets, _ := fix.Move.(map[string]any)["targets"].([]map[string]int)
 	if len(targets) != 1 {
 		t.Fatalf("expected 1 target, got %d", len(targets))
 	}
@@ -293,7 +293,7 @@ func TestMutation_AutosolveContradiction_RefillPathFixesCellZero(t *testing.T) {
 	}
 	// moveResult.Move is the in-memory map (not JSON-roundtripped), so targets
 	// retains its concrete []map[string]int type from appendFixErrorMove.
-	targets, _ := fix.Move.(map[string]interface{})["targets"].([]map[string]int)
+	targets, _ := fix.Move.(map[string]any)["targets"].([]map[string]int)
 	if len(targets) != 1 {
 		t.Fatalf("expected 1 target, got %d", len(targets))
 	}
@@ -306,7 +306,7 @@ func TestMutation_AutosolveContradiction_RefillPathFixesCellZero(t *testing.T) {
 // the given technique, or nil when absent.
 func moveResultByTechnique(moves []moveResult, want string) *moveResult {
 	for i := range moves {
-		mv, ok := moves[i].Move.(map[string]interface{})
+		mv, ok := moves[i].Move.(map[string]any)
 		if !ok {
 			continue
 		}
@@ -343,7 +343,7 @@ func TestMutation_SolveAll_BreakOnSolvedNoStalledMove(t *testing.T) {
 		t.Skip("no non-given cell available to place a user entry")
 	}
 
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	if isSolved, _ := resp["solved"].(bool); !isSolved {
@@ -397,7 +397,7 @@ func TestMutation_SolveAll_ConflictFixMoveCarriesPopulatedCandidates(t *testing.
 		t.Skip("could not construct a fixable row conflict for this puzzle")
 	}
 
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	seq := solveAllTechniques(resp)
@@ -431,7 +431,7 @@ func TestMutation_SolveAll_NoCandidatesRequestPopulatesFirstMove(t *testing.T) {
 	solved := dp.GenerateFullGrid(31337)
 	givens := dp.CarveGivensWithSubset(context.Background(), solved, 31337)["medium"]
 
-	bodyBytes, _ := json.Marshal(map[string]interface{}{
+	bodyBytes, _ := json.Marshal(map[string]any{
 		"token": token, "board": givens, "givens": givens,
 	})
 	w := httptest.NewRecorder()
@@ -439,17 +439,17 @@ func TestMutation_SolveAll_NoCandidatesRequestPopulatesFirstMove(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
-	moves, ok := resp["moves"].([]interface{})
+	moves, ok := resp["moves"].([]any)
 	if !ok || len(moves) == 0 {
 		t.Fatalf("expected at least one move, got %v", resp["moves"])
 	}
-	first, _ := moves[0].(map[string]interface{})
-	cands, _ := first["candidates"].([]interface{})
+	first, _ := moves[0].(map[string]any)
+	cands, _ := first["candidates"].([]any)
 	populated := 0
 	for _, c := range cands {
-		if arr, ok := c.([]interface{}); ok && len(arr) > 0 {
+		if arr, ok := c.([]any); ok && len(arr) > 0 {
 			populated++
 		}
 	}
@@ -462,7 +462,7 @@ func TestMutation_SolveAll_NoCandidatesRequestPopulatesFirstMove(t *testing.T) {
 	// above is necessary but not sufficient. The original NewBoard path runs
 	// InitCandidates up front, so the first move is a real solving technique
 	// (hidden-single, naked-single, etc.), never "fill-candidate".
-	firstMove, _ := first["move"].(map[string]interface{})
+	firstMove, _ := first["move"].(map[string]any)
 	if technique, _ := firstMove["technique"].(string); technique == "fill-candidate" {
 		t.Errorf("expected first move to be a real solving technique (InitCandidates ran up front), got fill-candidate (mutant likely skipped NewBoard path)")
 	}
@@ -486,24 +486,24 @@ func TestMutation_SolveAll_SkipsUnfixableConflictThenFixesNext(t *testing.T) {
 	board[4], givens[4] = 7, 7
 	board[8] = 7 // user entry, not a given
 
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
-	moves, ok := resp["moves"].([]interface{})
+	moves, ok := resp["moves"].([]any)
 	if !ok || len(moves) == 0 {
 		t.Fatalf("expected moves, got %v", resp)
 	}
-	first, _ := moves[0].(map[string]interface{})
-	mv, _ := first["move"].(map[string]interface{})
+	first, _ := moves[0].(map[string]any)
+	mv, _ := first["move"].(map[string]any)
 	technique, _ := mv["technique"].(string)
 	if technique != "fix-conflict" {
 		t.Fatalf("expected first move fix-conflict (skip-then-fix), got %q (sequence=%v)", technique, solveAllTechniques(resp))
 	}
-	targets, _ := mv["targets"].([]interface{})
+	targets, _ := mv["targets"].([]any)
 	if len(targets) != 1 {
 		t.Fatalf("expected 1 target, got %d", len(targets))
 	}
-	target, _ := targets[0].(map[string]interface{})
+	target, _ := targets[0].(map[string]any)
 	if int(target["row"].(float64)) != 0 || int(target["col"].(float64)) != 8 {
 		t.Errorf("expected the user cell (0,8) to be fixed, got %v", target)
 	}
@@ -597,7 +597,7 @@ func TestMutation_CustomValidate_RejectsOverNineGivens(t *testing.T) {
 	givens := make([]int, 81)
 	givens[0] = 50 // out of legal range 0-9
 
-	body, _ := json.Marshal(map[string]interface{}{
+	body, _ := json.Marshal(map[string]any{
 		"givens": givens, "device_id": "dev-1",
 	})
 	w := httptest.NewRecorder()
@@ -701,7 +701,7 @@ func TestMutation_DailyHandler_PuzzleIndexIsNonZeroFromLoader(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	got, _ := resp["puzzle_index"].(float64)
 	if int(got) != expected {
@@ -720,7 +720,7 @@ func TestMutation_CustomValidate_StopsAfterOutOfRangeGiven(t *testing.T) {
 	givens := make([]int, 81)
 	givens[0] = 50 // out of legal range 0-9
 
-	body, _ := json.Marshal(map[string]interface{}{"givens": givens, "device_id": "dev-1"})
+	body, _ := json.Marshal(map[string]any{"givens": givens, "device_id": "dev-1"})
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/custom/validate", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -794,7 +794,7 @@ func TestMutation_SolveAll_Step2FixCountStartsAtZero(t *testing.T) {
 	board := []int{5, 0, 6, 0, 0, 2, 0, 0, 8, 0, 8, 0, 9, 0, 3, 4, 5, 6, 0, 7, 4, 5, 0, 0, 1, 2, 0, 0, 0, 0, 0, 9, 6, 0, 4, 2, 4, 5, 9, 2, 0, 1, 6, 0, 7, 8, 0, 3, 4, 7, 0, 9, 1, 0, 2, 0, 0, 0, 1, 8, 3, 7, 4, 9, 1, 8, 3, 6, 5, 0, 0, 0, 7, 4, 5, 0, 0, 0, 0, 6, 1}
 	givens := []int{0, 0, 0, 0, 0, 2, 0, 0, 8, 0, 0, 0, 9, 0, 3, 4, 5, 6, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 9, 6, 0, 4, 0, 4, 5, 9, 2, 0, 1, 6, 0, 7, 8, 0, 0, 4, 7, 0, 9, 1, 0, 2, 0, 0, 0, 1, 8, 3, 0, 4, 9, 1, 8, 3, 6, 0, 0, 0, 0, 0, 4, 5, 0, 0, 0, 0, 6, 1}
 
-	code, resp := postSolveAll(t, router, map[string]interface{}{
+	code, resp := postSolveAll(t, router, map[string]any{
 		"token":  token,
 		"board":  board,
 		"givens": givens,

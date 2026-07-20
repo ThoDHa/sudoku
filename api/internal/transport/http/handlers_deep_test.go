@@ -22,7 +22,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func postSolveNext(t *testing.T, router *gin.Engine, body map[string]interface{}) (int, map[string]interface{}) {
+func postSolveNext(t *testing.T, router *gin.Engine, body map[string]any) (int, map[string]any) {
 	t.Helper()
 	bodyBytes, _ := json.Marshal(body)
 	w := httptest.NewRecorder()
@@ -30,7 +30,7 @@ func postSolveNext(t *testing.T, router *gin.Engine, body map[string]interface{}
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	return w.Code, resp
 }
@@ -43,7 +43,7 @@ func TestSolveNextReturnsNullMoveWhenBoardIsAlreadySolved(t *testing.T) {
 	token := getValidToken(router)
 
 	solvedGrid := dp.GenerateFullGrid(12345)
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token":  token,
 		"board":  solvedGrid,
 		"givens": solvedGrid,
@@ -79,7 +79,7 @@ func TestSolveNextPinpointsUserErrorOnContradiction(t *testing.T) {
 	// can attribute the contradiction to a user-entered cell.
 	givens := make([]int, 81)
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token":  token,
 		"board":  board,
 		"givens": givens,
@@ -90,7 +90,7 @@ func TestSolveNextPinpointsUserErrorOnContradiction(t *testing.T) {
 		t.Fatalf("expected status 200, got %d. body: %s", code, resp)
 	}
 
-	move, ok := resp["move"].(map[string]interface{})
+	move, ok := resp["move"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected a move in the contradiction response, got: %v", resp)
 	}
@@ -112,7 +112,7 @@ func TestSolveNextPinpointsUserErrorOnContradiction(t *testing.T) {
 		t.Errorf("expected digit 1-9 (the wrong entry's value), got %v", digit)
 	}
 
-	fixedBoard, _ := resp["board"].([]interface{})
+	fixedBoard, _ := resp["board"].([]any)
 	if filledFromIface(fixedBoard) >= filledFromInt(board) {
 		t.Errorf("expected the fix-error move to clear a cell; input filled=%d, output filled=%d",
 			filledFromInt(board), filledFromIface(fixedBoard))
@@ -161,7 +161,7 @@ func TestSolveNextReportsUnpinpointableWhenErrorIsAllGivens(t *testing.T) {
 	givens := make([]int, 81)
 	copy(givens, board)
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token":  token,
 		"board":  board,
 		"givens": givens,
@@ -172,7 +172,7 @@ func TestSolveNextReportsUnpinpointableWhenErrorIsAllGivens(t *testing.T) {
 		t.Fatalf("expected status 200, got %d. body: %s", code, resp)
 	}
 
-	move, ok := resp["move"].(map[string]interface{})
+	move, ok := resp["move"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected a move in the response, got: %v", resp)
 	}
@@ -191,7 +191,7 @@ func filledFromInt(board []int) int {
 	return count
 }
 
-func filledFromIface(board []interface{}) int {
+func filledFromIface(board []any) int {
 	count := 0
 	for _, v := range board {
 		if n, ok := v.(float64); ok && n != 0 {
@@ -214,7 +214,7 @@ func TestMutation_FixConflict_ExactRowConflictResponse(t *testing.T) {
 	conflictDigit := solved[0]
 	board, givens := boardWithUserErrors(solved, map[int]int{4: conflictDigit})
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token":  token,
 		"board":  board,
 		"givens": givens,
@@ -225,7 +225,7 @@ func TestMutation_FixConflict_ExactRowConflictResponse(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %v", code, resp)
 	}
 
-	move, ok := resp["move"].(map[string]interface{})
+	move, ok := resp["move"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected move in response: %v", resp)
 	}
@@ -238,11 +238,11 @@ func TestMutation_FixConflict_ExactRowConflictResponse(t *testing.T) {
 		t.Errorf("expected digit %d, got %v", conflictDigit, digit)
 	}
 
-	targets, _ := move["targets"].([]interface{})
+	targets, _ := move["targets"].([]any)
 	if len(targets) != 1 {
 		t.Fatalf("expected 1 target, got %d", len(targets))
 	}
-	target := targets[0].(map[string]interface{})
+	target := targets[0].(map[string]any)
 	if row, _ := target["row"].(float64); int(row) != 0 {
 		t.Errorf("expected target row 0 (badCell=4: 4/9=0), got %v", row)
 	}
@@ -250,10 +250,10 @@ func TestMutation_FixConflict_ExactRowConflictResponse(t *testing.T) {
 		t.Errorf("expected target col 4 (badCell=4: 4%%9=4), got %v", col)
 	}
 
-	highlights, _ := move["highlights"].(map[string]interface{})
-	primary, _ := highlights["primary"].([]interface{})
+	highlights, _ := move["highlights"].(map[string]any)
+	primary, _ := highlights["primary"].([]any)
 	if len(primary) > 0 {
-		p := primary[0].(map[string]interface{})
+		p := primary[0].(map[string]any)
 		if row, _ := p["row"].(float64); int(row) != 0 {
 			t.Errorf("expected primary row 0, got %v", row)
 		}
@@ -261,9 +261,9 @@ func TestMutation_FixConflict_ExactRowConflictResponse(t *testing.T) {
 			t.Errorf("expected primary col 4, got %v", col)
 		}
 	}
-	secondary, _ := highlights["secondary"].([]interface{})
+	secondary, _ := highlights["secondary"].([]any)
 	if len(secondary) > 0 {
-		s := secondary[0].(map[string]interface{})
+		s := secondary[0].(map[string]any)
 		if row, _ := s["row"].(float64); int(row) != 0 {
 			t.Errorf("expected secondary row 0 (otherCell=0), got %v", row)
 		}
@@ -300,7 +300,7 @@ func TestMutation_FixConflict_ExactColumnConflictResponse(t *testing.T) {
 	givens := make([]int, 81)
 	givens[0] = 5
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token":  token,
 		"board":  board,
 		"givens": givens,
@@ -311,7 +311,7 @@ func TestMutation_FixConflict_ExactColumnConflictResponse(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %v", code, resp)
 	}
 
-	move, ok := resp["move"].(map[string]interface{})
+	move, ok := resp["move"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected move: %v", resp)
 	}
@@ -320,11 +320,11 @@ func TestMutation_FixConflict_ExactColumnConflictResponse(t *testing.T) {
 		t.Fatalf("expected fix-conflict, got %q", technique)
 	}
 
-	targets, _ := move["targets"].([]interface{})
+	targets, _ := move["targets"].([]any)
 	if len(targets) == 0 {
 		t.Fatal("expected targets")
 	}
-	target := targets[0].(map[string]interface{})
+	target := targets[0].(map[string]any)
 	if row, _ := target["row"].(float64); int(row) != 3 {
 		t.Errorf("expected target row 3 (badCell=27: 27/9=3), got %v", row)
 	}
@@ -355,7 +355,7 @@ func TestMutation_FixConflict_ExactBoxConflictResponse(t *testing.T) {
 	givens := make([]int, 81)
 	givens[0] = 7
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token":  token,
 		"board":  board,
 		"givens": givens,
@@ -366,7 +366,7 @@ func TestMutation_FixConflict_ExactBoxConflictResponse(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %v", code, resp)
 	}
 
-	move, ok := resp["move"].(map[string]interface{})
+	move, ok := resp["move"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected move: %v", resp)
 	}
@@ -375,11 +375,11 @@ func TestMutation_FixConflict_ExactBoxConflictResponse(t *testing.T) {
 		t.Fatalf("expected fix-conflict, got %q", technique)
 	}
 
-	targets, _ := move["targets"].([]interface{})
+	targets, _ := move["targets"].([]any)
 	if len(targets) == 0 {
 		t.Fatal("expected targets")
 	}
-	target := targets[0].(map[string]interface{})
+	target := targets[0].(map[string]any)
 	if row, _ := target["row"].(float64); int(row) != 2 {
 		t.Errorf("expected target row 2 (badCell=20: 20/9=2), got %v", row)
 	}
@@ -406,7 +406,7 @@ func TestMutation_BoardValidation_RejectsOutOfRangeValues(t *testing.T) {
 	board[0] = 10
 	givens := make([]int, 81)
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token":  token,
 		"board":  board,
 		"givens": givens,
@@ -436,7 +436,7 @@ func TestMutation_SolveAll_RespectsMaxFixesCap(t *testing.T) {
 		3: solved[7],
 	})
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token":  token,
 		"board":  board,
 		"givens": givens,
@@ -471,7 +471,7 @@ func TestMutation_PuzzleHandler_RejectsInvalidDifficulty(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected 400 for invalid difficulty, got %d", w.Code)
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if _, ok := resp["error"]; !ok {
 		t.Errorf("expected error field in response, got: %s", w.Body.String())
@@ -490,9 +490,9 @@ func TestMutation_PuzzleHandler_AcceptsAllDifficulties(t *testing.T) {
 		if w.Code != http.StatusOK {
 			t.Errorf("difficulty %q: expected 200, got %d. body: %s", d, w.Code, w.Body.String())
 		}
-		var resp map[string]interface{}
+		var resp map[string]any
 		_ = json.Unmarshal(w.Body.Bytes(), &resp)
-		givens, ok := resp["givens"].([]interface{})
+		givens, ok := resp["givens"].([]any)
 		if !ok {
 			t.Errorf("difficulty %q: missing givens array. body: %s", d, w.Body.String())
 			continue
@@ -522,7 +522,7 @@ func TestMutation_DailyHandler_ReturnsDeterministicFields(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	for _, field := range []string{"date_utc", "seed", "puzzle_index"} {
 		if _, ok := resp[field]; !ok {
@@ -539,7 +539,7 @@ func TestMutation_ValidateBoard_DetectsConflicts(t *testing.T) {
 	board[0] = 5
 	board[3] = 5
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token": token,
 		"board": board,
 	}
@@ -554,7 +554,7 @@ func TestMutation_ValidateBoard_DetectsConflicts(t *testing.T) {
 	if reason, _ := resp["reason"].(string); reason != "conflicts" {
 		t.Errorf("expected reason 'conflicts', got %q", reason)
 	}
-	conflictCells, _ := resp["conflictCells"].([]interface{})
+	conflictCells, _ := resp["conflictCells"].([]any)
 	cellSet := make(map[int]bool)
 	for _, c := range conflictCells {
 		if n, ok := c.(float64); ok {
@@ -572,7 +572,7 @@ func TestMutation_ValidateBoard_AcceptsSolvedBoard(t *testing.T) {
 
 	solved := dp.GenerateFullGrid(42)
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token": token,
 		"board": solved,
 	}
@@ -606,7 +606,7 @@ func TestMutation_SolveNext_NormalMove_ExactResponse(t *testing.T) {
 	}
 	candidates := board.GetCandidates()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token":      token,
 		"board":      givens,
 		"givens":     givens,
@@ -618,7 +618,7 @@ func TestMutation_SolveNext_NormalMove_ExactResponse(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %v", code, resp)
 	}
 
-	move, ok := resp["move"].(map[string]interface{})
+	move, ok := resp["move"].(map[string]any)
 	if move == nil || !ok {
 		t.Fatal("expected a move, got nil")
 	}
@@ -629,11 +629,11 @@ func TestMutation_SolveNext_NormalMove_ExactResponse(t *testing.T) {
 	if digit, _ := move["digit"].(float64); int(digit) != 5 {
 		t.Errorf("expected digit 5, got %v", digit)
 	}
-	targets, _ := move["targets"].([]interface{})
+	targets, _ := move["targets"].([]any)
 	if len(targets) != 1 {
 		t.Fatalf("expected 1 target, got %d", len(targets))
 	}
-	target := targets[0].(map[string]interface{})
+	target := targets[0].(map[string]any)
 	if row, _ := target["row"].(float64); int(row) != 0 {
 		t.Errorf("expected target row 0, got %v", row)
 	}
@@ -648,7 +648,7 @@ func TestMutation_SolveNext_NormalMove_ExactResponse(t *testing.T) {
 func TestMutation_SessionStart_ExactResponse(t *testing.T) {
 	router := setupRouter()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"device_id":  "test-device",
 		"seed":       "test-seed",
 		"difficulty": "medium",
@@ -683,7 +683,7 @@ func TestMutation_SessionStart_ExactResponse(t *testing.T) {
 func TestMutation_SessionStart_RejectsInvalidDifficulty(t *testing.T) {
 	router := setupRouter()
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"device_id":  "test-device",
 		"seed":       "test-seed",
 		"difficulty": "bogus",
@@ -707,7 +707,7 @@ func TestMutation_PuzzleAnalyze_ExactResponse(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 
 	for _, field := range []string{"seed", "difficulty", "givens_count", "required_difficulty", "status", "techniques"} {
@@ -744,7 +744,7 @@ func TestMutation_SolveFull_FastMode_ExactSolution(t *testing.T) {
 	partial[0] = 0
 	partial[40] = 0
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token": token,
 		"board": partial,
 	}
@@ -754,7 +754,7 @@ func TestMutation_SolveFull_FastMode_ExactSolution(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %v", code, resp)
 	}
 
-	finalBoard, _ := resp["final_board"].([]interface{})
+	finalBoard, _ := resp["final_board"].([]any)
 	if len(finalBoard) != 81 {
 		t.Fatalf("expected 81 cells, got %d", len(finalBoard))
 	}
@@ -773,7 +773,7 @@ func TestMutation_SolveFull_RejectsOutOfRangeValues(t *testing.T) {
 	board := make([]int, 81)
 	board[0] = 42
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"token": token,
 		"board": board,
 	}
@@ -793,7 +793,7 @@ func TestMutation_CustomValidate_ValidUniquePuzzle(t *testing.T) {
 	givens[0] = 0
 	givens[40] = 0
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"givens":    givens,
 		"device_id": "test",
 	}
@@ -820,7 +820,7 @@ func TestMutation_CustomValidate_RejectsTooFewGivens(t *testing.T) {
 	givens := make([]int, 81)
 	givens[0] = 5
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"givens":    givens,
 		"device_id": "test",
 	}
@@ -842,7 +842,7 @@ func TestMutation_CustomValidate_RejectsConflicts(t *testing.T) {
 	copy(givens, solved)
 	givens[1] = solved[0]
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"givens":    givens,
 		"device_id": "test",
 	}
@@ -868,7 +868,7 @@ func TestMutation_HealthHandler_ExactStatusAndVersion(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["status"] != "ok" {
 		t.Errorf("expected status 'ok', got %v", resp["status"])
@@ -886,7 +886,7 @@ func TestMutation_VersionHandler_ExactVersions(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["api_version"] != constants.APIVersion {
 		t.Errorf("api_version: expected %q, got %v", constants.APIVersion, resp["api_version"])
@@ -904,7 +904,7 @@ func TestMutation_DailyHandler_SeedIsPrefixPlusDate(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	dateUTC, _ := resp["date_utc"].(string)
 	expectedSeed := constants.DailyPuzzlePrefix + dateUTC
@@ -931,7 +931,7 @@ func TestMutation_PuzzleHandler_EchoesSeedDifficultyAndLoaderIndex(t *testing.T)
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d. body: %s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["seed"] != seed {
 		t.Errorf("seed: expected %q, got %v", seed, resp["seed"])
@@ -971,7 +971,7 @@ func TestMutation_PuzzleHandler_DefaultsDifficultyToMedium(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["difficulty"] != "medium" {
 		t.Errorf("expected default difficulty 'medium', got %v", resp["difficulty"])
@@ -986,7 +986,7 @@ func TestMutation_InvalidDifficulty_ExactErrorMessage(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	errMsg, _ := resp["error"].(string)
 	expected := "invalid difficulty 'bogus'. Must be one of: easy, medium, hard, extreme, impossible"
@@ -997,7 +997,7 @@ func TestMutation_InvalidDifficulty_ExactErrorMessage(t *testing.T) {
 
 func TestMutation_SessionStart_InvalidDifficulty_ExactMessage(t *testing.T) {
 	router := setupRouter()
-	code, resp := postJSON(t, router, "/api/session/start", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/session/start", map[string]any{
 		"device_id": "d", "seed": "s", "difficulty": "nope",
 	})
 	if code != http.StatusBadRequest {
@@ -1013,7 +1013,7 @@ func TestMutation_SessionStart_InvalidDifficulty_ExactMessage(t *testing.T) {
 func TestMutation_RequireBoardLength_ExactMessage(t *testing.T) {
 	router := setupRouter()
 	token := getValidToken(router)
-	code, resp := postJSON(t, router, "/api/solve/next", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/solve/next", map[string]any{
 		"token": token, "board": []int{1, 2, 3},
 	})
 	if code != http.StatusBadRequest {
@@ -1030,7 +1030,7 @@ func TestMutation_RequireBoardValues_ExactOutOfRangeMessage(t *testing.T) {
 
 	over := make([]int, 81)
 	over[0] = 10
-	code, resp := postJSON(t, router, "/api/solve/next", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/solve/next", map[string]any{
 		"token": token, "board": over,
 	})
 	if code != http.StatusBadRequest {
@@ -1042,7 +1042,7 @@ func TestMutation_RequireBoardValues_ExactOutOfRangeMessage(t *testing.T) {
 
 	neg := make([]int, 81)
 	neg[5] = -3
-	code, resp = postJSON(t, router, "/api/solve/next", map[string]interface{}{
+	code, resp = postJSON(t, router, "/api/solve/next", map[string]any{
 		"token": token, "board": neg,
 	})
 	if code != http.StatusBadRequest {
@@ -1057,7 +1057,7 @@ func TestMutation_SolveNext_InvalidToken_ExactErrorPrefix(t *testing.T) {
 	router := setupRouter()
 	board := make([]int, 81)
 	board[0] = 5
-	code, resp := postJSON(t, router, "/api/solve/next", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/solve/next", map[string]any{
 		"token": "not-a-real-token", "board": board,
 	})
 	if code != http.StatusUnauthorized {
@@ -1079,13 +1079,13 @@ func TestMutation_SolveNext_ContradictionFixError_ExactFields(t *testing.T) {
 	board[9] = 9
 	givens := make([]int, 81)
 
-	code, resp := postSolveNext(t, router, map[string]interface{}{
+	code, resp := postSolveNext(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	if code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %v", code, resp)
 	}
-	move, ok := resp["move"].(map[string]interface{})
+	move, ok := resp["move"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected a move, got: %v", resp)
 	}
@@ -1095,20 +1095,20 @@ func TestMutation_SolveNext_ContradictionFixError_ExactFields(t *testing.T) {
 	if digit, _ := move["digit"].(float64); int(digit) != 1 {
 		t.Errorf("expected digit 1 (value at blocking cell 1), got %v", digit)
 	}
-	targets, _ := move["targets"].([]interface{})
+	targets, _ := move["targets"].([]any)
 	if len(targets) != 1 {
 		t.Fatalf("expected 1 target, got %d", len(targets))
 	}
-	target, _ := targets[0].(map[string]interface{})
+	target, _ := targets[0].(map[string]any)
 	if int(target["row"].(float64)) != 0 || int(target["col"].(float64)) != 1 {
 		t.Errorf("expected target (row=0,col=1) for badCell=1, got %v", target)
 	}
-	highlights, _ := move["highlights"].(map[string]interface{})
-	secondary, _ := highlights["secondary"].([]interface{})
+	highlights, _ := move["highlights"].(map[string]any)
+	secondary, _ := highlights["secondary"].([]any)
 	if len(secondary) != 1 {
 		t.Fatalf("expected 1 secondary highlight, got %d", len(secondary))
 	}
-	sec, _ := secondary[0].(map[string]interface{})
+	sec, _ := secondary[0].(map[string]any)
 	if int(sec["row"].(float64)) != 0 || int(sec["col"].(float64)) != 0 {
 		t.Errorf("expected secondary (0,0) contradiction cell, got %v", sec)
 	}
@@ -1143,7 +1143,7 @@ func TestMutation_SolveNext_NormalMove_AppliesDigitToBoard(t *testing.T) {
 	prepBoard := human.NewBoard(givens)
 	candidates := prepBoard.GetCandidates()
 
-	code, resp := postSolveNext(t, router, map[string]interface{}{
+	code, resp := postSolveNext(t, router, map[string]any{
 		"token": token, "board": givens, "givens": givens, "candidates": candidates,
 	})
 	if code != http.StatusOK {
@@ -1163,7 +1163,7 @@ func TestMutation_SolveNext_NormalMove_AppliesDigitToBoard(t *testing.T) {
 
 func TestMutation_SessionStart_ExactPuzzleIDAndRFC3339Timestamp(t *testing.T) {
 	router := setupRouter()
-	_, resp := postJSON(t, router, "/api/session/start", map[string]interface{}{
+	_, resp := postJSON(t, router, "/api/session/start", map[string]any{
 		"device_id": "dev", "seed": "myseed", "difficulty": "hard",
 	})
 	expected := "myseed" + constants.PuzzleIDDl + "hard"
@@ -1181,7 +1181,7 @@ func TestMutation_CustomValidate_TooFewGivensExactReason(t *testing.T) {
 	few := make([]int, 81)
 	few[0] = 5
 	few[1] = 3
-	code, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/custom/validate", map[string]any{
 		"givens": few, "device_id": "d",
 	})
 	if code != http.StatusOK {
@@ -1197,7 +1197,7 @@ func TestMutation_CustomValidate_TooFewGivensExactReason(t *testing.T) {
 
 func TestMutation_CustomValidate_WrongLengthExactMessage(t *testing.T) {
 	router := setupRouter()
-	code, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/custom/validate", map[string]any{
 		"givens": []int{1, 2, 3}, "device_id": "d",
 	})
 	if code != http.StatusBadRequest {
@@ -1214,7 +1214,7 @@ func TestMutation_CustomValidate_ConflictsExactReason(t *testing.T) {
 	conflict := make([]int, 81)
 	copy(conflict, solved)
 	conflict[1] = solved[0]
-	_, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{
+	_, resp := postJSON(t, router, "/api/custom/validate", map[string]any{
 		"givens": conflict, "device_id": "d",
 	})
 	if resp["valid"] != false {
@@ -1260,7 +1260,7 @@ func TestMutation_CustomValidate_NoSolutionExactReason(t *testing.T) {
 	if count, _ := dp.CountSolutions(context.Background(), board, 1); count != 0 {
 		t.Fatalf("setup: board must have zero solutions to reach the no-solution branch")
 	}
-	code, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/custom/validate", map[string]any{
 		"givens": board, "device_id": "d",
 	})
 	if code != http.StatusOK {
@@ -1288,7 +1288,7 @@ func TestMutation_CustomValidate_MultipleSolutionsExactReason(t *testing.T) {
 	if n, _ := dp.CountSolutions(context.Background(), givens, 2); n < 2 {
 		t.Skipf("setup: this 17-given board has %d solution(s); cannot exercise multiple-solutions branch", n)
 	}
-	code, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/custom/validate", map[string]any{
 		"givens": givens, "device_id": "d",
 	})
 	if code != http.StatusOK {
@@ -1309,7 +1309,7 @@ func TestMutation_CustomValidate_UniquePuzzleIDIsCustomPrefixPlusHash(t *testing
 	copy(givens, solved)
 	givens[0] = 0
 	givens[40] = 0
-	_, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{
+	_, resp := postJSON(t, router, "/api/custom/validate", map[string]any{
 		"givens": givens, "device_id": "d",
 	})
 	puzzleID, _ := resp["puzzle_id"].(string)
@@ -1328,7 +1328,7 @@ func TestMutation_ValidateBoard_ConflictExactMessageAndCells(t *testing.T) {
 	conflictBoard := make([]int, 81)
 	conflictBoard[0] = 5
 	conflictBoard[3] = 5
-	_, resp := postJSON(t, router, "/api/validate", map[string]interface{}{
+	_, resp := postJSON(t, router, "/api/validate", map[string]any{
 		"token": token, "board": conflictBoard,
 	})
 	if resp["valid"] != false {
@@ -1340,11 +1340,11 @@ func TestMutation_ValidateBoard_ConflictExactMessageAndCells(t *testing.T) {
 	if resp["message"] != "There are conflicting numbers in the puzzle" {
 		t.Errorf("message: got %v", resp["message"])
 	}
-	conflicts, ok := resp["conflicts"].([]interface{})
+	conflicts, ok := resp["conflicts"].([]any)
 	if !ok || len(conflicts) == 0 {
 		t.Fatalf("expected conflicts array, got %v", resp["conflicts"])
 	}
-	first, _ := conflicts[0].(map[string]interface{})
+	first, _ := conflicts[0].(map[string]any)
 	for _, k := range []string{"type", "cell1", "cell2", "value"} {
 		if first[k] == nil {
 			t.Errorf("conflict entry missing %q: %v", k, first)
@@ -1376,7 +1376,7 @@ func TestMutation_ValidateBoard_UnsolvableExactMessage(t *testing.T) {
 	unsolvable[33] = 5
 	unsolvable[34] = 6
 	unsolvable[35] = 7
-	_, resp := postJSON(t, router, "/api/validate", map[string]interface{}{
+	_, resp := postJSON(t, router, "/api/validate", map[string]any{
 		"token": token, "board": unsolvable,
 	})
 	if resp["valid"] != false {
@@ -1394,7 +1394,7 @@ func TestMutation_ValidateBoard_ValidExactMessage(t *testing.T) {
 	router := setupRouter()
 	token := getValidToken(router)
 	empty := make([]int, 81)
-	_, resp := postJSON(t, router, "/api/validate", map[string]interface{}{
+	_, resp := postJSON(t, router, "/api/validate", map[string]any{
 		"token": token, "board": empty,
 	})
 	if resp["valid"] != true {
@@ -1413,7 +1413,7 @@ func TestMutation_SolveFull_HumanModeExactFields(t *testing.T) {
 	copy(partial, solved)
 	partial[0] = 0
 	partial[40] = 0
-	_, resp := postJSON(t, router, "/api/solve/full", map[string]interface{}{
+	_, resp := postJSON(t, router, "/api/solve/full", map[string]any{
 		"token": token, "board": partial,
 	})
 	for _, field := range []string{"moves", "final_board", "stopped_reason"} {
@@ -1444,7 +1444,7 @@ func TestMutation_SolveFull_DefaultsToHumanMode(t *testing.T) {
 	token := getValidToken(router)
 	board := make([]int, 81)
 	board[0] = 5
-	_, resp := postJSON(t, router, "/api/solve/full", map[string]interface{}{
+	_, resp := postJSON(t, router, "/api/solve/full", map[string]any{
 		"token": token, "board": board,
 	})
 	if _, ok := resp["stopped_reason"]; !ok {
@@ -1469,7 +1469,7 @@ func TestMutation_SolveFull_FastModeUnsolvableExactError(t *testing.T) {
 	unsolvable[33] = 5
 	unsolvable[34] = 6
 	unsolvable[35] = 7
-	code, resp := postJSON(t, router, "/api/solve/full?mode=fast", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/solve/full?mode=fast", map[string]any{
 		"token": token, "board": unsolvable,
 	})
 	if code != http.StatusBadRequest {
@@ -1485,7 +1485,7 @@ func TestMutation_SolveAll_TopLevelKeysPresent(t *testing.T) {
 	token := getValidToken(router)
 	board := make([]int, 81)
 	board[0] = 5
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board,
 	})
 	for _, k := range []string{"moves", "solved", "finalBoard"} {
@@ -1508,7 +1508,7 @@ func TestMutation_SolveAll_ErrorMoveExactExplanation(t *testing.T) {
 		}
 	}
 	board, givens := boardWithUserErrors(solved, corruptions)
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	errMove := solveAllMoveByTechnique(resp, "error")
@@ -1537,7 +1537,7 @@ func TestMutation_SolveAll_DiagnosticAndUnpinpointableExact(t *testing.T) {
 		corruptions[idx] = wrong
 	}
 	board, givens := boardWithUserErrors(solved, corruptions)
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	diag := solveAllMoveByTechnique(resp, "diagnostic")
@@ -1575,7 +1575,7 @@ func TestMutation_SolveAll_StalledMoveExactExplanation(t *testing.T) {
 	}
 	board[9] = 9
 	givens := make([]int, 81)
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	stalled := solveAllMoveByTechnique(resp, "stalled")
@@ -1599,7 +1599,7 @@ func TestMutation_SolveAll_FirstFixErrorMoveExactShape(t *testing.T) {
 	}
 	board[9] = 9
 	givens := make([]int, 81)
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	fix := solveAllMoveByTechnique(resp, "fix-error")
@@ -1615,11 +1615,11 @@ func TestMutation_SolveAll_FirstFixErrorMoveExactShape(t *testing.T) {
 	if digit, _ := fix["digit"].(float64); int(digit) != 1 {
 		t.Errorf("expected digit 1, got %v", digit)
 	}
-	targets, _ := fix["targets"].([]interface{})
+	targets, _ := fix["targets"].([]any)
 	if len(targets) != 1 {
 		t.Fatalf("expected 1 target, got %d", len(targets))
 	}
-	target, _ := targets[0].(map[string]interface{})
+	target, _ := targets[0].(map[string]any)
 	if int(target["row"].(float64)) != 0 || int(target["col"].(float64)) != 1 {
 		t.Errorf("expected target (0,1) for badCell=1, got %v", target)
 	}
@@ -1637,7 +1637,7 @@ func TestMutation_PracticeHandler_SeedFormatMatchesIndex(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d. body: %s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["cached"] != false {
 		t.Errorf("first lookup: expected cached=false, got %v", resp["cached"])
@@ -1661,7 +1661,7 @@ func TestMutation_PracticeHandler_NotFoundExactBody(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d. body: %s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["error"] != "no puzzle found" {
 		t.Errorf("error: expected 'no puzzle found', got %v", resp["error"])
@@ -1686,7 +1686,7 @@ func TestMutation_PracticeHandler_503WhenPuzzlesNotLoaded(t *testing.T) {
 	if w.Code != http.StatusServiceUnavailable {
 		t.Fatalf("expected 503, got %d", w.Code)
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["error"] != "puzzles not loaded" {
 		t.Errorf("error: expected 'puzzles not loaded', got %v", resp["error"])
@@ -1707,7 +1707,7 @@ func TestMutation_PracticeHandler_MissingTechniqueExactError(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400 for empty technique, got %d. body: %s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["error"] != "technique required" {
 		t.Errorf("error: expected 'technique required', got %v", resp["error"])
@@ -1728,7 +1728,7 @@ func TestMutation_PuzzleAnalyze_ExactGivensCount(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 
 	loader := puzzles.Global()
@@ -1763,7 +1763,7 @@ func TestMutation_CustomValidate_ExactlySixteenGivensTriggersMinCheck(t *testing
 	if !dp.IsValid(context.Background(), givens) {
 		t.Skipf("setup: 16-given board has conflicts, cannot exercise min-givens check")
 	}
-	code, resp := postJSON(t, router, "/api/custom/validate", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/custom/validate", map[string]any{
 		"givens": givens, "device_id": "d",
 	})
 	if code != http.StatusOK {
@@ -1792,7 +1792,7 @@ func TestMutation_PuzzleHandler_GeneratesOnDemandWhenLoaderAbsent(t *testing.T) 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 
 	if resp["puzzle_index"] != nil && resp["puzzle_index"].(float64) != -1 {
@@ -1827,7 +1827,7 @@ func TestMutation_PuzzleAnalyze_GeneratesGivensWhenLoaderAbsent(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	got, _ := resp["givens_count"].(float64)
 	if int(got) <= 0 {
@@ -1845,7 +1845,7 @@ func TestMutation_DailyHandler_ExactPuzzleIndex(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 
 	loader := puzzles.Global()
@@ -1880,13 +1880,13 @@ func TestMutation_SolveNext_NonDegenerateContradictionExactExplanation(t *testin
 	board[44] = 8
 	board[4] = 9
 
-	code, resp := postSolveNext(t, router, map[string]interface{}{
+	code, resp := postSolveNext(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	if code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %v", code, resp)
 	}
-	move, ok := resp["move"].(map[string]interface{})
+	move, ok := resp["move"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected a move, got: %v", resp)
 	}
@@ -1920,7 +1920,7 @@ func TestMutation_SolveAll_NonDegenerateContradictionFirstFix(t *testing.T) {
 	board[44] = 8
 	board[4] = 9
 
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	fix := solveAllMoveByTechnique(resp, "fix-error")
@@ -1930,8 +1930,8 @@ func TestMutation_SolveAll_NonDegenerateContradictionFirstFix(t *testing.T) {
 	if digit, _ := fix["digit"].(float64); int(digit) != 4 {
 		t.Errorf("expected digit 4 (cell 39 holds 4), got %v", digit)
 	}
-	targets, _ := fix["targets"].([]interface{})
-	target, _ := targets[0].(map[string]interface{})
+	targets, _ := fix["targets"].([]any)
+	target, _ := targets[0].(map[string]any)
 	if int(target["row"].(float64)) != 4 || int(target["col"].(float64)) != 3 {
 		t.Errorf("expected target (4,3) for badCell=39, got %v", target)
 	}
@@ -1974,13 +1974,13 @@ func TestMutation_SolveNext_RefillPathExactExplanation(t *testing.T) {
 	given(44, 8)
 	user(49, 9)
 
-	code, resp := postSolveNext(t, router, map[string]interface{}{
+	code, resp := postSolveNext(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	if code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %v", code, resp)
 	}
-	move, ok := resp["move"].(map[string]interface{})
+	move, ok := resp["move"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected a move, got: %v", resp)
 	}
@@ -1990,11 +1990,11 @@ func TestMutation_SolveNext_RefillPathExactExplanation(t *testing.T) {
 	if digit, _ := move["digit"].(float64); int(digit) != 9 {
 		t.Errorf("expected digit 9 (the user entry at cell 49), got %v", digit)
 	}
-	targets, _ := move["targets"].([]interface{})
+	targets, _ := move["targets"].([]any)
 	if len(targets) != 1 {
 		t.Fatalf("expected 1 target, got %d", len(targets))
 	}
-	target, _ := targets[0].(map[string]interface{})
+	target, _ := targets[0].(map[string]any)
 	if int(target["row"].(float64)) != 5 || int(target["col"].(float64)) != 4 {
 		t.Errorf("expected target (5,4) for badCell=49, got %v", target)
 	}
@@ -2039,7 +2039,7 @@ func TestMutation_SolveAll_RefillPathFixErrorShape(t *testing.T) {
 	given(44, 8)
 	user(49, 9)
 
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	fix := solveAllMoveByTechnique(resp, "fix-error")
@@ -2052,12 +2052,12 @@ func TestMutation_SolveAll_RefillPathFixErrorShape(t *testing.T) {
 	if expl, _ := fix["explanation"].(string); expl != "Removing incorrect 9 from R6C5." {
 		t.Errorf("explanation: got %q", expl)
 	}
-	highlights, _ := fix["highlights"].(map[string]interface{})
-	secondary, _ := highlights["secondary"].([]interface{})
+	highlights, _ := fix["highlights"].(map[string]any)
+	secondary, _ := highlights["secondary"].([]any)
 	if len(secondary) != 1 {
 		t.Fatalf("expected 1 secondary highlight, got %d", len(secondary))
 	}
-	sec, _ := secondary[0].(map[string]interface{})
+	sec, _ := secondary[0].(map[string]any)
 	if int(sec["row"].(float64)) != 4 || int(sec["col"].(float64)) != 4 {
 		t.Errorf("expected secondary (4,4) for zeroCandCell=40, got %v", sec)
 	}
@@ -2085,7 +2085,7 @@ func TestMutation_SolveAll_FiveErrorsSolvedUnderCap(t *testing.T) {
 	}
 	board, givens := boardWithUserErrors(solved, corruptions)
 
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	if hasTechnique(solveAllTechniques(resp), "error") {
@@ -2108,7 +2108,7 @@ func TestMutation_SolveAll_SixErrorsHitCap(t *testing.T) {
 	}
 	board, givens := boardWithUserErrors(solved, corruptions)
 
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	if !hasTechnique(solveAllTechniques(resp), "error") {
@@ -2132,7 +2132,7 @@ func TestMutation_SolveAll_RejectsBadToken(t *testing.T) {
 	router := setupRouter()
 	board := make([]int, 81)
 	board[0] = 5
-	code, resp := postJSON(t, router, "/api/solve/all", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/solve/all", map[string]any{
 		"token": "not.a.token", "board": board,
 	})
 	if code != http.StatusUnauthorized {
@@ -2148,7 +2148,7 @@ func TestMutation_SolveAll_RejectsBadToken(t *testing.T) {
 func TestMutation_SolveAll_RejectsWrongBoardLength(t *testing.T) {
 	router := setupRouter()
 	token := getValidToken(router)
-	code, resp := postJSON(t, router, "/api/solve/all", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/solve/all", map[string]any{
 		"token": token, "board": []int{1, 2, 3},
 	})
 	if code != http.StatusBadRequest {
@@ -2165,7 +2165,7 @@ func TestMutation_SolveAll_RejectsOutOfRangeValue(t *testing.T) {
 	token := getValidToken(router)
 	board := make([]int, 81)
 	board[0] = 99
-	code, resp := postJSON(t, router, "/api/solve/all", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/solve/all", map[string]any{
 		"token": token, "board": board,
 	})
 	if code != http.StatusBadRequest {
@@ -2180,7 +2180,7 @@ func TestMutation_SolveAll_RejectsOutOfRangeValue(t *testing.T) {
 func TestMutation_SolveFull_RejectsWrongBoardLength(t *testing.T) {
 	router := setupRouter()
 	token := getValidToken(router)
-	code, resp := postJSON(t, router, "/api/solve/full", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/solve/full", map[string]any{
 		"token": token, "board": []int{1, 2, 3},
 	})
 	if code != http.StatusBadRequest {
@@ -2198,7 +2198,7 @@ func TestMutation_SolveFull_RejectsOutOfRangeValue(t *testing.T) {
 	token := getValidToken(router)
 	board := make([]int, 81)
 	board[0] = 42
-	code, resp := postJSON(t, router, "/api/solve/full", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/solve/full", map[string]any{
 		"token": token, "board": board,
 	})
 	if code != http.StatusBadRequest {
@@ -2232,7 +2232,7 @@ func TestMutation_Practice_EmptyLoaderReturnsNotFound(t *testing.T) {
 func TestMutation_ValidateBoard_RejectsWrongLength(t *testing.T) {
 	router := setupRouter()
 	token := getValidToken(router)
-	code, resp := postJSON(t, router, "/api/validate", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/validate", map[string]any{
 		"token": token, "board": []int{1, 2, 3},
 	})
 	if code != http.StatusBadRequest {
@@ -2249,7 +2249,7 @@ func TestMutation_ValidateBoard_RejectsOutOfRangeValue(t *testing.T) {
 	token := getValidToken(router)
 	board := make([]int, 81)
 	board[0] = 42
-	code, resp := postJSON(t, router, "/api/validate", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/validate", map[string]any{
 		"token": token, "board": board,
 	})
 	if code != http.StatusBadRequest {
@@ -2280,13 +2280,13 @@ func TestMutation_SolveNext_SkipsBothGivensConflict(t *testing.T) {
 	givens[1] = 5
 	givens[2] = 7
 
-	code, resp := postSolveNext(t, router, map[string]interface{}{
+	code, resp := postSolveNext(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	if code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %v", code, resp)
 	}
-	move, ok := resp["move"].(map[string]interface{})
+	move, ok := resp["move"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected a move, got: %v", resp)
 	}
@@ -2315,7 +2315,7 @@ func TestMutation_SolveAll_SolvesCleanlyWithoutStalledMove(t *testing.T) {
 		t.Fatalf("loader error: %v", err)
 	}
 
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": givens, "givens": givens,
 	})
 	if solved, _ := resp["solved"].(bool); !solved {
@@ -2342,14 +2342,14 @@ func TestMutation_SolveAll_FixErrorMoveCarriesCandidates(t *testing.T) {
 	board[9] = 9
 	givens := make([]int, 81)
 
-	_, resp := postSolveAll(t, router, map[string]interface{}{
+	_, resp := postSolveAll(t, router, map[string]any{
 		"token": token, "board": board, "givens": givens,
 	})
 	fixWrapper := solveAllMoveWrapperByTechnique(resp, "fix-error")
 	if fixWrapper == nil {
 		t.Fatalf("expected a fix-error move, sequence=%v", solveAllTechniques(resp))
 	}
-	cands, ok := fixWrapper["candidates"].([]interface{})
+	cands, ok := fixWrapper["candidates"].([]any)
 	if !ok {
 		t.Fatalf("fix-error move missing candidates field: %v", fixWrapper)
 	}
@@ -2410,7 +2410,7 @@ var aiEscargot = []int{
 	0, 0, 7, 0, 0, 0, 3, 0, 0,
 }
 
-func postWithCanceledContext(t *testing.T, router *gin.Engine, path string, body map[string]interface{}) *httptest.ResponseRecorder {
+func postWithCanceledContext(t *testing.T, router *gin.Engine, path string, body map[string]any) *httptest.ResponseRecorder {
 	t.Helper()
 	bodyBytes, _ := json.Marshal(body)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -2426,7 +2426,7 @@ func TestSolveFullFastMode_Returns408OnCanceledContext(t *testing.T) {
 	router := setupRouter()
 	token := getValidToken(router)
 
-	w := postWithCanceledContext(t, router, "/api/solve/full?mode=fast", map[string]interface{}{
+	w := postWithCanceledContext(t, router, "/api/solve/full?mode=fast", map[string]any{
 		"token": token,
 		"board": aiEscargot,
 	})
@@ -2439,7 +2439,7 @@ func TestValidateBoard_Returns408OnCanceledContext(t *testing.T) {
 	router := setupRouter()
 	token := getValidToken(router)
 
-	w := postWithCanceledContext(t, router, "/api/validate", map[string]interface{}{
+	w := postWithCanceledContext(t, router, "/api/validate", map[string]any{
 		"token": token,
 		"board": aiEscargot,
 	})
@@ -2452,7 +2452,7 @@ func TestCustomValidate_Returns408OnCanceledContext(t *testing.T) {
 	router := setupRouter()
 	token := getValidToken(router)
 
-	w := postWithCanceledContext(t, router, "/api/custom/validate", map[string]interface{}{
+	w := postWithCanceledContext(t, router, "/api/custom/validate", map[string]any{
 		"token":     token,
 		"givens":    aiEscargot,
 		"device_id": "test-device",
@@ -2481,7 +2481,7 @@ func TestSolveFullFastMode_ConflictingBoardReturnsConflicts(t *testing.T) {
 		t.Fatal("test setup error: expected fullButInvalid to fail IsValid")
 	}
 
-	code, resp := postJSON(t, router, "/api/solve/full?mode=fast", map[string]interface{}{
+	code, resp := postJSON(t, router, "/api/solve/full?mode=fast", map[string]any{
 		"token": token,
 		"board": fullButInvalid,
 	})
@@ -2492,11 +2492,11 @@ func TestSolveFullFastMode_ConflictingBoardReturnsConflicts(t *testing.T) {
 	if reason, _ := resp["error"].(string); !strings.Contains(reason, "conflict") {
 		t.Errorf("expected error body to mention conflicts, got %q", reason)
 	}
-	conflicts, ok := resp["conflicts"].([]interface{})
+	conflicts, ok := resp["conflicts"].([]any)
 	if !ok || len(conflicts) == 0 {
 		t.Errorf("expected non-empty conflicts slice in response, got: %v", resp["conflicts"])
 	}
-	cells, ok := resp["conflictCells"].([]interface{})
+	cells, ok := resp["conflictCells"].([]any)
 	if !ok || len(cells) == 0 {
 		t.Errorf("expected non-empty conflictCells slice in response, got: %v", resp["conflictCells"])
 	}
@@ -2541,7 +2541,7 @@ func TestDailyHandler_SeedAndPuzzleIndexAgree(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", w.Code, w.Body.String())
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 
 	seed, _ := resp["seed"].(string)
