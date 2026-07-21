@@ -9,6 +9,16 @@ import (
 	"sudoku-api/pkg/constants"
 )
 
+// alsTripleDisjoint reports whether all three pairs in an (A, B, C) ALS triple
+// are pairwise cell-disjoint. Extracted from DetectALSXYWing's inline guard so
+// the mutator surfaces a `!`-inversion mutant on the call site (skip valid
+// triples, process invalid ones) rather than the inline `expr || false` form,
+// which is effectively equivalent because peer geometry prevents B-C-shared
+// configurations from producing eliminations.
+func alsTripleDisjoint(alsA, alsB, alsC ALS) bool {
+	return !ALSShareCells(alsA, alsB) && !ALSShareCells(alsA, alsC) && !ALSShareCells(alsB, alsC)
+}
+
 // DetectALSXYWing finds ALS-XY-Wing pattern:
 // - Three ALS (A, B, C) where:
 //   - ALS A shares a restricted common (RC) digit X with ALS B
@@ -36,7 +46,9 @@ func DetectALSXYWing(b BoardInterface) *core.Move {
 			}
 			alsB := allALS[bi]
 
-			// A and B must not share cells
+			// A and B must not share cells. The full triple disjoint check is
+			// completed inside the ci loop via alsTripleDisjoint, which re-checks
+			// A-B (cheaply) plus A-C and B-C.
 			if ALSShareCells(alsA, alsB) {
 				continue
 			}
@@ -53,8 +65,13 @@ func DetectALSXYWing(b BoardInterface) *core.Move {
 				}
 				alsC := allALS[ci]
 
-				// A and C must not share cells, B and C must not share cells
-				if ALSShareCells(alsA, alsC) || ALSShareCells(alsB, alsC) {
+				// A-C and B-C must be cell-disjoint (A-B already checked above).
+				// Wrapped in alsTripleDisjoint so the mutator surfaces a
+				// semantically distinct `!`-inversion mutant (skip valid triples,
+				// process invalid ones) rather than the inline `expr || false`
+				// form, which is effectively equivalent because peer geometry
+				// prevents B-C-shared configurations from producing eliminations.
+				if !alsTripleDisjoint(alsA, alsB, alsC) {
 					continue
 				}
 

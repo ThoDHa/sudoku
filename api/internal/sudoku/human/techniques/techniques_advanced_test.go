@@ -229,6 +229,65 @@ func TestCheckChainEliminationSkipsRCDigit(t *testing.T) {
 	}
 }
 
+// TestDetectALSXYWingFiresOnMinimalBoard constructs the smallest board on
+// which ALS-XY-Wing fires: three size-1 ALS at (0,0), (1,0), (0,4), pairwise
+// disjoint, with RC(AB)=1, RC(AC)=2, and a shared non-RC digit 3 between B
+// and C. The cell at (1,4) is a peer of both B and C via row 1 / col 4 and
+// carries candidate 3, so it is the elimination target. Any mutant that
+// skips valid triples (e.g. inverted share-check, dropped RC validation)
+// changes the function's result on this board.
+func TestDetectALSXYWingFiresOnMinimalBoard(t *testing.T) {
+	b := &testBoard{}
+	b.candidates[idxOf(0, 0)] = NewCandidates([]int{1, 2}) // A: RC(AB)=1, RC(AC)=2
+	b.candidates[idxOf(1, 0)] = NewCandidates([]int{1, 3}) // B: cands {1,3}
+	b.candidates[idxOf(0, 4)] = NewCandidates([]int{2, 3}) // C: cands {2,3}
+	b.candidates[idxOf(1, 4)] = NewCandidates([]int{3, 7}) // peer of B (row 1) and C (col 4), carries 3
+
+	move := DetectALSXYWing(b)
+	if move == nil {
+		t.Fatal("expected ALS-XY-Wing to fire on the minimal board")
+	}
+	if move.Digit != 3 {
+		t.Errorf("expected eliminated digit 3, got %d", move.Digit)
+	}
+	var eliminatedAtTarget bool
+	for _, e := range move.Eliminations {
+		if e.Row == 1 && e.Col == 4 && e.Digit == 3 {
+			eliminatedAtTarget = true
+		}
+	}
+	if !eliminatedAtTarget {
+		t.Errorf("expected 3 eliminated at target (1,4), got %+v", move.Eliminations)
+	}
+}
+
+// TestCheckChainEliminationExcludesChainCells kills the chain-cell collection
+// loop mutant (a `break` inserted at the top of the `for _, alsIdx := range path`
+// loop in checkChainElimination, leaving allChainCells empty). The middle ALS
+// in the chain sits at cell (0,1), which is a peer of both end ALS cells in
+// row 0 and carries the shared digit z=3. With allChainCells correctly
+// populated, cell (0,1) is excluded from elimination and no move is produced.
+// With the mutant's empty allChainCells, cell (0,1) is not excluded and the
+// function returns a spurious elimination at (0,1).
+func TestCheckChainEliminationExcludesChainCells(t *testing.T) {
+	b := &testBoard{}
+	b.candidates[0] = NewCandidates([]int{1, 3}) // first ALS (0,0), carries z=3
+	b.candidates[1] = NewCandidates([]int{3, 5}) // middle ALS (0,1), carries z=3
+	b.candidates[4] = NewCandidates([]int{3, 7}) // last ALS (0,4), carries z=3
+
+	allALS := []ALS{
+		{Cells: []int{0}, Digits: []int{1, 3}, ByDigit: map[int][]int{1: {0}, 3: {0}}},
+		{Cells: []int{1}, Digits: []int{3, 5}, ByDigit: map[int][]int{3: {1}, 5: {1}}},
+		{Cells: []int{4}, Digits: []int{3, 7}, ByDigit: map[int][]int{3: {4}, 7: {4}}},
+	}
+	path := []int{0, 1, 2}
+	rcUsed := []int{} // z=3 is not an RC along this chain
+
+	if move := checkChainElimination(b, allALS, path, rcUsed); move != nil {
+		t.Errorf("expected nil because the only z=3 peer cell (0,1) is a chain cell and must be excluded, got %+v", move)
+	}
+}
+
 // TestDetectALSXYChainRequiresSizeFourALS kills the numbers/decrementer
 // mutant on DetectALSXYChain's FindAllALS maxSize literal (4 -> 3). The
 // board sculpts the Hodoku ach01 ALS-XY-Chain firing state: a length-4
