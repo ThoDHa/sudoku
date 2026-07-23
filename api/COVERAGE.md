@@ -26,10 +26,11 @@ own thresholds in `frontend/vite.config.ts`.
 | `./internal/sudoku/dp` | 99% | 99.4% | 0.4pp |
 | `./internal/sudoku/human` | 99% | 100.0% | 1.0pp |
 | `./internal/sudoku/human/techniques` | 99% | 99.1% | 0.1pp |
+| `./internal/sudoku/diagnosis` | 98% | 98.6% | 0.6pp |
 
 Floors are encoded as Make variables at the top of the `coverage-gate` target
 in `api/Makefile` (`DP_COVERAGE_FLOOR`, `HUMAN_COVERAGE_FLOOR`,
-`TECHNIQUES_COVERAGE_FLOOR`).
+`TECHNIQUES_COVERAGE_FLOOR`, `DIAGNOSIS_COVERAGE_FLOOR`).
 
 `./internal/transport/http` is intentionally NOT gated: it is a dev-only HTTP
 harness (ARCH-2; see `internal/transport/http/doc.go`) that is never built for
@@ -97,7 +98,7 @@ tests, or after a deliberate reduction in tested surface):
 
 ## Scope
 
-Only the two packages above are gated today. Other packages in the module are
+Only the four packages above are gated today. Other packages in the module are
 tested by the existing suite but have no per-package floor. Add a new package
 to the gate by introducing a `*_COVERAGE_FLOOR` variable and an additional
 `check_pkg` call in the `coverage-gate` target, plus a row in the table above.

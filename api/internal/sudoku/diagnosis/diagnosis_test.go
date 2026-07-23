@@ -127,6 +127,32 @@ func TestFindErrorByCandidateRefillBlockerIsDigitNine(t *testing.T) {
 	}
 }
 
+// TestFindErrorByCandidateRefillBlockerInBoxRegion pins the box-region scan:
+// cell 0 has zero candidates, and digit 1's only blocker is cell 10 (row 1,
+// col 1), which shares box 0 with cell 0 but sits in neither row 0 nor col 0.
+// firstBlockingUserPeer scans row, then column, then box; only the box scan
+// finds the blocker, exercising the box-region return.
+func TestFindErrorByCandidateRefillBlockerInBoxRegion(t *testing.T) {
+	board := make([]int, 81)
+	for d := 2; d <= 9; d++ {
+		board[d-1] = d // row peers of cell 0 (cells 1-8) hold digits 2-9
+	}
+	board[10] = 1 // box-only peer of cell 0 holds digit 1
+	givens := make([]int, 81)
+
+	badCell, badDigit, zeroCell := FindErrorByCandidateRefill(board, givens)
+
+	if zeroCell != 0 {
+		t.Errorf("zeroCell: expected 0, got %d", zeroCell)
+	}
+	if badCell != 10 {
+		t.Errorf("badCell: expected 10 (box-region blocker), got %d", badCell)
+	}
+	if badDigit != 1 {
+		t.Errorf("badDigit: expected 1, got %d", badDigit)
+	}
+}
+
 // --- peerCellIndices exact cell indices ---
 //
 // These three tests pin the exact cell indices returned by peerCellIndices for

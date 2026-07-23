@@ -92,6 +92,11 @@ test-coverage-verbose:
 DP_COVERAGE_FLOOR := 99
 HUMAN_COVERAGE_FLOOR := 99
 TECHNIQUES_COVERAGE_FLOOR := 99
+# diagnosis (CODE-7's deduped user-error logic) reaches an honest 98.6% ceiling:
+# the only uncovered line is a Go-required trailing `return` after an exhaustive
+# early-return, so it is unreachable rather than a testing gap. Floor sits below
+# the measured baseline to absorb Go-version/test-order variance.
+DIAGNOSIS_COVERAGE_FLOOR := 98
 
 # Enforce per-package coverage floors. Runs `go test -cover` per gated package,
 # parses the reported percentage, and exits non-zero on breach. CI invokes this
@@ -123,6 +128,7 @@ coverage-gate:
 	check_pkg ./internal/sudoku/dp $(DP_COVERAGE_FLOOR); \
 	check_pkg ./internal/sudoku/human $(HUMAN_COVERAGE_FLOOR); \
 	check_pkg ./internal/sudoku/human/techniques $(TECHNIQUES_COVERAGE_FLOOR); \
+	check_pkg ./internal/sudoku/diagnosis $(DIAGNOSIS_COVERAGE_FLOOR); \
 	echo "coverage-gate: all gated packages met their floors."
 
 # Per-package mutation efficacy floors (MUT-1-2; Decisions 4 + 9). The Go
