@@ -65,11 +65,13 @@ let wasmScriptElement: HTMLScriptElement | null = null
 let wasmAbortController: AbortController | null = null
 let wasmRecentlyUnloaded = false
 
-// Extend globalThis for TypeScript
+// Runtime globals injected by wasm_exec.js and the WASM module. All are absent
+// until the script loads, so they are optional: the loader and tests read them
+// through guards instead of assuming presence.
 declare global {
   interface Window {
-    Go: new () => GoInstance
-    SudokuWasm: SudokuWasmAPI
+    Go?: new () => GoInstance
+    SudokuWasm?: SudokuWasmAPI
     gc?: () => void // For manual garbage collection in development
   }
 }
@@ -147,12 +149,10 @@ export function unloadWasm(): void {
   if (typeof window !== 'undefined') {
     // Stryker disable next-line ConditionalExpression: delete on an absent property is a no-op (returns true), so always-entering this block is observationally identical to guarding on window.SudokuWasm
     if (window.SudokuWasm) {
-      // @ts-expect-error - We know this exists and want to delete it
       delete window.SudokuWasm
     }
     // Stryker disable next-line ConditionalExpression: same as above; delete on an absent property is a no-op, so the guard is observationally irrelevant in every environment
     if (window.Go) {
-      // @ts-expect-error - We know this exists and want to delete it
       delete window.Go
     }
   }

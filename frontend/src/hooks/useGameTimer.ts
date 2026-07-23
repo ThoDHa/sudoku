@@ -94,8 +94,8 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
         startTimer()
       }
     },
-    /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way */ [],
-  ) // eslint-disable-line react-hooks/exhaustive-deps
+    /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way */ [], // eslint-disable-line react-hooks/exhaustive-deps -- mount-only effect: autoStart and startTimer are intentionally excluded to avoid re-running on every render
+  )
 
   const pauseTimer = useCallback(() => {
     if (isRunning && startTimeRef.current !== null) {

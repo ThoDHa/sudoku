@@ -55,8 +55,13 @@ async function globalSetup(config: FullConfig) {
          // Log IndexedDB databases when available for diagnostics (do not attempt destructive actions)
          if (typeof indexedDB !== 'undefined' && 'databases' in indexedDB) {
            try {
-             // @ts-ignore
-             await indexedDB.databases();
+             // `databases()` is an experimental API absent from the DOM lib types;
+             // the `'databases' in` guard above proves it is present at runtime.
+             await (
+               indexedDB as IDBFactory & {
+                 databases(): Promise<Array<{ name: string; version: number }>>;
+               }
+             ).databases();
            } catch {
              // Silent failure - ignore
            }

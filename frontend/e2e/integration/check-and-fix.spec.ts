@@ -1,4 +1,6 @@
 import { test, expect } from '../fixtures';
+import log from 'loglevel';
+const logger = log;
 
 /**
  * Check & Fix Behavior
@@ -25,12 +27,9 @@ test.describe('@integration Check & Fix', () => {
     page.on('console', msg => {
       // Route page console through loglevel to centralize output while preserving original content
       try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const log = require('loglevel');
-        const logger = log;
         logger.getLogger('e2e').info('PAGE_CONSOLE', msg.type(), msg.text());
       } catch (e) {
-        const errorLogger = (global as any).logger;
+        const errorLogger = (global as { logger?: typeof log }).logger;
         if (errorLogger) {
           errorLogger.getLogger('e2e').info('PAGE_CONSOLE', msg.type(), msg.text());
         }
