@@ -17,10 +17,10 @@ export async function waitForWasmReady(page: any, timeout = 30000) {
   await page.waitForFunction(
     () => {
       // Check if SudokuWasm API is available on window
-      return typeof (window as any).SudokuWasm !== 'undefined';
+      return typeof (window as any).SudokuWasm !== 'undefined'
     },
-    { timeout }
-  );
+    { timeout },
+  )
 }
 
 /**
@@ -33,16 +33,16 @@ export async function waitForWasmReady(page: any, timeout = 30000) {
  * @param options - Optional configuration
  * @returns Promise that resolves when board is visible
  */
-export async function waitForBoard(page: any, options: {
-  /** Timeout in milliseconds (default: 30000) */
-  timeout?: number
-  /** Whether to check WASM readiness (default: false - WASM loads on-demand) */
-  checkWasm?: boolean
-} = {}): Promise<void> {
-  const {
-    timeout = 30000,
-    checkWasm = false
-  } = options
+export async function waitForBoard(
+  page: any,
+  options: {
+    /** Timeout in milliseconds (default: 30000) */
+    timeout?: number
+    /** Whether to check WASM readiness (default: false - WASM loads on-demand) */
+    checkWasm?: boolean
+  } = {},
+): Promise<void> {
+  const { timeout = 30000, checkWasm = false } = options
 
   // Phase 1: Wait for WASM to be ready (if explicitly requested)
   // Note: WASM is now lazy-loaded, so most tests don't need this
@@ -52,7 +52,7 @@ export async function waitForBoard(page: any, options: {
         () => {
           return typeof (window as any).SudokuWasm !== 'undefined'
         },
-        { timeout: Math.min(timeout, 10000) }
+        { timeout: Math.min(timeout, 10000) },
       )
     } catch {
       // Continue - WASM will load on-demand when needed
@@ -63,7 +63,7 @@ export async function waitForBoard(page: any, options: {
   // Phase 2: Wait for board selector to be visible
   await page.waitForSelector('.sudoku-board', {
     timeout: timeout,
-    state: 'visible'
+    state: 'visible',
   })
 }
 
@@ -79,22 +79,25 @@ export async function waitForBoard(page: any, options: {
  * @param options - Configuration for game setup
  * @returns Promise that resolves when game is ready
  */
-export async function setupGameAndWaitForBoard(page: any, options: {
-  /** Difficulty level for Play button (default: 'easy') */
-  difficulty?: string
-  /** Seed to use instead of clicking Play button */
-  seed?: string
-  /** Custom puzzle to navigate to */
-  custom?: string
-  /** Board wait timeout (default: 30000) */
-  boardTimeout?: number
-  /** Skip waiting for cells with values (for saved state tests with empty boards) */
-  skipCellValueCheck?: boolean
-  /** Skip navigation - just wait for the board (use after page.goto or page.reload) */
-  skipNavigation?: boolean
-  /** Wait for WASM to be ready (default: false - WASM loads on-demand) */
-  checkWasm?: boolean
-} = {}): Promise<void> {
+export async function setupGameAndWaitForBoard(
+  page: any,
+  options: {
+    /** Difficulty level for Play button (default: 'easy') */
+    difficulty?: string
+    /** Seed to use instead of clicking Play button */
+    seed?: string
+    /** Custom puzzle to navigate to */
+    custom?: string
+    /** Board wait timeout (default: 30000) */
+    boardTimeout?: number
+    /** Skip waiting for cells with values (for saved state tests with empty boards) */
+    skipCellValueCheck?: boolean
+    /** Skip navigation - just wait for the board (use after page.goto or page.reload) */
+    skipNavigation?: boolean
+    /** Wait for WASM to be ready (default: false - WASM loads on-demand) */
+    checkWasm?: boolean
+  } = {},
+): Promise<void> {
   const {
     difficulty = 'easy',
     seed,
@@ -102,7 +105,7 @@ export async function setupGameAndWaitForBoard(page: any, options: {
     boardTimeout = 30000,
     skipCellValueCheck = false,
     skipNavigation = false,
-    checkWasm = false
+    checkWasm = false,
   } = options
 
   // Navigate based on options provided (unless skipped)
@@ -123,7 +126,7 @@ export async function setupGameAndWaitForBoard(page: any, options: {
 
   // Wait for board to appear
   await waitForBoard(page, { timeout: boardTimeout, checkWasm })
-  
+
   // Phase 3: Wait for puzzle data to actually load (unless skipped)
   // The board div appears before the puzzle data is rendered - we need to wait for actual cells
   // Look for cells with values (either "given" or filled cells)
@@ -131,7 +134,7 @@ export async function setupGameAndWaitForBoard(page: any, options: {
   if (!skipCellValueCheck) {
     await page.waitForSelector('[role="gridcell"][aria-label*="value"]', {
       timeout: boardTimeout,
-      state: 'visible'
+      state: 'visible',
     })
   }
 }

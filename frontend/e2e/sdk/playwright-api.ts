@@ -5,47 +5,47 @@
  * Useful for API tests within Playwright test files.
  */
 
-import type { APIRequestContext } from '@playwright/test';
-import { SudokuSDK } from './base';
-import type { SDKOptions, SDKResponse } from './types';
+import type { APIRequestContext } from '@playwright/test'
+import { SudokuSDK } from './base'
+import type { SDKOptions, SDKResponse } from './types'
 
 export interface PlaywrightAPISDKOptions extends SDKOptions {
-  request: APIRequestContext;
+  request: APIRequestContext
 }
 
 export class PlaywrightAPISDK extends SudokuSDK {
-  private request: APIRequestContext;
+  private request: APIRequestContext
 
   constructor(options: PlaywrightAPISDKOptions) {
-    super(options);
-    this.request = options.request;
+    super(options)
+    this.request = options.request
   }
 
   protected async get<T>(path: string): Promise<SDKResponse<T>> {
     try {
       const response = await this.request.get(`${this.baseUrl}${path}`, {
         timeout: this.timeout,
-      });
+      })
 
-      const status = response.status();
-      const ok = response.ok();
+      const status = response.status()
+      const ok = response.ok()
 
       if (!ok) {
-        let error: string;
+        let error: string
         try {
-          const body = await response.json();
-          error = body.error || body.message || `HTTP ${status}`;
+          const body = await response.json()
+          error = body.error || body.message || `HTTP ${status}`
         } catch {
-          error = `HTTP ${status}`;
+          error = `HTTP ${status}`
         }
-        return { ok: false, status, error };
+        return { ok: false, status, error }
       }
 
-      const data = await response.json();
-      return { ok: true, status, data };
+      const data = await response.json()
+      return { ok: true, status, data }
     } catch (err) {
-      const error = err instanceof Error ? err.message : 'Unknown error';
-      return { ok: false, status: 0, error };
+      const error = err instanceof Error ? err.message : 'Unknown error'
+      return { ok: false, status: 0, error }
     }
   }
 
@@ -57,29 +57,29 @@ export class PlaywrightAPISDK extends SudokuSDK {
           'Content-Type': 'application/json',
         },
         timeout: this.timeout,
-      });
+      })
 
-      const status = response.status();
-      const ok = response.ok();
+      const status = response.status()
+      const ok = response.ok()
 
       if (!ok) {
-        let error: string;
+        let error: string
         try {
-          const responseBody = await response.json();
-          error = responseBody.error || responseBody.message || `HTTP ${status}`;
+          const responseBody = await response.json()
+          error = responseBody.error || responseBody.message || `HTTP ${status}`
         } catch {
-          error = `HTTP ${status}`;
+          error = `HTTP ${status}`
         }
-        return { ok: false, status, error };
+        return { ok: false, status, error }
       }
 
-      const data = await response.json();
-      return { ok: true, status, data };
+      const data = await response.json()
+      return { ok: true, status, data }
     } catch (err) {
-      const error = err instanceof Error ? err.message : 'Unknown error';
-      return { ok: false, status: 0, error };
+      const error = err instanceof Error ? err.message : 'Unknown error'
+      return { ok: false, status: 0, error }
     }
   }
 }
 
-export default PlaywrightAPISDK;
+export default PlaywrightAPISDK

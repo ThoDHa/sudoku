@@ -1,6 +1,6 @@
-import { test, expect } from '../fixtures';
-import { selectCell } from '../utils/selectCell';
-import { setupGameAndWaitForBoard } from '../utils/board-wait';
+import { test, expect } from '../fixtures'
+import { selectCell } from '../utils/selectCell'
+import { setupGameAndWaitForBoard } from '../utils/board-wait'
 
 /**
  * Keyboard Navigation E2E Tests
@@ -18,763 +18,788 @@ import { setupGameAndWaitForBoard } from '../utils/board-wait';
 
 // Helper to get a cell by row and column (1-indexed)
 function getCellLocator(page: any, row: number, col: number) {
-  return page.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`);
+  return page.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`)
 }
 
 // Helper to check if a cell has a specific value
 async function expectCellValue(page: any, row: number, col: number, value: number | 'empty') {
-  const cell = getCellLocator(page, row, col);
+  const cell = getCellLocator(page, row, col)
   if (value === 'empty') {
-    await expect(cell).toHaveAttribute('aria-label', new RegExp(`Row ${row}, Column ${col}, empty`));
+    await expect(cell).toHaveAttribute('aria-label', new RegExp(`Row ${row}, Column ${col}, empty`))
   } else {
-    await expect(cell).toHaveAttribute('aria-label', new RegExp(`Row ${row}, Column ${col}, value ${value}`));
+    await expect(cell).toHaveAttribute(
+      'aria-label',
+      new RegExp(`Row ${row}, Column ${col}, value ${value}`),
+    )
   }
 }
 
 // Helper to verify cell is selected (has focus ring)
 // Selected cells get ring-2 ring-inset ring-accent z-10 classes
 async function expectCellSelected(cell: any) {
-  await expect(cell).toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/);
+  await expect(cell).toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/)
 }
 
 // Helper to verify cell is NOT selected (no focus ring)
 // Regression test helper to ensure proper deselection
 async function expectCellNotSelected(cell: any) {
-  await expect(cell).not.toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/);
+  await expect(cell).not.toHaveClass(/ring-2.*ring-accent|ring-accent.*ring-2/)
 }
 
 // Helper to find an empty cell at a specific position
-async function findEmptyCellPosition(page: any, preferredRow: number): Promise<{ row: number; col: number }> {
-  const emptyCell = page.locator(`[role="gridcell"][aria-label*="Row ${preferredRow}"][aria-label*="empty"]`).first();
-  const ariaLabel = await emptyCell.getAttribute('aria-label');
-  const match = ariaLabel?.match(/Row (\d+), Column (\d+)/);
+async function findEmptyCellPosition(
+  page: any,
+  preferredRow: number,
+): Promise<{ row: number; col: number }> {
+  const emptyCell = page
+    .locator(`[role="gridcell"][aria-label*="Row ${preferredRow}"][aria-label*="empty"]`)
+    .first()
+  const ariaLabel = await emptyCell.getAttribute('aria-label')
+  const match = ariaLabel?.match(/Row (\d+), Column (\d+)/)
   return {
     row: match ? parseInt(match[1]) : preferredRow,
     col: match ? parseInt(match[2]) : 1,
-  };
+  }
 }
 
 // Helper to find an empty cell that has an adjacent empty cell in the given direction
 async function findCellWithAdjacentEmpty(
   page: any,
-  direction: 'right' | 'left' | 'up' | 'down'
+  direction: 'right' | 'left' | 'up' | 'down',
 ): Promise<{ startRow: number; startCol: number; endRow: number; endCol: number } | null> {
   // Scan the board for an empty cell with an adjacent empty cell in the given direction
   for (let row = 2; row <= 8; row++) {
     for (let col = 2; col <= 8; col++) {
-      const startCell = getCellLocator(page, row, col);
-      const startLabel = await startCell.getAttribute('aria-label');
-      if (!startLabel?.includes('empty')) continue;
+      const startCell = getCellLocator(page, row, col)
+      const startLabel = await startCell.getAttribute('aria-label')
+      if (!startLabel?.includes('empty')) continue
 
       // Calculate adjacent cell based on direction
-      let adjRow = row, adjCol = col;
+      let adjRow = row,
+        adjCol = col
       switch (direction) {
-        case 'right': adjCol = col + 1; break;
-        case 'left': adjCol = col - 1; break;
-        case 'down': adjRow = row + 1; break;
-        case 'up': adjRow = row - 1; break;
+        case 'right':
+          adjCol = col + 1
+          break
+        case 'left':
+          adjCol = col - 1
+          break
+        case 'down':
+          adjRow = row + 1
+          break
+        case 'up':
+          adjRow = row - 1
+          break
       }
 
-      if (adjRow < 1 || adjRow > 9 || adjCol < 1 || adjCol > 9) continue;
+      if (adjRow < 1 || adjRow > 9 || adjCol < 1 || adjCol > 9) continue
 
-      const adjCell = getCellLocator(page, adjRow, adjCol);
-      const adjLabel = await adjCell.getAttribute('aria-label');
+      const adjCell = getCellLocator(page, adjRow, adjCol)
+      const adjLabel = await adjCell.getAttribute('aria-label')
       if (adjLabel?.includes('empty')) {
-        return { startRow: row, startCol: col, endRow: adjRow, endCol: adjCol };
+        return { startRow: row, startCol: col, endRow: adjRow, endCol: adjCol }
       }
     }
   }
-  return null;
+  return null
 }
 
 test.describe('@integration Keyboard Navigation - Arrow Keys', () => {
   test.beforeEach(async ({ page }) => {
-    await setupGameAndWaitForBoard(page);
-  });
+    await setupGameAndWaitForBoard(page)
+  })
 
   test('Arrow Right moves selection to next column', async ({ page }) => {
     // Find an empty cell with an empty cell to its right
     // Note: Arrow navigation skips given cells, so we need two adjacent empty cells
-    const cells = await findCellWithAdjacentEmpty(page, 'right');
-    test.skip(!cells, 'No adjacent empty cells found for this test');
-    
-    const startCell = getCellLocator(page, cells!.startRow, cells!.startCol);
-    await startCell.scrollIntoViewIfNeeded();
-    await startCell.click();
-    await expectCellSelected(startCell);
+    const cells = await findCellWithAdjacentEmpty(page, 'right')
+    test.skip(!cells, 'No adjacent empty cells found for this test')
+
+    const startCell = getCellLocator(page, cells!.startRow, cells!.startCol)
+    await startCell.scrollIntoViewIfNeeded()
+    await startCell.click()
+    await expectCellSelected(startCell)
 
     // Press right arrow
-    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight')
 
     // Verify the adjacent empty cell is now selected
-    const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol);
-    await expectCellSelected(nextCell);
-  });
+    const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol)
+    await expectCellSelected(nextCell)
+  })
 
   test('Arrow Left moves selection to previous column', async ({ page }) => {
     // Find an empty cell with an empty cell to its left
-    const cells = await findCellWithAdjacentEmpty(page, 'left');
-    test.skip(!cells, 'No adjacent empty cells found for this test');
-    
-    const startCell = getCellLocator(page, cells!.startRow, cells!.startCol);
-    await startCell.scrollIntoViewIfNeeded();
-    await startCell.click();
-    await expectCellSelected(startCell);
+    const cells = await findCellWithAdjacentEmpty(page, 'left')
+    test.skip(!cells, 'No adjacent empty cells found for this test')
+
+    const startCell = getCellLocator(page, cells!.startRow, cells!.startCol)
+    await startCell.scrollIntoViewIfNeeded()
+    await startCell.click()
+    await expectCellSelected(startCell)
 
     // Press left arrow
-    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft')
 
     // Verify the adjacent empty cell is now selected
-    const prevCell = getCellLocator(page, cells!.endRow, cells!.endCol);
-    await expectCellSelected(prevCell);
-  });
+    const prevCell = getCellLocator(page, cells!.endRow, cells!.endCol)
+    await expectCellSelected(prevCell)
+  })
 
   test('Arrow Down moves selection to next row', async ({ page }) => {
     // Find an empty cell with an empty cell below it
-    const cells = await findCellWithAdjacentEmpty(page, 'down');
-    test.skip(!cells, 'No adjacent empty cells found for this test');
-    
-    const startCell = getCellLocator(page, cells!.startRow, cells!.startCol);
-    await startCell.scrollIntoViewIfNeeded();
-    await startCell.click();
-    await expectCellSelected(startCell);
+    const cells = await findCellWithAdjacentEmpty(page, 'down')
+    test.skip(!cells, 'No adjacent empty cells found for this test')
+
+    const startCell = getCellLocator(page, cells!.startRow, cells!.startCol)
+    await startCell.scrollIntoViewIfNeeded()
+    await startCell.click()
+    await expectCellSelected(startCell)
 
     // Press down arrow
-    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown')
 
     // Verify the cell below is now selected
-    const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol);
-    await expectCellSelected(nextCell);
-  });
+    const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol)
+    await expectCellSelected(nextCell)
+  })
 
   test('Arrow Up moves selection to previous row', async ({ page }) => {
     // Find an empty cell with an empty cell above it
-    const cells = await findCellWithAdjacentEmpty(page, 'up');
-    test.skip(!cells, 'No adjacent empty cells found for this test');
-    
-    const startCell = getCellLocator(page, cells!.startRow, cells!.startCol);
-    await startCell.scrollIntoViewIfNeeded();
-    await startCell.click();
-    await expectCellSelected(startCell);
+    const cells = await findCellWithAdjacentEmpty(page, 'up')
+    test.skip(!cells, 'No adjacent empty cells found for this test')
+
+    const startCell = getCellLocator(page, cells!.startRow, cells!.startCol)
+    await startCell.scrollIntoViewIfNeeded()
+    await startCell.click()
+    await expectCellSelected(startCell)
 
     // Press up arrow
-    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('ArrowUp')
 
     // Verify the cell above is now selected
-    const prevCell = getCellLocator(page, cells!.endRow, cells!.endCol);
-    await expectCellSelected(prevCell);
-  });
+    const prevCell = getCellLocator(page, cells!.endRow, cells!.endCol)
+    await expectCellSelected(prevCell)
+  })
 
   test('Arrow Right from column 9 wraps or stops at edge', async ({ page }) => {
     // Find an empty cell in column 9
-    let edgeRow = 0;
+    let edgeRow = 0
     for (let row = 1; row <= 9; row++) {
-      const cell = getCellLocator(page, row, 9);
-      const label = await cell.getAttribute('aria-label');
+      const cell = getCellLocator(page, row, 9)
+      const label = await cell.getAttribute('aria-label')
       if (label?.includes('empty')) {
-        edgeRow = row;
-        break;
+        edgeRow = row
+        break
       }
     }
-    test.skip(edgeRow === 0, 'No empty cell in column 9 for this test');
-    
-    const edgeCell = getCellLocator(page, edgeRow, 9);
-    await edgeCell.scrollIntoViewIfNeeded();
-    await edgeCell.click();
-    await expectCellSelected(edgeCell);
+    test.skip(edgeRow === 0, 'No empty cell in column 9 for this test')
+
+    const edgeCell = getCellLocator(page, edgeRow, 9)
+    await edgeCell.scrollIntoViewIfNeeded()
+    await edgeCell.click()
+    await expectCellSelected(edgeCell)
 
     // Press right arrow
-    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight')
 
     // Edge behavior: pressing right at column 9 either stops (the current cell
     // stays selected) or wraps to another column. Either way at least one cell
     // must remain selected. A crash or full deselection leaves zero selected,
     // which fails this guard. (Replaces a tautological >= 0 on count().)
-    const selectedCount = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
-    expect(selectedCount).toBeGreaterThanOrEqual(1);
-  });
+    const selectedCount = await page.locator('[role="gridcell"][class*="ring-accent"]').count()
+    expect(selectedCount).toBeGreaterThanOrEqual(1)
+  })
 
   test('Arrow Down from row 9 wraps or stops at edge', async ({ page }) => {
     // Find an empty cell in row 9
-    let edgeCol = 0;
+    let edgeCol = 0
     for (let col = 1; col <= 9; col++) {
-      const cell = getCellLocator(page, 9, col);
-      const label = await cell.getAttribute('aria-label');
+      const cell = getCellLocator(page, 9, col)
+      const label = await cell.getAttribute('aria-label')
       if (label?.includes('empty')) {
-        edgeCol = col;
-        break;
+        edgeCol = col
+        break
       }
     }
-    test.skip(edgeCol === 0, 'No empty cell in row 9 for this test');
-    
-    const edgeCell = getCellLocator(page, 9, edgeCol);
-    await edgeCell.scrollIntoViewIfNeeded();
-    await edgeCell.click();
-    await expectCellSelected(edgeCell);
+    test.skip(edgeCol === 0, 'No empty cell in row 9 for this test')
+
+    const edgeCell = getCellLocator(page, 9, edgeCol)
+    await edgeCell.scrollIntoViewIfNeeded()
+    await edgeCell.click()
+    await expectCellSelected(edgeCell)
 
     // Press down arrow
-    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown')
 
     // Edge behavior: pressing down at row 9 either stops or wraps. At least one
     // cell must remain selected afterward; a crash or full deselection fails here.
-    const selectedCount = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
-    expect(selectedCount).toBeGreaterThanOrEqual(1);
-  });
+    const selectedCount = await page.locator('[role="gridcell"][class*="ring-accent"]').count()
+    expect(selectedCount).toBeGreaterThanOrEqual(1)
+  })
 
   test('rapid arrow key pressing navigates correctly', async ({ page }) => {
     test.skip(
       ['iphone-12', 'pixel-5'].includes(test.info().project.name),
-      'Arrow key navigation tests require physical keyboard - mobile devices use touch navigation'
-    );
+      'Arrow key navigation tests require physical keyboard - mobile devices use touch navigation',
+    )
 
-    const cells = await findCellWithAdjacentEmpty(page, 'right');
-    test.skip(!cells, 'No adjacent empty cells found for this test');
+    const cells = await findCellWithAdjacentEmpty(page, 'right')
+    test.skip(!cells, 'No adjacent empty cells found for this test')
 
-    const startCell = getCellLocator(page, cells!.startRow, cells!.startCol);
-    await startCell.scrollIntoViewIfNeeded();
-    await startCell.click();
-    await expectCellSelected(startCell);
+    const startCell = getCellLocator(page, cells!.startRow, cells!.startCol)
+    await startCell.scrollIntoViewIfNeeded()
+    await startCell.click()
+    await expectCellSelected(startCell)
 
     // Regression guard for the focus bug: an arrow keydown must move focus to the
     // target cell synchronously, in the same JS turn. The handler must not rely on
     // a deferred (requestAnimationFrame) focus effect, or a rapid second keypress
     // re-fires on the origin and toggles selection off. Asserting focus inside the
     // same evaluate (before the event loop yields) proves focus moved immediately.
-    const startLabel = await startCell.getAttribute('aria-label');
+    const startLabel = await startCell.getAttribute('aria-label')
     const focusMoved = await page.evaluate((start) => {
-      const t = document.activeElement as HTMLElement | null;
-      t?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-      const focused = (document.activeElement as HTMLElement | null)?.getAttribute('aria-label') ?? null;
-      return focused !== null && focused !== start;
-    }, startLabel);
-    expect(focusMoved).toBe(true);
+      const t = document.activeElement as HTMLElement | null
+      t?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+      const focused =
+        (document.activeElement as HTMLElement | null)?.getAttribute('aria-label') ?? null
+      return focused !== null && focused !== start
+    }, startLabel)
+    expect(focusMoved).toBe(true)
 
     // Directed rapid sequence still ends with exactly one selected cell.
-    await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('ArrowDown')
 
-    const selectedCells = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
-    expect(selectedCells).toBe(1);
-  });
+    const selectedCells = await page.locator('[role="gridcell"][class*="ring-accent"]').count()
+    expect(selectedCells).toBe(1)
+  })
 
   test('cell deselects after digit entry (regression test)', async ({ page }) => {
     test.skip(
       ['iphone-12', 'pixel-5'].includes(test.info().project.name),
-      'Arrow key navigation tests require physical keyboard - mobile devices use touch navigation'
-    );
+      'Arrow key navigation tests require physical keyboard - mobile devices use touch navigation',
+    )
 
-    const cells = await findCellWithAdjacentEmpty(page, 'right');
-    test.skip(!cells, 'No adjacent empty cells found for this test');
+    const cells = await findCellWithAdjacentEmpty(page, 'right')
+    test.skip(!cells, 'No adjacent empty cells found for this test')
 
-    const emptyCell = getCellLocator(page, cells!.startRow, cells!.startCol);
-    await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
+    const emptyCell = getCellLocator(page, cells!.startRow, cells!.startCol)
+    await emptyCell.scrollIntoViewIfNeeded()
+    await emptyCell.click()
 
-    await expectCellSelected(emptyCell);
+    await expectCellSelected(emptyCell)
 
-    await page.keyboard.press('5');
+    await page.keyboard.press('5')
 
-    await expect(emptyCell).toHaveAttribute('aria-label', /value 5/, { timeout: 2000 });
+    await expect(emptyCell).toHaveAttribute('aria-label', /value 5/, { timeout: 2000 })
 
-    await expectCellNotSelected(emptyCell);
+    await expectCellNotSelected(emptyCell)
 
-    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight')
 
-    await expect(page.locator('[role="gridcell"]').first()).toBeVisible();
+    await expect(page.locator('[role="gridcell"]').first()).toBeVisible()
 
-    const selectedCells = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
-    expect(selectedCells).toBe(0);
+    const selectedCells = await page.locator('[role="gridcell"][class*="ring-accent"]').count()
+    expect(selectedCells).toBe(0)
 
-    await emptyCell.click();
-    await expectCellSelected(emptyCell);
+    await emptyCell.click()
+    await expectCellSelected(emptyCell)
 
-    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight')
 
-    const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol);
-    await expectCellSelected(nextCell);
-  });
-});
+    const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol)
+    await expectCellSelected(nextCell)
+  })
+})
 
 test.describe('@integration Keyboard Navigation - Digit Entry', () => {
   test.beforeEach(async ({ page }) => {
-    await setupGameAndWaitForBoard(page);
-  });
+    await setupGameAndWaitForBoard(page)
+  })
 
   test('keys 1-9 enter digits in selected empty cell', async ({ page }) => {
-    const pos = await findEmptyCellPosition(page, 5);
-    const emptyCell = getCellLocator(page, pos.row, pos.col);
-    await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
+    const pos = await findEmptyCellPosition(page, 5)
+    const emptyCell = getCellLocator(page, pos.row, pos.col)
+    await emptyCell.scrollIntoViewIfNeeded()
+    await emptyCell.click()
 
     // Enter digit 7
-    await page.keyboard.press('7');
+    await page.keyboard.press('7')
 
     // Verify digit was placed
-    await expect(getCellLocator(page, pos.row, pos.col)).toHaveAttribute('aria-label', /value 7/, { timeout: 2000 });
-  });
+    await expect(getCellLocator(page, pos.row, pos.col)).toHaveAttribute('aria-label', /value 7/, {
+      timeout: 2000,
+    })
+  })
 
   test('cannot overwrite given (fixed) cells', async ({ page }) => {
     // Find a given cell
-    const givenCell = page.locator('[role="gridcell"][aria-label*="given"]').first();
-    const ariaLabel = await givenCell.getAttribute('aria-label');
-    const match = ariaLabel?.match(/Row (\d+), Column (\d+), value (\d+)/);
-    const row = match ? parseInt(match[1]) : 1;
-    const col = match ? parseInt(match[2]) : 1;
-    const originalValue = match ? parseInt(match[3]) : 1;
+    const givenCell = page.locator('[role="gridcell"][aria-label*="given"]').first()
+    const ariaLabel = await givenCell.getAttribute('aria-label')
+    const match = ariaLabel?.match(/Row (\d+), Column (\d+), value (\d+)/)
+    const row = match ? parseInt(match[1]) : 1
+    const col = match ? parseInt(match[2]) : 1
+    const originalValue = match ? parseInt(match[3]) : 1
 
-    await givenCell.scrollIntoViewIfNeeded();
-    await givenCell.click();
+    await givenCell.scrollIntoViewIfNeeded()
+    await givenCell.click()
 
     // Try to enter a different digit
-    const newDigit = originalValue === 9 ? 1 : originalValue + 1;
-    await page.keyboard.press(newDigit.toString());
+    const newDigit = originalValue === 9 ? 1 : originalValue + 1
+    await page.keyboard.press(newDigit.toString())
 
     // Value should remain unchanged - given cells cannot be modified
-    await expect(givenCell).toHaveAttribute('aria-label', new RegExp(`value ${originalValue}`), { timeout: 2000 });
-  });
+    await expect(givenCell).toHaveAttribute('aria-label', new RegExp(`value ${originalValue}`), {
+      timeout: 2000,
+    })
+  })
 
   test('digit replaces existing user digit', async ({ page }) => {
-    const pos = await findEmptyCellPosition(page, 6);
-    const cell = getCellLocator(page, pos.row, pos.col);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const pos = await findEmptyCellPosition(page, 6)
+    const cell = getCellLocator(page, pos.row, pos.col)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
 
     // Enter first digit
-    await page.keyboard.press('3');
-    await expect(cell).toHaveAttribute('aria-label', /value 3/, { timeout: 2000 });
+    await page.keyboard.press('3')
+    await expect(cell).toHaveAttribute('aria-label', /value 3/, { timeout: 2000 })
 
     // Re-select the cell and enter different digit
-    await cell.click();
-    await page.keyboard.press('8');
+    await cell.click()
+    await page.keyboard.press('8')
 
     // New digit should replace old one
-    await expect(cell).toHaveAttribute('aria-label', /value 8/, { timeout: 2000 });
-  });
+    await expect(cell).toHaveAttribute('aria-label', /value 8/, { timeout: 2000 })
+  })
 
   test('key 0 or Backspace clears cell', async ({ page }) => {
-    const pos = await findEmptyCellPosition(page, 5);
-    const cell = getCellLocator(page, pos.row, pos.col);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const pos = await findEmptyCellPosition(page, 5)
+    const cell = getCellLocator(page, pos.row, pos.col)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
 
     // Enter a digit
-    await page.keyboard.press('4');
-    await expect(cell).toHaveAttribute('aria-label', /value 4/, { timeout: 2000 });
+    await page.keyboard.press('4')
+    await expect(cell).toHaveAttribute('aria-label', /value 4/, { timeout: 2000 })
 
     // Clear with Backspace
     // Ensure the cell is focused/selected via shared helper before sending keys
-    await selectCell(page, pos.row, pos.col);
-    await page.keyboard.press('Backspace');
+    await selectCell(page, pos.row, pos.col)
+    await page.keyboard.press('Backspace')
 
     // Cell should be empty
-    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
-  });
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 })
+  })
 
   test('Delete key clears cell', async ({ page }) => {
-    const pos = await findEmptyCellPosition(page, 6);
-    const cell = getCellLocator(page, pos.row, pos.col);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const pos = await findEmptyCellPosition(page, 6)
+    const cell = getCellLocator(page, pos.row, pos.col)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
 
     // Enter a digit
-    await page.keyboard.press('9');
-    await expect(cell).toHaveAttribute('aria-label', /value 9/, { timeout: 2000 });
+    await page.keyboard.press('9')
+    await expect(cell).toHaveAttribute('aria-label', /value 9/, { timeout: 2000 })
 
     // Clear with Delete
     // Ensure the cell is focused/selected via shared helper before sending keys
-    await selectCell(page, pos.row, pos.col);
-    await page.keyboard.press('Delete');
+    await selectCell(page, pos.row, pos.col)
+    await page.keyboard.press('Delete')
 
     // Cell should be empty
-    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
-  });
-});
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 })
+  })
+})
 
 test.describe('@integration Keyboard Navigation - Undo/Redo', () => {
   test.beforeEach(async ({ page }) => {
-    await setupGameAndWaitForBoard(page);
-  });
+    await setupGameAndWaitForBoard(page)
+  })
 
   test('Ctrl+Z undoes last move', async ({ page, browserName }) => {
     test.skip(
       ['iphone-12', 'pixel-5'].includes(test.info().project.name),
-      'Keyboard shortcuts (Ctrl/Meta+Z) require physical keyboard - mobile devices use touch UI with undo button'
-    );
+      'Keyboard shortcuts (Ctrl/Meta+Z) require physical keyboard - mobile devices use touch UI with undo button',
+    )
 
-    const pos = await findEmptyCellPosition(page, 5);
-    const cell = getCellLocator(page, pos.row, pos.col);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const pos = await findEmptyCellPosition(page, 5)
+    const cell = getCellLocator(page, pos.row, pos.col)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
 
-    await page.keyboard.press('6');
-    await expect(cell).toHaveAttribute('aria-label', /value 6/, { timeout: 2000 });
+    await page.keyboard.press('6')
+    await expect(cell).toHaveAttribute('aria-label', /value 6/, { timeout: 2000 })
 
-    const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
-    await page.keyboard.press(`${modifier}+z`);
+    const modifier = browserName === 'webkit' ? 'Meta' : 'Control'
+    await page.keyboard.press(`${modifier}+z`)
 
-    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
-  });
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 })
+  })
 
   test('Ctrl+Y or Ctrl+Shift+Z redoes', async ({ page, browserName }) => {
     test.skip(
       ['iphone-12', 'pixel-5'].includes(test.info().project.name),
-      'Keyboard shortcuts (Ctrl/Meta+Y) require physical keyboard - mobile devices use touch UI with redo button'
-    );
+      'Keyboard shortcuts (Ctrl/Meta+Y) require physical keyboard - mobile devices use touch UI with redo button',
+    )
 
-    const pos = await findEmptyCellPosition(page, 5);
-    const cell = getCellLocator(page, pos.row, pos.col);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const pos = await findEmptyCellPosition(page, 5)
+    const cell = getCellLocator(page, pos.row, pos.col)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
 
-    await page.keyboard.press('2');
-    await expect(cell).toHaveAttribute('aria-label', /value 2/, { timeout: 2000 });
+    await page.keyboard.press('2')
+    await expect(cell).toHaveAttribute('aria-label', /value 2/, { timeout: 2000 })
 
-    const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
-    await page.keyboard.press(`${modifier}+z`);
-    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
+    const modifier = browserName === 'webkit' ? 'Meta' : 'Control'
+    await page.keyboard.press(`${modifier}+z`)
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 })
 
-    await page.keyboard.press(`${modifier}+y`);
+    await page.keyboard.press(`${modifier}+y`)
 
-    const ariaLabel = await cell.getAttribute('aria-label');
+    const ariaLabel = await cell.getAttribute('aria-label')
     if (ariaLabel?.includes('empty')) {
-      await page.keyboard.press(`${modifier}+Shift+z`);
+      await page.keyboard.press(`${modifier}+Shift+z`)
     }
 
-    await expect(cell).toHaveAttribute('aria-label', /value 2/, { timeout: 2000 });
-  });
+    await expect(cell).toHaveAttribute('aria-label', /value 2/, { timeout: 2000 })
+  })
 
   test('multiple undos work sequentially', async ({ page, browserName }) => {
     test.skip(
       ['iphone-12', 'pixel-5'].includes(test.info().project.name),
-      'Keyboard shortcuts (Ctrl/Meta+Z) require physical keyboard - mobile devices use touch UI with undo button'
-    );
+      'Keyboard shortcuts (Ctrl/Meta+Z) require physical keyboard - mobile devices use touch UI with undo button',
+    )
 
-    const pos1 = await findEmptyCellPosition(page, 5);
-    const pos2 = await findEmptyCellPosition(page, 6);
+    const pos1 = await findEmptyCellPosition(page, 5)
+    const pos2 = await findEmptyCellPosition(page, 6)
 
-    const cell1 = getCellLocator(page, pos1.row, pos1.col);
-    const cell2 = getCellLocator(page, pos2.row, pos2.col);
+    const cell1 = getCellLocator(page, pos1.row, pos1.col)
+    const cell2 = getCellLocator(page, pos2.row, pos2.col)
 
-    await cell1.scrollIntoViewIfNeeded();
-    await cell1.click();
-    await page.keyboard.press('1');
-    await expect(cell1).toHaveAttribute('aria-label', /value 1/, { timeout: 2000 });
+    await cell1.scrollIntoViewIfNeeded()
+    await cell1.click()
+    await page.keyboard.press('1')
+    await expect(cell1).toHaveAttribute('aria-label', /value 1/, { timeout: 2000 })
 
-    await cell2.scrollIntoViewIfNeeded();
-    await cell2.click();
-    await page.keyboard.press('2');
-    await expect(cell2).toHaveAttribute('aria-label', /value 2/, { timeout: 2000 });
+    await cell2.scrollIntoViewIfNeeded()
+    await cell2.click()
+    await page.keyboard.press('2')
+    await expect(cell2).toHaveAttribute('aria-label', /value 2/, { timeout: 2000 })
 
-    const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
+    const modifier = browserName === 'webkit' ? 'Meta' : 'Control'
 
-    await page.keyboard.press(`${modifier}+z`);
-    await expect(cell2).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
+    await page.keyboard.press(`${modifier}+z`)
+    await expect(cell2).toHaveAttribute('aria-label', /empty/, { timeout: 2000 })
 
-    await page.keyboard.press(`${modifier}+z`);
-    await expect(cell1).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
-  });
+    await page.keyboard.press(`${modifier}+z`)
+    await expect(cell1).toHaveAttribute('aria-label', /empty/, { timeout: 2000 })
+  })
 
   test('undo after redo works correctly', async ({ page, browserName }) => {
     test.skip(
       ['iphone-12', 'pixel-5'].includes(test.info().project.name),
-      'Keyboard shortcuts (Ctrl/Meta+Z/Y) require physical keyboard - mobile devices use touch UI with undo/redo buttons'
-    );
+      'Keyboard shortcuts (Ctrl/Meta+Z/Y) require physical keyboard - mobile devices use touch UI with undo/redo buttons',
+    )
 
-    const pos = await findEmptyCellPosition(page, 5);
-    const cell = getCellLocator(page, pos.row, pos.col);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const pos = await findEmptyCellPosition(page, 5)
+    const cell = getCellLocator(page, pos.row, pos.col)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
 
-    const modifier = browserName === 'webkit' ? 'Meta' : 'Control';
+    const modifier = browserName === 'webkit' ? 'Meta' : 'Control'
 
-    await page.keyboard.press('5');
-    await expect(cell).toHaveAttribute('aria-label', /value 5/, { timeout: 2000 });
+    await page.keyboard.press('5')
+    await expect(cell).toHaveAttribute('aria-label', /value 5/, { timeout: 2000 })
 
-    await page.keyboard.press(`${modifier}+z`);
-    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
+    await page.keyboard.press(`${modifier}+z`)
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 })
 
-    await page.keyboard.press(`${modifier}+y`);
+    await page.keyboard.press(`${modifier}+y`)
 
-    let ariaLabel = await cell.getAttribute('aria-label');
+    let ariaLabel = await cell.getAttribute('aria-label')
     if (ariaLabel?.includes('empty')) {
-      await page.keyboard.press(`${modifier}+Shift+z`);
+      await page.keyboard.press(`${modifier}+Shift+z`)
     }
 
-    await expect(cell).toHaveAttribute('aria-label', /value 5/, { timeout: 2000 });
+    await expect(cell).toHaveAttribute('aria-label', /value 5/, { timeout: 2000 })
 
-    await page.keyboard.press(`${modifier}+z`);
-    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
-  });
-});
+    await page.keyboard.press(`${modifier}+z`)
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 })
+  })
+})
 
 test.describe('@integration Keyboard Navigation - Notes Mode', () => {
   test.beforeEach(async ({ page }) => {
-    await setupGameAndWaitForBoard(page);
-  });
+    await setupGameAndWaitForBoard(page)
+  })
 
   test('N key toggles notes mode on', async ({ page }) => {
     // Verify notes mode is off initially
-    const notesButton = page.locator('button[aria-label*="Notes"]');
-    await expect(notesButton).not.toHaveClass(/bg-amber|active|enabled/);
+    const notesButton = page.locator('button[aria-label*="Notes"]')
+    await expect(notesButton).not.toHaveClass(/bg-amber|active|enabled/)
 
     // Press N to toggle notes mode
-    await page.keyboard.press('n');
+    await page.keyboard.press('n')
 
     // Notes button should show active state
-    await expect(notesButton).toHaveClass(/bg-amber|active|enabled/, { timeout: 2000 });
-  });
+    await expect(notesButton).toHaveClass(/bg-amber|active|enabled/, { timeout: 2000 })
+  })
 
   test('in notes mode, digits toggle candidates', async ({ page }) => {
-    const pos = await findEmptyCellPosition(page, 5);
-    const cell = getCellLocator(page, pos.row, pos.col);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const pos = await findEmptyCellPosition(page, 5)
+    const cell = getCellLocator(page, pos.row, pos.col)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
 
     // Enable notes mode
-    await page.keyboard.press('n');
-    await expect(page.locator('button[aria-label*="Notes"]')).toHaveClass(/bg-amber|active|enabled/, { timeout: 2000 });
+    await page.keyboard.press('n')
+    await expect(page.locator('button[aria-label*="Notes"]')).toHaveClass(
+      /bg-amber|active|enabled/,
+      { timeout: 2000 },
+    )
 
     // Enter a candidate digit
-    await page.keyboard.press('3');
+    await page.keyboard.press('3')
 
     // Wait for candidate to be added - check for notes/candidates in aria-label or DOM
     await expect(async () => {
-      const ariaLabel = await cell.getAttribute('aria-label');
-      const hasNotesClass = await cell.evaluate((el: Element) =>
-        el.querySelector('.text-xs') !== null || el.innerHTML.includes('3')
-      );
-      const hasCandidates = ariaLabel?.includes('candidates') || ariaLabel?.includes('3');
-      expect(hasCandidates || hasNotesClass).toBe(true);
-    }).toPass({ timeout: 2000 });
-  });
+      const ariaLabel = await cell.getAttribute('aria-label')
+      const hasNotesClass = await cell.evaluate(
+        (el: Element) => el.querySelector('.text-xs') !== null || el.innerHTML.includes('3'),
+      )
+      const hasCandidates = ariaLabel?.includes('candidates') || ariaLabel?.includes('3')
+      expect(hasCandidates || hasNotesClass).toBe(true)
+    }).toPass({ timeout: 2000 })
+  })
 
   test('N key again exits notes mode', async ({ page }) => {
-    const notesButton = page.locator('button[aria-label*="Notes"]');
+    const notesButton = page.locator('button[aria-label*="Notes"]')
 
     // Enable notes mode
-    await page.keyboard.press('n');
-    await expect(notesButton).toHaveClass(/bg-amber|active|enabled/, { timeout: 2000 });
+    await page.keyboard.press('n')
+    await expect(notesButton).toHaveClass(/bg-amber|active|enabled/, { timeout: 2000 })
 
     // Disable notes mode
-    await page.keyboard.press('n');
+    await page.keyboard.press('n')
 
     // Notes button should not show active state
-    await expect(notesButton).not.toHaveClass(/bg-amber|active|enabled/, { timeout: 2000 });
-  });
-});
+    await expect(notesButton).not.toHaveClass(/bg-amber|active|enabled/, { timeout: 2000 })
+  })
+})
 
 test.describe('@integration Keyboard Navigation - Tab Navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await setupGameAndWaitForBoard(page);
-  });
+    await setupGameAndWaitForBoard(page)
+  })
 
   test('Tab moves through interactive elements', async ({ page }) => {
     // Focus the board first
-    const board = page.locator('.sudoku-board');
-    await board.click();
+    const board = page.locator('.sudoku-board')
+    await board.click()
 
     // Press Tab multiple times
-    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab')
 
     // Some element should have focus
-    await expect(page.locator(':focus')).toBeVisible({ timeout: 2000 });
+    await expect(page.locator(':focus')).toBeVisible({ timeout: 2000 })
 
     // Tab again
-    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab')
 
     // A different element should now have focus
-    await expect(page.locator(':focus')).toBeVisible({ timeout: 2000 });
-  });
+    await expect(page.locator(':focus')).toBeVisible({ timeout: 2000 })
+  })
 
   test('Shift+Tab moves backwards through elements', async ({ page }) => {
     // First make a move so Undo button becomes enabled
     // Find an empty cell and enter a digit
-    const pos = await findEmptyCellPosition(page, 5);
-    const emptyCell = getCellLocator(page, pos.row, pos.col);
-    await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
-    await page.keyboard.press('5');
-    
+    const pos = await findEmptyCellPosition(page, 5)
+    const emptyCell = getCellLocator(page, pos.row, pos.col)
+    await emptyCell.scrollIntoViewIfNeeded()
+    await emptyCell.click()
+    await page.keyboard.press('5')
+
     // Wait for the move to be registered
-    await page.waitForTimeout(200);
-    
+    await page.waitForTimeout(200)
+
     // Focus the Undo button (should be enabled now)
-    const undoButton = page.locator('button[title="Undo"]');
-    await undoButton.focus();
-    
+    const undoButton = page.locator('button[title="Undo"]')
+    await undoButton.focus()
+
     // Wait for focus to be properly set
-    await expect(undoButton).toBeFocused({ timeout: 2000 });
+    await expect(undoButton).toBeFocused({ timeout: 2000 })
 
     // Tab forward twice
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Tab')
 
     // Capture a stable identity of the focused element (tagName alone is too
     // coarse: two buttons both report "BUTTON"). Combining id/title/aria/text
     // distinguishes which interactive element actually holds focus.
     const focusFingerprint = (): Promise<string> =>
       page.evaluate(() => {
-        const el = document.activeElement;
-        if (!el) return '';
-        const tag = el.tagName.toLowerCase();
-        const id = el.id ? `#${el.id}` : '';
-        const title = el.getAttribute('title') || '';
-        const aria = el.getAttribute('aria-label') || '';
-        const text = (el.textContent || '').trim().slice(0, 20);
-        return `${tag}${id}[title=${title}][aria=${aria}]"${text}"`;
-      });
+        const el = document.activeElement
+        if (!el) return ''
+        const tag = el.tagName.toLowerCase()
+        const id = el.id ? `#${el.id}` : ''
+        const title = el.getAttribute('title') || ''
+        const aria = el.getAttribute('aria-label') || ''
+        const text = (el.textContent || '').trim().slice(0, 20)
+        return `${tag}${id}[title=${title}][aria=${aria}]"${text}"`
+      })
 
-    const beforeShiftTab = await focusFingerprint();
+    const beforeShiftTab = await focusFingerprint()
 
     // Shift+Tab backwards
-    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Shift+Tab')
 
     // Focus must have moved to a different element — if Shift+Tab is a no-op the
     // fingerprint is unchanged and this fails. (Replaces a tautological
     // toBeDefined on activeElement, which is body by default and never null.)
-    const afterShiftTab = await focusFingerprint();
-    expect(afterShiftTab).not.toBe(beforeShiftTab);
-  });
-});
+    const afterShiftTab = await focusFingerprint()
+    expect(afterShiftTab).not.toBe(beforeShiftTab)
+  })
+})
 
 test.describe('@integration Keyboard Navigation - Focus Management', () => {
   test.beforeEach(async ({ page }) => {
-    await setupGameAndWaitForBoard(page);
-  });
+    await setupGameAndWaitForBoard(page)
+  })
 
   test('keyboard works after board click', async ({ page }) => {
     // Find an empty cell with an adjacent empty cell to the right
-    const cells = await findCellWithAdjacentEmpty(page, 'right');
-    test.skip(!cells, 'No adjacent empty cells found for this test');
-    
+    const cells = await findCellWithAdjacentEmpty(page, 'right')
+    test.skip(!cells, 'No adjacent empty cells found for this test')
+
     // Click the first empty cell
-    const cell = getCellLocator(page, cells!.startRow, cells!.startCol);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const cell = getCellLocator(page, cells!.startRow, cells!.startCol)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
 
     // Arrow key should work - move to adjacent empty cell
-    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight')
 
     // The adjacent empty cell should be selected
-    const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol);
-    await expectCellSelected(nextCell);
+    const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol)
+    await expectCellSelected(nextCell)
 
     // Digit entry should work - click another empty cell and enter digit
-    const pos = await findEmptyCellPosition(page, 5);
-    const emptyCell = getCellLocator(page, pos.row, pos.col);
-    await emptyCell.click();
-    await page.keyboard.press('4');
-    await expect(emptyCell).toHaveAttribute('aria-label', /value 4/, { timeout: 2000 });
-  });
+    const pos = await findEmptyCellPosition(page, 5)
+    const emptyCell = getCellLocator(page, pos.row, pos.col)
+    await emptyCell.click()
+    await page.keyboard.press('4')
+    await expect(emptyCell).toHaveAttribute('aria-label', /value 4/, { timeout: 2000 })
+  })
 
   test('focus visible indicator shows on selected cell', async ({ page }) => {
     // Find an empty cell with an adjacent empty cell below it
-    const cells = await findCellWithAdjacentEmpty(page, 'down');
-    test.skip(!cells, 'No adjacent empty cells found for this test');
-    
-    const cell = getCellLocator(page, cells!.startRow, cells!.startCol);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const cells = await findCellWithAdjacentEmpty(page, 'down')
+    test.skip(!cells, 'No adjacent empty cells found for this test')
+
+    const cell = getCellLocator(page, cells!.startRow, cells!.startCol)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
 
     // Cell should have visible focus indicator (ring class)
-    await expect(cell).toHaveClass(/ring/);
+    await expect(cell).toHaveClass(/ring/)
 
     // Navigate to adjacent empty cell below
-    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown')
 
     // Previous cell should not have focus ring with accent
-    await expect(cell).not.toHaveClass(/ring-accent/);
+    await expect(cell).not.toHaveClass(/ring-accent/)
 
     // New cell should have focus ring
-    const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol);
-    await expect(nextCell).toHaveClass(/ring/);
-  });
-});
+    const nextCell = getCellLocator(page, cells!.endRow, cells!.endCol)
+    await expect(nextCell).toHaveClass(/ring/)
+  })
+})
 
 test.describe('@integration Keyboard Navigation - Edge Cases', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: /easy Play/i }).click();
-    await await setupGameAndWaitForBoard(page);
-  });
+    await page.goto('/')
+    await page.getByRole('button', { name: /easy Play/i }).click()
+    await await setupGameAndWaitForBoard(page)
+  })
 
   test('Arrow Left from column 1 wraps or stops at edge', async ({ page }) => {
     // Find an empty cell in column 1
-    let edgeRow = 0;
+    let edgeRow = 0
     for (let row = 1; row <= 9; row++) {
-      const cell = getCellLocator(page, row, 1);
-      const label = await cell.getAttribute('aria-label');
+      const cell = getCellLocator(page, row, 1)
+      const label = await cell.getAttribute('aria-label')
       if (label?.includes('empty')) {
-        edgeRow = row;
-        break;
+        edgeRow = row
+        break
       }
     }
-    test.skip(edgeRow === 0, 'No empty cell in column 1 for this test');
-    
-    const edgeCell = getCellLocator(page, edgeRow, 1);
-    await edgeCell.scrollIntoViewIfNeeded();
-    await edgeCell.click();
-    await expectCellSelected(edgeCell);
+    test.skip(edgeRow === 0, 'No empty cell in column 1 for this test')
+
+    const edgeCell = getCellLocator(page, edgeRow, 1)
+    await edgeCell.scrollIntoViewIfNeeded()
+    await edgeCell.click()
+    await expectCellSelected(edgeCell)
 
     // Press left arrow
-    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft')
 
     // Edge behavior: pressing left at column 1 either stops or wraps. At least
     // one cell must remain selected afterward; a crash or full deselect fails here.
-    const selectedCount = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
-    expect(selectedCount).toBeGreaterThanOrEqual(1);
-  });
+    const selectedCount = await page.locator('[role="gridcell"][class*="ring-accent"]').count()
+    expect(selectedCount).toBeGreaterThanOrEqual(1)
+  })
 
   test('Arrow Up from row 1 wraps or stops at edge', async ({ page }) => {
     // Find an empty cell in row 1
-    let edgeCol = 0;
+    let edgeCol = 0
     for (let col = 1; col <= 9; col++) {
-      const cell = getCellLocator(page, 1, col);
-      const label = await cell.getAttribute('aria-label');
+      const cell = getCellLocator(page, 1, col)
+      const label = await cell.getAttribute('aria-label')
       if (label?.includes('empty')) {
-        edgeCol = col;
-        break;
+        edgeCol = col
+        break
       }
     }
-    test.skip(edgeCol === 0, 'No empty cell in row 1 for this test');
-    
-    const edgeCell = getCellLocator(page, 1, edgeCol);
-    await edgeCell.scrollIntoViewIfNeeded();
-    await edgeCell.click();
-    await expectCellSelected(edgeCell);
+    test.skip(edgeCol === 0, 'No empty cell in row 1 for this test')
+
+    const edgeCell = getCellLocator(page, 1, edgeCol)
+    await edgeCell.scrollIntoViewIfNeeded()
+    await edgeCell.click()
+    await expectCellSelected(edgeCell)
 
     // Press up arrow
-    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('ArrowUp')
 
     // Edge behavior: pressing up at row 1 either stops or wraps. At least one
     // cell must remain selected afterward; a crash or full deselect fails here.
-    const selectedCount = await page.locator('[role="gridcell"][class*="ring-accent"]').count();
-    expect(selectedCount).toBeGreaterThanOrEqual(1);
-  });
+    const selectedCount = await page.locator('[role="gridcell"][class*="ring-accent"]').count()
+    expect(selectedCount).toBeGreaterThanOrEqual(1)
+  })
 
   test('keyboard navigation works with no cell selected initially', async ({ page }) => {
     // Without clicking, try pressing an arrow key
-    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight')
 
     // Some cell should now be selected (typically first cell or no action)
     // This tests that the app handles keyboard input gracefully without crashes
-    const anySelected = await page.locator('[role="gridcell"]').first().isVisible();
-    expect(anySelected).toBe(true);
-  });
+    const anySelected = await page.locator('[role="gridcell"]').first().isVisible()
+    expect(anySelected).toBe(true)
+  })
 
   test('invalid keys are ignored gracefully', async ({ page }) => {
-    const pos = await findEmptyCellPosition(page, 5);
-    const cell = getCellLocator(page, pos.row, pos.col);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const pos = await findEmptyCellPosition(page, 5)
+    const cell = getCellLocator(page, pos.row, pos.col)
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
 
     // Press invalid keys
-    await page.keyboard.press('a');
-    await page.keyboard.press('x');
-    await page.keyboard.press('Enter');
+    await page.keyboard.press('a')
+    await page.keyboard.press('x')
+    await page.keyboard.press('Enter')
 
     // Cell should still be empty (no crash, no unexpected value)
-    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 });
-  });
-});
+    await expect(cell).toHaveAttribute('aria-label', /empty/, { timeout: 2000 })
+  })
+})

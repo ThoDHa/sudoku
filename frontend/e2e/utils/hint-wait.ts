@@ -7,7 +7,7 @@
  * spinner rendered on the Hint / Technique buttons.
  */
 
-import type { Page } from '@playwright/test';
+import type { Page } from '@playwright/test'
 
 /**
  * Dismiss any open modals or toasts that might be blocking clicks.
@@ -21,19 +21,19 @@ export async function dismissModals(page: Page): Promise<void> {
     page.getByRole('button', { name: /Check & Fix/i }),
     page.getByRole('button', { name: /Close/i }),
     page.getByRole('button', { name: /OK/i }),
-  ];
+  ]
 
   for (const button of modalButtons) {
     if (await button.isVisible().catch(() => false)) {
-      await button.click({ timeout: 5000 }).catch(() => {});
-      await page.waitForTimeout(100);
-      break; // Only click the first visible button
+      await button.click({ timeout: 5000 }).catch(() => {})
+      await page.waitForTimeout(100)
+      break // Only click the first visible button
     }
   }
 
   // Press Escape to close any residual modal
-  await page.keyboard.press('Escape').catch(() => {});
-  await page.waitForTimeout(50);
+  await page.keyboard.press('Escape').catch(() => {})
+  await page.waitForTimeout(50)
 }
 
 /**
@@ -62,7 +62,7 @@ export async function dismissModals(page: Page): Promise<void> {
 export async function waitForHintProcessing(page: Page): Promise<void> {
   const hintSpinner = page
     .locator('button:has-text("Technique"), button:has-text("Hint")')
-    .locator('svg.animate-spin');
+    .locator('svg.animate-spin')
 
   // Confirm the action actually started (spinner rendered). A cached hint can
   // settle within a single render tick, so fall back if it never appears.
@@ -70,9 +70,12 @@ export async function waitForHintProcessing(page: Page): Promise<void> {
     .first()
     .waitFor({ state: 'visible', timeout: 2000 })
     .then(() => true)
-    .catch(() => false);
+    .catch(() => false)
   if (started) {
-    await hintSpinner.first().waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+    await hintSpinner
+      .first()
+      .waitFor({ state: 'hidden', timeout: 15000 })
+      .catch(() => {})
   }
 
   // The gate has released; confirm the real feedback toast rendered. Resolves
@@ -81,10 +84,10 @@ export async function waitForHintProcessing(page: Page): Promise<void> {
     .locator('.validation-message')
     .first()
     .waitFor({ state: 'visible', timeout: 10000 })
-    .catch(() => {});
-  await page.waitForTimeout(100);
+    .catch(() => {})
+  await page.waitForTimeout(100)
 
-  await dismissModals(page);
+  await dismissModals(page)
 }
 
 /**
@@ -103,5 +106,5 @@ export async function waitForHintToastCleared(page: Page): Promise<void> {
     .locator('.validation-message')
     .first()
     .waitFor({ state: 'hidden', timeout: 6000 })
-    .catch(() => {});
+    .catch(() => {})
 }

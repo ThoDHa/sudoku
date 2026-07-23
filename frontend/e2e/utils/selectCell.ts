@@ -1,6 +1,6 @@
-import { test, Page, Locator, expect, TestInfo } from '@playwright/test';
+import { test, Page, Locator, expect, TestInfo } from '@playwright/test'
 
-const TOUCH_PROJECTS = new Set(['pixel-5', 'iphone-12']);
+const TOUCH_PROJECTS = new Set(['pixel-5', 'iphone-12'])
 
 /**
  * Determine whether the current test is running on a touch device project.
@@ -8,8 +8,8 @@ const TOUCH_PROJECTS = new Set(['pixel-5', 'iphone-12']);
  * (works from any function running inside a Playwright test).
  */
 export function isTouchProject(testInfo?: TestInfo): boolean {
-  const info = testInfo ?? test.info();
-  return TOUCH_PROJECTS.has(info.project.name);
+  const info = testInfo ?? test.info()
+  return TOUCH_PROJECTS.has(info.project.name)
 }
 
 /**
@@ -21,9 +21,9 @@ export function isTouchProject(testInfo?: TestInfo): boolean {
  */
 export async function tapOrClick(locator: Locator, testInfo?: TestInfo): Promise<void> {
   if (isTouchProject(testInfo)) {
-    await locator.tap();
+    await locator.tap()
   } else {
-    await locator.click();
+    await locator.click()
   }
 }
 
@@ -35,25 +35,25 @@ export async function tapOrClick(locator: Locator, testInfo?: TestInfo): Promise
  * - Returns the Playwright Locator for the cell so callers can continue interacting
  */
 export async function selectCell(page: Page, row: number, col: number): Promise<Locator> {
-  const sel = `[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`;
-  const cell = page.locator(sel).first();
-  await cell.scrollIntoViewIfNeeded();
-  await tapOrClick(cell);
+  const sel = `[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`
+  const cell = page.locator(sel).first()
+  await cell.scrollIntoViewIfNeeded()
+  await tapOrClick(cell)
 
   // Ensure tabindex is 0 which indicates the cell is focusable/selected
-  await expect(cell).toHaveAttribute('tabindex', '0');
+  await expect(cell).toHaveAttribute('tabindex', '0')
 
   // Try to focus explicitly and verify document.activeElement
   const focused = await page.evaluate((s: string) => {
-    const el = document.querySelector(s) as HTMLElement | null;
-    if (!el) return false;
-    (el as HTMLElement).focus();
-    return document.activeElement === el;
-  }, sel);
+    const el = document.querySelector(s) as HTMLElement | null
+    if (!el) return false
+    ;(el as HTMLElement).focus()
+    return document.activeElement === el
+  }, sel)
 
   if (!focused) {
-    throw new Error(`selectCell: failed to focus cell ${row},${col}`);
+    throw new Error(`selectCell: failed to focus cell ${row},${col}`)
   }
 
-  return cell;
+  return cell
 }

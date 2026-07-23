@@ -6,8 +6,8 @@
  * and reading DOM state.
  */
 
-import type { Page } from '@playwright/test';
-import { SudokuSDK } from './base';
+import type { Page } from '@playwright/test'
+import { SudokuSDK } from './base'
 import type {
   SDKOptions,
   SDKResponse,
@@ -30,26 +30,26 @@ import type {
   CustomValidateResponse,
   Move,
   SolveStepResult,
-} from './types';
+} from './types'
 
 export interface PlaywrightUISDKOptions extends SDKOptions {
-  page: Page;
+  page: Page
 }
 
 export class PlaywrightUISDK extends SudokuSDK {
-  private page: Page;
-  
+  private page: Page
+
   // Internal state tracking
-  private currentBoard: Board = [];
-  private currentCandidates: Candidates = [];
-  private simulatedToken: string = '';
-  private currentSeed: string = '';
-  private currentDifficulty: Difficulty = 'medium';
-  private stepIndex: number = 0;
+  private currentBoard: Board = []
+  private currentCandidates: Candidates = []
+  private simulatedToken: string = ''
+  private currentSeed: string = ''
+  private currentDifficulty: Difficulty = 'medium'
+  private stepIndex: number = 0
 
   constructor(options: PlaywrightUISDKOptions) {
-    super(options);
-    this.page = options.page;
+    super(options)
+    this.page = options.page
   }
 
   // ============================================
@@ -66,7 +66,7 @@ export class PlaywrightUISDK extends SudokuSDK {
       ok: false,
       status: 0,
       error: 'PlaywrightUISDK does not support direct HTTP requests. Use specific methods.',
-    };
+    }
   }
 
   /**
@@ -79,7 +79,7 @@ export class PlaywrightUISDK extends SudokuSDK {
       ok: false,
       status: 0,
       error: 'PlaywrightUISDK does not support direct HTTP requests. Use specific methods.',
-    };
+    }
   }
 
   // ============================================
@@ -89,9 +89,9 @@ export class PlaywrightUISDK extends SudokuSDK {
   async health(): Promise<SDKResponse<HealthResponse>> {
     try {
       // Check if the page can load the app
-      await this.page.goto(this.baseUrl, { waitUntil: 'networkidle' });
-      const title = await this.page.title();
-      
+      await this.page.goto(this.baseUrl, { waitUntil: 'networkidle' })
+      const title = await this.page.title()
+
       return {
         ok: true,
         status: 200,
@@ -99,25 +99,25 @@ export class PlaywrightUISDK extends SudokuSDK {
           status: 'ok',
           version: 'ui-sdk',
         },
-      };
+      }
     } catch (error) {
       return {
         ok: false,
         status: 0,
         error: error instanceof Error ? error.message : 'Failed to load page',
-      };
+      }
     }
   }
 
   async daily(): Promise<SDKResponse<DailyResponse>> {
     try {
-      await this.delay();
+      await this.delay()
       // Navigate to home and look for daily puzzle info
-      await this.page.goto(this.baseUrl, { waitUntil: 'networkidle' });
-      
+      await this.page.goto(this.baseUrl, { waitUntil: 'networkidle' })
+
       // The daily seed might be exposed in the page or we can extract from URL after clicking
-      const today = new Date().toISOString().split('T')[0];
-      
+      const today = new Date().toISOString().split('T')[0]
+
       return {
         ok: true,
         status: 200,
@@ -126,13 +126,13 @@ export class PlaywrightUISDK extends SudokuSDK {
           seed: `daily-${today}`,
           puzzle_index: 0,
         },
-      };
+      }
     } catch (error) {
       return {
         ok: false,
         status: 0,
         error: error instanceof Error ? error.message : 'Failed to get daily',
-      };
+      }
     }
   }
 
@@ -140,27 +140,32 @@ export class PlaywrightUISDK extends SudokuSDK {
   // Puzzle Endpoints (UI Navigation)
   // ============================================
 
-  async getPuzzle(seed: string, difficulty: Difficulty = 'medium'): Promise<SDKResponse<PuzzleResponse>> {
+  async getPuzzle(
+    seed: string,
+    difficulty: Difficulty = 'medium',
+  ): Promise<SDKResponse<PuzzleResponse>> {
     try {
-      await this.delay();
-      
+      await this.delay()
+
       // Navigate to the game URL with seed and difficulty
-      const url = `${this.baseUrl}/game/${seed}?d=${difficulty}`;
-      await this.page.goto(url, { waitUntil: 'networkidle' });
-      
+      const url = `${this.baseUrl}/game/${seed}?d=${difficulty}`
+      await this.page.goto(url, { waitUntil: 'networkidle' })
+
       // Wait for the game board to load
-      await this.page.waitForSelector('.sudoku-cell', { timeout: this.timeout });
-      
+      await this.page.waitForSelector('.sudoku-cell', { timeout: this.timeout })
+
       // Read the initial board state (givens)
-      const board = await this.readBoardFromDOM();
-      
+      const board = await this.readBoardFromDOM()
+
       // Store state
-      this.currentBoard = [...board];
-      this.currentCandidates = Array(81).fill([]).map(() => []);
-      this.currentSeed = seed;
-      this.currentDifficulty = difficulty;
-      this.stepIndex = 0;
-      
+      this.currentBoard = [...board]
+      this.currentCandidates = Array(81)
+        .fill([])
+        .map(() => [])
+      this.currentSeed = seed
+      this.currentDifficulty = difficulty
+      this.stepIndex = 0
+
       return {
         ok: true,
         status: 200,
@@ -171,17 +176,20 @@ export class PlaywrightUISDK extends SudokuSDK {
           givens: board,
           puzzle_index: 0,
         },
-      };
+      }
     } catch (error) {
       return {
         ok: false,
         status: 0,
         error: error instanceof Error ? error.message : 'Failed to get puzzle',
-      };
+      }
     }
   }
 
-  async analyzePuzzle(seed: string, difficulty: Difficulty = 'medium'): Promise<SDKResponse<AnalyzeResponse>> {
+  async analyzePuzzle(
+    seed: string,
+    difficulty: Difficulty = 'medium',
+  ): Promise<SDKResponse<AnalyzeResponse>> {
     // UI doesn't directly support analysis, return simulated response
     return {
       ok: true,
@@ -194,7 +202,7 @@ export class PlaywrightUISDK extends SudokuSDK {
         status: 'ui-simulated',
         techniques: {},
       },
-    };
+    }
   }
 
   // ============================================
@@ -203,28 +211,28 @@ export class PlaywrightUISDK extends SudokuSDK {
 
   async startSession(request: SessionStartRequest): Promise<SDKResponse<SessionStartResponse>> {
     try {
-      await this.delay();
-      
+      await this.delay()
+
       // The game auto-starts a session when loaded
       // Generate a simulated token based on the request
-      this.simulatedToken = `ui-token-${request.seed}-${request.device_id}-${Date.now()}`;
-      this.currentSeed = request.seed;
-      this.currentDifficulty = request.difficulty;
-      
+      this.simulatedToken = `ui-token-${request.seed}-${request.device_id}-${Date.now()}`
+      this.currentSeed = request.seed
+      this.currentDifficulty = request.difficulty
+
       // If we're not already on the game page, navigate there
-      const currentUrl = this.page.url();
-      const expectedUrlPattern = `/game/${request.seed}`;
-      
+      const currentUrl = this.page.url()
+      const expectedUrlPattern = `/game/${request.seed}`
+
       if (!currentUrl.includes(expectedUrlPattern)) {
-        const url = `${this.baseUrl}/game/${request.seed}?d=${request.difficulty}`;
-        await this.page.goto(url, { waitUntil: 'networkidle' });
-        await this.page.waitForSelector('.sudoku-cell', { timeout: this.timeout });
+        const url = `${this.baseUrl}/game/${request.seed}?d=${request.difficulty}`
+        await this.page.goto(url, { waitUntil: 'networkidle' })
+        await this.page.waitForSelector('.sudoku-cell', { timeout: this.timeout })
       }
-      
+
       // Read current board state
-      this.currentBoard = await this.readBoardFromDOM();
-      this.currentCandidates = await this.readCandidatesFromDOM();
-      
+      this.currentBoard = await this.readBoardFromDOM()
+      this.currentCandidates = await this.readCandidatesFromDOM()
+
       return {
         ok: true,
         status: 200,
@@ -233,13 +241,13 @@ export class PlaywrightUISDK extends SudokuSDK {
           puzzle_id: `${request.seed}-${request.difficulty}`,
           started_at: new Date().toISOString(),
         },
-      };
+      }
     } catch (error) {
       return {
         ok: false,
         status: 0,
         error: error instanceof Error ? error.message : 'Failed to start session',
-      };
+      }
     }
   }
 
@@ -249,29 +257,29 @@ export class PlaywrightUISDK extends SudokuSDK {
 
   async solveNext(request: SolveRequest): Promise<SDKResponse<SolveNextResponse>> {
     try {
-      await this.delay();
-      
+      await this.delay()
+
       // Read current board state before hint
-      const boardBefore = await this.readBoardFromDOM();
-      const candidatesBefore = await this.readCandidatesFromDOM();
-      
+      const boardBefore = await this.readBoardFromDOM()
+      const candidatesBefore = await this.readCandidatesFromDOM()
+
       // Click the hint button
-      await this.clickHint();
-      
+      await this.clickHint()
+
       // Wait for the move to be applied
-      await this.waitForMove(boardBefore, candidatesBefore);
-      
+      await this.waitForMove(boardBefore, candidatesBefore)
+
       // Read new state after hint
-      const boardAfter = await this.readBoardFromDOM();
-      const candidatesAfter = await this.readCandidatesFromDOM();
-      
+      const boardAfter = await this.readBoardFromDOM()
+      const candidatesAfter = await this.readCandidatesFromDOM()
+
       // Determine what changed
-      const move = this.detectMove(boardBefore, boardAfter, candidatesBefore, candidatesAfter);
-      
-      this.currentBoard = boardAfter;
-      this.currentCandidates = candidatesAfter;
-      this.stepIndex++;
-      
+      const move = this.detectMove(boardBefore, boardAfter, candidatesBefore, candidatesAfter)
+
+      this.currentBoard = boardAfter
+      this.currentCandidates = candidatesAfter
+      this.stepIndex++
+
       return {
         ok: true,
         status: 200,
@@ -280,64 +288,66 @@ export class PlaywrightUISDK extends SudokuSDK {
           candidates: candidatesAfter,
           move,
         },
-      };
+      }
     } catch (error) {
       return {
         ok: false,
         status: 0,
         error: error instanceof Error ? error.message : 'Failed to solve next',
-      };
+      }
     }
   }
 
   async solveAll(request: SolveRequest): Promise<SDKResponse<SolveAllResponse>> {
     try {
-      await this.delay();
-      
-      const moves: SolveStepResult[] = [];
-      let solved = false;
-      let iterations = 0;
-      const maxIterations = 100;
-      
+      await this.delay()
+
+      const moves: SolveStepResult[] = []
+      let solved = false
+      let iterations = 0
+      const maxIterations = 100
+
       while (!solved && iterations < maxIterations) {
-        const boardBefore = await this.readBoardFromDOM();
-        const candidatesBefore = await this.readCandidatesFromDOM();
-        
+        const boardBefore = await this.readBoardFromDOM()
+        const candidatesBefore = await this.readCandidatesFromDOM()
+
         // Check if already solved
         if (this.isSolved(boardBefore)) {
-          solved = true;
-          break;
+          solved = true
+          break
         }
-        
+
         // Click hint
-        await this.clickHint();
-        await this.waitForMove(boardBefore, candidatesBefore);
-        
-        const boardAfter = await this.readBoardFromDOM();
-        const candidatesAfter = await this.readCandidatesFromDOM();
-        
-        const move = this.detectMove(boardBefore, boardAfter, candidatesBefore, candidatesAfter);
-        
+        await this.clickHint()
+        await this.waitForMove(boardBefore, candidatesBefore)
+
+        const boardAfter = await this.readBoardFromDOM()
+        const candidatesAfter = await this.readCandidatesFromDOM()
+
+        const move = this.detectMove(boardBefore, boardAfter, candidatesBefore, candidatesAfter)
+
         if (move) {
           moves.push({
             board: boardAfter,
             candidates: candidatesAfter,
             move,
-          });
+          })
         }
-        
+
         // Check if no progress
-        if (JSON.stringify(boardBefore) === JSON.stringify(boardAfter) &&
-            JSON.stringify(candidatesBefore) === JSON.stringify(candidatesAfter)) {
-          break;
+        if (
+          JSON.stringify(boardBefore) === JSON.stringify(boardAfter) &&
+          JSON.stringify(candidatesBefore) === JSON.stringify(candidatesAfter)
+        ) {
+          break
         }
-        
-        iterations++;
+
+        iterations++
       }
-      
-      const finalBoard = await this.readBoardFromDOM();
-      solved = this.isSolved(finalBoard);
-      
+
+      const finalBoard = await this.readBoardFromDOM()
+      solved = this.isSolved(finalBoard)
+
       return {
         ok: true,
         status: 200,
@@ -346,48 +356,51 @@ export class PlaywrightUISDK extends SudokuSDK {
           solved,
           finalBoard,
         },
-      };
+      }
     } catch (error) {
       return {
         ok: false,
         status: 0,
         error: error instanceof Error ? error.message : 'Failed to solve all',
-      };
+      }
     }
   }
 
   async solveFull(
     token: string,
     board: Board,
-    mode: 'human' | 'fast' = 'human'
+    mode: 'human' | 'fast' = 'human',
   ): Promise<SDKResponse<SolveFullResponse>> {
     try {
-      await this.delay();
-      
+      await this.delay()
+
       // Use auto-solve feature from menu
-      await this.clickAutoSolve();
-      
+      await this.clickAutoSolve()
+
       // Wait for solve to complete by checking for completion or all cells filled
-      await this.page.waitForFunction(
-        () => {
-          const cells = document.querySelectorAll('.sudoku-cell');
-          let filledCount = 0;
-          cells.forEach(cell => {
-            const text = cell.textContent?.trim();
-            if (text && /^[1-9]$/.test(text)) filledCount++;
-          });
-          // Check if solved or if completion modal is visible
-          const hasCompletion = document.querySelector('[role="dialog"]') !== null ||
-                               document.body.innerText.includes('Congratulations');
-          return filledCount === 81 || hasCompletion;
-        },
-        { timeout: 60000 }
-      ).catch(() => {
-        // May timeout if puzzle can't be fully solved
-      });
-      
-      const finalBoard = await this.readBoardFromDOM();
-      
+      await this.page
+        .waitForFunction(
+          () => {
+            const cells = document.querySelectorAll('.sudoku-cell')
+            let filledCount = 0
+            cells.forEach((cell) => {
+              const text = cell.textContent?.trim()
+              if (text && /^[1-9]$/.test(text)) filledCount++
+            })
+            // Check if solved or if completion modal is visible
+            const hasCompletion =
+              document.querySelector('[role="dialog"]') !== null ||
+              document.body.innerText.includes('Congratulations')
+            return filledCount === 81 || hasCompletion
+          },
+          { timeout: 60000 },
+        )
+        .catch(() => {
+          // May timeout if puzzle can't be fully solved
+        })
+
+      const finalBoard = await this.readBoardFromDOM()
+
       return {
         ok: true,
         status: 200,
@@ -395,13 +408,13 @@ export class PlaywrightUISDK extends SudokuSDK {
           final_board: finalBoard,
           stopped_reason: this.isSolved(finalBoard) ? 'completed' : 'stalled',
         },
-      };
+      }
     } catch (error) {
       return {
         ok: false,
         status: 0,
         error: error instanceof Error ? error.message : 'Failed to solve full',
-      };
+      }
     }
   }
 
@@ -411,43 +424,44 @@ export class PlaywrightUISDK extends SudokuSDK {
 
   async validate(request: ValidateRequest): Promise<SDKResponse<ValidateResponse>> {
     try {
-      await this.delay();
-      
+      await this.delay()
+
       // Click validate button or use keyboard shortcut
-      await this.clickValidate();
-      
+      await this.clickValidate()
+
       // Wait for validation result to appear (toast, modal, or error highlighting)
-      await this.page.waitForSelector(
-        '[role="alert"], .toast, .error-cell, [class*="valid"]',
-        { timeout: 2000 }
-      ).catch(() => {
-        // Validation feedback may not always show a distinct element
-      });
-      
+      await this.page
+        .waitForSelector('[role="alert"], .toast, .error-cell, [class*="valid"]', { timeout: 2000 })
+        .catch(() => {
+          // Validation feedback may not always show a distinct element
+        })
+
       // Try to read validation message from UI
-      const validationResult = await this.readValidationResult();
-      
+      const validationResult = await this.readValidationResult()
+
       return {
         ok: true,
         status: 200,
         data: validationResult,
-      };
+      }
     } catch (error) {
       return {
         ok: false,
         status: 0,
         error: error instanceof Error ? error.message : 'Failed to validate',
-      };
+      }
     }
   }
 
-  async validateCustom(request: CustomValidateRequest): Promise<SDKResponse<CustomValidateResponse>> {
+  async validateCustom(
+    request: CustomValidateRequest,
+  ): Promise<SDKResponse<CustomValidateResponse>> {
     // Custom validation not supported through UI
     return {
       ok: false,
       status: 501,
       error: 'Custom validation not supported through UI',
-    };
+    }
   }
 
   // ============================================
@@ -459,11 +473,11 @@ export class PlaywrightUISDK extends SudokuSDK {
    */
   async clickCell(index: number): Promise<void> {
     if (index < 0 || index > 80) {
-      throw new Error(`Invalid cell index: ${index}. Must be 0-80.`);
+      throw new Error(`Invalid cell index: ${index}. Must be 0-80.`)
     }
-    
-    const cells = this.page.locator('.sudoku-cell');
-    await cells.nth(index).click();
+
+    const cells = this.page.locator('.sudoku-cell')
+    await cells.nth(index).click()
   }
 
   /**
@@ -471,10 +485,10 @@ export class PlaywrightUISDK extends SudokuSDK {
    */
   async enterDigit(digit: number): Promise<void> {
     if (digit < 1 || digit > 9) {
-      throw new Error(`Invalid digit: ${digit}. Must be 1-9.`);
+      throw new Error(`Invalid digit: ${digit}. Must be 1-9.`)
     }
-    
-    await this.page.keyboard.press(digit.toString());
+
+    await this.page.keyboard.press(digit.toString())
   }
 
   /**
@@ -482,11 +496,12 @@ export class PlaywrightUISDK extends SudokuSDK {
    */
   async clickHint(): Promise<void> {
     // Try multiple selectors for the hint button
-    const hintButton = this.page.getByRole('button', { name: /Hint/i })
+    const hintButton = this.page
+      .getByRole('button', { name: /Hint/i })
       .or(this.page.locator('button[title*="Hint"]'))
-      .or(this.page.locator('button:has-text("Hint")'));
-    
-    await hintButton.first().click();
+      .or(this.page.locator('button:has-text("Hint")'))
+
+    await hintButton.first().click()
   }
 
   /**
@@ -494,20 +509,22 @@ export class PlaywrightUISDK extends SudokuSDK {
    */
   async clickAutoSolve(): Promise<void> {
     // Open menu first
-    const menuButton = this.page.locator('header button').last();
-    await menuButton.click();
-    
+    const menuButton = this.page.locator('header button').last()
+    await menuButton.click()
+
     // Wait for menu to appear
-    await this.page.waitForSelector('button:has-text("Solve"), button:has-text("Auto")', { timeout: 2000 });
-    
+    await this.page.waitForSelector('button:has-text("Solve"), button:has-text("Auto")', {
+      timeout: 2000,
+    })
+
     // Look for solve option
-    const autoSolve = this.page.locator('button:has-text("Auto"), button:has-text("Solve")').first();
+    const autoSolve = this.page.locator('button:has-text("Auto"), button:has-text("Solve")').first()
     if (await autoSolve.isVisible()) {
-      await autoSolve.click();
+      await autoSolve.click()
     } else {
       // Close menu and fallback to repeated hints
-      await this.page.keyboard.press('Escape');
-      throw new Error('Solve not found in menu');
+      await this.page.keyboard.press('Escape')
+      throw new Error('Solve not found in menu')
     }
   }
 
@@ -517,15 +534,16 @@ export class PlaywrightUISDK extends SudokuSDK {
   async clickValidate(): Promise<void> {
     // Try keyboard shortcut first
     try {
-      await this.page.keyboard.press('v');
+      await this.page.keyboard.press('v')
     } catch {
       // Fallback to button
-      const validateButton = this.page.getByRole('button', { name: /Validate|Check/i })
+      const validateButton = this.page
+        .getByRole('button', { name: /Validate|Check/i })
         .or(this.page.locator('button[title*="Validate"]'))
-        .or(this.page.locator('button:has-text("Check")'));
-      
+        .or(this.page.locator('button:has-text("Check")'))
+
       if (await validateButton.first().isVisible()) {
-        await validateButton.first().click();
+        await validateButton.first().click()
       }
     }
   }
@@ -533,55 +551,55 @@ export class PlaywrightUISDK extends SudokuSDK {
   /**
    * Read the current board state from DOM
    * Returns 81-element array where 0 = empty, 1-9 = digit
-   * 
+   *
    * Uses a single page.evaluate() call for performance - this prevents
    * browser crashes during long hint loops by reducing 81+ async calls to 1.
    */
   async readBoardFromDOM(): Promise<Board> {
     const board = await this.page.evaluate(() => {
-      const cells = document.querySelectorAll('.sudoku-cell');
-      const result: number[] = [];
-      
+      const cells = document.querySelectorAll('.sudoku-cell')
+      const result: number[] = []
+
       cells.forEach((cell) => {
         // First check for data-value attribute
-        const dataValue = cell.getAttribute('data-value');
+        const dataValue = cell.getAttribute('data-value')
         if (dataValue && /^[1-9]$/.test(dataValue)) {
-          result.push(parseInt(dataValue));
-          return;
+          result.push(parseInt(dataValue))
+          return
         }
-        
+
         // Get text content, excluding candidate grid content
-        const candidateGrid = cell.querySelector('.candidate-grid');
-        let text = '';
-        
+        const candidateGrid = cell.querySelector('.candidate-grid')
+        let text = ''
+
         if (candidateGrid) {
           // Clone the cell and remove candidate grid to get main digit only
-          const clone = cell.cloneNode(true) as HTMLElement;
-          const candidateClone = clone.querySelector('.candidate-grid');
-          if (candidateClone) candidateClone.remove();
-          text = clone.textContent?.trim() || '';
+          const clone = cell.cloneNode(true) as HTMLElement
+          const candidateClone = clone.querySelector('.candidate-grid')
+          if (candidateClone) candidateClone.remove()
+          text = clone.textContent?.trim() || ''
         } else {
-          text = cell.textContent?.trim() || '';
+          text = cell.textContent?.trim() || ''
         }
-        
+
         // Check for single digit
-        const digitMatch = text.match(/^[1-9]$/);
+        const digitMatch = text.match(/^[1-9]$/)
         if (digitMatch) {
-          result.push(parseInt(digitMatch[0]));
+          result.push(parseInt(digitMatch[0]))
         } else {
-          result.push(0);
+          result.push(0)
         }
-      });
-      
+      })
+
       // Ensure exactly 81 cells
       while (result.length < 81) {
-        result.push(0);
+        result.push(0)
       }
-      
-      return result.slice(0, 81);
-    });
-    
-    return board as Board;
+
+      return result.slice(0, 81)
+    })
+
+    return board as Board
   }
 
   /**
@@ -589,63 +607,65 @@ export class PlaywrightUISDK extends SudokuSDK {
    * Returns 81-element array where each element is an array of possible digits
    */
   async readCandidatesFromDOM(): Promise<Candidates> {
-    const candidates: Candidates = Array(81).fill([]).map(() => []);
-    const cells = await this.page.locator('.sudoku-cell').all();
-    
+    const candidates: Candidates = Array(81)
+      .fill([])
+      .map(() => [])
+    const cells = await this.page.locator('.sudoku-cell').all()
+
     for (let i = 0; i < Math.min(cells.length, 81); i++) {
-      const cell = cells[i];
-      const candidateGrid = cell.locator('.candidate-grid');
-      
+      const cell = cells[i]
+      const candidateGrid = cell.locator('.candidate-grid')
+
       if (await candidateGrid.isVisible().catch(() => false)) {
-        const candidateDigits: number[] = [];
-        
+        const candidateDigits: number[] = []
+
         // Look for candidate digits (usually in a 3x3 grid)
         for (let d = 1; d <= 9; d++) {
-          const candidateElement = candidateGrid.locator(`:text("${d}")`).first();
-          const isVisible = await candidateElement.isVisible().catch(() => false);
+          const candidateElement = candidateGrid.locator(`:text("${d}")`).first()
+          const isVisible = await candidateElement.isVisible().catch(() => false)
           if (isVisible) {
-            candidateDigits.push(d);
+            candidateDigits.push(d)
           }
         }
-        
-        candidates[i] = candidateDigits;
+
+        candidates[i] = candidateDigits
       }
     }
-    
-    return candidates;
+
+    return candidates
   }
 
   /**
    * Wait for the board to change after a hint or move
    */
   async waitForMove(previousBoard: Board, previousCandidates: Candidates): Promise<void> {
-    const maxWait = 5000;
-    
+    const maxWait = 5000
+
     try {
       // Use waitForFunction for efficient polling
       await this.page.waitForFunction(
         (prevBoardStr: string) => {
-          const cells = document.querySelectorAll('.sudoku-cell');
-          const currentBoard: number[] = [];
-          cells.forEach(cell => {
-            const text = cell.textContent?.trim();
+          const cells = document.querySelectorAll('.sudoku-cell')
+          const currentBoard: number[] = []
+          cells.forEach((cell) => {
+            const text = cell.textContent?.trim()
             // Check for main digit (not candidates)
-            const digitMatch = text?.match(/^(\d)$/);
-            currentBoard.push(digitMatch ? parseInt(digitMatch[1]) : 0);
-          });
-          
+            const digitMatch = text?.match(/^(\d)$/)
+            currentBoard.push(digitMatch ? parseInt(digitMatch[1]) : 0)
+          })
+
           // Also check for candidate changes
-          const candidateGrids = document.querySelectorAll('.candidate-grid');
-          const hasCandidateChange = candidateGrids.length > 0;
-          
-          return JSON.stringify(currentBoard) !== prevBoardStr || hasCandidateChange;
+          const candidateGrids = document.querySelectorAll('.candidate-grid')
+          const hasCandidateChange = candidateGrids.length > 0
+
+          return JSON.stringify(currentBoard) !== prevBoardStr || hasCandidateChange
         },
         JSON.stringify(previousBoard),
-        { timeout: maxWait }
-      );
-      
+        { timeout: maxWait },
+      )
+
       // Small delay for any animations to settle
-      await this.page.waitForLoadState('domcontentloaded');
+      await this.page.waitForLoadState('domcontentloaded')
     } catch {
       // Timeout - board didn't change, which is acceptable
     }
@@ -658,7 +678,7 @@ export class PlaywrightUISDK extends SudokuSDK {
     boardBefore: Board,
     boardAfter: Board,
     candidatesBefore: Candidates,
-    candidatesAfter: Candidates
+    candidatesAfter: Candidates,
   ): Move | null {
     // Check for cell assignment
     for (let i = 0; i < 81; i++) {
@@ -670,60 +690,60 @@ export class PlaywrightUISDK extends SudokuSDK {
           digit: boardAfter[i],
           targets: [{ row: Math.floor(i / 9), col: i % 9 }],
           explanation: `Placed ${boardAfter[i]} at row ${Math.floor(i / 9) + 1}, column ${(i % 9) + 1}`,
-        };
-      }
-    }
-    
-    // Check for candidate eliminations
-    const eliminations: { row: number; col: number; digit: number }[] = [];
-    for (let i = 0; i < 81; i++) {
-      const before = candidatesBefore[i] || [];
-      const after = candidatesAfter[i] || [];
-      
-      for (const digit of before) {
-        if (!after.includes(digit)) {
-          eliminations.push({ row: Math.floor(i / 9), col: i % 9, digit });
         }
       }
     }
-    
+
+    // Check for candidate eliminations
+    const eliminations: { row: number; col: number; digit: number }[] = []
+    for (let i = 0; i < 81; i++) {
+      const before = candidatesBefore[i] || []
+      const after = candidatesAfter[i] || []
+
+      for (const digit of before) {
+        if (!after.includes(digit)) {
+          eliminations.push({ row: Math.floor(i / 9), col: i % 9, digit })
+        }
+      }
+    }
+
     if (eliminations.length > 0) {
       return {
         step_index: this.stepIndex,
         technique: 'ui-hint',
         action: 'eliminate',
         digit: eliminations[0].digit,
-        targets: eliminations.map(e => ({ row: e.row, col: e.col })),
+        targets: eliminations.map((e) => ({ row: e.row, col: e.col })),
         eliminations,
         explanation: `Eliminated ${eliminations.length} candidates`,
-      };
+      }
     }
-    
+
     // Check for candidate additions
-    const additions: { row: number; col: number; digit: number }[] = [];
+    const additions: { row: number; col: number; digit: number }[] = []
     for (let i = 0; i < 81; i++) {
-      const before = candidatesBefore[i] || [];
-      const after = candidatesAfter[i] || [];
-      
+      const before = candidatesBefore[i] || []
+      const after = candidatesAfter[i] || []
+
       for (const digit of after) {
         if (!before.includes(digit)) {
-          additions.push({ row: Math.floor(i / 9), col: i % 9, digit });
+          additions.push({ row: Math.floor(i / 9), col: i % 9, digit })
         }
       }
     }
-    
+
     if (additions.length > 0) {
       return {
         step_index: this.stepIndex,
         technique: 'ui-hint',
         action: 'candidate',
         digit: additions[0].digit,
-        targets: additions.map(a => ({ row: a.row, col: a.col })),
+        targets: additions.map((a) => ({ row: a.row, col: a.col })),
         explanation: `Added ${additions.length} candidates`,
-      };
+      }
     }
-    
-    return null;
+
+    return null
   }
 
   /**
@@ -731,40 +751,53 @@ export class PlaywrightUISDK extends SudokuSDK {
    */
   private async readValidationResult(): Promise<ValidateResponse> {
     // Look for success/error indicators
-    const successIndicator = this.page.locator('[role="alert"]:has-text("valid"), .toast:has-text("valid"), .toast:has-text("correct")');
-    const errorIndicator = this.page.locator('[role="alert"]:has-text("error"), .toast:has-text("error"), .toast:has-text("incorrect"), .error-cell');
-    
-    const hasError = await errorIndicator.first().isVisible().catch(() => false);
-    const hasSuccess = await successIndicator.first().isVisible().catch(() => false);
-    
+    const successIndicator = this.page.locator(
+      '[role="alert"]:has-text("valid"), .toast:has-text("valid"), .toast:has-text("correct")',
+    )
+    const errorIndicator = this.page.locator(
+      '[role="alert"]:has-text("error"), .toast:has-text("error"), .toast:has-text("incorrect"), .error-cell',
+    )
+
+    const hasError = await errorIndicator
+      .first()
+      .isVisible()
+      .catch(() => false)
+    const hasSuccess = await successIndicator
+      .first()
+      .isVisible()
+      .catch(() => false)
+
     if (hasError) {
-      const errorMessage = await errorIndicator.first().textContent().catch(() => 'Validation errors found');
+      const errorMessage = await errorIndicator
+        .first()
+        .textContent()
+        .catch(() => 'Validation errors found')
       return {
         valid: false,
         reason: 'conflicts',
         message: errorMessage || 'Validation errors found',
-      };
+      }
     }
-    
+
     if (hasSuccess) {
       return {
         valid: true,
-      };
+      }
     }
-    
+
     // Check if puzzle is complete
-    const board = await this.readBoardFromDOM();
+    const board = await this.readBoardFromDOM()
     if (this.isSolved(board)) {
       return {
         valid: true,
         message: 'Puzzle completed!',
-      };
+      }
     }
-    
+
     return {
       valid: true,
       message: 'No errors found',
-    };
+    }
   }
 
   // ============================================
@@ -775,29 +808,29 @@ export class PlaywrightUISDK extends SudokuSDK {
    * Get the current board state
    */
   getCurrentBoard(): Board {
-    return [...this.currentBoard];
+    return [...this.currentBoard]
   }
 
   /**
    * Get the current candidates
    */
   getCurrentCandidates(): Candidates {
-    return this.currentCandidates.map(c => [...c]);
+    return this.currentCandidates.map((c) => [...c])
   }
 
   /**
    * Get the simulated token
    */
   getToken(): string {
-    return this.simulatedToken;
+    return this.simulatedToken
   }
 
   /**
    * Get the Playwright Page instance
    */
   getPage(): Page {
-    return this.page;
+    return this.page
   }
 }
 
-export default PlaywrightUISDK;
+export default PlaywrightUISDK

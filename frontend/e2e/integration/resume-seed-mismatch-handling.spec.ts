@@ -1,8 +1,8 @@
-import { test, expect } from '@playwright/test';
-import { setupGameAndWaitForBoard } from '../utils/board-wait';
-import log from 'loglevel';
-const logger = log;
-logger.setLevel('info');
+import { test, expect } from '@playwright/test'
+import { setupGameAndWaitForBoard } from '../utils/board-wait'
+import log from 'loglevel'
+const logger = log
+logger.setLevel('info')
 
 /**
  * Resume Bug Direct Reproduction Test
@@ -21,139 +21,141 @@ test.describe('@bug Resume Bug - Direct Reproduction', () => {
     // Use addInitScript to clear storage before first navigation
     // This avoids SecurityError from page.evaluate on about:blank
     await page.addInitScript(() => {
-      const prefix = 'sudoku_game_';
-      const keysToRemove: string[] = [];
+      const prefix = 'sudoku_game_'
+      const keysToRemove: string[] = []
       for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+        const key = localStorage.key(i)
         if (key?.startsWith(prefix)) {
-          keysToRemove.push(key);
+          keysToRemove.push(key)
         }
       }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-      sessionStorage.clear();
-    });
-  });
+      keysToRemove.forEach((key) => localStorage.removeItem(key))
+      sessionStorage.clear()
+    })
+  })
 
   test('resume bug: saved P-seed but resume shows daily seed', async ({ page }) => {
     // Console messages collection routed through loglevel for consistency
-    const consoleMessages: string[] = [];
-    page.on('console', msg => {
-      logger.getLogger('e2e').info('PAGE_CONSOLE', msg.type(), msg.text());
-      consoleMessages.push(msg.text());
-    });
+    const consoleMessages: string[] = []
+    page.on('console', (msg) => {
+      logger.getLogger('e2e').info('PAGE_CONSOLE', msg.type(), msg.text())
+      consoleMessages.push(msg.text())
+    })
 
     // Step 1: Create a saved game with random P-seed
-    const randomSeed = `P${Date.now()}`;
-    await page.goto(`/${randomSeed}?d=medium`);
-    await page.waitForSelector('[role="grid"]', { timeout: 15000 });
+    const randomSeed = `P${Date.now()}`
+    await page.goto(`/${randomSeed}?d=medium`)
+    await page.waitForSelector('[role="grid"]', { timeout: 15000 })
 
     // Play one move to trigger auto-save
-    const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first();
-    await emptyCell.scrollIntoViewIfNeeded();
-    await emptyCell.click();
-    await page.keyboard.press('5');
+    const emptyCell = page.locator('[role="gridcell"][aria-label*="empty"]').first()
+    await emptyCell.scrollIntoViewIfNeeded()
+    await emptyCell.click()
+    await page.keyboard.press('5')
 
     // Wait for auto-save by checking localStorage
     await expect(async () => {
       const hasGame = await page.evaluate(() => {
-        const prefix = 'sudoku_game_';
+        const prefix = 'sudoku_game_'
         for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
+          const key = localStorage.key(i)
           if (key?.startsWith(prefix)) {
-            return true;
+            return true
           }
         }
-        return false;
-      });
-      expect(hasGame).toBe(true);
-    }).toPass({ timeout: 3000 });
+        return false
+      })
+      expect(hasGame).toBe(true)
+    }).toPass({ timeout: 3000 })
 
     // Verify saved game has correct seed
     const savedAfterFirst = await page.evaluate(() => {
-      const prefix = 'sudoku_game_';
-      const games: any[] = [];
+      const prefix = 'sudoku_game_'
+      const games: any[] = []
       for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+        const key = localStorage.key(i)
         if (key?.startsWith(prefix)) {
-          const data = localStorage.getItem(key);
+          const data = localStorage.getItem(key)
           if (data) {
-            const parsed = JSON.parse(data);
+            const parsed = JSON.parse(data)
             games.push({
               seed: key.slice(prefix.length),
               savedAt: parsed.savedAt,
-            });
+            })
           }
         }
       }
-      return games;
-    });
+      return games
+    })
 
-    expect(savedAfterFirst).toHaveLength(1);
-    expect(savedAfterFirst[0].seed).toBe(randomSeed);
-    logger.info('[TEST] Saved game with seed:', randomSeed);
+    expect(savedAfterFirst).toHaveLength(1)
+    expect(savedAfterFirst[0].seed).toBe(randomSeed)
+    logger.info('[TEST] Saved game with seed:', randomSeed)
 
     // Step 2: Navigate away from the game
-    await page.goto('/');
-    await expect(page.locator('h1')).toBeVisible();
+    await page.goto('/')
+    await expect(page.locator('h1')).toBeVisible()
 
     // Step 3: Navigate back to a DAILY seed (simulating resume modal showing wrong seed)
-    const today = new Date().toISOString().split('T')[0];
-    const dailySeed = `daily-${today}`;
-    await page.goto(`/${dailySeed}?d=medium`);
-    
+    const today = new Date().toISOString().split('T')[0]
+    const dailySeed = `daily-${today}`
+    await page.goto(`/${dailySeed}?d=medium`)
+
     // Wait for page to be fully loaded and components mounted
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('[role="grid"]')).toBeVisible({ timeout: 15000 });
+    await page.waitForLoadState('networkidle')
+    await expect(page.locator('[role="grid"]')).toBeVisible({ timeout: 15000 })
 
     // Check restoration logs
-    const restorationLogs = consoleMessages.filter(msg =>
-      msg.includes('RESTORATION') || msg.includes('RESTORATION FLAG RESET')
-    );
-    logger.info('[TEST] Restoration logs:', restorationLogs);
+    const restorationLogs = consoleMessages.filter(
+      (msg) => msg.includes('RESTORATION') || msg.includes('RESTORATION FLAG RESET'),
+    )
+    logger.info('[TEST] Restoration logs:', restorationLogs)
 
     // Check if restoration attempted with wrong seed
-    const seedMismatch = restorationLogs.some(log =>
-      log.includes(dailySeed) && log.includes(randomSeed)
-    );
+    const seedMismatch = restorationLogs.some(
+      (log) => log.includes(dailySeed) && log.includes(randomSeed),
+    )
 
     // Check if restoration was attempted with daily seed
-    const dailyRestorationAttempt = restorationLogs.some(log =>
-      log.includes(dailySeed) && log.includes('Attempting to load saved state')
-    );
+    const dailyRestorationAttempt = restorationLogs.some(
+      (log) => log.includes(dailySeed) && log.includes('Attempting to load saved state'),
+    )
 
-    logger.info('[TEST] Daily seed:', dailySeed);
-    logger.info('[TEST] Random seed saved:', randomSeed);
-    logger.info('[TEST] Daily restoration attempted:', dailyRestorationAttempt);
-    logger.info('[TEST] Seed mismatch in logs:', seedMismatch);
+    logger.info('[TEST] Daily seed:', dailySeed)
+    logger.info('[TEST] Random seed saved:', randomSeed)
+    logger.info('[TEST] Daily restoration attempted:', dailyRestorationAttempt)
+    logger.info('[TEST] Seed mismatch in logs:', seedMismatch)
 
     // The bug: Restoration should attempt to load daily seed, but saved game has random seed
     if (dailyRestorationAttempt && savedAfterFirst[0].seed !== dailySeed) {
-      logger.info('[TEST] ✅ BUG REPRODUCED: Restoration attempted for daily seed, but saved game has different seed');
+      logger.info(
+        '[TEST] ✅ BUG REPRODUCED: Restoration attempted for daily seed, but saved game has different seed',
+      )
     } else {
-      logger.info('[TEST] ❌ BUG NOT REPRODUCED: Check logic');
+      logger.info('[TEST] ❌ BUG NOT REPRODUCED: Check logic')
     }
 
     // Verify saved games after navigating to daily seed
     const savedAfterDailyNav = await page.evaluate(() => {
-      const prefix = 'sudoku_game_';
-      const games: any[] = [];
+      const prefix = 'sudoku_game_'
+      const games: any[] = []
       for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+        const key = localStorage.key(i)
         if (key?.startsWith(prefix)) {
-          const data = localStorage.getItem(key);
+          const data = localStorage.getItem(key)
           if (data) {
-            const parsed = JSON.parse(data);
+            const parsed = JSON.parse(data)
             games.push({
               seed: key.slice(prefix.length),
               savedAt: parsed.savedAt,
               isComplete: parsed.isComplete,
-            });
+            })
           }
         }
       }
-      return games;
-    });
+      return games
+    })
 
-    logger.info('[TEST] Saved games after daily navigation:', savedAfterDailyNav);
-  });
-});
+    logger.info('[TEST] Saved games after daily navigation:', savedAfterDailyNav)
+  })
+})

@@ -75,7 +75,7 @@ fi
 
 # Run Prettier format check on staged frontend source files.
 # Includes test files: Prettier formats them, unlike ESLint (which ignores them).
-PRETTIER_FILES=$(echo "$STAGED_FILES" | grep -E '^frontend/src/.*\.(ts|tsx|css)$' || true)
+PRETTIER_FILES=$(echo "$STAGED_FILES" | grep -E '^frontend/(src|e2e)/.*\.(ts|tsx|css)$' || true)
 if [ -n "$PRETTIER_FILES" ]; then
   echo ""
   echo "Running Prettier format check on staged frontend files..."

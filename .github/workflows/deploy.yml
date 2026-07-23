@@ -68,11 +68,11 @@ jobs:
         working-directory: frontend
         run: npx tsc --noEmit -p tsconfig.test.json
 
-      # Hard format gate: the tree is fully prettier-clean, so drift now fails
-      # CI. Matches `make format-check-frontend`.
+      # Hard format gate: the tree is fully prettier-clean (src + e2e), so drift
+      # now fails CI. Matches `make format-check-frontend`.
       - name: Check formatting (Prettier)
         working-directory: frontend
-        run: npx prettier --check "src/**/*.{ts,tsx,css}"
+        run: npx prettier --check "src/**/*.{ts,tsx,css}" "e2e/**/*.{ts,tsx}"
 
       - name: Run linting
         working-directory: frontend

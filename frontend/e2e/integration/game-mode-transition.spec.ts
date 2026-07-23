@@ -5,11 +5,11 @@ logger.setLevel('info')
 
 /**
  * Game Mode Transition E2E Tests
- * 
+ *
  * Tests to verify that when user starts a practice game on one difficulty,
  * then uses menu to start a new game on a different difficulty,
  * the game starts correctly with the new difficulty.
- * 
+ *
  * Bug Fix: Added key={seed} prop to Game component to force remount
  * when seed changes, ensuring GameContent receives fresh hooks and URL params.
  */
@@ -20,7 +20,7 @@ test.describe('Game Mode Transitions', () => {
     await page.goto('/')
     await page.evaluate(() => {
       const keys = Object.keys(localStorage)
-      keys.forEach(key => {
+      keys.forEach((key) => {
         if (key.startsWith('sudoku_game_state_')) {
           localStorage.removeItem(key)
         }
@@ -41,24 +41,24 @@ test.describe('Game Mode Transitions', () => {
     // Step 2: Open menu and select "New Game" → "Easy"
     await page.click('button[aria-label="Menu"]')
     await page.waitForSelector('text=New Game', { state: 'visible', timeout: 10000 })
-    
+
     await page.click('text=New Game')
     await page.waitForSelector('text=Easy', { state: 'visible', timeout: 10000 })
-    
+
     // Step 3: Click "Easy" to start new game
     const easyPromise = page.waitForNavigation({ url: /\/P\d+\?d=easy$/, timeout: 15000 })
     await page.click('text=Easy')
-    
+
     // Wait for navigation to complete
     await easyPromise
 
     // Step 4: Verify new game is on easy difficulty
     const easyUrl = page.url()
     logger.info(`After navigation URL: ${easyUrl}`)
-    
+
     // Verify URL has easy difficulty parameter
     expect(easyUrl).toMatch(/\?d=easy$/)
-    
+
     // Verify URL does NOT still have impossible difficulty
     expect(easyUrl).not.toContain('d=impossible')
   })
@@ -76,22 +76,25 @@ test.describe('Game Mode Transitions', () => {
     // Step 2: Open menu and select "New Game" → "Impossible"
     await page.click('button[aria-label="Menu"]')
     await page.waitForSelector('text=New Game', { state: 'visible', timeout: 10000 })
-    
+
     await page.click('text=New Game')
     await page.waitForSelector('text=Impossible', { state: 'visible', timeout: 10000 })
-    
-    const impossiblePromise = page.waitForNavigation({ url: /\/P\d+\?d=impossible$/, timeout: 15000 })
+
+    const impossiblePromise = page.waitForNavigation({
+      url: /\/P\d+\?d=impossible$/,
+      timeout: 15000,
+    })
     await page.click('text=Impossible')
-    
+
     await impossiblePromise
 
     // Step 3: Verify new game is on impossible difficulty
     const impossibleUrl = page.url()
     logger.info(`After navigation URL: ${impossibleUrl}`)
-    
+
     // Verify URL has impossible difficulty parameter
     expect(impossibleUrl).toMatch(/\?d=impossible$/)
-    
+
     // Verify URL does NOT still have easy difficulty
     expect(impossibleUrl).not.toContain('d=easy')
   })
@@ -108,14 +111,14 @@ test.describe('Game Mode Transitions', () => {
     // Open menu and restart puzzle using Clear All (which restarts the puzzle)
     await page.click('button[aria-label="Menu"]')
     await page.waitForSelector('text=Clear All', { state: 'visible', timeout: 10000 })
-    
+
     await page.click('text=Clear All')
-    
+
     // Wait for restart by verifying the URL still has the same difficulty
     await expect(async () => {
       const currentUrl = page.url()
       expect(currentUrl).toMatch(/\?d=medium$/)
-    }).toPass({ timeout: 3000 });
+    }).toPass({ timeout: 3000 })
 
     // Verify same difficulty after restart
     const currentUrl = page.url()

@@ -54,7 +54,10 @@ test.describe('@integration Share to a friend', () => {
       CLIPBOARD_UNSUPPORTED.includes(testInfo.project.name),
       'clipboard-read permission is unsupported on WebKit/mobile projects',
     )
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {})
+    await page
+      .context()
+      .grantPermissions(['clipboard-read', 'clipboard-write'])
+      .catch(() => {})
     // Headless/containerized Chromium may not expose navigator.clipboard even with
     // permissions granted (the CI Docker sidecar does not), which makes the app
     // fall back to execCommand and makes readText() throw. Install a capturing stub
@@ -132,9 +135,7 @@ test.describe('@integration Share to a friend', () => {
     await friendPage.goto(stateUrl)
     await waitForBoard(friendPage)
     // No game in progress, so the modal offers only "Load shared game" (no resume).
-    await expect(
-      friendPage.getByRole('button', { name: 'Resume current game' }),
-    ).toHaveCount(0)
+    await expect(friendPage.getByRole('button', { name: 'Resume current game' })).toHaveCount(0)
     await friendPage.getByRole('button', { name: 'Load shared game' }).click()
 
     // The shared entry must STICK (SHARE-2: it used to flash then wipe to givens)...

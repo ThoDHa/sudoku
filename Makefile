@@ -77,7 +77,7 @@ format: format-frontend format-go
 
 # Format frontend source with Prettier (writes)
 format-frontend:
-	@cd frontend && npx prettier --write "src/**/*.{ts,tsx,css}"
+	@cd frontend && npx prettier --write "src/**/*.{ts,tsx,css}" "e2e/**/*.{ts,tsx}"
 
 # Format Go source with gofmt (writes); excludes cmd/wasm/ build files
 format-go:
@@ -88,7 +88,7 @@ format-check: format-check-frontend format-check-go
 
 # Check frontend formatting (Prettier --check)
 format-check-frontend:
-	@cd frontend && npx prettier --check "src/**/*.{ts,tsx,css}"
+	@cd frontend && npx prettier --check "src/**/*.{ts,tsx,css}" "e2e/**/*.{ts,tsx}"
 
 # Check Go formatting; list and fail if any file is unformatted
 format-check-go:
