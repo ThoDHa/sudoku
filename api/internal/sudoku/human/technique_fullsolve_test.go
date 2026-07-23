@@ -150,7 +150,10 @@ func TestFullSolve_First100(t *testing.T) {
 	}
 }
 
-// TestFullSolve_DifficultyProgression tests that puzzles at each difficulty can be solved
+// TestFullSolve_DifficultyProgression tests that the first 5 puzzles at each
+// difficulty solve to the correct solution. Every load, completion, and
+// cell-by-cell solution check is asserted, so the test fails on any solver
+// regression rather than silently logging counts.
 func TestFullSolve_DifficultyProgression(t *testing.T) {
 	puzzlePath := "../../../../frontend/puzzles.json"
 	loader, err := puzzles.Load(puzzlePath)
@@ -163,37 +166,38 @@ func TestFullSolve_DifficultyProgression(t *testing.T) {
 
 	for _, diff := range difficulties {
 		t.Run(diff, func(t *testing.T) {
-			// Test first 5 puzzles at each difficulty
 			passing := 0
 			for idx := range 5 {
 				givens, expectedSolution, err := loader.GetPuzzle(idx, diff)
 				if err != nil {
-					t.Logf("Puzzle %d at %s: Failed to load: %v", idx, diff, err)
+					t.Errorf("%s puzzle %d: failed to load: %v", diff, idx, err)
 					continue
 				}
 
 				board := NewBoard(givens)
 				moves, status := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
 
-				if status == constants.StatusCompleted {
-					// Verify solution
-					correct := true
-					for i := range 81 {
-						if board.Cells[i] != expectedSolution[i] {
-							correct = false
-							break
-						}
-					}
-					if correct {
-						passing++
+				if status != constants.StatusCompleted {
+					t.Errorf("%s puzzle %d: did not complete (status=%s, moves=%d)", diff, idx, status, len(moves))
+					continue
+				}
+
+				for i := range 81 {
+					if board.Cells[i] != expectedSolution[i] {
+						t.Errorf("%s puzzle %d cell %d: got %d, expected %d",
+							diff, idx, i, board.Cells[i], expectedSolution[i])
+						break
 					}
 				}
 
+				passing++
 				techCounts := countTechniques(moves)
-				t.Logf("  Puzzle %d: status=%s, techniques=%v", idx, status, techCounts)
+				t.Logf("  %s puzzle %d: techniques=%v", diff, idx, techCounts)
 			}
 
-			t.Logf("%s: %d/5 solved correctly", diff, passing)
+			if passing != 5 {
+				t.Errorf("%s: expected all 5 first puzzles to solve correctly, got %d/5", diff, passing)
+			}
 		})
 	}
 }
@@ -272,12 +276,14 @@ func TestSolver_NoInfiniteLoop(t *testing.T) {
 
 	solver := NewSolver()
 
+	loaded := 0
 	// Test a variety of puzzles
 	for idx := range 20 {
 		givens, _, err := loader.GetPuzzle(idx, "impossible")
 		if err != nil {
 			continue
 		}
+		loaded++
 
 		board := NewBoard(givens)
 		moves, status := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
@@ -287,6 +293,12 @@ func TestSolver_NoInfiniteLoop(t *testing.T) {
 			t.Errorf("Puzzle %d hit max steps (%d moves) - possible infinite loop",
 				idx, len(moves))
 		}
+	}
+
+	// Guard against a silent vacuous pass: if every puzzle failed to load, the
+	// loop above exercised the solver zero times and the property is unverified.
+	if loaded == 0 {
+		t.Fatal("no puzzles loaded; the no-infinite-loop property was not exercised")
 	}
 }
 
