@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from 'react'
+import { useState, useMemo, useEffect, useRef, Fragment } from 'react'
 import { GLOSSARY, type GlossaryTerm } from '../lib/techniques'
 
 interface GlossaryLinkedTextProps {
@@ -10,16 +10,17 @@ interface GlossaryTooltipProps {
   term: GlossaryTerm
   children: React.ReactNode
   onClose: () => void
+  tooltipRef: React.RefObject<HTMLDivElement | null>
 }
 
 // Tooltip component for glossary terms
-function GlossaryTooltip({ term, children, onClose }: GlossaryTooltipProps) {
+function GlossaryTooltip({ term, children, onClose, tooltipRef }: GlossaryTooltipProps) {
   return (
     <span className="relative inline-block">
       {children}
       <div
+        ref={tooltipRef}
         className="absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 rounded-lg border border-board-border-light bg-background p-3 shadow-lg"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-2">
           <h4 className="font-semibold text-accent">{term.term}</h4>
@@ -137,6 +138,7 @@ function parseText(text: string): TextSegment[] {
 // Main component that renders text with glossary links
 export default function GlossaryLinkedText({ text, className = '' }: GlossaryLinkedTextProps) {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
+  const tooltipRef = useRef<HTMLDivElement>(null)
 
   const segments = useMemo(() => parseText(text), [text])
 
@@ -144,15 +146,22 @@ export default function GlossaryLinkedText({ text, className = '' }: GlossaryLin
     setActiveTooltip(activeTooltip === termName ? null : termName)
   }
 
-  // Close tooltip when clicking outside
-  const handleContainerClick = () => {
-    if (activeTooltip) {
-      setActiveTooltip(null)
+  // Close tooltip when clicking outside it (document-level listener avoids
+  // the need for a click handler on the container span, which would violate
+  // jsx-a11y/no-static-element-interactions).
+  useEffect(() => {
+    if (!activeTooltip) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(e.target as Node)) {
+        setActiveTooltip(null)
+      }
     }
-  }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [activeTooltip])
 
   return (
-    <span className={className} onClick={handleContainerClick}>
+    <span className={className}>
       {segments.map((segment, idx) => {
         if (segment.type === 'text') {
           return <Fragment key={idx}>{segment.content}</Fragment>
@@ -164,7 +173,11 @@ export default function GlossaryLinkedText({ text, className = '' }: GlossaryLin
           return (
             <Fragment key={idx}>
               {isActive ? (
-                <GlossaryTooltip term={segment.term} onClose={() => setActiveTooltip(null)}>
+                <GlossaryTooltip
+                  term={segment.term}
+                  onClose={() => setActiveTooltip(null)}
+                  tooltipRef={tooltipRef}
+                >
                   <button
                     onClick={(e) => {
                       e.stopPropagation()

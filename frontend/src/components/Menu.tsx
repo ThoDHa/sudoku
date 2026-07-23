@@ -879,20 +879,23 @@ export default function Menu({
 
   return (
     <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50 z-[99]" onClick={onClose} data-overlay-backdrop />
-
-      {/* Modal - centered in viewport */}
-      <div
-        className="fixed inset-0 z-[100] overflow-hidden"
+      {/* Backdrop: standalone <button> so click-to-close is keyboard-accessible. */}
+      <button
+        type="button"
+        aria-label="Close menu"
+        className="fixed inset-0 bg-black/50 z-[99] cursor-default"
         onClick={onClose}
         data-overlay-backdrop
-      >
+      />
+
+      {/* Centering wrapper: pointer-events-none lets outside clicks pass through
+          to the backdrop button above; the panel re-enables them. No onClick or
+          stopPropagation needed anywhere in the modal structure. */}
+      <div className="fixed inset-0 z-[100] overflow-hidden pointer-events-none">
         <div className="min-h-full flex items-center justify-center p-4">
           <div
             {...menuPanel}
-            className="w-full max-w-md max-h-[95vh] overflow-auto rounded-xl border border-board-border-light bg-background shadow-2xl text-base"
-            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md max-h-[95vh] overflow-auto rounded-xl border border-board-border-light bg-background shadow-2xl text-base pointer-events-auto"
             data-modal
           >
             {/* Header */}
@@ -1175,16 +1178,20 @@ export default function Menu({
       {/* Confirmation Modal for New Game */}
       {confirmNewPuzzle && (
         <>
-          <div
-            className="fixed inset-0 bg-black/50 z-[101]"
+          <button
+            type="button"
+            aria-label="Cancel new game"
+            className="fixed inset-0 bg-black/50 z-[101] cursor-default"
             onClick={() => setConfirmNewPuzzle(null)}
             data-overlay-backdrop
           />
-          <div className="fixed inset-0 z-[102] flex items-center justify-center p-4" data-modal>
+          <div
+            className="fixed inset-0 z-[102] flex items-center justify-center p-4 pointer-events-none"
+            data-modal
+          >
             <div
               {...confirmPanel}
-              className="w-full max-w-xs rounded-xl border border-board-border-light bg-background shadow-2xl p-4"
-              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-xs rounded-xl border border-board-border-light bg-background shadow-2xl p-4 pointer-events-auto"
             >
               <h3 id="menu-confirm-title" className="text-lg font-semibold text-foreground mb-2">
                 Start New Game?

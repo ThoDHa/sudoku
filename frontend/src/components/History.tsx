@@ -200,11 +200,7 @@ export default function History({
                   ref={(el) => {
                     itemRefs.current[originalIdx] = el
                   }}
-                  onClick={() => {
-                    onMoveClick(move, originalIdx)
-                    onClose()
-                  }}
-                  className={`cursor-pointer rounded-lg border p-3 shadow-sm transition-shadow hover:shadow-md ${
+                  className={`rounded-lg border p-3 shadow-sm transition-shadow hover:shadow-md ${
                     move.isUserMove ? 'opacity-75' : ''
                   } ${
                     selectedMoveIndex === originalIdx
@@ -227,9 +223,16 @@ export default function History({
                     )}
                   </div>
 
-                  <p className="mb-2 text-sm text-foreground">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onMoveClick(move, originalIdx)
+                      onClose()
+                    }}
+                    className="mb-2 block w-full text-left text-sm text-foreground hover:text-accent"
+                  >
                     <MoveActionText move={move} />
-                  </p>
+                  </button>
 
                   {!move.isUserMove && (
                     <p className="text-xs text-foreground-muted">{move.explanation}</p>
@@ -237,8 +240,7 @@ export default function History({
 
                   {!move.isUserMove && move.refs && move.refs.slug && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation()
+                      onClick={() => {
                         onTechniqueClick({ title: move.refs.title, slug: move.refs.slug })
                       }}
                       className="mt-2 inline-block text-xs text-accent hover:underline"

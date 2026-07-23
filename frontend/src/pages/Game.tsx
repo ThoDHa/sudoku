@@ -995,10 +995,14 @@ function GameContent() {
               className={timerControl.isPausedDueToVisibility && !game.isComplete ? 'blur-md' : ''}
             />
 
-            {/* Pause overlay - minimal overlay when board is blurred */}
+            {/* Pause overlay - minimal overlay when board is blurred.
+                Button element so the click-to-resume is keyboard-accessible
+                (Enter/Space activates it); the content is non-interactive. */}
             {timerControl.isPausedDueToVisibility && !game.isComplete && (
-              <div
-                className="absolute inset-0 flex flex-col items-center justify-center rounded-xl z-20"
+              <button
+                type="button"
+                aria-label="Resume game"
+                className="absolute inset-0 flex flex-col items-center justify-center rounded-xl z-20 cursor-pointer"
                 onClick={() => {
                   // Clicking the overlay brings focus back, which auto-resumes the timer
                   window.focus()
@@ -1026,7 +1030,7 @@ function GameContent() {
                     <PauseOverlayTimer />
                   </div>
                 </div>
-              </div>
+              </button>
             )}
           </div>
 

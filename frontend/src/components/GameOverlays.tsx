@@ -91,42 +91,53 @@ export default function GameOverlays({
           navigating back when the shared link is for a different puzzle. With no
           game in progress, the X/backdrop backs out to the homepage. */}
       {showShareConflict && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          data-overlay-backdrop
-          onClick={onResumeOwnGame}
-        >
-          <div
-            className="relative w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme"
-            data-modal
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={onResumeOwnGame}
-              className="absolute right-3 top-3 rounded p-1 text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
-              aria-label="Close"
+        <>
+          {/* Backdrop button: standalone <button> so click-outside-to-close is
+              fully keyboard-accessible. Cannot wrap the modal in this button
+              because the panel contains its own buttons (nested buttons are
+              invalid HTML); the pointer-events pattern below routes outside
+              clicks here while keeping inside clicks on the panel. */}
+          <button
+            type="button"
+            aria-label="Close shared-link prompt"
+            className="fixed inset-0 z-50 bg-black/50 cursor-default"
+            onClick={onResumeOwnGame}
+            data-overlay-backdrop
+          />
+          {/* Centering wrapper: pointer-events-none lets clicks pass through to
+              the backdrop; the panel re-enables them. */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <div
+              className="relative w-full max-w-sm rounded-xl bg-background-secondary p-6 shadow-theme pointer-events-auto"
+              data-modal
             >
-              <CloseIcon className="h-5 w-5" />
-            </button>
-            <h2 className="mb-6 pr-8 text-lg font-semibold text-foreground">Load shared game?</h2>
-            <div className="flex gap-3">
-              {shareHasCurrentGame && (
-                <button
-                  onClick={onResumeOwnGame}
-                  className="flex-1 rounded-lg border border-board-border-light px-4 py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
-                >
-                  Resume current game
-                </button>
-              )}
               <button
-                onClick={onStartFromShared}
-                className="flex-1 rounded-lg bg-accent px-4 py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
+                onClick={onResumeOwnGame}
+                className="absolute right-3 top-3 rounded p-1 text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
+                aria-label="Close"
               >
-                Load shared game
+                <CloseIcon className="h-5 w-5" />
               </button>
+              <h2 className="mb-6 pr-8 text-lg font-semibold text-foreground">Load shared game?</h2>
+              <div className="flex gap-3">
+                {shareHasCurrentGame && (
+                  <button
+                    onClick={onResumeOwnGame}
+                    className="flex-1 rounded-lg border border-board-border-light px-4 py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
+                  >
+                    Resume current game
+                  </button>
+                )}
+                <button
+                  onClick={onStartFromShared}
+                  className="flex-1 rounded-lg bg-accent px-4 py-2 font-medium text-btn-active-text transition-colors hover:opacity-90"
+                >
+                  Load shared game
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Difficulty Chooser Modal - shown when opening shared link without difficulty */}
