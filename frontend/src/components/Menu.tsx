@@ -56,7 +56,7 @@ function OfflineModeToggle() {
     if (next) {
       registerOfflineMode()
     } else {
-      unregisterOfflineMode().catch((error) =>
+      unregisterOfflineMode().catch((error: unknown) =>
         logger.error('Failed to disable offline mode:', error),
       )
     }

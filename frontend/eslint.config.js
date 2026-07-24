@@ -87,14 +87,19 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-argument': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',
+
+      // Permanent, justified OFF (not staged rollout debt):
+      // require-await: the flagged functions are async-by-contract — they carry
+      // a Promise<T> signature for callers (.then/await) and rely on async's
+      // throw->rejection wrapping, with no await expression today. Removing
+      // async would either break callers or change throw semantics for no gain.
       '@typescript-eslint/require-await': 'off',
-      '@typescript-eslint/restrict-plus-operands': 'off',
-      '@typescript-eslint/use-unknown-in-catch-callback-variable': 'off',
-      '@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off',
-      '@typescript-eslint/no-useless-default-assignment': 'off',
-      '@typescript-eslint/no-invalid-void-type': 'off',
+      // no-implied-eval: wasm.worker.ts uses `new Function(scriptText)()` as the
+      // documented fallback to load wasm_exec.js in module workers, where
+      // importScripts is unavailable. The worker prefers importScripts and only
+      // reaches this path when it is absent; there is no eval-free alternative
+      // for executing a fetched script string in a module worker.
       '@typescript-eslint/no-implied-eval': 'off',
-      '@typescript-eslint/no-dynamic-delete': 'off',
     },
   },
 

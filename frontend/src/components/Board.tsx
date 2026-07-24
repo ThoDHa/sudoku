@@ -261,7 +261,7 @@ const Board = memo(function Board({
   candidates,
   candidatesVersion,
   selectedCell,
-  selectedCells = new Set<number>(),
+  selectedCells,
   highlightedDigit,
   highlight,
   onCellClick,

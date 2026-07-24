@@ -69,7 +69,7 @@ function encodeSparse(cells: number[]): string {
   let maskStr = ''
   for (let i = 0; i < 14; i++) {
     const idx = Number((mask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
-    maskStr += ALPHABET[idx]
+    maskStr += ALPHABET[idx] ?? ''
   }
 
   // Encode each filled cell's digit (1-9 -> first 9 chars of the alphabet)
@@ -78,7 +78,7 @@ function encodeSparse(cells: number[]): string {
   for (let i = 0; i < 81; i++) {
     const cell = cells[i]
     if (cell !== undefined && cell !== 0) {
-      digitsStr += ALPHABET[cell - 1]
+      digitsStr += ALPHABET[cell - 1] ?? ''
     }
   }
 
@@ -257,7 +257,7 @@ export function encodePuzzleWithState(
   let maskStr = ''
   for (let i = 0; i < 14; i++) {
     const idx = Number((givensMask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
-    maskStr += ALPHABET[idx]
+    maskStr += ALPHABET[idx] ?? ''
   }
 
   // Encode all 81 cell values using dense encoding (4 bits per cell)
@@ -315,7 +315,7 @@ function encodeCandidates(candidates: number[][]): string {
   let maskStr = ''
   for (let i = 0; i < 14; i++) {
     const idx = Number((hasCandMask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
-    maskStr += ALPHABET[idx]
+    maskStr += ALPHABET[idx] ?? ''
   }
 
   // Collect all candidate bits for cells that have candidates

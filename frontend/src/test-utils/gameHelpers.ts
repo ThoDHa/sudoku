@@ -113,14 +113,19 @@ export const createDefaultAutoSolveOptions = (
     backgroundManager: createMockBackgroundManager(),
     stepDelay: 10,
   }
-  if (overrides) {
-    for (const [key, value] of Object.entries(overrides)) {
-      if (value === undefined) {
-        delete (options as Record<string, unknown>)[key]
-      } else {
-        Object.assign(options, { [key]: value })
-      }
-    }
-  }
-  return options
+  if (!overrides) return options
+  // Overrides may pass `undefined` to UNSET a defaulted callback (see the note
+  // on the param above). Rebuild so unset keys are genuinely ABSENT from the
+  // result rather than present as `key: undefined` (dynamic `delete` would also
+  // work but trips @typescript-eslint/no-dynamic-delete).
+  const unset = new Set(
+    Object.entries(overrides)
+      .filter(([, v]) => v === undefined)
+      .map(([k]) => k),
+  )
+  const defined = Object.fromEntries(Object.entries(overrides).filter(([, v]) => v !== undefined))
+  return {
+    ...Object.fromEntries(Object.entries(options).filter(([k]) => !unset.has(k))),
+    ...defined,
+  } as typeof options
 }

@@ -50,7 +50,11 @@ export function getBoxCells(box: number): number[] {
  * @param callback - Called for each unit. Return false to stop iteration early.
  */
 export function forEachUnit(
-  callback: (unitType: 'row' | 'col' | 'box', index: number, cells: number[]) => boolean | void,
+  callback: (
+    unitType: 'row' | 'col' | 'box',
+    index: number,
+    cells: number[],
+  ) => boolean | undefined,
 ): void {
   // Check rows
   for (let i = 0; i < 9; i++) {

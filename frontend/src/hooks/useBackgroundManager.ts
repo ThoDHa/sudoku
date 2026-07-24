@@ -71,7 +71,7 @@ export function useBackgroundManager(
       // Playwright specific user agent patterns
       navigator.userAgent.includes('playwright') ||
       // Automation detection - webdriver flag (Playwright sets this)
-      navigator.webdriver === true ||
+      navigator.webdriver ||
       // Modern Playwright Chrome uses "Chrome/XXX" without explicit headless marker
       // but has webdriver enabled. Check for webdriver property existence.
       /* v8 ignore start -- redundant automation probe: when webdriver is present in jsdom/browsers it is `=== true` and already caught above, so this final operand's truthy read is unreachable */

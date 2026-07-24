@@ -41,7 +41,7 @@ function isAutomatedEnvironment(): boolean {
   if (typeof navigator === 'undefined') return false
   /* v8 ignore stop */
   return (
-    navigator.webdriver === true ||
+    navigator.webdriver ||
     // Stryker disable next-line ConditionalExpression: navigator.userAgent is always a string in jsdom and browsers, so the typeof guard is always true and forcing it true is observationally identical
     (typeof navigator.userAgent === 'string' &&
       (navigator.userAgent.includes('HeadlessChrome') ||

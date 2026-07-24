@@ -92,7 +92,7 @@ export async function instantiateSudokuWasm(
     const goPromise = go.run(result.instance)
     // Stryker disable next-line ConditionalExpression,LogicalOperator: the Go mock and the real Go runtime both return a thenable promise (always truthy with a .catch method), so widening `&&` to `||` or forcing either operand to `true` enters the same branch and attaches the same catch handler
     if (typeof goPromise?.catch === 'function') {
-      goPromise.catch((error) => {
+      goPromise.catch((error: unknown) => {
         log.error('[WASM] Go program error:', error)
       })
     }

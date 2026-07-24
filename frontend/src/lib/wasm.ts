@@ -357,8 +357,8 @@ function waitForWasmReadyEvent(): Promise<void> {
  * Use this for eager loading on app startup
  */
 export function preloadWasm(): void {
-  loadWasm().catch((error) => {
-    logger.debug('WASM preload failed:', error.message)
+  loadWasm().catch((error: unknown) => {
+    logger.debug('WASM preload failed:', error instanceof Error ? error.message : String(error))
   })
 }
 
