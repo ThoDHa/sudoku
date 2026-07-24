@@ -98,8 +98,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   const lastNoteToggle = useRef<{ idx: number; digit: number; time: number } | null>(null)
 
   const digitCounts = useMemo(() => {
-    const counts = Array(MAX_DIGIT).fill(0)
-    for (const val of board) if (val >= MIN_DIGIT && val <= MAX_DIGIT) counts[val - 1]++
+    const counts = Array<number>(MAX_DIGIT).fill(0)
+    for (const val of board)
+      if (val >= MIN_DIGIT && val <= MAX_DIGIT) counts[val - 1] = (counts[val - 1] ?? 0) + 1
     return counts
   }, [board])
 

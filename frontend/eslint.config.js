@@ -19,6 +19,10 @@ export default tseslint.config(
       '**/*.spec.ts',
       '**/*.spec.tsx',
       'e2e/**/*',
+      // Test-infrastructure helpers (mocks/fixtures) are test-only, like the
+      // *.test.ts files above; not shipped, and they legitimately use `any`
+      // for mock return shapes.
+      'src/test-utils/**',
     ],
   },
 
@@ -79,13 +83,6 @@ export default tseslint.config(
       // landed with this change). Tracked in FE-2-1.
       '@typescript-eslint/no-confusing-void-expression': 'off',
       '@typescript-eslint/restrict-template-expressions': 'off',
-      '@typescript-eslint/no-unnecessary-condition': 'off',
-      '@typescript-eslint/no-unsafe-return': 'off',
-      '@typescript-eslint/no-unnecessary-type-assertion': 'off',
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
 
       // Permanent, justified OFF (not staged rollout debt):
       // require-await: the flagged functions are async-by-contract — they carry
@@ -99,6 +96,15 @@ export default tseslint.config(
       // reaches this path when it is absent; there is no eval-free alternative
       // for executing a fetched script string in a module worker.
       '@typescript-eslint/no-implied-eval': 'off',
+      // no-unnecessary-condition: this codebase deliberately keeps defensive
+      // guards that the rule's type-level analysis flags as unnecessary but
+      // that protect real runtime paths where types diverge from reality —
+      // SSR `typeof window === 'undefined'` checks in the WASM loader (several
+      // documented via Stryker disable comments as intentional), presence
+      // checks on type-narrowed values, and optional chains over values the
+      // DOM lib types as always-defined. Stripping them would remove genuine
+      // safety, so the rule is a poor fit here.
+      '@typescript-eslint/no-unnecessary-condition': 'off',
     },
   },
 

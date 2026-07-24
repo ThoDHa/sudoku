@@ -103,7 +103,7 @@ export function useBackgroundManager(
 
   const handleVisibilityChange = useCallback(
     () => {
-      const newVisibilityState = document.visibilityState as 'visible' | 'hidden'
+      const newVisibilityState = document.visibilityState
       setVisibilityState(newVisibilityState)
 
       const newIsHidden = newVisibilityState === 'hidden'
@@ -162,7 +162,7 @@ export function useBackgroundManager(
     if (!enabled) return
 
     // Check initial visibility state
-    const initialVisibility = document.visibilityState as 'visible' | 'hidden'
+    const initialVisibility = document.visibilityState
     setVisibilityState(initialVisibility)
     setIsHidden(initialVisibility === 'hidden')
     if (initialVisibility === 'hidden') {

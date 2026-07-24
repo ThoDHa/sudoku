@@ -139,7 +139,7 @@ function decodeRaw81(str: string): number[] {
 export function decodePuzzle(encoded: string): number[] {
   // Stryker disable next-line ConditionalExpression, BlockStatement: an empty string falls through to decodeDense('') which returns the same 81-zero board, making this early return observationally identical
   if (encoded.length === 0) {
-    return Array(81).fill(0)
+    return Array<number>(81).fill(0)
   }
 
   // Check for raw 81-digit string first
@@ -160,7 +160,7 @@ export function decodePuzzle(encoded: string): number[] {
   }
 }
 
-const EMPTY_BOARD = () => Array(81).fill(0) as number[]
+const EMPTY_BOARD = () => Array<number>(81).fill(0)
 
 // Decode the leading 14-char base64url bitmask into a BigInt. Returns null when
 // the mask is malformed; callers substitute their own empty fallback.
@@ -415,7 +415,7 @@ export function decodePuzzleWithState(
   /* v8 ignore stop */
 
   // Extract givens from mask
-  const givens = Array(81).fill(0) as number[]
+  const givens = Array<number>(81).fill(0)
   // Stryker disable next-line EqualityOperator: at i===81 the BigInt shift is by BigInt(-1) (a left-shift by 1), so the masked bit is always 0 and no assignment happens; even if it did, givens[81] is out of bounds
   for (let i = 0; i < 81; i++) {
     const bit = (mask >> BigInt(80 - i)) & BigInt(1)
@@ -553,7 +553,7 @@ function decodeDense(encoded: string): number[] {
   try {
     binary = atob(base64)
   } catch {
-    return Array(81).fill(0)
+    return Array<number>(81).fill(0)
   }
 
   const bytes = new Uint8Array(binary.length)

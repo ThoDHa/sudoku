@@ -93,7 +93,8 @@ async function initializeWasm(): Promise<void> {
           throw new Error(`Failed to fetch wasm_exec.js: ${resp.status}`)
         }
         const wasmExecText = await resp.text()
-        // Execute the script in global scope so it attaches `Go` to the worker global
+        // Execute the script in global scope so it attaches `Go` to the worker global.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         new Function(wasmExecText)()
       }
 

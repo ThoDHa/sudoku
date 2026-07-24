@@ -105,7 +105,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     const oldMode = localStorage.getItem('mode')
     if (oldMode && (oldMode === 'light' || oldMode === 'dark')) {
-      return oldMode as ModePreference
+      return oldMode
     }
     // Default to system
     return 'system'

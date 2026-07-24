@@ -194,7 +194,7 @@ const Cell = memo(
     // Set both refs when the element mounts
     const setRefs = useCallback(
       (el: HTMLDivElement | null) => {
-        ;(localRef as React.RefObject<HTMLDivElement | null>).current = el
+        localRef.current = el
         cellRef(el)
       },
       [cellRef],

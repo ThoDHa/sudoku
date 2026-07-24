@@ -7,7 +7,7 @@ import { MIN_GIVENS, STORAGE_KEYS } from '../lib/constants'
 
 export default function Custom() {
   const navigate = useNavigate()
-  const [board, setBoard] = useState<number[]>(Array(81).fill(0))
+  const [board, setBoard] = useState<number[]>(Array<number>(81).fill(0))
   const [selectedCell, setSelectedCell] = useState<number | null>(null)
   const [selectedCells] = useState<Set<number>>(new Set())
   const [validating, setValidating] = useState(false)
@@ -67,7 +67,7 @@ export default function Custom() {
   }
 
   const handleClear = () => {
-    setBoard(Array(81).fill(0))
+    setBoard(Array<number>(81).fill(0))
     setSelectedCell(null)
     setError(null)
   }
@@ -157,7 +157,7 @@ export default function Custom() {
         <div className="relative aspect-square w-full">
           <Board
             board={board}
-            initialBoard={Array(81).fill(0)}
+            initialBoard={Array<number>(81).fill(0)}
             candidates={candidates}
             selectedCell={selectedCell}
             selectedCells={selectedCells}

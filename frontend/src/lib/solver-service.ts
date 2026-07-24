@@ -241,7 +241,7 @@ export async function findNextMove(
     try {
       const result = await workerFindNextMove(board, candidates, givens)
       return {
-        move: result.move as Move | null,
+        move: result.move,
         board: result.board,
         candidates: result.candidates,
         solved: result.solved,
@@ -259,7 +259,7 @@ export async function findNextMove(
   const api = await getApi()
   const result = api.findNextMove(board, candidates, givens)
   return {
-    move: result.move as Move | null,
+    move: result.move,
     board: result.board.cells,
     candidates: result.board.candidates,
     solved: result.solved,

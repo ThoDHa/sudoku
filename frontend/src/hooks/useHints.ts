@@ -159,7 +159,7 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
 
       // Show the hint highlight WITH the answer (showAnswer defaults to true)
       // User sees red eliminations and green additions
-      setMoveHighlight(move as MoveHighlight, game.history.length)
+      setMoveHighlight(move, game.history.length)
 
       // Show toast with technique explanation
       setValidationMessage({
@@ -237,7 +237,7 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
       // Handle constraint violations and errors - show WITH highlighting
       if (move.action === 'contradiction' || move.action === 'error') {
         // Show the constraint violation highlights (shows which cells conflict)
-        setMoveHighlight({ ...move, showAnswer: false } as MoveHighlight, game.history.length)
+        setMoveHighlight({ ...move, showAnswer: false }, game.history.length)
 
         // Show the error message
         setValidationMessage({
@@ -255,7 +255,7 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
 
       // Show highlight WITHOUT the answer (showAnswer: false)
       // This shows primary/secondary cell highlighting but hides eliminations and target additions
-      setMoveHighlight({ ...move, showAnswer: false } as MoveHighlight, game.history.length)
+      setMoveHighlight({ ...move, showAnswer: false }, game.history.length)
 
       // Show toast with technique name and "Learn more" action
       setValidationMessage({

@@ -24,7 +24,7 @@ export function useBoardState(options: UseBoardStateOptions): UseBoardStateRetur
       // Stryker disable next-line ArrayDeclaration: givenCells is re-seeded by the L42 effect on mount, so the [...initialBoard] return is never observed
       return [...initialBoard]
     }
-    return Array(TOTAL_CELLS).fill(0)
+    return Array<number>(TOTAL_CELLS).fill(0)
   })
 
   // Stryker disable next-line BooleanLiteral: firstInitRef is write-only (set in updateBoard, never read), so its initial value is unobservable
@@ -34,7 +34,7 @@ export function useBoardState(options: UseBoardStateOptions): UseBoardStateRetur
     if (initialBoard.length === TOTAL_CELLS && initialBoard.some((v) => v !== 0)) {
       return [...initialBoard]
     }
-    return Array(TOTAL_CELLS).fill(0)
+    return Array<number>(TOTAL_CELLS).fill(0)
   })
 
   const boardRef = useRef(board)

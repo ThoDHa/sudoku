@@ -403,7 +403,7 @@ function GameContent() {
 
   // Game state hook - only initialize after we have the initial board
   const game = useSudokuGame({
-    initialBoard: initialBoard.length === 81 ? initialBoard : Array(81).fill(0),
+    initialBoard: initialBoard.length === 81 ? initialBoard : Array<number>(81).fill(0),
   })
 
   const { clearSavedGameState, loadSavedGameState, restoredAsCompleteRef } = useGamePersistence({
@@ -1071,7 +1071,7 @@ function GameContent() {
         isOpen={historyOpen}
         onClose={() => setHistoryOpen(false)}
         onMoveClick={(move, index) => {
-          const moveHighlight: MoveHighlight = move as MoveHighlight
+          const moveHighlight: MoveHighlight = move
           if (!moveHighlight.highlights || moveHighlight.highlights.primary.length === 0) {
             const eliminations = moveHighlight.eliminations?.map((e) => ({
               row: e.row,

@@ -628,7 +628,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     stateHistoryRef.current = [
       {
         board: [...givens],
-        candidates: Array(81).fill([]),
+        candidates: Array<number[]>(81).fill([]),
         move: null,
       },
     ]

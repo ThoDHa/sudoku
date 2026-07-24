@@ -37,10 +37,8 @@ async function loadBank(): Promise<void> {
     import('../../puzzles.json'),
     import('../../practice_puzzles.json'),
   ])
-  puzzlesData = puzzlesModule.default as { puzzles: CompactPuzzle[] }
-  practiceData = practiceModule.default as {
-    techniques: Record<string, PracticePuzzleRef[]>
-  }
+  puzzlesData = puzzlesModule.default
+  practiceData = practiceModule.default
 }
 
 export function ensurePuzzleBank(): Promise<void> {
@@ -82,9 +80,9 @@ function getPuzzleByIndex(
   }
 
   // Build givens array (0 for empty cells)
-  const givens = new Array(81).fill(0)
+  const givens = new Array<number>(81).fill(0)
   for (const idx of indices) {
-    givens[idx] = solution[idx]
+    givens[idx] = solution[idx] ?? 0
   }
 
   return { givens, solution }

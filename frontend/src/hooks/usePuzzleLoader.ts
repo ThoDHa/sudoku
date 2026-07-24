@@ -41,7 +41,7 @@ function parseStoredGivens(raw: string): number[] {
   ) {
     throw new Error('Stored puzzle data is malformed')
   }
-  return parsed
+  return parsed as number[]
 }
 
 // Validate custom givens and build the puzzleData payload shared by the

@@ -115,7 +115,7 @@ export function useAutoSolveAdapters(
       const candidatesArray = newCandidates.map((set) => Array.from(set))
       const uint16Candidates = arraysToCandidates(candidatesArray)
       game.applyExternalMove(newBoard, uint16Candidates, move)
-      setMoveHighlight(move as MoveHighlight, index)
+      setMoveHighlight(move, index)
 
       // Highlight the digit being placed/modified
       if (move.digit && move.digit > 0) {
