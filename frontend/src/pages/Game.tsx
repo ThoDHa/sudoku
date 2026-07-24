@@ -512,7 +512,12 @@ function GameContent() {
     existingInProgressGame,
     onResumeExistingGame: handleResumeExistingGame,
     onStartNewGame: handleStartNewGame,
-  } = useInProgressGameCheck({ seed, encoded, sharedStateParam, navigate })
+  } = useInProgressGameCheck({
+    seed,
+    encoded,
+    sharedStateParam,
+    navigate: (path: string) => void navigate(path),
+  })
 
   const {
     showShareConflict,
@@ -532,7 +537,7 @@ function GameContent() {
     sharedTimeParam,
     encoded,
     loadSavedGameState,
-    navigate,
+    navigate: (path: string) => void navigate(path),
   })
 
   // Handlers for daily prompt modal
@@ -540,7 +545,7 @@ function GameContent() {
     setShowDailyPrompt(false)
     const { seed } = getDailySeed()
     // Navigate without difficulty to show the difficulty chooser
-    navigate(`/${seed}`)
+    void navigate(`/${seed}`)
   }, [navigate])
 
   const handleContinuePractice = useCallback(() => {
@@ -682,7 +687,7 @@ function GameContent() {
   // Keep handleSubmit ref updated so onComplete can call it. handleSubmit is
   // returned by useGameActions above; the ref is the circular-dep breaker
   // between useSudokuGame's onComplete and handleSubmit itself.
-  handleSubmitRef.current = handleSubmit
+  handleSubmitRef.current = () => void handleSubmit()
 
   // Share-link actions live in useShareActions; only the two public handlers
   // are consumed by the GameHeader share buttons.
@@ -706,7 +711,7 @@ function GameContent() {
   useGameKeyboardShortcuts({
     handleUndo,
     handleRedo,
-    handleNext,
+    handleNext: () => void handleNext(),
     handleValidate,
     clearAllAndDeselect,
     setNotesMode,
@@ -904,16 +909,16 @@ function GameContent() {
         onTogglePause={autoSolve.togglePause}
         onStopAutoSolve={autoSolve.stopAutoSolve}
         onSetAutoSolveSpeed={setAutoSolveSpeedState}
-        onTechniqueHint={handleTechniqueHint}
+        onTechniqueHint={() => void handleTechniqueHint()}
         techniqueHintDisabled={false}
         techniqueHintLoading={techniqueHintLoading}
-        onHint={handleNext}
+        onHint={() => void handleNext()}
         hintLoading={hintLoading}
         hintDisabled={false}
         onHistoryOpen={() => setHistoryOpen(true)}
         onShowResult={() => setShowResultModal(true)}
-        onSharePuzzle={handleSharePuzzle}
-        onShareState={handleShareState}
+        onSharePuzzle={() => void handleSharePuzzle()}
+        onShareState={() => void handleShareState()}
         onAutoFillNotes={autoFillNotes}
         onCheckNotes={handleCheckNotes}
         onClearNotes={() => {
@@ -925,7 +930,7 @@ function GameContent() {
         onClearAll={() => setShowClearConfirm(true)}
         onTechniquesList={() => setTechniquesListOpen(true)}
         onAbout={openAbout}
-        onCopyDebugInfo={handleCopyDebugInfo}
+        onCopyDebugInfo={() => void handleCopyDebugInfo()}
         onFeatureRequest={handleFeatureRequest}
         debugInfoCopied={debugInfoCopied}
         mode={mode}
@@ -1118,7 +1123,7 @@ function GameContent() {
       <GameModals
         solveConfirmOpen={solveConfirmOpen}
         setSolveConfirmOpen={setSolveConfirmOpen}
-        onSolve={handleSolve}
+        onSolve={() => void handleSolve()}
         isSolving={autoSolve.isFetching}
         showClearConfirm={showClearConfirm}
         setShowClearConfirm={setShowClearConfirm}
@@ -1128,7 +1133,7 @@ function GameContent() {
         showSolutionConfirm={showSolutionConfirm}
         setShowSolutionConfirm={setShowSolutionConfirm}
         unpinpointableErrorMessage={unpinpointableErrorInfo?.message || null}
-        onCheckAndFix={handleCheckAndFix}
+        onCheckAndFix={() => void handleCheckAndFix()}
       />
 
       {/* Onboarding Modal - shown for first-time users */}

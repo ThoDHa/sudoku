@@ -97,7 +97,7 @@ export default function TechniqueDetailView({
     localStorage.setItem(storageKey, JSON.stringify(puzzle.givens))
 
     // Navigate to the puzzle
-    navigate(`/${seed}?d=${puzzle.difficulty}`)
+    void navigate(`/${seed}?d=${puzzle.difficulty}`)
   }
 
   return (
@@ -184,7 +184,7 @@ export default function TechniqueDetailView({
       {canPractice && (
         <div>
           <button
-            onClick={handlePractice}
+            onClick={() => void handlePractice()}
             className="w-full rounded-lg bg-accent py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
           >
             <span className="flex items-center justify-center gap-2">

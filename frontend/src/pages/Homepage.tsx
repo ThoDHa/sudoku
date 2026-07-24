@@ -57,7 +57,7 @@ export default function Homepage() {
     const { seed } = getDailySeed()
     const lastDifficulty = getLastDailyDifficulty()
     // Navigate to daily puzzle with difficulty if available, otherwise Game will show chooser
-    navigate(lastDifficulty ? `/${seed}?d=${lastDifficulty}` : `/${seed}`)
+    void navigate(lastDifficulty ? `/${seed}?d=${lastDifficulty}` : `/${seed}`)
   }
 
   const handleSwitchToPractice = () => {
@@ -67,7 +67,7 @@ export default function Homepage() {
     if (practiceGame) {
       // Resume existing practice game
       sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
-      navigate(`/${practiceGame.seed}?d=${practiceGame.difficulty}`)
+      void navigate(`/${practiceGame.seed}?d=${practiceGame.difficulty}`)
     } else {
       // Switch to game mode to let user select difficulty
       setHomepageMode('game')
@@ -92,7 +92,7 @@ export default function Homepage() {
     if (pendingNavigation) {
       // Signal to Game component that we've already handled in-progress game check
       sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
-      navigate(pendingNavigation)
+      void navigate(pendingNavigation)
     }
     setShowNewGameConfirm(false)
     setPendingNavigation(null)

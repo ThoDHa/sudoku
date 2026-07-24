@@ -24,7 +24,7 @@ export default tseslint.config(
 
   // Base configs
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.strictTypeChecked,
 
   // TypeScript project settings
   {
@@ -70,6 +70,31 @@ export default tseslint.config(
       'no-console': 'error',
       eqeqeq: ['error', 'always'],
       'prefer-const': 'error',
+
+      // FE-2-1 staged strictTypeChecked rollout. strictTypeChecked is now the
+      // base, but the high-volume type-checked rules are temporarily OFF until
+      // each rule's findings are cleared in a follow-up commit; every rule here
+      // is re-enabled the moment its backlog is fixed. no-floating-promises and
+      // no-misused-promises are already enforced (the async-correctness fixes
+      // landed with this change). Tracked in FE-2-1.
+      '@typescript-eslint/no-confusing-void-expression': 'off',
+      '@typescript-eslint/restrict-template-expressions': 'off',
+      '@typescript-eslint/no-unnecessary-condition': 'off',
+      '@typescript-eslint/no-deprecated': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/restrict-plus-operands': 'off',
+      '@typescript-eslint/use-unknown-in-catch-callback-variable': 'off',
+      '@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off',
+      '@typescript-eslint/no-useless-default-assignment': 'off',
+      '@typescript-eslint/no-invalid-void-type': 'off',
+      '@typescript-eslint/no-implied-eval': 'off',
+      '@typescript-eslint/no-dynamic-delete': 'off',
     },
   },
 

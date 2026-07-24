@@ -35,7 +35,7 @@ export default function DifficultyGrid({
     }
 
     onSelect(difficulty)
-    navigate(path)
+    void navigate(path)
   }
 
   const renderCards = (keys: Difficulty[]) =>

@@ -92,7 +92,7 @@ export default function Result() {
           {shareText}
         </pre>
         <button
-          onClick={handleShare}
+          onClick={() => void handleShare()}
           className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-btn-active-text hover:opacity-90 transition-colors"
         >
           {copied ? (

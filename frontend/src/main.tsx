@@ -27,7 +27,7 @@ window.logger = logger
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || ''
 
 // Check cache version before app starts
-checkCacheVersion().then((cacheCleared) => {
+void checkCacheVersion().then((cacheCleared) => {
   if (cacheCleared) {
     logger.warn('Cache was cleared due to version update - fresh content loaded')
   }

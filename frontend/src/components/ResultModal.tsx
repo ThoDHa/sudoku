@@ -182,7 +182,7 @@ export default function ResultModal({
 
       {/* Share button */}
       <button
-        onClick={handleShare}
+        onClick={() => void handleShare()}
         className="mb-4 w-full rounded-lg bg-accent py-3 font-medium text-btn-active-text transition-opacity hover:opacity-90"
       >
         {copied ? '✅ Copied!' : '📤 Share Result'}
@@ -246,7 +246,7 @@ export default function ResultModal({
             // Set flag so Game.tsx knows user is intentionally starting a new game
             // and won't show its own in-progress check prompt
             sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
-            navigate(createGameRoute(selectedDifficulty))
+            void navigate(createGameRoute(selectedDifficulty))
           }}
           className="w-full rounded-lg border-2 border-accent py-2.5 font-medium text-accent transition-colors hover:bg-accent hover:text-btn-active-text"
         >

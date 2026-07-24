@@ -94,7 +94,7 @@ export default function Header() {
       setHomepageModeState(newMode)
       if (location.pathname === '/') {
         setMenuOpen(false)
-        navigate('/')
+        void navigate('/')
       }
     },
     [location.pathname, navigate],
@@ -179,7 +179,7 @@ export default function Header() {
         onSetMode={() => toggleMode()}
         onSetColorTheme={setColorTheme}
         onSetFontSize={setFontSize}
-        onCopyDebugInfo={handleCopyDebugInfo}
+        onCopyDebugInfo={() => void handleCopyDebugInfo()}
         onFeatureRequest={handleFeatureRequest}
         showNavigation={true}
         homepageActions={{

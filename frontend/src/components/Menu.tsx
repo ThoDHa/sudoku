@@ -266,7 +266,7 @@ function ModeSwitchSection({ onClose, currentSeed }: ModeSwitchSectionProps) {
     // Skip in-progress check: user explicitly chose to switch modes
     sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
     // Navigate to daily puzzle with difficulty if available, otherwise Game will show chooser
-    navigate(difficulty ? `/${seed}?d=${difficulty}` : `/${seed}`)
+    void navigate(difficulty ? `/${seed}?d=${difficulty}` : `/${seed}`)
     onClose()
   }
 
@@ -278,12 +278,12 @@ function ModeSwitchSection({ onClose, currentSeed }: ModeSwitchSectionProps) {
 
     if (inProgressGame) {
       // Resume existing practice game
-      navigate(`/${inProgressGame.seed}?d=${inProgressGame.difficulty}`)
+      void navigate(`/${inProgressGame.seed}?d=${inProgressGame.difficulty}`)
     } else {
       // Generate new practice seed and navigate to it without difficulty
       // This triggers the difficulty chooser modal in Game.tsx
       const newSeed = `P${Date.now()}`
-      navigate(`/${newSeed}`)
+      void navigate(`/${newSeed}`)
     }
     onClose()
   }
@@ -836,9 +836,9 @@ export default function Menu({
       // and won't show its own in-progress check prompt
       sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
       if (difficulty === 'custom') {
-        navigate('/custom')
+        void navigate('/custom')
       } else {
-        navigate(createGameRoute(difficulty))
+        void navigate(createGameRoute(difficulty))
       }
       onClose()
     }
@@ -858,7 +858,7 @@ export default function Menu({
         'Difficulty:',
         confirmNewPuzzle,
       )
-      navigate(targetRoute)
+      void navigate(targetRoute)
       onClose()
     }
   }
@@ -1054,7 +1054,7 @@ export default function Menu({
                     </span>
                   </div>
                   <button
-                    onClick={handleClearCache}
+                    onClick={() => void handleClearCache()}
                     className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground-muted rounded-lg hover:bg-btn-hover"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1072,7 +1072,7 @@ export default function Menu({
 
               {/* Production Cache Clear (always available) */}
               <button
-                onClick={handleClearCache}
+                onClick={() => void handleClearCache()}
                 className="flex w-full items-center gap-3 px-3 py-2 text-sm text-foreground-muted rounded-lg hover:bg-btn-hover"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

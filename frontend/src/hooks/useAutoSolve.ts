@@ -280,7 +280,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           }
         }
         pausedBoardSnapshotRef.current = null
-        playNextMoveRef.current()
+        void playNextMoveRef.current()
       }
     }
   }, [gamePaused, manualPaused, backgroundManager, getBoard, stopAutoSolve])
@@ -367,7 +367,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         // is covered by the sequential-playback tests, which fail if moves stop advancing.
         // Stryker disable next-line ConditionalExpression: forcing this guard is unobservable (see note above)
         if (shouldPlay) {
-          playNextMove()
+          void playNextMove()
         }
       } catch (err) {
         setIsFetching(false)
@@ -609,7 +609,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       playNextMoveRef.current = playNextMove
 
       if (!startPaused) {
-        playNextMove()
+        void playNextMove()
       }
     },
     [getBoard, getCandidates, applyMove, stopAutoSolve, scheduleNextMove, onError],
@@ -675,7 +675,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
       const playNextMove = createPlayNextMove(context)
       playNextMoveRef.current = playNextMove
-      playNextMove()
+      void playNextMove()
     } catch (err) {
       setIsFetching(false)
       // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
@@ -761,7 +761,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
           setTimeout(checkDone, POLL_INTERVAL)
         }
 
-        checkDone()
+        void checkDone()
       })
     },
     [isAutoSolving, playMoves, stopAutoSolve, restartAutoSolve, onError],

@@ -22,7 +22,7 @@ export interface MoveHandlerContext {
   stateHistoryRef: { current: StateSnapshot[] }
   currentIndexRef: { current: number }
   setCurrentIndex: (index: number) => void
-  scheduleNextMove: (callback: () => void, delay: number) => void
+  scheduleNextMove: (callback: () => Promise<void> | void, delay: number) => void
   stopAutoSolve: () => void
   stepDelayRef: { current: number }
   applyMove: (board: number[], candidates: Set<number>[], move: Move, index: number) => void
@@ -170,7 +170,7 @@ export function handleMoveResult(
           moveResult.move.explanation || 'Found and fixed an error in your entries.',
           () => {
             if (hasMoreMoves()) {
-              playNextMove()
+              void playNextMove()
             } else {
               stopAutoSolve()
             }

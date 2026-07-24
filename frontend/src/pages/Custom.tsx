@@ -104,7 +104,7 @@ export default function Custom() {
       const encoded = encodePuzzle(board)
 
       // Navigate to play the custom puzzle using the encoded URL
-      navigate(`/c/${encoded}`)
+      void navigate(`/c/${encoded}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to validate puzzle. Please try again.')
     } finally {
@@ -225,7 +225,7 @@ export default function Custom() {
           Clear All
         </button>
         <button
-          onClick={handlePaste}
+          onClick={() => void handlePaste()}
           className="rounded-lg bg-btn-bg px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-btn-hover"
         >
           Paste
@@ -240,13 +240,13 @@ export default function Custom() {
 
       <div className="mt-4 flex gap-4">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => void navigate('/')}
           className="rounded-lg border border-board-border-light px-6 py-3 font-medium text-foreground transition-colors hover:bg-btn-hover"
         >
           Cancel
         </button>
         <button
-          onClick={handleValidateAndPlay}
+          onClick={() => void handleValidateAndPlay()}
           disabled={validating}
           className="rounded-lg bg-accent px-6 py-3 font-medium text-btn-active-text transition-colors hover:opacity-90 disabled:opacity-50"
         >
