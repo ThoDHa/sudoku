@@ -75,14 +75,17 @@ export default tseslint.config(
       eqeqeq: ['error', 'always'],
       'prefer-const': 'error',
 
-      // FE-2-1 staged strictTypeChecked rollout. strictTypeChecked is now the
-      // base, but the high-volume type-checked rules are temporarily OFF until
-      // each rule's findings are cleared in a follow-up commit; every rule here
-      // is re-enabled the moment its backlog is fixed. no-floating-promises and
-      // no-misused-promises are already enforced (the async-correctness fixes
-      // landed with this change). Tracked in FE-2-1.
-      '@typescript-eslint/no-confusing-void-expression': 'off',
-      '@typescript-eslint/restrict-template-expressions': 'off',
+      // restrict-template-expressions: allow number interpolation (safe,
+      // idiomatic in log/UI strings); only flag types that could print
+      // "undefined"/"null" or hide a real coercion bug (undefined, null,
+      // never, objects).
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+
+      // strictTypeChecked rollout is COMPLETE: every type-checked rule is
+      // enforced except the three permanent justified-OFF cases below. The
+      // staged off-block that accompanied the incremental adoption (FE-2-1)
+      // has been fully retired — every staged rule was re-enabled once its
+      // findings were cleared.
 
       // Permanent, justified OFF (not staged rollout debt):
       // require-await: the flagged functions are async-by-contract — they carry

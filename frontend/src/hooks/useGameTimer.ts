@@ -178,7 +178,9 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     }, TIMER_UPDATE_INTERVAL)
 
     // Stryker disable next-line ArrowFunction: the interval body is idempotent (setElapsedMs to accumulatedRef + (Date.now() - startTimeRef)), so a leaked interval from a no-op cleanup computes the same value as the active one
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+    }
   }, [isRunning, pauseOnHidden, backgroundManager.shouldPauseOperations])
 
   // Handle visibility changes using central background manager

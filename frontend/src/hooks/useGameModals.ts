@@ -54,26 +54,44 @@ export function useGameModals() {
     useState<UnpinpointableErrorInfo | null>(null)
 
   // History modal actions
-  const openHistory = useCallback(() => setHistoryOpen(true), [])
-  const closeHistory = useCallback(() => setHistoryOpen(false), [])
+  const openHistory = useCallback(() => {
+    setHistoryOpen(true)
+  }, [])
+  const closeHistory = useCallback(() => {
+    setHistoryOpen(false)
+  }, [])
 
   // Technique modal actions
   const openTechnique = useCallback((technique: TechniqueModalState) => {
     setTechniqueModal(technique)
   }, [])
-  const closeTechnique = useCallback(() => setTechniqueModal(null), [])
+  const closeTechnique = useCallback(() => {
+    setTechniqueModal(null)
+  }, [])
 
   // Techniques list modal actions
-  const openTechniquesList = useCallback(() => setTechniquesListOpen(true), [])
-  const closeTechniquesList = useCallback(() => setTechniquesListOpen(false), [])
+  const openTechniquesList = useCallback(() => {
+    setTechniquesListOpen(true)
+  }, [])
+  const closeTechniquesList = useCallback(() => {
+    setTechniquesListOpen(false)
+  }, [])
 
   // Solve confirm modal actions
-  const openSolveConfirm = useCallback(() => setSolveConfirmOpen(true), [])
-  const closeSolveConfirm = useCallback(() => setSolveConfirmOpen(false), [])
+  const openSolveConfirm = useCallback(() => {
+    setSolveConfirmOpen(true)
+  }, [])
+  const closeSolveConfirm = useCallback(() => {
+    setSolveConfirmOpen(false)
+  }, [])
 
   // Clear confirm modal actions
-  const openClearConfirm = useCallback(() => setShowClearConfirm(true), [])
-  const closeClearConfirm = useCallback(() => setShowClearConfirm(false), [])
+  const openClearConfirm = useCallback(() => {
+    setShowClearConfirm(true)
+  }, [])
+  const closeClearConfirm = useCallback(() => {
+    setShowClearConfirm(false)
+  }, [])
 
   // Solution confirm modal actions (for unpinpointable errors)
   const openSolutionConfirm = useCallback((errorInfo: UnpinpointableErrorInfo) => {

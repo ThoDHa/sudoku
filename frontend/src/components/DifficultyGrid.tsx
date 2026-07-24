@@ -45,7 +45,9 @@ export default function DifficultyGrid({
         difficulty={key}
         selected={lastSelected === key}
         isResumable={resumeDifficulty === key}
-        onPlay={() => handlePlay(key)}
+        onPlay={() => {
+          handlePlay(key)
+        }}
       />
     ))
 

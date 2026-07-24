@@ -166,7 +166,9 @@ export function useAutoSolveAdapters(
   const handleAutoSolveError = useCallback(
     (message: string) => {
       setValidationMessage({ type: 'error', message })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+      scheduleToastClear(TOAST_DURATION_ERROR, () => {
+        setValidationMessage(null)
+      })
     },
     [scheduleToastClear, setValidationMessage],
   )
@@ -182,7 +184,9 @@ export function useAutoSolveAdapters(
   const handleAutoSolveStatus = useCallback(
     (message: string) => {
       throttledSetValidationMessage({ type: 'success', message })
-      scheduleToastClear(2000, () => setValidationMessage(null))
+      scheduleToastClear(2000, () => {
+        setValidationMessage(null)
+      })
     },
     [throttledSetValidationMessage, scheduleToastClear, setValidationMessage],
   )
@@ -192,7 +196,9 @@ export function useAutoSolveAdapters(
       // Show toast for fix-error (longer duration than normal hints)
       setValidationMessage({ type: 'error', message: `Fixed: ${message}` })
       // Clear toast after full duration
-      scheduleToastClear(TOAST_DURATION_FIX_ERROR, () => setValidationMessage(null))
+      scheduleToastClear(TOAST_DURATION_FIX_ERROR, () => {
+        setValidationMessage(null)
+      })
       // But resume solving sooner for better UX
       visibilityAwareTimeout(resumeCallback, ERROR_FIX_RESUME_DELAY)
     },

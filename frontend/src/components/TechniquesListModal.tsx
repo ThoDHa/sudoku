@@ -48,7 +48,9 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
           <div className="flex items-center gap-3">
             {view !== 'list' ? (
               <button
-                onClick={() => setView('list')}
+                onClick={() => {
+                  setView('list')
+                }}
                 className="rounded p-1 text-foreground-muted hover:bg-btn-hover"
               >
                 <ChevronLeftIcon />
@@ -80,7 +82,9 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
             <TechniqueDetailView
               technique={selectedTechnique}
               variant="modal"
-              onRelatedClick={(t) => setView(t)}
+              onRelatedClick={(t) => {
+                setView(t)
+              }}
               showTips
             />
           ) : (
@@ -88,7 +92,9 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
             <>
               {/* How to Play button */}
               <button
-                onClick={() => setView('overview')}
+                onClick={() => {
+                  setView('overview')
+                }}
                 className="mb-4 flex w-full items-center justify-between rounded-lg border-2 border-accent bg-accent-light p-3 text-left transition-colors hover:opacity-90"
               >
                 <div className="flex items-center gap-3">
@@ -100,7 +106,9 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
 
               {/* Glossary button */}
               <button
-                onClick={() => setShowGlossary(true)}
+                onClick={() => {
+                  setShowGlossary(true)
+                }}
                 className="mb-4 flex w-full items-center justify-between rounded-lg border border-board-border-light bg-background-secondary p-3 text-left transition-colors hover:bg-btn-hover"
               >
                 <div className="flex items-center gap-3">
@@ -125,7 +133,9 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
               {/* Filter tabs */}
               <div className="mb-4 flex gap-2">
                 <button
-                  onClick={() => setFilterTier(null)}
+                  onClick={() => {
+                    setFilterTier(null)
+                  }}
                   className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
                     filterTier === null
                       ? 'bg-accent text-btn-active-text'
@@ -137,7 +147,9 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
                 {TIERS.map((tier) => (
                   <button
                     key={tier}
-                    onClick={() => setFilterTier(tier)}
+                    onClick={() => {
+                      setFilterTier(tier)
+                    }}
                     className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
                       filterTier === tier
                         ? 'bg-accent text-btn-active-text'
@@ -154,7 +166,9 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
                 {filteredTechniques.map((technique) => (
                   <button
                     key={technique.slug}
-                    onClick={() => setView(technique)}
+                    onClick={() => {
+                      setView(technique)
+                    }}
                     className="flex items-center justify-between rounded-lg border border-board-border-light bg-background-secondary p-3 text-left transition-colors hover:bg-btn-hover"
                   >
                     <div className="flex items-center gap-3">
@@ -181,7 +195,12 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
       </Dialog>
 
       {/* Glossary Modal */}
-      <GlossaryModal isOpen={showGlossary} onClose={() => setShowGlossary(false)} />
+      <GlossaryModal
+        isOpen={showGlossary}
+        onClose={() => {
+          setShowGlossary(false)
+        }}
+      />
     </>
   )
 }

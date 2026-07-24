@@ -228,7 +228,9 @@ function GameContent() {
   // re-arms, which left toasts stuck (SHARE-2 #1), so toast-clearing uses this.
   const plainToastTimeout = useCallback((cb: () => void, delay: number): (() => void) => {
     const id = window.setTimeout(cb, delay)
-    return () => window.clearTimeout(id)
+    return () => {
+      window.clearTimeout(id)
+    }
   }, [])
 
   // Single replaceable toast-clear timer over the shared validationMessage. Every
@@ -483,7 +485,9 @@ function GameContent() {
       timerControl.pauseTimer()
     }, EXTENDED_PAUSE_DELAY)
 
-    return () => clearTimeout(timeout)
+    return () => {
+      clearTimeout(timeout)
+    }
   }, [backgroundManager.isHidden, autoSolve, timerControl])
 
   // Unload WASM immediately when page becomes hidden to save ~4MB memory
@@ -728,11 +732,15 @@ function GameContent() {
         historyCount: game.history.length,
         isComplete: game.isComplete,
         onHint: null,
-        onHistory: () => setHistoryOpen(true),
+        onHistory: () => {
+          setHistoryOpen(true)
+        },
         onAutoFillNotes: autoFillNotes,
       })
     }
-    return () => setGameState(null)
+    return () => {
+      setGameState(null)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback; we only want a static snapshot at mount
   }, [
     loading,
@@ -843,7 +851,9 @@ function GameContent() {
     }
 
     window.addEventListener('pageshow', handlePageShow)
-    return () => window.removeEventListener('pageshow', handlePageShow)
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow)
+    }
   }, [puzzle, loadSavedGameState, game, timerControl, restoredAsCompleteRef])
 
   // NOTE: We do NOT auto-clear saved games on completion anymore!
@@ -915,8 +925,12 @@ function GameContent() {
         onHint={() => void handleNext()}
         hintLoading={hintLoading}
         hintDisabled={false}
-        onHistoryOpen={() => setHistoryOpen(true)}
-        onShowResult={() => setShowResultModal(true)}
+        onHistoryOpen={() => {
+          setHistoryOpen(true)
+        }}
+        onShowResult={() => {
+          setShowResultModal(true)
+        }}
         onSharePuzzle={() => void handleSharePuzzle()}
         onShareState={() => void handleShareState()}
         onAutoFillNotes={autoFillNotes}
@@ -926,9 +940,15 @@ function GameContent() {
           clearMoveHighlight()
         }}
         onValidate={handleValidate}
-        onSolve={() => setSolveConfirmOpen(true)}
-        onClearAll={() => setShowClearConfirm(true)}
-        onTechniquesList={() => setTechniquesListOpen(true)}
+        onSolve={() => {
+          setSolveConfirmOpen(true)
+        }}
+        onClearAll={() => {
+          setShowClearConfirm(true)
+        }}
+        onTechniquesList={() => {
+          setTechniquesListOpen(true)
+        }}
         onAbout={openAbout}
         onCopyDebugInfo={() => void handleCopyDebugInfo()}
         onFeatureRequest={handleFeatureRequest}
@@ -1069,7 +1089,9 @@ function GameContent() {
       <History
         moves={game.history}
         isOpen={historyOpen}
-        onClose={() => setHistoryOpen(false)}
+        onClose={() => {
+          setHistoryOpen(false)
+        }}
         onMoveClick={(move, index) => {
           const moveHighlight: MoveHighlight = move
           if (!moveHighlight.highlights || moveHighlight.highlights.primary.length === 0) {
@@ -1084,7 +1106,9 @@ function GameContent() {
           }
           setMoveHighlight(moveHighlight, index)
         }}
-        onTechniqueClick={(technique) => setTechniqueModal(technique)}
+        onTechniqueClick={(technique) => {
+          setTechniqueModal(technique)
+        }}
         selectedMoveIndex={selectedMoveIndex}
         autoSolveStepsUsed={autoSolveStepsUsed}
         autoSolveErrorsFixed={autoSolveErrorsFixed}
@@ -1094,7 +1118,9 @@ function GameContent() {
 
       <ResultModal
         isOpen={showResultModal}
-        onClose={() => setShowResultModal(false)}
+        onClose={() => {
+          setShowResultModal(false)
+        }}
         seed={completedDailyScore?.seed || puzzle?.seed || ''}
         difficulty={(completedDailyScore?.difficulty as Difficulty) || difficulty}
         timeMs={completedDailyScore?.timeMs || timerControl.getElapsedMs()}
@@ -1116,7 +1142,9 @@ function GameContent() {
 
       <TechniquesListModal
         isOpen={techniquesListOpen}
-        onClose={() => setTechniquesListOpen(false)}
+        onClose={() => {
+          setTechniquesListOpen(false)
+        }}
       />
 
       {/* Confirmation Dialogs */}
@@ -1159,7 +1187,9 @@ function GameContent() {
         showDifficultyChooser={showDifficultyChooser}
         seed={seed || ''}
         onSelectDifficulty={setSelectedDifficulty}
-        onCloseDifficultyChooser={() => setShowDifficultyChooser(false)}
+        onCloseDifficultyChooser={() => {
+          setShowDifficultyChooser(false)
+        }}
         pathname={location.pathname}
       />
     </div>

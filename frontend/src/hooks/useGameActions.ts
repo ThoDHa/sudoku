@@ -192,7 +192,9 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
 
     if (result.cellsWithNotes === 0) {
       setValidationMessage({ type: 'error', message: 'No notes to check. Add some notes first!' })
-      scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
+      scheduleToastClear(TOAST_DURATION_INFO, () => {
+        setValidationMessage(null)
+      })
       return
     }
 
@@ -212,14 +214,18 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
         message: `Found ${wrongCount} incorrect note${wrongCount > 1 ? 's' : ''}. Some notes are impossible.`,
       })
     }
-    scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
+    scheduleToastClear(TOAST_DURATION_INFO, () => {
+      setValidationMessage(null)
+    })
   }, [game, scheduleToastClear])
 
   // Validate current board state by comparing against the known solution
   const handleValidate = useCallback(() => {
     if (solution.length !== 81) {
       setValidationMessage({ type: 'error', message: 'Solution not available' })
-      scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
+      scheduleToastClear(TOAST_DURATION_INFO, () => {
+        setValidationMessage(null)
+      })
       return
     }
 
@@ -368,7 +374,9 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
     const success = await copyToClipboard(bugReportJson)
     if (success) {
       setDebugInfoCopied(true)
-      visibilityAwareTimeout(() => setDebugInfoCopied(false), COPY_TOAST_DURATION)
+      visibilityAwareTimeout(() => {
+        setDebugInfoCopied(false)
+      }, COPY_TOAST_DURATION)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
   }, [puzzle, initialBoard, game, colorTheme, mode, visibilityAwareTimeout])

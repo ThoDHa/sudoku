@@ -157,7 +157,9 @@ export default function GlossaryLinkedText({ text, className = '' }: GlossaryLin
       }
     }
     document.addEventListener('click', handleClickOutside)
-    return () => document.removeEventListener('click', handleClickOutside)
+    return () => {
+      document.removeEventListener('click', handleClickOutside)
+    }
   }, [activeTooltip])
 
   return (
@@ -175,7 +177,9 @@ export default function GlossaryLinkedText({ text, className = '' }: GlossaryLin
               {isActive ? (
                 <GlossaryTooltip
                   term={segment.term}
-                  onClose={() => setActiveTooltip(null)}
+                  onClose={() => {
+                    setActiveTooltip(null)
+                  }}
                   tooltipRef={tooltipRef}
                 >
                   <button

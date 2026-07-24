@@ -47,7 +47,9 @@ export default function Header() {
   const navigate = useNavigate()
 
   // Close dropdown when clicking outside
-  useClickOutside(modeDropdownRef, modeDropdownOpen, () => setModeDropdownOpen(false))
+  useClickOutside(modeDropdownRef, modeDropdownOpen, () => {
+    setModeDropdownOpen(false)
+  })
 
   // Load homepage preference on mount
   useEffect(() => {
@@ -77,7 +79,9 @@ export default function Header() {
     const success = await copyToClipboard(debugJson)
     if (success) {
       setToastMessage('Debug info copied!')
-      setTimeout(() => setToastMessage(null), COPY_TOAST_DURATION)
+      setTimeout(() => {
+        setToastMessage(null)
+      }, COPY_TOAST_DURATION)
     }
   }, [location.pathname, colorTheme, mode, homepageModeState])
 
@@ -150,14 +154,18 @@ export default function Header() {
                 mode={mode}
                 modePreference={modePreference}
                 isOpen={modeDropdownOpen}
-                onToggle={() => setModeDropdownOpen(!modeDropdownOpen)}
+                onToggle={() => {
+                  setModeDropdownOpen(!modeDropdownOpen)
+                }}
                 onSetModePreference={setModePreference}
                 dropdownRef={modeDropdownRef}
               />
 
               {/* Menu button */}
               <button
-                onClick={() => setMenuOpen(true)}
+                onClick={() => {
+                  setMenuOpen(true)
+                }}
                 className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
                 title="Menu"
                 aria-label="Menu"
@@ -172,11 +180,15 @@ export default function Header() {
       {/* Menu modal */}
       <Menu
         isOpen={menuOpen}
-        onClose={() => setMenuOpen(false)}
+        onClose={() => {
+          setMenuOpen(false)
+        }}
         mode={mode}
         colorTheme={colorTheme}
         fontSize={fontSize}
-        onSetMode={() => toggleMode()}
+        onSetMode={() => {
+          toggleMode()
+        }}
         onSetColorTheme={setColorTheme}
         onSetFontSize={setFontSize}
         onCopyDebugInfo={() => void handleCopyDebugInfo()}

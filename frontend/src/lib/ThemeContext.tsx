@@ -126,7 +126,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setSystemMode(e.matches ? 'dark' : 'light')
     }
     mediaQuery.addEventListener('change', handler)
-    return () => mediaQuery.removeEventListener('change', handler)
+    return () => {
+      mediaQuery.removeEventListener('change', handler)
+    }
   }, [])
 
   // Compute effective mode from preference

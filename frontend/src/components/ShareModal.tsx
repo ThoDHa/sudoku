@@ -66,7 +66,9 @@ export default function ShareModal({
         {SHARE_OPTIONS.map(({ key, label, description }) => (
           <button
             key={key}
-            onClick={() => handleSelect(key)}
+            onClick={() => {
+              handleSelect(key)
+            }}
             className="w-full flex flex-col items-start gap-0.5 rounded-lg border border-board-border-light px-4 py-3 text-left transition-colors text-foreground hover:bg-btn-hover"
           >
             <span className="text-sm font-medium">{label}</span>

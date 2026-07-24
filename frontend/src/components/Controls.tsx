@@ -45,7 +45,9 @@ function Controls({
     return (
       <button
         key={digit}
-        onClick={() => onDigit(digit)}
+        onClick={() => {
+          onDigit(digit)
+        }}
         disabled={isDisabled}
         aria-label={`Enter ${digit}, ${remaining} remaining`}
         className={`control-digit-btn ${

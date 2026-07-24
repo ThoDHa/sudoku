@@ -47,7 +47,9 @@ export default function ThemeModeDropdown({
           {MODE_OPTIONS.map(({ pref, label, Icon }) => (
             <button
               key={pref}
-              onClick={() => handleSelect(pref)}
+              onClick={() => {
+                handleSelect(pref)
+              }}
               className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
                 modePreference === pref ? ACTIVE : INACTIVE
               }`}

@@ -252,7 +252,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
           type: 'error',
           id,
           success: false,
-          error: `Unknown message type: ${type}`,
+          error: `Unknown message type: ${String(type)}`,
         }
         self.postMessage(response)
       }

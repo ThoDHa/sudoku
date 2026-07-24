@@ -108,7 +108,9 @@ export function useGameKeyboardShortcuts({
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [
     handleUndo,
     handleRedo,

@@ -209,7 +209,9 @@ const Cell = memo(
         className={className}
         data-cell-idx={idx}
         onClick={handleClick}
-        onKeyDown={(e) => onKeyDown(e, idx)}
+        onKeyDown={(e) => {
+          onKeyDown(e, idx)
+        }}
         onPointerDown={() => onPointerDown?.(idx)}
         style={isGiven ? { cursor: 'default' } : undefined}
       >

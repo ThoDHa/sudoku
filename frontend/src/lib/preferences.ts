@@ -89,9 +89,13 @@ export function setHomepageMode(mode: HomepageMode): void {
 
 // Subscribe to homepage mode changes
 export function onHomepageModeChange(callback: (mode: HomepageMode) => void): () => void {
-  const handler = (e: Event) => callback((e as CustomEvent<HomepageMode>).detail)
+  const handler = (e: Event) => {
+    callback((e as CustomEvent<HomepageMode>).detail)
+  }
   window.addEventListener(HOMEPAGE_MODE_CHANGE_EVENT, handler)
-  return () => window.removeEventListener(HOMEPAGE_MODE_CHANGE_EVENT, handler)
+  return () => {
+    window.removeEventListener(HOMEPAGE_MODE_CHANGE_EVENT, handler)
+  }
 }
 
 export function getAutoSolveSpeed(): AutoSolveSpeed {

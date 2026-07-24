@@ -295,14 +295,26 @@ export function useHighlightState() {
   const actions = useMemo(
     () => ({
       // Selection
-      selectCell: (cell: number) => dispatch({ type: 'SELECT_CELL', cell }),
-      deselectCell: () => dispatch({ type: 'DESELECT_CELL' }),
-      selectMultipleCells: (cells: number[]) => dispatch({ type: 'SELECT_MULTIPLE_CELLS', cells }),
+      selectCell: (cell: number) => {
+        dispatch({ type: 'SELECT_CELL', cell })
+      },
+      deselectCell: () => {
+        dispatch({ type: 'DESELECT_CELL' })
+      },
+      selectMultipleCells: (cells: number[]) => {
+        dispatch({ type: 'SELECT_MULTIPLE_CELLS', cells })
+      },
 
       // Digit highlight
-      setDigitHighlight: (digit: number) => dispatch({ type: 'SET_DIGIT_HIGHLIGHT', digit }),
-      clearDigitHighlight: () => dispatch({ type: 'CLEAR_DIGIT_HIGHLIGHT' }),
-      toggleDigitHighlight: (digit: number) => dispatch({ type: 'TOGGLE_DIGIT_HIGHLIGHT', digit }),
+      setDigitHighlight: (digit: number) => {
+        dispatch({ type: 'SET_DIGIT_HIGHLIGHT', digit })
+      },
+      clearDigitHighlight: () => {
+        dispatch({ type: 'CLEAR_DIGIT_HIGHLIGHT' })
+      },
+      toggleDigitHighlight: (digit: number) => {
+        dispatch({ type: 'TOGGLE_DIGIT_HIGHLIGHT', digit })
+      },
 
       // Move highlight
       setMoveHighlight: (move: MoveHighlight, index?: number) => {
@@ -313,20 +325,41 @@ export function useHighlightState() {
           dispatch({ type: 'SET_MOVE_HIGHLIGHT', move })
         }
       },
-      clearMoveHighlight: () => dispatch({ type: 'CLEAR_MOVE_HIGHLIGHT' }),
+      clearMoveHighlight: () => {
+        dispatch({ type: 'CLEAR_MOVE_HIGHLIGHT' })
+      },
 
       // Compound actions
-      clearAll: () => dispatch({ type: 'CLEAR_ALL' }),
-      clearAllAndDeselect: () => dispatch({ type: 'CLEAR_ALL_AND_DESELECT' }),
-      clearAfterUserCandidateOp: () => dispatch({ type: 'CLEAR_AFTER_USER_CANDIDATE_OP' }),
-      clearAfterDigitPlacement: () => dispatch({ type: 'CLEAR_AFTER_DIGIT_PLACEMENT' }),
-      clearAfterCellSelection: () => dispatch({ type: 'CLEAR_AFTER_CELL_SELECTION' }),
-      clearAfterErase: () => dispatch({ type: 'CLEAR_AFTER_ERASE' }),
-      clearOnModeChange: () => dispatch({ type: 'CLEAR_ON_MODE_CHANGE' }),
-      clearAfterDigitToggle: () => dispatch({ type: 'CLEAR_AFTER_DIGIT_TOGGLE' }),
-      clearHighlightsKeepSelection: () => dispatch({ type: 'CLEAR_HIGHLIGHTS_KEEP_SELECTION' }),
-      clickGivenCell: (digit: number, cell: number) =>
-        dispatch({ type: 'CLICK_GIVEN_CELL', digit, cell }),
+      clearAll: () => {
+        dispatch({ type: 'CLEAR_ALL' })
+      },
+      clearAllAndDeselect: () => {
+        dispatch({ type: 'CLEAR_ALL_AND_DESELECT' })
+      },
+      clearAfterUserCandidateOp: () => {
+        dispatch({ type: 'CLEAR_AFTER_USER_CANDIDATE_OP' })
+      },
+      clearAfterDigitPlacement: () => {
+        dispatch({ type: 'CLEAR_AFTER_DIGIT_PLACEMENT' })
+      },
+      clearAfterCellSelection: () => {
+        dispatch({ type: 'CLEAR_AFTER_CELL_SELECTION' })
+      },
+      clearAfterErase: () => {
+        dispatch({ type: 'CLEAR_AFTER_ERASE' })
+      },
+      clearOnModeChange: () => {
+        dispatch({ type: 'CLEAR_ON_MODE_CHANGE' })
+      },
+      clearAfterDigitToggle: () => {
+        dispatch({ type: 'CLEAR_AFTER_DIGIT_TOGGLE' })
+      },
+      clearHighlightsKeepSelection: () => {
+        dispatch({ type: 'CLEAR_HIGHLIGHTS_KEEP_SELECTION' })
+      },
+      clickGivenCell: (digit: number, cell: number) => {
+        dispatch({ type: 'CLICK_GIVEN_CELL', digit, cell })
+      },
     }),
     // Stryker disable next-line ArrayDeclaration: every action creator closes over the stable dispatch, so a constant deps entry is observationally identical to the empty array
     [],

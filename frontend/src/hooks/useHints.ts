@@ -103,7 +103,9 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
           ? 'Puzzle is already complete!'
           : 'This puzzle requires advanced techniques beyond our hint system.',
       })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+      scheduleToastClear(TOAST_DURATION_ERROR, () => {
+        setValidationMessage(null)
+      })
       return null
     }
 
@@ -145,14 +147,18 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
             type: 'error',
             message: move.explanation || 'Contradiction found - undoing last move',
           })
-          scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+          scheduleToastClear(TOAST_DURATION_ERROR, () => {
+            setValidationMessage(null)
+          })
           return
         } else {
           setValidationMessage({
             type: 'error',
             message: 'The puzzle cannot be solved - initial state has errors.',
           })
-          scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+          scheduleToastClear(TOAST_DURATION_ERROR, () => {
+            setValidationMessage(null)
+          })
           return
         }
       }
@@ -166,7 +172,9 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
         type: 'success',
         message: move.explanation || move.technique || 'Hint',
       })
-      scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
+      scheduleToastClear(TOAST_DURATION_INFO, () => {
+        setValidationMessage(null)
+      })
 
       // Only increment counter if this is a NEW hint (different from last shown)
       const signature = getHintSignature(move)
@@ -181,7 +189,9 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
         type: 'error',
         message: err instanceof Error ? err.message : 'Failed to get hint',
       })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+      scheduleToastClear(TOAST_DURATION_ERROR, () => {
+        setValidationMessage(null)
+      })
     } finally {
       gate.end()
       setHintLoading(false)
@@ -220,7 +230,9 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
           type: 'info',
           message: 'Fill in some candidates first, or use 💡 Hint to get started',
         })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+        scheduleToastClear(TOAST_DURATION_ERROR, () => {
+          setValidationMessage(null)
+        })
         return
       }
 
@@ -230,7 +242,9 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
           type: 'error',
           message: 'There seems to be an error in the puzzle. Try using 💡 Hint to fix it.',
         })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+        scheduleToastClear(TOAST_DURATION_ERROR, () => {
+          setValidationMessage(null)
+        })
         return
       }
 
@@ -244,7 +258,9 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
           type: 'error',
           message: move.explanation || 'Constraint violation detected',
         })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+        scheduleToastClear(TOAST_DURATION_ERROR, () => {
+          setValidationMessage(null)
+        })
         return
       }
 
@@ -263,10 +279,14 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
         message: `Try: ${techniqueName}`,
         action: {
           label: 'Learn more',
-          onClick: () => setTechniqueModal({ title: techniqueName, slug: techniqueSlug }),
+          onClick: () => {
+            setTechniqueModal({ title: techniqueName, slug: techniqueSlug })
+          },
         },
       })
-      scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
+      scheduleToastClear(TOAST_DURATION_INFO, () => {
+        setValidationMessage(null)
+      })
 
       // Only increment counter if this is a NEW hint (different from last shown)
       const signature = getHintSignature(move)
@@ -281,7 +301,9 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
         type: 'error',
         message: err instanceof Error ? err.message : 'Failed to get technique',
       })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+      scheduleToastClear(TOAST_DURATION_ERROR, () => {
+        setValidationMessage(null)
+      })
     } finally {
       gate.end()
       setTechniqueHintLoading(false)

@@ -62,7 +62,9 @@ export default function GlossaryModal({ isOpen, onClose }: GlossaryModalProps) {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+            }}
             placeholder="Search terms..."
             className="w-full rounded-lg border border-board-border-light bg-background-secondary px-4 py-2 pl-10 text-foreground placeholder-foreground-muted focus:border-accent focus:outline-none"
           />
@@ -81,7 +83,9 @@ export default function GlossaryModal({ isOpen, onClose }: GlossaryModalProps) {
           </svg>
           {searchQuery && (
             <button
-              onClick={() => setSearchQuery('')}
+              onClick={() => {
+                setSearchQuery('')
+              }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
             >
               <CloseIcon className="h-4 w-4" />
@@ -107,7 +111,9 @@ export default function GlossaryModal({ isOpen, onClose }: GlossaryModalProps) {
                 key={term.term}
                 term={term}
                 isExpanded={expandedTerm === term.term}
-                onToggle={() => setExpandedTerm(expandedTerm === term.term ? null : term.term)}
+                onToggle={() => {
+                  setExpandedTerm(expandedTerm === term.term ? null : term.term)
+                }}
               />
             ))}
           </div>
@@ -128,9 +134,9 @@ export default function GlossaryModal({ isOpen, onClose }: GlossaryModalProps) {
                           key={term.term}
                           term={term}
                           isExpanded={expandedTerm === term.term}
-                          onToggle={() =>
+                          onToggle={() => {
                             setExpandedTerm(expandedTerm === term.term ? null : term.term)
-                          }
+                          }}
                         />
                       ))}
                     </div>

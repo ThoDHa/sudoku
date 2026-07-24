@@ -347,7 +347,9 @@ export function useGamePersistence({
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
   }, [
     puzzle,
     game.isComplete,

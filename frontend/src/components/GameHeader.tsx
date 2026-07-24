@@ -109,7 +109,9 @@ function AutoSolveControls({
           {SPEED_OPTIONS.map(({ speed, icon, label }) => (
             <button
               key={speed}
-              onClick={() => onSpeedChange(speed)}
+              onClick={() => {
+                onSpeedChange(speed)
+              }}
               title={label}
               aria-label={`Auto-solve speed ${label}`}
               className={`px-2 py-1.5 transition-colors ${
@@ -178,7 +180,9 @@ function AutoSolveControls({
         {SPEED_OPTIONS.map(({ speed, icon, label }) => (
           <button
             key={speed}
-            onClick={() => onSpeedChange(speed)}
+            onClick={() => {
+              onSpeedChange(speed)
+            }}
             title={label}
             aria-label={`Auto-solve speed ${label}`}
             className={`px-3 py-2 transition-colors ${
@@ -426,7 +430,9 @@ export default memo(function GameHeader({
 
   // Close the theme dropdown when clicking outside (the share modal manages its
   // own backdrop/Escape close).
-  useClickOutside(modeDropdownRef, modeDropdownOpen, () => setModeDropdownOpen(false))
+  useClickOutside(modeDropdownRef, modeDropdownOpen, () => {
+    setModeDropdownOpen(false)
+  })
 
   const handleSpeedChange = (speed: AutoSolveSpeed) => {
     setAutoSolveSpeed(speed)
@@ -525,7 +531,9 @@ export default memo(function GameHeader({
               </button>
             ) : (
               <button
-                onClick={() => setShareModalOpen(true)}
+                onClick={() => {
+                  setShareModalOpen(true)
+                }}
                 className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
                 title="Share the puzzle or your current game"
                 aria-label="Share the puzzle or your current game"
@@ -539,7 +547,9 @@ export default memo(function GameHeader({
             )}
             <ShareModal
               isOpen={shareModalOpen}
-              onClose={() => setShareModalOpen(false)}
+              onClose={() => {
+                setShareModalOpen(false)
+              }}
               onSharePuzzle={onSharePuzzle}
               onShareState={onShareState}
             />
@@ -549,14 +559,18 @@ export default memo(function GameHeader({
               mode={mode}
               modePreference={modePreference}
               isOpen={modeDropdownOpen}
-              onToggle={() => setModeDropdownOpen(!modeDropdownOpen)}
+              onToggle={() => {
+                setModeDropdownOpen(!modeDropdownOpen)
+              }}
               onSetModePreference={onSetModePreference}
               dropdownRef={modeDropdownRef}
             />
 
             {/* Menu button */}
             <button
-              onClick={() => onMenuOpenChange(true)}
+              onClick={() => {
+                onMenuOpenChange(true)
+              }}
               className="p-2 rounded text-foreground-muted hover:text-foreground hover:bg-btn-hover transition-colors"
               title="Menu"
               aria-label="Menu"
@@ -593,7 +607,9 @@ export default memo(function GameHeader({
       {/* Menu modal - outside header to overlay full page */}
       <Menu
         isOpen={menuOpen}
-        onClose={() => onMenuOpenChange(false)}
+        onClose={() => {
+          onMenuOpenChange(false)
+        }}
         currentSeed={seed}
         mode={mode}
         colorTheme={colorTheme}

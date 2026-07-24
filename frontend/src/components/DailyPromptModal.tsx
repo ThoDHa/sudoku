@@ -61,7 +61,9 @@ export default function DailyPromptModal({
         <input
           type="checkbox"
           checked={dontShowAgain}
-          onChange={(e) => setDontShowAgain(e.target.checked)}
+          onChange={(e) => {
+            setDontShowAgain(e.target.checked)
+          }}
           className="h-4 w-4 rounded border-board-border-light text-accent focus:ring-2 focus:ring-accent focus:ring-offset-0 cursor-pointer"
         />
         <span className="text-sm text-foreground-muted">Don't show this again</span>

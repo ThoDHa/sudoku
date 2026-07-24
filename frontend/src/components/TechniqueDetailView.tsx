@@ -37,7 +37,9 @@ function RelatedTechniques({ slugs, onRelatedClick, variant }: RelatedTechniques
           return (
             <button
               key={slug}
-              onClick={() => onRelatedClick(related)}
+              onClick={() => {
+                onRelatedClick(related)
+              }}
               className="inline-flex items-center gap-1 rounded-full bg-background-secondary px-3 py-1 text-sm text-accent hover:bg-btn-hover"
             >
               {related.title}

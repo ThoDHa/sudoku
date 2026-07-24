@@ -231,7 +231,9 @@ export default function AboutModal({ isOpen, onClose, isOnboarding = false }: Ab
         {ABOUT_SECTIONS.map((_, idx) => (
           <button
             key={idx}
-            onClick={() => setCurrentStep(idx)}
+            onClick={() => {
+              setCurrentStep(idx)
+            }}
             className={`w-2 h-2 rounded-full transition-all ${
               idx === currentStep
                 ? 'bg-accent w-6'
@@ -303,7 +305,9 @@ export function useAboutModal() {
         setIsOnboarding(true)
         setShowAbout(true)
       }, 500)
-      return () => clearTimeout(timer)
+      return () => {
+        clearTimeout(timer)
+      }
     }
     return undefined
   }, [])

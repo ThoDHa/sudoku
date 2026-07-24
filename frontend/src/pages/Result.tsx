@@ -64,7 +64,9 @@ export default function Result() {
       const success = await copyToClipboard(shareText)
       if (success) {
         setCopied(true)
-        setTimeout(() => setCopied(false), COPY_TOAST_DURATION)
+        setTimeout(() => {
+          setCopied(false)
+        }, COPY_TOAST_DURATION)
       }
     } catch {
       // Native share was cancelled or failed, no action needed

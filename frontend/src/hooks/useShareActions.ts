@@ -49,10 +49,14 @@ export function useShareActions(options: UseShareActionsOptions): UseShareAction
       const success = await copyToClipboard(url)
       if (success) {
         setValidationMessage({ type: 'success', message: `${label} link copied to clipboard!` })
-        scheduleToastClear(TOAST_DURATION_INFO, () => setValidationMessage(null))
+        scheduleToastClear(TOAST_DURATION_INFO, () => {
+          setValidationMessage(null)
+        })
       } else {
         setValidationMessage({ type: 'error', message: 'Failed to copy link' })
-        scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+        scheduleToastClear(TOAST_DURATION_ERROR, () => {
+          setValidationMessage(null)
+        })
       }
     },
     [scheduleToastClear, setValidationMessage],
@@ -62,7 +66,9 @@ export function useShareActions(options: UseShareActionsOptions): UseShareAction
     (err: unknown) => {
       logger.error('Share error:', err)
       setValidationMessage({ type: 'error', message: 'Failed to create share link' })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => setValidationMessage(null))
+      scheduleToastClear(TOAST_DURATION_ERROR, () => {
+        setValidationMessage(null)
+      })
     },
     [scheduleToastClear, setValidationMessage],
   )

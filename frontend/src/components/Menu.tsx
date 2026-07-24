@@ -56,9 +56,9 @@ function OfflineModeToggle() {
     if (next) {
       registerOfflineMode()
     } else {
-      unregisterOfflineMode().catch((error: unknown) =>
-        logger.error('Failed to disable offline mode:', error),
-      )
+      unregisterOfflineMode().catch((error: unknown) => {
+        logger.error('Failed to disable offline mode:', error)
+      })
     }
   }
 
@@ -551,14 +551,18 @@ function GameActionsSection({
             {['easy', 'medium', 'hard', 'extreme', 'impossible'].map((d) => (
               <button
                 key={d}
-                onClick={() => handleNewPuzzle(d)}
+                onClick={() => {
+                  handleNewPuzzle(d)
+                }}
                 className="block w-full px-3 py-1.5 text-left text-sm capitalize text-foreground-muted hover:text-foreground rounded-lg hover:bg-btn-hover"
               >
                 {d}
               </button>
             ))}
             <button
-              onClick={() => handleNewPuzzle('custom')}
+              onClick={() => {
+                handleNewPuzzle('custom')
+              }}
               className="block w-full px-3 py-1.5 text-left text-sm text-foreground-muted hover:text-foreground rounded-lg hover:bg-btn-hover"
             >
               Custom
@@ -646,7 +650,9 @@ function SettingsSection({
               {COLOR_THEMES.map((theme) => (
                 <button
                   key={theme.key}
-                  onClick={() => onSetColorTheme(theme.key)}
+                  onClick={() => {
+                    onSetColorTheme(theme.key)
+                  }}
                   className={`w-4 h-4 rounded-full ${theme.color} transition-transform ${
                     colorTheme === theme.key
                       ? 'ring-2 ring-offset-1 ring-foreground scale-110'
@@ -788,7 +794,9 @@ export default function Menu({
       }
     }
     document.addEventListener('keydown', handleEscapeKey)
-    return () => document.removeEventListener('keydown', handleEscapeKey)
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey)
+    }
   }, [isOpen])
 
   // Dialog semantics + focus trap for the menu panel and its nested confirm
@@ -803,7 +811,9 @@ export default function Menu({
   })
   const confirmPanel = useDialog({
     open: !!confirmNewPuzzle,
-    onClose: () => setConfirmNewPuzzle(null),
+    onClose: () => {
+      setConfirmNewPuzzle(null)
+    },
     titleId: 'menu-confirm-title',
     closeOnEscape: false,
   })
@@ -867,7 +877,9 @@ export default function Menu({
     try {
       await clearAllCaches()
       setCacheCleared(true)
-      setTimeout(() => setCacheCleared(false), TOAST_DURATION_INFO)
+      setTimeout(() => {
+        setCacheCleared(false)
+      }, TOAST_DURATION_INFO)
       // Reload page to get fresh content
       window.location.reload()
     } catch (error) {
@@ -958,7 +970,9 @@ export default function Menu({
                   <div className="text-xs text-foreground-muted mb-2">Homepage Mode</div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => homepageActions.onSetHomepageMode('daily')}
+                      onClick={() => {
+                        homepageActions.onSetHomepageMode('daily')
+                      }}
                       className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                         homepageActions.homepageMode === 'daily'
                           ? ACCENT_ACTIVE
@@ -968,7 +982,9 @@ export default function Menu({
                       Daily Puzzle
                     </button>
                     <button
-                      onClick={() => homepageActions.onSetHomepageMode('game')}
+                      onClick={() => {
+                        homepageActions.onSetHomepageMode('game')
+                      }}
                       className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                         homepageActions.homepageMode === 'game'
                           ? ACCENT_ACTIVE
@@ -1182,7 +1198,9 @@ export default function Menu({
             type="button"
             aria-label="Cancel new game"
             className="fixed inset-0 bg-black/50 z-[101] cursor-default"
-            onClick={() => setConfirmNewPuzzle(null)}
+            onClick={() => {
+              setConfirmNewPuzzle(null)
+            }}
             data-overlay-backdrop
           />
           <div
@@ -1202,7 +1220,9 @@ export default function Menu({
               </p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setConfirmNewPuzzle(null)}
+                  onClick={() => {
+                    setConfirmNewPuzzle(null)
+                  }}
                   className="flex-1 px-3 py-2 text-sm font-medium rounded-lg border border-board-border-light text-foreground hover:bg-btn-hover"
                 >
                   Cancel

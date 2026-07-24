@@ -51,7 +51,9 @@ export default function GameModals({
       {solveConfirmOpen && (
         <Dialog
           isOpen={solveConfirmOpen}
-          onClose={() => setSolveConfirmOpen(false)}
+          onClose={() => {
+            setSolveConfirmOpen(false)
+          }}
           titleId="solve-confirm-title"
           panelClassName="w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl"
         >
@@ -63,7 +65,9 @@ export default function GameModals({
           </p>
           <div className="flex gap-3">
             <button
-              onClick={() => setSolveConfirmOpen(false)}
+              onClick={() => {
+                setSolveConfirmOpen(false)
+              }}
               disabled={isSolving}
               className="flex-1 rounded-lg border border-board-border-light py-2 font-medium text-foreground transition-colors hover:bg-btn-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -112,7 +116,9 @@ export default function GameModals({
       {showClearConfirm && (
         <Dialog
           isOpen={showClearConfirm}
-          onClose={() => setShowClearConfirm(false)}
+          onClose={() => {
+            setShowClearConfirm(false)
+          }}
           titleId="clear-confirm-title"
           panelClassName="w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl"
         >
@@ -126,7 +132,9 @@ export default function GameModals({
           </p>
           <div className="flex gap-3">
             <button
-              onClick={() => setShowClearConfirm(false)}
+              onClick={() => {
+                setShowClearConfirm(false)
+              }}
               className="flex-1 rounded-lg border border-board-border-light py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
             >
               Cancel
@@ -152,7 +160,9 @@ export default function GameModals({
       {showSolutionConfirm && (
         <Dialog
           isOpen={showSolutionConfirm}
-          onClose={() => setShowSolutionConfirm(false)}
+          onClose={() => {
+            setShowSolutionConfirm(false)
+          }}
           titleId="solution-confirm-title"
           panelClassName="w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl"
           backdropClassName="bg-black/50"
@@ -166,7 +176,9 @@ export default function GameModals({
           </p>
           <div className="flex gap-3">
             <button
-              onClick={() => setShowSolutionConfirm(false)}
+              onClick={() => {
+                setShowSolutionConfirm(false)
+              }}
               className="flex-1 rounded-lg border border-board-border-light py-2 font-medium text-foreground transition-colors hover:bg-btn-hover"
             >
               Let Me Fix It

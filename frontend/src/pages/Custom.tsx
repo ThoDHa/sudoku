@@ -175,7 +175,9 @@ export default function Custom() {
               {[1, 2, 3].map((digit) => (
                 <button
                   key={digit}
-                  onClick={() => handleDigitInput(digit)}
+                  onClick={() => {
+                    handleDigitInput(digit)
+                  }}
                   className="control-digit-btn bg-btn-bg text-foreground"
                 >
                   {digit}
@@ -187,7 +189,9 @@ export default function Custom() {
               {[4, 5, 6].map((digit) => (
                 <button
                   key={digit}
-                  onClick={() => handleDigitInput(digit)}
+                  onClick={() => {
+                    handleDigitInput(digit)
+                  }}
                   className="control-digit-btn bg-btn-bg text-foreground"
                 >
                   {digit}
@@ -199,7 +203,9 @@ export default function Custom() {
               {[7, 8, 9].map((digit) => (
                 <button
                   key={digit}
-                  onClick={() => handleDigitInput(digit)}
+                  onClick={() => {
+                    handleDigitInput(digit)
+                  }}
                   className="control-digit-btn bg-btn-bg text-foreground"
                 >
                   {digit}

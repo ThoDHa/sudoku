@@ -57,6 +57,6 @@ export function commitCellAction(actionType: CellActionType, opts: CommitCellAct
       opts.clearAllAndDeselect?.()
       break
     default:
-      throw new Error(`Unknown actionType: ${actionType}`)
+      throw new Error(`Unknown actionType: ${String(actionType)}`)
   }
 }

@@ -98,10 +98,14 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
     checkReady()
 
     // Also listen for the wasmReady event
-    const handler = () => checkReady()
+    const handler = () => {
+      checkReady()
+    }
     window.addEventListener('wasmReady', handler)
 
-    return () => window.removeEventListener('wasmReady', handler)
+    return () => {
+      window.removeEventListener('wasmReady', handler)
+    }
   }, [isReady])
 
   const load = useCallback(async (): Promise<boolean> => {

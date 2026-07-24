@@ -94,7 +94,9 @@ export default function ResultModal({
     const success = await copyToClipboard(shareText)
     if (success) {
       setCopied(true)
-      setTimeout(() => setCopied(false), COPY_TOAST_DURATION)
+      setTimeout(() => {
+        setCopied(false)
+      }, COPY_TOAST_DURATION)
     }
   }
 
@@ -208,7 +210,9 @@ export default function ResultModal({
               return (
                 <button
                   key={d}
-                  onClick={() => setSelectedDifficulty(d)}
+                  onClick={() => {
+                    setSelectedDifficulty(d)
+                  }}
                   className={`rounded-lg py-2.5 text-sm font-medium capitalize transition-all ${
                     isSelected ? colors.selected : colors.base
                   }`}
@@ -228,7 +232,9 @@ export default function ResultModal({
               return (
                 <button
                   key={d}
-                  onClick={() => setSelectedDifficulty(d)}
+                  onClick={() => {
+                    setSelectedDifficulty(d)
+                  }}
                   className={`rounded-lg py-2.5 px-6 text-sm font-medium capitalize transition-all ${
                     isSelected ? colors.selected : colors.base
                   }`}
