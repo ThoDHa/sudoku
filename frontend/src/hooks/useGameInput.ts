@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { commitCellAction } from '../lib/commitCellAction'
 import { isDigitComplete } from '../lib/digitCompletion'
 import type { UseSudokuGameReturn } from './useSudokuGame'
@@ -20,13 +20,13 @@ import type { useAutoSolve } from './useAutoSolve'
 
 export interface UseGameInputOptions {
   // Mirror refs owned by Game; the hook only reads them.
-  selectedCellRef: MutableRefObject<number | null>
-  selectedCellsRef: MutableRefObject<Set<number>>
-  notesModeRef: MutableRefObject<boolean>
-  eraseModeRef: MutableRefObject<boolean>
-  highlightedDigitRef: MutableRefObject<number | null>
-  gameRef: MutableRefObject<UseSudokuGameReturn | null>
-  autoSolveRef: MutableRefObject<ReturnType<typeof useAutoSolve> | null>
+  selectedCellRef: RefObject<number | null>
+  selectedCellsRef: RefObject<Set<number>>
+  notesModeRef: RefObject<boolean>
+  eraseModeRef: RefObject<boolean>
+  highlightedDigitRef: RefObject<number | null>
+  gameRef: RefObject<UseSudokuGameReturn | null>
+  autoSolveRef: RefObject<ReturnType<typeof useAutoSolve> | null>
 
   // Highlight-state callbacks (from useHighlightState).
   selectCell: (idx: number) => void

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import { STORAGE_KEYS, MAX_DIGIT } from '../lib/constants'
 import { getGameMode } from '../lib/gameSettings'
 import { shouldShowDailyPrompt, markDailyPromptShown } from '../lib/dailyPrompt'
@@ -244,9 +244,9 @@ export interface UsePuzzleLoaderOptions {
   onboardingComplete: boolean
   backgroundManager: BackgroundManager
   /** Shared with the persistence hook and the restore orchestration in Game. */
-  hasRestoredSavedState: MutableRefObject<boolean>
+  hasRestoredSavedState: RefObject<boolean>
   /** Owned by Game (the share-conflict flow); this hook only resets it per load. */
-  loadedFromSharedUrl: MutableRefObject<boolean>
+  loadedFromSharedUrl: RefObject<boolean>
   /** Invoked when a shared-state link resolves; opens the share-conflict modal. */
   restoreOrPromptSharedState: (board: number[], candidates: number[][] | null, seed: string) => void
   setIncorrectCells: (cells: number[]) => void

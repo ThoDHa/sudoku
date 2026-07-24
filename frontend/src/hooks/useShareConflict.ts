@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import { isValidSolution } from '../lib/validationUtils'
 import { arraysToCandidates } from '../lib/candidatesUtils'
 import { getMostRecentGame } from '../lib/gameSettings'
@@ -24,9 +24,9 @@ export interface ResumeTarget {
 export interface UseShareConflictOptions {
   game: UseSudokuGameReturn
   timerControl: TimerControl
-  restoredAsCompleteRef: MutableRefObject<boolean>
-  hasRestoredSavedState: MutableRefObject<boolean>
-  loadedFromSharedUrl: MutableRefObject<boolean>
+  restoredAsCompleteRef: RefObject<boolean>
+  hasRestoredSavedState: RefObject<boolean>
+  loadedFromSharedUrl: RefObject<boolean>
   alreadyCompletedToday: boolean
   showDifficultyChooser: boolean
   sharedTimeParam: string | null
@@ -40,7 +40,7 @@ export interface UseShareConflictReturn {
   pendingSharedState: SharedBoardPayload | null
   resumeTarget: ResumeTarget | null
   shareHasCurrentGame: boolean
-  shareResolvedRef: MutableRefObject<boolean>
+  shareResolvedRef: RefObject<boolean>
   applySharedBoard: (shared: SharedBoardPayload) => void
   consumeShareParams: () => void
   finalizeSharedUrlLoad: () => void
@@ -136,7 +136,7 @@ export function useShareConflict({
     // consumeShareParams self-guards on the actual URL, so call it unconditionally
     // (a stale sharedStateParam closure was suppressing the strip).
     consumeShareParams()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hasRestoredSavedState and loadedFromSharedUrl are stable MutableRefObjects; reading .current does not need to re-create the callback
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hasRestoredSavedState and loadedFromSharedUrl are stable RefObjects; reading .current does not need to re-create the callback
   }, [alreadyCompletedToday, showDifficultyChooser, timerControl, consumeShareParams])
 
   // Shared-game modal dismissed (Resume current game, the X, or the backdrop):

@@ -80,7 +80,6 @@ export default tseslint.config(
       '@typescript-eslint/no-confusing-void-expression': 'off',
       '@typescript-eslint/restrict-template-expressions': 'off',
       '@typescript-eslint/no-unnecessary-condition': 'off',
-      '@typescript-eslint/no-deprecated': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/no-unnecessary-type-assertion': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',

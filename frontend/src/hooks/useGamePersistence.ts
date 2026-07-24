@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import { logger } from '../lib/logger'
 import { STORAGE_KEYS } from '../lib/constants'
 import { shouldSuppressAutoSave } from '../lib/autoSaveGuard'
@@ -34,7 +34,7 @@ export interface UseGamePersistenceOptions {
    * the current puzzle. Auto-save is suppressed until this flips true, so the
    * first restore cannot be clobbered by a debounced write over partial state.
    */
-  hasRestoredSavedState: MutableRefObject<boolean>
+  hasRestoredSavedState: RefObject<boolean>
 }
 
 export interface UseGamePersistenceReturn {
@@ -49,7 +49,7 @@ export interface UseGamePersistenceReturn {
    * the completion handler to detect a "completed then reopened" scenario. The
    * restore orchestration in Game.tsx writes this; the hook owns the storage.
    */
-  restoredAsCompleteRef: MutableRefObject<boolean>
+  restoredAsCompleteRef: RefObject<boolean>
 }
 
 // Length of value when it is an array, otherwise undefined. Lets the corruption

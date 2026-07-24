@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { commitCellAction } from '../lib/commitCellAction'
 import { buildFreshTrackingState } from '../lib/gameStateReset'
 import { candidatesToArrays, countCandidates } from '../lib/candidatesUtils'
@@ -50,7 +50,7 @@ export interface UseGameActionsOptions {
   hintsUsed: number
   techniqueHintsUsed: number
   autoFillUsed: boolean
-  autoSolveUsedRef: MutableRefObject<boolean>
+  autoSolveUsedRef: RefObject<boolean>
   colorTheme: string
   mode: 'light' | 'dark'
 

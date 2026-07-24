@@ -17,6 +17,11 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     textarea.style.opacity = '0'
     document.body.appendChild(textarea)
     textarea.select()
+    // execCommand('copy') is the only clipboard fallback for insecure contexts
+    // and older browsers where navigator.clipboard is unavailable; the primary
+    // path above uses navigator.clipboard.writeText, and no modern API covers
+    // this fallback case.
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     document.execCommand('copy')
     document.body.removeChild(textarea)
     return true

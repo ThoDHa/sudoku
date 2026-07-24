@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 
 export interface UseDeselectOnOutsideClickOptions {
-  selectedCellRef: MutableRefObject<number | null>
-  selectedCellsRef: MutableRefObject<Set<number>>
+  selectedCellRef: RefObject<number | null>
+  selectedCellsRef: RefObject<Set<number>>
   deselectCell: () => void
   clearMoveHighlight: () => void
   setEraseMode: (value: boolean) => void

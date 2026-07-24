@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { candidatesToArrays, arraysToCandidates } from '../lib/candidatesUtils'
 import {
   TOAST_DURATION_ERROR,
@@ -19,8 +19,8 @@ export interface AutoSolveValidationMessage {
 }
 
 export interface UseAutoSolveAdaptersOptions {
-  gameRef: MutableRefObject<UseSudokuGameReturn | null>
-  initialBoardRef: MutableRefObject<number[]>
+  gameRef: RefObject<UseSudokuGameReturn | null>
+  initialBoardRef: RefObject<number[]>
 
   // Highlight-state callbacks.
   setMoveHighlight: (move: MoveHighlight, index: number) => void

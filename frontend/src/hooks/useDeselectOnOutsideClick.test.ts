@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useRef } from 'react'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import { useDeselectOnOutsideClick } from './useDeselectOnOutsideClick'
 
 interface SetupInput {
@@ -43,8 +43,8 @@ function setupHook(input: SetupInput) {
       const selectedCellRef = useRef<number | null>(selectedCell)
       const selectedCellsRef = useRef<Set<number>>(selectedCells)
       useDeselectOnOutsideClick({
-        selectedCellRef: selectedCellRef as MutableRefObject<number | null>,
-        selectedCellsRef: selectedCellsRef as MutableRefObject<Set<number>>,
+        selectedCellRef: selectedCellRef as RefObject<number | null>,
+        selectedCellsRef: selectedCellsRef as RefObject<Set<number>>,
         deselectCell,
         clearMoveHighlight,
         setEraseMode,

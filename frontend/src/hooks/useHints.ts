@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import { findNextMove } from '../lib/solver-service'
 import { createHintRequestGate, type HintRequestGate } from '../lib/hintRequestGate'
 import { shouldIncrementHintCounter } from '../lib/hintLifecycle'
@@ -20,7 +20,7 @@ export interface HintValidationMessage {
 
 export interface UseHintsOptions {
   game: UseSudokuGameReturn
-  gameRef: MutableRefObject<UseSudokuGameReturn | null>
+  gameRef: RefObject<UseSudokuGameReturn | null>
   initialBoard: number[]
   clearAllAndDeselect: () => void
   setMoveHighlight: (move: MoveHighlight, index: number) => void
