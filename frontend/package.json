@@ -62,6 +62,7 @@
     "allure-commandline": "^2.36.0",
     "allure-playwright": "^3.4.3",
     "allure-vitest": "^3.4.3",
+    "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsx-a11y": "^6.10.2",
