@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/ThemeContext'
 import { useClickOutside } from '../hooks/useClickOutside'
@@ -31,7 +31,7 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [modeDropdownOpen, setModeDropdownOpen] = useState(false)
   const modeDropdownRef = useRef<HTMLDivElement>(null)
-  const [homepageModeState, setHomepageModeState] = useState<HomepageMode>('daily')
+  const [homepageModeState, setHomepageModeState] = useState<HomepageMode>(getHomepageMode)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const {
     colorTheme,
@@ -52,10 +52,6 @@ export default function Header() {
   })
 
   // Load homepage preference on mount
-  useEffect(() => {
-    setHomepageModeState(getHomepageMode())
-  }, [])
-
   // Hide header on game pages - they have their own UI
   // Game routes: /c/* for custom, or /:seed (anything not a known route)
   const knownRoutes = ['/', '/r', '/techniques', '/technique', '/custom', '/leaderboard', '/about']
@@ -65,10 +61,12 @@ export default function Header() {
   const isGamePage =
     location.pathname.startsWith('/c/') || (!isKnownRoute && location.pathname !== '/')
 
-  // Close menu on route change
-  useEffect(() => {
+  // Close menu on route change (adjusting state during render avoids the effect)
+  const [prevPathname, setPrevPathname] = useState(location.pathname)
+  if (prevPathname !== location.pathname) {
+    setPrevPathname(location.pathname)
     setMenuOpen(false)
-  }, [location.pathname])
+  }
 
   // Bug report handlers - split into copy and report
   const handleCopyDebugInfo = useCallback(async () => {

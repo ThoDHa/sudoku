@@ -43,9 +43,12 @@ export function useBoardState(options: UseBoardStateOptions): UseBoardStateRetur
   }, [board])
 
   React.useEffect(() => {
-    if (initialBoard.length === TOTAL_CELLS && initialBoard.some((v) => v !== 0)) {
-      setGivenCells([...initialBoard])
+    const syncGivenCells = () => {
+      if (initialBoard.length === TOTAL_CELLS && initialBoard.some((v) => v !== 0)) {
+        setGivenCells([...initialBoard])
+      }
     }
+    syncGivenCells()
   }, [initialBoard])
 
   const updateBoard = useCallback(

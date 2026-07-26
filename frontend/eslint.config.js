@@ -60,23 +60,13 @@ export default tseslint.config(
       ...reactHooks.configs['recommended-latest'].rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
 
-      // FE-2-2b staged react-hooks compiler rules. The recommended-latest
-      // config is enabled, but these three compiler-era rules surface findings
-      // that need careful, behavior-risky effect/ref restructuring (not a
-      // rush job). Tracked for follow-up:
-      // - set-state-in-effect (19): setState in effects — often a legitimate
-      //   sync pattern; the React Compiler auto-memoizes many of these.
-      // - refs (11): ref access during render — genuine anti-pattern, needs
-      //   per-site fixes.
-      // - immutability (3): values the compiler treats as immutable.
-      'react-hooks/set-state-in-effect': 'off',
-      'react-hooks/refs': 'off',
-      'react-hooks/immutability': 'off',
-      // preserve-manual-memoization: fires when the compiler cannot preserve
-      // existing useMemo/useCallback/memo. The codebase has 224 manual-memo
-      // sites; removing the ones the compiler bails on is FE-1-2's job, not
-      // FE-2-2b's config-enable.
-      'react-hooks/preserve-manual-memoization': 'off',
+      // react-hooks compiler-era rules (FE-2-2b). All four are now enforced
+      // at 'error' after per-site effect/ref restructuring eliminated every
+      // finding. See FE-2 Work Log for the detailed fix patterns applied.
+      'react-hooks/set-state-in-effect': 'error',
+      'react-hooks/refs': 'error',
+      'react-hooks/immutability': 'error',
+      'react-hooks/preserve-manual-memoization': 'error',
 
       // TypeScript rules - strict but practical
       '@typescript-eslint/no-unused-vars': [

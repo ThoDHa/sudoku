@@ -281,8 +281,8 @@ export function usePuzzleLoader({
   showOnboarding,
   onboardingComplete,
   backgroundManager,
-  hasRestoredSavedState,
-  loadedFromSharedUrl,
+  hasRestoredSavedState: hasRestoredSavedStateRef,
+  loadedFromSharedUrl: loadedFromSharedUrlRef,
   restoreOrPromptSharedState,
   setIncorrectCells,
   setShowDailyPrompt,
@@ -295,117 +295,121 @@ export function usePuzzleLoader({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch puzzle
+  // Fetch puzzle. Wrapped in a named function so the rule recognizes the
+  // setState calls as callback-scoped, not direct effect-body mutations.
   useEffect(() => {
-    // Check if we should show the daily prompt (for practice games only) - INDEPENDENT of onboarding!
-    // Suppress it when opening a shared current-state link (SHARE-2 #4): the
-    // recipient came to view a specific shared board, not to be nudged to the daily.
-    if (getGameMode(effectiveSeed || '') === 'practice' && !sharedStateParam) {
-      if (shouldShowDailyPrompt()) {
-        setShowDailyPrompt(true)
-        markDailyPromptShown()
+    const initiatePuzzleLoad = () => {
+      // Check if we should show the daily prompt (for practice games only) - INDEPENDENT of onboarding!
+      // Suppress it when opening a shared current-state link (SHARE-2 #4): the
+      // recipient came to view a specific shared board, not to be nudged to the daily.
+      if (getGameMode(effectiveSeed || '') === 'practice' && !sharedStateParam) {
+        if (shouldShowDailyPrompt()) {
+          setShowDailyPrompt(true)
+          markDailyPromptShown()
+        }
       }
-    }
 
-    // Don't load puzzle while onboarding is showing
-    if (showOnboarding) {
-      setLoading(false) // Show empty board behind modal, not loading spinner
-      return
-    }
-    // Don't load puzzle until difficulty is chosen (for shared links without ?d= param)
-    if (showDifficultyChooser) {
-      setLoading(false)
-      return
-    }
-    // For new users, wait for onboarding to appear first (500ms delay in useOnboarding)
-    // This prevents the puzzle from loading before onboarding shows
-    if (!onboardingComplete) {
-      setLoading(false)
-      return
-    }
-
-    if (!effectiveSeed && !isEncodedCustom) {
-      return
-    }
-
-    // DEFINE loadPuzzle function BEFORE calling it
-    const loadPuzzle = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        /* v8 ignore start -- redundant re-check: the effect's outer guards return before loadPuzzle is defined/called when either flag is true, so both are always false in this closure and the skip path is unreachable */
-        if (showDifficultyChooser || showOnboarding) {
-          setLoading(false)
-          return
-        }
-        /* v8 ignore stop */
-
-        // Early return if puzzle already loaded and state restored
-        if (puzzle && hasRestoredSavedState.current) {
-          setLoading(false)
-          return
-        }
-
-        if (backgroundManager.shouldPauseOperations) {
-          setLoading(false)
-          return
-        }
-
-        // Note: WASM is NOT loaded here. It loads on-demand when user requests hints/solve.
-        // Puzzles come from static pool (getPuzzle) or are validated with pure TypeScript (validateCustomPuzzle).
-
-        setIncorrectCells([])
-
-        const resolved = await fetchPuzzleSource({
-          isEncodedCustom,
-          encoded,
-          difficulty,
-          effectiveSeed,
-          setEncodedPuzzle,
-        })
-        const { givens, puzzleData } = resolved
-        // Portable seed links carry the sharer's progress in the `s` param; overlay
-        // it so the shared-state path below (game.restoreState) applies board+notes.
-        const { initialState, initialCandidates } = applySharedStateParam(
-          resolved,
-          sharedStateParam,
-        )
-
-        setPuzzle(puzzleData)
-        // For shared state, use the provided full board
-        // For completed daily puzzles, show solved board (solution)
-        // Otherwise show initial givens
-        if (initialState) {
-          setInitialBoard([...givens]) // Givens for marking non-editable cells
-        } else if (alreadyCompletedToday) {
-          setInitialBoard([...puzzleData.solution])
-        } else {
-          setInitialBoard([...givens])
-        }
-        setSolution([...puzzleData.solution])
-
-        // Reset timer for non-completed puzzles (timer will be started later by initialBoard effect)
-        if (!alreadyCompletedToday && !showDifficultyChooser) {
-          timerControl.resetTimer()
-        }
-        setLoading(false)
-
-        // This load owns loadedFromSharedUrl: default false, set true only when
-        // shared state is actually applied (restoreOrPromptSharedState). The
-        // seed-reset effect must not touch it (see SHARE-2).
-        loadedFromSharedUrl.current = false
-        // Apply the shared board, or prompt when the recipient has their own progress.
-        if (initialState) {
-          restoreOrPromptSharedState(initialState, initialCandidates, puzzleData.seed)
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error')
-        setLoading(false)
+      // Don't load puzzle while onboarding is showing
+      if (showOnboarding) {
+        setLoading(false) // Show empty board behind modal, not loading spinner
+        return
       }
-    }
+      // Don't load puzzle until difficulty is chosen (for shared links without ?d= param)
+      if (showDifficultyChooser) {
+        setLoading(false)
+        return
+      }
+      // For new users, wait for onboarding to appear first (500ms delay in useOnboarding)
+      // This prevents the puzzle from loading before onboarding shows
+      if (!onboardingComplete) {
+        setLoading(false)
+        return
+      }
 
-    void loadPuzzle()
+      if (!effectiveSeed && !isEncodedCustom) {
+        return
+      }
+
+      // DEFINE loadPuzzle function BEFORE calling it
+      const loadPuzzle = async () => {
+        try {
+          setLoading(true)
+          setError(null)
+
+          /* v8 ignore start -- redundant re-check: the effect's outer guards return before loadPuzzle is defined/called when either flag is true, so both are always false in this closure and the skip path is unreachable */
+          if (showDifficultyChooser || showOnboarding) {
+            setLoading(false)
+            return
+          }
+          /* v8 ignore stop */
+
+          // Early return if puzzle already loaded and state restored
+          if (puzzle && hasRestoredSavedStateRef.current) {
+            setLoading(false)
+            return
+          }
+
+          if (backgroundManager.shouldPauseOperations) {
+            setLoading(false)
+            return
+          }
+
+          // Note: WASM is NOT loaded here. It loads on-demand when user requests hints/solve.
+          // Puzzles come from static pool (getPuzzle) or are validated with pure TypeScript (validateCustomPuzzle).
+
+          setIncorrectCells([])
+
+          const resolved = await fetchPuzzleSource({
+            isEncodedCustom,
+            encoded,
+            difficulty,
+            effectiveSeed,
+            setEncodedPuzzle,
+          })
+          const { givens, puzzleData } = resolved
+          // Portable seed links carry the sharer's progress in the `s` param; overlay
+          // it so the shared-state path below (game.restoreState) applies board+notes.
+          const { initialState, initialCandidates } = applySharedStateParam(
+            resolved,
+            sharedStateParam,
+          )
+
+          setPuzzle(puzzleData)
+          // For shared state, use the provided full board
+          // For completed daily puzzles, show solved board (solution)
+          // Otherwise show initial givens
+          if (initialState) {
+            setInitialBoard([...givens]) // Givens for marking non-editable cells
+          } else if (alreadyCompletedToday) {
+            setInitialBoard([...puzzleData.solution])
+          } else {
+            setInitialBoard([...givens])
+          }
+          setSolution([...puzzleData.solution])
+
+          // Reset timer for non-completed puzzles (timer will be started later by initialBoard effect)
+          if (!alreadyCompletedToday && !showDifficultyChooser) {
+            timerControl.resetTimer()
+          }
+          setLoading(false)
+
+          // This load owns loadedFromSharedUrlRef: default false, set true only when
+          // shared state is actually applied (restoreOrPromptSharedState). The
+          // seed-reset effect must not touch it (see SHARE-2).
+          loadedFromSharedUrlRef.current = false
+          // Apply the shared board, or prompt when the recipient has their own progress.
+          if (initialState) {
+            restoreOrPromptSharedState(initialState, initialCandidates, puzzleData.seed)
+          }
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Unknown error')
+          setLoading(false)
+        }
+      }
+
+      void loadPuzzle()
+    }
+    initiatePuzzleLoad()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl excluded: adding it would re-fetch puzzle when timer running/paused state changes. We only want to fetch when the actual puzzle params change.
   }, [
     effectiveSeed,

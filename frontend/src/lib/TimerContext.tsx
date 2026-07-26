@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useRef, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
 import { useGameTimer } from '../hooks/useGameTimer'
 import { useBackgroundManagerContext } from './BackgroundManagerContext'
 
@@ -60,44 +60,37 @@ export function TimerProvider({
   })
 
   // Keep elapsedMs in a ref for getElapsedMs() - allows reading without subscribing
+  // (avoids re-rendering 81 cells every second). Updated post-commit so the ref
+  // stays current for event-handler reads; render-time callers see the prior
+  // tick's value, which is acceptable for the display fallback at Game.tsx.
   const elapsedMsRef = useRef(timer.elapsedMs)
-  elapsedMsRef.current = timer.elapsedMs
+  useEffect(() => {
+    elapsedMsRef.current = timer.elapsedMs
+  })
 
-  // Stable callback to get elapsed time without causing re-renders
-  const getElapsedMs = useCallback(() => elapsedMsRef.current, [])
+  // Stable callback to get elapsed time without causing re-renders.
+  // React Compiler auto-memos based on elapsedMsRef (stable ref).
+  const getElapsedMs = () => elapsedMsRef.current
 
   // Split into control context (stable except for isRunning/isPausedDueToVisibility)
-  const controlValue = useMemo<TimerControlContextType>(
-    () => ({
-      isRunning: timer.isRunning,
-      isPausedDueToVisibility: timer.isPausedDueToVisibility,
-      startTimer: timer.startTimer,
-      pauseTimer: timer.pauseTimer,
-      resetTimer: timer.resetTimer,
-      setElapsedMs: timer.setElapsedMs,
-      getElapsedMs,
-      formatTime: timer.formatTime,
-    }),
-    [
-      timer.isRunning,
-      timer.isPausedDueToVisibility,
-      timer.startTimer,
-      timer.pauseTimer,
-      timer.resetTimer,
-      timer.setElapsedMs,
-      getElapsedMs,
-      timer.formatTime,
-    ],
-  )
+  // and display context (changes every second). React Compiler auto-memos both
+  // objects based on their property values, preserving context identity stability.
+  const controlValue: TimerControlContextType = {
+    isRunning: timer.isRunning,
+    isPausedDueToVisibility: timer.isPausedDueToVisibility,
+    startTimer: timer.startTimer,
+    pauseTimer: timer.pauseTimer,
+    resetTimer: timer.resetTimer,
+    setElapsedMs: timer.setElapsedMs,
+    getElapsedMs,
+    formatTime: timer.formatTime,
+  }
 
   // Display context - changes every second (only TimerDisplay subscribes)
-  const displayValue = useMemo<TimerDisplayContextType>(
-    () => ({
-      elapsedMs: timer.elapsedMs,
-      formatTime: timer.formatTime,
-    }),
-    [timer.elapsedMs, timer.formatTime],
-  )
+  const displayValue: TimerDisplayContextType = {
+    elapsedMs: timer.elapsedMs,
+    formatTime: timer.formatTime,
+  }
 
   return (
     <TimerControlContext.Provider value={controlValue}>

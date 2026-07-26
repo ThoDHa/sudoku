@@ -289,7 +289,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
   }, [autoSolve, clearAllAndDeselect])
 
   // Check & Fix handler - compares current board vs solution, removes mismatches, continues solving
-  const handleCheckAndFix = useCallback(async () => {
+  const handleCheckAndFix = async () => {
     logger.debug('Check & Fix invoked')
     if (!solution || solution.length !== 81) {
       logger.error('Cannot check and fix: solution not available')
@@ -331,7 +331,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       logger.error('Check & Fix failed:', error)
       handleAutoSolveError('Failed to check and fix entries')
     }
-  }, [solution, game.board, game.candidates, puzzle?.givens, handleAutoSolveError, autoSolve])
+  }
 
   // Bug report handlers - split into copy and report
   const handleCopyDebugInfo = useCallback(async () => {

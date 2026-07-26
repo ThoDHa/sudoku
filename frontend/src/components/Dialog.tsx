@@ -51,10 +51,16 @@ export function useDialog({
 }: UseDialogOptions): DialogPanelProps {
   const panelRef = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
   const closeOnEscapeRef = useRef(closeOnEscape)
-  closeOnEscapeRef.current = closeOnEscape
   const previouslyFocused = useRef<HTMLElement | null>(null)
+
+  // Sync latest callbacks into refs after commit so the keyboard-handler
+  // effect (which intentionally excludes them from deps to avoid re-arming
+  // the listener) always reads current values at event time.
+  useEffect(() => {
+    onCloseRef.current = onClose
+    closeOnEscapeRef.current = closeOnEscape
+  })
 
   useEffect(() => {
     const panel = panelRef.current

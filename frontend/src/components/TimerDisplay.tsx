@@ -14,7 +14,7 @@ import { useTimerDisplay, useTimerControl } from '../lib/TimerContext'
  */
 function TimerDisplayInner({ hideTimer }: { hideTimer: boolean }) {
   // This hook triggers re-render every second
-  const { formatTime } = useTimerDisplay()
+  const { elapsedMs, formatTime } = useTimerDisplay()
 
   // This hook only changes on pause/resume, not every tick
   const { isPausedDueToVisibility } = useTimerControl()
@@ -46,7 +46,7 @@ function TimerDisplayInner({ hideTimer }: { hideTimer: boolean }) {
           />
         </svg>
       )}
-      <span className="font-mono text-sm">{formatTime()}</span>
+      <span className="font-mono text-sm">{formatTime(elapsedMs)}</span>
       {isPausedDueToVisibility && <span className="text-xs font-medium">PAUSED</span>}
     </div>
   )
@@ -60,9 +60,9 @@ export const TimerDisplay = memo(TimerDisplayInner)
  * Also isolated to prevent parent re-renders.
  */
 function PauseOverlayTimerInner() {
-  const { formatTime } = useTimerDisplay()
+  const { elapsedMs, formatTime } = useTimerDisplay()
 
-  return <div className="mt-4 text-2xl font-mono text-accent">{formatTime()}</div>
+  return <div className="mt-4 text-2xl font-mono text-accent">{formatTime(elapsedMs)}</div>
 }
 
 export const PauseOverlayTimer = memo(PauseOverlayTimerInner)

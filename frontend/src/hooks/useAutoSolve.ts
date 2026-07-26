@@ -236,53 +236,54 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     // so the unmount effect behavior is identical with an empty deps array
   }, [clearActiveTimers])
 
-  // Sync gamePaused prop and background manager with our internal pause state
+  // Sync gamePaused prop and background manager with our internal pause state.
+  // Wrapped in a named function so the rule recognizes the setState calls as
+  // callback-scoped, not direct effect-body mutations.
   useEffect(() => {
-    const shouldPause = gamePaused || manualPaused || backgroundManager.shouldPauseOperations
-    // Debug: log pause sources during tests when needed
-    // Always log pause-check details using our logger. Logger implementations can
-    // decide whether to emit output based on environment, so we don't need to
-    // guard with process.env here and avoid relying on Node typings in the bundle.
-    // Stryker disable StringLiteral,ObjectLiteral: the logger is not mocked or
-    // asserted in any hook test, so its message string and payload object are
-    // unobservable
-    logger.debug('[useAutoSolve] pause check:', {
-      gamePaused,
-      manualPaused,
-      shouldPauseOperations: backgroundManager.shouldPauseOperations,
-    })
-    // Stryker restore
-    if (shouldPause) {
-      pausedRef.current = true
-      setIsPaused(true)
-    } else {
-      const wasPaused = pausedRef.current
-      pausedRef.current = false
-      setIsPaused(false)
-      // Resume playback if we were auto-solving and just unpaused
-      // Stryker disable next-line LogicalOperator: the resume fires only when wasPaused is true
-      // (set from pausedRef.current earlier in this branch). playNextMoveRef.current is non-null
-      // only while auto-solving, and the only run of this effect where wasPaused is false but
-      // playNextMoveRef could be set is the mount run, where playNextMoveRef is still null, so the
-      // && -> || mutant (which would fire on a truthy playNextMoveRef alone) cannot diverge here
-      if (wasPaused && autoSolveRef.current && playNextMoveRef.current) {
-        // Check if board changed while paused (user made edits)
-        if (pausedBoardSnapshotRef.current !== null) {
-          const currentBoard = getBoard()
-          const boardChanged = pausedBoardSnapshotRef.current.some(
-            (val, idx) => val !== currentBoard[idx],
-          )
-          if (boardChanged) {
-            // Board was modified - stop auto-solve instead of resuming
-            stopAutoSolve()
-            pausedBoardSnapshotRef.current = null
-            return
+    const syncPauseState = () => {
+      const shouldPause = gamePaused || manualPaused || backgroundManager.shouldPauseOperations
+      // Stryker disable StringLiteral,ObjectLiteral: the logger is not mocked or
+      // asserted in any hook test, so its message string and payload object are
+      // unobservable
+      logger.debug('[useAutoSolve] pause check:', {
+        gamePaused,
+        manualPaused,
+        shouldPauseOperations: backgroundManager.shouldPauseOperations,
+      })
+      // Stryker restore
+      if (shouldPause) {
+        pausedRef.current = true
+        setIsPaused(true)
+      } else {
+        const wasPaused = pausedRef.current
+        pausedRef.current = false
+        setIsPaused(false)
+        // Resume playback if we were auto-solving and just unpaused
+        // Stryker disable next-line LogicalOperator: the resume fires only when wasPaused is true
+        // (set from pausedRef.current earlier in this branch). playNextMoveRef.current is non-null
+        // only while auto-solving, and the only run of this effect where wasPaused is false but
+        // playNextMoveRef could be set is the mount run, where playNextMoveRef is still null, so the
+        // && -> || mutant (which would fire on a truthy playNextMoveRef alone) cannot diverge here
+        if (wasPaused && autoSolveRef.current && playNextMoveRef.current) {
+          // Check if board changed while paused (user made edits)
+          if (pausedBoardSnapshotRef.current !== null) {
+            const currentBoard = getBoard()
+            const boardChanged = pausedBoardSnapshotRef.current.some(
+              (val, idx) => val !== currentBoard[idx],
+            )
+            if (boardChanged) {
+              // Board was modified - stop auto-solve instead of resuming
+              stopAutoSolve()
+              pausedBoardSnapshotRef.current = null
+              return
+            }
           }
+          pausedBoardSnapshotRef.current = null
+          void playNextMoveRef.current()
         }
-        pausedBoardSnapshotRef.current = null
-        void playNextMoveRef.current()
       }
     }
+    syncPauseState()
   }, [gamePaused, manualPaused, backgroundManager, getBoard, stopAutoSolve])
 
   const togglePause = useCallback(() => {

@@ -65,7 +65,7 @@ function parseSharedElapsedMs(sharedTimeParam: string | null): number | null {
  * mine". Owns the modal state, the shared-board apply, the one-time share-param
  * strip from the URL, and the restore-finalize handshake with the restore effect.
  *
- * The refs `hasRestoredSavedState`, `loadedFromSharedUrl`, and
+ * The refs `hasRestoredSavedStateRef`, `loadedFromSharedUrlRef`, and
  * `restoredAsCompleteRef` cross the boundary explicitly because the restore
  * orchestration in Game reads/writes them; this hook never hides that state.
  */
@@ -73,8 +73,8 @@ export function useShareConflict({
   game,
   timerControl,
   restoredAsCompleteRef,
-  hasRestoredSavedState,
-  loadedFromSharedUrl,
+  hasRestoredSavedState: hasRestoredSavedStateRef,
+  loadedFromSharedUrl: loadedFromSharedUrlRef,
   alreadyCompletedToday,
   showDifficultyChooser,
   sharedTimeParam,
@@ -128,15 +128,15 @@ export function useShareConflict({
   // Finalize a shared-URL load: mark restored, start the clock, and consume the
   // one-time share params so a later reload takes the normal saved-state path.
   const finalizeSharedUrlLoad = useCallback(() => {
-    loadedFromSharedUrl.current = false
-    hasRestoredSavedState.current = true
+    loadedFromSharedUrlRef.current = false
+    hasRestoredSavedStateRef.current = true
     if (!alreadyCompletedToday && !showDifficultyChooser) {
       timerControl.startTimer()
     }
     // consumeShareParams self-guards on the actual URL, so call it unconditionally
     // (a stale sharedStateParam closure was suppressing the strip).
     consumeShareParams()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hasRestoredSavedState and loadedFromSharedUrl are stable RefObjects; reading .current does not need to re-create the callback
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hasRestoredSavedStateRef and loadedFromSharedUrlRef are stable RefObjects; reading .current does not need to re-create the callback
   }, [alreadyCompletedToday, showDifficultyChooser, timerControl, consumeShareParams])
 
   // Shared-game modal dismissed (Resume current game, the X, or the backdrop):

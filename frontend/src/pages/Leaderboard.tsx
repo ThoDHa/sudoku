@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getBestScoresPure, getBestScoresAssisted, type Score, formatTime } from '../lib/scores'
 
@@ -31,13 +31,8 @@ const difficultyColors: Record<string, { bg: string; border: string; text: strin
 }
 
 export default function Leaderboard() {
-  const [bestScoresPure, setBestScoresPure] = useState<Record<string, Score>>({})
-  const [bestScoresAssisted, setBestScoresAssisted] = useState<Record<string, Score>>({})
-
-  useEffect(() => {
-    setBestScoresPure(getBestScoresPure())
-    setBestScoresAssisted(getBestScoresAssisted())
-  }, [])
+  const [bestScoresPure] = useState<Record<string, Score>>(() => getBestScoresPure())
+  const [bestScoresAssisted] = useState<Record<string, Score>>(() => getBestScoresAssisted())
 
   const difficulties = ['easy', 'medium', 'hard', 'extreme', 'impossible']
 

@@ -115,12 +115,11 @@ export function useBoardInteraction({
   // Tracks the last cell the pointer entered to avoid redundant handleDragEnter calls.
   const lastEnteredCellRef = useRef<number | null>(null)
 
-  // Ref for initialBoard to allow stable callbacks that always read the latest value
-  // This is critical because Cell memoization doesn't compare onKeyDown callbacks,
-  // so we need callbacks that don't go stale when initialBoard changes
-  // IMPORTANT: Update the ref synchronously during render, NOT in useEffect!
-  // useEffect runs after render, causing stale reads when initialBoard changes.
+  // Ref for initialBoard to allow stable callbacks that always read the latest value.
+  // Synchronous render-time write is required: keyboard/interaction callbacks read this
+  // ref before useEffect would run, and a stale read causes cell-selection regressions.
   const initialBoardRef = useRef(initialBoard)
+  // eslint-disable-next-line react-hooks/refs -- synchronous write required for stale-read safety; see comment above
   initialBoardRef.current = initialBoard
 
   // Focus the selected cell when it changes, blur when deselected
@@ -401,16 +400,19 @@ export function useBoardInteraction({
     }
   }, [])
 
-  // Stable ref callback factory - returns the same function for each cell index
+  // Stable ref callback factory - returns the same function for each cell index.
+  // React invokes ref callbacks during commit (not render), but the rule's
+  // static analysis cannot distinguish them from render-time mutations.
   const cellRefCallbacks = useMemo(() => {
     const callbacks: ((el: HTMLDivElement | null) => void)[] = []
     for (let i = 0; i < 81; i++) {
+      // eslint-disable-next-line react-hooks/refs -- ref callback: React calls this during commit, not render
       callbacks.push((el: HTMLDivElement | null) => {
         cellRefs.current[i] = el
       })
     }
     return callbacks
-  }, []) // Empty deps - callbacks never change
+  }, [])
 
   return {
     focusedCell,

@@ -176,12 +176,14 @@ interface AboutModalProps {
 export default function AboutModal({ isOpen, onClose, isOnboarding = false }: AboutModalProps) {
   const [currentStep, setCurrentStep] = useState(0)
 
-  // Reset to first step when modal opens
-  useEffect(() => {
+  // Reset to first step when modal opens (adjusting state during render)
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen)
     if (isOpen) {
       setCurrentStep(0)
     }
-  }, [isOpen])
+  }
 
   const handleNext = () => {
     if (currentStep < ABOUT_SECTIONS.length - 1) {

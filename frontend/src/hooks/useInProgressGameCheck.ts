@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getMostRecentGame, clearInProgressGame, type SavedGameInfo } from '../lib/gameSettings'
 import { STORAGE_KEYS } from '../lib/constants'
 import { logger } from '../lib/logger'
@@ -28,48 +28,19 @@ export function useInProgressGameCheck(
 ): UseInProgressGameCheckReturn {
   const { seed, encoded, sharedStateParam, navigate } = options
 
-  // Track if we've handled initial navigation (to prevent in-progress check after seed changes)
-  const handledInitialNavigationRef = useRef(false)
-  const [showInProgressConfirm, setShowInProgressConfirm] = useState(false)
-  const [existingInProgressGame, setExistingInProgressGame] = useState<SavedGameInfo | null>(null)
-
-  // Check for existing in-progress game when navigating to a different puzzle
-  useEffect(() => {
-    // Skip if user already confirmed navigation (from Homepage or Menu)
-    // Both Homepage and Menu handle their own in-progress confirmations
-    // Also skip if we've already handled initial navigation (to prevent check after seed changes)
-    const skipInProgressCheck = sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
-    if (skipInProgressCheck) {
-      sessionStorage.removeItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
-    }
-    if (skipInProgressCheck || handledInitialNavigationRef.current) {
-      return
-    }
-
-    // A shared-state link (?s=…) carries the sharer's position, and
-    // restoreOrPromptSharedState owns the resume-vs-open-shared choice. The generic
-    // "resume your other game" prompt must not race it (loadPuzzle is async, so this
-    // effect would otherwise fire first and its Resume would navigate away to an
-    // unrelated saved game). Mark navigation handled so it stays skipped after
-    // consumeShareParams strips the s param and this effect re-runs. See SHARE-2.
-    if (sharedStateParam) {
-      handledInitialNavigationRef.current = true
-      return
-    }
-
+  // Compute initial in-progress state lazily (runs once per mount; seed
+  // changes re-mount GameContent via its key). sessionStorage/localStorage
+  // reads in initializers are the React-accepted lazy-init pattern.
+  const [existingInProgressGame, setExistingInProgressGame] = useState<SavedGameInfo | null>(() => {
+    const skip = sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
+    if (skip || sharedStateParam) return null
     const savedGame = getMostRecentGame()
-    // Mark that we've handled initial navigation for this component mount
-    handledInitialNavigationRef.current = true
     logger.debug(
       '[IN-PROGRESS CHECK] Current URL seed:',
       seed,
       'Saved game found:',
       savedGame ? savedGame.seed : 'none',
     )
-    // Show prompt if:
-    // - There's a saved game
-    // - It's for a DIFFERENT seed than what we're trying to load
-    // - It's not complete (progress < 100%)
     if (
       savedGame &&
       savedGame.seed !== seed &&
@@ -82,12 +53,22 @@ export function useInProgressGameCheck(
         'vs current:',
         seed,
       )
-      setExistingInProgressGame(savedGame)
-      setShowInProgressConfirm(true)
-    } else {
-      logger.debug('[IN-PROGRESS CHECK] No modal needed (no existing game or same seed)')
+      return savedGame
     }
-  }, [seed, encoded, sharedStateParam])
+    logger.debug('[IN-PROGRESS CHECK] No modal needed (no existing game or same seed)')
+    return null
+  })
+  const [showInProgressConfirm, setShowInProgressConfirm] = useState(
+    existingInProgressGame !== null,
+  )
+
+  // Mount-only: clean up the one-time skip flag (side effect, no setState)
+  useEffect(() => {
+    const skipInProgressCheck = sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
+    if (skipInProgressCheck) {
+      sessionStorage.removeItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
+    }
+  }, [])
 
   // Handlers for in-progress game confirmation modal
   const onResumeExistingGame = useCallback(() => {

@@ -769,13 +769,15 @@ export default function Menu({
   const [showDailyReminder, setShowDailyReminderState] = useState(getShowDailyReminder)
   const [confirmNewPuzzle, setConfirmNewPuzzle] = useState<string | null>(null)
 
-  // Close submenu when menu closes
-  useEffect(() => {
+  // Close submenu when menu closes (adjusting state during render)
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen)
     if (!isOpen) {
       setNewPuzzleMenuOpen(false)
       setConfirmNewPuzzle(null)
     }
-  }, [isOpen])
+  }
 
   // onClose is an inline fn from callers, so depending on it directly would re-register
   // the listener every parent render and drop it mid keydown dispatch. Ref keeps it stable.

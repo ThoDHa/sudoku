@@ -313,7 +313,9 @@ function GameContent() {
   const timerControl = useTimerControl()
 
   // Keep timerControl ref updated for stable callbacks
-  timerControlRef.current = timerControl
+  useEffect(() => {
+    timerControlRef.current = timerControl
+  })
 
   // restoreOrPromptSharedState is defined later (it needs loadSavedGameState from
   // the persistence hook below), but usePuzzleLoader must run before useSudokuGame
@@ -438,7 +440,9 @@ function GameContent() {
   }, [game.isComplete, handleGameComplete, restoredAsCompleteRef])
 
   // Keep game ref updated for stable callbacks
-  gameRef.current = game
+  useEffect(() => {
+    gameRef.current = game
+  })
 
   // Auto-solve hook - fetches all moves at once and plays them back
   const gamePaused = useMemo(
@@ -464,13 +468,15 @@ function GameContent() {
   })
 
   // Keep autoSolve ref updated for stable callbacks
-  autoSolveRef.current = autoSolve
+  useEffect(() => {
+    autoSolveRef.current = autoSolve
+  })
 
-  // Extended background pause logic - suspend all operations after EXTENDED_PAUSE_DELAY hidden
+  // Extended background pause logic - suspend all operations after EXTENDED_PAUSE_DELAY hidden.
+  // The reset-to-false lives in the hidden-branch cleanup so no setState fires
+  // directly in the effect body.
   useEffect(() => {
     if (!backgroundManager.isHidden) {
-      // Reset extended pause when visible
-      setIsExtendedPaused(false)
       return
     }
 
@@ -487,6 +493,7 @@ function GameContent() {
 
     return () => {
       clearTimeout(timeout)
+      setIsExtendedPaused(false)
     }
   }, [backgroundManager.isHidden, autoSolve, timerControl])
 
@@ -566,8 +573,12 @@ function GameContent() {
 
   // Publish the latest restoreOrPromptSharedState (from useShareConflict) to the
   // ref usePuzzleLoader holds, so its fetch effect (which runs before the share
-  // hook) always invokes the current version.
-  restoreOrPromptSharedStateRef.current = restoreOrPromptSharedState
+  // hook) always invokes the current version. Safe in useEffect because the
+  // fetch effect calls restoreOrPromptSharedState asynchronously (after all
+  // effects have fired, so the ref is already current by then).
+  useEffect(() => {
+    restoreOrPromptSharedStateRef.current = restoreOrPromptSharedState
+  })
 
   // ============================================================
   // GAME ACTIONS (using hooks)
@@ -691,7 +702,9 @@ function GameContent() {
   // Keep handleSubmit ref updated so onComplete can call it. handleSubmit is
   // returned by useGameActions above; the ref is the circular-dep breaker
   // between useSudokuGame's onComplete and handleSubmit itself.
-  handleSubmitRef.current = () => void handleSubmit()
+  useEffect(() => {
+    handleSubmitRef.current = () => void handleSubmit()
+  })
 
   // Share-link actions live in useShareActions; only the two public handlers
   // are consumed by the GameHeader share buttons.
@@ -752,25 +765,32 @@ function GameContent() {
     setGameState,
   ])
 
-  // Clear highlights and toast when auto-solve stops so History shows the summary, not last move
+  // Clear highlights and toast when auto-solve stops so History shows the summary, not last move.
+  // Wrapped in a named function so setState is callback-scoped, not direct effect-body.
   useEffect(() => {
-    if (!autoSolve.isAutoSolving) {
-      clearDigitHighlight()
-      clearMoveHighlight()
-      setValidationMessage(null) // Clear any persisting autosolve toast
+    const clearOnAutoSolveStop = () => {
+      if (!autoSolve.isAutoSolving) {
+        clearDigitHighlight()
+        clearMoveHighlight()
+        setValidationMessage(null)
+      }
     }
+    clearOnAutoSolveStop()
   }, [autoSolve.isAutoSolving, clearDigitHighlight, clearMoveHighlight])
 
   // Track auto-solve steps and errors fixed when auto-solve stops
   useEffect(() => {
-    if (!autoSolve.isAutoSolving && autoSolve.lastCompletedSteps > 0) {
-      setAutoSolveStepsUsed(autoSolve.lastCompletedSteps)
-      // Count fix-error and fix-conflict moves in history (errors fixed during autosolve)
-      const errorsFixed = game.history.filter(
-        (move) => move.action === 'fix-error' || move.action === 'fix-conflict',
-      ).length
-      setAutoSolveErrorsFixed(errorsFixed)
+    const trackResults = () => {
+      if (!autoSolve.isAutoSolving && autoSolve.lastCompletedSteps > 0) {
+        setAutoSolveStepsUsed(autoSolve.lastCompletedSteps)
+        // Count fix-error and fix-conflict moves in history (errors fixed during autosolve)
+        const errorsFixed = game.history.filter(
+          (move) => move.action === 'fix-error' || move.action === 'fix-conflict',
+        ).length
+        setAutoSolveErrorsFixed(errorsFixed)
+      }
     }
+    trackResults()
   }, [autoSolve.isAutoSolving, autoSolve.lastCompletedSteps, game.history])
 
   // Reset restoration flags when puzzle seed changes
@@ -786,46 +806,50 @@ function GameContent() {
     }
   }, [puzzle?.seed])
 
-  // Reset game state when initialBoard changes (new puzzle loaded) and restore saved state if available
+  // Reset game state when initialBoard changes (new puzzle loaded) and restore saved state if available.
+  // Wrapped in a named function so setState is callback-scoped, not direct effect-body.
   useEffect(() => {
-    if (initialBoard.length === 81 && puzzle) {
-      // Set restoration flag early so useSudokuGame doesn't overwrite restored state
-      hasRestoredSavedState.current = true
+    const restoreOrInitState = () => {
+      if (initialBoard.length === 81 && puzzle) {
+        // Set restoration flag early so useSudokuGame doesn't overwrite restored state
+        hasRestoredSavedState.current = true
 
-      // Skip if we already loaded from a shared URL (state is already restored).
-      // Finalizing here also consumes the share params; safe because
-      // hasRestoredSavedState is now set, so the re-triggered loadPuzzle early-returns.
-      if (loadedFromSharedUrl.current) {
-        finalizeSharedUrlLoad()
-        return
-      }
-
-      // Check for saved state for this puzzle
-      const savedState = loadSavedGameState(puzzle.seed)
-
-      if (savedState) {
-        // Restore saved state
-        const restoredCandidates = arraysToCandidates(savedState.candidates)
-        restoredAsCompleteRef.current = isValidSolution(savedState.board)
-        game.restoreState(savedState.board, restoredCandidates, savedState.history)
-        timerControl.setElapsedMs(savedState.elapsedMs)
-        // Start timer (resume from saved time) - only if puzzle is playable
-        if (!alreadyCompletedToday && !showDifficultyChooser) {
-          timerControl.startTimer()
+        // Skip if we already loaded from a shared URL (state is already restored).
+        // Finalizing here also consumes the share params; safe because
+        // hasRestoredSavedState is now set, so the re-triggered loadPuzzle early-returns.
+        if (loadedFromSharedUrl.current) {
+          finalizeSharedUrlLoad()
+          return
         }
-        setAutoFillUsed(savedState.autoFillUsed)
-        const restoredHints = restoreHintCounters(savedState)
-        setHintsUsed(restoredHints.hintsUsed)
-        setTechniqueHintsUsed(restoredHints.techniqueHintsUsed)
-      } else {
-        // No saved state - initialize board from givens
-        game.setBoardState(initialBoard, new Uint16Array(81))
-        // Start timer for new game - only if puzzle is playable
-        if (!alreadyCompletedToday && !showDifficultyChooser) {
-          timerControl.startTimer()
+
+        // Check for saved state for this puzzle
+        const savedState = loadSavedGameState(puzzle.seed)
+
+        if (savedState) {
+          // Restore saved state
+          const restoredCandidates = arraysToCandidates(savedState.candidates)
+          restoredAsCompleteRef.current = isValidSolution(savedState.board)
+          game.restoreState(savedState.board, restoredCandidates, savedState.history)
+          timerControl.setElapsedMs(savedState.elapsedMs)
+          // Start timer (resume from saved time) - only if puzzle is playable
+          if (!alreadyCompletedToday && !showDifficultyChooser) {
+            timerControl.startTimer()
+          }
+          setAutoFillUsed(savedState.autoFillUsed)
+          const restoredHints = restoreHintCounters(savedState)
+          setHintsUsed(restoredHints.hintsUsed)
+          setTechniqueHintsUsed(restoredHints.techniqueHintsUsed)
+        } else {
+          // No saved state - initialize board from givens
+          game.setBoardState(initialBoard, new Uint16Array(81))
+          // Start timer for new game - only if puzzle is playable
+          if (!alreadyCompletedToday && !showDifficultyChooser) {
+            timerControl.startTimer()
+          }
         }
       }
     }
+    restoreOrInitState()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- game.restoreState, resetAllGameState, and timerControl.setElapsedMs are stable callbacks. We intentionally only trigger this when initialBoard or puzzle changes to prevent re-initialization loops.
   }, [initialBoard, puzzle, loadSavedGameState])
 

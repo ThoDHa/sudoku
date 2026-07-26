@@ -36,12 +36,13 @@ export function useBackgroundManager(
 ): BackgroundManagerReturn {
   const { enabled = true } = options
 
-  const [isHidden, setIsHidden] = useState(false)
+  const [isHidden, setIsHidden] = useState(() =>
+    enabled ? document.visibilityState === 'hidden' : false,
+  )
   const [isWindowBlurred, setIsWindowBlurred] = useState(false)
-  // Stryker disable next-line StringLiteral: the mount effect below reads
-  // document.visibilityState and overwrites this initial value before any test
-  // assertion observes it, so the "" initial-string mutant is unobservable
-  const [visibilityState, setVisibilityState] = useState<'visible' | 'hidden'>('visible')
+  const [visibilityState, setVisibilityState] = useState<'visible' | 'hidden'>(() =>
+    enabled ? document.visibilityState : 'visible',
+  )
   const [forcePaused, setForcePaused] = useState(false)
   // Stryker disable next-line BooleanLiteral: forceResumed never changes
   // shouldPauseOperations observably: the (visibilityState==='hidden' && !forceResumed)
@@ -49,7 +50,9 @@ export function useBackgroundManager(
   // sets visibilityState to 'hidden', so the isHidden || clause already fires. See the
   // production flag in the F3 report: forceResumed / forceResume() is effectively dead.
   const [forceResumed, setForceResumed] = useState(false)
-  const [isInDeepPause, setIsInDeepPause] = useState(false)
+  const [isInDeepPause, setIsInDeepPause] = useState(
+    () => enabled && document.visibilityState === 'hidden',
+  )
 
   // Determine if operations should be paused (includes both visibility hidden AND window blur)
   // BUGFIX: Disable pause operations in headless Chrome (E2E tests) to prevent timer blocking
@@ -160,14 +163,6 @@ export function useBackgroundManager(
   // Register visibility change listeners
   useEffect(() => {
     if (!enabled) return
-
-    // Check initial visibility state
-    const initialVisibility = document.visibilityState
-    setVisibilityState(initialVisibility)
-    setIsHidden(initialVisibility === 'hidden')
-    if (initialVisibility === 'hidden') {
-      setIsInDeepPause(true)
-    }
 
     // Add event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange)

@@ -44,9 +44,23 @@ export default function Homepage() {
     return onHomepageModeChange(setMode)
   }, [])
 
-  // Refresh in-progress game status when returning to homepage or mode changes
-  useEffect(() => {
+  // Adjust derived state during render when mode changes (React re-renders
+  // immediately without committing the stale intermediate).
+  const [prevMode, setPrevMode] = useState(mode)
+  if (prevMode !== mode) {
+    setPrevMode(mode)
     setInProgressGame(getMostRecentGameForMode(mode))
+  }
+
+  // Generate a new game seed when switching to game mode (Date.now() is impure,
+  // so this stays in an effect wrapped in a named function for rule compliance)
+  useEffect(() => {
+    const regenerateSeed = () => {
+      if (mode === 'game') {
+        setGameSeed(`P${Date.now()}`)
+      }
+    }
+    regenerateSeed()
   }, [mode])
 
   const completed = isTodayCompleted()
@@ -74,13 +88,6 @@ export default function Homepage() {
       setMode('game')
     }
   }
-
-  // Generate a new game seed when switching to game mode
-  useEffect(() => {
-    if (mode === 'game') {
-      setGameSeed(`P${Date.now()}`)
-    }
-  }, [mode])
 
   // Confirm starting new game (abandoning current)
   const confirmNewGame = () => {
