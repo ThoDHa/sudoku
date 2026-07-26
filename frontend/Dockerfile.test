@@ -6,7 +6,7 @@
 # proposes digest bumps under review. Matches frontend/Dockerfile's build stage.
 FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd
 WORKDIR /app
-COPY package*.json ./
+COPY package*.json .npmrc ./
 RUN npm ci
 COPY . .
 # Make write targets world-writable so the container can run as an arbitrary

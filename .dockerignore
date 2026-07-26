@@ -10,6 +10,7 @@ frontend/dist/
 *.dylib
 
 # Test files
+**/*_test.go
 *_test.go
 *.test
 coverage.out

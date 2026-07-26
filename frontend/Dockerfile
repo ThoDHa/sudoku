@@ -29,7 +29,7 @@ COPY --from=wasm-builder /go-app/sudoku.wasm ./public/sudoku.wasm
 COPY --from=wasm-builder /go-app/wasm_exec.js ./public/wasm_exec.js
 
 # Copy frontend files
-COPY frontend/package*.json ./
+COPY frontend/package*.json frontend/.npmrc ./
 RUN npm ci
 
 COPY frontend/ .
