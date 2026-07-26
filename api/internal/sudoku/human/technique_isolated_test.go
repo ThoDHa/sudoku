@@ -355,7 +355,7 @@ func TestTechniqueIsolated_Skyscraper(t *testing.T) {
 }
 
 func TestTechniqueIsolated_XChain(t *testing.T) {
-	runIsolatedTechniqueTest(t, "x-chain")
+	runEarlyStopWithDisabledTechniques(t, "x-chain", techniquetest.TechniqueIsolationConfig["x-chain"])
 }
 
 func TestTechniqueIsolated_XYChain(t *testing.T) {

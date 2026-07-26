@@ -14,6 +14,8 @@ import (
 
 	"sudoku-api/internal/puzzles"
 	"sudoku-api/internal/sudoku/human"
+	"sudoku-api/internal/sudoku/human/techniquetest"
+	"sudoku-api/pkg/constants"
 )
 
 // PracticePuzzle represents a single practice puzzle entry
@@ -114,6 +116,72 @@ func collectTechniqueMap(results <-chan analyzeResult) map[string][]PracticePuzz
 	return techniqueMap
 }
 
+// filterByNecessity drops practice-puzzle entries whose technique is not
+// genuinely required to solve the puzzle. The detect pass emits a technique
+// whenever it fires during a natural full-strength solve. Rare or advanced
+// techniques are often preempted by more common ones along that natural path,
+// so a puzzle can register as detected even though another solve path never
+// needs the target technique.
+//
+// For slugs listed in techniquetest.TechniqueIsolationConfig the filter
+// re-solves each candidate with the competing techniques disabled (the same
+// isolation semantics runEarlyStopWithDisabledTechniques uses in the test
+// suite) and keeps the entry only when the target technique still fires.
+// Slugs outside the isolation map are returned untouched: the test suite
+// verifies those by natural detection, so the detect pass already agrees.
+func filterByNecessity(loader *puzzles.Loader, techniqueMap map[string][]PracticePuzzle) {
+	isolated := 0
+	dropped := 0
+	for slug, entries := range techniqueMap {
+		disabled, needsIsolation := techniquetest.TechniqueIsolationConfig[slug]
+		if !needsIsolation {
+			continue
+		}
+		isolated++
+		kept := make([]PracticePuzzle, 0, len(entries))
+		for _, entry := range entries {
+			if techniqueNecessary(loader, entry, slug, disabled) {
+				kept = append(kept, entry)
+			}
+		}
+		dropped += len(entries) - len(kept)
+		techniqueMap[slug] = kept
+	}
+	fmt.Printf("Necessity filter: re-checked %d isolated techniques, dropped %d entries\n",
+		isolated, dropped)
+}
+
+// techniqueNecessary reports whether slug fires when solving the puzzle at
+// entry.Index/entry.Difficulty with the competing techniques disabled. It
+// mirrors runEarlyStopWithDisabledTechniques in technique_isolated_test.go:
+// fresh board, solver with competitors disabled, early-stop the moment the
+// target fires. The entry counts as necessary only if the target fires
+// before the solver stalls or hits the step cap.
+func techniqueNecessary(loader *puzzles.Loader, entry PracticePuzzle, slug string, disabled []string) bool {
+	diffName, ok := difficultyNameByKey(entry.Difficulty)
+	if !ok {
+		return false
+	}
+	givens, _, err := loader.GetPuzzle(entry.Index, diffName)
+	if err != nil {
+		return false
+	}
+	board := human.NewBoard(givens)
+	solver := human.CreateSolverWithoutTechniques(disabled...)
+	ctx := context.Background()
+	for range constants.MaxSolverSteps {
+		move := solver.FindNextMove(ctx, board)
+		if move == nil {
+			return false
+		}
+		solver.ApplyMove(board, move)
+		if move.Technique == slug {
+			return true
+		}
+	}
+	return false
+}
+
 // trimTechniqueMap sorts each technique's puzzle list deterministically (by
 // index then difficulty) and caps it at maxPerTechnique so repeated runs
 // produce stable output.
@@ -132,6 +200,30 @@ func trimTechniqueMap(techniqueMap map[string][]PracticePuzzle, maxPerTechnique 
 	}
 }
 
+// practiceDifficulties is the full set of (loader name, JSON key) pairs the
+// generator scans. analyzePuzzles enumerates every puzzle at every tier for
+// the detect pass; difficultyNameByKey maps a stored entry key back to the
+// name loader.GetPuzzle expects during the necessity filter.
+var practiceDifficulties = []struct {
+	name string
+	key  string
+}{
+	{"easy", "e"},
+	{"medium", "m"},
+	{"hard", "h"},
+	{"extreme", "x"},
+	{"impossible", "i"},
+}
+
+func difficultyNameByKey(key string) (string, bool) {
+	for _, d := range practiceDifficulties {
+		if d.key == key {
+			return d.name, true
+		}
+	}
+	return "", false
+}
+
 // analyzePuzzles runs the worker pool that scans every (puzzle, difficulty)
 // combination with the human solver, collects the techniques each puzzle
 // requires, and returns the trimmed technique -> puzzle list.
@@ -143,20 +235,9 @@ func analyzePuzzles(loader *puzzles.Loader, workers, maxPerTechnique int) map[st
 	var analyzed int64
 	done := startProgressReporter(puzzleCount*5, &analyzed)
 
-	difficulties := []struct {
-		name string
-		key  string
-	}{
-		{"easy", "e"},
-		{"medium", "m"},
-		{"hard", "h"},
-		{"extreme", "x"},
-		{"impossible", "i"},
-	}
-
 	work := make(chan workItem, puzzleCount*5)
 	for i := range puzzleCount {
-		for _, d := range difficulties {
+		for _, d := range practiceDifficulties {
 			work <- workItem{Index: i, Difficulty: d.name, DiffKey: d.key}
 		}
 	}
@@ -181,13 +262,14 @@ func analyzePuzzles(loader *puzzles.Loader, workers, maxPerTechnique int) map[st
 	done <- true
 	fmt.Printf("Analyzed %d puzzle-difficulty combinations in %v\n", puzzleCount*5, time.Since(start))
 
+	filterByNecessity(loader, techniqueMap)
 	trimTechniqueMap(techniqueMap, maxPerTechnique)
 	return techniqueMap
 }
 
 func writePracticeFile(output string, techniqueMap map[string][]PracticePuzzle) error {
 	file := PracticeFile{
-		Version:    1,
+		Version:    2,
 		Generated:  time.Now().UTC().Format(time.RFC3339),
 		Techniques: techniqueMap,
 	}
