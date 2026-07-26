@@ -20,7 +20,7 @@
     "test:unit:watch": "vitest",
     "test:e2e": "playwright test e2e/integration/",
     "test:e2e:slow": "playwright test e2e/slow/",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "VITE_SKIP_RC=1 vitest run --coverage",
     "size": "size-limit",
     "test:memory": "playwright test e2e/profiling/ --workers=1 --project=chrome-desktop && playwright test e2e/profiling/ --workers=1 --project=pixel-5 && playwright test e2e/profiling/ --workers=1 --project=iphone-12",
     "simulate": "tsx e2e/simulation/cli.ts",

@@ -28,6 +28,15 @@ const reactCompilerPresetAllEnvs = (() => {
   }
 })()
 
+// Coverage is measured on the source developers wrote, not on the React
+// Compiler's emitted cache machinery: RC injects branch-heavy memoization code
+// ($[i] slot invalidation) into every compiled hook/component, and those
+// compiler-generated branches are not exercised by the existing tests, which
+// would drop the hard 100% gate without reflecting real source coverage. The
+// `test:coverage` script sets VITE_SKIP_RC=1 so RC is omitted for that run
+// only; regular tests (`test:unit`) and production builds keep RC active.
+const enableReactCompiler = !process.env.VITE_SKIP_RC
+
 // Base path for GitHub Pages deployment
 // Set VITE_BASE_PATH=/repo-name/ for GitHub Pages, or leave empty for root
 const base = process.env.VITE_BASE_PATH || '/'
@@ -154,7 +163,7 @@ export default defineConfig({
 
   plugins: [
     react(),
-    babel({ presets: [reactCompilerPresetAllEnvs] }),
+    ...(enableReactCompiler ? [babel({ presets: [reactCompilerPresetAllEnvs] })] : []),
     ...pwaPlugins
   ],
   server: {
