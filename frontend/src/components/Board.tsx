@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo, useRef } from 'react'
+import React, { memo, useRef } from 'react'
 import { hasCandidate, countCandidates } from '../lib/candidatesUtils'
 import { findDuplicates } from '../lib/validationUtils'
 import { useBoardInteraction } from '../hooks/useBoardInteraction'
@@ -185,20 +185,17 @@ const Cell = memo(
     }
 
     // Combine local ref with callback ref, and focus synchronously on click
-    const handleClick = useCallback(() => {
+    const handleClick = () => {
       onCellClick(idx)
       // Focus immediately for keyboard input (don't wait for useEffect + RAF)
       localRef.current?.focus()
-    }, [onCellClick, idx])
+    }
 
     // Set both refs when the element mounts
-    const setRefs = useCallback(
-      (el: HTMLDivElement | null) => {
-        localRef.current = el
-        cellRef(el)
-      },
-      [cellRef],
-    )
+    const setRefs = (el: HTMLDivElement | null) => {
+      localRef.current = el
+      cellRef(el)
+    }
 
     return (
       <div
@@ -294,36 +291,27 @@ const Board = memo(function Board({
     ...(onDragEnd !== undefined ? { onDragEnd } : {}),
   })
 
-  // Memoize the set of incorrect cells for efficient lookup
-  const incorrectCellsSet = React.useMemo(() => new Set(incorrectCells), [incorrectCells])
+  const incorrectCellsSet = new Set(incorrectCells)
 
-  // Memoize the set of cells that have the highlighted digit
-  // This ensures React properly tracks changes to candidates and triggers re-renders
-  // candidatesVersion ensures this recomputes even when Uint16Array reference comparison fails
-  const cellsWithHighlightedDigit = React.useMemo(() => {
-    // Use candidatesVersion to force recomputation when candidates change
-    // (Uint16Array mutations may not trigger re-renders on mobile without this)
-    void candidatesVersion
-
-    const result = new Set<number>()
-    if (highlightedDigit === null) return result
-
+  // candidatesVersion is read (not just listed as a dep) so the React Compiler
+  // keys recomputation on it: candidates is a Uint16Array mutated in place, so a
+  // reference-only check would miss the in-place mutations signalled by a version bump.
+  void candidatesVersion
+  const cellsWithHighlightedDigit = new Set<number>()
+  if (highlightedDigit !== null) {
     for (let idx = 0; idx < 81; idx++) {
       // Check if cell is filled with the highlighted digit
       if (board[idx] === highlightedDigit) {
-        result.add(idx)
+        cellsWithHighlightedDigit.add(idx)
         continue
       }
       // Check if cell has the highlighted digit as a candidate
       const cellCandidates = candidates[idx]
       if (cellCandidates !== undefined && hasCandidate(cellCandidates, highlightedDigit)) {
-        result.add(idx)
+        cellsWithHighlightedDigit.add(idx)
       }
     }
-    return result
-    // Note: candidatesVersion is intentionally included to force recomputation when Uint16Array mutates
-    // (mutation is not detected by reference comparison on mobile devices)
-  }, [board, candidates, highlightedDigit, candidatesVersion])
+  }
 
   const getCellAriaLabel = (idx: number): string => {
     const row = Math.floor(idx / 9)
@@ -338,8 +326,7 @@ const Board = memo(function Board({
     const givenText = isGiven ? ', given' : ''
     return `${position}, value ${value}${givenText}`
   }
-  // Compute duplicates - memoized to avoid expensive recomputation on every render
-  const duplicates = React.useMemo(() => findDuplicates(board), [board])
+  const duplicates = findDuplicates(board)
 
   const isHighlightedPrimary = (row: number, col: number): boolean => {
     if (!highlight) return false
@@ -576,59 +563,41 @@ const Board = memo(function Board({
 
   // REMOVED: renderCell function - now handled inside Cell component
 
-  // Pre-compute all 81 cell data objects for memoization
-  // This runs once per Board render (not per cell), and each cell only
-  // re-renders if its specific CellData object changes
-  const cellDataArray = useMemo((): CellData[] => {
-    const result: CellData[] = []
-    for (let idx = 0; idx < 81; idx++) {
-      const row = Math.floor(idx / 9)
-      const col = idx % 9
-      const isGiven = initialBoard[idx] !== 0
-      const isPrimary = isHighlightedPrimary(row, col)
-      const isSecondary = isHighlightedSecondary(row, col)
-      const isTarget = highlight?.targets?.some((t) => t.row === row && t.col === col) ?? false
+  // Pre-compute all 81 cell data objects. The React Compiler memoizes the array
+  // on its full transitive read set; each Cell only re-renders when its specific
+  // CellData fields change (see the custom comparator on the Cell memo wrapper).
+  const cellDataArray: CellData[] = []
+  for (let idx = 0; idx < 81; idx++) {
+    const row = Math.floor(idx / 9)
+    const col = idx % 9
+    const isGiven = initialBoard[idx] !== 0
+    const isPrimary = isHighlightedPrimary(row, col)
+    const isSecondary = isHighlightedSecondary(row, col)
+    const isTarget = highlight?.targets?.some((t) => t.row === row && t.col === col) ?? false
 
-      const targetDigit = highlight?.digit
-      const cellData: CellData = {
-        idx,
-        value: board[idx] ?? 0,
-        cellCandidates: candidates[idx] || 0,
-        isGiven,
-        isSelected: selectedCell === idx,
-        tabIndex: idx === tabStopCell ? 0 : -1,
-        isMultiSelected: selectedCells.has(idx) && selectedCell !== idx,
-        className: getCellClass(idx),
-        ariaLabel: getCellAriaLabel(idx),
-        highlightedDigit,
-        isPrimary,
-        isSecondary,
-        isTarget,
-        eliminations: highlight?.eliminations,
-        showAnswer: highlight?.showAnswer !== false, // Default to true for backward compatibility
-      }
-      if (targetDigit !== undefined) {
-        cellData.targetDigit = targetDigit // Pass the hint's digit for candidate highlighting
-      }
-      result.push(cellData)
+    const targetDigit = highlight?.digit
+    const cellData: CellData = {
+      idx,
+      value: board[idx] ?? 0,
+      cellCandidates: candidates[idx] || 0,
+      isGiven,
+      isSelected: selectedCell === idx,
+      tabIndex: idx === tabStopCell ? 0 : -1,
+      isMultiSelected: selectedCells.has(idx) && selectedCell !== idx,
+      className: getCellClass(idx),
+      ariaLabel: getCellAriaLabel(idx),
+      highlightedDigit,
+      isPrimary,
+      isSecondary,
+      isTarget,
+      eliminations: highlight?.eliminations,
+      showAnswer: highlight?.showAnswer !== false, // Default to true for backward compatibility
     }
-    return result
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Helper functions (getCellClass, etc.) read from state vars already in deps; adding them would cause unnecessary recreations
-  }, [
-    board,
-    candidates,
-    candidatesVersion,
-    initialBoard,
-    selectedCell,
-    selectedCells,
-    highlightedDigit,
-    highlight,
-    duplicates,
-    incorrectCellsSet,
-    cellsWithHighlightedDigit,
-    focusedCell,
-    tabStopCell,
-  ])
+    if (targetDigit !== undefined) {
+      cellData.targetDigit = targetDigit // Pass the hint's digit for candidate highlighting
+    }
+    cellDataArray.push(cellData)
+  }
 
   return (
     <div
