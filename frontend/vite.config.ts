@@ -1,8 +1,32 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import react, { reactCompilerPreset } from '@vitejs/plugin-react'
+import babel from '@rolldown/plugin-babel'
 import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'child_process'
+
+// React Compiler via plugin-react v6's first-party reactCompilerPreset, run
+// through @rolldown/plugin-babel. plugin-react v6 dropped the v5 `babel: {}`
+// option (it uses oxc, not babel, for JSX), so the previous
+// `react({ babel: { plugins: [RC] } })` config was silently ignored and the
+// compiler never ran in any environment.
+//
+// reactCompilerPreset's default applyToEnvironmentHook gates on
+// `consumer === 'client'`, which excludes the vitest (non-client) environment.
+// This app is a SPA with no SSR: client is the only real consumer in real
+// builds, and forcing the hook true in vitest aligns the test transform with
+// production so tests exercise RC-memoized code (required for the identity
+// stability tests and for safely removing manual useMemo/useCallback).
+const reactCompilerPresetAllEnvs = (() => {
+  const preset = reactCompilerPreset({ target: '19' })
+  return {
+    ...preset,
+    rolldown: {
+      ...preset.rolldown,
+      applyToEnvironmentHook: () => true,
+    },
+  }
+})()
 
 // Base path for GitHub Pages deployment
 // Set VITE_BASE_PATH=/repo-name/ for GitHub Pages, or leave empty for root
@@ -129,11 +153,8 @@ export default defineConfig({
   },
 
   plugins: [
-    react({
-      babel: {
-        plugins: [['babel-plugin-react-compiler', { target: '19' }]],
-      },
-    }),
+    react(),
+    babel({ presets: [reactCompilerPresetAllEnvs] }),
     ...pwaPlugins
   ],
   server: {

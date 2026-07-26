@@ -47,6 +47,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.57.0",
+    "@rolldown/plugin-babel": "^0.2.3",
     "@size-limit/file": "^12.1.0",
     "@stryker-mutator/core": "~9.6",
     "@stryker-mutator/vitest-runner": "~9.6",
