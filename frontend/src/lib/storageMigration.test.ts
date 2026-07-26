@@ -35,6 +35,16 @@ describe('storageMigration', () => {
     it('returns null for null input', () => {
       expect(migrateVersionedEnvelope(null, {}, 1)).toBeNull()
     })
+
+    it('returns null for null input without invoking any migration on null', () => {
+      // The null guard must short-circuit before migrations run. If the guard were
+      // removed, null would be treated as legacy v0 data and the v0 migration
+      // would be invoked on null, producing a transformed object instead of null.
+      const v0 = vi.fn(() => ({ touched: true }))
+      const result = migrateVersionedEnvelope<{ touched: boolean }>(null, { 0: v0 }, 1)
+      expect(result).toBeNull()
+      expect(v0).not.toHaveBeenCalled()
+    })
   })
 
   describe('migrateVersionedEnvelope - current version', () => {
@@ -116,6 +126,14 @@ describe('storageMigration', () => {
       expect(isVersionedEnvelope({ schemaVersion: 1 })).toBe(false)
       expect(isVersionedEnvelope({ data: 1 })).toBe(false)
     })
+
+    it('rejects primitive values, relying on the typeof guard before the in-operator checks', () => {
+      // Primitives make `typeof raw === 'object'` false so the chain short-circuits
+      // to false. If that guard were removed, the later `'schemaVersion' in raw`
+      // would throw on a primitive instead of cleanly returning false.
+      expect(isVersionedEnvelope('schema')).toBe(false)
+      expect(isVersionedEnvelope(42)).toBe(false)
+    })
   })
 
   describe('migrateVersionedRecord', () => {
@@ -153,6 +171,16 @@ describe('storageMigration', () => {
       expect(migrateVersionedRecord(null, {}, 1)).toBeNull()
       expect(migrateVersionedRecord('string', {}, 1)).toBeNull()
       expect(migrateVersionedRecord(42, {}, 1)).toBeNull()
+    })
+
+    it('returns null for null input without invoking any migration on null', () => {
+      // The `raw === null` operand of the guard must short-circuit. If it were
+      // removed, null would fall through (typeof null === 'object'), get version 0
+      // from readRecordVersion, and the v0 migration would run on null.
+      const v0 = vi.fn(() => ({ touched: true }))
+      const result = migrateVersionedRecord<{ touched: boolean }>(null, { 0: v0 }, 1)
+      expect(result).toBeNull()
+      expect(v0).not.toHaveBeenCalled()
     })
   })
 

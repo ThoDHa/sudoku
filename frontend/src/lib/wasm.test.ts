@@ -551,6 +551,20 @@ describe('wasm module', () => {
         expect(loggerMock).toHaveBeenCalledWith('WASM preload failed:', 'Preload failed')
       })
     })
+
+    it('should stringify a non-Error preload rejection', async () => {
+      // preloadWasm's catch maps non-Error rejections through String(error); a bare
+      // string rejection exercises the `instanceof Error` false branch.
+      globalThis.fetch = vi.fn().mockRejectedValue('network-down')
+
+      const { preloadWasm } = await import('./wasm')
+
+      preloadWasm()
+
+      await vi.waitFor(() => {
+        expect(loggerMock).toHaveBeenCalledWith('WASM preload failed:', 'network-down')
+      })
+    })
   })
 
   // ==================== abortWasmLoad ====================

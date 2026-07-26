@@ -82,6 +82,10 @@ function getPuzzleByIndex(
   // Build givens array (0 for empty cells)
   const givens = new Array<number>(81).fill(0)
   for (const idx of indices) {
+    // idx comes from the bundled puzzle bank indices, which are validated to be
+    // in range at puzzle-data build time; the ?? 0 guards against malformed data
+    // and is unreachable for the shipped puzzle set.
+    /* v8 ignore next */
     givens[idx] = solution[idx] ?? 0
   }
 

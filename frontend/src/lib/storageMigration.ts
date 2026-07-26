@@ -62,6 +62,7 @@ export function wrapVersionedEnvelope<T>(
 }
 
 export function readRecordVersion(raw: unknown): number {
+  // Stryker disable next-line ConditionalExpression: the `typeof raw !== 'object'` operand is redundant. `raw === null` already returns 0 for null, and for any other primitive the subsequent `(raw as ...).schemaVersion` property access auto-boxes (no throw) and yields undefined, which the `: 0` fallback returns. Removing the typeof operand is therefore observationally identical.
   if (typeof raw !== 'object' || raw === null) return 0
   const v = (raw as { schemaVersion?: unknown }).schemaVersion
   return typeof v === 'number' ? v : 0

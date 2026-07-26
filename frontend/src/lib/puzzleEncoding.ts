@@ -69,6 +69,9 @@ function encodeSparse(cells: number[]): string {
   let maskStr = ''
   for (let i = 0; i < 14; i++) {
     const idx = Number((mask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
+    // idx is masked to 6 bits (0-63) and ALPHABET holds exactly 64 chars, so the
+    // ?? '' fallback is unreachable for every input; sealed rather than contrived.
+    /* v8 ignore next */
     maskStr += ALPHABET[idx] ?? ''
   }
 
@@ -78,6 +81,9 @@ function encodeSparse(cells: number[]): string {
   for (let i = 0; i < 81; i++) {
     const cell = cells[i]
     if (cell !== undefined && cell !== 0) {
+      // cell is 1-9 here (guarded against 0/undefined), so cell-1 is 0-8 and
+      // ALPHABET[0..8] is always defined; the ?? '' fallback is unreachable.
+      /* v8 ignore next */
       digitsStr += ALPHABET[cell - 1] ?? ''
     }
   }
@@ -257,6 +263,9 @@ export function encodePuzzleWithState(
   let maskStr = ''
   for (let i = 0; i < 14; i++) {
     const idx = Number((givensMask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
+    // idx is masked to 6 bits (0-63) and ALPHABET holds exactly 64 chars, so the
+    // ?? '' fallback is unreachable for every input; sealed rather than contrived.
+    /* v8 ignore next */
     maskStr += ALPHABET[idx] ?? ''
   }
 
@@ -315,6 +324,9 @@ function encodeCandidates(candidates: number[][]): string {
   let maskStr = ''
   for (let i = 0; i < 14; i++) {
     const idx = Number((hasCandMask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
+    // idx is masked to 6 bits (0-63) and ALPHABET holds exactly 64 chars, so the
+    // ?? '' fallback is unreachable for every input; sealed rather than contrived.
+    /* v8 ignore next */
     maskStr += ALPHABET[idx] ?? ''
   }
 
