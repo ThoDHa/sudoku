@@ -323,7 +323,7 @@ describe('useClickOutside', () => {
       }).not.toThrow()
     })
 
-    it('calls onClickOutside when ref.current is null (click is always outside)', () => {
+    it('does NOT call onClickOutside when ref.current is null because the contains guard short-circuits', () => {
       const onClickOutside = vi.fn()
 
       setupHook(null, true, onClickOutside)

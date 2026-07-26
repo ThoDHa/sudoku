@@ -167,7 +167,7 @@ test.describe('@integration Share to a friend', () => {
     // The recipient has their own progress, so they get the shared-game prompt.
     // Dismissing it (the X) keeps their current game.
     await expect(page.getByText('Load shared game?')).toBeVisible()
-    await page.getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: 'Close', exact: true }).click()
 
     // Their later, local-only move survives, and the one-time params are consumed.
     const laterCell = page.locator(

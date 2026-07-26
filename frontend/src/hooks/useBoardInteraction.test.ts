@@ -588,38 +588,42 @@ describe('useBoardInteraction', () => {
     })
 
     function renderDragHook() {
-      return renderHook(() =>
+      const onCellSelectMultiple = vi.fn()
+      const hook = renderHook(() =>
         useBoardInteraction({
           selectedCell: null,
           initialBoard: emptyBoard(),
           board: emptyBoard(),
           onCellClick: vi.fn(),
-          onCellSelectMultiple: vi.fn(),
+          onCellSelectMultiple,
         }),
       )
+      return { result: hook.result, onCellSelectMultiple }
     }
 
     it('handleBoardPointerMove ignores a move when elementFromPoint returns null', () => {
-      const { result } = renderDragHook()
+      const { result, onCellSelectMultiple } = renderDragHook()
       act(() => result.current.handleDragStart(0))
       const original = document.elementFromPoint
       document.elementFromPoint = (() => null) as typeof document.elementFromPoint
       act(() => result.current.handleBoardPointerMove({ clientX: 1, clientY: 1 } as never))
       document.elementFromPoint = original
+      expect(onCellSelectMultiple).not.toHaveBeenCalled()
     })
 
     it('handleBoardPointerMove ignores an element with no cell ancestor', () => {
-      const { result } = renderDragHook()
+      const { result, onCellSelectMultiple } = renderDragHook()
       act(() => result.current.handleDragStart(0))
       const strayEl = { closest: () => null } as unknown as HTMLElement
       const original = document.elementFromPoint
       document.elementFromPoint = (() => strayEl) as typeof document.elementFromPoint
       act(() => result.current.handleBoardPointerMove({ clientX: 1, clientY: 1 } as never))
       document.elementFromPoint = original
+      expect(onCellSelectMultiple).not.toHaveBeenCalled()
     })
 
     it('handleBoardPointerMove ignores a cell whose index attribute is not numeric', () => {
-      const { result } = renderDragHook()
+      const { result, onCellSelectMultiple } = renderDragHook()
       act(() => result.current.handleDragStart(0))
       const cellEl = { getAttribute: () => 'abc' }
       const strayEl = { closest: () => cellEl } as unknown as HTMLElement
@@ -627,6 +631,7 @@ describe('useBoardInteraction', () => {
       document.elementFromPoint = (() => strayEl) as typeof document.elementFromPoint
       act(() => result.current.handleBoardPointerMove({ clientX: 1, clientY: 1 } as never))
       document.elementFromPoint = original
+      expect(onCellSelectMultiple).not.toHaveBeenCalled()
     })
 
     it('handleBoardPointerMove ignores a move onto the same cell as the last event', () => {

@@ -86,31 +86,25 @@ async function clearAllGameStates(page: any): Promise<void> {
   }, GAME_STATE_PREFIX)
 }
 
-// Helper to wait for auto-save to complete by detecting localStorage changes
-// This replaces arbitrary timeout waits with efficient state change detection
+// Helper to wait for auto-save to complete by detecting localStorage changes.
+// Polls until expectedChange reflects the saved state or the timeout elapses,
+// at which point the test fails honestly rather than falling back to a weaker
+// existence-only check that would mask a persistence regression.
 async function waitForAutoSave(
   page: any,
   storageKey: string,
   expectedChange?: (savedState: any) => boolean,
   timeout = 3000,
 ): Promise<void> {
-  try {
-    await expect(async () => {
-      const savedState = await getLocalStorageItem(page, storageKey)
-      expect(savedState).toBeTruthy()
+  await expect(async () => {
+    const savedState = await getLocalStorageItem(page, storageKey)
+    expect(savedState).toBeTruthy()
 
-      if (expectedChange) {
-        const parsed = JSON.parse(savedState!)
-        expect(expectedChange(parsed)).toBe(true)
-      }
-    }).toPass({ timeout })
-  } catch (error) {
-    // If specific change check fails, fall back to basic existence check
-    await expect(async () => {
-      const savedState = await getLocalStorageItem(page, storageKey)
-      expect(savedState).toBeTruthy()
-    }).toPass({ timeout })
-  }
+    if (expectedChange) {
+      const parsed = JSON.parse(savedState!)
+      expect(expectedChange(parsed)).toBe(true)
+    }
+  }).toPass({ timeout })
 }
 
 // Helper to wait for UI elements to be ready after interactions

@@ -1080,13 +1080,6 @@ describe('Board', () => {
       expect(cells[0]).toHaveAttribute('data-cell-idx')
     })
 
-    it('Board component provides drag handler callbacks', () => {
-      const onCellSelectMultiple = vi.fn()
-      render(<Board {...defaultProps({ onCellSelectMultiple })} />)
-
-      expect(typeof onCellSelectMultiple).toBe('function')
-    })
-
     it('multi-selected cells get same styling as single selected cell', () => {
       const selectedCells = new Set([10, 11, 12])
       const { container } = render(<Board {...defaultProps({ selectedCell: 10, selectedCells })} />)
