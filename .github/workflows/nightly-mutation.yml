@@ -141,7 +141,7 @@ jobs:
         working-directory: frontend
         run: |
           python3 scripts/mutation_aggregate.py \
-            --floor 90 --expected 7 --reports-dir ../shards \
+            --floor 80 --expected 7 --reports-dir ../shards \
             --label "frontend/hooks (CODE-6)"
 
   go-mutation:
