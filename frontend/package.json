@@ -32,6 +32,7 @@
     "allure:clean": "rm -rf allure-results allure-report",
     "mutation": "stryker run",
     "mutation:incremental": "stryker run --incremental",
+    "mutation:hook": "stryker run --mutate",
     "prepare": "cd .. && husky",
     "gen:portal-themes": "tsx scripts/gen-portal-themes.mjs > ../.github/scripts/report_portal.themes.css",
     "gen:go-coverage": "node scripts/lcov-to-istanbul.mjs",

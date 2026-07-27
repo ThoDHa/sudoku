@@ -63,6 +63,87 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
+  # The 7 CODE-6 extracted hooks were deferred from QUAL-2's mutation lockdown
+  # because the 893-mutant unsharded run is impractical in-session (~8h). This
+  # matrix runs one shard per hook, mirroring the Go techniques sharding pattern
+  # (INFRA-4): public repo = free hosted minutes, so fine-grained sharding costs
+  # nothing and eliminates the 6h-cap timeout that hid the results under the
+  # unsharded run. The aggregate job below combines the per-shard reports and
+  # gates the combined efficacy against the floor.
+  frontend-hooks-mutation:
+    name: Frontend - hooks (${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || inputs.scope != 'go'
+    # Below GitHub's hard 6h cap so our timeout fires first; a timed-out shard's
+    # report goes missing and the aggregate gate fails loudly (exit 2) rather
+    # than reporting a partial number as if it were complete.
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: useGameActions
+          - shard: useGameInput
+          - shard: useHints
+          - shard: useShareActions
+          - shard: useAutoSolveAdapters
+          - shard: useInProgressGameCheck
+          - shard: useDeselectOnOutsideClick
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run StrykerJS on ${{ matrix.shard }}
+        working-directory: frontend
+        run: npx stryker run --mutate "src/hooks/${{ matrix.shard }}.ts"
+        continue-on-error: true
+
+      - name: Upload shard report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: mutation-frontend-hooks-${{ matrix.shard }}
+          path: frontend/mutation.json
+          retention-days: 30
+          if-no-files-found: warn
+
+  # Combine the 7 per-hook shard reports into one efficacy number and gate it,
+  # exactly as a single unsharded run would. Fails loudly (exit 2) if any shard
+  # report is missing so a timed-out shard cannot masquerade as a passing
+  # partial result. Mirrors the Go techniques-aggregate job.
+  frontend-hooks-aggregate:
+    name: Frontend - hooks (aggregate gate)
+    runs-on: ubuntu-latest
+    needs: frontend-hooks-mutation
+    if: always() && (github.event_name == 'schedule' || inputs.scope != 'go')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Download all hooks shard reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: mutation-frontend-hooks-*
+          path: shards
+
+      - name: Aggregate efficacy gate
+        working-directory: frontend
+        run: |
+          python3 scripts/mutation_aggregate.py \
+            --floor 90 --expected 7 --reports-dir ../shards \
+            --label "frontend/hooks (CODE-6)"
+
   go-mutation:
     name: Go - ${{ matrix.name }}
     runs-on: ubuntu-latest
