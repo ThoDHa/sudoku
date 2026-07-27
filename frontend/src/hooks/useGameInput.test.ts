@@ -834,7 +834,7 @@ describe('useGameInput - undo / redo', () => {
 // =============================================================================
 
 // RC-dependent: see useGameActions.test.ts for the same skipIf rationale.
-describe.skipIf(process.env.VITE_SKIP_RC)('useGameInput - handler stability', () => {
+describe.skipIf(process.env['VITE_SKIP_RC'])('useGameInput - handler stability', () => {
   it('returns the same handler identities across re-renders when inputs are stable', () => {
     const options = makeOptions()
     const { result, rerender } = renderInput(options)

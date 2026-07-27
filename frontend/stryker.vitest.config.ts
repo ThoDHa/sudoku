@@ -23,6 +23,16 @@ const getCommitHash = () => {
 const realNodeModules = fs.realpathSync(path.resolve(dirname, 'node_modules'))
 const realFrontendRoot = path.dirname(realNodeModules)
 
+// This config uses react() with NO babel/RC preset, so the React Compiler is
+// off in the Stryker sandbox (consistent with the coverage model: Stryker
+// mutates source as written, not RC-compiled output). Set VITE_SKIP_RC=1 so
+// tests tagged with .skipIf(process.env.VITE_SKIP_RC) — the RC-dependent
+// identity-stability tests whose assertions only hold when RC is firing —
+// skip in the sandbox just as they do in the coverage run. Without this, the
+// initial test run fails on those tests and StrykerJS aborts before mutation
+// testing begins.
+process.env.VITE_SKIP_RC = '1'
+
 export default defineConfig({
   plugins: [react()],
   define: {
