@@ -504,6 +504,38 @@ jobs:
         working-directory: frontend
         run: npm run size
 
+      # Deploy smoke gate: serve the just-built production artifact (the same
+      # bundle that ships to Pages) and run the post-deploy smoke against it
+      # BEFORE preparing or uploading the Pages artifact. A broken bundle that
+      # builds clean but fails to load, run the WASM solver, or accept input
+      # is caught here, failing the allure-report job, which in turn blocks
+      # the downstream deploy job (which needs allure-report == 'success').
+      - name: Install Playwright browser for deploy smoke
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run post-deploy smoke against production build
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:4174/sudoku/
+        run: |
+          set -euo pipefail
+          # Serve dist/ under the /sudoku/ base path the build was compiled with.
+          # vite preview serves with correct WASM MIME and honors --base.
+          npx vite preview --base /sudoku/ --port 4174 --strictPort &
+          PREVIEW_PID=$!
+          # Ensure teardown whether the smoke passes or fails.
+          trap 'kill $PREVIEW_PID 2>/dev/null || true' EXIT
+          # Wait for the preview server to be ready (no wait-on dep needed).
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:4174/sudoku/ >/dev/null; then break; fi
+            sleep 0.5
+          done
+          curl -sf http://localhost:4174/sudoku/ >/dev/null || { echo "preview server did not start"; exit 1; }
+          npm run test:smoke
+
       - name: Prepare Pages artifact
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
         run: |

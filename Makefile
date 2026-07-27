@@ -1,7 +1,7 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-.PHONY: check check-fast check-full test test-go test-scripts test-unit test-e2e test-integration test-frontend lint lint-go tools-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck mutation-frontend mutation-go mutation-gate mutation-clean format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons wasm dev prod report serve-reports allure-report allure-serve allure-clean
+.PHONY: check check-fast check-full test test-go test-scripts test-unit test-e2e test-integration test-frontend lint lint-go tools-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck mutation-frontend mutation-go mutation-gate mutation-clean format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons wasm dev prod prod-test report serve-reports allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Development & Production
@@ -24,6 +24,21 @@ dev: wasm
 prod:
 	@echo "Starting production server..."
 	@docker compose -f docker-compose.prod.yml up --build
+
+# Bring up the prod stack, run the post-deploy smoke against it, tear down.
+# Mirrors `test-e2e`/`test-integration` for the production image: builds
+# docker-compose.prod.yml, blocks on the container healthcheck (--wait),
+# runs the deployment smoke spec against http://localhost/, and tears down
+# on any exit via trap. Unlike `test-e2e` (test stack on :4173, full suite),
+# this targets the prod nginx image on :80 with the deploy smoke only.
+prod-test:
+	@echo ""
+	@echo "========================================"
+	@echo "  Running Post-Deploy Smoke vs Prod Image"
+	@echo "========================================"
+	@trap 'docker compose -f $(PWD)/docker-compose.prod.yml down' EXIT; \
+	docker compose -f docker-compose.prod.yml up -d --build --wait && \
+	cd frontend && PLAYWRIGHT_BASE_URL=http://localhost/ npx playwright test e2e/deployment/ --project=chrome-desktop --reporter=list
 
 #-----------------------------------------------------------------------
 # Linting
