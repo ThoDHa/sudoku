@@ -408,7 +408,8 @@ describe('useAutoSolveAdapters - handleStepNavigate', () => {
   })
 })
 
-describe('useAutoSolveAdapters - handler stability', () => {
+// RC-dependent: see useGameActions.test.ts for the same skipIf rationale.
+describe.skipIf(process.env.VITE_SKIP_RC)('useAutoSolveAdapters - handler stability', () => {
   // Shared options object: handler identities must stay stable across re-renders
   // when the inputs do not change, because useAutoSolve memoizes on them.
   let options: ReturnType<typeof makeOptions>

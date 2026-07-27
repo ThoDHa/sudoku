@@ -833,7 +833,8 @@ describe('useGameInput - undo / redo', () => {
 // Refs-as-deps sanity: handlers stay stable across re-renders
 // =============================================================================
 
-describe('useGameInput - handler stability', () => {
+// RC-dependent: see useGameActions.test.ts for the same skipIf rationale.
+describe.skipIf(process.env.VITE_SKIP_RC)('useGameInput - handler stability', () => {
   it('returns the same handler identities across re-renders when inputs are stable', () => {
     const options = makeOptions()
     const { result, rerender } = renderInput(options)

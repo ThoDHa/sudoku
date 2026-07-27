@@ -1692,7 +1692,11 @@ describe('useSudokuGame - Given Cells Behavior', () => {
 // =============================================================================
 
 describe('useSudokuGame - Memoization', () => {
-  it('memoizes return object correctly', () => {
+  // RC-dependent: the whole-return-object identity assertion holds only when
+  // the React Compiler is firing (test:unit). Under VITE_SKIP_RC=1 (coverage)
+  // RC is off and the manual return useMemo has been removed (FE-7), so the
+  // object is recreated each render. The state-change test below still runs.
+  it.skipIf(process.env.VITE_SKIP_RC)('memoizes return object correctly', () => {
     const puzzle = createEmptyPuzzle()
     const { result, rerender } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
 
