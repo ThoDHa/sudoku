@@ -182,6 +182,22 @@ describe('useGameActions - autoFillNotes', () => {
     })
     expect(options.game.applyExternalMove).toHaveBeenCalledTimes(1)
     expect(options.setAutoFillUsed).toHaveBeenCalledWith(true)
+    // Assert the Move object's content — kills StringLiteral, ObjectLiteral,
+    // ArrayDeclaration, BooleanLiteral, ConditionalExpression, EqualityOperator,
+    // LogicalOperator, and UpdateOperator mutants on the fillMove construction
+    // and the cellsWithCandidates counting loop.
+    const moveArg = (options.game.applyExternalMove as Mock).mock.calls[0][2]
+    expect(moveArg).toEqual({
+      step_index: 0,
+      technique: 'Fill Candidates',
+      action: 'candidate',
+      digit: 0,
+      targets: [],
+      explanation: 'Filled all candidates for 1 cells',
+      refs: { title: 'Fill Candidates', slug: 'fill-candidates', url: '' },
+      highlights: { primary: [] },
+      isUserMove: true,
+    })
   })
 
   it('applies the auto-fill move even when no cell has candidates', () => {
@@ -193,6 +209,9 @@ describe('useGameActions - autoFillNotes', () => {
     })
     expect(options.game.applyExternalMove).toHaveBeenCalledTimes(1)
     expect(options.setAutoFillUsed).toHaveBeenCalledWith(true)
+    // cellsWithCandidates = 0 when no cell has candidate bits set.
+    const moveArg = (options.game.applyExternalMove as Mock).mock.calls[0][2]
+    expect(moveArg.explanation).toBe('Filled all candidates for 0 cells')
   })
 })
 
