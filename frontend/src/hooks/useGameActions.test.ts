@@ -694,6 +694,14 @@ describe('useGameActions - handleCopyDebugInfo / handleFeatureRequest', () => {
       await result.current.handleCopyDebugInfo()
     })
     expect(clipSpy).toHaveBeenCalledTimes(1)
+    // Assert the bug report content kills ObjectLiteral/ArrowFunction
+    // mutants on the report construction and history.map.
+    const jsonArg = (clipSpy as Mock).mock.calls[0]![0] as string
+    const report = JSON.parse(jsonArg)
+    expect(report.history).toHaveLength(1)
+    expect(report.history[0].technique).toBe('place')
+    expect(report.history[0].digit).toBe(5)
+    expect(report.state.currentBoard).toEqual(Array(81).fill(0))
     // Drive the visibility-aware timeout callback so the inline arrow runs.
     const cb = (options.visibilityAwareTimeout as unknown as Mock).mock.calls[0]![0] as () => void
     act(() => cb())
