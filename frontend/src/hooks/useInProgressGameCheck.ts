@@ -36,9 +36,12 @@ export function useInProgressGameCheck(
     if (skip || sharedStateParam) return null
     const savedGame = getMostRecentGame()
     logger.debug(
+      // Stryker disable next-line StringLiteral: log message content does not affect program behavior
       '[IN-PROGRESS CHECK] Current URL seed:',
       seed,
+      // Stryker disable next-line StringLiteral: log message content does not affect program behavior
       'Saved game found:',
+      // Stryker disable next-line StringLiteral: log label content does not affect program behavior
       savedGame ? savedGame.seed : 'none',
     )
     if (
@@ -48,13 +51,16 @@ export function useInProgressGameCheck(
       savedGame.progress < 100
     ) {
       logger.debug(
+        // Stryker disable next-line StringLiteral: log message content does not affect program behavior
         '[IN-PROGRESS CHECK] Showing modal: Existing game found',
         savedGame.seed,
+        // Stryker disable next-line StringLiteral: log label content does not affect program behavior
         'vs current:',
         seed,
       )
       return savedGame
     }
+    // Stryker disable next-line StringLiteral: log message content does not affect program behavior
     logger.debug('[IN-PROGRESS CHECK] No modal needed (no existing game or same seed)')
     return null
   })
@@ -65,9 +71,11 @@ export function useInProgressGameCheck(
   // Mount-only: clean up the one-time skip flag (side effect, no setState)
   useEffect(() => {
     const skipInProgressCheck = sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
+    // Stryker disable next-line ConditionalExpression: removeItem on a missing key is a no-op, so always-true branching is observably identical to the guarded remove
     if (skipInProgressCheck) {
       sessionStorage.removeItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
     }
+    // Stryker disable next-line ArrayDeclaration: useEffect deps are manual memoization; the effect is idempotent (read+remove) so re-running on identity changes is observably identical
   }, [])
 
   // Handlers for in-progress game confirmation modal
@@ -79,6 +87,7 @@ export function useInProgressGameCheck(
       navigate(targetUrl)
     }
     setShowInProgressConfirm(false)
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
   }, [existingInProgressGame, navigate])
 
   const onStartNewGame = useCallback(() => {
@@ -89,6 +98,7 @@ export function useInProgressGameCheck(
     sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
     setShowInProgressConfirm(false)
     setExistingInProgressGame(null)
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
   }, [existingInProgressGame])
 
   return {

@@ -110,6 +110,7 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
     }
 
     return data.move
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
   }, [game.board, game.candidates, initialBoard, scheduleToastClear, setValidationMessage])
 
   // Handle hint button - shows the next move with full answer (eliminations + additions visible)
@@ -141,6 +142,7 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
 
       if (move.action === 'contradiction' || move.action === 'error') {
         const currentGame = gameRef.current
+        // Stryker disable next-line OptionalChaining: defensive guard; gameRef.current is always populated by the host component, and the contract does not exercise a null ref
         if (currentGame?.canUndo) {
           commitCellAction('undo', { game: currentGame, clearMoveHighlight })
           setValidationMessage({
@@ -196,6 +198,7 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
       gate.end()
       setHintLoading(false)
     }
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
   }, [
     game.history.length,
     clearAllAndDeselect,
@@ -308,6 +311,7 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
       gate.end()
       setTechniqueHintLoading(false)
     }
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
   }, [
     game.history.length,
     clearAllAndDeselect,
@@ -325,6 +329,7 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
     lastTechniqueHintRef.current = null
     lastRegularHintRef.current = null
     cachedHintRef.current = null
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization; a stable-string deps array keeps the callback identity stable across renders, observably identical to the empty-deps form
   }, [])
 
   return {

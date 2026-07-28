@@ -134,6 +134,12 @@ describe('useHints', () => {
   })
 
   describe('fetchCachedHint caching', () => {
+    it('initializes hintLoading and techniqueHintLoading as false before any action', () => {
+      const { result } = renderHintsHook(makeGame(), createHintsCallbacks())
+      expect(result.current.hintLoading).toBe(false)
+      expect(result.current.techniqueHintLoading).toBe(false)
+    })
+
     it('reuses the cached hint when the board signature is unchanged (single solver call)', async () => {
       const move = makeMove()
       mockedFindNextMove.mockResolvedValue(makeFindResult(move))
@@ -149,6 +155,22 @@ describe('useHints', () => {
 
       // Same board+candidates → findNextMove fetched exactly once.
       expect(mockedFindNextMove).toHaveBeenCalledTimes(1)
+      // The cached branch must actually populate data; if it no-ops, the second handler
+      // throws and logger.error fires.
+      expect(mockedLoggerError).not.toHaveBeenCalled()
+    })
+
+    it('passes the live board snapshot (not an empty array) to findNextMove', async () => {
+      const move = makeMove()
+      mockedFindNextMove.mockResolvedValue(makeFindResult(move))
+      const game = makeGame({ board: [1, 2, 3] })
+      const { result } = renderHintsHook(game, createHintsCallbacks())
+
+      await act(async () => {
+        await result.current.handleNext()
+      })
+
+      expect(mockedFindNextMove).toHaveBeenCalledWith([1, 2, 3], expect.anything(), [1, 2, 3])
     })
 
     it('refetches when the board changes between hint requests', async () => {
@@ -213,6 +235,8 @@ describe('useHints', () => {
       if (!hintCall) throw new Error('expected hint counter increment')
       const updater = hintCall[0] as (n: number) => number
       expect(updater(3)).toBe(4)
+      // Success-path clearer must null the validation message (scheduleToastClear mock invokes cb synchronously).
+      expect(callbacks.setValidationMessage).toHaveBeenCalledWith(null)
       expect(result.current.hintLoading).toBe(false)
     })
 
@@ -273,6 +297,8 @@ describe('useHints', () => {
         type: 'error',
         message: 'bad cell',
       })
+      // The canUndo clearer must null the validation message (scheduleToastClear mock invokes cb synchronously).
+      expect(callbacks.setValidationMessage).toHaveBeenCalledWith(null)
     })
 
     it('toasts a cannot-solve message when a contradiction is returned but the game cannot undo', async () => {
@@ -290,6 +316,8 @@ describe('useHints', () => {
         type: 'error',
         message: 'The puzzle cannot be solved - initial state has errors.',
       })
+      // The cannot-undo clearer must null the validation message.
+      expect(callbacks.setValidationMessage).toHaveBeenCalledWith(null)
     })
 
     it('surfaces the already-complete toast when the solver reports solved with no move', async () => {
@@ -306,6 +334,10 @@ describe('useHints', () => {
         message: 'Puzzle is already complete!',
       })
       expect(callbacks.setMoveHighlight).not.toHaveBeenCalled()
+      // Exactly two calls: the fetchCachedHint toast, then the synchronous clearer nulling it.
+      // L106 mutant (clearer body emptied) → 1 call; L130 mutant (return guard removed, throws downstream) → 4 calls.
+      expect(callbacks.setValidationMessage).toHaveBeenCalledTimes(2)
+      expect(mockedLoggerError).not.toHaveBeenCalled()
     })
 
     it('surfaces the advanced-techniques toast when there is no move and the puzzle is not solved', async () => {
@@ -321,6 +353,9 @@ describe('useHints', () => {
         type: 'error',
         message: 'This puzzle requires advanced techniques beyond our hint system.',
       })
+      // The no-move return guard must hold: exactly two calls (toast + clearer), no throw, no error logged.
+      expect(callbacks.setValidationMessage).toHaveBeenCalledTimes(2)
+      expect(mockedLoggerError).not.toHaveBeenCalled()
     })
 
     it('logs and toasts when findNextMove rejects', async () => {
@@ -337,6 +372,8 @@ describe('useHints', () => {
         type: 'error',
         message: 'solver down',
       })
+      // The catch-path clearer must null the validation message.
+      expect(callbacks.setValidationMessage).toHaveBeenCalledWith(null)
       expect(result.current.hintLoading).toBe(false)
     })
   })
@@ -357,6 +394,8 @@ describe('useHints', () => {
         message: 'Fill in some candidates first, or use 💡 Hint to get started',
       })
       expect(callbacks.setMoveHighlight).not.toHaveBeenCalled()
+      // The fill-candidate clearer must null the validation message.
+      expect(callbacks.setValidationMessage).toHaveBeenCalledWith(null)
     })
 
     it('shows an error toast (no highlight) for an unpinpointable-error move', async () => {
@@ -374,6 +413,8 @@ describe('useHints', () => {
         message: 'There seems to be an error in the puzzle. Try using 💡 Hint to fix it.',
       })
       expect(callbacks.setMoveHighlight).not.toHaveBeenCalled()
+      // The unpinpointable clearer must null the validation message.
+      expect(callbacks.setValidationMessage).toHaveBeenCalledWith(null)
     })
 
     it('highlights a contradiction WITHOUT the answer and toasts the violation', async () => {
@@ -394,6 +435,8 @@ describe('useHints', () => {
         type: 'error',
         message: 'row clash',
       })
+      // The contradiction clearer must null the validation message.
+      expect(callbacks.setValidationMessage).toHaveBeenCalledWith(null)
     })
 
     it('highlights without the answer and offers a Learn-more action for a normal technique', async () => {
@@ -430,6 +473,33 @@ describe('useHints', () => {
       if (!techniqueCall) throw new Error('expected technique counter increment')
       const updater = techniqueCall[0] as (n: number) => number
       expect(updater(2)).toBe(3)
+      // The technique success clearer must null the validation message.
+      expect(callbacks.setValidationMessage).toHaveBeenCalledWith(null)
+    })
+
+    it('derives the slug by collapsing repeated whitespace to single dashes and underscores to dashes', async () => {
+      // technique 'a  b_c' (two spaces + underscore): correct slug is 'a-b-c'.
+      // - /\s+/g -> /\s/g mutant would yield 'a--b-c'
+      // - first '-' replacement emptied would yield 'ab-c'
+      // - second '-' replacement emptied would yield 'a-bc'
+      const move = makeMove({ technique: 'a  b_c' })
+      mockedFindNextMove.mockResolvedValue(makeFindResult(move))
+      const callbacks = createHintsCallbacks()
+      const { result } = renderHintsHook(makeGame(), callbacks)
+
+      await act(async () => {
+        await result.current.handleTechniqueHint()
+      })
+
+      const infoCall = callbacks.setValidationMessage.mock.calls.find(
+        (c) => (c[0] as { type: string }).type === 'info',
+      )
+      expect(infoCall).toBeDefined()
+      const msg = infoCall![0] as { action?: { onClick: () => void } }
+      msg.action!.onClick()
+      expect(callbacks.setTechniqueModal).toHaveBeenCalledWith(
+        expect.objectContaining({ slug: 'a-b-c' }),
+      )
     })
 
     it('does not double-count an identical technique hint signature', async () => {
@@ -458,6 +528,37 @@ describe('useHints', () => {
 
       expect(mockedLoggerError).toHaveBeenCalledWith('Technique hint error:', expect.any(Error))
       expect(result.current.techniqueHintLoading).toBe(false)
+      // The technique catch clearer must null the validation message.
+      expect(callbacks.setValidationMessage).toHaveBeenCalledWith(null)
+    })
+
+    it('sets techniqueHintLoading true while a technique hint request is in flight', async () => {
+      let resolveSolver: (value: FindResult) => void = () => {}
+      mockedFindNextMove.mockImplementation(
+        () =>
+          new Promise<FindResult>((resolve) => {
+            resolveSolver = resolve
+          }),
+      )
+      const move = makeMove()
+      const callbacks = createHintsCallbacks()
+      const { result } = renderHintsHook(makeGame(), callbacks)
+
+      let pending: Promise<void> | undefined
+      act(() => {
+        pending = result.current.handleTechniqueHint()
+      })
+
+      // While the solver is pending, the loading flag must be true (setTechniqueHintLoading(true)).
+      expect(result.current.techniqueHintLoading).toBe(true)
+
+      await act(async () => {
+        resolveSolver(makeFindResult(move))
+        await pending
+      })
+      await waitFor(() => {
+        expect(result.current.techniqueHintLoading).toBe(false)
+      })
     })
   })
 
@@ -709,6 +810,10 @@ describe('useHints', () => {
         message: 'Puzzle is already complete!',
       })
       expect(callbacks.setMoveHighlight).not.toHaveBeenCalled()
+      // Exactly two calls: the fetchCachedHint toast, then the synchronous clearer nulling it.
+      // L106 mutant (clearer body emptied) → 1 call; L225 mutant (return guard removed) → 4 calls.
+      expect(callbacks.setValidationMessage).toHaveBeenCalledTimes(2)
+      expect(mockedLoggerError).not.toHaveBeenCalled()
     })
 
     it('toasts "Failed to get technique" when the solver rejects a non-Error value', async () => {

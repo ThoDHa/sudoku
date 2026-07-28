@@ -191,7 +191,7 @@ describe('useGameActions - autoFillNotes', () => {
     // ArrayDeclaration, BooleanLiteral, ConditionalExpression, EqualityOperator,
     // LogicalOperator, and UpdateOperator mutants on the fillMove construction
     // and the cellsWithCandidates counting loop.
-    const moveArg = (options.game.applyExternalMove as Mock).mock.calls[0][2]
+    const moveArg = (options.game.applyExternalMove as Mock).mock.calls[0]![2]
     expect(moveArg).toEqual({
       step_index: 0,
       technique: 'Fill Candidates',
@@ -215,7 +215,7 @@ describe('useGameActions - autoFillNotes', () => {
     expect(options.game.applyExternalMove).toHaveBeenCalledTimes(1)
     expect(options.setAutoFillUsed).toHaveBeenCalledWith(true)
     // cellsWithCandidates = 0 when no cell has candidate bits set.
-    const moveArg = (options.game.applyExternalMove as Mock).mock.calls[0][2]
+    const moveArg = (options.game.applyExternalMove as Mock).mock.calls[0]![2]
     expect(moveArg.explanation).toBe('Filled all candidates for 0 cells')
   })
 })

@@ -98,6 +98,8 @@ describe('useShareActions', () => {
         message: 'Failed to copy link',
       })
       expect(scheduleToastClear).toHaveBeenCalledWith(TOAST_DURATION_ERROR, expect.any(Function))
+      // The error-path clearer must null the validation message (scheduleToastClear mock invokes cb synchronously).
+      expect(setValidationMessage).toHaveBeenCalledWith(null)
     })
 
     it('routes a builder throw to the share-error toast and logs it', async () => {
@@ -118,6 +120,8 @@ describe('useShareActions', () => {
       expect(scheduleToastClear).toHaveBeenCalledWith(TOAST_DURATION_ERROR, expect.any(Function))
       // Clipboard must never be reached when the builder throws.
       expect(mockedCopyToClipboard).not.toHaveBeenCalled()
+      // handleShareError's clearer must null the validation message (scheduleToastClear mock invokes cb synchronously).
+      expect(setValidationMessage).toHaveBeenCalledWith(null)
     })
   })
 
@@ -197,6 +201,9 @@ describe('useShareActions', () => {
         difficulty: 'medium',
         givens: [1, 2, 3],
       })
+      // Conditional spread must omit the seed key entirely (vitest treats {seed: undefined} as equal to {},
+      // so assert the key is genuinely absent).
+      expect(mockedBuildPuzzleShareUrl.mock.calls[0]![0]).not.toHaveProperty('seed')
 
       await act(async () => {
         await result.current.onShareState()
@@ -209,6 +216,7 @@ describe('useShareActions', () => {
         candidates: [[], []],
         elapsedMs: 44000,
       })
+      expect(mockedBuildStateShareUrl.mock.calls[0]![0]).not.toHaveProperty('seed')
     })
   })
 

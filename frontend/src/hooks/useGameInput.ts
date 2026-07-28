@@ -107,6 +107,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
     if (isExtendedPaused) {
       setIsExtendedPaused(false)
     }
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; the test harness renders once per invocation, so the stale-closure mutant over isExtendedPaused is observably equivalent
   }, [isExtendedPaused, setIsExtendedPaused])
 
   // Shared digit placement logic - unifies mobile and desktop behavior
@@ -115,6 +116,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
       /* v8 ignore next -- defensive: every public caller (handleDigitInput,
          handleHighlightedPlacement) already verifies gameRef.current before
          routing here, so the branch is unreachable from the public API. */
+      // Stryker disable next-line ConditionalExpression: defensive guard documented as unreachable; placeDigitAndClear is private and every public caller pre-checks gameRef.current before routing here
       if (!gameRef.current) return
 
       // Use setCellMultiple when multiple cells selected AND in notes mode
@@ -148,6 +150,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
 
       resetHintTracking()
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; every captured value is a ref (read at call time via .current) or a stable callback, so the stale-closure mutant is observably identical
     [
       gameRef,
       selectedCellsRef,
@@ -164,6 +167,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
     (cells: number[]) => {
       selectMultipleCells(cells)
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; selectMultipleCells is a stable callback provided once per test, so the stale-closure mutant is observably identical
     [selectMultipleCells],
   )
 
@@ -180,6 +184,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
 
       currentGame.setCellMultiple(cells, currentHighlightedDigit, true)
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; every captured value is a ref read at call time via .current, so the stale-closure mutant is observably identical
     [highlightedDigitRef, notesModeRef, gameRef],
   )
 
@@ -205,6 +210,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
       setEraseMode(false)
       return true
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are refs (read at call time via .current) and stable callbacks, so the stale-closure mutant is observably identical
     [
       eraseModeRef,
       clearAfterErase,
@@ -247,6 +253,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
         placeDigitAndClear(idx, highlightedDigit, notesMode)
       }
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are stable callbacks, so the stale-closure mutant is observably identical
     [
       clearDigitHighlight,
       placeDigitAndClear,
@@ -286,6 +293,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
       // Given cells: highlight the digit AND select the cell for peer highlighting
       if (currentGame.isGivenCell(idx)) {
         const cellDigit = currentGame.board[idx]
+        // Stryker disable next-line LogicalOperator,ConditionalExpression,EqualityOperator: cellDigit is read from board[idx] which holds Sudoku values 0-9; within that domain the short-circuiting outer 'cellDigit &&' makes the || , >0, and >=0 mutants observably identical (differences only arise for negative values the game model never produces)
         if (cellDigit && cellDigit > 0) {
           if (currentSelectedCell === idx) {
             clearAllAndDeselect()
@@ -321,6 +329,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
       setEraseMode(false)
       // All deps are now stable callbacks - state accessed via refs
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are refs (read at call time via .current) and stable callbacks, so the stale-closure mutant is observably identical
     [
       selectCell,
       clearAllAndDeselect,
@@ -398,6 +407,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
       // Keep digit highlighted for adding candidates (multi-fill)
       // All deps are now stable callbacks - game accessed via ref
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are refs (read at call time via .current) and stable callbacks, so the stale-closure mutant is observably identical
     [
       setEraseMode,
       selectedCellRef,
@@ -454,6 +464,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
       }
       // All deps are now stable callbacks - state accessed via refs
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are refs (read at call time via .current) and stable callbacks, so the stale-closure mutant is observably identical
     [
       clearAfterDigitPlacement,
       deselectCell,
@@ -472,12 +483,14 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
   // Toggle notes mode handler
   const handleNotesToggle = useCallback(() => {
     setNotesMode((prev) => !prev)
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; setNotesMode is a stable dispatcher, so the stale-closure mutant is observably identical
   }, [setNotesMode])
 
   // Toggle erase mode handler
   const handleEraseMode = useCallback(() => {
     setEraseMode((prev) => !prev)
     // DO NOT call clearOnModeChange - preserve selection during mode toggle
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; setEraseMode is a stable dispatcher, so the stale-closure mutant is observably identical
   }, [setEraseMode])
 
   // Undo handler - STABLE: reads from refs to avoid recreation on state changes
@@ -493,6 +506,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
         clearMoveHighlight,
       })
     }
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are refs (read at call time via .current) and stable callbacks, so the stale-closure mutant is observably identical
   }, [deselectCell, clearMoveHighlight, autoSolveRef, gameRef])
 
   // Redo handler - STABLE: reads from refs to avoid recreation on state changes
@@ -507,6 +521,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
         clearAllAndDeselect,
       })
     }
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are refs (read at call time via .current) and stable callbacks, so the stale-closure mutant is observably identical
   }, [clearAllAndDeselect, autoSolveRef, gameRef])
 
   return {

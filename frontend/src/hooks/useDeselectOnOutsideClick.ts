@@ -26,6 +26,7 @@ export function useDeselectOnOutsideClick(options: UseDeselectOnOutsideClickOpti
 
       const target = event.target as Element | null
       /* v8 ignore next -- defensive guard: a dispatched DOM click/touchstart always carries a non-null event.target (the browser/jsdom assigns it during dispatch), so this null check is unreachable for genuine events */
+      // Stryker disable next-line ConditionalExpression: event.target is always assigned by the DOM/jsdom dispatcher, so the guard is unreachable in practice and flipping it is observably identical
       if (!target) return
 
       // Check for actual modals AND overlay backdrops (not toasts/notifications).

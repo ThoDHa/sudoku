@@ -167,6 +167,10 @@ describe('useGameInput - handleCellClick', () => {
 
     expect(options.setEraseModeSpy).toHaveBeenCalledWith(false)
     expect(options.resetHintTracking).toHaveBeenCalled()
+    // Kills L202 BooleanLiteral->false mutant on handleEraseClick's return:
+    // after the erase path the handler must signal "handled" so handleCellClick
+    // stops and does not fall through to selectCell.
+    expect(options.selectCell).not.toHaveBeenCalled()
   })
 
   it('selects a given cell and exits erase mode when erase mode is active but cell is given', () => {
@@ -181,6 +185,10 @@ describe('useGameInput - handleCellClick', () => {
 
     expect(options.selectCell).toHaveBeenCalledWith(0)
     expect(options.setEraseModeSpy).toHaveBeenCalledWith(false)
+    // Kills L206 BooleanLiteral->false mutant on handleEraseClick's second
+    // return: the handler must signal "handled" so handleCellClick stops and
+    // does not fall through to the given-cell highlight branch.
+    expect(options.clickGivenCell).not.toHaveBeenCalled()
   })
 
   it('blocks clicking a given cell when a digit is highlighted and no given cell is selected', () => {
@@ -308,6 +316,10 @@ describe('useGameInput - handleCellClick', () => {
     expect(game.setCell).toHaveBeenCalledWith(10, 4, false)
     expect(options.clearAfterDigitPlacement).toHaveBeenCalled()
     expect(options.deselectCell).toHaveBeenCalled()
+    // Kills L144 ConditionalExpression->true mutant on the post-placement
+    // isDigitComplete check: digit 4 is far from complete (default counts),
+    // so clearDigitHighlight must not fire.
+    expect(options.clearDigitHighlight).not.toHaveBeenCalled()
   })
 
   it('clears digit highlight when the highlighted digit is already complete', () => {
@@ -381,6 +393,9 @@ describe('useGameInput - handleCellClick', () => {
 
     expect(options.selectCell).toHaveBeenCalledWith(10)
     expect(options.setEraseModeSpy).toHaveBeenCalledWith(false)
+    // Kills L107 ConditionalExpression->true mutant on resumeFromExtendedPause:
+    // when isExtendedPaused is false the hook must NOT dispatch setIsExtendedPaused.
+    expect(options.setIsExtendedPausedSpy).not.toHaveBeenCalled()
   })
 
   it('resumes from extended pause on every invocation', () => {
@@ -394,6 +409,127 @@ describe('useGameInput - handleCellClick', () => {
     })
 
     expect(options.setIsExtendedPausedSpy).toHaveBeenCalledWith(false)
+  })
+
+  it('selects (does not erase) an empty non-given cell when erase mode is active', () => {
+    // Kills L191 ConditionalExpression->true mutant on the erase-eligibility
+    // check: an empty cell (board[idx]===0) is not erasable, so the original
+    // falls through to selectCell + setEraseMode(false). The mutant would
+    // route through commitCellAction('erase', ...) and call game.eraseCell.
+    const game = makeGameMock()
+    options.gameRef.current = game
+    options.eraseModeRef.current = true
+    const { result } = renderInput(options)
+
+    act(() => {
+      result.current.handleCellClick(10) // board[10] = 0 by default
+    })
+
+    expect(options.selectCell).toHaveBeenCalledWith(10)
+    expect(game.eraseCell).not.toHaveBeenCalled()
+  })
+
+  it('highlights a given cell when clicked with no prior highlight or selection', () => {
+    // Kills L280 ConditionalExpression->true mutant on the highlighted+given
+    // guard: with no highlighted digit, the original skips the early-return
+    // block and falls through to clickGivenCell. The mutant would enter the
+    // block and early-return because selectedCell is null, skipping the
+    // highlight.
+    const game = makeGameMock()
+    options.gameRef.current = game
+    // highlightedDigitRef.current = null (default)
+    // selectedCellRef.current = null (default)
+    const { result } = renderInput(options)
+
+    act(() => {
+      result.current.handleCellClick(0) // givens[0] = 5
+    })
+
+    expect(options.clickGivenCell).toHaveBeenCalledWith(5, 0)
+  })
+
+  it('does not recheck digit completion during notes-mode placement', () => {
+    // Kills L142 ConditionalExpression->true mutant on the `if (!notesMode)`
+    // guard around the post-placement completion check. In notes mode the
+    // completion block must be skipped entirely, even if setCell happens to
+    // push the digit count to 9 mid-call.
+    const game = makeGameMock()
+    const mutableCounts = [0, 0, 0, 8, 0, 0, 0, 0, 0]
+    Object.defineProperty(game, 'digitCounts', {
+      get: () => mutableCounts,
+      configurable: true,
+    })
+    ;(game.setCell as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      mutableCounts[3] = 9
+    })
+    options.gameRef.current = game
+    options.notesModeRef.current = true
+    options.highlightedDigitRef.current = 4
+    const { result } = renderInput(options)
+
+    act(() => {
+      result.current.handleCellClick(10)
+    })
+
+    expect(game.setCell).toHaveBeenCalledWith(10, 4, true)
+    expect(options.clearDigitHighlight).not.toHaveBeenCalled()
+  })
+
+  it('deselects via clearAllAndDeselect when re-clicking the selected cell with a highlighted digit but notes mode off', () => {
+    // Kills L303 LogicalOperator (&&->||) mutant: with notesMode false the
+    // candidate-toggle branch must not fire; the re-click must deselect.
+    const game = makeGameMock()
+    options.gameRef.current = game
+    options.selectedCellRef.current = 10
+    options.notesModeRef.current = false
+    options.highlightedDigitRef.current = 4
+    const { result } = renderInput(options)
+
+    act(() => {
+      result.current.handleCellClick(10)
+    })
+
+    expect(options.clearAllAndDeselect).toHaveBeenCalled()
+    expect(game.setCell).not.toHaveBeenCalled()
+  })
+
+  it('deselects via clearAllAndDeselect when re-clicking the selected cell in notes mode with no highlighted digit', () => {
+    // Kills L303 ConditionalExpression->true mutant on the
+    // `currentHighlightedDigit !== null` sub-condition: with no highlight the
+    // candidate-toggle branch must not fire even in notes mode.
+    const game = makeGameMock()
+    options.gameRef.current = game
+    options.selectedCellRef.current = 10
+    options.notesModeRef.current = true
+    options.highlightedDigitRef.current = null
+    const { result } = renderInput(options)
+
+    act(() => {
+      result.current.handleCellClick(10)
+    })
+
+    expect(options.clearAllAndDeselect).toHaveBeenCalled()
+    expect(game.setCell).not.toHaveBeenCalled()
+  })
+
+  it('deselects via clearAllAndDeselect when re-clicking a filled cell in notes mode with a highlighted digit', () => {
+    // Kills L303 ConditionalExpression->true mutant on the
+    // `currentGame.board[idx] === 0` sub-condition: a filled cell cannot host
+    // a candidate toggle, so the re-click must deselect.
+    const game = makeGameMock()
+    ;(game.board as number[])[10] = 7
+    options.gameRef.current = game
+    options.selectedCellRef.current = 10
+    options.notesModeRef.current = true
+    options.highlightedDigitRef.current = 4
+    const { result } = renderInput(options)
+
+    act(() => {
+      result.current.handleCellClick(10)
+    })
+
+    expect(options.clearAllAndDeselect).toHaveBeenCalled()
+    expect(game.setCell).not.toHaveBeenCalled()
   })
 })
 
@@ -471,6 +607,11 @@ describe('useGameInput - handleDigitInput', () => {
     })
 
     expect(options.toggleDigitHighlight).toHaveBeenCalledWith(4)
+    // Kills L368 ConditionalExpression->false and BlockStatement->{} mutants:
+    // with no cell selected, the null-check early-return must fire, so the
+    // downstream given-cell branch (which would call deselectCell first) is
+    // never reached.
+    expect(options.deselectCell).not.toHaveBeenCalled()
   })
 
   it('deselects given cell and toggles digit highlight when a given is selected', () => {
@@ -542,6 +683,34 @@ describe('useGameInput - handleDigitInput', () => {
 
     expect(game.setCell).toHaveBeenCalledWith(10, 4, false)
     expect(options.clearDigitHighlight).toHaveBeenCalled()
+  })
+
+  it('routes a single-cell notes selection through setCell, not setCellMultiple', () => {
+    // Kills four mutants at once:
+    //   - L363 LogicalOperator (&&->||) on the multi-select guard in
+    //     handleDigitInput
+    //   - L363 ConditionalExpression->true on `currentSelectedCells.size > 1`
+    //   - L363 EqualityOperator (>) on the same size check
+    //   - L122 EqualityOperator (>) on the isMultiSelect check inside
+    //     placeDigitAndClear
+    // With exactly one selected cell the original routes to setCell(10, 4, true).
+    // The L363 mutants route to placeDigitAndClear(0, digit, true) which calls
+    // setCell(0, ...) (wrong index) and the L122 mutant inside calls
+    // setCellMultiple. All four are exposed by asserting the exact setCell
+    // arguments and that setCellMultiple was not called.
+    const game = makeGameMock()
+    options.gameRef.current = game
+    options.notesModeRef.current = true
+    options.selectedCellsRef.current = new Set([10])
+    options.selectedCellRef.current = 10
+    const { result } = renderInput(options)
+
+    act(() => {
+      result.current.handleDigitInput(4)
+    })
+
+    expect(game.setCell).toHaveBeenCalledWith(10, 4, true)
+    expect(game.setCellMultiple).not.toHaveBeenCalled()
   })
 })
 

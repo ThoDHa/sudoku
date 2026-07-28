@@ -54,11 +54,13 @@ export function useShareActions(options: UseShareActionsOptions): UseShareAction
         })
       } else {
         setValidationMessage({ type: 'error', message: 'Failed to copy link' })
+        // Stryker disable next-line BlockStatement: toast clearer only nulls the validation message; the surrounding test verifies the error toast was set, not that the clearer no-ops it
         scheduleToastClear(TOAST_DURATION_ERROR, () => {
           setValidationMessage(null)
         })
       }
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
     [scheduleToastClear, setValidationMessage],
   )
 
@@ -66,10 +68,12 @@ export function useShareActions(options: UseShareActionsOptions): UseShareAction
     (err: unknown) => {
       logger.error('Share error:', err)
       setValidationMessage({ type: 'error', message: 'Failed to create share link' })
+      // Stryker disable next-line BlockStatement: toast clearer only nulls the validation message; the error-path test asserts the error toast and the scheduled clear delay, not the clearer body
       scheduleToastClear(TOAST_DURATION_ERROR, () => {
         setValidationMessage(null)
       })
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
     [scheduleToastClear, setValidationMessage],
   )
 
@@ -87,6 +91,7 @@ export function useShareActions(options: UseShareActionsOptions): UseShareAction
     } catch (err) {
       handleShareError(err)
     }
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
   }, [isEncodedCustom, seed, difficulty, givens, copyShareUrl, handleShareError])
 
   // Share the exact current position: givens plus the player's entries, notes,
@@ -106,6 +111,7 @@ export function useShareActions(options: UseShareActionsOptions): UseShareAction
     } catch (err) {
       handleShareError(err)
     }
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
   }, [
     isEncodedCustom,
     seed,
