@@ -17,6 +17,25 @@ coverage.out
 playwright-report/
 test-results/
 
+# Test/CI outputs (large, never needed in the image — the Dockerfile builds fresh)
+allure-results/
+**/allure-results/
+reports/
+**/reports/
+mutation-results/
+**/mutation-results/
+.stryker-tmp/
+**/.stryker-tmp/
+frontend/coverage/
+frontend/dev-dist/
+frontend/mutation.json
+frontend/console-debug.log
+
+# Project management artifacts (not part of the application)
+.tasks/
+.future_task/
+.opencode/
+
 # IDE and editor files
 .idea/
 .vscode/
