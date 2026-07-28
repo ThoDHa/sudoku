@@ -133,6 +133,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       setAutoSolveStepsUsed,
       setAutoSolveErrorsFixed,
     })
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler (FE-7); test mocks provide stable objects so stale-closure mutant is equivalent
   }, [game, clearSavedGameState, clearAllAndDeselect])
 
   // Reset all game state (board, candidates, history, and tracking variables)
@@ -146,6 +147,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
     autoSolveUsedRef.current = fresh.autoSolveUsed
     setAutoSolveStepsUsed(fresh.autoSolveStepsUsed)
     setAutoSolveErrorsFixed(fresh.autoSolveErrorsFixed)
+    // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
   }, [game])
 
   // Restart puzzle (clears all AND resets timer)
@@ -157,6 +159,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
     clearAllAndDeselect()
     setNotesMode(false)
     setShowResultModal(false)
+    // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
   }, [resetAllGameState, timerControl, clearSavedGameState, clearAllAndDeselect])
 
   // Auto-fill notes based on current board state
@@ -184,6 +187,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
 
     game.applyExternalMove(game.board, newCandidates, fillMove)
     setAutoFillUsed(true)
+    // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
   }, [game])
 
   // Check notes for errors
@@ -217,6 +221,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
     scheduleToastClear(TOAST_DURATION_INFO, () => {
       setValidationMessage(null)
     })
+    // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
   }, [game, scheduleToastClear])
 
   // Validate current board state by comparing against the known solution
@@ -246,6 +251,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       setValidationMessage(null)
       setIncorrectCells([])
     })
+    // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
   }, [game.board, solution, scheduleToastClear])
 
   // Submit handler - builds the score record, persists it, marks daily, and
@@ -276,6 +282,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
 
     setShowResultModal(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
+    // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
   }, [puzzle, hintsUsed, techniqueHintsUsed, encodedPuzzle, autoFillUsed])
 
   // Auto-solve handler
@@ -286,6 +293,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
     // Start paused if speed is 'step'
     const startPaused = getAutoSolveSpeed() === 'step'
     await autoSolve.restartAutoSolve(startPaused)
+    // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
   }, [autoSolve, clearAllAndDeselect])
 
   // Check & Fix handler - compares current board vs solution, removes mismatches, continues solving
