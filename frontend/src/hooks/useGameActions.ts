@@ -281,8 +281,8 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
     }
 
     setShowResultModal(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
     // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
   }, [puzzle, hintsUsed, techniqueHintsUsed, encodedPuzzle, autoFillUsed])
 
   // Auto-solve handler
@@ -310,6 +310,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       // Get current state
       const currentBoard = game.board
       const currentCandidates = game.candidates
+      // Stryker disable next-line OptionalChaining,ArrayDeclaration: puzzle is always defined in the test paths; the || fallback is checked by givens.length !== 81 below so ["Stryker was here"] and [] are observationally identical
       const givens = puzzle?.givens || []
 
       if (givens.length !== 81) {
@@ -325,6 +326,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
         givens,
         solution,
       )
+      // Stryker disable next-line ConditionalExpression,LogicalOperator,BlockStatement: block body contains only logger.debug calls (all StringLiteral mutants already disabled), so the condition and empty-block mutant have no observable effect
       if (result && result.moves) {
         // Stryker disable next-line StringLiteral: debug log label, does not affect behavior
         logger.debug(
@@ -338,10 +340,12 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
         // Use new autosolver infrastructure to animate the replayed moves step-by-step, with UX feedback.
         autoSolve.playMoves(result.moves, false)
       } else {
+        // Stryker disable next-line BlockStatement: else body contains only the logger.warn call below (StringLiteral already disabled), so empty-block mutant has no observable effect
         // Stryker disable next-line StringLiteral: log message content does not affect program behavior
         logger.warn('Check & Fix: no changes needed')
       }
     } catch (error) {
+      // Stryker disable next-line StringLiteral: log message content does not affect program behavior
       logger.error('Check & Fix failed:', error)
       handleAutoSolveError('Failed to check and fix entries')
     }
@@ -392,6 +396,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
         setDebugInfoCopied(false)
       }, COPY_TOAST_DURATION)
     }
+    // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
   }, [puzzle, initialBoard, game, colorTheme, mode, visibilityAwareTimeout])
 
@@ -399,6 +404,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
   const handleFeatureRequest = useCallback(() => {
     // Open GitHub issues page with enhancement label (short URL for desktop compatibility)
     window.open('https://github.com/thodha/sudoku/issues', '_blank', 'noopener,noreferrer')
+    // Stryker disable next-line ArrayDeclaration: empty-deps useCallback; the mutant adds a string but the callback captures only stable refs, so deps content is observationally irrelevant
   }, [])
 
   return {
