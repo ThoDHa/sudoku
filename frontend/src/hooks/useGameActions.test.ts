@@ -705,6 +705,7 @@ describe('useGameActions - handleCopyDebugInfo / handleFeatureRequest', () => {
     expect(report.history[0].technique).toBe('place')
     expect(report.history[0].digit).toBe(5)
     expect(report.state.currentBoard).toEqual(Array(81).fill(0))
+    expect(report.settings).toEqual({ colorTheme: 'tokyonight', mode: 'dark' })
     // Drive the visibility-aware timeout callback so the inline arrow runs.
     const cb = (options.visibilityAwareTimeout as unknown as Mock).mock.calls[0]![0] as () => void
     act(() => cb())

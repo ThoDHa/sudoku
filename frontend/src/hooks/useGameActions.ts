@@ -358,6 +358,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       version: __COMMIT_HASH__,
       timestamp: new Date().toISOString(),
       puzzle: {
+        // Stryker disable next-line OptionalChaining: puzzle is always defined when handleCopyDebugInfo is reachable (the hook requires a puzzle prop); the ?. is defensive but observationally identical to .
         seed: puzzle?.seed,
         difficulty: puzzle?.difficulty,
         puzzleId: puzzle?.puzzle_id,
