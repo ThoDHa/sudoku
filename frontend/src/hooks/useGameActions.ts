@@ -290,8 +290,10 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
 
   // Check & Fix handler - compares current board vs solution, removes mismatches, continues solving
   const handleCheckAndFix = async () => {
+    // Stryker disable next-line StringLiteral: log message content does not affect program behavior
     logger.debug('Check & Fix invoked')
     if (!solution || solution.length !== 81) {
+      // Stryker disable next-line StringLiteral: log message content does not affect program behavior
       logger.error('Cannot check and fix: solution not available')
       return
     }
@@ -303,6 +305,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       const givens = puzzle?.givens || []
 
       if (givens.length !== 81) {
+        // Stryker disable next-line StringLiteral: log message content does not affect program behavior
         logger.error('Cannot check and fix: givens not available')
         return
       }
@@ -315,8 +318,10 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
         solution,
       )
       if (result && result.moves) {
+        // Stryker disable next-line StringLiteral: debug log label, does not affect behavior
         logger.debug(
           'Check & Fix moves:',
+          // Stryker disable next-line ArrowFunction,ObjectLiteral,ConditionalExpression,LogicalOperator: debug-only map output for logging, never asserted in tests
           result.moves.map((m, idx) => ({ idx, move: m && m.move, board: m && m.board })),
         )
       }
@@ -325,6 +330,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
         // Use new autosolver infrastructure to animate the replayed moves step-by-step, with UX feedback.
         autoSolve.playMoves(result.moves, false)
       } else {
+        // Stryker disable next-line StringLiteral: log message content does not affect program behavior
         logger.warn('Check & Fix: no changes needed')
       }
     } catch (error) {
