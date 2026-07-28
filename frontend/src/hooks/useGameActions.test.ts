@@ -447,6 +447,9 @@ describe('useGameActions - handleValidate', () => {
       type: 'error',
       message: 'There are errors in the puzzle',
     })
+    // incorrectCells was omitted from the result — setIncorrectCells must NOT
+    // be called. Kills ConditionalExpression(true) mutant on the guard.
+    expect(options.setIncorrectCells).not.toHaveBeenCalled()
     spy.mockRestore()
   })
 })

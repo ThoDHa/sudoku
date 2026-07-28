@@ -167,6 +167,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
     if (game.board.length !== 81) return
     const newCandidates = game.fillAllCandidates()
     let cellsWithCandidates = 0
+    // Stryker disable next-line EqualityOperator: i<=81 iterates once more on newCandidates[81] which is undefined → undefined||0 → countCandidates(0)=0 → no count change; observationally equivalent
     for (let i = 0; i < 81; i++) {
       if (countCandidates(newCandidates[i] || 0) > 0) {
         cellsWithCandidates++
