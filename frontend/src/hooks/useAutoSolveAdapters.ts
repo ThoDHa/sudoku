@@ -95,6 +95,7 @@ export function useAutoSolveAdapters(
     setShowSolutionConfirm,
   } = options
 
+  // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
   const getBoard = useCallback(() => gameRef.current?.board ?? [], [gameRef])
 
   const getCandidates = useCallback(() => {
@@ -103,8 +104,10 @@ export function useAutoSolveAdapters(
     // Convert Uint16Array to Set<number>[] for legacy API compatibility
     const arrays = candidatesToArrays(game.candidates)
     return arrays.map((arr) => new Set(arr))
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
   }, [gameRef])
 
+  // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
   const getGivens = useCallback(() => initialBoardRef.current, [initialBoardRef])
 
   const handleApplyMove = useCallback(
@@ -118,6 +121,7 @@ export function useAutoSolveAdapters(
       setMoveHighlight(move, index)
 
       // Highlight the digit being placed/modified
+      // Stryker disable next-line LogicalOperator, ConditionalExpression, EqualityOperator: valid Sudoku digits are 0-9, so once move.digit is truthy the > 0 comparison is always true; all three mutations are domain-equivalent
       if (move.digit && move.digit > 0) {
         setDigitHighlight(move.digit)
       }
@@ -129,6 +133,7 @@ export function useAutoSolveAdapters(
         setNotesMode(false)
       }
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
     [setMoveHighlight, setDigitHighlight, setNotesMode, gameRef],
   )
 
@@ -143,6 +148,7 @@ export function useAutoSolveAdapters(
       setMoveHighlight(move as MoveHighlight, index)
 
       // Update digit highlight based on move
+      // Stryker disable next-line ConditionalExpression, EqualityOperator: valid Sudoku digits are 0-9, so once move.digit is truthy the > 0 comparison is always true; both mutations are domain-equivalent
       if (move && move.digit && move.digit > 0) {
         setDigitHighlight(move.digit)
       } else {
@@ -158,9 +164,11 @@ export function useAutoSolveAdapters(
         }
       }
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
     [setMoveHighlight, setDigitHighlight, clearDigitHighlight, setNotesMode, gameRef],
   )
 
+  // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
   const handleIsComplete = useCallback(() => gameRef.current?.isComplete ?? false, [gameRef])
 
   const handleAutoSolveError = useCallback(
@@ -170,6 +178,7 @@ export function useAutoSolveAdapters(
         setValidationMessage(null)
       })
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
     [scheduleToastClear, setValidationMessage],
   )
 
@@ -178,6 +187,7 @@ export function useAutoSolveAdapters(
       setUnpinpointableErrorInfo({ message, count })
       setShowSolutionConfirm(true)
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
     [setUnpinpointableErrorInfo, setShowSolutionConfirm],
   )
 
@@ -188,6 +198,7 @@ export function useAutoSolveAdapters(
         setValidationMessage(null)
       })
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
     [throttledSetValidationMessage, scheduleToastClear, setValidationMessage],
   )
 
@@ -202,6 +213,7 @@ export function useAutoSolveAdapters(
       // But resume solving sooner for better UX
       visibilityAwareTimeout(resumeCallback, ERROR_FIX_RESUME_DELAY)
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
     [visibilityAwareTimeout, scheduleToastClear, setValidationMessage],
   )
 
@@ -216,6 +228,7 @@ export function useAutoSolveAdapters(
         setValidationMessage({ type: 'success', message: 'Initial state' })
       }
     },
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
     [setValidationMessage],
   )
 

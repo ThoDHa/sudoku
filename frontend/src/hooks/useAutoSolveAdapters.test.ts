@@ -132,6 +132,8 @@ describe('useAutoSolveAdapters - handleApplyMove', () => {
     })
 
     expect(game.applyExternalMove).toHaveBeenCalledTimes(1)
+    const moveCall = (game.applyExternalMove as unknown as Mock).mock.calls[0]!
+    expect((moveCall[1] as Uint16Array)[0]).toBe((1 << 1) | (1 << 2))
     expect(options.setMoveHighlight).toHaveBeenCalledWith(move, 3)
     expect(options.setDigitHighlight).toHaveBeenCalledWith(5)
     expect(options.setNotesMode).toHaveBeenCalledWith(false)
@@ -230,6 +232,8 @@ describe('useAutoSolveAdapters - handleApplyState', () => {
     })
 
     expect(game.setBoardState).toHaveBeenCalledTimes(1)
+    const stateCall = (game.setBoardState as unknown as Mock).mock.calls[0]!
+    expect((stateCall[1] as Uint16Array)[0]).toBe((1 << 3) | (1 << 5))
     expect(options.setMoveHighlight).toHaveBeenCalledWith(move, 1)
     expect(options.setDigitHighlight).toHaveBeenCalledWith(3)
     expect(options.setNotesMode).toHaveBeenCalledWith(true)
