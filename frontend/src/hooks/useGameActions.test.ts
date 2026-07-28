@@ -2,6 +2,11 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { useGameActions, type UseGameActionsOptions } from './useGameActions'
 import type { UseSudokuGameReturn } from './useSudokuGame'
+import { getAutoSolveSpeed } from '../lib/preferences'
+
+vi.mock('../lib/preferences', () => ({
+  getAutoSolveSpeed: vi.fn(() => 'normal'),
+}))
 
 // Minimal game mock covering every field the action handlers read. Real
 // game-state behavior is exercised in useSudokuGame.test.ts and the Game page
@@ -537,6 +542,19 @@ describe('useGameActions - handleSolve', () => {
     expect(options.setAutoSolveUsed).toHaveBeenCalledWith(true)
     expect(options.autoSolveUsedRef.current).toBe(true)
     expect(options.autoSolve.restartAutoSolve).toHaveBeenCalledTimes(1)
+    // Default speed is not 'step', so startPaused must be false.
+    expect(options.autoSolve.restartAutoSolve).toHaveBeenCalledWith(false)
+  })
+
+  it('starts paused when autoSolveSpeed is step', async () => {
+    vi.mocked(getAutoSolveSpeed).mockReturnValue('step')
+    const options = makeOptions()
+    const { result } = renderActions(options)
+    await act(async () => {
+      await result.current.handleSolve()
+    })
+    expect(options.autoSolve.restartAutoSolve).toHaveBeenCalledWith(true)
+    vi.mocked(getAutoSolveSpeed).mockReturnValue('normal')
   })
 })
 
