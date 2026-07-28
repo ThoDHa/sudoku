@@ -31,7 +31,7 @@ import { PlaywrightUISDK } from '../sdk'
  * Get the regular hint button (Hint)
  */
 function getHintButton(page: Page): Locator {
-  return page.locator('button:has-text("Hint")').first()
+  return page.getByRole('button', { name: 'Get a hint' })
 }
 
 /**

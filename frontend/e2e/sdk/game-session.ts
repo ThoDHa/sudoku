@@ -335,7 +335,7 @@ export class SudokuGameSession {
       { selector: 'button[title="Redo"]', name: 'redo_button' },
       { selector: 'button[title*="Notes"]', name: 'notes_button' },
       { selector: 'button[title="Erase"]', name: 'erase_button' },
-      { selector: 'button:has-text("Hint")', name: 'hint_button' },
+      { selector: 'button[title="Get a hint"]', name: 'hint_button' },
       { selector: '.font-mono', name: 'timer' },
       { selector: 'header', name: 'header' },
     ]

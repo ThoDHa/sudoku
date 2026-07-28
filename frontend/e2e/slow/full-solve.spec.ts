@@ -40,7 +40,7 @@ test.describe('@slow Hint System Visual Guidance', () => {
     await waitForWasmReady(page)
 
     const sdk = new PlaywrightUISDK({ page })
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first()
+    const hintButton = page.getByRole('button', { name: 'Get a hint' })
 
     // Verify hint button is functional
     expect(await hintButton.isVisible()).toBeTruthy()
@@ -75,7 +75,7 @@ test.describe('@slow Hint System Visual Guidance', () => {
     await waitForWasmReady(page)
 
     const sdk = new PlaywrightUISDK({ page })
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first()
+    const hintButton = page.getByRole('button', { name: 'Get a hint' })
 
     expect(await hintButton.isVisible()).toBeTruthy()
     expect(await hintButton.isEnabled()).toBeTruthy()
@@ -107,7 +107,7 @@ test.describe('@slow Hint System Visual Guidance', () => {
     await waitForWasmReady(page)
 
     const sdk = new PlaywrightUISDK({ page })
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first()
+    const hintButton = page.getByRole('button', { name: 'Get a hint' })
 
     expect(await hintButton.isVisible()).toBeTruthy()
     expect(await hintButton.isEnabled()).toBeTruthy()
@@ -141,7 +141,7 @@ test.describe('@slow Hint System Stability', () => {
     await waitForWasmReady(page)
 
     const sdk = new PlaywrightUISDK({ page })
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first()
+    const hintButton = page.getByRole('button', { name: 'Get a hint' })
 
     const initialBoard = await sdk.readBoardFromDOM()
     const initialEmpty = initialBoard.filter((v) => v === 0).length
@@ -175,7 +175,7 @@ test.describe('@slow Hint System Stability', () => {
 
     const sdk = new PlaywrightUISDK({ page })
     const timer = page.locator('.font-mono').first()
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first()
+    const hintButton = page.getByRole('button', { name: 'Get a hint' })
 
     // Verify timer is visible
     expect(await timer.isVisible()).toBeTruthy()
@@ -215,7 +215,7 @@ test.describe('@slow Hint System Consistency', () => {
     const initialBoard = await sdk.readBoardFromDOM()
     const initialEmpty = initialBoard.filter((v) => v === 0).length
 
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first()
+    const hintButton = page.getByRole('button', { name: 'Get a hint' })
 
     // Click hint button multiple times
     for (let i = 0; i < 10; i++) {
@@ -248,7 +248,7 @@ test.describe('@slow Hint System Consistency', () => {
     const initialBoard = await sdk.readBoardFromDOM()
     const initialFilled = initialBoard.filter((v) => v !== 0).length
 
-    const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first()
+    const hintButton = page.getByRole('button', { name: 'Get a hint' })
 
     // Click hint button multiple times
     for (let i = 0; i < 10; i++) {

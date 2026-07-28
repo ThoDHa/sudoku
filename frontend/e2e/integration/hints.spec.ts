@@ -15,8 +15,7 @@ import { dismissModals, waitForHintProcessing, waitForHintToastCleared } from '.
  * Get the hint button that works on both mobile (emoji 💡) and desktop (text "Hint").
  */
 function getHintButton(page: Page): Locator {
-  // This locator matches either the desktop "Hint" button or the mobile emoji button
-  return page.locator('button:has-text("Hint"), button:has-text("💡")').first()
+  return page.getByRole('button', { name: 'Get a hint' })
 }
 
 test.describe('@integration Hints - Basic Functionality', () => {

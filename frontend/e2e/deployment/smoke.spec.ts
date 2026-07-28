@@ -95,8 +95,8 @@ test.describe('@deployment Post-Deploy Smoke', () => {
       // Asserting `window.SudokuWasm` is defined after the click is the only
       // way to tell a working artifact from a broken one. This is the single
       // step that proves the shipped WASM bundle is functional end-to-end.
-      const hintButton = page.locator('button:has-text("Hint")')
-      await hintButton.first().click()
+      const hintButton = page.getByRole('button', { name: 'Get a hint' })
+      await hintButton.click()
       await waitForHintProcessing(page)
 
       await expect

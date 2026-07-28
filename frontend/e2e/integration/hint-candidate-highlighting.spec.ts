@@ -33,9 +33,7 @@ test.describe('@integration Hint Candidate Highlighting Bug', () => {
   })
 
   function getHintButton(page: Page) {
-    return page
-      .locator('button[title*="hint" i], button:has-text("💡"), button:has-text("Hint")')
-      .first()
+    return page.getByRole('button', { name: 'Get a hint' })
   }
 
   async function openMenu(page: Page): Promise<void> {

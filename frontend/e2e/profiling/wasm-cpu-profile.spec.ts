@@ -559,7 +559,7 @@ async function runDeviceProfiling(
     // Wait for WASM to be fully ready by checking for hint button availability
     // The hint button requires WASM solver to be initialized
     await expect(async () => {
-      const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")')
+      const hintButton = page.getByRole('button', { name: 'Get a hint' })
       const hasHint = (await hintButton.count()) > 0
       expect(hasHint).toBe(true)
     }).toPass({ timeout: 5000 })

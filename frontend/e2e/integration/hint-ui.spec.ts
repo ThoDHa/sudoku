@@ -24,9 +24,7 @@ test.describe('@integration Hints - UI Behavior', () => {
   // On desktop: shows "💡 Hint"
   // On mobile: shows only "💡" with hidden text
   const getHintButton = (page: Page) => {
-    return page
-      .locator('button[title*="hint" i], button:has-text("💡"), button:has-text("Hint")')
-      .first()
+    return page.getByRole('button', { name: 'Get a hint' })
   }
 
   test('hint usage works on desktop (happy path)', async ({ page }) => {

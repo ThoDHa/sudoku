@@ -295,7 +295,7 @@ test.describe('@integration Autosolve Error Handling', () => {
     await page.waitForSelector('[role="grid"]', { timeout: 15000 })
 
     // Hint button may show as "💡 Hint" or just "💡" on mobile
-    const hintButton = page.locator('button:has-text("💡"), button:has-text("Hint")').first()
+    const hintButton = page.getByRole('button', { name: 'Get a hint' })
 
     // Helper to dismiss any modal overlay that might appear after hint
     const dismissModal = async () => {

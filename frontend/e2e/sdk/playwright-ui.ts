@@ -495,13 +495,9 @@ export class PlaywrightUISDK extends SudokuSDK {
    * Click the hint button
    */
   async clickHint(): Promise<void> {
-    // Try multiple selectors for the hint button
-    const hintButton = this.page
-      .getByRole('button', { name: /Hint/i })
-      .or(this.page.locator('button[title*="Hint"]'))
-      .or(this.page.locator('button:has-text("Hint")'))
+    const hintButton = this.page.getByRole('button', { name: 'Get a hint' })
 
-    await hintButton.first().click()
+    await hintButton.click()
   }
 
   /**

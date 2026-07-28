@@ -24,7 +24,7 @@ import { waitForWasmReady } from '../utils/board-wait'
  */
 
 function getHintButton(page: Page): Locator {
-  return page.locator('button:has-text("Hint"), button:has-text("💡")').first()
+  return page.getByRole('button', { name: 'Get a hint' })
 }
 
 async function emptyCellCount(page: Page): Promise<number> {

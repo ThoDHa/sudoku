@@ -115,7 +115,7 @@ async function useHintsAndVerifyStable(
   page: import('@playwright/test').Page,
   count: number,
 ): Promise<boolean> {
-  const hintButton = page.locator('button:has-text("Hint"), button:has-text("💡")').first()
+  const hintButton = page.getByRole('button', { name: 'Get a hint' })
 
   for (let i = 0; i < count; i++) {
     // Dismiss any error modal before tapping hint
@@ -281,7 +281,7 @@ test.describe('@mobile Game Features - Mobile', () => {
     await waitForWasmReady(page)
 
     // Use hint once to prep board
-    const hintBtn = page.locator('button:has-text("💡"), button:has-text("Hint")').first()
+    const hintBtn = page.getByRole('button', { name: 'Get a hint' })
     await hintBtn.tap()
     // Wait for hint processing to complete by watching for UI state
     await expect(async () => {
@@ -335,7 +335,7 @@ test.describe('@mobile Game Features - Mobile', () => {
     await waitForWasmReady(page)
 
     // Use hint once to prep board
-    const hintBtn = page.locator('button:has-text("💡"), button:has-text("Hint")').first()
+    const hintBtn = page.getByRole('button', { name: 'Get a hint' })
     await hintBtn.tap()
     // Wait for hint processing to complete by watching for UI state
     await expect(async () => {
