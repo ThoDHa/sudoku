@@ -140,7 +140,6 @@ export function useGamePersistence({
     } catch (e) {
       logger.warn('Failed to save game state:', e)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
   }, [
     puzzle,
     game.board,

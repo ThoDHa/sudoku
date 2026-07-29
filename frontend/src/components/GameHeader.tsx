@@ -254,6 +254,9 @@ interface HintButtonsProps {
   hintDisabled: boolean
 }
 
+const LOADING_LABEL = 'Loading...'
+const DISABLED_LABEL = 'Make a move to use again'
+
 function HintButtons({
   onTechniqueHint,
   techniqueHintDisabled,
@@ -274,16 +277,16 @@ function HintButtons({
         }`}
         title={
           techniqueHintLoading
-            ? 'Loading...'
+            ? LOADING_LABEL
             : techniqueHintDisabled
-              ? 'Make a move to use again'
+              ? DISABLED_LABEL
               : 'Learn which technique to use'
         }
         aria-label={
           techniqueHintLoading
-            ? 'Loading...'
+            ? LOADING_LABEL
             : techniqueHintDisabled
-              ? 'Make a move to use again'
+              ? DISABLED_LABEL
               : 'Learn which technique to use'
         }
       >
@@ -302,12 +305,8 @@ function HintButtons({
             ? 'text-foreground-muted/50 cursor-not-allowed'
             : 'text-foreground-muted hover:text-accent hover:bg-btn-hover'
         }`}
-        title={
-          hintLoading ? 'Loading...' : hintDisabled ? 'Make a move to use again' : 'Get a hint'
-        }
-        aria-label={
-          hintLoading ? 'Loading...' : hintDisabled ? 'Make a move to use again' : 'Get a hint'
-        }
+        title={hintLoading ? LOADING_LABEL : hintDisabled ? DISABLED_LABEL : 'Get a hint'}
+        aria-label={hintLoading ? LOADING_LABEL : hintDisabled ? DISABLED_LABEL : 'Get a hint'}
       >
         {hintLoading ? (
           <ButtonSpinner className="h-4 w-4" />

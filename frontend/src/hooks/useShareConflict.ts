@@ -136,7 +136,6 @@ export function useShareConflict({
     // consumeShareParams self-guards on the actual URL, so call it unconditionally
     // (a stale sharedStateParam closure was suppressing the strip).
     consumeShareParams()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hasRestoredSavedStateRef and loadedFromSharedUrlRef are stable RefObjects; reading .current does not need to re-create the callback
   }, [alreadyCompletedToday, showDifficultyChooser, timerControl, consumeShareParams])
 
   // Shared-game modal dismissed (Resume current game, the X, or the backdrop):

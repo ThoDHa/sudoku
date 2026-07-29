@@ -754,7 +754,6 @@ function GameContent() {
     return () => {
       setGameState(null)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback; we only want a static snapshot at mount
   }, [
     loading,
     puzzle,
@@ -850,7 +849,6 @@ function GameContent() {
       }
     }
     restoreOrInitState()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- game.restoreState, resetAllGameState, and timerControl.setElapsedMs are stable callbacks. We intentionally only trigger this when initialBoard or puzzle changes to prevent re-initialization loops.
   }, [initialBoard, puzzle, loadSavedGameState])
 
   // Handle BFCache restore (back button navigation)

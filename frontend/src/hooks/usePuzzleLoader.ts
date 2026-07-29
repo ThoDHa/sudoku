@@ -410,7 +410,6 @@ export function usePuzzleLoader({
       void loadPuzzle()
     }
     initiatePuzzleLoad()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl excluded: adding it would re-fetch puzzle when timer running/paused state changes. We only want to fetch when the actual puzzle params change.
   }, [
     effectiveSeed,
     encoded,

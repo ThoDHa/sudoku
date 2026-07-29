@@ -282,7 +282,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
     }
 
     setShowResultModal(true)
-    /* eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is stable */ // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
+    // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
   }, [puzzle, hintsUsed, techniqueHintsUsed, encodedPuzzle, autoFillUsed])
 
   // Auto-solve handler
@@ -399,7 +399,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
         setDebugInfoCopied(false)
       }, COPY_TOAST_DURATION)
     }
-    /* eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is stable */ // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
+    // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
   }, [puzzle, initialBoard, game, colorTheme, mode, visibilityAwareTimeout])
 
   // Feature request handler - opens GitHub issue for new features

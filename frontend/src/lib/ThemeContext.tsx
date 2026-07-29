@@ -77,6 +77,7 @@ const FONT_SIZE_VARS: Record<FontSize, Record<string, string>> = {
 
 const VALID_FONT_SIZES: FontSize[] = ['xs', 'small', 'medium', 'large', 'xl']
 
+// eslint-disable-next-line react-refresh/only-export-components -- utility function tightly coupled to theme state
 export function getValidFontSize(saved: string | null): FontSize {
   if (!saved) return 'xl'
   if (VALID_FONT_SIZES.includes(saved as FontSize)) {
