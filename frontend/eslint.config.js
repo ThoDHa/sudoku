@@ -58,6 +58,11 @@ export default tseslint.config(
       // format (plugins as a string array), not flat config. With the React
       // Compiler wired (FE-1-1), this gates the compiler-era rules too.
       ...reactHooks.configs['recommended-latest'].rules,
+      // exhaustive-deps is obsolete under the React Compiler: RC tracks deps
+      // automatically and memoizes correctly without manual useCallback/useMemo
+      // deps arrays. The rule now generates false positives on every inline
+      // handler that RC handles. (FE-7: manual memoization sweep.)
+      'react-hooks/exhaustive-deps': 'off',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
 
       // react-hooks compiler-era rules (FE-2-2b). All four are now enforced
