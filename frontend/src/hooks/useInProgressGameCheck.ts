@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getMostRecentGame, clearInProgressGame, type SavedGameInfo } from '../lib/gameSettings'
 import { STORAGE_KEYS } from '../lib/constants'
 import { logger } from '../lib/logger'
@@ -79,7 +79,7 @@ export function useInProgressGameCheck(
   }, [])
 
   // Handlers for in-progress game confirmation modal
-  const onResumeExistingGame = useCallback(() => {
+  const onResumeExistingGame = () => {
     if (existingInProgressGame) {
       // Set flag so we don't show modal again when navigating to resumed game
       sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
@@ -87,10 +87,9 @@ export function useInProgressGameCheck(
       navigate(targetUrl)
     }
     setShowInProgressConfirm(false)
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-  }, [existingInProgressGame, navigate])
+  }
 
-  const onStartNewGame = useCallback(() => {
+  const onStartNewGame = () => {
     if (existingInProgressGame) {
       clearInProgressGame(existingInProgressGame.seed)
     }
@@ -98,8 +97,7 @@ export function useInProgressGameCheck(
     sessionStorage.setItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK, 'true')
     setShowInProgressConfirm(false)
     setExistingInProgressGame(null)
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-  }, [existingInProgressGame])
+  }
 
   return {
     showInProgressConfirm,
