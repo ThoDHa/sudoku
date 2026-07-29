@@ -1,4 +1,3 @@
-import { useCallback } from 'react'
 import { copyToClipboard } from '../lib/clipboard'
 import { buildPuzzleShareUrl, buildStateShareUrl } from '../lib/shareLinks'
 import { logger } from '../lib/logger'
@@ -44,42 +43,32 @@ export function useShareActions(options: UseShareActionsOptions): UseShareAction
   } = options
 
   // Copy a share URL to the clipboard and surface the outcome as a toast.
-  const copyShareUrl = useCallback(
-    async (url: string, label: string) => {
-      const success = await copyToClipboard(url)
-      if (success) {
-        setValidationMessage({ type: 'success', message: `${label} link copied to clipboard!` })
-        scheduleToastClear(TOAST_DURATION_INFO, () => {
-          setValidationMessage(null)
-        })
-      } else {
-        setValidationMessage({ type: 'error', message: 'Failed to copy link' })
-        // Stryker disable next-line BlockStatement: toast clearer only nulls the validation message; the surrounding test verifies the error toast was set, not that the clearer no-ops it
-        scheduleToastClear(TOAST_DURATION_ERROR, () => {
-          setValidationMessage(null)
-        })
-      }
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-    [scheduleToastClear, setValidationMessage],
-  )
-
-  const handleShareError = useCallback(
-    (err: unknown) => {
-      logger.error('Share error:', err)
-      setValidationMessage({ type: 'error', message: 'Failed to create share link' })
-      // Stryker disable next-line BlockStatement: toast clearer only nulls the validation message; the error-path test asserts the error toast and the scheduled clear delay, not the clearer body
+  const copyShareUrl = async (url: string, label: string) => {
+    const success = await copyToClipboard(url)
+    if (success) {
+      setValidationMessage({ type: 'success', message: `${label} link copied to clipboard!` })
+      scheduleToastClear(TOAST_DURATION_INFO, () => {
+        setValidationMessage(null)
+      })
+    } else {
+      setValidationMessage({ type: 'error', message: 'Failed to copy link' })
       scheduleToastClear(TOAST_DURATION_ERROR, () => {
         setValidationMessage(null)
       })
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-    [scheduleToastClear, setValidationMessage],
-  )
+    }
+  }
+
+  const handleShareError = (err: unknown) => {
+    logger.error('Share error:', err)
+    setValidationMessage({ type: 'error', message: 'Failed to create share link' })
+    scheduleToastClear(TOAST_DURATION_ERROR, () => {
+      setValidationMessage(null)
+    })
+  }
 
   // Share the bare puzzle (givens only): a short seed link for portable puzzles,
   // an encoded /c/ link for localStorage-backed ones.
-  const onSharePuzzle = useCallback(async () => {
+  const onSharePuzzle = async () => {
     try {
       const url = buildPuzzleShareUrl({
         isEncodedCustom,
@@ -91,12 +80,11 @@ export function useShareActions(options: UseShareActionsOptions): UseShareAction
     } catch (err) {
       handleShareError(err)
     }
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-  }, [isEncodedCustom, seed, difficulty, givens, copyShareUrl, handleShareError])
+  }
 
   // Share the exact current position: givens plus the player's entries, notes,
   // and elapsed time.
-  const onShareState = useCallback(async () => {
+  const onShareState = async () => {
     try {
       const url = buildStateShareUrl({
         isEncodedCustom,
@@ -111,18 +99,7 @@ export function useShareActions(options: UseShareActionsOptions): UseShareAction
     } catch (err) {
       handleShareError(err)
     }
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-  }, [
-    isEncodedCustom,
-    seed,
-    difficulty,
-    givens,
-    board,
-    candidates,
-    elapsedMs,
-    copyShareUrl,
-    handleShareError,
-  ])
+  }
 
   return { onSharePuzzle, onShareState }
 }
