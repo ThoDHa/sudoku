@@ -25,9 +25,10 @@ export function useDeselectOnOutsideClick(options: UseDeselectOnOutsideClickOpti
       if (selectedCellRef.current === null && selectedCellsRef.current.size === 0) return
 
       const target = event.target as Element | null
-      // Stryker disable next-line ConditionalExpression: event.target is always assigned by the DOM/jsdom dispatcher, so the guard is unreachable in practice and flipping it is observably identical
-      /* v8 ignore next -- defensive guard: a dispatched DOM click/touchstart always carries a non-null event.target, so this null check is unreachable for genuine events */
+      // Stryker disable ConditionalExpression: guard is unreachable for genuine events
+      /* v8 ignore next -- event.target is always assigned by the dispatcher */
       if (!target) return
+      // Stryker restore ConditionalExpression
 
       // Check for actual modals AND overlay backdrops (not toasts/notifications).
       // [data-overlay-backdrop] covers all three backdrop structural patterns; [data-modal]

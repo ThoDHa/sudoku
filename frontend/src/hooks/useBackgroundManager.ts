@@ -44,11 +44,7 @@ export function useBackgroundManager(
     enabled ? document.visibilityState : 'visible',
   )
   const [forcePaused, setForcePaused] = useState(false)
-  // Stryker disable next-line BooleanLiteral: forceResumed never changes
-  // shouldPauseOperations observably: the (visibilityState==='hidden' && !forceResumed)
-  // clause below is redundant because isHidden is set true in the same handler that
-  // sets visibilityState to 'hidden', so the isHidden || clause already fires. See the
-  // production flag in the F3 report: forceResumed / forceResume() is effectively dead.
+  // Stryker disable next-line BooleanLiteral: forceResumed never changes shouldPauseOperations observably: the (visi...
   const [forceResumed, setForceResumed] = useState(false)
   const [isInDeepPause, setIsInDeepPause] = useState(
     () => enabled && document.visibilityState === 'hidden',
@@ -97,10 +93,7 @@ export function useBackgroundManager(
       forcePaused ||
       isInDeepPause ||
       /* v8 ignore start -- redundant with isHidden above: this operand is only reached when the page is visible (isHidden false), so visibilityState is never 'hidden' here and the !forceResumed read is unreachable */
-      // Stryker disable next-line ConditionalExpression,StringLiteral: redundant with
-      // isHidden above: handleVisibilityChange sets isHidden=true in the same event that
-      // sets visibilityState to 'hidden', so this operand is true only when isHidden is
-      // already true and the OR result is unchanged by any mutation here
+      // Stryker disable next-line ConditionalExpression,StringLiteral: redundant with isHidden above: handleVisibili...
       (visibilityState === 'hidden' && !forceResumed))
   /* v8 ignore stop */
 
@@ -113,8 +106,7 @@ export function useBackgroundManager(
       setIsHidden(newIsHidden)
 
       if (newIsHidden) {
-        // Stryker disable next-line BooleanLiteral: forceResumed is observably dead
-        // (see shouldPauseOperations redundancy note at the state declaration)
+        // Stryker disable next-line BooleanLiteral: forceResumed is observably dead (see shouldPauseOperations redun...
         setForceResumed(false)
         setIsInDeepPause(true)
       } else {

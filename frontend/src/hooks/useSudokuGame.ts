@@ -18,9 +18,7 @@ import { createStateDiff } from '../lib/diffUtils'
 export type { Move } from './useBoardHistory'
 
 // Technique label applied to every user-initiated move recorded in history.
-// Stryker disable next-line StringLiteral: the empty-string mutant is killed by
-// tests asserting move.technique === 'User Input' (see "records the technique"
-// cases); the Stryker "Timeout" status is a harness artifact, not a real survivor
+// Stryker disable next-line StringLiteral: killed by tests asserting move.technique === 'User Input'
 const USER_INPUT_TECHNIQUE = 'User Input'
 
 interface UseSudokuGameOptions {
@@ -164,14 +162,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
         const now = Date.now()
         if (
           lastNoteToggle.current?.idx === idx &&
-          // Stryker disable next-line OptionalChaining: when
-          // lastNoteToggle.current is null the first clause (?.idx === idx) is
-          // false and short-circuits the && chain before this expression runs;
-          // when it is non-null, ?. and a direct access are observationally identical
+          // Stryker disable next-line OptionalChaining: when lastNoteToggle.current is null the first clause (?.idx ...
           lastNoteToggle.current?.digit === digit &&
-          // Stryker disable next-line EqualityOperator: heuristic double-toggle
-          // debounce; < 100 vs <= 100 differs only at exactly 100ms elapsed,
-          // which is non-deterministic with Date.now() and not meaningfully observable
+          // Stryker disable next-line EqualityOperator: heuristic double-toggle debounce; < 100 vs <= 100 differs on...
           now - lastNoteToggle.current.time < 100
         )
           return

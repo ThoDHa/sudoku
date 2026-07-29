@@ -103,9 +103,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const backgroundManager = providedBackgroundManager || defaultBackgroundManager
 
   const [isAutoSolving, setIsAutoSolving] = useState(false)
-  // Stryker disable next-line BooleanLiteral: isPaused is overwritten by the mount run of the
-  // pause-sync effect below (which sets it from shouldPause, false on the initial visible render)
-  // before any test asserts it, so the true initial-string mutant is unobservable
+  // Stryker disable next-line BooleanLiteral: isPaused is overwritten by the mount run of the pause-sync effect belo...
   const [isPaused, setIsPaused] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
   const [manualPaused, setManualPaused] = useState(false)
@@ -113,14 +111,9 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const [totalMoves, setTotalMoves] = useState(0)
   const [lastCompletedSteps, setLastCompletedSteps] = useState(0)
 
-  // Stryker disable next-line BooleanLiteral: autoSolveRef is only read while
-  // isAutoSolving is true (every reader is guarded) and is set to true inside
-  // startAutoSolve/restartAutoSolve/playMoves/solveFromGivens before any read, so the
-  // initial false->true mutant is unobservable
+  // Stryker disable next-line BooleanLiteral: autoSolveRef is only read while isAutoSolving is true (every reader is...
   const autoSolveRef = useRef(false)
-  // Stryker disable next-line BooleanLiteral: pausedRef is reassigned by the pause-sync
-  // effect on mount (to shouldPause, false initially) before any consumer reads it, so the
-  // initial false->true mutant is unobservable
+  // Stryker disable next-line BooleanLiteral: pausedRef is reassigned by the pause-sync effect on mount (to shouldPa...
   const pausedRef = useRef(false)
   const manualPausedRef = useRef(false)
   // Stryker disable ArrayDeclaration: each ref is reassigned to a fresh array
@@ -163,9 +156,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       clearTimeout(activeTimeoutRef.current)
       activeTimeoutRef.current = null
     }
-    // Stryker disable next-line ArrayDeclaration: clearActiveTimers captures no
-    // external values; a stable-string mutant leaves the empty deps array
-    // observationally unchanged
+    // Stryker disable next-line ArrayDeclaration: clearActiveTimers captures no external values; a stable-string mut...
   }, [])
 
   // Helper to schedule next move with proper timer tracking
@@ -184,9 +175,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         callback()
       }, delay)
     },
-    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is itself
-    // stable (deps []), so dropping it from the deps array leaves scheduleNextMove
-    // referentially stable with identical behavior
+    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is itself stable (deps []), so dropping it from ...
     [clearActiveTimers],
   )
 
@@ -220,20 +209,17 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     setManualPaused(false)
     setCurrentIndex(-1)
     setTotalMoves(0)
-    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is stable,
-    // so omitting it from stopAutoSolve's deps leaves behavior unchanged
+    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is stable, so omitting it from stopAutoSolve's d...
   }, [clearActiveTimers])
 
   // Cleanup on unmount - prevents battery drain from orphaned timers
   useEffect(() => {
     return () => {
       clearActiveTimers()
-      // Stryker disable next-line BooleanLiteral: after unmount the hook instance
-      // is gone, so autoSolveRef's value is never read again
+      // Stryker disable next-line BooleanLiteral: after unmount the hook instance is gone, so autoSolveRef's value i...
       autoSolveRef.current = false
     }
-    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is stable,
-    // so the unmount effect behavior is identical with an empty deps array
+    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is stable, so the unmount effect behavior is ide...
   }, [clearActiveTimers])
 
   // Sync gamePaused prop and background manager with our internal pause state.
@@ -259,11 +245,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         pausedRef.current = false
         setIsPaused(false)
         // Resume playback if we were auto-solving and just unpaused
-        // Stryker disable next-line LogicalOperator: the resume fires only when wasPaused is true
-        // (set from pausedRef.current earlier in this branch). playNextMoveRef.current is non-null
-        // only while auto-solving, and the only run of this effect where wasPaused is false but
-        // playNextMoveRef could be set is the mount run, where playNextMoveRef is still null, so the
-        // && -> || mutant (which would fire on a truthy playNextMoveRef alone) cannot diverge here
+        // Stryker disable next-line LogicalOperator: the resume fires only when wasPaused is true (set from pausedRe...
         if (wasPaused && autoSolveRef.current && playNextMoveRef.current) {
           // Check if board changed while paused (user made edits)
           if (pausedBoardSnapshotRef.current !== null) {

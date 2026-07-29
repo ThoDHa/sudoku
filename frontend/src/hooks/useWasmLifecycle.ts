@@ -120,8 +120,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
       currentRouteRequiresWasm.current = true
       void loadWasm()
     } else if (!routeNeedsWasm && currentRouteRequiresWasm.current) {
-      // Stryker disable next-line ConditionalExpression, LogicalOperator: in this else-if branch routeNeedsWasm is already false, so the operand is redundant
-      // Leaving WASM route - schedule cleanup
+      // Stryker disable next-line ConditionalExpression, LogicalOperator: in this else-if branch routeNeedsWasm is a...
       log(`Leaving WASM route: ${location.pathname}`)
       scheduleUnload()
     }

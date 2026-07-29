@@ -113,11 +113,10 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
   // Shared digit placement logic - unifies mobile and desktop behavior
   const placeDigitAndClear = useCallback(
     (cellIndex: number, digit: number, notesMode: boolean) => {
-      // Stryker disable next-line ConditionalExpression: defensive guard documented as unreachable; placeDigitAndClear is private and every public caller pre-checks gameRef.current before routing here
-      /* v8 ignore next -- defensive: every public caller (handleDigitInput,
-         handleHighlightedPlacement) already verifies gameRef.current before
-         routing here, so the branch is unreachable from the public API. */
+      // Stryker disable ConditionalExpression: unreachable defensive guard
+      /* v8 ignore next -- callers pre-check gameRef.current before routing here */
       if (!gameRef.current) return
+      // Stryker restore ConditionalExpression
 
       // Use setCellMultiple when multiple cells selected AND in notes mode
       const currentSelectedCells = selectedCellsRef.current

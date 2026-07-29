@@ -282,8 +282,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
     }
 
     setShowResultModal(true)
-    // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is stable */ // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
   }, [puzzle, hintsUsed, techniqueHintsUsed, encodedPuzzle, autoFillUsed])
 
   // Auto-solve handler
@@ -329,8 +328,8 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       )
       // Stryker disable next-line ConditionalExpression,LogicalOperator,BlockStatement: block body contains only logger.debug calls (all StringLiteral mutants already disabled), so the condition and empty-block mutant have no observable effect
       if (result && result.moves) {
-        // Stryker disable next-line StringLiteral: debug log label, does not affect behavior
         logger.debug(
+          // Stryker disable next-line StringLiteral: debug log label, does not affect behavior
           'Check & Fix moves:',
           // Stryker disable next-line ArrowFunction,ObjectLiteral,ConditionalExpression,LogicalOperator: debug-only map output for logging, never asserted in tests
           result.moves.map((m, idx) => ({ idx, move: m && m.move, board: m && m.board })),
@@ -340,8 +339,8 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       if (result.moves && result.moves.length > 0) {
         // Use new autosolver infrastructure to animate the replayed moves step-by-step, with UX feedback.
         autoSolve.playMoves(result.moves, false)
+        // Stryker disable next-line BlockStatement: else body is logger-only, no behavioral side effect
       } else {
-        // Stryker disable next-line BlockStatement: else body contains only the logger.warn call below (StringLiteral already disabled), so empty-block mutant has no observable effect
         // Stryker disable next-line StringLiteral: log message content does not affect program behavior
         logger.warn('Check & Fix: no changes needed')
       }
@@ -358,9 +357,11 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       version: __COMMIT_HASH__,
       timestamp: new Date().toISOString(),
       puzzle: {
-        // Stryker disable next-line OptionalChaining: puzzle is always defined when handleCopyDebugInfo is reachable (the hook requires a puzzle prop); the ?. is defensive but observationally identical to .
+        // Stryker disable next-line OptionalChaining: puzzle is always defined when handleCopyDebugInfo is reachable; the ?. is defensive but observationally identical to .
         seed: puzzle?.seed,
+        // Stryker disable next-line OptionalChaining: same rationale as seed above
         difficulty: puzzle?.difficulty,
+        // Stryker disable next-line OptionalChaining: same rationale as seed above
         puzzleId: puzzle?.puzzle_id,
       },
       state: {
@@ -398,8 +399,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
         setDebugInfoCopied(false)
       }, COPY_TOAST_DURATION)
     }
-    // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is a stable callback that reads from a ref
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- timerControl.getElapsedMs is stable */ // Stryker disable next-line ArrayDeclaration: see handleClearAll deps for rationale
   }, [puzzle, initialBoard, game, colorTheme, mode, visibilityAwareTimeout])
 
   // Feature request handler - opens GitHub issue for new features
