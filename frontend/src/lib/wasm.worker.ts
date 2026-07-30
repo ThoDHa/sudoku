@@ -183,13 +183,13 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         }
 
         // wasmApi is guaranteed after initializeWasm()
-        /* v8 ignore start -- unreachable defensive guard: initializeWasm either sets wasmApi or throws (caught by the outer try/catch), so wasmApi is always set once the await returns */
+        /* istanbul ignore start -- unreachable defensive guard: initializeWasm either sets wasmApi or throws (caught by the outer try/catch), so wasmApi is always set once the await returns */
         // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: this defensive guard is unreachable in normal flow — initializeWasm either sets wasmApi or throws (caught by the outer onmessage try/catch), so after `await initializeWasm()` completes successfully wasmApi is always set. The mutants are observationally equivalent dead-code guards.
         if (!wasmApi) {
           // Stryker disable next-line StringLiteral: unreachable defensive guard (initializeWasm either sets wasmApi or throws), so blanking the message is observationally equivalent; the enclosing `if` mutants are already ignored above
           throw new Error('WASM API not available after initialization')
         }
-        /* v8 ignore stop */
+        /* istanbul ignore stop */
 
         const { cells, candidates, givens } = payload as FindNextMovePayload
         const result = wasmApi.findNextMove(cells, candidates, givens)
@@ -217,13 +217,13 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         }
 
         // wasmApi is guaranteed after initializeWasm()
-        /* v8 ignore start -- unreachable defensive guard: initializeWasm either sets wasmApi or throws (caught by the outer try/catch), so wasmApi is always set once the await returns */
+        /* istanbul ignore start -- unreachable defensive guard: initializeWasm either sets wasmApi or throws (caught by the outer try/catch), so wasmApi is always set once the await returns */
         // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: this defensive guard is unreachable in normal flow — initializeWasm either sets wasmApi or throws (caught by the outer onmessage try/catch), so after `await initializeWasm()` completes successfully wasmApi is always set. The mutants are observationally equivalent dead-code guards.
         if (!wasmApi) {
           // Stryker disable next-line StringLiteral: unreachable defensive guard (initializeWasm either sets wasmApi or throws), so blanking the message is observationally equivalent; the enclosing `if` mutants are already ignored above
           throw new Error('WASM API not available after initialization')
         }
-        /* v8 ignore stop */
+        /* istanbul ignore stop */
 
         const { cells, candidates, givens } = payload as SolveAllPayload
         const result = wasmApi.solveAll(cells, candidates, givens)

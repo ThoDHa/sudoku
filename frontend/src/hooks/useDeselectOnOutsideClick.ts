@@ -26,7 +26,7 @@ export function useDeselectOnOutsideClick(options: UseDeselectOnOutsideClickOpti
 
       const target = event.target as Element | null
       // Stryker disable ConditionalExpression: guard is unreachable for genuine events
-      /* v8 ignore next -- event.target is always assigned by the dispatcher */
+      /* istanbul ignore next -- event.target is always assigned by the dispatcher */
       if (!target) return
       // Stryker restore ConditionalExpression
 

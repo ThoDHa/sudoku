@@ -421,7 +421,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     const snapshot = stateHistoryRef.current[newIndex]
     // newIndex is always a previously visited index, so its snapshot is always present.
     // Stryker disable ConditionalExpression: dead defensive guard (snapshot always defined here); the false-forcing variant that skips restoration is covered by the stepBack applyState test
-    /* v8 ignore next */
+    /* istanbul ignore next */
     if (snapshot) {
       // Stryker restore ConditionalExpression
       const candidates = snapshot.candidates.map((arr) => new Set(arr))
@@ -462,7 +462,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       const snapshot = stateHistoryRef.current[newIndex]
       // newIndex < history length in this branch, so the snapshot is always present.
       // Stryker disable ConditionalExpression: dead defensive guard (snapshot always defined in this branch); forcing it either way cannot change the observed restoration
-      /* v8 ignore next */
+      /* istanbul ignore next */
       if (!snapshot) return
       // Stryker restore ConditionalExpression
       const candidates = snapshot.candidates.map((arr) => new Set(arr))
@@ -478,7 +478,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
       // newIndex never exceeds allMovesRef length (guarded above), so moveResult is always defined.
       // Stryker disable ConditionalExpression: dead defensive guard (moveResult always defined here); the false-forcing variant that skips applying the fresh move is covered by the stepForward new-territory test
-      /* v8 ignore next */
+      /* istanbul ignore next */
       if (moveResult) {
         // Stryker restore ConditionalExpression
         currentIndexRef.current = newIndex
@@ -547,7 +547,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         {
           // moves[0] is guaranteed defined by the top guard, so the `|| currentBoard` /
           // `|| candidatesToArrays` fallbacks are unreachable (kept for defensive coverage).
-          /* v8 ignore start */
+          /* istanbul ignore start */
           board: [...(moves[0]?.board || currentBoard)],
           // The moves-non-empty guard makes moves[0] and its candidates always defined here,
           // so the ?. short-circuits are dead defensive code. The map/ternary/|| behaviour
@@ -557,7 +557,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
             // Stryker disable next-line OptionalChaining: short-circuits are dead here (see note above)
             moves[0]?.candidates?.map((arr) => (arr ? [...arr] : [])) ||
             candidatesToArrays(currentCandidates),
-          /* v8 ignore stop */
+          /* istanbul ignore stop */
           move: null,
         },
       ]

@@ -85,12 +85,12 @@ export function findConflicts(grid: number[]): Conflict[] {
         const b = cells[j]
         // cells only ever holds defined numeric cell indices (pushed in findInUnit),
         // so the undefined guard's false branch can never be taken.
-        /* v8 ignore start */
+        /* istanbul ignore start */
         // Stryker disable next-line ConditionalExpression,LogicalOperator: cells comes from positions.get(val).arr (always defined numeric cell indices); both halves of this defensive guard are always true under the original outer loops, so every mutant here is observationally equivalent
         if (a !== undefined && b !== undefined) {
           addConflict(a, b, value, type)
         }
-        /* v8 ignore stop */
+        /* istanbul ignore stop */
       }
     }
   }
@@ -197,10 +197,10 @@ export function validateBoardAgainstSolution(
   for (let i = 0; i < 81; i++) {
     // board and solution are both exactly length 81 (guarded above), so for every
     // in-range i the ?? 0 fallbacks are unreachable defensive defaults.
-    /* v8 ignore start */
+    /* istanbul ignore start */
     const boardVal = board[i] ?? 0
     const solutionVal = solution[i] ?? 0
-    /* v8 ignore stop */
+    /* istanbul ignore stop */
     if (boardVal !== 0 && boardVal !== solutionVal) {
       incorrectCells.push(i)
     }
@@ -262,10 +262,10 @@ function countSolutions(grid: number[], maxCount: number): number {
     // The L282 prune breaks every ancestor digit loop the moment count reaches
     // maxCount, so countHelper is never re-entered with count already maxed: this
     // top-of-function prune is an unreachable performance guard.
-    /* v8 ignore start */
+    /* istanbul ignore start */
     // Stryker disable next-line ConditionalExpression, EqualityOperator: early pruning at maxCount is a performance optimization; hasUniqueSolution only checks count === 1
     if (count >= maxCount) return
-    /* v8 ignore stop */
+    /* istanbul ignore stop */
 
     // Find next empty cell
     let idx = -1

@@ -346,7 +346,7 @@ function hashGivens(givens: number[]): string {
   let hash = 0
   // Stryker disable next-line UpdateOperator: i-- from 0 is an infinite loop the harness times out on
   for (let i = 0; i < givens.length; i++) {
-    /* v8 ignore next -- givens is always a dense array at every call site; the `?? 0` only satisfies noUncheckedIndexedAccess and its fallback is unreachable at runtime */
+    /* istanbul ignore next -- givens is always a dense array at every call site; the `?? 0` only satisfies noUncheckedIndexedAccess and its fallback is unreachable at runtime */
     const val = givens[i] ?? 0
     // Stryker disable next-line ArithmeticOperator: the recurrence is linear in val, so replacing `+ val` with `- val` negates the accumulated hash at every step (h' = -h). The result is passed through Math.abs() before being returned, which erases the sign, making the two variants produce identical output for every practical input.
     hash = ((hash << 5) - hash + val) | 0
@@ -370,13 +370,13 @@ export async function checkAndFixWithSolution(
   const result = api.checkAndFixWithSolution(board, candidates, givens, solution)
   try {
     // Stryker disable OptionalChaining: the surrounding try/catch swallows any TypeError from removing '?., making these observationally equivalent
-    /* v8 ignore start -- defensive debug logging: the WASM contract guarantees a well-formed result, so the optional-chaining null branches and the non-array `movesCount` fallback are unreachable; the try/catch also swallows any access error */
+    /* istanbul ignore start -- defensive debug logging: the WASM contract guarantees a well-formed result, so the optional-chaining null branches and the non-array `movesCount` fallback are unreachable; the try/catch also swallows any access error */
     logger.debug('[Check&Fix] wasm result', {
       solved: result?.solved,
       movesCount: Array.isArray(result?.moves) ? result.moves.length : 0,
       hasFinalBoard: !!result?.finalBoard,
     })
-    /* v8 ignore stop */
+    /* istanbul ignore stop */
     // Stryker restore OptionalChaining
   } catch {
     /* no-op */

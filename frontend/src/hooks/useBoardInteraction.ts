@@ -24,17 +24,17 @@ const extendTrailForward = (
   board: number[],
 ): void => {
   let prevCell: number
-  /* v8 ignore else -- the drag trail is always seeded with the start cell on drag start and backtrackTrail never empties it below one element, so trail.length === 0 and this else branch are unreachable */
+  /* istanbul ignore else -- the drag trail is always seeded with the start cell on drag start and backtrackTrail never empties it below one element, so trail.length === 0 and this else branch are unreachable */
   if (trail.length > 0) {
     const lastIdx = trail[trail.length - 1]
-    /* v8 ignore next -- lastIdx is the last element of a non-empty dense array, always a defined number, so the undefined guard never fires */
+    /* istanbul ignore next -- lastIdx is the last element of a non-empty dense array, always a defined number, so the undefined guard never fires */
     if (lastIdx === undefined) return
     prevCell = lastIdx
   } else {
-    /* v8 ignore start -- defensive guard: reachable only if the trail invariant above ever breaks; handleDragEnter already guarantees startCell is non-null here */
+    /* istanbul ignore start -- defensive guard: reachable only if the trail invariant above ever breaks; handleDragEnter already guarantees startCell is non-null here */
     if (startCell === null) return
     prevCell = startCell
-    /* v8 ignore stop */
+    /* istanbul ignore stop */
   }
   for (const cellIdx of calculatePathCells(prevCell, idx)) {
     if (initialBoard[cellIdx] === 0 && board[cellIdx] === 0 && !trailSet.has(cellIdx)) {
@@ -308,7 +308,7 @@ export function useBoardInteraction({
 
   const handleDragEnter = useCallback(
     (idx: number) => {
-      /* v8 ignore next -- defensive guard: handleDragEnter's only caller (handleBoardPointerMove) already returns when !isDraggingRef.current, and dragStartCellRef is set alongside isDragging in handleDragStart, so both operands are always false here and the early return is unreachable */
+      /* istanbul ignore next -- defensive guard: handleDragEnter's only caller (handleBoardPointerMove) already returns when !isDraggingRef.current, and dragStartCellRef is set alongside isDragging in handleDragStart, so both operands are always false here and the early return is unreachable */
       if (!isDraggingRef.current || dragStartCellRef.current === null) return
 
       // If pointer moved to a different cell than the drag start, this is a real

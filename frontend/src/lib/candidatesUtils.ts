@@ -160,7 +160,7 @@ export const candidatesToArrays = (candidates: Uint16Array): number[][] => {
   for (let i = 0; i < candidates.length; i++) {
     // A Uint16Array yields a number for every in-range index, so the ?? 0 fallback
     // is an unreachable defensive default.
-    /* v8 ignore next */
+    /* istanbul ignore next */
     result.push(getCandidatesArray(candidates[i] ?? 0))
   }
   return result
@@ -204,7 +204,7 @@ export const masksToSets = (masks: Uint16Array): Set<number>[] => {
   for (let i = 0; i < masks.length; i++) {
     // A Uint16Array yields a number for every in-range index, so the ?? 0 fallback
     // is an unreachable defensive default.
-    /* v8 ignore next */
+    /* istanbul ignore next */
     result.push(new Set(getCandidatesArray(masks[i] ?? 0)))
   }
   return result

@@ -62,12 +62,12 @@ function getPuzzleByIndex(
   }
 
   const puzzle = puzzlesData.puzzles[index]
-  /* v8 ignore start -- unreachable defensive guard: the puzzles JSON is a hole-free array, so any in-range index yields a defined puzzle and out-of-range indices are already caught above */
+  /* istanbul ignore start -- unreachable defensive guard: the puzzles JSON is a hole-free array, so any in-range index yields a defined puzzle and out-of-range indices are already caught above */
   // Stryker disable next-line ConditionalExpression,BlockStatement: defensive guard. puzzlesData.puzzles is a hole-free JSON array, so any in-range index yields a defined puzzle and out-of-range indices are already caught by the bounds check above; this branch is unreachable for all reachable inputs, so forcing the condition false or emptying the block is observationally identical
   if (!puzzle) {
     return null
   }
-  /* v8 ignore stop */
+  /* istanbul ignore stop */
   const diffKey = DifficultyKey[difficulty] ?? difficulty
 
   // Parse solution
@@ -85,7 +85,7 @@ function getPuzzleByIndex(
     // idx comes from the bundled puzzle bank indices, which are validated to be
     // in range at puzzle-data build time; the ?? 0 guards against malformed data
     // and is unreachable for the shipped puzzle set.
-    /* v8 ignore next */
+    /* istanbul ignore next */
     givens[idx] = solution[idx] ?? 0
   }
 
@@ -146,12 +146,12 @@ export function getPracticePuzzle(
   // Pick one deterministically based on current date (so it changes daily)
   const dayOfYear = Math.floor(Date.now() / (1000 * 60 * 60 * 24))
   const ref = refs[dayOfYear % refs.length]
-  /* v8 ignore start -- unreachable defensive guard: refs is non-empty past the guard above, so `dayOfYear % refs.length` is always a valid index and ref is always defined */
+  /* istanbul ignore start -- unreachable defensive guard: refs is non-empty past the guard above, so `dayOfYear % refs.length` is always a valid index and ref is always defined */
   // Stryker disable next-line ConditionalExpression,BlockStatement: defensive guard. After the L128 check, refs is a non-empty array, so `dayOfYear % refs.length` is in [0, length-1] and ref is always defined; this branch is unreachable in normal flow
   if (!ref) {
     return null
   }
-  /* v8 ignore stop */
+  /* istanbul ignore stop */
 
   const difficulty = KeyToDifficulty[ref.d] ?? ref.d
   const result = getPuzzleByIndex(ref.i, difficulty)

@@ -336,12 +336,12 @@ export function usePuzzleLoader({
           setLoading(true)
           setError(null)
 
-          /* v8 ignore start -- redundant re-check: the effect's outer guards return before loadPuzzle is defined/called when either flag is true, so both are always false in this closure and the skip path is unreachable */
+          /* istanbul ignore start -- redundant re-check: the effect's outer guards return before loadPuzzle is defined/called when either flag is true, so both are always false in this closure and the skip path is unreachable */
           if (showDifficultyChooser || showOnboarding) {
             setLoading(false)
             return
           }
-          /* v8 ignore stop */
+          /* istanbul ignore stop */
 
           // Early return if puzzle already loaded and state restored
           if (puzzle && hasRestoredSavedStateRef.current) {

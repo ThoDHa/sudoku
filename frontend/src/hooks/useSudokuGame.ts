@@ -101,7 +101,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       if (val >= MIN_DIGIT && val <= MAX_DIGIT) {
         // val is guarded to [MIN_DIGIT, MAX_DIGIT] (1-9), so val-1 is 0-8 and
         // counts[0..8] is always defined; the ?? 0 fallback is unreachable.
-        /* v8 ignore next */
+        /* istanbul ignore next */
         counts[val - 1] = (counts[val - 1] ?? 0) + 1
       }
     return counts
@@ -287,7 +287,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       const currentBoard = boardRef.current
       const currentCandidates = candidatesRef.current
       // Callers always pass an in-range cell index, so `?? 0` never falls back to the default.
-      /* v8 ignore next */
+      /* istanbul ignore next */
       const cellValue = currentBoard[idx] ?? 0
       const cellCandidates = currentCandidates[idx] || 0
       if (cellValue === 0 && countCandidates(cellCandidates) === 0) return

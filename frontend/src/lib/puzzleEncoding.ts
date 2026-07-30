@@ -71,7 +71,7 @@ function encodeSparse(cells: number[]): string {
     const idx = Number((mask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
     // idx is masked to 6 bits (0-63) and ALPHABET holds exactly 64 chars, so the
     // ?? '' fallback is unreachable for every input; sealed rather than contrived.
-    /* v8 ignore next */
+    /* istanbul ignore next */
     maskStr += ALPHABET[idx] ?? ''
   }
 
@@ -83,7 +83,7 @@ function encodeSparse(cells: number[]): string {
     if (cell !== undefined && cell !== 0) {
       // cell is 1-9 here (guarded against 0/undefined), so cell-1 is 0-8 and
       // ALPHABET[0..8] is always defined; the ?? '' fallback is unreachable.
-      /* v8 ignore next */
+      /* istanbul ignore next */
       digitsStr += ALPHABET[cell - 1] ?? ''
     }
   }
@@ -102,7 +102,7 @@ function encodeDense(cells: number[]): string {
   for (let i = 0; i < 81; i += 2) {
     // cells has exactly 81 entries, so an even index is always defined; the ?? 0
     // fallback here is unreachable (only the odd-index low nibble can reach it).
-    /* v8 ignore next */
+    /* istanbul ignore next */
     const high = (cells[i] ?? 0) & 0x0f
     const low = (cells[i + 1] ?? 0) & 0x0f
     bytes.push((high << 4) | low)
@@ -174,10 +174,10 @@ const decode14CharMask = (maskStr: string): bigint | null => {
   let mask = BigInt(0)
   for (let i = 0; i < 14; i++) {
     const char = maskStr[i]
-    /* v8 ignore start */
+    /* istanbul ignore start */
     // Stryker disable next-line ConditionalExpression: both call sites (decodeSparse L197, decodeCandidates L463) gate on `length < 14` before invoking, so maskStr is always exactly 14 chars and char is always defined; the branch is provably unreachable
     if (!char) return null
-    /* v8 ignore stop */
+    /* istanbul ignore stop */
     const idx = ALPHABET.indexOf(char)
     if (idx === -1) return null
     mask = (mask << BigInt(6)) | BigInt(idx)
@@ -198,10 +198,10 @@ const countSetMaskBits = (mask: bigint): number => {
 
 // Decode a single base64url digit char into a 1-based puzzle digit (0 on miss).
 const decodeDigitChar = (char: string | undefined): number => {
-  /* v8 ignore start */
+  /* istanbul ignore start */
   // Stryker disable next-line ConditionalExpression: when char is undefined, the early return yields 0; skipping it makes ALPHABET.indexOf(undefined) return -1, and the ternary below then yields 0 as well. Both paths are observationally identical.
   if (!char) return 0
-  /* v8 ignore stop */
+  /* istanbul ignore stop */
   const d = ALPHABET.indexOf(char)
   return d >= 0 && d < 9 ? d + 1 : 0
 }
@@ -222,10 +222,10 @@ function decodeSparse(encoded: string): number[] {
   // Stryker disable next-line EqualityOperator: extra i=81 step shifts by BigInt(-1) (a left-shift by 1 in BigInt); the low bit becomes 0 so the mask-bit test fails and no assignment happens
   for (let i = 0; i < 81; i++) {
     if (((mask >> BigInt(80 - i)) & BigInt(1)) === BigInt(1)) {
-      /* v8 ignore start */
+      /* istanbul ignore start */
       // Stryker disable next-line ConditionalExpression,EqualityOperator: when digitIdx >= digitsStr.length, digitsStr[digitIdx] is undefined and decodeDigitChar(undefined) returns 0; cells[i] stays at 0 either way, and digitIdx++ runs unconditionally outside the branch
       if (digitIdx < digitsStr.length) cells[i] = decodeDigitChar(digitsStr[digitIdx])
-      /* v8 ignore stop */
+      /* istanbul ignore stop */
       digitIdx++
     }
   }
@@ -265,7 +265,7 @@ export function encodePuzzleWithState(
     const idx = Number((givensMask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
     // idx is masked to 6 bits (0-63) and ALPHABET holds exactly 64 chars, so the
     // ?? '' fallback is unreachable for every input; sealed rather than contrived.
-    /* v8 ignore next */
+    /* istanbul ignore next */
     maskStr += ALPHABET[idx] ?? ''
   }
 
@@ -275,7 +275,7 @@ export function encodePuzzleWithState(
   for (let i = 0; i < 81; i += 2) {
     // board has exactly 81 entries, so an even index is always defined; the ?? 0
     // fallback here is unreachable (only the odd-index low nibble can reach it).
-    /* v8 ignore next */
+    /* istanbul ignore next */
     const high = (board[i] ?? 0) & 0x0f
     const low = (board[i + 1] ?? 0) & 0x0f
     bytes.push((high << 4) | low)
@@ -326,7 +326,7 @@ function encodeCandidates(candidates: number[][]): string {
     const idx = Number((hasCandMask >> BigInt((13 - i) * 6)) & BigInt(0x3f))
     // idx is masked to 6 bits (0-63) and ALPHABET holds exactly 64 chars, so the
     // ?? '' fallback is unreachable for every input; sealed rather than contrived.
-    /* v8 ignore next */
+    /* istanbul ignore next */
     maskStr += ALPHABET[idx] ?? ''
   }
 
@@ -369,12 +369,12 @@ function encodeCandidates(candidates: number[][]): string {
   }
 
   // Convert to base64url
-  /* v8 ignore start */
+  /* istanbul ignore start */
   // Stryker disable next-line ConditionalExpression,BlockStatement: encodeCandidates is only called after the `hasCandidates` guard in encodePuzzleWithState, so at least one cell pushes an entry to candBits; bitCount >= 9 forces byteCount >= 2, so candBytes is never empty and this branch is provably unreachable
   if (candBytes.length === 0) {
     return maskStr
   }
-  /* v8 ignore stop */
+  /* istanbul ignore stop */
   const candUint8 = new Uint8Array(candBytes)
   const candBinary = String.fromCharCode(...candUint8)
   const candBase64 = btoa(candBinary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
@@ -421,10 +421,10 @@ export function decodePuzzleWithState(
   // The board is exactly 41 bytes = 328 bits, which encodes to ceil(41*8/6) = 55 base64 chars
   const boardStr = data.slice(14, boardEndIdx)
   const board = decodeDense(boardStr)
-  /* v8 ignore start */
+  /* istanbul ignore start */
   // Stryker disable next-line ConditionalExpression: decodeDense always returns a length-81 array (padding to 81 cells at the end), so this guard is unreachable for any input that reaches this line; forcing false is observationally identical
   if (board.length !== 81) return null
-  /* v8 ignore stop */
+  /* istanbul ignore stop */
 
   // Extract givens from mask
   const givens = Array<number>(81).fill(0)
@@ -434,7 +434,7 @@ export function decodePuzzleWithState(
     if (bit === BigInt(1)) {
       // board is length 81 and i < 81, so board[i] is always defined; ?? 0 is a
       // defensive default.
-      /* v8 ignore next */
+      /* istanbul ignore next */
       givens[i] = board[i] ?? 0
     }
   }
@@ -456,10 +456,10 @@ export function decodePuzzleWithState(
  */
 // Decode a base64url string into bytes. Returns null on empty or decode error.
 const base64UrlToBytes = (str: string): Uint8Array | null => {
-  /* v8 ignore start */
+  /* istanbul ignore start */
   // Stryker disable next-line ConditionalExpression: when str==='' the original returns null; the mutant continues, but the atob('') call below yields '' (empty binary), producing a zero-length Uint8Array. Callers check `if (!bytes)` which is false for an empty Uint8Array, then extractCandBits runs zero iterations, and the consumer loop's mask-bit check skips every cell — yielding the same all-empty candidates that the null path returns
   if (str.length === 0) return null
-  /* v8 ignore stop */
+  /* istanbul ignore stop */
   let base64 = str.replace(/-/g, '+').replace(/_/g, '/')
   // Stryker disable next-line ConditionalExpression: the runtime atob is forgiving of missing padding (a length%4 of 2 or 3 decodes identically with or without the '=' suffix, and length%4===1 never occurs for a validly-encoded payload and throws either way), so removing this padding loop yields identical bytes
   while (base64.length % 4) base64 += '='
@@ -479,10 +479,10 @@ const base64UrlToBytes = (str: string): Uint8Array | null => {
 // Expand a packed 9-bit candidate mask into the list of candidate digits 1-9.
 const bitsToCandidateDigits = (bits: number | undefined): number[] => {
   const digits: number[] = []
-  /* v8 ignore start */
+  /* istanbul ignore start */
   // Stryker disable next-line ConditionalExpression: every caller passes a defined number (extractCandBits indexes a typed array slot that may be undefined, but the surrounding `candIdx < candBits.length` guard ensures the index is in range). For the in-range case both branches yield the same digits list; the mutant only differs when bits===undefined, which is unreachable in normal flow
   if (bits === undefined) return digits
-  /* v8 ignore stop */
+  /* istanbul ignore stop */
   for (let d = 1; d <= 9; d++) {
     if ((bits & (1 << (d - 1))) !== 0) digits.push(d)
   }
@@ -496,7 +496,7 @@ const extractCandBits = (bytes: Uint8Array, cellsWithCands: number): number[] =>
   for (let i = 0; i < bytes.length; i++) {
     // bytes[i] is always defined for i < bytes.length (Uint8Array), so ?? 0 is a
     // defensive default.
-    /* v8 ignore next */
+    /* istanbul ignore next */
     allBits = (allBits << BigInt(8)) | BigInt(bytes[i] ?? 0)
   }
   const totalBitsInBytes = bytes.length * 8
@@ -522,16 +522,16 @@ function decodeCandidates(data: string): number[][] {
 
   // Stryker disable next-line MethodExpression: decode14CharMask reads only indices 0..13 of its argument; for data already >=14 chars long, data.slice(0,14) and data share those leading 14 chars identically
   const mask = decode14CharMask(data.slice(0, 14))
-  /* v8 ignore start */
+  /* istanbul ignore start */
   // Stryker disable next-line ConditionalExpression: forcing `false` here continues with mask===null, but BigInt ops on null coerce to 0n so countSetMaskBits returns 0 and the L467 guard returns the same all-empty candidates
   if (mask === null) return candidates
-  /* v8 ignore stop */
+  /* istanbul ignore stop */
 
   const cellsWithCands = countSetMaskBits(mask)
-  /* v8 ignore start */
+  /* istanbul ignore start */
   // Stryker disable next-line ConditionalExpression: forcing `false` continues with cellsWithCands===0; extractCandBits returns an empty array and the consumer loop's mask-bit check (mask===0n) skips every cell, yielding the same all-empty candidates as the early return
   if (cellsWithCands === 0) return candidates
-  /* v8 ignore stop */
+  /* istanbul ignore stop */
 
   const bytes = base64UrlToBytes(data.slice(14))
   if (!bytes) return candidates
@@ -579,10 +579,10 @@ function decodeDense(encoded: string): number[] {
   // Stryker disable next-line EqualityOperator: at i===bytes.length, byte===undefined; the L519 `if (byte === undefined) continue` guard skips the extra iteration, making it a no-op
   for (let i = 0; i < bytes.length && cells.length < 81; i++) {
     const byte = bytes[i]
-    /* v8 ignore start */
+    /* istanbul ignore start */
     // Stryker disable next-line ConditionalExpression: for in-range i, bytes[i] is always defined (Uint8Array returns a number for valid indices), so this guard only matters for the L508 mutant's extra iteration; without it, that extra step still skips cleanly because the loop's `cells.length < 81` bound halts growth. For the normal in-range case both branches are identical.
     if (byte === undefined) continue
-    /* v8 ignore stop */
+    /* istanbul ignore stop */
     const high = (byte >> 4) & 0x0f
     const low = byte & 0x0f
     cells.push(high > 9 ? 0 : high)

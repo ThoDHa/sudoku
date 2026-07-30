@@ -114,7 +114,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
   const placeDigitAndClear = useCallback(
     (cellIndex: number, digit: number, notesMode: boolean) => {
       // Stryker disable ConditionalExpression: unreachable defensive guard
-      /* v8 ignore next -- callers pre-check gameRef.current before routing here */
+      /* istanbul ignore next -- callers pre-check gameRef.current before routing here */
       if (!gameRef.current) return
       // Stryker restore ConditionalExpression
 

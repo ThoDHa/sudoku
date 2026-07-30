@@ -121,10 +121,10 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
 
     const nextMove = currentHistory[currentHistoryIndex + 1]
     // The bound check above guarantees nextMove is defined, so this guard is unreachable.
-    /* v8 ignore start */
+    /* istanbul ignore start */
     // Stryker disable next-line ConditionalExpression: after the L117 bound check nextMove is always defined, so this guard is dead and forcing it false is unobservable
     if (!nextMove) return
-    /* v8 ignore stop */
+    /* istanbul ignore stop */
 
     if (nextMove.stateDiff) {
       const result = applyStateDiff(currentBoard, currentCandidates, nextMove.stateDiff)

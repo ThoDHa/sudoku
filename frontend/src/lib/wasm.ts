@@ -361,7 +361,7 @@ export function preloadWasm(): void {
     // loadWasm normalizes every rejection into an Error (see its own catch), so
     // `error instanceof Error` is always true here and the String(error) fallback
     // is unreachable; sealed rather than contrived.
-    /* v8 ignore next */
+    /* istanbul ignore next */
     logger.debug('WASM preload failed:', error instanceof Error ? error.message : String(error))
   })
 }

@@ -36,10 +36,10 @@ interface UseGameTimerReturn {
 // focus/visibility pausing must be bypassed: the runner window may not be
 // focused but the page is still "visible".
 function isAutomatedEnvironment(): boolean {
-  /* v8 ignore start -- SSR/non-browser guard: navigator is always defined in browsers and jsdom, so this early return is unreachable in the test environment */
+  /* istanbul ignore start -- SSR/non-browser guard: navigator is always defined in browsers and jsdom, so this early return is unreachable in the test environment */
   // Stryker disable next-line ConditionalExpression,StringLiteral,BooleanLiteral: jsdom always defines navigator (object) and navigator.userAgent (string), so this SSR/non-browser guard is unreachable here and every mutation is observationally identical
   if (typeof navigator === 'undefined') return false
-  /* v8 ignore stop */
+  /* istanbul ignore stop */
   return (
     navigator.webdriver ||
     // Stryker disable next-line ConditionalExpression: navigator.userAgent is always a string in jsdom and browsers, so the typeof guard is always true and forcing it true is observationally identical
