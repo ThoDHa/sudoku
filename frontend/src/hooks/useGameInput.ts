@@ -1,22 +1,16 @@
-import { useCallback } from 'react'
+import { useMemo } from 'react'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { commitCellAction } from '../lib/commitCellAction'
 import { isDigitComplete } from '../lib/digitCompletion'
 import type { UseSudokuGameReturn } from './useSudokuGame'
 import type { useAutoSolve } from './useAutoSolve'
 
-// Input-handler braid extracted from Game.tsx. Every callback below is stable
-// (its deps array contains only other stable callbacks); refs are read-only
-// identifiers from React's perspective, so they are intentionally omitted
-// from the deps arrays to match the original Game.tsx convention. Preserving
-// the deps exactly is critical: the Cell/Board memoization invariant depends
-// on onCellClick / onCellChange / onDigit never changing identity.
-//
-// The hook reads current state exclusively from the mirror refs passed in
-// (selectedCellRef / selectedCellsRef / notesModeRef / eraseModeRef /
-// highlightedDigitRef / gameRef / autoSolveRef); the only React state it
-// owns is the extended-pause flag, kept here because resumeFromExtendedPause
-// is wired into every entry point.
+// Input-handler braid extracted from Game.tsx. Reads current state exclusively
+// from the mirror refs passed in (selectedCellRef / selectedCellsRef /
+// notesModeRef / eraseModeRef / highlightedDigitRef / gameRef /
+// autoSolveRef); the only React state it owns is the extended-pause flag,
+// kept here because resumeFromExtendedPause is wired into every entry point.
+// Under the React Compiler these handlers are memoized automatically.
 
 export interface UseGameInputOptions {
   // Mirror refs owned by Game; the hook only reads them.
@@ -103,397 +97,296 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
   } = options
 
   // Resume from extended pause on user interaction
-  const resumeFromExtendedPause = useCallback(() => {
+  const resumeFromExtendedPause = () => {
     if (isExtendedPaused) {
       setIsExtendedPaused(false)
     }
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; the test harness renders once per invocation, so the stale-closure mutant over isExtendedPaused is observably equivalent
-  }, [isExtendedPaused, setIsExtendedPaused])
+  }
 
   // Shared digit placement logic - unifies mobile and desktop behavior
-  const placeDigitAndClear = useCallback(
-    (cellIndex: number, digit: number, notesMode: boolean) => {
-      // Stryker disable ConditionalExpression: unreachable defensive guard
-      /* istanbul ignore next -- callers pre-check gameRef.current before routing here */
-      if (!gameRef.current) return
-      // Stryker restore ConditionalExpression
+  const placeDigitAndClear = (cellIndex: number, digit: number, notesMode: boolean) => {
+    // Stryker disable ConditionalExpression: unreachable defensive guard
+    /* istanbul ignore next -- callers pre-check gameRef.current before routing here */
+    if (!gameRef.current) return
+    // Stryker restore ConditionalExpression
 
-      // Use setCellMultiple when multiple cells selected AND in notes mode
-      const currentSelectedCells = selectedCellsRef.current
-      const isMultiSelect = notesMode && currentSelectedCells.size > 1
+    // Use setCellMultiple when multiple cells selected AND in notes mode
+    const currentSelectedCells = selectedCellsRef.current
+    const isMultiSelect = notesMode && currentSelectedCells.size > 1
 
-      if (isMultiSelect) {
-        // Convert Set to array for setCellMultiple
-        const selectedCellsArray = Array.from(currentSelectedCells)
-        gameRef.current.setCellMultiple(selectedCellsArray, digit, notesMode)
-      } else {
-        // Single cell: use original setCell logic
-        gameRef.current.setCell(cellIndex, digit, notesMode)
+    if (isMultiSelect) {
+      // Convert Set to array for setCellMultiple
+      const selectedCellsArray = Array.from(currentSelectedCells)
+      gameRef.current.setCellMultiple(selectedCellsArray, digit, notesMode)
+    } else {
+      // Single cell: use original setCell logic
+      gameRef.current.setCell(cellIndex, digit, notesMode)
+    }
+
+    if (notesMode) {
+      clearAfterUserCandidateOp()
+    } else {
+      clearAfterDigitPlacement()
+      deselectCell()
+    }
+
+    // Fix 1: Clear highlight when digit becomes complete
+    // Check if the digit we just placed is now complete (all 9 instances on board)
+    if (!notesMode) {
+      const digitCounts = gameRef.current.digitCounts
+      if (isDigitComplete(digit, digitCounts)) {
+        clearDigitHighlight()
       }
+    }
 
-      if (notesMode) {
-        clearAfterUserCandidateOp()
-      } else {
-        clearAfterDigitPlacement()
-        deselectCell()
-      }
-
-      // Fix 1: Clear highlight when digit becomes complete
-      // Check if the digit we just placed is now complete (all 9 instances on board)
-      if (!notesMode) {
-        const digitCounts = gameRef.current.digitCounts
-        if (isDigitComplete(digit, digitCounts)) {
-          clearDigitHighlight()
-        }
-      }
-
-      resetHintTracking()
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; every captured value is a ref (read at call time via .current) or a stable callback, so the stale-closure mutant is observably identical
-    [
-      gameRef,
-      selectedCellsRef,
-      clearAfterUserCandidateOp,
-      clearAfterDigitPlacement,
-      deselectCell,
-      clearDigitHighlight,
-      resetHintTracking,
-    ],
-  )
+    resetHintTracking()
+  }
 
   // Multi-select callback for drag selection on Board
-  const handleCellSelectMultiple = useCallback(
-    (cells: number[]) => {
-      selectMultipleCells(cells)
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; selectMultipleCells is a stable callback provided once per test, so the stale-closure mutant is observably identical
-    [selectMultipleCells],
-  )
+  const handleCellSelectMultiple = (cells: number[]) => {
+    selectMultipleCells(cells)
+  }
 
   // Drag end callback: when a multi-cell drag completes and a digit is highlighted
   // in notes mode, auto-insert/toggle that candidate on all selected cells.
-  const handleDragEnd = useCallback(
-    (cells: number[]) => {
-      const currentHighlightedDigit = highlightedDigitRef.current
-      const currentNotesMode = notesModeRef.current
-      const currentGame = gameRef.current
+  const handleDragEnd = (cells: number[]) => {
+    const currentHighlightedDigit = highlightedDigitRef.current
+    const currentNotesMode = notesModeRef.current
+    const currentGame = gameRef.current
 
-      if (!currentGame || !currentNotesMode || currentHighlightedDigit === null) return
-      if (cells.length === 0) return
+    if (!currentGame || !currentNotesMode || currentHighlightedDigit === null) return
+    if (cells.length === 0) return
 
-      currentGame.setCellMultiple(cells, currentHighlightedDigit, true)
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; every captured value is a ref read at call time via .current, so the stale-closure mutant is observably identical
-    [highlightedDigitRef, notesModeRef, gameRef],
-  )
+    currentGame.setCellMultiple(cells, currentHighlightedDigit, true)
+  }
 
   // Erase-mode click: if active and the cell is erasable, erase it (keeping
   // erase mode on); otherwise just select the cell and exit erase mode.
-  const handleEraseClick = useCallback(
-    (idx: number, game: GameApi): boolean => {
-      if (!eraseModeRef.current) return false
-      if (game.board[idx] !== 0 && !game.isGivenCell(idx)) {
-        commitCellAction('erase', {
-          idx,
-          game,
-          clearAfterErase,
-          deselectCell,
-          setEraseMode,
-          setAutoSolveStepsUsed,
-          setAutoSolveErrorsFixed,
-        })
-        resetHintTracking()
-        return true
-      }
-      selectCell(idx)
-      setEraseMode(false)
+  const handleEraseClick = (idx: number, game: GameApi): boolean => {
+    if (!eraseModeRef.current) return false
+    if (game.board[idx] !== 0 && !game.isGivenCell(idx)) {
+      commitCellAction('erase', {
+        idx,
+        game,
+        clearAfterErase,
+        deselectCell,
+        setEraseMode,
+        setAutoSolveStepsUsed,
+        setAutoSolveErrorsFixed,
+      })
+      resetHintTracking()
       return true
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are refs (read at call time via .current) and stable callbacks, so the stale-closure mutant is observably identical
-    [
-      eraseModeRef,
-      clearAfterErase,
-      deselectCell,
-      selectCell,
-      setEraseMode,
-      setAutoSolveStepsUsed,
-      setAutoSolveErrorsFixed,
-      resetHintTracking,
-    ],
-  )
+    }
+    selectCell(idx)
+    setEraseMode(false)
+    return true
+  }
 
   // Place (or toggle) the highlighted digit on a cell. In notes mode toggles
   // the candidate; otherwise places the digit, or erases if the cell already
   // holds that digit.
-  const handleHighlightedPlacement = useCallback(
-    (idx: number, game: GameApi, highlightedDigit: number, notesMode: boolean): void => {
-      if (isDigitComplete(highlightedDigit, game.digitCounts)) {
-        clearDigitHighlight()
-        return
-      }
-      if (notesMode) {
-        if (game.board[idx] === 0) {
-          placeDigitAndClear(idx, highlightedDigit, notesMode)
-        }
-        return
-      }
-      if (game.board[idx] === highlightedDigit) {
-        commitCellAction('erase', {
-          idx,
-          game,
-          clearAfterErase,
-          deselectCell,
-          setEraseMode,
-          setAutoSolveStepsUsed,
-          setAutoSolveErrorsFixed,
-        })
-        resetHintTracking()
-      } else {
+  const handleHighlightedPlacement = (
+    idx: number,
+    game: GameApi,
+    highlightedDigit: number,
+    notesMode: boolean,
+  ): void => {
+    if (isDigitComplete(highlightedDigit, game.digitCounts)) {
+      clearDigitHighlight()
+      return
+    }
+    if (notesMode) {
+      if (game.board[idx] === 0) {
         placeDigitAndClear(idx, highlightedDigit, notesMode)
       }
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are stable callbacks, so the stale-closure mutant is observably identical
-    [
-      clearDigitHighlight,
-      placeDigitAndClear,
-      clearAfterErase,
-      deselectCell,
-      setEraseMode,
-      setAutoSolveStepsUsed,
-      setAutoSolveErrorsFixed,
-      resetHintTracking,
-    ],
-  )
+      return
+    }
+    if (game.board[idx] === highlightedDigit) {
+      commitCellAction('erase', {
+        idx,
+        game,
+        clearAfterErase,
+        deselectCell,
+        setEraseMode,
+        setAutoSolveStepsUsed,
+        setAutoSolveErrorsFixed,
+      })
+      resetHintTracking()
+    } else {
+      placeDigitAndClear(idx, highlightedDigit, notesMode)
+    }
+  }
 
-  // Cell click handler - STABLE: reads from refs to avoid recreating on state changes
-  // This is critical because Cell memo doesn't compare callback props for performance
-  const handleCellClick = useCallback(
-    (idx: number) => {
-      resumeFromExtendedPause()
+  // Cell click handler - reads from refs so React Compiler can keep it stable.
+  const handleCellClick = (idx: number) => {
+    resumeFromExtendedPause()
 
-      // Read current state from refs for stable callback
-      const currentHighlightedDigit = highlightedDigitRef.current
-      const currentSelectedCell = selectedCellRef.current
-      const currentNotesMode = notesModeRef.current
-      const currentGame = gameRef.current
+    // Read current state from refs
+    const currentHighlightedDigit = highlightedDigitRef.current
+    const currentSelectedCell = selectedCellRef.current
+    const currentNotesMode = notesModeRef.current
+    const currentGame = gameRef.current
 
-      if (!currentGame) return
+    if (!currentGame) return
 
-      if (handleEraseClick(idx, currentGame)) return
+    if (handleEraseClick(idx, currentGame)) return
 
-      // If a digit is already highlighted and we're clicking a given cell,
-      // only block if we're NOT coming from another given cell (allow given-to-given navigation)
-      if (currentHighlightedDigit !== null && currentGame.isGivenCell(idx)) {
-        if (currentSelectedCell === null || !currentGame.isGivenCell(currentSelectedCell)) {
-          return
-        }
-      }
-
-      // Given cells: highlight the digit AND select the cell for peer highlighting
-      if (currentGame.isGivenCell(idx)) {
-        const cellDigit = currentGame.board[idx]
-        // Stryker disable next-line LogicalOperator,ConditionalExpression,EqualityOperator: cellDigit is read from board[idx] which holds Sudoku values 0-9; within that domain the short-circuiting outer 'cellDigit &&' makes the || , >0, and >=0 mutants observably identical (differences only arise for negative values the game model never produces)
-        if (cellDigit && cellDigit > 0) {
-          if (currentSelectedCell === idx) {
-            clearAllAndDeselect()
-          } else {
-            clickGivenCell(cellDigit, idx)
-          }
-        }
-        setEraseMode(false)
+    // If a digit is already highlighted and we're clicking a given cell,
+    // only block if we're NOT coming from another given cell (allow given-to-given navigation)
+    if (currentHighlightedDigit !== null && currentGame.isGivenCell(idx)) {
+      if (currentSelectedCell === null || !currentGame.isGivenCell(currentSelectedCell)) {
         return
       }
+    }
 
-      // Toggle selection: clicking the same cell again deselects it.
-      // In notes mode with a highlighted digit, instead toggle that candidate.
-      if (currentSelectedCell === idx) {
-        if (currentNotesMode && currentHighlightedDigit !== null && currentGame.board[idx] === 0) {
-          currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
-          clearAfterUserCandidateOp()
-          resetHintTracking()
-          return
+    // Given cells: highlight the digit AND select the cell for peer highlighting
+    if (currentGame.isGivenCell(idx)) {
+      const cellDigit = currentGame.board[idx]
+      // Stryker disable next-line LogicalOperator,ConditionalExpression,EqualityOperator: cellDigit is read from board[idx] which holds Sudoku values 0-9; within that domain the short-circuiting outer 'cellDigit &&' makes the || , >0, and >=0 mutants observably identical (differences only arise for negative values the game model never produces)
+      if (cellDigit && cellDigit > 0) {
+        if (currentSelectedCell === idx) {
+          clearAllAndDeselect()
+        } else {
+          clickGivenCell(cellDigit, idx)
         }
-        clearAllAndDeselect()
-        return
       }
-
-      if (currentHighlightedDigit !== null) {
-        handleHighlightedPlacement(idx, currentGame, currentHighlightedDigit, currentNotesMode)
-        return
-      }
-
-      // Select the cell (works for both empty and user-filled cells)
-      // selectCell atomically selects and clears highlights
-      selectCell(idx)
       setEraseMode(false)
-      // All deps are now stable callbacks - state accessed via refs
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are refs (read at call time via .current) and stable callbacks, so the stale-closure mutant is observably identical
-    [
-      selectCell,
-      clearAllAndDeselect,
-      clickGivenCell,
-      resumeFromExtendedPause,
-      clearAfterUserCandidateOp,
-      resetHintTracking,
-      handleEraseClick,
-      handleHighlightedPlacement,
-      highlightedDigitRef,
-      selectedCellRef,
-      notesModeRef,
-      gameRef,
-      setEraseMode,
-    ],
-  )
+      return
+    }
 
-  // Digit input handler - STABLE: reads from refs to avoid recreating on state changes
-  const handleDigitInput = useCallback(
-    (digit: number) => {
-      resumeFromExtendedPause()
-      // Clear erase mode when selecting a digit
-      setEraseMode(false)
-
-      const currentSelectedCell = selectedCellRef.current
-      const currentNotesMode = notesModeRef.current
-      const currentGame = gameRef.current
-
-      if (!currentGame) return
-
-      // Fix 2: Block selection of complete digits
-      // Don't allow selecting/placing digits that have all 9 instances on the board
-      if (isDigitComplete(digit, currentGame.digitCounts)) {
-        return
-      }
-
-      // Multi-select in notes mode: route to bulk note entry
-      // selectedCell is null during multi-select (by design), so check selectedCells directly
-      const currentSelectedCells = selectedCellsRef.current
-      if (currentNotesMode && currentSelectedCells.size > 1) {
-        placeDigitAndClear(0, digit, currentNotesMode)
-        return
-      }
-
-      if (currentSelectedCell === null) {
-        toggleDigitHighlight(digit)
-        return
-      }
-
-      // If a given cell is selected, deselect it and toggle digit highlight for multi-fill mode
-      if (currentGame.isGivenCell(currentSelectedCell)) {
-        deselectCell()
-        toggleDigitHighlight(digit)
-        return
-      }
-
-      // If cell already has this digit, erase it
-      if (currentGame.board[currentSelectedCell] === digit) {
-        commitCellAction('erase', {
-          idx: currentSelectedCell,
-          game: currentGame,
-          clearAfterErase: clearAfterDigitToggle,
-          deselectCell,
-          setEraseMode,
-          setAutoSolveStepsUsed,
-          setAutoSolveErrorsFixed,
-        })
+    // Toggle selection: clicking the same cell again deselects it.
+    // In notes mode with a highlighted digit, instead toggle that candidate.
+    if (currentSelectedCell === idx) {
+      if (currentNotesMode && currentHighlightedDigit !== null && currentGame.board[idx] === 0) {
+        currentGame.setCell(idx, currentHighlightedDigit, currentNotesMode)
+        clearAfterUserCandidateOp()
         resetHintTracking()
         return
       }
+      clearAllAndDeselect()
+      return
+    }
 
-      placeDigitAndClear(currentSelectedCell, digit, currentNotesMode)
+    if (currentHighlightedDigit !== null) {
+      handleHighlightedPlacement(idx, currentGame, currentHighlightedDigit, currentNotesMode)
+      return
+    }
 
-      // Cell deselects after digit entry (per requirements)
-      // Keep digit highlighted for adding candidates (multi-fill)
-      // All deps are now stable callbacks - game accessed via ref
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are refs (read at call time via .current) and stable callbacks, so the stale-closure mutant is observably identical
-    [
-      setEraseMode,
-      selectedCellRef,
-      notesModeRef,
-      gameRef,
-      selectedCellsRef,
-      resumeFromExtendedPause,
-      toggleDigitHighlight,
-      clearAfterDigitToggle,
-      placeDigitAndClear,
-      deselectCell,
-      setAutoSolveStepsUsed,
-      setAutoSolveErrorsFixed,
-      resetHintTracking,
-    ],
-  )
+    // Select the cell (works for both empty and user-filled cells)
+    // selectCell atomically selects and clears highlights
+    selectCell(idx)
+    setEraseMode(false)
+  }
+
+  // Digit input handler - reads from refs so React Compiler can keep it stable.
+  const handleDigitInput = (digit: number) => {
+    resumeFromExtendedPause()
+    // Clear erase mode when selecting a digit
+    setEraseMode(false)
+
+    const currentSelectedCell = selectedCellRef.current
+    const currentNotesMode = notesModeRef.current
+    const currentGame = gameRef.current
+
+    if (!currentGame) return
+
+    // Fix 2: Block selection of complete digits
+    // Don't allow selecting/placing digits that have all 9 instances on the board
+    if (isDigitComplete(digit, currentGame.digitCounts)) {
+      return
+    }
+
+    // Multi-select in notes mode: route to bulk note entry
+    // selectedCell is null during multi-select (by design), so check selectedCells directly
+    const currentSelectedCells = selectedCellsRef.current
+    if (currentNotesMode && currentSelectedCells.size > 1) {
+      placeDigitAndClear(0, digit, currentNotesMode)
+      return
+    }
+
+    if (currentSelectedCell === null) {
+      toggleDigitHighlight(digit)
+      return
+    }
+
+    // If a given cell is selected, deselect it and toggle digit highlight for multi-fill mode
+    if (currentGame.isGivenCell(currentSelectedCell)) {
+      deselectCell()
+      toggleDigitHighlight(digit)
+      return
+    }
+
+    // If cell already has this digit, erase it
+    if (currentGame.board[currentSelectedCell] === digit) {
+      commitCellAction('erase', {
+        idx: currentSelectedCell,
+        game: currentGame,
+        clearAfterErase: clearAfterDigitToggle,
+        deselectCell,
+        setEraseMode,
+        setAutoSolveStepsUsed,
+        setAutoSolveErrorsFixed,
+      })
+      resetHintTracking()
+      return
+    }
+
+    placeDigitAndClear(currentSelectedCell, digit, currentNotesMode)
+
+    // Cell deselects after digit entry (per requirements)
+    // Keep digit highlighted for adding candidates (multi-fill)
+  }
 
   // Keyboard cell change handler (from Board component)
-  // STABLE: reads from refs to avoid recreation on state changes (like handleCellClick)
-  const handleCellChange = useCallback(
-    (idx: number, value: number) => {
-      resumeFromExtendedPause()
+  const handleCellChange = (idx: number, value: number) => {
+    resumeFromExtendedPause()
 
-      const currentGame = gameRef.current
-      const currentNotesMode = notesModeRef.current
+    const currentGame = gameRef.current
+    const currentNotesMode = notesModeRef.current
 
-      if (!currentGame) return
-      if (currentGame.isGivenCell(idx)) return
+    if (!currentGame) return
+    if (currentGame.isGivenCell(idx)) return
 
-      if (value === 0) {
-        commitCellAction('erase', {
-          idx,
-          game: currentGame,
-          clearAfterErase,
-          deselectCell,
-          setEraseMode,
-          setAutoSolveStepsUsed,
-          setAutoSolveErrorsFixed,
-        })
-        resetHintTracking()
+    if (value === 0) {
+      commitCellAction('erase', {
+        idx,
+        game: currentGame,
+        clearAfterErase,
+        deselectCell,
+        setEraseMode,
+        setAutoSolveStepsUsed,
+        setAutoSolveErrorsFixed,
+      })
+      resetHintTracking()
+    } else {
+      if (currentNotesMode) {
+        currentGame.setCell(idx, value, currentNotesMode)
+
+        // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
+        clearAfterUserCandidateOp()
       } else {
-        if (currentNotesMode) {
-          currentGame.setCell(idx, value, currentNotesMode)
-
-          // Clear all move-related highlights (cell backgrounds) but preserve digit highlight for multi-fill
-          clearAfterUserCandidateOp()
-        } else {
-          currentGame.setCell(idx, value, currentNotesMode)
-          clearAfterDigitPlacement()
-          deselectCell()
-        }
-        // Reset last hint tracking so next hint counts as new
-        resetHintTracking()
+        currentGame.setCell(idx, value, currentNotesMode)
+        clearAfterDigitPlacement()
+        deselectCell()
       }
-      // All deps are now stable callbacks - state accessed via refs
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are refs (read at call time via .current) and stable callbacks, so the stale-closure mutant is observably identical
-    [
-      clearAfterDigitPlacement,
-      deselectCell,
-      clearAfterErase,
-      clearAfterUserCandidateOp,
-      resumeFromExtendedPause,
-      resetHintTracking,
-      gameRef,
-      notesModeRef,
-      setEraseMode,
-      setAutoSolveStepsUsed,
-      setAutoSolveErrorsFixed,
-    ],
-  )
+      // Reset last hint tracking so next hint counts as new
+      resetHintTracking()
+    }
+  }
 
   // Toggle notes mode handler
-  const handleNotesToggle = useCallback(() => {
+  const handleNotesToggle = () => {
     setNotesMode((prev) => !prev)
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; setNotesMode is a stable dispatcher, so the stale-closure mutant is observably identical
-  }, [setNotesMode])
+  }
 
   // Toggle erase mode handler
-  const handleEraseMode = useCallback(() => {
+  const handleEraseMode = () => {
     setEraseMode((prev) => !prev)
     // DO NOT call clearOnModeChange - preserve selection during mode toggle
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; setEraseMode is a stable dispatcher, so the stale-closure mutant is observably identical
-  }, [setEraseMode])
+  }
 
-  // Undo handler - STABLE: reads from refs to avoid recreation on state changes
-  const handleUndo = useCallback(() => {
+  // Undo handler - reads from refs so React Compiler can keep it stable.
+  const handleUndo = () => {
     const currentAutoSolve = autoSolveRef.current
     const currentGame = gameRef.current
     if (currentAutoSolve?.isAutoSolving) {
@@ -505,11 +398,10 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
         clearMoveHighlight,
       })
     }
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are refs (read at call time via .current) and stable callbacks, so the stale-closure mutant is observably identical
-  }, [deselectCell, clearMoveHighlight, autoSolveRef, gameRef])
+  }
 
-  // Redo handler - STABLE: reads from refs to avoid recreation on state changes
-  const handleRedo = useCallback(() => {
+  // Redo handler - reads from refs so React Compiler can keep it stable.
+  const handleRedo = () => {
     const currentAutoSolve = autoSolveRef.current
     const currentGame = gameRef.current
     if (currentAutoSolve?.isAutoSolving) {
@@ -520,18 +412,30 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
         clearAllAndDeselect,
       })
     }
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; captured values are refs (read at call time via .current) and stable callbacks, so the stale-closure mutant is observably identical
-  }, [clearAllAndDeselect, autoSolveRef, gameRef])
-
-  return {
-    handleCellClick,
-    handleCellChange,
-    handleDigitInput,
-    handleCellSelectMultiple,
-    handleDragEnd,
-    handleNotesToggle,
-    handleEraseMode,
-    handleUndo,
-    handleRedo,
   }
+
+  return useMemo(
+    () => ({
+      handleCellClick,
+      handleCellChange,
+      handleDigitInput,
+      handleCellSelectMultiple,
+      handleDragEnd,
+      handleNotesToggle,
+      handleEraseMode,
+      handleUndo,
+      handleRedo,
+    }),
+    [
+      handleCellClick,
+      handleCellChange,
+      handleDigitInput,
+      handleCellSelectMultiple,
+      handleDragEnd,
+      handleNotesToggle,
+      handleEraseMode,
+      handleUndo,
+      handleRedo,
+    ],
+  )
 }
