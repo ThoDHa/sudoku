@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useMemo } from 'react'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { candidatesToArrays, arraysToCandidates } from '../lib/candidatesUtils'
 import {
@@ -67,10 +67,9 @@ export interface UseAutoSolveAdaptersReturn {
   handleStepNavigate: (move: Move | null) => void
 }
 
-// Stable adapter callbacks for useAutoSolve, extracted from Game.tsx. Every
-// callback here is wrapped in useCallback with the original deps array; this
-// is the second slice of the CODE-6 braid after useGameInput. Behavior is
-// identical to the inline implementation that lived in Game.tsx previously.
+// Stable adapter callbacks for useAutoSolve, extracted from Game.tsx. This is
+// the second slice of the CODE-6 braid after useGameInput. Behavior is identical
+// to the inline implementation that lived in Game.tsx previously.
 //
 // handleGameComplete (which reads timerControlRef + handleSubmitRef, the
 // circular-dep breaker between useSudokuGame's onComplete and handleSubmit)
@@ -95,154 +94,147 @@ export function useAutoSolveAdapters(
     setShowSolutionConfirm,
   } = options
 
-  // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-  const getBoard = useCallback(() => gameRef.current?.board ?? [], [gameRef])
+  const getBoard = () => gameRef.current?.board ?? []
 
-  const getCandidates = useCallback(() => {
+  const getCandidates = () => {
     const game = gameRef.current
     if (!game) return []
     // Convert Uint16Array to Set<number>[] for legacy API compatibility
     const arrays = candidatesToArrays(game.candidates)
     return arrays.map((arr) => new Set(arr))
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-  }, [gameRef])
+  }
 
-  // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-  const getGivens = useCallback(() => initialBoardRef.current, [initialBoardRef])
+  const getGivens = () => initialBoardRef.current
 
-  const handleApplyMove = useCallback(
-    (newBoard: number[], newCandidates: Set<number>[], move: Move, index: number) => {
-      const game = gameRef.current
-      if (!game) return
-      // Convert Set<number>[] back to Uint16Array
-      const candidatesArray = newCandidates.map((set) => Array.from(set))
-      const uint16Candidates = arraysToCandidates(candidatesArray)
-      game.applyExternalMove(newBoard, uint16Candidates, move)
-      setMoveHighlight(move, index)
+  const handleApplyMove = (
+    newBoard: number[],
+    newCandidates: Set<number>[],
+    move: Move,
+    index: number,
+  ) => {
+    const game = gameRef.current
+    if (!game) return
+    // Convert Set<number>[] back to Uint16Array
+    const candidatesArray = newCandidates.map((set) => Array.from(set))
+    const uint16Candidates = arraysToCandidates(candidatesArray)
+    game.applyExternalMove(newBoard, uint16Candidates, move)
+    setMoveHighlight(move, index)
 
-      // Highlight the digit being placed/modified
-      // Stryker disable next-line LogicalOperator, ConditionalExpression, EqualityOperator: valid Sudoku digits are 0-9, so once move.digit is truthy the > 0 comparison is always true; all three mutations are domain-equivalent
-      if (move.digit && move.digit > 0) {
-        setDigitHighlight(move.digit)
-      }
+    // Highlight the digit being placed/modified
+    // Stryker disable next-line LogicalOperator, ConditionalExpression, EqualityOperator: valid Sudoku digits are 0-9, so once move.digit is truthy the > 0 comparison is always true; all three mutations are domain-equivalent
+    if (move.digit && move.digit > 0) {
+      setDigitHighlight(move.digit)
+    }
 
-      // Show notes mode if it's a candidate operation
+    // Show notes mode if it's a candidate operation
+    if (move.action === 'eliminate' || move.action === 'candidate') {
+      setNotesMode(true)
+    } else if (move.action === 'assign' || move.action === 'place') {
+      setNotesMode(false)
+    }
+  }
+
+  const handleApplyState = (
+    board: number[],
+    candidates: Set<number>[],
+    move: Move | null,
+    index: number,
+  ) => {
+    const game = gameRef.current
+    if (!game) return
+    // Convert Set<number>[] back to Uint16Array
+    const candidatesArray = candidates.map((set) => Array.from(set))
+    const uint16Candidates = arraysToCandidates(candidatesArray)
+    game.setBoardState(board, uint16Candidates)
+    setMoveHighlight(move as MoveHighlight, index)
+
+    // Update digit highlight based on move
+    // Stryker disable next-line ConditionalExpression, EqualityOperator: valid Sudoku digits are 0-9, so once move.digit is truthy the > 0 comparison is always true; both mutations are domain-equivalent
+    if (move && move.digit && move.digit > 0) {
+      setDigitHighlight(move.digit)
+    } else {
+      clearDigitHighlight()
+    }
+
+    // Update notes mode based on move action
+    if (move) {
       if (move.action === 'eliminate' || move.action === 'candidate') {
         setNotesMode(true)
       } else if (move.action === 'assign' || move.action === 'place') {
         setNotesMode(false)
       }
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-    [setMoveHighlight, setDigitHighlight, setNotesMode, gameRef],
-  )
-
-  const handleApplyState = useCallback(
-    (board: number[], candidates: Set<number>[], move: Move | null, index: number) => {
-      const game = gameRef.current
-      if (!game) return
-      // Convert Set<number>[] back to Uint16Array
-      const candidatesArray = candidates.map((set) => Array.from(set))
-      const uint16Candidates = arraysToCandidates(candidatesArray)
-      game.setBoardState(board, uint16Candidates)
-      setMoveHighlight(move as MoveHighlight, index)
-
-      // Update digit highlight based on move
-      // Stryker disable next-line ConditionalExpression, EqualityOperator: valid Sudoku digits are 0-9, so once move.digit is truthy the > 0 comparison is always true; both mutations are domain-equivalent
-      if (move && move.digit && move.digit > 0) {
-        setDigitHighlight(move.digit)
-      } else {
-        clearDigitHighlight()
-      }
-
-      // Update notes mode based on move action
-      if (move) {
-        if (move.action === 'eliminate' || move.action === 'candidate') {
-          setNotesMode(true)
-        } else if (move.action === 'assign' || move.action === 'place') {
-          setNotesMode(false)
-        }
-      }
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-    [setMoveHighlight, setDigitHighlight, clearDigitHighlight, setNotesMode, gameRef],
-  )
-
-  // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-  const handleIsComplete = useCallback(() => gameRef.current?.isComplete ?? false, [gameRef])
-
-  const handleAutoSolveError = useCallback(
-    (message: string) => {
-      setValidationMessage({ type: 'error', message })
-      scheduleToastClear(TOAST_DURATION_ERROR, () => {
-        setValidationMessage(null)
-      })
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-    [scheduleToastClear, setValidationMessage],
-  )
-
-  const handleUnpinpointableError = useCallback(
-    (message: string, count: number) => {
-      setUnpinpointableErrorInfo({ message, count })
-      setShowSolutionConfirm(true)
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-    [setUnpinpointableErrorInfo, setShowSolutionConfirm],
-  )
-
-  const handleAutoSolveStatus = useCallback(
-    (message: string) => {
-      throttledSetValidationMessage({ type: 'success', message })
-      scheduleToastClear(2000, () => {
-        setValidationMessage(null)
-      })
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-    [throttledSetValidationMessage, scheduleToastClear, setValidationMessage],
-  )
-
-  const handleErrorFixed = useCallback(
-    (message: string, resumeCallback: () => void) => {
-      // Show toast for fix-error (longer duration than normal hints)
-      setValidationMessage({ type: 'error', message: `Fixed: ${message}` })
-      // Clear toast after full duration
-      scheduleToastClear(TOAST_DURATION_FIX_ERROR, () => {
-        setValidationMessage(null)
-      })
-      // But resume solving sooner for better UX
-      visibilityAwareTimeout(resumeCallback, ERROR_FIX_RESUME_DELAY)
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-    [visibilityAwareTimeout, scheduleToastClear, setValidationMessage],
-  )
-
-  const handleStepNavigate = useCallback(
-    (move: Move | null) => {
-      // Show toast with move explanation when stepping through autosolve.
-      // Toast persists until next step or autosolve stops (no timeout).
-      if (move) {
-        setValidationMessage({ type: 'success', message: move.explanation })
-      } else {
-        // Stepped back to initial state
-        setValidationMessage({ type: 'success', message: 'Initial state' })
-      }
-    },
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-    [setValidationMessage],
-  )
-
-  return {
-    getBoard,
-    getCandidates,
-    getGivens,
-    handleApplyMove,
-    handleApplyState,
-    handleIsComplete,
-    handleAutoSolveError,
-    handleUnpinpointableError,
-    handleAutoSolveStatus,
-    handleErrorFixed,
-    handleStepNavigate,
+    }
   }
+
+  const handleIsComplete = () => gameRef.current?.isComplete ?? false
+
+  const handleAutoSolveError = (message: string) => {
+    setValidationMessage({ type: 'error', message })
+    scheduleToastClear(TOAST_DURATION_ERROR, () => {
+      setValidationMessage(null)
+    })
+  }
+
+  const handleUnpinpointableError = (message: string, count: number) => {
+    setUnpinpointableErrorInfo({ message, count })
+    setShowSolutionConfirm(true)
+  }
+
+  const handleAutoSolveStatus = (message: string) => {
+    throttledSetValidationMessage({ type: 'success', message })
+    scheduleToastClear(2000, () => {
+      setValidationMessage(null)
+    })
+  }
+
+  const handleErrorFixed = (message: string, resumeCallback: () => void) => {
+    // Show toast for fix-error (longer duration than normal hints)
+    setValidationMessage({ type: 'error', message: `Fixed: ${message}` })
+    // Clear toast after full duration
+    scheduleToastClear(TOAST_DURATION_FIX_ERROR, () => {
+      setValidationMessage(null)
+    })
+    // But resume solving sooner for better UX
+    visibilityAwareTimeout(resumeCallback, ERROR_FIX_RESUME_DELAY)
+  }
+
+  const handleStepNavigate = (move: Move | null) => {
+    // Show toast with move explanation when stepping through autosolve.
+    // Toast persists until next step or autosolve stops (no timeout).
+    if (move) {
+      setValidationMessage({ type: 'success', message: move.explanation })
+    } else {
+      // Stepped back to initial state
+      setValidationMessage({ type: 'success', message: 'Initial state' })
+    }
+  }
+
+  return useMemo(
+    () => ({
+      getBoard,
+      getCandidates,
+      getGivens,
+      handleApplyMove,
+      handleApplyState,
+      handleIsComplete,
+      handleAutoSolveError,
+      handleUnpinpointableError,
+      handleAutoSolveStatus,
+      handleErrorFixed,
+      handleStepNavigate,
+    }),
+    [
+      getBoard,
+      getCandidates,
+      getGivens,
+      handleApplyMove,
+      handleApplyState,
+      handleIsComplete,
+      handleAutoSolveError,
+      handleUnpinpointableError,
+      handleAutoSolveStatus,
+      handleErrorFixed,
+      handleStepNavigate,
+    ],
+  )
 }
