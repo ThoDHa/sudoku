@@ -542,6 +542,10 @@ jobs:
           # Create directory structure for GitHub Pages
           # Main app goes to root, test report goes to /test-report/
           mkdir -p pages-artifact/test-report
+          # Disable Jekyll processing: without this, GitHub Pages runs Jekyll,
+          # which silently drops the Allure report's data/test-cases/ directory
+          # (4151 JSON files). .nojekyll makes Pages serve every file as-is.
+          touch pages-artifact/.nojekyll
           cp -r allure-report/* pages-artifact/test-report/
           cp -r frontend/dist/* pages-artifact/
           # Safety net: Vite already copies public/ (incl. these) into dist, but
