@@ -1144,7 +1144,7 @@ export default function Menu({
 
               {/* Test Report */}
               <a
-                href="https://thodha.github.io/sudoku/test-report/"
+                href="https://thodha.github.io/sudoku/reports/"
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={onClose}
