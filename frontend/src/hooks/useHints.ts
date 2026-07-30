@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { findNextMove } from '../lib/solver-service'
 import { createHintRequestGate, type HintRequestGate } from '../lib/hintRequestGate'
@@ -82,7 +82,7 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
 
   // Resolve the next hint move, using the cached hint when the board signature is unchanged.
   // Returns null (after surfacing an error toast) when there is no next move.
-  const fetchCachedHint = useCallback(async (): Promise<Move | null> => {
+  const fetchCachedHint = async (): Promise<Move | null> => {
     const boardSnapshot = [...game.board]
     const currentSignature = getBoardSignature(game.board, game.candidates)
 
@@ -110,11 +110,10 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
     }
 
     return data.move
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-  }, [game.board, game.candidates, initialBoard, scheduleToastClear, setValidationMessage])
+  }
 
   // Handle hint button - shows the next move with full answer (eliminations + additions visible)
-  const handleNext = useCallback(async () => {
+  const handleNext = async () => {
     // Prevent concurrent hint requests (spam protection)
     const gate = hintGateRef.current
     if (!gate.canStart()) {
@@ -198,22 +197,10 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
       gate.end()
       setHintLoading(false)
     }
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-  }, [
-    game.history.length,
-    clearAllAndDeselect,
-    fetchCachedHint,
-    scheduleToastClear,
-    setMoveHighlight,
-    clearMoveHighlight,
-    setValidationMessage,
-    setHintsUsed,
-    setUnpinpointableErrorInfo,
-    setShowSolutionConfirm,
-  ])
+  }
 
   // Handle technique hint button - shows technique name and highlights cells without revealing the answer
-  const handleTechniqueHint = useCallback(async () => {
+  const handleTechniqueHint = async () => {
     // Prevent concurrent requests
     const gate = hintGateRef.current
     if (!gate.canStart()) return
@@ -311,26 +298,15 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
       gate.end()
       setTechniqueHintLoading(false)
     }
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler; test mocks provide stable objects
-  }, [
-    game.history.length,
-    clearAllAndDeselect,
-    fetchCachedHint,
-    scheduleToastClear,
-    setMoveHighlight,
-    setValidationMessage,
-    setTechniqueHintsUsed,
-    setTechniqueModal,
-  ])
+  }
 
   // Shared reset for hint tracking caches, invoked after any user action that
   // changes the board and therefore invalidates the cached next hint.
-  const resetHintTracking = useCallback(() => {
+  const resetHintTracking = () => {
     lastTechniqueHintRef.current = null
     lastRegularHintRef.current = null
     cachedHintRef.current = null
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization; a stable-string deps array keeps the callback identity stable across renders, observably identical to the empty-deps form
-  }, [])
+  }
 
   return {
     handleNext,
