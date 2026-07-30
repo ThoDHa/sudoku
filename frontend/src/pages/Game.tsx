@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { resolveCompletionAction } from '../lib/completionGate'
 import { isValidSolution } from '../lib/validationUtils'
 import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
@@ -226,12 +226,12 @@ function GameContent() {
   // A plain (non-visibility-aware) timeout: fires after its delay even if the tab
   // was hidden mid-countdown. The visibility-aware timer cancels on hide and never
   // re-arms, which left toasts stuck (SHARE-2 #1), so toast-clearing uses this.
-  const plainToastTimeout = useCallback((cb: () => void, delay: number): (() => void) => {
+  const plainToastTimeout = (cb: () => void, delay: number): (() => void) => {
     const id = window.setTimeout(cb, delay)
     return () => {
       window.clearTimeout(id)
     }
-  }, [])
+  }
 
   // Single replaceable toast-clear timer over the shared validationMessage. Every
   // clear (validation, info, and share) goes through this one instance, so
@@ -297,16 +297,15 @@ function GameContent() {
   const [isExtendedPaused, setIsExtendedPaused] = useState(false)
 
   // Throttle validation messages when hidden to reduce re-renders
-  const throttledSetValidationMessage = useCallback(
-    (message: { type: 'success' | 'error'; message: string } | null) => {
-      if (shouldSkipStateUpdate() && message?.type === 'success') {
-        // Skip non-critical success messages when hidden to reduce battery usage
-        return
-      }
-      setValidationMessage(message)
-    },
-    [shouldSkipStateUpdate],
-  )
+  const throttledSetValidationMessage = (
+    message: { type: 'success' | 'error'; message: string } | null,
+  ) => {
+    if (shouldSkipStateUpdate() && message?.type === 'success') {
+      // Skip non-critical success messages when hidden to reduce battery usage
+      return
+    }
+    setValidationMessage(message)
+  }
 
   // Timer control hook - gets controls without subscribing to elapsedMs updates
   // The actual timer is created by TimerProvider wrapping this component
@@ -324,12 +323,13 @@ function GameContent() {
   const restoreOrPromptSharedStateRef = useRef<
     (board: number[], candidates: number[][] | null, seed: string) => void
   >(() => {})
-  const invokeRestoreOrPromptSharedState = useCallback(
-    (board: number[], candidates: number[][] | null, seed: string) => {
-      restoreOrPromptSharedStateRef.current(board, candidates, seed)
-    },
-    [],
-  )
+  const invokeRestoreOrPromptSharedState = (
+    board: number[],
+    candidates: number[][] | null,
+    seed: string,
+  ) => {
+    restoreOrPromptSharedStateRef.current(board, candidates, seed)
+  }
 
   const { loading, error, puzzle, initialBoard, solution, encodedPuzzle } = usePuzzleLoader({
     effectiveSeed,
@@ -366,10 +366,10 @@ function GameContent() {
   // handleGameComplete stays in Game (not in useAutoSolveAdapters) because it
   // reads timerControlRef + handleSubmitRef, the circular-dep breaker between
   // useSudokuGame's onComplete and handleSubmit itself.
-  const handleGameComplete = useCallback(() => {
+  const handleGameComplete = () => {
     timerControlRef.current?.pauseTimer()
     handleSubmitRef.current?.()
-  }, [])
+  }
 
   // Adapter callbacks for useAutoSolve live in useAutoSolveAdapters. The hook
   // takes the gameRef / initialBoardRef refs, the highlight-state callbacks,
@@ -552,20 +552,20 @@ function GameContent() {
   })
 
   // Handlers for daily prompt modal
-  const handleGoToDaily = useCallback(() => {
+  const handleGoToDaily = () => {
     setShowDailyPrompt(false)
     const { seed } = getDailySeed()
     // Navigate without difficulty to show the difficulty chooser
     void navigate(`/${seed}`)
-  }, [navigate])
+  }
 
-  const handleContinuePractice = useCallback(() => {
+  const handleContinuePractice = () => {
     setShowDailyPrompt(false)
-  }, [])
+  }
 
-  const handleDontShowDailyPromptAgain = useCallback(() => {
+  const handleDontShowDailyPromptAgain = () => {
     setShowDailyReminder(false)
-  }, [])
+  }
 
   // ============================================================
   // HELPER FUNCTIONS
