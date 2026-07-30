@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { TIMER_UPDATE_INTERVAL, MS_PER_SECOND } from '../lib/constants'
 import type { useBackgroundManager } from './useBackgroundManager'
 
@@ -79,7 +79,7 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
 
   // Use the provided background manager (from shared context)
 
-  const startTimer = useCallback(() => {
+  const startTimer = () => {
     if (!isRunning) {
       startTimeRef.current = Date.now()
       setIsRunning(true)
@@ -87,7 +87,7 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     } else if (startTimeRef.current === null) {
       startTimeRef.current = Date.now()
     }
-  }, [isRunning])
+  }
 
   // On mount, if autoStart is set, seed startTimeRef. isRunning is already
   // initialized to autoStart (line above), so no setState is needed — just
@@ -101,50 +101,44 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way */ [],
   )
 
-  const pauseTimer = useCallback(() => {
+  const pauseTimer = () => {
     if (isRunning && startTimeRef.current !== null) {
       // Save accumulated time
       accumulatedRef.current += Date.now() - startTimeRef.current
       startTimeRef.current = null
       setIsRunning(false)
     }
-  }, [isRunning])
+  }
 
-  const resetTimer = useCallback(() => {
+  const resetTimer = () => {
     setElapsedMs(0)
     accumulatedRef.current = 0
     startTimeRef.current = isRunning ? Date.now() : null
     setIsPausedDueToVisibility(false)
-  }, [isRunning])
+  }
 
-  const setElapsedMsValue = useCallback(
-    (ms: number) => {
-      // Validate input to prevent NaN or negative values
-      const validMs = Math.max(0, Number.isFinite(ms) ? ms : 0)
-      setElapsedMs(validMs)
-      accumulatedRef.current = validMs
-      // If timer is running, reset the start time reference
-      // Stryker disable next-line ConditionalExpression: startTimeRef is read only under isRunning guards; when isRunning is false the seed is overwritten by the next startTimer before any read, so forcing the branch true is unobservable
-      if (isRunning) {
-        startTimeRef.current = Date.now()
-      }
-    },
-    [isRunning],
-  )
+  const setElapsedMsValue = (ms: number) => {
+    // Validate input to prevent NaN or negative values
+    const validMs = Math.max(0, Number.isFinite(ms) ? ms : 0)
+    setElapsedMs(validMs)
+    accumulatedRef.current = validMs
+    // If timer is running, reset the start time reference
+    // Stryker disable next-line ConditionalExpression: startTimeRef is read only under isRunning guards; when isRunning is false the seed is overwritten by the next startTimer before any read, so forcing the branch true is unobservable
+    if (isRunning) {
+      startTimeRef.current = Date.now()
+    }
+  }
 
   // STABLE formatTime - reads from ref instead of closure to avoid recreation every tick
   // This is critical: if formatTime changes every second, TimerControlContext updates,
   // which causes Game.tsx to re-render, which re-renders 81 cells!
-  const formatTime = useCallback(
-    (ms?: number): string => {
-      const time = ms ?? elapsedMsRef.current
-      const totalSeconds = Math.floor(time / MS_PER_SECOND)
-      const minutes = Math.floor(totalSeconds / 60)
-      const seconds = totalSeconds % 60
-      return `${minutes}:${seconds.toString().padStart(2, '0')}`
-    },
-    /* Stryker disable next-line ArrayDeclaration: formatTime reads elapsedMs via a ref and has no reactive deps, so a constant deps entry is observationally identical to the empty array */ [],
-  ) // No dependencies - stable forever!
+  const formatTime = (ms?: number): string => {
+    const time = ms ?? elapsedMsRef.current
+    const totalSeconds = Math.floor(time / MS_PER_SECOND)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
 
   // Main timer interval - completely stopped when hidden for battery savings
   // NOTE: In E2E tests, we should NOT pause due to visibility/focus changes
