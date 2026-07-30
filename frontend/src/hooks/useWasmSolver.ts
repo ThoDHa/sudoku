@@ -134,46 +134,39 @@ export function useWasmSolver(options: UseWasmSolverOptions = {}): UseWasmSolver
   }, [isReady])
 
   // Synchronous solver functions (return null if not ready)
-  const findNextMove = useCallback(
-    (cells: number[], candidates: number[][], givens: number[]): FindNextMoveResult | null =>
-      callWasm(api, (a) => a.findNextMove(cells, candidates, givens), 'findNextMove'),
-    [api],
-  )
+  const findNextMove = (
+    cells: number[],
+    candidates: number[][],
+    givens: number[],
+  ): FindNextMoveResult | null =>
+    callWasm(api, (a) => a.findNextMove(cells, candidates, givens), 'findNextMove')
 
-  const solveAll = useCallback(
-    (cells: number[], candidates: number[][], givens: number[]): SolveAllResult | null =>
-      callWasm(api, (a) => a.solveAll(cells, candidates, givens), 'solveAll'),
-    [api],
-  )
+  const solveAll = (
+    cells: number[],
+    candidates: number[][],
+    givens: number[],
+  ): SolveAllResult | null =>
+    callWasm(api, (a) => a.solveAll(cells, candidates, givens), 'solveAll')
 
-  const validateBoard = useCallback(
-    (board: number[], solution: number[]): ValidateBoardResult | null =>
-      callWasm(api, (a) => a.validateBoard(board, solution), 'validateBoard'),
-    [api],
-  )
+  const validateBoard = (board: number[], solution: number[]): ValidateBoardResult | null =>
+    callWasm(api, (a) => a.validateBoard(board, solution), 'validateBoard')
 
-  const validateCustom = useCallback(
-    (givens: number[]): ValidateCustomResult | null =>
-      callWasm(api, (a) => a.validateCustomPuzzle(givens), 'validateCustom'),
-    [api],
-  )
+  const validateCustom = (givens: number[]): ValidateCustomResult | null =>
+    callWasm(api, (a) => a.validateCustomPuzzle(givens), 'validateCustom')
 
-  const getPuzzle = useCallback(
-    (
-      seed: string,
-      difficulty: string,
-    ): { givens: number[]; solution: number[]; puzzleId: string } | null =>
-      callWasm(
-        api,
-        (a) => {
-          const result = a.getPuzzleForSeed(seed, difficulty)
-          if (result.error) return null
-          return { givens: result.givens, solution: result.solution, puzzleId: result.puzzleId }
-        },
-        'getPuzzle',
-      ),
-    [api],
-  )
+  const getPuzzle = (
+    seed: string,
+    difficulty: string,
+  ): { givens: number[]; solution: number[]; puzzleId: string } | null =>
+    callWasm(
+      api,
+      (a) => {
+        const result = a.getPuzzleForSeed(seed, difficulty)
+        if (result.error) return null
+        return { givens: result.givens, solution: result.solution, puzzleId: result.puzzleId }
+      },
+      'getPuzzle',
+    )
 
   return {
     isReady,
