@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import {
   hasCandidate,
   addCandidate,
@@ -86,58 +86,47 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
 
   const [candidatesVersion, setCandidatesVersion] = useState(0)
 
-  const setCandidates = useCallback(
-    (newCandidates: Uint16Array) => {
-      setCandidatesState(newCandidates)
-      setCandidatesVersion((v) => v + 1)
-    },
-    /* Stryker disable next-line ArrayDeclaration: setCandidates captures only stable setState dispatchers, so a constant deps entry is observationally identical to the empty array */ [],
-  )
+  const setCandidates = (newCandidates: Uint16Array) => {
+    setCandidatesState(newCandidates)
+    setCandidatesVersion((v) => v + 1)
+  }
 
-  const calculateCandidatesForCell = useCallback(
-    (idx: number, currentBoard: number[]): CandidateMask => {
-      const row = Math.floor(idx / BOARD_SIZE)
-      const col = idx % BOARD_SIZE
-      const boxRow = Math.floor(row / SUBGRID_SIZE) * SUBGRID_SIZE
-      const boxCol = Math.floor(col / SUBGRID_SIZE) * SUBGRID_SIZE
-      let validCandidates = 0
+  const calculateCandidatesForCell = (idx: number, currentBoard: number[]): CandidateMask => {
+    const row = Math.floor(idx / BOARD_SIZE)
+    const col = idx % BOARD_SIZE
+    const boxRow = Math.floor(row / SUBGRID_SIZE) * SUBGRID_SIZE
+    const boxCol = Math.floor(col / SUBGRID_SIZE) * SUBGRID_SIZE
+    let validCandidates = 0
 
-      for (let d = MIN_DIGIT; d <= MAX_DIGIT; d++) {
-        if (isDigitPlaceable(currentBoard, row, col, boxRow, boxCol, d)) {
-          validCandidates = addCandidate(validCandidates, d)
-        }
+    for (let d = MIN_DIGIT; d <= MAX_DIGIT; d++) {
+      if (isDigitPlaceable(currentBoard, row, col, boxRow, boxCol, d)) {
+        validCandidates = addCandidate(validCandidates, d)
       }
-      return validCandidates
-    },
-    // Stryker disable next-line ArrayDeclaration: calculateCandidatesForCell captures no external values, so a constant deps entry is observationally identical to the empty array
-    [],
-  )
+    }
+    return validCandidates
+  }
 
-  const calculateAllCandidatesForBoard = useCallback(
-    (boardToCalculate: number[]): Uint16Array => {
-      const newCandidates = new Uint16Array(TOTAL_CELLS)
+  const calculateAllCandidatesForBoard = (boardToCalculate: number[]): Uint16Array => {
+    const newCandidates = new Uint16Array(TOTAL_CELLS)
 
-      // Stryker disable next-line EqualityOperator: idx=81 reads boardToCalculate[81] (undefined); `undefined !== 0` is true so the branch writes newCandidates[81]=0 (no-op on a length-81 typed array) and continues, leaving the result unchanged
-      for (let idx = 0; idx < TOTAL_CELLS; idx++) {
-        if (boardToCalculate[idx] !== 0) {
-          newCandidates[idx] = 0
-          continue
-        }
-        newCandidates[idx] = calculateCandidatesForCell(idx, boardToCalculate)
+    // Stryker disable next-line EqualityOperator: idx=81 reads boardToCalculate[81] (undefined); `undefined !== 0` is true so the branch writes newCandidates[81]=0 (no-op on a length-81 typed array) and continues, leaving the result unchanged
+    for (let idx = 0; idx < TOTAL_CELLS; idx++) {
+      if (boardToCalculate[idx] !== 0) {
+        newCandidates[idx] = 0
+        continue
       }
-      return newCandidates
-    },
-    // Stryker disable next-line ArrayDeclaration: calculateCandidatesForCell has empty deps and is therefore stable forever, so capturing it once via [] is observationally identical to [calculateCandidatesForCell]
-    [calculateCandidatesForCell],
-  )
+      newCandidates[idx] = calculateCandidatesForCell(idx, boardToCalculate)
+    }
+    return newCandidates
+  }
 
-  const fillAllCandidates = useCallback((): Uint16Array => {
+  const fillAllCandidates = (): Uint16Array => {
     const calculated = calculateAllCandidatesForBoard(board)
     setCandidates(calculated)
     return calculated
-  }, [calculateAllCandidatesForBoard, board, setCandidates])
+  }
 
-  const areCandidatesFilled = useCallback((): boolean => {
+  const areCandidatesFilled = (): boolean => {
     let hasAnyCandidates = false
     // Stryker disable next-line EqualityOperator: idx=81 reads board[81] (undefined); `undefined !== 0` is true so the loop continues without touching hasAnyCandidates
     for (let idx = 0; idx < TOTAL_CELLS; idx++) {
@@ -150,80 +139,76 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
       }
     }
     return hasAnyCandidates
-  }, [board, candidates])
+  }
 
-  const eliminateFromPeers = useCallback(
-    (candidatesToEliminate: Uint16Array, idx: number, digit: number): Uint16Array => {
-      const result = new Uint16Array(candidatesToEliminate)
-      const row = Math.floor(idx / BOARD_SIZE)
-      const col = idx % BOARD_SIZE
-      const boxRow = Math.floor(row / SUBGRID_SIZE) * SUBGRID_SIZE
-      const boxCol = Math.floor(col / SUBGRID_SIZE) * SUBGRID_SIZE
+  const eliminateFromPeers = (
+    candidatesToEliminate: Uint16Array,
+    idx: number,
+    digit: number,
+  ): Uint16Array => {
+    const result = new Uint16Array(candidatesToEliminate)
+    const row = Math.floor(idx / BOARD_SIZE)
+    const col = idx % BOARD_SIZE
+    const boxRow = Math.floor(row / SUBGRID_SIZE) * SUBGRID_SIZE
+    const boxCol = Math.floor(col / SUBGRID_SIZE) * SUBGRID_SIZE
 
-      result[idx] = 0
+    result[idx] = 0
 
-      for (let c = 0; c < BOARD_SIZE; c++) {
-        const cellIdx = row * BOARD_SIZE + c
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const cellIdx = row * BOARD_SIZE + c
+      result[cellIdx] = removeCandidate(result[cellIdx] || 0, digit)
+    }
+    // Stryker disable next-line EqualityOperator: r=9 gives cellIdx=81+col, out of bounds for the length-81 result typed array; both the read (|| 0) and the write are no-ops
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      const cellIdx = r * BOARD_SIZE + col
+      result[cellIdx] = removeCandidate(result[cellIdx] || 0, digit)
+    }
+    for (let r = boxRow; r < boxRow + SUBGRID_SIZE; r++) {
+      for (let c = boxCol; c < boxCol + SUBGRID_SIZE; c++) {
+        const cellIdx = r * BOARD_SIZE + c
         result[cellIdx] = removeCandidate(result[cellIdx] || 0, digit)
       }
-      // Stryker disable next-line EqualityOperator: r=9 gives cellIdx=81+col, out of bounds for the length-81 result typed array; both the read (|| 0) and the write are no-ops
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        const cellIdx = r * BOARD_SIZE + col
-        result[cellIdx] = removeCandidate(result[cellIdx] || 0, digit)
-      }
-      for (let r = boxRow; r < boxRow + SUBGRID_SIZE; r++) {
-        for (let c = boxCol; c < boxCol + SUBGRID_SIZE; c++) {
-          const cellIdx = r * BOARD_SIZE + c
-          result[cellIdx] = removeCandidate(result[cellIdx] || 0, digit)
-        }
-      }
+    }
 
-      return result
-    },
-    // Stryker disable next-line ArrayDeclaration: eliminateFromPeers captures no external values, so a constant deps entry is observationally identical to the empty array
-    [],
-  )
+    return result
+  }
 
-  const checkNotes = useCallback(
-    (
-      boardToCheck: number[],
-      candidatesToCheck: Uint16Array,
-    ): {
-      valid: boolean
-      wrongNotes: { idx: number; digit: number }[]
-      missingNotes: { idx: number; digit: number }[]
-      cellsWithNotes: number
-    } => {
-      const wrongNotes: { idx: number; digit: number }[] = []
-      const missingNotes: { idx: number; digit: number }[] = []
-      let cellsWithNotes = 0
+  const checkNotes = (
+    boardToCheck: number[],
+    candidatesToCheck: Uint16Array,
+  ): {
+    valid: boolean
+    wrongNotes: { idx: number; digit: number }[]
+    missingNotes: { idx: number; digit: number }[]
+    cellsWithNotes: number
+  } => {
+    const wrongNotes: { idx: number; digit: number }[] = []
+    const missingNotes: { idx: number; digit: number }[] = []
+    let cellsWithNotes = 0
 
-      // Stryker disable next-line EqualityOperator: idx=81 reads boardToCheck[81] (undefined); `undefined !== 0` is true so the loop continues without touching the accumulators
-      for (let idx = 0; idx < TOTAL_CELLS; idx++) {
-        if (boardToCheck[idx] !== 0) continue
+    // Stryker disable next-line EqualityOperator: idx=81 reads boardToCheck[81] (undefined); `undefined !== 0` is true so the loop continues without touching the accumulators
+    for (let idx = 0; idx < TOTAL_CELLS; idx++) {
+      if (boardToCheck[idx] !== 0) continue
 
-        const userNotesMask = candidatesToCheck[idx] || 0
-        const validCandidatesMask = calculateCandidatesForCell(idx, boardToCheck)
+      const userNotesMask = candidatesToCheck[idx] || 0
+      const validCandidatesMask = calculateCandidatesForCell(idx, boardToCheck)
 
-        if (countCandidates(userNotesMask) > 0) {
-          cellsWithNotes++
-        }
-
-        const { wrong, missing } = diffCellNotes(idx, userNotesMask, validCandidatesMask)
-        wrongNotes.push(...wrong)
-        missingNotes.push(...missing)
+      if (countCandidates(userNotesMask) > 0) {
+        cellsWithNotes++
       }
 
-      return {
-        valid: wrongNotes.length === 0,
-        wrongNotes,
-        missingNotes,
-        cellsWithNotes,
-      }
-    },
-    // Stryker disable next-line ArrayDeclaration: calculateCandidatesForCell has empty deps and is therefore stable forever, so capturing it once via [] is observationally identical to [calculateCandidatesForCell]
-    [calculateCandidatesForCell],
-  )
+      const { wrong, missing } = diffCellNotes(idx, userNotesMask, validCandidatesMask)
+      wrongNotes.push(...wrong)
+      missingNotes.push(...missing)
+    }
+
+    return {
+      valid: wrongNotes.length === 0,
+      wrongNotes,
+      missingNotes,
+      cellsWithNotes,
+    }
+  }
 
   return useMemo(
     () => ({
