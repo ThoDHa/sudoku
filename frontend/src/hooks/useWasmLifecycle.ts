@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { logger } from '../lib/logger'
 import { initializeSolver, cleanupSolver } from '../lib/solver-service'
@@ -31,43 +31,35 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   const unloadTimeoutRef = useRef<number | null>(null)
   const currentRouteRequiresWasm = useRef(false)
 
-  const log = useCallback(
-    (message: string) => {
-      if (enableLogging) {
-        logger.warn(`[WasmLifecycle] ${message}`)
-      }
-    },
-    // Stryker disable next-line ArrayDeclaration: log captures enableLogging; covered by the "picks up changed enableLogging" test in useWasmLifecycle.test.ts
-    [enableLogging],
-  )
+  const log = (message: string) => {
+    if (enableLogging) {
+      logger.warn(`[WasmLifecycle] ${message}`)
+    }
+  }
 
-  const isWasmRoute = useCallback(
-    (pathname: string): boolean => {
-      // Custom puzzles always need WASM (for validation during creation)
-      // Stryker disable next-line ConditionalExpression, MethodExpression: '/c/...' paths also return true via the unknown-route fallback below
-      if (pathname.startsWith('/c/')) return true
-      // Check if it's a known non-game route
-      const isKnownRoute = KNOWN_NON_GAME_ROUTES.some(
-        (route) => pathname === route || pathname.startsWith(route + '/'),
-      )
-      // If not a known route and not homepage, it's a game route (/:seed)
-      // Stryker disable next-line ConditionalExpression, StringLiteral: isKnownRoute is always true for '/', so the pathname !== '/' clause is redundant
-      return !isKnownRoute && pathname !== '/'
-    },
-    /* Stryker disable next-line ArrayDeclaration: isWasmRoute is a pure function over its pathname argument with no closure captures, so the empty deps array has no observable effect */ [],
-  )
+  const isWasmRoute = (pathname: string): boolean => {
+    // Custom puzzles always need WASM (for validation during creation)
+    // Stryker disable next-line ConditionalExpression, MethodExpression: '/c/...' paths also return true via the unknown-route fallback below
+    if (pathname.startsWith('/c/')) return true
+    // Check if it's a known non-game route
+    const isKnownRoute = KNOWN_NON_GAME_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(route + '/'),
+    )
+    // If not a known route and not homepage, it's a game route (/:seed)
+    // Stryker disable next-line ConditionalExpression, StringLiteral: isKnownRoute is always true for '/', so the pathname !== '/' clause is redundant
+    return !isKnownRoute && pathname !== '/'
+  }
 
-  const unloadWasm = useCallback(async () => {
+  const unloadWasm = async () => {
     try {
       cleanupSolver()
       log('WASM unloaded - freed ~4MB memory')
     } catch (error) {
       logger.error('[WasmLifecycle] Error during WASM cleanup:', error)
     }
-    // Stryker disable next-line ArrayDeclaration: unloadWasm only depends on log, whose enableLogging dependency is covered by the "picks up changed enableLogging" test
-  }, [log])
+  }
 
-  const scheduleUnload = useCallback(() => {
+  const scheduleUnload = () => {
     // Clear any existing timeout
     // Stryker disable next-line ConditionalExpression: clearTimeout(null/undefined) is a safe no-op
     if (unloadTimeoutRef.current) {
@@ -86,28 +78,25 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
     }, unloadDelay)
 
     log(`Scheduled WASM unload in ${unloadDelay}ms`)
-    // Stryker disable next-line ArrayDeclaration: the captured deps (unloadDelay, isWasmRoute, unloadWasm, log) are exercised by the "picks up changed unloadDelay" test
-  }, [unloadDelay, isWasmRoute, unloadWasm, log])
+  }
 
-  const cancelUnload = useCallback(() => {
+  const cancelUnload = () => {
     // Stryker disable next-line ConditionalExpression: clearTimeout(null/undefined) is a safe no-op
     if (unloadTimeoutRef.current) {
       clearTimeout(unloadTimeoutRef.current)
       unloadTimeoutRef.current = null
       log('Cancelled scheduled WASM unload')
     }
-    // Stryker disable next-line ArrayDeclaration: cancelUnload only depends on log, whose enableLogging dependency is covered by the "picks up changed enableLogging" test
-  }, [log])
+  }
 
-  const loadWasm = useCallback(async () => {
+  const loadWasm = async () => {
     try {
       await initializeSolver()
       log('WASM loaded successfully')
     } catch (error) {
       logger.error('[WasmLifecycle] Failed to initialize WASM solver:', error)
     }
-    // Stryker disable next-line ArrayDeclaration: loadWasm only depends on log, whose enableLogging dependency is covered by the "picks up changed enableLogging" test
-  }, [log])
+  }
 
   // Handle route changes - load WASM when entering game routes, unload when leaving
   useEffect(() => {
