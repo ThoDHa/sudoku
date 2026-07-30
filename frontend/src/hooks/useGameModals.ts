@@ -1,11 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
-
-// Stryker disable ArrayDeclaration: every useCallback in this hook has an empty
-// dependency array and captures only stable setState setters. Mutating those []
-// deps to a fixed primitive array (e.g. ["Stryker was here"]) leaves React's
-// element-wise Object.is dep comparison unchanged, so callback identity and
-// behavior are identical. There is no behavioral test that can distinguish the
-// mutant from the original.
+import { useState, useMemo } from 'react'
 
 /**
  * Technique modal state
@@ -54,54 +47,54 @@ export function useGameModals() {
     useState<UnpinpointableErrorInfo | null>(null)
 
   // History modal actions
-  const openHistory = useCallback(() => {
+  const openHistory = () => {
     setHistoryOpen(true)
-  }, [])
-  const closeHistory = useCallback(() => {
+  }
+  const closeHistory = () => {
     setHistoryOpen(false)
-  }, [])
+  }
 
   // Technique modal actions
-  const openTechnique = useCallback((technique: TechniqueModalState) => {
+  const openTechnique = (technique: TechniqueModalState) => {
     setTechniqueModal(technique)
-  }, [])
-  const closeTechnique = useCallback(() => {
+  }
+  const closeTechnique = () => {
     setTechniqueModal(null)
-  }, [])
+  }
 
   // Techniques list modal actions
-  const openTechniquesList = useCallback(() => {
+  const openTechniquesList = () => {
     setTechniquesListOpen(true)
-  }, [])
-  const closeTechniquesList = useCallback(() => {
+  }
+  const closeTechniquesList = () => {
     setTechniquesListOpen(false)
-  }, [])
+  }
 
   // Solve confirm modal actions
-  const openSolveConfirm = useCallback(() => {
+  const openSolveConfirm = () => {
     setSolveConfirmOpen(true)
-  }, [])
-  const closeSolveConfirm = useCallback(() => {
+  }
+  const closeSolveConfirm = () => {
     setSolveConfirmOpen(false)
-  }, [])
+  }
 
   // Clear confirm modal actions
-  const openClearConfirm = useCallback(() => {
+  const openClearConfirm = () => {
     setShowClearConfirm(true)
-  }, [])
-  const closeClearConfirm = useCallback(() => {
+  }
+  const closeClearConfirm = () => {
     setShowClearConfirm(false)
-  }, [])
+  }
 
   // Solution confirm modal actions (for unpinpointable errors)
-  const openSolutionConfirm = useCallback((errorInfo: UnpinpointableErrorInfo) => {
+  const openSolutionConfirm = (errorInfo: UnpinpointableErrorInfo) => {
     setUnpinpointableErrorInfo(errorInfo)
     setShowSolutionConfirm(true)
-  }, [])
-  const closeSolutionConfirm = useCallback(() => {
+  }
+  const closeSolutionConfirm = () => {
     setShowSolutionConfirm(false)
     // Don't clear error info immediately - modal may need it for exit animation
-  }, [])
+  }
 
   // Check if any modal is open (useful for disabling keyboard shortcuts)
   const isAnyModalOpen = useMemo(() => {
