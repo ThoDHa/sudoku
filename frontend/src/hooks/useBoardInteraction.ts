@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { calculatePathCells } from '../lib/pathUtils'
 
 // DOM attribute tagging each cell element. Pointer-move resolution maps a
@@ -163,179 +163,164 @@ export function useBoardInteraction({
 
   // Find next non-given cell in a direction, returns null if none found
   // Reads from initialBoardRef to get latest value without stale closures
-  const findNextNonGivenCell = useCallback(
-    (startIdx: number, direction: 'up' | 'down' | 'left' | 'right'): number | null => {
-      const currentInitialBoard = initialBoardRef.current
-      let row = Math.floor(startIdx / 9)
-      let col = startIdx % 9
+  const findNextNonGivenCell = (
+    startIdx: number,
+    direction: 'up' | 'down' | 'left' | 'right',
+  ): number | null => {
+    const currentInitialBoard = initialBoardRef.current
+    let row = Math.floor(startIdx / 9)
+    let col = startIdx % 9
 
-      const move = () => {
-        switch (direction) {
-          case 'up':
-            row--
-            break
-          case 'down':
-            row++
-            break
-          case 'left':
-            col--
-            break
-          case 'right':
-            col++
-            break
-        }
+    const move = () => {
+      switch (direction) {
+        case 'up':
+          row--
+          break
+        case 'down':
+          row++
+          break
+        case 'left':
+          col--
+          break
+        case 'right':
+          col++
+          break
       }
+    }
 
-      const isValid = () => row >= 0 && row < 9 && col >= 0 && col < 9
+    const isValid = () => row >= 0 && row < 9 && col >= 0 && col < 9
 
+    move()
+    while (isValid()) {
+      const idx = row * 9 + col
+      if (currentInitialBoard[idx] === 0) {
+        return idx
+      }
       move()
-      while (isValid()) {
-        const idx = row * 9 + col
-        if (currentInitialBoard[idx] === 0) {
-          return idx
-        }
-        move()
+    }
+    return null
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
+    const currentInitialBoard = initialBoardRef.current
+    const isGiven = currentInitialBoard[idx] !== 0
+
+    // Arrow navigation: find the next non-given cell in the direction,
+    // select it, and move focus synchronously (the selectedCell RAF effect
+    // is too slow for rapid/directed arrows and lets the origin re-fire).
+    const moveSelection = (direction: 'up' | 'down' | 'left' | 'right') => {
+      e.preventDefault()
+      const nextCell = findNextNonGivenCell(idx, direction)
+      if (nextCell !== null) {
+        onCellClick(nextCell)
+        cellRefs.current[nextCell]?.focus()
       }
-      return null
-    },
-    [],
-  ) // No deps needed - reads from ref
+    }
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
-      const currentInitialBoard = initialBoardRef.current
-      const isGiven = currentInitialBoard[idx] !== 0
-
-      // Arrow navigation: find the next non-given cell in the direction,
-      // select it, and move focus synchronously (the selectedCell RAF effect
-      // is too slow for rapid/directed arrows and lets the origin re-fire).
-      const moveSelection = (direction: 'up' | 'down' | 'left' | 'right') => {
+    // Arrow key navigation - skip over givens
+    switch (e.key) {
+      case 'ArrowUp':
+        moveSelection('up')
+        break
+      case 'ArrowDown':
+        moveSelection('down')
+        break
+      case 'ArrowLeft':
+        moveSelection('left')
+        break
+      case 'ArrowRight':
+        moveSelection('right')
+        break
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9':
         e.preventDefault()
-        const nextCell = findNextNonGivenCell(idx, direction)
-        if (nextCell !== null) {
-          onCellClick(nextCell)
-          cellRefs.current[nextCell]?.focus()
+        if (!isGiven && onCellChange) {
+          onCellChange(idx, parseInt(e.key, 10))
         }
-      }
-
-      // Arrow key navigation - skip over givens
-      switch (e.key) {
-        case 'ArrowUp':
-          moveSelection('up')
-          break
-        case 'ArrowDown':
-          moveSelection('down')
-          break
-        case 'ArrowLeft':
-          moveSelection('left')
-          break
-        case 'ArrowRight':
-          moveSelection('right')
-          break
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-        case '6':
-        case '7':
-        case '8':
-        case '9':
-          e.preventDefault()
-          if (!isGiven && onCellChange) {
-            onCellChange(idx, parseInt(e.key, 10))
-          }
-          break
-        case 'Backspace':
-        case 'Delete': {
-          e.preventDefault()
-          if (!isGiven && onCellChange) {
-            onCellChange(idx, 0)
-          }
-          break
+        break
+      case 'Backspace':
+      case 'Delete': {
+        e.preventDefault()
+        if (!isGiven && onCellChange) {
+          onCellChange(idx, 0)
         }
-        case 'Enter':
-        case ' ':
-          e.preventDefault()
-          onCellClick(idx)
-          break
+        break
       }
-    },
-    [findNextNonGivenCell, onCellClick, onCellChange],
-  ) // No initialBoard dep - reads from ref
+      case 'Enter':
+      case ' ':
+        e.preventDefault()
+        onCellClick(idx)
+        break
+    }
+  }
 
   // Stable callback for cell clicks - doesn't change between renders
-  const handleCellClick = useCallback(
-    (idx: number) => {
-      // After a multi-cell drag, the browser synthesizes a click event.
-      // Suppress it so the multi-select state is not overwritten.
-      if (suppressNextClickRef.current) {
-        suppressNextClickRef.current = false
-        return
-      }
-      onCellClick(idx)
-    },
-    [onCellClick],
-  )
+  const handleCellClick = (idx: number) => {
+    // After a multi-cell drag, the browser synthesizes a click event.
+    // Suppress it so the multi-select state is not overwritten.
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false
+      return
+    }
+    onCellClick(idx)
+  }
 
   // Stable callback for keyboard events
-  const handleCellKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
-      handleKeyDown(e, idx)
-    },
-    [handleKeyDown],
-  )
+  const handleCellKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, idx: number) => {
+    handleKeyDown(e, idx)
+  }
 
   // Drag handlers for multi-select feature
-  const handleDragStart = useCallback(
-    (idx: number) => {
-      // Skip starting drag on given or filled cells
-      if (initialBoard[idx] !== 0 || board[idx] !== 0) {
-        return
-      }
-      isDraggingRef.current = true
-      dragStartCellRef.current = idx
-      // Initialize ordered trail with the start cell
-      dragTrailRef.current = [idx]
-      dragTrailSetRef.current = new Set([idx])
-      // Record the start cell so handleBoardPointerMove skips redundant
-      // handleDragEnter calls when the pointer stays on the same cell
-      // (prevents selectMultipleCells from firing on a simple tap)
-      lastEnteredCellRef.current = idx
-    },
-    [initialBoard, board],
-  )
+  const handleDragStart = (idx: number) => {
+    // Skip starting drag on given or filled cells
+    if (initialBoard[idx] !== 0 || board[idx] !== 0) {
+      return
+    }
+    isDraggingRef.current = true
+    dragStartCellRef.current = idx
+    // Initialize ordered trail with the start cell
+    dragTrailRef.current = [idx]
+    dragTrailSetRef.current = new Set([idx])
+    // Record the start cell so handleBoardPointerMove skips redundant
+    // handleDragEnter calls when the pointer stays on the same cell
+    // (prevents selectMultipleCells from firing on a simple tap)
+    lastEnteredCellRef.current = idx
+  }
 
-  const handleDragEnter = useCallback(
-    (idx: number) => {
-      /* istanbul ignore next -- defensive guard: handleDragEnter's only caller (handleBoardPointerMove) already returns when !isDraggingRef.current, and dragStartCellRef is set alongside isDragging in handleDragStart, so both operands are always false here and the early return is unreachable */
-      if (!isDraggingRef.current || dragStartCellRef.current === null) return
+  const handleDragEnter = (idx: number) => {
+    /* istanbul ignore next -- defensive guard: handleDragEnter's only caller (handleBoardPointerMove) already returns when !isDraggingRef.current, and dragStartCellRef is set alongside isDragging in handleDragStart, so both operands are always false here and the early return is unreachable */
+    if (!isDraggingRef.current || dragStartCellRef.current === null) return
 
-      // If pointer moved to a different cell than the drag start, this is a real
-      // multi-cell drag: suppress the click event that browser synthesizes after
-      // pointerup to avoid overwriting the multi-select state.
-      if (idx !== dragStartCellRef.current) {
-        suppressNextClickRef.current = true
-      }
+    // If pointer moved to a different cell than the drag start, this is a real
+    // multi-cell drag: suppress the click event that browser synthesizes after
+    // pointerup to avoid overwriting the multi-select state.
+    if (idx !== dragStartCellRef.current) {
+      suppressNextClickRef.current = true
+    }
 
-      const trail = dragTrailRef.current
-      const trailSet = dragTrailSetRef.current
+    const trail = dragTrailRef.current
+    const trailSet = dragTrailSetRef.current
 
-      if (trailSet.has(idx)) {
-        backtrackTrail(trail, trailSet, idx)
-      } else {
-        extendTrailForward(trail, trailSet, idx, dragStartCellRef.current, initialBoard, board)
-      }
+    if (trailSet.has(idx)) {
+      backtrackTrail(trail, trailSet, idx)
+    } else {
+      extendTrailForward(trail, trailSet, idx, dragStartCellRef.current, initialBoard, board)
+    }
 
-      // Update selection from the current trail
-      if (onCellSelectMultiple) {
-        onCellSelectMultiple([...trail])
-      }
-    },
-    [initialBoard, board, onCellSelectMultiple],
-  )
+    // Update selection from the current trail
+    if (onCellSelectMultiple) {
+      onCellSelectMultiple([...trail])
+    }
+  }
 
-  const handleDragEnd = useCallback(() => {
+  const handleDragEnd = () => {
     // Notify parent with the final set of selected cells before clearing trail
     if (onDragEndProp && dragTrailRef.current.length > 1) {
       onDragEndProp([...dragTrailRef.current])
@@ -354,51 +339,48 @@ export function useBoardInteraction({
         suppressNextClickRef.current = false
       }, 0)
     }
-  }, [onDragEndProp])
+  }
 
   // Board-level pointer move handler: resolves which cell the pointer is over
   // using elementFromPoint. Works for both mouse and touch (pointer events unify both).
-  const handleBoardPointerMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!isDraggingRef.current) return
+  const handleBoardPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return
 
-      const el = document.elementFromPoint(e.clientX, e.clientY)
-      if (!el) return
+    const el = document.elementFromPoint(e.clientX, e.clientY)
+    if (!el) return
 
-      // Walk up to find the cell element with data-cell-idx
-      const cellEl = (el as HTMLElement).closest(CELL_SELECTOR)
-      if (!cellEl) return
+    // Walk up to find the cell element with data-cell-idx
+    const cellEl = (el as HTMLElement).closest(CELL_SELECTOR)
+    if (!cellEl) return
 
-      const idx = Number(cellEl.getAttribute(DATA_CELL_IDX))
-      if (Number.isNaN(idx) || idx === lastEnteredCellRef.current) return
+    const idx = Number(cellEl.getAttribute(DATA_CELL_IDX))
+    if (Number.isNaN(idx) || idx === lastEnteredCellRef.current) return
 
-      // handleDragEnter reads lastEnteredCellRef to bridge from the previous
-      // cell, so call it BEFORE updating the ref to the new cell.
-      handleDragEnter(idx)
-      lastEnteredCellRef.current = idx
-    },
-    [handleDragEnter],
-  )
+    // handleDragEnter reads lastEnteredCellRef to bridge from the previous
+    // cell, so call it BEFORE updating the ref to the new cell.
+    handleDragEnter(idx)
+    lastEnteredCellRef.current = idx
+  }
 
   // Board-level pointer up handler
-  const handleBoardPointerUp = useCallback(() => {
+  const handleBoardPointerUp = () => {
     handleDragEnd()
-  }, [handleDragEnd])
+  }
 
-  const handleGridFocus = useCallback((e: React.FocusEvent<HTMLDivElement>) => {
+  const handleGridFocus = (e: React.FocusEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement
     if (target.hasAttribute(DATA_CELL_IDX)) {
       const idx = Number(target.getAttribute(DATA_CELL_IDX))
       if (!Number.isNaN(idx)) setFocusedCell(idx)
     }
-  }, [])
+  }
 
-  const handleGridBlur = useCallback((e: React.FocusEvent<HTMLDivElement>) => {
+  const handleGridBlur = (e: React.FocusEvent<HTMLDivElement>) => {
     const related = e.relatedTarget as HTMLElement | null
     if (!related || !related.hasAttribute(DATA_CELL_IDX)) {
       setFocusedCell(null)
     }
-  }, [])
+  }
 
   // Stable ref callback factory - returns the same function for each cell index.
   // React invokes ref callbacks during commit (not render), but the rule's
@@ -414,16 +396,30 @@ export function useBoardInteraction({
     return callbacks
   }, [])
 
-  return {
-    focusedCell,
-    tabStopCell,
-    cellRefCallbacks,
-    handleCellClick,
-    handleCellKeyDown,
-    handleDragStart,
-    handleBoardPointerMove,
-    handleBoardPointerUp,
-    handleGridFocus,
-    handleGridBlur,
-  }
+  return useMemo(
+    () => ({
+      focusedCell,
+      tabStopCell,
+      cellRefCallbacks,
+      handleCellClick,
+      handleCellKeyDown,
+      handleDragStart,
+      handleBoardPointerMove,
+      handleBoardPointerUp,
+      handleGridFocus,
+      handleGridBlur,
+    }),
+    [
+      focusedCell,
+      tabStopCell,
+      cellRefCallbacks,
+      handleCellClick,
+      handleCellKeyDown,
+      handleDragStart,
+      handleBoardPointerMove,
+      handleBoardPointerUp,
+      handleGridFocus,
+      handleGridBlur,
+    ],
+  )
 }
