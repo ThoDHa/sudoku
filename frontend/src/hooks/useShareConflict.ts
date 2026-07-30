@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { isValidSolution } from '../lib/validationUtils'
 import { arraysToCandidates } from '../lib/candidatesUtils'
@@ -98,24 +98,21 @@ export function useShareConflict({
   const shareResolvedRef = useRef(false)
 
   // Overlay a shared board (from a state-link's `s`/`t`) onto the current game.
-  const applySharedBoard = useCallback(
-    (shared: SharedBoardPayload) => {
-      const candidatesArray = shared.candidates ?? Array.from({ length: 81 }, () => [] as number[])
-      restoredAsCompleteRef.current = isValidSolution(shared.board)
-      game.restoreState(shared.board, arraysToCandidates(candidatesArray), [])
-      if (shared.elapsedMs !== null) {
-        timerControl.setElapsedMs(shared.elapsedMs)
-      }
-    },
-    [game, timerControl, restoredAsCompleteRef],
-  )
+  const applySharedBoard = (shared: SharedBoardPayload) => {
+    const candidatesArray = shared.candidates ?? Array.from({ length: 81 }, () => [] as number[])
+    restoredAsCompleteRef.current = isValidSolution(shared.board)
+    game.restoreState(shared.board, arraysToCandidates(candidatesArray), [])
+    if (shared.elapsedMs !== null) {
+      timerControl.setElapsedMs(shared.elapsedMs)
+    }
+  }
 
   // Drop the one-time `s`/`t` share params from the URL so a later reload takes
   // the normal saved-state path instead of re-applying the sharer's snapshot.
   // Uses history.replaceState rather than the router's setSearchParams, which did
   // not persist when called from the initial-load effect; this cleans the address
   // bar reliably without re-navigating (the shared state is already applied).
-  const consumeShareParams = useCallback(() => {
+  const consumeShareParams = () => {
     const url = new URL(window.location.href)
     if (!url.searchParams.has('s') && !url.searchParams.has('t')) {
       return
@@ -123,11 +120,11 @@ export function useShareConflict({
     url.searchParams.delete('s')
     url.searchParams.delete('t')
     window.history.replaceState(window.history.state, '', url.toString())
-  }, [])
+  }
 
   // Finalize a shared-URL load: mark restored, start the clock, and consume the
   // one-time share params so a later reload takes the normal saved-state path.
-  const finalizeSharedUrlLoad = useCallback(() => {
+  const finalizeSharedUrlLoad = () => {
     loadedFromSharedUrlRef.current = false
     hasRestoredSavedStateRef.current = true
     if (!alreadyCompletedToday && !showDifficultyChooser) {
@@ -136,11 +133,11 @@ export function useShareConflict({
     // consumeShareParams self-guards on the actual URL, so call it unconditionally
     // (a stale sharedStateParam closure was suppressing the strip).
     consumeShareParams()
-  }, [alreadyCompletedToday, showDifficultyChooser, timerControl, consumeShareParams])
+  }
 
   // Shared-game modal dismissed (Resume current game, the X, or the backdrop):
   // keep what the recipient was doing instead of loading the shared game.
-  const handleResumeOwnGame = useCallback(() => {
+  const handleResumeOwnGame = () => {
     shareResolvedRef.current = true
     setShowShareConflict(false)
     setPendingSharedState(null)
@@ -157,10 +154,10 @@ export function useShareConflict({
     }
     // Otherwise the current game is this same puzzle: its saved board is already
     // restored, so closing the modal keeps it.
-  }, [consumeShareParams, resumeTarget, shareHasCurrentGame, navigate])
+  }
 
   // Share-conflict modal: recipient discards their progress for the shared position.
-  const handleStartFromShared = useCallback(() => {
+  const handleStartFromShared = () => {
     if (pendingSharedState) {
       applySharedBoard(pendingSharedState)
       if (!alreadyCompletedToday && !showDifficultyChooser) {
@@ -173,47 +170,41 @@ export function useShareConflict({
     setResumeTarget(null)
     setShareHasCurrentGame(false)
     consumeShareParams()
-  }, [
-    pendingSharedState,
-    applySharedBoard,
-    alreadyCompletedToday,
-    showDifficultyChooser,
-    timerControl,
-    consumeShareParams,
-  ])
+  }
 
   // On a shared state-link, always prompt before loading the shared game (the
   // recipient chooses "Load shared game", or dismisses to keep what they were
   // doing / return home). Kept out of loadPuzzle for clarity.
-  const restoreOrPromptSharedState = useCallback(
-    (board: number[], candidates: number[][] | null, seed: string) => {
-      if (shareResolvedRef.current) {
-        return
-      }
-      const shared = { board, candidates, elapsedMs: parseSharedElapsedMs(sharedTimeParam) }
-      // Classify the recipient's current game: their own save for THIS puzzle, a
-      // game on a DIFFERENT puzzle, or none. It decides the modal's buttons and
-      // what dismissing does.
-      const saved = loadSavedGameState(seed)
-      const hasThisPuzzleProgress = !!(saved && saved.history.length > 0)
-      const otherGame = getMostRecentGame()
-      const otherInProgress =
-        !!otherGame &&
-        otherGame.seed !== seed &&
-        otherGame.seed !== encoded &&
-        otherGame.progress < 100
-      setPendingSharedState(shared)
-      // Different-puzzle game: dismiss = go back to it. Same-puzzle or none: no target.
-      setResumeTarget(
-        !hasThisPuzzleProgress && otherInProgress && otherGame
-          ? { seed: otherGame.seed, difficulty: otherGame.difficulty }
-          : null,
-      )
-      setShareHasCurrentGame(hasThisPuzzleProgress || otherInProgress)
-      setShowShareConflict(true)
-    },
-    [sharedTimeParam, loadSavedGameState, encoded],
-  )
+  const restoreOrPromptSharedState = (
+    board: number[],
+    candidates: number[][] | null,
+    seed: string,
+  ) => {
+    if (shareResolvedRef.current) {
+      return
+    }
+    const shared = { board, candidates, elapsedMs: parseSharedElapsedMs(sharedTimeParam) }
+    // Classify the recipient's current game: their own save for THIS puzzle, a
+    // game on a DIFFERENT puzzle, or none. It decides the modal's buttons and
+    // what dismissing does.
+    const saved = loadSavedGameState(seed)
+    const hasThisPuzzleProgress = !!(saved && saved.history.length > 0)
+    const otherGame = getMostRecentGame()
+    const otherInProgress =
+      !!otherGame &&
+      otherGame.seed !== seed &&
+      otherGame.seed !== encoded &&
+      otherGame.progress < 100
+    setPendingSharedState(shared)
+    // Different-puzzle game: dismiss = go back to it. Same-puzzle or none: no target.
+    setResumeTarget(
+      !hasThisPuzzleProgress && otherInProgress && otherGame
+        ? { seed: otherGame.seed, difficulty: otherGame.difficulty }
+        : null,
+    )
+    setShareHasCurrentGame(hasThisPuzzleProgress || otherInProgress)
+    setShowShareConflict(true)
+  }
 
   return {
     showShareConflict,
