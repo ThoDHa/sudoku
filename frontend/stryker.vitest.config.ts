@@ -29,6 +29,13 @@ const realFrontendRoot = path.dirname(realNodeModules)
 // failures when RC is off. Stryker mutates the source files BEFORE RC's babel
 // transform runs, so mutations still target the original code. RC only affects
 // how the (already-mutated) code executes during the test run.
+//
+// VITE_SKIP_RC must ALSO be set: Stryker's instrumentation adds coverage
+// tracking that changes the AST enough to prevent RC from memoizing function
+// identities. The identity-stability tests (handler stability blocks) cannot
+// pass under instrumentation regardless of RC, so they must be skipped via
+// the same .skipIf(process.env.VITE_SKIP_RC) guard they already use.
+process.env.VITE_SKIP_RC = '1'
 const reactCompilerAllEnvs = (() => {
   const preset = reactCompilerPreset({ target: '19' })
   return { ...preset, rolldown: { ...preset.rolldown, applyToEnvironmentHook: () => true } }
