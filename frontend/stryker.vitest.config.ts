@@ -3,7 +3,8 @@ import fs from 'node:fs'
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import react, { reactCompilerPreset } from '@vitejs/plugin-react'
+import babel from '@rolldown/plugin-babel'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -23,18 +24,21 @@ const getCommitHash = () => {
 const realNodeModules = fs.realpathSync(path.resolve(dirname, 'node_modules'))
 const realFrontendRoot = path.dirname(realNodeModules)
 
-// This config uses react() with NO babel/RC preset, so the React Compiler is
-// off in the Stryker sandbox (consistent with the coverage model: Stryker
-// mutates source as written, not RC-compiled output). Set VITE_SKIP_RC=1 so
-// tests tagged with .skipIf(process.env.VITE_SKIP_RC) — the RC-dependent
-// identity-stability tests whose assertions only hold when RC is firing —
-// skip in the sandbox just as they do in the coverage run. Without this, the
-// initial test run fails on those tests and StrykerJS aborts before mutation
-// testing begins.
-process.env.VITE_SKIP_RC = '1'
+// RC must be ON during Stryker's test execution: after FE-7-SWEEP removed ~92
+// useCallback sites, the unmemoized functions cause effect cascades and test
+// failures when RC is off. Stryker mutates the source files BEFORE RC's babel
+// transform runs, so mutations still target the original code. RC only affects
+// how the (already-mutated) code executes during the test run.
+const reactCompilerAllEnvs = (() => {
+  const preset = reactCompilerPreset({ target: '19' })
+  return { ...preset, rolldown: { ...preset.rolldown, applyToEnvironmentHook: () => true } }
+})()
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    babel({ presets: [reactCompilerAllEnvs] }),
+  ],
   define: {
     __COMMIT_HASH__: JSON.stringify(getCommitHash()),
   },
