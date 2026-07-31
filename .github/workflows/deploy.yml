@@ -596,11 +596,23 @@ jobs:
             --out-dir pages-artifact/reports \
             --allure-rel ../test-report/
 
+      - name: Build Pages tar (ensure .nojekyll is included)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        run: |
+          # .nojekyll disables Jekyll processing on GitHub Pages. Without it,
+          # Jekyll silently drops the Allure report's data/test-cases/ directory
+          # (4151 JSON files). upload-pages-artifact v5 excludes dot-files from
+          # its tar, so we build the tar ourselves to guarantee inclusion.
+          touch pages-artifact/.nojekyll
+          tar --dereference -cf /tmp/github-pages.tar -C pages-artifact .
+
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v5
         with:
-          path: pages-artifact
+          name: github-pages
+          path: /tmp/github-pages.tar
+          retention-days: 1
 
   # ============================================
   # Deploy to GitHub Pages (Game + Test Report)
