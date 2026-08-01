@@ -133,7 +133,7 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
       if (move.action === 'unpinpointable-error') {
         setUnpinpointableErrorInfo({
           message: move.explanation || `Couldn't pinpoint the error.`,
-          count: (move as unknown as { userEntryCount?: number }).userEntryCount || 0,
+          count: move.userEntryCount ?? 0,
         })
         setShowSolutionConfirm(true)
         return

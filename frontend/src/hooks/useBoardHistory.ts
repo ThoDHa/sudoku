@@ -19,6 +19,9 @@ export interface Move {
   stateDiff?: StateDiff
   boardBefore?: number[]
   candidatesBefore?: number[][]
+  // Set only on `unpinpointable-error` moves: how many user-entered digits
+  // conflict, surfaced by the unpinpointable-error modal.
+  userEntryCount?: number
 }
 
 export interface UseBoardHistoryOptions {
