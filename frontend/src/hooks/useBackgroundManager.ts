@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 interface BackgroundManagerOptions {
   /** Whether to enable background pause functionality */
@@ -44,8 +44,6 @@ export function useBackgroundManager(
     enabled ? document.visibilityState : 'visible',
   )
   const [forcePaused, setForcePaused] = useState(false)
-  // Stryker disable next-line BooleanLiteral: forceResumed never changes shouldPauseOperations observably: the (visi...
-  const [forceResumed, setForceResumed] = useState(false)
   const [isInDeepPause, setIsInDeepPause] = useState(
     () => enabled && document.visibilityState === 'hidden',
   )
@@ -83,21 +81,13 @@ export function useBackgroundManager(
   // This fixes E2E tests where the window might be "blurred" but still visible
   const effectiveIsWindowBlurred = isHeadlessChrome ? false : isWindowBlurred
 
-  // Core logic: shouldPause if enabled AND not headless AND any pause condition is true
-  // BUT if document.visibilityState is 'visible' and we're not explicitly paused, don't pause
+  // Core logic: pause if enabled, not headless, and any pause condition holds.
   const shouldPauseOperations =
     enabled &&
     !isHeadlessChrome &&
-    (isHidden ||
-      effectiveIsWindowBlurred ||
-      forcePaused ||
-      isInDeepPause ||
-      /* istanbul ignore start -- redundant with isHidden above: this operand is only reached when the page is visible (isHidden false), so visibilityState is never 'hidden' here and the !forceResumed read is unreachable */
-      // Stryker disable next-line ConditionalExpression,StringLiteral: redundant with isHidden above: handleVisibili...
-      (visibilityState === 'hidden' && !forceResumed))
-  /* istanbul ignore stop */
+    (isHidden || effectiveIsWindowBlurred || forcePaused || isInDeepPause)
 
-  const handleVisibilityChange = () => {
+  const handleVisibilityChange = useCallback(() => {
     const newVisibilityState = document.visibilityState
     setVisibilityState(newVisibilityState)
 
@@ -105,37 +95,31 @@ export function useBackgroundManager(
     setIsHidden(newIsHidden)
 
     if (newIsHidden) {
-      // Stryker disable next-line BooleanLiteral: forceResumed is observably dead (see shouldPauseOperations redun...
-      setForceResumed(false)
       setIsInDeepPause(true)
     } else {
       setForcePaused(false)
       setIsInDeepPause(false)
     }
-  }
+  }, [])
 
   // Separate handlers for window blur/focus (app switching on desktop)
   // These set isWindowBlurred but NOT isHidden - so timer pauses but frozen state doesn't trigger
-  const handleWindowBlur = () => {
+  const handleWindowBlur = useCallback(() => {
     setIsWindowBlurred(true)
-  }
+  }, [])
 
-  const handleWindowFocus = () => {
+  const handleWindowFocus = useCallback(() => {
     setIsWindowBlurred(false)
-  }
+  }, [])
 
-  const forceResume = () => {
-    // Stryker disable next-line BooleanLiteral: forceResumed is observably dead (see state-declaration note)
-    setForceResumed(true)
+  const forceResume = useCallback(() => {
     setForcePaused(false)
     setIsInDeepPause(false)
-  }
+  }, [])
 
-  const forcePause = () => {
+  const forcePause = useCallback(() => {
     setForcePaused(true)
-    // Stryker disable next-line BooleanLiteral: forceResumed is observably dead (see state-declaration note)
-    setForceResumed(false)
-  }
+  }, [])
 
   // Register visibility change listeners
   useEffect(() => {
@@ -220,9 +204,6 @@ export function useBackgroundManager(
     }
   }, [enabled])
 
-  // CRITICAL: Memoize return object to prevent cascading re-renders.
-  // Without this, every render creates a new object reference, causing all
-  // context consumers to re-render (~746 renders/second instead of ~1/second).
   return useMemo(
     () => ({
       isHidden,
