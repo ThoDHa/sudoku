@@ -15,105 +15,94 @@ describe('useGameModals', () => {
     expect(result.current.isAnyModalOpen).toBe(false)
   })
 
-  it('openHistory/closeHistory toggle historyOpen and isAnyModalOpen', () => {
+  it('setHistoryOpen toggles historyOpen and isAnyModalOpen', () => {
     const { result } = renderHook(() => useGameModals())
     act(() => {
-      result.current.openHistory()
+      result.current.setHistoryOpen(true)
     })
     expect(result.current.historyOpen).toBe(true)
     expect(result.current.isAnyModalOpen).toBe(true)
     act(() => {
-      result.current.closeHistory()
+      result.current.setHistoryOpen(false)
     })
     expect(result.current.historyOpen).toBe(false)
     expect(result.current.isAnyModalOpen).toBe(false)
   })
 
-  it('openTechnique/closeTechnique toggle techniqueModal state', () => {
+  it('setTechniqueModal toggles techniqueModal state', () => {
     const { result } = renderHook(() => useGameModals())
     act(() => {
-      result.current.openTechnique({ title: 'Naked Single', slug: 'naked-single' })
+      result.current.setTechniqueModal({ title: 'Naked Single', slug: 'naked-single' })
     })
     expect(result.current.techniqueModal).toEqual({ title: 'Naked Single', slug: 'naked-single' })
     expect(result.current.isAnyModalOpen).toBe(true)
     act(() => {
-      result.current.closeTechnique()
+      result.current.setTechniqueModal(null)
     })
     expect(result.current.techniqueModal).toBeNull()
     expect(result.current.isAnyModalOpen).toBe(false)
   })
 
-  it('openTechniquesList/closeTechniquesList toggle the list flag', () => {
+  it('setTechniquesListOpen toggles the list flag', () => {
     const { result } = renderHook(() => useGameModals())
     act(() => {
-      result.current.openTechniquesList()
+      result.current.setTechniquesListOpen(true)
     })
     expect(result.current.techniquesListOpen).toBe(true)
     act(() => {
-      result.current.closeTechniquesList()
+      result.current.setTechniquesListOpen(false)
     })
     expect(result.current.techniquesListOpen).toBe(false)
   })
 
-  it('openSolveConfirm/closeSolveConfirm toggle the flag', () => {
+  it('setSolveConfirmOpen toggles the flag', () => {
     const { result } = renderHook(() => useGameModals())
     act(() => {
-      result.current.openSolveConfirm()
+      result.current.setSolveConfirmOpen(true)
     })
     expect(result.current.solveConfirmOpen).toBe(true)
     act(() => {
-      result.current.closeSolveConfirm()
+      result.current.setSolveConfirmOpen(false)
     })
     expect(result.current.solveConfirmOpen).toBe(false)
   })
 
-  it('openClearConfirm/closeClearConfirm toggle the flag', () => {
+  it('setShowClearConfirm toggles the flag', () => {
     const { result } = renderHook(() => useGameModals())
     act(() => {
-      result.current.openClearConfirm()
+      result.current.setShowClearConfirm(true)
     })
     expect(result.current.showClearConfirm).toBe(true)
     act(() => {
-      result.current.closeClearConfirm()
+      result.current.setShowClearConfirm(false)
     })
     expect(result.current.showClearConfirm).toBe(false)
   })
 
-  it('openSolutionConfirm stores error info and opens the modal', () => {
+  it('setShowSolutionConfirm and setUnpinpointableErrorInfo manage the error modal', () => {
     const { result } = renderHook(() => useGameModals())
     act(() => {
-      result.current.openSolutionConfirm({ message: 'Cannot pinpoint', count: 4 })
+      result.current.setUnpinpointableErrorInfo({ message: 'Cannot pinpoint', count: 4 })
+      result.current.setShowSolutionConfirm(true)
     })
     expect(result.current.showSolutionConfirm).toBe(true)
     expect(result.current.unpinpointableErrorInfo).toEqual({ message: 'Cannot pinpoint', count: 4 })
     expect(result.current.isAnyModalOpen).toBe(true)
   })
 
-  it('closeSolutionConfirm clears the flag but retains error info for exit animation', () => {
-    const { result } = renderHook(() => useGameModals())
-    act(() => {
-      result.current.openSolutionConfirm({ message: 'm', count: 3 })
-    })
-    act(() => {
-      result.current.closeSolutionConfirm()
-    })
-    expect(result.current.showSolutionConfirm).toBe(false)
-    expect(result.current.unpinpointableErrorInfo).toEqual({ message: 'm', count: 3 })
-  })
-
   it('isAnyModalOpen reflects the OR of every individual modal flag', () => {
     const { result } = renderHook(() => useGameModals())
     act(() => {
-      result.current.openClearConfirm()
+      result.current.setShowClearConfirm(true)
     })
     expect(result.current.isAnyModalOpen).toBe(true)
     act(() => {
-      result.current.closeClearConfirm()
-      result.current.openTechniquesList()
+      result.current.setShowClearConfirm(false)
+      result.current.setTechniquesListOpen(true)
     })
     expect(result.current.isAnyModalOpen).toBe(true)
     act(() => {
-      result.current.closeTechniquesList()
+      result.current.setTechniquesListOpen(false)
     })
     expect(result.current.isAnyModalOpen).toBe(false)
   })

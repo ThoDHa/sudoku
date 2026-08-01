@@ -30,10 +30,11 @@ export interface GameModalsState {
 }
 
 /**
- * Hook for managing all modal states in the Game component
+ * Hook for managing all modal states in the Game component.
  *
- * Consolidates 7 modal-related state variables into a single hook
- * with clear, semantic action methods.
+ * Owns the seven modal visibility states and exposes the raw setState setters
+ * plus an `isAnyModalOpen` aggregate. Callers toggle modals directly through
+ * the setters (e.g. `setHistoryOpen(true)`).
  */
 export function useGameModals() {
   // Modal visibility states
@@ -45,56 +46,6 @@ export function useGameModals() {
   const [showSolutionConfirm, setShowSolutionConfirm] = useState(false)
   const [unpinpointableErrorInfo, setUnpinpointableErrorInfo] =
     useState<UnpinpointableErrorInfo | null>(null)
-
-  // History modal actions
-  const openHistory = () => {
-    setHistoryOpen(true)
-  }
-  const closeHistory = () => {
-    setHistoryOpen(false)
-  }
-
-  // Technique modal actions
-  const openTechnique = (technique: TechniqueModalState) => {
-    setTechniqueModal(technique)
-  }
-  const closeTechnique = () => {
-    setTechniqueModal(null)
-  }
-
-  // Techniques list modal actions
-  const openTechniquesList = () => {
-    setTechniquesListOpen(true)
-  }
-  const closeTechniquesList = () => {
-    setTechniquesListOpen(false)
-  }
-
-  // Solve confirm modal actions
-  const openSolveConfirm = () => {
-    setSolveConfirmOpen(true)
-  }
-  const closeSolveConfirm = () => {
-    setSolveConfirmOpen(false)
-  }
-
-  // Clear confirm modal actions
-  const openClearConfirm = () => {
-    setShowClearConfirm(true)
-  }
-  const closeClearConfirm = () => {
-    setShowClearConfirm(false)
-  }
-
-  // Solution confirm modal actions (for unpinpointable errors)
-  const openSolutionConfirm = (errorInfo: UnpinpointableErrorInfo) => {
-    setUnpinpointableErrorInfo(errorInfo)
-    setShowSolutionConfirm(true)
-  }
-  const closeSolutionConfirm = () => {
-    setShowSolutionConfirm(false)
-    // Don't clear error info immediately - modal may need it for exit animation
-  }
 
   // Check if any modal is open (useful for disabling keyboard shortcuts)
   const isAnyModalOpen = useMemo(() => {
@@ -126,31 +77,7 @@ export function useGameModals() {
     unpinpointableErrorInfo,
     isAnyModalOpen,
 
-    // History modal
-    openHistory,
-    closeHistory,
-
-    // Technique modal
-    openTechnique,
-    closeTechnique,
-
-    // Techniques list modal
-    openTechniquesList,
-    closeTechniquesList,
-
-    // Solve confirm modal
-    openSolveConfirm,
-    closeSolveConfirm,
-
-    // Clear confirm modal
-    openClearConfirm,
-    closeClearConfirm,
-
-    // Solution confirm modal
-    openSolutionConfirm,
-    closeSolutionConfirm,
-
-    // Raw setters for backwards compatibility and edge cases
+    // Raw setters
     setHistoryOpen,
     setTechniqueModal,
     setTechniquesListOpen,
