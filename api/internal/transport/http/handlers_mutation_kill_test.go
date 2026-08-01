@@ -327,7 +327,11 @@ func TestMutation_SolveAll_BreakOnSolvedNoStalledMove(t *testing.T) {
 	token := getValidToken(router)
 
 	solved := dp.GenerateFullGrid(4242)
-	givens := dp.CarveGivensWithSubset(context.Background(), solved, 4242)["easy"]
+	easyGivens, err := dp.CarveGivensWithSubset(context.Background(), solved, 4242)
+	if err != nil {
+		t.Fatalf("CarveGivensWithSubset: %v", err)
+	}
+	givens := easyGivens["easy"]
 	// Add one correct user entry at a non-given cell so userEntryCount > 0 at solve.
 	board := make([]int, 81)
 	copy(board, givens)
@@ -371,7 +375,11 @@ func TestMutation_SolveAll_ConflictFixMoveCarriesPopulatedCandidates(t *testing.
 	// Use a real solvable puzzle so the autosolve loop has work to do after the
 	// conflict is fixed; a near-empty board would stall regardless.
 	solved := dp.GenerateFullGrid(4242)
-	givens := dp.CarveGivensWithSubset(context.Background(), solved, 4242)["easy"]
+	subset378, err := dp.CarveGivensWithSubset(context.Background(), solved, 4242)
+	if err != nil {
+		t.Fatalf("CarveGivensWithSubset: %v", err)
+	}
+	givens := subset378["easy"]
 	board := make([]int, 81)
 	copy(board, givens)
 
@@ -429,7 +437,11 @@ func TestMutation_SolveAll_NoCandidatesRequestPopulatesFirstMove(t *testing.T) {
 	token := getValidToken(router)
 
 	solved := dp.GenerateFullGrid(31337)
-	givens := dp.CarveGivensWithSubset(context.Background(), solved, 31337)["medium"]
+	subset31337, err := dp.CarveGivensWithSubset(context.Background(), solved, 31337)
+	if err != nil {
+		t.Fatalf("CarveGivensWithSubset: %v", err)
+	}
+	givens := subset31337["medium"]
 
 	bodyBytes, _ := json.Marshal(map[string]any{
 		"token": token, "board": givens, "givens": givens,

@@ -603,7 +603,7 @@ func TestGenerateFullGrid(t *testing.T) {
 func TestCarveGivens(t *testing.T) {
 	t.Run("produces valid puzzle", func(t *testing.T) {
 		fullGrid := GenerateFullGrid(123)
-		puzzle := CarveGivens(context.Background(), fullGrid, 30, 456)
+		puzzle := mustCarveGivens(t, fullGrid, 30, 456)
 
 		if !IsValid(context.Background(), puzzle) {
 			t.Error("carved puzzle is not valid")
@@ -612,7 +612,7 @@ func TestCarveGivens(t *testing.T) {
 
 	t.Run("puzzle has unique solution", func(t *testing.T) {
 		fullGrid := GenerateFullGrid(789)
-		puzzle := CarveGivens(context.Background(), fullGrid, 35, 101)
+		puzzle := mustCarveGivens(t, fullGrid, 35, 101)
 
 		unique, err := HasUniqueSolution(context.Background(), puzzle)
 		if err != nil {
@@ -625,7 +625,7 @@ func TestCarveGivens(t *testing.T) {
 
 	t.Run("puzzle solution matches original grid", func(t *testing.T) {
 		fullGrid := GenerateFullGrid(111)
-		puzzle := CarveGivens(context.Background(), fullGrid, 40, 222)
+		puzzle := mustCarveGivens(t, fullGrid, 40, 222)
 
 		solution, err := Solve(context.Background(), puzzle)
 		if err != nil {
@@ -644,7 +644,7 @@ func TestCarveGivens(t *testing.T) {
 
 	t.Run("preserves filled cells from original", func(t *testing.T) {
 		fullGrid := GenerateFullGrid(333)
-		puzzle := CarveGivens(context.Background(), fullGrid, 25, 444)
+		puzzle := mustCarveGivens(t, fullGrid, 25, 444)
 
 		for i := range puzzle {
 			if puzzle[i] != 0 && puzzle[i] != fullGrid[i] {
@@ -656,8 +656,8 @@ func TestCarveGivens(t *testing.T) {
 
 	t.Run("same seeds produce same puzzle", func(t *testing.T) {
 		fullGrid := GenerateFullGrid(555)
-		puzzle1 := CarveGivens(context.Background(), fullGrid, 30, 666)
-		puzzle2 := CarveGivens(context.Background(), fullGrid, 30, 666)
+		puzzle1 := mustCarveGivens(t, fullGrid, 30, 666)
+		puzzle2 := mustCarveGivens(t, fullGrid, 30, 666)
 
 		for i := range puzzle1 {
 			if puzzle1[i] != puzzle2[i] {
@@ -669,8 +669,8 @@ func TestCarveGivens(t *testing.T) {
 	t.Run("fewer target givens produces harder puzzle", func(t *testing.T) {
 		fullGrid := GenerateFullGrid(777)
 
-		easyPuzzle := CarveGivens(context.Background(), fullGrid, 45, 888)
-		hardPuzzle := CarveGivens(context.Background(), fullGrid, 25, 888)
+		easyPuzzle := mustCarveGivens(t, fullGrid, 45, 888)
+		hardPuzzle := mustCarveGivens(t, fullGrid, 25, 888)
 
 		easyGivens := countGivens(easyPuzzle)
 		hardGivens := countGivens(hardPuzzle)
@@ -692,11 +692,78 @@ func countGivens(grid []int) int {
 	return count
 }
 
+// mustCarveGivens wraps CarveGivens for tests using an uncancellable background
+// context, failing the test if carving errors unexpectedly.
+func mustCarveGivens(t *testing.T, fullGrid []int, targetGivens int, seed int64) []int {
+	t.Helper()
+	puzzle, err := CarveGivens(context.Background(), fullGrid, targetGivens, seed)
+	if err != nil {
+		t.Fatalf("CarveGivens errored: %v", err)
+	}
+	return puzzle
+}
+
+// mustCarveGivensWithSubset wraps CarveGivensWithSubset for tests using an
+// uncancellable background context.
+func mustCarveGivensWithSubset(t *testing.T, fullGrid []int, seed int64) map[string][]int {
+	t.Helper()
+	puzzles, err := CarveGivensWithSubset(context.Background(), fullGrid, seed)
+	if err != nil {
+		t.Fatalf("CarveGivensWithSubset errored: %v", err)
+	}
+	return puzzles
+}
+
+// TestCarveGivens_CancelledContextPropagatesError asserts that a canceled
+// context surfaces as an error instead of being swallowed into a silently
+// partially-carved board. HasUniqueSolution honors ctx cancellation; without
+// error propagation the carve loop would treat (false, ctx.Err()) as "not
+// unique, restore and continue", walking the rest of the cells and returning a
+// wrong puzzle.
+func TestCarveGivens_CancelledContextPropagatesError(t *testing.T) {
+	fullGrid := GenerateFullGrid(20260731)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	puzzle, err := CarveGivens(ctx, fullGrid, 30, 456)
+	if err == nil {
+		t.Fatalf("expected error from canceled context, got nil (puzzle=%v)", puzzle)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+	// A usable partially-carved board must not be returned alongside the error.
+	if puzzle != nil {
+		t.Errorf("expected nil puzzle on error, got %d-cell board", len(puzzle))
+	}
+}
+
+// TestCarveGivensWithSubset_CancelledContextPropagatesError is the subset
+// variant of the cancellation regression above.
+func TestCarveGivensWithSubset_CancelledContextPropagatesError(t *testing.T) {
+	fullGrid := GenerateFullGrid(20260731)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	puzzles, err := CarveGivensWithSubset(ctx, fullGrid, 456)
+	if err == nil {
+		t.Fatalf("expected error from canceled context, got nil (puzzles=%v)", puzzles)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+	if puzzles != nil {
+		t.Errorf("expected nil puzzle map on error, got %d entries", len(puzzles))
+	}
+}
+
 // TestCarveGivensWithSubset
 
 func TestCarveGivensWithSubset(t *testing.T) {
 	fullGrid := GenerateFullGrid(12345)
-	puzzles := CarveGivensWithSubset(context.Background(), fullGrid, 67890)
+	puzzles := mustCarveGivensWithSubset(t, fullGrid, 67890)
 
 	difficulties := []string{"easy", "medium", "hard", "extreme", "impossible"}
 
@@ -1085,11 +1152,31 @@ func TestMutation_FindConflicts_DedupAndAllPairsFromTripleGroup(t *testing.T) {
 	}
 }
 
+// TestFindConflicts_DedupsPairSharedByRowAndBox asserts the cross-unit dedup is
+// load-bearing: two cells at indices 0 and 1 share BOTH row 0 and box 0. Without
+// the dedup map the row pass and the box pass each emit a Conflict for the same
+// pair; with it, exactly one Conflict is emitted.
+func TestFindConflicts_DedupsPairSharedByRowAndBox(t *testing.T) {
+	grid := make([]int, 81)
+	grid[0] = 5
+	grid[1] = 5
+
+	conflicts := FindConflicts(grid)
+
+	if len(conflicts) != 1 {
+		t.Fatalf("expected exactly 1 deduped conflict for a pair shared by row+box, got %d: %+v", len(conflicts), conflicts)
+	}
+	c := conflicts[0]
+	if c.Cell1 != 0 || c.Cell2 != 1 || c.Value != 5 {
+		t.Errorf("unexpected conflict: %+v", c)
+	}
+}
+
 // --- CarveGivensWithSubset: exact givens count per difficulty ---
 
 func TestMutation_CarveGivensWithSubset_ExactGivensPerDifficulty(t *testing.T) {
 	fullGrid := GenerateFullGrid(12345)
-	puzzles := CarveGivensWithSubset(context.Background(), fullGrid, 67890)
+	puzzles := mustCarveGivensWithSubset(t, fullGrid, 67890)
 
 	expectedGivens := map[string]int{
 		"easy":       40,
@@ -1108,7 +1195,7 @@ func TestMutation_CarveGivensWithSubset_ExactGivensPerDifficulty(t *testing.T) {
 
 func TestMutation_CarveGivensWithSubset_SubsetPropertyStrict(t *testing.T) {
 	fullGrid := GenerateFullGrid(12345)
-	puzzles := CarveGivensWithSubset(context.Background(), fullGrid, 67890)
+	puzzles := mustCarveGivensWithSubset(t, fullGrid, 67890)
 
 	difficulties := []string{"easy", "medium", "hard", "extreme", "impossible"}
 	for i := range len(difficulties) - 1 {
@@ -1128,7 +1215,7 @@ func TestMutation_CarveGivensWithSubset_SubsetPropertyStrict(t *testing.T) {
 func TestMutation_CarveGivens_ExactGivensCount(t *testing.T) {
 	fullGrid := GenerateFullGrid(123)
 	for _, target := range []int{30, 40} {
-		puzzle := CarveGivens(context.Background(), fullGrid, target, 456)
+		puzzle := mustCarveGivens(t, fullGrid, target, 456)
 		got := countGivens(puzzle)
 		if got != target {
 			t.Errorf("target=%d: expected %d givens, got %d", target, target, got)
@@ -1145,8 +1232,8 @@ func TestMutation_CarveGivens_ExactGivensCount(t *testing.T) {
 func TestMutation_CarveGivens_DifferentSeedsProduceDifferentPuzzles(t *testing.T) {
 	fullGrid := GenerateFullGrid(2024)
 
-	puzzleA := CarveGivens(context.Background(), fullGrid, 30, 100)
-	puzzleB := CarveGivens(context.Background(), fullGrid, 30, 900)
+	puzzleA := mustCarveGivens(t, fullGrid, 30, 100)
+	puzzleB := mustCarveGivens(t, fullGrid, 30, 900)
 
 	differ := false
 	for i := range puzzleA {

@@ -791,7 +791,10 @@ func TestHTTPRoutes(t *testing.T) {
 		// Build a deterministic full grid and carved givens
 		seed := int64(424242)
 		fullGrid := dp.GenerateFullGrid(seed)
-		allPuzzles := dp.CarveGivensWithSubset(context.Background(), fullGrid, seed)
+		allPuzzles, err := dp.CarveGivensWithSubset(context.Background(), fullGrid, seed)
+		if err != nil {
+			t.Fatalf("CarveGivensWithSubset: %v", err)
+		}
 		givens := allPuzzles["easy"]
 		if len(givens) != 81 {
 			t.Fatalf("expected givens length 81, got %d", len(givens))

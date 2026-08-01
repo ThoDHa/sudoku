@@ -29,7 +29,10 @@ func TestResolveGivens_GeneratesOnDemandWhenLoaderUnavailable(t *testing.T) {
 		Difficulty: "medium",
 	}
 
-	givens := resolveGivens(context.Background(), session, []int{1, 2, 3})
+	givens, err := resolveGivens(context.Background(), session, []int{1, 2, 3})
+	if err != nil {
+		t.Fatalf("resolveGivens errored: %v", err)
+	}
 
 	if len(givens) != constants.TotalCells {
 		t.Fatalf("expected on-demand generation to produce %d givens, got %d", constants.TotalCells, len(givens))

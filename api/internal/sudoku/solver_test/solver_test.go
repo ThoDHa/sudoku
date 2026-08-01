@@ -27,7 +27,10 @@ func TestSolverHandlesAllDifficulties(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			fullGrid := dp.GenerateFullGrid(tc.seed)
-			givens := dp.CarveGivens(context.Background(), fullGrid, tc.givens, tc.seed)
+			givens, err := dp.CarveGivens(context.Background(), fullGrid, tc.givens, tc.seed)
+			if err != nil {
+				t.Fatalf("CarveGivens: %v", err)
+			}
 
 			board := human.NewBoard(givens)
 			moves, status := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
@@ -61,7 +64,10 @@ func TestSolverUsesMultipleTechniques(t *testing.T) {
 	for i := range 20 {
 		seed := int64(i * 7919) // Prime multiplier for variety
 		fullGrid := dp.GenerateFullGrid(seed)
-		givens := dp.CarveGivens(context.Background(), fullGrid, 30, seed) // Medium-hard difficulty
+		givens, err := dp.CarveGivens(context.Background(), fullGrid, 30, seed) // Medium-hard difficulty
+		if err != nil {
+			t.Fatalf("CarveGivens: %v", err)
+		}
 
 		board := human.NewBoard(givens)
 		moves, _ := solver.SolveWithSteps(context.Background(), board, constants.MaxSolverSteps)
@@ -106,7 +112,11 @@ func BenchmarkSolver(b *testing.B) {
 			for i := range b.N {
 				seed := int64(i)
 				fullGrid := dp.GenerateFullGrid(seed)
-				puzzles[i] = dp.CarveGivens(context.Background(), fullGrid, diff.givens, seed)
+				var err error
+				puzzles[i], err = dp.CarveGivens(context.Background(), fullGrid, diff.givens, seed)
+				if err != nil {
+					b.Fatalf("CarveGivens: %v", err)
+				}
 			}
 
 			solver := human.NewSolver()

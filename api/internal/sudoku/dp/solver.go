@@ -36,9 +36,14 @@ func (b *nodeBudget) tick(ctx context.Context) error {
 }
 
 // Solve finds a solution using backtracking. Returns the solved grid, or nil if
-// unsolvable. Returns ErrBudgetExceeded if the node budget is exhausted.
-// A grid whose givens already conflict is rejected up front: backtracking from
-// conflicting givens cannot remove them, so it would echo the invalid board.
+// the grid is unsolvable. Returns ErrBudgetExceeded if the node budget is
+// exhausted.
+//
+// Note: (nil, nil) is returned for two distinct cases that this signature
+// conflates: conflicting givens (rejected up front, since backtracking cannot
+// remove the user's givens) and a genuinely unsolvable conflict-free board.
+// Callers that need to distinguish them should call FindConflicts first; the
+// HTTP solveFull path already does so.
 func Solve(ctx context.Context, grid []int) ([]int, error) {
 	if !IsValid(ctx, grid) {
 		return nil, nil
@@ -146,8 +151,9 @@ func appendUnitConflicts(positions [10][9]int, counts [10]int, conflictType stri
 		for i := range group {
 			for j := i + 1; j < len(group); j++ {
 				key := conflictKey(group[i], group[j], val)
-				// Redundant scanning: row/column/box each independently detect conflicts.
-				// Mutating this dedup guard or its continue is compensated by other scans.
+				// Cross-unit de-duplication: two cells can share more than one unit
+				// (e.g. the same row AND the same box), so the row pass and the box
+				// pass would each emit a Conflict for that pair without this guard.
 				// mutator-disable-next-line branch/if
 				if _, ok := (*seen)[key]; ok {
 					// mutator-disable-next-line loop/break
@@ -393,8 +399,11 @@ func fillGrid(board []int, rng *rng) bool {
 
 // CarveGivens removes cells from a complete grid to create a puzzle.
 // targetGivens is the desired number of clues to remain.
-// Returns the puzzle grid with zeros for empty cells.
-func CarveGivens(ctx context.Context, fullGrid []int, targetGivens int, seed int64) []int {
+// Returns the puzzle grid with zeros for empty cells. An error (context
+// cancellation or ErrBudgetExceeded from the uniqueness check) is propagated
+// rather than swallowed: returning a partially-carved board on a canceled
+// context would silently serve an incorrect puzzle.
+func CarveGivens(ctx context.Context, fullGrid []int, targetGivens int, seed int64) ([]int, error) {
 	puzzle := make([]int, constants.TotalCells)
 	copy(puzzle, fullGrid)
 
@@ -425,36 +434,63 @@ func CarveGivens(ctx context.Context, fullGrid []int, targetGivens int, seed int
 		oldVal := puzzle[pos]
 		puzzle[pos] = 0
 
-		if unique, _ := HasUniqueSolution(ctx, puzzle); unique {
+		unique, err := HasUniqueSolution(ctx, puzzle)
+		if err != nil {
+			// Do not treat a canceled context or exhausted budget as "not unique":
+			// restoring the cell and continuing would walk the rest of the cells and
+			// return a silently partially-carved (wrong) puzzle.
+			return nil, err
+		}
+		if unique {
 			removed++
 		} else {
 			puzzle[pos] = oldVal
 		}
 	}
 
-	return puzzle
+	return puzzle, nil
+}
+
+// Givens targets per difficulty for puzzle carving (fewer givens = harder).
+// Shared by CarveGivens (single-difficulty on-demand generation) and
+// CarveGivensWithSubset (multi-difficulty generation with the subset property).
+var givensTargets = map[string]int{
+	string(core.DifficultyEasy):   targetGivensEasy,
+	string(core.DifficultyMedium): targetGivensMedium,
+	string(core.DifficultyHard):   targetGivensHard,
+	// extreme/impossible targets are masked by the carving floor: for the test
+	// grid (seed 12345/67890), impossible reaches 24 givens, so extreme (24) and
+	// impossible (20) targets are both unreachable. Decrementing extreme (24→23)
+	// yields cellsToRestore=-1 (no-op restore loop, same 24 givens). Impossible
+	// target ±1 cannot lower the floor.
+	// mutator-disable-next-line numbers/decrementer
+	string(core.DifficultyExtreme): targetGivensExtreme,
+	// mutator-disable-next-line numbers/decrementer,numbers/incrementer
+	string(core.DifficultyImpossible): targetGivensImpossible,
+}
+
+const (
+	targetGivensEasy       = 40
+	targetGivensMedium     = 34
+	targetGivensHard       = 28
+	targetGivensExtreme    = 24
+	targetGivensImpossible = 20
+)
+
+// TargetGivensFor returns the target clue count for on-demand carving at the
+// given difficulty, or zero for an unrecognized difficulty.
+func TargetGivensFor(diff string) int {
+	return givensTargets[diff]
 }
 
 // CarveGivensWithSubset generates puzzles for all difficulty levels ensuring subset property.
 // Returns a map of difficulty -> givens where impossible ⊂ extreme ⊂ hard ⊂ medium ⊂ easy.
 // The approach: carve to the minimum (impossible), then record which cells to restore for easier levels.
 // Difficulty is assigned by givens count alone: fewer givens yield harder labels. No technique
-// verification is performed.
-func CarveGivensWithSubset(ctx context.Context, fullGrid []int, seed int64) map[string][]int {
-	// Target givens for each difficulty (fewer givens = harder puzzle)
-	targets := map[string]int{
-		"easy":   40,
-		"medium": 34,
-		"hard":   28,
-		// extreme/impossible targets are masked by the carving floor: for the test grid
-		// (seed 12345/67890), impossible reaches 24 givens, so extreme (24) and impossible (20)
-		// targets are both unreachable. Decrementing extreme (24→23) yields cellsToRestore=-1
-		// (no-op restore loop, same 24 givens). Impossible target ±1 cannot lower the floor.
-		// mutator-disable-next-line numbers/decrementer
-		"extreme": 24,
-		// mutator-disable-next-line numbers/decrementer,numbers/incrementer
-		"impossible": 20,
-	}
+// verification is performed. An error (context cancellation or ErrBudgetExceeded from the
+// uniqueness check) is propagated rather than swallowed.
+func CarveGivensWithSubset(ctx context.Context, fullGrid []int, seed int64) (map[string][]int, error) {
+	targets := givensTargets
 
 	puzzle := make([]int, constants.TotalCells)
 	copy(puzzle, fullGrid)
@@ -477,7 +513,7 @@ func CarveGivensWithSubset(ctx context.Context, fullGrid []int, seed int64) map[
 	// Carving floor: for the test grid, impossible reaches 24 givens (57 removed) regardless
 	// of targetRemoved value. ±1 on the subtraction or the >= guard cannot change the floor.
 	// mutator-disable-next-line arithmetic/base
-	targetRemoved := constants.TotalCells - targets["impossible"]
+	targetRemoved := constants.TotalCells - targets[string(core.DifficultyImpossible)]
 
 	for _, pos := range positions {
 		// Carving floor: same as CarveGivens — the >= guard never fires because the
@@ -491,7 +527,13 @@ func CarveGivensWithSubset(ctx context.Context, fullGrid []int, seed int64) map[
 		oldVal := puzzle[pos]
 		puzzle[pos] = 0
 
-		if unique, _ := HasUniqueSolution(ctx, puzzle); unique {
+		unique, err := HasUniqueSolution(ctx, puzzle)
+		if err != nil {
+			// Propagate cancellation/budget errors instead of restoring-and-continuing,
+			// which would yield a partially-carved board served as valid.
+			return nil, err
+		}
+		if unique {
 			removalOrder = append(removalOrder, pos)
 		} else {
 			puzzle[pos] = oldVal
@@ -506,10 +548,15 @@ func CarveGivensWithSubset(ctx context.Context, fullGrid []int, seed int64) map[
 	// Impossible is the base (most cells removed)
 	impossiblePuzzle := make([]int, constants.TotalCells)
 	copy(impossiblePuzzle, puzzle)
-	result["impossible"] = impossiblePuzzle
+	result[string(core.DifficultyImpossible)] = impossiblePuzzle
 
 	// For each easier difficulty, restore cells to reach target
-	difficulties := []string{"extreme", "hard", "medium", "easy"}
+	difficulties := []string{
+		string(core.DifficultyExtreme),
+		string(core.DifficultyHard),
+		string(core.DifficultyMedium),
+		string(core.DifficultyEasy),
+	}
 
 	for _, diff := range difficulties {
 		targetGivens := targets[diff]
@@ -531,7 +578,7 @@ func CarveGivensWithSubset(ctx context.Context, fullGrid []int, seed int64) map[
 		result[diff] = diffPuzzle
 	}
 
-	return result
+	return result, nil
 }
 
 // PuzzleAnalysis contains the analysis results for a puzzle

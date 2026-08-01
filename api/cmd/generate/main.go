@@ -80,7 +80,11 @@ func main() {
 			defer wg.Done()
 			for idx := range work {
 				seed := *startSeed + int64(idx)
-				puzzle := generatePuzzle(seed)
+				puzzle, err := generatePuzzle(seed)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error generating puzzle for seed %d: %v\n", seed, err)
+					os.Exit(1)
+				}
 				puzzles[idx] = puzzle
 				atomic.AddInt64(&generated, 1)
 			}
@@ -95,10 +99,16 @@ func main() {
 
 	// Write to file
 	fmt.Printf("Writing to %s...\n", *output)
+	writePuzzleFile(*output, *count, puzzles)
+}
 
+// writePuzzleFile serializes the generated puzzles to disk as JSON and reports
+// the file size. It aborts the process on write failure, matching the worker
+// goroutine's error handling in main.
+func writePuzzleFile(output string, count int, puzzles []CompactPuzzle) {
 	file := PuzzleFile{
 		Version: 1,
-		Count:   *count,
+		Count:   count,
 		Puzzles: puzzles,
 	}
 
@@ -108,18 +118,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := os.WriteFile(*output, data, 0600); err != nil {
+	if err := os.WriteFile(output, data, 0600); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Calculate file size
-	info, _ := os.Stat(*output)
+	info, _ := os.Stat(output)
 	sizeMB := float64(info.Size()) / 1024 / 1024
 	fmt.Printf("Done! File size: %.2f MB\n", sizeMB)
 }
 
-func generatePuzzle(seed int64) CompactPuzzle {
+func generatePuzzle(seed int64) (CompactPuzzle, error) {
 	// Generate complete grid
 	fullGrid := dp.GenerateFullGrid(seed)
 
@@ -130,7 +139,10 @@ func generatePuzzle(seed int64) CompactPuzzle {
 	}
 
 	// Generate puzzles for all difficulties with subset property
-	allPuzzles := dp.CarveGivensWithSubset(context.Background(), fullGrid, seed)
+	allPuzzles, err := dp.CarveGivensWithSubset(context.Background(), fullGrid, seed)
+	if err != nil {
+		return CompactPuzzle{}, fmt.Errorf("carve givens: %w", err)
+	}
 
 	// Extract indices for each difficulty
 	givens := make(map[string][]int)
@@ -155,5 +167,5 @@ func generatePuzzle(seed int64) CompactPuzzle {
 	return CompactPuzzle{
 		S: string(solStr),
 		G: givens,
-	}
+	}, nil
 }

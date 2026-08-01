@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"log"
@@ -173,7 +174,7 @@ func requireBoardValues(c *gin.Context, board []int) bool {
 
 // requireMinGivens writes a 400 and returns false when the board has fewer than
 // MinGivens non-empty cells. Boards below the minimum cannot have a unique
-// solution and are rejected before reaching the unbounded DP backtracker.
+// solution and are rejected before reaching the bounded DP backtracker.
 func requireMinGivens(c *gin.Context, board []int) bool {
 	givenCount := 0
 	for _, v := range board {
@@ -188,6 +189,18 @@ func requireMinGivens(c *gin.Context, board []int) bool {
 		return false
 	}
 	return true
+}
+
+// writeCarveError maps a puzzle-carving error to the appropriate HTTP response.
+// A canceled context or expired deadline (client gone or request aborted) maps
+// to 504 Gateway Timeout; any other failure (node-budget exhaustion, etc.) maps
+// to 503 Service Unavailable so a partially-carved board is never served.
+func writeCarveError(c *gin.Context, err error) {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		c.JSON(http.StatusGatewayTimeout, gin.H{"error": "puzzle generation timed out"})
+		return
+	}
+	c.JSON(http.StatusServiceUnavailable, gin.H{"error": "puzzle generation failed"})
 }
 
 // buildFixedCandidates clones the user's candidate grid for a fix response,
@@ -276,11 +289,13 @@ func buildConflictFix(board []int, candidates [][]int, givens []int, conflict dp
 
 // resolveGivens returns the puzzle's original givens, preferring the value
 // supplied in the request and falling back to the loader or on-demand
-// generation from the session seed when it is not the right length.
-func resolveGivens(ctx context.Context, session *SessionToken, reqGivens []int) []int {
+// generation from the session seed when it is not the right length. The
+// returned error is non-nil when on-demand carving is aborted by a canceled
+// context or an exhausted node budget.
+func resolveGivens(ctx context.Context, session *SessionToken, reqGivens []int) ([]int, error) {
 	givens := reqGivens
 	if len(givens) == constants.TotalCells {
-		return givens
+		return givens, nil
 	}
 
 	loader := puzzles.Global()
@@ -288,13 +303,14 @@ func resolveGivens(ctx context.Context, session *SessionToken, reqGivens []int) 
 		givens, _, _, _ = loader.GetPuzzleBySeed(session.Seed, session.Difficulty)
 	}
 	if len(givens) == constants.TotalCells {
-		return givens
+		return givens, nil
 	}
 
 	seedHash := hashSeed(session.Seed)
 	fullGrid := dp.GenerateFullGrid(seedHash)
-	allPuzzles := dp.CarveGivensWithSubset(ctx, fullGrid, seedHash)
-	return allPuzzles[session.Difficulty]
+	// Only the session's single difficulty is needed here, so carve to its
+	// target directly instead of generating all five difficulties.
+	return dp.CarveGivens(ctx, fullGrid, dp.TargetGivensFor(session.Difficulty), seedHash)
 }
 
 func dailyHandler(c *gin.Context) {
@@ -350,8 +366,14 @@ func puzzleHandler(c *gin.Context) {
 	if loader == nil {
 		seedHash := hashSeed(seed)
 		fullGrid := dp.GenerateFullGrid(seedHash)
-		allPuzzles := dp.CarveGivensWithSubset(c.Request.Context(), fullGrid, seedHash)
-		givens = allPuzzles[string(difficulty)]
+		// Only the requested difficulty is needed, so carve to its target directly
+		// instead of generating all five difficulties with the subset property.
+		carved, err := dp.CarveGivens(c.Request.Context(), fullGrid, dp.TargetGivensFor(string(difficulty)), seedHash)
+		if err != nil {
+			writeCarveError(c, err)
+			return
+		}
+		givens = carved
 		puzzleIndex = -1 // Indicates generated, not pre-loaded
 	}
 
@@ -398,8 +420,14 @@ func puzzleAnalyzeHandler(c *gin.Context) {
 	if loader == nil {
 		seedHash := hashSeed(seed)
 		fullGrid := dp.GenerateFullGrid(seedHash)
-		allPuzzles := dp.CarveGivensWithSubset(c.Request.Context(), fullGrid, seedHash)
-		givens = allPuzzles[string(difficulty)]
+		// Only the requested difficulty is needed here, so carve to its target
+		// directly instead of generating all five difficulties.
+		carved, err := dp.CarveGivens(c.Request.Context(), fullGrid, dp.TargetGivensFor(string(difficulty)), seedHash)
+		if err != nil {
+			writeCarveError(c, err)
+			return
+		}
+		givens = carved
 	}
 
 	// Analyze with human solver
@@ -838,26 +866,16 @@ func solveNextHandler(c *gin.Context) {
 		return
 	}
 
-	givens := resolveGivens(c.Request.Context(), session, req.Givens)
+	givens, err := resolveGivens(c.Request.Context(), session, req.Givens)
+	if err != nil {
+		writeCarveError(c, err)
+		return
+	}
 
 	// STEP 1: Check for direct conflicts FIRST (before running solver).
 	// These are immediate rule violations: same digit twice in a row/column/box.
-	conflicts := dp.FindConflicts(req.Board)
-	// mutator-disable-next-line expression/comparison,numbers/decrementer
-	if len(conflicts) > 0 {
-		for _, conflict := range conflicts {
-			move, fixedBoard, fixedCandidates, ok := buildConflictFix(req.Board, req.Candidates, givens, conflict)
-			if !ok {
-				continue
-			}
-			newBoard := human.NewBoardWithCandidates(fixedBoard, fixedCandidates)
-			c.JSON(http.StatusOK, gin.H{
-				"board":      newBoard.GetCells(),
-				"candidates": newBoard.GetCandidates(),
-				"move":       move,
-			})
-			return
-		}
+	if handleSolveNextConflicts(c, req, givens) {
+		return
 	}
 
 	// STEP 2: No direct conflicts - proceed with normal solver.
@@ -883,6 +901,32 @@ func solveNextHandler(c *gin.Context) {
 		"candidates": board.GetCandidates(),
 		"move":       move,
 	})
+}
+
+// handleSolveNextConflicts detects direct rule violations (a digit repeated
+// within a row, column, or box) and, for the first one that yields a clean
+// fix, writes the fixed board + move and returns true. Returns false when
+// there is nothing to fix so the caller proceeds with the normal solver.
+func handleSolveNextConflicts(c *gin.Context, req SolveNextRequest, givens []int) bool {
+	conflicts := dp.FindConflicts(req.Board)
+	// mutator-disable-next-line expression/comparison,numbers/decrementer
+	if len(conflicts) == 0 {
+		return false
+	}
+	for _, conflict := range conflicts {
+		move, fixedBoard, fixedCandidates, ok := buildConflictFix(req.Board, req.Candidates, givens, conflict)
+		if !ok {
+			continue
+		}
+		newBoard := human.NewBoardWithCandidates(fixedBoard, fixedCandidates)
+		c.JSON(http.StatusOK, gin.H{
+			"board":      newBoard.GetCells(),
+			"candidates": newBoard.GetCandidates(),
+			"move":       move,
+		})
+		return true
+	}
+	return false
 }
 
 type SolveAllRequest struct {
@@ -1058,6 +1102,13 @@ func runAutosolveLoop(ctx context.Context, solver *human.Solver, board *human.Bo
 			// mutator-disable-next-line loop/break
 			break
 		}
+		// Re-check the context each iteration so a canceled client stops the
+		// autosolve loop promptly. FindNextMove also checks ctx, but this avoids
+		// one extra round of contradiction handling on a dead request.
+		if err := ctx.Err(); err != nil {
+			moves = appendStalledMove(moves, board, originalUserBoard, givens)
+			break
+		}
 		move := solver.FindNextMove(ctx, board)
 		if move == nil {
 			moves = appendStalledMove(moves, board, originalUserBoard, givens)
@@ -1146,7 +1197,11 @@ func solveAllHandler(c *gin.Context) {
 		return
 	}
 
-	givens := resolveGivens(c.Request.Context(), session, req.Givens)
+	givens, err := resolveGivens(c.Request.Context(), session, req.Givens)
+	if err != nil {
+		writeCarveError(c, err)
+		return
+	}
 
 	// STEP 1: direct conflicts get fixed first, then solving continues from
 	// the corrected board. Falls through when no conflict is user-fixable.
