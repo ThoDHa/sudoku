@@ -22,8 +22,23 @@ const (
 	SessionTokenExpiry = 24 * time.Hour
 )
 
-// Difficulties are defined in package core as core.Difficulty* (the single
-// source of truth); the string literals are not duplicated here.
+// Difficulties
+const (
+	DifficultyEasy       = "easy"
+	DifficultyMedium     = "medium"
+	DifficultyHard       = "hard"
+	DifficultyExtreme    = "extreme"
+	DifficultyImpossible = "impossible"
+)
+
+// Difficulty compact keys (for puzzle file format)
+var DifficultyKeys = map[string]string{
+	DifficultyEasy:       "e",
+	DifficultyMedium:     "m",
+	DifficultyHard:       "h",
+	DifficultyExtreme:    "x",
+	DifficultyImpossible: "i",
+}
 
 // Technique tiers
 const (
