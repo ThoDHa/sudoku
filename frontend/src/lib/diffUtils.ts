@@ -3,6 +3,8 @@
  * Used for compact history storage instead of storing full board states
  */
 
+import { TOTAL_CELLS } from './constants'
+
 export interface CellChange {
   idx: number
   oldValue: number
@@ -35,7 +37,7 @@ export function createStateDiff(
   const candidateChanges: CandidateChange[] = []
 
   // Find board changes
-  for (let idx = 0; idx < 81; idx++) {
+  for (let idx = 0; idx < TOTAL_CELLS; idx++) {
     const oldValue = oldBoard[idx] || 0
     const newValue = newBoard[idx] || 0
     if (oldValue !== newValue) {
@@ -45,7 +47,7 @@ export function createStateDiff(
 
   // Find candidate changes
   // Stryker disable next-line EqualityOperator: idx===81 is out of bounds for the contractually 81-cell Uint16Array; oldCandidates[81] and newCandidates[81] are both undefined and coerce to 0 via the `|| 0` guard, so 0!==0 is false and the extra iteration is a no-op
-  for (let idx = 0; idx < 81; idx++) {
+  for (let idx = 0; idx < TOTAL_CELLS; idx++) {
     const oldMask = oldCandidates[idx] || 0
     const newMask = newCandidates[idx] || 0
     if (oldMask !== newMask) {
@@ -115,8 +117,8 @@ export function getDiffMemorySize(diff: StateDiff): number {
  * Get memory size of storing full board states (old approach)
  */
 export function getFullStateMemorySize(): number {
-  // board: 81 * 4 bytes + candidates: 81 * 2 bytes = 486 bytes per state
-  return 81 * 4 + 81 * 2
+  // board: TOTAL_CELLS * 4 bytes + candidates: TOTAL_CELLS * 2 bytes = 486 bytes per state
+  return TOTAL_CELLS * 4 + TOTAL_CELLS * 2
 }
 
 /**

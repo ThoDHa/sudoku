@@ -1,6 +1,7 @@
 import React, { memo, useRef } from 'react'
 import { hasCandidate, countCandidates } from '../lib/candidatesUtils'
 import { findDuplicates } from '../lib/validationUtils'
+import { TOTAL_CELLS } from '../lib/constants'
 import { useBoardInteraction } from '../hooks/useBoardInteraction'
 
 interface Move {
@@ -299,7 +300,7 @@ const Board = memo(function Board({
   void candidatesVersion
   const cellsWithHighlightedDigit = new Set<number>()
   if (highlightedDigit !== null) {
-    for (let idx = 0; idx < 81; idx++) {
+    for (let idx = 0; idx < TOTAL_CELLS; idx++) {
       // Check if cell is filled with the highlighted digit
       if (board[idx] === highlightedDigit) {
         cellsWithHighlightedDigit.add(idx)
@@ -567,7 +568,7 @@ const Board = memo(function Board({
   // on its full transitive read set; each Cell only re-renders when its specific
   // CellData fields change (see the custom comparator on the Cell memo wrapper).
   const cellDataArray: CellData[] = []
-  for (let idx = 0; idx < 81; idx++) {
+  for (let idx = 0; idx < TOTAL_CELLS; idx++) {
     const row = Math.floor(idx / 9)
     const col = idx % 9
     const isGiven = initialBoard[idx] !== 0

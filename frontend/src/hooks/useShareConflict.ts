@@ -3,7 +3,7 @@ import type { RefObject } from 'react'
 import { isValidSolution } from '../lib/validationUtils'
 import { arraysToCandidates } from '../lib/candidatesUtils'
 import { getMostRecentGame } from '../lib/gameSettings'
-import { STORAGE_KEYS } from '../lib/constants'
+import { STORAGE_KEYS, TOTAL_CELLS } from '../lib/constants'
 import type { UseSudokuGameReturn } from './useSudokuGame'
 import type { useTimerControl } from '../lib/TimerContext'
 import type { SavedGameState } from '../lib/savedGameState'
@@ -99,7 +99,8 @@ export function useShareConflict({
 
   // Overlay a shared board (from a state-link's `s`/`t`) onto the current game.
   const applySharedBoard = (shared: SharedBoardPayload) => {
-    const candidatesArray = shared.candidates ?? Array.from({ length: 81 }, () => [] as number[])
+    const candidatesArray =
+      shared.candidates ?? Array.from({ length: TOTAL_CELLS }, () => [] as number[])
     restoredAsCompleteRef.current = isValidSolution(shared.board)
     game.restoreState(shared.board, arraysToCandidates(candidatesArray), [])
     if (shared.elapsedMs !== null) {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { RefObject } from 'react'
-import { STORAGE_KEYS, MAX_DIGIT } from '../lib/constants'
+import { STORAGE_KEYS, MAX_DIGIT, TOTAL_CELLS } from '../lib/constants'
 import { getGameMode } from '../lib/gameSettings'
 import { shouldShowDailyPrompt, markDailyPromptShown } from '../lib/dailyPrompt'
 import { getPuzzle, validateCustomPuzzle } from '../lib/solver-service'
@@ -96,7 +96,7 @@ async function resolveEncodedCustom(
   } else {
     try {
       givens = decodePuzzle(encoded)
-      if (givens.length !== 81) {
+      if (givens.length !== TOTAL_CELLS) {
         throw new Error('Invalid puzzle encoding')
       }
     } catch {
@@ -300,8 +300,8 @@ export function usePuzzleLoader({
   useEffect(() => {
     const initiatePuzzleLoad = () => {
       // Check if we should show the daily prompt (for practice games only) - INDEPENDENT of onboarding!
-      // Suppress it when opening a shared current-state link (SHARE-2 #4): the
-      // recipient came to view a specific shared board, not to be nudged to the daily.
+      // Suppress it when opening a shared current-state link: the recipient came
+      // to view a specific shared board, not to be nudged to the daily.
       if (getGameMode(effectiveSeed || '') === 'practice' && !sharedStateParam) {
         if (shouldShowDailyPrompt()) {
           setShowDailyPrompt(true)
@@ -395,7 +395,7 @@ export function usePuzzleLoader({
 
           // This load owns loadedFromSharedUrlRef: default false, set true only when
           // shared state is actually applied (restoreOrPromptSharedState). The
-          // seed-reset effect must not touch it (see SHARE-2).
+          // seed-reset effect must not touch it.
           loadedFromSharedUrlRef.current = false
           // Apply the shared board, or prompt when the recipient has their own progress.
           if (initialState) {

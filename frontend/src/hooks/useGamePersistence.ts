@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { RefObject } from 'react'
 import { logger } from '../lib/logger'
-import { STORAGE_KEYS } from '../lib/constants'
+import { STORAGE_KEYS, TOTAL_CELLS } from '../lib/constants'
 import { shouldSuppressAutoSave } from '../lib/autoSaveGuard'
 import { shouldAllowStaleSave } from '../lib/autoSaveSeedGuard'
 import { getAutoSaveEnabled, clearOtherGamesForMode } from '../lib/gameSettings'
@@ -67,10 +67,10 @@ function isValidSavedGameState(value: unknown): value is SavedGameState {
   const v = value as { board?: unknown; candidates?: unknown }
   return (
     Array.isArray(v.board) &&
-    v.board.length === 81 &&
+    v.board.length === TOTAL_CELLS &&
     v.board.every((n) => typeof n === 'number') &&
     Array.isArray(v.candidates) &&
-    v.candidates.length === 81
+    v.candidates.length === TOTAL_CELLS
   )
 }
 
@@ -97,7 +97,7 @@ export function useGamePersistence({
   // if the React state update has not propagated into the effect closure.
   const isCompleteRef = useRef(false)
   // Active puzzle seed at execution time. Lets a stale debounced save detect
-  // that the user has moved on to another puzzle and refuse to write (BUG-12).
+  // that the user has moved on to another puzzle and reject the write.
   const currentSeedRef = useRef<string | null>(null)
   // Tracks whether the latest change was skipped because the app was hidden, so
   // the visibility-flip effect can flush exactly once.

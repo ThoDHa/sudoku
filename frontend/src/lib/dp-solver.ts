@@ -10,7 +10,7 @@
  * For hints and human-style solving, WASM is still required.
  */
 
-import { BOARD_SIZE, SUBGRID_SIZE } from './constants'
+import { BOARD_SIZE, SUBGRID_SIZE, TOTAL_CELLS } from './constants'
 
 // ==================== Types ====================
 
@@ -188,13 +188,13 @@ export function validateBoardAgainstSolution(
   message?: string
   incorrectCells?: number[]
 } {
-  if (board.length !== 81 || solution.length !== 81) {
+  if (board.length !== TOTAL_CELLS || solution.length !== TOTAL_CELLS) {
     return { valid: false, message: 'Invalid board or solution length' }
   }
 
   const incorrectCells: number[] = []
   // Stryker disable next-line EqualityOperator, UpdateOperator: i === 81 yields undefined (coerced to 0 by ?? 0, boardVal 0 is ignored); i-- from 0 is an infinite loop the harness times out on
-  for (let i = 0; i < 81; i++) {
+  for (let i = 0; i < TOTAL_CELLS; i++) {
     // board and solution are both exactly length 81 (guarded above), so for every
     // in-range i the ?? 0 fallbacks are unreachable defensive defaults.
     /* istanbul ignore start */
@@ -223,7 +223,7 @@ function solveBacktrack(board: number[]): boolean {
   // Find next empty cell
   let idx = -1
   // Stryker disable next-line EqualityOperator, UpdateOperator: i === 81 yields board[81] === undefined which is not === 0, so idx is unaffected; i-- from 0 is an infinite loop the harness times out on
-  for (let i = 0; i < 81; i++) {
+  for (let i = 0; i < TOTAL_CELLS; i++) {
     if (board[i] === 0) {
       idx = i
       break
@@ -270,7 +270,7 @@ function countSolutions(grid: number[], maxCount: number): number {
     // Find next empty cell
     let idx = -1
     // Stryker disable next-line EqualityOperator, UpdateOperator: i === 81 yields board[81] === undefined which is not === 0, so idx is unaffected; i-- from 0 is an infinite loop the harness times out on
-    for (let i = 0; i < 81; i++) {
+    for (let i = 0; i < TOTAL_CELLS; i++) {
       if (board[i] === 0) {
         idx = i
         break
