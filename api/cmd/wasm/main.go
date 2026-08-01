@@ -652,7 +652,10 @@ func carveGivens(this js.Value, args []js.Value) interface{} {
 	targetGivens := args[1].Int()
 	seed := int64(args[2].Float())
 
-	puzzle := dp.CarveGivens(context.Background(), fullGrid, targetGivens, seed)
+	puzzle, err := dp.CarveGivens(context.Background(), fullGrid, targetGivens, seed)
+	if err != nil {
+		return js.Null()
+	}
 	return intSliceToJSArray(puzzle)
 }
 
@@ -671,7 +674,10 @@ func carveGivensWithSubset(this js.Value, args []js.Value) interface{} {
 
 	seed := int64(args[1].Float())
 
-	puzzles := dp.CarveGivensWithSubset(context.Background(), fullGrid, seed)
+	puzzles, err := dp.CarveGivensWithSubset(context.Background(), fullGrid, seed)
+	if err != nil {
+		return js.Null()
+	}
 
 	// Build JS object explicitly
 	obj := js.Global().Get("Object").New()
@@ -1442,7 +1448,10 @@ func getPuzzleForSeed(this js.Value, args []js.Value) interface{} {
 	// Generate deterministic seed hash
 	seedHash := hashSeed(seed)
 	fullGrid := dp.GenerateFullGrid(seedHash)
-	allPuzzles := dp.CarveGivensWithSubset(context.Background(), fullGrid, seedHash)
+	allPuzzles, err := dp.CarveGivensWithSubset(context.Background(), fullGrid, seedHash)
+	if err != nil {
+		return errorToJS("puzzle generation failed")
+	}
 	givens := allPuzzles[difficulty]
 
 	puzzleID := seed + "-" + difficulty
