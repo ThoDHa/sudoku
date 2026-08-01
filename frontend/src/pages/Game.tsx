@@ -11,6 +11,7 @@ import TechniquesListModal from '../components/TechniquesListModal'
 import GameHeader from '../components/GameHeader'
 import GameModals from '../components/GameModals'
 import GameOverlays from '../components/GameOverlays'
+import { Toast } from '../components/Toast'
 import AboutModal, { useAboutModal } from '../components/AboutModal'
 import DailyPromptModal from '../components/DailyPromptModal'
 import { PauseOverlayTimer } from '../components/TimerDisplay'
@@ -225,7 +226,7 @@ function GameContent() {
 
   // A plain (non-visibility-aware) timeout: fires after its delay even if the tab
   // was hidden mid-countdown. The visibility-aware timer cancels on hide and never
-  // re-arms, which left toasts stuck (SHARE-2 #1), so toast-clearing uses this.
+  // re-arms, so toast-clearing uses this plain timeout to guarantee the clearer fires.
   const plainToastTimeout = (cb: () => void, delay: number): (() => void) => {
     const id = window.setTimeout(cb, delay)
     return () => {
@@ -657,9 +658,7 @@ function GameContent() {
   // All cell-click, digit-entry, keyboard-cell-change, drag, mode-toggle,
   // undo, and redo handlers live in useGameInput. The hook takes the mirror
   // refs and the stable highlight-state callbacks as inputs and returns the
-  // stable handlers Cell/Board/Controls memoization depends on. Behavior is
-  // identical to the inline implementation that lived here previously; the
-  // hook preserves every deps array exactly.
+  // handlers Cell/Board/Controls render against.
   const {
     handleCellClick,
     handleCellChange,
@@ -799,8 +798,7 @@ function GameContent() {
       hasRestoredSavedState.current = false
       // Do NOT reset loadedFromSharedUrl here. loadPuzzle owns it per load (false
       // by default, true only when it applies shared state). Resetting it here
-      // raced ahead of the restore effect below and wiped the shared board back
-      // to bare givens on a share-link open (SHARE-2).
+      // races the restore effect below and clobbers an applied shared board.
       logger.debug('[RESTORATION FLAG RESET] Seed changed to:', puzzle.seed, 'Flag reset to false')
     }
   }, [puzzle?.seed])
@@ -993,9 +991,11 @@ function GameContent() {
         onMenuOpenChange={setMenuOpen}
       />
 
-      {/* Validation message toast */}
+      {/* Validation message toast - live region so screen readers announce it.
+          Errors are assertive; success/info are polite. */}
       {validationMessage && (
-        <div
+        <Toast
+          role={validationMessage.type === 'error' ? 'alert' : 'status'}
           className={`validation-message fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg flex items-center gap-3 ${
             validationMessage.type === 'success'
               ? 'bg-accent text-btn-active-text'
@@ -1016,7 +1016,7 @@ function GameContent() {
               {validationMessage.action.label}
             </button>
           )}
-        </div>
+        </Toast>
       )}
 
       <div className="game-background game-area flex-1" data-testid="game-background">

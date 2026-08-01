@@ -271,6 +271,13 @@ describe('Game page render-test harness', () => {
         expect(screen.getByText(/Only candidate here/i)).toBeInTheDocument()
       })
 
+      // The toast is a polite live region (success => role=status) so screen
+      // readers announce validation/hint messages instead of rendering them silent.
+      await waitFor(() => {
+        const toast = screen.getByRole('status')
+        expect(toast).toHaveAttribute('aria-live', 'polite')
+      })
+
       // The hint target (row 0, col TARGET_IDX -> idx TARGET_IDX) carries the
       // primary-highlight class, proving the highlight braid is intact.
       await waitFor(() => {
