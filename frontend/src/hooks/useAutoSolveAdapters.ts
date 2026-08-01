@@ -67,9 +67,7 @@ export interface UseAutoSolveAdaptersReturn {
   handleStepNavigate: (move: Move | null) => void
 }
 
-// Stable adapter callbacks for useAutoSolve, extracted from Game.tsx. This is
-// the second slice of the CODE-6 braid after useGameInput. Behavior is identical
-// to the inline implementation that lived in Game.tsx previously.
+// Stable adapter callbacks for useAutoSolve, extracted from Game.tsx.
 //
 // handleGameComplete (which reads timerControlRef + handleSubmitRef, the
 // circular-dep breaker between useSudokuGame's onComplete and handleSubmit)

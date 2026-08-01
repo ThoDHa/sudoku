@@ -133,7 +133,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       setAutoSolveStepsUsed,
       setAutoSolveErrorsFixed,
     })
-    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization to be replaced by React Compiler (FE-7); test mocks provide stable objects so stale-closure mutant is equivalent
+    // Stryker disable next-line ArrayDeclaration: useCallback deps are manual memoization (load-bearing for context stability); test mocks provide stable objects so the stale-closure mutant is equivalent
   }, [game, clearSavedGameState, clearAllAndDeselect])
 
   // Reset all game state (board, candidates, history, and tracking variables)

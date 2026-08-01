@@ -130,7 +130,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
       deselectCell()
     }
 
-    // Fix 1: Clear highlight when digit becomes complete
+    // Clear highlight when the placed digit becomes complete
     // Check if the digit we just placed is now complete (all 9 instances on board)
     if (!notesMode) {
       const digitCounts = gameRef.current.digitCounts
@@ -290,7 +290,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
 
     if (!currentGame) return
 
-    // Fix 2: Block selection of complete digits
+    // Block selection of complete digits
     // Don't allow selecting/placing digits that have all 9 instances on the board
     if (isDigitComplete(digit, currentGame.digitCounts)) {
       return
