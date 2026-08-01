@@ -272,6 +272,44 @@ func TestSolveWithSteps_ReturnsStalledOnContradiction(t *testing.T) {
 	}
 }
 
+// TestFindNextMove_CancelledContextReturnsNil asserts that a canceled context
+// short-circuits FindNextMove instead of running the full detection pipeline.
+func TestFindNextMove_CancelledContextReturnsNil(t *testing.T) {
+	givens := make([]int, 81)
+	copy(givens, solvedGrid[:])
+	givens[0] = 0
+	givens[40] = 0
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	move := NewSolver().FindNextMove(ctx, NewBoard(givens))
+	if move != nil {
+		t.Errorf("expected nil move on canceled context, got technique=%q", move.Technique)
+	}
+}
+
+// TestSolveWithSteps_CancelledContextStalls asserts the loop honors a canceled
+// context by breaking early with a stalled status rather than running to
+// completion or to MaxSolverSteps.
+func TestSolveWithSteps_CancelledContextStalls(t *testing.T) {
+	givens := make([]int, 81)
+	copy(givens, solvedGrid[:])
+	givens[0] = 0
+	givens[40] = 0
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	moves, status := NewSolver().SolveWithSteps(ctx, NewBoard(givens), constants.MaxSolverSteps)
+	if status != constants.StatusStalled {
+		t.Errorf("expected stalled on canceled context, got %q", status)
+	}
+	if len(moves) != 0 {
+		t.Errorf("expected no moves on immediately-canceled context, got %d", len(moves))
+	}
+}
+
 // --- AnalyzePuzzleDifficulty (solver.go) ---
 
 // TestAnalyzePuzzleDifficulty_UnsolvableShortCircuits kills HUMAN-42: when the

@@ -123,7 +123,7 @@ func (s *Solver) createDuplicateViolationMove(digit int, idx1, idx2 int, unitTyp
 
 	return &core.Move{
 		Technique: technique,
-		Action:    "contradiction",
+		Action:    constants.ActionContradiction,
 		Digit:     digit,
 		Targets: []core.CellRef{
 			{Row: row1, Col: col1},
@@ -204,7 +204,7 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 			if !anyValidPlacement {
 				return &core.Move{
 					Technique:   "contradiction",
-					Action:      "contradiction",
+					Action:      constants.ActionContradiction,
 					Digit:       0,
 					Targets:     []core.CellRef{{Row: row, Col: col}},
 					Explanation: fmt.Sprintf("No candidates available for R%dC%d: contradiction detected", row+1, col+1),
@@ -257,7 +257,7 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 
 				return &core.Move{
 					Technique:    "constraint-violation-invalid-candidate",
-					Action:       "eliminate",
+					Action:       constants.ActionEliminate,
 					Digit:        d,
 					Targets:      []core.CellRef{{Row: row, Col: col}},
 					Eliminations: []core.Candidate{{Row: row, Col: col, Digit: d}},
@@ -282,6 +282,13 @@ func (s *Solver) checkConstraintViolations(b *Board) *core.Move {
 
 // FindNextMove finds the next applicable move using simple-first strategy
 func (s *Solver) FindNextMove(ctx context.Context, b *Board) *core.Move {
+	// Honor a canceled context before running the detection pipeline: a
+	// disconnected client should not keep the solver working through every
+	// technique. Returns nil (the same shape as a no-move-found result) so the
+	// caller's existing nil handling short-circuits the request.
+	if err := ctx.Err(); err != nil {
+		return nil
+	}
 	// FIRST: Check for constraint violations before attempting any other moves
 	if violation := s.checkConstraintViolations(b); violation != nil {
 		return violation
@@ -398,7 +405,7 @@ func (s *Solver) fillCandidatesForUnit(b *Board, unitType UnitType, unitIndex, d
 		if !digitExistsInCells(b, row, col, d) && !b.Candidates[i].Has(d) && !b.Eliminated[i].Has(d) {
 			return &core.Move{
 				Technique:   "fill-candidate",
-				Action:      "candidate",
+				Action:      constants.ActionCandidate,
 				Digit:       d,
 				Targets:     []core.CellRef{{Row: row, Col: col}},
 				Explanation: fmt.Sprintf("Added %d as a candidate to R%dC%d", d, row+1, col+1),
@@ -587,7 +594,7 @@ func (s *Solver) ApplyMove(b *Board, move *core.Move) {
 		for _, elim := range move.Eliminations {
 			b.RemoveCandidate(elim.Row*constants.GridSize+elim.Col, elim.Digit)
 		}
-	case "candidate":
+	case constants.ActionCandidate:
 		for _, target := range move.Targets {
 			idx := target.Row*constants.GridSize + target.Col
 			b.AddCandidate(idx, move.Digit)
@@ -606,6 +613,12 @@ func (s *Solver) SolveWithSteps(ctx context.Context, b *Board, maxSteps int) ([]
 	step := 0
 
 	for step < maxSteps && !b.IsSolved() {
+		// Re-check the context each iteration so a canceled request breaks out
+		// of the loop promptly instead of running up to maxSteps moves. Returns
+		// the moves accumulated so far with a stalled status.
+		if err := ctx.Err(); err != nil {
+			return moves, constants.StatusStalled
+		}
 		move := s.FindNextMove(ctx, b)
 		if move == nil {
 			return moves, constants.StatusStalled
@@ -615,7 +628,7 @@ func (s *Solver) SolveWithSteps(ctx context.Context, b *Board, maxSteps int) ([]
 		s.ApplyMove(b, move)
 		moves = append(moves, *move)
 
-		if move.Action == "contradiction" {
+		if move.Action == constants.ActionContradiction {
 			return moves, constants.StatusStalled
 		}
 
