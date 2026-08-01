@@ -7,6 +7,7 @@ import (
 
 	"sudoku-api/internal/core"
 	"sudoku-api/internal/sudoku/human/techniques"
+	"sudoku-api/pkg/constants"
 )
 
 // TechniqueDescriptor holds metadata about a solving technique
@@ -64,7 +65,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Naked Single",
 		Slug:        "naked-single",
-		Tier:        "simple",
+		Tier:        constants.TierSimple,
 		Description: "A cell with only one possible candidate",
 		Detector:    techniques.DetectNakedSingle,
 		Enabled:     true,
@@ -75,7 +76,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Hidden Single",
 		Slug:        "hidden-single",
-		Tier:        "simple",
+		Tier:        constants.TierSimple,
 		Description: "A digit that can only go in one cell in a row, column, or box",
 		Detector:    techniques.DetectHiddenSingle,
 		Enabled:     true,
@@ -86,7 +87,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Naked Pair",
 		Slug:        "naked-pair",
-		Tier:        "simple",
+		Tier:        constants.TierSimple,
 		Description: "Two cells with the same two candidates eliminate those digits from their peers",
 		Detector:    techniques.DetectNakedPair,
 		Enabled:     true,
@@ -96,7 +97,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Hidden Pair",
 		Slug:        "hidden-pair",
-		Tier:        "simple",
+		Tier:        constants.TierSimple,
 		Description: "Two digits that can only be in two cells eliminate other candidates from those cells",
 		Detector:    techniques.DetectHiddenPair,
 		Enabled:     true,
@@ -107,7 +108,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Pointing Pair",
 		Slug:        "pointing-pair",
-		Tier:        "simple",
+		Tier:        constants.TierSimple,
 		Description: "If a digit in a box can only be in one row/column, eliminate it from the rest of that row/column",
 		Detector:    techniques.DetectPointingPair,
 		Enabled:     true,
@@ -117,7 +118,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Box-Line Reduction",
 		Slug:        "box-line-reduction",
-		Tier:        "simple",
+		Tier:        constants.TierSimple,
 		Description: "If a digit in a row/column can only be in one box, eliminate it from the rest of that box",
 		Detector:    techniques.DetectBoxLineReduction,
 		Enabled:     true,
@@ -128,7 +129,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Naked Triple",
 		Slug:        "naked-triple",
-		Tier:        "simple",
+		Tier:        constants.TierSimple,
 		Description: "Three cells with the same three candidates eliminate those digits from their peers",
 		Detector:    techniques.DetectNakedTriple,
 		Enabled:     true,
@@ -138,7 +139,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Hidden Triple",
 		Slug:        "hidden-triple",
-		Tier:        "simple",
+		Tier:        constants.TierSimple,
 		Description: "Three digits that can only be in three cells eliminate other candidates from those cells",
 		Detector:    techniques.DetectHiddenTriple,
 		Enabled:     true,
@@ -154,7 +155,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Naked Quad",
 		Slug:        "naked-quad",
-		Tier:        "medium",
+		Tier:        constants.TierMedium,
 		Description: "Four cells with the same four candidates eliminate those digits from their peers",
 		Detector:    techniques.DetectNakedQuad,
 		Enabled:     true,
@@ -164,7 +165,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Hidden Quad",
 		Slug:        "hidden-quad",
-		Tier:        "medium",
+		Tier:        constants.TierMedium,
 		Description: "Four digits that can only be in four cells eliminate other candidates from those cells",
 		Detector:    techniques.DetectHiddenQuad,
 		Enabled:     true,
@@ -175,7 +176,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "X-Wing",
 		Slug:        "x-wing",
-		Tier:        "medium",
+		Tier:        constants.TierMedium,
 		Description: "A digit forming a rectangle pattern allows eliminations",
 		Detector:    techniques.DetectXWing,
 		Enabled:     true,
@@ -185,7 +186,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Swordfish",
 		Slug:        "swordfish",
-		Tier:        "medium",
+		Tier:        constants.TierMedium,
 		Description: "A 3x3 fish pattern for eliminations",
 		Detector:    techniques.DetectSwordfish,
 		Enabled:     true,
@@ -196,7 +197,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "XY-Wing",
 		Slug:        "xy-wing",
-		Tier:        "medium",
+		Tier:        constants.TierMedium,
 		Description: "A hinge cell and two pincers eliminate candidates",
 		Detector:    techniques.DetectXYWing,
 		Enabled:     true,
@@ -206,7 +207,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "XYZ-Wing",
 		Slug:        "xyz-wing",
-		Tier:        "medium",
+		Tier:        constants.TierMedium,
 		Description: "A trivalue hinge with bivalue pincers",
 		Detector:    techniques.DetectXYZWing,
 		Enabled:     true,
@@ -217,7 +218,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Simple Coloring",
 		Slug:        "simple-coloring",
-		Tier:        "medium",
+		Tier:        constants.TierMedium,
 		Description: "Color chains of strong links to find eliminations",
 		Detector:    techniques.DetectSimpleColoring,
 		Enabled:     true,
@@ -228,7 +229,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "BUG",
 		Slug:        "bug",
-		Tier:        "medium",
+		Tier:        constants.TierMedium,
 		Description: "Bivalue Universal Grave - avoid patterns with multiple solutions",
 		Detector:    techniques.DetectBUG,
 		Enabled:     true,
@@ -238,7 +239,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Unique Rectangle",
 		Slug:        "unique-rectangle",
-		Tier:        "medium",
+		Tier:        constants.TierMedium,
 		Description: "Avoid deadly rectangles that would make puzzle have multiple solutions",
 		Detector:    techniques.DetectUniqueRectangle,
 		Enabled:     true,
@@ -254,7 +255,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Jellyfish",
 		Slug:        "jellyfish",
-		Tier:        "hard",
+		Tier:        constants.TierHard,
 		Description: "A 4x4 fish pattern for eliminations",
 		Detector:    techniques.DetectJellyfish,
 		Enabled:     true,
@@ -265,7 +266,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Skyscraper",
 		Slug:        "skyscraper",
-		Tier:        "hard",
+		Tier:        constants.TierHard,
 		Description: "A turbot fish variant for eliminations",
 		Detector:    techniques.DetectSkyscraper,
 		Enabled:     true,
@@ -276,7 +277,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "X-Chain",
 		Slug:        "x-chain",
-		Tier:        "hard",
+		Tier:        constants.TierHard,
 		Description: "Chain of alternating strong/weak links for a single digit",
 		Detector:    techniques.DetectXChain,
 		Enabled:     true,
@@ -287,7 +288,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "XY-Chain",
 		Slug:        "xy-chain",
-		Tier:        "hard",
+		Tier:        constants.TierHard,
 		Description: "Chain through bivalue cells",
 		Detector:    techniques.DetectXYChain,
 		Enabled:     true,
@@ -298,7 +299,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "W-Wing",
 		Slug:        "w-wing",
-		Tier:        "hard",
+		Tier:        constants.TierHard,
 		Description: "Two bivalue cells connected by strong link",
 		Detector:    techniques.DetectWWing,
 		Enabled:     true,
@@ -309,7 +310,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "WXYZ-Wing",
 		Slug:        "wxyz-wing",
-		Tier:        "hard",
+		Tier:        constants.TierHard,
 		Description: "A four-candidate wing pattern",
 		Detector:    techniques.DetectWXYZWing,
 		Enabled:     true,
@@ -320,7 +321,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Empty Rectangle",
 		Slug:        "empty-rectangle",
-		Tier:        "hard",
+		Tier:        constants.TierHard,
 		Description: "Use empty rectangles to create eliminations",
 		Detector:    techniques.DetectEmptyRectangle,
 		Enabled:     true,
@@ -331,7 +332,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "3D Medusa",
 		Slug:        "medusa-3d",
-		Tier:        "hard",
+		Tier:        constants.TierHard,
 		Description: "Multi-digit coloring with strong/weak link chains",
 		Detector:    techniques.DetectMedusa3D,
 		Enabled:     true,
@@ -342,7 +343,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Unique Rectangle Type 2",
 		Slug:        "unique-rectangle-type-2",
-		Tier:        "hard",
+		Tier:        constants.TierHard,
 		Description: "Unique rectangle with extra candidates in one corner",
 		Detector:    techniques.DetectUniqueRectangleType2,
 		Enabled:     true,
@@ -352,7 +353,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Unique Rectangle Type 3",
 		Slug:        "unique-rectangle-type-3",
-		Tier:        "hard",
+		Tier:        constants.TierHard,
 		Description: "Unique rectangle with naked pair/triple",
 		Detector:    techniques.DetectUniqueRectangleType3,
 		Enabled:     true,
@@ -362,7 +363,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Unique Rectangle Type 4",
 		Slug:        "unique-rectangle-type-4",
-		Tier:        "hard",
+		Tier:        constants.TierHard,
 		Description: "Unique rectangle with hidden pair",
 		Detector:    techniques.DetectUniqueRectangleType4,
 		Enabled:     true,
@@ -378,7 +379,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Finned X-Wing",
 		Slug:        "finned-x-wing",
-		Tier:        "extreme",
+		Tier:        constants.TierExtreme,
 		Description: "An X-Wing with extra candidates (fins)",
 		Detector:    techniques.DetectFinnedXWing,
 		Enabled:     true,
@@ -388,7 +389,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Finned Swordfish",
 		Slug:        "finned-swordfish",
-		Tier:        "extreme",
+		Tier:        constants.TierExtreme,
 		Description: "A Swordfish with extra candidates (fins)",
 		Detector:    techniques.DetectFinnedSwordfish,
 		Enabled:     true,
@@ -399,7 +400,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Grouped X-Cycles",
 		Slug:        "grouped-x-cycles",
-		Tier:        "extreme",
+		Tier:        constants.TierExtreme,
 		Description: "X-Cycles using group strong links",
 		Detector:    techniques.DetectGroupedXCycles,
 		Enabled:     true,
@@ -410,7 +411,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "AIC",
 		Slug:        "aic",
-		Tier:        "extreme",
+		Tier:        constants.TierExtreme,
 		Description: "Alternating Inference Chains",
 		Detector:    techniques.DetectAIC,
 		Enabled:     true,
@@ -421,7 +422,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "ALS-XZ",
 		Slug:        "als-xz",
-		Tier:        "extreme",
+		Tier:        constants.TierExtreme,
 		Description: "Almost Locked Set with XZ rule",
 		Detector:    techniques.DetectALSXZ,
 		Enabled:     true,
@@ -431,7 +432,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "ALS-XY-Wing",
 		Slug:        "als-xy-wing",
-		Tier:        "extreme",
+		Tier:        constants.TierExtreme,
 		Description: "Almost Locked Set XY-Wing pattern",
 		Detector:    techniques.DetectALSXYWing,
 		Enabled:     true,
@@ -441,7 +442,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "ALS-XY-Chain",
 		Slug:        "als-xy-chain",
-		Tier:        "extreme",
+		Tier:        constants.TierExtreme,
 		Description: "Chain of Almost Locked Sets",
 		Detector:    techniques.DetectALSXYChain,
 		Enabled:     true,
@@ -452,7 +453,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Sue de Coq",
 		Slug:        "sue-de-coq",
-		Tier:        "extreme",
+		Tier:        constants.TierExtreme,
 		Description: "Two intersecting almost locked sets",
 		Detector:    techniques.DetectSueDeCoq,
 		Enabled:     true,
@@ -463,7 +464,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Death Blossom",
 		Slug:        "death-blossom",
-		Tier:        "extreme",
+		Tier:        constants.TierExtreme,
 		Description: "Advanced ALS pattern with stem and petals",
 		Detector:    techniques.DetectDeathBlossom,
 		Enabled:     true,
@@ -474,7 +475,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Digit Forcing Chain",
 		Slug:        "digit-forcing-chain",
-		Tier:        "extreme",
+		Tier:        constants.TierExtreme,
 		Description: "Forcing chain focused on single digit",
 		Detector:    techniques.DetectDigitForcingChain,
 		Enabled:     true,
@@ -484,7 +485,7 @@ func (r *TechniqueRegistry) registerTechniques() {
 	r.register(TechniqueDescriptor{
 		Name:        "Forcing Chain",
 		Slug:        "forcing-chain",
-		Tier:        "extreme",
+		Tier:        constants.TierExtreme,
 		Description: "Chain of implications from candidate assumptions",
 		Detector:    techniques.DetectForcingChain,
 		Enabled:     true,

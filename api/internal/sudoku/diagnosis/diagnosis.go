@@ -140,12 +140,6 @@ func firstUserBlocker(cells []int, board *human.Board, digit int, originalUserBo
 // likely wrong; ties resolve to the lowest-index cell, so the result is
 // deterministic.
 //
-// This is the unified source of truth for both the WASM client (production)
-// and the HTTP transport (dev/test). Adopting the deterministic lowest-index
-// form here normalizes a prior latent non-determinism in the WASM path; the
-// fix only affects the autosolve fix-path, not the solver's solution or
-// user-facing correctness.
-//
 // Returns: Cell index and blocking digit, or (-1, 0) if no user error found.
 func FindBlockingUserCell(board *human.Board, contradictionCell int, originalUserBoard, givens []int) (int, int) {
 	row, col := contradictionCell/constants.GridSize, contradictionCell%constants.GridSize

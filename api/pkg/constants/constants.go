@@ -22,23 +22,8 @@ const (
 	SessionTokenExpiry = 24 * time.Hour
 )
 
-// Difficulties
-const (
-	DifficultyEasy       = "easy"
-	DifficultyMedium     = "medium"
-	DifficultyHard       = "hard"
-	DifficultyExtreme    = "extreme"
-	DifficultyImpossible = "impossible"
-)
-
-// Difficulty compact keys (for puzzle file format)
-var DifficultyKeys = map[string]string{
-	DifficultyEasy:       "e",
-	DifficultyMedium:     "m",
-	DifficultyHard:       "h",
-	DifficultyExtreme:    "x",
-	DifficultyImpossible: "i",
-}
+// Difficulties are defined in package core as core.Difficulty* (the single
+// source of truth); the string literals are not duplicated here.
 
 // Technique tiers
 const (
@@ -50,9 +35,15 @@ const (
 
 // Move actions
 const (
-	ActionAssign        = "assign"
-	ActionEliminate     = "eliminate"
-	ActionContradiction = "contradiction"
+	ActionAssign            = "assign"
+	ActionEliminate         = "eliminate"
+	ActionContradiction     = "contradiction"
+	ActionCandidate         = "candidate"
+	ActionFixError          = "fix-error"
+	ActionStalled           = "stalled"
+	ActionError             = "error"
+	ActionDiagnostic        = "diagnostic"
+	ActionUnpinpointableErr = "unpinpointable-error"
 )
 
 // Solver status

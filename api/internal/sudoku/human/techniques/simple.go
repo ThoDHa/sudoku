@@ -9,13 +9,13 @@ import (
 
 // DetectNakedSingle finds a cell with only one candidate
 func DetectNakedSingle(b BoardInterface) *core.Move {
-	for i := range constants.GridSize * constants.GridSize {
+	for i := range constants.TotalCells {
 		if b.GetCell(i) == 0 && b.GetCandidatesAt(i).Count() == 1 {
 			digit, _ := b.GetCandidatesAt(i).Only()
 			row, col := i/constants.GridSize, i%constants.GridSize
 
 			return &core.Move{
-				Action:      "assign",
+				Action:      constants.ActionAssign,
 				Digit:       digit,
 				Targets:     []core.CellRef{{Row: row, Col: col}},
 				Explanation: fmt.Sprintf("Cell R%dC%d has only one candidate: %d", row+1, col+1, digit),

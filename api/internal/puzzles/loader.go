@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"sudoku-api/internal/core"
 	"sudoku-api/pkg/constants"
 )
 
@@ -33,20 +34,20 @@ type Loader struct {
 
 // DifficultyKey maps full difficulty names to compact keys
 var DifficultyKey = map[string]string{
-	"easy":       "e",
-	"medium":     "m",
-	"hard":       "h",
-	"extreme":    "x",
-	"impossible": "i",
+	string(core.DifficultyEasy):       "e",
+	string(core.DifficultyMedium):     "m",
+	string(core.DifficultyHard):       "h",
+	string(core.DifficultyExtreme):    "x",
+	string(core.DifficultyImpossible): "i",
 }
 
 // KeyToDifficulty maps compact keys to full difficulty names
 var KeyToDifficulty = map[string]string{
-	"e": "easy",
-	"m": "medium",
-	"h": "hard",
-	"x": "extreme",
-	"i": "impossible",
+	"e": string(core.DifficultyEasy),
+	"m": string(core.DifficultyMedium),
+	"h": string(core.DifficultyHard),
+	"x": string(core.DifficultyExtreme),
+	"i": string(core.DifficultyImpossible),
 }
 
 var (

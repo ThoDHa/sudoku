@@ -3,6 +3,8 @@ package config
 import (
 	"errors"
 	"os"
+
+	"sudoku-api/pkg/constants"
 )
 
 type Config struct {
@@ -30,7 +32,7 @@ func Load() (*Config, error) {
 
 	return &Config{
 		JWTSecret:   jwtSecret,
-		Port:        getEnv("PORT", "8080"),
+		Port:        getEnv("PORT", constants.DefaultPort),
 		PuzzlesFile: getEnv("PUZZLES_FILE", "/data/puzzles.json"),
 	}, nil
 }
