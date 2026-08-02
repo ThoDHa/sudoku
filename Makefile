@@ -318,6 +318,7 @@ help:
 	@echo "  check-fast       - Fast per-commit gate (lint + go + unit, no coverage)"
 	@echo "  check            - Full non-e2e gate (lint + typecheck + go + coverage + dup + vuln)"
 	@echo "  check-full       - Full gate incl. e2e + integration (= check + e2e + integration)"
+	@echo "  check-wasm       - Type-check cmd/wasm under js&&wasm (part of check/check-fast)"
 	@echo "  test             - Full test run incl. e2e (Go + unit + E2E)"
 	@echo "  test-go          - Run Go tests with Allure output"
 	@echo "  test-unit        - Run Frontend unit tests with Allure output (Docker)"

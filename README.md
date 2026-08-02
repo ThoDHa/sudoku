@@ -336,6 +336,18 @@ make test-integration
 make test-frontend
 ```
 
+### Quality Gate
+
+Before pushing, run the local quality gate — it mirrors what CI enforces:
+
+```bash
+make check-fast   # lint + typecheck + Go + frontend unit (+ WASM type-check); tight dev loop
+make check        # adds Go/frontend coverage floors, the duplication gate, and govulncheck
+make check-full   # adds E2E + integration (slow; true superset of check)
+```
+
+`check-wasm` type-checks `api/cmd/wasm` under its `//go:build js && wasm` constraint via a standard Go cross-compile (`GOOS=js GOARCH=wasm`, no TinyGo required). Host `go build ./...` skips those files, so `check-wasm` is what prevents a WASM-caller signature change from compiling locally and breaking only in CI's TinyGo build.
+
 ---
 
 ## Code Quality
