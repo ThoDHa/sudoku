@@ -1,7 +1,7 @@
 # Sudoku Project Makefile
 # Provides git hooks installation, testing, and linting
 
-.PHONY: check check-fast check-full test test-go test-scripts test-unit test-e2e test-integration test-frontend lint lint-go tools-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck mutation-frontend mutation-go mutation-gate mutation-clean format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons wasm dev prod prod-test report serve-reports allure-report allure-serve allure-clean
+.PHONY: check check-fast check-full check-wasm test test-go test-scripts test-unit test-e2e test-integration test-frontend lint lint-go tools-go lint-frontend typecheck-frontend coverage-frontend dup-frontend coverage-go vulncheck mutation-frontend mutation-go mutation-gate mutation-clean format format-frontend format-go format-check format-check-frontend format-check-go help generate-icons wasm dev prod prod-test report serve-reports allure-report allure-serve allure-clean
 
 #-----------------------------------------------------------------------
 # Development & Production
@@ -236,12 +236,24 @@ test: allure-clean
 	@echo "  All tests complete! Run 'make report' to generate report"
 	@echo "========================================"
 
+# Type-check the WASM entry point (cmd/wasm) under its js&&wasm build
+# constraint. Host `go build ./...` skips these files, so without this target
+# the non-WASM gate cannot see compile errors in cmd/wasm that CI's TinyGo
+# WASM build (and the deployed solver) would hit. Standard go (not TinyGo) is
+# enough to catch signature/symbol errors; the production artifact is still
+# built by TinyGo via `make wasm`.
+check-wasm:
+	@echo ""
+	@echo "[WASM] Type-checking cmd/wasm (GOOS=js GOARCH=wasm)..."
+	@cd api && GOOS=js GOARCH=wasm go build ./cmd/wasm/
+	@echo "[WASM] cmd/wasm type-check passed!"
+
 # Full local gate: mirrors what CI enforces (minus e2e). Run before pushing
 # so local-green guarantees CI-green. Slower than check-fast because it adds
 # the coverage thresholds, the duplication gate, and govulncheck.
 # e2e/integration stay in `make check-full` and `make test`; e2e-green is
 # owned by TEST-001.F.
-check: lint-go lint-frontend typecheck-frontend test-go test-scripts coverage-go vulncheck coverage-frontend dup-frontend
+check: lint-go lint-frontend typecheck-frontend check-wasm test-go test-scripts coverage-go vulncheck coverage-frontend dup-frontend
 	@echo ""
 	@echo "========================================"
 	@echo "  Full gate passed (lint + go + frontend"
@@ -252,7 +264,7 @@ check: lint-go lint-frontend typecheck-frontend test-go test-scripts coverage-go
 # Fast per-commit gate: lint + Go + frontend unit (no coverage/dup/vuln).
 # Use for tight dev loops; run `make check` before pushing to catch the
 # quality gates CI enforces.
-check-fast: lint-go lint-frontend typecheck-frontend test-go test-scripts test-unit
+check-fast: lint-go lint-frontend typecheck-frontend check-wasm test-go test-scripts test-unit
 	@echo ""
 	@echo "========================================"
 	@echo "  Fast gate passed (lint + go + unit)."
