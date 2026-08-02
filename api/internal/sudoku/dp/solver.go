@@ -189,11 +189,10 @@ func appendBoxConflicts(grid []int, box int, seen *map[uint64]bool, conflicts []
 	return appendUnitConflicts(positions, counts, "box", seen, conflicts)
 }
 
-// conflictKey builds an integer dedup key from (cell1, cell2, val). cell1 < cell2
-// always in the caller (i < j over index-ascending groups), so the normalization
-// branch is dead code; it is retained defensively. Cell indices are bounded 0-80
-// and val 1-9, so cell1*810 + cell2*10 + val uniquely identifies the triple and
-// cannot overflow int (max 65609) before the uint64 conversion.
+// conflictKey builds an integer dedup key from (cell1, cell2, val), normalizing
+// the pair so (a,b) and (b,a) collide. Cell indices are bounded 0-80 and val
+// 1-9, so cell1*810 + cell2*10 + val uniquely identifies the triple and cannot
+// overflow int (max 65609) before the uint64 conversion.
 // mutator-disable-func
 func conflictKey(cell1, cell2, val int) uint64 {
 	if cell1 > cell2 {
