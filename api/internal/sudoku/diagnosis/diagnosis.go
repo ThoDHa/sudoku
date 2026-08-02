@@ -52,26 +52,11 @@ func FindErrorByCandidateRefill(originalUserBoard, givens []int) (badCell, badDi
 // digit. The scan order matches the original per-transport inline scans, so
 // the first match is deterministic.
 func firstBlockingUserPeer(originalUserBoard, givens []int, row, col, digit int) (int, bool) {
-	// Row peers (left to right).
-	for c := range constants.GridSize {
-		cellIdx := row*constants.GridSize + c
-		if userHoldsDigit(originalUserBoard, givens, cellIdx, digit) {
-			return cellIdx, true
-		}
-	}
-	// Column peers (top to bottom).
-	for r := range constants.GridSize {
-		cellIdx := r*constants.GridSize + col
-		if userHoldsDigit(originalUserBoard, givens, cellIdx, digit) {
-			return cellIdx, true
-		}
-	}
-	// Box peers (row by row).
-	boxRow := (row / constants.BoxSize) * constants.BoxSize
-	boxCol := (col / constants.BoxSize) * constants.BoxSize
-	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-			cellIdx := r*constants.GridSize + c
+	// Row, then column, then box — peerCellIndices returns the peers in that
+	// exact order, preserving the deterministic first-match scan.
+	rowCells, colCells, boxCells := peerCellIndices(row, col)
+	for _, unit := range [...][]int{rowCells, colCells, boxCells} {
+		for _, cellIdx := range unit {
 			if userHoldsDigit(originalUserBoard, givens, cellIdx, digit) {
 				return cellIdx, true
 			}

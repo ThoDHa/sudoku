@@ -104,28 +104,15 @@ func (b *Board) InitCandidates() {
 // canPlace checks if a digit can be placed at idx (no conflicts in row/col/box)
 func (b *Board) canPlace(idx, digit int) bool {
 	row, col := idx/constants.GridSize, idx%constants.GridSize
+	box := (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize
 
-	for c := range constants.GridSize {
-		if b.Cells[row*constants.GridSize+c] == digit {
-			return false
-		}
-	}
-
-	for r := range constants.GridSize {
-		if b.Cells[r*constants.GridSize+col] == digit {
-			return false
-		}
-	}
-
-	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
-	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-			if b.Cells[r*constants.GridSize+c] == digit {
+	for _, unit := range [...][]int{techniques.RowIndices[row], techniques.ColIndices[col], techniques.BoxIndices[box]} {
+		for _, peer := range unit {
+			if b.Cells[peer] == digit {
 				return false
 			}
 		}
 	}
-
 	return true
 }
 
@@ -140,30 +127,13 @@ func (b *Board) SetCell(idx, digit int) {
 	b.Eliminated[idx] = 0 // Clear eliminated for filled cell
 
 	row, col := idx/constants.GridSize, idx%constants.GridSize
+	box := (row/constants.BoxSize)*constants.BoxSize + col/constants.BoxSize
 
-	for c := range constants.GridSize {
-		peerIdx := row*constants.GridSize + c
-		if b.Candidates[peerIdx].Has(digit) {
-			b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
-			b.Eliminated[peerIdx] = b.Eliminated[peerIdx].Set(digit)
-		}
-	}
-
-	for r := range constants.GridSize {
-		peerIdx := r*constants.GridSize + col
-		if b.Candidates[peerIdx].Has(digit) {
-			b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
-			b.Eliminated[peerIdx] = b.Eliminated[peerIdx].Set(digit)
-		}
-	}
-
-	boxRow, boxCol := (row/constants.BoxSize)*constants.BoxSize, (col/constants.BoxSize)*constants.BoxSize
-	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
-		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-			peerIdx := r*constants.GridSize + c
-			if b.Candidates[peerIdx].Has(digit) {
-				b.Candidates[peerIdx] = b.Candidates[peerIdx].Clear(digit)
-				b.Eliminated[peerIdx] = b.Eliminated[peerIdx].Set(digit)
+	for _, unit := range [...][]int{techniques.RowIndices[row], techniques.ColIndices[col], techniques.BoxIndices[box]} {
+		for _, peer := range unit {
+			if b.Candidates[peer].Has(digit) {
+				b.Candidates[peer] = b.Candidates[peer].Clear(digit)
+				b.Eliminated[peer] = b.Eliminated[peer].Set(digit)
 			}
 		}
 	}
