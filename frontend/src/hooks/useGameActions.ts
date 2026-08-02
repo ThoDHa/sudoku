@@ -8,7 +8,7 @@ import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 import { saveScore, markDailyCompleted, type Score } from '../lib/scores'
 import { getAutoSolveSpeed } from '../lib/preferences'
 import { logger } from '../lib/logger'
-import { TOAST_DURATION_INFO } from '../lib/constants'
+import { TOAST_DURATION_INFO, TOTAL_CELLS } from '../lib/constants'
 import type { useSudokuGame, Move } from './useSudokuGame'
 import type { useAutoSolve } from './useAutoSolve'
 import type { PuzzleData } from './usePuzzleLoader'
@@ -164,11 +164,11 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
 
   // Auto-fill notes based on current board state
   const autoFillNotes = useCallback(() => {
-    if (game.board.length !== 81) return
+    if (game.board.length !== TOTAL_CELLS) return
     const newCandidates = game.fillAllCandidates()
     let cellsWithCandidates = 0
     // Stryker disable next-line EqualityOperator: i<=81 iterates once more on newCandidates[81] which is undefined → undefined||0 → countCandidates(0)=0 → no count change; observationally equivalent
-    for (let i = 0; i < 81; i++) {
+    for (let i = 0; i < TOTAL_CELLS; i++) {
       if (countCandidates(newCandidates[i] || 0) > 0) {
         cellsWithCandidates++
       }
@@ -227,7 +227,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
 
   // Validate current board state by comparing against the known solution
   const handleValidate = useCallback(() => {
-    if (solution.length !== 81) {
+    if (solution.length !== TOTAL_CELLS) {
       setValidationMessage({ type: 'error', message: 'Solution not available' })
       scheduleToastClear(TOAST_DURATION_INFO, () => {
         setValidationMessage(null)
@@ -300,7 +300,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
   const handleCheckAndFix = async () => {
     // Stryker disable next-line StringLiteral: log message content does not affect program behavior
     logger.debug('Check & Fix invoked')
-    if (!solution || solution.length !== 81) {
+    if (!solution || solution.length !== TOTAL_CELLS) {
       // Stryker disable next-line StringLiteral: log message content does not affect program behavior
       logger.error('Cannot check and fix: solution not available')
       return
@@ -313,7 +313,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       // Stryker disable next-line OptionalChaining,ArrayDeclaration: puzzle is always defined in the test paths; the || fallback is checked by givens.length !== 81 below so ["Stryker was here"] and [] are observationally identical
       const givens = puzzle?.givens || []
 
-      if (givens.length !== 81) {
+      if (givens.length !== TOTAL_CELLS) {
         // Stryker disable next-line StringLiteral: log message content does not affect program behavior
         logger.error('Cannot check and fix: givens not available')
         return

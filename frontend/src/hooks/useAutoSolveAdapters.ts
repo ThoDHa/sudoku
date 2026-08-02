@@ -4,6 +4,7 @@ import { candidatesToArrays, arraysToCandidates } from '../lib/candidatesUtils'
 import {
   TOAST_DURATION_ERROR,
   TOAST_DURATION_FIX_ERROR,
+  TOAST_DURATION_STATUS,
   ERROR_FIX_RESUME_DELAY,
 } from '../lib/constants'
 import type { UseSudokuGameReturn, Move } from './useSudokuGame'
@@ -180,7 +181,7 @@ export function useAutoSolveAdapters(
 
   const handleAutoSolveStatus = (message: string) => {
     throttledSetValidationMessage({ type: 'success', message })
-    scheduleToastClear(2000, () => {
+    scheduleToastClear(TOAST_DURATION_STATUS, () => {
       setValidationMessage(null)
     })
   }

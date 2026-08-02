@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { TOTAL_CELLS } from '../lib/constants'
 import { calculatePathCells } from '../lib/pathUtils'
 
 // DOM attribute tagging each cell element. Pointer-move resolution maps a
@@ -92,7 +93,7 @@ export function useBoardInteraction({
 
   const tabStopCell = useMemo(() => {
     if (selectedCell !== null) return selectedCell
-    for (let i = 0; i < 81; i++) {
+    for (let i = 0; i < TOTAL_CELLS; i++) {
       if (initialBoard[i] === 0) return i
     }
     return 0
@@ -387,7 +388,7 @@ export function useBoardInteraction({
   // static analysis cannot distinguish them from render-time mutations.
   const cellRefCallbacks = useMemo(() => {
     const callbacks: ((el: HTMLDivElement | null) => void)[] = []
-    for (let i = 0; i < 81; i++) {
+    for (let i = 0; i < TOTAL_CELLS; i++) {
       // eslint-disable-next-line react-hooks/refs -- ref callback: React calls this during commit, not render
       callbacks.push((el: HTMLDivElement | null) => {
         cellRefs.current[i] = el
