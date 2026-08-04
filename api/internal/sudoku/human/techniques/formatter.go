@@ -19,9 +19,6 @@ func FormatCell(cell int) string {
 
 // FormatCells formats multiple cells as comma-separated "R{row}C{col}"
 func FormatCells(cells []int) string {
-	if len(cells) == 0 {
-		return ""
-	}
 	parts := make([]string, len(cells))
 	for i, cell := range cells {
 		parts[i] = FormatCell(cell)
@@ -36,9 +33,6 @@ func FormatRef(ref core.CellRef) string {
 
 // FormatRefs formats multiple CellRefs as comma-separated
 func FormatRefs(refs []core.CellRef) string {
-	if len(refs) == 0 {
-		return ""
-	}
 	parts := make([]string, len(refs))
 	for i, ref := range refs {
 		parts[i] = FormatRef(ref)
@@ -53,9 +47,6 @@ func FormatDigit(digit int) string {
 
 // FormatDigits formats digits as comma-separated
 func FormatDigits(digits []int) string {
-	if len(digits) == 0 {
-		return ""
-	}
 	parts := make([]string, len(digits))
 	for i, d := range digits {
 		parts[i] = strconv.Itoa(d)
