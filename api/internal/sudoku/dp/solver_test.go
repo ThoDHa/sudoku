@@ -1475,3 +1475,163 @@ func TestCountSolutions_ConflictingFullGridReportsZero(t *testing.T) {
 		t.Errorf("expected 0 solutions for full-but-invalid grid, got %d", count)
 	}
 }
+
+// --- MUT-6-3: kill tests for the 18 survivors of the honest (--exec-timeout 300)
+// dp measurement in run 30899984529. Each test pins an observable property that
+// one or more of those mutants changes.
+
+// --- unitPositions: the "slot 0 stays empty" invariant appendUnitConflicts relies on ---
+
+func TestUnitPositionsRecordSkipsEmptiesAndFilesDigitsUnderTheirValue(t *testing.T) {
+	var unit unitPositions
+
+	unit.record(0, 3)
+	unit.record(0, 4)
+	if unit.counts[0] != 0 {
+		t.Fatalf("empty cells must not be recorded, got counts[0]=%d holding %v",
+			unit.counts[0], unit.positions[0][:unit.counts[0]])
+	}
+
+	unit.record(1, 5)
+	unit.record(9, 7)
+
+	if unit.counts[1] != 1 || unit.positions[1][0] != 5 {
+		t.Errorf("expected digit 1 filed at cell 5, got counts[1]=%d positions[1][0]=%d",
+			unit.counts[1], unit.positions[1][0])
+	}
+	if unit.counts[9] != 1 || unit.positions[9][0] != 7 {
+		t.Errorf("expected digit 9 filed at cell 7, got counts[9]=%d positions[9][0]=%d",
+			unit.counts[9], unit.positions[9][0])
+	}
+	if unit.counts[0] != 0 {
+		t.Errorf("recording digits must leave slot 0 empty, got counts[0]=%d", unit.counts[0])
+	}
+}
+
+func TestAppendUnitConflictsIgnoresGroupsFiledUnderSlotZero(t *testing.T) {
+	// record cannot populate slot 0, so it is written directly here: the scan must
+	// start at digit 1 and report nothing for a group of would-be empty cells.
+	var unit unitPositions
+	unit.positions[0][0], unit.positions[0][1] = 4, 8
+	unit.counts[0] = 2
+
+	var seen map[uint64]bool
+	conflicts := appendUnitConflicts(unit, "row", &seen, nil)
+
+	if len(conflicts) != 0 {
+		t.Fatalf("slot 0 must never yield a conflict, got %+v", conflicts)
+	}
+}
+
+// --- FindConflicts: the digits at both ends of the 1-9 scan range ---
+
+func TestFindConflictsReportsBoundaryDigitDuplicatesInEveryUnitType(t *testing.T) {
+	for _, digit := range []int{1, 9} {
+		t.Run(fmt.Sprintf("digit_%d", digit), func(t *testing.T) {
+			// Cells 0 and 2 share row 0, cells 0 and 9 share column 0, and cells 2
+			// and 9 share box 0, so one grid exercises all three unit types.
+			grid := make([]int, 81)
+			grid[0], grid[2], grid[9] = digit, digit, digit
+
+			got := make(map[string]bool)
+			for _, c := range FindConflicts(grid) {
+				got[fmt.Sprintf("%d-%d-%d:%s", c.Cell1, c.Cell2, c.Value, c.Type)] = true
+			}
+
+			want := []string{
+				fmt.Sprintf("0-2-%d:row", digit),
+				fmt.Sprintf("0-9-%d:column", digit),
+				fmt.Sprintf("2-9-%d:box", digit),
+			}
+			if len(got) != len(want) {
+				t.Fatalf("expected %d conflicts for digit %d, got %d: %v", len(want), digit, len(got), got)
+			}
+			for _, w := range want {
+				if !got[w] {
+					t.Errorf("missing conflict %s for digit %d, got %v", w, digit, got)
+				}
+			}
+		})
+	}
+}
+
+func TestFindConflictsEmitsRemainingPairsAfterSkippingAnAlreadySeenPair(t *testing.T) {
+	// Cells 0, 1 and 20 all sit in box 0, and 0 and 1 additionally share row 0.
+	// The box pass therefore meets the already-seen pair (0,1) first; it must
+	// carry on to (0,20) rather than abandoning the rest of cell 0's pairs.
+	grid := make([]int, 81)
+	grid[0], grid[1], grid[20] = 5, 5, 5
+
+	got := make(map[string]bool)
+	for _, c := range FindConflicts(grid) {
+		got[fmt.Sprintf("%d-%d-%d:%s", c.Cell1, c.Cell2, c.Value, c.Type)] = true
+	}
+
+	want := []string{"0-1-5:row", "0-20-5:box", "1-20-5:box"}
+	if len(got) != len(want) {
+		t.Fatalf("expected %d conflicts, got %d: %v", len(want), len(got), got)
+	}
+	for _, w := range want {
+		if !got[w] {
+			t.Errorf("missing conflict %s, got %v", w, got)
+		}
+	}
+}
+
+// --- nodeBudget: where the periodic budget check falls, and its boundary ---
+
+func TestNodeBudgetChecksTheBudgetOnEveryThousandthTick(t *testing.T) {
+	// The tick counts are written as literals rather than as budgetCheckInterval so
+	// that a mutated interval cannot move the expectation along with the code.
+	budget := &nodeBudget{max: 0}
+	ctx := context.Background()
+
+	for tick := 1; tick < 1000; tick++ {
+		if err := budget.tick(ctx); err != nil {
+			t.Fatalf("tick %d ran a budget check before the 1000th, got %v", tick, err)
+		}
+	}
+	if err := budget.tick(ctx); !errors.Is(err, ErrBudgetExceeded) {
+		t.Fatalf("tick 1000 must be the first budget checkpoint, got %v", err)
+	}
+}
+
+func TestNodeBudgetAllowsANodeCountEqualToItsMaximum(t *testing.T) {
+	budget := &nodeBudget{max: 1000}
+	ctx := context.Background()
+
+	for tick := 1; tick <= 1000; tick++ {
+		if err := budget.tick(ctx); err != nil {
+			t.Fatalf("a budget of 1000 nodes must permit tick %d, got %v", tick, err)
+		}
+	}
+}
+
+// --- TargetGivensFor: the carving targets as a public contract ---
+
+func TestTargetGivensForReturnsTheClueCountForEachDifficulty(t *testing.T) {
+	tests := []struct {
+		difficulty string
+		want       int
+	}{
+		{"easy", 40},
+		{"medium", 34},
+		{"hard", 28},
+		{"extreme", 24},
+		{"impossible", 20},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.difficulty, func(t *testing.T) {
+			if got := TargetGivensFor(tt.difficulty); got != tt.want {
+				t.Errorf("TargetGivensFor(%q) = %d, want %d", tt.difficulty, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTargetGivensForReturnsZeroForAnUnrecognizedDifficulty(t *testing.T) {
+	if got := TargetGivensFor("nonexistent"); got != 0 {
+		t.Errorf("TargetGivensFor(%q) = %d, want 0", "nonexistent", got)
+	}
+}

@@ -90,42 +90,32 @@ func IsValid(ctx context.Context, grid []int) bool {
 // FindConflicts returns all conflicting cell pairs in the grid.
 // Each conflict identifies two cells with the same value in the same row, column, or box.
 //
-// Allocation profile: per-unit position tracking uses stack-allocated [10][9]int
-// arrays (no per-unit heap maps), the dedup map is lazily allocated only when a
-// conflict is actually found, and the dedup key is integer arithmetic rather
-// than string concatenation. A grid with no conflicts therefore allocates only
-// the returned (nil) slice header.
+// Allocation profile: per-unit position tracking uses a stack-allocated
+// unitPositions value (no per-unit heap maps), the dedup map is lazily allocated
+// only when a conflict is actually found, and the dedup key is integer
+// arithmetic rather than string concatenation. A grid with no conflicts
+// therefore allocates only the returned (nil) slice header.
 func FindConflicts(grid []int) []Conflict {
 	var conflicts []Conflict
 	var seen map[uint64]bool
 
 	for row := range constants.GridSize {
-		var positions [10][9]int
-		var counts [10]int
+		var unit unitPositions
 		base := row * constants.GridSize
 		for col := range constants.GridSize {
-			val := grid[base+col]
-			if val == 0 {
-				continue
-			}
-			positions[val][counts[val]] = base + col
-			counts[val]++
+			idx := base + col
+			unit.record(grid[idx], idx)
 		}
-		conflicts = appendUnitConflicts(positions, counts, "row", &seen, conflicts)
+		conflicts = appendUnitConflicts(unit, "row", &seen, conflicts)
 	}
 
 	for col := range constants.GridSize {
-		var positions [10][9]int
-		var counts [10]int
+		var unit unitPositions
 		for row := range constants.GridSize {
-			val := grid[row*constants.GridSize+col]
-			if val == 0 {
-				continue
-			}
-			positions[val][counts[val]] = row*constants.GridSize + col
-			counts[val]++
+			idx := row*constants.GridSize + col
+			unit.record(grid[idx], idx)
 		}
-		conflicts = appendUnitConflicts(positions, counts, "column", &seen, conflicts)
+		conflicts = appendUnitConflicts(unit, "column", &seen, conflicts)
 	}
 
 	for box := range constants.GridSize {
@@ -135,13 +125,34 @@ func FindConflicts(grid []int) []Conflict {
 	return conflicts
 }
 
+// unitPositions records which cells of a single unit hold each digit.
+// positions[v][:counts[v]] holds the indices of the cells holding digit v.
+//
+// Slot 0 is never written. appendUnitConflicts scans digits 1-9 only, so a cell
+// filed under slot 0 would be silently dropped from conflict detection rather
+// than reported; keeping empties out of the structure altogether is what makes
+// that scan range correct.
+type unitPositions struct {
+	positions [10][9]int
+	counts    [10]int
+}
+
+// record files idx under the digit the cell holds, ignoring empty cells so that
+// slot 0 stays empty.
+func (u *unitPositions) record(val, idx int) {
+	if val == 0 {
+		return
+	}
+	u.positions[val][u.counts[val]] = idx
+	u.counts[val]++
+}
+
 // appendUnitConflicts scans the position groups for a single unit and appends
-// any newly-seen conflicts of the given type. positions[v][:counts[v]] holds the
-// cell indices in this unit holding value v. The seen map is lazily allocated
+// any newly-seen conflicts of the given type. The seen map is lazily allocated
 // on the first conflict so a clean unit costs nothing.
-func appendUnitConflicts(positions [10][9]int, counts [10]int, conflictType string, seen *map[uint64]bool, conflicts []Conflict) []Conflict {
+func appendUnitConflicts(unit unitPositions, conflictType string, seen *map[uint64]bool, conflicts []Conflict) []Conflict {
 	for val := 1; val <= 9; val++ {
-		group := positions[val][:counts[val]]
+		group := unit.positions[val][:unit.counts[val]]
 		// < 2 vs <= 1 is moot: the inner j=i+1 loop yields no pairs for groups of size < 2.
 		// branch/if (removing the continue) is also moot for the same reason.
 		// mutator-disable-next-line numbers/decrementer, branch/if
@@ -154,9 +165,7 @@ func appendUnitConflicts(positions [10][9]int, counts [10]int, conflictType stri
 				// Cross-unit de-duplication: two cells can share more than one unit
 				// (e.g. the same row AND the same box), so the row pass and the box
 				// pass would each emit a Conflict for that pair without this guard.
-				// mutator-disable-next-line branch/if
 				if _, ok := (*seen)[key]; ok {
-					// mutator-disable-next-line loop/break
 					continue
 				}
 				if *seen == nil {
@@ -174,32 +183,24 @@ func appendUnitConflicts(positions [10][9]int, counts [10]int, conflictType stri
 // conflicts of type "box".
 func appendBoxConflicts(grid []int, box int, seen *map[uint64]bool, conflicts []Conflict) []Conflict {
 	boxRow, boxCol := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
-	var positions [10][9]int
-	var counts [10]int
+	var unit unitPositions
 	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
 		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-			val := grid[r*constants.GridSize+c]
-			if val == 0 {
-				continue
-			}
-			positions[val][counts[val]] = r*constants.GridSize + c
-			counts[val]++
+			idx := r*constants.GridSize + c
+			unit.record(grid[idx], idx)
 		}
 	}
-	return appendUnitConflicts(positions, counts, "box", seen, conflicts)
+	return appendUnitConflicts(unit, "box", seen, conflicts)
 }
 
 // conflictKey builds an integer dedup key from (cell1, cell2, val), normalizing
 // the pair so (a,b) and (b,a) collide. Cell indices are bounded 0-80 and val
-// 1-9, so cell1*810 + cell2*10 + val uniquely identifies the triple and cannot
+// 1-9, so lo*810 + hi*10 + val uniquely identifies the triple and cannot
 // overflow int (max 65609) before the uint64 conversion.
-// mutator-disable-func
 func conflictKey(cell1, cell2, val int) uint64 {
-	if cell1 > cell2 {
-		cell1, cell2 = cell2, cell1
-	}
-	// cell1, cell2 are validated Sudoku cell indices (0-80); val is a digit (1-9).
-	return uint64(cell1*810 + cell2*10 + val) //nolint:gosec // G115: bounded inputs, see doc comment
+	lo, hi := min(cell1, cell2), max(cell1, cell2)
+	// lo, hi are validated Sudoku cell indices (0-80); val is a digit (1-9).
+	return uint64(lo*810 + hi*10 + val) //nolint:gosec // G115: bounded inputs, see doc comment
 }
 
 // findEmptyCell returns the index of the first empty (0) cell, or -1 if the board is full.
@@ -422,10 +423,9 @@ func CarveGivens(ctx context.Context, fullGrid []int, targetGivens int, seed int
 	target := constants.TotalCells - targetGivens
 
 	for _, pos := range positions {
-		// Carving floor: once enough cells are removed, remaining cells can't be
-		// removed without breaking uniqueness. break vs continue/remove is moot.
-		// mutator-disable-next-line expression/comparison, branch/if
 		if removed >= target {
+			// continue would behave identically: the guard re-tests on every
+			// remaining position, so neither form removes a further cell.
 			// mutator-disable-next-line loop/break
 			break
 		}
@@ -457,14 +457,11 @@ var givensTargets = map[string]int{
 	string(core.DifficultyEasy):   targetGivensEasy,
 	string(core.DifficultyMedium): targetGivensMedium,
 	string(core.DifficultyHard):   targetGivensHard,
-	// extreme/impossible targets are masked by the carving floor: for the test
-	// grid (seed 12345/67890), impossible reaches 24 givens, so extreme (24) and
-	// impossible (20) targets are both unreachable. Decrementing extreme (24→23)
-	// yields cellsToRestore=-1 (no-op restore loop, same 24 givens). Impossible
-	// target ±1 cannot lower the floor.
-	// mutator-disable-next-line numbers/decrementer
-	string(core.DifficultyExtreme): targetGivensExtreme,
-	// mutator-disable-next-line numbers/decrementer,numbers/incrementer
+	// The extreme and impossible targets do not steer CarveGivensWithSubset's
+	// output: the uniqueness constraint floors carving at 24 givens for the test
+	// grid, above both targets. They remain part of the public contract through
+	// TargetGivensFor, which returns each value verbatim.
+	string(core.DifficultyExtreme):    targetGivensExtreme,
 	string(core.DifficultyImpossible): targetGivensImpossible,
 }
 
@@ -515,8 +512,8 @@ func CarveGivensWithSubset(ctx context.Context, fullGrid []int, seed int64) (map
 	targetRemoved := constants.TotalCells - targets[string(core.DifficultyImpossible)]
 
 	for _, pos := range positions {
-		// Carving floor: same as CarveGivens — the >= guard never fires because the
-		// uniqueness constraint prevents reaching targetRemoved.
+		// This guard never fires: the uniqueness constraint floors carving well
+		// above targetRemoved, so no variation of the comparison is observable.
 		// mutator-disable-next-line expression/comparison, branch/if
 		if len(removalOrder) >= targetRemoved {
 			// mutator-disable-next-line loop/break, loop/range_break
