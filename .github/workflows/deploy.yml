@@ -4,11 +4,9 @@ on:
   push:
     branches:
       - main
-      - modernization
   pull_request:
     branches:
       - main
-      - modernization
   workflow_dispatch:
     inputs:
       test_suite:
@@ -336,7 +334,7 @@ jobs:
       # artifacts. If a run does not exist yet or a download fails, the combined
       # Allure and the portal simply omit those pieces; the deploy is unaffected.
       - name: Fetch latest nightly reports
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -357,7 +355,7 @@ jobs:
       # Coverage reports are produced by this run's own test jobs; pull them into
       # the same dir so the portal links them alongside the nightly reports.
       - name: Download coverage reports
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
@@ -470,11 +468,11 @@ jobs:
           retention-days: 30
 
       - name: Setup Pages
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
 
       - name: Setup Go for WASM build
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         uses: ./.github/actions/setup-go
 
       # IMPORTANT: TinyGo version must match local development environment (0.41.1)
@@ -482,25 +480,25 @@ jobs:
       # Different TinyGo versions produce incompatible WASM binaries
       # See: https://github.com/tinygo-org/tinygo/releases
       - name: Install TinyGo for WASM build
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         run: |
           wget https://github.com/tinygo-org/tinygo/releases/download/v0.41.1/tinygo_0.41.1_amd64.deb
           sudo dpkg -i tinygo_0.41.1_amd64.deb
 
       - name: Build WASM for deployment
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         working-directory: api
         run: make wasm-all
 
       - name: Build frontend for deployment
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         working-directory: frontend
         run: npm run build
         env:
           VITE_BASE_PATH: /sudoku/
 
       - name: Enforce bundle-size budget
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         working-directory: frontend
         run: npm run size
 
@@ -511,12 +509,12 @@ jobs:
       # is caught here, failing the allure-report job, which in turn blocks
       # the downstream deploy job (which needs allure-report == 'success').
       - name: Install Playwright browser for deploy smoke
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
       - name: Run post-deploy smoke against production build
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         working-directory: frontend
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:4174/sudoku/
@@ -537,7 +535,7 @@ jobs:
           npm run test:smoke
 
       - name: Prepare Pages artifact
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         run: |
           # Create directory structure for GitHub Pages
           # Main app goes to root, test report goes to /test-report/
@@ -558,7 +556,7 @@ jobs:
       # so it matches the frontend coverage exactly. Uses the frontend's already
       # installed istanbul libs; the api/ source is present from the checkout.
       - name: Render Go coverage report (istanbul, matches frontend)
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         continue-on-error: true
         run: |
           if [ -f nightly-artifacts/coverage-go/coverage.lcov ]; then
@@ -573,7 +571,7 @@ jobs:
       # StrykerJS produces for the frontend, so the Go mutation report matches the
       # frontend's exactly. Uses the frontend's already installed elements bundle.
       - name: Render Go mutation report (Stryker elements, matches frontend)
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         continue-on-error: true
         run: |
           mapfile -t go_mutation_reports < <(find nightly-artifacts -path '*mutation-go-*' -name report.json | sort)
@@ -588,7 +586,7 @@ jobs:
       # Unified report portal at /reports/ linking Allure + any fetched mutation
       # reports. Isolated and non-fatal so it can never break the app deploy.
       - name: Build unified report portal
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         continue-on-error: true
         run: |
           python3 .github/scripts/gen_report_portal.py \
@@ -597,7 +595,7 @@ jobs:
             --allure-rel ../test-report/
 
       - name: Build Pages tar (ensure .nojekyll is included)
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         run: |
           # .nojekyll disables Jekyll processing on GitHub Pages. Without it,
           # Jekyll silently drops the Allure report's data/test-cases/ directory
@@ -607,7 +605,7 @@ jobs:
           tar --dereference -cf /tmp/github-pages.tar -C pages-artifact .
 
       - name: Upload Pages artifact
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization'
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v5
         with:
           name: github-pages
@@ -618,7 +616,7 @@ jobs:
   # Deploy to GitHub Pages (Game + Test Report)
   # ============================================
   deploy:
-    # Deploy runs on main (production) or modernization (working branch) when the core gates
+    # Deploy runs on main (production) when the core gates
     # pass (Go + unit tests), the Pages artifact was built (allure-report), AND E2E failures are
     # within tolerance. Not all-or-nothing: a flaky E2E test no longer blocks deploy, but a
     # tolerance of up to 5 failures applies only when E2E actually ran (e2e_ran == 'true'). A
@@ -626,7 +624,7 @@ jobs:
     # deliberately skipped E2E job (manual partial run) is still allowed through.
     if: |
       always() &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/modernization') &&
+      (github.ref == 'refs/heads/main') &&
       needs.allure-report.result == 'success' &&
       needs.test-go.result == 'success' &&
       needs.test-frontend-unit.result == 'success' &&

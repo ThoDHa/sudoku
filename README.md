@@ -517,7 +517,7 @@ cd api && go run ./cmd/generate_practice \
 
 ### GitHub Pages (Automatic)
 
-Pushing to `main` (or `modernization`) triggers the full CI/CD pipeline in a
+Pushing to `main` triggers the full CI/CD pipeline in a
 single **Test & Deploy** workflow (`deploy.yml`): it runs all tests (Go,
 frontend unit, E2E), builds the app, and deploys it alongside the unified
 report portal. Mutation and profiling run in separate nightly workflows
