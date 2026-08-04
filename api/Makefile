@@ -160,6 +160,22 @@ MUTATION_REPORT_DIR := reports/mutation
 # same value; see .github/workflows/nightly-mutation.yml.
 MUTATION_EXEC_TIMEOUT := 300
 
+# Address-space cap (KB) applied to the whole go-mutesting invocation via
+# `ulimit -v`. Some mutants convert a bounded loop into unbounded allocation:
+# mutating the AIC BFS dequeue from `queue = queue[1:]` to `queue[0:]` reaches
+# 5.5 GB in 50s and is then OS-killed, which on a hosted runner exhausts the
+# machine and takes the runner agent down with it (exit 143 followed by "The
+# runner has received a shutdown signal"). Under this cap the same mutant dies
+# alone as a Go runtime out-of-memory at 1.3 GB in 6s, so `go test` exits
+# non-zero and go-mutesting scores it killed through its normal exit-code path.
+# This caps address space, not resident memory: the honest techniques suite
+# peaks at 90 MB resident and a full `-a` rebuild of every package at 292 MB,
+# so 3 GB leaves roughly tenfold headroom for legitimate work. GOMEMLIMIT is
+# not a substitute; being a soft limit it raised the peak to 6.2 GB and doubled
+# the runtime rather than stopping the growth. CI must use the same value; see
+# .github/workflows/nightly-mutation.yml.
+MUTATION_ADDRESS_SPACE_KB := 3000000
+
 # Build the go-mutesting v2.3.1 binary from a pinned-tag local clone,
 # working around the upstream go.mod major-version defect above.
 mutation-install:
@@ -185,6 +201,7 @@ mutation-install:
 # (relative ../ escapes panic) and outputs are relocated per package.
 mutation-go: mutation-install
 	@set -e; \
+	ulimit -v $(MUTATION_ADDRESS_SPACE_KB); \
 	for entry in \
 		"./internal/sudoku/dp|$(DP_MUTATION_FLOOR)" \
 		"./internal/sudoku/human|$(HUMAN_MUTATION_FLOOR)" \

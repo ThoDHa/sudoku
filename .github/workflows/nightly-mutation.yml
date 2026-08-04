@@ -34,6 +34,19 @@ env:
   # suite (dp ~75s, techniques ~33s, human ~22s) and silently converted
   # surviving mutants into kills.
   MUTATION_EXEC_TIMEOUT: 300
+  # Address-space cap (KB) applied via `ulimit -v` to the whole go-mutesting
+  # invocation, mirroring MUTATION_ADDRESS_SPACE_KB in api/Makefile. Some
+  # mutants turn a bounded loop into unbounded allocation: mutating the AIC
+  # BFS dequeue from `queue = queue[1:]` to `queue[0:]` reaches 5.5 GB in 50s,
+  # which exhausts a hosted runner and takes the runner agent down with it
+  # (exit 143 followed by "The runner has received a shutdown signal"). Under
+  # this cap the same mutant dies alone as a Go runtime out-of-memory at
+  # 1.3 GB in 6s, so `go test` exits non-zero and the mutant is correctly
+  # scored killed. Measured headroom is roughly tenfold: the honest techniques
+  # suite peaks at 90 MB resident and a full `-a` rebuild at 292 MB.
+  # GOMEMLIMIT is not a substitute; being a soft limit it raised the peak to
+  # 6.2 GB and doubled the runtime instead of stopping the growth.
+  MUTATION_ADDRESS_SPACE_KB: 3000000
 
 jobs:
   frontend-mutation:
@@ -187,6 +200,7 @@ jobs:
           cat > /tmp/mutation-config.yml <<'YAML'
           json_output: true
           YAML
+          ulimit -v "$MUTATION_ADDRESS_SPACE_KB"
           go-mutesting --exec-timeout "$MUTATION_EXEC_TIMEOUT" \
             --config=/tmp/mutation-config.yml ${{ matrix.pkg }}
           slug=$(echo "${{ matrix.pkg }}" | tr -d './' | tr '/' '-')
@@ -321,6 +335,7 @@ jobs:
           for f in ${{ matrix.files }}; do
             targets+=("./internal/sudoku/human/techniques/$f")
           done
+          ulimit -v "$MUTATION_ADDRESS_SPACE_KB"
           go-mutesting --exec-timeout "$MUTATION_EXEC_TIMEOUT" \
             --config=/tmp/mutation-config.yml "${targets[@]}"
           mv report.json "$outdir/" 2>/dev/null || true
