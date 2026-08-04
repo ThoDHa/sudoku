@@ -148,6 +148,18 @@ GO_MUTESTESTING_BIN := $(shell go env GOPATH)/bin/go-mutesting
 GO_MUTESTESTING_TAG := v2.3.1
 MUTATION_REPORT_DIR := reports/mutation
 
+# Per-mutant `go test` timeout passed to go-mutesting. This MUST exceed the
+# slowest in-scope package suite, or the measurement is meaningless: the tool
+# runs `go test -timeout <this>` per mutant and maps a non-zero exit to
+# "killed" (cmd/go-mutesting/main.go: `case 1: // Tests failed -> PASS`). A
+# timeout panic exits non-zero, so any mutant that outlives the budget is
+# scored as killed whether or not a test detected it. go-mutesting's own
+# default is 10s, well under every scoped suite here (dp ~75s, techniques
+# ~33s, human ~22s), which silently converted surviving mutants into kills.
+# Keep this above the slowest suite on the slowest runner. CI must pass the
+# same value; see .github/workflows/nightly-mutation.yml.
+MUTATION_EXEC_TIMEOUT := 300
+
 # Build the go-mutesting v2.3.1 binary from a pinned-tag local clone,
 # working around the upstream go.mod major-version defect above.
 mutation-install:
@@ -184,7 +196,7 @@ mutation-go: mutation-install
 		mkdir -p "$$outdir"; \
 		printf 'skip_without_test: true\nskip_with_build_tags: true\njson_output: true\nhtml_output: true\nsilent_mode: false\n' > "$$outdir/config.yml"; \
 		echo "mutation-go: running go-mutesting on $$pkg -> $$outdir/"; \
-		"$(GO_MUTESTESTING_BIN)" --config="$$outdir/config.yml" "$$pkg"; \
+		"$(GO_MUTESTESTING_BIN)" --exec-timeout $(MUTATION_EXEC_TIMEOUT) --config="$$outdir/config.yml" "$$pkg"; \
 		mv -f report.json go-mutesting-report.html "$$outdir/" 2>/dev/null; \
 	done; \
 	echo "mutation-go: all in-scope packages done. Reports under $(MUTATION_REPORT_DIR)/."

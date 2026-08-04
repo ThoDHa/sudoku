@@ -26,6 +26,14 @@ concurrency:
 
 env:
   CI: true
+  # Per-mutant `go test` timeout for go-mutesting, mirroring
+  # MUTATION_EXEC_TIMEOUT in api/Makefile. Must exceed the slowest in-scope
+  # suite: the tool maps a non-zero `go test` exit to "killed", so a mutant
+  # that outlives the budget is scored as killed by its own timeout panic
+  # rather than by any test. The tool's 10s default sits below every scoped
+  # suite (dp ~75s, techniques ~33s, human ~22s) and silently converted
+  # surviving mutants into kills.
+  MUTATION_EXEC_TIMEOUT: 300
 
 jobs:
   frontend-mutation:
@@ -179,7 +187,8 @@ jobs:
           cat > /tmp/mutation-config.yml <<'YAML'
           json_output: true
           YAML
-          go-mutesting --config=/tmp/mutation-config.yml ${{ matrix.pkg }}
+          go-mutesting --exec-timeout "$MUTATION_EXEC_TIMEOUT" \
+            --config=/tmp/mutation-config.yml ${{ matrix.pkg }}
           slug=$(echo "${{ matrix.pkg }}" | tr -d './' | tr '/' '-')
           mkdir -p "reports/mutation/${slug}"
           mv report.json "reports/mutation/${slug}/" 2>/dev/null || true
@@ -312,7 +321,8 @@ jobs:
           for f in ${{ matrix.files }}; do
             targets+=("./internal/sudoku/human/techniques/$f")
           done
-          go-mutesting --config=/tmp/mutation-config.yml "${targets[@]}"
+          go-mutesting --exec-timeout "$MUTATION_EXEC_TIMEOUT" \
+            --config=/tmp/mutation-config.yml "${targets[@]}"
           mv report.json "$outdir/" 2>/dev/null || true
         continue-on-error: true
 
