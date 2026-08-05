@@ -1,6 +1,6 @@
 # Sudoku API Makefile
 
-.PHONY: all build server generate-constants wasm wasm-copy clean test coverage-gate vulncheck mutation-install mutation-go mutation-gate mutation-ratchet mutation-clean
+.PHONY: all build server generate-constants wasm wasm-copy clean test coverage-gate vulncheck mutation-install mutation-probe-check mutation-go mutation-gate mutation-ratchet mutation-clean
 
 # Go build settings
 GO := go
@@ -153,6 +153,26 @@ GO_MUTESTESTING_BIN := $(shell go env GOPATH)/bin/go-mutesting
 GO_MUTESTESTING_TAG := v2.3.1
 MUTATION_REPORT_DIR := reports/mutation
 
+# Local patch applied to the pinned tag before building (MUT-6-27). Upstream
+# reads three meanings out of one `go test` exit code and expects 2 for a build
+# failure; modern `go test` returns 1, so its skip path is unreachable and every
+# mutant that never compiled was scored as a kill. The patch compiles each
+# mutant with `go test -c` first, observing compilation rather than inferring it
+# from an exit code. The filename carries the tag, so bumping the tag points at
+# a patch that does not exist and the build stops instead of quietly producing
+# an unpatched binary. See the patch header for the measured magnitude.
+GO_MUTESTESTING_PATCH := patches/go-mutesting-$(GO_MUTESTESTING_TAG)-compile-probe.patch
+
+# String the patch compiles into the binary. `mutation-install` greps for it to
+# tell a patched binary from one an earlier install left on PATH, which the
+# is-executable short-circuit would otherwise reuse indefinitely. Keep in sync
+# with compileProbeMarker in the patch.
+GO_MUTESTESTING_PATCH_MARKER := go-mutesting-compile-probe/MUT-6-27
+
+# Frozen fixture package the compile-probe regression check mutates. It is not
+# production code; see its package comment.
+MUTATION_PROBE_FIXTURE := ./internal/mutationfixture/compileprobe
+
 # Per-mutant `go test` timeout passed to go-mutesting. This MUST exceed the
 # slowest in-scope package suite, or the measurement is meaningless: the tool
 # runs `go test -timeout <this>` per mutant and maps a non-zero exit to
@@ -181,20 +201,108 @@ MUTATION_EXEC_TIMEOUT := 300
 # .github/workflows/nightly-mutation.yml.
 MUTATION_ADDRESS_SPACE_KB := 3000000
 
-# Build the go-mutesting v2.3.1 binary from a pinned-tag local clone,
-# working around the upstream go.mod major-version defect above.
+# Build the go-mutesting v2.3.1 binary from a pinned-tag local clone, working
+# around the upstream go.mod major-version defect above, and apply the local
+# compile-probe patch on the way.
+#
+# Three guards stand between a tag bump and a silently unpatched binary, because
+# an unpatched one does not fail: it reports inflated scores that look like an
+# improvement. `git apply` fails the build when the patch stops applying; the
+# marker grep rejects a stale binary an earlier install left behind; and
+# mutation-probe-check proves on a frozen fixture that the built binary actually
+# skips a non-compiling mutant. The first two check that the patch is present,
+# the third that it works.
 mutation-install:
 	@set -e; \
-	if [ -x "$(GO_MUTESTESTING_BIN)" ]; then \
-		echo "mutation-install: go-mutesting already installed at $(GO_MUTESTESTING_BIN)"; \
+	if [ -x "$(GO_MUTESTESTING_BIN)" ] && grep -qa "$(GO_MUTESTESTING_PATCH_MARKER)" "$(GO_MUTESTESTING_BIN)"; then \
+		echo "mutation-install: patched go-mutesting already installed at $(GO_MUTESTESTING_BIN)"; \
 	else \
+		if [ -e "$(GO_MUTESTESTING_BIN)" ]; then \
+			echo "mutation-install: $(GO_MUTESTESTING_BIN) predates the compile-probe patch; rebuilding"; \
+		fi; \
 		tmp=$$(mktemp -d); \
 		echo "mutation-install: cloning avito-tech/go-mutesting $(GO_MUTESTESTING_TAG) and building (upstream go install is broken; see Makefile note)"; \
 		git clone --depth=1 --branch $(GO_MUTESTESTING_TAG) https://github.com/avito-tech/go-mutesting.git "$$tmp/go-mutesting"; \
+		echo "mutation-install: applying $(GO_MUTESTESTING_PATCH)"; \
+		git -C "$$tmp/go-mutesting" apply "$(CURDIR)/$(GO_MUTESTESTING_PATCH)" || { \
+			echo "mutation-install: FAILED to apply $(GO_MUTESTESTING_PATCH) to $(GO_MUTESTESTING_TAG)."; \
+			echo "  Refresh the patch against that tag. Do not build without it:"; \
+			echo "  an unpatched go-mutesting scores every non-compiling mutant as a kill."; \
+			rm -rf "$$tmp"; \
+			exit 1; \
+		}; \
 		GOTOOLCHAIN=local go -C "$$tmp/go-mutesting" build -o "$(GO_MUTESTESTING_BIN)" ./cmd/go-mutesting; \
 		rm -rf "$$tmp"; \
-		echo "mutation-install: installed $(GO_MUTESTESTING_BIN)"; \
+		grep -qa "$(GO_MUTESTESTING_PATCH_MARKER)" "$(GO_MUTESTESTING_BIN)" || { \
+			echo "mutation-install: the patch applied but $(GO_MUTESTESTING_PATCH_MARKER) is absent from the built binary,"; \
+			echo "  so the patched code is no longer reached. Removing the binary rather than trusting it."; \
+			rm -f "$(GO_MUTESTESTING_BIN)"; \
+			exit 1; \
+		}; \
+		echo "mutation-install: installed patched $(GO_MUTESTESTING_BIN)"; \
 	fi
+	@$(MAKE) --no-print-directory mutation-probe-check
+
+# Regression check for the compile probe: a mutant that does not compile must be
+# reported skipped, never killed.
+#
+# The assertion runs against a frozen fixture package rather than a real one.
+# Asserting skippedCount > 0 on a real package is unsound, because a legitimate
+# code change can drive that package's non-compiling mutant population to zero;
+# the check would then fail on healthy code and be relaxed until it asserted
+# nothing. The fixture's mutant population is fixed by construction, so both
+# assertions below are decidable and stay decidable.
+#
+# killedCount is asserted alongside skippedCount because the skip assertion
+# alone is satisfied by a probe that wrongly skips everything, which would read
+# as a perfect score with an empty denominator.
+#
+# go-mutesting writes report.json to the working directory with no way to
+# redirect it, so the report is moved aside exactly as mutation-go does.
+define MUTATION_PROBE_ASSERT
+import json, sys
+
+stats = json.load(open(sys.argv[1]))["stats"]
+killed, skipped = stats["killedCount"], stats["skippedCount"]
+print(
+    "mutation-probe-check: killed=%d escaped=%d skipped=%d total=%d"
+    % (killed, stats["escapedCount"], skipped, stats["totalMutantsCount"])
+)
+if skipped < 1:
+    sys.exit(
+        "mutation-probe-check: FAILED, no mutant was skipped. The fixture contains a "
+        "mutant that cannot compile, so a skip is mandatory. Zero skips means the "
+        "compile probe is not in effect and every non-compiling mutant across every "
+        "package is being counted as a kill."
+    )
+if killed < 1:
+    sys.exit(
+        "mutation-probe-check: FAILED, no mutant was killed. The fixture contains a "
+        "mutant that compiles and fails its test, so a kill is mandatory. Zero kills "
+        "means the probe is rejecting mutants that do compile."
+    )
+endef
+export MUTATION_PROBE_ASSERT
+
+mutation-probe-check:
+	@set -e; \
+	if [ ! -x "$(GO_MUTESTESTING_BIN)" ]; then \
+		echo "mutation-probe-check: $(GO_MUTESTESTING_BIN) not found; run 'make mutation-install' first"; \
+		exit 1; \
+	fi; \
+	work=$$(mktemp -d); \
+	trap 'rm -rf "$$work"' EXIT; \
+	printf 'skip_without_test: true\nskip_with_build_tags: true\njson_output: true\nsilent_mode: true\n' > "$$work/config.yml"; \
+	ulimit -v $(MUTATION_ADDRESS_SPACE_KB); \
+	if ! "$(GO_MUTESTESTING_BIN)" --exec-timeout $(MUTATION_EXEC_TIMEOUT) \
+		--config="$$work/config.yml" $(MUTATION_PROBE_FIXTURE) > "$$work/run.log" 2>&1; then \
+		echo "mutation-probe-check: go-mutesting failed on $(MUTATION_PROBE_FIXTURE):"; \
+		cat "$$work/run.log"; \
+		exit 1; \
+	fi; \
+	mv -f report.json "$$work/report.json"; \
+	rm -f go-mutesting-report.html; \
+	python3 -c "$$MUTATION_PROBE_ASSERT" "$$work/report.json"
 
 # Run go-mutesting on each in-scope Go package (Decision 9: explicit
 # enumeration; human/techniquetest is excluded as pure test-fixture data).

@@ -1,0 +1,71 @@
+Compile-probe patch for avito-tech/go-mutesting v2.3.1 (MUT-6-27).
+
+Upstream reads three meanings out of one `go test` exit code: 0 for tests
+passing, 1 for tests failing, and 2 for a build failure it maps to SKIP. Modern
+`go test` returns 1 for a package build failure, so the skip path is unreachable
+and every mutant that never compiled is counted as a kill. Measured on this
+repository, that was 11.07% of dp mutants, 16.99% of human, and roughly 9.07% of
+techniques.
+
+The patch compiles each mutant with `go test -c` before running the suite and
+returns the skip verdict on failure, so compilation is observed rather than
+inferred from an exit code. `go test -c` is the faithful discriminator: `go
+build` returns 0 when only a test file fails to compile, and `go vet` runs a
+wider analyser set than `go test` does.
+
+Applied by `make mutation-install`, which fails the build if this patch stops
+applying. Refresh it against the new tag rather than building without it.
+
+diff --git a/cmd/go-mutesting/main.go b/cmd/go-mutesting/main.go
+index 5749905..dd84faa 100644
+--- a/cmd/go-mutesting/main.go
++++ b/cmd/go-mutesting/main.go
+@@ -48,6 +48,14 @@ const (
+ 	returnError
+ )
+ 
++// exitCodeDidNotCompile is the exec verdict the caller maps to SkippedCount.
++const exitCodeDidNotCompile = 2
++
++// compileProbeMarker identifies this local patch inside the built binary, so an
++// unpatched or stale go-mutesting can be detected before it is trusted to
++// produce a score. Keep it in sync with GO_MUTESTING_PATCH_MARKER in api/Makefile.
++const compileProbeMarker = "go-mutesting-compile-probe/MUT-6-27"
++
+ func checkArguments(args []string, opts *models.Options) (bool, int) {
+ 	p := flags.NewNamedParser("go-mutesting", flags.None)
+ 
+@@ -464,6 +472,33 @@ func mutateExec(
+ 			pkgName += "/..."
+ 		}
+ 
++		// A mutant that does not compile is not a kill. `go test` exits 1 for a
++		// build failure exactly as it does for a failing test, so the exit-code
++		// switch below cannot tell the two apart and scores every non-compiling
++		// mutant as killed. Observe compilation directly instead of inferring it
++		// from an exit code, which is the assumption that produced the defect.
++		// `go test -c` is the faithful discriminator: it compiles the test files
++		// and runs the same default vet subset `go test` does, where `go build`
++		// does neither and `go vet` runs a wider analyser set.
++		if opts.Test.Recursive {
++			panic(compileProbeMarker + ": --test-recursive is not supported, because `go test -c` rejects a multi-package pattern; run one package at a time")
++		}
++		compileCmd := exec.Command("go", "test", "-c", "-o", os.DevNull, pkgName)
++		compileCmd.Env = os.Environ()
++		if compileOut, compileErr := compileCmd.CombinedOutput(); compileErr != nil {
++			if opts.General.Verbose {
++				fmt.Println("Mutation did not compile (" + compileProbeMarker + ")")
++			}
++			if opts.General.Debug {
++				fmt.Printf("%s\n", compileOut)
++				console.PrintDiff(diff)
++			}
++
++			mutant.Diff = string(diff)
++
++			return exitCodeDidNotCompile
++		}
++
+ 		goTestCmd := exec.Command("go", "test", "-timeout", fmt.Sprintf("%ds", opts.Exec.Timeout), pkgName)
+ 		goTestCmd.Env = os.Environ()
+ 
