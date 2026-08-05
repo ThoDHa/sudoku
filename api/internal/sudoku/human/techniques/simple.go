@@ -53,18 +53,12 @@ func DetectHiddenSingle(b BoardInterface) *core.Move {
 // cells is the unit's cell-index list (RowIndices[i], ColIndices[i], BoxIndices[i]);
 // desc is used in the explanation ("row", "column", "box").
 func findHiddenSingleInUnit(b BoardInterface, unitIdx int, cells []int, desc string) *core.Move {
+	// digit=0 is never a candidate: Candidates.Has rejects anything outside
+	// 1..GridSize, so an extra iteration at 0 finds no position and no unit
+	// already holding it.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
-		var positions []int
-		placed := false
-		for _, idx := range cells {
-			if b.GetCell(idx) == digit {
-				placed = true
-				break
-			}
-			if b.GetCandidatesAt(idx).Has(digit) {
-				positions = append(positions, idx)
-			}
-		}
+		positions, placed := unitDigitPositions(b, cells, digit)
 		if placed || len(positions) != 1 {
 			continue
 		}
@@ -79,10 +73,29 @@ func findHiddenSingleInUnit(b BoardInterface, unitIdx int, cells []int, desc str
 	return nil
 }
 
+// unitDigitPositions lists the cells of a unit that hold digit as a candidate.
+// It reports placed=true, with no positions, as soon as a cell of the unit
+// already holds the digit: the unit is settled for that digit at that point,
+// whatever the remaining cells still carry as candidates.
+func unitDigitPositions(b BoardInterface, cells []int, digit int) (positions []int, placed bool) {
+	for _, idx := range cells {
+		if b.GetCell(idx) == digit {
+			return nil, true
+		}
+		if b.GetCandidatesAt(idx).Has(digit) {
+			positions = append(positions, idx)
+		}
+	}
+	return positions, false
+}
+
 // buildHiddenSingleMove constructs the assign move for a hidden single, including
 // eliminations for every other candidate in the target cell.
 func buildHiddenSingleMove(row, col, digit, unitIdx int, desc string, cells []int, cellCandidates Candidates) *core.Move {
 	var eliminations []core.Candidate
+	// d=0 is never a candidate: Candidates.Has rejects anything outside
+	// 1..GridSize, so an extra iteration at 0 eliminates nothing.
+	// mutator-disable-next-line numbers/decrementer
 	for d := 1; d <= constants.GridSize; d++ {
 		if d != digit && cellCandidates.Has(d) {
 			eliminations = append(eliminations, core.Candidate{Row: row, Col: col, Digit: d})
@@ -105,6 +118,9 @@ func buildHiddenSingleMove(row, col, digit, unitIdx int, desc string, cells []in
 func DetectPointingPair(b BoardInterface) *core.Move {
 	for box := range constants.GridSize {
 		boxRow, boxCol := (box/3)*3, (box%3)*3
+		// digit=0 is never a candidate: Candidates.Has rejects anything outside
+		// 1..GridSize, so an extra iteration at 0 collects no position at all.
+		// mutator-disable-next-line numbers/decrementer
 		for digit := 1; digit <= constants.GridSize; digit++ {
 			positions := scanBoxCandidates(b, boxRow, boxCol, digit)
 			if move := findPointingPairMove(b, box, digit, positions); move != nil {
@@ -159,6 +175,10 @@ func sharedLine(positions []core.CellRef, byRow bool) (int, bool) {
 	} else {
 		first = positions[0].Col
 	}
+	// The scan starts at index 1 because index 0 is where first came from:
+	// including it would compare that value against itself, which can never
+	// disagree, so the lower bound is unobservable.
+	// mutator-disable-next-line numbers/decrementer
 	for _, p := range positions[1:] {
 		var v int
 		if byRow {
@@ -236,12 +256,12 @@ func DetectBoxLineReduction(b BoardInterface) *core.Move {
 // (byRow=false) for a digit whose candidates all lie in one box, and returns
 // the elimination move for the rest of that box.
 func findBoxLineReductionInLine(b BoardInterface, lineIdx int, byRow bool) *core.Move {
+	// digit=0 is never a candidate: Candidates.Has rejects anything outside
+	// 1..GridSize, so an extra iteration at 0 collects no position at all.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		positions := scanLineCandidates(b, lineIdx, byRow, digit)
-		if len(positions) < 2 || len(positions) > 3 {
-			continue
-		}
-		boxLo, ok := sharedBoxAlongLine(positions, byRow)
+		boxLo, ok := lineDigitBox(positions, byRow)
 		if !ok {
 			continue
 		}
@@ -250,6 +270,17 @@ func findBoxLineReductionInLine(b BoardInterface, lineIdx int, byRow bool) *core
 		}
 	}
 	return nil
+}
+
+// lineDigitBox reports the box origin shared by a line's candidate positions
+// for one digit. It admits two or three positions only: a single position is a
+// hidden single rather than a reduction, and four or more cannot fit the three
+// cells a box contributes to a line.
+func lineDigitBox(positions []core.CellRef, byRow bool) (int, bool) {
+	if len(positions) < 2 || len(positions) > 3 {
+		return 0, false
+	}
+	return sharedBoxAlongLine(positions, byRow)
 }
 
 // scanLineCandidates collects cells holding digit along a row (byRow=true) or
@@ -283,6 +314,10 @@ func sharedBoxAlongLine(positions []core.CellRef, byRow bool) (int, bool) {
 	} else {
 		first = (positions[0].Row / 3) * 3
 	}
+	// The scan starts at index 1 because index 0 is where first came from:
+	// including it would compare that origin against itself, which can never
+	// disagree, so the lower bound is unobservable.
+	// mutator-disable-next-line numbers/decrementer
 	for _, p := range positions[1:] {
 		var v int
 		if byRow {
