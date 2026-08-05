@@ -215,14 +215,12 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 		// both colors above with an elimination list that cannot be empty in
 		// that case. Neither call can therefore return a move, so the color
 		// number passed in and the early return are both unobservable.
-		// mutator-disable-next-line numbers/decrementer,numbers/incrementer
+		// mutator-disable-next-line numbers/decrementer,numbers/incrementer,branch/if
 		if move := checkAllCandidatesSameColor(b, color1, color2, colors, 1); move != nil {
-			// mutator-disable-next-line branch/if
 			return move
 		}
-		// mutator-disable-next-line numbers/decrementer,numbers/incrementer
+		// mutator-disable-next-line numbers/decrementer,numbers/incrementer,branch/if
 		if move := checkAllCandidatesSameColor(b, color2, color1, colors, 2); move != nil {
-			// mutator-disable-next-line branch/if
 			return move
 		}
 	}

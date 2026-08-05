@@ -78,9 +78,8 @@ func findURRectangles(b BoardInterface, d1, d2 int) []urRectangle {
 	// Lowering this bound, or dropping the early return, cannot change the
 	// result: fewer than four cells leave the four-index loop below with no
 	// iteration to run, so the function returns a nil slice either way.
-	// mutator-disable-next-line numbers/decrementer
+	// mutator-disable-next-line numbers/decrementer,branch/if
 	if len(cells) < 4 {
-		// mutator-disable-next-line branch/if
 		return nil
 	}
 

@@ -115,11 +115,12 @@ func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int)
 			}
 		}
 
+		// Both weakenings of this exit leave the loop spinning over an
+		// unchanged board for the remaining rounds and returning the same
+		// result, so the exit bounds cost rather than behavior.
+		// mutator-disable-next-line branch/if
 		if !progress {
-			// Both weakenings of this exit leave the loop spinning over an
-			// unchanged board for the remaining rounds and returning the same
-			// result, so the exit bounds cost rather than behavior.
-			// mutator-disable-next-line branch/if,loop/break
+			// mutator-disable-next-line loop/break
 			break
 		}
 	}
@@ -260,9 +261,8 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 				// propagateSingles only places cells that were empty, so a
 				// filled cell is never in any branch's placements. The guard
 				// stays because it skips those cells cheaply.
-				// mutator-disable-next-line expression/remove
+				// mutator-disable-next-line expression/remove,branch/if
 				if targetCell == cell || b.GetCell(targetCell) != 0 {
-					// mutator-disable-next-line branch/if
 					continue
 				}
 
@@ -288,9 +288,8 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 				// As above: the hypothesis cell holds a different digit in each
 				// branch, so no digit is eliminated from it by all of them, and
 				// a filled cell has no live candidate to reach the check below.
-				// mutator-disable-next-line expression/remove
+				// mutator-disable-next-line expression/remove,branch/if
 				if targetCell == cell || b.GetCell(targetCell) != 0 {
-					// mutator-disable-next-line branch/if
 					continue
 				}
 
@@ -401,11 +400,11 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 
 	// Find common placements
 	for targetCell := range constants.TotalCells {
+		// propagateSingles only places cells that were empty, so a filled
+		// cell is never in any branch's placements; skipping it saves the
+		// lookup rather than filtering anything out.
+		// mutator-disable-next-line branch/if
 		if b.GetCell(targetCell) != 0 {
-			// propagateSingles only places cells that were empty, so a filled
-			// cell is never in any branch's placements; skipping it saves the
-			// lookup rather than filtering anything out.
-			// mutator-disable-next-line branch/if
 			continue
 		}
 
