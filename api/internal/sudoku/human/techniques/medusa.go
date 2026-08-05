@@ -37,6 +37,28 @@ func (cp candidatePair) key() int {
 	return cp.cell*100 + cp.digit
 }
 
+// medusaPairFromKey reverses candidatePair.key(). Keys are 100*cell+digit with
+// cell below TotalCells and digit at most GridSize, so the stride separates the
+// two fields exactly.
+func medusaPairFromKey(key int) candidatePair {
+	// The quotient is unchanged by a stride of 99, because cell+digit never
+	// reaches 99 over the reachable key domain.
+	// mutator-disable-next-line numbers/decrementer
+	cell := key / 100
+	digit := key % 100
+	return candidatePair{cell: cell, digit: digit}
+}
+
+// medusaSeesAny reports whether cell is a peer of any cell in others.
+func medusaSeesAny(cell int, others []int) bool {
+	for _, other := range others {
+		if ArePeers(cell, other) {
+			return true
+		}
+	}
+	return false
+}
+
 // DetectMedusa3D implements 3D Medusa (Multi-Coloring) technique
 // This extends simple coloring by coloring candidate-cell pairs rather than just cells.
 // Connections are made through:
@@ -50,6 +72,9 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 
 	// First, find all conjugate pairs for each digit (strong links)
 	conjugatePairs := make(map[int][][2]int) // digit -> list of cell pairs
+	// Candidates.Has rejects digit 0, so an extra iteration from 0 adds an
+	// empty pair list that contributes no adjacency.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		conjugatePairs[digit] = findConjugatePairs(b, digit)
 	}
@@ -89,10 +114,6 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 		}
 	}
 
-	if len(adj) == 0 {
-		return nil
-	}
-
 	// Iterate starting points in sorted order for deterministic coloring.
 	startKeys := slices.Sorted(maps.Keys(adj))
 
@@ -100,11 +121,17 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 	colors := make(map[int]int) // pair.key() -> color (1 or 2)
 
 	for _, startKey := range startKeys {
+		// Dropping the skip cannot change the outcome: every neighbor of an
+		// already-colored start pair is itself colored, so the re-entered BFS
+		// adds nothing and yields a single-pair color1 with an empty color2.
+		// Every rule below returns nil for that shape, and the color markers
+		// are not read outside this loop.
+		// mutator-disable-next-line branch/if
 		if colors[startKey] != 0 {
 			continue
 		}
 
-		startPair := candidatePair{startKey / 100, startKey % 100}
+		startPair := medusaPairFromKey(startKey)
 
 		// BFS to color this component
 		var color1, color2 []candidatePair
@@ -116,6 +143,10 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 			current := queue[0]
 			queue = queue[1:]
 			currentColor := colors[current.key()]
+			// A stride of 4 alternates the marker values 1 and 3 instead of 1
+			// and 2; the slice each pair joins, and hence the partition, is
+			// unchanged, and the marker values are never read after this loop.
+			// mutator-disable-next-line numbers/incrementer
 			nextColor := 3 - currentColor
 
 			for _, neighbor := range adj[current.key()] {
@@ -131,10 +162,10 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 			}
 		}
 
-		// Need at least one pair of each color
-		if len(color1) == 0 || len(color2) == 0 {
-			continue
-		}
+		// Both colors are always populated here. color1 holds the BFS seed, and
+		// every key in adj carries a non-empty neighbor list whose members are
+		// all uncolored when their component is seeded, so the first BFS step
+		// always places at least one pair in color2.
 
 		// Check for contradictions and eliminations
 		// Rules are numbered according to SudokuWiki.org's 3D Medusa conventions
@@ -177,10 +208,21 @@ func DetectMedusa3D(b BoardInterface) *core.Move {
 
 		// Rule 6: Cell with all candidates in one color
 		// -> that color is false (cell would be empty), eliminate all of that color
+		//
+		// Both calls are unreachable from here: a cell whose every candidate
+		// carries one color puts two or more of that color's pairs in one
+		// cell, which is exactly what Rule 1 detects, and Rule 1 runs first for
+		// both colors above with an elimination list that cannot be empty in
+		// that case. Neither call can therefore return a move, so the color
+		// number passed in and the early return are both unobservable.
+		// mutator-disable-next-line numbers/decrementer,numbers/incrementer
 		if move := checkAllCandidatesSameColor(b, color1, color2, colors, 1); move != nil {
+			// mutator-disable-next-line branch/if
 			return move
 		}
+		// mutator-disable-next-line numbers/decrementer,numbers/incrementer
 		if move := checkAllCandidatesSameColor(b, color2, color1, colors, 2); move != nil {
+			// mutator-disable-next-line branch/if
 			return move
 		}
 	}
@@ -194,10 +236,7 @@ func findConjugatePairs(b BoardInterface, digit int) [][2]int {
 	seen := make(map[[2]int]bool)
 
 	addPair := func(c1, c2 int) {
-		if c1 > c2 {
-			c1, c2 = c2, c1
-		}
-		pair := [2]int{c1, c2}
+		pair := [2]int{min(c1, c2), max(c1, c2)}
 		if !seen[pair] {
 			seen[pair] = true
 			pairs = append(pairs, pair)
@@ -270,6 +309,10 @@ func checkSameUnitContradiction(b BoardInterface, colorToCheck, otherColor []can
 		pairs := digitPairs[digit]
 		// Check if any two cells with this digit see each other
 		for i := range pairs {
+			// ArePeers is false for identical indices and a color set cannot
+			// hold the same cell-digit pair twice, so a j == i iteration can
+			// never match.
+			// mutator-disable-next-line numbers/decrementer
 			for j := i + 1; j < len(pairs); j++ {
 				if ArePeers(pairs[i].cell, pairs[j].cell) {
 					// Contradiction: two same-digit candidates of the same color in the same unit
@@ -332,11 +375,18 @@ func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePa
 		color2ByDigit[cp.digit] = append(color2ByDigit[cp.digit], cp.cell)
 	}
 
-	// Find uncolored candidates that see the same digit in both colors
+	// Find uncolored candidates that see the same digit in both colors.
+	// Digit 0 is never indexed by either color bucket, so an extra iteration
+	// from 0 is discarded by the presence check below.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		cells1, ok1 := color1ByDigit[digit]
 		cells2, ok2 := color2ByDigit[digit]
 
+		// Dropping the skip cannot change the result: an absent bucket yields a
+		// nil cell list, and medusaSeesAny reports false for it, so no
+		// elimination can be reached for that digit either way.
+		// mutator-disable-next-line branch/if
 		if !ok1 || !ok2 {
 			continue
 		}
@@ -353,23 +403,9 @@ func checkUncoloredSeesBothColors(b BoardInterface, color1, color2 []candidatePa
 				continue
 			}
 
-			// Check if it sees a cell in color1 with this digit
-			seesColor1 := false
-			for _, c1 := range cells1 {
-				if ArePeers(cell, c1) {
-					seesColor1 = true
-					break
-				}
-			}
-
-			// Check if it sees a cell in color2 with this digit
-			seesColor2 := false
-			for _, c2 := range cells2 {
-				if ArePeers(cell, c2) {
-					seesColor2 = true
-					break
-				}
-			}
+			// Check if it sees a cell of this digit in each color
+			seesColor1 := medusaSeesAny(cell, cells1)
+			seesColor2 := medusaSeesAny(cell, cells2)
 
 			if seesColor1 && seesColor2 {
 				return &core.Move{
@@ -541,54 +577,44 @@ func checkUncoloredSeesColorAndOppositeInCell(b BoardInterface, color1, color2 [
 			}
 
 			// Check: sees Color1 in unit AND has Color2 in same cell?
-			if cellHasColor2[cell] {
-				// Cell has Color2 - check if this candidate sees Color1 of same digit in a unit
-				for _, c1 := range color1ByDigit[digit] {
-					if ArePeers(cell, c1) {
-						// Elimination: sees Color1 in unit, has Color2 in cell
-						return &core.Move{
-							Action: "eliminate",
-							Digit:  digit,
-							Targets: []core.CellRef{
-								{Row: cell / constants.GridSize, Col: cell % constants.GridSize},
-							},
-							Eliminations: []core.Candidate{
-								{Row: cell / constants.GridSize, Col: cell % constants.GridSize, Digit: digit},
-							},
-							Explanation: fmt.Sprintf("3D Medusa: R%dC%d has color 2 and sees %d in color 1: eliminate %d.",
-								cell/constants.GridSize+1, cell%constants.GridSize+1, digit, digit),
-							Highlights: core.Highlights{
-								Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
-								Secondary: pairsToTargetsMulti(color1, color2),
-							},
-						}
-					}
+			if cellHasColor2[cell] && medusaSeesAny(cell, color1ByDigit[digit]) {
+				// Elimination: sees Color1 in unit, has Color2 in cell
+				return &core.Move{
+					Action: "eliminate",
+					Digit:  digit,
+					Targets: []core.CellRef{
+						{Row: cell / constants.GridSize, Col: cell % constants.GridSize},
+					},
+					Eliminations: []core.Candidate{
+						{Row: cell / constants.GridSize, Col: cell % constants.GridSize, Digit: digit},
+					},
+					Explanation: fmt.Sprintf("3D Medusa: R%dC%d has color 2 and sees %d in color 1: eliminate %d.",
+						cell/constants.GridSize+1, cell%constants.GridSize+1, digit, digit),
+					Highlights: core.Highlights{
+						Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
+						Secondary: pairsToTargetsMulti(color1, color2),
+					},
 				}
 			}
 
 			// Check: sees Color2 in unit AND has Color1 in same cell?
-			if cellHasColor1[cell] {
-				// Cell has Color1 - check if this candidate sees Color2 of same digit in a unit
-				for _, c2 := range color2ByDigit[digit] {
-					if ArePeers(cell, c2) {
-						// Elimination: sees Color2 in unit, has Color1 in cell
-						return &core.Move{
-							Action: "eliminate",
-							Digit:  digit,
-							Targets: []core.CellRef{
-								{Row: cell / constants.GridSize, Col: cell % constants.GridSize},
-							},
-							Eliminations: []core.Candidate{
-								{Row: cell / constants.GridSize, Col: cell % constants.GridSize, Digit: digit},
-							},
-							Explanation: fmt.Sprintf("3D Medusa: R%dC%d has color 1 and sees %d in color 2: eliminate %d.",
-								cell/constants.GridSize+1, cell%constants.GridSize+1, digit, digit),
-							Highlights: core.Highlights{
-								Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
-								Secondary: pairsToTargetsMulti(color1, color2),
-							},
-						}
-					}
+			if cellHasColor1[cell] && medusaSeesAny(cell, color2ByDigit[digit]) {
+				// Elimination: sees Color2 in unit, has Color1 in cell
+				return &core.Move{
+					Action: "eliminate",
+					Digit:  digit,
+					Targets: []core.CellRef{
+						{Row: cell / constants.GridSize, Col: cell % constants.GridSize},
+					},
+					Eliminations: []core.Candidate{
+						{Row: cell / constants.GridSize, Col: cell % constants.GridSize, Digit: digit},
+					},
+					Explanation: fmt.Sprintf("3D Medusa: R%dC%d has color 1 and sees %d in color 2: eliminate %d.",
+						cell/constants.GridSize+1, cell%constants.GridSize+1, digit, digit),
+					Highlights: core.Highlights{
+						Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
+						Secondary: pairsToTargetsMulti(color1, color2),
+					},
 				}
 			}
 		}
@@ -626,7 +652,6 @@ func checkAllCandidatesSameColor(b BoardInterface, colorToCheck, otherColor []ca
 			cp := candidatePair{cell, digit}
 			if !colorToCheckSet[cp.key()] {
 				allInColor = false
-				break
 			}
 		}
 
@@ -642,19 +667,22 @@ func checkAllCandidatesSameColor(b BoardInterface, colorToCheck, otherColor []ca
 				}
 			}
 
-			if len(eliminations) > 0 {
-				return &core.Move{
-					Action:       "eliminate",
-					Digit:        0,
-					Targets:      pairsToTargetsMulti(colorToCheck, otherColor),
-					Eliminations: eliminations,
-					Explanation: fmt.Sprintf("3D Medusa: R%dC%d has all candidates in color %d: eliminate all color %d.",
-						cell/constants.GridSize+1, cell%constants.GridSize+1, colorNum, colorNum),
-					Highlights: core.Highlights{
-						Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
-						Secondary: pairsToTargetsMulti(colorToCheck, otherColor),
-					},
-				}
+			// allInColor is derived from this cell's own candidates, and the
+			// cell holds at least two of them, so eliminations is never empty
+			// here. Unlike Rules 1 and 2, which detect a contradiction from the
+			// coloring alone, this rule cannot fire on candidates the board has
+			// already lost.
+			return &core.Move{
+				Action:       "eliminate",
+				Digit:        0,
+				Targets:      pairsToTargetsMulti(colorToCheck, otherColor),
+				Eliminations: eliminations,
+				Explanation: fmt.Sprintf("3D Medusa: R%dC%d has all candidates in color %d: eliminate all color %d.",
+					cell/constants.GridSize+1, cell%constants.GridSize+1, colorNum, colorNum),
+				Highlights: core.Highlights{
+					Primary:   []core.CellRef{{Row: cell / constants.GridSize, Col: cell % constants.GridSize}},
+					Secondary: pairsToTargetsMulti(colorToCheck, otherColor),
+				},
 			}
 		}
 	}
