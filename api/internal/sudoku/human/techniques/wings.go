@@ -55,15 +55,18 @@ func DetectXYZWing(b BoardInterface) *core.Move {
 			var xzWings, yzWings []int
 
 			for _, wing := range bivalues {
-				if wing == pivot {
-					continue
-				}
 				if !ArePeers(pivot, wing) {
 					continue
 				}
 
 				wingCands := b.GetCandidatesAt(wing).ToSlice()
+				// wing comes from bivalues, whose members all report Count()==2,
+				// and ToSlice returns exactly Count() digits, so this length can
+				// never differ from 2. The guard stays as a precondition for the
+				// indexing below.
+				// mutator-disable-next-line branch/if
 				if len(wingCands) != 2 {
+					// mutator-disable-next-line loop/break
 					continue
 				}
 
@@ -80,20 +83,17 @@ func DetectXYZWing(b BoardInterface) *core.Move {
 				}
 			}
 
-			// Try all XZ-YZ wing pairs
+			// Try all XZ-YZ wing pairs. A wing holds exactly two candidates, so
+			// it cannot match both {xDigit, zDigit} and {yDigit, zDigit} while
+			// xDigit != yDigit: the two wing lists are always disjoint.
 			for _, xzWing := range xzWings {
 				for _, yzWing := range yzWings {
-					if xzWing == yzWing {
-						continue
-					}
-
 					// Find cells that see ALL THREE cells (pivot, xzWing, yzWing)
-					// and have zDigit as a candidate
+					// and have zDigit as a candidate. The three pattern cells drop
+					// out on their own, because ArePeers below returns false for
+					// identical indices.
 					var eliminations []core.Candidate
 					for i := range constants.TotalCells {
-						if i == pivot || i == xzWing || i == yzWing {
-							continue
-						}
 						if !b.GetCandidatesAt(i).Has(zDigit) {
 							continue
 						}
@@ -155,21 +155,36 @@ func DetectWXYZWing(b BoardInterface) *core.Move {
 	var cells []int
 	for i := range constants.TotalCells {
 		n := b.GetCandidatesAt(i).Count()
-		if n >= 2 && n <= 4 {
-			cells = append(cells, i)
+		if n < 2 {
+			continue
 		}
+		// The upper bound is a cost saving rather than a rule: a quad holding a
+		// cell with five or more candidates unions to at least five digits and
+		// is rejected by the count check below, so admitting such a cell would
+		// only lengthen the search. Raising the bound or dropping the skip
+		// therefore leaves the result unchanged.
+		// mutator-disable-next-line branch/if,numbers/incrementer
+		if n > 4 {
+			continue
+		}
+		cells = append(cells, i)
 	}
 
-	if len(cells) < 4 {
-		return nil
-	}
-
-	// Try all combinations of 4 cells
-	for i := range cells {
+	// Try all combinations of 4 cells. Starting each index one past the
+	// previous keeps the quad strictly ascending; a mutated start that repeats
+	// or reorders an index yields a quad with a duplicated cell, and every such
+	// quad is rejected below because a repeated cell cannot see itself, which
+	// makes each of its digits non-restricted.
+	for i, ci := range cells {
+		// mutator-disable-next-line numbers/decrementer
 		for j := i + 1; j < len(cells); j++ {
+			cj := cells[j]
+			// mutator-disable-next-line arithmetic/base,numbers/decrementer
 			for k := j + 1; k < len(cells); k++ {
+				ck := cells[k]
+				// mutator-disable-next-line arithmetic/base,numbers/decrementer
 				for l := k + 1; l < len(cells); l++ {
-					quad := [4]int{cells[i], cells[j], cells[k], cells[l]}
+					quad := [4]int{ci, cj, ck, cells[l]}
 
 					// Check if these 4 cells contain exactly 4 distinct digits total
 					combined := b.GetCandidatesAt(quad[0]).Union(b.GetCandidatesAt(quad[1])).Union(b.GetCandidatesAt(quad[2])).Union(b.GetCandidatesAt(quad[3]))
@@ -204,16 +219,14 @@ func DetectWXYZWing(b BoardInterface) *core.Move {
 
 					z := nonRestrictedDigits[0]
 
-					// Find cells in the quad that contain Z
+					// Find cells in the quad that contain Z. A non-restricted digit
+					// sits in at least two quad cells, because isDigitRestricted
+					// reports any digit held by one cell or none as restricted.
 					var zCells []int
 					for _, cell := range quad {
 						if b.GetCandidatesAt(cell).Has(z) {
 							zCells = append(zCells, cell)
 						}
-					}
-
-					if len(zCells) == 0 {
-						continue
 					}
 
 					// Eliminate Z from cells that see ALL Z-containing cells in the quad
@@ -223,15 +236,7 @@ func DetectWXYZWing(b BoardInterface) *core.Move {
 						// Build targets (all 4 cells)
 						targets := CellRefsFromIndices(quad[:]...)
 
-						// Find the hinge (cell with most candidates, or any with all 4)
-						hingeIdx := quad[0]
-						for _, cell := range quad {
-							if b.GetCandidatesAt(cell).Count() > b.GetCandidatesAt(hingeIdx).Count() {
-								hingeIdx = cell
-							}
-						}
-
-						// Primary = cells with Z (wing cells), Secondary = hinge
+						// Primary = cells with Z (wing cells), Secondary = the rest
 						var primary, secondary []core.CellRef
 						for _, cell := range quad {
 							if b.GetCandidatesAt(cell).Has(z) {
@@ -272,6 +277,9 @@ func isConnectedQuad(quad [4]int) bool {
 		for j, other := range quad {
 			if i != j && ArePeers(cell, other) {
 				seesAnother = true
+				// Turning this into a continue only costs further iterations
+				// that re-assign the same true.
+				// mutator-disable-next-line loop/break
 				break
 			}
 		}
@@ -292,12 +300,8 @@ func isDigitRestricted(b BoardInterface, quad [4]int, digit int) bool {
 		}
 	}
 
-	// If only 0 or 1 cell has the digit, it's trivially restricted
-	if len(digitCells) <= 1 {
-		return true
-	}
-
-	// All pairs must see each other
+	// All pairs must see each other. A digit held by one quad cell or none has
+	// no pair to check, so the loop below reports it restricted.
 	for i := range digitCells {
 		for j := i + 1; j < len(digitCells); j++ {
 			if !ArePeers(digitCells[i], digitCells[j]) {
@@ -317,8 +321,10 @@ func isDigitRestricted(b BoardInterface, quad [4]int, digit int) bool {
 func DetectALSXZ(b BoardInterface) *core.Move {
 	allALS := FindAllALS(b, 4)
 
-	// Try all pairs of ALS
+	// Try all pairs of ALS. Starting j one past i skips pairing an ALS with
+	// itself, which the share check below would reject anyway.
 	for i := range allALS {
+		// mutator-disable-next-line numbers/decrementer
 		for j := i + 1; j < len(allALS); j++ {
 			alsA := allALS[i]
 			alsB := allALS[j]
@@ -328,8 +334,11 @@ func DetectALSXZ(b BoardInterface) *core.Move {
 				continue
 			}
 
-			// Find common digits between the two ALS
+			// Find common digits between the two ALS. A single common digit is
+			// already rejected by the z loop below, which skips z == x and so
+			// finds no elimination digit; the guard only saves the work.
 			commonDigits := IntersectInts(alsA.Digits, alsB.Digits)
+			// mutator-disable-next-line branch/if,numbers/decrementer
 			if len(commonDigits) < 2 {
 				continue // Need at least X (restricted common) and Z (elimination digit)
 			}
