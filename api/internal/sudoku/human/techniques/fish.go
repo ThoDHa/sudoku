@@ -12,6 +12,9 @@ import (
 // DetectXWing finds X-Wing pattern: a digit in exactly 2 positions in 2 rows,
 // and those positions share the same columns
 func DetectXWing(b BoardInterface) *core.Move {
+	// digit=0 is never a candidate: Candidates.Has rejects anything outside
+	// 1..GridSize, so an extra iteration at 0 reads no state and finds no line.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		if m := findXWingInAxis(b, digit, true); m != nil {
 			return m
@@ -179,7 +182,12 @@ func DetectXYWing(b BoardInterface) *core.Move {
 
 	for _, pivot := range bivalues {
 		pivotCands := b.GetCandidatesAt(pivot).ToSlice()
+		// bivalues holds only cells whose Candidates.Count() is 2, and ToSlice
+		// returns exactly Count() digits, so this length can never differ from 2.
+		// The guard stays as a precondition for indexing pivotCands below.
+		// mutator-disable-next-line branch/if
 		if len(pivotCands) != 2 {
+			// mutator-disable-next-line loop/break
 			continue
 		}
 		x, y := pivotCands[0], pivotCands[1]
@@ -188,6 +196,9 @@ func DetectXYWing(b BoardInterface) *core.Move {
 		var xzWings, yzWings []int
 
 		for _, wing := range bivalues {
+			// ArePeers below already rejects wing==pivot, since it returns false
+			// for identical indices; this is the cheaper early exit.
+			// mutator-disable-next-line branch/if
 			if wing == pivot {
 				continue
 			}
@@ -196,16 +207,27 @@ func DetectXYWing(b BoardInterface) *core.Move {
 			}
 
 			wingCands := b.GetCandidatesAt(wing).ToSlice()
+			// Same invariant as the pivot guard: wing also comes from bivalues,
+			// so this length is always 2. Retained to guard the indexing below.
+			// mutator-disable-next-line branch/if
 			if len(wingCands) != 2 {
+				// mutator-disable-next-line loop/break
 				continue
 			}
 
 			hasX := wingCands[0] == x || wingCands[1] == x
 			hasY := wingCands[0] == y || wingCands[1] == y
 
-			if hasX && !hasY {
+			// A usable wing holds exactly one of the pivot's two digits. One
+			// holding both is {x,y}, whose z would be the pivot's other digit,
+			// which no opposite wing can ever match; one holding neither has no
+			// digit in common with the pivot at all.
+			if hasX == hasY {
+				continue
+			}
+			if hasX {
 				xzWings = append(xzWings, wing)
-			} else if hasY && !hasX {
+			} else {
 				yzWings = append(yzWings, wing)
 			}
 		}
@@ -234,12 +256,13 @@ func DetectXYWing(b BoardInterface) *core.Move {
 				}
 				z := z1
 
-				// Find cells that see both wings and have z as candidate
+				// Find cells that see both wings and have z as candidate. The
+				// pivot and the two wings need no explicit exclusion: the
+				// pivot's candidates are exactly {x,y} and z is neither, so the
+				// Has(z) guard drops it, and ArePeers is false for a cell
+				// compared with itself, so each wing fails the peer conjunction.
 				var eliminations []core.Candidate
 				for i := range constants.TotalCells {
-					if i == pivot || i == xzWing || i == yzWing {
-						continue
-					}
 					if !b.GetCandidatesAt(i).Has(z) {
 						continue
 					}
@@ -277,10 +300,20 @@ func DetectXYWing(b BoardInterface) *core.Move {
 	return nil
 }
 
+// linkConjugates records a conjugate pair as an undirected edge, so a coloring
+// walk starting from either endpoint reaches the other.
+func linkConjugates(conjugates map[int][]int, a, b int) {
+	conjugates[a] = append(conjugates[a], b)
+	conjugates[b] = append(conjugates[b], a)
+}
+
 // DetectSimpleColoring uses single-digit coloring to find eliminations
 //
 //nolint:gocyclo // Simple Coloring builds a conjugate-pair graph, runs two-color BFS, then checks five trap/elimination patterns over the resulting color sets; each pattern consumes the same color buckets and per-cell color maps.
 func DetectSimpleColoring(b BoardInterface) *core.Move {
+	// digit=0 is never a candidate: Candidates.Has rejects anything outside
+	// 1..GridSize, so an extra iteration at 0 builds no conjugate pair.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		// Find conjugate pairs (cells where digit appears exactly twice in a unit)
 		conjugates := make(map[int][]int) // cell -> connected cells
@@ -294,8 +327,7 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 				}
 			}
 			if len(cells) == 2 {
-				conjugates[cells[0]] = append(conjugates[cells[0]], cells[1])
-				conjugates[cells[1]] = append(conjugates[cells[1]], cells[0])
+				linkConjugates(conjugates, cells[0], cells[1])
 			}
 		}
 
@@ -308,8 +340,7 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 				}
 			}
 			if len(cells) == 2 {
-				conjugates[cells[0]] = append(conjugates[cells[0]], cells[1])
-				conjugates[cells[1]] = append(conjugates[cells[1]], cells[0])
+				linkConjugates(conjugates, cells[0], cells[1])
 			}
 		}
 
@@ -325,13 +356,8 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 				}
 			}
 			if len(cells) == 2 {
-				conjugates[cells[0]] = append(conjugates[cells[0]], cells[1])
-				conjugates[cells[1]] = append(conjugates[cells[1]], cells[0])
+				linkConjugates(conjugates, cells[0], cells[1])
 			}
-		}
-
-		if len(conjugates) == 0 {
-			continue
 		}
 
 		// Sorted list of starting cells for deterministic iteration.
@@ -341,6 +367,12 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 		colors := make(map[int]int) // cell -> color (1 or 2)
 
 		for _, start := range startCells {
+			// Dropping this skip cannot change the outcome: BFS colors an entire
+			// connected component, so re-entering at an already-colored cell
+			// finds every neighbor colored, leaves color2 empty, and the peer
+			// scan below can then never see both colors. It is kept because it
+			// avoids re-walking each component once per member.
+			// mutator-disable-next-line branch/if
 			if colors[start] != 0 {
 				continue
 			}
@@ -355,6 +387,11 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 				cell := queue[0]
 				queue = queue[1:]
 				currentColor := colors[cell]
+				// nextColor is only ever compared against 1, and k-currentColor
+				// seeded at 1 alternates between 1 and k-1 for any k >= 3, so
+				// raising the constant relabels the second color without moving
+				// a single cell between the two buckets.
+				// mutator-disable-next-line numbers/incrementer
 				nextColor := 3 - currentColor
 
 				for _, neighbor := range conjugates[cell] {
@@ -370,11 +407,6 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 				}
 			}
 
-			// Need at least one cell of each color for a valid chain
-			if len(color1) == 0 || len(color2) == 0 {
-				continue
-			}
-
 			// Check for eliminations: cells that see both colors OF THIS COMPONENT
 			for i := range constants.TotalCells {
 				if !b.GetCandidatesAt(i).Has(digit) || colors[i] != 0 {
@@ -386,12 +418,17 @@ func DetectSimpleColoring(b BoardInterface) *core.Move {
 				for _, c1 := range color1 {
 					if ArePeers(i, c1) {
 						seesColor1 = true
+						// Turning this into a continue only costs further
+						// iterations that re-assign the same true.
+						// mutator-disable-next-line loop/break
 						break
 					}
 				}
 				for _, c2 := range color2 {
 					if ArePeers(i, c2) {
 						seesColor2 = true
+						// Same reasoning as the color1 scan above.
+						// mutator-disable-next-line loop/break
 						break
 					}
 				}
