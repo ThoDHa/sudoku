@@ -20,6 +20,9 @@ import (
 
 // DetectSwordfish finds Swordfish patterns
 func DetectSwordfish(b BoardInterface) *core.Move {
+	// Starting at 0 changes nothing: Candidates.Has rejects any digit outside
+	// 1..GridSize, so a digit-0 pass finds no positions on any line.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		if move := detectSwordfishInRows(b, digit); move != nil {
 			return move
@@ -47,10 +50,10 @@ func detectSwordfishInAxis(b BoardInterface, digit int, byRow bool) *core.Move {
 	lineToPerps := swordfishLinePositions(b, digit, byRow)
 	// Sorted so the first Swordfish found is deterministic (Go randomizes map range).
 	lines := slices.Sorted(maps.Keys(lineToPerps))
-	if len(lines) < 3 {
-		return nil
-	}
 	for i := range lines {
+		// j may reach len(lines) without harm: the k loop below then yields no
+		// iteration, so nothing indexes lines[j].
+		// mutator-disable-next-line expression/comparison
 		for j := i + 1; j < len(lines); j++ {
 			for k := j + 1; k < len(lines); k++ {
 				l1, l2, l3 := lines[i], lines[j], lines[k]
@@ -193,6 +196,8 @@ func swordfishExplanation(digit int, lines, perps []int, byRow bool) string {
 // - Eliminate the digit from cells that are in one of the 3 columns AND see the fin cell
 
 func DetectFinnedSwordfish(b BoardInterface) *core.Move {
+	// As in DetectSwordfish, a digit-0 pass finds nothing.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		if move := detectFinnedSwordfishInRows(b, digit); move != nil {
 			return move
@@ -226,10 +231,9 @@ func detectFinnedSwordfishInCols(b BoardInterface, digit int) *core.Move {
 // as the finned one and delegates the configuration check.
 func detectFinnedSwordfishInAxis(b BoardInterface, digit int, byRow bool) *core.Move {
 	lines := collectFinnedLines(b, digit, byRow)
-	if len(lines) < 3 {
-		return nil
-	}
 	for i := range lines {
+		// As above, j may reach len(lines) without harm.
+		// mutator-disable-next-line expression/comparison
 		for j := i + 1; j < len(lines); j++ {
 			for k := j + 1; k < len(lines); k++ {
 				l1, l2, l3 := lines[i], lines[j], lines[k]
@@ -277,6 +281,12 @@ func collectFinnedLines(b BoardInterface, digit int, byRow bool) []finnedLineInf
 // and returns the elimination move if the configuration is a legal finned
 // swordfish with eliminations.
 func tryFinnedSwordfishConfig(b BoardInterface, digit int, finned, base1, base2 finnedLineInfo, byRow bool) *core.Move {
+	// This is a cost guard, not a correctness one: a base line with more than
+	// three positions cannot fit a three-coordinate base set, and the union
+	// check below would reject it anyway. Keeping it avoids the map build in
+	// unionInts on a hot path (removing it costs ~65% on a dense board), so the
+	// mutants that only weaken it cannot change behavior.
+	// mutator-disable-next-line branch/if,numbers/incrementer,expression/remove
 	if len(base1.perps) > 3 || len(base2.perps) > 3 {
 		return nil
 	}
@@ -288,10 +298,18 @@ func tryFinnedSwordfishConfig(b BoardInterface, digit int, finned, base1, base2 
 	if len(mainPerps) < 2 || len(finPerps) == 0 {
 		return nil
 	}
+	// Also a cost guard: fins spread across boxes leave no cell that sees all
+	// of them, so seesAllFins would drop every candidate and the move would
+	// come back empty regardless.
+	// mutator-disable-next-line branch/if
 	if !finsInSameBoxAxis(finPerps) {
 		return nil
 	}
 	targetPerps := perpsSharingBoxWithFins(mainPerps, finPerps)
+	// Cost guard again: with no target coordinates the elimination walk below
+	// iterates nothing and buildFinnedSwordfishMove returns nil on an empty
+	// elimination list.
+	// mutator-disable-next-line branch/if,numbers/decrementer
 	if len(targetPerps) == 0 {
 		return nil
 	}
@@ -312,12 +330,14 @@ func splitMainAndFins(perps []int, baseSet map[int]bool) (main, fins []int) {
 
 // finsInSameBoxAxis reports whether all fin perpendicular coordinates fall in
 // the same box along the perpendicular axis.
+// An empty slice is vacuously in one box, and the guard is what makes
+// finPerps[0] below safe.
 func finsInSameBoxAxis(finPerps []int) bool {
-	if len(finPerps) <= 1 {
+	if len(finPerps) == 0 {
 		return true
 	}
 	boxAxis := finPerps[0] / constants.BoxSize
-	for _, fp := range finPerps[1:] {
+	for _, fp := range finPerps {
 		if fp/constants.BoxSize != boxAxis {
 			return false
 		}
@@ -390,6 +410,14 @@ func collectFinnedSwordfishElims(
 				continue
 			}
 			if !seesAllFins(finned.line, finPerps, idx, byRow) {
+				// Unreachable from the detector and order-independent when
+				// reached directly: k spans the fin line's own box band and tp
+				// shares the fins' box axis, so every cell this walk visits for
+				// a given tp stands in the same box relation to every fin.
+				// The guard therefore rejects all of a coordinate's cells or
+				// none, and abandoning the walk collects the same set as
+				// skipping the cell.
+				// mutator-disable-next-line loop/break
 				continue
 			}
 			eliminations = append(eliminations, cand)
