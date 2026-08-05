@@ -118,7 +118,7 @@ func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int)
 		if !progress {
 			// Both weakenings of this exit leave the loop spinning over an
 			// unchanged board for the remaining rounds and returning the same
-			// result, so the exit bounds cost rather than behaviour.
+			// result, so the exit bounds cost rather than behavior.
 			// mutator-disable-next-line branch/if,loop/break
 			break
 		}
