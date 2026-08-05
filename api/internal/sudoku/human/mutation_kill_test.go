@@ -712,3 +712,47 @@ func TestFindNextMove_ResetsGenerationStateAfterStall(t *testing.T) {
 		t.Errorf("reused solver must reset state and solve the puzzle, got %q", status2)
 	}
 }
+
+// The SolveWithSteps loop guards each iteration with ctx.Err(), and that guard
+// is annotated as equivalent because FindNextMove already refuses a canceled
+// context. These two tests pin that reasoning: the first fixes the downstream
+// behavior the annotation depends on, the second fixes the result the loop
+// produces either way. If FindNextMove's check ordering ever changes, the first
+// fails and the annotation stops being true before it can mislead anyone.
+
+func TestFindNextMoveReturnsNilForACanceledContext(t *testing.T) {
+	givens := make([]int, len(solvedGrid))
+	copy(givens, solvedGrid[:])
+	// Empty one cell so an uncanceled call would have a move to find.
+	givens[0] = 0
+
+	board := NewBoard(givens)
+	solver := NewSolver()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if move := solver.FindNextMove(ctx, board); move != nil {
+		t.Fatalf("FindNextMove returned %+v for a canceled context, want nil", move)
+	}
+}
+
+func TestSolveWithStepsStopsWithStalledStatusForACanceledContext(t *testing.T) {
+	givens := make([]int, len(solvedGrid))
+	copy(givens, solvedGrid[:])
+	givens[0] = 0
+
+	board := NewBoard(givens)
+	solver := NewSolver()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	moves, status := solver.SolveWithSteps(ctx, board, constants.MaxSolverSteps)
+	if status != constants.StatusStalled {
+		t.Errorf("status = %q, want %q", status, constants.StatusStalled)
+	}
+	if len(moves) != 0 {
+		t.Errorf("moves = %d, want 0: a canceled context must not apply any move", len(moves))
+	}
+}

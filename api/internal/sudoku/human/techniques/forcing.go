@@ -87,6 +87,10 @@ func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int)
 				for _, idx := range unit.Cells {
 					if sim.GetCell(idx) == digit {
 						found = true
+						// Scanning on instead of breaking only lengthens
+						// positions, and every later use of positions is gated
+						// on !found, so the exit is a cost saving.
+						// mutator-disable-next-line loop/break
 						break
 					}
 					if sim.GetCandidatesAt(idx).Has(digit) {
@@ -112,6 +116,10 @@ func propagateSingles(b BoardInterface, startCell, startDigit int, maxSteps int)
 		}
 
 		if !progress {
+			// Both weakenings of this exit leave the loop spinning over an
+			// unchanged board for the remaining rounds and returning the same
+			// result, so the exit bounds cost rather than behaviour.
+			// mutator-disable-next-line branch/if,loop/break
 			break
 		}
 	}
@@ -142,6 +150,37 @@ func getUnitsForCell(cellIdx int) []Unit {
 		{Type: UnitCol, Index: col, Cells: ColIndices[col]},
 		{Type: UnitBox, Index: box, Cells: BoxIndices[box]},
 	}
+}
+
+// forcingCommonPlacement returns the digit that every branch places in
+// targetCell. The second result is false when the branches disagree, when any
+// branch leaves targetCell unplaced, or when there are no branches at all.
+func forcingCommonPlacement(results []*propagationResult, targetCell int) (int, bool) {
+	commonDigit := 0
+	for _, res := range results {
+		digit, ok := res.placements[targetCell]
+		if !ok || (commonDigit != 0 && digit != commonDigit) {
+			return commonDigit, false
+		}
+		commonDigit = digit
+	}
+	return commonDigit, commonDigit != 0
+}
+
+// forcingAllBranchesEliminate reports whether every branch removes digit from
+// targetCell. A branch removes it either by recording the elimination outright
+// or by placing some other digit in that cell.
+func forcingAllBranchesEliminate(results []*propagationResult, targetCell, digit int) bool {
+	for _, res := range results {
+		if res.eliminations[targetCell][digit] {
+			continue
+		}
+		if placedDigit, ok := res.placements[targetCell]; ok && placedDigit != digit {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // DetectForcingChain detects forcing chain patterns
@@ -215,27 +254,19 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 
 			// Find common placements across all branches
 			for targetCell := range constants.TotalCells {
+				// Neither half of this guard can change the outcome. The
+				// hypothesis cell takes a different digit in every branch, so
+				// forcingCommonPlacement never finds agreement there; and
+				// propagateSingles only places cells that were empty, so a
+				// filled cell is never in any branch's placements. The guard
+				// stays because it skips those cells cheaply.
+				// mutator-disable-next-line expression/remove
 				if targetCell == cell || b.GetCell(targetCell) != 0 {
+					// mutator-disable-next-line branch/if
 					continue
 				}
 
-				// Check if all branches place the same digit in this cell
-				commonDigit := -1
-				for i, res := range results {
-					if digit, ok := res.placements[targetCell]; ok {
-						if i == 0 {
-							commonDigit = digit
-						} else if digit != commonDigit {
-							commonDigit = -1
-							break
-						}
-					} else {
-						commonDigit = -1
-						break
-					}
-				}
-
-				if commonDigit > 0 {
+				if commonDigit, ok := forcingCommonPlacement(results, targetCell); ok {
 					row, col := cell/constants.GridSize, cell%constants.GridSize
 					targetRow, targetCol := targetCell/constants.GridSize, targetCell%constants.GridSize
 					return &core.Move{
@@ -254,29 +285,24 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 
 			// Find common eliminations across all branches
 			for targetCell := range constants.TotalCells {
+				// As above: the hypothesis cell holds a different digit in each
+				// branch, so no digit is eliminated from it by all of them, and
+				// a filled cell has no live candidate to reach the check below.
+				// mutator-disable-next-line expression/remove
 				if targetCell == cell || b.GetCell(targetCell) != 0 {
+					// mutator-disable-next-line branch/if
 					continue
 				}
 
+				// Starting at 0 changes nothing: Candidates.Has rejects every
+				// digit outside 1..GridSize, so the extra iteration is skipped.
+				// mutator-disable-next-line numbers/decrementer
 				for digit := 1; digit <= constants.GridSize; digit++ {
 					if !b.GetCandidatesAt(targetCell).Has(digit) {
 						continue
 					}
 
-					// Check if all branches eliminate this digit from this cell
-					allEliminate := true
-					for _, res := range results {
-						if res.eliminations[targetCell] == nil || !res.eliminations[targetCell][digit] {
-							// Also check if cell was placed with a different digit
-							if placedDigit, ok := res.placements[targetCell]; ok && placedDigit != digit {
-								continue // This counts as eliminated
-							}
-							allEliminate = false
-							break
-						}
-					}
-
-					if allEliminate {
+					if forcingAllBranchesEliminate(results, targetCell, digit) {
 						row, col := cell/constants.GridSize, cell%constants.GridSize
 						targetRow, targetCol := targetCell/constants.GridSize, targetCell%constants.GridSize
 						return &core.Move{
@@ -305,7 +331,10 @@ func detectCellForcingChain(b BoardInterface) *core.Move {
 // detectUnitForcingChain examines units where a digit can only go in 2-3 cells
 // For each possible placement, propagate and find common conclusions
 func detectUnitForcingChain(b BoardInterface) *core.Move {
-	// Check each unit (rows, columns, boxes)
+	// Check each unit (rows, columns, boxes). Starting at 0 changes nothing:
+	// Candidates.Has rejects it, so digit 0 collects no positions and the
+	// position-count guard below rejects every unit for it.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		for _, unit := range AllUnits() {
 			var positions []int
@@ -373,38 +402,17 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 	// Find common placements
 	for targetCell := range constants.TotalCells {
 		if b.GetCell(targetCell) != 0 {
+			// propagateSingles only places cells that were empty, so a filled
+			// cell is never in any branch's placements; skipping it saves the
+			// lookup rather than filtering anything out.
+			// mutator-disable-next-line branch/if
 			continue
 		}
 
-		// Skip cells that are part of the forcing positions
-		isForcing := false
-		for _, pos := range positions {
-			if pos == targetCell {
-				isForcing = true
-				break
-			}
-		}
-		if isForcing {
-			continue
-		}
-
-		// Check if all branches place the same digit
-		commonDigit := -1
-		for i, res := range results {
-			if placedDigit, ok := res.placements[targetCell]; ok {
-				if i == 0 {
-					commonDigit = placedDigit
-				} else if placedDigit != commonDigit {
-					commonDigit = -1
-					break
-				}
-			} else {
-				commonDigit = -1
-				break
-			}
-		}
-
-		if commonDigit > 0 {
+		// The forcing positions themselves need no filtering here: they all sit
+		// in one unit, so a branch that places digit at one of them clears digit
+		// from the others, and no two branches can agree on any digit there.
+		if commonDigit, ok := forcingCommonPlacement(results, targetCell); ok {
 			targetRow, targetCol := targetCell/constants.GridSize, targetCell%constants.GridSize
 			var highlights []core.CellRef
 			for _, pos := range positions {
@@ -434,6 +442,9 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 		for _, pos := range positions {
 			if pos == targetCell {
 				isForcing = true
+				// Scanning the remaining positions cannot unset the flag, so
+				// the exit is a cost saving with no effect.
+				// mutator-disable-next-line loop/break
 				break
 			}
 		}
@@ -441,27 +452,15 @@ func tryUnitForcingChain(b BoardInterface, digit int, positions []int, unitDesc 
 			continue
 		}
 
+		// Starting at 0 changes nothing: Candidates.Has rejects every digit
+		// outside 1..GridSize, so the extra iteration is skipped.
+		// mutator-disable-next-line numbers/decrementer
 		for elimDigit := 1; elimDigit <= constants.GridSize; elimDigit++ {
 			if !b.GetCandidatesAt(targetCell).Has(elimDigit) {
 				continue
 			}
 
-			allEliminate := true
-			for _, res := range results {
-				eliminated := false
-				if res.eliminations[targetCell] != nil && res.eliminations[targetCell][elimDigit] {
-					eliminated = true
-				}
-				if placedDigit, ok := res.placements[targetCell]; ok && placedDigit != elimDigit {
-					eliminated = true
-				}
-				if !eliminated {
-					allEliminate = false
-					break
-				}
-			}
-
-			if allEliminate {
+			if forcingAllBranchesEliminate(results, targetCell, elimDigit) {
 				targetRow, targetCol := targetCell/constants.GridSize, targetCell%constants.GridSize
 				var highlights []core.CellRef
 				for _, pos := range positions {

@@ -613,9 +613,17 @@ func (s *Solver) SolveWithSteps(ctx context.Context, b *Board, maxSteps int) ([]
 	step := 0
 
 	for step < maxSteps && !b.IsSolved() {
-		// Re-check the context each iteration so a canceled request breaks out
-		// of the loop promptly instead of running up to maxSteps moves. Returns
-		// the moves accumulated so far with a stalled status.
+		// Re-check the context each iteration so a canceled request stops here
+		// rather than entering the detection pipeline, returning the moves
+		// accumulated so far with a stalled status.
+		//
+		// Removing this return cannot change the result: FindNextMove checks the
+		// context before anything else and returns nil, which the nil branch
+		// below turns into the same (moves, StatusStalled). The guard is kept as
+		// defense in depth, because deleting it would make prompt cancellation
+		// depend on FindNextMove's internal check ordering, an invariant nothing
+		// enforces.
+		// mutator-disable-next-line branch/if
 		if err := ctx.Err(); err != nil {
 			return moves, constants.StatusStalled
 		}
