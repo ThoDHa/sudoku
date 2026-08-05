@@ -88,16 +88,28 @@ func countDigitInUnit(b BoardInterface, cells []int, digit int) int {
 func bugInvariantHolds(b BoardInterface, bugCell int) bool {
 	bugRow, bugCol, bugBox := RowOf(bugCell), ColOf(bugCell), BoxOf(bugCell)
 	bugCands := b.GetCandidatesAt(bugCell)
-	unitKinds := [3][constants.GridSize][]int{RowIndices, ColIndices, BoxIndices}
-	bugUnitKeys := [3]int{bugRow, bugCol, bugBox}
+	unitKinds := [...][constants.GridSize][]int{RowIndices, ColIndices, BoxIndices}
+	bugUnitKeys := [...]int{bugRow, bugCol, bugBox}
 
-	for kind := range 3 {
+	for kind := range unitKinds {
 		for u := range constants.GridSize {
 			containsBug := u == bugUnitKeys[kind]
+			// digit=0 is never a candidate: Candidates.Has rejects anything outside
+			// 1..GridSize, so an extra iteration at 0 counts nothing and the
+			// count==0 arm already accepts it.
+			// mutator-disable-next-line numbers/decrementer
 			for digit := 1; digit <= constants.GridSize; digit++ {
 				count := countDigitInUnit(b, unitKinds[kind][u], digit)
+				// Both accepting arms are deliberately empty, so go-mutesting's
+				// branch/case mutant for each emits source byte-identical to the
+				// original. The two are identical to each other as well, so the
+				// tool deduplicates them into one entry: annotating a single
+				// clause leaves that entry alive and reads as an inert directive.
+				// Both clauses must carry the directive to retire it.
 				switch {
+				// mutator-disable-next-line branch/case
 				case count == 0, count == 2:
+				// mutator-disable-next-line branch/case
 				case count == 3 && containsBug && bugCands.Has(digit):
 				default:
 					return false
