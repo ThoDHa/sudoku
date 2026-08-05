@@ -9,10 +9,22 @@ import (
 	"sudoku-api/pkg/constants"
 )
 
+// chainsScanDigits yields each digit a detector in this file scans, in
+// ascending order. The three detectors below all walk the same range, and the
+// start value and bound are the kind of thing that drifts independently when
+// repeated, so the range is defined once here.
+func chainsScanDigits(yield func(int) bool) {
+	for digit := 1; digit <= constants.GridSize; digit++ {
+		if !yield(digit) {
+			return
+		}
+	}
+}
+
 // DetectJellyfish finds Jellyfish pattern: 4 rows where a digit appears in 2-4 positions,
 // and those positions share exactly 4 columns (or vice versa).
 func DetectJellyfish(b BoardInterface) *core.Move {
-	for digit := 1; digit <= constants.GridSize; digit++ {
+	for digit := range chainsScanDigits {
 		if move := detectJellyfishInDirection(b, digit, UnitRow); move != nil {
 			return move
 		}
@@ -37,7 +49,7 @@ func detectJellyfishInDirection(b BoardInterface, digit int, dir UnitType) *core
 				secondaries = append(secondaries, secondary)
 			}
 		}
-		if len(secondaries) >= 2 && len(secondaries) <= 4 {
+		if len(secondaries) >= 2 {
 			unitPositions[primary] = secondaries
 		}
 	}
@@ -45,13 +57,15 @@ func detectJellyfishInDirection(b BoardInterface, digit int, dir UnitType) *core
 	// Sorted for deterministic iteration order (Go randomizes map range).
 	units := slices.Sorted(maps.Keys(unitPositions))
 
-	if len(units) < 4 {
-		return nil
-	}
-
 	// Try all combinations of 4 units
 	for i := range units {
+		// An index one past the end is never dereferenced: units[j] is only read
+		// inside the innermost loop, which cannot run once j reaches len(units).
+		// mutator-disable-next-line expression/comparison
 		for j := i + 1; j < len(units); j++ {
+			// Same as the bound above: units[k] is read only inside the innermost
+			// loop, which cannot run once k reaches len(units).
+			// mutator-disable-next-line expression/comparison
 			for k := j + 1; k < len(units); k++ {
 				for l := k + 1; l < len(units); l++ {
 					u1, u2, u3, u4 := units[i], units[j], units[k], units[l]
@@ -151,14 +165,9 @@ func directionNamePlural(dir UnitType) string {
 
 // DetectXChain finds X-Chain pattern: a chain of conjugate pairs for a single digit
 func DetectXChain(b BoardInterface) *core.Move {
-	for digit := 1; digit <= constants.GridSize; digit++ {
+	for digit := range chainsScanDigits {
 		// Build conjugate pair graph
 		conjugates := buildConjugateGraph(b, digit)
-		if len(conjugates) == 0 {
-			// redundant guard; ranging the empty conjugates map below is already a no-op
-			// mutator-disable-next-line branch/if
-			continue
-		}
 
 		// Find chains of length 4+ (even length required for elimination).
 		// Sorted so the first chain found and returned is deterministic.
@@ -215,13 +224,12 @@ func buildConjugateGraph(b BoardInterface, digit int) map[int][]int {
 func findXChainFrom(b BoardInterface, digit int, start int, conjugates map[int][]int) *core.Move {
 	// BFS to find chains
 	type chainNode struct {
-		cell  int
-		path  []int
-		color int // 0 = ON, 1 = OFF
+		cell int
+		path []int
 	}
 
 	visited := make(map[int]bool)
-	queue := []chainNode{{start, []int{start}, 0}}
+	queue := []chainNode{{start, []int{start}}}
 
 	for len(queue) > 0 {
 		node := queue[0]
@@ -233,6 +241,9 @@ func findXChainFrom(b BoardInterface, digit int, start int, conjugates map[int][
 		visited[node.cell] = true
 
 		// Look for eliminations: cells that see both ends of an even-length chain
+		// The parity check admits only even lengths, so lowering this floor to 3
+		// leaves the admitted set unchanged: 3 is odd.
+		// mutator-disable-next-line numbers/decrementer
 		if len(node.path) >= 4 && len(node.path)%2 == 0 {
 			if move := findChainEndpointElimination(b, digit, node.path, "X-Chain: sees both ends of chain: eliminate %d from R%dC%d."); move != nil {
 				return move
@@ -245,7 +256,7 @@ func findXChainFrom(b BoardInterface, digit int, start int, conjugates map[int][
 				newPath := make([]int, len(node.path)+1)
 				copy(newPath, node.path)
 				newPath[len(node.path)] = next
-				queue = append(queue, chainNode{next, newPath, 1 - node.color})
+				queue = append(queue, chainNode{next, newPath})
 			}
 		}
 	}
@@ -317,10 +328,6 @@ func DetectXYChain(b BoardInterface) *core.Move {
 		}
 	}
 
-	if len(bivalue) < 3 {
-		return nil
-	}
-
 	// Build adjacency: two bivalue cells are connected if they share a unit and a candidate
 	adj := make(map[int][]struct {
 		cell       int
@@ -329,6 +336,9 @@ func DetectXYChain(b BoardInterface) *core.Move {
 
 	for _, c1 := range bivalue {
 		for _, c2 := range bivalue {
+			// ArePeers is false for a cell against itself, so the equal case is
+			// rejected by the peer test whether or not this comparison admits it.
+			// mutator-disable-next-line expression/comparison
 			if c1 >= c2 || !ArePeers(c1, c2) {
 				continue
 			}
@@ -405,9 +415,12 @@ func findXYChainFrom(b BoardInterface, start int, adj map[int][]struct {
 
 			// Extend chain
 			for _, neighbor := range adj[n.cell] {
+				// Dropping this guard only re-queues nodes that are already visited, and
+				// the visited check at pop discards them, so nothing observable changes.
+				// The comment sits above the if rather than above the continue because
+				// the branch/if mutant is attached to the if statement's own node.
+				// mutator-disable-next-line branch/if
 				if visited[neighbor.cell] {
-					// dropping the guard only re-queues visited nodes, which are discarded on pop
-					// mutator-disable-next-line branch/if
 					continue
 				}
 				// The shared candidate must be the current endCand
@@ -418,8 +431,6 @@ func findXYChainFrom(b BoardInterface, start int, adj map[int][]struct {
 				// New end candidate is the other candidate of the neighbor cell
 				neighborCands := b.GetCandidatesAt(neighbor.cell).ToSlice()
 				if len(neighborCands) != 2 {
-					// dead guard; adj holds only bivalue cells, so neighborCands always has length 2
-					// mutator-disable-next-line loop/break
 					continue
 				}
 				newEndCand := neighborCands[0]
@@ -494,8 +505,9 @@ func DetectWWing(b BoardInterface) *core.Move {
 						}
 
 						// Check if one cell sees bv1 and the other sees bv2
-						// link2's -1 init is dead; link1 (not link2) gates the branch and both are reassigned together before use
-						// mutator-disable-next-line numbers/decrementer
+						// link2's initial value is never read: link1 alone gates the branch
+						// below, and both are assigned together before either is used.
+						// mutator-disable-next-line numbers/decrementer, numbers/incrementer
 						link1, link2 := -1, -1
 						if ArePeers(cells[0], bv1.idx) && ArePeers(cells[1], bv2.idx) {
 							link1, link2 = cells[0], cells[1]
@@ -510,7 +522,7 @@ func DetectWWing(b BoardInterface) *core.Move {
 								if !b.GetCandidatesAt(idx).Has(elimDigit) {
 									continue
 								}
-								if idx == bv1.idx || idx == bv2.idx || idx == link1 || idx == link2 {
+								if idx == link1 || idx == link2 {
 									continue
 								}
 								if ArePeers(idx, bv1.idx) && ArePeers(idx, bv2.idx) {
@@ -561,7 +573,7 @@ func DetectWWing(b BoardInterface) *core.Move {
 //
 //nolint:gocyclo // Empty Rectangle detection spans a 5-level nested search (digit × box × ER row/col × perpendicular cells × conjugate-pair strategies). The two strategies share box/row/col state computed at outer levels; splitting them apart would duplicate that derivation or require a wide intermediate-state struct.
 func DetectEmptyRectangle(b BoardInterface) *core.Move {
-	for digit := 1; digit <= constants.GridSize; digit++ {
+	for digit := range chainsScanDigits {
 		for box := range constants.GridSize {
 			boxRowStart, boxColStart := (box/constants.BoxSize)*constants.BoxSize, (box%constants.BoxSize)*constants.BoxSize
 
@@ -575,26 +587,21 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 				}
 			}
 
-			if len(positions) < 2 || len(positions) > 4 {
+			if len(positions) > 4 {
 				continue
 			}
 
 			// Check if positions form an ER (all in one row OR one column within box,
 			// or in an L-shape where there's a "pivot" row and column)
-			rowCount := make(map[int]int)
-			colCount := make(map[int]int)
-			for _, pos := range positions {
-				// rowCount is a dead store, never read below
-				// mutator-disable-next-line arithmetic/base
-				rowCount[pos/9]++
-				// colCount is a dead store, never read below
-				// mutator-disable-next-line numbers/incrementer
-				colCount[pos%9]++
-			}
-
 			// For ER, we need positions that can be covered by one row + one column
 			// Try each combination of pivot row and column within the box
+			// A pivot row one past the box matches no in-box position, so the row-arm
+			// check below rejects that extra iteration.
+			// mutator-disable-next-line expression/comparison
 			for erRow := boxRowStart; erRow < boxRowStart+constants.BoxSize; erRow++ {
+				// A pivot column one past the box matches no in-box position, so the
+				// column-arm check below rejects that extra iteration.
+				// mutator-disable-next-line expression/comparison
 				for erCol := boxColStart; erCol < boxColStart+constants.BoxSize; erCol++ {
 					// Check if all positions are in erRow or erCol
 					validER := true
@@ -602,6 +609,9 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 						r, c := pos/constants.GridSize, pos%constants.GridSize
 						if r != erRow && c != erCol {
 							validER = false
+							// Early exit only: validER is already false, so continuing the
+							// scan instead of leaving it reaches the same state.
+							// mutator-disable-next-line loop/break
 							break
 						}
 					}
@@ -615,14 +625,25 @@ func DetectEmptyRectangle(b BoardInterface) *core.Move {
 					hasColArm := false
 					for _, pos := range positions {
 						r, c := pos/constants.GridSize, pos%constants.GridSize
+						// validER guarantees each position is on the pivot row or the pivot
+						// column, so c != erCol already implies r == erRow here.
+						// mutator-disable-next-line expression/remove
 						if r == erRow && c != erCol {
 							hasRowArm = true
 						}
+						// Mirror of the row arm: r != erRow already implies c == erCol under
+						// the same validER guarantee.
+						// mutator-disable-next-line expression/remove
 						if c == erCol && r != erRow {
 							hasColArm = true
 						}
 					}
 					if !hasRowArm || !hasColArm {
+						// Within one pivot row, two pivot columns can satisfy validER only
+						// when no position lies off that row, and then no column arm exists
+						// for either. So no later column in this row can succeed, and
+						// leaving the scan here reaches the same result as skipping on.
+						// mutator-disable-next-line loop/break
 						continue // Need both arms for a proper ER
 					}
 
