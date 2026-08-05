@@ -174,13 +174,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # No floor here: the gate step reads api/mutation-floors.json, which
+          # is the single source of truth the Makefile also reads (MUT-6-1).
           - name: dp
             pkg: ./internal/sudoku/dp
-            floor: 100
             timeout: 360
           - name: human
             pkg: ./internal/sudoku/human
-            floor: 100
             timeout: 360
     steps:
       - name: Checkout
@@ -203,34 +203,23 @@ jobs:
           ulimit -v "$MUTATION_ADDRESS_SPACE_KB"
           go-mutesting --exec-timeout "$MUTATION_EXEC_TIMEOUT" \
             --config=/tmp/mutation-config.yml ${{ matrix.pkg }}
-          slug=$(echo "${{ matrix.pkg }}" | tr -d './' | tr '/' '-')
-          mkdir -p "reports/mutation/${slug}"
-          mv report.json "reports/mutation/${slug}/" 2>/dev/null || true
+          # Ask for the destination rather than deriving it, so the producer and
+          # the gate that reads it cannot disagree about the path.
+          dest=$(python3 scripts/mutation_floors.py report-path \
+            --package-dir reports/mutation --scope "${{ matrix.name }}")
+          mkdir -p "$(dirname "$dest")"
+          mv report.json "$dest" 2>/dev/null || true
         continue-on-error: true
 
+      # Floor and efficacy arithmetic both live in scripts/mutation_floors.py,
+      # which `make mutation-gate` also calls, so a local run and this job cannot
+      # reach different verdicts on the same report. A missing report exits 2
+      # (untrustworthy) rather than passing as an unmeasured scope.
       - name: Check efficacy gate
         working-directory: api
         run: |
-          slug=$(echo "${{ matrix.pkg }}" | tr -d './' | tr '/' '-')
-          report="reports/mutation/${slug}/report.json"
-          if [ ! -f "$report" ]; then
-            echo "mutation-gate: FAIL ${{ matrix.pkg }} no report (run errored or timed out; efficacy unmeasured)" >&2
-            exit 1
-          fi
-          python3 -c "
-          import json, sys
-          with open('$report') as f:
-              r = json.load(f)
-          s = r['stats']
-          killed = s['killedCount'] + s.get('timeOutCount', 0)
-          escaped = s['escapedCount']
-          denom = killed + escaped
-          eff = killed / denom * 100 if denom > 0 else 100
-          floor = ${{ matrix.floor }}
-          status = 'OK' if eff >= floor else 'FAIL'
-          print(f'mutation-gate: {status} ${{ matrix.pkg }} {eff:.1f}% (floor {floor}%) [killed={killed} escaped={escaped} total={s[\"totalMutantsCount\"]}]')
-          sys.exit(0 if eff >= floor else 1)
-          "
+          python3 scripts/mutation_floors.py gate-package \
+            --package-dir reports/mutation --scope "${{ matrix.name }}"
 
       - name: Upload Go mutation report
         if: always()
@@ -253,8 +242,9 @@ jobs:
   # reports into one efficacy number and enforces the floor.
   #
   # One matrix entry per non-test *.go file in the techniques package. When a
-  # technique file is added or removed, add/remove its entry and update the
-  # aggregate's --expected to match the shard count.
+  # technique file is added or removed, add/remove its entry here and its floor
+  # entry in api/mutation-floors.json; the expected shard count is derived from
+  # that file, and a test asserts the two lists agree.
   techniques-mutation:
     name: Go - techniques (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
@@ -350,10 +340,15 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-  # Combine the per-shard techniques reports into one efficacy number and gate
-  # it against the floor, exactly as a single unsharded run would. Fails loudly
-  # (in-log) if any shard report is missing so a timed-out shard cannot masquerade
-  # as a passing partial result.
+  # Gate each techniques shard against its own floor, then the whole package
+  # against the aggregate floor, both read from api/mutation-floors.json. Fails
+  # loudly (in-log) if any shard report is missing so a timed-out shard cannot
+  # masquerade as a passing partial result.
+  #
+  # Per-shard floors are what let the MUT-6 campaign hold ground it has taken. A
+  # closed shard is a few dozen mutants against a package denominator in the
+  # thousands, so a full regression of one shard moves the aggregate by a
+  # fraction of a point and an aggregate-only gate absorbs it silently.
   techniques-aggregate:
     name: Go - techniques (aggregate gate)
     runs-on: ubuntu-latest
@@ -369,8 +364,10 @@ jobs:
           pattern: mutation-go-techniques-shard-*
           path: shards
 
-      - name: Aggregate efficacy gate
+      # The expected shard count comes from the floors file's shard map rather
+      # than a literal here, so adding a technique file means adding one entry
+      # in one place instead of keeping a matrix and an --expected count in step.
+      - name: Per-shard and aggregate efficacy gate
         working-directory: api
         run: |
-          python3 scripts/mutation_aggregate.py \
-            --floor 100 --expected 22 --reports-dir ../shards
+          python3 scripts/mutation_floors.py gate-shards --shards-dir ../shards

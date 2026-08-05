@@ -123,12 +123,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
-      # Report-portal script tests, including the drift guard that pins
-      # api/Makefile and nightly-mutation.yml to the canonical mutation floors
-      # in api/mutation-floors.json. Needs no Go, so it fails fast.
+      # Report-portal script tests, including the drift guard that holds
+      # api/Makefile and nightly-mutation.yml to reading the canonical mutation
+      # floors in api/mutation-floors.json rather than copying them. Needs no
+      # Go, so it fails fast.
       - name: Run report-portal script tests
         working-directory: .github/scripts
         run: python3 -m unittest gen_report_portal_test
+
+      # The mutation floor gate and its ratchet. Runs on every push rather than
+      # only on the nightly, because a broken gate is silent until the night it
+      # is needed.
+      - name: Run mutation floor gate tests
+        working-directory: api/scripts
+        run: python3 -m unittest mutation_floors_test mutation_aggregate_test
 
       - name: Setup Go
         uses: ./.github/actions/setup-go

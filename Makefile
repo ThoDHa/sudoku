@@ -121,15 +121,22 @@ test-go:
 	@echo "========================================"
 	@cd api && mkdir -p allure-results && $(shell go env GOPATH)/bin/gotestsum --junitfile allure-results/go-results.xml --format testname -- -v ./...
 
-# Run the report-portal script tests, including the drift guard that pins
-# api/Makefile and nightly-mutation.yml to the canonical mutation floors in
-# api/mutation-floors.json. Mirrors the test-go job's step in deploy.yml.
+# Run the Python script tests: the report-portal suite (including the drift
+# guard that holds api/Makefile and nightly-mutation.yml to reading the
+# canonical mutation floors in api/mutation-floors.json rather than copying
+# them) and the mutation floor gate and ratchet. Mirrors the test-go job's steps
+# in deploy.yml.
 test-scripts:
 	@echo ""
 	@echo "========================================"
 	@echo "  Running report-portal script tests"
 	@echo "========================================"
 	@cd .github/scripts && python3 -m unittest gen_report_portal_test
+	@echo ""
+	@echo "========================================"
+	@echo "  Running mutation floor gate tests"
+	@echo "========================================"
+	@cd api/scripts && python3 -m unittest mutation_floors_test mutation_aggregate_test
 
 # Run Frontend unit tests with Allure output (Docker)
 test-unit:

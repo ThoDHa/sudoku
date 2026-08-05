@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Tests for mutation_aggregate.py. Run: python3 -m unittest mutation_aggregate_test."""
+"""Tests for the mutation_aggregate.py counting primitives.
+
+Run: python3 -m unittest mutation_aggregate_test. Gating is tested in
+mutation_floors_test, which owns the floors and the comparison against them."""
 
 import json
 import os
@@ -46,40 +49,6 @@ class Aggregation(unittest.TestCase):
             self.assertEqual(total, 95)
             # (70 + 10) / (70 + 10 + 15) = 80 / 95
             self.assertAlmostEqual(agg.efficacy(killed_no_to + timeout, escaped), 80 / 95 * 100)
-
-
-class Gate(unittest.TestCase):
-    def _run(self, floor, expected, dir_path):
-        return agg.main(["--floor", str(floor), "--expected", str(expected),
-                         "--reports-dir", dir_path])
-
-    def test_passes_when_combined_meets_floor(self):
-        with tempfile.TemporaryDirectory() as d:
-            write_report(os.path.join(d, "s1"), killed=90, escaped=5, total=100, timeout=0)
-            write_report(os.path.join(d, "s2"), killed=88, escaped=6, total=100, timeout=2)
-            self.assertEqual(self._run(85, 2, d), 0)
-
-    def test_fails_when_combined_below_floor(self):
-        with tempfile.TemporaryDirectory() as d:
-            write_report(os.path.join(d, "s1"), killed=70, escaped=30, total=100, timeout=0)
-            write_report(os.path.join(d, "s2"), killed=70, escaped=30, total=100, timeout=0)
-            self.assertEqual(self._run(85, 2, d), 1)
-
-    def test_missing_shard_fails_loudly(self):
-        with tempfile.TemporaryDirectory() as d:
-            write_report(os.path.join(d, "s1"), killed=90, escaped=5, total=100, timeout=0)
-            # Only 1 of 2 expected shards present -> untrustworthy -> exit 2.
-            self.assertEqual(self._run(85, 2, d), 2)
-
-    def test_corrupt_report_fails_as_untrustworthy(self):
-        with tempfile.TemporaryDirectory() as d:
-            write_report(os.path.join(d, "s1"), killed=90, escaped=5, total=100, timeout=0)
-            os.makedirs(os.path.join(d, "s2"), exist_ok=True)
-            # A present but truncated/malformed report is unreadable, not "below
-            # floor": it must exit 2, mirroring the missing-shard contract.
-            with open(os.path.join(d, "s2", "report.json"), "w") as f:
-                f.write("{ this is not valid json")
-            self.assertEqual(self._run(85, 2, d), 2)
 
 
 if __name__ == "__main__":

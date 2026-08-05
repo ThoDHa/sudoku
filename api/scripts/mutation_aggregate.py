@@ -1,29 +1,24 @@
 #!/usr/bin/env python3
-"""Aggregate sharded go-mutesting reports into one efficacy number and gate it.
+"""Counting primitives over go-mutesting report.json files.
 
 The techniques package is too large to mutate within GitHub Actions' hard 6h
 per-job limit, so its mutation run is split across N matrix shards, each
-mutating a subset of files. Each shard emits its own report.json. This script
-combines those per-shard reports into a single efficacy figure and enforces the
-package floor, exactly as a single unsharded run's gate would.
+mutating a subset of files, each emitting its own report.json. This module finds
+those reports and sums them.
 
-Efficacy is defined as in the per-package gate: killed (including timeouts) over
-killed + escaped. Mutants that were not covered or errored are excluded from the
-denominator so the number reflects test effectiveness, not coverage gaps.
+Efficacy is killed (including timeouts) over killed + escaped. Mutants that were
+not covered or errored are excluded from the denominator so the number reflects
+test effectiveness, not coverage gaps.
 
-Usage:
-    mutation_aggregate.py --floor 85 --expected 4 --reports-dir shards/
-
-Exit codes:
-    0  aggregated efficacy meets the floor
-    1  aggregated efficacy below the floor
-    2  a shard report is missing or unreadable (result is untrustworthy)
+This is a library, not a gate. Floors and the comparison against them live in
+mutation_floors.py, which reads the canonical api/mutation-floors.json; nothing
+here accepts a floor, so no second copy of a floor can enter through this file.
+The sibling frontend/scripts/mutation_aggregate.py still carries a gate CLI,
+because the StrykerJS side has no equivalent canonical floors file yet.
 """
 
-import argparse
 import json
 import os
-import sys
 
 
 def find_reports(reports_dir):
@@ -55,41 +50,3 @@ def efficacy(killed_with_timeouts, escaped):
     if denom == 0:
         return 100.0
     return killed_with_timeouts / denom * 100
-
-
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--floor", type=float, required=True,
-                        help="Minimum acceptable efficacy percentage.")
-    parser.add_argument("--expected", type=int, required=True,
-                        help="Number of shard reports that must be present.")
-    parser.add_argument("--reports-dir", required=True,
-                        help="Directory searched recursively for report.json files.")
-    parser.add_argument("--label", default="./internal/sudoku/human/techniques",
-                        help="Package label used in the gate output line.")
-    args = parser.parse_args(argv)
-
-    reports = find_reports(args.reports_dir)
-    if len(reports) < args.expected:
-        print(f"mutation-gate: FAIL {args.label} incomplete: found "
-              f"{len(reports)}/{args.expected} shard reports under "
-              f"{args.reports_dir} (a shard likely timed out)", file=sys.stderr)
-        return 2
-
-    try:
-        killed_no_timeout, timeout, escaped, total = combine(reports)
-    except (OSError, ValueError, KeyError) as err:
-        print(f"mutation-gate: FAIL {args.label} unreadable shard report: {err}",
-              file=sys.stderr)
-        return 2
-    killed = killed_no_timeout + timeout
-    eff = efficacy(killed, escaped)
-    status = "OK" if eff >= args.floor else "FAIL"
-    print(f"mutation-gate: {status} {args.label} {eff:.1f}% (floor "
-          f"{args.floor:.0f}%) [shards={len(reports)} killed={killed} "
-          f"escaped={escaped} total={total}]")
-    return 0 if eff >= args.floor else 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())

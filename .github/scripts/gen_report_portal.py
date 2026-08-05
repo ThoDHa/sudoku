@@ -51,12 +51,18 @@ def _load_frontend_mutation_gate(config_path=None):
 def _load_go_mutation_floors(floors_path=None):
     """Per-package Go mutation efficacy floors from the canonical
     api/mutation-floors.json (technique shards aggregate into one "techniques"
-    scope). Falls back to the documented floors if the file is unreadable."""
+    scope). Falls back to the documented floors if the file is unreadable.
+
+    A null floor means the scope is unmeasured and not enforced, so it is left
+    out rather than coerced. Coercing raised TypeError, which this fallback
+    caught, and one unmeasured scope then replaced every real floor with the
+    invented numbers below."""
     path = floors_path or os.path.join(_REPO_ROOT, "api", "mutation-floors.json")
     try:
         with open(path) as f:
-            return {k: float(v) for k, v in json.load(f)["floors"].items()}
-    except (OSError, KeyError, ValueError, TypeError):
+            floors = json.load(f)["floors"]
+        return {k: float(v) for k, v in floors.items() if v is not None}
+    except (OSError, KeyError, ValueError, TypeError, AttributeError):
         return {"dp": 95.0, "human": 85.0, "techniques": 85.0}
 
 
@@ -64,8 +70,9 @@ def _load_go_mutation_floors(floors_path=None):
 # The Go tile instead honors each package's own floor below, so a stricter
 # package (dp) is not diluted by the pooled number.
 MUTATION = _load_frontend_mutation_gate()
-# Canonical in api/mutation-floors.json; api/Makefile and the nightly-mutation
-# workflow mirror it and are drift-guarded against it in the portal's tests.
+# Canonical in api/mutation-floors.json, which api/Makefile and the
+# nightly-mutation workflow read rather than copy; the portal's tests guard that
+# no floor literal reappears in either.
 GO_MUTATION_FLOORS = _load_go_mutation_floors()
 GO_MUTATION_DEFAULT_FLOOR = 85.0
 # Profiling idle-thread health (wasm-cpu-profile VERDICT_THRESHOLDS).
@@ -403,7 +410,7 @@ def build_sections(artifacts_dir, out_dir, allure_rel, hrefs):
     # The Go mutation report is rendered as one unified mutation-testing-elements
     # dashboard (every package and technique shard, matching the frontend) by the
     # portal build before this runs. The tile's health reflects each package's own
-    # floor (all Go packages now at 100), so one package's breach is not diluted
+    # floor from api/mutation-floors.json, so one package's breach is not diluted
     # across the thousands of technique mutants in the pooled number.
     go_breach = False
     packages = _go_package_counts(artifacts_dir)

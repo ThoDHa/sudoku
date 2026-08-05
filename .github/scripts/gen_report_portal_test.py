@@ -186,11 +186,27 @@ def _repo(*parts):
     return os.path.join(portal._REPO_ROOT, *parts)
 
 
+def _nightly_jobs():
+    """Split nightly-mutation.yml into job-name -> job body.
+
+    Text-level rather than a YAML parse so the guard adds no dependency to a
+    suite that runs on every push. Job keys sit at two-space indent under
+    `jobs:`, which is the only place that indent is used for a mapping key."""
+    with open(_repo(".github", "workflows", "nightly-mutation.yml")) as f:
+        text = f.read()
+    starts = [(m.start(), m.group(1))
+              for m in re.finditer(r"^  ([a-zA-Z0-9_-]+):$", text, re.M)]
+    bounds = [s for s, _ in starts] + [len(text)]
+    return {name: text[bounds[i]:bounds[i + 1]]
+            for i, (_, name) in enumerate(starts)}
+
+
 class MutationFloorSources(unittest.TestCase):
     """The mutation gate numbers have single sources of truth (Stryker config for
-    the frontend, api/mutation-floors.json for the Go per-package floors). The
-    portal reads them, and the api/Makefile + nightly-mutation workflow mirrors
-    are guarded against silent drift from the canonical file."""
+    the frontend, api/mutation-floors.json for the Go floors). The portal reads
+    them, and since MUT-6-1 so do api/Makefile and the nightly-mutation workflow,
+    which no longer keep copies. These guards therefore assert that no floor
+    literal exists to drift, rather than that the copies happen to match."""
 
     def setUp(self):
         with open(_repo("api", "mutation-floors.json")) as f:
@@ -208,34 +224,68 @@ class MutationFloorSources(unittest.TestCase):
         self.assertEqual(portal._load_go_mutation_floors("/no/such/floors.json"),
                          {"dp": 95.0, "human": 85.0, "techniques": 85.0})
 
+    def test_go_floor_loader_drops_unmeasured_scopes_without_losing_the_rest(self):
+        """A null floor means unmeasured. Coercing it raised TypeError, which the
+        fallback caught, so one unmeasured scope replaced every real floor with
+        numbers matching nothing in the canonical file."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "floors.json")
+            with open(path, "w") as f:
+                json.dump({"floors": {"dp": 92.8, "unmeasured": None}}, f)
+            self.assertEqual(portal._load_go_mutation_floors(path), {"dp": 92.8})
+
     def test_frontend_gate_loader_falls_back_on_missing_file(self):
         self.assertEqual(portal._load_frontend_mutation_gate("/no/such/config.json"),
                          {"ok": 90.0, "warn": 90.0})
 
-    def test_makefile_floors_match_canonical(self):
+    def test_makefile_carries_no_floor_literal(self):
+        """MUT-6-1 replaced the api/Makefile floor mirrors with calls into
+        scripts/mutation_floors.py, so drift is impossible rather than merely
+        detected. Guard the property that made it impossible: a literal
+        reintroduced here would silently outrank the file the ratchet writes."""
         with open(_repo("api", "Makefile")) as f:
             text = f.read()
-        var_to_slug = {"DP": "dp", "HUMAN": "human", "TECHNIQUES": "techniques"}
-        found = {}
-        for var, slug in var_to_slug.items():
-            m = re.search(rf"^{var}_MUTATION_FLOOR\s*:=\s*(\d+)", text, re.M)
-            self.assertIsNotNone(m, f"{var}_MUTATION_FLOOR not found in api/Makefile")
-            found[slug] = float(m.group(1))
-        self.assertEqual(found, self.floors)
+        stray = re.findall(r"^\s*\w*_?MUTATION_FLOOR\w*\s*[:?]?=\s*[\d.]+\s*$",
+                           text, re.M)
+        self.assertEqual(stray, [], f"floor literals left in api/Makefile: {stray}")
+        self.assertRegex(text, re.compile(
+            r"^MUTATION_FLOORS\s*:?=.*mutation_floors\.py", re.M))
+        self.assertIn("$(MUTATION_FLOORS) gate-package", text)
 
-    def test_nightly_matrix_floors_match_canonical(self):
-        with open(_repo(".github", "workflows", "nightly-mutation.yml")) as f:
-            text = f.read()
-        # Matrix entries are "- name: <slug>" then "pkg:" then "floor: <n>" on
-        # consecutive lines; step definitions (name -> uses/run) never match.
-        matrix = {name: float(fl) for name, fl in
-                  re.findall(r"-\s*name:\s*(\S+)\s*\n\s*pkg:[^\n]*\n\s*floor:\s*(\d+)", text)}
-        self.assertTrue(matrix, "no matrix floors parsed from nightly-mutation.yml")
-        # The nightly matrix runs a subset (techniques is sharded elsewhere), so
-        # every floor it declares must match the canonical file, not vice versa.
-        for name, floor in matrix.items():
-            self.assertIn(name, self.floors, f"matrix scope {name} missing from canonical floors")
-            self.assertEqual(floor, self.floors[name], f"{name} floor drifted from canonical")
+    def test_nightly_go_jobs_carry_no_floor_literal(self):
+        """The Go matrix and the techniques aggregate step both used to carry
+        their own copies of the floor. Both now read the canonical file.
+
+        Scoped to the Go jobs by name rather than by position, so a Go job added
+        above them is still covered. The frontend StrykerJS jobs in the same
+        file legitimately pass --floor: they gate against thresholds in
+        frontend/stryker.config.json and have no bearing on the Go floors."""
+        jobs = _nightly_jobs()
+        for name in ("go-mutation", "techniques-mutation", "techniques-aggregate"):
+            self.assertIn(name, jobs, f"{name} job not found")
+            body = jobs[name]
+            stray = re.findall(r"^\s*floor:\s*[\d.]+", body, re.M)
+            self.assertEqual(stray, [], f"floor literals left in {name}: {stray}")
+            self.assertNotIn("--floor", body,
+                             f"a --floor argument in {name} bypasses "
+                             f"api/mutation-floors.json")
+        self.assertIn("mutation_floors.py gate-package", jobs["go-mutation"])
+        self.assertIn("mutation_floors.py gate-shards", jobs["techniques-aggregate"])
+
+    def test_go_mutation_job_does_not_derive_its_own_report_path(self):
+        """The run step and the gate step must agree on where report.json goes.
+
+        They previously each rolled a slug expression and disagreed: the
+        workflow's `tr -d './'` strips every dot and slash, giving
+        `internalsudokudp` where the Makefile and the gate produce
+        `internal-sudoku-dp`. That went unnoticed because the old inline gate
+        was wrong in the same way, so the mismatch only appeared once the gate
+        started deriving the path correctly."""
+        job = _nightly_jobs()["go-mutation"]
+        self.assertNotIn("tr -d", job,
+                         "the go-mutation job is deriving a report slug itself; "
+                         "ask mutation_floors.py report-path instead")
+        self.assertIn("mutation_floors.py report-path", job)
 
 
 if __name__ == "__main__":

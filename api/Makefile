@@ -1,6 +1,6 @@
 # Sudoku API Makefile
 
-.PHONY: all build server generate-constants wasm wasm-copy clean test coverage-gate vulncheck mutation-install mutation-go mutation-gate mutation-clean
+.PHONY: all build server generate-constants wasm wasm-copy clean test coverage-gate vulncheck mutation-install mutation-go mutation-gate mutation-ratchet mutation-clean
 
 # Go build settings
 GO := go
@@ -131,12 +131,17 @@ coverage-gate:
 	check_pkg ./internal/sudoku/diagnosis $(DIAGNOSIS_COVERAGE_FLOOR); \
 	echo "coverage-gate: all gated packages met their floors."
 
-# Per-package mutation efficacy floors (MUT-1-2; Decisions 4 + 9). The Go
-# solver is the source of truth for game correctness, so it carries the
-# strictest floor. Efficacy is defined in the mutation-gate target below.
-DP_MUTATION_FLOOR := 100
-HUMAN_MUTATION_FLOOR := 100
-TECHNIQUES_MUTATION_FLOOR := 100
+# Per-package mutation efficacy floors (MUT-1-2; Decisions 4 + 9). The Go solver
+# is the source of truth for game correctness, so it carries the project's
+# strictest mutation floors. Efficacy is defined in the mutation-gate target
+# below. dp currently sits below human and techniques only because it is the one
+# package with an honest measurement; MUT-6 is closing that gap.
+#
+# The numbers themselves live in mutation-floors.json, which the nightly
+# workflow reads too, so no copy exists here to drift out of step (MUT-6-1).
+# Read one with `python3 scripts/mutation_floors.py get <scope>`; raise one with
+# `make mutation-ratchet`, never by editing a number into a file.
+MUTATION_FLOORS := python3 scripts/mutation_floors.py
 
 # go-mutesting binary. avito-tech/go-mutesting v2.3.1 carries an upstream
 # packaging defect: its go.mod declares `module github.com/avito-tech/go-mutesting`
@@ -202,12 +207,11 @@ mutation-install:
 mutation-go: mutation-install
 	@set -e; \
 	ulimit -v $(MUTATION_ADDRESS_SPACE_KB); \
-	for entry in \
-		"./internal/sudoku/dp|$(DP_MUTATION_FLOOR)" \
-		"./internal/sudoku/human|$(HUMAN_MUTATION_FLOOR)" \
-		"./internal/sudoku/human/techniques|$(TECHNIQUES_MUTATION_FLOOR)" \
+	for pkg in \
+		./internal/sudoku/dp \
+		./internal/sudoku/human \
+		./internal/sudoku/human/techniques \
 	; do \
-		pkg=$${entry%%|*}; \
 		slug=$$(echo "$$pkg" | sed 's|^\./||; s|/|-|g'); \
 		outdir="$(MUTATION_REPORT_DIR)/$$slug"; \
 		mkdir -p "$$outdir"; \
@@ -228,41 +232,30 @@ mutation-go: mutation-install
 # coverage gap (Decision 8 separates coverage from mutation scope), error is a
 # tooling/build failure, and skipped covers `// mutator-disable-next-line`
 # equivalent-mutant annotations. Run `make mutation-go` first; this target
-# does not run the slow sweep itself. Mirrors the coverage-gate check_pkg
-# pattern. report.json field names are verified against v2.3.1 output (note
-# the spelling `timeOutCount` / `timeouted`).
+# does not run the slow sweep itself.
+#
+# The comparison lives in scripts/mutation_floors.py, which the nightly workflow
+# also calls, so the local gate and CI cannot disagree about either the floors
+# or the arithmetic. MUT-6-1 moved it there from three separate copies of the
+# formula (this recipe's awk, the workflow's inline python, and the aggregate
+# script). report.json field names are verified against v2.3.1 output (note the
+# spelling `timeOutCount` / `timeouted`).
 mutation-gate:
-	@set -e; \
-	check_pkg() { \
-		pkg="$$1"; floor="$$2"; \
-		slug=$$(echo "$$pkg" | sed 's|^\./||; s|/|-|g'); \
-		report="$(MUTATION_REPORT_DIR)/$$slug/report.json"; \
-		if [ ! -f "$$report" ]; then \
-			echo "mutation-gate: ERROR missing $$report (run 'make mutation-go' first)" >&2; \
-			exit 2; \
-		fi; \
-		killed=$$(grep -oE '"killedCount":[0-9]+' "$$report" | grep -oE '[0-9]+$$'); \
-		timeout=$$(grep -oE '"timeOutCount":[0-9]+' "$$report" | grep -oE '[0-9]+$$'); \
-		escaped=$$(grep -oE '"escapedCount":[0-9]+' "$$report" | grep -oE '[0-9]+$$'); \
-		notcov=$$(grep -oE '"notCoveredCount":[0-9]+' "$$report" | grep -oE '[0-9]+$$'); \
-		err=$$(grep -oE '"errorCount":[0-9]+' "$$report" | grep -oE '[0-9]+$$'); \
-		skipped=$$(grep -oE '"skippedCount":[0-9]+' "$$report" | grep -oE '[0-9]+$$'); \
-		total=$$(grep -oE '"totalMutantsCount":[0-9]+' "$$report" | grep -oE '[0-9]+$$'); \
-		pct=$$(awk -v k="$$killed" -v t="$$timeout" -v e="$$escaped" 'BEGIN { d=k+t+e; if (d==0) print 100; else printf "%.2f", (k+t)*100/d }'); \
-		if awk -v p="$$pct" -v f="$$floor" 'BEGIN { exit !(p+0 >= f+0) }'; then \
-			printf 'mutation-gate: OK   %s %s%% (floor %s%%) [killed=%s timeout=%s escaped=%s notCovered=%s error=%s skipped=%s total=%s]\n' "$$pkg" "$$pct" "$$floor" "$$killed" "$$timeout" "$$escaped" "$$notcov" "$$err" "$$skipped" "$$total"; \
-		else \
-			delta=$$(awk -v p="$$pct" -v f="$$floor" 'BEGIN { printf "%.2f", f - p }'); \
-			printf 'mutation-gate: FAIL %s %s%% < floor %s%% (short by %spp) [killed=%s timeout=%s escaped=%s notCovered=%s error=%s skipped=%s total=%s]\n' "$$pkg" "$$pct" "$$floor" "$$delta" "$$killed" "$$timeout" "$$escaped" "$$notcov" "$$err" "$$skipped" "$$total" >&2; \
-			failed=1; \
-		fi; \
-	}; \
-	failed=0; \
-	check_pkg ./internal/sudoku/dp $(DP_MUTATION_FLOOR); \
-	check_pkg ./internal/sudoku/human $(HUMAN_MUTATION_FLOOR); \
-	check_pkg ./internal/sudoku/human/techniques $(TECHNIQUES_MUTATION_FLOOR); \
-	if [ "$$failed" = "1" ]; then exit 1; fi; \
-	echo "mutation-gate: all in-scope packages met their floors."
+	@$(MUTATION_FLOORS) gate-package --package-dir $(MUTATION_REPORT_DIR) \
+		--scope dp --scope human --scope techniques \
+	&& echo "mutation-gate: all in-scope packages met their floors."
+
+# Raise the floors in mutation-floors.json to the efficacy a completed run
+# actually measured, per the procedure in that file's _ratchet block. Writes in
+# place; review the diff before committing. Set SHARDS_DIR to a directory of
+# downloaded techniques shard artifacts to ratchet those too, and RUN to the
+# workflow run id so the provenance records where the number came from.
+mutation-ratchet:
+	@$(MUTATION_FLOORS) propose --in-place \
+		--package-dir $(MUTATION_REPORT_DIR) \
+		$(if $(SHARDS_DIR),--shards-dir $(SHARDS_DIR)) \
+		$(if $(RUN),--run $(RUN)) --recorded $$(date +%F) \
+		--note "Measured under --exec-timeout $(MUTATION_EXEC_TIMEOUT), ulimit -v $(MUTATION_ADDRESS_SPACE_KB)."
 
 # Remove mutation report artifacts (report.json, HTML, per-pkg config).
 mutation-clean:
