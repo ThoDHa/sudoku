@@ -17,6 +17,9 @@ import (
 
 // DetectFinnedXWing finds Finned X-Wing patterns
 func DetectFinnedXWing(b BoardInterface) *core.Move {
+	// Lowering the first digit only adds a pass for a digit no cell can hold:
+	// Candidates.Has rejects anything below 1.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		// Check row-based finned X-wing
 		if move := detectFinnedXWingInRows(b, digit); move != nil {
@@ -47,6 +50,9 @@ func detectFinnedXWingInAxis(b BoardInterface, digit int, byRow bool) *core.Move
 	lines := xwingFinnedLines(b, digit, byRow)
 	for i := range lines {
 		for j := range lines {
+			// A line paired with itself has the same position count on both
+			// sides, so it fails the two-and-three check below either way.
+			// mutator-disable-next-line branch/if
 			if i == j {
 				continue
 			}
@@ -105,9 +111,13 @@ func tryFinnedXWing(b BoardInterface, digit int, base, fin finnedLineInfo, byRow
 	return buildFinnedXWingMove(digit, base, fin, finPerp, targetPerp, eliminations, byRow)
 }
 
-// findFinnedXWingFinPerp returns the perpendicular coord of the fin (the fin
-// line's position that is not in the base's two positions), or ok=false if the
-// fin line does not cover both base positions.
+// findFinnedXWingFinPerp returns the perpendicular coord of the fin: the one
+// position of the fin line that is not among the base's two. It refuses when the
+// fin line has no such position or more than one.
+//
+// It does not check that the fin line covers both base positions. A two-position
+// fin line sharing one position with the base passes here, and the caller's
+// count check is what keeps that pattern out.
 func findFinnedXWingFinPerp(basePerps, finPerps []int) (int, bool) {
 	baseSet := map[int]bool{basePerps[0]: true, basePerps[1]: true}
 	var fin int
@@ -124,14 +134,6 @@ func findFinnedXWingFinPerp(basePerps, finPerps []int) (int, bool) {
 	}
 	if !found {
 		return 0, false
-	}
-	for _, p := range finPerps {
-		if p == fin {
-			continue
-		}
-		if !baseSet[p] {
-			return 0, false
-		}
 	}
 	return fin, true
 }
