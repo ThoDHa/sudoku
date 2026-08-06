@@ -9,40 +9,40 @@
     "Lowering a floor is deliberate, manual, and needs a stated reason in its 'sources' note. A floor with no 'sources' entry is refused by the gate rather than enforced, so a number cannot arrive here without an origin. Precedent for why this is guarded: commit bd2f8d5 lowered the techniques floor to 99.9 for 'residual-flakiness headroom' and had to be reverted by e5e10c6."
   ],
   "floors": {
-    "dp": 92.8,
+    "dp": 98.64,
     "human": 100,
     "techniques": 100
   },
   "techniques_shards": {
-    "aic": null,
-    "als_chains": null,
-    "blossom": null,
-    "board": null,
-    "bug": null,
-    "chains": null,
-    "digit_forcing": null,
-    "fish": null,
-    "forcing": null,
-    "formatter": null,
-    "grid": null,
-    "medusa": null,
-    "pairs": null,
-    "sdc": null,
-    "simple": null,
-    "skyscraper": null,
-    "swordfish": null,
-    "triples": null,
-    "ur": null,
-    "wings": null,
-    "xcycles": null,
-    "xwing_finned": null
+    "aic": 55.94,
+    "als_chains": 56.29,
+    "blossom": 41.66,
+    "board": 100.0,
+    "bug": 100.0,
+    "chains": 98.86,
+    "digit_forcing": 100.0,
+    "fish": 100.0,
+    "forcing": 99.59,
+    "formatter": 100.0,
+    "grid": 84.0,
+    "medusa": 100.0,
+    "pairs": 54.23,
+    "sdc": 62.44,
+    "simple": 100.0,
+    "skyscraper": 59.37,
+    "swordfish": 100.0,
+    "triples": 73.72,
+    "ur": 93.26,
+    "wings": 100.0,
+    "xcycles": 55.42,
+    "xwing_finned": 66.4
   },
   "sources": {
     "dp": {
-      "measured": 92.8,
-      "run": "30899984529",
-      "recorded": "2026-08-04",
-      "note": "232 killed, 18 escaped, 250 in the denominator. First measurement under --exec-timeout 300, reproduced identically on a second CI run. Two caveats make this a lower bound rather than the truth: it predates MUT-6-27's finding that non-compiling mutants are counted as kills, which inflates every published score by a margin still being quantified, and 65a162a has since closed all 18 escapes. Both move the honest figure, so this stays as a floor nobody can argue is too high until propose replaces it from a run measured after the compile-error correction. The denominator will also fall below 250, because 65a162a closed escapes partly by deleting redundant code; floors are percentages precisely so a shrinking denominator does not read as a regression."
+      "measured": 98.64,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
     },
     "human": {
       "measured": null,
@@ -55,6 +55,138 @@
       "run": null,
       "recorded": "2026-08-04",
       "note": "Unmeasured as a package: run 30899984529 returned 58.97% across only 18 of the 22 shards, and an aggregate over an incomplete shard set is not a floor for the complete one. Floor left at 100 until a run reports all 22 shards. MUT-6-27 separately found non-compiling mutants counted as kills, so every published figure overestimates by an unknown margin and no number measured before that fix should be locked in."
+    },
+    "techniques/aic": {
+      "measured": 55.94,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/als_chains": {
+      "measured": 56.29,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/blossom": {
+      "measured": 41.67,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/board": {
+      "measured": 100.0,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/bug": {
+      "measured": 100.0,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/chains": {
+      "measured": 98.87,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/digit_forcing": {
+      "measured": 100.0,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/fish": {
+      "measured": 100.0,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/forcing": {
+      "measured": 99.6,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/formatter": {
+      "measured": 100.0,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/grid": {
+      "measured": 84.0,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/medusa": {
+      "measured": 100.0,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/pairs": {
+      "measured": 54.24,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/sdc": {
+      "measured": 62.44,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/simple": {
+      "measured": 100.0,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/skyscraper": {
+      "measured": 59.38,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/swordfish": {
+      "measured": 100.0,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/triples": {
+      "measured": 73.72,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/ur": {
+      "measured": 93.27,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/wings": {
+      "measured": 100.0,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/xcycles": {
+      "measured": 55.43,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+    },
+    "techniques/xwing_finned": {
+      "measured": 66.4,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
     }
   }
 }
