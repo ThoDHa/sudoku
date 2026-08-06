@@ -38,6 +38,10 @@ func findNakedPairInUnit(b BoardInterface, indices []int, unitType string, unitN
 			digits := b.GetCandidatesAt(idx1).ToSlice()
 			eliminations := pairEliminationsOutside(b, idx1, idx2, digits, indices)
 			if len(eliminations) == 0 {
+				// Nothing to eliminate means no other cell in the unit holds
+				// either digit, so no later cell can match this pair either and
+				// leaving the loop would reach the same result.
+				// mutator-disable-next-line loop/break
 				continue
 			}
 			r1, c1 := idx1/constants.GridSize, idx1%constants.GridSize
@@ -97,6 +101,9 @@ func DetectHiddenPair(b BoardInterface) *core.Move {
 func findHiddenPairInUnit(b BoardInterface, indices []int, unitType string, unitNum int) *core.Move {
 	// Find positions for each digit
 	digitPositions := make(map[int][]int)
+	// Lowering the first digit only adds passes for digits no cell can hold:
+	// Candidates.Has rejects anything below 1.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		for _, idx := range indices {
 			if b.GetCandidatesAt(idx).Has(digit) {
