@@ -133,8 +133,13 @@ func FindConflicts(grid []int) []Conflict {
 // than reported; keeping empties out of the structure altogether is what makes
 // that scan range correct.
 type unitPositions struct {
-	positions [10][9]int
-	counts    [10]int
+	// Both arrays are indexed by digit, so they carry GridSize+1 slots: one per
+	// digit plus the unwritten slot 0. Widening either by one leaves a slot no
+	// index ever reaches; narrowing it puts digit GridSize out of bounds.
+	// mutator-disable-next-line numbers/incrementer
+	positions [constants.GridSize + 1][constants.GridSize]int
+	// mutator-disable-next-line numbers/incrementer
+	counts [constants.GridSize + 1]int
 }
 
 // record files idx under the digit the cell holds, ignoring empty cells so that
