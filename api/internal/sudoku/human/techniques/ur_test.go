@@ -219,6 +219,24 @@ func TestDetectUniqueRectangleType2SkipsRoofWithTwoExtras(t *testing.T) {
 	}
 }
 
+// TestDetectUniqueRectangleType2SkipsMatchingTwoExtraRoofs pins the soundness
+// boundary of the count half of the roof guard, which the differing-extras tests
+// above cannot reach because they fail the equality half first. Both roofs here
+// carry the same two extras, so the extras are equal and only the count check
+// stands between the detector and an unsound move: with two extras the deadly
+// pattern forces one roof to hold 3 or 4, which licenses no elimination of 3
+// alone.
+func TestDetectUniqueRectangleType2SkipsMatchingTwoExtraRoofs(t *testing.T) {
+	b := urRectangleCorners([]int{1, 2}, []int{1, 2}, []int{1, 2, 3, 4}, []int{1, 2, 3, 4})
+	// A row-1 peer of both roof corners holding the first extra, which a
+	// detector that dropped the count check would wrongly eliminate.
+	b.candidates[idxOf(1, 5)] = NewCandidates([]int{3, 9})
+
+	if move := DetectUniqueRectangleType2(b); move != nil {
+		t.Errorf("expected nil when both roofs carry two extras, got %+v", move)
+	}
+}
+
 // TestDetectUniqueRectangleType2SkipsWhenNoPeerHoldsTheExtra checks the
 // elimination guard: a well-formed Type 2 pattern with nothing to remove
 // produces no move rather than an empty one.
@@ -901,6 +919,38 @@ func TestDetectUniqueRectangleType3TripleTriesEveryPartnerPairing(t *testing.T) 
 		Highlights: core.Highlights{
 			Primary:   refs([2]int{0, 0}, [2]int{0, 3}),
 			Secondary: refs([2]int{1, 0}, [2]int{1, 3}, [2]int{1, 1}, [2]int{1, 4}),
+		},
+	})
+}
+
+// TestDetectUniqueRectangleType3TripleRejectsFourCandidatePartner pins what
+// happens to a cell too wide to be a triple member now that the partner scan
+// screens only the lower bound. The four-candidate cell sits ahead of the real
+// partners in the row, so every pairing that includes it is tried first and must
+// be rejected by the three-digit union check; it then appears in the
+// eliminations, which is the only place it belongs.
+func TestDetectUniqueRectangleType3TripleRejectsFourCandidatePartner(t *testing.T) {
+	b := urRectangleCorners([]int{1, 2}, []int{1, 2}, []int{1, 2, 3, 4}, []int{1, 2, 5})
+	b.candidates[idxOf(1, 1)] = NewCandidates([]int{3, 4, 5, 6})
+	b.candidates[idxOf(1, 2)] = NewCandidates([]int{3, 4})
+	b.candidates[idxOf(1, 4)] = NewCandidates([]int{4, 5})
+	b.candidates[idxOf(1, 5)] = NewCandidates([]int{3, 9})
+
+	assertMove(t, DetectUniqueRectangleType3(b), &core.Move{
+		Action:  "eliminate",
+		Digit:   0,
+		Targets: urCorners,
+		Eliminations: []core.Candidate{
+			{Row: 1, Col: 1, Digit: 3},
+			{Row: 1, Col: 1, Digit: 4},
+			{Row: 1, Col: 1, Digit: 5},
+			{Row: 1, Col: 5, Digit: 3},
+		},
+		Explanation: "Unique Rectangle Type 3: 1/2: pseudo-cell forms naked triple with " +
+			"R2C3 and R2C5 in row.",
+		Highlights: core.Highlights{
+			Primary:   refs([2]int{0, 0}, [2]int{0, 3}),
+			Secondary: refs([2]int{1, 0}, [2]int{1, 3}, [2]int{1, 2}, [2]int{1, 4}),
 		},
 	})
 }

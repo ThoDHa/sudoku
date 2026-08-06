@@ -241,6 +241,13 @@ func DetectUniqueRectangleType2(b BoardInterface) *core.Move {
 				extras1 := b.GetCandidatesAt(corners[roofPair[1]]).Subtract(urDigits)
 
 				if extras0.Count() != 1 || extras0 != extras1 {
+					// Reaching here means this pairing's floor is bivalue while its
+					// roof does not carry one shared extra. A later pairing can only
+					// return a move if both of its own roof corners are non-bivalue,
+					// and every later roof either is this bivalue floor or overlaps
+					// it in one corner, so none can succeed. Leaving the loop and
+					// skipping the rest of it therefore coincide.
+					// mutator-disable-next-line loop/break
 					continue
 				}
 
@@ -300,17 +307,13 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 				roofCorner1 := corners[roofPair[1]]
 
 				// A rectangle whose roof corners are both bivalue has no extras
-				// at all, and the combined-extras bounds below reject it, so the
-				// candidate counts need no separate guard.
+				// at all, and an empty pseudo-cell matches no case of the switch
+				// below, so the candidate counts need no separate guard.
 
 				// Combine extras from both corners (excluding d1, d2)
 				urDigits := NewCandidates([]int{d1, d2})
 				combinedExtras := b.GetCandidatesAt(roofCorner0).Subtract(urDigits).Union(
 					b.GetCandidatesAt(roofCorner1).Subtract(urDigits))
-
-				if combinedExtras.Count() == 0 || combinedExtras.Count() > 3 {
-					continue
-				}
 
 				extraSlice := combinedExtras.ToSlice()
 
@@ -337,17 +340,19 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 					sharedUnits = append(sharedUnits, unitInfo{"box", BoxIndices[box0]})
 				}
 
-				// For each shared unit, look for naked subset with the pseudo-cell
+				// For each shared unit, look for naked subset with the pseudo-cell.
+				// Two combined extras close a naked pair with one further cell,
+				// three close a naked triple with two, and every other size
+				// matches no case. That is the whole of the bounds check the
+				// pseudo-cell needs, so no separate size guard precedes it.
 				for _, unit := range sharedUnits {
-					// Naked pair: combined extras have 2 digits, find 1 other cell with subset of these
-					// Naked triple: combined extras have 3 digits, find 2 other cells
-
-					if len(extraSlice) == 2 {
-						// Look for naked pair: one other cell with exactly these 2 candidates
+					switch len(extraSlice) {
+					case 2:
+						// Look for naked pair: one other cell with exactly these 2 candidates.
+						// A roof corner cannot be the partner: it holds d1 and d2,
+						// which extraSlice excludes, so the exact-match check below
+						// rejects it.
 						for _, idx := range unit.indices {
-							if idx == roofCorner0 || idx == roofCorner1 {
-								continue
-							}
 							if b.GetCell(idx) != 0 {
 								continue
 							}
@@ -394,78 +399,74 @@ func DetectUniqueRectangleType3(b BoardInterface) *core.Move {
 								}
 							}
 						}
-					}
 
-					if len(extraSlice) >= 2 && len(extraSlice) <= 3 {
+					case 3:
 						// Look for naked triple: find cells that together with pseudo-cell form a triple
 						var candidateCells []int
 						for _, idx := range unit.indices {
-							if idx == roofCorner0 || idx == roofCorner1 {
-								continue
-							}
 							if b.GetCell(idx) != 0 {
 								continue
 							}
 							// A cell outside the pseudo-cell's digits widens the
 							// combined set past three digits, which the triple
-							// check below rejects, so only the cell size is
-							// screened here.
+							// check below rejects, so only the lower cell size is
+							// screened here. That check also excludes a roof
+							// corner, whose d1 and d2 are absent from the extras.
 							cellCands := b.GetCandidatesAt(idx)
-							if cellCands.Count() < 2 || cellCands.Count() > 3 {
+							if cellCands.Count() < 2 {
 								continue
 							}
 							candidateCells = append(candidateCells, idx)
 						}
 
-						// For naked triple, we need exactly 2 more cells (pseudo-cell counts as 1)
-						if len(extraSlice) == 3 && len(candidateCells) >= 2 {
-							// Try pairs of candidate cells
-							for ci := range candidateCells {
-								for cj := ci + 1; cj < len(candidateCells); cj++ {
-									idx1, idx2 := candidateCells[ci], candidateCells[cj]
+						// Try pairs of candidate cells. Fewer than two leaves the
+						// pairing loops with nothing to run, which is the whole of
+						// the cell-count requirement.
+						for ci := range candidateCells {
+							for cj := ci + 1; cj < len(candidateCells); cj++ {
+								idx1, idx2 := candidateCells[ci], candidateCells[cj]
 
-									// Combined candidates of pseudo-cell + these 2 cells must be exactly 3 digits
-									allCands := combinedExtras.Union(b.GetCandidatesAt(idx1)).Union(b.GetCandidatesAt(idx2))
+								// Combined candidates of pseudo-cell + these 2 cells must be exactly 3 digits
+								allCands := combinedExtras.Union(b.GetCandidatesAt(idx1)).Union(b.GetCandidatesAt(idx2))
 
-									if allCands.Count() != 3 {
+								if allCands.Count() != 3 {
+									continue
+								}
+
+								tripleDigits := allCands.ToSlice()
+
+								// Eliminate these 3 digits from other cells in unit
+								var eliminations []core.Candidate
+								for _, elimIdx := range unit.indices {
+									if elimIdx == roofCorner0 || elimIdx == roofCorner1 || elimIdx == idx1 || elimIdx == idx2 {
 										continue
 									}
-
-									tripleDigits := allCands.ToSlice()
-
-									// Eliminate these 3 digits from other cells in unit
-									var eliminations []core.Candidate
-									for _, elimIdx := range unit.indices {
-										if elimIdx == roofCorner0 || elimIdx == roofCorner1 || elimIdx == idx1 || elimIdx == idx2 {
-											continue
-										}
-										if b.GetCell(elimIdx) != 0 {
-											continue
-										}
-										for _, d := range tripleDigits {
-											if b.GetCandidatesAt(elimIdx).Has(d) {
-												eliminations = append(eliminations, core.Candidate{
-													Row: elimIdx / constants.GridSize, Col: elimIdx % constants.GridSize, Digit: d,
-												})
-											}
+									if b.GetCell(elimIdx) != 0 {
+										continue
+									}
+									for _, d := range tripleDigits {
+										if b.GetCandidatesAt(elimIdx).Has(d) {
+											eliminations = append(eliminations, core.Candidate{
+												Row: elimIdx / constants.GridSize, Col: elimIdx % constants.GridSize, Digit: d,
+											})
 										}
 									}
+								}
 
-									if len(eliminations) > 0 {
-										targets := CellRefsFromIndices(corners[:]...)
+								if len(eliminations) > 0 {
+									targets := CellRefsFromIndices(corners[:]...)
 
-										return &core.Move{
-											Action:       "eliminate",
-											Digit:        0,
-											Targets:      targets,
-											Eliminations: eliminations,
-											Explanation: fmt.Sprintf("Unique Rectangle Type 3: %d/%d: pseudo-cell forms naked triple with R%dC%d and R%dC%d in %s.",
-												d1, d2, idx1/constants.GridSize+1, idx1%constants.GridSize+1, idx2/constants.GridSize+1, idx2%constants.GridSize+1, unit.unitType),
-											Highlights: core.Highlights{
-												Primary:   CellRefsFromIndices(corners[floorPair[0]], corners[floorPair[1]]),
-												Secondary: CellRefsFromIndices(roofCorner0, roofCorner1, idx1, idx2),
-											},
-										}
+									return &core.Move{
+										Action:       "eliminate",
+										Digit:        0,
+										Targets:      targets,
+										Eliminations: eliminations,
+										Explanation: fmt.Sprintf("Unique Rectangle Type 3: %d/%d: pseudo-cell forms naked triple with R%dC%d and R%dC%d in %s.",
+											d1, d2, idx1/constants.GridSize+1, idx1%constants.GridSize+1, idx2/constants.GridSize+1, idx2%constants.GridSize+1, unit.unitType),
+										Highlights: core.Highlights{
+											Primary:   CellRefsFromIndices(corners[floorPair[0]], corners[floorPair[1]]),
+											Secondary: CellRefsFromIndices(roofCorner0, roofCorner1, idx1, idx2),
+										},
 									}
 								}
 							}
