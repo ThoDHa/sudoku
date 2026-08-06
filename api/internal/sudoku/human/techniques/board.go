@@ -14,13 +14,12 @@ import (
 // Bit positions 1-N correspond to digits 1-N. Bit 0 is unused.
 type Candidates uint16
 
-// NewCandidates creates a Candidates bitmask from a slice of digits
+// NewCandidates creates a Candidates bitmask from a slice of digits.
+// Digits outside 1-N are dropped by Set, so no range check is needed here.
 func NewCandidates(digits []int) Candidates {
 	var c Candidates
 	for _, d := range digits {
-		if d >= 1 && d <= constants.GridSize {
-			c = c.Set(d)
-		}
+		c = c.Set(d)
 	}
 	return c
 }
@@ -28,6 +27,9 @@ func NewCandidates(digits []int) Candidates {
 // AllCandidates returns a Candidates with all digits 1-N set
 func AllCandidates() Candidates {
 	var c Candidates
+	// i=0 sets nothing: Set rejects anything outside 1..GridSize, so an extra
+	// iteration at 0 leaves the bitmask unchanged.
+	// mutator-disable-next-line numbers/decrementer
 	for i := 1; i <= constants.GridSize; i++ {
 		c = c.Set(i)
 	}
@@ -80,6 +82,9 @@ func (c Candidates) Only() (int, bool) {
 			return i, true
 		}
 	}
+	// Unreachable: Count reported exactly one digit in 1..GridSize, so the loop
+	// above always returns. Go still requires a terminating statement.
+	// mutator-disable-next-line numbers/decrementer,numbers/incrementer
 	return 0, false
 }
 
@@ -121,9 +126,6 @@ func (c Candidates) Equals(other Candidates) bool {
 
 // String returns a string representation for debugging
 func (c Candidates) String() string {
-	if c == 0 {
-		return "{}"
-	}
 	digits := c.ToSlice()
 	var sb strings.Builder
 	sb.WriteByte('{')
