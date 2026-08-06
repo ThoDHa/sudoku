@@ -181,6 +181,9 @@ func (u Unit) GetCellRefs() []core.CellRef {
 
 // AllUnits returns all units (16 rows + 16 cols + 16 boxes = 48 total)
 func AllUnits() []Unit {
+	// Capacity is a preallocation hint only: append grows the slice regardless,
+	// so a wrong size changes no result.
+	// mutator-disable-next-line arithmetic/base
 	units := make([]Unit, 0, constants.GridSize*3)
 	for i := range constants.GridSize {
 		units = append(units, Unit{Type: UnitRow, Index: i, Cells: RowIndices[i]})
@@ -231,9 +234,11 @@ func IntersectInts(a, b []int) []int {
 
 // Combinations generates all k-element combinations of slice
 func Combinations(slice []int, k int) [][]int {
-	if k <= 0 || k > len(slice) {
+	if k <= 0 {
 		return nil
 	}
+	// k > len(slice) needs no guard: combinationsHelper's loop bound
+	// len(slice)-(k-len(current)) is already negative there, so it returns nil.
 	return combinationsHelper(slice, k, 0, nil)
 }
 
@@ -266,6 +271,10 @@ func MakeElimination(cell, digit int) core.Candidate {
 
 // DedupeEliminations removes duplicate eliminations
 func DedupeEliminations(elims []core.Candidate) []core.Candidate {
+	// Narrowing this fast path by one cannot change the result: the loop below
+	// returns an equal slice for zero or one element. Raising the bound does
+	// change it, and a test pins that.
+	// mutator-disable-next-line numbers/decrementer,expression/comparison
 	if len(elims) <= 1 {
 		return elims
 	}
@@ -313,17 +322,12 @@ func CellRefsFromIndices(indices ...int) []core.CellRef {
 // FindEliminationsSeeing finds cells with digit that see ALL specified mustSee cells.
 // Cells in the exclude set are skipped. If exclude is nil, mustSee cells are excluded.
 func FindEliminationsSeeing(b BoardInterface, digit int, exclude []int, mustSee ...int) []core.Candidate {
-	// Build exclusion set
+	// Build exclusion set. The mustSee cells need no entry here: ArePeers
+	// reports false for a cell against itself, so each drops out of the sweep
+	// below on its own seesAll check.
 	excludeSet := make(map[int]bool)
-	if exclude != nil {
-		for _, idx := range exclude {
-			excludeSet[idx] = true
-		}
-	} else {
-		// Default: exclude the mustSee cells themselves
-		for _, idx := range mustSee {
-			excludeSet[idx] = true
-		}
+	for _, idx := range exclude {
+		excludeSet[idx] = true
 	}
 
 	var eliminations []core.Candidate
@@ -338,6 +342,9 @@ func FindEliminationsSeeing(b BoardInterface, digit int, exclude []int, mustSee 
 		for _, target := range mustSee {
 			if !ArePeers(idx, target) {
 				seesAll = false
+				// Replacing this break with continue only costs iterations:
+				// seesAll is never set true again.
+				// mutator-disable-next-line loop/break
 				break
 			}
 		}
@@ -375,6 +382,9 @@ func FindAllALS(b BoardInterface, maxSize int) []ALS {
 
 	// Build unit list in specific order: all rows, then all cols, then all boxes.
 	// This order affects which ALS are found first and can impact technique results.
+	// Capacity is a preallocation hint only: append grows the slice regardless,
+	// so a wrong size changes no result.
+	// mutator-disable-next-line arithmetic/base
 	units := make([][]int, 0, constants.GridSize*3)
 	for i := range constants.GridSize {
 		units = append(units, RowIndices[i])
@@ -396,7 +406,9 @@ func FindAllALS(b BoardInterface, maxSize int) []ALS {
 		}
 
 		// Find ALS of sizes 1 to maxSize
-		for size := 1; size <= maxSize && size <= len(emptyCells); size++ {
+		// size=0 finds nothing: Combinations returns nil for k <= 0.
+		// mutator-disable-next-line numbers/decrementer
+		for size := 1; size <= maxSize; size++ {
 			combos := Combinations(emptyCells, size)
 			for _, combo := range combos {
 				// Count combined candidates
@@ -420,6 +432,10 @@ func FindAllALS(b BoardInterface, maxSize int) []ALS {
 					// Sort cells for consistency
 					sortedCells := make([]int, len(combo))
 					copy(sortedCells, combo)
+					// Already ascending: every unit index list is ascending and
+					// Combinations preserves input order, so this only guards the
+					// documented ordering against a future unsorted source.
+					// mutator-disable-next-line statement/remove
 					sort.Ints(sortedCells)
 
 					allALS = append(allALS, ALS{
