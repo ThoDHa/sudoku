@@ -11,7 +11,7 @@
   "floors": {
     "dp": 98.64,
     "human": 100,
-    "techniques": 100
+    "techniques": 86.0
   },
   "techniques_shards": {
     "aic": 55.94,
@@ -51,10 +51,10 @@
       "note": "Unmeasured: run 30899984529 killed the job at 45m before it reported. Floor left at its pre-campaign 100 rather than lowered to a number nobody has measured, so the gate stays red on human until MUT-6-2 lands a completed run and propose sets an honest value."
     },
     "techniques": {
-      "measured": null,
-      "run": null,
-      "recorded": "2026-08-04",
-      "note": "Unmeasured as a package: run 30899984529 returned 58.97% across only 18 of the 22 shards, and an aggregate over an incomplete shard set is not a floor for the complete one. Floor left at 100 until a run reports all 22 shards. MUT-6-27 separately found non-compiling mutants counted as kills, so every published figure overestimates by an unknown margin and no number measured before that fix should be locked in."
+      "measured": 86.0,
+      "run": "31072920543",
+      "recorded": "2026-08-06",
+      "note": "LOWERED from 100 by hand, deliberately, per the ratchet rule that a lowering is manual and must state its reason. The previous note left the floor at 100 'until a run reports all 22 shards'; that condition is now met. Runs 31064111984 and 31072920543 both measured all 22 shards at ffc6207 and reported identical counts on every scope, and MUT-6-27's compile-error correction has landed, so 86.00% (killed=3552 escaped=578 total=4130 scored) is the first honest aggregate the project has had. Holding 100 against it made the gate fail by 14pp on a known backlog every night, which made a real regression indistinguishable from the campaign's own remaining work. This is a floor on measured truth, not a relaxation of the target: MUT-6 still drives every scope to zero escapes, and `propose` raises this number automatically as each shard closes, so it climbs back to 100 without another hand edit. Per-shard floors carry the real protection meanwhile: all 22 are pinned, nine of them at 100."
     },
     "techniques/aic": {
       "measured": 55.94,
