@@ -32,13 +32,21 @@ func findNakedSubsetInUnit(b BoardInterface, subsetSize int, name string, indice
 	var candidates []int
 	for _, idx := range indices {
 		n := b.GetCandidatesAt(idx).Count()
-		if n >= 2 && n <= subsetSize {
-			candidates = append(candidates, idx)
+		// A solved cell or a naked single cannot be a subset member.
+		if n < 2 {
+			continue
 		}
+		// A cell holding more digits than the subset can contain is rejected by
+		// the union check in tryNakedSubset, so this bound only keeps the
+		// combination count down. Letting such a cell through changes no result.
+		// mutator-disable-next-line branch/if
+		if n > subsetSize {
+			continue
+		}
+		candidates = append(candidates, idx)
 	}
-	if len(candidates) < subsetSize {
-		return nil
-	}
+	// Too few cells to choose from is not checked here: combinationsSizeK
+	// returns without a single call when the size exceeds the pool.
 	var found *core.Move
 	combinationsSizeK(candidates, subsetSize, func(combo []int) bool {
 		m := tryNakedSubset(b, combo, indices, unitType, unitNum, name)
@@ -55,7 +63,7 @@ func findNakedSubsetInUnit(b BoardInterface, subsetSize int, name string, indice
 // returns the elimination move if the union of candidates equals subsetSize and
 // produces eliminations in other unit cells.
 func tryNakedSubset(b BoardInterface, subsetCells []int, unitCells []int, unitType string, unitNum int, name string) *core.Move {
-	union := Candidates(0)
+	var union Candidates
 	for _, c := range subsetCells {
 		union = union.Union(b.GetCandidatesAt(c))
 	}
@@ -179,6 +187,9 @@ func findHiddenTripleInUnit(b BoardInterface, indices []int, unitType string, un
 // technique in the explanation.
 func findHiddenSubsetInUnit(b BoardInterface, subsetSize int, name string, indices []int, unitType string, unitNum int) *core.Move {
 	digitPositions := map[int][]int{}
+	// Lowering the first digit only adds passes for digits no cell can hold:
+	// Candidates.Has rejects anything below 1.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		for _, idx := range indices {
 			if b.GetCandidatesAt(idx).Has(digit) {
@@ -190,13 +201,22 @@ func findHiddenSubsetInUnit(b BoardInterface, subsetSize int, name string, indic
 	var smallDigits []int
 	for _, digit := range slices.Sorted(maps.Keys(digitPositions)) {
 		positions := digitPositions[digit]
-		if len(positions) >= 2 && len(positions) <= subsetSize {
-			smallDigits = append(smallDigits, digit)
+		// A digit with one position is a hidden single, not a subset member.
+		if len(positions) < 2 {
+			continue
 		}
+		// A digit spread over more cells than the subset holds is rejected by
+		// the position-union check in tryHiddenSubset, so this bound only keeps
+		// the combination count down. Letting such a digit through changes no
+		// result.
+		// mutator-disable-next-line branch/if
+		if len(positions) > subsetSize {
+			continue
+		}
+		smallDigits = append(smallDigits, digit)
 	}
-	if len(smallDigits) < subsetSize {
-		return nil
-	}
+	// Too few digits to choose from is not checked here: combinationsSizeK
+	// returns without a single call when the size exceeds the pool.
 	var found *core.Move
 	combinationsSizeK(smallDigits, subsetSize, func(combo []int) bool {
 		m := tryHiddenSubset(b, combo, digitPositions, unitType, unitNum, name)
