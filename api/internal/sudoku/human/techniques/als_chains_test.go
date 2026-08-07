@@ -389,6 +389,37 @@ func TestDetectALSXYWingPairsAPivotWithEveryLaterSet(t *testing.T) {
 	})
 }
 
+// TestDetectALSXYWingStopsAtTheFourCellSetCap pins the size this detector asks
+// the almost-locked-set search for. R1C2 to R1C6 hold three candidates each in
+// an overlapping run, so no subset of them lands on one more digit than cells
+// and the five together are a set at a cap of five and nothing at four. The
+// rest of the wing is present and reachable only through that set: 3 is
+// restricted between it and R1C8, 7 is restricted between it and R3C4, those
+// two sets share 9 without seeing each other, and R3C8 sees both cells holding
+// 9. Asking the search for one size more eliminates 9 from R3C8.
+//
+// A run of bivalue cells cannot pin a bound this way: every contiguous stretch
+// of one is itself an almost locked set, so it supplies the smaller sizes the
+// test means to withhold.
+func TestDetectALSXYWingStopsAtTheFourCellSetCap(t *testing.T) {
+	b := simpleBoard(map[int][]int{
+		idxOf(0, 1): {1, 3, 4},
+		idxOf(0, 2): {3, 4, 5},
+		idxOf(0, 3): {4, 5, 6},
+		idxOf(0, 4): {5, 6, 7},
+		idxOf(0, 5): {6, 7, 1},
+		idxOf(0, 7): {3, 9},
+		// Shares 9 with R1C8 but sees no cell of it, so 9 stays unrestricted
+		// between the two wings and remains available to eliminate.
+		idxOf(2, 3): {7, 9},
+		idxOf(2, 7): {9, 2},
+	})
+
+	if move := DetectALSXYWing(b); move != nil {
+		t.Errorf("expected nil when the only qualifying pivot holds five cells, got %+v", move)
+	}
+}
+
 // TestDetectALSXYChainExcludesOverlappingSetsFromTheAdjacency pins that two
 // sets sharing a cell are never linked. The three-set chain here eliminates 3
 // from R7C2; an adjacency that also links overlapping sets offers a fourth link
