@@ -49,22 +49,30 @@ import (
 //   - Z gets placed somewhere in that petal
 //   - Since we don't know WHICH petal will lock, Z must appear in any position
 //     that all petals cover for Z
-//
-//nolint:gocyclo // Death Blossom couples stem-cell selection with per-digit ALS lookup and peer-elimination across the stem's peers; the ALS-candidate and elimination phases share the stem context, and decomposing them would pass stem plus per-digit ALS state across boundaries.
 func DetectDeathBlossom(b BoardInterface) *core.Move {
-	// Find all ALS with size 1-4 cells
+	// Find all ALS with size 1-4 cells. Fewer than two cannot yield a blossom,
+	// but no guard says so here: a set paired with itself is rejected by
+	// ALSShareCells, and a stem candidate with no set at all contributes an
+	// empty petal list that the combination loops never enter.
 	allALS := FindAllALS(b, 4)
-	if len(allALS) < 2 {
-		return nil
-	}
 
-	// Find potential stem cells (2-3 candidates)
+	// Find potential stem cells (2-3 candidates). Both bounds are cost filters
+	// rather than correctness checks: a stem of any other size reaches
+	// tryPetalCombinations, whose switch has no case for it, so no move can
+	// follow. Each bound is stated separately so its equivalent mutant can be
+	// named without silencing the killable one on the same line.
 	var stems []int
 	for i := range constants.TotalCells {
 		n := b.GetCandidatesAt(i).Count()
-		if n >= 2 && n <= 3 {
-			stems = append(stems, i)
+		// mutator-disable-next-line numbers/decrementer,branch/if
+		if n < 2 {
+			continue
 		}
+		// mutator-disable-next-line numbers/incrementer,branch/if
+		if n > 3 {
+			continue
+		}
+		stems = append(stems, i)
 	}
 
 	for _, stem := range stems {
@@ -74,24 +82,17 @@ func DetectDeathBlossom(b BoardInterface) *core.Move {
 		// Build a map: stem candidate -> list of valid petal ALS
 		petalsByCandidate := make(map[int][]ALS)
 
+		// A candidate with no petals is recorded with an empty list rather than
+		// left out: the combination loops iterate each candidate's list, and an
+		// empty one and an absent one both end the search for this stem.
 		for _, cand := range stemCands {
-			petals := findPetalsForCandidate(b, stem, cand, allALS)
-			if len(petals) > 0 {
-				petalsByCandidate[cand] = petals
-			}
+			petalsByCandidate[cand] = findPetalsForCandidate(b, stem, cand, allALS)
 		}
 
-		// Need at least one petal for each stem candidate
-		allHavePetals := true
-		for _, cand := range stemCands {
-			if len(petalsByCandidate[cand]) == 0 {
-				allHavePetals = false
-				break
-			}
-		}
-		if !allHavePetals {
-			continue
-		}
+		// Every stem candidate needs a petal of its own, which is not checked
+		// here: a candidate with none leaves an empty list, and the combination
+		// loops below iterate each candidate's list in turn, so an empty one
+		// ends the search for that stem without a move.
 
 		// Try all combinations of petals (one per stem candidate)
 		if move := tryPetalCombinations(b, stem, stemCands, petalsByCandidate); move != nil {
@@ -116,12 +117,10 @@ func findPetalsForCandidate(b BoardInterface, stem int, cand int, allALS []ALS) 
 			continue
 		}
 
-		// ALS must have the candidate as one of its digits
-		if !slices.Contains(als.Digits, cand) {
-			continue
-		}
-
-		// Find cells in the ALS that contain this candidate
+		// Find cells in the ALS that contain this candidate. FindAllALS builds
+		// Digits as the union of its cells' candidates and ByDigit from the same
+		// cells, so a digit is listed exactly when some cell holds it: an empty
+		// cell list is the whole of "the set does not carry this candidate".
 		candCells := als.ByDigit[cand]
 		if len(candCells) == 0 {
 			continue
@@ -138,6 +137,9 @@ func findPetalsForCandidate(b BoardInterface, stem int, cand int, allALS []ALS) 
 		for _, cell := range candCells {
 			if !ArePeers(cell, stem) {
 				allCandCellsSeeStem = false
+				// The flag is already false, so carrying on through the rest of
+				// the cells reaches the same verdict at more cost.
+				// mutator-disable-next-line loop/break
 				break
 			}
 		}
@@ -228,7 +230,9 @@ func findEliminationDigits(b BoardInterface, stem int, petals []ALS) []int {
 	// Start with digits from first petal
 	commonDigits := NewCandidates(petals[0].Digits)
 
-	// Intersect with other petals
+	// Intersect with other petals. Starting at zero would intersect the first
+	// petal with itself before going on, which changes nothing.
+	// mutator-disable-next-line numbers/decrementer
 	for i := 1; i < len(petals); i++ {
 		petalDigits := NewCandidates(petals[i].Digits)
 		commonDigits = commonDigits.Intersect(petalDigits)
@@ -254,14 +258,11 @@ func findBlossomEliminations(b BoardInterface, stem int, petals []ALS, z int, st
 		return nil
 	}
 
-	// Collect all cells to exclude (stem + all petal cells)
-	exclude := []int{stem}
-	for _, petal := range petals {
-		exclude = append(exclude, petal.Cells...)
-	}
-
-	// Find cells that see ALL zCells and have z as candidate
-	eliminations := FindEliminationsSeeing(b, z, exclude, allZCells...)
+	// Find cells that see ALL zCells and have z as candidate. Nothing is
+	// excluded by name: z is chosen from digits the stem does not hold, and a
+	// petal cell holding z is itself one of the zCells, which no cell can see,
+	// so both the stem and the petals drop out of the sweep on their own.
+	eliminations := FindEliminationsSeeing(b, z, nil, allZCells...)
 
 	if len(eliminations) == 0 {
 		return nil
