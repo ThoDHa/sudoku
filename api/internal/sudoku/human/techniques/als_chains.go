@@ -31,7 +31,7 @@ func alsTripleDisjoint(alsA, alsB, alsC ALS) bool {
 // A would be locked on its N digits). So either B has X locked out and contains Z,
 // or C has Y locked out and contains Z. Either way, Z appears in B or C.
 //
-//nolint:gocyclo // ALS-XY-Wing searches a 4-deep loop (pivot ALS × X-ALS × Y-ALS × Z digit) with structural constraints (RC exclusivity, restricted-common verification, peer elimination) checked inline against accumulated state; extracting the inner checks spreads tightly-coupled state across helpers.
+//nolint:gocyclo // The digit selection and move assembly are in alsXYWingMove; what remains is the enumeration itself, a 4-deep loop over pivot ALS × X-ALS × Y-ALS × RC digit pair whose skips depend on indices and sets from three different loop levels at once.
 func DetectALSXYWing(b BoardInterface) *core.Move {
 	allALS := FindAllALS(b, 4)
 
@@ -41,6 +41,11 @@ func DetectALSXYWing(b BoardInterface) *core.Move {
 		alsA := allALS[ai]
 
 		for bi := range n {
+			// Dropping this skip changes nothing: a set shares every one of its
+			// cells with itself, so the guard below catches bi == ai anyway.
+			// Turning it into a break does change the search, and
+			// TestDetectALSXYWingPairsAPivotWithEveryLaterSet covers that.
+			// mutator-disable-next-line branch/if
 			if bi == ai {
 				continue
 			}
@@ -48,18 +53,27 @@ func DetectALSXYWing(b BoardInterface) *core.Move {
 
 			// A and B must not share cells. The full triple disjoint check is
 			// completed inside the ci loop via alsTripleDisjoint, which re-checks
-			// A-B (cheaply) plus A-C and B-C.
+			// A-B (cheaply) plus A-C and B-C, so dropping this skip only costs
+			// the work of reaching that check.
+			// mutator-disable-next-line branch/if
 			if ALSShareCells(alsA, alsB) {
 				continue
 			}
 
-			// Find restricted commons between A and B
+			// Find restricted commons between A and B. Dropping this skip
+			// changes nothing: an empty slice makes the x loop below iterate
+			// zero times, and len is never negative.
 			rcAB := findRestrictedCommons(alsA, alsB)
+			// mutator-disable-next-line branch/if,numbers/decrementer
 			if len(rcAB) == 0 {
 				continue
 			}
 
 			for ci := range n {
+				// Dropping either half changes nothing: alsTripleDisjoint below
+				// rejects alsC equal to alsA or to alsB, since a set shares
+				// cells with itself.
+				// mutator-disable-next-line branch/if,expression/remove
 				if ci == ai || ci == bi {
 					continue
 				}
@@ -75,8 +89,11 @@ func DetectALSXYWing(b BoardInterface) *core.Move {
 					continue
 				}
 
-				// Find restricted commons between A and C
+				// Find restricted commons between A and C. Dropping this skip
+				// changes nothing: an empty slice makes the y loop below iterate
+				// zero times, and len is never negative.
 				rcAC := findRestrictedCommons(alsA, alsC)
+				// mutator-disable-next-line branch/if,numbers/decrementer
 				if len(rcAC) == 0 {
 					continue
 				}
@@ -84,52 +101,71 @@ func DetectALSXYWing(b BoardInterface) *core.Move {
 				// Try each combination of RC digits X (A-B) and Y (A-C)
 				for _, x := range rcAB {
 					for _, y := range rcAC {
-						if x == y {
-							continue // X and Y must be different
-						}
-
-						// Find common digit Z in B and C (but Z should not be an RC between B and C)
-						commonBC := IntersectInts(alsB.Digits, alsC.Digits)
-						for _, z := range commonBC {
-							if z == x || z == y {
-								continue
-							}
-
-							// Z must not be a restricted common between B and C
-							// (if it were, the pattern would collapse)
-							if isRestrictedCommon(alsB, alsC, z) {
-								continue
-							}
-
-							// Find eliminations: cells seeing all Z in B and all Z in C
-							zCellsB := alsB.ByDigit[z]
-							zCellsC := alsC.ByDigit[z]
-
-							if len(zCellsB) == 0 || len(zCellsC) == 0 {
-								continue
-							}
-
-							eliminations := findZEliminations(b, z, zCellsB, zCellsC, alsA.Cells, alsB.Cells, alsC.Cells)
-
-							if len(eliminations) > 0 {
-								targets := buildTargets(alsA.Cells, alsB.Cells, alsC.Cells)
-								return &core.Move{
-									Action:       "eliminate",
-									Digit:        z,
-									Targets:      targets,
-									Eliminations: eliminations,
-									Explanation: fmt.Sprintf(
-										"ALS-XY-Wing: A=%s, B=%s, C=%s; RC(A-B)=%d, RC(A-C)=%d; eliminate %d",
-										FormatCells(alsA.Cells), FormatCells(alsB.Cells), FormatCells(alsC.Cells),
-										x, y, z),
-									Highlights: core.Highlights{
-										Primary: targets,
-									},
-								}
-							}
+						if move := alsXYWingMove(b, alsA, alsB, alsC, x, y); move != nil {
+							return move
 						}
 					}
 				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// alsXYWingMove returns the move the (A, B, C) triple licenses under restricted
+// commons x (A-B) and y (A-C), or nil when it licenses none. The eliminated
+// digit Z is the first digit B and C share that is neither restricted common,
+// is not itself restricted between them, and is held by cells that some cell
+// outside the triple sees all of.
+//
+// Split out of DetectALSXYWing's innermost loop so the digit-selection rules and
+// the assembled move can be driven from hand-built sets, rather than from a
+// board contrived to make FindAllALS emit the triple that reaches them.
+func alsXYWingMove(b BoardInterface, alsA, alsB, alsC ALS, x, y int) *core.Move {
+	if x == y {
+		return nil // X and Y must be different
+	}
+
+	// Find common digit Z in B and C (but Z should not be an RC between B and C)
+	commonBC := IntersectInts(alsB.Digits, alsC.Digits)
+	for _, z := range commonBC {
+		if z == x || z == y {
+			continue
+		}
+
+		// Z must not be a restricted common between B and C
+		// (if it were, the pattern would collapse)
+		if isRestrictedCommon(alsB, alsC, z) {
+			continue
+		}
+
+		// Find eliminations: cells seeing all Z in B and all Z in C
+		zCellsB := alsB.ByDigit[z]
+		zCellsC := alsC.ByDigit[z]
+
+		// A set advertising a digit it holds in no cell would leave the scan
+		// below with one end only. FindAllALS never builds one.
+		if len(zCellsB) == 0 || len(zCellsC) == 0 {
+			continue
+		}
+
+		eliminations := findZEliminations(b, z, zCellsB, zCellsC, alsA.Cells, alsB.Cells, alsC.Cells)
+
+		if len(eliminations) > 0 {
+			targets := buildTargets(alsA.Cells, alsB.Cells, alsC.Cells)
+			return &core.Move{
+				Action:       "eliminate",
+				Digit:        z,
+				Targets:      targets,
+				Eliminations: eliminations,
+				Explanation: fmt.Sprintf(
+					"ALS-XY-Wing: A=%s, B=%s, C=%s; RC(A-B)=%d, RC(A-C)=%d; eliminate %d",
+					FormatCells(alsA.Cells), FormatCells(alsB.Cells), FormatCells(alsC.Cells),
+					x, y, z),
+				Highlights: core.Highlights{
+					Primary: targets,
+				},
 			}
 		}
 	}
@@ -164,13 +200,20 @@ func detectALSXYChain(b BoardInterface, maxSize int) *core.Move {
 			// Skip self-pairs but keep building the rest of the row: the
 			// adjacency must stay symmetric. TestDetectALSXYChainAdjacencyIsSymmetric
 			// fails if this becomes a break (lower-triangular adjacency).
+			// Dropping the skip changes nothing: a set shares every one of its
+			// cells with itself, so the guard below catches i == j anyway.
+			// mutator-disable-next-line branch/if
 			if i == j {
 				continue
 			}
 			if ALSShareCells(allALS[i], allALS[j]) {
 				continue
 			}
+			// Storing an empty slice changes nothing: it adds a neighbor whose
+			// link-digit loop in searchALSChain iterates zero times, and len is
+			// never negative.
 			rcs := findRestrictedCommons(allALS[i], allALS[j])
+			// mutator-disable-next-line expression/comparison,numbers/decrementer
 			if len(rcs) > 0 {
 				adjRC[i][j] = rcs
 			}
@@ -246,18 +289,17 @@ func searchALSChain(b BoardInterface, allALS []ALS, adjRC map[int]map[int][]int,
 				continue
 			}
 
-			// The RC digit must be different from the last used RC (if any)
 			for _, rc := range rcs {
-				if len(curr.rcUsed) > 0 && curr.rcUsed[len(curr.rcUsed)-1] == rc {
-					continue // Same RC as previous link - skip
-				}
-
-				// Also check that this RC is not the same as any other RC in the chain
-				// to maintain proper alternation
+				// The RC digit must differ from every RC already used in the
+				// chain, which maintains the alternation the pattern rests on
+				// and covers the immediately previous link as one of the cases.
 				validRC := true
 				for _, usedRC := range curr.rcUsed {
 					if usedRC == rc {
 						validRC = false
+						// Replacing this break with continue only costs
+						// iterations: validRC is never set true again.
+						// mutator-disable-next-line loop/break
 						break
 					}
 				}
@@ -312,6 +354,9 @@ func checkChainElimination(b BoardInterface, allALS []ALS, path []int, rcUsed []
 		for _, rc := range rcUsed {
 			if rc == z {
 				isRC = true
+				// Replacing this break with continue only costs iterations:
+				// isRC is never set false again.
+				// mutator-disable-next-line loop/break
 				break
 			}
 		}
@@ -319,7 +364,9 @@ func checkChainElimination(b BoardInterface, allALS []ALS, path []int, rcUsed []
 			continue
 		}
 
-		// Z must exist in both first and last ALS
+		// Z must exist in both first and last ALS. An end advertising a digit
+		// it holds in no cell would leave the scan below with one end only.
+		// FindAllALS never builds one.
 		zCellsFirst := firstALS.ByDigit[z]
 		zCellsLast := lastALS.ByDigit[z]
 
