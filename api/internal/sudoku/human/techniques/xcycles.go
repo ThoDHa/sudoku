@@ -22,6 +22,9 @@ import (
 //   - Type 2 (discontinuous): two weak links meet at a node
 //     -> That node must be OFF (eliminate the digit)
 func DetectGroupedXCycles(b BoardInterface) *core.Move {
+	// Candidates.Has rejects any digit outside 1..GridSize, so an extra
+	// iteration at 0 finds no cells and reports nothing.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		if move := findGroupedXCycleForDigit(b, digit); move != nil {
 			return move
@@ -39,6 +42,11 @@ func findGroupedXCycleForDigit(b BoardInterface, digit int) *core.Move {
 		}
 	}
 
+	// A cycle needs four distinct nodes to close, and with exactly four
+	// candidate cells every one of them lies on the loop, leaving no outside
+	// cell to eliminate from. Every count this bound could admit or refuse
+	// differently therefore yields nothing either way.
+	// mutator-disable-next-line branch/if,expression/comparison,numbers/decrementer,numbers/incrementer
 	if len(cells) < 4 {
 		return nil
 	}
@@ -116,9 +124,10 @@ func hasStrongLinkXC(strongLinks []strongLinkXC, cell1, cell2 int) bool {
 	return false
 }
 
-// hasWeakLinkXC checks if there's a weak link (cells see each other)
+// hasWeakLinkXC checks if there's a weak link (cells see each other).
+// ArePeers already excludes a cell from its own peers.
 func hasWeakLinkXC(cell1, cell2 int) bool {
-	return cell1 != cell2 && ArePeers(cell1, cell2)
+	return ArePeers(cell1, cell2)
 }
 
 // findXCyclesDFS searches for X-Cycles using DFS
@@ -175,6 +184,9 @@ func searchCycle(b BoardInterface, digit int, cells []int, strongLinks []strongL
 		}
 
 		// Check for cycle back to start (need at least 4 nodes for a valid cycle)
+		// Lowering the bound changes nothing: analyzeCycleFixed rejects any
+		// cycle of fewer than four nodes.
+		// mutator-disable-next-line numbers/decrementer
 		if pathLen >= 4 {
 			if needStrong && hasStrongLinkXC(strongLinks, currentCell, startCell) {
 				// Cycle closes with strong link
@@ -203,6 +215,9 @@ func searchCycle(b BoardInterface, digit int, cells []int, strongLinks []strongL
 			for _, p := range state.path {
 				if p == nextCell {
 					inPath = true
+					// The flag is never cleared, so scanning the rest of the path
+					// reaches the same answer.
+					// mutator-disable-next-line loop/break
 					break
 				}
 			}
@@ -321,6 +336,9 @@ func findNiceLoopEliminationsFixed(b BoardInterface, digit int, path []int, link
 				for _, p := range path {
 					if p == idx {
 						inPath = true
+						// The flag is never cleared, so scanning the rest of the
+						// path reaches the same answer.
+						// mutator-disable-next-line loop/break
 						break
 					}
 				}

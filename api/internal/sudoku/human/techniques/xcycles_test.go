@@ -36,6 +36,36 @@ func TestBuildStrongLinksXCTakesEveryUnitHoldingExactlyTwo(t *testing.T) {
 	}
 }
 
+// TestBuildStrongLinksXCConfinesTheBoxScanToItsOwnThreeByThree pins all four
+// bounds of the box window: a cell on the box's first row or first column
+// belongs to it, and a cell one row or one column beyond its last does not.
+func TestBuildStrongLinksXCConfinesTheBoxScanToItsOwnThreeByThree(t *testing.T) {
+	b := &testBoard{}
+	want := []strongLinkXC{{idxOf(0, 0), idxOf(1, 1), "box"}}
+
+	// R1C1 sits on both the first row and the first column of box 1, so
+	// excluding either edge would leave the box holding one cell and no link.
+	if got := buildStrongLinksXC(b, 5, []int{idxOf(0, 0), idxOf(1, 1)}); !reflect.DeepEqual(got, want) {
+		t.Errorf("links with both cells inside box 1 = %+v, want %+v", got, want)
+	}
+
+	// R4C3 lies one row below box 1. Admitting it would give the box three
+	// cells, which is one too many for a strong link.
+	if got := buildStrongLinksXC(b, 5, []int{idxOf(0, 0), idxOf(1, 1), idxOf(3, 2)}); !reflect.DeepEqual(got, want) {
+		t.Errorf("links with a cell one row below box 1 = %+v, want %+v", got, want)
+	}
+
+	// R2C4 lies one column right of box 1, and shares row 2 with R2C2, so the
+	// row link is expected and only the box link is at stake.
+	wantWithRow := []strongLinkXC{
+		{idxOf(1, 1), idxOf(1, 3), "row"},
+		{idxOf(0, 0), idxOf(1, 1), "box"},
+	}
+	if got := buildStrongLinksXC(b, 5, []int{idxOf(0, 0), idxOf(1, 1), idxOf(1, 3)}); !reflect.DeepEqual(got, wantWithRow) {
+		t.Errorf("links with a cell one column right of box 1 = %+v, want %+v", got, wantWithRow)
+	}
+}
+
 // TestHasStrongLinkXCMatchesEitherDirection pins the lookup: a link is a pair
 // without an order, so it must be found however its ends are given.
 func TestHasStrongLinkXCMatchesEitherDirection(t *testing.T) {
@@ -52,6 +82,23 @@ func TestHasStrongLinkXCMatchesEitherDirection(t *testing.T) {
 	}
 	if hasStrongLinkXC(nil, idxOf(0, 0), idxOf(0, 4)) {
 		t.Error("expected no link in an empty table")
+	}
+}
+
+// TestHasStrongLinkXCRejectsHalfMatchingPairs pins both halves of both
+// orientations of the lookup: matching one end of a link is not matching the
+// link.
+func TestHasStrongLinkXCRejectsHalfMatchingPairs(t *testing.T) {
+	links := []strongLinkXC{{idxOf(0, 0), idxOf(0, 4), "row"}}
+
+	if hasStrongLinkXC(links, idxOf(0, 1), idxOf(0, 4)) {
+		t.Error("expected no link when only the far end matches as given")
+	}
+	if hasStrongLinkXC(links, idxOf(0, 4), idxOf(0, 1)) {
+		t.Error("expected no link when only the far end matches reversed")
+	}
+	if hasStrongLinkXC(links, idxOf(0, 1), idxOf(0, 0)) {
+		t.Error("expected no link when only the near end matches reversed")
 	}
 }
 
@@ -152,6 +199,86 @@ func TestAnalyzeCycleFixedRejectsMalformedCycles(t *testing.T) {
 	}
 }
 
+// offsetCyclePath is a four-cell cycle placed away from the grid origin: R2C2,
+// R2C6, R6C6, R6C2. Its second node has index 14, whose row quotient, column
+// remainder and index are three different numbers, so the coordinate split of
+// a move naming that node is observable.
+func offsetCyclePath() []int {
+	return []int{idxOf(1, 1), idxOf(1, 5), idxOf(5, 5), idxOf(5, 1)}
+}
+
+// TestAnalyzeCycleFixedAssignsAtAMeetingNodeAwayFromTheOrigin pins the
+// coordinate arithmetic of the Type 1 move, which a cycle meeting at R1C1
+// cannot: index 0 divides, remainders and multiplies to itself.
+func TestAnalyzeCycleFixedAssignsAtAMeetingNodeAwayFromTheOrigin(t *testing.T) {
+	b := &testBoard{}
+
+	// Links out of each node: strong, strong, weak, weak. Node 0 is entered
+	// weakly and left strongly, so the scan passes it and stops at node 1.
+	got := analyzeCycleFixed(b, 5, offsetCyclePath(), []bool{true, true, false, false})
+
+	assertMove(t, got, &core.Move{
+		Action:      "assign",
+		Digit:       5,
+		Targets:     refs([2]int{1, 5}),
+		Explanation: "X-Cycle Type 1: two strong links meet at R2C6, so it must be 5",
+		Highlights: core.Highlights{
+			Primary: refs([2]int{1, 1}, [2]int{1, 5}, [2]int{5, 5}, [2]int{5, 1}),
+		},
+	})
+}
+
+// TestAnalyzeCycleFixedEliminatesAtAMeetingNodeAwayFromTheOrigin is the Type 2
+// mirror, and pins the same coordinate split across the elimination, the
+// explanation and the secondary highlight.
+func TestAnalyzeCycleFixedEliminatesAtAMeetingNodeAwayFromTheOrigin(t *testing.T) {
+	b := &testBoard{}
+	b.candidates[idxOf(1, 5)] = NewCandidates([]int{5, 7})
+
+	got := analyzeCycleFixed(b, 5, offsetCyclePath(), []bool{false, false, true, true})
+
+	assertMove(t, got, &core.Move{
+		Action:       "eliminate",
+		Digit:        5,
+		Eliminations: []core.Candidate{{Row: 1, Col: 5, Digit: 5}},
+		Explanation:  "X-Cycle Type 2: two weak links meet at R2C6, eliminating 5",
+		Highlights: core.Highlights{
+			Primary:   refs([2]int{1, 1}, [2]int{1, 5}, [2]int{5, 5}, [2]int{5, 1}),
+			Secondary: refs([2]int{1, 5}),
+		},
+	})
+}
+
+// TestAnalyzeCycleFixedHandsAnAlternatingCycleToTheNiceLoop pins both halves of
+// each discontinuity test. Every node of an alternating cycle is entered and
+// left by opposite link types, so neither reading applies and the analysis
+// falls through; testing only the incoming or only the outgoing link would
+// report a discontinuity at the first node the scan reached.
+//
+// R2C8 sees the near end of the R2C6-R6C6 weak link but not the far end, so it
+// survives, which pins the far end as a distinct cell rather than a repeat of
+// the near one.
+func TestAnalyzeCycleFixedHandsAnAlternatingCycleToTheNiceLoop(t *testing.T) {
+	b := &testBoard{}
+	for _, cell := range offsetCyclePath() {
+		b.candidates[cell] = NewCandidates([]int{5, 9})
+	}
+	b.candidates[idxOf(3, 5)] = NewCandidates([]int{5, 8})
+	b.candidates[idxOf(1, 7)] = NewCandidates([]int{5, 8})
+
+	got := analyzeCycleFixed(b, 5, offsetCyclePath(), []bool{true, false, true, false})
+
+	assertMove(t, got, &core.Move{
+		Action:       "eliminate",
+		Digit:        5,
+		Eliminations: []core.Candidate{{Row: 3, Col: 5, Digit: 5}},
+		Explanation:  "X-Cycle Nice Loop: eliminate 5 from cells seeing both ends of weak links.",
+		Highlights: core.Highlights{
+			Primary: refs([2]int{1, 1}, [2]int{1, 5}, [2]int{5, 5}, [2]int{5, 1}),
+		},
+	})
+}
+
 // ============================================================================
 // Nice loops
 // ============================================================================
@@ -196,6 +323,32 @@ func TestFindNiceLoopEliminationsFixedReturnsNilWithoutWeakLinks(t *testing.T) {
 	if move := findNiceLoopEliminationsFixed(b, 5, xcyclePath(), []bool{true, true, true, true}); move != nil {
 		t.Errorf("expected nil when the loop holds no weak link, got %+v", move)
 	}
+}
+
+// TestFindNiceLoopEliminationsFixedSkipsLoopCellsAndDeduplicates uses a loop
+// whose four cells share a box, so each of them sees both ends of a weak link
+// and would be eliminated from itself if the in-path skip were dropped. The one
+// outside cell sees both ends of both weak links, so it is collected twice and
+// only deduplication reduces it to a single elimination.
+func TestFindNiceLoopEliminationsFixedSkipsLoopCellsAndDeduplicates(t *testing.T) {
+	b := &testBoard{}
+	path := []int{idxOf(0, 0), idxOf(0, 1), idxOf(1, 1), idxOf(1, 0)}
+	for _, cell := range path {
+		b.candidates[cell] = NewCandidates([]int{5, 9})
+	}
+	b.candidates[idxOf(2, 2)] = NewCandidates([]int{5, 8})
+
+	got := findNiceLoopEliminationsFixed(b, 5, path, []bool{true, false, true, false})
+
+	assertMove(t, got, &core.Move{
+		Action:       "eliminate",
+		Digit:        5,
+		Eliminations: []core.Candidate{{Row: 2, Col: 2, Digit: 5}},
+		Explanation:  "X-Cycle Nice Loop: eliminate 5 from cells seeing both ends of weak links.",
+		Highlights: core.Highlights{
+			Primary: refs([2]int{0, 0}, [2]int{0, 1}, [2]int{1, 1}, [2]int{1, 0}),
+		},
+	})
 }
 
 // ============================================================================
