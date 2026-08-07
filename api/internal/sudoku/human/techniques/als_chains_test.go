@@ -447,6 +447,36 @@ func TestDetectALSXYChainBoundsSetsAtFourCells(t *testing.T) {
 	})
 }
 
+// TestDetectALSXYChainBoundsChainsAtSixSets pins the chain-length bound the
+// public entry point applies. Six sets reach the elimination of 6 from R5C2
+// through link digits 4, 7, 3, 5 and 1. Allowing a seventh set lets the search
+// reach the same elimination first through a longer route that inserts a link
+// on 2, which reports a different chain for the same result.
+func TestDetectALSXYChainBoundsChainsAtSixSets(t *testing.T) {
+	b := simpleBoard(map[int][]int{
+		idxOf(0, 0): {3, 4},
+		idxOf(0, 5): {4, 5},
+		idxOf(1, 2): {2, 3},
+		idxOf(4, 1): {1, 6},
+		idxOf(4, 7): {4, 6},
+		idxOf(5, 5): {1, 5},
+		idxOf(5, 8): {1, 4},
+		idxOf(6, 2): {2, 7},
+		idxOf(6, 7): {4, 7},
+	})
+
+	cells := refs([2]int{4, 7}, [2]int{6, 7}, [2]int{1, 2}, [2]int{6, 2}, [2]int{0, 0},
+		[2]int{0, 5}, [2]int{5, 5}, [2]int{4, 7}, [2]int{5, 8})
+	assertMove(t, DetectALSXYChain(b), &core.Move{
+		Action:       "eliminate",
+		Digit:        6,
+		Targets:      cells,
+		Eliminations: []core.Candidate{{Row: 4, Col: 1, Digit: 6}},
+		Explanation:  "ALS-XY-Chain: 6 ALS linked by RCs [4 7 3 5 1]; eliminate 6",
+		Highlights:   core.Highlights{Primary: cells},
+	})
+}
+
 // alsAdjacency builds the restricted-common adjacency searchALSChain consumes,
 // the way detectALSXYChain does. The search fixtures below hand-build their set
 // list and derive the adjacency from it, so every graph searched is one the
