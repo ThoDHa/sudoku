@@ -387,3 +387,29 @@ func TestDetectDeathBlossomUsesAFourCellPetal(t *testing.T) {
 		},
 	})
 }
+
+// TestDetectDeathBlossomStopsAtTheFourCellPetalCap pins the other edge of the
+// size the almost-locked-set search is asked for. R1C2 to R1C6 form a five-cell
+// set over six digits whose every proper subset holds too many digits for its
+// size, so it is a petal at a cap of five and nothing at all at four. The rest
+// of the blossom is present: it carries the link digit 1 in cells that both see
+// the stem, R2C2 is the petal for stem candidate 2, and R2C4 sees every cell
+// holding the shared digit 7. Raising the cap by one eliminates 7 from R2C4, so
+// the cap alone is what turns this board away.
+func TestDetectDeathBlossomStopsAtTheFourCellPetalCap(t *testing.T) {
+	b := &testBoard{}
+	b.candidates[idxOf(0, 0)] = NewCandidates([]int{1, 2})
+	// Three candidates per cell in an overlapping run: no single cell, pair,
+	// triple or quadruple among them lands on one more digit than cells.
+	b.candidates[idxOf(0, 1)] = NewCandidates([]int{1, 3, 4})
+	b.candidates[idxOf(0, 2)] = NewCandidates([]int{3, 4, 5})
+	b.candidates[idxOf(0, 3)] = NewCandidates([]int{4, 5, 6})
+	b.candidates[idxOf(0, 4)] = NewCandidates([]int{5, 6, 7})
+	b.candidates[idxOf(0, 5)] = NewCandidates([]int{6, 7, 1})
+	b.candidates[idxOf(1, 1)] = NewCandidates([]int{2, 7})
+	b.candidates[idxOf(1, 3)] = NewCandidates([]int{7, 8})
+
+	if move := DetectDeathBlossom(b); move != nil {
+		t.Errorf("expected nil when the only qualifying petal holds five cells, got %+v", move)
+	}
+}
