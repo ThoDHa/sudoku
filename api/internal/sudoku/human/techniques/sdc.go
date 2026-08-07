@@ -48,8 +48,10 @@ func detectSueDeCoqIntersection(b BoardInterface, box int, lineIdx int, isRow bo
 	// Get intersection cells (cells that are in both box and line)
 	intersectionCells := sdcIntersectionCells(b, boxRow, boxCol, lineIdx, isRow)
 
-	// Need 2 or 3 intersection cells
-	if len(intersectionCells) < 2 || len(intersectionCells) > 3 {
+	// The intersection is one box row or column, so sdcIntersectionCells can
+	// return at most BoxSize cells and only the lower bound can fail here: a
+	// single cell leaves nothing for the two sets to divide between them.
+	if len(intersectionCells) < 2 {
 		return nil
 	}
 
@@ -316,6 +318,9 @@ func findALSInCells(b BoardInterface, cells []int, intersectionDigits []int) []A
 
 	// Try ALS of size 3 (3 cells with 4 candidates total) - less common but possible
 	for i := range cells {
+		// A final j at len(cells) leaves the k loop starting one past the end,
+		// so the extra iteration reads no cell and forms no set.
+		// mutator-disable-next-line expression/comparison
 		for j := i + 1; j < len(cells); j++ {
 			for k := j + 1; k < len(cells); k++ {
 				result = append(result, alsFromCells(b, []int{cells[i], cells[j], cells[k]}, intersectionSet)...)
@@ -330,7 +335,7 @@ func findALSInCells(b BoardInterface, cells []int, intersectionDigits []int) []A
 // Set property (N cells holding exactly N+1 candidates) and shares at least one
 // digit with intersectionSet. Returns nil otherwise.
 func alsFromCells(b BoardInterface, cells []int, intersectionSet Candidates) []ALS {
-	combined := Candidates(0)
+	var combined Candidates
 	for _, c := range cells {
 		combined = combined.Union(b.GetCandidatesAt(c))
 	}
