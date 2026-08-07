@@ -13,12 +13,6 @@ type candidateNode struct {
 	digit int
 }
 
-// chainLink represents a link in the chain with polarity
-type chainLink struct {
-	node   candidateNode
-	strong bool // true if this node was reached via a strong link
-}
-
 // DetectAIC finds Alternating Inference Chains and returns eliminations or assignments
 func DetectAIC(b BoardInterface) *core.Move {
 	// Build strong and weak link maps for efficient lookup
@@ -137,17 +131,14 @@ func containsNode(nodes []candidateNode, target candidateNode) bool {
 }
 
 // bfsAIC performs BFS to find valid AIC chains
-//
-//nolint:gocyclo // bfsAIC interleaves BFS state (queue, visited, polarity) with three per-step elimination checks (continuous loop, alternating-discontinuity, sees-both-polarities); each check needs the chain built so far, so extraction requires passing the full chain context.
 func bfsAIC(b BoardInterface, start candidateNode, startPolarity bool, strongLinks, weakLinks map[candidateNode][]candidateNode) *core.Move {
 	type queueItem struct {
-		chain    []chainLink
+		chain    []candidateNode
 		polarity bool // current polarity: true=ON, false=OFF
 	}
 
 	// Start chain with the initial node (polarity true means "assume ON")
-	initialChain := []chainLink{{node: start, strong: startPolarity}}
-	queue := []queueItem{{chain: initialChain, polarity: startPolarity}}
+	queue := []queueItem{{chain: []candidateNode{start}, polarity: startPolarity}}
 
 	maxChainLength := 10
 
@@ -159,40 +150,31 @@ func bfsAIC(b BoardInterface, start candidateNode, startPolarity bool, strongLin
 			continue
 		}
 
-		lastLink := current.chain[len(current.chain)-1]
+		lastNode := current.chain[len(current.chain)-1]
 
 		// Determine which links to follow based on alternation
 		// After a strong link (polarity ON), we follow weak links
 		// After a weak link (polarity OFF), we follow strong links
 		var nextLinks []candidateNode
-		var nextStrong bool
 
 		if current.polarity {
 			// Current node is ON, follow weak links (next will be OFF)
-			nextLinks = weakLinks[lastLink.node]
-			nextStrong = false
+			nextLinks = weakLinks[lastNode]
 		} else {
 			// Current node is OFF, follow strong links (next will be ON)
-			nextLinks = strongLinks[lastLink.node]
-			nextStrong = true
+			nextLinks = strongLinks[lastNode]
 		}
 
 		for _, nextNode := range nextLinks {
-			// Check if we've visited this node in this chain
-			visited := false
-			for _, link := range current.chain {
-				if link.node.cell == nextNode.cell && link.node.digit == nextNode.digit {
-					visited = true
-					break
-				}
-			}
-			if visited {
+			// Revisiting a node would close the chain onto itself rather than
+			// extend it, so the branch is abandoned.
+			if containsNode(current.chain, nextNode) {
 				continue
 			}
 
-			newChain := make([]chainLink, len(current.chain)+1)
+			newChain := make([]candidateNode, len(current.chain)+1)
 			copy(newChain, current.chain)
-			newChain[len(current.chain)] = chainLink{node: nextNode, strong: nextStrong}
+			newChain[len(current.chain)] = nextNode
 			nextPolarity := !current.polarity
 
 			// Check for valid chain conclusions (need at least 3 nodes)
@@ -211,7 +193,7 @@ func bfsAIC(b BoardInterface, start candidateNode, startPolarity bool, strongLin
 }
 
 // checkChainConclusion checks if a chain leads to valid eliminations or assignments
-func checkChainConclusion(b BoardInterface, chain []chainLink, start candidateNode, startPolarity bool, end candidateNode, endPolarity bool) *core.Move {
+func checkChainConclusion(b BoardInterface, chain []candidateNode, start candidateNode, startPolarity bool, end candidateNode, endPolarity bool) *core.Move {
 	// Type 1: Discontinuous Nice Loop - endpoints are the same with same polarity
 	// If both ends are ON (or both OFF) for the same candidate, we have a contradiction
 	if start.cell == end.cell && start.digit == end.digit {
@@ -262,23 +244,23 @@ func checkChainConclusion(b BoardInterface, chain []chainLink, start candidateNo
 }
 
 // getChainCellRefs extracts cell references from a chain
-func getChainCellRefs(chain []chainLink) []core.CellRef {
+func getChainCellRefs(chain []candidateNode) []core.CellRef {
 	refs := make([]core.CellRef, len(chain))
-	for i, link := range chain {
-		refs[i] = core.CellRef{Row: link.node.cell / constants.GridSize, Col: link.node.cell % constants.GridSize}
+	for i, n := range chain {
+		refs[i] = core.CellRef{Row: n.cell / constants.GridSize, Col: n.cell % constants.GridSize}
 	}
 	return refs
 }
 
 // buildAICHighlights creates highlight information for the chain
-func buildAICHighlights(chain []chainLink) core.Highlights {
+func buildAICHighlights(chain []candidateNode) core.Highlights {
 	highlights := core.Highlights{
 		Primary:   []core.CellRef{},
 		Secondary: []core.CellRef{},
 	}
 
-	for _, link := range chain {
-		cellRef := core.CellRef{Row: link.node.cell / constants.GridSize, Col: link.node.cell % constants.GridSize}
+	for _, n := range chain {
+		cellRef := core.CellRef{Row: n.cell / constants.GridSize, Col: n.cell % constants.GridSize}
 		highlights.Primary = append(highlights.Primary, cellRef)
 	}
 
