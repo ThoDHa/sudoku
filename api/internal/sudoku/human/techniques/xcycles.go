@@ -42,10 +42,20 @@ func findGroupedXCycleForDigit(b BoardInterface, digit int) *core.Move {
 		}
 	}
 
-	// A cycle needs four distinct nodes to close, and with exactly four
-	// candidate cells every one of them lies on the loop, leaving no outside
-	// cell to eliminate from. Every count this bound could admit or refuse
-	// differently therefore yields nothing either way.
+	// Every count this bound could admit or refuse differently yields nothing
+	// either way, which takes two arguments rather than one.
+	//
+	// Below four, searchCycle never reaches its own four-node minimum, so no
+	// cycle closes at all.
+	//
+	// At exactly four, a cycle closes but cannot conclude. searchCycle picks
+	// each next link as the opposite of the last and closes only when the
+	// closing link matches what the alternation demands, so the closure
+	// continues the alternation rather than breaking it. An even-length cycle
+	// therefore never carries two links of the same strength meeting at a node,
+	// which is what both of analyzeCycleFixed's readings require. That leaves
+	// only the continuous nice loop, whose eliminations fall on cells outside
+	// the loop, and with exactly four candidate cells all four are on it.
 	// mutator-disable-next-line branch/if,expression/comparison,numbers/decrementer,numbers/incrementer
 	if len(cells) < 4 {
 		return nil
