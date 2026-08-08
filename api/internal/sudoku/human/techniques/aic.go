@@ -19,8 +19,12 @@ func DetectAIC(b BoardInterface) *core.Move {
 	strongLinks := buildStrongLinks(b)
 	weakLinks := buildWeakLinks(b)
 
-	// Try starting from each candidate in each cell
+	// Try starting from each candidate in each cell. Dropping this skip costs
+	// iterations and changes no result: both weak-link builders ignore solved
+	// cells, so a solved cell is neither key nor value in weakLinks, and a
+	// search always leaves its start node along a weak link.
 	for cell := range constants.TotalCells {
+		// mutator-disable-next-line branch/if
 		if b.GetCell(cell) != 0 {
 			continue
 		}
@@ -42,7 +46,10 @@ func DetectAIC(b BoardInterface) *core.Move {
 func buildStrongLinks(b BoardInterface) map[candidateNode][]candidateNode {
 	links := make(map[candidateNode][]candidateNode)
 
-	// Strong links from conjugate pairs (only 2 places for digit in a unit)
+	// Strong links from conjugate pairs (only 2 places for digit in a unit).
+	// Candidates.Has rejects any digit outside 1..GridSize, so an extra
+	// iteration at 0 finds no cells in any unit and adds no link.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		for _, unit := range AllUnits() {
 			cells := b.CellsWithDigitInUnit(unit, digit)
@@ -81,7 +88,9 @@ func buildStrongLinks(b BoardInterface) map[candidateNode][]candidateNode {
 func buildWeakLinks(b BoardInterface) map[candidateNode][]candidateNode {
 	links := make(map[candidateNode][]candidateNode)
 
-	// Weak links: same digit in cells that see each other
+	// Weak links: same digit in cells that see each other. As in
+	// buildStrongLinks, an extra iteration at 0 collects no cells at all.
+	// mutator-disable-next-line numbers/decrementer
 	for digit := 1; digit <= constants.GridSize; digit++ {
 		cells := []int{}
 		for cell := range constants.TotalCells {
@@ -90,6 +99,9 @@ func buildWeakLinks(b BoardInterface) map[candidateNode][]candidateNode {
 			}
 		}
 		for i := range cells {
+			// Starting j at i pairs a cell with itself, which ArePeers refuses
+			// since a cell is not among its own peers, so no link follows.
+			// mutator-disable-next-line numbers/decrementer
 			for j := i + 1; j < len(cells); j++ {
 				if ArePeers(cells[i], cells[j]) {
 					n1 := candidateNode{cell: cells[i], digit: digit}
@@ -140,6 +152,13 @@ func bfsAIC(b BoardInterface, start candidateNode, startPolarity bool, strongLin
 	// Start chain with the initial node (polarity true means "assume ON")
 	queue := []queueItem{{chain: []candidateNode{start}, polarity: startPolarity}}
 
+	// Both readings in checkChainConclusion require the start and end
+	// polarities to agree. The start is always ON and the polarity flips at
+	// every step, so only an odd chain length can conclude. A conclusion is
+	// checked on a chain one longer than the one being extended, which puts the
+	// longest concluding chain at maxChainLength+1. Raising this bound by one
+	// therefore only admits an even length, which concludes nothing.
+	// mutator-disable-next-line numbers/incrementer
 	maxChainLength := 10
 
 	for len(queue) > 0 {
@@ -147,6 +166,13 @@ func bfsAIC(b BoardInterface, start candidateNode, startPolarity bool, strongLin
 		queue = queue[1:]
 
 		if len(current.chain) > maxChainLength {
+			// Abandoning the whole search here reaches the same answer. The
+			// queue is strictly level-ordered, since a chain is only ever
+			// appended while extending one exactly a node shorter, so by the
+			// time an over-long chain is dequeued every shorter chain has been
+			// extended and every conclusion checked, and everything still
+			// queued is over-long too.
+			// mutator-disable-next-line loop/break
 			continue
 		}
 
@@ -177,7 +203,10 @@ func bfsAIC(b BoardInterface, start candidateNode, startPolarity bool, strongLin
 			newChain[len(current.chain)] = nextNode
 			nextPolarity := !current.polarity
 
-			// Check for valid chain conclusions (need at least 3 nodes)
+			// Check for valid chain conclusions (need at least 3 nodes).
+			// Lowering the bound changes nothing: a two-node chain ends OFF
+			// while the start is ON, and both readings need them to agree.
+			// mutator-disable-next-line numbers/decrementer
 			if len(newChain) >= 3 {
 				move := checkChainConclusion(b, newChain, start, startPolarity, nextNode, nextPolarity)
 				if move != nil {
@@ -218,7 +247,11 @@ func checkChainConclusion(b BoardInterface, chain []candidateNode, start candida
 	// But if they see each other, they can't both be ON (weak link)
 	// This is a CONTRADICTION - therefore Start must be OFF!
 	// We eliminate the digit from Start.
-	if start.digit == end.digit && start.cell != end.cell && startPolarity && endPolarity {
+	// The endpoints being different cells is not checked here. Type 1 above
+	// returns for every chain whose endpoints are the same cell and digit with
+	// both polarities ON, which is exactly what would reach this line, and
+	// ArePeers refuses a cell as its own peer in any case.
+	if start.digit == end.digit && startPolarity && endPolarity {
 		if ArePeers(start.cell, end.cell) {
 			// Contradiction: Start=ON leads to End=ON, but they see each other
 			// So Start CANNOT be ON - eliminate it
