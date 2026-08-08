@@ -317,8 +317,6 @@ func pathCellRefs(path []int) []core.CellRef {
 }
 
 // DetectXYChain finds XY-Chain pattern: a chain of bivalue cells
-//
-//nolint:gocyclo // XY-Chain driver threads bivalue-cell adjacency, BFS queue state, and chain-extension validation through one BFS body; the extension step needs the per-cell adjacency and the visited set built in the outer scan.
 func DetectXYChain(b BoardInterface) *core.Move {
 	// Find all bivalue cells
 	var bivalue []int
@@ -334,12 +332,14 @@ func DetectXYChain(b BoardInterface) *core.Move {
 		sharedCand int
 	})
 
-	for _, c1 := range bivalue {
-		for _, c2 := range bivalue {
-			// ArePeers is false for a cell against itself, so the equal case is
-			// rejected by the peer test whether or not this comparison admits it.
-			// mutator-disable-next-line expression/comparison
-			if c1 >= c2 || !ArePeers(c1, c2) {
+	for i, c1 := range bivalue {
+		// Both directions of an edge are appended together below, so only the pairs
+		// above the diagonal need visiting. Starting the inner range at i rather
+		// than i+1 would add only the pair of a cell with itself, which ArePeers
+		// rejects.
+		// mutator-disable-next-line numbers/decrementer
+		for _, c2 := range bivalue[i+1:] {
+			if !ArePeers(c1, c2) {
 				continue
 			}
 			// Find shared candidate

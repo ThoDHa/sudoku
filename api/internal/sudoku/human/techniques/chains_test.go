@@ -923,3 +923,128 @@ func TestDetectWWingExcludesTheSecondLinkEndFromEliminations(t *testing.T) {
 		},
 	})
 }
+
+// TestDetectXChainIgnoresALongerRouteToAnAlreadyVisitedCell pins the visited
+// check the X-Chain search makes when a node is popped, as distinct from the one
+// it makes when a node is queued. Digit 3 sits in a ring of five conjugate
+// pairs: R1C1-R1C5 in row 1, R1C5-R2C4 in box 2, R2C4-R9C4 in column 4,
+// R9C4-R9C1 in row 9, and R9C1-R1C1 in column 1. Breadth-first search reaches
+// every cell of a five-ring by a path of odd length, so no even-length chain
+// exists and the detector must report nothing.
+//
+// R9C4 is nevertheless queued twice, once by each arm of the ring, and the
+// second entry carries the four-cell path R1C1-R1C5-R2C4-R9C4. That path passes
+// the even-length test, and R9C1 holds digit 3 while seeing both of its ends, so
+// reading the stale entry produces an elimination of a cell that is itself a
+// link in the ring. Only the check at pop discards it.
+func TestDetectXChainIgnoresALongerRouteToAnAlreadyVisitedCell(t *testing.T) {
+	b := &testBoard{}
+	for _, rc := range [][2]int{{0, 0}, {0, 4}, {1, 3}, {8, 3}, {8, 0}} {
+		b.candidates[idxOf(rc[0], rc[1])] = NewCandidates([]int{3})
+	}
+	if move := DetectXChain(b); move != nil {
+		t.Fatalf("expected no X-Chain from a ring of five conjugate pairs, got %+v", move)
+	}
+}
+
+// TestFindXYChainFromIgnoresALongerRouteToAnAlreadyVisitedCell is the XY-Chain
+// counterpart. Two routes of equal length leave R1C1 and meet at R4C5:
+// R1C1-R1C2-R4C2-R4C5 arrives on digit 1 and leaves 5 dangling, while
+// R1C1-R5C1-R5C5-R4C5 arrives on digit 5 and leaves 1 dangling. Both are queued
+// before R4C5 is first popped, so the search pops it twice.
+//
+// The first entry dangles 5, which does not close the chain against the 1 that
+// R1C1 offers. The second dangles 1 and does close it, and R1C5 holds digit 1
+// while seeing both R1C1 and R4C5, so reading the stale entry eliminates from
+// it. The search must instead stop at the first arrival: the chain it did
+// complete, R1C1-R1C2-R4C2, ends on a cell no digit-1 candidate sees alongside
+// R1C1, so the correct answer is that there is no elimination here.
+func TestFindXYChainFromIgnoresALongerRouteToAnAlreadyVisitedCell(t *testing.T) {
+	b := &testBoard{}
+	start := idxOf(0, 0)
+	firstLeg, firstEnd := idxOf(0, 1), idxOf(3, 1)
+	secondLeg, secondEnd := idxOf(4, 0), idxOf(4, 4)
+	meet := idxOf(3, 4)
+	b.candidates[start] = NewCandidates([]int{1, 2})
+	b.candidates[firstLeg] = NewCandidates([]int{2, 3})
+	b.candidates[firstEnd] = NewCandidates([]int{1, 3})
+	b.candidates[secondLeg] = NewCandidates([]int{2, 4})
+	b.candidates[secondEnd] = NewCandidates([]int{4, 5})
+	b.candidates[meet] = NewCandidates([]int{1, 5})
+	// Three candidates keep this cell out of the bivalue set that feeds the
+	// adjacency, so it is only ever an elimination target.
+	b.candidates[idxOf(0, 4)] = NewCandidates([]int{1, 7, 8})
+
+	adj := chainsXYAdjacency{
+		start:     {chainsXYLink(firstLeg, 2), chainsXYLink(secondLeg, 2)},
+		firstLeg:  {chainsXYLink(start, 2), chainsXYLink(firstEnd, 3)},
+		firstEnd:  {chainsXYLink(firstLeg, 3), chainsXYLink(meet, 1)},
+		secondLeg: {chainsXYLink(start, 2), chainsXYLink(secondEnd, 4)},
+		secondEnd: {chainsXYLink(meet, 5), chainsXYLink(secondLeg, 4)},
+		meet:      {chainsXYLink(firstEnd, 1), chainsXYLink(secondEnd, 5)},
+	}
+	if move := findXYChainFrom(b, start, adj); move != nil {
+		t.Fatalf("expected no XY-Chain from a stale second route, got %+v", move)
+	}
+}
+
+// TestFindXYChainFromContinuesPastANonBivalueNeighbor pins that the bivalue
+// check on a neighbor rejects that one neighbor rather than the rest of the
+// adjacency list. R2C5 holds three candidates and is listed ahead of R2C8, so a
+// search that abandons the list on the first rejection never reaches the genuine
+// link and the chain R2C2-R2C8-R5C8 is never built.
+func TestFindXYChainFromContinuesPastANonBivalueNeighbor(t *testing.T) {
+	b := &testBoard{}
+	start := idxOf(1, 1)
+	decoy := idxOf(1, 4)
+	mid, end := idxOf(1, 7), idxOf(4, 7)
+	b.candidates[start] = NewCandidates([]int{1, 2})
+	b.candidates[decoy] = NewCandidates([]int{2, 3, 4})
+	b.candidates[mid] = NewCandidates([]int{2, 3})
+	b.candidates[end] = NewCandidates([]int{1, 3})
+	b.candidates[idxOf(4, 1)] = NewCandidates([]int{1, 9}) // sees both ends
+
+	adj := chainsXYAdjacency{
+		start: {chainsXYLink(decoy, 2), chainsXYLink(mid, 2)},
+		decoy: {chainsXYLink(start, 2)},
+		mid:   {chainsXYLink(start, 2), chainsXYLink(end, 3)},
+		end:   {chainsXYLink(mid, 3)},
+	}
+	targets := refs([2]int{1, 1}, [2]int{1, 7}, [2]int{4, 7})
+	assertMove(t, findXYChainFrom(b, start, adj), &core.Move{
+		Action:       "eliminate",
+		Digit:        1,
+		Targets:      targets,
+		Eliminations: []core.Candidate{{Row: 4, Col: 1, Digit: 1}},
+		Explanation:  "XY-Chain: eliminate 1 from R5C2.",
+		Highlights: core.Highlights{
+			Primary:   targets,
+			Secondary: refs([2]int{4, 1}),
+		},
+	})
+}
+
+// TestDetectEmptyRectangleKeepsScanningBoxesPastAnOverfullBox pins that the
+// position ceiling rejects one box rather than the rest of the grid. Box 2 holds
+// five digit-5 candidates and is scanned before box 5, which holds the genuine
+// Empty Rectangle, so a search that abandons the box scan on the first overfull
+// box reports nothing for digit 5 and, since no other digit is a candidate
+// anywhere, nothing at all.
+func TestDetectEmptyRectangleKeepsScanningBoxesPastAnOverfullBox(t *testing.T) {
+	b := chainsERBoard([2]int{4, 4}, [2]int{4, 5}, [2]int{5, 4})
+	for _, rc := range [][2]int{{0, 3}, {0, 4}, {0, 5}, {1, 3}, {1, 4}} {
+		b.candidates[idxOf(rc[0], rc[1])] = NewCandidates([]int{5})
+	}
+	targets := refs([2]int{4, 4}, [2]int{4, 5}, [2]int{5, 4})
+	assertMove(t, DetectEmptyRectangle(b), &core.Move{
+		Action:       "eliminate",
+		Digit:        5,
+		Targets:      targets,
+		Eliminations: []core.Candidate{{Row: 7, Col: 4, Digit: 5}},
+		Explanation:  "Empty Rectangle: 5 in box 5 with conjugate pair in C2: eliminate from R8C5.",
+		Highlights: core.Highlights{
+			Primary:   targets,
+			Secondary: refs([2]int{7, 4}),
+		},
+	})
+}
