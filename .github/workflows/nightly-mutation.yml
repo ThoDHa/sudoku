@@ -371,3 +371,127 @@ jobs:
         working-directory: api
         run: |
           python3 scripts/mutation_floors.py gate-shards --shards-dir ../shards
+
+  # The floors only rise when somebody runs `make mutation-ratchet` by hand, and
+  # for the whole of the MUT-6 campaign nobody did: all 22 shard floors sat unset
+  # while nine shards had already been driven to zero escapes, so a regression
+  # inside any of them would have failed nothing. This job makes that drift
+  # impossible to miss.
+  #
+  # It detects; it does not act. Raising a floor from CI would be a quality gate
+  # moving its own bar unattended, and it would need a write token this
+  # repository grants no workflow. The fix is one documented command, and the
+  # exact diff to commit is printed into the run summary.
+  #
+  # It runs here rather than on a pull request because only inside this run do
+  # the measurement and the code it describes belong together: on a pull request
+  # the newest available artifacts measure something else.
+  floors-lag-check:
+    name: Go - mutation floors lag check
+    runs-on: ubuntu-latest
+    needs: [go-mutation, techniques-aggregate]
+    if: always() && (github.event_name == 'schedule' || inputs.scope != 'frontend')
+    permissions:
+      contents: read
+      # Reading another run's artifacts, to corroborate a raise against the
+      # previous measurement rather than trusting one reading.
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Download this run's package reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: mutation-go-@(dp|human)
+          path: pkgs
+          merge-multiple: true
+
+      - name: Download this run's shard reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: mutation-go-techniques-shard-*
+          path: shards
+
+      # A floor raised onto a single run's number reds the gate on unchanged
+      # code if that number drifts down next time. Every raise this job proposes
+      # is therefore the lower of this run and the last one that produced
+      # reports. When there is no previous run to compare against, the check
+      # still runs, uncorroborated: that makes it stricter rather than weaker,
+      # which is the safe direction for a detector.
+      - name: Resolve the previous run of this workflow
+        id: previous
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id=$(gh run list --repo "$GITHUB_REPOSITORY" \
+                 --workflow "${{ github.workflow }}" --status success --limit 10 \
+                 --json databaseId \
+                 --jq "[.[] | select(.databaseId != ${{ github.run_id }})][0].databaseId // empty")
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "previous run: ${id:-none found}"
+
+      - name: Download the previous run's package reports
+        if: steps.previous.outputs.id != ''
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: mutation-go-@(dp|human)
+          path: prev-pkgs
+          merge-multiple: true
+          run-id: ${{ steps.previous.outputs.id }}
+          github-token: ${{ github.token }}
+
+      - name: Download the previous run's shard reports
+        if: steps.previous.outputs.id != ''
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: mutation-go-techniques-shard-*
+          path: prev-shards
+          run-id: ${{ steps.previous.outputs.id }}
+          github-token: ${{ github.token }}
+
+      - name: Fail if the floors lag this measurement
+        working-directory: api
+        run: |
+          set -euo pipefail
+          corroborate=""
+          if [ -d ../prev-pkgs ]; then
+            corroborate="$corroborate --previous-package-dir ../prev-pkgs"
+          fi
+          if [ -d ../prev-shards ]; then
+            corroborate="$corroborate --previous-shards-dir ../prev-shards"
+          fi
+          if [ -z "$corroborate" ]; then
+            echo "::notice::no previous run's reports available; checking against this run alone"
+          fi
+
+          # shellcheck disable=SC2086 # the flags are built above and must split
+          python3 scripts/mutation_floors.py propose \
+            --package-dir ../pkgs --shards-dir ../shards $corroborate \
+            --run "$GITHUB_RUN_ID" --in-place
+
+          if git diff --quiet -- mutation-floors.json; then
+            echo "floors are level with the measurement" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          {
+            echo "## Mutation floors lag this run"
+            echo
+            echo "Every number below is a floor that has been earned and is not"
+            echo "being enforced. Raise them with:"
+            echo
+            echo '```'
+            echo "make mutation-ratchet SHARDS_DIR=<downloaded shards> RUN=$GITHUB_RUN_ID"
+            echo '```'
+            echo
+            echo '```diff'
+            git diff -- mutation-floors.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "::error::mutation floors lag this run's measurement; see the run summary for the diff"
+          git --no-pager diff -- mutation-floors.json
+          exit 1

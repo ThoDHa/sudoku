@@ -6,6 +6,8 @@
     "2. Propose: 'make mutation-ratchet', adding SHARDS_DIR=<dir> for the techniques shards and RUN=<workflow run id> so the provenance records where the number came from. A scope with no report this time, or whose report measured nothing, is skipped with a warning and left unmeasured rather than aborting the other raises.",
     "3. Review the diff. Every changed number is a floor going up; propose has no path that lowers one, so a number going down in that diff means somebody edited by hand.",
     "4. Commit it with the work that earned it, so the closed escapes and the raised floor arrive together.",
+    "You are not relied upon to remember. The nightly's floors-lag-check job runs the same propose against its own artifacts and fails when any floor would rise, printing the diff to commit into the run summary. It never raises a floor itself: a gate that moves its own bar unattended is not a gate.",
+    "In CI that propose is corroborated. Given --previous-package-dir and --previous-shards-dir it raises each scope only to the lower of the two runs, and leaves alone anything only one run measured, so a single drifting measurement cannot set a floor the next identical run fails. A local ratchet has one run and raises from it.",
     "Lowering a floor is deliberate, manual, and needs a stated reason in its 'sources' note. A floor with no 'sources' entry is refused by the gate rather than enforced, so a number cannot arrive here without an origin. Precedent for why this is guarded: commit bd2f8d5 lowered the techniques floor to 99.9 for 'residual-flakiness headroom' and had to be reverted by e5e10c6."
   ],
   "floors": {

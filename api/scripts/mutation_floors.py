@@ -302,10 +302,31 @@ def ratchet(current, measured):
     return max(current, truncated)
 
 
+def corroborate(measured, previous, what):
+    """The lower of two runs' measurements, or None when only one exists.
+
+    A floor raised onto a single run's number reds the gate on unchanged code if
+    that number drifts down next time, which is the campaign's own defect in a
+    new place. The lower of two independent runs cannot be a single-run fluke.
+
+    A scope only one run measured is left alone rather than guessed at: a floor
+    that stayed put can only be lower than it might have been, while a floor
+    raised onto an uncorroborated number can be higher than the code can meet.
+    """
+    if measured is None:
+        return None
+    if previous is None:
+        print(f"mutation-floors: not raising {what}: only one run measured it, "
+              f"and a raise takes the lower of two", file=sys.stderr)
+        return None
+    return min(measured, previous)
+
+
 def cmd_propose(args):
     data = load(args.floors_file)
     out = copy.deepcopy(data)
     changes = []
+    corroborated = bool(args.previous_package_dir or args.previous_shards_dir)
 
     def apply(block, key, source_key, label, measured):
         old = block[key]
@@ -317,7 +338,11 @@ def cmd_propose(args):
             "measured": round(measured, 2),
             "run": args.run,
             "recorded": args.recorded,
-            "note": args.note or f"Raised by mutation_floors.py propose from {label}.",
+            "note": args.note or (
+                f"Raised by mutation_floors.py propose from {label}, to the "
+                f"lower of this run and the previous one."
+                if corroborated else
+                f"Raised by mutation_floors.py propose from {label}."),
         }
         changes.append(f"  {source_key}: {old} -> {new}")
 
@@ -336,20 +361,48 @@ def cmd_propose(args):
             print(f"mutation-floors: skipping {what}: {err}", file=sys.stderr)
             return None
 
+    def previous_package(scope):
+        if not args.previous_package_dir:
+            return None
+        path = report_path(args.previous_package_dir, scope)
+        if not os.path.isfile(path):
+            return None
+        return measured_or_skipped([path], f"previous {scope}")
+
     if args.package_dir:
         for scope in PACKAGE_PKGS:
             path = report_path(args.package_dir, scope)
             # A scope nobody ran this time is simply not measured.
             if not os.path.isfile(path):
                 continue
-            apply(out["floors"], scope, scope, path,
-                  measured_or_skipped([path], scope))
+            measured = measured_or_skipped([path], scope)
+            if corroborated:
+                measured = corroborate(measured, previous_package(scope), scope)
+            apply(out["floors"], scope, scope, path, measured)
 
     if args.shards_dir:
         by_shard = group_by_shard(agg.find_reports(args.shards_dir))
         unknown = sorted(set(by_shard) - set(out["techniques_shards"]))
         if unknown:
             raise FloorsError(f"shards {unknown} have no entry in the floors file")
+        prev_by_shard = {}
+        prev_agg_killed = prev_agg_escaped = 0
+        prev_measured_shards = 0
+        if args.previous_shards_dir:
+            for name, paths in sorted(
+                    group_by_shard(agg.find_reports(args.previous_shards_dir)).items()):
+                try:
+                    eff, killed, escaped, _total = measure(
+                        paths, f"previous shard {name}")
+                except FloorsError as err:
+                    print(f"mutation-floors: skipping previous shard {name}: {err}",
+                          file=sys.stderr)
+                    continue
+                prev_by_shard[name] = eff
+                prev_agg_killed += killed
+                prev_agg_escaped += escaped
+                prev_measured_shards += 1
+
         agg_killed = agg_escaped = 0
         measured_shards = 0
         for name, paths in sorted(by_shard.items()):
@@ -362,6 +415,9 @@ def cmd_propose(args):
             agg_killed += killed
             agg_escaped += escaped
             measured_shards += 1
+            if corroborated:
+                eff = corroborate(eff, prev_by_shard.get(name),
+                                  f"techniques/{name}")
             apply(out["techniques_shards"], name, f"techniques/{name}",
                   f"techniques shard {name}", eff)
         # The aggregate is a weighted average over the whole shard set, so a
@@ -369,9 +425,17 @@ def cmd_propose(args):
         # Per-shard floors above are safe from this because each is derived only
         # from its own report.
         if measured_shards == len(out["techniques_shards"]):
+            aggregate = agg.efficacy(agg_killed, agg_escaped)
+            if corroborated:
+                # The previous aggregate is only meaningful over the same full
+                # shard set, for the reason stated just below.
+                prev_aggregate = (
+                    agg.efficacy(prev_agg_killed, prev_agg_escaped)
+                    if prev_measured_shards == len(out["techniques_shards"])
+                    else None)
+                aggregate = corroborate(aggregate, prev_aggregate, "techniques")
             apply(out["floors"], "techniques", "techniques",
-                  "the full techniques shard run",
-                  agg.efficacy(agg_killed, agg_escaped))
+                  "the full techniques shard run", aggregate)
         else:
             print(f"mutation-floors: not proposing an aggregate techniques floor "
                   f"from {measured_shards}/{len(out['techniques_shards'])} "
@@ -430,6 +494,16 @@ def build_parser():
                           help="Emit a candidate floors file, raising only.")
     p_pr.add_argument("--package-dir", help="Per-package report directory.")
     p_pr.add_argument("--shards-dir", help="Techniques shard report directory.")
+    # Supplying either previous directory turns on corroboration for its whole
+    # block: every raise there takes the lower of the two runs, and a scope only
+    # this run measured is left alone. Omit them and the raises come from a
+    # single run, which is fine for a local ratchet and not for CI.
+    p_pr.add_argument("--previous-package-dir",
+                      help="Per-package reports from the previous run, to "
+                           "corroborate raises against.")
+    p_pr.add_argument("--previous-shards-dir",
+                      help="Techniques shard reports from the previous run, to "
+                           "corroborate raises against.")
     p_pr.add_argument("--run", default=None, help="Run identifier to record.")
     # Defaults to today rather than None: a null `recorded` produces a floor the
     # gate then refuses for missing provenance, so the tool would write a file

@@ -330,6 +330,112 @@ class Propose(unittest.TestCase):
             self.assertEqual(data["floors"]["techniques"], 100.0)
 
 
+class ProposeCorroboration(unittest.TestCase):
+    """A raise onto one run's number reds the gate when that number drifts.
+
+    Supplying a previous run turns every raise in that block into the lower of
+    the two, and leaves alone anything only one run measured.
+    """
+
+    def _propose(self, tmp, floors_path, argv):
+        out = os.path.join(tmp, "candidate.json")
+        rc = mf.main(["--floors-file", floors_path, "propose", "--out", out,
+                      "--run", "999", "--recorded", "2026-08-04"] + argv)
+        with open(out) as f:
+            return rc, json.load(f)
+
+    def test_a_shard_raises_only_to_the_lower_of_the_two_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            now, prev = os.path.join(tmp, "now"), os.path.join(tmp, "prev")
+            write_report(shard_dir(now, "formatter"), killed=30, escaped=0)
+            write_report(shard_dir(prev, "formatter"), killed=27, escaped=3)
+            floors = write_floors(tmp, {"techniques": None},
+                                  shards={"formatter": None}, sources={})
+            rc, data = self._propose(tmp, floors, [
+                "--shards-dir", now, "--previous-shards-dir", prev])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["techniques_shards"]["formatter"], 90.0)
+
+    def test_the_earlier_run_does_not_drag_a_floor_below_where_it_stands(self):
+        # Corroboration chooses what to raise TO; it never lowers, because the
+        # ratchet itself still takes the max against the standing floor.
+        with tempfile.TemporaryDirectory() as tmp:
+            now, prev = os.path.join(tmp, "now"), os.path.join(tmp, "prev")
+            write_report(shard_dir(now, "formatter"), killed=30, escaped=0)
+            write_report(shard_dir(prev, "formatter"), killed=15, escaped=15)
+            floors = write_floors(tmp, {"techniques": None},
+                                  shards={"formatter": 95.0},
+                                  sources={"techniques/formatter": SOURCE})
+            rc, data = self._propose(tmp, floors, [
+                "--shards-dir", now, "--previous-shards-dir", prev])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["techniques_shards"]["formatter"], 95.0)
+
+    def test_a_shard_only_this_run_measured_is_left_unraised(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            now, prev = os.path.join(tmp, "now"), os.path.join(tmp, "prev")
+            write_report(shard_dir(now, "formatter"), killed=30, escaped=0)
+            write_report(shard_dir(prev, "ur"), killed=584, escaped=0)
+            floors = write_floors(tmp, {"techniques": None},
+                                  shards={"formatter": None, "ur": None},
+                                  sources={})
+            rc, data = self._propose(tmp, floors, [
+                "--shards-dir", now, "--previous-shards-dir", prev])
+            self.assertEqual(rc, 0)
+            self.assertIsNone(data["techniques_shards"]["formatter"])
+
+    def test_the_aggregate_takes_the_lower_of_two_complete_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            now, prev = os.path.join(tmp, "now"), os.path.join(tmp, "prev")
+            write_report(shard_dir(now, "formatter"), killed=30, escaped=0)
+            write_report(shard_dir(now, "ur"), killed=70, escaped=0)
+            write_report(shard_dir(prev, "formatter"), killed=30, escaped=0)
+            write_report(shard_dir(prev, "ur"), killed=60, escaped=10)
+            floors = write_floors(tmp, {"techniques": None},
+                                  shards={"formatter": None, "ur": None},
+                                  sources={})
+            rc, data = self._propose(tmp, floors, [
+                "--shards-dir", now, "--previous-shards-dir", prev])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["floors"]["techniques"], 90.0)
+
+    def test_an_incomplete_previous_run_leaves_the_aggregate_unraised(self):
+        # An aggregate over part of the shard set is not comparable with one
+        # over all of it, so there is nothing to corroborate against.
+        with tempfile.TemporaryDirectory() as tmp:
+            now, prev = os.path.join(tmp, "now"), os.path.join(tmp, "prev")
+            write_report(shard_dir(now, "formatter"), killed=30, escaped=0)
+            write_report(shard_dir(now, "ur"), killed=70, escaped=0)
+            write_report(shard_dir(prev, "formatter"), killed=30, escaped=0)
+            floors = write_floors(tmp, {"techniques": None},
+                                  shards={"formatter": None, "ur": None},
+                                  sources={})
+            rc, data = self._propose(tmp, floors, [
+                "--shards-dir", now, "--previous-shards-dir", prev])
+            self.assertEqual(rc, 0)
+            self.assertIsNone(data["floors"]["techniques"])
+
+    def test_a_package_floor_takes_the_lower_of_the_two_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            now, prev = os.path.join(tmp, "now"), os.path.join(tmp, "prev")
+            write_report(package_dir(now, "dp"), killed=250, escaped=0)
+            write_report(package_dir(prev, "dp"), killed=225, escaped=25)
+            floors = write_floors(tmp, {"dp": 50.0}, sources={"dp": SOURCE})
+            rc, data = self._propose(tmp, floors, [
+                "--package-dir", now, "--previous-package-dir", prev])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["floors"]["dp"], 90.0)
+
+    def test_without_a_previous_run_a_single_measurement_still_raises(self):
+        # The local ratchet has one run and stays usable; CI supplies both.
+        with tempfile.TemporaryDirectory() as tmp:
+            write_report(package_dir(tmp, "dp"), killed=250, escaped=0)
+            floors = write_floors(tmp, {"dp": 50.0}, sources={"dp": SOURCE})
+            rc, data = self._propose(tmp, floors, ["--package-dir", tmp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["floors"]["dp"], 100.0)
+
+
 class ProposeResilience(unittest.TestCase):
     """propose skips what it cannot measure; the gates refuse it. Skipping is
     conservative here, since a floor left alone can only be lower than it might
