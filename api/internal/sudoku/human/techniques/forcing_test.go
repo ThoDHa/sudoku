@@ -77,6 +77,33 @@ func TestDetectCellForcingChainCommonEliminationMoveIsFullyPinned(t *testing.T) 
 	})
 }
 
+// cellElimOnesCells / cellElimOnesCand are the cellElimCells state with digits 1
+// and 2 exchanged everywhere, in the grid and in every candidate mask. Renaming
+// digits is a symmetry of Sudoku, so the position stays valid and the same
+// forcing chain reaches the same target, eliminating 1 where it eliminated 2.
+const cellElimOnesCells = "370020046080006050560004200000090060007060004000400300000030417753149682000002000"
+const cellElimOnesCand = "0,0,514,800,0,290,770,0,0,20,0,20,648,130,0,642,0,522,0,0,514,904,386,0,0,648,778,278,30,310,428,0,426,418,0,290,774,526,0,300,0,298,802,516,0,838,518,870,0,418,418,0,644,802,836,516,836,352,0,288,0,0,0,0,0,0,0,0,0,0,0,0,850,530,850,480,416,0,544,520,552"
+
+// TestDetectCellForcingChainEliminatesTheLowestDigit pins where the digit scan
+// starts. Every other elimination fixture in this file lands on a digit of 2 or
+// more, so a scan beginning at 2 finds all of them and the first digit is never
+// reached. Here the eliminated digit is 1, and it is the only one this board
+// offers, so a scan that skips it reports nothing at all.
+func TestDetectCellForcingChainEliminatesTheLowestDigit(t *testing.T) {
+	got := detectCellForcingChain(boardFromCandidateState(cellElimOnesCells, cellElimOnesCand))
+	assertMove(t, got, &core.Move{
+		Action:       "eliminate",
+		Digit:        1,
+		Targets:      refs([2]int{0, 2}),
+		Eliminations: []core.Candidate{{Row: 3, Col: 2, Digit: 1}},
+		Explanation:  "Cell Forcing Chain: All candidates in R1C3 lead to eliminating 1 from R4C3",
+		Highlights: core.Highlights{
+			Primary:   refs([2]int{0, 2}),
+			Secondary: refs([2]int{3, 2}),
+		},
+	})
+}
+
 func TestDetectUnitForcingChainContradictionMoveIsFullyPinned(t *testing.T) {
 	got := detectUnitForcingChain(boardFromPuzzleString(forcingChainContradictionBoard))
 	assertMove(t, got, &core.Move{
