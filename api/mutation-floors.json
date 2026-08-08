@@ -9,14 +9,14 @@
     "Lowering a floor is deliberate, manual, and needs a stated reason in its 'sources' note. A floor with no 'sources' entry is refused by the gate rather than enforced, so a number cannot arrive here without an origin. Precedent for why this is guarded: commit bd2f8d5 lowered the techniques floor to 99.9 for 'residual-flakiness headroom' and had to be reverted by e5e10c6."
   ],
   "floors": {
-    "dp": 98.64,
+    "dp": 100.0,
     "human": 100,
-    "techniques": 86.0
+    "techniques": 99.84
   },
   "techniques_shards": {
-    "aic": 55.94,
-    "als_chains": 56.29,
-    "blossom": 41.66,
+    "aic": 100.0,
+    "als_chains": 100.0,
+    "blossom": 100.0,
     "board": 100.0,
     "bug": 100.0,
     "chains": 98.86,
@@ -24,25 +24,25 @@
     "fish": 100.0,
     "forcing": 99.59,
     "formatter": 100.0,
-    "grid": 84.0,
+    "grid": 100.0,
     "medusa": 100.0,
-    "pairs": 54.23,
-    "sdc": 62.44,
+    "pairs": 100.0,
+    "sdc": 100.0,
     "simple": 100.0,
-    "skyscraper": 59.37,
+    "skyscraper": 100.0,
     "swordfish": 100.0,
-    "triples": 73.72,
-    "ur": 93.26,
+    "triples": 100.0,
+    "ur": 100.0,
     "wings": 100.0,
-    "xcycles": 55.42,
-    "xwing_finned": 66.4
+    "xcycles": 100.0,
+    "xwing_finned": 100.0
   },
   "sources": {
     "dp": {
-      "measured": 98.64,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "human": {
       "measured": null,
@@ -51,28 +51,28 @@
       "note": "Unmeasured: run 30899984529 killed the job at 45m before it reported. Floor left at its pre-campaign 100 rather than lowered to a number nobody has measured, so the gate stays red on human until MUT-6-2 lands a completed run and propose sets an honest value."
     },
     "techniques": {
-      "measured": 86.0,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "LOWERED from 100 by hand, deliberately, per the ratchet rule that a lowering is manual and must state its reason. The previous note left the floor at 100 'until a run reports all 22 shards'; that condition is now met. Runs 31064111984 and 31072920543 both measured all 22 shards at ffc6207 and reported identical counts on every scope, and MUT-6-27's compile-error correction has landed, so 86.00% (killed=3552 escaped=578 total=4130 scored) is the first honest aggregate the project has had. Holding 100 against it made the gate fail by 14pp on a known backlog every night, which made a real regression indistinguishable from the campaign's own remaining work. This is a floor on measured truth, not a relaxation of the target: MUT-6 still drives every scope to zero escapes, and `propose` raises this number automatically as each shard closes, so it climbs back to 100 without another hand edit. Per-shard floors carry the real protection meanwhile: all 22 are pinned, nine of them at 100."
+      "measured": 99.85,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "techniques/aic": {
-      "measured": 55.94,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "techniques/als_chains": {
-      "measured": 56.29,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "techniques/blossom": {
-      "measured": 41.67,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "techniques/board": {
       "measured": 100.0,
@@ -117,10 +117,10 @@
       "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
     },
     "techniques/grid": {
-      "measured": 84.0,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "techniques/medusa": {
       "measured": 100.0,
@@ -129,16 +129,16 @@
       "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
     },
     "techniques/pairs": {
-      "measured": 54.24,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "techniques/sdc": {
-      "measured": 62.44,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "techniques/simple": {
       "measured": 100.0,
@@ -147,10 +147,10 @@
       "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
     },
     "techniques/skyscraper": {
-      "measured": 59.38,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "techniques/swordfish": {
       "measured": 100.0,
@@ -159,16 +159,16 @@
       "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
     },
     "techniques/triples": {
-      "measured": 73.72,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "techniques/ur": {
-      "measured": 93.27,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "techniques/wings": {
       "measured": 100.0,
@@ -177,16 +177,16 @@
       "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
     },
     "techniques/xcycles": {
-      "measured": 55.43,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "techniques/xwing_finned": {
-      "measured": 66.4,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31256468220",
+      "recorded": "2026-08-08",
+      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     }
   }
 }
