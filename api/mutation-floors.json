@@ -47,10 +47,10 @@
       "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
     },
     "human": {
-      "measured": null,
-      "run": null,
-      "recorded": "2026-08-04",
-      "note": "Unmeasured: run 30899984529 killed the job at 45m before it reported. Floor left at its pre-campaign 100 rather than lowered to a number nobody has measured, so the gate stays red on human until MUT-6-2 lands a completed run and propose sets an honest value."
+      "measured": 100.0,
+      "run": "31276617045",
+      "recorded": "2026-08-08",
+      "note": "Measured 516 killed, 0 escaped of 618. Corrected by hand rather than by propose: the floor already stood at 100, and propose only ever raises, so a measurement that confirms a floor can never refresh its own provenance."
     },
     "techniques": {
       "measured": 99.85,
