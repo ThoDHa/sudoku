@@ -13,7 +13,7 @@
   "floors": {
     "dp": 100.0,
     "human": 100,
-    "techniques": 99.84
+    "techniques": 100.0
   },
   "techniques_shards": {
     "aic": 100.0,
@@ -21,10 +21,10 @@
     "blossom": 100.0,
     "board": 100.0,
     "bug": 100.0,
-    "chains": 98.86,
+    "chains": 100.0,
     "digit_forcing": 100.0,
     "fish": 100.0,
-    "forcing": 99.59,
+    "forcing": 100.0,
     "formatter": 100.0,
     "grid": 100.0,
     "medusa": 100.0,
@@ -53,10 +53,10 @@
       "note": "Measured 516 killed, 0 escaped of 618. Corrected by hand rather than by propose: the floor already stood at 100, and propose only ever raises, so a measurement that confirms a floor can never refresh its own provenance."
     },
     "techniques": {
-      "measured": 99.85,
-      "run": "31256468220",
-      "recorded": "2026-08-08",
-      "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
+      "measured": 100.0,
+      "run": "31288300610",
+      "recorded": "2026-08-09",
+      "note": "Raised to 100 from two consecutive runs, 31276617045 and 31288300610, both at e0af178 with unchanged code, each measuring zero escapes in all 24 scopes."
     },
     "techniques/aic": {
       "measured": 100.0,
@@ -89,10 +89,10 @@
       "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
     },
     "techniques/chains": {
-      "measured": 98.87,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31288300610",
+      "recorded": "2026-08-09",
+      "note": "Raised to 100 from two consecutive runs, 31276617045 and 31288300610, both at e0af178 with unchanged code, each measuring zero escapes in all 24 scopes."
     },
     "techniques/digit_forcing": {
       "measured": 100.0,
@@ -107,10 +107,10 @@
       "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
     },
     "techniques/forcing": {
-      "measured": 99.6,
-      "run": "31072920543",
-      "recorded": "2026-08-06",
-      "note": "Two consecutive full runs at ffc6207 (31064111984, 31072920543) reported identical counts across all 24 scopes"
+      "measured": 100.0,
+      "run": "31288300610",
+      "recorded": "2026-08-09",
+      "note": "Raised to 100 from two consecutive runs, 31276617045 and 31288300610, both at e0af178 with unchanged code, each measuring zero escapes in all 24 scopes."
     },
     "techniques/formatter": {
       "measured": 100.0,
