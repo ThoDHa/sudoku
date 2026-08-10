@@ -21,6 +21,18 @@ function makeFakeCellElement(idx: number): {
   return { el, cellEl }
 }
 
+// Fire a board pointer-move that hit-tests onto cell `idx`.
+function movePointerTo(
+  result: { current: ReturnType<typeof useBoardInteraction> },
+  idx: number,
+): void {
+  const { el } = makeFakeCellElement(idx)
+  const original = document.elementFromPoint
+  document.elementFromPoint = vi.fn().mockReturnValue(el)
+  act(() => result.current.handleBoardPointerMove(makePointerEvent() as never))
+  document.elementFromPoint = original
+}
+
 // Drive a drag: pointerDown on startIdx, then pointerMove resolving to each
 // target idx in turn, then pointerUp. Returns the recorded selection arrays.
 function dragThrough(
@@ -32,11 +44,7 @@ function dragThrough(
 ) {
   act(() => result.current.handleDragStart(startIdx))
   for (const idx of path) {
-    const { el } = makeFakeCellElement(idx)
-    const original = document.elementFromPoint
-    document.elementFromPoint = vi.fn().mockReturnValue(el)
-    act(() => result.current.handleBoardPointerMove(makePointerEvent() as never))
-    document.elementFromPoint = original
+    movePointerTo(result, idx)
   }
   act(() => result.current.handleBoardPointerUp())
   void boardEl
@@ -98,6 +106,41 @@ describe('useBoardInteraction', () => {
         }),
       )
       expect(result.current.tabStopCell).toBe(0)
+    })
+
+    it('never offers a tab stop beyond the last cell of the grid', () => {
+      // Every cell of the 9x9 grid is a given, so the fallback (cell 0) applies.
+      // Index 81 lies outside the grid and must not be reachable by tabbing even
+      // though it holds a non-given value.
+      const initialBoard = Array(82).fill(9)
+      initialBoard[81] = 0
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: null,
+          initialBoard,
+          board: [...initialBoard],
+          onCellClick: vi.fn(),
+        }),
+      )
+      expect(result.current.tabStopCell).toBe(0)
+    })
+
+    it('recomputes the tab stop when the selection changes', () => {
+      const initialBoard = emptyBoard()
+      initialBoard[0] = 5
+      const { result, rerender } = renderHook(
+        ({ sel }: { sel: number | null }) =>
+          useBoardInteraction({
+            selectedCell: sel,
+            initialBoard,
+            board: emptyBoard(),
+            onCellClick: vi.fn(),
+          }),
+        { initialProps: { sel: null as number | null } },
+      )
+      expect(result.current.tabStopCell).toBe(1)
+      rerender({ sel: 42 })
+      expect(result.current.tabStopCell).toBe(42)
     })
   })
 
@@ -166,6 +209,55 @@ describe('useBoardInteraction', () => {
       expect(onCellClick).not.toHaveBeenCalled()
     })
 
+    it('does not wrap onto the next row when moving right off the last column', () => {
+      // Cell 8 is row 0, column 8. Stepping right lands on column 9, which is
+      // off-grid; cell 9 (row 1, column 0) must not be selected instead.
+      const onCellClick = vi.fn()
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: 8,
+          initialBoard: emptyBoard(),
+          board: emptyBoard(),
+          onCellClick,
+        }),
+      )
+      act(() => result.current.handleCellKeyDown(key('ArrowRight') as never, 8))
+      expect(onCellClick).not.toHaveBeenCalled()
+    })
+
+    it('does not wrap onto the previous row when moving left off the first column', () => {
+      // Cell 9 is row 1, column 0. Stepping left lands on column -1, which is
+      // off-grid; cell 8 (row 0, column 8) must not be selected instead.
+      const onCellClick = vi.fn()
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: 9,
+          initialBoard: emptyBoard(),
+          board: emptyBoard(),
+          onCellClick,
+        }),
+      )
+      act(() => result.current.handleCellKeyDown(key('ArrowLeft') as never, 9))
+      expect(onCellClick).not.toHaveBeenCalled()
+    })
+
+    it('does not move below the last row even when the board array is longer than the grid', () => {
+      // Navigation is bounded by the 9x9 geometry, not by the length of the
+      // array it is handed: row 9 does not exist even if index 85 does.
+      const initialBoard = Array(90).fill(0)
+      const onCellClick = vi.fn()
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: 76,
+          initialBoard,
+          board: [...initialBoard],
+          onCellClick,
+        }),
+      )
+      act(() => result.current.handleCellKeyDown(key('ArrowDown') as never, 76))
+      expect(onCellClick).not.toHaveBeenCalled()
+    })
+
     it('digit key calls onCellChange with that value on an empty cell', () => {
       const onCellChange = vi.fn()
       const { result } = renderHook(() =>
@@ -210,6 +302,21 @@ describe('useBoardInteraction', () => {
         }),
       )
       act(() => result.current.handleCellKeyDown(key('Backspace') as never, 0))
+      expect(onCellChange).toHaveBeenCalledWith(0, 0)
+    })
+
+    it('Delete clears the cell via onCellChange(idx, 0)', () => {
+      const onCellChange = vi.fn()
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: 0,
+          initialBoard: emptyBoard(),
+          board: emptyBoard(),
+          onCellClick: vi.fn(),
+          onCellChange,
+        }),
+      )
+      act(() => result.current.handleCellKeyDown(key('Delete') as never, 0))
       expect(onCellChange).toHaveBeenCalledWith(0, 0)
     })
 
@@ -424,6 +531,171 @@ describe('useBoardInteraction', () => {
       act(() => result.current.handleDragStart(0))
       act(() => result.current.handleBoardPointerUp())
       expect(onDragEnd).not.toHaveBeenCalled()
+    })
+
+    it('does not start a drag on a given cell whose value is absent from the working board', () => {
+      // A cell is unselectable when it is a given OR already filled. Both arms
+      // are checked independently, so a given must be rejected on its own even
+      // if the working board reports the cell as empty.
+      const onCellSelectMultiple = vi.fn()
+      const initialBoard = emptyBoard()
+      initialBoard[0] = 5
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: null,
+          initialBoard,
+          board: emptyBoard(),
+          onCellClick: vi.fn(),
+          onCellSelectMultiple,
+        }),
+      )
+      dragThrough(result, {} as HTMLElement, 0, [1], onCellSelectMultiple)
+      expect(onCellSelectMultiple).not.toHaveBeenCalled()
+    })
+
+    it('skips a given cell when bridging even if the working board reports it empty', () => {
+      const onCellSelectMultiple = vi.fn()
+      const initialBoard = emptyBoard()
+      initialBoard[1] = 5 // given: must be skipped when bridging 0 -> 2
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: null,
+          initialBoard,
+          board: emptyBoard(),
+          onCellClick: vi.fn(),
+          onCellSelectMultiple,
+        }),
+      )
+      dragThrough(result, {} as HTMLElement, 0, [2], onCellSelectMultiple)
+      expect(lastSelection(onCellSelectMultiple)).toEqual([0, 2])
+    })
+
+    it('bridges every skipped cell when the pointer jumps a gap', () => {
+      const onCellSelectMultiple = vi.fn()
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: null,
+          initialBoard: emptyBoard(),
+          board: emptyBoard(),
+          onCellClick: vi.fn(),
+          onCellSelectMultiple,
+        }),
+      )
+      // The pointer reports 1 then jumps to 4: cells 2 and 3 are bridged from
+      // the trail tip, not from the drag start.
+      dragThrough(result, {} as HTMLElement, 0, [1, 4], onCellSelectMultiple)
+      expect(lastSelection(onCellSelectMultiple)).toEqual([0, 1, 2, 3, 4])
+    })
+
+    it('ignores a pointer move when no drag is in progress', () => {
+      const onCellSelectMultiple = vi.fn()
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: null,
+          initialBoard: emptyBoard(),
+          board: emptyBoard(),
+          onCellClick: vi.fn(),
+          onCellSelectMultiple,
+        }),
+      )
+      movePointerTo(result, 5)
+      expect(onCellSelectMultiple).not.toHaveBeenCalled()
+    })
+
+    it('ignores a pointer move once the drag has ended', () => {
+      const onCellSelectMultiple = vi.fn()
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: null,
+          initialBoard: emptyBoard(),
+          board: emptyBoard(),
+          onCellClick: vi.fn(),
+          onCellSelectMultiple,
+        }),
+      )
+      dragThrough(result, {} as HTMLElement, 0, [1], onCellSelectMultiple)
+      onCellSelectMultiple.mockClear()
+      movePointerTo(result, 5)
+      expect(onCellSelectMultiple).not.toHaveBeenCalled()
+    })
+
+    it('suppresses only the first click after a multi-cell drag', () => {
+      const onCellClick = vi.fn()
+      const onCellSelectMultiple = vi.fn()
+      const { result } = renderHook(() =>
+        useBoardInteraction({
+          selectedCell: null,
+          initialBoard: emptyBoard(),
+          board: emptyBoard(),
+          onCellClick,
+          onCellSelectMultiple,
+        }),
+      )
+      dragThrough(result, {} as HTMLElement, 0, [1, 2], onCellSelectMultiple)
+      act(() => result.current.handleCellClick(2)) // synthetic click: suppressed
+      act(() => result.current.handleCellClick(7)) // genuine click: must pass through
+      expect(onCellClick).toHaveBeenCalledTimes(1)
+      expect(onCellClick).toHaveBeenCalledWith(7)
+    })
+
+    it('clears the suppression flag after the event cycle when no click follows', () => {
+      // Nothing synthesizes a click after a pointercancel, so the safety-net
+      // timer must disarm suppression or the next real click would be eaten.
+      vi.useFakeTimers()
+      try {
+        const onCellClick = vi.fn()
+        const onCellSelectMultiple = vi.fn()
+        const { result } = renderHook(() =>
+          useBoardInteraction({
+            selectedCell: null,
+            initialBoard: emptyBoard(),
+            board: emptyBoard(),
+            onCellClick,
+            onCellSelectMultiple,
+          }),
+        )
+        dragThrough(result, {} as HTMLElement, 0, [1, 2], onCellSelectMultiple)
+        act(() => {
+          vi.runAllTimers()
+        })
+        act(() => result.current.handleCellClick(2))
+        expect(onCellClick).toHaveBeenCalledWith(2)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('does not let a finished tap disarm the suppression of a later drag', () => {
+      // A tap arms no suppression, so it must leave no timer behind: one firing
+      // mid-drag would disarm the suppression that drag is about to need.
+      vi.useFakeTimers()
+      try {
+        const onCellClick = vi.fn()
+        const onCellSelectMultiple = vi.fn()
+        const { result } = renderHook(() =>
+          useBoardInteraction({
+            selectedCell: null,
+            initialBoard: emptyBoard(),
+            board: emptyBoard(),
+            onCellClick,
+            onCellSelectMultiple,
+          }),
+        )
+        act(() => result.current.handleDragStart(0))
+        act(() => result.current.handleBoardPointerUp())
+
+        act(() => result.current.handleDragStart(0))
+        movePointerTo(result, 1)
+        movePointerTo(result, 2)
+        act(() => {
+          vi.runAllTimers()
+        })
+        act(() => result.current.handleBoardPointerUp())
+        act(() => result.current.handleCellClick(2))
+        expect(onCellClick).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('passes the backtracked trail to onDragEnd, not the full history', () => {
@@ -713,6 +985,25 @@ describe('useBoardInteraction', () => {
         rerender({ sel: 5 })
         act(() => rafCallbacks.forEach((cb) => cb(0)))
         expect(el.focus).toHaveBeenCalled()
+      })
+
+      it('schedules no frame when the selected cell has no element yet', () => {
+        // Cell 0 is selected but never had a ref attached, so there is nothing
+        // to focus and no frame should be requested.
+        renderFocusHook(0)
+        expect(rafCallbacks).toHaveLength(0)
+      })
+
+      it('does not throw when the cell element is detached before the frame fires', () => {
+        const { result, rerender } = renderFocusHook(null)
+        const el = document.createElement('div')
+        el.focus = vi.fn() as unknown as HTMLDivElement['focus']
+        act(() => result.current.cellRefCallbacks[5]!(el))
+        rerender({ sel: 5 })
+        // The cell unmounts between the effect and the frame: React clears the ref.
+        act(() => result.current.cellRefCallbacks[5]!(null))
+        act(() => rafCallbacks.forEach((cb) => cb(0)))
+        expect(el.focus).not.toHaveBeenCalled()
       })
 
       it('skips focusing when unmounted before the frame fires', () => {
