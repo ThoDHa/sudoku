@@ -8,15 +8,15 @@
     "related": false
   },
   "coverageAnalysis": "perTest",
+  "_comment_mutate": "src/lib takes .tsx as well as .ts. The four React context files there were never deliberately excluded; the .ts-only glob simply never reached them, leaving ThemeContext.tsx unmeasured despite its 319-line test file. constants-generated.ts is machine-written from api/pkg/constants and its correctness property is parity with that source, which a generator check should assert rather than mutation. techniques.ts and themes.ts stay excluded on a measurement, not a hunch: 96% of techniques.ts's 3144 mutants are static (module-level data), Stryker's own estimate for one shard was ~53 hours, and every one of the 13 mutants that did run returned Timeout, which the aggregate scores as caught. Admitting it whole would report thousands of clock-kills as assertion-kills. Their genuine logic (207 mutants across query, glossary and colour-derivation functions) is being split into separately mutated modules instead.",
   "mutate": [
     "src/lib/**/*.ts",
+    "src/lib/**/*.tsx",
     "src/hooks/**/*.ts",
     "!src/**/*.test.ts",
     "!src/**/*.test.tsx",
     "!src/**/*.spec.ts",
     "!src/lib/constants-generated.ts",
-    "!src/lib/api.ts",
-    "!src/lib/constants.ts",
     "!src/lib/techniques.ts",
     "!src/lib/themes.ts"
   ],
