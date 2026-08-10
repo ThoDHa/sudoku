@@ -89,10 +89,19 @@ jobs:
     runs-on: ubuntu-latest
     needs: frontend-surface-matrix
     if: github.event_name == 'schedule' || inputs.scope != 'go'
-    # One instrumented file, so this is minutes rather than hours. Kept well
-    # below GitHub's 6h cap so our own timeout fires first and the missing
-    # report reds the aggregate loudly.
-    timeout-minutes: 60
+    # One instrumented file, so this is minutes rather than hours, and still far
+    # below GitHub's 6h cap so our own timeout fires first and the missing report
+    # reds the aggregate loudly.
+    #
+    # 120 rather than 60 because loop density, not file size, sets a shard's
+    # cost. Run 31395038245 measured this: puzzleEncoding.ts (600 lines, 424
+    # mutants) finished in ~8 minutes, while useCandidates.ts (237 lines, 16
+    # nested loops over the board) blew past 60 despite a test suite that runs
+    # in 486ms. Mutating a loop bound or increment produces a non-terminating
+    # mutant that costs the full Stryker timeout before it can be scored, so the
+    # wall-clock is dominated by timeouts rather than by work. Those mutants are
+    # still counted as caught; they are simply expensive to reach.
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
