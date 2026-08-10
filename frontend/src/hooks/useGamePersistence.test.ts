@@ -55,6 +55,7 @@ import { STORAGE_KEYS } from '../lib/constants'
 // =============================================================================
 
 const STORAGE_KEY = `${STORAGE_KEYS.GAME_STATE_PREFIX}seed1`
+const OTHER_STORAGE_KEY = `${STORAGE_KEYS.GAME_STATE_PREFIX}seed2`
 // requestIdleCallback is stubbed as a delayed setTimeout so the debounce timer
 // (500ms) can fire and leave the idle callback pending, letting cleanup tests
 // observe cancellation before the idle callback resolves.
@@ -106,6 +107,41 @@ function makeOptions(overrides: OptionsOverrides = {}): UseGamePersistenceOption
     hintsUsed: overrides.hintsUsed ?? 0,
     techniqueHintsUsed: overrides.techniqueHintsUsed ?? 0,
     hasRestoredSavedState: { current: overrides.restored ?? true },
+  }
+}
+
+// The buildSavedState mock spreads its input straight through, so the persisted
+// JSON is exactly the argument the hook assembled. That lets every save site be
+// asserted as a whole payload rather than a handful of cherry-picked keys.
+function expectedPayload(overrides: Record<string, unknown> = {}) {
+  return {
+    board: Array(81).fill(0),
+    candidates: [],
+    elapsedMs: 0,
+    history: [],
+    autoFillUsed: false,
+    difficulty: 'easy',
+    isComplete: false,
+    hintsUsed: 0,
+    techniqueHintsUsed: 0,
+    ...overrides,
+  }
+}
+
+// The corruption log reports the observed array lengths so a support report can
+// distinguish "wrong length" from "wrong type" without the raw payload.
+function corruptionMessage(board: number | undefined, candidates: number | undefined) {
+  return `[STORAGE ERROR] Corrupted saved state for seed: seed1 - board: ${board}, candidates: ${candidates}`
+}
+
+// The full context object the hook must hand to the auto-save suppression guard.
+function expectedSuppressionContext(overrides: Record<string, unknown> = {}) {
+  return {
+    hasPuzzle: true,
+    hasRestoredSavedState: true,
+    isComplete: false,
+    autoSaveEnabled: true,
+    ...overrides,
   }
 }
 
@@ -215,10 +251,28 @@ describe('useGamePersistence', () => {
       const { result } = renderPersistence(makeOptions({ restored: true }))
       act(() => result.current.saveGameState())
       expect(clearOtherGamesForMode).toHaveBeenCalledWith('seed1')
-      expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull()
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
-      expect(stored.board).toHaveLength(81)
-      expect(stored.isComplete).toBe(false)
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!)).toEqual(expectedPayload())
+    })
+
+    it('persists the current tracking counters in the snapshot', () => {
+      const { result } = renderPersistence(
+        makeOptions({
+          restored: true,
+          autoFillUsed: true,
+          hintsUsed: 4,
+          techniqueHintsUsed: 2,
+          board: makeBoardWith(3, 9),
+        }),
+      )
+      act(() => result.current.saveGameState())
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!)).toEqual(
+        expectedPayload({
+          board: makeBoardWith(3, 9),
+          autoFillUsed: true,
+          hintsUsed: 4,
+          techniqueHintsUsed: 2,
+        }),
+      )
     })
 
     it('is a no-op when there is no puzzle', () => {
@@ -265,6 +319,16 @@ describe('useGamePersistence', () => {
       expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
     })
 
+    it('removes the entry for the seed active at call time, not the seed at mount', () => {
+      localStorage.setItem(STORAGE_KEY, '{"board":[]}')
+      localStorage.setItem(OTHER_STORAGE_KEY, '{"board":[]}')
+      const { result, rerenderWith } = renderPersistence(makeOptions())
+      rerenderWith(makeOptions({ puzzle: makePuzzle('seed2') }))
+      act(() => result.current.clearSavedGameState())
+      expect(localStorage.getItem(OTHER_STORAGE_KEY)).toBeNull()
+      expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull()
+    })
+
     it('is a no-op when there is no puzzle', () => {
       const { result } = renderPersistence(makeOptions({ puzzle: null }))
       const spy = vi.spyOn(Storage.prototype, 'removeItem')
@@ -303,9 +367,13 @@ describe('useGamePersistence', () => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
     }
 
-    it('returns null when no entry exists for the seed', () => {
+    it('returns null without logging when no entry exists for the seed', () => {
       const { result } = renderPersistence(makeOptions())
       expect(result.current.loadSavedGameState('seed1')).toBeNull()
+      // An absent entry is the normal "new game" case, not corruption: it must
+      // short-circuit before parsing rather than fall into the corruption log.
+      expect(logger.warn).not.toHaveBeenCalled()
+      expect(logger.error).not.toHaveBeenCalled()
     })
 
     it('returns the parsed state when board and candidates are both length 81', () => {
@@ -321,28 +389,28 @@ describe('useGamePersistence', () => {
       seedStore({ board: Array(80).fill(0), candidates: Array.from({ length: 81 }, () => []) })
       const { result } = renderPersistence(makeOptions())
       expect(result.current.loadSavedGameState('seed1')).toBeNull()
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Corrupted saved state'))
+      expect(logger.warn).toHaveBeenCalledWith(corruptionMessage(80, 81))
     })
 
     it('warns and returns null when candidates length is not 81', () => {
       seedStore({ board: Array(81).fill(0), candidates: Array.from({ length: 80 }, () => []) })
       const { result } = renderPersistence(makeOptions())
       expect(result.current.loadSavedGameState('seed1')).toBeNull()
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Corrupted saved state'))
+      expect(logger.warn).toHaveBeenCalledWith(corruptionMessage(81, 80))
     })
 
     it('warns and returns null when board is missing (optional-chaining short-circuit)', () => {
       seedStore({ candidates: Array.from({ length: 81 }, () => []) })
       const { result } = renderPersistence(makeOptions())
       expect(result.current.loadSavedGameState('seed1')).toBeNull()
-      expect(logger.warn).toHaveBeenCalled()
+      expect(logger.warn).toHaveBeenCalledWith(corruptionMessage(undefined, 81))
     })
 
     it('warns and returns null when candidates are missing (optional-chaining short-circuit)', () => {
       seedStore({ board: Array(81).fill(0) })
       const { result } = renderPersistence(makeOptions())
       expect(result.current.loadSavedGameState('seed1')).toBeNull()
-      expect(logger.warn).toHaveBeenCalled()
+      expect(logger.warn).toHaveBeenCalledWith(corruptionMessage(81, undefined))
     })
 
     it('logs an error and returns null when the stored seed fails extraction', () => {
@@ -384,14 +452,16 @@ describe('useGamePersistence', () => {
       localStorage.setItem(STORAGE_KEY, 'null')
       const { result } = renderPersistence(makeOptions())
       expect(result.current.loadSavedGameState('seed1')).toBeNull()
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Corrupted saved state'))
+      expect(logger.warn).toHaveBeenCalledWith(corruptionMessage(undefined, undefined))
+      expect(logger.error).not.toHaveBeenCalled()
     })
 
     it('warns and returns null when the parsed payload is a primitive (non-object)', () => {
       localStorage.setItem(STORAGE_KEY, '5')
       const { result } = renderPersistence(makeOptions())
       expect(result.current.loadSavedGameState('seed1')).toBeNull()
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Corrupted saved state'))
+      expect(logger.warn).toHaveBeenCalledWith(corruptionMessage(undefined, undefined))
+      expect(logger.error).not.toHaveBeenCalled()
     })
 
     it('warns and returns null when board contains a non-number element', () => {
@@ -400,7 +470,7 @@ describe('useGamePersistence', () => {
       seedStore({ board, candidates: Array.from({ length: 81 }, () => []) })
       const { result } = renderPersistence(makeOptions())
       expect(result.current.loadSavedGameState('seed1')).toBeNull()
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Corrupted saved state'))
+      expect(logger.warn).toHaveBeenCalledWith(corruptionMessage(81, 81))
     })
   })
 
@@ -447,6 +517,68 @@ describe('useGamePersistence', () => {
       })
       expect(clearOtherGamesForMode).toHaveBeenCalledWith('seed1')
       expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull()
+    })
+
+    it('passes the full suppression context to the auto-save guard', () => {
+      renderPersistence(makeOptions({ restored: true }))
+      expect(shouldSuppressAutoSave).toHaveBeenCalledTimes(1)
+      expect(shouldSuppressAutoSave).toHaveBeenCalledWith(expectedSuppressionContext())
+    })
+
+    it('reports the live puzzle/restore/completion flags in the suppression context', () => {
+      renderPersistence(makeOptions({ puzzle: null, restored: false, isComplete: true }))
+      expect(shouldSuppressAutoSave).toHaveBeenCalledWith(
+        expectedSuppressionContext({
+          hasPuzzle: false,
+          hasRestoredSavedState: false,
+          isComplete: true,
+        }),
+      )
+    })
+
+    it('requests the idle callback with a bounded timeout', () => {
+      renderPersistence(makeOptions({ restored: true }))
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+      expect(idleCallbackMock).toHaveBeenCalledWith(expect.any(Function), { timeout: 1000 })
+    })
+
+    it('passes the scheduled and current seeds to the stale-save guard', async () => {
+      renderPersistence(makeOptions({ restored: true }))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(shouldAllowStaleSave).toHaveBeenCalledWith({
+        scheduledSeed: 'seed1',
+        currentSeed: 'seed1',
+      })
+    })
+
+    it('tracks the active seed across puzzle changes for the stale-save guard', async () => {
+      const { rerenderWith } = renderPersistence(makeOptions({ restored: true }))
+      rerenderWith(makeOptions({ puzzle: makePuzzle('seed2'), restored: true }))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(shouldAllowStaleSave).toHaveBeenCalledWith({
+        scheduledSeed: 'seed2',
+        currentSeed: 'seed2',
+      })
+      expect(localStorage.getItem(OTHER_STORAGE_KEY)).not.toBeNull()
+    })
+
+    it('clears the unsaved-changes flag after an idle-path save', async () => {
+      const { rerenderWith } = renderPersistence(makeOptions({ restored: true }))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(clearOtherGamesForMode).toHaveBeenCalledTimes(1)
+      // A later hidden -> visible round trip has nothing to flush, because the
+      // idle save already drained the pending changes.
+      rerenderWith(makeOptions({ restored: true, isHidden: true }))
+      rerenderWith(makeOptions({ restored: true, isHidden: false }))
+      expect(clearOtherGamesForMode).toHaveBeenCalledTimes(1)
     })
 
     it('does not save while shouldSuppressAutoSave is true', async () => {
@@ -547,6 +679,60 @@ describe('useGamePersistence', () => {
       expect(clearOtherGamesForMode).not.toHaveBeenCalled()
     })
 
+    it('passes the scheduled and current seeds to the stale-save guard on the fallback path', async () => {
+      delete (window as unknown as { requestIdleCallback?: unknown }).requestIdleCallback
+      renderPersistence(makeOptions({ restored: true }))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1100)
+      })
+      expect(shouldAllowStaleSave).toHaveBeenCalledWith({
+        scheduledSeed: 'seed1',
+        currentSeed: 'seed1',
+      })
+    })
+
+    it('clears the unsaved-changes flag after a fallback-path save', async () => {
+      delete (window as unknown as { requestIdleCallback?: unknown }).requestIdleCallback
+      const { rerenderWith } = renderPersistence(makeOptions({ restored: true }))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1100)
+      })
+      expect(clearOtherGamesForMode).toHaveBeenCalledTimes(1)
+      rerenderWith(makeOptions({ restored: true, isHidden: true }))
+      rerenderWith(makeOptions({ restored: true, isHidden: false }))
+      expect(clearOtherGamesForMode).toHaveBeenCalledTimes(1)
+    })
+
+    it('cancels the pending fallback timeout on unmount so no stale save fires', async () => {
+      delete (window as unknown as { requestIdleCallback?: unknown }).requestIdleCallback
+      const { unmount } = renderPersistence(makeOptions({ restored: true }))
+      // Past the debounce so the fallback setTimeout is armed, but short of its
+      // own 500ms delay.
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+      act(() => unmount())
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(clearOtherGamesForMode).not.toHaveBeenCalled()
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+    })
+
+    it('does not clear a fallback timeout that was never armed', () => {
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
+      const { unmount } = renderPersistence(makeOptions({ restored: true }))
+      // The idle path is taken here, so the fallback handle stays null and
+      // cleanup must not ask the platform to clear a timer that never existed.
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+      act(() => unmount())
+      expect(clearTimeoutSpy).toHaveBeenCalled()
+      expect(clearTimeoutSpy).not.toHaveBeenCalledWith(null)
+      clearTimeoutSpy.mockRestore()
+    })
+
     it('skips the save on the fallback path when the seed has gone stale', async () => {
       ;(shouldAllowStaleSave as Mock).mockReturnValue(false)
       delete (window as unknown as { requestIdleCallback?: unknown }).requestIdleCallback
@@ -573,6 +759,19 @@ describe('useGamePersistence', () => {
       rerenderWith(makeOptions({ restored: true, isHidden: false, shouldPauseOperations: false }))
       expect(clearOtherGamesForMode).toHaveBeenCalledTimes(1)
       expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull()
+    })
+
+    it('clears the unsaved-changes flag after the catch-up save', () => {
+      const { rerenderWith } = renderPersistence(
+        makeOptions({ restored: true, isHidden: true, shouldPauseOperations: true }),
+      )
+      rerenderWith(makeOptions({ restored: true, isHidden: false, shouldPauseOperations: false }))
+      expect(clearOtherGamesForMode).toHaveBeenCalledTimes(1)
+      // A second hidden -> visible round trip with nothing pending must not
+      // re-save, which only holds if the catch-up drained the flag.
+      rerenderWith(makeOptions({ restored: true, isHidden: true, shouldPauseOperations: false }))
+      rerenderWith(makeOptions({ restored: true, isHidden: false, shouldPauseOperations: false }))
+      expect(clearOtherGamesForMode).toHaveBeenCalledTimes(1)
     })
 
     it('does not save on the initial mount (wasHidden is false)', () => {
@@ -623,6 +822,49 @@ describe('useGamePersistence', () => {
       expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull()
     })
 
+    it('passes the full suppression context when deciding to flush', () => {
+      renderPersistence(makeOptions({ restored: true }))
+      // Drop the mount-time call from the auto-save effect so only the
+      // beforeunload call is under assertion.
+      ;(shouldSuppressAutoSave as Mock).mockClear()
+      dispatchBeforeUnload()
+      expect(shouldSuppressAutoSave).toHaveBeenCalledTimes(1)
+      expect(shouldSuppressAutoSave).toHaveBeenCalledWith(expectedSuppressionContext())
+    })
+
+    it('writes the whole snapshot built from the props current at unload time', () => {
+      const { rerenderWith } = renderPersistence(makeOptions({ restored: true }))
+      rerenderWith(
+        makeOptions({
+          restored: true,
+          puzzle: makePuzzle('seed2'),
+          board: makeBoardWith(0, 4),
+          autoFillUsed: true,
+          hintsUsed: 3,
+          techniqueHintsUsed: 2,
+        }),
+      )
+      dispatchBeforeUnload()
+      expect(JSON.parse(localStorage.getItem(OTHER_STORAGE_KEY)!)).toEqual(
+        expectedPayload({
+          board: makeBoardWith(0, 4),
+          autoFillUsed: true,
+          hintsUsed: 3,
+          techniqueHintsUsed: 2,
+        }),
+      )
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+    })
+
+    it('records the completion flag in the unload snapshot', () => {
+      const { rerenderWith } = renderPersistence(makeOptions({ restored: true }))
+      rerenderWith(makeOptions({ restored: true, isComplete: true }))
+      dispatchBeforeUnload()
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!)).toEqual(
+        expectedPayload({ isComplete: true }),
+      )
+    })
+
     it('skips the write when there is no puzzle', () => {
       renderPersistence(makeOptions({ puzzle: null, restored: true }))
       dispatchBeforeUnload()
@@ -660,6 +902,14 @@ describe('useGamePersistence', () => {
       rerenderWith(makeOptions({ isComplete: true }))
       expect(clearOtherGamesForMode).toHaveBeenCalledTimes(1)
       void result
+    })
+
+    it('saves once when the hook mounts with an already-complete puzzle', () => {
+      renderPersistence(makeOptions({ isComplete: true, restored: true }))
+      expect(clearOtherGamesForMode).toHaveBeenCalledTimes(1)
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!)).toEqual(
+        expectedPayload({ isComplete: true }),
+      )
     })
 
     it('resets the once guard when isComplete returns to false, allowing a later re-save', () => {
