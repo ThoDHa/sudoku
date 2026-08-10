@@ -164,9 +164,7 @@ func parseSolution(s string) ([]int, error) {
 // GetPuzzleBySeed returns a puzzle for a given seed string
 // Uses FNV hash to deterministically map seed to puzzle index
 func (l *Loader) GetPuzzleBySeed(seed string, difficulty string) (givens []int, solution []int, puzzleIndex int, err error) {
-	l.mu.RLock()
-	count := len(l.puzzles)
-	l.mu.RUnlock()
+	count := l.Count()
 
 	if count == 0 {
 		return nil, nil, 0, errors.New("no puzzles loaded")
