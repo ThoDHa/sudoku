@@ -311,15 +311,28 @@ jobs:
           cat > /tmp/mutation-config.yml <<'YAML'
           json_output: true
           YAML
-          ulimit -v "$MUTATION_ADDRESS_SPACE_KB"
-          go-mutesting --exec-timeout "$MUTATION_EXEC_TIMEOUT" \
-            --config=/tmp/mutation-config.yml ${{ matrix.pkg }}
           # Ask for the destination rather than deriving it, so the producer and
           # the gate that reads it cannot disagree about the path.
           dest=$(python3 scripts/mutation_floors.py report-path \
             --package-dir reports/mutation --scope "${{ matrix.name }}")
           mkdir -p "$(dirname "$dest")"
+          # The cap below kills a runaway mutant, and go-mutesting scores that
+          # exactly as it scores an assertion failure: one exit code, and the
+          # test output discarded. The --exec wrapper is the last place that
+          # output exists, so it classifies each kill and writes the verdict
+          # next to the report, inside the directory already uploaded. It also
+          # carries the two things go-mutesting does not apply on the exec path,
+          # the compile probe and the per-mutant timeout; see the header of
+          # tools/mutation/ci-exec.sh, and the same-code control in
+          # tools/mutation/README.md that shows no score moved.
+          export MUTATION_AUDIT_LOG="$PWD/$(dirname "$dest")/audit.log"
+          ulimit -v "$MUTATION_ADDRESS_SPACE_KB"
+          go-mutesting --exec-timeout "$MUTATION_EXEC_TIMEOUT" \
+            --exec="$GITHUB_WORKSPACE/tools/mutation/ci-exec.sh" \
+            --config=/tmp/mutation-config.yml ${{ matrix.pkg }}
           mv report.json "$dest" 2>/dev/null || true
+          ../tools/mutation/audit-summary.sh "${{ matrix.name }}" \
+            "$MUTATION_AUDIT_LOG" >> "$GITHUB_STEP_SUMMARY"
         continue-on-error: true
 
       # Floor and efficacy arithmetic both live in scripts/mutation_floors.py,
@@ -436,10 +449,18 @@ jobs:
           for f in ${{ matrix.files }}; do
             targets+=("./internal/sudoku/human/techniques/$f")
           done
+          # Records why each mutant died, so a kill the address-space cap
+          # produced can be told from one a test earned. Same wrapper, same
+          # reasoning and same caveats as the go-mutation job above; the
+          # per-shard log rides along inside this shard's report directory.
+          export MUTATION_AUDIT_LOG="$PWD/$outdir/audit.log"
           ulimit -v "$MUTATION_ADDRESS_SPACE_KB"
           go-mutesting --exec-timeout "$MUTATION_EXEC_TIMEOUT" \
+            --exec="$GITHUB_WORKSPACE/tools/mutation/ci-exec.sh" \
             --config=/tmp/mutation-config.yml "${targets[@]}"
           mv report.json "$outdir/" 2>/dev/null || true
+          ../tools/mutation/audit-summary.sh "techniques/${{ matrix.shard }}" \
+            "$MUTATION_AUDIT_LOG" >> "$GITHUB_STEP_SUMMARY"
         continue-on-error: true
 
       - name: Upload techniques shard report
