@@ -5,6 +5,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -92,6 +93,48 @@ class ShardIdentification(unittest.TestCase):
         self.assertIsNone(mf.shard_name_from_path("/tmp/shards/whatever/report.json"))
 
 
+class PackageEnumeration(unittest.TestCase):
+    """PACKAGE_PKGS is the only list of what gets mutated, so the Makefile and
+    the nightly matrix have to be reading it rather than repeating it."""
+
+    def _run(self, argv):
+        out = subprocess.run(
+            [sys.executable, os.path.join(_REPO, "api", "scripts", "mutation_floors.py")] + argv,
+            capture_output=True, text=True, check=True)
+        return out.stdout.split()
+
+    def test_packages_prints_every_scope_in_order(self):
+        self.assertEqual(self._run(["packages"]), list(mf.PACKAGE_PKGS))
+
+    def test_packages_prints_every_pkg_path_in_order(self):
+        self.assertEqual(self._run(["packages", "--pkg-paths"]),
+                         list(mf.PACKAGE_PKGS.values()))
+
+    def test_the_makefile_sweeps_the_packages_the_gate_knows_about(self):
+        """A hardcoded loop here is how a package gets swept but never gated,
+        or gated against a report nothing produced."""
+        with open(os.path.join(_REPO, "api", "Makefile")) as f:
+            makefile = f.read()
+        self.assertIn("packages --pkg-paths", makefile,
+                      "mutation-go must read its package list from this script")
+        m = re.search(r"^mutation-gate:\n(?:\t.*\n)+", makefile, re.MULTILINE)
+        self.assertIsNotNone(m, "could not find the mutation-gate recipe")
+        self.assertNotIn("--scope", m.group(0),
+                         "mutation-gate must gate every package scope, not a "
+                         "hand-picked subset that can fall behind the sweep")
+
+    def test_the_nightly_matrix_covers_every_unsharded_package(self):
+        """techniques is absent because it has its own sharded job; every other
+        package scope needs a matrix entry or it is never measured in CI."""
+        with open(os.path.join(_REPO, ".github", "workflows",
+                               "nightly-mutation.yml")) as f:
+            text = f.read()
+        job = text.split("go-mutation:", 1)[1].split("techniques-mutation:", 1)[0]
+        matrix = dict(re.findall(r"-\s*name:\s*(\S+)\s*\n\s*pkg:\s*(\S+)", job))
+        expected = {k: v for k, v in mf.PACKAGE_PKGS.items() if k != "techniques"}
+        self.assertEqual(matrix, expected)
+
+
 class FloorLookup(unittest.TestCase):
     def test_get_prints_a_package_floor(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -155,6 +198,19 @@ class PackageGate(unittest.TestCase):
     def test_unmeasured_floor_is_reported_but_not_enforced(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(self._run(tmp, None, killed=1, escaped=99, source=None), 0)
+
+    def test_omitting_scope_gates_every_package_scope(self):
+        """`make mutation-gate` passes no --scope, so the default has to be the
+        whole set: a default of "nothing" would exit 0 having checked nothing."""
+        with tempfile.TemporaryDirectory() as tmp:
+            floors = write_floors(tmp, {s: 100.0 for s in mf.PACKAGE_PKGS},
+                                  sources={s: SOURCE for s in mf.PACKAGE_PKGS})
+            for scope in mf.PACKAGE_PKGS:
+                # One breached scope; a gate that skipped it would exit 0.
+                escaped = 1 if scope == list(mf.PACKAGE_PKGS)[-1] else 0
+                write_report(package_dir(tmp, scope), killed=10, escaped=escaped)
+            self.assertEqual(mf.main(["--floors-file", floors, "gate-package",
+                                      "--package-dir", tmp]), 1)
 
     def test_missing_report_is_untrustworthy_not_passing(self):
         with tempfile.TemporaryDirectory() as tmp:

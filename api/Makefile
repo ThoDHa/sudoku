@@ -305,7 +305,10 @@ mutation-probe-check:
 	python3 -c "$$MUTATION_PROBE_ASSERT" "$$work/report.json"
 
 # Run go-mutesting on each in-scope Go package (Decision 9: explicit
-# enumeration; human/techniquetest is excluded as pure test-fixture data).
+# enumeration; human/techniquetest is excluded as pure test-fixture data). The
+# enumeration itself lives in PACKAGE_PKGS in scripts/mutation_floors.py, which
+# the gate also reads, so a package cannot be swept without being gated or
+# gated without being swept.
 # Emits reports/mutation/<pkg-slug>/{report.json,go-mutesting-report.html}.
 # go-mutesting v2.3.1 has NO --output flag; JSON+HTML are config keys
 # (json_output / html_output), so a config.yml is generated per package.
@@ -315,11 +318,7 @@ mutation-probe-check:
 mutation-go: mutation-install
 	@set -e; \
 	ulimit -v $(MUTATION_ADDRESS_SPACE_KB); \
-	for pkg in \
-		./internal/sudoku/dp \
-		./internal/sudoku/human \
-		./internal/sudoku/human/techniques \
-	; do \
+	for pkg in $$($(MUTATION_FLOORS) packages --pkg-paths); do \
 		slug=$$(echo "$$pkg" | sed 's|^\./||; s|/|-|g'); \
 		outdir="$(MUTATION_REPORT_DIR)/$$slug"; \
 		mkdir -p "$$outdir"; \
@@ -350,7 +349,6 @@ mutation-go: mutation-install
 # spelling `timeOutCount` / `timeouted`).
 mutation-gate:
 	@$(MUTATION_FLOORS) gate-package --package-dir $(MUTATION_REPORT_DIR) \
-		--scope dp --scope human --scope techniques \
 	&& echo "mutation-gate: all in-scope packages met their floors."
 
 # Raise the floors in mutation-floors.json to the efficacy a completed run

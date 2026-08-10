@@ -19,6 +19,7 @@ its gate without reading as a number going down, which would be a cheaper way to
 surrender ground than lowering one, so a test refuses it.
 
 Usage:
+    mutation_floors.py packages [--pkg-paths]
     mutation_floors.py get <scope>
     mutation_floors.py gate-package --package-dir reports/mutation --scope dp
     mutation_floors.py gate-shards --shards-dir shards/
@@ -47,7 +48,10 @@ DEFAULT_FLOORS_FILE = os.path.join(
 
 TECHNIQUES_LABEL = "./internal/sudoku/human/techniques"
 # The Go packages carrying a package-level floor, and the ./pkg paths their
-# report directories are named after.
+# report directories are named after. This mapping is the single enumeration of
+# what gets mutated: api/Makefile's mutation-go loop and mutation-gate both read
+# it through the `packages` subcommand rather than repeating the list, and a
+# test requires the nightly's go-mutation matrix to agree with it.
 PACKAGE_PKGS = {
     "dp": "./internal/sudoku/dp",
     "human": "./internal/sudoku/human",
@@ -187,6 +191,19 @@ def cmd_report_path(args):
     return 0
 
 
+def cmd_packages(args):
+    """Print the package scopes, or the ./pkg paths they mutate.
+
+    The Makefile drives its sweep and its gate off this rather than restating
+    the package list, so adding a scope in PACKAGE_PKGS is enough to put it in
+    both. Insertion order is preserved, which puts the cheap packages first and
+    the multi-hour techniques sweep last.
+    """
+    for scope, pkg in PACKAGE_PKGS.items():
+        print(pkg if args.pkg_paths else scope)
+    return 0
+
+
 def cmd_get(args):
     data = load(args.floors_file)
     floors = {**data["floors"], **data["techniques_shards"]}
@@ -204,7 +221,9 @@ def cmd_gate_package(args):
     """Gate one or more package reports in a single pass over the floors file."""
     data = load(args.floors_file)
     ok = True
-    for scope in args.scope:
+    # No --scope means every package scope, so `make mutation-gate` cannot gate
+    # a smaller set than `make mutation-go` just ran.
+    for scope in args.scope or list(PACKAGE_PKGS):
         if scope not in data["floors"]:
             raise FloorsError(f"unknown scope '{scope}'")
         floor = data["floors"][scope]
@@ -467,6 +486,12 @@ def build_parser():
                         help="Path to mutation-floors.json (default: repo canonical).")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    p_packages = sub.add_parser(
+        "packages", help="Print the package scopes (or their ./pkg paths).")
+    p_packages.add_argument("--pkg-paths", action="store_true",
+                            help="Print ./pkg paths instead of scope names.")
+    p_packages.set_defaults(func=cmd_packages)
+
     p_get = sub.add_parser("get", help="Print one floor (0 when unmeasured).")
     p_get.add_argument("scope")
     p_get.set_defaults(func=cmd_get)
@@ -480,8 +505,8 @@ def build_parser():
     p_pkg = sub.add_parser("gate-package", help="Gate one or more package reports.")
     p_pkg.add_argument("--package-dir", required=True,
                        help="Directory holding <pkg-slug>/report.json per package.")
-    p_pkg.add_argument("--scope", action="append", required=True,
-                       help="Package scope, repeatable.")
+    p_pkg.add_argument("--scope", action="append",
+                       help="Package scope, repeatable. Default: every package scope.")
     p_pkg.set_defaults(func=cmd_gate_package)
 
     p_sh = sub.add_parser("gate-shards",
