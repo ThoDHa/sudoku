@@ -153,6 +153,37 @@ func TestFindErrorByCandidateRefillBlockerInBoxRegion(t *testing.T) {
 	}
 }
 
+// TestFindErrorByCandidateRefillBoxBlockerForCellOffTheFirstColumn pins the
+// case the earlier box-region test cannot reach: a zero-candidate cell whose
+// column index is non-zero, found through the column and box scans rather than
+// the row. At column 0 the column arithmetic is invisible, because idx%GridSize
+// and any other function of idx that happens to yield 0 agree there; cell 10
+// (row 1, column 1) is the cheapest position where they diverge.
+func TestFindErrorByCandidateRefillBoxBlockerForCellOffTheFirstColumn(t *testing.T) {
+	board := make([]int, 81)
+	// Row 1's other cells hold digits 2-9, so cell 10 loses those candidates.
+	rowPeers := []int{9, 11, 12, 13, 14, 15, 16, 17}
+	for i, cell := range rowPeers {
+		board[cell] = i + 2
+	}
+	// Digit 1's only blocker sits in cell 10's box but in neither its row nor
+	// its column, so the row and column scans must both come up empty first.
+	board[0] = 1
+	givens := make([]int, 81)
+
+	badCell, badDigit, zeroCell := FindErrorByCandidateRefill(board, givens)
+
+	if zeroCell != 10 {
+		t.Errorf("zeroCell: expected 10, got %d", zeroCell)
+	}
+	if badCell != 0 {
+		t.Errorf("badCell: expected 0 (box-only blocker of cell 10), got %d", badCell)
+	}
+	if badDigit != 1 {
+		t.Errorf("badDigit: expected 1, got %d", badDigit)
+	}
+}
+
 // --- peerCellIndices exact cell indices ---
 //
 // These three tests pin the exact cell indices returned by peerCellIndices for
@@ -389,6 +420,27 @@ func TestFindBlockingUserCell_SingleBlockerReturnsCellAndDigit(t *testing.T) {
 	}
 	if digit != 6 {
 		t.Errorf("expected digit 6, got %d", digit)
+	}
+}
+
+// TestFindBlockingUserCell_BlockerIsDigitOne pins the low end of the digit
+// scan. Digit 9 is already pinned above; without a fixture whose answer is
+// digit 1, a scan starting at 2 would return the same result as one starting
+// at 1 on every other fixture in this file.
+func TestFindBlockingUserCell_BlockerIsDigitOne(t *testing.T) {
+	cells := make([]int, 81)
+	cells[1] = 1
+	board := human.NewBoard(cells)
+	original := make([]int, 81)
+	original[1] = 1
+	givens := make([]int, 81)
+
+	idx, digit := FindBlockingUserCell(board, 0, original, givens)
+	if idx != 1 {
+		t.Errorf("expected blocker cell 1, got %d", idx)
+	}
+	if digit != 1 {
+		t.Errorf("expected digit 1, got %d", digit)
 	}
 }
 
