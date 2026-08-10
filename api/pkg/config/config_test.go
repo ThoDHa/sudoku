@@ -20,8 +20,11 @@ func TestLoadFailsWhenJwtSecretMissing(t *testing.T) {
 	if cfg != nil {
 		t.Errorf("expected nil config on error, got %+v", cfg)
 	}
-	if !strings.Contains(err.Error(), "JWT_SECRET") {
-		t.Errorf("expected error to mention JWT_SECRET, got: %v", err)
+	// An unset secret is also a too-short secret, so the length check would
+	// reject it too and any assertion that merely mentions JWT_SECRET passes
+	// either way. Naming the reason is what distinguishes the two rejections.
+	if !strings.Contains(err.Error(), "required but not set") {
+		t.Errorf("expected the missing-secret error rather than the length error, got: %v", err)
 	}
 }
 
@@ -48,6 +51,47 @@ func TestLoadFailsForTooShortSecret(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "32 characters") {
 		t.Errorf("expected error to mention the length requirement, got: %v", err)
+	}
+}
+
+// The minimum secret length is a bound, and a bound is invisible unless a
+// fixture lands exactly on each side of it: "short-secret" above is rejected by
+// any threshold from 13 upwards. These two pin it at 32 by rejecting the
+// longest secret that must fail and accepting the shortest that must pass.
+const (
+	secretJustTooShort      = "0123456789012345678901234567890"  // 31 characters
+	secretExactlyLongEnough = "01234567890123456789012345678901" // 32 characters
+)
+
+func TestLoadRejectsASecretOneCharacterBelowTheMinimum(t *testing.T) {
+	if len(secretJustTooShort) != 31 {
+		t.Fatalf("fixture must be 31 characters to sit on the boundary, got %d", len(secretJustTooShort))
+	}
+	t.Setenv("JWT_SECRET", secretJustTooShort)
+
+	_, err := Load()
+
+	if err == nil {
+		t.Fatalf("expected a 31-character secret to be rejected as too short")
+	}
+	if !strings.Contains(err.Error(), "32 characters") {
+		t.Errorf("expected the length error, got: %v", err)
+	}
+}
+
+func TestLoadAcceptsASecretOfExactlyTheMinimumLength(t *testing.T) {
+	if len(secretExactlyLongEnough) != 32 {
+		t.Fatalf("fixture must be 32 characters to sit on the boundary, got %d", len(secretExactlyLongEnough))
+	}
+	t.Setenv("JWT_SECRET", secretExactlyLongEnough)
+
+	cfg, err := Load()
+
+	if err != nil {
+		t.Fatalf("expected a 32-character secret to be accepted, got: %v", err)
+	}
+	if cfg.JWTSecret != secretExactlyLongEnough {
+		t.Errorf("expected the secret to be loaded verbatim, got %q", cfg.JWTSecret)
 	}
 }
 
