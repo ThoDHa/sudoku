@@ -170,6 +170,45 @@ describe('useGameKeyboardShortcuts', () => {
 
       expect(options.handleRedo).toHaveBeenCalledTimes(1)
     })
+
+    it('does not fire redo or undo on a bare z with no modifier at all', () => {
+      const options = makeOptions()
+      renderHook(() => useGameKeyboardShortcuts(options))
+
+      dispatchKeyDown('z')
+
+      expect(options.handleRedo).not.toHaveBeenCalled()
+      expect(options.handleUndo).not.toHaveBeenCalled()
+    })
+
+    it('does not fire redo on Shift+Z without Ctrl/Cmd', () => {
+      const options = makeOptions()
+      renderHook(() => useGameKeyboardShortcuts(options))
+
+      dispatchKeyDown('z', { shiftKey: true })
+
+      expect(options.handleRedo).not.toHaveBeenCalled()
+      expect(options.handleUndo).not.toHaveBeenCalled()
+    })
+
+    it('does not fire redo on Ctrl+Shift with a key other than Z', () => {
+      const options = makeOptions()
+      renderHook(() => useGameKeyboardShortcuts(options))
+
+      dispatchKeyDown('a', { ctrlKey: true, shiftKey: true })
+
+      expect(options.handleRedo).not.toHaveBeenCalled()
+    })
+
+    it('does not fire redo on Ctrl with a key that is neither Z nor Y', () => {
+      const options = makeOptions()
+      renderHook(() => useGameKeyboardShortcuts(options))
+
+      dispatchKeyDown('a', { ctrlKey: true })
+
+      expect(options.handleRedo).not.toHaveBeenCalled()
+      expect(options.handleUndo).not.toHaveBeenCalled()
+    })
   })
 
   describe('hint (H)', () => {
@@ -348,6 +387,55 @@ describe('useGameKeyboardShortcuts', () => {
       dispatchKeyDown(' ', { ctrlKey: true })
 
       expect(options.setNotesMode).not.toHaveBeenCalled()
+    })
+
+    it('toggles notes on Space when the document has no active element', () => {
+      // document.activeElement is typed Element | null and really is null in a
+      // document with no focused element, so the handler must tolerate it
+      // rather than dereference it.
+      const options = makeOptions()
+      renderHook(() => useGameKeyboardShortcuts(options))
+
+      Object.defineProperty(document, 'activeElement', { configurable: true, get: () => null })
+      try {
+        expect(document.activeElement).toBeNull()
+        dispatchKeyDown(' ')
+      } finally {
+        Reflect.deleteProperty(document, 'activeElement')
+      }
+
+      expect(options.setNotesMode).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('listener rebinding when props change', () => {
+    it('routes the shortcut to the latest handler after a handler prop changes', () => {
+      const firstUndo = vi.fn()
+      const secondUndo = vi.fn()
+      const { rerender } = renderHook(
+        ({ options }: { options: UseGameKeyboardShortcutsOptions }) =>
+          useGameKeyboardShortcuts(options),
+        { initialProps: { options: makeOptions({ handleUndo: firstUndo }) } },
+      )
+
+      rerender({ options: makeOptions({ handleUndo: secondUndo }) })
+      dispatchKeyDown('z', { ctrlKey: true })
+
+      expect(secondUndo).toHaveBeenCalledTimes(1)
+      expect(firstUndo).not.toHaveBeenCalled()
+    })
+
+    it('stops firing shortcuts once isModalOpen flips true on a rerender', () => {
+      const options = makeOptions()
+      const { rerender } = renderHook(
+        ({ o }: { o: UseGameKeyboardShortcutsOptions }) => useGameKeyboardShortcuts(o),
+        { initialProps: { o: options } },
+      )
+
+      rerender({ o: { ...options, isModalOpen: true } })
+      dispatchKeyDown('h')
+
+      expect(options.handleNext).not.toHaveBeenCalled()
     })
   })
 
