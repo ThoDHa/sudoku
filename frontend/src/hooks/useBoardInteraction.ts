@@ -20,23 +20,14 @@ const extendTrailForward = (
   trail: number[],
   trailSet: Set<number>,
   idx: number,
-  startCell: number | null,
   initialBoard: number[],
   board: number[],
 ): void => {
-  let prevCell: number
-  /* istanbul ignore else -- the drag trail is always seeded with the start cell on drag start and backtrackTrail never empties it below one element, so trail.length === 0 and this else branch are unreachable */
-  if (trail.length > 0) {
-    const lastIdx = trail[trail.length - 1]
-    /* istanbul ignore next -- lastIdx is the last element of a non-empty dense array, always a defined number, so the undefined guard never fires */
-    if (lastIdx === undefined) return
-    prevCell = lastIdx
-  } else {
-    /* istanbul ignore start -- defensive guard: reachable only if the trail invariant above ever breaks; handleDragEnter already guarantees startCell is non-null here */
-    if (startCell === null) return
-    prevCell = startCell
-    /* istanbul ignore stop */
-  }
+  // The tip always exists: a drag seeds the trail with its start cell and
+  // backtrackTrail never trims below that first element, so the trail is
+  // non-empty for as long as a drag is in progress. The assertion is needed
+  // only because noUncheckedIndexedAccess widens every index read.
+  const prevCell = trail[trail.length - 1] as number
   for (const cellIdx of calculatePathCells(prevCell, idx)) {
     if (initialBoard[cellIdx] === 0 && board[cellIdx] === 0 && !trailSet.has(cellIdx)) {
       trail.push(cellIdx)
@@ -99,14 +90,16 @@ export function useBoardInteraction({
     return 0
   }, [selectedCell, initialBoard])
 
-  // Drag state for multi-select feature
+  // Drag state for multi-select feature.
   // Refs updated synchronously so drag callbacks always read the latest value
-  // (setState is asynchronous, so handleDragEnter would see stale isDragging=false)
-  const isDraggingRef = useRef(false)
-  const dragStartCellRef = useRef<number | null>(null)
-  // Ordered trail of cells the pointer has swept through. When the pointer
-  // revisits a cell already in the trail, we trim back to that point
-  // (backtracking removes cells). Uses an array for order + a set for O(1) lookup.
+  // (setState is asynchronous, so handleDragEnter would see a stale value).
+  //
+  // Ordered trail of cells the pointer has swept through. The trail doubles as
+  // the drag flag: handleDragStart seeds it with the start cell and
+  // handleDragEnd empties it, so a non-empty trail means a drag is in progress.
+  // When the pointer revisits a cell already in the trail, we trim back to that
+  // point (backtracking removes cells). Uses an array for order + a set for
+  // O(1) lookup.
   const dragTrailRef = useRef<number[]>([])
   const dragTrailSetRef = useRef<Set<number>>(new Set())
   // Tracks whether a multi-select drag occurred, so the subsequent click event
@@ -128,19 +121,7 @@ export function useBoardInteraction({
   useEffect(() => {
     const isComponentMounted = { current: true }
 
-    if (selectedCell !== null && cellRefs.current[selectedCell]) {
-      // Use requestAnimationFrame to ensure DOM has updated before focusing
-      const animationFrameId = requestAnimationFrame(() => {
-        if (isComponentMounted.current) {
-          cellRefs.current[selectedCell]?.focus()
-        }
-      })
-
-      return () => {
-        cancelAnimationFrame(animationFrameId)
-        isComponentMounted.current = false
-      }
-    } else if (selectedCell === null) {
+    if (selectedCell === null) {
       // When cell is deselected, blur any focused cell
       const activeElement = document.activeElement
       if (activeElement && 'blur' in activeElement) {
@@ -155,11 +136,28 @@ export function useBoardInteraction({
           isComponentMounted.current = false
         }
       }
+      // Nothing focusable to blur, so no frame was scheduled.
+      return undefined
     }
 
-    return () => {
-      isComponentMounted.current = false
+    if (cellRefs.current[selectedCell]) {
+      // Use requestAnimationFrame to ensure DOM has updated before focusing
+      const animationFrameId = requestAnimationFrame(() => {
+        if (isComponentMounted.current) {
+          // Re-read the ref: the cell can be detached between this effect and
+          // the frame, in which case there is nothing left to focus.
+          cellRefs.current[selectedCell]?.focus()
+        }
+      })
+
+      return () => {
+        cancelAnimationFrame(animationFrameId)
+        isComponentMounted.current = false
+      }
     }
+
+    // The selected cell has no element yet, so no frame was scheduled.
+    return undefined
   }, [selectedCell])
 
   // Find next non-given cell in a direction, returns null if none found
@@ -284,9 +282,8 @@ export function useBoardInteraction({
     if (initialBoard[idx] !== 0 || board[idx] !== 0) {
       return
     }
-    isDraggingRef.current = true
-    dragStartCellRef.current = idx
-    // Initialize ordered trail with the start cell
+    // Initialize ordered trail with the start cell, which also marks the drag
+    // as in progress
     dragTrailRef.current = [idx]
     dragTrailSetRef.current = new Set([idx])
     // Record the start cell so handleBoardPointerMove skips redundant
@@ -296,15 +293,11 @@ export function useBoardInteraction({
   }
 
   const handleDragEnter = (idx: number) => {
-    /* istanbul ignore next -- defensive guard: handleDragEnter's only caller (handleBoardPointerMove) already returns when !isDraggingRef.current, and dragStartCellRef is set alongside isDragging in handleDragStart, so both operands are always false here and the early return is unreachable */
-    if (!isDraggingRef.current || dragStartCellRef.current === null) return
-
-    // If pointer moved to a different cell than the drag start, this is a real
-    // multi-cell drag: suppress the click event that browser synthesizes after
-    // pointerup to avoid overwriting the multi-select state.
-    if (idx !== dragStartCellRef.current) {
-      suppressNextClickRef.current = true
-    }
+    // Reaching here means the pointer resolved to a cell other than the one it
+    // was last over, so a real multi-cell drag is underway: suppress the click
+    // the browser synthesizes after pointerup, which would otherwise overwrite
+    // the multi-select state with a single-cell selection.
+    suppressNextClickRef.current = true
 
     const trail = dragTrailRef.current
     const trailSet = dragTrailSetRef.current
@@ -312,7 +305,7 @@ export function useBoardInteraction({
     if (trailSet.has(idx)) {
       backtrackTrail(trail, trailSet, idx)
     } else {
-      extendTrailForward(trail, trailSet, idx, dragStartCellRef.current, initialBoard, board)
+      extendTrailForward(trail, trailSet, idx, initialBoard, board)
     }
 
     // Update selection from the current trail
@@ -326,8 +319,6 @@ export function useBoardInteraction({
     if (onDragEndProp && dragTrailRef.current.length > 1) {
       onDragEndProp([...dragTrailRef.current])
     }
-    isDraggingRef.current = false
-    dragStartCellRef.current = null
     lastEnteredCellRef.current = null
     dragTrailRef.current = []
     dragTrailSetRef.current = new Set()
@@ -345,7 +336,8 @@ export function useBoardInteraction({
   // Board-level pointer move handler: resolves which cell the pointer is over
   // using elementFromPoint. Works for both mouse and touch (pointer events unify both).
   const handleBoardPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current) return
+    // An empty trail means no drag is in progress.
+    if (dragTrailRef.current.length === 0) return
 
     const el = document.elementFromPoint(e.clientX, e.clientY)
     if (!el) return
@@ -386,16 +378,20 @@ export function useBoardInteraction({
   // Stable ref callback factory - returns the same function for each cell index.
   // React invokes ref callbacks during commit (not render), but the rule's
   // static analysis cannot distinguish them from render-time mutations.
-  const cellRefCallbacks = useMemo(() => {
-    const callbacks: ((el: HTMLDivElement | null) => void)[] = []
-    for (let i = 0; i < TOTAL_CELLS; i++) {
-      // eslint-disable-next-line react-hooks/refs -- ref callback: React calls this during commit, not render
-      callbacks.push((el: HTMLDivElement | null) => {
-        cellRefs.current[i] = el
-      })
-    }
-    return callbacks
-  }, [])
+  const cellRefCallbacks = useMemo(
+    () => {
+      const callbacks: ((el: HTMLDivElement | null) => void)[] = []
+      for (let i = 0; i < TOTAL_CELLS; i++) {
+        // eslint-disable-next-line react-hooks/refs -- ref callback: React calls this during commit, not render
+        callbacks.push((el: HTMLDivElement | null) => {
+          cellRefs.current[i] = el
+        })
+      }
+      return callbacks
+    },
+    // Stryker disable next-line ArrayDeclaration: React compares dependency arrays element-wise with Object.is, so a one-element array holding the same constant on every render is exactly as unchanging as an empty one. The memo body runs once under either array, so no program behaviour differs and no test can observe the substitution.
+    [],
+  )
 
   return useMemo(
     () => ({
