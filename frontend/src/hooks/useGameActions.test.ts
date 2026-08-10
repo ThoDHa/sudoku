@@ -775,3 +775,157 @@ describe.skipIf(process.env['VITE_SKIP_RC'])('useGameActions - handler stability
     void waitFor
   })
 })
+
+// =============================================================================
+// Memo deps: every handler reaches the collaborator the CURRENT render supplied
+// =============================================================================
+
+// Deliberately behavioural rather than identity-based, so these survive
+// Stryker's instrumentation (which defeats memoization and forces the
+// identity-based block above to skip). Emptying a useCallback dependency array
+// freezes that handler on the first render's closure; invoking it afterwards
+// reaches whatever collaborator render 1 captured. Each test swaps exactly one
+// collaborator on a re-render and asserts the handler drove the replacement and
+// left the original untouched, which observes the staleness directly.
+describe('useGameActions - memo dependency tracking', () => {
+  function renderTracked(options: UseGameActionsOptions) {
+    return renderHook(({ opts }) => useGameActions(opts), {
+      initialProps: { opts: options },
+    })
+  }
+
+  it('routes handleClearAll to the current clearSavedGameState after it is replaced', () => {
+    const options = makeOptions()
+    const { result, rerender } = renderTracked(options)
+
+    const replacement = vi.fn()
+    rerender({ opts: { ...options, clearSavedGameState: replacement } })
+    act(() => {
+      result.current.handleClearAll()
+    })
+
+    expect(replacement).toHaveBeenCalledTimes(1)
+    expect(options.clearSavedGameState).not.toHaveBeenCalled()
+  })
+
+  it('routes resetAllGameState to the current game after it is replaced', () => {
+    const options = makeOptions()
+    const { result, rerender } = renderTracked(options)
+
+    const replacement = makeGameMock()
+    rerender({ opts: { ...options, game: replacement } })
+    act(() => {
+      result.current.resetAllGameState()
+    })
+
+    expect(replacement.resetGame).toHaveBeenCalledTimes(1)
+    expect(options.game.resetGame).not.toHaveBeenCalled()
+  })
+
+  it('routes handleRestart to the current timerControl after it is replaced', () => {
+    const options = makeOptions()
+    const { result, rerender } = renderTracked(options)
+
+    const replacement = makeTimerControlMock() as unknown as UseGameActionsOptions['timerControl']
+    rerender({ opts: { ...options, timerControl: replacement } })
+    act(() => {
+      result.current.handleRestart()
+    })
+
+    expect(replacement.resetTimer).toHaveBeenCalledTimes(1)
+    expect(replacement.startTimer).toHaveBeenCalledTimes(1)
+    expect(options.timerControl.resetTimer).not.toHaveBeenCalled()
+  })
+
+  it('routes autoFillNotes to the current game after it is replaced', () => {
+    const options = makeOptions()
+    const { result, rerender } = renderTracked(options)
+
+    const replacement = makeGameMock()
+    rerender({ opts: { ...options, game: replacement } })
+    act(() => {
+      result.current.autoFillNotes()
+    })
+
+    expect(replacement.applyExternalMove).toHaveBeenCalledTimes(1)
+    expect(options.game.applyExternalMove).not.toHaveBeenCalled()
+  })
+
+  it('routes handleCheckNotes to the current scheduleToastClear after it is replaced', () => {
+    const options = makeOptions()
+    const { result, rerender } = renderTracked(options)
+
+    const replacement = vi.fn()
+    rerender({ opts: { ...options, scheduleToastClear: replacement } })
+    act(() => {
+      result.current.handleCheckNotes()
+    })
+
+    expect(replacement).toHaveBeenCalledTimes(1)
+    expect(options.scheduleToastClear).not.toHaveBeenCalled()
+  })
+
+  it('routes handleValidate to the current scheduleToastClear after it is replaced', () => {
+    // An empty solution takes the "Solution not available" arm, which still
+    // funnels through scheduleToastClear without reaching the solver.
+    const options = makeOptions({ solution: [] })
+    const { result, rerender } = renderTracked(options)
+
+    const replacement = vi.fn()
+    rerender({ opts: { ...options, scheduleToastClear: replacement } })
+    act(() => {
+      result.current.handleValidate()
+    })
+
+    expect(replacement).toHaveBeenCalledTimes(1)
+    expect(options.scheduleToastClear).not.toHaveBeenCalled()
+  })
+
+  it('routes handleSubmit to the current puzzle after it is replaced', async () => {
+    const options = makeOptions()
+    const { result, rerender } = renderTracked(options)
+    const saveScoreSpy = vi
+      .spyOn(await import('../lib/scores'), 'saveScore')
+      .mockImplementation(() => undefined)
+
+    const replacement = { ...options.puzzle!, seed: 'P-replacement' }
+    rerender({ opts: { ...options, puzzle: replacement } })
+    await act(async () => {
+      await result.current.handleSubmit()
+    })
+
+    expect(saveScoreSpy).toHaveBeenCalledWith(expect.objectContaining({ seed: 'P-replacement' }))
+    saveScoreSpy.mockRestore()
+  })
+
+  it('routes handleSolve to the current clearAllAndDeselect after it is replaced', async () => {
+    const options = makeOptions()
+    const { result, rerender } = renderTracked(options)
+
+    const replacement = vi.fn()
+    rerender({ opts: { ...options, clearAllAndDeselect: replacement } })
+    await act(async () => {
+      await result.current.handleSolve()
+    })
+
+    expect(replacement).toHaveBeenCalledTimes(1)
+    expect(options.clearAllAndDeselect).not.toHaveBeenCalled()
+  })
+
+  it('routes handleCopyDebugInfo to the current visibilityAwareTimeout after it is replaced', async () => {
+    const clipboard = await import('../lib/clipboard')
+    const clipSpy = vi.spyOn(clipboard, 'copyToClipboard').mockResolvedValue(true)
+    const options = makeOptions()
+    const { result, rerender } = renderTracked(options)
+
+    const replacement = vi.fn()
+    rerender({ opts: { ...options, visibilityAwareTimeout: replacement } })
+    await act(async () => {
+      await result.current.handleCopyDebugInfo()
+    })
+
+    expect(replacement).toHaveBeenCalledTimes(1)
+    expect(options.visibilityAwareTimeout).not.toHaveBeenCalled()
+    clipSpy.mockRestore()
+  })
+})
