@@ -61,9 +61,11 @@ function arrayLengthOf(value: unknown): number | undefined {
 // Narrow an unknown JSON.parse result into a SavedGameState whose board is a
 // length-81 number[] and candidates a length-81 array, so a malformed
 // localStorage entry fails here and falls through to the corruption log rather
-// than being trusted as typed data downstream.
+// than being trusted as typed data downstream. Only null needs an explicit
+// guard: on any other non-object JSON value the property reads below yield
+// undefined and the Array.isArray checks already reject it.
 function isValidSavedGameState(value: unknown): value is SavedGameState {
-  if (typeof value !== 'object' || value === null) return false
+  if (value === null) return false
   const v = value as { board?: unknown; candidates?: unknown }
   return (
     Array.isArray(v.board) &&
@@ -72,6 +74,53 @@ function isValidSavedGameState(value: unknown): value is SavedGameState {
     Array.isArray(v.candidates) &&
     v.candidates.length === TOTAL_CELLS
   )
+}
+
+// Storage key for a seed. Lives at module scope because it closes over nothing
+// from the component: it is referentially stable by construction, so callers
+// need no memoization to keep a stable identity.
+function getStorageKey(puzzleSeed: string): string {
+  const validation = validateSeed(puzzleSeed)
+  if (!validation.valid) {
+    throw new Error(`Cannot create storage key for invalid seed: ${validation.error}`)
+  }
+  return `${STORAGE_KEYS.GAME_STATE_PREFIX}${validation.seed}`
+}
+
+// Read and validate the saved state for a seed, or null if absent/corrupt.
+// Module scope for the same reason as getStorageKey.
+function loadSavedGameState(puzzleSeed: string): SavedGameState | null {
+  try {
+    // Resolve the storage key inside the try so an invalid seed honors the
+    // declared SavedGameState | null contract (returns null + logs) rather
+    // than throwing out of loadSavedGameState.
+    const storageKey = getStorageKey(puzzleSeed)
+    const saved = localStorage.getItem(storageKey)
+    if (!saved) return null
+
+    const parsed: unknown = JSON.parse(saved)
+    const extractedSeed = extractSeedFromStorageKey(storageKey)
+
+    if (!extractedSeed.valid) {
+      logger.error(
+        `[STORAGE ERROR] Cannot load game with invalid seed: ${puzzleSeed} (stored seed: ${extractedSeed.seed}, error: ${extractedSeed.error})`,
+      )
+      return null
+    }
+
+    if (isValidSavedGameState(parsed)) {
+      return parsed
+    }
+
+    const partial = parsed as { board?: unknown; candidates?: unknown } | null
+    logger.warn(
+      `[STORAGE ERROR] Corrupted saved state for seed: ${extractedSeed.seed} - board: ${arrayLengthOf(partial?.board)}, candidates: ${arrayLengthOf(partial?.candidates)}`,
+    )
+    return null
+  } catch (e) {
+    logger.error(`[STORAGE ERROR] Failed to load saved game for seed: ${puzzleSeed}`, e)
+    return null
+  }
 }
 
 /**
@@ -95,7 +144,7 @@ export function useGamePersistence({
   // isComplete at execution time, not closure time. The debounced save reads
   // this so a save that fires after completion records the completion flag even
   // if the React state update has not propagated into the effect closure.
-  const isCompleteRef = useRef(false)
+  const isCompleteRef = useRef(game.isComplete)
   // Active puzzle seed at execution time. Lets a stale debounced save detect
   // that the user has moved on to another puzzle and reject the write.
   const currentSeedRef = useRef<string | null>(null)
@@ -108,14 +157,6 @@ export function useGamePersistence({
   const hasSavedOnCompleteRef = useRef(false)
   // Set by the restore orchestration when a restored save is already solved.
   const restoredAsCompleteRef = useRef(false)
-
-  const getStorageKey = useCallback((puzzleSeed: string) => {
-    const validation = validateSeed(puzzleSeed)
-    if (!validation.valid) {
-      throw new Error(`Cannot create storage key for invalid seed: ${validation.error}`)
-    }
-    return `${STORAGE_KEYS.GAME_STATE_PREFIX}${validation.seed}`
-  }, [])
 
   const saveGameState = useCallback(() => {
     if (!puzzle || !hasRestoredSavedState.current) return
@@ -148,7 +189,6 @@ export function useGamePersistence({
     autoFillUsed,
     hintsUsed,
     techniqueHintsUsed,
-    getStorageKey,
   ])
 
   const clearSavedGameState = useCallback(() => {
@@ -159,44 +199,7 @@ export function useGamePersistence({
     } catch (e) {
       logger.warn('Failed to clear saved game state:', e)
     }
-  }, [puzzle, getStorageKey])
-
-  const loadSavedGameState = useCallback(
-    (puzzleSeed: string): SavedGameState | null => {
-      try {
-        // Resolve the storage key inside the try so an invalid seed honors the
-        // declared SavedGameState | null contract (returns null + logs) rather
-        // than throwing out of loadSavedGameState.
-        const storageKey = getStorageKey(puzzleSeed)
-        const saved = localStorage.getItem(storageKey)
-        if (!saved) return null
-
-        const parsed: unknown = JSON.parse(saved)
-        const extractedSeed = extractSeedFromStorageKey(storageKey)
-
-        if (!extractedSeed.valid) {
-          logger.error(
-            `[STORAGE ERROR] Cannot load game with invalid seed: ${puzzleSeed} (stored seed: ${extractedSeed.seed}, error: ${extractedSeed.error})`,
-          )
-          return null
-        }
-
-        if (isValidSavedGameState(parsed)) {
-          return parsed
-        }
-
-        const partial = parsed as { board?: unknown; candidates?: unknown } | null
-        logger.warn(
-          `[STORAGE ERROR] Corrupted saved state for seed: ${extractedSeed.seed} - board: ${arrayLengthOf(partial?.board)}, candidates: ${arrayLengthOf(partial?.candidates)}`,
-        )
-        return null
-      } catch (e) {
-        logger.error(`[STORAGE ERROR] Failed to load saved game for seed: ${puzzleSeed}`, e)
-        return null
-      }
-    },
-    [getStorageKey],
-  )
+  }, [puzzle])
 
   // Keep isCompleteRef in sync with game.isComplete for use in debounced callbacks
   useEffect(() => {
