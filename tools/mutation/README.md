@@ -1,11 +1,24 @@
-# Local mutation sweep instrument
+# Mutation instruments
 
-Fast local iteration tooling for closing Go mutation escapes, built and
-calibrated during the MUT-6 campaign that took `dp`, `human` and all 22
-techniques shards to zero escapes. The honest, gating measurement remains
-`make mutation-go` / CI; this directory exists because that measurement costs
-~32s per mutant, which makes a 200-mutant file a two-hour wait per iteration.
-The instrument here turns that into minutes without sacrificing soundness.
+Two instruments share this directory, and they share one hazard.
+
+**The local sweep** (`sweep.sh`, `confirm.py`, `runmut.sh`) is fast iteration
+tooling for closing Go mutation escapes, built and calibrated during the MUT-6
+campaign that took `dp`, `human` and all 22 techniques shards to zero escapes.
+The honest, gating measurement remains `make mutation-go` / CI; this exists
+because that measurement costs ~32s per mutant, which makes a 200-mutant file a
+two-hour wait per iteration. The sweep turns that into minutes without
+sacrificing soundness.
+
+**The CI kill audit** (`ci-exec.sh`, `audit-summary.sh`, `calibrate-ci-exec.sh`)
+records why each mutant died during the nightly run, so a kill the memory cap
+produced can be told from one a test earned. See
+[The CI kill audit](#the-ci-kill-audit).
+
+The shared hazard is that both are `--exec` scripts, and go-mutesting reads an
+exec script's exit code as the verdict itself. An inverted contract does not
+error; it produces confident, wrong numbers. [Calibration](#calibration) governs
+both for that reason.
 
 The floors these sweeps feed live in `api/mutation-floors.json`; how they are
 raised (and why hand edits are forbidden) is documented in that file's
@@ -43,15 +56,159 @@ over-approximation property.
 
 ## Calibration
 
-`runmut.sh` implements the exec contract: **exit 0 is recorded KILLED, exit 1
-is recorded ESCAPED.** Never trust a harness variant without calibrating both
-directions first:
+`runmut.sh` and `ci-exec.sh` both implement the exec contract, which
+`cmd/go-mutesting/main.go` reads straight off the exit code with no mapping:
+**exit 0 is recorded KILLED, exit 1 is recorded ESCAPED, exit 2 is recorded
+SKIPPED, anything else is recorded ERRORED.** Never trust a harness variant
+without calibrating both directions first:
 
 - Run it on the unmutated file: it must report SURVIVED. A harness that
   cannot fail invents kills (see Hazards).
 - Gut the scope's entry point (`return nil` first line) and run it: it must
   report KILLED. `--exec=/bin/true` also serves as a generation-only control
   and mutant counter (~6s for a whole file).
+
+For `ci-exec.sh` this is automated: `calibrate-ci-exec.sh` drives all four
+directions in about ten seconds and refuses to pass on any one of them. Run it
+after every edit to that script. Calibrating only the kill direction is the
+dangerous half-measure, because a harness that can only report kills reads as a
+perfect score.
+
+## The CI kill audit
+
+`ci-exec.sh` is the `--exec` script the nightly workflow's `go-mutation` and
+`techniques-mutation` jobs run. It answers a question the reports could not:
+**how many of the reported kills did a test actually earn?**
+
+CI caps address space (`ulimit -v`, `MUTATION_ADDRESS_SPACE_KB`) so that a
+mutant turning a bounded loop into unbounded allocation dies alone instead of
+taking the runner down with it. Such a mutant exits non-zero, and go-mutesting
+scores any non-zero exit as a kill, so a cap kill and an assertion kill are the
+same event as far as the score is concerned. The reports cannot settle it
+afterwards: all 4,692 killed entries across the 24 reports of run 31276617045
+carry only go-mutesting's own `PASS` line in `processOutput`, and the `go test`
+output is discarded. The audit therefore has to be built where that output still
+exists, which is the exec layer.
+
+One line per mutant is appended to `$MUTATION_AUDIT_LOG`, which the workflow
+points inside the directory it already uploads, so the audit rides along with
+the report and costs no new artifact. The fields are
+`<verdict> <source-file>:<line> <mutation-file> <seconds> <evidence>`, and the
+mutation file is the same path go-mutesting writes into that mutant's
+`processOutput`, which is what lets a log line and a report entry be joined:
+
+| Verdict | Exit | Recorded as | Meaning |
+|---------|------|-------------|---------|
+| `KILLED-TEST` | 0 | killed | a test asserted the difference |
+| `KILLED-CRASH` | 0 | killed | the mutant panicked, a real behaviour change |
+| `KILLED-OOM` | 0 | killed | the cap ended it and no test caught it |
+| `KILLED-TIMEOUT` | 0 | killed | it outlived `--exec-timeout`, no test caught it |
+| `KILLED-UNCLASSIFIED` | 0 | killed | killed for a reason the script does not recognise |
+| `SURVIVED` | 1 | escaped | an escape |
+| `SKIPPED-NOCOMPILE` | 2 | skipped | never compiled, out of the denominator |
+| `SKIPPED-NOCOMPILE-OOM` | 2 | skipped | the cap stopped the compile |
+
+Each log sits beside the `report.json` it describes, as
+`reports/mutation/internal-sudoku-dp/audit.log` and
+`reports/mutation/techniques-shard-aic/audit.log`, so it needs no artifact of
+its own. Answering the audit question is one grep over the downloaded artifacts:
+
+```sh
+grep -c '^KILLED-OOM ' reports/mutation/*/audit.log
+```
+
+The verdict lines start at column zero and the raw tails are indented, so the
+count is exact. `audit-summary.sh` prints the whole table into the run summary
+as well, which is what makes an unearned kill visible to somebody who was not
+already looking for one.
+
+A test failure outranks an allocation failure. If an assertion already caught
+the mutant, the cap did not need to, and the kill is genuine whether or not a
+later test also exhausted memory; that case stays visible through an `oom=yes`
+flag on the `KILLED-TEST` line rather than a separate bucket.
+
+**Nothing is bucketed as genuine by assumption.** The OOM patterns are matched,
+not guessed: `runtime: out of memory` and `fatal error: out of memory` are the
+measured output of the known AIC dequeue runaway under the cap on go1.26, and
+the script also matches the other shapes the same condition takes (a cap blocks
+thread creation as well as allocation, and a cgroup or the kernel OOM killer
+sends SIGKILL, which `go test` reports as `signal: killed`). A kill matching
+none of the patterns is recorded as `KILLED-UNCLASSIFIED` with the last 25 lines
+of its output indented behind `  | `, so it can be diagnosed without re-running
+anything.
+
+### What the exec path costs
+
+go-mutesting's exec path is not its built-in path with a hook added. It is a
+different path that skips work the built-in one does, and every omission below
+corrupts scores if the wrapper does not carry it:
+
+- **The compile probe.** `api/patches/go-mutesting-v2.3.1-compile-probe.patch`
+  teaches the *built-in* runner that a mutant which does not compile is skipped
+  rather than killed. That patch does not run on the exec path. `ci-exec.sh`
+  runs the same `go test -c -o /dev/null` before the suite; without it the
+  defect the patch fixed returns in full, and the patch header measured that at
+  11.07% of `dp` mutants, 16.99% of `human` and ~9.07% of techniques.
+- **The per-mutant timeout.** `--exec-timeout` is applied only by the built-in
+  runner; the exec path carries a literal `TODO timeout here` where the budget
+  would be. The wrapper hands `MUTATE_TIMEOUT`, which carries the same value, to
+  `go test -timeout`.
+- **The file swap.** go-mutesting does not apply the mutant on this path, so
+  the wrapper copies it over the original and restores on every exit path.
+
+The genuine cost, paid knowingly: `report.json` entries lose `diff` and
+`originalStartLine`, which only the built-in runner fills in. Nothing gates on
+either (`mutation_floors.py` and `mutation_aggregate.py` read only the `stats`
+counts), the complete `originalSourceCode` and `mutatedSourceCode` are still
+recorded so a diff is reconstructable, and the audit log carries `file:line` for
+every mutant including the survivors. The information moved; it did not
+disappear.
+
+### Calibration and the control, as measured
+
+Two things had to be shown before this wrapper was allowed near a score, and
+both are re-runnable:
+
+1. **The contract, in all four directions.** `calibrate-ci-exec.sh` asserts the
+   exit code *and* the verdict for an unmutated file, a gutted entry point, a
+   non-compiling mutant, and a runaway allocation, then asserts the original
+   file was restored.
+2. **The same-code control.** go-mutesting run twice over identical source,
+   once with its built-in runner exactly as CI invokes it and once through the
+   wrapper. The stats must be identical, because a wrapper that changes a score
+   is a wrapper that broke something.
+
+Measured on go1.26.4 under `ulimit -v 3000000`, built-in runner against
+`ci-exec.sh` over identical source:
+
+| Control | total | killed | escaped | skipped |
+|---------|------:|-------:|--------:|--------:|
+| `internal/mutationfixture/compileprobe` | 4 = 4 | 1 = 1 | 1 = 1 | 2 = 2 |
+| `pkg/config` | 7 = 7 | 3 = 3 | 4 = 4 | 0 = 0 |
+
+Small controls, chosen so that between them every verdict is exercised. The
+fixture is the load-bearing one despite being four mutants: its two skipped
+mutants are the only evidence that the compile probe survived the move onto the
+exec path, and a control where everything is killed cannot show that.
+`pkg/config` supplies the escapes, which is the direction a broken harness fails
+silently in.
+
+**What these controls do not cover, stated so nobody assumes otherwise.** Both
+run against fast suites. No gated scope (`dp`, `human`, or a techniques shard)
+has been controlled end to end locally, because each costs hours at roughly a
+minute or more per mutant. The first nightly run is therefore the real control:
+compare its per-scope killed and escaped counts against the previous run's on
+unchanged code, and treat any movement as a wrapper defect until proven
+otherwise, not as a code regression. The floors are all at 100, so any
+regression this could introduce would red the gate rather than pass silently,
+which is the safe direction for an unproven change.
+
+`make mutation-go` still uses the built-in runner, so the local gate and the CI
+gate now reach their identical verdicts by different routes. That asymmetry is
+deliberate (a local run keeps the richer `diff` and `originalStartLine` in its
+report) and it is exactly what the control above exists to keep honest. Re-run
+both checks after any edit to `ci-exec.sh`; the local sweep's own harness,
+`runmut.sh`, is unaffected by all of this.
 
 ## Isolation
 
