@@ -50,11 +50,11 @@ export interface UseShareConflictReturn {
 }
 
 // Parse a shared `t` elapsed-time param into positive milliseconds, or null.
+// An absent param stringifies to "null" and an empty one to "", both of which
+// parseInt reports as NaN, so the finite/positive check is the single gate that
+// every rejected input falls through to.
 function parseSharedElapsedMs(sharedTimeParam: string | null): number | null {
-  if (!sharedTimeParam) {
-    return null
-  }
-  const ms = parseInt(sharedTimeParam, 10)
+  const ms = parseInt(String(sharedTimeParam), 10)
   return Number.isFinite(ms) && ms > 0 ? ms : null
 }
 

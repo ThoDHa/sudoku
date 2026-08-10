@@ -33,6 +33,18 @@ function setLocation(href: string): void {
   window.history.replaceState({}, '', href)
 }
 
+function makeSavedGame(history: SavedGameState['history']): SavedGameState {
+  return {
+    board: [1],
+    candidates: [],
+    elapsedMs: 0,
+    history,
+    autoFillUsed: false,
+    savedAt: 0,
+    difficulty: 'easy',
+  } as unknown as SavedGameState
+}
+
 function buildOptions(overrides: Partial<UseShareConflictOptions> = {}): UseShareConflictOptions {
   return {
     game: { restoreState: vi.fn() } as unknown as UseShareConflictOptions['game'],
@@ -68,6 +80,26 @@ describe('useShareConflict', () => {
     setLocation(BASE_URL)
     sessionStorage.clear()
     vi.clearAllMocks()
+  })
+
+  describe('initial state', () => {
+    it('opens with the modal closed, nothing pending, and no current game recorded', () => {
+      const { result } = renderHook(() => useShareConflict(buildOptions()))
+
+      expect({
+        showShareConflict: result.current.showShareConflict,
+        pendingSharedState: result.current.pendingSharedState,
+        resumeTarget: result.current.resumeTarget,
+        shareHasCurrentGame: result.current.shareHasCurrentGame,
+        shareResolved: result.current.shareResolvedRef.current,
+      }).toEqual({
+        showShareConflict: false,
+        pendingSharedState: null,
+        resumeTarget: null,
+        shareHasCurrentGame: false,
+        shareResolved: false,
+      })
+    })
   })
 
   describe('applySharedBoard', () => {
@@ -131,10 +163,31 @@ describe('useShareConflict', () => {
 
     it('returns early without touching the URL when neither s nor t is present', () => {
       setLocation(`${BASE_URL}?foo=bar`)
-      const { result } = renderHook(() => useShareConflict(buildOptions()))
-      act(() => result.current.consumeShareParams())
-      // URL is unchanged because the early-return path skips replaceState.
-      expect(window.location.href).toBe(`${BASE_URL}?foo=bar`)
+      const replaceStateSpy = vi.spyOn(window.history, 'replaceState')
+      try {
+        const { result } = renderHook(() => useShareConflict(buildOptions()))
+        act(() => result.current.consumeShareParams())
+        // The early return must skip replaceState outright: pushing an
+        // equivalent URL would still rewrite the history entry for nothing.
+        expect(replaceStateSpy).not.toHaveBeenCalled()
+        expect(window.location.href).toBe(`${BASE_URL}?foo=bar`)
+      } finally {
+        replaceStateSpy.mockRestore()
+      }
+    })
+
+    it('replaces state with the preserved history state, an empty title, and the stripped URL', () => {
+      setLocation(`${BASE_URL}?s=abc&t=1000`)
+      const replaceStateSpy = vi.spyOn(window.history, 'replaceState')
+      try {
+        const { result } = renderHook(() => useShareConflict(buildOptions()))
+        act(() => result.current.consumeShareParams())
+        // The empty title keeps the document title untouched, and the existing
+        // history state is carried across rather than dropped.
+        expect(replaceStateSpy.mock.calls).toEqual([[window.history.state, '', BASE_URL]])
+      } finally {
+        replaceStateSpy.mockRestore()
+      }
     })
   })
 
@@ -212,18 +265,7 @@ describe('useShareConflict', () => {
 
     it('keeps the current game (no navigate) when the recipient has this-puzzle progress', () => {
       const opts = buildOptions({
-        loadSavedGameState: vi.fn(
-          () =>
-            ({
-              board: [1],
-              candidates: [],
-              elapsedMs: 0,
-              history: [{ idx: 0, prev: 0, next: 5 }],
-              autoFillUsed: false,
-              savedAt: 0,
-              difficulty: 'easy',
-            }) as unknown as SavedGameState,
-        ),
+        loadSavedGameState: vi.fn(() => makeSavedGame([{ idx: 0, prev: 0, next: 5 }])),
       })
       const { result } = renderHook(() => useShareConflict(opts))
 
@@ -294,6 +336,23 @@ describe('useShareConflict', () => {
       expect(opts.timerControl.startTimer).not.toHaveBeenCalled()
     })
 
+    it('clears shareHasCurrentGame once the recipient discards their own progress', () => {
+      isValidSolutionMock.mockReturnValue(false)
+      const opts = buildOptions({
+        loadSavedGameState: vi.fn(() => makeSavedGame([{ idx: 0, prev: 0, next: 5 }])),
+      })
+      const { result } = renderHook(() => useShareConflict(opts))
+
+      act(() => result.current.restoreOrPromptSharedState([1], null, 'myseed'))
+      expect(result.current.shareHasCurrentGame).toBe(true)
+
+      act(() => result.current.handleStartFromShared())
+
+      // The kept game was just overwritten by the shared board, so the flag
+      // that drives the "Resume current game" button must go back down.
+      expect(result.current.shareHasCurrentGame).toBe(false)
+    })
+
     it('skips applySharedBoard entirely when no pendingSharedState is set', () => {
       const opts = buildOptions()
       const { result } = renderHook(() => useShareConflict(opts))
@@ -321,18 +380,7 @@ describe('useShareConflict', () => {
 
     it('classifies a same-puzzle save (history non-empty) as no-resume-target with a current game', () => {
       const opts = buildOptions({
-        loadSavedGameState: vi.fn(
-          () =>
-            ({
-              board: [1],
-              candidates: [],
-              elapsedMs: 0,
-              history: [{ idx: 0, prev: 0, next: 5 }],
-              autoFillUsed: false,
-              savedAt: 0,
-              difficulty: 'easy',
-            }) as unknown as SavedGameState,
-        ),
+        loadSavedGameState: vi.fn(() => makeSavedGame([{ idx: 0, prev: 0, next: 5 }])),
       })
       const { result } = renderHook(() => useShareConflict(opts))
 
@@ -340,6 +388,19 @@ describe('useShareConflict', () => {
 
       expect(result.current.resumeTarget).toBeNull()
       expect(result.current.shareHasCurrentGame).toBe(true)
+      expect(result.current.showShareConflict).toBe(true)
+    })
+
+    it('treats a same-puzzle save with an empty history as no progress worth keeping', () => {
+      // A save exists but the recipient has not placed a single digit, so there
+      // is nothing to resume: only a non-empty history counts as progress.
+      const opts = buildOptions({ loadSavedGameState: vi.fn(() => makeSavedGame([])) })
+      const { result } = renderHook(() => useShareConflict(opts))
+
+      act(() => result.current.restoreOrPromptSharedState([1], null, 'myseed'))
+
+      expect(result.current.shareHasCurrentGame).toBe(false)
+      expect(result.current.resumeTarget).toBeNull()
       expect(result.current.showShareConflict).toBe(true)
     })
 
