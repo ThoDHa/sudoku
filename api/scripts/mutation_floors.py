@@ -14,9 +14,12 @@ full procedure lives in the `_ratchet` block of mutation-floors.json.
 
 An unmeasured shard carries a null floor. The gate prints it as UNSET and does
 not enforce it, so a shard nobody has measured can never be mistaken for a shard
-that passed. The three package scopes may NOT be null: nulling a floor disarms
-its gate without reading as a number going down, which would be a cheaper way to
-surrender ground than lowering one, so a test refuses it.
+that passed. No package scope may be null: nulling a floor disarms its gate
+without reading as a number going down, which would be a cheaper way to
+surrender ground than lowering one, so a test refuses it. A package scope is
+therefore added to PACKAGE_PKGS only once a run has measured it, and a null
+entry there is a transient state that exists only between seeding the scope and
+the `propose` that fills it in.
 
 Usage:
     mutation_floors.py packages [--pkg-paths]
@@ -52,7 +55,16 @@ TECHNIQUES_LABEL = "./internal/sudoku/human/techniques"
 # what gets mutated: api/Makefile's mutation-go loop and mutation-gate both read
 # it through the `packages` subcommand rather than repeating the list, and a
 # test requires the nightly's go-mutation matrix to agree with it.
+#
+# ./internal/core is deliberately absent. It generates zero mutants (models.go
+# declares types and nothing else), and a report with an empty denominator is
+# rejected as untrustworthy by `measure`, so listing it would fail the gate for
+# a package that has nothing to gate.
 PACKAGE_PKGS = {
+    "config": "./pkg/config",
+    "constants": "./pkg/constants",
+    "puzzles": "./internal/puzzles",
+    "diagnosis": "./internal/sudoku/diagnosis",
     "dp": "./internal/sudoku/dp",
     "human": "./internal/sudoku/human",
     "techniques": TECHNIQUES_LABEL,

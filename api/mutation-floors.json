@@ -1,5 +1,5 @@
 {
-  "_comment": "Canonical Go mutation efficacy floors (percent). Single source of truth, read at gate time by api/scripts/mutation_floors.py and at report time by .github/scripts/gen_report_portal.py. api/Makefile and .github/workflows/nightly-mutation.yml read this file rather than mirroring it, so no floor literal exists outside it; gen_report_portal_test.py guards that property. Floors are raised by 'python3 scripts/mutation_floors.py propose', which can only ever raise. A null shard floor means unmeasured: the gate reports it as UNSET and does not enforce it. The three entries under 'floors' may NOT be null, because nulling one disarms its gate without reading as a number going down; a test refuses it. transport/http is a dev-only harness (ARCH-2) and carries no production mutation floor.",
+  "_comment": "Canonical Go mutation efficacy floors (percent). Single source of truth, read at gate time by api/scripts/mutation_floors.py and at report time by .github/scripts/gen_report_portal.py. api/Makefile and .github/workflows/nightly-mutation.yml read this file rather than mirroring it, so no floor literal exists outside it; gen_report_portal_test.py guards that property. Floors are raised by 'python3 scripts/mutation_floors.py propose', which can only ever raise. A null shard floor means unmeasured: the gate reports it as UNSET and does not enforce it. No entry under 'floors' may be null, because nulling one disarms its gate without reading as a number going down; a test refuses it. Two Go packages carry no floor here, for opposite reasons. transport/http is a dev-only harness (ARCH-2) and carries no production mutation floor. internal/core generates zero mutants at all: models.go declares types and nothing else, so it is structurally empty rather than excluded, and listing it would fail the gate, which rejects an empty denominator as a run that measured nothing. The four cmd/ mains (generate, generate_practice, server, wasm) are thin wiring from flags to library calls with no package suite of their own; they are exercised end to end by the Makefile's generate targets, so a package-level floor would have nothing to enforce against.",
   "_ratchet": [
     "How a floor is raised. Never edit a number in this file by hand; edit it by measuring.",
     "1. Get a completed run. Locally: 'make mutation-go'. From CI: download the nightly artifacts, which unpack to shards/mutation-go-techniques-shard-<name>/...",
@@ -11,6 +11,10 @@
     "Lowering a floor is deliberate, manual, and needs a stated reason in its 'sources' note. A floor with no 'sources' entry is refused by the gate rather than enforced, so a number cannot arrive here without an origin. Precedent for why this is guarded: commit bd2f8d5 lowered the techniques floor to 99.9 for 'residual-flakiness headroom' and had to be reverted by e5e10c6."
   ],
   "floors": {
+    "config": 100.0,
+    "constants": 100.0,
+    "puzzles": 100.0,
+    "diagnosis": 100.0,
     "dp": 100.0,
     "human": 100,
     "techniques": 100.0
@@ -189,6 +193,30 @@
       "run": "31256468220",
       "recorded": "2026-08-08",
       "note": "Raised from the MUT-6 closure run at 8bb61a8, in which every techniques shard, dp and human measured zero escapes."
+    },
+    "config": {
+      "measured": 100.0,
+      "run": null,
+      "recorded": "2026-08-10",
+      "note": "First floor for this scope, from MUT-8-5. Measured locally at 705b82c in a dedicated git worktree per tools/mutation/README.md, under --exec-timeout 300 and ulimit -v 3000000, the settings the nightly uses. Raised to the lower of two consecutive full sweeps of the package, which reported identical counts. No CI run has measured this scope yet: the nightly's floors-lag-check corroborates against the dp and human artifacts only, so it will not re-propose these until its download patterns cover them."
+    },
+    "constants": {
+      "measured": 100.0,
+      "run": null,
+      "recorded": "2026-08-10",
+      "note": "First floor for this scope, from MUT-8-5. Measured locally at 705b82c in a dedicated git worktree per tools/mutation/README.md, under --exec-timeout 300 and ulimit -v 3000000, the settings the nightly uses. Raised to the lower of two consecutive full sweeps of the package, which reported identical counts. No CI run has measured this scope yet: the nightly's floors-lag-check corroborates against the dp and human artifacts only, so it will not re-propose these until its download patterns cover them."
+    },
+    "puzzles": {
+      "measured": 100.0,
+      "run": null,
+      "recorded": "2026-08-10",
+      "note": "First floor for this scope, from MUT-8-5. Measured locally at 705b82c in a dedicated git worktree per tools/mutation/README.md, under --exec-timeout 300 and ulimit -v 3000000, the settings the nightly uses. Raised to the lower of two consecutive full sweeps of the package, which reported identical counts. No CI run has measured this scope yet: the nightly's floors-lag-check corroborates against the dp and human artifacts only, so it will not re-propose these until its download patterns cover them."
+    },
+    "diagnosis": {
+      "measured": 100.0,
+      "run": null,
+      "recorded": "2026-08-10",
+      "note": "First floor for this scope, from MUT-8-5. Measured locally at 705b82c in a dedicated git worktree per tools/mutation/README.md, under --exec-timeout 300 and ulimit -v 3000000, the settings the nightly uses. Raised to the lower of two consecutive full sweeps of the package, which reported identical counts. No CI run has measured this scope yet: the nightly's floors-lag-check corroborates against the dp and human artifacts only, so it will not re-propose these until its download patterns cover them."
     }
   }
 }

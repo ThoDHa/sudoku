@@ -216,7 +216,10 @@ jobs:
           name: mutation-frontend-hooks-${{ matrix.shard }}
           path: frontend/reports/mutation/mutation.json
           retention-days: 30
-          if-no-files-found: warn
+          # error, not warn: a shard that produced no report should fail here,
+          # at the shard that lost it, rather than one layer later as an
+          # --expected shortfall in the aggregate that has to infer which.
+          if-no-files-found: error
 
   # Combine the 7 per-hook shard reports into one efficacy number and gate it,
   # exactly as a single unsharded run would. Fails loudly (exit 2) if any shard
@@ -255,6 +258,26 @@ jobs:
         include:
           # No floor here: the gate step reads api/mutation-floors.json, which
           # is the single source of truth the Makefile also reads (MUT-6-1).
+          # This list must match PACKAGE_PKGS in api/scripts/mutation_floors.py
+          # minus `techniques`, which is sharded by the job below; a test in
+          # api/scripts/mutation_floors_test.py enforces that.
+          #
+          # The four small packages carry a 60-minute cap rather than dp and
+          # human's 360: their suites run in well under a second and their
+          # whole surface is 180 mutants between them, so an hour is already
+          # several times the observed cost.
+          - name: config
+            pkg: ./pkg/config
+            timeout: 60
+          - name: constants
+            pkg: ./pkg/constants
+            timeout: 60
+          - name: puzzles
+            pkg: ./internal/puzzles
+            timeout: 60
+          - name: diagnosis
+            pkg: ./internal/sudoku/diagnosis
+            timeout: 60
           - name: dp
             pkg: ./internal/sudoku/dp
             timeout: 360
