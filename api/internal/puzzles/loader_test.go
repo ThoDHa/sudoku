@@ -70,7 +70,13 @@ func TestLoad_ValidFile(t *testing.T) {
 func TestLoad_NonExistentFile(t *testing.T) {
 	_, err := Load("/nonexistent/path/puzzles.json")
 	if err == nil {
-		t.Error("Load() should fail for non-existent file")
+		t.Fatal("Load() should fail for non-existent file")
+	}
+	// Naming the stage matters: without the read check, Load would hand nil
+	// bytes to the JSON decoder and report a parse failure for a file it never
+	// opened, which sends a reader looking for corruption instead of a path.
+	if !strings.Contains(err.Error(), "failed to read puzzle file") {
+		t.Errorf("expected a read failure, got: %v", err)
 	}
 }
 
@@ -216,6 +222,58 @@ func TestGetPuzzle_IndexOutOfBounds(t *testing.T) {
 	}
 }
 
+// validPuzzleJSON holds two puzzles, so the only legal indices are 0 and 1 and
+// the first illegal one is 2. Both facts are load-bearing below: a bound is
+// invisible until a fixture lands exactly on it, and the advertised range in
+// the error message is the only place the bound is stated to a caller.
+func TestGetPuzzle_RejectsTheIndexOnePastTheLastPuzzle(t *testing.T) {
+	path := createTempPuzzleFile(t, validPuzzleJSON)
+	loader, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() failed: %v", err)
+	}
+
+	cases := []struct {
+		name    string
+		index   int
+		wantErr string
+	}{
+		{"first index past the end", 2, "puzzle index 2 out of range (0-1)"},
+		{"far past the end", 100, "puzzle index 100 out of range (0-1)"},
+		{"negative", -1, "puzzle index -1 out of range (0-1)"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			givens, solution, err := loader.GetPuzzle(tc.index, "easy")
+			if err == nil {
+				t.Fatalf("GetPuzzle(%d) should fail", tc.index)
+			}
+			if got := err.Error(); got != tc.wantErr {
+				t.Errorf("GetPuzzle(%d) error = %q, want %q", tc.index, got, tc.wantErr)
+			}
+			if givens != nil || solution != nil {
+				t.Errorf("GetPuzzle(%d) should return no puzzle data on error", tc.index)
+			}
+		})
+	}
+}
+
+func TestGetPuzzle_GivensIndexErrorNamesTheCellRange(t *testing.T) {
+	validSolution := "157924638362158974498736512531279486926483157784615293273561849619847325845392761"
+	loader := NewLoaderFromPuzzles([]CompactPuzzle{
+		{S: validSolution, G: map[string][]int{"e": {0, constants.TotalCells}}},
+	})
+
+	_, _, err := loader.GetPuzzle(0, "easy")
+	if err == nil {
+		t.Fatal("GetPuzzle() should fail for a givens index past the last cell")
+	}
+	want := "puzzle index 0: givens index 81 out of range (0-80)"
+	if got := err.Error(); got != want {
+		t.Errorf("GetPuzzle() error = %q, want %q", got, want)
+	}
+}
+
 func TestGetPuzzle_UnknownDifficulty(t *testing.T) {
 	path := createTempPuzzleFile(t, validPuzzleJSON)
 	loader, err := Load(path)
@@ -225,7 +283,13 @@ func TestGetPuzzle_UnknownDifficulty(t *testing.T) {
 
 	_, _, err = loader.GetPuzzle(0, "nightmare")
 	if err == nil {
-		t.Error("GetPuzzle() should fail for unknown difficulty")
+		t.Fatal("GetPuzzle() should fail for unknown difficulty")
+	}
+	// A difficulty with no compact key and a puzzle missing a difficulty it
+	// does have a key for are different faults with different fixes, and
+	// skipping the key check turns the first silently into the second.
+	if got, want := err.Error(), "unknown difficulty: nightmare"; got != want {
+		t.Errorf("GetPuzzle() error = %q, want %q", got, want)
 	}
 }
 
@@ -390,9 +454,70 @@ func TestGetPuzzleBySeed_DifferentSeeds(t *testing.T) {
 func TestGetPuzzleBySeed_EmptyLoader(t *testing.T) {
 	loader := NewLoaderFromPuzzles([]CompactPuzzle{})
 
-	_, _, _, err := loader.GetPuzzleBySeed("any-seed", "easy")
+	givens, solution, idx, err := loader.GetPuzzleBySeed("any-seed", "easy")
 	if err == nil {
-		t.Error("GetPuzzleBySeed() should fail with no puzzles loaded")
+		t.Fatal("GetPuzzleBySeed() should fail with no puzzles loaded")
+	}
+	// Callers read the index alongside the error; a negative or positive
+	// sentinel here would be indexed straight into an empty puzzle list.
+	if idx != 0 {
+		t.Errorf("expected index 0 alongside the error, got %d", idx)
+	}
+	if givens != nil || solution != nil {
+		t.Error("expected no puzzle data alongside the error")
+	}
+}
+
+// seedIndexFixtureSize is the number of puzzles behind the seed-mapping tests.
+// The two-puzzle fixture used elsewhere is too small to see a hash through: any
+// mapping, including a constant one, lands on 0 or 1, so half the wrong answers
+// look right. Sixteen slots spread the expected indices far enough apart that a
+// seed reaching the wrong one is unambiguous.
+const seedIndexFixtureSize = 16
+
+func newSeedIndexLoader() *Loader {
+	const validSolution = "157924638362158974498736512531279486926483157784615293273561849619847325845392761"
+	puzzles := make([]CompactPuzzle, seedIndexFixtureSize)
+	for i := range puzzles {
+		puzzles[i] = CompactPuzzle{S: validSolution, G: map[string][]int{"e": {0}}}
+	}
+	return NewLoaderFromPuzzles(puzzles)
+}
+
+// TestGetPuzzleBySeed_MapsSeedsToTheirFnvIndices pins the seed-to-index mapping
+// itself. Clients are handed a seed and expect the puzzle it names, so the
+// mapping is part of the contract rather than an implementation detail: a seed
+// that stops reaching the hash, or an index that stops being derived from it,
+// silently serves everyone the same puzzle.
+func TestGetPuzzleBySeed_MapsSeedsToTheirFnvIndices(t *testing.T) {
+	loader := newSeedIndexLoader()
+
+	// FNV-1a of the seed, modulo the puzzle count.
+	cases := []struct {
+		seed      string
+		wantIndex int
+	}{
+		{"seed-alpha", 5},
+		{"seed-beta", 9},
+		{"seed-gamma", 8},
+		{"seed-delta", 3},
+	}
+	seen := make(map[int]string, len(cases))
+	for _, tc := range cases {
+		t.Run(tc.seed, func(t *testing.T) {
+			_, _, idx, err := loader.GetPuzzleBySeed(tc.seed, "easy")
+			if err != nil {
+				t.Fatalf("GetPuzzleBySeed(%q) failed: %v", tc.seed, err)
+			}
+			if idx != tc.wantIndex {
+				t.Errorf("GetPuzzleBySeed(%q) index = %d, want %d", tc.seed, idx, tc.wantIndex)
+			}
+		})
+		if prev, dup := seen[tc.wantIndex]; dup {
+			t.Errorf("fixture is not discriminating: seeds %q and %q expect the same index %d",
+				prev, tc.seed, tc.wantIndex)
+		}
+		seen[tc.wantIndex] = tc.seed
 	}
 }
 
