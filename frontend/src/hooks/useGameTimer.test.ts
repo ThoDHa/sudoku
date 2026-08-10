@@ -394,7 +394,11 @@ describe('useGameTimer', () => {
   })
 
   // FUNCTION STABILITY TESTS
-  describe('Function Stability', () => {
+  // RC-dependent: useGameTimer declares these as plain arrow functions (FE-7
+  // removed its useCallback wrappers), so their identity across a rerender is
+  // the React Compiler's memoization. Stryker sets VITE_SKIP_RC=1, which turns
+  // RC off, and instrumentation would defeat the memoization regardless.
+  describe.skipIf(process.env['VITE_SKIP_RC'])('Function Stability', () => {
     it('provides stable function references across rerenders', () => {
       const backgroundManager = createMockBackgroundManager()
       const { result, rerender } = renderHook(() => useGameTimer({ backgroundManager }))
@@ -405,7 +409,7 @@ describe('useGameTimer', () => {
 
       rerender()
 
-      // Functions should be stable (useCallback)
+      // Functions should be stable (React Compiler memoization)
       expect(result.current.startTimer).toBe(startTimer1)
       expect(result.current.pauseTimer).toBe(pauseTimer1)
       expect(result.current.resetTimer).toBe(resetTimer1)

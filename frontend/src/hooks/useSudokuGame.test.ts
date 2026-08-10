@@ -1383,7 +1383,12 @@ describe('useSudokuGame - Edge Cases', () => {
     expect(result.current.board[32]).toBe(5)
   })
 
-  it('maintains stable function references', () => {
+  // RC-dependent: these handlers have no manual useCallback (FE-7), so their
+  // identity across a rerender is the React Compiler's memoization. Under
+  // VITE_SKIP_RC=1 RC is off and the identities change every render. Stryker
+  // sets that flag because its instrumentation defeats RC memoization anyway,
+  // so the assertion would be about a build the product never ships.
+  it.skipIf(process.env['VITE_SKIP_RC'])('maintains stable function references', () => {
     const puzzle = createEmptyPuzzle()
     const { result, rerender } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
 
@@ -1693,9 +1698,10 @@ describe('useSudokuGame - Given Cells Behavior', () => {
 
 describe('useSudokuGame - Memoization', () => {
   // RC-dependent: the whole-return-object identity assertion holds only when
-  // the React Compiler is firing (test:unit). Under VITE_SKIP_RC=1 (coverage)
-  // RC is off and the manual return useMemo has been removed (FE-7), so the
-  // object is recreated each render. The state-change test below still runs.
+  // the React Compiler is firing, which is every run except Stryker's. With
+  // VITE_SKIP_RC=1 RC is off and the manual return useMemo has been removed
+  // (FE-7), so the object is recreated each render. The state-change test
+  // below still runs.
   it.skipIf(process.env['VITE_SKIP_RC'])('memoizes return object correctly', () => {
     const puzzle = createEmptyPuzzle()
     const { result, rerender } = renderHook(() => useSudokuGame({ initialBoard: puzzle }))
