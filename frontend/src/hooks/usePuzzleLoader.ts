@@ -29,15 +29,18 @@ interface ResolvedPuzzle {
   initialCandidates: number[][] | null
 }
 
+const INVALID_LINK_MESSAGE = 'Invalid puzzle link. The puzzle could not be decoded.'
+
 // Read a givens array previously written with JSON.stringify(number[]). Narrows
 // the parsed value to an integer array in digit range (0..MAX_DIGIT, where 0 is
 // an empty cell) so a corrupted localStorage entry fails here instead of being
-// passed to the solver as an untyped value.
+// passed to the solver as an untyped value. Number.isInteger is false for every
+// non-number, so it carries the type check as well as the integer check.
 function parseStoredGivens(raw: string): number[] {
   const parsed: unknown = JSON.parse(raw)
   if (
     !Array.isArray(parsed) ||
-    !parsed.every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= MAX_DIGIT)
+    !parsed.every((n) => Number.isInteger(n) && n >= 0 && n <= MAX_DIGIT)
   ) {
     throw new Error('Stored puzzle data is malformed')
   }
@@ -86,7 +89,7 @@ async function resolveEncodedCustom(
   if (encoded.startsWith('e') || encoded.startsWith('c')) {
     const decoded = decodePuzzleWithState(encoded)
     if (!decoded) {
-      throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
+      throw new Error(INVALID_LINK_MESSAGE)
     }
     givens = decoded.givens
     initialState = decoded.board
@@ -94,14 +97,18 @@ async function resolveEncodedCustom(
       initialCandidates = decoded.candidates
     }
   } else {
+    // The length check lives outside the try so its failure message is the one
+    // callers see, rather than being swallowed and rethrown by the catch.
+    let decodedGivens: number[]
     try {
-      givens = decodePuzzle(encoded)
-      if (givens.length !== TOTAL_CELLS) {
-        throw new Error('Invalid puzzle encoding')
-      }
+      decodedGivens = decodePuzzle(encoded)
     } catch {
-      throw new Error('Invalid puzzle link. The puzzle could not be decoded.')
+      throw new Error(INVALID_LINK_MESSAGE)
     }
+    if (decodedGivens.length !== TOTAL_CELLS) {
+      throw new Error(INVALID_LINK_MESSAGE)
+    }
+    givens = decodedGivens
   }
 
   const { solution, puzzleData } = await validateAndBuildCustom(givens, encoded, setEncodedPuzzle)
@@ -335,13 +342,6 @@ export function usePuzzleLoader({
         try {
           setLoading(true)
           setError(null)
-
-          /* istanbul ignore start -- redundant re-check: the effect's outer guards return before loadPuzzle is defined/called when either flag is true, so both are always false in this closure and the skip path is unreachable */
-          if (showDifficultyChooser || showOnboarding) {
-            setLoading(false)
-            return
-          }
-          /* istanbul ignore stop */
 
           // Early return if puzzle already loaded and state restored
           if (puzzle && hasRestoredSavedStateRef.current) {

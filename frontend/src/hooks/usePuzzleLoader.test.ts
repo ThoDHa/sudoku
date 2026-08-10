@@ -24,7 +24,7 @@ import { getPuzzle, validateCustomPuzzle } from '../lib/solver-service'
 import { decodePuzzle, decodePuzzleWithState, encodePuzzle } from '../lib/puzzleEncoding'
 import { shouldShowDailyPrompt, markDailyPromptShown } from '../lib/dailyPrompt'
 import { getGameMode } from '../lib/gameSettings'
-import { STORAGE_KEYS } from '../lib/constants'
+import { STORAGE_KEYS, MAX_DIGIT } from '../lib/constants'
 
 const getPuzzleMock = getPuzzle as unknown as Mock
 const validateCustomPuzzleMock = validateCustomPuzzle as unknown as Mock
@@ -180,8 +180,17 @@ describe('usePuzzleLoader', () => {
         ),
       )
       await flushMicro()
+      expect(getGameModeMock).toHaveBeenCalledWith('practice-x')
       expect(setShowDailyPrompt).toHaveBeenCalledWith(true)
       expect(markDailyPromptShownMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('passes an empty string to getGameMode when there is no effective seed', async () => {
+      renderHook(() =>
+        usePuzzleLoader(makeOptions({ effectiveSeed: undefined, showOnboarding: true })),
+      )
+      await flushMicro()
+      expect(getGameModeMock).toHaveBeenCalledWith('')
     })
 
     it('skips daily prompt when a sharedStateParam is present', async () => {
@@ -244,6 +253,8 @@ describe('usePuzzleLoader', () => {
       await flushMicro()
       expect(result.current.loading).toBe(false)
       expect(result.current.puzzle).toBeNull()
+      expect(result.current.initialBoard).toEqual([])
+      expect(result.current.solution).toEqual([])
       expect(getPuzzleMock).not.toHaveBeenCalled()
     })
 
@@ -315,6 +326,20 @@ describe('usePuzzleLoader', () => {
       expect(result.current.loading).toBe(false)
       expect(getPuzzleMock).not.toHaveBeenCalled()
     })
+
+    it('still loads when hasRestoredSavedState is true but no puzzle has loaded yet', async () => {
+      const { result } = renderHook(() =>
+        usePuzzleLoader(
+          makeOptions({
+            effectiveSeed: 'freshSeed',
+            hasRestoredSavedState: { current: true },
+          }),
+        ),
+      )
+      await flushLoading(result)
+      expect(getPuzzleMock).toHaveBeenCalledWith('freshSeed', 'easy')
+      expect(result.current.puzzle).not.toBeNull()
+    })
   })
 
   describe('fetchPuzzleSource: resolveFetched (default arm)', () => {
@@ -360,6 +385,55 @@ describe('usePuzzleLoader', () => {
       expect(result.current.puzzle).not.toBeNull()
     })
 
+    it('routes a custom- seed to the fetched pool when the difficulty is not custom', async () => {
+      const { result } = renderHook(() =>
+        usePuzzleLoader(makeOptions({ difficulty: 'easy', effectiveSeed: 'custom-abc' })),
+      )
+      await flushLoading(result)
+      expect(getPuzzleMock).toHaveBeenCalledWith('custom-abc', 'easy')
+      expect(validateCustomPuzzleMock).not.toHaveBeenCalled()
+      expect(result.current.error).toBeNull()
+    })
+
+    it('routes a seed without the custom- prefix to the fetched pool when difficulty is custom', async () => {
+      const { result } = renderHook(() =>
+        usePuzzleLoader(makeOptions({ difficulty: 'custom', effectiveSeed: 'plainSeed' })),
+      )
+      await flushLoading(result)
+      expect(getPuzzleMock).toHaveBeenCalledWith('plainSeed', 'custom')
+      expect(result.current.error).toBeNull()
+    })
+
+    it('treats an undefined seed as not-custom instead of dereferencing it', async () => {
+      const { result } = renderHook(() =>
+        usePuzzleLoader(
+          makeOptions({
+            difficulty: 'custom',
+            effectiveSeed: undefined,
+            isEncodedCustom: true,
+            encoded: undefined,
+          }),
+        ),
+      )
+      await flushLoading(result)
+      expect(getPuzzleMock).toHaveBeenCalledWith('', 'custom')
+      expect(result.current.error).toBeNull()
+    })
+
+    it('refetches when the effective seed changes', async () => {
+      const { result, rerender } = renderHook(
+        (props: UsePuzzleLoaderOptions) => usePuzzleLoader(props),
+        { initialProps: makeOptions({ effectiveSeed: 'seedA' }) },
+      )
+      await flushLoading(result)
+      expect(getPuzzleMock).toHaveBeenCalledWith('seedA', 'easy')
+
+      rerender(makeOptions({ effectiveSeed: 'seedB' }))
+      await flushLoading(result)
+      expect(getPuzzleMock).toHaveBeenCalledWith('seedB', 'easy')
+      expect(getPuzzleMock).toHaveBeenCalledTimes(2)
+    })
+
     it('sets error to err.message when getPuzzle rejects with an Error', async () => {
       getPuzzleMock.mockRejectedValue(new Error('network down'))
       const { result } = renderHook(() =>
@@ -392,20 +466,49 @@ describe('usePuzzleLoader', () => {
         usePuzzleLoader(
           makeOptions({
             isEncodedCustom: true,
-            encoded: 'eXYZ',
+            // Longer than the 8 characters the puzzle id is built from, so a
+            // truncation that never happens is visible in the id below.
+            encoded: 'eABCDEFGHIJ',
             restoreOrPromptSharedState,
           }),
         ),
       )
       await flushLoading(result)
-      expect(decodePuzzleWithStateMock).toHaveBeenCalledWith('eXYZ')
+      expect(decodePuzzleWithStateMock).toHaveBeenCalledWith('eABCDEFGHIJ')
       expect(validateCustomPuzzleMock).toHaveBeenCalledTimes(1)
-      expect(result.current.encodedPuzzle).toBe('eXYZ')
+      expect(validateCustomPuzzleMock).toHaveBeenCalledWith(givens81(), '')
+      expect(result.current.encodedPuzzle).toBe('eABCDEFGHIJ')
+      expect(result.current.puzzle).toEqual({
+        puzzle_id: 'custom-eABCDEFG',
+        seed: 'custom-eABCDEFG',
+        difficulty: 'custom',
+        givens: givens81(),
+        solution: solution81(),
+      })
       expect(restoreOrPromptSharedState).toHaveBeenCalledWith(
         board81(),
         candidates81(),
-        expect.any(String),
+        'custom-eABCDEFG',
       )
+    })
+
+    it('passes null candidates when the decoded link omits them entirely', async () => {
+      decodePuzzleWithStateMock.mockReturnValue({
+        givens: givens81(),
+        board: board81(),
+      })
+      const restoreOrPromptSharedState = vi.fn()
+      const { result } = renderHook(() =>
+        usePuzzleLoader(
+          makeOptions({
+            isEncodedCustom: true,
+            encoded: 'eNoCands',
+            restoreOrPromptSharedState,
+          }),
+        ),
+      )
+      await flushLoading(result)
+      expect(restoreOrPromptSharedState).toHaveBeenCalledWith(board81(), null, expect.any(String))
     })
 
     it('decodes a c-prefixed encoded custom link through the same path with null candidates', async () => {
@@ -536,7 +639,44 @@ describe('usePuzzleLoader', () => {
       expect(validateCustomPuzzleMock).toHaveBeenCalledWith(givens, '')
       expect(encodePuzzleMock).toHaveBeenCalledWith(givens)
       expect(result.current.encodedPuzzle).toBe('enc')
-      expect(result.current.puzzle).not.toBeNull()
+      expect(result.current.error).toBeNull()
+      expect(result.current.puzzle).toEqual({
+        puzzle_id: 'custom-abc',
+        seed: 'custom-abc',
+        difficulty: 'custom',
+        givens,
+        solution: solution81(),
+      })
+      expect(result.current.initialBoard).toEqual(givens)
+    })
+
+    it('accepts MAX_DIGIT as a stored given', async () => {
+      const givens = givens81()
+      givens[0] = MAX_DIGIT
+      localStorage.setItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}custom-max`, JSON.stringify(givens))
+      const { result } = renderHook(() =>
+        usePuzzleLoader(makeOptions({ difficulty: 'custom', effectiveSeed: 'custom-max' })),
+      )
+      await flushLoading(result)
+      expect(result.current.error).toBeNull()
+      expect(result.current.initialBoard).toEqual(givens)
+    })
+
+    it('throws "Stored puzzle is invalid" when the puzzle is not unique but has a solution', async () => {
+      localStorage.setItem(
+        `${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}custom-multi`,
+        JSON.stringify(givens81()),
+      )
+      validateCustomPuzzleMock.mockResolvedValue({
+        valid: false,
+        unique: true,
+        solution: solution81(),
+      })
+      const { result } = renderHook(() =>
+        usePuzzleLoader(makeOptions({ difficulty: 'custom', effectiveSeed: 'custom-multi' })),
+      )
+      await flushLoading(result)
+      expect(result.current.error).toBe('Stored puzzle is invalid')
     })
 
     it('throws "Custom puzzle not found" when localStorage is empty', async () => {
@@ -571,6 +711,23 @@ describe('usePuzzleLoader', () => {
       await flushLoading(result)
       expect(result.current.error).toBe('Stored puzzle data is malformed')
     })
+
+    it.each([
+      ['a non-integer', 1.5],
+      ['a negative digit', -1],
+      ['a digit above MAX_DIGIT', MAX_DIGIT + 1],
+    ])('throws "Stored puzzle data is malformed" for %s', async (_label, badValue) => {
+      const bad = givens81()
+      bad[0] = badValue
+      const seed = 'custom-outofrange'
+      localStorage.setItem(`${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}${seed}`, JSON.stringify(bad))
+      const { result } = renderHook(() =>
+        usePuzzleLoader(makeOptions({ difficulty: 'custom', effectiveSeed: seed })),
+      )
+      await flushLoading(result)
+      expect(result.current.error).toBe('Stored puzzle data is malformed')
+      expect(validateCustomPuzzleMock).not.toHaveBeenCalled()
+    })
   })
 
   describe('fetchPuzzleSource: resolvePractice', () => {
@@ -586,8 +743,30 @@ describe('usePuzzleLoader', () => {
       await flushLoading(result)
       expect(validateCustomPuzzleMock).toHaveBeenCalledWith(givens, '')
       expect(result.current.encodedPuzzle).toBeNull()
-      expect(result.current.puzzle).not.toBeNull()
-      expect(result.current.puzzle?.difficulty).toBe('medium')
+      expect(result.current.puzzle).toEqual({
+        puzzle_id: 'practice-abc',
+        seed: 'practice-abc',
+        difficulty: 'medium',
+        givens,
+        solution: solution81(),
+      })
+    })
+
+    it('throws "Practice puzzle is invalid" when the puzzle is not unique but has a solution', async () => {
+      localStorage.setItem(
+        `${STORAGE_KEYS.CUSTOM_PUZZLE_PREFIX}practice-multi`,
+        JSON.stringify(givens81()),
+      )
+      validateCustomPuzzleMock.mockResolvedValue({
+        valid: false,
+        unique: true,
+        solution: solution81(),
+      })
+      const { result } = renderHook(() =>
+        usePuzzleLoader(makeOptions({ effectiveSeed: 'practice-multi' })),
+      )
+      await flushLoading(result)
+      expect(result.current.error).toBe('Practice puzzle is invalid')
     })
 
     it('throws "Practice puzzle not found" when localStorage is empty', async () => {
@@ -690,6 +869,9 @@ describe('usePuzzleLoader', () => {
       )
       await flushLoading(result)
       expect(restoreOrPromptSharedState).not.toHaveBeenCalled()
+      expect(result.current.error).toBeNull()
+      expect(result.current.puzzle).not.toBeNull()
+      expect(result.current.initialBoard).toEqual(givens81())
     })
   })
 
@@ -735,6 +917,34 @@ describe('usePuzzleLoader', () => {
       await flushLoading(result)
       expect(result.current.initialBoard).toEqual(givens)
       expect(resetTimer).toHaveBeenCalledTimes(1)
+    })
+
+    it('keeps the givens as initialBoard when shared state arrives for an already-completed puzzle', async () => {
+      const givens = givens81()
+      getPuzzleMock.mockResolvedValue({
+        puzzle_id: 'p1',
+        seed: 'sharedDone',
+        difficulty: 'easy',
+        givens,
+        solution: solution81(),
+      })
+      decodePuzzleWithStateMock.mockReturnValue({
+        givens,
+        board: board81(),
+        candidates: null,
+      })
+      const { result } = renderHook(() =>
+        usePuzzleLoader(
+          makeOptions({
+            effectiveSeed: 'sharedDone',
+            sharedStateParam: 'eShared',
+            alreadyCompletedToday: true,
+          }),
+        ),
+      )
+      await flushLoading(result)
+      expect(result.current.initialBoard).toEqual(givens)
+      expect(result.current.solution).toEqual(solution81())
     })
 
     it('sets initialBoard to the givens when initialState is present (encoded custom)', async () => {
