@@ -53,6 +53,10 @@ jobs:
     name: Frontend (StrykerJS)
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || inputs.scope != 'go'
+    # Below GitHub's hard 6h cap so our own timeout fires first and reds the job
+    # with a report, rather than the runner cancelling it opaquely. The whole
+    # surface is ~6,300 mutants in one unsharded run; MUT-8-3 shards it.
+    timeout-minutes: 350
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -68,21 +72,24 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      # No continue-on-error here. Stryker's own break threshold (90, in
+      # stryker.config.json) is this job's gate, and a crashed initial test run
+      # must red the job too: three consecutive nightlies died in the dry run
+      # while the mask reported them green.
       - name: Run StrykerJS
         working-directory: frontend
         run: npx stryker run
-        continue-on-error: true
 
+      # if-no-files-found: error, so a run that produces no report cannot leave
+      # a green job behind an empty artifact.
       - name: Upload frontend mutation report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: mutation-frontend
-          path: |
-            frontend/reports/mutation/
-            frontend/mutation.json
+          path: frontend/reports/mutation/
           retention-days: 30
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # The 7 CODE-6 extracted hooks were deferred from QUAL-2's mutation lockdown
   # because the 893-mutant unsharded run is impractical in-session (~8h). This
