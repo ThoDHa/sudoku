@@ -1017,6 +1017,34 @@ describe.skipIf(process.env['VITE_SKIP_RC'])('useGameInput - handler stability',
   })
 })
 
+// =============================================================================
+// Memo deps: the returned object tracks collaborator changes
+// =============================================================================
+
+// Deliberately behavioural rather than identity-based, so it survives Stryker's
+// instrumentation (which defeats memoization and forces the identity-based
+// blocks above to skip). Emptying the useMemo dependency array freezes the
+// returned object on the first render's closures; calling a handler then
+// reaches the collaborator that render captured, which this observes directly.
+describe('useGameInput - memo dependency tracking', () => {
+  it('routes a redo to the current clearAllAndDeselect after it is replaced', () => {
+    const options = makeOptions()
+    options.gameRef.current = makeGameMock()
+    const { result, rerender } = renderHook(({ opts }) => useGameInput(opts), {
+      initialProps: { opts: options },
+    })
+
+    const replacement = vi.fn()
+    rerender({ opts: { ...options, clearAllAndDeselect: replacement } })
+    act(() => {
+      result.current.handleRedo()
+    })
+
+    expect(replacement).toHaveBeenCalled()
+    expect(options.clearAllAndDeselect).not.toHaveBeenCalled()
+  })
+})
+
 // Keep the React import referenced; the test file does not render JSX but
 // renderHook pulls in the React runtime.
 void useRef

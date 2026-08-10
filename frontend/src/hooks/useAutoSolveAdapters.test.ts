@@ -434,3 +434,30 @@ describe.skipIf(process.env['VITE_SKIP_RC'])('useAutoSolveAdapters - handler sta
     expect(result.current.handleStepNavigate).toBe(first.handleStepNavigate)
   })
 })
+
+// =============================================================================
+// Memo deps: the returned object tracks collaborator changes
+// =============================================================================
+
+// Behavioural rather than identity-based, so it survives Stryker's
+// instrumentation (which defeats memoization and forces the identity block
+// above to skip). Emptying the useMemo dependency array freezes the returned
+// object on the first render's closures; invoking a handler then reaches the
+// collaborator that render captured, which this observes directly.
+describe('useAutoSolveAdapters - memo dependency tracking', () => {
+  it('routes an error toast to the current scheduleToastClear after it is replaced', () => {
+    const options = makeOptions()
+    const { result, rerender } = renderHook(({ opts }) => useAutoSolveAdapters(opts), {
+      initialProps: { opts: options },
+    })
+
+    const replacement = vi.fn()
+    rerender({ opts: { ...options, scheduleToastClear: replacement } })
+    act(() => {
+      result.current.handleAutoSolveError('boom')
+    })
+
+    expect(replacement).toHaveBeenCalled()
+    expect(options.scheduleToastClear).not.toHaveBeenCalled()
+  })
+})

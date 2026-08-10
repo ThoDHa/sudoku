@@ -618,6 +618,10 @@ describe('useGameActions - handleCheckAndFix', () => {
       await result.current.handleCheckAndFix()
     })
     expect(options.autoSolve.playMoves).not.toHaveBeenCalled()
+    // The warning is the whole point of the else arm, so assert it fired.
+    // Without this the arm's body can be emptied and every other assertion
+    // here still holds.
+    expect(warnSpy).toHaveBeenCalledTimes(1)
     spy.mockRestore()
     warnSpy.mockRestore()
   })
@@ -706,6 +710,14 @@ describe('useGameActions - handleCopyDebugInfo / handleFeatureRequest', () => {
     expect(report.history[0].digit).toBe(5)
     expect(report.state.currentBoard).toEqual(Array(81).fill(0))
     expect(report.settings).toEqual({ colorTheme: 'tokyonight', mode: 'dark' })
+    // Whole-value, so emptying the puzzle sub-object cannot pass: a per-key
+    // assertion would still hold for a report carrying extra keys, and an
+    // ObjectLiteral mutant that empties it has to fail this outright.
+    expect(report.puzzle).toEqual({
+      seed: 'P-test',
+      difficulty: 'easy',
+      puzzleId: 'p-1',
+    })
     // Drive the visibility-aware timeout callback so the inline arrow runs.
     const cb = (options.visibilityAwareTimeout as unknown as Mock).mock.calls[0]![0] as () => void
     act(() => cb())
