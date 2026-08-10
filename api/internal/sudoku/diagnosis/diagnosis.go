@@ -8,6 +8,12 @@ import (
 	"sudoku-api/pkg/constants"
 )
 
+// noCell is the "no such cell" sentinel every scan in this package returns.
+// It sits outside 0..TotalCells-1, so it can never be mistaken for a real cell
+// index, and having exactly one spelling of it means the value is pinned by any
+// test that reads a not-found result rather than being restated at each return.
+const noCell = -1
+
 // FindErrorByCandidateRefill uses the "clear and recalculate" strategy to
 // find user errors: rebuild candidates from the current board, then for any
 // cell that ends up with zero candidates, scan its peers for a user-entered
@@ -18,7 +24,7 @@ import (
 // behavior is identical across the HTTP and WASM transports, which is why it
 // is unified here.
 //
-// Returns: (badCell, badDigit, zeroCandidateCell) or (-1, 0, -1) if no error
+// Returns: (badCell, badDigit, zeroCandidateCell) or (noCell, 0, noCell) if no error
 // is found.
 func FindErrorByCandidateRefill(originalUserBoard, givens []int) (badCell, badDigit, zeroCandidateCell int) {
 	freshBoard := human.NewBoard(originalUserBoard)
@@ -36,19 +42,20 @@ func FindErrorByCandidateRefill(originalUserBoard, givens []int) (badCell, badDi
 		// right, top to bottom) with digit as the outer loop, so the first
 		// match is deterministic.
 		row, col := idx/constants.GridSize, idx%constants.GridSize
-		for digit := 1; digit <= constants.GridSize; digit++ {
+		for d := range constants.GridSize {
+			digit := d + 1
 			if cellIdx, ok := firstBlockingUserPeer(originalUserBoard, givens, row, col, digit); ok {
 				return cellIdx, digit, idx
 			}
 		}
 	}
 
-	return -1, 0, -1
+	return noCell, 0, noCell
 }
 
 // firstBlockingUserPeer scans the row, column, and box peers of (row, col), in
 // that order, for the first user-entered cell (a non-given holding digit). It
-// returns that cell's index and true, or -1 and false when no peer blocks
+// returns that cell's index and true, or noCell and false when no peer blocks
 // digit. The scan order matches the original per-transport inline scans, so
 // the first match is deterministic.
 func firstBlockingUserPeer(originalUserBoard, givens []int, row, col, digit int) (int, bool) {
@@ -62,7 +69,7 @@ func firstBlockingUserPeer(originalUserBoard, givens []int, row, col, digit int)
 			}
 		}
 	}
-	return -1, false
+	return noCell, false
 }
 
 // userHoldsDigit reports whether cellIdx is a user-entered cell (not a given)
@@ -85,10 +92,13 @@ func peerCellIndices(row, col int) (rowCells, colCells, boxCells []int) {
 	}
 	boxRow := (row / constants.BoxSize) * constants.BoxSize
 	boxCol := (col / constants.BoxSize) * constants.BoxSize
-	boxCells = make([]int, 0, constants.GridSize)
+	// Filled by index rather than by append so the allocation is load-bearing:
+	// a capacity-only `make` is unobservable, and the row and column slices
+	// above are built the same way.
+	boxCells = make([]int, constants.GridSize)
 	for r := boxRow; r < boxRow+constants.BoxSize; r++ {
 		for c := boxCol; c < boxCol+constants.BoxSize; c++ {
-			boxCells = append(boxCells, r*constants.GridSize+c)
+			boxCells[(r-boxRow)*constants.BoxSize+(c-boxCol)] = r*constants.GridSize + c
 		}
 	}
 	return rowCells, colCells, boxCells
@@ -109,9 +119,9 @@ func firstUserBlocker(cells []int, board *human.Board, digit int, originalUserBo
 		if originalUserBoard[idx] != 0 && givens[idx] == 0 {
 			return idx, true
 		}
-		return -1, false
+		return noCell, false
 	}
-	return -1, false
+	return noCell, false
 }
 
 // FindBlockingUserCell analyzes a contradiction reported by the solver and
@@ -125,45 +135,31 @@ func firstUserBlocker(cells []int, board *human.Board, digit int, originalUserBo
 // likely wrong; ties resolve to the lowest-index cell, so the result is
 // deterministic.
 //
-// Returns: Cell index and blocking digit, or (-1, 0) if no user error found.
+// Returns: Cell index and blocking digit, or (noCell, 0) if no user error found.
 func FindBlockingUserCell(board *human.Board, contradictionCell int, originalUserBoard, givens []int) (int, int) {
 	row, col := contradictionCell/constants.GridSize, contradictionCell%constants.GridSize
 	rowCells, colCells, boxCells := peerCellIndices(row, col)
 
-	type blockingCell struct {
-		idx   int
-		digit int
-	}
-	var userBlockers []blockingCell
-
-	for digit := 1; digit <= constants.GridSize; digit++ {
+	// Count how many times each user cell appears as a blocker; the cell
+	// blocking the most candidates is most likely wrong. A cell reached by
+	// several digits keeps the last one scanned, matching the original
+	// per-transport behavior.
+	cellCount := make(map[int]int)
+	cellDigit := make(map[int]int)
+	for d := range constants.GridSize {
+		digit := d + 1
 		for _, region := range [][]int{rowCells, colCells, boxCells} {
 			if idx, ok := firstUserBlocker(region, board, digit, originalUserBoard, givens); ok {
-				userBlockers = append(userBlockers, blockingCell{idx, digit})
+				cellCount[idx]++
+				cellDigit[idx] = digit
 			}
 		}
 	}
 
-	// The tail `return -1, 0` produces the same result when blockers is empty,
-	// so dropping this early-return would be observably safe. It is kept for
-	// clarity and as an explicit fast-path.
-	if len(userBlockers) == 0 {
-		return -1, 0
-	}
-
-	// Count how many times each user cell appears as a blocker; the cell
-	// blocking the most candidates is most likely wrong. Iterating in cell-index
-	// order with a strict ">" comparison makes ties resolve to the lowest-index
-	// cell, keeping the result deterministic.
-	cellCount := make(map[int]int)
-	cellDigit := make(map[int]int)
-	for _, b := range userBlockers {
-		cellCount[b.idx]++
-		cellDigit[b.idx] = b.digit
-	}
-
+	// Iterating in cell-index order with a strict ">" comparison makes ties
+	// resolve to the lowest-index cell, keeping the result deterministic.
 	maxCount := 0
-	maxCell := -1
+	maxCell := noCell
 	for idx := range constants.TotalCells {
 		if cellCount[idx] > maxCount {
 			maxCount = cellCount[idx]
@@ -171,8 +167,8 @@ func FindBlockingUserCell(board *human.Board, contradictionCell int, originalUse
 		}
 	}
 
-	if maxCell >= 0 {
+	if maxCell != noCell {
 		return maxCell, cellDigit[maxCell]
 	}
-	return -1, 0
+	return noCell, 0
 }
