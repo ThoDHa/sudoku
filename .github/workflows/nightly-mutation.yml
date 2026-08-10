@@ -49,14 +49,54 @@ env:
   MUTATION_ADDRESS_SPACE_KB: 3000000
 
 jobs:
-  frontend-mutation:
-    name: Frontend (StrykerJS)
+  # The whole surface cannot be mutated in one job. Instrumenting all 65 files
+  # inserts 6302 mutant switches, and src/lib carries solver and board code
+  # called in tight loops, so the INITIAL TEST RUN ALONE exceeded two hours on a
+  # hosted runner while the uninstrumented suite takes ~170s (run 31353467288).
+  # Sharding one file per job instruments a single file, which keeps each
+  # shard's initial run close to that uninstrumented figure. Same reasoning as
+  # the techniques and hooks matrices; public repo, so hosted minutes are free
+  # and fine-grained sharding costs nothing.
+  #
+  # The shard list is derived, never hand-maintained: scripts/mutation_shards.py
+  # expands stryker.config.json's own mutate globs and subtracts the hooks the
+  # matrix below already covers, reading those names out of this same file. A
+  # new src/lib or src/hooks file therefore gets a shard the day it lands, and
+  # the two jobs cannot double-count a file.
+  frontend-surface-matrix:
+    name: Frontend - surface (shard list)
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || inputs.scope != 'go'
-    # Below GitHub's hard 6h cap so our own timeout fires first and reds the job
-    # with a report, rather than the runner cancelling it opaquely. The whole
-    # surface is ~6,300 mutants in one unsharded run; MUT-8-3 shards it.
-    timeout-minutes: 350
+    outputs:
+      shards: ${{ steps.enumerate.outputs.shards }}
+      count: ${{ steps.enumerate.outputs.count }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Enumerate shards
+        id: enumerate
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          out=$(python3 scripts/mutation_shards.py surface)
+          echo "shards=$(echo "$out" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["shards"]))')" >> "$GITHUB_OUTPUT"
+          echo "count=$(echo "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')" >> "$GITHUB_OUTPUT"
+          echo "$out" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("%d shards" % d["count"])'
+
+  frontend-surface-mutation:
+    name: Frontend - surface (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    needs: frontend-surface-matrix
+    if: github.event_name == 'schedule' || inputs.scope != 'go'
+    # One instrumented file, so this is minutes rather than hours. Kept well
+    # below GitHub's 6h cap so our own timeout fires first and the missing
+    # report reds the aggregate loudly.
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.frontend-surface-matrix.outputs.shards) }}
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -72,24 +112,56 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      # No continue-on-error here. Stryker's own break threshold (90, in
-      # stryker.config.json) is this job's gate, and a crashed initial test run
-      # must red the job too: three consecutive nightlies died in the dry run
-      # while the mask reported them green.
-      - name: Run StrykerJS
+      # continue-on-error here, unlike an unsharded run, because the aggregate
+      # below is this scope's gate: a single shard under its own break threshold
+      # must not stop the other 57 from being measured. A shard that produces no
+      # report still fails loudly, at the upload step and again at the aggregate.
+      - name: Run StrykerJS on ${{ matrix.file }}
         working-directory: frontend
-        run: npx stryker run
+        run: npx stryker run --mutate "${{ matrix.file }}"
+        continue-on-error: true
 
-      # if-no-files-found: error, so a run that produces no report cannot leave
-      # a green job behind an empty artifact.
-      - name: Upload frontend mutation report
+      - name: Upload shard report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: mutation-frontend
-          path: frontend/reports/mutation/
+          name: mutation-frontend-surface-${{ matrix.name }}
+          path: frontend/reports/mutation/mutation.json
           retention-days: 30
           if-no-files-found: error
+
+  # Combines the per-file reports into one efficacy number, exactly as a single
+  # unsharded run would have. --expected is the enumerated shard count rather
+  # than a literal, so a shard that never ran cannot masquerade as a complete
+  # result: a missing report exits 2.
+  frontend-surface-aggregate:
+    name: Frontend - surface (aggregate gate)
+    runs-on: ubuntu-latest
+    needs: [frontend-surface-matrix, frontend-surface-mutation]
+    if: always() && (github.event_name == 'schedule' || inputs.scope != 'go')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Download all surface shard reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: mutation-frontend-surface-*
+          path: shards
+
+      # Floor 0 because this scope has never been measured: the unsharded job it
+      # replaces never completed a run, so there is no honest number to enforce
+      # yet. The gate still fails on a missing shard, which is the property that
+      # matters today. Raise the floor onto the first green run's measurement,
+      # per the ratchet discipline in api/mutation-floors.json: floors move up
+      # with the work that earned them, never ahead of it.
+      - name: Aggregate efficacy gate
+        working-directory: frontend
+        run: |
+          python3 scripts/mutation_aggregate.py \
+            --floor 0 --expected "${{ needs.frontend-surface-matrix.outputs.count }}" \
+            --reports-dir ../shards \
+            --label "frontend/surface (MUT-8-3)"
 
   # The 7 CODE-6 extracted hooks were deferred from QUAL-2's mutation lockdown
   # because the 893-mutant unsharded run is impractical in-session (~8h). This
