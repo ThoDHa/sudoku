@@ -69,14 +69,17 @@ export function useInProgressGameCheck(
   )
 
   // Mount-only: clean up the one-time skip flag (side effect, no setState)
-  useEffect(() => {
-    const skipInProgressCheck = sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
-    // Stryker disable next-line ConditionalExpression: removeItem on a missing key is a no-op, so always-true branching is observably identical to the guarded remove
-    if (skipInProgressCheck) {
-      sessionStorage.removeItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
-    }
+  useEffect(
+    () => {
+      const skipInProgressCheck = sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
+      // Stryker disable next-line ConditionalExpression: removeItem on a missing key is a no-op, so always-true branching is observably identical to the guarded remove
+      if (skipInProgressCheck) {
+        sessionStorage.removeItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
+      }
+    },
     // Stryker disable next-line ArrayDeclaration: useEffect deps are manual memoization; the effect is idempotent (read+remove) so re-running on identity changes is observably identical
-  }, [])
+    [],
+  )
 
   // Handlers for in-progress game confirmation modal
   const onResumeExistingGame = () => {
