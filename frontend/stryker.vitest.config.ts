@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
+import { pwaPlugins } from './vite.config'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -45,6 +46,10 @@ export default defineConfig({
   plugins: [
     react(),
     babel({ presets: [reactCompilerAllEnvs] }),
+    // Shared with vite.config.ts, not copied: this config must resolve
+    // virtual:pwa-register the same way the normal suite does, or the three
+    // tests that reach pwaRegistration.ts through a component fail to load.
+    ...pwaPlugins,
   ],
   define: {
     __COMMIT_HASH__: JSON.stringify(getCommitHash()),

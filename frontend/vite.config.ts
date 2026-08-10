@@ -50,7 +50,10 @@ const getCommitHash = () => {
 }
 
   // PWA plugin: enabled in dev only when explicitly requested via env
-const pwaPlugins = [VitePWA({
+// Exported so stryker.vitest.config.ts wires the identical plugin rather than
+// its own copy. Without it, `virtual:pwa-register` does not resolve and every
+// test transitively importing pwaRegistration.ts fails to load under Stryker.
+export const pwaPlugins = [VitePWA({
   // autoUpdate so a new deploy takes over returning browsers automatically.
   // 'prompt' left users stranded on stale cached bundles because no update
   // prompt was ever wired, so the waiting worker never activated.
