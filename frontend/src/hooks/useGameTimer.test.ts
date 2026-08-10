@@ -1321,6 +1321,78 @@ describe('mutation-killing: pauseOnHidden opt-out honored by interval body inner
   })
 })
 
+describe('startTimer recovery after a visibility pause', () => {
+  let originalVisibilityState: PropertyDescriptor | undefined
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    if (originalVisibilityState) {
+      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
+    }
+  })
+
+  it('re-seeds startTimeRef so a later pauseTimer still stops the clock and drops the overlay', () => {
+    const visible = createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
+    const hidden = createMockBackgroundManager({ shouldPauseOperations: true, isHidden: true })
+    const { result, rerender } = renderHook(({ bg }) => useGameTimer({ backgroundManager: bg }), {
+      initialProps: { bg: visible },
+    })
+
+    act(() => {
+      result.current.startTimer()
+    })
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+
+    // Hiding nulls startTimeRef while isRunning stays true.
+    rerender({ bg: hidden })
+    expect(result.current.isPausedDueToVisibility).toBe(true)
+
+    // startTimer on an already-running timer takes the recovery branch and
+    // must restore startTimeRef. Without it pauseTimer's
+    // `startTimeRef !== null` guard fails and the timer never stops.
+    act(() => {
+      result.current.startTimer()
+    })
+    act(() => {
+      result.current.pauseTimer()
+    })
+
+    expect(result.current.isRunning).toBe(false)
+    // The canonical sync must now recompute the flag from the stopped timer:
+    // a paused game is not "paused because you looked away", so no overlay.
+    expect(result.current.isPausedDueToVisibility).toBe(false)
+  })
+})
+
+describe('interval teardown', () => {
+  it('clears the tick interval on unmount instead of leaking it', () => {
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval')
+    const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval')
+    try {
+      const bg = createMockBackgroundManager()
+      const { unmount } = renderHook(() => useGameTimer({ backgroundManager: bg, autoStart: true }))
+
+      expect(setIntervalSpy).toHaveBeenCalledTimes(1)
+      const intervalId = setIntervalSpy.mock.results[0]!.value as ReturnType<typeof setInterval>
+
+      unmount()
+
+      expect(clearIntervalSpy).toHaveBeenCalledWith(intervalId)
+    } finally {
+      setIntervalSpy.mockRestore()
+      clearIntervalSpy.mockRestore()
+    }
+  })
+})
+
 describe('mutation-killing: no interval is scheduled while fully paused for visibility (L152)', () => {
   // Real timers here so we observe the genuine global setInterval. isAutomatedEnvironment()
   // is false in the default jsdom UA, so the `pauseOnHidden && shouldPauseOperations`

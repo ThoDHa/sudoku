@@ -61,12 +61,12 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
   const [isRunning, setIsRunning] = useState(autoStart)
   const [isPausedDueToVisibility, setIsPausedDueToVisibility] = useState(false)
 
-  // Track when timer was last started (for calculating elapsed time)
+  // When the current running span started, or null while stopped
   const startTimeRef = useRef<number | null>(null)
   // Track accumulated time before last pause
   const accumulatedRef = useRef(0)
   // Track if timer was running before visibility pause
-  // Stryker disable next-line BooleanLiteral: wasRunningBeforePauseRef is read only inside resumeFromVisibility, whose mount-time read is absorbed by the autoStart mount effect (same Date.now() tick) plus React's identical-state bailout, so initial false == true
+  // Stryker disable next-line BooleanLiteral: wasRunningBeforePauseRef is read only inside resumeFromVisibility, whose mount-time read is absorbed by the autoStart startTimeRef seed (same Date.now() tick) plus React's identical-state bailout, so initial false == true
   const wasRunningBeforePauseRef = useRef(false)
   // Track elapsedMs for stable formatTime callback (no re-creation on every tick).
   // Updated post-commit; display components pass elapsedMs explicitly to
@@ -89,14 +89,13 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     }
   }
 
-  // On mount, if autoStart is set, seed startTimeRef. isRunning is already
-  // initialized to autoStart (line above), so no setState is needed — just
-  // the ref assignment that startTimer()'s recovery branch would do.
+  // autoStart makes isRunning true from the very first render without anyone
+  // calling startTimer, so the running span has to be dated here or the first
+  // interval tick would have nothing to measure from and elapsedMs would sit
+  // frozen. A non-autoStart timer is dated by startTimer instead.
   useEffect(
     () => {
-      if (autoStart && startTimeRef.current === null) {
-        startTimeRef.current = Date.now()
-      }
+      startTimeRef.current = autoStart ? Date.now() : null
     },
     /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way */ [],
   )
@@ -150,16 +149,13 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     // In automated tests, don't pause based on visibility
     const effectiveShouldPause = isAutomatedEnvironment()
       ? false
-      : // Stryker disable next-line ConditionalExpression: when not automated and pauseOnHidden and shouldPause, the visibility effect's pauseForVisibility already sets isPausedDueToVisibility and nulls startTimeRef, so forcing this ternary branch false (skipping the interval pause) is compensated
-        pauseOnHidden && backgroundManager.shouldPauseOperations
+      : pauseOnHidden && backgroundManager.shouldPauseOperations
 
-    // Stryker disable next-line ConditionalExpression,BlockStatement: the visibility effect compensates isPausedDueToVisibility and the interval body skips when startTimeRef is null (nulled by pauseForVisibility), so skipping or emptying this block is unobservable
+    // Schedule nothing while hidden: the visibility effect below owns
+    // isPausedDueToVisibility, so all this effect has to do is stop burning
+    // battery on ticks the interval body would skip anyway.
     if (effectiveShouldPause) {
-      const markVisibilityPaused = () => {
-        setIsPausedDueToVisibility(true)
-      }
-      markVisibilityPaused()
-      return // No interval when hidden
+      return
     }
 
     // Start the interval
@@ -171,13 +167,11 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
         return // Skip update when hidden
       }
 
-      // Stryker disable next-line ConditionalExpression: when the interval fires startTimeRef is always non-null (pauseForVisibility nulls it only alongside tearing down the interval), so forcing this guard true is observationally identical
       if (startTimeRef.current !== null) {
         setElapsedMs(accumulatedRef.current + (Date.now() - startTimeRef.current))
       }
     }, TIMER_UPDATE_INTERVAL)
 
-    // Stryker disable next-line ArrowFunction: the interval body is idempotent (setElapsedMs to accumulatedRef + (Date.now() - startTimeRef)), so a leaked interval from a no-op cleanup computes the same value as the active one
     return () => {
       clearInterval(interval)
     }
