@@ -185,23 +185,32 @@ Measured on go1.26.4 under `ulimit -v 3000000`, built-in runner against
 |---------|------:|-------:|--------:|--------:|
 | `internal/mutationfixture/compileprobe` | 4 = 4 | 1 = 1 | 1 = 1 | 2 = 2 |
 | `pkg/config` | 7 = 7 | 3 = 3 | 4 = 4 | 0 = 0 |
+| `techniques/aic.go --match '^bfsAIC$'` | 29 = 29 | 24 = 24 | 0 = 0 | 5 = 5 |
 
-Small controls, chosen so that between them every verdict is exercised. The
-fixture is the load-bearing one despite being four mutants: its two skipped
-mutants are the only evidence that the compile probe survived the move onto the
-exec path, and a control where everything is killed cannot show that.
-`pkg/config` supplies the escapes, which is the direction a broken harness fails
-silently in.
+The `aic` row is the decisive one. It is a scope an actual floor gates at 100, it
+puts the compile probe against real technique code rather than a four-mutant
+fixture (5 of its 29 mutants never compiled, and both runners skipped the same
+5), and it is the scope that contains the real runaway mutant, so it is the one
+control where the built-in runner and the wrapper had to agree about a mutant
+the memory cap killed. They did. The other two rows cover verdicts `aic` does
+not reach: `pkg/config` supplies escapes, which is the direction a broken
+harness fails silently in.
 
-**What these controls do not cover, stated so nobody assumes otherwise.** Both
-run against fast suites. No gated scope (`dp`, `human`, or a techniques shard)
-has been controlled end to end locally, because each costs hours at roughly a
-minute or more per mutant. The first nightly run is therefore the real control:
+That same run produced the first measurement of the thing this audit exists for.
+Of 24 kills in `bfsAIC`, **2 were memory-cap kills**, both the BFS dequeue at
+`aic.go:163` under `runtime: out of memory`. No test caught either one; the score
+counts them as kills regardless. That is 8.3% of that scope's kills, which is
+the size of the hole the headline 100% was hiding there.
+
+**What these controls do not cover, stated so nobody assumes otherwise.** No
+whole gated scope has been controlled: `dp`, `human` and every full techniques
+shard cost hours at roughly a minute or more per mutant, and `aic` was bounded
+to one function. The first nightly run is therefore the remaining control:
 compare its per-scope killed and escaped counts against the previous run's on
 unchanged code, and treat any movement as a wrapper defect until proven
 otherwise, not as a code regression. The floors are all at 100, so any
-regression this could introduce would red the gate rather than pass silently,
-which is the safe direction for an unproven change.
+regression this could introduce reds the gate rather than passing silently,
+which is the safe direction for a change that has not yet run in CI.
 
 `make mutation-go` still uses the built-in runner, so the local gate and the CI
 gate now reach their identical verdicts by different routes. That asymmetry is
