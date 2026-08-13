@@ -207,6 +207,7 @@ function GameContent() {
   const initialBoardRef = useRef<number[]>([])
   const timerControlRef = useRef<typeof timerControl | null>(null)
   const handleSubmitRef = useRef<(() => void) | null>(null)
+  const autoFillNotesRef = useRef<(() => void) | null>(null)
 
   // ============================================================
   // SYNC REFS WITH STATE (for stable callbacks)
@@ -705,6 +706,12 @@ function GameContent() {
     handleSubmitRef.current = () => void handleSubmit()
   })
 
+  // Keep autoFillNotes ref updated so the game-context sync effect can call the
+  // current handler without naming it as a dependency.
+  useEffect(() => {
+    autoFillNotesRef.current = autoFillNotes
+  })
+
   // Share-link actions live in useShareActions; only the two public handlers
   // are consumed by the GameHeader share buttons.
   const { onSharePuzzle: handleSharePuzzle, onShareState: handleShareState } = useShareActions({
@@ -734,7 +741,14 @@ function GameContent() {
     isModalOpen: showResultModal || isAnyModalOpen || showShareConflict || menuOpen,
   })
 
-  // Sync game state to global context for header
+  // Sync game state to global context for header.
+  //
+  // autoFillNotes is deliberately absent from the dependency array and reached
+  // through autoFillNotesRef instead. It has no manual useCallback (FE-7), so its
+  // identity is stable only while the React Compiler memoizes it. Listed as a
+  // dependency it makes this effect re-run every render, and the body writes a
+  // fresh object into the game context, which re-renders this component: an
+  // unbounded loop on the first click whenever RC is absent or defeated.
   useEffect(() => {
     if (!loading && puzzle) {
       setGameState({
@@ -747,21 +761,15 @@ function GameContent() {
         onHistory: () => {
           setHistoryOpen(true)
         },
-        onAutoFillNotes: autoFillNotes,
+        onAutoFillNotes: () => {
+          autoFillNotesRef.current?.()
+        },
       })
     }
     return () => {
       setGameState(null)
     }
-  }, [
-    loading,
-    puzzle,
-    difficulty,
-    game.history.length,
-    game.isComplete,
-    autoFillNotes,
-    setGameState,
-  ])
+  }, [loading, puzzle, difficulty, game.history.length, game.isComplete, setGameState])
 
   // Clear highlights and toast when auto-solve stops so History shows the summary, not last move.
   // Wrapped in a named function so setState is callback-scoped, not direct effect-body.
