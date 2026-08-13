@@ -36,6 +36,22 @@ const realFrontendRoot = path.dirname(realNodeModules)
 // identities. The identity-stability tests (handler stability blocks) cannot
 // pass under instrumentation regardless of RC, so they must be skipped via
 // the same .skipIf(process.env.VITE_SKIP_RC) guard they already use.
+//
+// A shard that hangs in the INITIAL test run is usually this, and it is a
+// product bug rather than a Stryker setting. Because instrumenting a file
+// defeats RC's memoization of that file's values, any consumer whose render
+// loop terminates only because RC held a value stable will re-render without
+// bound. Diagnose it by reproducing outside Stryker entirely:
+//
+//   VITE_SKIP_RC=1 npx vitest run src/pages/<suite>.test.tsx
+//
+// then add a render counter that throws past ~200 renders to tell an unbounded
+// loop apart from slowness. React does NOT raise "Maximum update depth
+// exceeded" for this shape, so the two look identical without the counter.
+// The fix belongs in the effect that closes the cycle, typically one that
+// writes a fresh object into a context while naming an unmemoized handler in
+// its dependency array. See the Game.tsx game-context sync effect for the
+// worked example and the ref-based remedy.
 process.env.VITE_SKIP_RC = '1'
 const reactCompilerAllEnvs = (() => {
   const preset = reactCompilerPreset({ target: '19' })
@@ -73,4 +89,3 @@ export default defineConfig({
     setupFiles: ['./test/test-setup.ts'],
   },
 })
-
