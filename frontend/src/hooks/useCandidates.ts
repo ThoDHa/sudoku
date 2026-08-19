@@ -20,8 +20,7 @@ const isDigitPlaceable = (
   for (let c = 0; c < BOARD_SIZE; c++) {
     if (board[row * BOARD_SIZE + c] === digit) return false
   }
-  // Stryker disable next-line EqualityOperator: the extra r=9 iteration reads board[81+col] (undefined); `undefined === digit` is false, so the early-return result is unchanged
-  for (let r = 0; r < BOARD_SIZE; r++) {
+  for (let r = 0; r !== BOARD_SIZE; r++) {
     if (board[r * BOARD_SIZE + col] === digit) return false
   }
   for (let r = boxRow; r < boxRow + SUBGRID_SIZE; r++) {
@@ -109,8 +108,7 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
   const calculateAllCandidatesForBoard = (boardToCalculate: number[]): Uint16Array => {
     const newCandidates = new Uint16Array(TOTAL_CELLS)
 
-    // Stryker disable next-line EqualityOperator: idx=81 reads boardToCalculate[81] (undefined); `undefined !== 0` is true so the branch writes newCandidates[81]=0 (no-op on a length-81 typed array) and continues, leaving the result unchanged
-    for (let idx = 0; idx < TOTAL_CELLS; idx++) {
+    for (let idx = 0; idx !== TOTAL_CELLS; idx++) {
       if (boardToCalculate[idx] !== 0) {
         newCandidates[idx] = 0
         continue
@@ -128,8 +126,7 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
 
   const areCandidatesFilled = (): boolean => {
     let hasAnyCandidates = false
-    // Stryker disable next-line EqualityOperator: idx=81 reads board[81] (undefined); `undefined !== 0` is true so the loop continues without touching hasAnyCandidates
-    for (let idx = 0; idx < TOTAL_CELLS; idx++) {
+    for (let idx = 0; idx !== TOTAL_CELLS; idx++) {
       if (board[idx] !== 0) continue
 
       const cellCandidates = candidates[idx]
@@ -158,8 +155,7 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
       const cellIdx = row * BOARD_SIZE + c
       result[cellIdx] = removeCandidate(result[cellIdx] || 0, digit)
     }
-    // Stryker disable next-line EqualityOperator: r=9 gives cellIdx=81+col, out of bounds for the length-81 result typed array; both the read (|| 0) and the write are no-ops
-    for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let r = 0; r !== BOARD_SIZE; r++) {
       const cellIdx = r * BOARD_SIZE + col
       result[cellIdx] = removeCandidate(result[cellIdx] || 0, digit)
     }
@@ -186,8 +182,7 @@ export function useCandidates(board: number[]): UseCandidatesReturn {
     const missingNotes: { idx: number; digit: number }[] = []
     let cellsWithNotes = 0
 
-    // Stryker disable next-line EqualityOperator: idx=81 reads boardToCheck[81] (undefined); `undefined !== 0` is true so the loop continues without touching the accumulators
-    for (let idx = 0; idx < TOTAL_CELLS; idx++) {
+    for (let idx = 0; idx !== TOTAL_CELLS; idx++) {
       if (boardToCheck[idx] !== 0) continue
 
       const userNotesMask = candidatesToCheck[idx] || 0
