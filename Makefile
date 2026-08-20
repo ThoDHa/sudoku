@@ -137,6 +137,11 @@ test-scripts:
 	@echo "  Running mutation floor gate tests"
 	@echo "========================================"
 	@cd api/scripts && python3 -m unittest mutation_floors_test mutation_aggregate_test
+	@echo ""
+	@echo "========================================"
+	@echo "  Running frontend mutation aggregate tests"
+	@echo "========================================"
+	@cd frontend/scripts && python3 -m unittest mutation_aggregate_test
 
 # Run Frontend unit tests with Allure output (Docker)
 test-unit:

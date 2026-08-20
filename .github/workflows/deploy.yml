@@ -138,6 +138,16 @@ jobs:
         working-directory: api/scripts
         run: python3 -m unittest mutation_floors_test mutation_aggregate_test
 
+      # The frontend has its own aggregator, a different and larger script than
+      # the api one above. Both steps name mutation_aggregate_test, but each
+      # resolves the module from its own working-directory, so the api step does
+      # not reach this one. It computes the surface and hooks efficacy that the
+      # nightly gates at --floor 100, so the argument for the step above applies
+      # to it at least as strongly.
+      - name: Run frontend mutation aggregate tests
+        working-directory: frontend/scripts
+        run: python3 -m unittest mutation_aggregate_test
+
       - name: Setup Go
         uses: ./.github/actions/setup-go
 
