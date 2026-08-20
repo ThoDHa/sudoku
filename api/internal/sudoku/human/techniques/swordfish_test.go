@@ -34,13 +34,8 @@ func TestSwordfishExplanationFormatsBothAxes(t *testing.T) {
 		t.Errorf("byRow explanation = %q, want %q", got, want)
 	}
 
-	// The byCol wording labels the perpendicular coordinates (which are rows)
-	// as columns and the source lines (which are columns) as rows. That is a
-	// defect in the user-facing text, tracked as BUG-23; this assertion pins the
-	// current output so the coordinates cannot drift, and will fail loudly when
-	// the wording is corrected.
 	if got, want := swordfishExplanation(3, lines, perps, false),
-		"Swordfish: 3 in columns 3,6,8 rows 2,5,7"; got != want {
+		"Swordfish: 3 in columns 2,5,7 rows 3,6,8"; got != want {
 		t.Errorf("byCol explanation = %q, want %q", got, want)
 	}
 }
@@ -257,12 +252,10 @@ func TestDetectSwordfishColumnPatternWholeMove(t *testing.T) {
 	)
 	targets := refs([2]int{1, 2}, [2]int{3, 2}, [2]int{3, 4}, [2]int{5, 4}, [2]int{1, 6}, [2]int{5, 6})
 	assertMove(t, DetectSwordfish(b), &core.Move{
-		Action:  "eliminate",
-		Digit:   4,
-		Targets: targets,
-		// Axes transposed in the wording; see BUG-23 and the note in
-		// TestSwordfishExplanationFormatsBothAxes.
-		Explanation: "Swordfish: 4 in columns 2,4,6 rows 3,5,7",
+		Action:      "eliminate",
+		Digit:       4,
+		Targets:     targets,
+		Explanation: "Swordfish: 4 in columns 3,5,7 rows 2,4,6",
 		Eliminations: []core.Candidate{
 			{Row: 3, Col: 7, Digit: 4},
 			{Row: 5, Col: 8, Digit: 4},

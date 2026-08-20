@@ -181,8 +181,8 @@ func swordfishExplanation(digit int, lines, perps []int, byRow bool) string {
 			perps[0]+1, perps[1]+1, perps[2]+1)
 	}
 	return fmt.Sprintf("Swordfish: %d in columns %d,%d,%d rows %d,%d,%d",
-		digit, perps[0]+1, perps[1]+1, perps[2]+1,
-		lines[0]+1, lines[1]+1, lines[2]+1)
+		digit, lines[0]+1, lines[1]+1, lines[2]+1,
+		perps[0]+1, perps[1]+1, perps[2]+1)
 }
 
 // ============================================================================
