@@ -2876,21 +2876,6 @@ export function getTechniqueBySlug(slug: string): TechniqueInfo | undefined {
   return TECHNIQUES.find((t) => t.subsections?.some((s) => s.slug === slug))
 }
 
-// Helper to find a subsection by slug (returns both parent and subsection)
-export function getSubsectionBySlug(
-  slug: string,
-): { parent: TechniqueInfo; subsection: TechniqueSubsection } | undefined {
-  for (const technique of TECHNIQUES) {
-    if (technique.subsections) {
-      const subsection = technique.subsections.find((s) => s.slug === slug)
-      if (subsection) {
-        return { parent: technique, subsection }
-      }
-    }
-  }
-  return undefined
-}
-
 // Get display techniques (excludes Auto tier)
 export function getDisplayTechniques(): TechniqueInfo[] {
   return TECHNIQUES.filter((t) => t.tier !== 'Auto')
@@ -2922,27 +2907,6 @@ export function getNextTechnique(slug: string): TechniqueInfo | undefined {
   const index = techniques.findIndex((t) => t.slug === slug)
   if (index === -1 || index >= techniques.length - 1) return undefined
   return techniques[index + 1]
-}
-
-// Convert backend technique key (snake_case) to display name
-// Uses TECHNIQUES data when available, falls back to formatted key
-export function getTechniqueDisplayName(backendKey: string): string {
-  // Convert snake_case to slug format (kebab-case)
-  const slug = backendKey.replace(/_/g, '-')
-
-  // Try to find in TECHNIQUES
-  const technique = getTechniqueBySlug(slug)
-  if (technique) return technique.title
-
-  // Check subsections
-  const subsection = getSubsectionBySlug(slug)
-  if (subsection) return subsection.subsection.title
-
-  // Fallback: convert snake_case to Title Case
-  return backendKey
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
 }
 
 // ============================================================
@@ -3360,12 +3324,6 @@ export const GLOSSARY: GlossaryTerm[] = [
     relatedTerms: ['Given'],
   },
 ]
-
-// Helper to get glossary term by name (case-insensitive)
-export function getGlossaryTerm(term: string): GlossaryTerm | undefined {
-  const lowerTerm = term.toLowerCase()
-  return GLOSSARY.find((g) => g.term.toLowerCase() === lowerTerm)
-}
 
 // Get all glossary terms sorted alphabetically
 export function getGlossarySorted(): GlossaryTerm[] {
