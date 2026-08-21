@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { useGameTimer } from './useGameTimer'
+import { useGameTimer, isAutomatedEnvironment } from './useGameTimer'
 import { createMockBackgroundManager } from '../test-utils/mocks'
 
 // TEST UTILITIES
@@ -1419,5 +1419,248 @@ describe('mutation-killing: no interval is scheduled while fully paused for visi
     } finally {
       setIntervalSpy.mockRestore()
     }
+  })
+
+  it('returns before setInterval when the timer is not running at all', () => {
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval')
+    try {
+      const bg = createMockBackgroundManager()
+      const { result, unmount } = renderHook(() =>
+        useGameTimer({ backgroundManager: bg, autoStart: false }),
+      )
+
+      expect(result.current.isRunning).toBe(false)
+      // The isRunning early return owns this one: forced false, the effect
+      // falls through and schedules a tick interval for a stopped timer.
+      expect(setIntervalSpy).not.toHaveBeenCalled()
+
+      unmount()
+    } finally {
+      setIntervalSpy.mockRestore()
+    }
+  })
+})
+
+// =============================================================================
+// Direct-call tests for the environment predicate (MUT-8-8-1).
+//
+// These call isAutomatedEnvironment with a supplied environment rather than
+// stubbing the navigator global, so they reach the absent-environment branch
+// and both directions of the userAgent type check without leaking state into
+// any later test in this file.
+// =============================================================================
+
+describe('isAutomatedEnvironment', () => {
+  it('reports a non-automated environment when no navigator is available', () => {
+    expect(isAutomatedEnvironment(undefined)).toBe(false)
+  })
+
+  it('reports an automated environment when webdriver is set', () => {
+    expect(isAutomatedEnvironment({ webdriver: true, userAgent: 'Mozilla/5.0' })).toBe(true)
+  })
+
+  it('reports a non-automated environment when userAgent is not a string', () => {
+    expect(isAutomatedEnvironment({ webdriver: false, userAgent: undefined })).toBe(false)
+  })
+
+  it('reports an automated environment for a HeadlessChrome userAgent', () => {
+    expect(
+      isAutomatedEnvironment({
+        webdriver: false,
+        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/120.0.0.0',
+      }),
+    ).toBe(true)
+  })
+
+  it('reports an automated environment for a playwright userAgent', () => {
+    expect(
+      isAutomatedEnvironment({
+        webdriver: false,
+        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) playwright/1.40.0',
+      }),
+    ).toBe(true)
+  })
+
+  it('reports a non-automated environment for an ordinary browser userAgent', () => {
+    expect(
+      isAutomatedEnvironment({
+        webdriver: false,
+        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0.0.0',
+      }),
+    ).toBe(false)
+  })
+})
+
+// =============================================================================
+// Mutation-killing tests for the visibility guards (MUT-8-8-1).
+//
+// pauseOnHidden is in the visibility effect's dependency list, so the hook
+// already declares that it reacts to that option changing between renders.
+// Toggling it is what lets a test reach resumeFromVisibility at an instant
+// later than the one startTimeRef was seeded at, which is the state every
+// guard mutant at that site needs in order to be observable.
+// =============================================================================
+
+describe('mutation-killing: visibility guards that need a delayed effect re-run', () => {
+  // No document.visibilityState stub here: this hook reads visibility only
+  // through the injected background manager and never touches document.
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const visible = () =>
+    createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
+  const blurred = () =>
+    createMockBackgroundManager({ shouldPauseOperations: true, isHidden: false })
+  const hidden = () => createMockBackgroundManager({ shouldPauseOperations: true, isHidden: true })
+
+  type TimerProps = {
+    bg: ReturnType<typeof createMockBackgroundManager>
+    pauseOnHidden: boolean
+    autoStart?: boolean
+  }
+
+  const renderTimer = (initialProps: TimerProps) =>
+    renderHook(
+      ({ bg, pauseOnHidden, autoStart = true }: TimerProps) =>
+        useGameTimer({ backgroundManager: bg, autoStart, pauseOnHidden }),
+      { initialProps },
+    )
+
+  it('does not re-seed a running timer on the first visibility resume', () => {
+    const { result, rerender } = renderTimer({ bg: visible(), pauseOnHidden: false })
+
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+    expect(result.current.elapsedMs).toBeGreaterThanOrEqual(4500)
+
+    // Enabling pauseOnHidden re-runs the visibility effect and calls
+    // resumeFromVisibility for the first time, 5s after startTimeRef was
+    // seeded. The timer never paused for visibility, so the guard must skip.
+    // A mutant that enters (forcing the condition true, weakening && to ||, or
+    // seeding wasRunningBeforePauseRef true) re-seeds startTimeRef and throws
+    // the first 5s away.
+    rerender({ bg: visible(), pauseOnHidden: true })
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+
+    expect(result.current.elapsedMs).toBeGreaterThanOrEqual(7500)
+  })
+
+  it('clears the visibility-resume flag so a later resume does not re-seed', () => {
+    const { result, rerender } = renderTimer({ bg: visible(), pauseOnHidden: true })
+
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+
+    // A real hide sets the flag, so the trailing write in resumeFromVisibility
+    // has something to clear. Without this the flag never leaves its initial
+    // false and the clearing write is a no-op the test cannot pin.
+    rerender({ bg: hidden(), pauseOnHidden: true })
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+
+    // Showing again consumes the flag: the resume re-seeds startTimeRef and
+    // must then clear the flag.
+    rerender({ bg: visible(), pauseOnHidden: true })
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+
+    // A third resume, reached by toggling the option rather than the manager,
+    // so nothing re-seeds startTimeRef on the way in. The flag is spent, so
+    // the guard must skip. If the trailing write never cleared it, this resume
+    // rebases startTimeRef onto now and discards the 2s since the show.
+    rerender({ bg: visible(), pauseOnHidden: false })
+    rerender({ bg: visible(), pauseOnHidden: true })
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+
+    // 2s before the hide plus 4s since the show. A resume that re-seeded on
+    // the way through lands near 4000 instead.
+    expect(result.current.elapsedMs).toBeGreaterThanOrEqual(5500)
+  })
+
+  it('does not re-enter the visibility pause once startTimeRef is already cleared', () => {
+    const { result, rerender } = renderTimer({ bg: visible(), pauseOnHidden: true })
+
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(result.current.elapsedMs).toBeGreaterThanOrEqual(1500)
+
+    // Window blurred while the tab stays visible: shouldPauseOperations is true
+    // with isHidden false, which useBackgroundManager produces from a blur
+    // alone. pauseForVisibility runs and clears startTimeRef.
+    rerender({ bg: blurred(), pauseOnHidden: true })
+
+    // The tab is then hidden as well. isHidden changed, so the effect re-runs
+    // and pauseForVisibility is called a second time with isRunning still true
+    // and startTimeRef already null. This pins the startTimeRef operand: a
+    // mutant that enters computes Date.now() - null and poisons the accumulated
+    // baseline with a value on the order of Date.now(). The isRunning operand
+    // is pinned by the stopped-timer test below, where it is the one that
+    // discriminates.
+    rerender({ bg: hidden(), pauseOnHidden: true })
+
+    rerender({ bg: visible(), pauseOnHidden: true })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    // Two-sided on purpose. The upper bound kills the guard mutants, which
+    // poison the baseline with a Date.now()-magnitude value. The lower bound
+    // catches the opposite regression, a resume that stops re-seeding
+    // startTimeRef and leaves elapsed frozen at the pre-blur 2s.
+    expect(result.current.elapsedMs).toBeLessThan(10000)
+    expect(result.current.elapsedMs).toBeGreaterThanOrEqual(2500)
+  })
+
+  it('does not bank a hidden pause for a timer that is not running', () => {
+    const { result, rerender } = renderTimer({
+      bg: visible(),
+      pauseOnHidden: true,
+      autoStart: false,
+    })
+
+    // Restoring a saved game seeds startTimeRef while the timer is stopped.
+    act(() => {
+      result.current.setElapsedMs(1000)
+    })
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+    expect(result.current.elapsedMs).toBe(1000)
+
+    // Hiding now calls pauseForVisibility with isRunning false and startTimeRef
+    // non-null, so the isRunning operand is the only thing between that stale
+    // seed and a five-second addition to a baseline that never ran. This is the
+    // gate the unguarded seed in setElapsedMs depends on.
+    rerender({ bg: hidden(), pauseOnHidden: true, autoStart: false })
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+
+    rerender({ bg: visible(), pauseOnHidden: true, autoStart: false })
+    act(() => {
+      result.current.startTimer()
+    })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+
+    // The restored 1s plus the 1s actually run. A pause that banked the stopped
+    // interval lands near 7000 instead.
+    expect(result.current.elapsedMs).toBeLessThan(5000)
+    expect(result.current.elapsedMs).toBeGreaterThanOrEqual(1500)
   })
 })
