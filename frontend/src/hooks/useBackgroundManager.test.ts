@@ -495,9 +495,9 @@ describe('useBackgroundManager', () => {
   })
 
   // ===========================================================================
-  // Mutation-killing: headless / automation detection bypass
+  // Mutation-killing: automation detection bypass
   // ===========================================================================
-  describe('Headless automation detection bypass', () => {
+  describe('Automation detection bypass', () => {
     afterEach(() => {
       // userAgent and webdriver live on Navigator.prototype in jsdom, so
       // our defineProperty created an own-property shadow. Deleting it lets
@@ -512,7 +512,7 @@ describe('useBackgroundManager', () => {
       Object.defineProperty(navigator, 'userAgent', { configurable: true, value: ua })
     }
 
-    it('does not pause when HeadlessChrome user agent is detected, even if hidden (L54:5, L55:6, L72:5)', () => {
+    it('does not pause when HeadlessChrome user agent is detected, even if hidden', () => {
       setUserAgent('Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/120.0.0.0')
       const { result } = renderHook(() => useBackgroundManager())
 
@@ -520,13 +520,13 @@ describe('useBackgroundManager', () => {
         simulateVisibilityChange('hidden')
       })
 
-      // Headless detection must keep shouldPauseOperations false so E2E
+      // Automation detection must keep shouldPauseOperations false so E2E
       // tests keep running. Mutants that break the detection, or that drop
-      // the !isHeadlessChrome guard, flip this to true.
+      // the !automated guard, flip this to true.
       expect(result.current.shouldPauseOperations).toBe(false)
     })
 
-    it('does not pause when playwright user agent is detected, even if hidden (L55:6 playwright branch)', () => {
+    it('does not pause when playwright user agent is detected, even if hidden', () => {
       setUserAgent('Mozilla/5.0 ... playwright/1.40.0')
       const { result } = renderHook(() => useBackgroundManager())
 
@@ -552,7 +552,7 @@ describe('useBackgroundManager', () => {
   // ===========================================================================
   // Mutation-killing: window blur / focus drive shouldPauseOperations
   // ===========================================================================
-  describe('Window blur drives shouldPauseOperations (L74:6, L99:24, L103:24, L131:29, L132:29)', () => {
+  describe('Window blur drives shouldPauseOperations', () => {
     it('sets shouldPauseOperations true on window blur', () => {
       const { result } = renderHook(() => useBackgroundManager())
 
@@ -562,9 +562,9 @@ describe('useBackgroundManager', () => {
         simulateWindowBlur()
       })
 
-      // effectiveIsWindowBlurred feeds shouldPauseOperations; mutants that
-      // drop the term, skip the setter, or register the wrong event name
-      // all leave shouldPauseOperations false here.
+      // isWindowBlurred feeds shouldPauseOperations; mutants that drop the
+      // term, skip the setter, or register the wrong event name all leave
+      // shouldPauseOperations false here.
       expect(result.current.shouldPauseOperations).toBe(true)
     })
 
@@ -587,10 +587,10 @@ describe('useBackgroundManager', () => {
   })
 
   // ===========================================================================
-  // Mutation-killing: enabled gates every effect (L143:9, L168:9, L194:9)
+  // Mutation-killing: enabled gates every effect
   // ===========================================================================
   describe('enabled gates background event effects', () => {
-    it('does not react to pagehide when disabled (L143:9 false mutant)', () => {
+    it('does not react to pagehide when disabled', () => {
       const { result } = renderHook(() => useBackgroundManager({ enabled: false }))
 
       act(() => {
@@ -601,7 +601,7 @@ describe('useBackgroundManager', () => {
       expect(result.current.isInDeepPause).toBe(false)
     })
 
-    it('does not react to freeze when disabled (L168:9 false mutant)', () => {
+    it('does not react to freeze when disabled', () => {
       const { result } = renderHook(() => useBackgroundManager({ enabled: false }))
 
       act(() => {
@@ -612,7 +612,7 @@ describe('useBackgroundManager', () => {
       expect(result.current.isInDeepPause).toBe(false)
     })
 
-    it('does not react to beforeunload when disabled (L194:9 false/enabled mutants)', () => {
+    it('does not react to beforeunload when disabled', () => {
       const { result } = renderHook(() => useBackgroundManager({ enabled: false }))
 
       act(() => {
@@ -622,7 +622,7 @@ describe('useBackgroundManager', () => {
       expect(result.current.isHidden).toBe(false)
     })
 
-    it('reacts to beforeunload when enabled (L194:9 true mutant, L201:29, L203:18)', () => {
+    it('reacts to beforeunload when enabled', () => {
       const { result } = renderHook(() => useBackgroundManager({ enabled: true }))
 
       act(() => {
@@ -635,10 +635,10 @@ describe('useBackgroundManager', () => {
   })
 
   // ===========================================================================
-  // Mutation-killing: effect deps re-subscribe on enabled flip (L139:6, L164:6, L190:6)
+  // Mutation-killing: effect deps re-subscribe on enabled flip
   // ===========================================================================
   describe('enabled-flip re-subscribes event listeners', () => {
-    it('re-runs visibility listener setup when enabled flips true (L139:6 deps mutant)', () => {
+    it('re-runs visibility listener setup when enabled flips true', () => {
       const { result, rerender } = renderHook(({ enabled }) => useBackgroundManager({ enabled }), {
         initialProps: { enabled: false },
       })
@@ -652,7 +652,7 @@ describe('useBackgroundManager', () => {
       expect(result.current.isHidden).toBe(true)
     })
 
-    it('re-runs pagehide listener setup when enabled flips true (L164:6 deps mutant)', () => {
+    it('re-runs pagehide listener setup when enabled flips true', () => {
       const { result, rerender } = renderHook(({ enabled }) => useBackgroundManager({ enabled }), {
         initialProps: { enabled: false },
       })
@@ -666,7 +666,7 @@ describe('useBackgroundManager', () => {
       expect(result.current.isHidden).toBe(true)
     })
 
-    it('re-runs freeze listener setup when enabled flips true (L190:6 deps mutant)', () => {
+    it('re-runs freeze listener setup when enabled flips true', () => {
       const { result, rerender } = renderHook(({ enabled }) => useBackgroundManager({ enabled }), {
         initialProps: { enabled: false },
       })
@@ -682,10 +682,10 @@ describe('useBackgroundManager', () => {
   })
 
   // ===========================================================================
-  // Mutation-killing: beforeunload cleanup (L204:34)
+  // Mutation-killing: beforeunload cleanup
   // ===========================================================================
   describe('beforeunload cleanup', () => {
-    it('removes the beforeunload listener on unmount (L204:34 string mutant)', () => {
+    it('removes the beforeunload listener on unmount', () => {
       const winRemoveEventListenerSpy = vi.spyOn(window, 'removeEventListener')
 
       const { unmount } = renderHook(() => useBackgroundManager())

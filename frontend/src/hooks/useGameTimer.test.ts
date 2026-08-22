@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { useGameTimer, isAutomatedEnvironment } from './useGameTimer'
+import { useGameTimer } from './useGameTimer'
 import { createMockBackgroundManager } from '../test-utils/mocks'
 
 // TEST UTILITIES
@@ -1438,56 +1438,6 @@ describe('mutation-killing: no interval is scheduled while fully paused for visi
     } finally {
       setIntervalSpy.mockRestore()
     }
-  })
-})
-
-// =============================================================================
-// Direct-call tests for the environment predicate (MUT-8-8-1).
-//
-// These call isAutomatedEnvironment with a supplied environment rather than
-// stubbing the navigator global, so they reach the absent-environment branch
-// and both directions of the userAgent type check without leaking state into
-// any later test in this file.
-// =============================================================================
-
-describe('isAutomatedEnvironment', () => {
-  it('reports a non-automated environment when no navigator is available', () => {
-    expect(isAutomatedEnvironment(undefined)).toBe(false)
-  })
-
-  it('reports an automated environment when webdriver is set', () => {
-    expect(isAutomatedEnvironment({ webdriver: true, userAgent: 'Mozilla/5.0' })).toBe(true)
-  })
-
-  it('reports a non-automated environment when userAgent is not a string', () => {
-    expect(isAutomatedEnvironment({ webdriver: false, userAgent: undefined })).toBe(false)
-  })
-
-  it('reports an automated environment for a HeadlessChrome userAgent', () => {
-    expect(
-      isAutomatedEnvironment({
-        webdriver: false,
-        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/120.0.0.0',
-      }),
-    ).toBe(true)
-  })
-
-  it('reports an automated environment for a playwright userAgent', () => {
-    expect(
-      isAutomatedEnvironment({
-        webdriver: false,
-        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) playwright/1.40.0',
-      }),
-    ).toBe(true)
-  })
-
-  it('reports a non-automated environment for an ordinary browser userAgent', () => {
-    expect(
-      isAutomatedEnvironment({
-        webdriver: false,
-        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) Chrome/120.0.0.0',
-      }),
-    ).toBe(false)
   })
 })
 

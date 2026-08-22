@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { TIMER_UPDATE_INTERVAL, MS_PER_SECOND } from '../lib/constants'
+import { isAutomatedEnvironment } from '../lib/automationEnvironment'
 import type { useBackgroundManager } from './useBackgroundManager'
 
 type BackgroundManagerReturn = ReturnType<typeof useBackgroundManager>
@@ -30,28 +31,6 @@ interface UseGameTimerReturn {
   setElapsedMs: (ms: number) => void
   /** Format elapsed time as "M:SS" */
   formatTime: (ms?: number) => string
-}
-
-// The subset of Navigator the automation probe reads. Both fields are unknown
-// because a non-browser runtime need not honour the Navigator shape at all, and
-// the probe has to answer without trusting either one.
-interface AutomationEnvironment {
-  webdriver: unknown
-  userAgent: unknown
-}
-
-// E2E/automation contexts (Playwright, Headless Chrome, webdriver) where
-// focus/visibility pausing must be bypassed: the runner window may not be
-// focused but the page is still "visible".
-//
-// Exported for direct testing, not as public API.
-export function isAutomatedEnvironment(env: AutomationEnvironment | undefined): boolean {
-  if (env === undefined) return false
-  return (
-    Boolean(env.webdriver) ||
-    (typeof env.userAgent === 'string' &&
-      (env.userAgent.includes('HeadlessChrome') || env.userAgent.includes('playwright')))
-  )
 }
 
 /**
