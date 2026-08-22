@@ -12,6 +12,7 @@
 
 import type { Move } from '../types/sudoku'
 import { logger } from './logger'
+import type { WorkerRequest, WorkerResponse } from './workerProtocol'
 
 // ==================== Types ====================
 
@@ -37,20 +38,6 @@ export interface WorkerSolveAllResult {
   }>
   solved: boolean
   finalBoard: number[]
-}
-
-interface WorkerRequest {
-  type: 'init' | 'findNextMove' | 'solveAll' | 'terminate'
-  id: string
-  payload?: unknown
-}
-
-interface WorkerResponse {
-  type: 'loaded' | 'ready' | 'result' | 'error'
-  id?: string
-  success?: boolean
-  data?: unknown
-  error?: string
 }
 
 interface PendingRequest {
@@ -212,30 +199,26 @@ export async function initializeWorker(): Promise<void> {
 
       // Set up the message handler for responses
       worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-        const { type, id, data, error } = event.data
+        const message = event.data
 
-        // Ignore non-response messages
-        // Stryker disable next-line StringLiteral: no real worker message uses the empty string as its type
-        if (type !== 'ready' && type !== 'result' && type !== 'error') {
-          return
-        }
+        // The load signal belongs to createWorker's handshake and carries no
+        // request id, so there is nothing to settle here.
+        if (message.type === 'loaded') return
 
-        // Stryker disable next-line ConditionalExpression: a message without id falls through to the pending lookup which returns undefined and returns
-        if (!id) return
-
-        const pending = pendingRequests.get(id)
+        const pending = pendingRequests.get(message.id)
         if (!pending) return
 
-        pendingRequests.delete(id)
+        pendingRequests.delete(message.id)
         clearTimeout(pending.timeoutId)
 
-        // `type` is the discriminator. A failure is always `type: 'error'`;
-        // `ready` and `result` are both successes, and `ready` carries no
-        // payload. Requiring a `success` field here rejected every `ready`.
-        if (type === 'error') {
-          pending.reject(new Error(error || 'Worker request failed'))
+        // `type` is the sole success signal. `error` is the only failure arm;
+        // `ready` succeeds with no payload and `result` succeeds with one.
+        if (message.type === 'error') {
+          pending.reject(new Error(message.error || 'Worker request failed'))
+        } else if (message.type === 'result') {
+          pending.resolve(message.data)
         } else {
-          pending.resolve(data)
+          pending.resolve(undefined)
         }
 
         // Reset idle timer after each operation completes

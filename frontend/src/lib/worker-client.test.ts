@@ -245,7 +245,6 @@ describe('worker-client advanced scenarios', () => {
             this.simulateMessage({
               type: 'error',
               id: data.id,
-              success: false,
               error: 'Init failed',
             })
             return
@@ -253,7 +252,7 @@ describe('worker-client advanced scenarios', () => {
 
           if (this.responseOverride) {
             const response = this.responseOverride(data)
-            this.simulateMessage({ type: 'result', id: data.id, success: true, data: response })
+            this.simulateMessage({ type: 'result', id: data.id, data: response })
             return
           }
 
@@ -282,7 +281,7 @@ describe('worker-client advanced scenarios', () => {
             }
           }
 
-          this.simulateMessage({ type: 'result', id: data.id, success: true, data: responseData })
+          this.simulateMessage({ type: 'result', id: data.id, data: responseData })
         }, this.autoRespondDelay)
       }
     }
@@ -504,9 +503,7 @@ describe('worker-client advanced scenarios', () => {
 
       const worker = createdWorkers[0]!
       // Message with type but no id - should be ignored
-      expect(() =>
-        worker.simulateMessage({ type: 'result', success: true, data: {} }),
-      ).not.toThrow()
+      expect(() => worker.simulateMessage({ type: 'result', data: {} })).not.toThrow()
 
       // Worker should still be ready after receiving ignored messages
       expect(isWorkerReady()).toBe(true)
@@ -523,7 +520,7 @@ describe('worker-client advanced scenarios', () => {
       const worker = createdWorkers[0]!
       // Message with unknown id - should be ignored (no pending request)
       expect(() =>
-        worker.simulateMessage({ type: 'result', id: 'unknown-id-12345', success: true, data: {} }),
+        worker.simulateMessage({ type: 'result', id: 'unknown-id-12345', data: {} }),
       ).not.toThrow()
 
       // Worker should still be ready after receiving ignored messages
@@ -537,7 +534,6 @@ describe('worker-client advanced scenarios', () => {
       buildResponse: (data: { type: string; id: string; payload?: unknown }) => {
         type: string
         id: string
-        success: boolean
         error: string
       },
     ) => {
@@ -570,7 +566,6 @@ describe('worker-client advanced scenarios', () => {
       buildResponse: (data: { type: string; id: string; payload?: unknown }) => {
         type: string
         id: string
-        success: boolean
         error: string
       },
     ) => {
@@ -583,7 +578,7 @@ describe('worker-client advanced scenarios', () => {
 
     it('should reject pending request on error type', async () => {
       const { findNextMove, terminateWorker, getCapturedId } = await setupRejectingFindNextMove(
-        (data) => ({ type: 'error', id: data.id, success: false, error: 'Custom error message' }),
+        (data) => ({ type: 'error', id: data.id, error: 'Custom error message' }),
       )
 
       await expect(findNextMove(emptyGrid(), fullCandidates(), emptyGrid())).rejects.toThrow(
@@ -1091,12 +1086,7 @@ describe('worker-client advanced scenarios', () => {
         // Resolve init with the exact id the client generated so isInitialized becomes true
         const initReq = posted.find((p) => p.type === 'init')
         expect(initReq).toBeDefined()
-        createdWorkers[0]!.simulateMessage({
-          type: 'result',
-          id: initReq!.id,
-          success: true,
-          data: null,
-        })
+        createdWorkers[0]!.simulateMessage({ type: 'ready', id: initReq!.id })
         await vi.advanceTimersByTimeAsync(10)
         await initPromise
 
@@ -1129,11 +1119,11 @@ describe('worker-client advanced scenarios', () => {
     })
   })
 
-  describe('mutation-kill: error-type rejection regardless of success flag', () => {
+  describe('mutation-kill: an error response rejects', () => {
     const emptyGrid = (): number[] => new Array(81).fill(0)
     const fullCandidates = (): number[][] => new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
 
-    it('rejects on error type even when success is true (L211)', async () => {
+    it('rejects on an error response even when it carries a data payload', async () => {
       vi.resetModules()
       globalThis.Worker = class extends MockWorker {
         constructor(url: URL | string, options?: WorkerOptions) {
@@ -1145,7 +1135,7 @@ describe('worker-client advanced scenarios', () => {
                 this.simulateMessage({
                   type: 'error',
                   id: data.id,
-                  success: true,
+                  data: { ignored: true },
                   error: 'Boom',
                 })
               }, 5)
@@ -1288,7 +1278,6 @@ describe('worker-client advanced scenarios', () => {
         createdWorkers[0]!.simulateMessage({
           type: 'error',
           id: findReqId,
-          success: false,
           error: '',
         })
 
@@ -1565,12 +1554,11 @@ describe('worker-client - response-type guard (mutation coverage)', () => {
       }
       postMessage(data: { type?: string; id?: string }): void {
         if (data?.type === 'init') {
-          this.dispatch({ type: 'result', id: data.id, success: true, data: null })
+          this.dispatch({ type: 'ready', id: data.id })
         } else if (data?.type === 'findNextMove') {
           this.dispatch({
             type: 'result',
             id: data.id,
-            success: true,
             data: {
               move: { technique: 'NakedSingle', placement: { row: 0, col: 0, digit: 5 } },
               board: new Array(81).fill(0),

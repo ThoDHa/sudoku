@@ -9,6 +9,7 @@
 
 import { instantiateSudokuWasm, type GoInstance } from './wasm-bootstrap'
 import type { SudokuWasmAPI } from '../types/sudoku'
+import type { WorkerRequest, WorkerResponse } from './workerProtocol'
 
 // Extend the worker global scope
 declare global {
@@ -17,12 +18,6 @@ declare global {
 }
 
 // ==================== Message Types ====================
-
-interface WorkerRequest {
-  type: 'init' | 'findNextMove' | 'solveAll' | 'terminate'
-  id: string
-  payload?: unknown
-}
 
 interface FindNextMovePayload {
   cells: number[]
@@ -34,14 +29,6 @@ interface SolveAllPayload {
   cells: number[]
   candidates: number[][]
   givens: number[]
-}
-
-interface WorkerResponse {
-  type: 'ready' | 'result' | 'error'
-  id?: string
-  success?: boolean
-  data?: unknown
-  error?: string
 }
 
 // ==================== Worker State ====================
@@ -197,7 +184,6 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         const response: WorkerResponse = {
           type: 'result',
           id,
-          success: true,
           data: {
             move: result.move,
             board: result.board.cells,
@@ -231,7 +217,6 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         const response: WorkerResponse = {
           type: 'result',
           id,
-          success: true,
           data: result,
         }
         self.postMessage(response)
@@ -241,7 +226,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       case 'terminate': {
         // Clean up and close the worker
         wasmApi = null
-        const response: WorkerResponse = { type: 'result', id, success: true }
+        const response: WorkerResponse = { type: 'result', id }
         self.postMessage(response)
         self.close()
         break
@@ -251,7 +236,6 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         const response: WorkerResponse = {
           type: 'error',
           id,
-          success: false,
           error: `Unknown message type: ${String(type)}`,
         }
         self.postMessage(response)
@@ -261,7 +245,6 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     const response: WorkerResponse = {
       type: 'error',
       id,
-      success: false,
       error: error instanceof Error ? error.message : String(error),
     }
     self.postMessage(response)

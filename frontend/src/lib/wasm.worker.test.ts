@@ -9,7 +9,6 @@ interface WorkerGlobalMock {
 interface PostedMessage {
   type: string
   id?: string
-  success?: boolean
   error?: string
   data?: unknown
 }
@@ -167,7 +166,6 @@ describe('wasm.worker message protocol', () => {
       expect(posted).toContainEqual({
         type: 'result',
         id: 'move-1',
-        success: true,
         data: {
           move: { technique: 'naked-single' },
           board: [1, 2],
@@ -195,7 +193,6 @@ describe('wasm.worker message protocol', () => {
       expect(posted).toContainEqual({
         type: 'result',
         id: 'solve-1',
-        success: true,
         data: { moves: [], solved: true, finalBoard: [1, 2, 3] },
       })
     })
@@ -211,7 +208,7 @@ describe('wasm.worker message protocol', () => {
 
     post({ type: 'terminate', id: 'term-1' })
     await vi.waitFor(() => {
-      expect(posted).toContainEqual({ type: 'result', id: 'term-1', success: true })
+      expect(posted).toContainEqual({ type: 'result', id: 'term-1' })
     })
     expect(sink.close).toHaveBeenCalled()
   })
@@ -223,7 +220,6 @@ describe('wasm.worker message protocol', () => {
       expect(posted).toContainEqual({
         type: 'error',
         id: 'x-1',
-        success: false,
         error: 'Unknown message type: bogus',
       })
     })
@@ -251,7 +247,6 @@ describe('wasm.worker init failure', () => {
       expect(posted).toContainEqual({
         type: 'error',
         id: 'init-fail',
-        success: false,
         error: 'Go runtime not available after loading wasm_exec.js',
       })
     })
@@ -299,7 +294,6 @@ describe('wasm.worker init polling timeout', () => {
     expect(posted).toContainEqual({
       type: 'error',
       id: 'init-timeout',
-      success: false,
       error: 'WASM initialization timeout',
     })
     expect(sink.close).not.toHaveBeenCalled()
@@ -370,7 +364,6 @@ describe('wasm.worker mutation kills', () => {
       expect(posted).toContainEqual({
         type: 'error',
         id: 'i5',
-        success: false,
         error: 'Failed to fetch WASM: 500',
       })
     })
@@ -467,7 +460,6 @@ describe('wasm.worker mutation kills', () => {
       expect(posted).toContainEqual({
         type: 'error',
         id: 'nonerr-1',
-        success: false,
         error: 'raw-string-failure',
       })
     })
@@ -509,7 +501,6 @@ describe('wasm.worker polling timeout boundary', () => {
     expect(posted).toContainEqual({
       type: 'error',
       id: 'tb-1',
-      success: false,
       error: 'WASM initialization timeout',
     })
   })
@@ -664,7 +655,6 @@ describe('wasm.worker mutation-kill: parallel init and edge paths', () => {
       expect(posted).toContainEqual({
         type: 'error',
         id: 'i-bad',
-        success: false,
         error: 'Failed to fetch wasm_exec.js: 503',
       })
     })
