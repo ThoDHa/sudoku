@@ -201,9 +201,14 @@ export async function initializeWorker(): Promise<void> {
       worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
         const message = event.data
 
-        // The load signal belongs to createWorker's handshake and carries no
-        // request id, so there is nothing to settle here.
-        if (message.type === 'loaded') return
+        // Only these three settle a request. `loaded` belongs to createWorker's
+        // handshake and carries no id, and event.data is not validated at
+        // runtime, so a type outside the protocol lands here too. Both must be
+        // rejected before the lookup below: past that point the entry is gone
+        // and its timeout cleared, so returning would strand the promise.
+        if (message.type !== 'ready' && message.type !== 'result' && message.type !== 'error') {
+          return
+        }
 
         const pending = pendingRequests.get(message.id)
         if (!pending) return
@@ -211,14 +216,12 @@ export async function initializeWorker(): Promise<void> {
         pendingRequests.delete(message.id)
         clearTimeout(pending.timeoutId)
 
-        // `type` is the sole success signal. `error` is the only failure arm;
-        // `ready` succeeds with no payload and `result` succeeds with one.
+        // `type` is the sole success signal: `error` is the only failure arm,
+        // and `ready` differs from `result` only in having no data to carry.
         if (message.type === 'error') {
           pending.reject(new Error(message.error || 'Worker request failed'))
-        } else if (message.type === 'result') {
-          pending.resolve(message.data)
         } else {
-          pending.resolve(undefined)
+          pending.resolve(message.data)
         }
 
         // Reset idle timer after each operation completes
@@ -226,7 +229,7 @@ export async function initializeWorker(): Promise<void> {
       }
 
       worker.onerror = (error) => {
-        logger.debug('[WorkerClient] Worker error:', error)
+        logger.error('[WorkerClient] Worker error:', error)
         // Reject all pending requests
         for (const [id, pending] of pendingRequests) {
           clearTimeout(pending.timeoutId)

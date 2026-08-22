@@ -23,7 +23,7 @@ export type WorkerResponse =
   /** The worker script has evaluated. Sent once, before any request, with no id. */
   | { type: 'loaded' }
   /** WASM is initialized. The reply to `init`; carries no payload. */
-  | { type: 'ready'; id: string }
+  | { type: 'ready'; id: string; data?: undefined }
   /** A request succeeded. `data` is the request's return value. */
   | { type: 'result'; id: string; data?: unknown }
   /** A request failed. This is the only failure signal. */

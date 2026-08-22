@@ -1288,6 +1288,68 @@ describe('worker-client advanced scenarios', () => {
       }
     })
 
+    it('leaves a request pending when a message carries an unknown type', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        let findReqId: string | undefined
+        globalThis.Worker = class extends MockWorker {
+          override postMessage(data: WorkerRequest): void {
+            if (data.type === 'findNextMove') {
+              findReqId = data.id
+              return
+            }
+            super.postMessage(data)
+          }
+          constructor(url: URL | string, options?: WorkerOptions) {
+            super(url, options)
+            createdWorkers.push(this)
+          }
+        } as unknown as typeof Worker
+
+        const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
+
+        const initPromise = initializeWorker()
+        await vi.advanceTimersByTimeAsync(50)
+        await initPromise
+
+        const findPromise = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
+        await vi.advanceTimersByTimeAsync(10)
+        expect(findReqId).toBeDefined()
+
+        // A message outside the protocol that happens to carry a live request
+        // id. Settling on it would hand the caller undefined, which then throws
+        // downstream on result.move. The request must stay pending so its own
+        // timeout rejects it with a message that says what happened.
+        createdWorkers[0]!.simulateMessage({
+          type: 'progress',
+          id: findReqId,
+          data: { percent: 50 },
+        })
+        await vi.advanceTimersByTimeAsync(10)
+
+        let settled = false
+        void findPromise.then(
+          () => (settled = true),
+          () => (settled = true),
+        )
+        await vi.advanceTimersByTimeAsync(10)
+        expect(settled).toBe(false)
+
+        // Attach the handler before advancing past REQUEST_TIMEOUT so the
+        // timer-fired rejection always has a waiter.
+        const assertion = expect(findPromise).rejects.toThrow(
+          'Worker request timeout: findNextMove',
+        )
+        await vi.advanceTimersByTimeAsync(31000)
+        await assertion
+
+        terminateWorker()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     it('rejects with a timeout message after REQUEST_TIMEOUT', async () => {
       vi.resetModules()
       vi.useFakeTimers()
@@ -1453,10 +1515,10 @@ describe('worker-client advanced scenarios', () => {
       }
     })
 
-    it('emits the worker-error debug log when onerror fires (L229)', async () => {
+    it('reports the worker error when onerror fires', async () => {
       vi.resetModules()
       const loggerMod = await import('../lib/logger')
-      const debugSpy = vi.spyOn(loggerMod.logger, 'debug').mockImplementation(() => {})
+      const debugSpy = vi.spyOn(loggerMod.logger, 'error').mockImplementation(() => {})
 
       vi.useFakeTimers()
       try {

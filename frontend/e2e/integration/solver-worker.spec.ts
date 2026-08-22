@@ -20,6 +20,15 @@ import { test, expect } from '../fixtures'
 const WORKER_BUDGET_MS = 15000
 
 test.describe('Solver worker mode', () => {
+  // chrome-desktop only. wasm.worker.ts caps its own readiness poll at 5s, which
+  // is tighter than anything this spec can wait past, and the mobile projects
+  // carry extended timeouts precisely because WASM boot is slower there. Worker
+  // mode on WebKit and on mobile Chromium needs its own measurement first.
+  test.skip(
+    () => ['iphone-12', 'pixel-5'].includes(test.info().project.name),
+    'worker-mode timing is only measured on chrome-desktop',
+  )
+
   test('initializes the WASM worker and keeps the solver off the main thread', async ({ page }) => {
     const workerPromise = page.waitForEvent('worker', { timeout: WORKER_BUDGET_MS })
 
