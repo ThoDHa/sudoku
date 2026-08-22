@@ -1421,3 +1421,68 @@ describe('mutation-killing: no interval is scheduled while fully paused for visi
     }
   })
 })
+
+// =============================================================================
+// Extended background pause (BUG-24).
+//
+// Game.tsx suspends operations after EXTENDED_PAUSE_DELAY hidden and calls
+// pauseTimer() there. That call cannot work: pauseTimer is guarded on
+// startTimeRef being non-null, and going hidden already nulled it. The guard is
+// load-bearing, not incidental, because entering the body with a null ref adds
+// Date.now() to the accumulated baseline.
+//
+// These pin what the timer must actually do across a long absence, which is
+// what makes deleting that call safe.
+// =============================================================================
+
+describe('extended background pause', () => {
+  let originalVisibilityState: PropertyDescriptor | undefined
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    if (originalVisibilityState) {
+      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
+    }
+  })
+
+  const visible = () =>
+    createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
+  const hidden = () => createMockBackgroundManager({ shouldPauseOperations: true, isHidden: true })
+
+  it('counts none of a long hidden interval and resumes on return', () => {
+    const { result, rerender } = renderHook(
+      ({ bg }) => useGameTimer({ backgroundManager: bg, autoStart: true }),
+      { initialProps: { bg: visible() } },
+    )
+
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+    const beforeHide = result.current.elapsedMs
+    expect(beforeHide).toBeGreaterThanOrEqual(2500)
+
+    // Hidden for far longer than EXTENDED_PAUSE_DELAY (15s).
+    rerender({ bg: hidden() })
+    act(() => {
+      vi.advanceTimersByTime(120000)
+    })
+    expect(result.current.elapsedMs).toBe(beforeHide)
+
+    // Back. The clock must continue from where it stopped, not restart and not
+    // stay frozen: there is no user-facing control that restarts a stopped
+    // timer, so a timer stopped here would stay stopped for the session.
+    rerender({ bg: visible() })
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+
+    expect(result.current.elapsedMs).toBeGreaterThanOrEqual(beforeHide + 1500)
+    expect(result.current.elapsedMs).toBeLessThan(beforeHide + 10000)
+  })
+})
