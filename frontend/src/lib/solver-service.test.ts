@@ -719,7 +719,7 @@ describe('solver-service', () => {
       await mod.initializeSolver()
 
       expect(mod.isUsingWorkerMode()).toBe(false)
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(logger.error).toHaveBeenCalledWith(
         '[SolverService] Worker initialization failed, falling back to main thread:',
         expect.any(Error),
       )

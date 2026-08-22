@@ -212,7 +212,7 @@ export async function initializeWorker(): Promise<void> {
 
       // Set up the message handler for responses
       worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-        const { type, id, success, data, error } = event.data
+        const { type, id, data, error } = event.data
 
         // Ignore non-response messages
         // Stryker disable next-line StringLiteral: no real worker message uses the empty string as its type
@@ -229,7 +229,10 @@ export async function initializeWorker(): Promise<void> {
         pendingRequests.delete(id)
         clearTimeout(pending.timeoutId)
 
-        if (type === 'error' || !success) {
+        // `type` is the discriminator. A failure is always `type: 'error'`;
+        // `ready` and `result` are both successes, and `ready` carries no
+        // payload. Requiring a `success` field here rejected every `ready`.
+        if (type === 'error') {
           pending.reject(new Error(error || 'Worker request failed'))
         } else {
           pending.resolve(data)

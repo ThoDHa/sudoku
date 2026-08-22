@@ -228,6 +228,7 @@ describe('worker-client advanced scenarios', () => {
     private initShouldFail = false
     private responseOverride:
       ((request: { type: string; id: string; payload?: unknown }) => unknown) | null = null
+    private received: { type: string; id: string; payload?: unknown }[] = []
 
     constructor(_url: URL | string, _options?: WorkerOptions) {
       // Simulate the worker sending 'loaded' message after construction
@@ -237,6 +238,7 @@ describe('worker-client advanced scenarios', () => {
     }
 
     postMessage(data: { type: string; id: string; payload?: unknown }): void {
+      this.received.push(data)
       if (this.shouldAutoRespond && data.type && data.id) {
         setTimeout(() => {
           if (this.initShouldFail && data.type === 'init') {
@@ -255,11 +257,17 @@ describe('worker-client advanced scenarios', () => {
             return
           }
 
+          // `init` is answered with `ready` and no payload, exactly as
+          // wasm.worker.ts does. The suite previously answered it with
+          // `{type:'result', success:true}`, a shape the worker never sends.
+          if (data.type === 'init') {
+            this.simulateMessage({ type: 'ready', id: data.id })
+            return
+          }
+
           // Default responses based on request type
           let responseData: unknown = null
-          if (data.type === 'init') {
-            responseData = null
-          } else if (data.type === 'findNextMove') {
+          if (data.type === 'findNextMove') {
             responseData = {
               move: { technique: 'NakedSingle', placement: { row: 0, col: 0, digit: 5 } },
               board: new Array(81).fill(0),
@@ -341,6 +349,11 @@ describe('worker-client advanced scenarios', () => {
     ) {
       this.responseOverride = fn
     }
+
+    /** The id the client generated for its most recent request of this type. */
+    requestIdFor(type: string): string | undefined {
+      return this.received.findLast((message) => message.type === type)?.id
+    }
   }
 
   // Install a Worker that does not auto-respond, so tests can drive the message flow manually.
@@ -359,12 +372,7 @@ describe('worker-client advanced scenarios', () => {
     const initPromise = initializeWorker()
     await vi.advanceTimersByTimeAsync(10)
     const worker = createdWorkers[0]!
-    worker.simulateMessage({
-      type: 'result',
-      id: 'req-1-' + Date.now(),
-      success: true,
-      data: null,
-    })
+    worker.simulateMessage({ type: 'ready', id: worker.requestIdFor('init') })
     await vi.advanceTimersByTimeAsync(10)
     return { worker, initPromise }
   }
@@ -392,6 +400,27 @@ describe('worker-client advanced scenarios', () => {
 
       await initializeWorker()
 
+      expect(isWorkerReady()).toBe(true)
+
+      terminateWorker()
+    })
+
+    it('resolves when the worker answers init with a ready message carrying no payload', async () => {
+      // wasm.worker.ts:173 answers `init` with exactly `{ type: 'ready', id }`
+      // and nothing else. The client used to require a `success` field on every
+      // response, so this message rejected and worker mode silently never ran.
+      installNoRespondWorker()
+
+      const { initializeWorker, isWorkerReady, terminateWorker } = await import('./worker-client')
+
+      const initPromise = initializeWorker()
+      await vi.waitFor(() => expect(createdWorkers[0]?.requestIdFor('init')).toBeDefined())
+
+      const worker = createdWorkers[0]!
+      // The exact message wasm.worker.ts:173 posts, and nothing more.
+      worker.simulateMessage({ type: 'ready', id: worker.requestIdFor('init') })
+
+      await expect(initPromise).resolves.toBeUndefined()
       expect(isWorkerReady()).toBe(true)
 
       terminateWorker()
@@ -566,9 +595,9 @@ describe('worker-client advanced scenarios', () => {
       terminateWorker()
     })
 
-    it('should reject on success: false', async () => {
+    it('should reject on an error response carrying a message', async () => {
       const { findNextMove, terminateWorker, getCapturedId } = await setupRejectingFindNextMove(
-        (data) => ({ type: 'result', id: data.id, success: false, error: 'Operation failed' }),
+        (data) => ({ type: 'error', id: data.id, error: 'Operation failed' }),
       )
 
       await expect(findNextMove(emptyGrid(), fullCandidates(), emptyGrid())).rejects.toThrow(
