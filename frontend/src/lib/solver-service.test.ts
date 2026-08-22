@@ -803,7 +803,7 @@ describe('solver-service', () => {
       const result = await solveAll([0], [[]], [0])
 
       expect(result.solved).toBe(true)
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(logger.error).toHaveBeenCalledWith(
         '[SolverService] Worker solveAll failed, falling back:',
         expect.any(Error),
       )
@@ -835,7 +835,7 @@ describe('solver-service', () => {
       const result = await findNextMove([0], [[]], [0])
 
       expect(result.move).toBeNull()
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(logger.error).toHaveBeenCalledWith(
         '[SolverService] Worker findNextMove failed, falling back:',
         expect.any(Error),
       )

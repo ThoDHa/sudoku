@@ -252,6 +252,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
 }
 
 // Signal that the worker script has loaded (not that WASM is ready yet)
-self.postMessage({ type: 'loaded' })
+const loadedSignal: WorkerResponse = { type: 'loaded' }
+self.postMessage(loadedSignal)
 
 export {} // Make this a module

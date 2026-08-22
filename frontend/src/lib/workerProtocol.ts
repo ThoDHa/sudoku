@@ -1,9 +1,8 @@
 /**
  * The message protocol between worker-client.ts and wasm.worker.ts.
  *
- * Declared once and imported by both sides. It used to be declared twice, in
- * near-identical permissive shapes, which is how the two ends came to disagree
- * about whether an `init` response carries a success flag.
+ * Declared once and imported by both sides, so neither end can hold its own
+ * idea of what a message looks like.
  */
 
 /** A request the client posts into the worker. */

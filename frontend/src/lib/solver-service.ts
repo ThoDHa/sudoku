@@ -159,10 +159,9 @@ export async function initializeSolver(): Promise<void> {
       logger.debug('[SolverService] Worker mode initialized')
       return
     } catch (error) {
-      // Reported at error level, not debug. The fallback keeps the app working,
-      // so nothing here is user-visible: every solve simply moves back onto the
-      // main thread. A debug-level line meant that degradation was invisible in
-      // production, which is how a dead worker handshake went unnoticed.
+      // Error level, not debug: the fallback keeps the app working, so this
+      // degradation is invisible to the user. Every solve moves back onto the
+      // main thread, which is the contention the worker exists to avoid.
       logger.error(
         '[SolverService] Worker initialization failed, falling back to main thread:',
         error,
@@ -213,7 +212,7 @@ export async function solveAll(
       if (error instanceof WorkerTerminatedError) {
         throw error
       }
-      logger.debug('[SolverService] Worker solveAll failed, falling back:', error)
+      logger.error('[SolverService] Worker solveAll failed, falling back:', error)
       // Fall through to main thread
     }
   }
@@ -254,7 +253,7 @@ export async function findNextMove(
       if (error instanceof WorkerTerminatedError) {
         throw error
       }
-      logger.debug('[SolverService] Worker findNextMove failed, falling back:', error)
+      logger.error('[SolverService] Worker findNextMove failed, falling back:', error)
       // Fall through to main thread
     }
   }
