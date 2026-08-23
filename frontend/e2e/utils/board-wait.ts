@@ -9,18 +9,38 @@
  */
 
 /**
- * Wait for WASM to be ready.
+ * Wait for the WASM solver to be ready.
  * Only needed for tests that require hint/solve functionality.
- * Most tests don't need this since WASM loads on-demand.
+ *
+ * The solver runs inside the wasm.worker when workers are available and falls
+ * back to the main thread otherwise, so readiness is the SudokuWasm global
+ * appearing in either place. Polling only window.SudokuWasm would time out in
+ * worker mode, where the main thread never defines it.
  */
 export async function waitForWasmReady(page: any, timeout = 30000) {
-  await page.waitForFunction(
-    () => {
-      // Check if SudokuWasm API is available on window
-      return typeof (window as any).SudokuWasm !== 'undefined'
-    },
-    { timeout },
+  const pollIntervalMs = 100
+  const deadline = Date.now() + timeout
+  while (Date.now() < deadline) {
+    if (await isSudokuWasmDefined(page)) return
+    for (const worker of page.workers()) {
+      if (/wasm\.worker/.test(worker.url()) && (await isSudokuWasmDefined(worker))) return
+    }
+    await page.waitForTimeout(pollIntervalMs)
+  }
+  throw new Error(
+    `WASM solver not ready within ${timeout}ms: SudokuWasm was defined neither on the main thread nor in the wasm.worker`,
   )
+}
+
+async function isSudokuWasmDefined(target: any): Promise<boolean> {
+  try {
+    return await target.evaluate(
+      () => typeof (globalThis as { SudokuWasm?: unknown }).SudokuWasm !== 'undefined',
+    )
+  } catch {
+    // A navigating page or a terminated worker cannot be evaluated; treat as not ready.
+    return false
+  }
 }
 
 /**
@@ -48,12 +68,7 @@ export async function waitForBoard(
   // Note: WASM is now lazy-loaded, so most tests don't need this
   if (checkWasm) {
     try {
-      await page.waitForFunction(
-        () => {
-          return typeof (window as any).SudokuWasm !== 'undefined'
-        },
-        { timeout: Math.min(timeout, 10000) },
-      )
+      await waitForWasmReady(page, Math.min(timeout, 10000))
     } catch {
       // Continue - WASM will load on-demand when needed
       console.log('[waitForBoard] WASM not yet loaded - will load on-demand')

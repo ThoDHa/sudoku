@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { waitForHintProcessing } from '../utils/hint-wait'
+import { waitForWasmReady } from '../utils/board-wait'
 
 /**
  * Post-Deploy Smoke Test
@@ -92,19 +93,16 @@ test.describe('@deployment Post-Deploy Smoke', () => {
       // `withWasm` wrapper (src/lib/wasm.ts) intentionally degrades to a
       // null fallback when WASM fails, so a "no hint found" toast renders
       // identically whether WASM ran and found nothing OR WASM never loaded.
-      // Asserting `window.SudokuWasm` is defined after the click is the only
+      // Asserting the `SudokuWasm` API is defined after the click is the only
       // way to tell a working artifact from a broken one. This is the single
       // step that proves the shipped WASM bundle is functional end-to-end.
       const hintButton = page.getByRole('button', { name: 'Get a hint' })
       await hintButton.click()
       await waitForHintProcessing(page)
 
-      await expect
-        .poll(
-          async () => await page.evaluate(() => typeof (window as any).SudokuWasm !== 'undefined'),
-          { timeout: 10000 },
-        )
-        .toBe(true)
+      // In worker mode the API lives in the wasm.worker, on the main thread only
+      // under the no-Worker fallback; the helper accepts either.
+      await waitForWasmReady(page, 10000)
 
       // WASM is proven live above; confirm the hint flow surfaced feedback.
       // Pin to the first message container and require non-whitespace
