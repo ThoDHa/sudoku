@@ -12,6 +12,7 @@
 
 import type { Move } from '../types/sudoku'
 import { logger } from './logger'
+import type { WorkerRequest, WorkerResponse } from './workerProtocol'
 
 // ==================== Types ====================
 
@@ -37,20 +38,6 @@ export interface WorkerSolveAllResult {
   }>
   solved: boolean
   finalBoard: number[]
-}
-
-interface WorkerRequest {
-  type: 'init' | 'findNextMove' | 'solveAll' | 'terminate'
-  id: string
-  payload?: unknown
-}
-
-interface WorkerResponse {
-  type: 'loaded' | 'ready' | 'result' | 'error'
-  id?: string
-  success?: boolean
-  data?: unknown
-  error?: string
 }
 
 interface PendingRequest {
@@ -81,6 +68,10 @@ const IDLE_TIMEOUT_MS = 60_000 // 1 minute of inactivity
 const WORKER_CREATION_TIMEOUT_MS = 10_000
 
 let idleTimeoutId: ReturnType<typeof setTimeout> | null = null
+// Replaced every time the module lets go of a worker. An initialization that
+// started under an older token has been superseded: it must not adopt the
+// worker it created, nor write state that now belongs to a later cycle.
+let workerToken = {}
 
 // ==================== Idle Cleanup ====================
 
@@ -169,6 +160,7 @@ async function createWorker(): Promise<Worker> {
       if (event.data.type === 'loaded') {
         clearTimeout(timeout)
         newWorker.removeEventListener('message', handleMessage)
+        newWorker.removeEventListener('error', handleError)
         resolve(newWorker)
       }
     }
@@ -206,33 +198,46 @@ export async function initializeWorker(): Promise<void> {
   isInitializing = true
 
   initPromise = (async () => {
+    const token = workerToken
     try {
       // Create the worker
-      worker = await createWorker()
+      const created = await createWorker()
+
+      // Something let go of the worker while this one was being built, so this
+      // cycle is stale. Terminate what it made rather than adopting it, or the
+      // thread leaks with nothing referencing it.
+      if (token !== workerToken) {
+        created.terminate()
+        throw new Error('Worker initialization superseded')
+      }
+
+      worker = created
 
       // Set up the message handler for responses
       worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-        const { type, id, success, data, error } = event.data
+        const message = event.data
 
-        // Ignore non-response messages
-        // Stryker disable next-line StringLiteral: no real worker message uses the empty string as its type
-        if (type !== 'ready' && type !== 'result' && type !== 'error') {
+        // Only these three settle a request. `loaded` belongs to createWorker's
+        // handshake and carries no id, and event.data is not validated at
+        // runtime, so a type outside the protocol lands here too. Both must be
+        // rejected before the lookup below: past that point the entry is gone
+        // and its timeout cleared, so returning would strand the promise.
+        if (message.type !== 'ready' && message.type !== 'result' && message.type !== 'error') {
           return
         }
 
-        // Stryker disable next-line ConditionalExpression: a message without id falls through to the pending lookup which returns undefined and returns
-        if (!id) return
-
-        const pending = pendingRequests.get(id)
+        const pending = pendingRequests.get(message.id)
         if (!pending) return
 
-        pendingRequests.delete(id)
+        pendingRequests.delete(message.id)
         clearTimeout(pending.timeoutId)
 
-        if (type === 'error' || !success) {
-          pending.reject(new Error(error || 'Worker request failed'))
+        // `type` is the sole success signal: `error` is the only failure arm,
+        // and `ready` differs from `result` only in having no data to carry.
+        if (message.type === 'error') {
+          pending.reject(new Error(message.error || 'Worker request failed'))
         } else {
-          pending.resolve(data)
+          pending.resolve(message.data)
         }
 
         // Reset idle timer after each operation completes
@@ -240,13 +245,19 @@ export async function initializeWorker(): Promise<void> {
       }
 
       worker.onerror = (error) => {
-        logger.debug('[WorkerClient] Worker error:', error)
+        logger.error('[WorkerClient] Worker error:', error)
         // Reject all pending requests
         for (const [id, pending] of pendingRequests) {
           clearTimeout(pending.timeoutId)
           pending.reject(new Error(`Worker error: ${error.message}`))
           pendingRequests.delete(id)
         }
+
+        // The worker is gone. Holding the reference would leave isWorkerReady
+        // reporting ready, and each later request would be posted into a dead
+        // worker and wait out REQUEST_TIMEOUT before the caller could fall back.
+        // Dropping it here means the next call re-initializes instead.
+        discardWorker()
       }
 
       // Initialize WASM inside the worker
@@ -259,12 +270,8 @@ export async function initializeWorker(): Promise<void> {
       // Start idle timer
       resetIdleTimer()
     } catch (error) {
-      // Stryker disable next-line BooleanLiteral: leaving isInitializing=true after failure is harmless because initPromise is also set to null on the next line, and the dedup check requires BOTH flags, so `true && null` is still falsy
-      isInitializing = false
-      initPromise = null
-      if (worker) {
-        worker.terminate()
-        worker = null
+      if (token === workerToken) {
+        discardWorker()
       }
       throw error
     }
@@ -306,29 +313,39 @@ async function sendRequest(type: WorkerRequest['type'], payload: unknown): Promi
 }
 
 /**
- * Terminate the worker and clean up
+ * Drop every reference to the current worker and reset the module to its
+ * uninitialized state. Settling outstanding requests is the caller's job: a
+ * deliberate terminate and a crash owe their callers different errors.
  */
-export function terminateWorker(): void {
+function discardWorker(): void {
   clearIdleTimer()
+  workerToken = {}
 
-  if (worker) {
-    // Clear all pending requests
-    for (const [id, pending] of pendingRequests) {
-      clearTimeout(pending.timeoutId)
-      pending.reject(new WorkerTerminatedError())
-      pendingRequests.delete(id)
-    }
+  worker?.terminate()
+  worker = null
 
-    worker.terminate()
-    worker = null
-  }
-
-  // Stryker disable next-line BooleanLiteral: leaving isInitialized=true after terminate is harmless because the `if (isInitialized && worker) return` guard requires BOTH to be true, and worker is null here, so subsequent initializeWorker calls proceed normally
+  // Stryker disable next-line BooleanLiteral: leaving isInitialized=true here is harmless because the `if (isInitialized && worker) return` guard requires BOTH to be true, and worker is null by this line in every caller
   isInitialized = false
-  // Stryker disable next-line BooleanLiteral: leaving isInitializing=true after terminate is harmless because initPromise is also set to null on the next line, and the dedup check requires BOTH flags
+  // Stryker disable next-line BooleanLiteral: leaving isInitializing=true here is harmless because initPromise is set to null on the next line and the dedup check requires BOTH flags, so `true && null` is still falsy
   isInitializing = false
   initPromise = null
   requestCounter = 0
+}
+
+/**
+ * Terminate the worker and clean up
+ */
+export function terminateWorker(): void {
+  // Unconditional: iterating an empty map is a no-op, and leaving entries behind
+  // while discardWorker resets requestCounter is how a regenerated id could
+  // collide with a live pending request.
+  for (const [id, pending] of pendingRequests) {
+    clearTimeout(pending.timeoutId)
+    pending.reject(new WorkerTerminatedError())
+    pendingRequests.delete(id)
+  }
+
+  discardWorker()
 
   logger.debug('[WorkerClient] Worker terminated, resources freed')
 }

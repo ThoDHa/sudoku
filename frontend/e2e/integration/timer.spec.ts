@@ -507,3 +507,44 @@ test.describe('@integration Timer - Edge Cases', () => {
     expect(seconds).toBeGreaterThanOrEqual(0)
   })
 })
+
+test.describe('@integration Timer - Extended Background Pause', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupGameAndWaitForBoard(page)
+  })
+
+  // Game.tsx suspends operations after EXTENDED_PAUSE_DELAY (15s) hidden. Under
+  // automation the visibility bypass is engaged (navigator.webdriver is true),
+  // so useGameTimer's visibility effect early-returns and never clears the
+  // running span. A pauseTimer() call in that effect is therefore live here, and
+  // it stops the clock for good: nothing outside puzzle load starts a stopped
+  // timer except Restart, which also resets it to zero.
+  test('timer still advances after returning from a hide longer than the extended pause', async ({
+    page,
+  }) => {
+    const timer = getTimerLocator(page)
+    await expect(timer).toBeVisible({ timeout: 10000 })
+
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+
+    // Past EXTENDED_PAUSE_DELAY, so the extended-pause effect has fired.
+    await page.waitForTimeout(17000)
+
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+
+    await expect(timer).toBeVisible({ timeout: 10000 })
+    const afterReturn = parseTimerToSeconds((await timer.textContent()) || '0:00')
+
+    // The clock must still be running. A stopped timer reads the same value
+    // forever, so this compares two readings rather than one against the start.
+    await page.waitForTimeout(3000)
+    const later = parseTimerToSeconds((await timer.textContent()) || '0:00')
+    expect(later).toBeGreaterThan(afterReturn)
+  })
+})

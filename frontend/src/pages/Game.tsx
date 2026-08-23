@@ -477,6 +477,15 @@ function GameContent() {
   // Extended background pause logic - suspend all operations after EXTENDED_PAUSE_DELAY hidden.
   // The reset-to-false lives in the hidden-branch cleanup so no setState fires
   // directly in the effect body.
+  //
+  // The timer is deliberately not touched here, and a pauseTimer() call that
+  // used to live in this callback was removed. In a browser it did nothing:
+  // going hidden banks the elapsed time and clears the running span, so
+  // pauseTimer's own guard skipped. Under automation it was live, because the
+  // headless bypass keeps shouldPauseOperations false while isHidden is true,
+  // so useGameTimer's visibility effect never runs and the span is never
+  // cleared. It stopped the clock permanently: no in-game control starts a
+  // stopped timer, only puzzle load and Restart, and Restart resets it to zero.
   useEffect(() => {
     if (!backgroundManager.isHidden) {
       return
@@ -489,15 +498,13 @@ function GameContent() {
       if (autoSolve.isAutoSolving) {
         autoSolve.stopAutoSolve()
       }
-      // Pause timer
-      timerControl.pauseTimer()
     }, EXTENDED_PAUSE_DELAY)
 
     return () => {
       clearTimeout(timeout)
       setIsExtendedPaused(false)
     }
-  }, [backgroundManager.isHidden, autoSolve, timerControl])
+  }, [backgroundManager.isHidden, autoSolve])
 
   // Unload WASM immediately when page becomes hidden to save ~4MB memory
   // This is more aggressive than waiting for deep pause - any visibility change triggers unload

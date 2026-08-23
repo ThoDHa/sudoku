@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { WorkerRequest } from './workerProtocol'
 
 /**
  * Worker Client Unit Tests
@@ -226,8 +227,9 @@ describe('worker-client advanced scenarios', () => {
     private shouldAutoRespond = true
     private autoRespondDelay = 5
     private initShouldFail = false
-    private responseOverride:
-      ((request: { type: string; id: string; payload?: unknown }) => unknown) | null = null
+    private responseOverride: ((request: WorkerRequest) => unknown) | null = null
+    private received: WorkerRequest[] = []
+    terminated = false
 
     constructor(_url: URL | string, _options?: WorkerOptions) {
       // Simulate the worker sending 'loaded' message after construction
@@ -236,14 +238,14 @@ describe('worker-client advanced scenarios', () => {
       }, 5)
     }
 
-    postMessage(data: { type: string; id: string; payload?: unknown }): void {
+    postMessage(data: WorkerRequest): void {
+      this.received.push(data)
       if (this.shouldAutoRespond && data.type && data.id) {
         setTimeout(() => {
           if (this.initShouldFail && data.type === 'init') {
             this.simulateMessage({
               type: 'error',
               id: data.id,
-              success: false,
               error: 'Init failed',
             })
             return
@@ -251,15 +253,20 @@ describe('worker-client advanced scenarios', () => {
 
           if (this.responseOverride) {
             const response = this.responseOverride(data)
-            this.simulateMessage({ type: 'result', id: data.id, success: true, data: response })
+            this.simulateMessage({ type: 'result', id: data.id, data: response })
+            return
+          }
+
+          // `init` is answered with `ready` and no payload, matching the
+          // `init` case of wasm.worker.ts's onmessage switch.
+          if (data.type === 'init') {
+            this.simulateMessage({ type: 'ready', id: data.id })
             return
           }
 
           // Default responses based on request type
           let responseData: unknown = null
-          if (data.type === 'init') {
-            responseData = null
-          } else if (data.type === 'findNextMove') {
+          if (data.type === 'findNextMove') {
             responseData = {
               move: { technique: 'NakedSingle', placement: { row: 0, col: 0, digit: 5 } },
               board: new Array(81).fill(0),
@@ -274,12 +281,13 @@ describe('worker-client advanced scenarios', () => {
             }
           }
 
-          this.simulateMessage({ type: 'result', id: data.id, success: true, data: responseData })
+          this.simulateMessage({ type: 'result', id: data.id, data: responseData })
         }, this.autoRespondDelay)
       }
     }
 
     terminate(): void {
+      this.terminated = true
       this.onmessage = null
       this.onerror = null
       this.eventListeners.clear()
@@ -336,10 +344,17 @@ describe('worker-client advanced scenarios', () => {
       this.initShouldFail = shouldFail
     }
 
-    setResponseOverride(
-      fn: ((request: { type: string; id: string; payload?: unknown }) => unknown) | null,
-    ) {
+    setResponseOverride(fn: ((request: WorkerRequest) => unknown) | null) {
       this.responseOverride = fn
+    }
+
+    /** The id the client generated for its most recent request of this type. */
+    requestIdFor(type: string): string | undefined {
+      for (let i = this.received.length - 1; i >= 0; i--) {
+        const message = this.received[i]
+        if (message?.type === type) return message.id
+      }
+      return undefined
     }
   }
 
@@ -359,12 +374,7 @@ describe('worker-client advanced scenarios', () => {
     const initPromise = initializeWorker()
     await vi.advanceTimersByTimeAsync(10)
     const worker = createdWorkers[0]!
-    worker.simulateMessage({
-      type: 'result',
-      id: 'req-1-' + Date.now(),
-      success: true,
-      data: null,
-    })
+    worker.simulateMessage({ type: 'ready', id: worker.requestIdFor('init') })
     await vi.advanceTimersByTimeAsync(10)
     return { worker, initPromise }
   }
@@ -392,6 +402,26 @@ describe('worker-client advanced scenarios', () => {
 
       await initializeWorker()
 
+      expect(isWorkerReady()).toBe(true)
+
+      terminateWorker()
+    })
+
+    it('resolves when the worker answers init with a ready message carrying no payload', async () => {
+      // The `init` case of wasm.worker.ts's onmessage switch answers with
+      // exactly `{ type: 'ready', id }`. Nothing else. A client that requires
+      // any other field on this message rejects it and worker mode never runs.
+      installNoRespondWorker()
+
+      const { initializeWorker, isWorkerReady, terminateWorker } = await import('./worker-client')
+
+      const initPromise = initializeWorker()
+      await vi.waitFor(() => expect(createdWorkers[0]?.requestIdFor('init')).toBeDefined())
+
+      const worker = createdWorkers[0]!
+      worker.simulateMessage({ type: 'ready', id: worker.requestIdFor('init') })
+
+      await expect(initPromise).resolves.toBeUndefined()
       expect(isWorkerReady()).toBe(true)
 
       terminateWorker()
@@ -475,9 +505,7 @@ describe('worker-client advanced scenarios', () => {
 
       const worker = createdWorkers[0]!
       // Message with type but no id - should be ignored
-      expect(() =>
-        worker.simulateMessage({ type: 'result', success: true, data: {} }),
-      ).not.toThrow()
+      expect(() => worker.simulateMessage({ type: 'result', data: {} })).not.toThrow()
 
       // Worker should still be ready after receiving ignored messages
       expect(isWorkerReady()).toBe(true)
@@ -494,7 +522,7 @@ describe('worker-client advanced scenarios', () => {
       const worker = createdWorkers[0]!
       // Message with unknown id - should be ignored (no pending request)
       expect(() =>
-        worker.simulateMessage({ type: 'result', id: 'unknown-id-12345', success: true, data: {} }),
+        worker.simulateMessage({ type: 'result', id: 'unknown-id-12345', data: {} }),
       ).not.toThrow()
 
       // Worker should still be ready after receiving ignored messages
@@ -505,10 +533,9 @@ describe('worker-client advanced scenarios', () => {
 
     // Build a Worker that intercepts findNextMove requests and responds with a custom message.
     const installInterceptingWorker = (
-      buildResponse: (data: { type: string; id: string; payload?: unknown }) => {
+      buildResponse: (data: WorkerRequest) => {
         type: string
         id: string
-        success: boolean
         error: string
       },
     ) => {
@@ -517,7 +544,7 @@ describe('worker-client advanced scenarios', () => {
         constructor(url: URL | string, options?: WorkerOptions) {
           super(url, options)
           const originalPostMessage = this.postMessage.bind(this)
-          this.postMessage = (data: { type: string; id: string; payload?: unknown }) => {
+          this.postMessage = (data: WorkerRequest) => {
             if (data.type === 'findNextMove') {
               capturedId = data.id
               setTimeout(() => {
@@ -538,10 +565,9 @@ describe('worker-client advanced scenarios', () => {
 
     // Wire up an intercepting worker and initialize the client, ready to call findNextMove.
     const setupRejectingFindNextMove = async (
-      buildResponse: (data: { type: string; id: string; payload?: unknown }) => {
+      buildResponse: (data: WorkerRequest) => {
         type: string
         id: string
-        success: boolean
         error: string
       },
     ) => {
@@ -554,7 +580,7 @@ describe('worker-client advanced scenarios', () => {
 
     it('should reject pending request on error type', async () => {
       const { findNextMove, terminateWorker, getCapturedId } = await setupRejectingFindNextMove(
-        (data) => ({ type: 'error', id: data.id, success: false, error: 'Custom error message' }),
+        (data) => ({ type: 'error', id: data.id, error: 'Custom error message' }),
       )
 
       await expect(findNextMove(emptyGrid(), fullCandidates(), emptyGrid())).rejects.toThrow(
@@ -566,9 +592,9 @@ describe('worker-client advanced scenarios', () => {
       terminateWorker()
     })
 
-    it('should reject on success: false', async () => {
+    it('should reject on an error response carrying a message', async () => {
       const { findNextMove, terminateWorker, getCapturedId } = await setupRejectingFindNextMove(
-        (data) => ({ type: 'result', id: data.id, success: false, error: 'Operation failed' }),
+        (data) => ({ type: 'error', id: data.id, error: 'Operation failed' }),
       )
 
       await expect(findNextMove(emptyGrid(), fullCandidates(), emptyGrid())).rejects.toThrow(
@@ -590,7 +616,7 @@ describe('worker-client advanced scenarios', () => {
         // the real auto-response, which echoes the actual request id) but leaves
         // every other request pending, so onerror is the only way they settle.
         globalThis.Worker = class extends MockWorker {
-          override postMessage(data: { type: string; id: string; payload?: unknown }): void {
+          override postMessage(data: WorkerRequest): void {
             if (data.type !== 'init') return // leave findNextMove/solveAll pending
             super.postMessage(data)
           }
@@ -622,10 +648,10 @@ describe('worker-client advanced scenarios', () => {
         findPromise.catch((e: Error) => errors.push(e.message))
         solvePromise.catch((e: Error) => errors.push(e.message))
 
-        // Fire onerror directly: the MockWorker's triggerEvent would first hit
-        // a stale createWorker error listener that terminates the worker and
-        // nulls onerror. The handler iterates pendingRequests and rejects each,
-        // so both pending requests must reject with the worker-error message.
+        // These pin the handler's rejection behaviour, so they call it directly
+        // rather than through simulateError, which would also exercise the
+        // listener cleanup that the crash tests already own. Both pending
+        // requests must reject with the worker-error message.
         worker.onerror?.(new ErrorEvent('error', { message: 'Worker crashed!' }))
         await vi.advanceTimersByTimeAsync(10)
 
@@ -819,7 +845,7 @@ describe('worker-client advanced scenarios', () => {
         constructor(url: URL | string, options?: WorkerOptions) {
           super(url, options)
           const originalPostMessage = this.postMessage.bind(this)
-          this.postMessage = (data: { type: string; id: string; payload?: unknown }) => {
+          this.postMessage = (data: WorkerRequest) => {
             if (data.type === 'findNextMove') {
               // Don't respond - capture the id for later
               capturedFindMoveId = data.id
@@ -953,9 +979,9 @@ describe('worker-client advanced scenarios', () => {
 
   describe('mutation-kill: request id and payload forwarding', () => {
     const installRecordingWorker = () => {
-      const posted: { type: string; id: string; payload?: unknown }[] = []
+      const posted: WorkerRequest[] = []
       globalThis.Worker = class extends MockWorker {
-        override postMessage(data: { type: string; id: string; payload?: unknown }): void {
+        override postMessage(data: WorkerRequest): void {
           posted.push(data)
           super.postMessage(data)
         }
@@ -1042,9 +1068,9 @@ describe('worker-client advanced scenarios', () => {
       vi.resetModules()
       vi.useFakeTimers()
       try {
-        const posted: { type: string; id: string; payload?: unknown }[] = []
+        const posted: WorkerRequest[] = []
         globalThis.Worker = class extends MockWorker {
-          override postMessage(data: { type: string; id: string; payload?: unknown }): void {
+          override postMessage(data: WorkerRequest): void {
             posted.push(data)
           }
           constructor(url: URL | string, options?: WorkerOptions) {
@@ -1062,12 +1088,7 @@ describe('worker-client advanced scenarios', () => {
         // Resolve init with the exact id the client generated so isInitialized becomes true
         const initReq = posted.find((p) => p.type === 'init')
         expect(initReq).toBeDefined()
-        createdWorkers[0]!.simulateMessage({
-          type: 'result',
-          id: initReq!.id,
-          success: true,
-          data: null,
-        })
+        createdWorkers[0]!.simulateMessage({ type: 'ready', id: initReq!.id })
         await vi.advanceTimersByTimeAsync(10)
         await initPromise
 
@@ -1100,23 +1121,23 @@ describe('worker-client advanced scenarios', () => {
     })
   })
 
-  describe('mutation-kill: error-type rejection regardless of success flag', () => {
+  describe('mutation-kill: an error response rejects', () => {
     const emptyGrid = (): number[] => new Array(81).fill(0)
     const fullCandidates = (): number[][] => new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
 
-    it('rejects on error type even when success is true (L211)', async () => {
+    it('rejects on an error response even when it carries a data payload', async () => {
       vi.resetModules()
       globalThis.Worker = class extends MockWorker {
         constructor(url: URL | string, options?: WorkerOptions) {
           super(url, options)
           const originalPostMessage = this.postMessage.bind(this)
-          this.postMessage = (data: { type: string; id: string; payload?: unknown }) => {
+          this.postMessage = (data: WorkerRequest) => {
             if (data.type === 'findNextMove') {
               setTimeout(() => {
                 this.simulateMessage({
                   type: 'error',
                   id: data.id,
-                  success: true,
+                  data: { ignored: true },
                   error: 'Boom',
                 })
               }, 5)
@@ -1190,7 +1211,7 @@ describe('worker-client advanced scenarios', () => {
     // Install a worker that auto-responds to init but swallows findNextMove
     const installInitOnlyWorker = () => {
       globalThis.Worker = class extends MockWorker {
-        override postMessage(data: { type: string; id: string; payload?: unknown }): void {
+        override postMessage(data: WorkerRequest): void {
           if (data.type === 'findNextMove') return // leave pending
           super.postMessage(data)
         }
@@ -1216,8 +1237,8 @@ describe('worker-client advanced scenarios', () => {
         const findPromise = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
         await vi.advanceTimersByTimeAsync(10)
 
-        // Call the client's onerror handler directly (the MockWorker's triggerEvent
-        // would first hit a stale createWorker error listener that terminates the worker)
+        // Directly, for the same reason as above: this pins the handler, not the
+        // listener cleanup.
         worker.onerror?.(new ErrorEvent('error', { message: 'crashed' }))
 
         await expect(findPromise).rejects.toThrow('Worker error: crashed')
@@ -1233,7 +1254,7 @@ describe('worker-client advanced scenarios', () => {
       try {
         let findReqId: string | undefined
         globalThis.Worker = class extends MockWorker {
-          override postMessage(data: { type: string; id: string; payload?: unknown }): void {
+          override postMessage(data: WorkerRequest): void {
             if (data.type === 'findNextMove') {
               findReqId = data.id
               return
@@ -1259,11 +1280,182 @@ describe('worker-client advanced scenarios', () => {
         createdWorkers[0]!.simulateMessage({
           type: 'error',
           id: findReqId,
-          success: false,
           error: '',
         })
 
         await expect(findPromise).rejects.toThrow('Worker request failed')
+        terminateWorker()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('leaves a request pending when a message carries an unknown type', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        let findReqId: string | undefined
+        globalThis.Worker = class extends MockWorker {
+          override postMessage(data: WorkerRequest): void {
+            if (data.type === 'findNextMove') {
+              findReqId = data.id
+              return
+            }
+            super.postMessage(data)
+          }
+          constructor(url: URL | string, options?: WorkerOptions) {
+            super(url, options)
+            createdWorkers.push(this)
+          }
+        } as unknown as typeof Worker
+
+        const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
+
+        const initPromise = initializeWorker()
+        await vi.advanceTimersByTimeAsync(50)
+        await initPromise
+
+        const findPromise = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
+        await vi.advanceTimersByTimeAsync(10)
+        expect(findReqId).toBeDefined()
+
+        // A message outside the protocol that happens to carry a live request
+        // id. Settling on it would hand the caller undefined, which then throws
+        // downstream on result.move. The request must stay pending so its own
+        // timeout rejects it with a message that says what happened.
+        createdWorkers[0]!.simulateMessage({
+          type: 'progress',
+          id: findReqId,
+          data: { percent: 50 },
+        })
+        await vi.advanceTimersByTimeAsync(10)
+
+        let settled = false
+        void findPromise.then(
+          () => (settled = true),
+          () => (settled = true),
+        )
+        await vi.advanceTimersByTimeAsync(10)
+        expect(settled).toBe(false)
+
+        // Attach the handler before advancing past REQUEST_TIMEOUT so the
+        // timer-fired rejection always has a waiter.
+        const assertion = expect(findPromise).rejects.toThrow(
+          'Worker request timeout: findNextMove',
+        )
+        await vi.advanceTimersByTimeAsync(31000)
+        await assertion
+
+        terminateWorker()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('forgets a worker that crashed, instead of timing out every later request', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        installNoRespondWorker()
+        const { initializeWorker, findNextMove, isWorkerReady, terminateWorker } =
+          await import('./worker-client')
+
+        const { worker, initPromise } = await manuallyInitWorker(initializeWorker)
+        await initPromise
+        expect(isWorkerReady()).toBe(true)
+
+        const firstRequest = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
+        await vi.advanceTimersByTimeAsync(10)
+
+        // The worker dies. Its pending work must fail immediately, and the
+        // client must stop claiming it has a usable worker.
+        worker.simulateError('crashed')
+        await expect(firstRequest).rejects.toThrow('Worker error: crashed')
+
+        expect(isWorkerReady()).toBe(false)
+
+        // The next request must build a fresh worker rather than post into the
+        // corpse and wait out REQUEST_TIMEOUT before the caller can fall back.
+        const workersBefore = createdWorkers.length
+        const secondRequest = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
+        await vi.advanceTimersByTimeAsync(50)
+        expect(createdWorkers.length).toBe(workersBefore + 1)
+
+        terminateWorker()
+        await secondRequest.catch(() => {})
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('does not adopt a worker created after the module let go of it', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        installNoRespondWorker()
+        const { initializeWorker, isWorkerReady, terminateWorker } = await import('./worker-client')
+
+        const pending = initializeWorker()
+        pending.catch(() => {})
+
+        // Terminate while the worker is still being constructed. There is no
+        // worker to tear down yet, so without a fence the in-flight cycle
+        // happily adopts the one it finishes building and reports ready.
+        terminateWorker()
+
+        const rejection = expect(pending).rejects.toThrow('Worker initialization superseded')
+        await vi.advanceTimersByTimeAsync(10)
+        await rejection
+
+        expect(createdWorkers).toHaveLength(1)
+        expect(createdWorkers[0]!.terminated).toBe(true)
+        expect(isWorkerReady()).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('does not leak a worker when an initialization is superseded mid-flight', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        installNoRespondWorker()
+        const { initializeWorker, terminateWorker } = await import('./worker-client')
+
+        const first = initializeWorker()
+        first.catch(() => {})
+        await vi.advanceTimersByTimeAsync(10)
+        const workerA = createdWorkers[0]!
+
+        // Crash while init is still in flight, then start a second cycle in the
+        // same tick. The first cycle's catch has not run yet.
+        workerA.simulateError('crashed')
+        const second = initializeWorker()
+        second.catch(() => {})
+
+        // Let the stale cycle's catch run. It must not clear the dedup state
+        // that now belongs to the second cycle.
+        await Promise.resolve()
+        await Promise.resolve()
+
+        // If it did clear it, this call is not deduped and starts a third
+        // cycle, leaving the second cycle's worker running with nothing
+        // referencing it.
+        const third = initializeWorker()
+        third.catch(() => {})
+        await vi.advanceTimersByTimeAsync(10)
+
+        expect(createdWorkers).toHaveLength(2)
+        expect(workerA.terminated).toBe(true)
+
+        const workerB = createdWorkers[1]!
+        workerB.simulateMessage({ type: 'ready', id: workerB.requestIdFor('init') })
+        await vi.advanceTimersByTimeAsync(10)
+        await second
+        await third
+
+        expect(workerB.terminated).toBe(false)
+
         terminateWorker()
       } finally {
         vi.useRealTimers()
@@ -1333,7 +1525,7 @@ describe('worker-client advanced scenarios', () => {
         // Install a worker that resolves 'loaded' but never responds to 'init',
         // so createWorker resolves (worker set) but isInitialized stays false.
         globalThis.Worker = class extends MockWorker {
-          override postMessage(data: { type: string; id: string; payload?: unknown }): void {
+          override postMessage(data: WorkerRequest): void {
             if (data.type === 'init') return // leave init pending
           }
           constructor(url: URL | string, options?: WorkerOptions) {
@@ -1435,15 +1627,15 @@ describe('worker-client advanced scenarios', () => {
       }
     })
 
-    it('emits the worker-error debug log when onerror fires (L229)', async () => {
+    it('reports the worker error when onerror fires', async () => {
       vi.resetModules()
       const loggerMod = await import('../lib/logger')
-      const debugSpy = vi.spyOn(loggerMod.logger, 'debug').mockImplementation(() => {})
+      const debugSpy = vi.spyOn(loggerMod.logger, 'error').mockImplementation(() => {})
 
       vi.useFakeTimers()
       try {
         globalThis.Worker = class extends MockWorker {
-          override postMessage(data: { type: string; id: string; payload?: unknown }): void {
+          override postMessage(data: WorkerRequest): void {
             if (data.type === 'findNextMove') return
             super.postMessage(data)
           }
@@ -1536,12 +1728,11 @@ describe('worker-client - response-type guard (mutation coverage)', () => {
       }
       postMessage(data: { type?: string; id?: string }): void {
         if (data?.type === 'init') {
-          this.dispatch({ type: 'result', id: data.id, success: true, data: null })
+          this.dispatch({ type: 'ready', id: data.id })
         } else if (data?.type === 'findNextMove') {
           this.dispatch({
             type: 'result',
             id: data.id,
-            success: true,
             data: {
               move: { technique: 'NakedSingle', placement: { row: 0, col: 0, digit: 5 } },
               board: new Array(81).fill(0),

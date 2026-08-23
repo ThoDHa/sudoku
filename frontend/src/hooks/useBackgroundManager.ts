@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { isAutomatedEnvironment } from '../lib/automationEnvironment'
 
 interface BackgroundManagerOptions {
   /** Whether to enable background pause functionality */
@@ -48,44 +49,15 @@ export function useBackgroundManager(
     () => enabled && document.visibilityState === 'hidden',
   )
 
-  // Determine if operations should be paused (includes both visibility hidden AND window blur)
-  // BUGFIX: Disable pause operations in headless Chrome (E2E tests) to prevent timer blocking
-  // Detection covers multiple scenarios:
-  // 1. HeadlessChrome user agent (older headless mode)
-  // 2. playwright in user agent (Playwright debugging)
-  // 3. navigator.webdriver true (automation flag)
-  // 4. Check if running in automated test environment via user agent pattern
-  // Stryker disable ConditionalExpression,StringLiteral,BooleanLiteral,LogicalOperator: every
-  // operand here probes navigator.userAgent / navigator.webdriver for HeadlessChrome / playwright
-  // / automation signatures. In the jsdom test environment navigator.userAgent contains neither
-  // signature and navigator.webdriver is undefined, so isHeadlessChrome resolves to false and
-  // every operand in this OR chain collapses to the same false result regardless of mutation.
-  // Mutating the typeof guard, the webdriver comparisons, or the string literals cannot change
-  // the outcome because no operand flips from false to true under jsdom's navigator.
-  const isHeadlessChrome =
-    typeof navigator !== 'undefined' &&
-    (navigator.userAgent.includes('HeadlessChrome') ||
-      // Playwright specific user agent patterns
-      navigator.userAgent.includes('playwright') ||
-      // Automation detection - webdriver flag (Playwright sets this)
-      navigator.webdriver ||
-      // Modern Playwright Chrome uses "Chrome/XXX" without explicit headless marker
-      // but has webdriver enabled. Check for webdriver property existence.
-      /* istanbul ignore start -- redundant automation probe: when webdriver is present in jsdom/browsers it is `=== true` and already caught above, so this final operand's truthy read is unreachable */
-      ('webdriver' in navigator && (navigator as { webdriver?: unknown }).webdriver))
-  /* istanbul ignore stop */
-  // Stryker restore
+  // Pausing must be bypassed under E2E automation: the runner window is often
+  // unfocused while the page is still visible, and pausing there blocks timers.
+  const automated = isAutomatedEnvironment(globalThis.navigator)
 
-  // In headless mode OR when visibilityState is 'visible', don't pause operations
-  // The key insight: if document.visibilityState is 'visible', operations should NOT be paused
-  // This fixes E2E tests where the window might be "blurred" but still visible
-  const effectiveIsWindowBlurred = isHeadlessChrome ? false : isWindowBlurred
-
-  // Core logic: pause if enabled, not headless, and any pause condition holds.
+  // Core logic: pause if enabled, not automated, and any pause condition holds.
+  // The !automated gate is what keeps an unfocused E2E runner from pausing, so
+  // no pause condition needs to re-check it.
   const shouldPauseOperations =
-    enabled &&
-    !isHeadlessChrome &&
-    (isHidden || effectiveIsWindowBlurred || forcePaused || isInDeepPause)
+    enabled && !automated && (isHidden || isWindowBlurred || forcePaused || isInDeepPause)
 
   const handleVisibilityChange = useCallback(() => {
     const newVisibilityState = document.visibilityState
