@@ -229,6 +229,7 @@ describe('worker-client advanced scenarios', () => {
     private initShouldFail = false
     private responseOverride: ((request: WorkerRequest) => unknown) | null = null
     private received: WorkerRequest[] = []
+    terminated = false
 
     constructor(_url: URL | string, _options?: WorkerOptions) {
       // Simulate the worker sending 'loaded' message after construction
@@ -286,6 +287,7 @@ describe('worker-client advanced scenarios', () => {
     }
 
     terminate(): void {
+      this.terminated = true
       this.onmessage = null
       this.onerror = null
       this.eventListeners.clear()
@@ -646,10 +648,10 @@ describe('worker-client advanced scenarios', () => {
         findPromise.catch((e: Error) => errors.push(e.message))
         solvePromise.catch((e: Error) => errors.push(e.message))
 
-        // Fire onerror directly: the MockWorker's triggerEvent would first hit
-        // a stale createWorker error listener that terminates the worker and
-        // nulls onerror. The handler iterates pendingRequests and rejects each,
-        // so both pending requests must reject with the worker-error message.
+        // These pin the handler's rejection behaviour, so they call it directly
+        // rather than through simulateError, which would also exercise the
+        // listener cleanup that the crash tests already own. Both pending
+        // requests must reject with the worker-error message.
         worker.onerror?.(new ErrorEvent('error', { message: 'Worker crashed!' }))
         await vi.advanceTimersByTimeAsync(10)
 
@@ -1235,8 +1237,8 @@ describe('worker-client advanced scenarios', () => {
         const findPromise = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
         await vi.advanceTimersByTimeAsync(10)
 
-        // Call the client's onerror handler directly (the MockWorker's triggerEvent
-        // would first hit a stale createWorker error listener that terminates the worker)
+        // Directly, for the same reason as above: this pins the handler, not the
+        // listener cleanup.
         worker.onerror?.(new ErrorEvent('error', { message: 'crashed' }))
 
         await expect(findPromise).rejects.toThrow('Worker error: crashed')
@@ -1343,6 +1345,116 @@ describe('worker-client advanced scenarios', () => {
         )
         await vi.advanceTimersByTimeAsync(31000)
         await assertion
+
+        terminateWorker()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('forgets a worker that crashed, instead of timing out every later request', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        installNoRespondWorker()
+        const { initializeWorker, findNextMove, isWorkerReady, terminateWorker } =
+          await import('./worker-client')
+
+        const { worker, initPromise } = await manuallyInitWorker(initializeWorker)
+        await initPromise
+        expect(isWorkerReady()).toBe(true)
+
+        const firstRequest = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
+        await vi.advanceTimersByTimeAsync(10)
+
+        // The worker dies. Its pending work must fail immediately, and the
+        // client must stop claiming it has a usable worker.
+        worker.simulateError('crashed')
+        await expect(firstRequest).rejects.toThrow('Worker error: crashed')
+
+        expect(isWorkerReady()).toBe(false)
+
+        // The next request must build a fresh worker rather than post into the
+        // corpse and wait out REQUEST_TIMEOUT before the caller can fall back.
+        const workersBefore = createdWorkers.length
+        const secondRequest = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
+        await vi.advanceTimersByTimeAsync(50)
+        expect(createdWorkers.length).toBe(workersBefore + 1)
+
+        terminateWorker()
+        await secondRequest.catch(() => {})
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('does not adopt a worker created after the module let go of it', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        installNoRespondWorker()
+        const { initializeWorker, isWorkerReady, terminateWorker } = await import('./worker-client')
+
+        const pending = initializeWorker()
+        pending.catch(() => {})
+
+        // Terminate while the worker is still being constructed. There is no
+        // worker to tear down yet, so without a fence the in-flight cycle
+        // happily adopts the one it finishes building and reports ready.
+        terminateWorker()
+
+        const rejection = expect(pending).rejects.toThrow('Worker initialization superseded')
+        await vi.advanceTimersByTimeAsync(10)
+        await rejection
+
+        expect(createdWorkers).toHaveLength(1)
+        expect(createdWorkers[0]!.terminated).toBe(true)
+        expect(isWorkerReady()).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('does not leak a worker when an initialization is superseded mid-flight', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        installNoRespondWorker()
+        const { initializeWorker, terminateWorker } = await import('./worker-client')
+
+        const first = initializeWorker()
+        first.catch(() => {})
+        await vi.advanceTimersByTimeAsync(10)
+        const workerA = createdWorkers[0]!
+
+        // Crash while init is still in flight, then start a second cycle in the
+        // same tick. The first cycle's catch has not run yet.
+        workerA.simulateError('crashed')
+        const second = initializeWorker()
+        second.catch(() => {})
+
+        // Let the stale cycle's catch run. It must not clear the dedup state
+        // that now belongs to the second cycle.
+        await Promise.resolve()
+        await Promise.resolve()
+
+        // If it did clear it, this call is not deduped and starts a third
+        // cycle, leaving the second cycle's worker running with nothing
+        // referencing it.
+        const third = initializeWorker()
+        third.catch(() => {})
+        await vi.advanceTimersByTimeAsync(10)
+
+        expect(createdWorkers).toHaveLength(2)
+        expect(workerA.terminated).toBe(true)
+
+        const workerB = createdWorkers[1]!
+        workerB.simulateMessage({ type: 'ready', id: workerB.requestIdFor('init') })
+        await vi.advanceTimersByTimeAsync(10)
+        await second
+        await third
+
+        expect(workerB.terminated).toBe(false)
 
         terminateWorker()
       } finally {
