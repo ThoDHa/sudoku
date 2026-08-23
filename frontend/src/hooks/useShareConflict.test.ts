@@ -18,6 +18,7 @@ import { useShareConflict } from './useShareConflict'
 import { isValidSolution } from '../lib/validationUtils'
 import { arraysToCandidates } from '../lib/candidatesUtils'
 import { getMostRecentGame } from '../lib/gameSettings'
+import { createMockMove } from '../test-utils'
 import { STORAGE_KEYS } from '../lib/constants'
 import type { SavedGameState } from '../lib/savedGameState'
 
@@ -265,7 +266,7 @@ describe('useShareConflict', () => {
 
     it('keeps the current game (no navigate) when the recipient has this-puzzle progress', () => {
       const opts = buildOptions({
-        loadSavedGameState: vi.fn(() => makeSavedGame([{ idx: 0, prev: 0, next: 5 }])),
+        loadSavedGameState: vi.fn(() => makeSavedGame([createMockMove()])),
       })
       const { result } = renderHook(() => useShareConflict(opts))
 
@@ -339,7 +340,7 @@ describe('useShareConflict', () => {
     it('clears shareHasCurrentGame once the recipient discards their own progress', () => {
       isValidSolutionMock.mockReturnValue(false)
       const opts = buildOptions({
-        loadSavedGameState: vi.fn(() => makeSavedGame([{ idx: 0, prev: 0, next: 5 }])),
+        loadSavedGameState: vi.fn(() => makeSavedGame([createMockMove()])),
       })
       const { result } = renderHook(() => useShareConflict(opts))
 
@@ -380,7 +381,7 @@ describe('useShareConflict', () => {
 
     it('classifies a same-puzzle save (history non-empty) as no-resume-target with a current game', () => {
       const opts = buildOptions({
-        loadSavedGameState: vi.fn(() => makeSavedGame([{ idx: 0, prev: 0, next: 5 }])),
+        loadSavedGameState: vi.fn(() => makeSavedGame([createMockMove()])),
       })
       const { result } = renderHook(() => useShareConflict(opts))
 
