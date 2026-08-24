@@ -152,6 +152,7 @@ test-unit:
 	@mkdir -p allure-results
 	@docker build -t sudoku-frontend-test -f frontend/Dockerfile.test frontend
 	@docker run --rm --user $$(id -u):$$(id -g) -e HOME=/tmp \
+		-e ALLURE_SKIP_CLEAN=$${ALLURE_SKIP_CLEAN:-} \
 		-v $(PWD)/allure-results:/app/allure-results \
 		sudoku-frontend-test npm run test:unit
 
@@ -208,22 +209,29 @@ mutation-clean:
 	@rm -rf frontend/reports/mutation
 	@echo "Mutation artifacts cleaned."
 
-# Run E2E tests with Allure output (Docker Compose)
+# Run E2E tests with Allure output (Docker Compose).
+# DOCKER_USER maps the container to the host user so the bind-mounted
+# frontend/ tree gets user-owned artifacts (root-owned test-results/ breaks
+# later local Playwright runs with EACCES). CI invokes compose directly
+# without DOCKER_USER and keeps the image's root default.
 test-e2e:
 	@echo ""
 	@echo "========================================"
 	@echo "  Running E2E Tests with Allure (Docker)"
 	@echo "========================================"
-	@trap 'docker compose -f docker-compose.test.yml down' EXIT; \
+	@export DOCKER_USER="$$(id -u):$$(id -g)"; \
+	trap 'docker compose -f docker-compose.test.yml down' EXIT; \
 	docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from playwright
 
-# Run integration tests with Allure output (Docker Compose)
+# Run integration tests with Allure output (Docker Compose).
+# DOCKER_USER: see test-e2e.
 test-integration:
 	@echo ""
 	@echo "========================================"
 	@echo "  Running Integration Tests with Allure (Docker)"
 	@echo "========================================"
-	@trap 'docker compose -f docker-compose.test.yml down' EXIT; \
+	@export DOCKER_USER="$$(id -u):$$(id -g)"; \
+	trap 'docker compose -f docker-compose.test.yml down' EXIT; \
 	docker compose -f docker-compose.test.yml up sudoku -d --build --wait && \
 	docker compose -f docker-compose.test.yml run --rm playwright npx playwright test --grep @integration
 
@@ -234,15 +242,18 @@ test-frontend: test-unit test-e2e
 	@echo "  Frontend Tests Complete!"
 	@echo "========================================"
 
-# Run all tests (Go + Frontend unit + E2E) with Allure output
+# Run all tests (Go + Frontend unit + E2E) with Allure output.
+# allure-clean wipes once up front; ALLURE_SKIP_CLEAN=1 stops each suite's
+# global setup from re-cleaning, so unit and e2e results combine into the
+# single report `make report` generates.
 test: allure-clean
 	@echo ""
 	@echo "========================================"
 	@echo "  Running All Tests with Allure Output"
 	@echo "========================================"
 	@$(MAKE) test-go
-	@$(MAKE) test-unit
-	@$(MAKE) test-e2e
+	@ALLURE_SKIP_CLEAN=1 $(MAKE) test-unit
+	@ALLURE_SKIP_CLEAN=1 $(MAKE) test-e2e
 	@echo ""
 	@echo "========================================"
 	@echo "  All tests complete! Run 'make report' to generate report"
@@ -285,7 +296,13 @@ check-fast: lint-go lint-frontend typecheck-frontend check-wasm test-go test-scr
 	@echo "========================================"
 
 # Full gate incl. E2E + integration. Slow; a true superset of `check`.
-check-full: check test-e2e test-integration
+# Cleans allure-results once after `check`, then lets e2e + integration
+# accumulate into one result set (ALLURE_SKIP_CLEAN=1 stops each suite's
+# global setup from wiping the previous suite's output).
+check-full: check
+	@$(MAKE) allure-clean
+	@ALLURE_SKIP_CLEAN=1 $(MAKE) test-e2e
+	@ALLURE_SKIP_CLEAN=1 $(MAKE) test-integration
 	@echo ""
 	@echo "========================================"
 	@echo "  Full gate passed (check + e2e + integration)."
@@ -403,11 +420,18 @@ allure-serve:
 	@cp -r api/allure-results/* allure-results/ 2>/dev/null || true
 	@cd frontend && npx allure serve ../allure-results
 
-# Clean all Allure artifacts
+# Clean all Allure artifacts. Falls back to a dockerized rm when plain rm
+# fails: checkouts that ran the compose test targets before DOCKER_USER
+# mapping existed hold root-owned files a plain rm cannot remove.
+ALLURE_ARTIFACTS := allure-results api/allure-results \
+	frontend/allure-results frontend/allure-report \
+	frontend/test-results frontend/playwright-report \
+	frontend/e2e/.auth frontend/console-debug.log
+
 allure-clean:
 	@echo "Cleaning Allure artifacts..."
-	@rm -rf allure-results
-	@rm -rf frontend/allure-results frontend/allure-report
-	@rm -rf frontend/test-results frontend/e2e/.auth frontend/console-debug.log
-	@rm -rf api/allure-results
+	@if ! rm -rf $(ALLURE_ARTIFACTS) 2>/dev/null; then \
+		echo "Plain rm failed (likely root-owned artifacts from an old Docker run); retrying via Docker..."; \
+		docker run --rm -v "$(PWD):/w" alpine sh -c 'cd /w && rm -rf $(ALLURE_ARTIFACTS)'; \
+	fi
 	@echo "Allure artifacts cleaned!"

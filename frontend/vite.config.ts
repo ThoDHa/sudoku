@@ -170,6 +170,20 @@ export default defineConfig({
   ],
   server: {
     host: true,
+    watch: {
+      // Artifact directories are never dev-server inputs. Allure results in
+      // particular can reach hundreds of thousands of files, which exhausts
+      // inotify watchers (ENOSPC) and prevents the dev server from starting.
+      // dev-dist/ stays watched: vite-plugin-pwa writes and serves it in dev.
+      ignored: [
+        '**/allure-results/**',
+        '**/test-results/**',
+        '**/playwright-report/**',
+        '**/coverage/**',
+        '**/reports/**',
+        '**/.stryker-tmp/**',
+      ],
+    },
     proxy: {
       '/api': 'http://localhost:8080',
       '/health': 'http://localhost:8080',
@@ -180,6 +194,9 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'scripts/**/*.test.mjs'],
     fileParallelism: false,
+    // Reset allure-results once per run so reporter output stays bounded
+    // (see test/clean-allure-results.ts for the ALLURE_SKIP_CLEAN contract).
+    globalSetup: ['./test/global-setup.ts'],
     setupFiles: ['allure-vitest/setup', './test/test-setup.ts'],
     reporters: [
       'default',

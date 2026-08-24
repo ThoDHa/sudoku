@@ -127,6 +127,31 @@ export const createEliminationHighlight = () => ({
 
 3. **Mock data**: When adding new highlight scenarios, add corresponding mock variants
 
+## Test Artifact Lifecycle
+
+Test runs write three artifact directories under `frontend/`, all gitignored and all regenerable:
+
+- `allure-results/` - Allure result JSON from vitest (`allure-vitest`) and Playwright
+  (`allure-playwright`). Reset automatically at the start of every run by
+  `test/clean-allure-results.ts` (wired into the vitest `globalSetup` and
+  `e2e/global-setup.ts`), so it always contains exactly one run's output. Setting
+  `ALLURE_SKIP_CLEAN` to a non-empty value skips the reset; the aggregate targets
+  (`make test`, `make check-full`) use it to combine several suites into one report after a
+  single up-front `make allure-clean`.
+- `test-results/` and `playwright-report/` - Playwright's per-run output and HTML report.
+  Playwright itself recreates these each run.
+
+Ownership: the Docker Compose test targets (`make test-e2e`, `make test-integration`) pass
+`DOCKER_USER="$(id -u):$(id -g)"` so the container writes these directories as your user. Raw
+`docker compose -f docker-compose.test.yml` invocations default to root (the CI shape); export
+`DOCKER_USER` yourself if you invoke compose directly and want user-owned artifacts. A checkout
+holding root-owned artifacts from an old run makes `npx playwright test` fail with `EACCES` on
+`test-results/.last-run.json`; recover with `make allure-clean`, which falls back to a dockerized
+`rm` when plain `rm` cannot remove root-owned files.
+
+The Vite dev server does not watch any of these directories (`server.watch.ignored` in
+`vite.config.ts`), so their contents can never exhaust inotify watchers and block `npm run dev`.
+
 ## Reference
 
 For universal testing principles, see: `~/.config/opencode/rules/testing-guidelines.md`

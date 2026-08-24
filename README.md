@@ -465,6 +465,22 @@ make allure-serve
 make allure-clean
 ```
 
+**Artifact retention:** Allure result directories are reset automatically at the start of every
+test run (vitest and Playwright global setups), so `allure-results/` always holds exactly one
+run's output and never grows without bound. Aggregate targets (`make test`, `make check-full`)
+clean once up front and set `ALLURE_SKIP_CLEAN=1` so their suites combine into a single report.
+`make allure-clean` remains available as a full wipe; it is not a prerequisite for anything.
+
+**Artifact ownership:** the Docker Compose test targets (`make test-e2e`,
+`make test-integration`) run the Playwright container as your host user via `DOCKER_USER`, so
+`frontend/test-results/`, `frontend/playwright-report/`, and `frontend/allure-results/` stay
+user-owned. Invoking `docker compose -f docker-compose.test.yml` directly runs the container as
+root (the CI shape); export `DOCKER_USER="$(id -u):$(id -g)"` first to keep artifacts
+user-owned. If a checkout already contains root-owned artifacts from an old run (symptom:
+`npx playwright test` fails with `EACCES` on `test-results/.last-run.json`), run
+`make allure-clean`; it falls back to a dockerized `rm` that removes root-owned files without
+sudo.
+
 ### CI/CD Pipeline
 
 Tests run automatically on every push and PR via GitHub Actions:

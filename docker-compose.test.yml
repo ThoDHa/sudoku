@@ -27,16 +27,22 @@ services:
   # cache dir, which the non-root container cannot write to (EACCES) and which
   # previously caused the suite to hang on download.
   #
-  # Runs as root (the image default). This is required on CI where the runner
-  # UID (1001) differs from the container's default UID assumption. Locally,
-  # users who want non-root artifact ownership can add a docker-compose.override.yml
-  # with `user: "${UID}:${GID}"`.
+  # Ownership contract: runs as ${DOCKER_USER}, defaulting to root (0:0, the
+  # image default). CI invokes this file directly without setting DOCKER_USER
+  # and keeps the root default. The Makefile test targets pass
+  # DOCKER_USER="$(id -u):$(id -g)" so local runs leave user-owned artifacts
+  # in the bind-mounted frontend/ tree instead of root-owned ones that later
+  # break `npx playwright test` (EACCES on test-results/.last-run.json).
+  # Do NOT replace this with `user: "${UID}:${GID}"`: UID/GID are unexported
+  # shell variables, so compose cannot see them; on a CI runner with UID 1001
+  # any hardcoded fallback mismatches and mkdir /app/allure-results fails.
   playwright:
     # Digest-pinned so a rebuilt :v1.61.1-noble cannot shift under us; the
     # pre-installed browsers at /ms-playwright must match the Playwright npm
     # version. Dependabot proposes digest bumps under review.
     image: mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48
     working_dir: /app
+    user: "${DOCKER_USER:-0:0}"
     volumes:
       - ./frontend:/app
     depends_on:
@@ -46,6 +52,10 @@ services:
       - PLAYWRIGHT_BASE_URL=http://sudoku:80
       - CI=true
       - HOME=/tmp
+      # Aggregate make targets clean allure-results once up front and set this
+      # so per-suite global setups do not wipe earlier suites' results.
+      # Empty (the default) means each suite cleans its own results at start.
+      - ALLURE_SKIP_CLEAN=${ALLURE_SKIP_CLEAN:-}
     command: >
       sh -c "
         mkdir -p /app/allure-results &&
