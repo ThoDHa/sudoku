@@ -232,6 +232,15 @@ Mutation rewrites the target file in place for the entire sweep.
   timeout, OOM, `kill -9`) cannot leave a mutant in it. CI needs none of this
   and must not gain it: every nightly job starts from a fresh checkout and
   calls go-mutesting directly with `ci-exec.sh`, not through this target.
+- `make mutation-probe-check` (and therefore `make mutation-install`, whose
+  final step it is) also never touches the checkout: it probes a minimal copy
+  of the compileprobe fixture (plus `go.mod`/`go.sum`) in a scratch tmpdir.
+  That copy is exempt from the partial-copy hazard below for one reason only:
+  the fixture is hermetic (its sole import is `testing`, it reads no files),
+  so a broken copy can only fail compiles, drive `killedCount` to 0, and fail
+  the probe assert loudly rather than inflate the score. Packages whose tests
+  read files outside the copy get no such exemption; do not reuse the pattern
+  for them.
 - The manual instruments (`sweep.sh`, `confirm.py`, `runmut.sh`) do NOT
   self-isolate. Run every sweep and every confirm in a dedicated
   `git worktree`. Two sweeps need two worktrees. Never point the instrument at
