@@ -304,6 +304,7 @@ mutation-probe-check:
 	fi; \
 	work=$$(mktemp -d); \
 	trap 'rm -rf "$$work"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
 	probe="$$work/probe"; \
 	mkdir -p "$$probe/$(MUTATION_PROBE_FIXTURE)"; \
 	cp go.mod go.sum "$$probe/"; \
