@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -35,6 +35,32 @@ const reactCompilerPresetAllEnvs = (() => {
 // This eliminates the need for VITE_SKIP_RC and the unmemoized-cascade perf
 // regression it caused during FE-7's manual-memoization sweep.
 const enableReactCompiler = !process.env.VITE_SKIP_RC
+
+// Dev server only: strip the CSP <meta> tag from the served index.html.
+// The tag exists for the GitHub Pages deploy (Pages cannot set response
+// headers); nginx delivers the same policy as an HTTP header. In dev, Vite
+// serves application CSS by injecting inline <style> elements and
+// plugin-react injects an inline refresh preamble script, both of which the
+// strict policy (style-src 'self'; script-src without 'unsafe-inline')
+// blocks - leaving the dev app unstyled and logging CSP violations.
+// apply: 'serve' keeps `vite build` output untouched, so the built HTML
+// (Pages) and nginx keep the full CSP.
+const stripCspMetaInDev: Plugin = {
+  name: 'strip-csp-meta-in-dev',
+  apply: 'serve',
+  transformIndexHtml(html) {
+    // [^>]* is safe: the content attribute holds no '>', and bounding at the
+    // first '>' means a reformatted tag can never swallow following elements.
+    const stripped = html.replace(/<meta\s+http-equiv="Content-Security-Policy"[^>]*>/, '')
+    if (stripped === html) {
+      console.warn(
+        '[strip-csp-meta-in-dev] No CSP meta tag matched in index.html; ' +
+          'dev-served CSS and the react-refresh preamble will be CSP-blocked',
+      )
+    }
+    return stripped
+  },
+}
 
 // Base path for GitHub Pages deployment
 // Set VITE_BASE_PATH=/repo-name/ for GitHub Pages, or leave empty for root
@@ -164,6 +190,7 @@ export default defineConfig({
   },
 
   plugins: [
+    stripCspMetaInDev,
     react(),
     ...(enableReactCompiler ? [babel({ presets: [reactCompilerPresetAllEnvs] })] : []),
     ...pwaPlugins
