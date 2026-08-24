@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures'
 import { setupGameAndWaitForBoard } from '../utils/board-wait'
+import { disableAutomationBypass } from '../utils/automation-bypass'
 
 /**
  * Timer E2E Tests
@@ -7,7 +8,7 @@ import { setupGameAndWaitForBoard } from '../utils/board-wait'
  * Comprehensive tests for the Sudoku game timer functionality including:
  * - Timer display format (MM:SS)
  * - Timer counting and incrementing
- * - Pause behavior on visibility change
+ * - Pause behavior on window blur, frozen placeholder on tab hide
  * - Hide timer preference
  * - Timer persistence across reload
  * - Timer behavior on puzzle completion
@@ -18,6 +19,24 @@ import { setupGameAndWaitForBoard } from '../utils/board-wait'
 // Helper to locate the timer element
 function getTimerLocator(page: any) {
   return page.locator('.font-mono').filter({ hasText: /^\d+:\d{2}$/ })
+}
+
+// Simulate the tab being hidden or shown: Playwright cannot change the real
+// visibilityState, so define it and fire the event the app listens for.
+async function setDocumentVisibility(page: any, state: 'hidden' | 'visible') {
+  await page.evaluate((value: string) => {
+    Object.defineProperty(document, 'visibilityState', { value, configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }, state)
+}
+
+// Simulate the window losing/regaining focus (the app listens on window).
+async function blurWindow(page: any) {
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+}
+
+async function focusWindow(page: any) {
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
 }
 
 // Helper to parse timer text into seconds
@@ -104,127 +123,117 @@ test.describe('@integration Timer - Counting', () => {
 })
 
 test.describe('@integration Timer - Pause Behavior', () => {
-  test.beforeEach(async ({ page }) => {
+  // Why these tests drive window blur, not a tab hide:
+  //
+  // The PAUSED indicator (TimerDisplay) and the resume overlay (Game.tsx) can
+  // never be observed through a visibility hide, for anyone. Hiding the tab
+  // sets isHidden/isInDeepPause, and those flags swap the whole game tree for
+  // the minimal frozen placeholder ("Paused") regardless of the automation
+  // bypass. The indicator and overlay only render while the page is still
+  // mounted, which happens when the window blurs with the tab left visible
+  // (isWindowBlurred pauses the timer without freezing the render).
+  //
+  // Pausing itself is disabled under automation (navigator.webdriver engages
+  // the bypass in useBackgroundManager/useGameTimer), so each test here defeats
+  // the bypass for its own pages via disableAutomationBypass before loading.
+  //
+  // What a tab hide DOES show, the frozen placeholder, is pinned by its own
+  // test below; the clock's behavior across a long hide is pinned by the
+  // Extended Background Pause test at the bottom of this file.
+
+  // Blur tests need the real pause behavior, which the app disables under
+  // automation, so they defeat the bypass before loading the game.
+  async function setupPausableGame(page: any) {
+    await disableAutomationBypass(page)
     await setupGameAndWaitForBoard(page, { difficulty: 'easy' })
+  }
+
+  // While the pause overlay is up, its own clock also matches getTimerLocator,
+  // so pause tests read the header clock, which precedes the board overlay in
+  // DOM order.
+  function headerTimerLocator(page: any) {
+    return getTimerLocator(page).first()
+  }
+
+  test('timer pauses and shows the PAUSED indicator when the window loses focus', async ({
+    page,
+  }) => {
+    await setupPausableGame(page)
+
+    const timer = headerTimerLocator(page)
+    await expect(timer).toBeVisible()
+
+    await blurWindow(page)
+
+    // The real indicator is the exact-case PAUSED label next to the clock.
+    // exact: true matches case-sensitively, so the frozen placeholder's
+    // "Paused" cannot satisfy this locator.
+    const pausedIndicator = page.getByText('PAUSED', { exact: true })
+    await expect(pausedIndicator).toBeVisible({ timeout: 5000 })
+
+    // The clock must actually stop: once paused, the tick interval is gone,
+    // so the reading cannot change.
+    const frozenAt = parseTimerToSeconds((await timer.textContent()) || '0:00')
+    await page.waitForTimeout(2500)
+    const later = parseTimerToSeconds((await timer.textContent()) || '0:00')
+    expect(later).toBe(frozenAt)
   })
 
-  test('timer shows paused state when page loses visibility', async ({ page }) => {
-    const timer = getTimerLocator(page)
+  test('timer resumes when the window regains focus', async ({ page }) => {
+    await setupPausableGame(page)
 
-    // Get initial time
-    const initialText = await timer.textContent()
-    const initialSeconds = parseTimerToSeconds(initialText || '0:00')
+    const timer = headerTimerLocator(page)
 
-    // Simulate page hidden using visibilitychange event
-    await page.evaluate(() => {
-      Object.defineProperty(document, 'visibilityState', {
-        value: 'hidden',
-        configurable: true,
-      })
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
-
-    // Wait for paused indicator to appear (condition-based)
-    const pausedIndicator = page.locator('text=PAUSED')
-    await expect(pausedIndicator).toBeVisible({ timeout: 3000 })
-  })
-
-  test('timer resumes when page regains visibility', async ({ page }) => {
-    // Use a more specific timer locator that works even when paused
-    const timerContainer = page
-      .locator('[class*="timer"], [data-testid="timer"]')
-      .or(page.locator('.font-mono').filter({ hasText: /\d+:\d{2}/ }))
-      .or(page.locator('text=/\\d+:\\d{2}/'))
-      .first()
-
-    // First, wait for timer to be visible and running
-    await expect(timerContainer).toBeVisible({ timeout: 10000 })
-
-    // Wait for some elapsed time
+    // Let the clock accumulate so the post-resume reading has a baseline.
     await expect(async () => {
-      const timeText = await timerContainer.textContent()
-      const seconds = parseTimerToSeconds(timeText || '0:00')
+      const seconds = parseTimerToSeconds((await timer.textContent()) || '0:00')
       expect(seconds).toBeGreaterThan(0)
     }).toPass({ timeout: 5000 })
 
-    // Get initial time before pause
-    const timeBeforePause = await timerContainer.textContent()
-    const secondsBeforePause = parseTimerToSeconds(timeBeforePause || '0:00')
+    await blurWindow(page)
 
-    // Pause the timer by simulating page hidden
-    await page.evaluate(() => {
-      Object.defineProperty(document, 'visibilityState', {
-        value: 'hidden',
-        configurable: true,
-      })
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
+    const pausedIndicator = page.getByText('PAUSED', { exact: true })
+    await expect(pausedIndicator).toBeVisible({ timeout: 5000 })
+    const secondsWhilePaused = parseTimerToSeconds((await timer.textContent()) || '0:00')
 
-    // Wait for paused indicator to appear
-    const pausedCheck = page.locator('text=PAUSED')
-    await expect(pausedCheck).toBeVisible({ timeout: 5000 })
+    await focusWindow(page)
 
-    // Wait a moment while paused to ensure timer is actually paused
-    await page.waitForTimeout(1500)
-
-    // Verify timer didn't advance significantly while paused
-    // The timer text might still be there even when paused
-    const timeWhilePaused = await timerContainer.textContent().catch(() => null)
-    if (timeWhilePaused) {
-      const secondsWhilePaused = parseTimerToSeconds(timeWhilePaused)
-      expect(secondsWhilePaused).toBeLessThanOrEqual(secondsBeforePause + 1)
-    }
-
-    // Resume visibility
-    await page.evaluate(() => {
-      Object.defineProperty(document, 'visibilityState', {
-        value: 'visible',
-        configurable: true,
-      })
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
-
-    // Wait for resume to take effect
-    await page.waitForTimeout(500)
-
-    // PAUSED text should disappear
-    await expect(pausedCheck).not.toBeVisible({ timeout: 5000 })
-
-    // Timer should continue running - verify it increments
+    // The indicator clears and the clock advances past its paused reading.
+    await expect(pausedIndicator).not.toBeVisible({ timeout: 5000 })
     await expect(async () => {
-      const timeLater = await timerContainer.textContent()
-      expect(timeLater).toBeTruthy()
-      const secondsLater = parseTimerToSeconds(timeLater!)
-      // Timer should have advanced beyond what it was before
-      expect(secondsLater).toBeGreaterThan(secondsBeforePause)
+      const seconds = parseTimerToSeconds((await timer.textContent()) || '0:00')
+      expect(seconds).toBeGreaterThan(secondsWhilePaused)
     }).toPass({ timeout: 8000 })
   })
 
-  test('pause overlay appears when timer is paused', async ({ page }) => {
-    // Note: beforeEach already set up the game
+  test('pause overlay appears over the board when the window loses focus', async ({ page }) => {
+    await setupPausableGame(page)
 
-    // Wait for timer to actually start counting using condition-based wait
-    const timer = getTimerLocator(page)
-    await expect(async () => {
-      const timerText = await timer.textContent()
-      const seconds = parseTimerToSeconds(timerText || '0:00')
-      expect(seconds).toBeGreaterThanOrEqual(0)
-    }).toPass({ timeout: 3000 })
+    await blurWindow(page)
 
-    // Pause the timer via visibility change
-    await page.evaluate(() => {
-      Object.defineProperty(document, 'visibilityState', {
-        value: 'hidden',
-        configurable: true,
-      })
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
+    // The real overlay is the click-to-resume button rendered over the board.
+    const overlay = page.locator('button[aria-label="Resume game"]')
+    await expect(overlay).toBeVisible({ timeout: 5000 })
 
-    // When app is hidden, it shows a minimal "Paused" state for battery optimization
-    // (The full "Game Paused" overlay is not shown because the entire game UI is replaced
-    // with a minimal frozen component when hidden)
-    const pausedText = page.locator('text=Paused')
-    await expect(pausedText).toBeVisible({ timeout: 5000 })
+    // Blur must not trigger the frozen placeholder (see the note above).
+    await expect(page.getByText('Paused', { exact: true })).not.toBeVisible()
+  })
+
+  test('hiding the tab replaces the game with the minimal frozen placeholder', async ({ page }) => {
+    // No bypass defeat here: the frozen render is not gated on automation.
+    await setupGameAndWaitForBoard(page, { difficulty: 'easy' })
+
+    await setDocumentVisibility(page, 'hidden')
+
+    const placeholder = page.getByText('Paused', { exact: true })
+    await expect(placeholder).toBeVisible({ timeout: 5000 })
+    await expect(getTimerLocator(page)).not.toBeVisible()
+
+    await setDocumentVisibility(page, 'visible')
+
+    // The game returns when the tab becomes visible again.
+    await expect(placeholder).not.toBeVisible({ timeout: 5000 })
+    await expect(getTimerLocator(page)).toBeVisible({ timeout: 5000 })
   })
 })
 
@@ -525,18 +534,12 @@ test.describe('@integration Timer - Extended Background Pause', () => {
     const timer = getTimerLocator(page)
     await expect(timer).toBeVisible({ timeout: 10000 })
 
-    await page.evaluate(() => {
-      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
+    await setDocumentVisibility(page, 'hidden')
 
     // Past EXTENDED_PAUSE_DELAY, so the extended-pause effect has fired.
     await page.waitForTimeout(17000)
 
-    await page.evaluate(() => {
-      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
+    await setDocumentVisibility(page, 'visible')
 
     await expect(timer).toBeVisible({ timeout: 10000 })
     const afterReturn = parseTimerToSeconds((await timer.textContent()) || '0:00')
