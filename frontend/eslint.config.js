@@ -23,6 +23,10 @@ export default tseslint.config(
       // *.test.ts files above; not shipped, and they legitimately use `any`
       // for mock return shapes.
       'src/test-utils/**',
+      // Vitest global-setup helpers: test-only infrastructure outside the
+      // app tsconfig (covered by tsconfig.test.json), which the ESLint
+      // project service cannot type.
+      'test/**',
     ],
   },
 

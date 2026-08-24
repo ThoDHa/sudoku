@@ -5,8 +5,12 @@
  */
 
 import { chromium, FullConfig } from '@playwright/test'
+import { cleanAllureResults } from '../test/clean-allure-results'
 
 async function globalSetup(config: FullConfig) {
+  // Bound allure-results to this run's output (skipped under ALLURE_SKIP_CLEAN)
+  cleanAllureResults()
+
   // Create a browser context to set up localStorage
   const browser = await chromium.launch()
   const context = await browser.newContext()
