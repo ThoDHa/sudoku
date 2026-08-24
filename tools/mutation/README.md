@@ -223,11 +223,22 @@ both checks after any edit to `ci-exec.sh`; the local sweep's own harness,
 
 Mutation rewrites the target file in place for the entire sweep.
 
-- Run every sweep and every confirm in a dedicated `git worktree`. Two sweeps
-  need two worktrees. Never point the instrument at a checkout being edited.
-- After any interrupted run, check `git status` before anything else. A stray
-  mutated source file makes the suite fail for unrelated reasons, and a failing
-  suite marks every subsequent mutant killed.
+- `make mutation-go` isolates itself: it refuses to start while `api/` or
+  `frontend/puzzles.json` is dirty (a worktree of HEAD would measure different
+  code than the editor holds), then runs the whole sweep inside a throwaway
+  detached `git worktree`
+  and tears it down on exit, copying `reports/mutation/` back. The developer's
+  checkout is never written, so interrupting the run at any point (Ctrl-C,
+  timeout, OOM, `kill -9`) cannot leave a mutant in it. CI needs none of this
+  and must not gain it: every nightly job starts from a fresh checkout and
+  calls go-mutesting directly with `ci-exec.sh`, not through this target.
+- The manual instruments (`sweep.sh`, `confirm.py`, `runmut.sh`) do NOT
+  self-isolate. Run every sweep and every confirm in a dedicated
+  `git worktree`. Two sweeps need two worktrees. Never point the instrument at
+  a checkout being edited.
+- After any interrupted manual run, check `git status` before anything else. A
+  stray mutated source file makes the suite fail for unrelated reasons, and a
+  failing suite marks every subsequent mutant killed.
 
 ## Hazards that produced wrong numbers before they were caught
 
