@@ -315,7 +315,31 @@ mutation-probe-check:
 # The tool writes report.json/go-mutesting-report.html to CWD and mirrors the
 # target path inside its tmp sandbox, so targets must be clean ./pkg paths
 # (relative ../ escapes panic) and outputs are relocated per package.
+#
+# Local-tree safety (INFRA-17): the built-in runner mutates source files in
+# place and restores them between mutants, so an interrupted run strands a
+# live mutant in the checkout, and even a healthy run leaves an hours-long
+# window in which `git add -A` commits one (observed 2026-08-22 in
+# swordfish.go). This target therefore never mutates the developer's
+# checkout: the outer invocation re-runs itself inside a throwaway detached
+# `git worktree` of HEAD (the full repo, so the curated-fixture loaders still
+# find ../frontend/puzzles.json; a partial copy of api/ is the fiction-score
+# hazard documented in tools/mutation/README.md), copies reports/mutation/
+# back on exit, and tears the worktree down in an EXIT trap. Safety does not
+# depend on the trap firing: the checkout is simply never written, so even
+# `kill -9` cannot dirty it; a worktree orphaned by a hard kill is
+# garbage-collected by the `git worktree prune` at the start of the next run.
+# The run refuses to start while api/ has uncommitted or untracked changes,
+# because a worktree of HEAD would silently measure different code than what
+# is in the editor. An EXIT-trap file restore was rejected instead of this
+# because it does not survive SIGKILL or the OOM kills the ulimit
+# deliberately provokes, and it leaves the mid-run `git add -A` hazard
+# untouched.
+# CI was never at risk and is unaffected by construction: each nightly job
+# starts from a fresh checkout and invokes go-mutesting directly with
+# ci-exec.sh, not through this target. Do not add isolation there too.
 mutation-go: mutation-install
+ifdef MUTATION_GO_IN_WORKTREE
 	@set -e; \
 	ulimit -v $(MUTATION_ADDRESS_SPACE_KB); \
 	for pkg in $$($(MUTATION_FLOORS) packages --pkg-paths); do \
@@ -328,6 +352,24 @@ mutation-go: mutation-install
 		mv -f report.json go-mutesting-report.html "$$outdir/" 2>/dev/null; \
 	done; \
 	echo "mutation-go: all in-scope packages done. Reports under $(MUTATION_REPORT_DIR)/."
+else
+	@set -e; \
+	git worktree prune; \
+	if [ -n "$$(git status --porcelain -- .)" ]; then \
+		echo "mutation-go: REFUSING to run: api/ has uncommitted or untracked changes:"; \
+		git status --porcelain -- .; \
+		echo "mutation-go: the sweep runs in a worktree of HEAD, so it would measure"; \
+		echo "mutation-go: different code than your editor holds. Commit or stash first."; \
+		exit 1; \
+	fi; \
+	scratch=$$(mktemp -d); \
+	wt="$$scratch/repo"; \
+	trap 'if [ -d "$$wt/api/$(MUTATION_REPORT_DIR)" ]; then mkdir -p "$(MUTATION_REPORT_DIR)"; cp -R "$$wt/api/$(MUTATION_REPORT_DIR)/." "$(MUTATION_REPORT_DIR)/"; fi; git worktree remove --force "$$wt" >/dev/null 2>&1 || true; rm -rf "$$scratch"; git worktree prune' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
+	echo "mutation-go: isolating the run in a temporary git worktree (the checkout is never mutated)"; \
+	git worktree add --detach "$$wt" HEAD; \
+	$(MAKE) -C "$$wt/api" mutation-go MUTATION_GO_IN_WORKTREE=1
+endif
 
 # Enforce per-package mutation efficacy floors by parsing each package's
 # report.json. Efficacy = (killed + timeout) / (killed + timeout + escaped)
