@@ -412,6 +412,18 @@ describe('dp-solver', () => {
     })
   })
 
+  describe('countSolutions', () => {
+    it('should return 1 for a puzzle with exactly one solution', async () => {
+      const { countSolutions } = await import('./dp-solver')
+      expect(countSolutions(VALID_UNIQUE_PUZZLE, 2)).toBe(1)
+    })
+
+    it('should stop counting exactly at the maxCount cap', async () => {
+      const { countSolutions } = await import('./dp-solver')
+      expect(countSolutions(MULTIPLE_SOLUTIONS_PUZZLE, 2)).toBe(2)
+    })
+  })
+
   describe('validatePuzzle', () => {
     it('should return valid and unique for proper puzzle with solution', async () => {
       const { validatePuzzle } = await import('./dp-solver')
