@@ -257,8 +257,20 @@ mutation-install:
 # alone is satisfied by a probe that wrongly skips everything, which would read
 # as a perfect score with an empty denominator.
 #
-# go-mutesting writes report.json to the working directory with no way to
-# redirect it, so the report is moved aside exactly as mutation-go does.
+# Checkout safety (INFRA-18): go-mutesting mutates the target file in place,
+# so probing the checkout's fixture directly strands a live mutant there when
+# the probe is interrupted, the hazard class INFRA-17 closed for the sweep.
+# The probe therefore runs against a minimal copy (go.mod, go.sum, and the
+# fixture package) in the scratch tmpdir; the checkout is never written, so
+# no interruption, SIGKILL included, can dirty it, and an orphaned tmpdir is
+# inert. The partial-copy fiction-score hazard documented in
+# tools/mutation/README.md does not apply to this one fixture: it is hermetic
+# (sole import is `testing`, no file reads), so environmental breakage of the
+# copy can only fail compiles, which drives killedCount to 0 and fails the
+# assert below loudly instead of inflating the score. Do not extend this
+# copy pattern to packages that read files outside the copy.
+# go-mutesting writes report.json to its working directory with no way to
+# redirect it, which lands it inside the scratch tmpdir here.
 define MUTATION_PROBE_ASSERT
 import json, sys
 
@@ -292,17 +304,20 @@ mutation-probe-check:
 	fi; \
 	work=$$(mktemp -d); \
 	trap 'rm -rf "$$work"' EXIT; \
+	trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM; \
+	probe="$$work/probe"; \
+	mkdir -p "$$probe/$(MUTATION_PROBE_FIXTURE)"; \
+	cp go.mod go.sum "$$probe/"; \
+	cp $(MUTATION_PROBE_FIXTURE)/*.go "$$probe/$(MUTATION_PROBE_FIXTURE)/"; \
 	printf 'skip_without_test: true\nskip_with_build_tags: true\njson_output: true\nsilent_mode: true\n' > "$$work/config.yml"; \
 	ulimit -v $(MUTATION_ADDRESS_SPACE_KB); \
-	if ! "$(GO_MUTESTESTING_BIN)" --exec-timeout $(MUTATION_EXEC_TIMEOUT) \
-		--config="$$work/config.yml" $(MUTATION_PROBE_FIXTURE) > "$$work/run.log" 2>&1; then \
+	if ! ( cd "$$probe" && "$(GO_MUTESTESTING_BIN)" --exec-timeout $(MUTATION_EXEC_TIMEOUT) \
+		--config="$$work/config.yml" $(MUTATION_PROBE_FIXTURE) > "$$work/run.log" 2>&1 ); then \
 		echo "mutation-probe-check: go-mutesting failed on $(MUTATION_PROBE_FIXTURE):"; \
 		cat "$$work/run.log"; \
 		exit 1; \
 	fi; \
-	mv -f report.json "$$work/report.json"; \
-	rm -f go-mutesting-report.html; \
-	python3 -c "$$MUTATION_PROBE_ASSERT" "$$work/report.json"
+	python3 -c "$$MUTATION_PROBE_ASSERT" "$$probe/report.json"
 
 # Run go-mutesting on each in-scope Go package (Decision 9: explicit
 # enumeration; human/techniquetest is excluded as pure test-fixture data). The
@@ -340,10 +355,11 @@ mutation-probe-check:
 # starts from a fresh checkout and invokes go-mutesting directly with
 # ci-exec.sh, not through this target. Do not add isolation there too.
 #
-# mutation-install is a prerequisite of the INNER invocation only: its final
-# mutation-probe-check step runs go-mutesting on the compileprobe fixture,
-# mutating that file in place in whatever tree it runs in, so it too must
-# happen inside the temporary worktree, never in the checkout.
+# mutation-install is a prerequisite of the INNER invocation only. Its final
+# mutation-probe-check step self-isolates (it probes a tmpdir copy of the
+# fixture; see that target), so the placement is no longer load-bearing for
+# checkout safety; it stays on the inner invocation so the probe verifies the
+# exact fixture files the sweep is about to measure.
 # Interruption note, measured: go-mutesting v2.3.1 swallows SIGINT, so a
 # Ctrl-C alone does not stop a run; termination actually arrives as a
 # follow-up SIGTERM/SIGHUP/SIGKILL. The HUP/INT/TERM traps below cover the
