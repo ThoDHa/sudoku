@@ -146,6 +146,18 @@ describe('useBackgroundManager', () => {
       expect(result.current.shouldPauseOperations).toBe(true)
     })
 
+    it('reports visibilityState as visible when disabled, even if the document is hidden', () => {
+      mockVisibilityState = 'hidden'
+
+      const { result } = renderHook(() => useBackgroundManager({ enabled: false }))
+
+      // A disabled manager ignores the real document state and falls back to
+      // the literal 'visible'. Mutants that corrupt that fallback string leak
+      // a bogus visibility value to consumers.
+      expect(result.current.visibilityState).toBe('visible')
+      expect(result.current.isHidden).toBe(false)
+    })
+
     it('does not set up event listeners when disabled', () => {
       const addEventListenerSpy = vi.spyOn(document, 'addEventListener')
 

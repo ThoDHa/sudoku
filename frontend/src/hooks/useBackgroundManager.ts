@@ -59,39 +59,54 @@ export function useBackgroundManager(
   const shouldPauseOperations =
     enabled && !automated && (isHidden || isWindowBlurred || forcePaused || isInDeepPause)
 
-  const handleVisibilityChange = useCallback(() => {
-    const newVisibilityState = document.visibilityState
-    setVisibilityState(newVisibilityState)
+  const handleVisibilityChange = useCallback(
+    () => {
+      const newVisibilityState = document.visibilityState
+      setVisibilityState(newVisibilityState)
 
-    const newIsHidden = newVisibilityState === 'hidden'
-    setIsHidden(newIsHidden)
+      const newIsHidden = newVisibilityState === 'hidden'
+      setIsHidden(newIsHidden)
 
-    if (newIsHidden) {
-      setIsInDeepPause(true)
-    } else {
-      setForcePaused(false)
-      setIsInDeepPause(false)
-    }
-  }, [])
+      if (newIsHidden) {
+        setIsInDeepPause(true)
+      } else {
+        setForcePaused(false)
+        setIsInDeepPause(false)
+      }
+    },
+    /* Stryker disable next-line ArrayDeclaration: React compares deps element-wise, and a constant literal entry is Object.is-equal on every render, so the callback keeps the same memoised identity as with the empty array */ [],
+  )
 
   // Separate handlers for window blur/focus (app switching on desktop)
   // These set isWindowBlurred but NOT isHidden - so timer pauses but frozen state doesn't trigger
-  const handleWindowBlur = useCallback(() => {
-    setIsWindowBlurred(true)
-  }, [])
+  const handleWindowBlur = useCallback(
+    () => {
+      setIsWindowBlurred(true)
+    },
+    /* Stryker disable next-line ArrayDeclaration: React compares deps element-wise, and a constant literal entry is Object.is-equal on every render, so the callback keeps the same memoised identity as with the empty array */ [],
+  )
 
-  const handleWindowFocus = useCallback(() => {
-    setIsWindowBlurred(false)
-  }, [])
+  const handleWindowFocus = useCallback(
+    () => {
+      setIsWindowBlurred(false)
+    },
+    /* Stryker disable next-line ArrayDeclaration: React compares deps element-wise, and a constant literal entry is Object.is-equal on every render, so the callback keeps the same memoised identity as with the empty array */ [],
+  )
 
-  const forceResume = useCallback(() => {
-    setForcePaused(false)
-    setIsInDeepPause(false)
-  }, [])
+  const forceResume = useCallback(
+    () => {
+      setForcePaused(false)
+      setIsInDeepPause(false)
+    },
+    /* Stryker disable next-line ArrayDeclaration: React compares deps element-wise, and a constant literal entry is Object.is-equal on every render, so the callback keeps the same memoised identity as with the empty array */ [],
+  )
 
-  const forcePause = useCallback(() => {
-    setForcePaused(true)
-  }, [])
+  const forcePause = useCallback(
+    () => {
+      setForcePaused(true)
+    },
+    /* Stryker disable next-line ArrayDeclaration: React compares deps element-wise, and a constant literal entry is Object.is-equal on every render, so the callback keeps the same memoised identity as with the empty array */ [],
+  )
 
   // Register visibility change listeners
   useEffect(() => {
