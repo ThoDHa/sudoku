@@ -338,8 +338,19 @@ mutation-probe-check:
 # CI was never at risk and is unaffected by construction: each nightly job
 # starts from a fresh checkout and invokes go-mutesting directly with
 # ci-exec.sh, not through this target. Do not add isolation there too.
-mutation-go: mutation-install
+#
+# mutation-install is a prerequisite of the INNER invocation only: its final
+# mutation-probe-check step runs go-mutesting on the compileprobe fixture,
+# mutating that file in place in whatever tree it runs in, so it too must
+# happen inside the temporary worktree, never in the checkout.
+# Interruption note, measured: go-mutesting v2.3.1 swallows SIGINT, so a
+# Ctrl-C alone does not stop a run; termination actually arrives as a
+# follow-up SIGTERM/SIGHUP/SIGKILL. The HUP/INT/TERM traps below cover the
+# catchable ones so teardown still runs, and SIGKILL merely orphans the
+# /tmp worktree for the next run's prune; the checkout stays clean on every
+# path because it is never written.
 ifdef MUTATION_GO_IN_WORKTREE
+mutation-go: mutation-install
 	@set -e; \
 	ulimit -v $(MUTATION_ADDRESS_SPACE_KB); \
 	for pkg in $$($(MUTATION_FLOORS) packages --pkg-paths); do \
@@ -353,6 +364,7 @@ ifdef MUTATION_GO_IN_WORKTREE
 	done; \
 	echo "mutation-go: all in-scope packages done. Reports under $(MUTATION_REPORT_DIR)/."
 else
+mutation-go:
 	@set -e; \
 	git worktree prune; \
 	if [ -n "$$(git status --porcelain -- .)" ]; then \
