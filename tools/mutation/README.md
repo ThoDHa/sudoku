@@ -223,9 +223,10 @@ both checks after any edit to `ci-exec.sh`; the local sweep's own harness,
 
 Mutation rewrites the target file in place for the entire sweep.
 
-- `make mutation-go` isolates itself: it refuses to start while `api/` is
-  dirty (a worktree of HEAD would measure different code than the editor
-  holds), then runs the whole sweep inside a throwaway detached `git worktree`
+- `make mutation-go` isolates itself: it refuses to start while `api/` or
+  `frontend/puzzles.json` is dirty (a worktree of HEAD would measure different
+  code than the editor holds), then runs the whole sweep inside a throwaway
+  detached `git worktree`
   and tears it down on exit, copying `reports/mutation/` back. The developer's
   checkout is never written, so interrupting the run at any point (Ctrl-C,
   timeout, OOM, `kill -9`) cannot leave a mutant in it. CI needs none of this

@@ -329,9 +329,10 @@ mutation-probe-check:
 # depend on the trap firing: the checkout is simply never written, so even
 # `kill -9` cannot dirty it; a worktree orphaned by a hard kill is
 # garbage-collected by the `git worktree prune` at the start of the next run.
-# The run refuses to start while api/ has uncommitted or untracked changes,
-# because a worktree of HEAD would silently measure different code than what
-# is in the editor. An EXIT-trap file restore was rejected instead of this
+# The run refuses to start while api/ or frontend/puzzles.json (the fixture
+# input the suite reads) has uncommitted or untracked changes, because a
+# worktree of HEAD would silently measure different code than what is in the
+# editor. An EXIT-trap file restore was rejected instead of this
 # because it does not survive SIGKILL or the OOM kills the ulimit
 # deliberately provokes, and it leaves the mid-run `git add -A` hazard
 # untouched.
@@ -367,9 +368,9 @@ else
 mutation-go:
 	@set -e; \
 	git worktree prune; \
-	if [ -n "$$(git status --porcelain -- .)" ]; then \
-		echo "mutation-go: REFUSING to run: api/ has uncommitted or untracked changes:"; \
-		git status --porcelain -- .; \
+	if [ -n "$$(git status --porcelain -- . ../frontend/puzzles.json)" ]; then \
+		echo "mutation-go: REFUSING to run: api/ or frontend/puzzles.json has uncommitted or untracked changes:"; \
+		git status --porcelain -- . ../frontend/puzzles.json; \
 		echo "mutation-go: the sweep runs in a worktree of HEAD, so it would measure"; \
 		echo "mutation-go: different code than your editor holds. Commit or stash first."; \
 		exit 1; \
