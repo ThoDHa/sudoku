@@ -17,20 +17,6 @@ declare global {
   var SudokuWasm: SudokuWasmAPI | undefined
 }
 
-// ==================== Message Types ====================
-
-interface FindNextMovePayload {
-  cells: number[]
-  candidates: number[][]
-  givens: number[]
-}
-
-interface SolveAllPayload {
-  cells: number[]
-  candidates: number[][]
-  givens: number[]
-}
-
 // ==================== Worker State ====================
 
 let wasmApi: SudokuWasmAPI | null = null
@@ -151,10 +137,14 @@ function waitForWasmReadyPoll(): Promise<void> {
 // ==================== Message Handler ====================
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
-  const { type, id, payload } = event.data
+  // Kept whole rather than destructured: narrowing follows `message` through
+  // the switch, so each case sees its own arm's payload type. `id` is common
+  // to every arm, so pulling it out does not affect the narrowing.
+  const message = event.data
+  const { id } = message
 
   try {
-    switch (type) {
+    switch (message.type) {
       case 'init': {
         await initializeWasm()
         const response: WorkerResponse = { type: 'ready', id }
@@ -178,7 +168,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         }
         /* istanbul ignore stop */
 
-        const { cells, candidates, givens } = payload as FindNextMovePayload
+        const { cells, candidates, givens } = message.payload
         const result = wasmApi.findNextMove(cells, candidates, givens)
 
         const response: WorkerResponse = {
@@ -211,7 +201,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         }
         /* istanbul ignore stop */
 
-        const { cells, candidates, givens } = payload as SolveAllPayload
+        const { cells, candidates, givens } = message.payload
         const result = wasmApi.solveAll(cells, candidates, givens)
 
         const response: WorkerResponse = {
@@ -233,10 +223,14 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       }
 
       default: {
+        // Unreachable per the union, but event.data is not validated at
+        // runtime, so an out-of-protocol type still lands here. The switch
+        // narrows `message` to never in this arm; `event.data` is the same
+        // value un-narrowed, so its `type` stays readable without a cast.
         const response: WorkerResponse = {
           type: 'error',
           id,
-          error: `Unknown message type: ${String(type)}`,
+          error: `Unknown message type: ${event.data.type}`,
         }
         self.postMessage(response)
       }

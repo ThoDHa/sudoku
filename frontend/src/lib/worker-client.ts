@@ -12,7 +12,7 @@
 
 import type { Move } from '../types/sudoku'
 import { logger } from './logger'
-import type { WorkerRequest, WorkerResponse } from './workerProtocol'
+import type { WorkerRequest, WorkerRequestBody, WorkerResponse } from './workerProtocol'
 
 // ==================== Types ====================
 
@@ -261,7 +261,7 @@ export async function initializeWorker(): Promise<void> {
       }
 
       // Initialize WASM inside the worker
-      await sendRequest('init', undefined)
+      await sendRequest({ type: 'init' })
 
       isInitialized = true
       // Stryker disable next-line BooleanLiteral: leaving isInitializing=true after success is harmless because the `if (isInitialized && worker) return` guard at the top of initializeWorker short-circuits all subsequent callers
@@ -281,9 +281,13 @@ export async function initializeWorker(): Promise<void> {
 }
 
 /**
- * Send a request to the worker and wait for response
+ * Send a request to the worker and wait for response.
+ *
+ * Takes the request body (the `WorkerRequest` arm minus `id`) so each call
+ * site's payload is compile-checked against its arm; attaching the
+ * correlation id is this function's concern.
  */
-async function sendRequest(type: WorkerRequest['type'], payload: unknown): Promise<unknown> {
+async function sendRequest(body: WorkerRequestBody): Promise<unknown> {
   /* istanbul ignore start -- unreachable defensive guard: every public entry point awaits initializeWorker() before calling sendRequest, so worker is always non-null here */
   // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: defensive guard; sendRequest is only reached after `if (!isInitialized || !worker) await initializeWorker()` in the public API, so worker is always non-null here. The mutants (skip the throw, empty the block, blank the message) are observationally equivalent because the block is unreachable in normal flow.
   if (!worker) {
@@ -302,12 +306,14 @@ async function sendRequest(type: WorkerRequest['type'], payload: unknown): Promi
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
       pendingRequests.delete(id)
-      reject(new Error(`Worker request timeout: ${type}`))
+      reject(new Error(`Worker request timeout: ${body.type}`))
     }, REQUEST_TIMEOUT)
 
     pendingRequests.set(id, { resolve, reject, timeoutId })
 
-    const request: WorkerRequest = { type, id, payload }
+    // Object spread distributes over the body union, so the composed value
+    // is checked against WorkerRequest arm by arm; no cast needed.
+    const request: WorkerRequest = { ...body, id }
     workerRef.postMessage(request)
   })
 }
@@ -366,7 +372,7 @@ export async function findNextMove(
     await initializeWorker()
   }
 
-  const result = await sendRequest('findNextMove', { cells, candidates, givens })
+  const result = await sendRequest({ type: 'findNextMove', payload: { cells, candidates, givens } })
   return result as WorkerFindNextMoveResult
 }
 
@@ -384,6 +390,6 @@ export async function solveAll(
     await initializeWorker()
   }
 
-  const result = await sendRequest('solveAll', { cells, candidates, givens })
+  const result = await sendRequest({ type: 'solveAll', payload: { cells, candidates, givens } })
   return result as WorkerSolveAllResult
 }
