@@ -1367,3 +1367,56 @@ describe('BUG-21: decodeDense clamps out-of-range nibbles to valid digits', () =
     expect(decoded!.board.every((c) => c >= 0 && c <= 9)).toBe(true)
   })
 })
+
+describe('mutation-killing: directive-retirement escapes', () => {
+  it('encodes invalid candidate digits to the exact filtered payload (d=0/dupes set no bit)', () => {
+    // candidates[1] = [0, 1, 5, 5, 9]: the invalid 0 must contribute nothing
+    // and the duplicate 5 must accumulate, so the packed 9-bit group is
+    // exactly bits {1,5,9} = 273 -> bytes [0x88,0x80] -> base64 "iIA".
+    const board = empty()
+    const givens = empty()
+    const candidates = Array.from({ length: 81 }, () => [] as number[])
+    candidates[1] = [0, 1, 5, 5, 9]
+    const encoded = encodePuzzleWithState(board, givens, candidates)
+    expect(encoded).toBe('c' + 'A'.repeat(14) + 'A'.repeat(55) + 'C' + 'A'.repeat(13) + 'iIA')
+  })
+
+  it('round-trips a candidates payload containing "_" (URL-safe "/")', () => {
+    // All nine digits in one cell pack to 0x1FF -> bytes [0xFF,0x80] -> std
+    // base64 "/4A" -> URL-safe "_4A". Dropping or mis-replacing "_" on decode
+    // corrupts the byte stream and the round-trip loses digits.
+    const board = empty()
+    const givens = empty()
+    const candidates = Array.from({ length: 81 }, () => [] as number[])
+    candidates[1] = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    const encoded = encodePuzzleWithState(board, givens, candidates)
+    expect(encoded).toBe('c' + 'A'.repeat(14) + 'A'.repeat(55) + 'C' + 'A'.repeat(13) + '_4A')
+    const decoded = decodePuzzleWithState(encoded)!
+    expect(decoded.candidates![1]).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
+  })
+
+  it('decodes a dense payload where "_" precedes nonzero cells (dropping "_" shifts cells)', () => {
+    // 'd_BCA': '_' is URL-safe '/'. '/BCA' decodes to bytes [252, 16, 128],
+    // whose valid nibbles give cells [.., 0,0,1,0,8, ..]. A decoder that
+    // deletes '_' instead of restoring '/' gets bytes [4, 32] and cells
+    // [0,4,2,..], so the assertions below distinguish the two.
+    const decoded = decodePuzzle('d_BCA')
+    expect(decoded).toHaveLength(81)
+    expect(decoded[2]).toBe(1)
+    expect(decoded[4]).toBe(8)
+  })
+
+  it('returns all-empty candidates when the candidates mask is malformed', () => {
+    // Valid 69-char 'c' prefix section (zero mask + zero board) followed by a
+    // candidates section whose 14-char mask contains '!'. The mask decode
+    // returns null and every cell keeps its empty candidate list; skipping the
+    // null guard would throw on the BigInt operations that follow.
+    const encoded = 'c' + 'A'.repeat(14) + 'A'.repeat(55) + '!'.repeat(14) + 'AA'
+    expect(() => decodePuzzleWithState(encoded)).not.toThrow()
+    const decoded = decodePuzzleWithState(encoded)!
+    expect(decoded.candidates).toBeDefined()
+    for (let i = 0; i < 81; i++) {
+      expect(decoded.candidates![i]).toEqual([])
+    }
+  })
+})
