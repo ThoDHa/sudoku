@@ -103,7 +103,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const backgroundManager = providedBackgroundManager || defaultBackgroundManager
 
   const [isAutoSolving, setIsAutoSolving] = useState(false)
-  // Stryker disable next-line BooleanLiteral: isPaused is overwritten by the mount run of the pause-sync effect belo...
+  // Stryker disable next-line BooleanLiteral: the pause-sync effect runs on mount before any test observes the first render, so the initial true variant is already overwritten
   const [isPaused, setIsPaused] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
   const [manualPaused, setManualPaused] = useState(false)
@@ -111,19 +111,16 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const [totalMoves, setTotalMoves] = useState(0)
   const [lastCompletedSteps, setLastCompletedSteps] = useState(0)
 
-  // Stryker disable next-line BooleanLiteral: autoSolveRef is only read while isAutoSolving is true (every reader is...
+  // Stryker disable next-line BooleanLiteral: every reader is gated on isAutoSolving, which stays false until a start path sets this ref, so the initial true variant is unobservable
   const autoSolveRef = useRef(false)
-  // Stryker disable next-line BooleanLiteral: pausedRef is reassigned by the pause-sync effect on mount (to shouldPa...
+  // Stryker disable next-line BooleanLiteral: reassigned by the pause-sync effect on mount, and no playback exists yet for a true initial value to block
   const pausedRef = useRef(false)
-  const manualPausedRef = useRef(false)
-  // Stryker disable ArrayDeclaration: each ref is reassigned to a fresh array
-  // inside startAutoSolve/restartAutoSolve/playMoves/solveFromGivens (and reads
-  // are guarded by isAutoSolving) before any consumer observes it, so the
-  // initial empty-array value is unobservable
+  // Stryker disable next-line ArrayDeclaration: reassigned to a fresh queue by every start path before any consumer reads it, and consumers are gated on isAutoSolving
   const movesQueueRef = useRef<MoveResult[]>([])
+  // Stryker disable next-line ArrayDeclaration: replaced with the session's moves by every start path before any consumer reads it
   const allMovesRef = useRef<MoveResult[]>([]) // All moves for rewind
+  // Stryker disable next-line ArrayDeclaration: reseeded by every start path before any consumer reads it, and consumers are gated on isAutoSolving
   const stateHistoryRef = useRef<StateSnapshot[]>([]) // State at each step
-  // Stryker restore
   const currentIndexRef = useRef(-1)
   const playNextMoveRef = useRef<(() => Promise<void>) | null>(null)
   const stepDelayRef = useRef(stepDelay)
@@ -132,7 +129,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const pausedBoardSnapshotRef = useRef<number[] | null>(null)
 
   // Track active timers for cleanup - prevents battery drain from orphaned timers
-  const activeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const activeTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // Keep stepDelayRef in sync with prop so speed changes take effect dynamically
   useEffect(() => {
@@ -143,21 +140,15 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   // of each solve. MAX_MOVE_HISTORY is imported but not used here because the
   // history is cleared on stopAutoSolve. If needed, add limit check after each push.
 
-  // Helper to clear any active timers
-  const clearActiveTimers = useCallback(() => {
-    // The two ConditionalExpression branch-forcing mutants on this null-check cannot be
-    // separated at mutator granularity. Forcing it true is a genuine no-op (clearTimeout on a
-    // null/settled handle is harmless and the null assignment is idempotent). Whether
-    // clearActiveTimers actually clears a live timer is verified separately by the
-    // clearTimeout-spy test through the BlockStatement and EqualityOperator mutants on these
-    // lines, which remain enabled and are killed.
-    // Stryker disable next-line ConditionalExpression: branch-forcing is unobservable here (see note above)
-    if (activeTimeoutRef.current !== null) {
+  // Helper to clear any active timers (clearTimeout on an undefined handle is a no-op)
+  const clearActiveTimers = useCallback(
+    () => {
       clearTimeout(activeTimeoutRef.current)
-      activeTimeoutRef.current = null
-    }
-    // Stryker disable next-line ArrayDeclaration: clearActiveTimers captures no external values; a stable-string mut...
-  }, [])
+      activeTimeoutRef.current = undefined
+    },
+    // Stryker disable next-line ArrayDeclaration: captures only refs, so the mutant array is constant across renders and the element-wise dependency comparison never differs
+    [],
+  )
 
   // Helper to schedule next move with proper timer tracking
   const scheduleNextMove = useCallback(
@@ -175,52 +166,53 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         callback()
       }, delay)
     },
-    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is itself stable (deps []), so dropping it from ...
+    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is itself stable (deps []), so dropping it changes nothing and the mutant array is constant across renders
     [clearActiveTimers],
   )
 
-  const stopAutoSolve = useCallback(() => {
-    // Clear all active timers first to prevent battery drain
-    clearActiveTimers()
+  const stopAutoSolve = useCallback(
+    () => {
+      // Clear all active timers first to prevent battery drain
+      clearActiveTimers()
 
-    // Save the final step count BEFORE resetting (for history display)
-    // Stryker disable next-line EqualityOperator: when currentIndexRef.current is 0, both >0 (false→0) and >=0 (true→0) yield finalSteps=0; for negative indices the hook guards prevent reaching here, so the boundary mutation is unobservable
-    const finalSteps = currentIndexRef.current > 0 ? currentIndexRef.current : 0
-    setLastCompletedSteps(finalSteps)
+      // Save the final step count BEFORE resetting (for history display)
+      const finalSteps = Math.max(currentIndexRef.current, 0)
+      setLastCompletedSteps(finalSteps)
 
-    // Stryker disable BooleanLiteral,ArrayDeclaration,UnaryOperator: every ref
-    // reset here is unobservable after stop. Each ref is either reassigned at
-    // the start of the next solve (startAutoSolve/restart/playMoves/solveFromGivens)
-    // before any consumer reads it, or its readers are guarded by isAutoSolving
-    // (now false). The resume effect is additionally blocked because
-    // playNextMoveRef.current is nulled two lines below.
-    autoSolveRef.current = false
-    pausedRef.current = false
-    manualPausedRef.current = false
-    pausedBoardSnapshotRef.current = null
-    movesQueueRef.current = []
-    allMovesRef.current = []
-    stateHistoryRef.current = []
-    currentIndexRef.current = -1
-    playNextMoveRef.current = null
-    // Stryker restore
-    setIsAutoSolving(false)
-    setIsPaused(false)
-    setManualPaused(false)
-    setCurrentIndex(-1)
-    setTotalMoves(0)
-    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is stable, so omitting it from stopAutoSolve's d...
-  }, [clearActiveTimers])
+      // Stryker disable next-line BooleanLiteral: set true by every start path before any reader runs, and readers are gated on isAutoSolving (false after stop)
+      autoSolveRef.current = false
+      // Stryker disable next-line BooleanLiteral: overwritten by the next start path's synchronous pausedRef assignment and by the pause-sync effect before any reader observes it
+      pausedRef.current = false
+      pausedBoardSnapshotRef.current = null
+      movesQueueRef.current = []
+      // Stryker disable next-line ArrayDeclaration: replaced with the next session's moves by every start path before any consumer reads it
+      allMovesRef.current = []
+      // Stryker disable next-line ArrayDeclaration: reseeded by every start path before any consumer reads it, and consumers are gated on isAutoSolving
+      stateHistoryRef.current = []
+      // Stryker disable next-line UnaryOperator: overwritten to 0 by every start path before any reader observes the index
+      currentIndexRef.current = -1
+      playNextMoveRef.current = null
+      setIsAutoSolving(false)
+      setIsPaused(false)
+      setManualPaused(false)
+      setCurrentIndex(-1)
+      setTotalMoves(0)
+    },
+    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is stable (deps []), so the mutant array is constant across renders
+    [clearActiveTimers],
+  )
 
   // Cleanup on unmount - prevents battery drain from orphaned timers
-  useEffect(() => {
-    return () => {
-      clearActiveTimers()
-      // Stryker disable next-line BooleanLiteral: after unmount the hook instance is gone, so autoSolveRef's value i...
-      autoSolveRef.current = false
-    }
-    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is stable, so the unmount effect behavior is ide...
-  }, [clearActiveTimers])
+  useEffect(
+    () => {
+      return () => {
+        clearActiveTimers()
+        autoSolveRef.current = false
+      }
+    },
+    // Stryker disable next-line ArrayDeclaration: clearActiveTimers is stable (deps []), so the mutant array is constant across renders
+    [clearActiveTimers],
+  )
 
   // Sync gamePaused prop and background manager with our internal pause state.
   // Wrapped in a named function so the rule recognizes the setState calls as
@@ -228,15 +220,6 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   useEffect(() => {
     const syncPauseState = () => {
       const shouldPause = gamePaused || manualPaused || backgroundManager.shouldPauseOperations
-      // Stryker disable StringLiteral,ObjectLiteral: the logger is not mocked or
-      // asserted in any hook test, so its message string and payload object are
-      // unobservable
-      logger.debug('[useAutoSolve] pause check:', {
-        gamePaused,
-        manualPaused,
-        shouldPauseOperations: backgroundManager.shouldPauseOperations,
-      })
-      // Stryker restore
       if (shouldPause) {
         pausedRef.current = true
         setIsPaused(true)
@@ -245,7 +228,6 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         pausedRef.current = false
         setIsPaused(false)
         // Resume playback if we were auto-solving and just unpaused
-        // Stryker disable next-line LogicalOperator: the resume fires only when wasPaused is true (set from pausedRe...
         if (wasPaused && autoSolveRef.current && playNextMoveRef.current) {
           // Check if board changed while paused (user made edits)
           if (pausedBoardSnapshotRef.current !== null) {
@@ -272,7 +254,6 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     if (!isAutoSolving) return
     setManualPaused((prev) => {
       const newPaused = !prev
-      manualPausedRef.current = newPaused
       // Snapshot board state when pausing so we can detect changes on resume
       if (newPaused) {
         pausedBoardSnapshotRef.current = [...getBoard()]
@@ -291,7 +272,6 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       candidatesArray: number[][],
       currentCandidates: Set<number>[],
       givens: number[],
-      shouldPlay: boolean,
     ) => {
       stateHistoryRef.current = [
         {
@@ -344,17 +324,11 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
         const playNextMove = createPlayNextMove(context)
         playNextMoveRef.current = playNextMove
 
-        // shouldPlay is false only on a startPaused restart, where manualPaused (and thus
-        // pausedRef) is already set before the async solve resolves, so playNextMove's own pause
-        // guard blocks the forced first play. The false-forcing variant (skip playback entirely)
-        // is covered by the sequential-playback tests, which fail if moves stop advancing.
-        // Stryker disable next-line ConditionalExpression: forcing this guard is unobservable (see note above)
-        if (shouldPlay) {
-          void playNextMove()
-        }
+        // When the session starts paused, restartAutoSolve/playMoves set pausedRef
+        // synchronously, so playNextMove's own pause guard blocks the first play.
+        void playNextMove()
       } catch (err) {
         setIsFetching(false)
-        // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
         logger.error('Auto-solve error:', err)
         onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
         stopAutoSolve()
@@ -383,21 +357,13 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       setIsAutoSolving(true)
       autoSolveRef.current = true
 
-      if (startPaused) {
-        manualPausedRef.current = true
-        setManualPaused(true)
-      } else {
-        manualPausedRef.current = false
-        setManualPaused(false)
-      }
+      // Set pausedRef synchronously so a paused start blocks the forced first play
+      // without a shouldPlay flag; the pause-sync effect keeps the ref in sync
+      // with the manualPaused state from here on.
+      pausedRef.current = startPaused
+      setManualPaused(startPaused)
 
-      await runAutoSolveFetch(
-        currentBoard,
-        candidatesArray,
-        currentCandidates,
-        givens,
-        !startPaused,
-      )
+      await runAutoSolveFetch(currentBoard, candidatesArray, currentCandidates, givens)
     },
     [getBoard, getCandidates, getGivens, runAutoSolveFetch],
   )
@@ -406,12 +372,9 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   const stepBack = useCallback(() => {
     if (!isAutoSolving || currentIndexRef.current <= 0) return
 
-    // Pause playback when manually stepping
-    // Stryker disable next-line ConditionalExpression: forcing this guard true only re-sets an already-true manual pause (idempotent); the false-forcing variant (never pause on step) is covered by the "pauses playback when stepping" test
-    if (!manualPausedRef.current) {
-      manualPausedRef.current = true
-      setManualPaused(true)
-    }
+    // Pause playback when manually stepping. Setting the same value is a
+    // React bail-out, so no guard is needed.
+    setManualPaused(true)
 
     const newIndex = currentIndexRef.current - 1
     currentIndexRef.current = newIndex
@@ -419,8 +382,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
     // Restore the state from before this move was applied
     const snapshot = stateHistoryRef.current[newIndex]
-    // newIndex is always a previously visited index, so its snapshot is always present.
-    // Stryker disable ConditionalExpression: dead defensive guard (snapshot always defined here); the false-forcing variant that skips restoration is covered by the stepBack applyState test
+    // Stryker disable ConditionalExpression: newIndex is always a previously visited index, so the snapshot is always defined and the true half is unobservable; the false half (skip restoration) is killed by the stepBack applyState test
     /* istanbul ignore next */
     if (snapshot) {
       // Stryker restore ConditionalExpression
@@ -436,20 +398,17 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
   // Step forward one move
   const stepForward = useCallback(() => {
-    // Past this guard, stepForward derives moveResult from allMovesRef and no-ops when it is
-    // undefined (empty queue or out-of-range index), so forcing the index comparison changes
-    // nothing observable at the boundary. The observable effect of wrongly proceeding when not
-    // auto-solving (engaging manual pause) is verified by the "does not engage pause when not
-    // auto-solving" test, which kills the LogicalOperator mutant.
-    // Stryker disable next-line ConditionalExpression,EqualityOperator: boundary variants are masked (see note above)
+    // The >= -> > and right-operand-false boundary variants step into the
+    // new-territory branch at the end of the moves, where allMovesRef[newIndex - 1]
+    // is undefined and the moveResult guard no-ops; every other variant
+    // (conditional forcing, <=, the || swap) is killed by the idle-step and
+    // stepForward suite tests.
+    // Stryker disable next-line ConditionalExpression,EqualityOperator: both boundary variants fall through to the moveResult guard's no-op at the end of the moves
     if (!isAutoSolving || currentIndexRef.current >= allMovesRef.current.length) return
 
-    // Pause playback when manually stepping
-    // Stryker disable next-line ConditionalExpression: forcing this guard true only re-sets an already-true manual pause (idempotent); the false-forcing variant is covered by the "pauses playback when stepping" test
-    if (!manualPausedRef.current) {
-      manualPausedRef.current = true
-      setManualPaused(true)
-    }
+    // Pause playback when manually stepping. Setting the same value is a
+    // React bail-out, so no guard is needed.
+    setManualPaused(true)
 
     const newIndex = currentIndexRef.current + 1
 
@@ -460,8 +419,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       setCurrentIndex(newIndex)
 
       const snapshot = stateHistoryRef.current[newIndex]
-      // newIndex < history length in this branch, so the snapshot is always present.
-      // Stryker disable ConditionalExpression: dead defensive guard (snapshot always defined in this branch); forcing it either way cannot change the observed restoration
+      // Stryker disable ConditionalExpression: newIndex < history length in this branch, so the snapshot is always defined and the false half is unobservable; the true half (skip the whole step) is killed by the stepForward visited-snapshot test
       /* istanbul ignore next */
       if (!snapshot) return
       // Stryker restore ConditionalExpression
@@ -476,8 +434,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       // New territory - apply the move normally (adds to history)
       const moveResult = allMovesRef.current[newIndex - 1] // -1 because index 0 is initial state
 
-      // newIndex never exceeds allMovesRef length (guarded above), so moveResult is always defined.
-      // Stryker disable ConditionalExpression: dead defensive guard (moveResult always defined here); the false-forcing variant that skips applying the fresh move is covered by the stepForward new-territory test
+      // Stryker disable ConditionalExpression: the entry guard bounds newIndex to allMovesRef's length, so moveResult is always defined and the true half is unobservable; the false half (skip applying the fresh move) is killed by the stepForward new-territory test
       /* istanbul ignore next */
       if (moveResult) {
         // Stryker restore ConditionalExpression
@@ -521,12 +478,17 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
     setIsAutoSolving(true)
     autoSolveRef.current = true
 
-    await runAutoSolveFetch(currentBoard, candidatesArray, currentCandidates, givens, true)
+    await runAutoSolveFetch(currentBoard, candidatesArray, currentCandidates, givens)
   }, [isAutoSolving, isComplete, getBoard, getCandidates, getGivens, runAutoSolveFetch])
 
   // Play a custom move sequence (for Check & Fix, etc)
   const playMoves = useCallback(
     (moves: MoveResult[], startPaused = false) => {
+      // The right-operand-false variant drops only the empty-array check: the
+      // seed falls back to the current board and the synchronous first play
+      // stops the empty session immediately, so nothing is observable. The
+      // null-check and whole-test variants die on the null/empty guard tests.
+      // Stryker disable next-line ConditionalExpression: the right-operand-false variant is the empty-array check, whose removal is unobservable
       if (!moves || moves.length === 0) return
 
       const currentBoard = getBoard()
@@ -535,29 +497,20 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       setIsAutoSolving(true)
       autoSolveRef.current = true
 
-      if (startPaused) {
-        manualPausedRef.current = true
-        setManualPaused(true)
-      } else {
-        manualPausedRef.current = false
-        setManualPaused(false)
-      }
+      // Set pausedRef synchronously so a paused start blocks the forced first play
+      // without a startPaused branch; the pause-sync effect keeps the ref in sync
+      // with the manualPaused state from here on.
+      pausedRef.current = startPaused
+      setManualPaused(startPaused)
 
       stateHistoryRef.current = [
         {
-          // moves[0] is guaranteed defined by the top guard, so the `|| currentBoard` /
-          // `|| candidatesToArrays` fallbacks are unreachable (kept for defensive coverage).
-          /* istanbul ignore start */
+          // moves[0] is guaranteed defined by the top guard; the || fallbacks
+          // only fire for the [undefined] fixture the empty-seed test passes.
           board: [...(moves[0]?.board || currentBoard)],
-          // The moves-non-empty guard makes moves[0] and its candidates always defined here,
-          // so the ?. short-circuits are dead defensive code. The map/ternary/|| behaviour
-          // that materializes the seed snapshot candidates is exercised by a dedicated
-          // seed-candidates test.
           candidates:
-            // Stryker disable next-line OptionalChaining: short-circuits are dead here (see note above)
             moves[0]?.candidates?.map((arr) => (arr ? [...arr] : [])) ||
             candidatesToArrays(currentCandidates),
-          /* istanbul ignore stop */
           move: null,
         },
       ]
@@ -591,9 +544,7 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       const playNextMove = createPlayNextMove(context)
       playNextMoveRef.current = playNextMove
 
-      if (!startPaused) {
-        void playNextMove()
-      }
+      void playNextMove()
     },
     [getBoard, getCandidates, applyMove, stopAutoSolve, scheduleNextMove, onError],
   )
@@ -661,7 +612,6 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
       void playNextMove()
     } catch (err) {
       setIsFetching(false)
-      // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
       logger.error('Solve from givens error:', err)
       onError?.(err instanceof Error ? err.message : 'Failed to get solution.')
       stopAutoSolve()
@@ -683,13 +633,8 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
   // Apply check&fix moves and then continue normal autosolving
   const applyFixesAndContinueSolving = useCallback(
     async (fixMoves: MoveResult[]) => {
-      // Whether the prior session is explicitly stopped first is unobservable: playMoves below
-      // fully re-initializes the refs and scheduleNextMove clears any pending timer, and stopping
-      // when not auto-solving is a no-op. The "fixes applied then autosolve resumes" behavior is
-      // covered by the applyFixesAndContinueSolving tests.
-      // Stryker disable next-line BlockStatement,ConditionalExpression: pre-stop is redundant here (see note above)
+      // If autosolving, stop it temporarily to apply fixes
       if (isAutoSolving) {
-        // If autosolving, stop it temporarily to apply fixes
         stopAutoSolve()
       }
 
@@ -705,14 +650,12 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
 
         const checkDone = async () => {
           // If queue empty, assume playback finished
-          // Stryker disable next-line ConditionalExpression: for the single-move fix path the queue is already empty after the synchronous first play, so forcing this branch is unobservable; the never-empty variant is covered by the drain/timeout tests
           if (movesQueueRef.current.length === 0) {
             // Small delay to ensure final state applied, then resume autosolve
             setTimeout(async () => {
               try {
                 await restartAutoSolve(false)
               } catch (error) {
-                // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
                 logger.error('Failed to resume autosolving after check&fix:', error)
                 onError?.('Failed to resume autosolving after applying fixes')
               }
@@ -721,19 +664,16 @@ export function useAutoSolve(options: UseAutoSolveOptions): UseAutoSolveReturn {
             return
           }
 
-          // Timeout guard. The elapsed-time comparison is a safety-net threshold whose exact
-          // firing delay is not a specified behavior: every operator/boundary variant still
-          // triggers the same recovery (restartAutoSolve) once the queue stalls, and the
-          // never-timeout variant is covered by the stall-recovery test.
-          // Stryker disable next-line ArithmeticOperator,ConditionalExpression,EqualityOperator: safety-net threshold, no observable difference (see note above)
+          // Timeout guard. The > -> >= variant fires the same recovery at most one
+          // poll sooner (poll cadence AUTO_SOLVE_STEP_DELAY), which no test can
+          // distinguish; every other variant is killed by the stall-recovery tests.
+          // Stryker disable next-line EqualityOperator: >= fires the identical recovery at most one poll sooner; the exact boundary is unreachable at the poll cadence
           if (Date.now() - start > TIMEOUT) {
-            // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
             logger.error('applyFixesAndContinueSolving: playback did not finish within timeout')
             // Try to restart anyway
             try {
               await restartAutoSolve(false)
             } catch (error) {
-              // Stryker disable next-line StringLiteral: logger is unobserved in hook tests
               logger.error('Failed to resume autosolving after timeout:', error)
               onError?.('Failed to resume autosolving after applying fixes')
             }
