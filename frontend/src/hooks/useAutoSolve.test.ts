@@ -3141,3 +3141,418 @@ describe('useAutoSolve mutation kills (MUT-1 iter-3)', () => {
     })
   })
 })
+
+describe('mutation-killing: directive-retirement escapes', () => {
+  const setVisibility = (state: 'visible' | 'hidden') => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => state,
+    })
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    mockSolveAll.mockReset()
+    setVisibility('visible')
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+    setVisibility('visible')
+  })
+
+  it('never applies a move after unmount while a fetch is in flight', async () => {
+    let resolveFetch!: (value: ReturnType<typeof createMockSolveResponse>) => void
+    mockSolveAll.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+    const applyMove = vi.fn()
+    const options = createDefaultOptions({ applyMove })
+    const { result, unmount } = renderHook(() => useAutoSolve(options))
+    let start!: Promise<void>
+    act(() => {
+      start = result.current.startAutoSolve()
+    })
+    unmount()
+    await act(async () => {
+      resolveFetch(createMockSolveResponse(2))
+      await start
+    })
+    expect(applyMove).not.toHaveBeenCalled()
+  })
+
+  it('logs the auto-solve fetch failure via logger.error', async () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
+    mockSolveAll.mockRejectedValue(new Error('solver boom'))
+    const options = createDefaultOptions()
+    const { result } = renderHook(() => useAutoSolve(options))
+    await act(async () => {
+      await result.current.startAutoSolve()
+    })
+    expect(result.current.isAutoSolving).toBe(false)
+    expect(errorSpy).toHaveBeenCalledWith('Auto-solve error:', expect.any(Error))
+  })
+
+  it('logs the solveFromGivens failure via logger.error', async () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
+    mockSolveAll.mockRejectedValue(new Error('givens boom'))
+    const options = createDefaultOptions()
+    const { result } = renderHook(() => useAutoSolve(options))
+    await act(async () => {
+      await result.current.solveFromGivens()
+    })
+    expect(result.current.isAutoSolving).toBe(false)
+    expect(errorSpy).toHaveBeenCalledWith('Solve from givens error:', expect.any(Error))
+  })
+
+  it('preserves lastCompletedSteps when fixes arrive while idle', async () => {
+    const result = await startAutoSolveWith(3)
+    await act(async () => {
+      vi.advanceTimersByTime(10)
+    })
+    actStopAutoSolve(result)
+    expect(result.current.lastCompletedSteps).toBe(2)
+
+    // Two fix moves: the first plays synchronously, the second is scheduled and
+    // dropped by the hidden-tab tick, stalling the queue mid-playback.
+    setVisibility('hidden')
+    const fix1 = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(1) }
+    const fix2 = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(2) }
+    let fixes!: Promise<void>
+    act(() => {
+      fixes = result.current.applyFixesAndContinueSolving([fix1, fix2])
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+    })
+    expect(result.current.lastCompletedSteps).toBe(2)
+    // Let the stalled playback time out so the pending promise settles.
+    await act(async () => {
+      vi.advanceTimersByTime(AUTO_SOLVE_MAX_TIME + 1000)
+      await fixes
+    })
+  })
+
+  it('captures the interrupted session progress when fixes arrive mid-solve', async () => {
+    const result = await startAutoSolveWith(3)
+    await act(async () => {
+      vi.advanceTimersByTime(10)
+    })
+    expect(result.current.currentIndex).toBe(2)
+
+    setVisibility('hidden')
+    const fix1 = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(1) }
+    const fix2 = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(2) }
+    let fixes!: Promise<void>
+    act(() => {
+      fixes = result.current.applyFixesAndContinueSolving([fix1, fix2])
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+    })
+    // The pre-stop captured the interrupted session's progress before playback.
+    expect(result.current.lastCompletedSteps).toBe(2)
+    await act(async () => {
+      vi.advanceTimersByTime(AUTO_SOLVE_MAX_TIME + 1000)
+      await fixes
+    })
+  })
+
+  it('recovers from a stalled fixes playback only after the timeout, then keeps playing', async () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+    const applyMove = vi.fn()
+    const options = createDefaultOptions({ applyMove })
+    const { result } = renderHook(() => useAutoSolve(options))
+
+    setVisibility('hidden')
+    const fix1 = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(1) }
+    const fix2 = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(2) }
+    let fixes!: Promise<void>
+    act(() => {
+      fixes = result.current.applyFixesAndContinueSolving([fix1, fix2])
+    })
+    const movesAfterFirstFix = applyMove.mock.calls.length
+
+    // Well inside the 15s safety window: fix 1 played, fix 2 is stalled, and no
+    // restart may have happened yet.
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+    })
+    expect(applyMove.mock.calls.length).toBe(movesAfterFirstFix)
+    expect(mockSolveAll).not.toHaveBeenCalled()
+
+    // Past the timeout the recovery restarts and plays again.
+    setVisibility('visible')
+    await act(async () => {
+      vi.advanceTimersByTime(AUTO_SOLVE_MAX_TIME + 1000)
+      await fixes
+    })
+    expect(mockSolveAll).toHaveBeenCalledTimes(1)
+    expect(applyMove.mock.calls.length).toBeGreaterThan(movesAfterFirstFix)
+    expect(errorSpy).toHaveBeenCalledWith(
+      'applyFixesAndContinueSolving: playback did not finish within timeout',
+    )
+  })
+
+  it('logs the timeout recovery failure via logger.error', async () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
+    let boardCalls = 0
+    const getBoard = vi.fn(() => {
+      boardCalls += 1
+      if (boardCalls > 1) throw new Error('late board boom')
+      return Array<number>(81).fill(0)
+    })
+    const options = createDefaultOptions({ getBoard })
+    const { result } = renderHook(() => useAutoSolve(options))
+
+    setVisibility('hidden')
+    const fix1 = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(1) }
+    const fix2 = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(2) }
+    let fixes!: Promise<void>
+    act(() => {
+      fixes = result.current.applyFixesAndContinueSolving([fix1, fix2])
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(AUTO_SOLVE_MAX_TIME + 1000)
+      await fixes
+    })
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Failed to resume autosolving after timeout:',
+      expect.any(Error),
+    )
+    expect(options.onError).toHaveBeenCalledWith(
+      'Failed to resume autosolving after applying fixes',
+    )
+  })
+
+  it('logs the immediate resume failure via logger.error', async () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {})
+    let boardCalls = 0
+    const getBoard = vi.fn(() => {
+      boardCalls += 1
+      if (boardCalls > 1) throw new Error('late board boom')
+      return Array<number>(81).fill(0)
+    })
+    const options = createDefaultOptions({ getBoard })
+    const { result } = renderHook(() => useAutoSolve(options))
+
+    // Visible throughout: both fixes play, the queue drains, and the 50ms
+    // resume restart throws through getBoard.
+    const fix1 = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(1) }
+    const fix2 = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(2) }
+    let fixes!: Promise<void>
+    act(() => {
+      fixes = result.current.applyFixesAndContinueSolving([fix1, fix2])
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await fixes
+    })
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Failed to resume autosolving after check&fix:',
+      expect.any(Error),
+    )
+  })
+
+  it('continues playback after fixes complete and autosolving resumes', async () => {
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+    const applyMove = vi.fn()
+    const options = createDefaultOptions({ applyMove })
+    const { result } = renderHook(() => useAutoSolve(options))
+
+    const fix1 = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(1) }
+    let fixes!: Promise<void>
+    act(() => {
+      fixes = result.current.applyFixesAndContinueSolving([fix1])
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await fixes
+    })
+    const fixesApplied = applyMove.mock.calls.length
+    expect(fixesApplied).toBeGreaterThanOrEqual(1)
+    // The resumed session plays its own moves after the fix.
+    await act(async () => {
+      vi.advanceTimersByTime(50)
+    })
+    expect(applyMove.mock.calls.length).toBeGreaterThan(fixesApplied)
+  })
+
+  it('restartAutoSolve() with no argument resumes playing immediately', async () => {
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+    const applyMove = vi.fn()
+    const options = createDefaultOptions({ applyMove })
+    const { result } = renderHook(() => useAutoSolve(options))
+    await act(async () => {
+      await result.current.restartAutoSolve()
+    })
+    expect(result.current.isAutoSolving).toBe(true)
+    expect(applyMove).toHaveBeenCalled()
+  })
+
+  it('does not engage pause when stepping forward while idle', async () => {
+    const options = createDefaultOptions()
+    const { result } = renderHook(() => useAutoSolve(options))
+    actStepForward(result)
+    await act(async () => {
+      vi.advanceTimersByTime(10)
+    })
+    expect(result.current.isPaused).toBe(false)
+    expect(options.applyMove).not.toHaveBeenCalled()
+  })
+
+  it('playMoves() without a second argument starts playing immediately', async () => {
+    const applyMove = vi.fn()
+    const options = createDefaultOptions({ applyMove })
+    const { result } = renderHook(() => useAutoSolve(options))
+    const m1 = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(1) }
+    act(() => {
+      result.current.playMoves([m1])
+    })
+    expect(applyMove).toHaveBeenCalled()
+    expect(result.current.isAutoSolving).toBe(false) // the single move drained and stopped
+  })
+
+  it('notifies direction "forward" when stepping into new territory', async () => {
+    const onStepNavigate = vi.fn()
+    const result = await startAutoSolveWith(2, { onStepNavigate })
+    // At index 1 with history length 2: back to 0, forward into visited 1, then
+    // forward again into new territory (move 2, never played).
+    actStepBack(result)
+    actStepForward(result)
+    actStepForward(result)
+    const directions = onStepNavigate.mock.calls.map((call) => call[1])
+    expect(directions[directions.length - 1]).toBe('forward')
+    expect(directions).toEqual(['back', 'forward', 'forward'])
+  })
+
+  it('stepBack restores the pre-solve board captured at startAutoSolve', async () => {
+    const preSolveBoard = Array<number>(81).fill(0)
+    preSolveBoard[0] = 7
+    const solvedBoard = Array<number>(81).fill(0)
+    solvedBoard[0] = 9
+    mockSolveAll.mockResolvedValue({
+      ...createMockSolveResponse(2),
+      moves: [
+        { ...createMockAutoSolveMove(), board: solvedBoard },
+        { ...createMockAutoSolveMove(), board: solvedBoard },
+      ],
+    })
+    const applyState = vi.fn()
+    const options = createDefaultOptions({ applyState, getBoard: vi.fn(() => preSolveBoard) })
+    const { result } = renderHook(() => useAutoSolve(options))
+    await act(async () => {
+      await result.current.startAutoSolve()
+    })
+    // One move has played; the second is still scheduled. Step back to the seed.
+    expect(result.current.currentIndex).toBe(1)
+    actStepBack(result)
+    const seedCall = applyState.mock.calls.find((call) => call[3] === 0)
+    expect(seedCall).toBeDefined()
+    expect(seedCall![0][0]).toBe(7)
+  })
+
+  it('playMoves seeds from the first move and restores it on stepBack, tolerating null candidates', async () => {
+    const applyState = vi.fn()
+    const getCandidates = vi.fn(() =>
+      Array.from({ length: 81 }, () => new Set([1, 2, 3, 4, 5, 6, 7, 8, 9])),
+    )
+    const options = createDefaultOptions({ applyState, getCandidates })
+    const { result } = renderHook(() => useAutoSolve(options))
+
+    const firstBoard = Array<number>(81).fill(0)
+    firstBoard[0] = 5
+    const secondBoard = Array<number>(81).fill(0)
+    secondBoard[0] = 6
+    const m1 = {
+      ...createMockAutoSolveMove(),
+      board: firstBoard,
+      candidates: null as unknown as MoveResult['candidates'],
+    }
+    const m2 = { ...createMockAutoSolveMove(), board: secondBoard }
+    act(() => {
+      result.current.playMoves([m1, m2], true)
+    })
+    expect(result.current.isAutoSolving).toBe(true)
+    actStepForward(result)
+    actStepForward(result)
+    actStepBack(result)
+    actStepBack(result)
+    // The pushed snapshot for move 1 and the seeded snapshot at index 0 both
+    // restore real boards; the null candidates fell back to the live ones.
+    const callsByIndex = new Map(applyState.mock.calls.map((call) => [call[3], call]))
+    expect(callsByIndex.get(1)![0][0]).toBe(5)
+    expect(callsByIndex.get(0)![0][0]).toBe(5)
+    expect(callsByIndex.get(0)![1]).toEqual(
+      Array.from({ length: 81 }, () => new Set([1, 2, 3, 4, 5, 6, 7, 8, 9])),
+    )
+  })
+
+  it('solveFromGivens seeds 81 empty candidate sets restored on stepBack', async () => {
+    const givens = Array<number>(81).fill(0)
+    givens[3] = 4
+    const applyState = vi.fn()
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(2))
+    const options = createDefaultOptions({ applyState, getGivens: vi.fn(() => givens) })
+    const { result } = renderHook(() => useAutoSolve(options))
+    await act(async () => {
+      await result.current.solveFromGivens()
+    })
+    // The first of two moves has played; step back to the givens seed.
+    expect(result.current.currentIndex).toBe(1)
+    actStepBack(result)
+    const seedCall = applyState.mock.calls.find((call) => call[3] === 0)
+    expect(seedCall).toBeDefined()
+    expect(seedCall![0][3]).toBe(4)
+    expect(seedCall![1]).toEqual(Array.from({ length: 81 }, () => new Set<number>()))
+  })
+})
+
+describe('mutation-killing: dependency-array staleness', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    mockSolveAll.mockReset()
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('uses the latest props after a rerender throughout the applyFixes chain', async () => {
+    // Dropping any prop-carrying entry from the runAutoSolveFetch /
+    // restartAutoSolve / playMoves / applyFixesAndContinueSolving dependency
+    // arrays freezes the chain on the first render's spies.
+    mockSolveAll.mockResolvedValue(createMockSolveResponse(1))
+    const firstApplyMove = vi.fn()
+    const firstOptions = createDefaultOptions({ applyMove: firstApplyMove })
+    const { result, rerender } = renderHook((opts: typeof firstOptions) => useAutoSolve(opts), {
+      initialProps: firstOptions,
+    })
+
+    const latestApplyMove = vi.fn()
+    rerender(createDefaultOptions({ applyMove: latestApplyMove }))
+
+    const fix = { ...createMockAutoSolveMove(), board: Array<number>(81).fill(1) }
+    let fixes!: Promise<void>
+    act(() => {
+      fixes = result.current.applyFixesAndContinueSolving([fix])
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(500)
+      await fixes
+    })
+    // The fix playback and the resumed session both run through the rerendered
+    // closures; the first render's spy must stay untouched.
+    expect(latestApplyMove).toHaveBeenCalled()
+    expect(firstApplyMove).not.toHaveBeenCalled()
+  })
+})
