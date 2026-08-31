@@ -49,11 +49,11 @@ interface PendingRequest {
 // ==================== Worker State ====================
 
 let worker: Worker | null = null
-// Stryker disable next-line BooleanLiteral: starting true desynchronizes the init handshake against the mock worker (harness timeout artifact)
-let isInitialized = false
-// Stryker disable next-line BooleanLiteral: starting true desynchronizes the init handshake against the mock worker (harness timeout artifact)
-let isInitializing = false
-let initPromise: Promise<void> | null = null
+// The worker of a completed initialization cycle, until the module lets go of
+// it. Distinct from `worker`, which is held from creation (earlier) so a
+// failed or crashed half-initialized cycle can still be torn down.
+let readyWorker: Worker | null = null
+let initPromise: Promise<Worker> | null = null
 let requestCounter = 0
 const pendingRequests = new Map<string, PendingRequest>()
 
@@ -67,7 +67,7 @@ const IDLE_TIMEOUT_MS = 60_000 // 1 minute of inactivity
 // Time to wait for the worker to report its initial 'loaded' message
 const WORKER_CREATION_TIMEOUT_MS = 10_000
 
-let idleTimeoutId: ReturnType<typeof setTimeout> | null = null
+let idleTimeoutId: ReturnType<typeof setTimeout> | undefined
 // Replaced every time the module lets go of a worker. An initialization that
 // started under an older token has been superseded: it must not adopt the
 // worker it created, nor write state that now belongs to a later cycle.
@@ -80,21 +80,15 @@ let workerToken = {}
  * After IDLE_TIMEOUT_MS of inactivity, the worker will be terminated.
  */
 function resetIdleTimer(): void {
-  // Clear existing timer
-  // Stryker disable next-line ConditionalExpression, BlockStatement: clearTimeout(null/undefined) is a safe no-op
-  if (idleTimeoutId) {
-    clearTimeout(idleTimeoutId)
-  }
+  clearTimeout(idleTimeoutId)
 
   // Set new timer to terminate worker after idle period
   idleTimeoutId = setTimeout(() => {
-    /* istanbul ignore start -- the idle timer only fires while armed, which happens with no request in flight (sendRequest clears it first) and a live worker (terminateWorker clears it), so the guard's false branch is unreachable */
-    // Stryker disable next-line ConditionalExpression,LogicalOperator: the idle timer is only armed when no request is in flight (sendRequest calls clearIdleTimer first), so pendingRequests.size is always 0 here; worker is also always set when the timer fires (terminateWorker clears the timer). All mutants on this line collapse to the same observable behavior.
-    if (worker && pendingRequests.size === 0) {
-      logger.debug('[WorkerClient] Idle timeout reached, terminating worker to save resources')
-      terminateWorker()
-    }
-    /* istanbul ignore stop */
+    // Terminating unconditionally is safe: a request clears this timer when it
+    // starts, and any request armed beforehand is settled first by its own
+    // REQUEST_TIMEOUT, which is shorter than IDLE_TIMEOUT_MS.
+    logger.debug('[WorkerClient] Idle timeout reached, terminating worker to save resources')
+    terminateWorker()
   }, IDLE_TIMEOUT_MS)
 }
 
@@ -102,11 +96,8 @@ function resetIdleTimer(): void {
  * Clear the idle timer (e.g., when intentionally keeping worker alive)
  */
 function clearIdleTimer(): void {
-  // Stryker disable next-line ConditionalExpression: clearTimeout(null/undefined) is a safe no-op
-  if (idleTimeoutId) {
-    clearTimeout(idleTimeoutId)
-    idleTimeoutId = null
-  }
+  clearTimeout(idleTimeoutId)
+  idleTimeoutId = undefined
 }
 
 /**
@@ -129,9 +120,7 @@ export function isWorkerSupported(): boolean {
  * Check if the worker is initialized and ready
  */
 export function isWorkerReady(): boolean {
-  // Stryker disable next-line LogicalOperator: covered by the "returns false mid-initialization" test which observes worker set + isInitialized=false; the `||` mutant would wrongly return true
-  // Stryker disable next-line ConditionalExpression: forcing `worker !== null` to `true` only diverges when isInitialized=true && worker=null, a state unreachable in normal flow (terminateWorker resets both), so the mutant is observationally equivalent
-  return isInitialized && worker !== null
+  return readyWorker !== null
 }
 
 /**
@@ -146,7 +135,6 @@ function generateRequestId(): string {
  */
 async function createWorker(): Promise<Worker> {
   // Use classic worker (not module) to support importScripts for wasm_exec.js
-  // Stryker disable next-line StringLiteral: the mock Worker in tests ignores the URL; in production the URL is resolved at build time
   const newWorker = new Worker(new URL('./wasm.worker.ts', import.meta.url))
 
   return new Promise((resolve, reject) => {
@@ -156,7 +144,9 @@ async function createWorker(): Promise<Worker> {
     }, WORKER_CREATION_TIMEOUT_MS)
 
     const handleMessage = (event: MessageEvent<WorkerResponse>) => {
-      // Stryker disable next-line ConditionalExpression: this handler is attached inside createWorker's promise scope; the worker's first message is always 'loaded' (posted at the end of wasm.worker.ts), so forcing `true` here resolves on the same message
+      // The worker's first message is 'loaded' (posted at the end of
+      // wasm.worker.ts); anything else it might emit first leaves this
+      // handshake waiting until the creation timeout rejects it.
       if (event.data.type === 'loaded') {
         clearTimeout(timeout)
         newWorker.removeEventListener('message', handleMessage)
@@ -179,23 +169,18 @@ async function createWorker(): Promise<Worker> {
 }
 
 /**
- * Initialize the worker and WASM
+ * Run (or join) the current initialization cycle and resolve with its worker.
  */
-export async function initializeWorker(): Promise<void> {
-  if (isInitialized && worker) {
-    return
-  }
-
-  // Stryker disable next-line LogicalOperator: equivalent to the original `&&` because initPromise is null whenever isInitializing is false (they are assigned together in the IIFE below), so `false || null` is still falsy
-  if (isInitializing && initPromise) {
+async function ensureWorker(): Promise<Worker> {
+  // Deduplicates every caller: fresh after a discard (initPromise is nulled),
+  // shared while a cycle is in flight, and already-resolved once ready.
+  if (initPromise) {
     return initPromise
   }
 
   if (!isWorkerSupported()) {
     throw new Error('Web Workers are not supported in this environment')
   }
-
-  isInitializing = true
 
   initPromise = (async () => {
     const token = workerToken
@@ -214,7 +199,7 @@ export async function initializeWorker(): Promise<void> {
       worker = created
 
       // Set up the message handler for responses
-      worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+      created.onmessage = (event: MessageEvent<WorkerResponse>) => {
         const message = event.data
 
         // Only these three settle a request. `loaded` belongs to createWorker's
@@ -244,7 +229,7 @@ export async function initializeWorker(): Promise<void> {
         resetIdleTimer()
       }
 
-      worker.onerror = (error) => {
+      created.onerror = (error) => {
         logger.error('[WorkerClient] Worker error:', error)
         // Reject all pending requests
         for (const [id, pending] of pendingRequests) {
@@ -253,7 +238,7 @@ export async function initializeWorker(): Promise<void> {
           pendingRequests.delete(id)
         }
 
-        // The worker is gone. Holding the reference would leave isWorkerReady
+        // The worker is gone. Keeping the state would leave isWorkerReady
         // reporting ready, and each later request would be posted into a dead
         // worker and wait out REQUEST_TIMEOUT before the caller could fall back.
         // Dropping it here means the next call re-initializes instead.
@@ -261,14 +246,14 @@ export async function initializeWorker(): Promise<void> {
       }
 
       // Initialize WASM inside the worker
-      await sendRequest({ type: 'init' })
+      await sendRequest(created, { type: 'init' })
 
-      isInitialized = true
-      // Stryker disable next-line BooleanLiteral: leaving isInitializing=true after success is harmless because the `if (isInitialized && worker) return` guard at the top of initializeWorker short-circuits all subsequent callers
-      isInitializing = false
+      readyWorker = created
 
       // Start idle timer
       resetIdleTimer()
+
+      return created
     } catch (error) {
       if (token === workerToken) {
         discardWorker()
@@ -281,23 +266,20 @@ export async function initializeWorker(): Promise<void> {
 }
 
 /**
+ * Initialize the worker and WASM
+ */
+export async function initializeWorker(): Promise<void> {
+  await ensureWorker()
+}
+
+/**
  * Send a request to the worker and wait for response.
  *
  * Takes the request body (the `WorkerRequest` arm minus `id`) so each call
  * site's payload is compile-checked against its arm; attaching the
  * correlation id is this function's concern.
  */
-async function sendRequest(body: WorkerRequestBody): Promise<unknown> {
-  /* istanbul ignore start -- unreachable defensive guard: every public entry point awaits initializeWorker() before calling sendRequest, so worker is always non-null here */
-  // Stryker disable next-line ConditionalExpression,BlockStatement,StringLiteral: defensive guard; sendRequest is only reached after `if (!isInitialized || !worker) await initializeWorker()` in the public API, so worker is always non-null here. The mutants (skip the throw, empty the block, blank the message) are observationally equivalent because the block is unreachable in normal flow.
-  if (!worker) {
-    // Stryker disable next-line StringLiteral: unreachable defensive guard (every public entry point awaits initializeWorker() before sendRequest, so worker is always non-null here), so blanking the message is observationally equivalent; the enclosing `if` mutants are already ignored above
-    throw new Error('Worker not initialized')
-  }
-  /* istanbul ignore stop */
-
-  // Capture worker reference after null check for use in Promise callback
-  const workerRef = worker
+async function sendRequest(target: Worker, body: WorkerRequestBody): Promise<unknown> {
   const id = generateRequestId()
 
   // Clear idle timer while request is in progress
@@ -314,7 +296,7 @@ async function sendRequest(body: WorkerRequestBody): Promise<unknown> {
     // Object spread distributes over the body union, so the composed value
     // is checked against WorkerRequest arm by arm; no cast needed.
     const request: WorkerRequest = { ...body, id }
-    workerRef.postMessage(request)
+    target.postMessage(request)
   })
 }
 
@@ -329,11 +311,8 @@ function discardWorker(): void {
 
   worker?.terminate()
   worker = null
+  readyWorker = null
 
-  // Stryker disable next-line BooleanLiteral: leaving isInitialized=true here is harmless because the `if (isInitialized && worker) return` guard requires BOTH to be true, and worker is null by this line in every caller
-  isInitialized = false
-  // Stryker disable next-line BooleanLiteral: leaving isInitializing=true here is harmless because initPromise is set to null on the next line and the dedup check requires BOTH flags, so `true && null` is still falsy
-  isInitializing = false
   initPromise = null
   requestCounter = 0
 }
@@ -367,12 +346,12 @@ export async function findNextMove(
   candidates: number[][],
   givens: number[],
 ): Promise<WorkerFindNextMoveResult> {
-  // Stryker disable next-line ConditionalExpression,LogicalOperator,BooleanLiteral: in normal flow isInitialized and worker are set together (initializeWorker) and cleared together (terminateWorker), so the four mutants on this line (!isInitialized->isInitialized, !worker->worker, ||->&&, ->true) collapse to the same observable behavior; the auto-init path runs identically
-  if (!isInitialized || !worker) {
-    await initializeWorker()
-  }
+  const target = readyWorker ?? (await ensureWorker())
 
-  const result = await sendRequest({ type: 'findNextMove', payload: { cells, candidates, givens } })
+  const result = await sendRequest(target, {
+    type: 'findNextMove',
+    payload: { cells, candidates, givens },
+  })
   return result as WorkerFindNextMoveResult
 }
 
@@ -385,11 +364,11 @@ export async function solveAll(
   candidates: number[][],
   givens: number[],
 ): Promise<WorkerSolveAllResult> {
-  // Stryker disable next-line ConditionalExpression,LogicalOperator,BooleanLiteral: same reasoning as findNextMove above; isInitialized and worker transition together, so all four mutants are observationally equivalent
-  if (!isInitialized || !worker) {
-    await initializeWorker()
-  }
+  const target = readyWorker ?? (await ensureWorker())
 
-  const result = await sendRequest({ type: 'solveAll', payload: { cells, candidates, givens } })
+  const result = await sendRequest(target, {
+    type: 'solveAll',
+    payload: { cells, candidates, givens },
+  })
   return result as WorkerSolveAllResult
 }
