@@ -1540,7 +1540,7 @@ describe('worker-client advanced scenarios', () => {
         await vi.advanceTimersByTimeAsync(50)
 
         // Worker was created (loaded message posted by mock) but init hasn't resolved.
-        // The `||` mutant would return true here because worker !== null.
+        // Readiness must stay false until the init cycle completes.
         expect(isWorkerReady()).toBe(false)
 
         terminateWorker()
@@ -1686,6 +1686,126 @@ describe('worker-client advanced scenarios', () => {
 
       expect(debugSpy).toHaveBeenCalledWith('[WorkerClient] Worker terminated, resources freed')
       debugSpy.mockRestore()
+    })
+  })
+
+  describe('mutation-kill: error identity and worker construction', () => {
+    const emptyGrid = (): number[] => new Array(81).fill(0)
+    const fullCandidates = (): number[][] => new Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+    it('rejects pending requests with an error carrying the WorkerTerminatedError name', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        installNoRespondWorker()
+        const { initializeWorker, findNextMove, terminateWorker } = await import('./worker-client')
+
+        const { initPromise } = await manuallyInitWorker(initializeWorker)
+        await initPromise
+
+        const findPromise = findNextMove(emptyGrid(), fullCandidates(), emptyGrid())
+        await vi.advanceTimersByTimeAsync(10)
+
+        // Attach the catch handler before terminating: the rejection is
+        // synchronous inside terminateWorker.
+        let caught: Error | null = null
+        findPromise.catch((e: Error) => {
+          caught = e
+        })
+
+        terminateWorker()
+        await vi.advanceTimersByTimeAsync(10)
+
+        // The message alone does not identify the class: solver-service
+        // branches on instanceof, and callers that string-match need the name.
+        expect(caught).not.toBeNull()
+        expect((caught as Error).name).toBe('WorkerTerminatedError')
+
+        await findPromise.catch(() => {})
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('constructs the worker from the wasm.worker module URL', async () => {
+      vi.resetModules()
+
+      let constructedUrl: URL | string | undefined
+      globalThis.Worker = class extends MockWorker {
+        constructor(url: URL | string, options?: WorkerOptions) {
+          constructedUrl = url
+          super(url, options)
+          createdWorkers.push(this)
+        }
+      } as unknown as typeof Worker
+
+      const { initializeWorker, terminateWorker } = await import('./worker-client')
+
+      await initializeWorker()
+
+      // The URL is resolved at import time from this module's location; a
+      // blanked specifier would fall back to the importer's own URL.
+      expect(constructedUrl).toBeInstanceOf(URL)
+      expect((constructedUrl as URL).pathname.endsWith('/wasm.worker.ts')).toBe(true)
+
+      terminateWorker()
+    })
+
+    it('waits for the loaded message rather than resolving on any first message', async () => {
+      vi.resetModules()
+      vi.useFakeTimers()
+      try {
+        // Answers nothing and never posts 'loaded': its only output is a
+        // junk response-shaped message before anything else.
+        class JunkFirstMessageWorker {
+          onmessage: ((event: MessageEvent) => void) | null = null
+          onerror: ((event: ErrorEvent) => void) | null = null
+          private eventListeners: Map<string, ((event: Event) => void)[]> = new Map()
+
+          constructor() {
+            setTimeout(() => {
+              const event = new MessageEvent('message', {
+                data: { type: 'result', id: 'req-1-0' },
+              })
+              for (const listener of this.eventListeners.get('message') ?? []) {
+                listener(event)
+              }
+            }, 5)
+          }
+
+          postMessage(): void {}
+          terminate(): void {}
+
+          addEventListener(type: string, handler: (event: Event) => void): void {
+            const listeners = this.eventListeners.get(type) || []
+            listeners.push(handler)
+            this.eventListeners.set(type, listeners)
+          }
+
+          removeEventListener(): void {}
+        }
+        globalThis.Worker = JunkFirstMessageWorker as unknown as typeof Worker
+
+        const { initializeWorker, terminateWorker } = await import('./worker-client')
+
+        let settled: Error | null = null
+        const initPromise = initializeWorker()
+        initPromise.catch((e: Error) => {
+          settled = e
+        })
+
+        // Advance past WORKER_CREATION_TIMEOUT_MS (10s): adopting on the junk
+        // message would leave init still pending here instead of rejected.
+        await vi.advanceTimersByTimeAsync(10001)
+
+        expect(settled).not.toBeNull()
+        expect(settled?.message).toBe('Worker creation timeout')
+
+        terminateWorker()
+        await initPromise.catch(() => {})
+      } finally {
+        vi.useRealTimers()
+      }
     })
   })
 })
