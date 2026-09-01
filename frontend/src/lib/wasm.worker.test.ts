@@ -556,6 +556,43 @@ describe('wasm.worker init readiness during polling', () => {
 
     expect(posted).toContainEqual({ type: 'ready', id: 'poll-ready' })
   })
+
+  it('resolves without arming the poll when the API is already published', async () => {
+    // This describe's default mock publishes asynchronously; override it with
+    // a Go runtime that publishes SudokuWasm synchronously while booting, so
+    // readiness must settle on the immediate check alone. Arming the poll for
+    // an API that is already there would delay every real solve by 100ms.
+    class SyncGoMock {
+      importObject = {}
+      run() {
+        Object.defineProperty(globalThis, 'SudokuWasm', {
+          value: mockWasmApi,
+          configurable: true,
+          writable: true,
+        })
+      }
+    }
+    Object.defineProperty(globalThis, 'Go', { value: SyncGoMock, configurable: true })
+
+    const intervalSpy = vi.spyOn(globalThis, 'setInterval')
+    try {
+      await import('./wasm.worker')
+      posted.length = 0
+
+      post({ type: 'init', id: 'sync-ready' })
+
+      // Drain the promise chain without advancing the clock: readiness must
+      // already have settled, with no interval left armed behind it. Under a
+      // mutant that defers to the poll, this fires the interval instead and
+      // the spy assertion fails.
+      await vi.runOnlyPendingTimersAsync()
+
+      expect(posted).toContainEqual({ type: 'ready', id: 'sync-ready' })
+      expect(intervalSpy).not.toHaveBeenCalled()
+    } finally {
+      intervalSpy.mockRestore()
+    }
+  })
 })
 
 describe('wasm.worker mutation-kill: parallel init and edge paths', () => {
