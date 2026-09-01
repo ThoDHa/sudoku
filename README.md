@@ -14,7 +14,7 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 - **Teaches Real Techniques**: Learn 39+ solving methods from basic Singles to advanced Forcing Chains
 - **Thinks Like You Do**: Human-like solver explains each step with detailed reasoning
 - **Fixes Your Mistakes**: Intelligent error detection and correction with clear explanations
-- **Works Everywhere**: Fully offline-capable PWA with aggressive caching
+- **Works Everywhere**: Installable PWA with opt-in offline mode that caches the full app, solver included
 - **Optimized Performance**: Code-split architecture with battery-efficient background handling
 - **Educational Focus**: Practice specific techniques with curated puzzle sets
 
@@ -44,8 +44,8 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 ### ⚡ **Performance & Reliability**
 - **Fast Loading**: Initial bundle ~170KB (reduced from 770KB)
 - **Battery Efficient**: Automatic pause when backgrounded, extended suspension after 15s
-- **Offline-First**: Complete functionality without internet after first load
-- **WASM Solver**: Go-based solver running in a dedicated Web Worker for non-blocking UI (~600KB cached)
+- **Offline Mode (Opt-In)**: After enabling it in the menu, the service worker precaches the app shell and WASM solver so the game works with no network
+- **WASM Solver**: Go-based solver running in a dedicated Web Worker for non-blocking UI (~650KB cached)
 
 ## 🎮 How to Play
 
@@ -70,26 +70,26 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 
 ## ⚙️ How It Works
 
-The entire application runs locally in your browser with no server required after initial load!
+The entire application runs locally in your browser; there is no backend server. With offline mode enabled, it needs no network after the first load.
 
 ### 🧱 **Architecture Overview**
-- **WASM Solver**: Go-based constraint solver compiled with TinyGo to WebAssembly (~600KB, cached)
+- **WASM Solver**: Go-based constraint solver compiled with TinyGo to WebAssembly (~650KB, cached)
 - **Web Worker Isolation**: Solver runs in a dedicated Web Worker thread for non-blocking UI
 - **Static Puzzles**: 1000+ pre-generated puzzles embedded for instant access
 - **Practice Database**: Pre-sorted puzzles categorized by required techniques
 - **Daily Determinism**: UTC date-based seeding ensures same daily puzzle globally
-- **Offline-First**: Service Worker + PWA manifest for complete offline functionality
+- **Offline Mode (Opt-In)**: Service worker + PWA manifest; the menu toggle registers or fully removes the offline caches
 
 ### 🔧 **Technical Stack**
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, PWA
-- **WASM Solver**: Go 1.26, TinyGo 0.40.1, WebAssembly, constraint propagation + backtracking
+- **WASM Solver**: Go 1.26, TinyGo 0.41.1, WebAssembly, constraint propagation + backtracking
 - **State Management**: React hooks, Context API, localStorage persistence
 - **Performance**: Route-based code splitting, lazy loading, WASM in dedicated Web Worker
 - **Testing**: Vitest unit tests, Playwright E2E, Go test suite (all via Docker)
 
 ### 🎯 **Extensibility**
 
-The game architecture supports different board sizes through constant changes. Current implementation is 9x9, but 16x16 Sudoku variants are possible with minimal modifications.
+The game architecture supports different board sizes through constant changes. Current implementation is 9x9; a 16x16 variant needs the constant updates below plus the follow-on work the considerations list names.
 
 **Current 9x9 Implementation:**
 
@@ -111,7 +111,7 @@ Update the following constants:
 Frontend:
 - `BOARD_SIZE = 16`
 - `SUBGRID_SIZE = 4` (since √16 = 4)
-- `MAX_DIGIT = 16` (hexadecimal digits: 0-9, A-F)
+- `MAX_DIGIT = 16` (sixteen symbols, displayed as 1-9 and A-G)
 
 Go:
 - `GridSize = 16`
@@ -119,7 +119,7 @@ Go:
 
 **Additional Considerations for 16x16:**
 
-- **Digit Notation**: 16x16 Sudoku uses hexadecimal digits (0-9, A-F) instead of decimal (1-9). UI would need to support digit selection beyond 9.
+- **Digit Notation**: 16x16 Sudoku uses sixteen symbols (typically 1-9 plus A-G), not the decimal 1-9. UI would need to support digit selection beyond 9.
 - **Candidate Bitmasks**: Current bitmask implementation assumes 9 digits. For 16x16, `Uint16Array` would need to become `Uint32Array` (or larger) to accommodate 16 bits.
 - **Solver Logic**: The Go-based solver's constraint propagation and backtracking algorithms already handle variable board sizes via constants.
 - **UI Layout**: Cell grid spacing and digit display would need adjustment for 16x16 board.
@@ -130,23 +130,23 @@ The architecture is designed for extensibility: all production code uses central
 
 ### ⚡ **Loading Performance**
 - **Lightning Fast**: Initial bundle ~170KB (down from 770KB)
-- **Tiny WASM**: Solver compiled with TinyGo (~600KB, down from 3.3MB)
-- **Smart Chunking**: Route-based code splitting for optimal loading
-- **Aggressive Caching**: Service Worker caches everything for instant offline access
-- **Progressive Loading**: Core game loads first, features load as needed
+- **Tiny WASM**: Solver compiled with TinyGo (~650KB, down from 3.3MB)
+- **Smart Chunking**: Route-based code splitting; the per-chunk sizes are listed in the build output table below
+- **Opt-In Offline**: When enabled in the menu, the service worker precaches the shell and solver for instant, network-free loads
+- **Progressive Loading**: The core game chunk loads first; technique pages, the leaderboard, and other routes arrive as their lazy chunks load
 
 ### 🔋 **Battery & Mobile Efficiency**
 - **Background Pause**: All operations pause when the app loses focus
 - **Extended Suspension**: Complete shutdown after 15s to prevent battery drain
 - **Touch Optimization**: Gesture-friendly controls optimized for mobile devices
 - **Memory Management**: Smart WASM lifecycle prevents memory leaks
-- **Network Aware**: Minimal data usage, works completely offline after first visit
+- **Low Data Usage**: One static fetch of the app and solver; with offline mode off, nothing is cached and no requests repeat needlessly
 
 ### 📱 **Responsive Design**
 - **Mobile-First**: Optimized touch interactions and gesture support
 - **Adaptive Layout**: Scales seamlessly from phone to desktop
 - **Accessibility**: Full keyboard navigation and screen reader support
-- **PWA Features**: Install to home screen, splash screens, background sync
+- **PWA Features**: Install to home screen with app icons; offline caching is a menu toggle, and new deploys take over automatically on next launch
 
 ## 🤖 Assistance Features Explained
 
@@ -184,7 +184,7 @@ The app separately tracks usage of each assistance type, so you can:
 Made errors while solving? The solver intelligently detects and fixes them:
 
 - **Direct Conflicts**: Detects when you place the same digit twice in a row, column, or box. Explains exactly which cells conflict.
-- **Blocking Cells**: Finds when your entry eliminates all possibilities for another cell. Traces to the logical chain to identify the problem.
+- **Blocking Cells**: Finds when your entry eliminates all possibilities for another cell. Traces the logical chain to identify the problem cell.
 - **Complex Errors**: When errors can't be traced to a single cell, provides guidance based on the number of user entries.
 
 Errors are corrected **one at a time** with clear explanations, so you learn from each mistake.
@@ -239,7 +239,7 @@ sudoku/
 │       └── transport/http/ # API routes with error correction
 ├── frontend/               # React + Vite + TypeScript + Tailwind
 │   ├── public/
-│   │   └── sudoku.wasm     # Compiled WASM solver (~600KB with TinyGo)
+│   │   └── sudoku.wasm     # Compiled WASM solver (~650KB with TinyGo)
 │   ├── e2e/                # Playwright E2E tests
 │   │   ├── integration/    # UI integration tests
 │   │   ├── profiling/      # WASM CPU/memory profiling
@@ -303,7 +303,7 @@ The solver implements 39+ techniques across 4 tiers:
 ### Prerequisites
 
 - Go 1.26+
-- TinyGo 0.40.1 (for WASM builds only)
+- TinyGo 0.41.1 (for WASM builds only)
 - Node.js 24+
 - Docker (for E2E tests and CI/CD runs)
 
@@ -338,7 +338,7 @@ make test-frontend
 
 ### Quality Gate
 
-Before pushing, run the local quality gate — it mirrors what CI enforces:
+Before pushing, run the local quality gate: it mirrors what CI enforces.
 
 ```bash
 make check-fast   # lint + typecheck + Go + frontend unit (+ WASM type-check); tight dev loop
@@ -354,51 +354,24 @@ make check-full   # adds E2E + integration (slow; true superset of check)
 
 ### Pre-Commit Hook
 
-The project uses a pre-commit git hook that enforces a shared lint-warning budget. This prevents introducing code quality issues before they reach the repository.
+The project uses a pre-commit git hook that lints exactly what you staged, so quality problems are caught before they reach the repository.
 
 **What it does:**
 
-- Automatically runs when you commit changes
-- Detects which file types are staged (frontend .ts/.tsx or Go .go)
-- Runs ESLint on frontend files if any were changed
-- Runs golangci-lint on Go files if any were changed
-- **Blocks commit** if ESLint warnings exceed the budget or golangci-lint reports any issue
+- Runs automatically on every commit and lints only the staged files, split by type: ESLint for staged frontend `.ts`/`.tsx`/`.js`/`.jsx` files (excluding e2e and test files, which the ESLint config ignores), golangci-lint for staged Go packages (excluding `cmd/wasm`, which needs the WASM build environment)
+- Regenerates `frontend/src/lib/constants-generated.ts` and stages it whenever `api/pkg/constants/constants.go` changed, so the machine-written TypeScript constants cannot drift from the Go source
+- Runs a `gofmt` check over staged Go files as a fast pre-check alongside golangci-lint
+- **Blocks the commit** if ESLint exceeds its warning budget or golangci-lint or gofmt report anything
 
-**Lint Warning Budget:**
+**Lint warning budgets:**
 
-The hook, `npm run lint`, and CI all share the same ESLint warning budget:
-- ESLint with `--max-warnings 13` (shared across the hook, `make lint-frontend`, and CI)
-- golangci-lint with strict zero-warning configuration (.golangci.yml)
+- `npm run lint`, `make lint-frontend`, and CI enforce **zero** ESLint warnings (`--max-warnings 0`) across `src/`
+- The hook runs ESLint only on staged files with a legacy budget of 13 warnings, so a commit can pass the hook yet fail CI: rely on `make check-fast`, not the hook, as your gate
+- golangci-lint runs with a strict zero-warning configuration (`.golangci.yml`)
 
-**Usage:**
+**Bypassing the hook:**
 
-```bash
-# Normal commit - hook runs automatically
-git add frontend/src/App.tsx
-git commit -m "fix: update component"
-
-# Hook runs linters, blocks if issues found
-# If successful: commit proceeds normally
-# If issues found: commit blocked with error message
-```
-
-**Bypassing the Hook (Emergency Only):**
-
-If you absolutely need to bypass the hook (not recommended):
-
-```bash
-git commit --no-verify -m "emergency: bypass pre-commit"
-```
-
-**Warning:** Using `--no-verify` should be rare. Fix the linting issues instead to maintain code quality.
-
-**Common Issues and Fixes:**
-
-| Issue | Fix Command |
-|--------|-------------|
-| ESLint warnings | `cd frontend && npm run lint:fix` |
-| Go linting issues | Run `golangci-lint run --fix` or fix manually |
-| Unknown linter error | Read the error output and address the specific issue |
+Do not use `--no-verify`. It skips the lint and format checks that keep the tree committable, and an automated bypass (scripts, CI, agents) is prohibited outright. If the hook blocks you, fix what it reported: `cd frontend && npm run lint:fix` resolves most ESLint findings, and `golangci-lint run --fix` resolves most Go findings.
 
 ---
 
@@ -431,13 +404,13 @@ End-to-end (E2E) integration tests now run in a dedicated Playwright Docker side
      mcr.microsoft.com/playwright:v1.57.0-jammy \
      npx playwright test
    ```
-   - This mounts your frontend/test code into the sidecar,
-   - Points Playwright to the running prod container,
-   - Ensures no local dependencies or browsers are required and results match CI runs.
+   - It mounts your frontend test code into the sidecar.
+   - It points Playwright at the running prod container.
+   - It requires no local Playwright installation or browsers, so local and CI results match.
 
 3. **CI Pipeline:**
    - GitHub Actions runs the same sidecar test step after Docker build/deploy.
-   - Failing E2E locally = failing in CI. If tests pass in this setup, they will pass in your pipeline.
+   - If it fails in this setup, it fails in CI; the container is the shared source of truth for both.
 
 **Troubleshooting/Notes:**
 - If Playwright, Chromium, or webkit errors appear locally, always run E2E in Docker as above.
@@ -485,9 +458,9 @@ sudo.
 
 Tests run automatically on every push and PR via GitHub Actions:
 
-- **Frontend Unit Tests**: Vitest with coverage
-- **Go Tests**: Full test suite with linting
-- **E2E Tests**: Playwright integration tests
+- **Frontend Unit Tests**: Vitest with coverage floors at 100% for lines and functions and 99% for statements and branches (the residual gap is documented, provably-unreachable defensive branches), plus type-check of the production build
+- **Go Tests**: Full test suite with golangci-lint at zero warnings
+- **E2E Tests**: Playwright against the production Docker image, with a flakiness tolerance that never masks a systemic failure
 
 **View Test Results**: Every deploy publishes a unified report portal that links
 all quality reports in one place:
@@ -507,7 +480,7 @@ not run yet is simply omitted, never linked dead.
 
 ### Rebuild WASM Solver
 
-The WASM solver is built with TinyGo for a smaller bundle size (~600KB vs 3.3MB with standard Go).
+The WASM solver is built with TinyGo for a smaller bundle size (~650KB vs 3.3MB with standard Go).
 
 ```bash
 # Install TinyGo: https://tinygo.org/getting-started/install/
