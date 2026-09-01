@@ -36,12 +36,9 @@ export function useInProgressGameCheck(
     if (skip || sharedStateParam) return null
     const savedGame = getMostRecentGame()
     logger.debug(
-      // Stryker disable next-line StringLiteral: log message content does not affect program behavior
       '[IN-PROGRESS CHECK] Current URL seed:',
       seed,
-      // Stryker disable next-line StringLiteral: log message content does not affect program behavior
       'Saved game found:',
-      // Stryker disable next-line StringLiteral: log label content does not affect program behavior
       savedGame ? savedGame.seed : 'none',
     )
     if (
@@ -51,16 +48,13 @@ export function useInProgressGameCheck(
       savedGame.progress < 100
     ) {
       logger.debug(
-        // Stryker disable next-line StringLiteral: log message content does not affect program behavior
         '[IN-PROGRESS CHECK] Showing modal: Existing game found',
         savedGame.seed,
-        // Stryker disable next-line StringLiteral: log label content does not affect program behavior
         'vs current:',
         seed,
       )
       return savedGame
     }
-    // Stryker disable next-line StringLiteral: log message content does not affect program behavior
     logger.debug('[IN-PROGRESS CHECK] No modal needed (no existing game or same seed)')
     return null
   })
@@ -71,13 +65,10 @@ export function useInProgressGameCheck(
   // Mount-only: clean up the one-time skip flag (side effect, no setState)
   useEffect(
     () => {
-      const skipInProgressCheck = sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
-      // Stryker disable next-line ConditionalExpression: removeItem on a missing key is a no-op, so always-true branching is observably identical to the guarded remove
-      if (skipInProgressCheck) {
-        sessionStorage.removeItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
-      }
+      // removeItem on a missing key is a no-op, so no read-guard is needed.
+      sessionStorage.removeItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
     },
-    // Stryker disable next-line ArrayDeclaration: useEffect deps are manual memoization; the effect is idempotent (read+remove) so re-running on identity changes is observably identical
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"]; the effect only calls the idempotent removeItem, so re-running it on any deps content is observationally identical
     [],
   )
 
