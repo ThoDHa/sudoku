@@ -74,6 +74,7 @@ const OFFLINE_MODE_KEY = 'sudoku_offline_mode_enabled'
 export function getOfflineModeEnabled(): boolean {
   try {
     const value = localStorage.getItem(OFFLINE_MODE_KEY)
+    // Stryker disable next-line ConditionalExpression: the forced-false half is equivalent: an absent key makes JSON.parse(null) yield null, and null === true is false, the same result the guard returns; the forced-true half and the === mutants die to the enabled/disabled preference tests
     if (value === null) return false
     const parsed: unknown = JSON.parse(value)
     return parsed === true
@@ -111,14 +112,13 @@ function collectSavedGames(includeComplete: boolean, warnLabel: string): SavedGa
   const prefix = STORAGE_KEYS.GAME_STATE_PREFIX
 
   try {
-    // Stryker disable next-line EqualityOperator: at i===localStorage.length, localStorage.key returns null; the optional-chaining guard on the next line then yields undefined and the body is skipped, so the extra iteration is a no-op
-    for (let i = 0; i < localStorage.length; i++) {
+    for (let i = 0; i !== localStorage.length; i++) {
       const key = localStorage.key(i)
-      // Stryker disable next-line OptionalChaining: for valid i in [0,length-1], localStorage.key(i) always returns a string, so `key.startsWith` and `key?.startsWith` are observationally identical here
+      // Stryker disable next-line OptionalChaining: with the !== bound, i is always a valid index and localStorage.key(i) always returns a string, so `?.` and `.` agree by construction
       if (key?.startsWith(prefix)) {
         const seed = key.slice(prefix.length)
         const data = localStorage.getItem(key)
-        // Stryker disable next-line ConditionalExpression: forcing `true` makes JSON.parse(null) yield null, whose `.board?.length` access then throws and is caught by the inner try/catch, producing the same skip-as-no-op behavior as the falsy path
+        // Stryker disable next-line ConditionalExpression: the forced-true half is equivalent (JSON.parse(null) yields null, whose .board access throws into the inner catch and skips, same as the falsy path); the forced-false half dies to every saved-game test
         if (data) {
           try {
             const parsed = JSON.parse(data) as {
@@ -130,7 +130,7 @@ function collectSavedGames(includeComplete: boolean, warnLabel: string): SavedGa
             }
             // Validate it's a game state; completed games are kept only when requested
             if (
-              // Stryker disable next-line OptionalChaining: parsed.board is always an array for valid saved games; when it is missing, the original `?.length` returns undefined (!== 81, skip) and the mutant throws, which the surrounding try/catch swallows identically
+              // Stryker disable next-line OptionalChaining: equivalent under the surrounding try/catch: when board is missing the `?.` yields undefined (!== 81, skip) while the `.` mutant throws and the catch skips the same entry
               parsed.board?.length === 81 &&
               parsed.savedAt &&
               (includeComplete || !parsed.isComplete)
