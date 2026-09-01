@@ -577,6 +577,27 @@ describe('wasm module', () => {
       expect(() => abortWasmLoad()).not.toThrow()
     })
 
+    it('returns the loaded instance after an abort without refetching', async () => {
+      // A completed load clears its abort controller, so abortWasmLoad is a
+      // no-op afterwards and the still-resolved load promise keeps serving
+      // the cached instance. A reload must not refetch the module.
+      // @ts-expect-error - Mocking
+      globalThis.window.SudokuWasm = mockWasmApi
+      const { loadWasm, abortWasmLoad, getWasmApi } = await import('./wasm')
+
+      await runLoadCycle(loadWasm)
+      const first = getWasmApi()
+
+      abortWasmLoad()
+
+      const fetchSpy = vi.fn()
+      globalThis.fetch = fetchSpy as unknown as typeof fetch
+      const second = await loadWasm()
+
+      expect(second).toBe(first)
+      expect(fetchSpy).not.toHaveBeenCalled()
+    })
+
     it('should clear wasmLoadPromise after abort', async () => {
       const { loadWasm, abortWasmLoad, isWasmReady } = await import('./wasm')
 
