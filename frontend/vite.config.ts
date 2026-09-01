@@ -167,9 +167,14 @@ export const pwaPlugins = [
         },
       ],
       // Serve the precached shell for offline SPA navigations (/, /daily-..., /c/<encoded>).
-      // Keep API requests out of the fallback so they fail clean when offline.
+      // Keep API requests out of the fallback so they fail clean when offline, and
+      // keep the deployed quality reports out of it too: /reports/ and /test-report/
+      // are plain static sites published beside the app, and an SW-served app shell
+      // answers those navigations with the game homepage (BUG-27). Unanchored on
+      // purpose: under a base path (github.io/sudoku/) the pathname starts with
+      // /sudoku/, so an anchored /^\/reports\// would never match.
       navigateFallback: 'index.html',
-      navigateFallbackDenylist: [/^\/api\//],
+      navigateFallbackDenylist: [/^\/api\//, /\/reports(\/|$)/, /\/test-report(\/|$)/],
     },
   }),
 ]
