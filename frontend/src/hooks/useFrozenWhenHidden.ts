@@ -18,7 +18,7 @@ export function useFrozenWhenHidden() {
   const backgroundManager = useBackgroundManagerContext()
 
   // Use ref for immediate access without React state update lag
-  // Stryker disable next-line BooleanLiteral: the mount effect overwrites isFrozenRef from backgroundManager before any read, so the initial false is observationally identical to true
+  // Stryker disable next-line BooleanLiteral: the only replacement flips the initial false to true; the mount effect overwrites the ref from the background manager before any read, so the initial value is never observed
   const isFrozenRef = useRef(false)
 
   // Track frozen state
@@ -31,7 +31,7 @@ export function useFrozenWhenHidden() {
     () => {
       return isFrozenRef.current
     },
-    /* Stryker disable next-line ArrayDeclaration: isFrozen captures only the stable isFrozenRef, so a constant deps entry is observationally identical to the empty array */ [],
+    /* Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant; isFrozen captures only the stable isFrozenRef, so any deps content is observationally identical across renders */ [],
   )
 
   // Wrap a callback to skip execution when frozen
@@ -48,7 +48,7 @@ export function useFrozenWhenHidden() {
         return callback(...args)
       }) as T
     },
-    // Stryker disable next-line ArrayDeclaration: skipWhenFrozen captures only the stable isFrozenRef, so a constant deps entry is observationally identical to the empty array
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant; skipWhenFrozen captures only the stable isFrozenRef, so any deps content is observationally identical across renders
     [],
   )
 
@@ -57,7 +57,7 @@ export function useFrozenWhenHidden() {
     () => {
       return isFrozenRef.current
     },
-    /* Stryker disable next-line ArrayDeclaration: shouldSkipStateUpdate captures only the stable isFrozenRef, so a constant deps entry is observationally identical to the empty array */ [],
+    /* Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant; shouldSkipStateUpdate captures only the stable isFrozenRef, so any deps content is observationally identical across renders */ [],
   )
 
   // CRITICAL: Memoize return object to prevent cascading re-renders.
