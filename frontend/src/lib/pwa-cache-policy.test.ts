@@ -46,4 +46,34 @@ describe('PWA cache policy', () => {
     expect(denyLine).not.toBeNull()
     expect(denyLine?.[1]).toContain('api')
   })
+
+  // BUG-27: the navigateFallback answered /reports/ and /test-report/ navigations
+  // with the precached app shell, so anyone who had visited the game (registering
+  // the SW) saw the homepage instead of the deployed quality reports. The deny
+  // patterns must match the real deployed pathnames, which carry the /sudoku/
+  // base prefix; an anchored /^\/reports\// passes a text search and still never
+  // fires. These assertions evaluate the literal patterns from the config source
+  // against real pathnames, so an anchor regression or a dropped entry fails here.
+  it('denies the navigation fallback for the deployed report sites, under the base path', () => {
+    const denyLine = config.match(/navigateFallbackDenylist:\s*\[([^\]]*)\]/)
+    const literals =
+      denyLine?.[1]
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean) ?? []
+    const patterns = literals.map((lit) => {
+      const m = lit.match(/^\/(.*)\/[a-z]*$/)
+      expect(m).not.toBeNull()
+      return new RegExp(m![1]!)
+    })
+    const matches = (pathname: string) => patterns.some((re) => re.test(pathname))
+    expect(matches('/sudoku/reports/')).toBe(true)
+    expect(matches('/sudoku/test-report/')).toBe(true)
+    expect(matches('/api/solve')).toBe(true)
+    expect(matches('/reports/')).toBe(true)
+    // The SPA's own routes must stay fallback-eligible.
+    expect(matches('/sudoku/')).toBe(false)
+    expect(matches('/sudoku/daily-2026-08-31')).toBe(false)
+    expect(matches('/sudoku/c/eyJzZWVkIjoxfQ')).toBe(false)
+  })
 })
