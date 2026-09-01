@@ -19,18 +19,16 @@ export function useBoardState(options: UseBoardStateOptions): UseBoardStateRetur
   const { initialBoard } = options
 
   const [givenCells, setGivenCells] = useState<number[]>(() => {
-    // Stryker disable next-line ConditionalExpression,MethodExpression,ArrowFunction,EqualityOperator,BlockStatement: the L42 effect re-seeds givenCells on mount whenever this branch fires, so the lazy initializer's return is never observed
+    // Stryker disable next-line ConditionalExpression,MethodExpression,ArrowFunction,EqualityOperator,BlockStatement: the [initialBoard] effect below re-seeds givenCells with the same branch on mount, so which arm the initializer takes is never observable
     if (initialBoard.length === TOTAL_CELLS && initialBoard.some((v) => v !== 0)) {
-      // Stryker disable next-line ArrayDeclaration: givenCells is re-seeded by the L42 effect on mount, so the [...initialBoard] return is never observed
+      // Stryker disable next-line ArrayDeclaration: same masking effect; the returned copy is replaced before any test can observe it
       return [...initialBoard]
     }
     return Array<number>(TOTAL_CELLS).fill(0)
   })
 
-  // Stryker disable next-line BooleanLiteral: firstInitRef is write-only (set in updateBoard, never read), so its initial value is unobservable
-  const firstInitRef = useRef<boolean>(false)
   const [board, setBoard] = useState<number[]>(() => {
-    // Stryker disable next-line ConditionalExpression: when length===81 and the board is all zeros, [...initialBoard] equals the default zeros, so forcing some() to true is observationally identical
+    // Stryker disable next-line ConditionalExpression: the some()→true operand forces the copy branch for an all-zeros 81-board, whose [...initialBoard] is value-identical to the default zeros, so that half is equivalent; the whole-test halves die (mixed-board copies assert the values; a short board asserts the 81-cell fallback)
     if (initialBoard.length === TOTAL_CELLS && initialBoard.some((v) => v !== 0)) {
       return [...initialBoard]
     }
@@ -53,11 +51,10 @@ export function useBoardState(options: UseBoardStateOptions): UseBoardStateRetur
 
   const updateBoard = useCallback(
     (newBoard: number[]) => {
-      // Stryker disable next-line BooleanLiteral: firstInitRef is write-only (never read), so assigning true vs false is unobservable
-      firstInitRef.current = true
       setBoard(newBoard)
     },
-    /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since updateBoard's only captured value is the stable setBoard dispatcher */ [],
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant; the callback captures only the stable setBoard dispatcher, so any deps content is observationally identical across renders
+    [],
   )
 
   const isGivenCell = useCallback(
