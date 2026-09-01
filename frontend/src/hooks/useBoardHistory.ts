@@ -73,7 +73,7 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
 
       return { history: trimmedHistory, index: adjustedIndex }
     },
-    // Stryker disable next-line ArrayDeclaration: limitHistory captures no external values, so a constant deps entry is observationally identical to the empty array
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant; limitHistory captures no external values, so any deps content is observationally identical across renders
     [],
   )
 
@@ -83,7 +83,7 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
     const currentHistory = historyRef.current
     const currentHistoryIndex = historyIndexRef.current
 
-    // Stryker disable next-line ConditionalExpression: currentHistory[negativeIndex] is undefined in JS, so the L85 !currentMove guard catches the same case and this early return is redundant
+    // Stryker disable next-line ConditionalExpression: the only surviving replacement is the forced-false half; a negative index reads currentHistory[-1] as undefined and the !currentMove guard below returns the same early result, while the forced-true half dies to the undo-at-start tests
     if (currentHistoryIndex < 0) return
 
     const currentMove = currentHistory[currentHistoryIndex]
@@ -119,13 +119,13 @@ export function useBoardHistory(options: UseBoardHistoryOptions): UseBoardHistor
     const currentHistory = historyRef.current
     const currentHistoryIndex = historyIndexRef.current
 
-    // Stryker disable next-line ConditionalExpression,EqualityOperator,ArithmeticOperator: at index>=length-1 the next-move lookup yields undefined and is caught by the L120 !nextMove guard, so every mutation of this bound is observationally identical
+    // Stryker disable next-line ConditionalExpression,EqualityOperator,ArithmeticOperator: every surviving replacement lets an out-of-range index through to the next-move lookup, whose undefined result the !nextMove guard below converts into the same early return; the bound's whole-test-true half dies to the redo-at-end tests
     if (currentHistoryIndex >= currentHistory.length - 1) return
 
     const nextMove = currentHistory[currentHistoryIndex + 1]
     // The bound check above guarantees nextMove is defined, so this guard is unreachable.
     /* istanbul ignore start */
-    // Stryker disable next-line ConditionalExpression: after the L117 bound check nextMove is always defined, so this guard is dead and forcing it false is unobservable
+    // Stryker disable next-line ConditionalExpression: the forced-false half is equivalent because the bound check above already excluded out-of-range indices, making nextMove always defined here; the forced-true half dies to every redo test
     if (!nextMove) return
     /* istanbul ignore stop */
 
