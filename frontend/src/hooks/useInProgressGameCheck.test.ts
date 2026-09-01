@@ -223,4 +223,40 @@ describe('useInProgressGameCheck', () => {
       expect(sessionStorage.getItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)).toBe('true')
     })
   })
+
+  describe('diagnostic log content', () => {
+    it('logs the exact decision messages when the modal is shown', async () => {
+      const loggerMod = await import('../lib/logger')
+      const debugMock = vi.mocked(loggerMod.logger.debug)
+      mockedGetMostRecentGame.mockReturnValue(makeSavedGame())
+      renderInProgressHook({ seed: 'current-seed' })
+      expect(debugMock).toHaveBeenCalledWith(
+        '[IN-PROGRESS CHECK] Current URL seed:',
+        'current-seed',
+        'Saved game found:',
+        'saved-seed',
+      )
+      expect(debugMock).toHaveBeenCalledWith(
+        '[IN-PROGRESS CHECK] Showing modal: Existing game found',
+        'saved-seed',
+        'vs current:',
+        'current-seed',
+      )
+    })
+
+    it('logs the exact no-modal messages when no saved game exists', async () => {
+      const loggerMod = await import('../lib/logger')
+      const debugMock = vi.mocked(loggerMod.logger.debug)
+      renderInProgressHook({ seed: 'current-seed' })
+      expect(debugMock).toHaveBeenCalledWith(
+        '[IN-PROGRESS CHECK] Current URL seed:',
+        'current-seed',
+        'Saved game found:',
+        'none',
+      )
+      expect(debugMock).toHaveBeenCalledWith(
+        '[IN-PROGRESS CHECK] No modal needed (no existing game or same seed)',
+      )
+    })
+  })
 })
