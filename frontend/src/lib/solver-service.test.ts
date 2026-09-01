@@ -181,6 +181,34 @@ describe('solver-service', () => {
       expect(result.valid).toBe(true)
       expect(result.unique).toBe(false)
     })
+
+    it('omits the unique key entirely when the solver reports none (strict shape)', async () => {
+      // toStrictEqual, unlike toEqual, distinguishes {a: undefined} from {};
+      // assigning the key unconditionally would fail this assertion.
+      const { validatePuzzle } = await import('./dp-solver')
+      vi.mocked(validatePuzzle).mockReturnValue({
+        valid: false,
+        reason: 'unsolvable',
+      })
+
+      const { validateCustomPuzzle } = await import('./solver-service')
+      const result = await validateCustomPuzzle(Array(81).fill(0), 'device-123')
+
+      expect(result).toStrictEqual({ valid: false, reason: 'unsolvable' })
+    })
+
+    it('omits the reason key entirely when the solver reports none (strict shape)', async () => {
+      const { validatePuzzle } = await import('./dp-solver')
+      vi.mocked(validatePuzzle).mockReturnValue({
+        valid: true,
+        unique: false,
+      })
+
+      const { validateCustomPuzzle } = await import('./solver-service')
+      const result = await validateCustomPuzzle(Array(81).fill(0), 'device-123')
+
+      expect(result).toStrictEqual({ valid: true, unique: false })
+    })
   })
 
   describe('getPuzzle()', () => {
