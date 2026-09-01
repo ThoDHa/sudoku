@@ -72,7 +72,7 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
         timeoutsRef.clear()
       }
     },
-    /* Stryker disable next-line ArrayDeclaration: a constant deps entry is observationally identical to the empty array since the mount effect runs once either way */ [],
+    /* Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant; the mount effect captures only stable refs, so re-running it on any deps content is observationally identical */ [],
   )
 
   const setVisibilityAwareTimeout = useCallback(
@@ -86,7 +86,7 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
         activeTimeoutsRef.current.delete(timeoutId)
         // Only call if page is still visible
         /* istanbul ignore start -- defensive re-check: isHiddenRef.current is true only via handlers that also clear every pending timeout, so a firing callback always sees it false and the skip path is unreachable */
-        // Stryker disable next-line ConditionalExpression: isHiddenRef.current is true only via handlers that also clear every pending timeout, so a firing callback always sees it false; forcing the guard true is observationally identical
+        // Stryker disable next-line ConditionalExpression: the only equivalent replacement is the forced-true half: isHiddenRef.current is true only via handlers that also clear every pending timeout, so a firing callback always sees it false; the forced-false half dies to the hidden-pause tests
         if (!isHiddenRef.current) {
           callback()
         }
@@ -101,7 +101,7 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
         activeTimeoutsRef.current.delete(timeoutId)
       }
     },
-    // Stryker disable next-line ArrayDeclaration: setVisibilityAwareTimeout captures only stable refs (activeTimeoutsRef, isHiddenRef), so a constant deps entry is observationally identical to the empty array
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant; setVisibilityAwareTimeout captures only stable refs (activeTimeoutsRef, isHiddenRef), so any deps content is observationally identical across renders
     [],
   )
 
@@ -112,7 +112,7 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
       })
       activeTimeoutsRef.current.clear()
     },
-    /* Stryker disable next-line ArrayDeclaration: cancelAll captures only the stable activeTimeoutsRef, so a constant deps entry is observationally identical to the empty array */ [],
+    /* Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant; cancelAll captures only the stable activeTimeoutsRef, so any deps content is observationally identical across renders */ [],
   )
 
   // CRITICAL: Memoize return object to prevent cascading re-renders.
@@ -122,7 +122,7 @@ export function useVisibilityAwareTimeout(): VisibilityAwareTimeoutReturn {
       setTimeout: setVisibilityAwareTimeout,
       cancelAll,
     }),
-    // Stryker disable next-line ArrayDeclaration: setVisibilityAwareTimeout and cancelAll are themselves stable (empty-dep useCallbacks), so the memo's [them] and [] capture the same values
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant; setVisibilityAwareTimeout and cancelAll are themselves stable (empty-dep useCallbacks), so the memo's [them] and any constant array capture the same values
     [setVisibilityAwareTimeout, cancelAll],
   )
 }
