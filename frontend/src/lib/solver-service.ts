@@ -284,8 +284,8 @@ export async function validateCustomPuzzle(
   const result = dpValidatePuzzle(givens)
 
   if (result.valid && result.unique && result.solution) {
-    // Stryker disable next-line MethodExpression: hash output is always 8 hex chars via padStart(8,'0'), so slice(0,16) never truncates
-    const puzzleId = 'custom-' + hashGivens(givens).slice(0, 16)
+    // hashGivens returns exactly 8 hex chars, so no truncation is applied.
+    const puzzleId = 'custom-' + hashGivens(givens)
     return {
       valid: true,
       unique: true,
@@ -296,9 +296,7 @@ export async function validateCustomPuzzle(
 
   // Build result object, only including defined properties
   const response: ValidateCustomResult = { valid: result.valid }
-  // Stryker disable next-line ConditionalExpression: assigning response.unique = undefined is observationally identical to omitting the key
   if (result.unique !== undefined) response.unique = result.unique
-  // Stryker disable next-line ConditionalExpression: assigning response.reason = undefined is observationally identical to omitting the key
   if (result.reason) response.reason = result.reason
   if (result.solution) response.solution = result.solution
   return response
@@ -347,12 +345,12 @@ export { isWasmReady }
 
 function hashGivens(givens: number[]): string {
   let hash = 0
-  // Stryker disable next-line UpdateOperator: i-- from 0 is an infinite loop the harness times out on
   for (let i = 0; i < givens.length; i++) {
     /* istanbul ignore next -- givens is always a dense array at every call site; the `?? 0` only satisfies noUncheckedIndexedAccess and its fallback is unreachable at runtime */
     const val = givens[i] ?? 0
-    // Stryker disable next-line ArithmeticOperator: the recurrence is linear in val, so replacing `+ val` with `- val` negates the accumulated hash at every step (h' = -h). The result is passed through Math.abs() before being returned, which erases the sign, making the two variants produce identical output for every practical input.
-    hash = ((hash << 5) - hash + val) | 0
+    const base = (hash << 5) - hash
+    // Stryker disable next-line ArithmeticOperator: the only equivalent replacement is `base - val`: negating the addend negates the accumulated hash at every step (provable by induction), and Math.abs erases the sign before the hex string is formed; the line is split so this directive cannot silence the `- hash` mutant above, which dies to exact puzzle-id assertions
+    hash = (base + val) | 0
   }
   return Math.abs(hash).toString(16).padStart(8, '0')
 }
@@ -371,16 +369,15 @@ export async function checkAndFixWithSolution(
   // Main-thread only: the worker client does not expose checkAndFixWithSolution.
   const api = await getApi()
   const result = api.checkAndFixWithSolution(board, candidates, givens, solution)
+  // The WASM contract guarantees a well-formed result here (solved flag,
+  // moves array, finalBoard), so the fields are read directly; the catch is
+  // for the logging path itself, which must never break the solve flow.
   try {
-    // Stryker disable OptionalChaining: the surrounding try/catch swallows any TypeError from removing '?., making these observationally equivalent
-    /* istanbul ignore start -- defensive debug logging: the WASM contract guarantees a well-formed result, so the optional-chaining null branches and the non-array `movesCount` fallback are unreachable; the try/catch also swallows any access error */
     logger.debug('[Check&Fix] wasm result', {
-      solved: result?.solved,
-      movesCount: Array.isArray(result?.moves) ? result.moves.length : 0,
-      hasFinalBoard: !!result?.finalBoard,
+      solved: result.solved,
+      movesCount: result.moves.length,
+      hasFinalBoard: !!result.finalBoard,
     })
-    /* istanbul ignore stop */
-    // Stryker restore OptionalChaining
   } catch {
     /* no-op */
   }
