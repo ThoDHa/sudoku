@@ -2333,6 +2333,30 @@ describe('useSudokuGame - mutation-killing exact-assertion tests', () => {
       expect(result.current.history[1]!.action).toBe('eliminate')
     })
 
+    it('applies a duplicate note toggle at exactly 100ms (the boundary is exclusive)', () => {
+      // Drive Date.now directly instead of advancing the fake clock: the
+      // boundary has zero margin, and any upward drift in the mocked clock
+      // would push the elapsed time past 100 and silently erase the kill.
+      let now = 1_000_000
+      const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => now)
+      const { result } = renderGame(createEmptyPuzzle())
+      act(() => {
+        result.current.setCell(40, 5, true)
+      })
+      expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(true)
+
+      // Exactly the debounce window: now - last.time === 100, and 100 < 100 is
+      // false, so this toggle is NOT debounced. A <= bound would swallow it.
+      now += 100
+      act(() => {
+        result.current.setCell(40, 5, true)
+      })
+      expect(hasCandidate(result.current.candidates[40] || 0, 5)).toBe(false)
+      expect(result.current.history).toHaveLength(2)
+      expect(result.current.history[1]!.action).toBe('eliminate')
+      nowSpy.mockRestore()
+    })
+
     it('does not debounce a different digit on the same cell', () => {
       const { result } = renderGame(createEmptyPuzzle())
       act(() => {

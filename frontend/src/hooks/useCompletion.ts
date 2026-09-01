@@ -2,7 +2,9 @@ import React, { useState, useCallback, useRef } from 'react'
 import { isValidSolution } from '../lib/validationUtils'
 
 export interface UseCompletionOptions {
-  onComplete?: () => void
+  // Explicit undefined so callers can forward an optional callback under
+  // exactOptionalPropertyTypes without a conditional spread.
+  onComplete?: (() => void) | undefined
 }
 
 export interface UseCompletionReturn {

@@ -18,7 +18,6 @@ import { createStateDiff } from '../lib/diffUtils'
 export type { Move } from './useBoardHistory'
 
 // Technique label applied to every user-initiated move recorded in history.
-// Stryker disable next-line StringLiteral: killed by tests asserting move.technique === 'User Input'
 const USER_INPUT_TECHNIQUE = 'User Input'
 
 interface UseSudokuGameOptions {
@@ -71,9 +70,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
   React.useEffect(() => {
     candidatesRef.current = candidatesHook.candidates
   }, [candidatesHook.candidates])
-  const { isComplete, setIsComplete, checkCompletion } = useCompletion(
-    onComplete !== undefined ? { onComplete } : {},
-  )
+  const { isComplete, setIsComplete, checkCompletion } = useCompletion({ onComplete })
   const {
     history,
     historyIndex,
@@ -147,7 +144,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       historyRef.current = limited
       historyIndexRef.current = index
     },
-    // Stryker disable next-line ArrayDeclaration: addToHistory reads only refs (historyRef, historyIndexRef) and stable callbacks/dispatchers (setHistory, setHistoryIndex, limitHistory), so the empty-deps mutant captures identical values
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is []; addToHistory reads only refs and stable dispatchers, so a frozen closure is observationally identical across renders
     [setHistory, setHistoryIndex, limitHistory, historyRef, historyIndexRef],
   )
 
@@ -160,13 +157,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       if (isNotesMode) {
         if (currentBoard[idx] !== 0) return
         const now = Date.now()
-        if (
-          lastNoteToggle.current?.idx === idx &&
-          // Stryker disable next-line OptionalChaining: when lastNoteToggle.current is null the first clause (?.idx ...
-          lastNoteToggle.current?.digit === digit &&
-          // Stryker disable next-line EqualityOperator: heuristic double-toggle debounce; < 100 vs <= 100 differs on...
-          now - lastNoteToggle.current.time < 100
-        )
+        const last = lastNoteToggle.current
+        if (last !== null && last.idx === idx && last.digit === digit && now - last.time < 100)
           return
         lastNoteToggle.current = { idx, digit, time: now }
 
@@ -397,10 +389,9 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       candidatesHook.setCandidates(savedCandidates)
       setHistory(savedHistory)
       setHistoryIndex(savedHistory.length - 1)
-      // Stryker disable next-line MethodExpression,ConditionalExpression: isValidSolution already rejects any board with an empty cell, so every()->some() and the every() predicate are observationally redundant here
-      setIsComplete(savedBoard.every((v: number) => v !== 0) && isValidSolution(savedBoard))
+      setIsComplete(isValidSolution(savedBoard))
     },
-    // Stryker disable next-line ArrayDeclaration: restoreState works on its arguments and stable values (updateBoard, candidatesHook.setCandidates, setHistory, setHistoryIndex, setIsComplete); it never reads candidatesHook.candidates, so the empty-deps mutant is observationally identical
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is []; restoreState works on its arguments and stable values and never reads candidatesHook.candidates, so a frozen closure is observationally identical across renders
     [updateBoard, candidatesHook, setHistory, setHistoryIndex, setIsComplete],
   )
 
@@ -409,19 +400,16 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       updateBoard(newBoard)
       candidatesHook.setCandidates(newCandidates)
     },
-    // Stryker disable next-line ArrayDeclaration: setBoardState only calls the stable updateBoard and candidatesHook.setCandidates, so a frozen callback behaves identically
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is []; setBoardState only calls stable updateBoard and candidatesHook.setCandidates, so a frozen closure behaves identically across renders
     [updateBoard, candidatesHook],
   )
 
   const handleUndo = useCallback(
     () => {
       historyUndo()
-      const newBoard = boardRef.current
-      // Stryker disable next-line ConditionalExpression,LogicalOperator,BooleanLiteral,MethodExpression,ArrowFunction,EqualityOperator: isValidSolution(newBoard) is false whenever any cell is empty or duplicated, so the !every(v=>v!==0) clause is redundant; the whole condition collapses observationally to !isValidSolution(newBoard)
-      if (!newBoard.every((v: number) => v !== 0) || !isValidSolution(newBoard))
-        setIsComplete(false)
+      if (!isValidSolution(boardRef.current)) setIsComplete(false)
     },
-    /* Stryker disable next-line ArrayDeclaration: historyUndo (useBoardHistory undo, memoized on stable refs/dispatchers), setIsComplete, and boardRef never change identity, so dropping them to [] yields the same frozen callback that reads current state via boardRef.current; observationally identical */ [
+    /* Stryker disable next-line ArrayDeclaration: the only generated replacement is []; historyUndo, setIsComplete, and boardRef never change identity, and the frozen callback reads current state via boardRef.current, so it is observationally identical across renders */ [
       historyUndo,
       setIsComplete,
       boardRef,
@@ -433,7 +421,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       historyRedo()
       checkCompletion(boardRef.current)
     },
-    /* Stryker disable next-line ArrayDeclaration: historyRedo (useBoardHistory redo, memoized on stable refs/dispatchers), checkCompletion (empty-deps useCallback), and boardRef never change identity, so dropping them to [] yields the same frozen callback that reads current state via boardRef.current; observationally identical */ [
+    /* Stryker disable next-line ArrayDeclaration: the only generated replacement is []; historyRedo, checkCompletion, and boardRef never change identity, and the frozen callback reads current state via boardRef.current, so it is observationally identical across renders */ [
       historyRedo,
       checkCompletion,
       boardRef,
@@ -447,7 +435,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
   const fillAllCandidates = useCallback(
     (): Uint16Array => candidatesHook.calculateAllCandidatesForBoard(boardRef.current),
-    // Stryker disable next-line ArrayDeclaration: fillAllCandidates reads the stable boardRef and calls candidatesHook.calculateAllCandidatesForBoard, itself a stable empty-deps callback, so the empty-deps mutant captures identical values
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is []; fillAllCandidates reads the stable boardRef and calls candidatesHook.calculateAllCandidatesForBoard, itself a stable empty-deps callback, so a frozen closure returns identical values across renders
     [candidatesHook, boardRef],
   )
 
