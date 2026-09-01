@@ -571,6 +571,18 @@ describe('useGameActions - handleCheckAndFix', () => {
     expect(options.autoSolve.playMoves).not.toHaveBeenCalled()
   })
 
+  it('logs the exact message when the solution is missing', async () => {
+    const loggerMod = await import('../lib/logger')
+    const errorSpy = vi.spyOn(loggerMod.logger, 'error').mockImplementation(() => undefined)
+    const options = makeOptions({ solution: [] })
+    const { result } = renderActions(options)
+    await act(async () => {
+      await result.current.handleCheckAndFix()
+    })
+    expect(errorSpy).toHaveBeenCalledWith('Cannot check and fix: solution not available')
+    errorSpy.mockRestore()
+  })
+
   it('returns early when givens are not available', async () => {
     const options = makeOptions({
       puzzle: {
@@ -586,6 +598,49 @@ describe('useGameActions - handleCheckAndFix', () => {
       await result.current.handleCheckAndFix()
     })
     expect(options.autoSolve.playMoves).not.toHaveBeenCalled()
+  })
+
+  it('bails short givens through the givens-missing error without invoking the solver', async () => {
+    const solverService = await import('../lib/solver-service')
+    const solveSpy = vi.spyOn(solverService, 'checkAndFixWithSolution')
+    const loggerMod = await import('../lib/logger')
+    const errorSpy = vi.spyOn(loggerMod.logger, 'error').mockImplementation(() => undefined)
+    const options = makeOptions({
+      puzzle: {
+        puzzle_id: 'p',
+        seed: 'P-test',
+        difficulty: 'easy',
+        givens: [],
+        solution: Array(81).fill(0),
+      },
+    })
+    const { result } = renderActions(options)
+    await act(async () => {
+      await result.current.handleCheckAndFix()
+    })
+    expect(errorSpy).toHaveBeenCalledWith('Cannot check and fix: givens not available')
+    expect(solveSpy).not.toHaveBeenCalled()
+    solveSpy.mockRestore()
+    errorSpy.mockRestore()
+  })
+
+  it('bails a null puzzle through the givens-missing error, not the catch arm', async () => {
+    const loggerMod = await import('../lib/logger')
+    const errorSpy = vi.spyOn(loggerMod.logger, 'error').mockImplementation(() => undefined)
+    const options = makeOptions({ puzzle: null })
+    const { result } = renderActions(options)
+    await act(async () => {
+      await result.current.handleCheckAndFix()
+    })
+    // The whole distinguishing power of this test is the pairing: the guard
+    // must emit exactly the givens-missing error (a mutant that skips the
+    // guard emits nothing here) and must not fall into the catch (a mutant
+    // that dereferences null emits the failed: message and calls the
+    // error handler instead).
+    expect(errorSpy).toHaveBeenCalledTimes(1)
+    expect(errorSpy).toHaveBeenCalledWith('Cannot check and fix: givens not available')
+    expect(options.handleAutoSolveError).not.toHaveBeenCalled()
+    errorSpy.mockRestore()
   })
 
   it('replays the returned fix moves through the auto-solve infrastructure', async () => {
@@ -622,6 +677,7 @@ describe('useGameActions - handleCheckAndFix', () => {
     // Without this the arm's body can be emptied and every other assertion
     // here still holds.
     expect(warnSpy).toHaveBeenCalledTimes(1)
+    expect(warnSpy).toHaveBeenCalledWith('Check & Fix: no changes needed')
     spy.mockRestore()
     warnSpy.mockRestore()
   })
@@ -638,7 +694,7 @@ describe('useGameActions - handleCheckAndFix', () => {
     spy.mockRestore()
   })
 
-  it('handles a null puzzle by falling back to empty givens and erroring out', async () => {
+  it('handles a null puzzle by bailing out before invoking the solver', async () => {
     const options = makeOptions({ puzzle: null })
     const { result } = renderActions(options)
     await act(async () => {
@@ -659,6 +715,23 @@ describe('useGameActions - handleCheckAndFix', () => {
     })
     expect(options.handleAutoSolveError).toHaveBeenCalledWith('Failed to check and fix entries')
     spy.mockRestore()
+  })
+
+  it('logs the exact failure message on the catch arm', async () => {
+    const solverService = await import('../lib/solver-service')
+    const spy = vi
+      .spyOn(solverService, 'checkAndFixWithSolution')
+      .mockRejectedValue(new Error('wasm down') as never)
+    const loggerMod = await import('../lib/logger')
+    const errorSpy = vi.spyOn(loggerMod.logger, 'error').mockImplementation(() => undefined)
+    const options = makeOptions()
+    const { result } = renderActions(options)
+    await act(async () => {
+      await result.current.handleCheckAndFix()
+    })
+    expect(errorSpy).toHaveBeenCalledWith('Check & Fix failed:', expect.any(Error))
+    spy.mockRestore()
+    errorSpy.mockRestore()
   })
 })
 
@@ -735,6 +808,24 @@ describe('useGameActions - handleCopyDebugInfo / handleFeatureRequest', () => {
     })
     expect(options.setDebugInfoCopied).not.toHaveBeenCalled()
     spy.mockRestore()
+  })
+
+  it('copies a report with an empty puzzle section when no puzzle is loaded', async () => {
+    const clipboard = await import('../lib/clipboard')
+    const clipSpy = vi.spyOn(clipboard, 'copyToClipboard').mockResolvedValue(true)
+    const options = makeOptions({ puzzle: null })
+    const { result } = renderActions(options)
+    await act(async () => {
+      await result.current.handleCopyDebugInfo()
+    })
+    expect(clipSpy).toHaveBeenCalledTimes(1)
+    const jsonArg = (clipSpy as Mock).mock.calls[0]![0] as string
+    const report = JSON.parse(jsonArg)
+    // JSON.stringify drops undefined fields, so all three optional-chained
+    // puzzle reads collapse to an empty object; replacing ?. with . throws
+    // on the null puzzle and the copy never happens at all.
+    expect(report.puzzle).toEqual({})
+    clipSpy.mockRestore()
   })
 
   it('opens the feature-request GitHub URL with noopener,noreferrer', () => {

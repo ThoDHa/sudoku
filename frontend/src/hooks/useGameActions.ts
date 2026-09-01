@@ -164,8 +164,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
     if (game.board.length !== TOTAL_CELLS) return
     const newCandidates = game.fillAllCandidates()
     let cellsWithCandidates = 0
-    // Stryker disable next-line EqualityOperator: i<=81 iterates once more on newCandidates[81] which is undefined → undefined||0 → countCandidates(0)=0 → no count change; observationally equivalent
-    for (let i = 0; i < TOTAL_CELLS; i++) {
+    for (let i = 0; i !== TOTAL_CELLS; i++) {
       if (countCandidates(newCandidates[i] || 0) > 0) {
         cellsWithCandidates++
       }
@@ -293,10 +292,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
 
   // Check & Fix handler - compares current board vs solution, removes mismatches, continues solving
   const handleCheckAndFix = async () => {
-    // Stryker disable next-line StringLiteral: log message content does not affect program behavior
-    logger.debug('Check & Fix invoked')
     if (!solution || solution.length !== TOTAL_CELLS) {
-      // Stryker disable next-line StringLiteral: log message content does not affect program behavior
       logger.error('Cannot check and fix: solution not available')
       return
     }
@@ -305,11 +301,8 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       // Get current state
       const currentBoard = game.board
       const currentCandidates = game.candidates
-      // Stryker disable next-line OptionalChaining,ArrayDeclaration: puzzle is always defined in the test paths; the || fallback is checked by givens.length !== 81 below so ["Stryker was here"] and [] are observationally identical
-      const givens = puzzle?.givens || []
 
-      if (givens.length !== TOTAL_CELLS) {
-        // Stryker disable next-line StringLiteral: log message content does not affect program behavior
+      if (!puzzle || puzzle.givens.length !== TOTAL_CELLS) {
         logger.error('Cannot check and fix: givens not available')
         return
       }
@@ -318,28 +311,17 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       const result = await checkAndFixWithSolution(
         currentBoard,
         candidatesToArrays(currentCandidates),
-        givens,
+        puzzle.givens,
         solution,
       )
-      // Stryker disable next-line ConditionalExpression,LogicalOperator,BlockStatement: block body contains only logger.debug calls (all StringLiteral mutants already disabled), so the condition and empty-block mutant have no observable effect
-      if (result && result.moves) {
-        logger.debug(
-          // Stryker disable next-line StringLiteral: debug log label, does not affect behavior
-          'Check & Fix moves:',
-          // Stryker disable next-line ArrowFunction,ObjectLiteral,ConditionalExpression,LogicalOperator: debug-only map output for logging, never asserted in tests
-          result.moves.map((m, idx) => ({ idx, move: m && m.move, board: m && m.board })),
-        )
-      }
 
       if (result.moves && result.moves.length > 0) {
         // Use new autosolver infrastructure to animate the replayed moves step-by-step, with UX feedback.
         autoSolve.playMoves(result.moves, false)
       } else {
-        // Stryker disable next-line StringLiteral: log message content does not affect program behavior
         logger.warn('Check & Fix: no changes needed')
       }
     } catch (error) {
-      // Stryker disable next-line StringLiteral: log message content does not affect program behavior
       logger.error('Check & Fix failed:', error)
       handleAutoSolveError('Failed to check and fix entries')
     }
@@ -351,11 +333,8 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       version: __COMMIT_HASH__,
       timestamp: new Date().toISOString(),
       puzzle: {
-        // Stryker disable next-line OptionalChaining: puzzle is always defined when handleCopyDebugInfo is reachable; the ?. is defensive but observationally identical to .
         seed: puzzle?.seed,
-        // Stryker disable next-line OptionalChaining: same rationale as seed above
         difficulty: puzzle?.difficulty,
-        // Stryker disable next-line OptionalChaining: same rationale as seed above
         puzzleId: puzzle?.puzzle_id,
       },
       state: {
@@ -401,7 +380,7 @@ export function useGameActions(options: UseGameActionsOptions): UseGameActionsRe
       // Open GitHub issues page with enhancement label (short URL for desktop compatibility)
       window.open('https://github.com/thodha/sudoku/issues', '_blank', 'noopener,noreferrer')
     },
-    // Stryker disable next-line ArrayDeclaration: empty-deps useCallback; the mutant adds a string but the callback captures only stable refs, so deps content is observationally irrelevant
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"]; the callback captures nothing but the global window, so any deps content is observationally identical across renders
     [],
   )
 
