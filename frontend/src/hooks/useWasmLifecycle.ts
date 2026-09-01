@@ -28,7 +28,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   const { unloadDelay = 2000, enableLogging = false } = options
 
   const location = useLocation()
-  const unloadTimeoutRef = useRef<number | null>(null)
+  const unloadTimeoutRef = useRef<number | undefined>(undefined)
   const currentRouteRequiresWasm = useRef(false)
 
   const log = (message: string) => {
@@ -38,16 +38,13 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   }
 
   const isWasmRoute = (pathname: string): boolean => {
-    // Custom puzzles always need WASM (for validation during creation)
-    // Stryker disable next-line ConditionalExpression, MethodExpression: '/c/...' paths also return true via the unknown-route fallback below
-    if (pathname.startsWith('/c/')) return true
     // Check if it's a known non-game route
     const isKnownRoute = KNOWN_NON_GAME_ROUTES.some(
       (route) => pathname === route || pathname.startsWith(route + '/'),
     )
-    // If not a known route and not homepage, it's a game route (/:seed)
-    // Stryker disable next-line ConditionalExpression, StringLiteral: isKnownRoute is always true for '/', so the pathname !== '/' clause is redundant
-    return !isKnownRoute && pathname !== '/'
+    // If not a known route, it's a game route (/:seed or /c/:encoded); the
+    // custom-puzzle /c/ paths fall through this same fallback.
+    return !isKnownRoute
   }
 
   const unloadWasm = async () => {
@@ -60,11 +57,8 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   }
 
   const scheduleUnload = () => {
-    // Clear any existing timeout
-    // Stryker disable next-line ConditionalExpression: clearTimeout(null/undefined) is a safe no-op
-    if (unloadTimeoutRef.current) {
-      clearTimeout(unloadTimeoutRef.current)
-    }
+    // Clear any existing timeout (clearTimeout on a missing handle is a no-op)
+    clearTimeout(unloadTimeoutRef.current)
 
     // Schedule unload with delay to handle rapid navigation
     unloadTimeoutRef.current = window.setTimeout(() => {
@@ -74,17 +68,19 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
         void unloadWasm()
         currentRouteRequiresWasm.current = false
       }
-      unloadTimeoutRef.current = null
+      unloadTimeoutRef.current = undefined
     }, unloadDelay)
 
     log(`Scheduled WASM unload in ${unloadDelay}ms`)
   }
 
   const cancelUnload = () => {
-    // Stryker disable next-line ConditionalExpression: clearTimeout(null/undefined) is a safe no-op
+    // The guard is load-bearing only for the log: clearTimeout on a missing
+    // handle is a no-op, but announcing a cancellation that never was
+    // scheduled would be noise.
     if (unloadTimeoutRef.current) {
       clearTimeout(unloadTimeoutRef.current)
-      unloadTimeoutRef.current = null
+      unloadTimeoutRef.current = undefined
       log('Cancelled scheduled WASM unload')
     }
   }
@@ -109,7 +105,6 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
       currentRouteRequiresWasm.current = true
       void loadWasm()
     } else if (!routeNeedsWasm && currentRouteRequiresWasm.current) {
-      // Stryker disable next-line ConditionalExpression, LogicalOperator: in this else-if branch routeNeedsWasm is a...
       log(`Leaving WASM route: ${location.pathname}`)
       scheduleUnload()
     }
@@ -119,13 +114,11 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   useEffect(
     () => {
       return () => {
-        // Stryker disable next-line ConditionalExpression: clearTimeout(null/undefined) is a safe no-op
-        if (unloadTimeoutRef.current) {
-          clearTimeout(unloadTimeoutRef.current)
-        }
+        clearTimeout(unloadTimeoutRef.current)
       }
     },
-    /* Stryker disable next-line ArrayDeclaration: the unmount cleanup captures no values; the constant `["Stryker was here"]` mutant never changes so the effect never re-runs, matching the original empty array */ [],
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant array; the cleanup captures no values and re-running the effect cannot change what it clears, so the mutant is observationally identical
+    [],
   )
 
   return {

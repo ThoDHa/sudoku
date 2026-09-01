@@ -347,6 +347,19 @@ describe('useWasmLifecycle', () => {
         actCancelUnload(result)
       }).not.toThrow()
     })
+
+    it('does not announce a cancellation when no unload is scheduled', () => {
+      vi.mocked(logger.warn).mockClear()
+      setMockPathname('/')
+      const { result } = renderHook(() => useWasmLifecycle({ enableLogging: true }))
+
+      actCancelUnload(result)
+
+      const announced = vi
+        .mocked(logger.warn)
+        .mock.calls.filter((c) => c[0] === '[WasmLifecycle] Cancelled scheduled WASM unload')
+      expect(announced).toHaveLength(0)
+    })
   })
 
   // ROUTE CHANGE EFFECTS TESTS
@@ -595,7 +608,8 @@ describe('useWasmLifecycle', () => {
 
   // CLEANUP TESTS
   describe('Cleanup on Unmount', () => {
-    it('clears pending timeout on unmount', async () => {
+    it('clears the armed unload timeout id on unmount', async () => {
+      const setTimeoutSpy = vi.spyOn(global, 'setTimeout')
       const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout')
 
       setPath('/game123')
@@ -609,10 +623,17 @@ describe('useWasmLifecycle', () => {
       setPath('/')
       rerender()
 
+      // The unload schedule is the most recent setTimeout; asserting the
+      // exact id keeps this kill attributable (any-clear assertions are
+      // satisfied by scheduleUnload's own pre-arm clear).
+      const scheduled = setTimeoutSpy.mock.results.at(-1)?.value as number
+      expect(scheduled).toBeDefined()
+
       // Unmount before the unload fires
       unmount()
 
-      expect(clearTimeoutSpy).toHaveBeenCalled()
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(scheduled)
+      setTimeoutSpy.mockRestore()
       clearTimeoutSpy.mockRestore()
     })
   })
