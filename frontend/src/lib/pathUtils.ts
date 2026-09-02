@@ -43,14 +43,14 @@ export function calculatePathCells(start: number, end: number): number[] {
   const endCol = endCoords.col
 
   // Phase 1: Move vertically from startRow toward endRow (column stays at startCol)
-  // Stryker disable next-line EqualityOperator: when startRow===endRow the for-loop body never executes, so rowStep is unused and <= is indistinguishable from <
+  // Stryker disable next-line EqualityOperator: the equivalent replacement widens the bound to <=; when startRow===endRow the loop body never executes, so the extra iteration never happens; the opposite replacement reverses the traversal and dies to the path tests
   const rowStep = startRow <= endRow ? 1 : -1
   for (let row = startRow; row !== endRow; row += rowStep) {
     cells.push(coordsToCellIndex(row, startCol))
   }
 
   // Phase 2: Move horizontally from startCol to endCol (row is now endRow)
-  // Stryker disable next-line EqualityOperator: when startCol===endCol the for-loop body never executes, so colStep is unused and <= is indistinguishable from <
+  // Stryker disable next-line EqualityOperator: the equivalent replacement widens the bound to <=; when startCol===endCol the loop body never executes, so the extra iteration never happens; the opposite replacement reverses the traversal and dies to the path tests
   const colStep = startCol <= endCol ? 1 : -1
   for (let col = startCol; col !== endCol; col += colStep) {
     cells.push(coordsToCellIndex(endRow, col))
