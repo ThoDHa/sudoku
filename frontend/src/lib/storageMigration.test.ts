@@ -193,6 +193,13 @@ describe('storageMigration', () => {
       expect(readRecordVersion({ name: 'x' })).toBe(0)
     })
 
+    it('returns 0 for undefined without throwing', () => {
+      // undefined is the one primitive the typeof operand alone excludes
+      // (null is caught by the second operand); dropping or disabling the
+      // operand makes the property access below throw instead.
+      expect(readRecordVersion(undefined)).toBe(0)
+    })
+
     it('returns 0 when schemaVersion is non-numeric', () => {
       expect(readRecordVersion({ schemaVersion: 'bad' })).toBe(0)
     })
