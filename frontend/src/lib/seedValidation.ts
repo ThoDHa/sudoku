@@ -19,9 +19,8 @@ export interface SeedValidationResult {
  * Get game mode from seed
  */
 export function getGameMode(seed: string): 'daily' | 'practice' | 'custom' | null {
-  // Stryker disable next-line ConditionalExpression: for an empty string every startsWith check below is false and the function returns null at the end, identical to this early return
-  if (!seed) return null
-
+  // An empty string fails every startsWith below and falls through to the
+  // final null, so no early return is needed on the string domain.
   if (seed.startsWith('daily-')) return 'daily'
   if (seed.startsWith('P') || seed.startsWith('practice-')) return 'practice'
   if (seed.startsWith('custom-')) return 'custom'
@@ -33,8 +32,9 @@ export function getGameMode(seed: string): 'daily' | 'practice' | 'custom' | nul
  * Validate seed format and provide detailed error if invalid
  */
 export function validateSeed(seed: string): SeedValidationResult {
-  // Stryker disable next-line LogicalOperator: for any string input, `!seed` is true only when seed==='' and `seed.length===0` is the same predicate, so AND and OR collapse to the same result; the right operand never throws because the type is `string`
-  if (!seed || seed.length === 0) {
+  // On the string domain `!seed` and emptiness are the same predicate, so
+  // one read suffices; the exact-message tests kill both bound mutations.
+  if (!seed) {
     return {
       valid: false,
       seed,
