@@ -119,9 +119,9 @@ export function useAutoSolveAdapters(
     game.applyExternalMove(newBoard, uint16Candidates, move)
     setMoveHighlight(move, index)
 
-    // Highlight the digit being placed/modified
-    // Stryker disable next-line LogicalOperator, ConditionalExpression, EqualityOperator: valid Sudoku digits are 0-9, so once move.digit is truthy the > 0 comparison is always true; all three mutations are domain-equivalent
-    if (move.digit && move.digit > 0) {
+    // Highlight the digit being placed/modified. Solver moves carry 1-9; a
+    // falsy digit (notes/candidate ops) has nothing to highlight.
+    if (move.digit) {
       setDigitHighlight(move.digit)
     }
 
@@ -147,9 +147,8 @@ export function useAutoSolveAdapters(
     game.setBoardState(board, uint16Candidates)
     setMoveHighlight(move as MoveHighlight, index)
 
-    // Update digit highlight based on move
-    // Stryker disable next-line ConditionalExpression, EqualityOperator: valid Sudoku digits are 0-9, so once move.digit is truthy the > 0 comparison is always true; both mutations are domain-equivalent
-    if (move && move.digit && move.digit > 0) {
+    // Update digit highlight based on move; a falsy digit clears it.
+    if (move && move.digit) {
       setDigitHighlight(move.digit)
     } else {
       clearDigitHighlight()
