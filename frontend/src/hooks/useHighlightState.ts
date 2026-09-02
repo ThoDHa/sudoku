@@ -238,7 +238,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         version: nextVersion,
       }
 
-    // Stryker disable next-line ConditionalExpression: CLEAR_AFTER_DIGIT_TOGGLE and CLEAR_HIGHLIGHTS_KEEP_SELECTION have byte-identical reducer bodies, so any case fall-through is observationally identical
+    // Stryker disable next-line ConditionalExpression: the surviving half is the fall-through to CLEAR_HIGHLIGHTS_KEEP_SELECTION, whose reducer body is byte-identical to CLEAR_AFTER_DIGIT_TOGGLE's; the other replacement kills the matching and dies to the highlight tests
     case 'CLEAR_AFTER_DIGIT_TOGGLE':
       // User toggled the same digit (erased it)
       // Clear all highlights
@@ -318,7 +318,7 @@ export function useHighlightState() {
 
       // Move highlight
       setMoveHighlight: (move: MoveHighlight, index?: number) => {
-        // Stryker disable next-line ConditionalExpression: dispatching {index: undefined} reads action.index as undefined exactly like dispatching without the index property, so the reducer action.index ?? fallback yields the same result
+        // Stryker disable next-line ConditionalExpression: the surviving replacement dispatches {index: undefined}, which the reducer reads exactly like a missing index property (action.index ?? fallback); the opposite replacement drops the index from every caller and dies to the selection tests
         if (index !== undefined) {
           dispatch({ type: 'SET_MOVE_HIGHLIGHT', move, index })
         } else {
@@ -361,7 +361,7 @@ export function useHighlightState() {
         dispatch({ type: 'CLICK_GIVEN_CELL', digit, cell })
       },
     }),
-    // Stryker disable next-line ArrayDeclaration: every action creator closes over the stable dispatch, so a constant deps entry is observationally identical to the empty array
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant; every action creator closes over the stable dispatch, so any deps content is observationally identical across renders
     [],
   )
 
