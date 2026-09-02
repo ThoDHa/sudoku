@@ -37,8 +37,9 @@ export function getLastDailyDifficulty(): Difficulty | null {
 
 export function useLastDailyDifficulty() {
   const [difficulty, setDifficultyState] = useState<Difficulty | null>(() => {
-    // Stryker disable next-line ConditionalExpression,StringLiteral: the typeof-window guard targets SSR / non-browser runtimes; in jsdom `typeof window === 'object'`, so the guard is unreachable here and both the condition and the literal are observationally identical for every reachable test execution
-    if (typeof window === 'undefined') return null
+    // Client-only hook: window (and localStorage) always exist where React
+    // runs this; a missing environment would throw into the caller's error
+    // boundary rather than silently yield null.
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored && ['easy', 'medium', 'hard', 'extreme', 'impossible'].includes(stored)) {
       return stored as Difficulty
