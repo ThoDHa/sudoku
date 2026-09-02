@@ -225,6 +225,10 @@ describe('scores', () => {
       // Routes are now /:seed (no /p/ prefix)
       expect(url).toContain('/2024-01-15')
       expect(url).not.toContain('/p/')
+      // Exact-shape assertion: a forced-true route guard would produce
+      // /c/undefined here, which contains neither the seed nor this shape.
+      expect(url.endsWith('/2024-01-15')).toBe(true)
+      expect(url).not.toContain('/c/')
     })
 
     it('should generate URL for custom puzzle with encoded data', () => {
@@ -236,6 +240,26 @@ describe('scores', () => {
       const url = generatePuzzleUrl(score)
 
       expect(url).toContain('/c/sABCDEF123')
+    })
+
+    it('builds the seed URL for a non-custom score that still carries encodedPuzzle', () => {
+      // Both operand-drop mutants of the route guard differ from the original
+      // only here: dropping `difficulty === 'custom'` routes this score to
+      // /c/<encoded>, and dropping `encodedPuzzle` only misses the custom
+      // cases above.
+      const score = { ...baseScore, encodedPuzzle: 'sXYZ' } as typeof baseScore
+      const url = generatePuzzleUrl(score)
+
+      expect(url.endsWith('/2024-01-15')).toBe(true)
+      expect(url).not.toContain('/c/')
+    })
+
+    it('routes a custom score without encoded data to the custom page, not /c/undefined', () => {
+      const score = { ...baseScore, difficulty: 'custom' } as typeof baseScore
+      const url = generatePuzzleUrl(score)
+
+      expect(url).toContain('/custom')
+      expect(url).not.toContain('undefined')
     })
 
     it('should generate URL for custom puzzle without encoded data', () => {
@@ -778,6 +802,16 @@ describe('scores', () => {
     it('should return empty set when no completions', () => {
       const result = getDailyCompletions()
       expect(result).toBeInstanceOf(Set)
+      expect(result.size).toBe(0)
+    })
+
+    it('should return an empty set for a stored string instead of a set of its characters', () => {
+      // A JSON string is iterable: skipping the isStringArray guard would
+      // build Set('abc') = {'a','b','c'} instead of the empty set.
+      mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = JSON.stringify('abc')
+
+      const result = getDailyCompletions()
+
       expect(result.size).toBe(0)
     })
 
