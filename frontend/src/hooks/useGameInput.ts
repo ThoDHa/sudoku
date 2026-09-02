@@ -105,10 +105,9 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
 
   // Shared digit placement logic - unifies mobile and desktop behavior
   const placeDigitAndClear = (cellIndex: number, digit: number, notesMode: boolean) => {
-    // Stryker disable ConditionalExpression: unreachable defensive guard
     /* istanbul ignore next -- callers pre-check gameRef.current before routing here */
+    // Stryker disable next-line ConditionalExpression: the forced-false half is equivalent because every caller pre-checks gameRef.current before routing here, so the guard never fires on a reachable path; the forced-true half returns early from every placement and dies to the input tests
     if (!gameRef.current) return
-    // Stryker restore ConditionalExpression
 
     // Use setCellMultiple when multiple cells selected AND in notes mode
     const currentSelectedCells = selectedCellsRef.current
@@ -242,8 +241,8 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
     // Given cells: highlight the digit AND select the cell for peer highlighting
     if (currentGame.isGivenCell(idx)) {
       const cellDigit = currentGame.board[idx]
-      // Stryker disable next-line LogicalOperator,ConditionalExpression,EqualityOperator: cellDigit is read from board[idx] which holds Sudoku values 0-9; within that domain the short-circuiting outer 'cellDigit &&' makes the || , >0, and >=0 mutants observably identical (differences only arise for negative values the game model never produces)
-      if (cellDigit && cellDigit > 0) {
+      // Stryker disable next-line ConditionalExpression: the forced-true half is equivalent on the given-cell domain (isGivenCell cells hold clue values 1-9, never 0); the forced-false half skips every given-cell highlight and dies to the digit-select tests
+      if (cellDigit) {
         if (currentSelectedCell === idx) {
           clearAllAndDeselect()
         } else {
