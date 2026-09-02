@@ -58,7 +58,7 @@ describe('PWA cache policy', () => {
     const denyLine = config.match(/navigateFallbackDenylist:\s*\[([^\]]*)\]/)
     const literals =
       denyLine?.[1]
-        .split(',')
+        ?.split(',')
         .map((s) => s.trim())
         .filter(Boolean) ?? []
     const patterns = literals.map((lit) => {

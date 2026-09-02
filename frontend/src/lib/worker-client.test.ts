@@ -1719,7 +1719,10 @@ describe('worker-client advanced scenarios', () => {
         // The message alone does not identify the class: solver-service
         // branches on instanceof, and callers that string-match need the name.
         expect(caught).not.toBeNull()
-        expect((caught as Error).name).toBe('WorkerTerminatedError')
+        // The cast widens the control-flow-narrowed `null` back to the
+        // declared union: the assignment lives inside the catch callback,
+        // which the linear flow analysis cannot see.
+        expect((caught as Error | null)?.name).toBe('WorkerTerminatedError')
 
         await findPromise.catch(() => {})
       } finally {
@@ -1799,7 +1802,8 @@ describe('worker-client advanced scenarios', () => {
         await vi.advanceTimersByTimeAsync(10001)
 
         expect(settled).not.toBeNull()
-        expect(settled?.message).toBe('Worker creation timeout')
+        // Same callback-narrowing caveat as the WorkerTerminatedError test.
+        expect((settled as Error | null)?.message).toBe('Worker creation timeout')
 
         terminateWorker()
         await initPromise.catch(() => {})
