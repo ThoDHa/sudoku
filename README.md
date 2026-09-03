@@ -21,6 +21,7 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 ## ✨ Key Features
 
 ### 🧩 **Game Modes**
+
 - **5 Difficulty Levels**: Easy → Medium → Hard → Extreme → Impossible
 - **Daily Puzzles**: Fresh puzzle every day, synchronized globally
 - **Game Mode**: Play random puzzles at your chosen difficulty
@@ -28,6 +29,7 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 - **Share to a Friend**: Share either the bare puzzle or your exact current game (givens, your entries, and pencil notes) as a link. A friend opens a playable copy; if they already have progress on that puzzle, they choose whether to keep theirs or open the shared position.
 
 ### 🧠 **Intelligent Assistance**
+
 - **Educational Hints (💡)**: Step-by-step guidance with technique explanations
 - **Auto-Solve (🤖)**: Watch the solver work through puzzles with battery optimization
 - **Auto-fill Candidates (📝)**: Smart candidate placement with visual feedback
@@ -35,6 +37,7 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 - **Validation**: Real-time error detection and board state checking
 
 ### 🎨 **User Experience**
+
 - **Responsive Design**: Seamless experience across desktop, tablet, and mobile
 - **Dark/Light Themes**: Multiple color schemes with system preference detection
 - **Intuitive Controls**: Click, keyboard, and touch-optimized interactions
@@ -42,6 +45,7 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 - **Gesture Support**: Tap to place, long-press for notes, swipe navigation
 
 ### ⚡ **Performance & Reliability**
+
 - **Fast Loading**: Initial bundle ~170KB (reduced from 770KB)
 - **Battery Efficient**: Automatic pause when backgrounded, extended suspension after 15s
 - **Offline Mode (Opt-In)**: After enabling it in the menu, the service worker precaches the app shell and WASM solver so the game works with no network
@@ -50,6 +54,7 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 ## 🎮 How to Play
 
 ### Basic Controls
+
 - **Place Numbers**: Click cell + click digit, or select cell + press 1-9
 - **Notes Mode**: Toggle with 'N' key or notes button to add/remove candidate digits
 - **Erase**: Select erase mode or press Delete/Backspace on selected cell
@@ -57,12 +62,14 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 - **Undo/Redo**: Ctrl+Z/Ctrl+Y or use toolbar buttons
 
 ### Getting Assistance
+
 - **Hints (💡)**: Click hint button for step-by-step guidance with technique explanations
 - **Auto-fill (📝)**: Fill all valid candidates automatically for a great starting point
 - **Auto-solve (🤖)**: Watch the AI solve with educational explanations
 - **Validation**: Check your progress with highlighted errors and incomplete regions
 
 ### Learning Features
+
 - **Technique Practice**: Focus on specific solving methods with curated puzzles
 - **Progressive Difficulty**: Start easy and work up to expert-level techniques
 - **Detailed Explanations**: Every hint includes why the move works and what technique applies
@@ -73,6 +80,7 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 The entire application runs locally in your browser; there is no backend server. With offline mode enabled, it needs no network after the first load.
 
 ### 🧱 **Architecture Overview**
+
 - **WASM Solver**: Go-based constraint solver compiled with TinyGo to WebAssembly (~650KB, cached)
 - **Web Worker Isolation**: Solver runs in a dedicated Web Worker thread for non-blocking UI
 - **Static Puzzles**: 1000+ pre-generated puzzles embedded for instant access
@@ -81,6 +89,7 @@ The entire application runs locally in your browser; there is no backend server.
 - **Offline Mode (Opt-In)**: Service worker + PWA manifest; the menu toggle registers or fully removes the offline caches
 
 ### 🔧 **Technical Stack**
+
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, PWA
 - **WASM Solver**: Go 1.26, TinyGo 0.41.1, WebAssembly, constraint propagation + backtracking
 - **State Management**: React hooks, Context API, localStorage persistence
@@ -94,12 +103,14 @@ The game architecture supports different board sizes through constant changes. C
 **Current 9x9 Implementation:**
 
 Frontend constants (in `frontend/src/lib/constants.ts`):
+
 - `BOARD_SIZE = 9`
 - `SUBGRID_SIZE = 3`
 - `TOTAL_CELLS = BOARD_SIZE * BOARD_SIZE` (81)
 - `MAX_DIGIT = BOARD_SIZE` (9)
 
 Go constants (in `api/pkg/constants/constants.go`):
+
 - `GridSize = 9`
 - `BoxSize = 3`
 - `TotalCells = 81`
@@ -109,11 +120,13 @@ Go constants (in `api/pkg/constants/constants.go`):
 Update the following constants:
 
 Frontend:
+
 - `BOARD_SIZE = 16`
 - `SUBGRID_SIZE = 4` (since √16 = 4)
 - `MAX_DIGIT = 16` (sixteen symbols, displayed as 1-9 and A-G)
 
 Go:
+
 - `GridSize = 16`
 - `BoxSize = 4`
 
@@ -129,6 +142,7 @@ The architecture is designed for extensibility: all production code uses central
 ## 📊 Performance & Mobile Optimization
 
 ### ⚡ **Loading Performance**
+
 - **Lightning Fast**: Initial bundle ~170KB (down from 770KB)
 - **Tiny WASM**: Solver compiled with TinyGo (~650KB, down from 3.3MB)
 - **Smart Chunking**: Route-based code splitting; the per-chunk sizes are listed in the build output table below
@@ -136,6 +150,7 @@ The architecture is designed for extensibility: all production code uses central
 - **Progressive Loading**: The core game chunk loads first; technique pages, the leaderboard, and other routes arrive as their lazy chunks load
 
 ### 🔋 **Battery & Mobile Efficiency**
+
 - **Background Pause**: All operations pause when the app loses focus
 - **Extended Suspension**: Complete shutdown after 15s to prevent battery drain
 - **Touch Optimization**: Gesture-friendly controls optimized for mobile devices
@@ -143,6 +158,7 @@ The architecture is designed for extensibility: all production code uses central
 - **Low Data Usage**: One static fetch of the app and solver; with offline mode off, nothing is cached and no requests repeat needlessly
 
 ### 📱 **Responsive Design**
+
 - **Mobile-First**: Optimized touch interactions and gesture support
 - **Adaptive Layout**: Scales seamlessly from phone to desktop
 - **Accessibility**: Full keyboard navigation and screen reader support
@@ -153,6 +169,7 @@ The architecture is designed for extensibility: all production code uses central
 The app provides three distinct types of help, each serving different learning goals:
 
 ### 💡 **Hints: Learn Step by Step**
+
 - **Purpose**: Educational guidance that teaches real solving techniques
 - **How it Works**: Analyzes current board state and suggests the next logical move
 - **What You Get**: Detailed explanation of why the move works and what technique applies
@@ -160,6 +177,7 @@ The app provides three distinct types of help, each serving different learning g
 - **Usage**: Perfect for learning new techniques or when stuck on a specific step
 
 ### 🤖 **Auto-Solve: Watch and Learn**
+
 - **Purpose**: Demonstration of complete solving process with educational value
 - **How it Works**: AI solver completes puzzle step-by-step with real-time explanations
 - **What You Get**: Full solution path with technique annotations and timing control
@@ -167,6 +185,7 @@ The app provides three distinct types of help, each serving different learning g
 - **Usage**: Study complex puzzles, verify your approach, or just enjoy the show
 
 ### 📝 **Auto-fill: Smart Starting Point**
+
 - **Purpose**: Automatically fill in valid candidates to reduce manual work
 - **How it Works**: Analyzes empty cells and fills all mathematically valid candidate digits
 - **What You Get**: Complete candidate notation without the tedious manual entry
@@ -174,13 +193,16 @@ The app provides three distinct types of help, each serving different learning g
 - **Usage**: Start puzzles faster, recover from mistakes, or focus on logic over notation
 
 ### 📈 **Progress Tracking**
+
 The app separately tracks usage of each assistance type, so you can:
+
 - Challenge yourself to solve without hints
 - Compare solving approaches across difficulty levels
 - Build confidence by gradually reducing assistance dependency
 - Track your learning progress over time
 
 ### 🔧 **Error Correction: Fix Your Mistakes**
+
 Made errors while solving? The solver intelligently detects and fixes them:
 
 - **Direct Conflicts**: Detects when you place the same digit twice in a row, column, or box. Explains exactly which cells conflict.
@@ -259,6 +281,7 @@ sudoku/
 ```
 
 **Build Output** (optimized chunks):
+
 - `react-vendor` (230KB, gzip: 74KB): React, React DOM, React Router
 - `solver-service` (572KB, gzip: 116KB): WASM solver loader and puzzle data
 - `app-shared` (171KB, gzip: 38KB): Shared utilities and hooks
@@ -276,16 +299,19 @@ sudoku/
 The solver implements 39+ techniques across 4 tiers:
 
 **Simple (Easy puzzles)**
+
 - Naked Single, Hidden Single
 - Pointing Pair, Box-Line Reduction
 - Naked/Hidden Pairs
 
 **Medium (Medium puzzles)**
+
 - Naked/Hidden Triples, Quads
 - X-Wing, XY-Wing
 - Simple Coloring
 
 **Hard (Hard/Extreme puzzles)**
+
 - Swordfish, Jellyfish
 - W-Wing, Skyscraper
 - X-Chains, XY-Chains
@@ -293,6 +319,7 @@ The solver implements 39+ techniques across 4 tiers:
 - ALS-XZ, Remote Pairs
 
 **Extreme (Impossible puzzles)**
+
 - 3D Medusa, Grouped X-Cycles
 - ALS chains (XY-Wing, XY-Chain)
 - Forcing Chains, Digit Forcing Chains
@@ -380,6 +407,7 @@ Do not use `--no-verify`. It skips the lint and format checks that keep the tree
 **Why use containerized E2E?**
 
 End-to-end (E2E) integration tests now run in a dedicated Playwright Docker sidecar, against the actual production image (served by nginx in a container). This ensures:
+
 - Full isolation from host dependencies and permission issues
 - Locally mirrors CI/CD pipeline with 100% parity
 - Works identically on all platforms, even if Playwright or browsers fail to run locally
@@ -387,14 +415,17 @@ End-to-end (E2E) integration tests now run in a dedicated Playwright Docker side
 **How it works:**
 
 1. **Build & Run Production App Container:**
+
    ```bash
    docker build -t sudoku-frontend -f frontend/Dockerfile .
    docker run --rm -p 8080:80 sudoku-frontend
    # App now accessible at http://localhost:8080
    ```
+
    You can use `make prod` or `docker compose up` for dev builds.
 
 2. **Run Playwright E2E in Sidecar:**
+
    ```bash
    docker run --rm -it \
      --network host \
@@ -413,6 +444,7 @@ End-to-end (E2E) integration tests now run in a dedicated Playwright Docker side
    - If it fails in this setup, it fails in CI; the container is the shared source of truth for both.
 
 **Troubleshooting/Notes:**
+
 - If Playwright, Chromium, or webkit errors appear locally, always run E2E in Docker as above.
 - If a test fails locally but passes in CI (or vice versa), check for race conditions or improper network base URLs.
 - Sidecar logs will show all E2E and UI failures for direct debug.
@@ -467,6 +499,7 @@ all quality reports in one place:
 **[https://thodha.github.io/sudoku/reports/](https://thodha.github.io/sudoku/reports/)**
 
 The portal links:
+
 - **Allure** ([/test-report/](https://thodha.github.io/sudoku/test-report/)): one combined
   report across all test suites (unit, Go, E2E, and nightly profiling), with historical
   trends, failure analysis, and duration metrics
@@ -509,10 +542,13 @@ cd api && go run ./cmd/generate_practice \
 Pushing to `main` triggers the full CI/CD pipeline in a
 single **Test & Deploy** workflow (`deploy.yml`): it runs all tests (Go,
 frontend unit, E2E), builds the app, and deploys it alongside the unified
-report portal. Mutation and profiling run in separate nightly workflows
-(`nightly-mutation.yml`, `nightly-profiling.yml`).
+report portal. Mutation runs nightly (`nightly-mutation.yml`); profiling runs
+weekly, and also whenever its published artifacts have expired, so the
+portal never loses its performance section on a quiet repo
+(`nightly-profiling.yml`, also dispatchable manually).
 
 Both app and test report are deployed:
+
 - **App**: [https://thodha.github.io/sudoku/](https://thodha.github.io/sudoku/)
 - **Test Report**: [https://thodha.github.io/sudoku/test-report/](https://thodha.github.io/sudoku/test-report/)
 
