@@ -1,13 +1,13 @@
 # Sudoku
 
-**🎮 [Play Game](https://thodha.github.io/sudoku/) | 📊 [Test Reports](https://thodha.github.io/sudoku/reports/)**
+**[Play Game](https://thodha.github.io/sudoku/) | [Test Reports](https://thodha.github.io/sudoku/reports/)**
 
 [![CI/CD Pipeline](https://github.com/ThoDHa/sudoku/actions/workflows/deploy.yml/badge.svg)](https://github.com/ThoDHa/sudoku/actions/workflows/deploy.yml)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 An advanced educational Sudoku web application that teaches solving techniques through human-like hints and intelligent assistance features.
 
-## 🎯 What Makes This Different
+## What Makes This Different
 
 This isn't just another Sudoku app. It's a comprehensive learning platform that:
 
@@ -18,9 +18,9 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 - **Optimized Performance**: Code-split architecture with battery-efficient background handling
 - **Educational Focus**: Practice specific techniques with curated puzzle sets
 
-## ✨ Key Features
+## Key Features
 
-### 🧩 **Game Modes**
+### **Game Modes**
 
 - **5 Difficulty Levels**: Easy → Medium → Hard → Extreme → Impossible
 - **Daily Puzzles**: Fresh puzzle every day, synchronized globally
@@ -28,15 +28,15 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 - **Custom Puzzles**: Enter, validate, and solve your own creations
 - **Share to a Friend**: Share either the bare puzzle or your exact current game (givens, your entries, and pencil notes) as a link. A friend opens a playable copy; if they already have progress on that puzzle, they choose whether to keep theirs or open the shared position.
 
-### 🧠 **Intelligent Assistance**
+### **Intelligent Assistance**
 
-- **Educational Hints (💡)**: Step-by-step guidance with technique explanations
-- **Auto-Solve (🤖)**: Watch the solver work through puzzles with battery optimization
-- **Auto-fill Candidates (📝)**: Smart candidate placement with visual feedback
-- **Error Correction (🔧)**: Intelligent detection and fixing of user mistakes
+- **Educational Hints ()**: Step-by-step guidance with technique explanations
+- **Auto-Solve ()**: Watch the solver work through puzzles with battery optimization
+- **Auto-fill Candidates ()**: Smart candidate placement with visual feedback
+- **Error Correction ()**: Intelligent detection and fixing of user mistakes
 - **Validation**: Real-time error detection and board state checking
 
-### 🎨 **User Experience**
+### **User Experience**
 
 - **Responsive Design**: Seamless experience across desktop, tablet, and mobile
 - **Dark/Light Themes**: Multiple color schemes with system preference detection
@@ -44,14 +44,14 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 - **Visual Highlighting**: Smart digit and cell highlighting with consistent behavior
 - **Gesture Support**: Tap to place, long-press for notes, swipe navigation
 
-### ⚡ **Performance & Reliability**
+### **Performance & Reliability**
 
 - **Fast Loading**: Initial bundle ~170KB (reduced from 770KB)
 - **Battery Efficient**: Automatic pause when backgrounded, extended suspension after 15s
 - **Offline Mode (Opt-In)**: After enabling it in the menu, the service worker precaches the app shell and WASM solver so the game works with no network
 - **WASM Solver**: Go-based solver running in a dedicated Web Worker for non-blocking UI (~650KB cached)
 
-## 🎮 How to Play
+## How to Play
 
 ### Basic Controls
 
@@ -63,9 +63,9 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 
 ### Getting Assistance
 
-- **Hints (💡)**: Click hint button for step-by-step guidance with technique explanations
-- **Auto-fill (📝)**: Fill all valid candidates automatically for a great starting point
-- **Auto-solve (🤖)**: Watch the AI solve with educational explanations
+- **Hints ()**: Click hint button for step-by-step guidance with technique explanations
+- **Auto-fill ()**: Fill all valid candidates automatically for a great starting point
+- **Auto-solve ()**: Watch the AI solve with educational explanations
 - **Validation**: Check your progress with highlighted errors and incomplete regions
 
 ### Learning Features
@@ -75,11 +75,11 @@ This isn't just another Sudoku app. It's a comprehensive learning platform that:
 - **Detailed Explanations**: Every hint includes why the move works and what technique applies
 - **Visual Aids**: Highlighting shows you exactly where techniques apply
 
-## ⚙️ How It Works
+## How It Works
 
 The entire application runs locally in your browser; there is no backend server. With offline mode enabled, it needs no network after the first load.
 
-### 🧱 **Architecture Overview**
+### **Architecture Overview**
 
 - **WASM Solver**: Go-based constraint solver compiled with TinyGo to WebAssembly (~650KB, cached)
 - **Web Worker Isolation**: Solver runs in a dedicated Web Worker thread for non-blocking UI
@@ -88,7 +88,7 @@ The entire application runs locally in your browser; there is no backend server.
 - **Daily Determinism**: UTC date-based seeding ensures same daily puzzle globally
 - **Offline Mode (Opt-In)**: Service worker + PWA manifest; the menu toggle registers or fully removes the offline caches
 
-### 🔧 **Technical Stack**
+### **Technical Stack**
 
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, PWA
 - **WASM Solver**: Go 1.26, TinyGo 0.41.1, WebAssembly, constraint propagation + backtracking
@@ -96,7 +96,7 @@ The entire application runs locally in your browser; there is no backend server.
 - **Performance**: Route-based code splitting, lazy loading, WASM in dedicated Web Worker
 - **Testing**: Vitest unit tests, Playwright E2E, Go test suite (all via Docker)
 
-### 🎯 **Extensibility**
+### **Extensibility**
 
 The game architecture supports different board sizes through constant changes. Current implementation is 9x9; a 16x16 variant needs the constant updates below plus the follow-on work the considerations list names.
 
@@ -139,9 +139,9 @@ Go:
 
 The architecture is designed for extensibility: all production code uses centralized constants rather than hardcoded values, making board size variants straightforward to implement.
 
-## 📊 Performance & Mobile Optimization
+## Performance & Mobile Optimization
 
-### ⚡ **Loading Performance**
+### **Loading Performance**
 
 - **Lightning Fast**: Initial bundle ~170KB (down from 770KB)
 - **Tiny WASM**: Solver compiled with TinyGo (~650KB, down from 3.3MB)
@@ -149,7 +149,7 @@ The architecture is designed for extensibility: all production code uses central
 - **Opt-In Offline**: When enabled in the menu, the service worker precaches the shell and solver for instant, network-free loads
 - **Progressive Loading**: The core game chunk loads first; technique pages, the leaderboard, and other routes arrive as their lazy chunks load
 
-### 🔋 **Battery & Mobile Efficiency**
+### **Battery & Mobile Efficiency**
 
 - **Background Pause**: All operations pause when the app loses focus
 - **Extended Suspension**: Complete shutdown after 15s to prevent battery drain
@@ -157,18 +157,18 @@ The architecture is designed for extensibility: all production code uses central
 - **Memory Management**: Smart WASM lifecycle prevents memory leaks
 - **Low Data Usage**: One static fetch of the app and solver; with offline mode off, nothing is cached and no requests repeat needlessly
 
-### 📱 **Responsive Design**
+### **Responsive Design**
 
 - **Mobile-First**: Optimized touch interactions and gesture support
 - **Adaptive Layout**: Scales seamlessly from phone to desktop
 - **Accessibility**: Full keyboard navigation and screen reader support
 - **PWA Features**: Install to home screen with app icons; offline caching is a menu toggle, and new deploys take over automatically on next launch
 
-## 🤖 Assistance Features Explained
+## Assistance Features Explained
 
 The app provides three distinct types of help, each serving different learning goals:
 
-### 💡 **Hints: Learn Step by Step**
+### **Hints: Learn Step by Step**
 
 - **Purpose**: Educational guidance that teaches real solving techniques
 - **How it Works**: Analyzes current board state and suggests the next logical move
@@ -176,7 +176,7 @@ The app provides three distinct types of help, each serving different learning g
 - **Learning Value**: High, builds your solving skills progressively
 - **Usage**: Perfect for learning new techniques or when stuck on a specific step
 
-### 🤖 **Auto-Solve: Watch and Learn**
+### **Auto-Solve: Watch and Learn**
 
 - **Purpose**: Demonstration of complete solving process with educational value
 - **How it Works**: AI solver completes puzzle step-by-step with real-time explanations
@@ -184,7 +184,7 @@ The app provides three distinct types of help, each serving different learning g
 - **Learning Value**: Medium, great for seeing advanced techniques in action
 - **Usage**: Study complex puzzles, verify your approach, or just enjoy the show
 
-### 📝 **Auto-fill: Smart Starting Point**
+### **Auto-fill: Smart Starting Point**
 
 - **Purpose**: Automatically fill in valid candidates to reduce manual work
 - **How it Works**: Analyzes empty cells and fills all mathematically valid candidate digits
@@ -192,7 +192,7 @@ The app provides three distinct types of help, each serving different learning g
 - **Learning Value**: Low, a convenience feature that saves time
 - **Usage**: Start puzzles faster, recover from mistakes, or focus on logic over notation
 
-### 📈 **Progress Tracking**
+### **Progress Tracking**
 
 The app separately tracks usage of each assistance type, so you can:
 
@@ -201,7 +201,7 @@ The app separately tracks usage of each assistance type, so you can:
 - Build confidence by gradually reducing assistance dependency
 - Track your learning progress over time
 
-### 🔧 **Error Correction: Fix Your Mistakes**
+### **Error Correction: Fix Your Mistakes**
 
 Made errors while solving? The solver intelligently detects and fixes them:
 
@@ -402,7 +402,7 @@ Do not use `--no-verify`. It skips the lint and format checks that keep the tree
 
 ---
 
-### 🐳 Docker-Based E2E CI Pipeline (Playwright Sidecar)
+### Docker-Based E2E CI Pipeline (Playwright Sidecar)
 
 **Why use containerized E2E?**
 

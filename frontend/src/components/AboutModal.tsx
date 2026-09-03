@@ -8,7 +8,6 @@ const ABOUT_SECTIONS = [
   {
     id: 'welcome',
     title: 'Welcome to Sudoku',
-    icon: '🧩',
     content: (
       <>
         <p className="text-center text-foreground-muted mb-4">
@@ -29,12 +28,10 @@ const ABOUT_SECTIONS = [
   {
     id: 'hints',
     title: 'Smart Hints',
-    icon: '💡',
     content: (
       <>
         <div className="space-y-4">
           <div className="flex gap-3 items-start">
-            <span className="text-lg">❓</span>
             <div>
               <h4 className="font-medium text-foreground text-sm">Technique Hints</h4>
               <p className="text-sm text-foreground-muted">
@@ -45,7 +42,6 @@ const ABOUT_SECTIONS = [
             </div>
           </div>
           <div className="flex gap-3 items-start">
-            <span className="text-lg">💡</span>
             <div>
               <h4 className="font-medium text-foreground text-sm">Full Hints</h4>
               <p className="text-sm text-foreground-muted">
@@ -61,7 +57,6 @@ const ABOUT_SECTIONS = [
   {
     id: 'notes',
     title: 'Notes Mode',
-    icon: '✏️',
     content: (
       <>
         <p className="text-center text-foreground-muted mb-4">
@@ -80,7 +75,6 @@ const ABOUT_SECTIONS = [
   {
     id: 'solver',
     title: 'The Solver',
-    icon: '🤖',
     content: (
       <>
         <p className="text-center text-foreground-muted mb-4">
@@ -113,7 +107,6 @@ const ABOUT_SECTIONS = [
   {
     id: 'learn',
     title: 'Learn Techniques',
-    icon: '📚',
     content: (
       <>
         <p className="text-center text-foreground-muted mb-4">
@@ -132,7 +125,6 @@ const ABOUT_SECTIONS = [
   {
     id: 'shortcuts',
     title: 'Quick Tips',
-    icon: '⌨️',
     content: (
       <>
         <div className="space-y-2 text-sm">
@@ -249,7 +241,6 @@ export default function AboutModal({ isOpen, onClose, isOnboarding = false }: Ab
       </div>
 
       {/* Icon */}
-      <div className="text-center text-5xl mb-4">{section.icon}</div>
 
       {/* Title */}
       <h2 id="about-modal-title" className="text-xl font-bold text-center text-foreground mb-4">

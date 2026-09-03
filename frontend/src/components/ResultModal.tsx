@@ -152,11 +152,11 @@ export default function ResultModal({
       <div className="mb-6 grid grid-cols-3 gap-4">
         <div className="rounded-lg bg-background-secondary p-4 text-center">
           <p className="text-2xl font-bold text-accent">{formatTime(timeMs)}</p>
-          <p className="text-xs text-foreground-muted">⏱️ Time</p>
+          <p className="text-xs text-foreground-muted">⏱Time</p>
         </div>
         <div className="rounded-lg bg-background-secondary p-4 text-center flex flex-col items-center justify-center">
           <DifficultyBadge difficulty={difficulty} size="md" />
-          <p className="text-xs text-foreground-muted mt-1">🎯 Difficulty</p>
+          <p className="text-xs text-foreground-muted mt-1">Difficulty</p>
         </div>
         <div className="rounded-lg bg-background-secondary p-4 text-center">
           {autoSolveUsed ? (
@@ -187,7 +187,7 @@ export default function ResultModal({
         onClick={() => void handleShare()}
         className="mb-4 w-full rounded-lg bg-accent py-3 font-medium text-btn-active-text transition-opacity hover:opacity-90"
       >
-        {copied ? '✅ Copied!' : '📤 Share Result'}
+        {copied ? 'Copied!' : '📤 Share Result'}
       </button>
 
       {/* Share preview */}
