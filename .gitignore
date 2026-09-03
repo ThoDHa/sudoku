@@ -99,3 +99,7 @@ temp/
 
 # OpenCode task management
 .opencode/
+
+# Local agent tooling state
+.claude/
+morning_start.sh
