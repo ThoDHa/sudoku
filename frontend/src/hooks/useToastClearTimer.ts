@@ -44,7 +44,7 @@ export function useToastClearTimer(visibilitySetTimeout: VisibilitySetTimeout) {
         }
       }
     },
-    /* Stryker disable next-line ArrayDeclaration: the unmount cleanup runs once on mount either way, so a constant deps entry is observationally identical to the empty array */ [],
+    /* Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant; the cleanup captures only the stable timer ref, so any deps content is observationally identical across renders */ [],
   )
 
   return scheduleToastClear
