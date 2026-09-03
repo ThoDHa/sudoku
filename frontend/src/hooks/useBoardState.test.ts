@@ -167,8 +167,7 @@ describe('useBoardState', () => {
 
   describe('short initial boards', () => {
     it('falls back to the 81-cell zero board when initialBoard is not 81 long', () => {
-      // A forced-true branch condition would copy the short array through;
-      // the length check is what keeps the board shape total.
+      // The length check keeps the board shape total; only the fallback branch gives 81 cells.
       const { result } = renderHook(() => useBoardState({ initialBoard: [1, 2, 3] }))
 
       expect(result.current.board).toHaveLength(TOTAL_CELLS)

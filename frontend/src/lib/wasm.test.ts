@@ -578,9 +578,8 @@ describe('wasm module', () => {
     })
 
     it('returns the loaded instance after an abort without refetching', async () => {
-      // A completed load clears its abort controller, so abortWasmLoad is a
-      // no-op afterwards and the still-resolved load promise keeps serving
-      // the cached instance. A reload must not refetch the module.
+      // A completed load has no controller, so abort no-ops and the
+      // still-resolved promise keeps serving the cached instance.
       // @ts-expect-error - Mocking
       globalThis.window.SudokuWasm = mockWasmApi
       const { loadWasm, abortWasmLoad, getWasmApi } = await import('./wasm')

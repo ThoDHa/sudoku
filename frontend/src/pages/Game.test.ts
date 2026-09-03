@@ -52,7 +52,7 @@ describe('SavedGameState hint-counter persistence', () => {
   })
 })
 
-describe('skip_in_progress_check flag (BUG-13)', () => {
+describe('skip_in_progress_check flag is consumed after one navigation', () => {
   beforeEach(() => {
     sessionStorage.clear()
   })

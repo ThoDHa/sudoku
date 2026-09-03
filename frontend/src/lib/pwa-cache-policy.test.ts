@@ -3,7 +3,7 @@ import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
 // Guard against reintroducing the Workbox caching policy that served returning
-// browsers stale assets (BUG-8): a CacheFirst 30-day wasm pin froze the solver,
+// browsers stale assets: a CacheFirst 30-day wasm pin froze the solver,
 // a 1s network timeout served stale bundles, and 'prompt' mode never activated
 // the fresh worker. This asserts the freshness-critical invariants directly on
 // the config source so a well-meaning battery optimization can't silently undo them.
@@ -17,7 +17,7 @@ describe('PWA cache policy', () => {
   })
 
   // Source-text guard: vite-plugin-pwa generates the SW at build time and the
-  // built artifact is never loaded in unit tests, so this catches the BUG-8
+  // built artifact is never loaded in unit tests, so this catches the
   // regression (a 'wasm-cache' CacheFirst runtime rule) at the config level.
   // The complementary positive assertion (wasm in globPatterns) is the test below.
   it('does not pin the wasm behind a CacheFirst runtime rule (precache handles offline)', () => {
@@ -25,7 +25,7 @@ describe('PWA cache policy', () => {
   })
 
   // Source-text guard: asserts the NetworkFirst timeout was raised from the
-  // BUG-8 1s value. Built-SW timeout behavior under a real network is not
+  // historical 1s value. Built-SW timeout behavior under a real network is not
   // tested here; a build-time integration test would be needed for that.
   it('does not fall back to a stale cache after a 1-second network timeout', () => {
     expect(config).not.toMatch(/networkTimeoutSeconds:\s*1\b/)
@@ -47,13 +47,10 @@ describe('PWA cache policy', () => {
     expect(denyLine?.[1]).toContain('api')
   })
 
-  // BUG-27: the navigateFallback answered /reports/ and /test-report/ navigations
-  // with the precached app shell, so anyone who had visited the game (registering
-  // the SW) saw the homepage instead of the deployed quality reports. The deny
-  // patterns must match the real deployed pathnames, which carry the /sudoku/
-  // base prefix; an anchored /^\/reports\// passes a text search and still never
-  // fires. These assertions evaluate the literal patterns from the config source
-  // against real pathnames, so an anchor regression or a dropped entry fails here.
+  // The deny patterns must match real deployed pathnames, which carry the
+  // /sudoku/ base prefix; an anchored /^\/reports\// passes a text search and
+  // never fires. Evaluating the literal patterns from the config source
+  // against real pathnames fails on an anchor regression or a dropped entry.
   it('denies the navigation fallback for the deployed report sites, under the base path', () => {
     const denyLine = config.match(/navigateFallbackDenylist:\s*\[([^\]]*)\]/)
     const literals =

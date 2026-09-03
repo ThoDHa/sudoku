@@ -194,9 +194,7 @@ describe('storageMigration', () => {
     })
 
     it('returns 0 for undefined without throwing', () => {
-      // undefined is the one primitive the typeof operand alone excludes
-      // (null is caught by the second operand); dropping or disabling the
-      // operand makes the property access below throw instead.
+      // undefined alone trips the typeof operand; without it the access below throws.
       expect(readRecordVersion(undefined)).toBe(0)
     })
 

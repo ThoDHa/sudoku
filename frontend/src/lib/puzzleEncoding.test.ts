@@ -1327,7 +1327,7 @@ describe('puzzleEncoding - filled-cell and digit guards (mutation coverage)', ()
   })
 })
 
-describe('BUG-21: decodeDense clamps out-of-range nibbles to valid digits', () => {
+describe('decodeDense clamps out-of-range nibbles to valid digits', () => {
   it('zeros decoded cell values when nibbles exceed 9', () => {
     // '_wAA' is URL-safe base64 for '/wAA', which decodes to bytes [255, 0, 0].
     // Byte 255: high nibble 15, low nibble 15. Both exceed the valid 0-9 range.

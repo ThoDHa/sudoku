@@ -17,7 +17,7 @@ describe('shouldAllowStaleSave', () => {
     })
   })
 
-  describe('BUG-12 scenario 2: blocking a stale save after navigating to a new puzzle', () => {
+  describe('autoSaveSeedGuard blocks a stale save after navigating to a new puzzle', () => {
     it('blocks the stale save so clearOtherGamesForMode cannot delete the new puzzle save', () => {
       expect(shouldAllowStaleSave({ scheduledSeed: 'P123', currentSeed: 'P456' })).toBe(false)
     })
@@ -38,7 +38,7 @@ describe('shouldAllowStaleSave', () => {
     })
   })
 
-  describe('BUG-12 scenario 1: blocking a stale save after the puzzle unloads', () => {
+  describe('autoSaveSeedGuard blocks a stale save after the puzzle unloads', () => {
     it('blocks the stale save when the current seed has cleared to null on unmount', () => {
       expect(shouldAllowStaleSave({ scheduledSeed: 'P123', currentSeed: null })).toBe(false)
     })
