@@ -1,15 +1,12 @@
 name: Profiling Gate
 
-# Weekly gate for the profiling suite, run only when `main` moved in the last
-# 7 days. PROF-001 moved the wasm-cpu-profile verdict to an ASSERTED
-# PASS/WARN/FAIL tier. This workflow is intentionally separate from deploy.yml
-# (per-commit gates): the profiling suite is slow (~15-20m for memory, ~10m
-# for wasm-cpu) and environment-sensitive. It originally ran only on manual
-# dispatch, which left the report portal without a profiling section once the
-# last run's artifacts passed their 30-day retention (INFRA-15); the weekly
-# schedule keeps fresh artifacts flowing whenever the code is actually
-# changing, and the changes-within-window job skips the run entirely when
-# `main` has been quiet for a week.
+# Weekly gate for the profiling suite. Kept separate from deploy.yml
+# (per-commit gates) because the suite is slow (~15-20m for memory, ~10m for
+# wasm-cpu) and environment-sensitive; only the wasm-cpu verdict is a hard
+# gate. The changes-within-window job decides per run between running the
+# suite (main moved in the last 7 days), refreshing the report artifacts
+# (quiet tree, but the artifacts would expire before the next scheduled run
+# could re-publish them), or skipping.
 #
 # Fail policy (Option A):
 #   - Cycle 1 (hard gate): wasm-cpu-profile.spec.ts verdict FAIL fails the job.
@@ -23,7 +20,7 @@ on:
   schedule:
     # Mondays 04:05 UTC, offset from the 04:00 mutation nightly so the two
     # long jobs never contend for the same window.
-    - cron: '5 4 * * 1'
+    - cron: "5 4 * * 1"
 
 permissions:
   contents: read
@@ -42,21 +39,27 @@ jobs:
   changes-within-window:
     # Scheduled runs fire regardless of repo activity, but profiling an
     # unchanged tree produces no new signal and burns a 25-30m runner. The
-    # gate runs the suite when EITHER holds:
-    #   - main's head committer timestamp is within the last 7 days (pushes
-    #     to this repo land as merge commits, so the committer date tracks
-    #     the push, not the original authoring), OR
-    #   - the latest successful run of this workflow has no live artifacts
-    #     anymore (they expire after 30 days), so the report portal would
-    #     otherwise silently lose its profiling section (INFRA-15).
+    # gate decides between three modes:
+    #   - run: main's head committer timestamp is within the last 7 days
+    #     (pushes to this repo land as merge commits, so the committer date
+    #     tracks the push, not the original authoring) -> run the suite.
+    #   - refresh: the tree is quiet but the latest successful run's
+    #     artifacts expire within the next 7 days (they live 30), i.e.
+    #     before the next scheduled run could refresh them. Artifacts cannot
+    #     be marked do-not-expire and their retention cannot be extended, so
+    #     the refresh job re-uploads the still-live artifacts under a fresh
+    #     30-day window in a successful run of this workflow (~2m runner)
+    #     instead of re-running the suite, keeping the report portal's
+    #     profiling section alive without paying for unchanged signal.
+    #   - skip: quiet tree, artifacts outlive the next scheduled run.
     runs-on: ubuntu-latest
     outputs:
-      should-run: ${{ steps.window.outputs.should-run }}
+      mode: ${{ steps.window.outputs.mode }}
     steps:
       - name: Checkout main head
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
-      - name: Check for recent changes or expired artifacts
+      - name: Decide run / refresh / skip
         id: window
         env:
           GH_TOKEN: ${{ github.token }}
@@ -66,28 +69,83 @@ jobs:
           cutoff=$(( $(date +%s) - 7*24*60*60 ))
           if [ "$last_commit" -ge "$cutoff" ]; then
             echo "main moved within the window (last commit $(date -u -d @"$last_commit")); running the profiling suite"
-            echo "should-run=true" >> "$GITHUB_OUTPUT"
+            echo "mode=run" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
+          next_run_cutoff=$(( $(date +%s) + 7*24*60*60 ))
           run_id=$(gh run list --workflow=nightly-profiling.yml --status=success \
             --limit 1 --json databaseId --jq '.[0].databaseId // empty')
-          live_artifacts=0
           if [ -n "$run_id" ]; then
-            live_artifacts=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts" \
-              --jq '[.artifacts[] | select(.expired == false)] | length')
+            earliest_expiry=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts" \
+              --jq '[.artifacts[] | select(.expired == false) | .expires_at] | min // ""')
+            if [ -n "$earliest_expiry" ] && \
+               [ "$(date -u -d "$earliest_expiry" +%s)" -ge "$next_run_cutoff" ]; then
+              echo "main has been quiet since $(date -u -d @"$last_commit") and the artifacts from run $run_id live until $earliest_expiry, past the next scheduled run; skipping"
+              echo "mode=skip" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
           fi
-          if [ "$live_artifacts" -eq 0 ]; then
-            echo "no live profiling artifacts remain (run ${run_id:-none}); running the profiling suite to restore the portal section"
-            echo "should-run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "main has been quiet since $(date -u -d @"$last_commit") and run $run_id still has $live_artifacts live artifacts; skipping"
-            echo "should-run=false" >> "$GITHUB_OUTPUT"
-          fi
+          echo "tree is quiet but the artifacts (run ${run_id:-none}) expire before the next scheduled run; refreshing them"
+          echo "mode=refresh" >> "$GITHUB_OUTPUT"
+          echo "run_id=${run_id:-}" >> "$GITHUB_OUTPUT"
+
+  refresh-artifacts:
+    # Re-publishes the still-live artifacts from the source run under a
+    # fresh 30-day window. GitHub offers no do-not-expire flag and no
+    # retention extension, so re-uploading in a new successful run of this
+    # workflow is the only way to keep the deploy's latest-successful-run
+    # fetch working on a quiet repo. The artifact names are fixed, so each
+    # gets its own upload step; missing ones fail soft (the portal generator
+    # omits sections whose artifacts never existed).
+    needs: [changes-within-window]
+    if: needs.changes-within-window.outputs.mode == 'refresh'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the source run's artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ needs.changes-within-window.outputs.run_id }}
+        run: |
+          set -eu
+          mkdir -p refreshed
+          gh run download "$SOURCE_RUN" --dir refreshed
+
+      - name: Refresh nightly-profiling-results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: nightly-profiling-results
+          path: refreshed/nightly-profiling-results/
+          retention-days: 30
+        continue-on-error: true
+
+      - name: Refresh nightly-playwright-report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: nightly-playwright-report
+          path: refreshed/nightly-playwright-report/
+          retention-days: 30
+        continue-on-error: true
+
+      - name: Refresh nightly-test-results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: nightly-test-results
+          path: refreshed/nightly-test-results/
+          retention-days: 30
+        continue-on-error: true
+
+      - name: Refresh nightly-allure-results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: nightly-allure-results
+          path: refreshed/nightly-allure-results/
+          retention-days: 30
+        continue-on-error: true
 
   nightly-profiling:
     needs: [changes-within-window]
-    if: needs.changes-within-window.outputs.should-run == 'true'
+    if: needs.changes-within-window.outputs.mode == 'run'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -104,8 +162,8 @@ jobs:
       # ============================================================
       # Cycle 1 - HARD GATE (verdict FAIL fails the job)
       # ============================================================
-      # Only wasm-cpu-profile.spec.ts carries a PASS/WARN/FAIL verdict tier
-      # (PROF-001). Its asserted `expect(report.analysis.verdict).not.toBe('FAIL')`
+      # Only wasm-cpu-profile.spec.ts carries a PASS/WARN/FAIL verdict tier.
+      # Its asserted `expect(report.analysis.verdict).not.toBe('FAIL')`
       # is the regression gate. The env-sensitive absolute thresholds live in
       # the other specs and are isolated to Cycle 2.
       #

@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: 'Which scope to run'
+        description: "Which scope to run"
         required: true
-        default: 'all'
+        default: "all"
         type: choice
         options:
           - all
@@ -15,10 +15,11 @@ on:
   schedule:
     # 04:00 UTC daily (one hour after nightly-profiling at 03:00 to avoid contention).
     # Re-enabled: ARCH-2 quarantined transport/http and coverage/mutation baselines are green.
-    - cron: '0 4 * * *'
+    - cron: "0 4 * * *"
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: mutation-testing
@@ -49,6 +50,66 @@ env:
   MUTATION_ADDRESS_SPACE_KB: 3000000
 
 jobs:
+  # Nightly runs fire regardless of repo activity, but this workflow is the
+  # most expensive thing the repo schedules (hours across the shard matrix)
+  # and mutating an unchanged tree reproduces the previous run's numbers
+  # exactly. The gate runs the suite when EITHER holds:
+  #   - main's head differs from the latest successful run's head (skip only
+  #     when the exact tree was already mutated), OR
+  #   - that run's artifacts expire within the next 2 days (they live 30),
+  #     before the next nightly could refresh them; a quiet repo followed by
+  #     any push would otherwise deploy a portal whose mutation section is
+  #     silently omitted. The 2-day window is the nightly cadence plus one
+  #     day of slack for cron/expiry timing edges. Unlike profiling (fixed
+  #     artifact names, refreshed by a cheap re-upload job), mutation's
+  #     matrix-generated artifact names make re-upload unwieldy, so this leg
+  #     re-runs the suite; on a public repo the minutes are free and the
+  #     trigger is at most monthly. Manual dispatches always run (they carry
+  #     an explicit scope choice).
+  changes-since-last-run:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.changes.outputs.should-run }}
+    steps:
+      - name: Check for new commits or artifacts expiring before the next run
+        id: changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "manual dispatch; running"
+            echo "should-run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          head=$(gh api repos/${GITHUB_REPOSITORY}/commits/main --jq .sha)
+          last_run=$(gh run list --workflow=nightly-mutation.yml --status=success \
+            --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          last_sha=$(gh run list --workflow=nightly-mutation.yml --status=success \
+            --limit 1 --json headSha --jq '.[0].headSha // empty')
+          if [ -z "$last_sha" ] || [ "$last_sha" != "$head" ]; then
+            echo "main moved since the last successful run (${last_sha:-none} -> $head); running"
+            echo "should-run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          expiry_cutoff=$(( $(date +%s) + 2*24*60*60 ))
+          refresh_needed=1
+          if [ -n "$last_run" ]; then
+            earliest_expiry=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${last_run}/artifacts" \
+              --jq '[.artifacts[] | select(.expired == false) | .expires_at] | min // ""')
+            if [ -n "$earliest_expiry" ] && \
+               [ "$(date -u -d "$earliest_expiry" +%s)" -ge "$expiry_cutoff" ]; then
+              refresh_needed=0
+              echo "head $head was already mutated and its artifacts live until $earliest_expiry, past the next nightly; skipping"
+            fi
+          fi
+          if [ "$refresh_needed" -eq 1 ]; then
+            echo "mutation artifacts are missing or expire before the next nightly; running to keep the portal section live"
+            echo "should-run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should-run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # The whole surface cannot be mutated in one job. Instrumenting all 65 files
   # inserts 6302 mutant switches, and src/lib carries solver and board code
   # called in tight loops, so the INITIAL TEST RUN ALONE exceeded two hours on a
@@ -66,6 +127,8 @@ jobs:
   frontend-surface-matrix:
     name: Frontend - surface (shard list)
     runs-on: ubuntu-latest
+    needs: [changes-since-last-run]
+    if: needs.changes-since-last-run.outputs.should-run == 'true'
     if: github.event_name == 'schedule' || inputs.scope != 'go'
     outputs:
       shards: ${{ steps.enumerate.outputs.shards }}
@@ -113,8 +176,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
-          node-version: '24'
-          cache: 'npm'
+          node-version: "24"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
@@ -189,6 +252,8 @@ jobs:
   frontend-hooks-mutation:
     name: Frontend - hooks (${{ matrix.shard }})
     runs-on: ubuntu-latest
+    needs: [changes-since-last-run]
+    if: needs.changes-since-last-run.outputs.should-run == 'true'
     if: github.event_name == 'schedule' || inputs.scope != 'go'
     # Below GitHub's hard 6h cap so our timeout fires first; a timed-out shard's
     # report goes missing and the aggregate gate fails loudly (exit 2) rather
@@ -212,8 +277,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
-          node-version: '24'
-          cache: 'npm'
+          node-version: "24"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
@@ -266,6 +331,8 @@ jobs:
   go-mutation:
     name: Go - ${{ matrix.name }}
     runs-on: ubuntu-latest
+    needs: [changes-since-last-run]
+    if: needs.changes-since-last-run.outputs.should-run == 'true'
     if: github.event_name == 'schedule' || inputs.scope != 'frontend'
     timeout-minutes: ${{ matrix.timeout }}
     strategy:
@@ -379,6 +446,8 @@ jobs:
   techniques-mutation:
     name: Go - techniques (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
+    needs: [changes-since-last-run]
+    if: needs.changes-since-last-run.outputs.should-run == 'true'
     if: github.event_name == 'schedule' || inputs.scope != 'frontend'
     # Below GitHub's hard 6h (360m) cap so our timeout fires first in the
     # unlikely event a single file runs long; that shard's report goes missing
