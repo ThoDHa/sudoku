@@ -37,9 +37,7 @@ export function getLastDailyDifficulty(): Difficulty | null {
 
 export function useLastDailyDifficulty() {
   const [difficulty, setDifficultyState] = useState<Difficulty | null>(() => {
-    // Client-only hook: window (and localStorage) always exist where React
-    // runs this; a missing environment would throw into the caller's error
-    // boundary rather than silently yield null.
+    // Client-only hook: a missing environment throws into the error boundary.
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored && ['easy', 'medium', 'hard', 'extreme', 'impossible'].includes(stored)) {
       return stored as Difficulty

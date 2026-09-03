@@ -76,7 +76,7 @@ export default function Technique() {
           </Link>
         </div>
 
-        <h1 className="page-title text-foreground">📚 Learn Sudoku</h1>
+        <h1 className="page-title text-foreground">Learn Sudoku</h1>
         <p className="mb-8 text-foreground-muted" style={{ fontSize: 'var(--text-base)' }}>
           Master the techniques used to solve Sudoku puzzles without guessing.
         </p>
@@ -88,7 +88,7 @@ export default function Technique() {
             className="mb-4 flex w-full items-center justify-between rounded-lg border-2 border-accent bg-accent-light p-4 text-left transition-colors hover:opacity-90"
           >
             <div>
-              <h2 className="text-lg font-semibold text-accent">🎮 How to Play Sudoku</h2>
+              <h2 className="text-lg font-semibold text-accent">How to Play Sudoku</h2>
               <p className="text-sm text-accent/80">
                 New to Sudoku? Start here to learn the basics.
               </p>
@@ -101,7 +101,7 @@ export default function Technique() {
             className="flex w-full items-center justify-between rounded-lg border border-board-border-light bg-background-secondary p-4 text-left transition-colors hover:shadow-md"
           >
             <div>
-              <h2 className="text-lg font-semibold text-foreground">🤖 How the Solver Works</h2>
+              <h2 className="text-lg font-semibold text-foreground">How the Solver Works</h2>
               <p className="text-sm text-foreground-muted">
                 Learn about the techniques, error correction, and philosophy behind our solver.
               </p>

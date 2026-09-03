@@ -225,8 +225,7 @@ describe('scores', () => {
       // Routes are now /:seed (no /p/ prefix)
       expect(url).toContain('/2024-01-15')
       expect(url).not.toContain('/p/')
-      // Exact-shape assertion: a forced-true route guard would produce
-      // /c/undefined here, which contains neither the seed nor this shape.
+      // /c/undefined would pass the contains checks; the exact shape does not.
       expect(url.endsWith('/2024-01-15')).toBe(true)
       expect(url).not.toContain('/c/')
     })
@@ -243,10 +242,8 @@ describe('scores', () => {
     })
 
     it('builds the seed URL for a non-custom score that still carries encodedPuzzle', () => {
-      // Both operand-drop mutants of the route guard differ from the original
-      // only here: dropping `difficulty === 'custom'` routes this score to
-      // /c/<encoded>, and dropping `encodedPuzzle` only misses the custom
-      // cases above.
+      // A non-custom score with encoded data is the only input where the
+      // route guard's operands disagree about the outcome.
       const score = { ...baseScore, encodedPuzzle: 'sXYZ' } as typeof baseScore
       const url = generatePuzzleUrl(score)
 
@@ -806,8 +803,7 @@ describe('scores', () => {
     })
 
     it('should return an empty set for a stored string instead of a set of its characters', () => {
-      // A JSON string is iterable: skipping the isStringArray guard would
-      // build Set('abc') = {'a','b','c'} instead of the empty set.
+      // A JSON string is iterable; unguarded it would yield its characters.
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_COMPLETIONS] = JSON.stringify('abc')
 
       const result = getDailyCompletions()

@@ -240,7 +240,7 @@ export function HowToPlayContent() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-foreground">🎯 The Goal</h3>
+        <h3 className="mb-2 text-sm font-semibold text-foreground">The Goal</h3>
         <p className="text-sm leading-relaxed text-foreground-muted">
           Fill every cell in the 9×9 grid with a digit from 1 to 9 so that each digit appears
           exactly once in every row, column, and 3×3 box.
@@ -248,34 +248,34 @@ export function HowToPlayContent() {
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-foreground">📋 The Rules</h3>
+        <h3 className="mb-2 text-sm font-semibold text-foreground">The Rules</h3>
         <ul className="space-y-1 text-sm text-foreground-muted">
-          <li>↔️ Each row must contain the digits 1-9 with no repeats</li>
-          <li>↕️ Each column must contain the digits 1-9 with no repeats</li>
-          <li>⬚ Each 3×3 box must contain the digits 1-9 with no repeats</li>
-          <li>✨ There is only one valid solution for each puzzle</li>
+          <li>↔Each row must contain the digits 1-9 with no repeats</li>
+          <li>↕Each column must contain the digits 1-9 with no repeats</li>
+          <li>Each 3×3 box must contain the digits 1-9 with no repeats</li>
+          <li>There is only one valid solution for each puzzle</li>
         </ul>
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-foreground">🚀 Getting Started</h3>
+        <h3 className="mb-2 text-sm font-semibold text-foreground">Getting Started</h3>
         <ul className="space-y-1 text-sm text-foreground-muted">
           <li>
-            🔒 <strong>Givens:</strong> The pre-filled numbers are clues — these cannot be changed
+            <strong>Givens:</strong> The pre-filled numbers are clues — these cannot be changed
           </li>
           <li>
-            ✏️ <strong>Candidates/Notes:</strong> Use notes to track which digits are possible in
-            each empty cell
+            <strong>Candidates/Notes:</strong> Use notes to track which digits are possible in each
+            empty cell
           </li>
           <li>
-            ❌ <strong>Elimination:</strong> When you place a digit, eliminate it as a candidate
-            from all cells in the same row, column, and box
+            <strong>Elimination:</strong> When you place a digit, eliminate it as a candidate from
+            all cells in the same row, column, and box
           </li>
         </ul>
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-foreground">🧠 Basic Strategy</h3>
+        <h3 className="mb-2 text-sm font-semibold text-foreground">Basic Strategy</h3>
         <ol className="list-inside list-decimal space-y-1 text-sm text-foreground-muted">
           <li>Use "Auto-fill notes" from the menu to see all possible candidates</li>
           <li>Look for cells with only one candidate (Naked Singles)</li>
@@ -288,7 +288,7 @@ export function HowToPlayContent() {
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-foreground">💡 Hints vs Solve</h3>
+        <h3 className="mb-2 text-sm font-semibold text-foreground">Hints vs Solve</h3>
         <ul className="space-y-1 text-sm text-foreground-muted">
           <li>
             💡 <strong>Hints:</strong> Get one logical step at a time. Each hint counts toward your
@@ -299,43 +299,43 @@ export function HowToPlayContent() {
             separately from hints.
           </li>
           <li>
-            ⚡ <strong>Smart Detection:</strong> The solver immediately fills cells when they have
-            only one possible digit.
+            <strong>Smart Detection:</strong> The solver immediately fills cells when they have only
+            one possible digit.
           </li>
         </ul>
       </div>
 
       <div className="rounded-lg bg-background-secondary p-4">
-        <h3 className="mb-2 text-sm font-semibold text-foreground">📊 Difficulty Levels</h3>
+        <h3 className="mb-2 text-sm font-semibold text-foreground">Difficulty Levels</h3>
         <ul className="space-y-2 text-sm text-foreground-muted">
           <li>
-            🟢 <span className="font-medium text-green-600 dark:text-green-400">Easy:</span> Can be
+            <span className="font-medium text-green-600 dark:text-green-400">Easy:</span> Can be
             solved with Naked and Hidden Singles only
           </li>
           <li>
-            🟡 <span className="font-medium text-yellow-600 dark:text-yellow-400">Medium:</span>{' '}
+            <span className="font-medium text-yellow-600 dark:text-yellow-400">Medium:</span>{' '}
             Requires pairs, triples, and basic intersection techniques
           </li>
           <li>
-            🟠 <span className="font-medium text-orange-600 dark:text-orange-400">Hard:</span>{' '}
-            Requires X-Wings, XY-Wings, and other advanced patterns
+            <span className="font-medium text-orange-600 dark:text-orange-400">Hard:</span> Requires
+            X-Wings, XY-Wings, and other advanced patterns
           </li>
           <li>
-            🔴 <span className="font-medium text-red-600 dark:text-red-400">Expert:</span> Requires
+            <span className="font-medium text-red-600 dark:text-red-400">Expert:</span> Requires
             chains, coloring, and complex pattern recognition
           </li>
         </ul>
       </div>
 
       <div className="rounded-lg border border-board-border-light p-4">
-        <h3 className="mb-2 text-sm font-semibold text-foreground">🎮 Tips for Success</h3>
+        <h3 className="mb-2 text-sm font-semibold text-foreground">Tips for Success</h3>
         <ul className="space-y-1 text-sm text-foreground-muted">
-          <li>✏️ Always use pencil marks (notes) — they're essential for harder puzzles</li>
-          <li>👀 Scan rows, columns, and boxes systematically</li>
-          <li>🔍 When stuck, look for pairs and triples of candidates</li>
-          <li>📚 Use the techniques list to learn new solving methods</li>
-          <li>🎯 Use hints to learn — they teach you real solving techniques</li>
-          <li>🏆 Practice makes perfect — start with easier puzzles and work your way up</li>
+          <li>Always use pencil marks (notes) — they're essential for harder puzzles</li>
+          <li>Scan rows, columns, and boxes systematically</li>
+          <li>When stuck, look for pairs and triples of candidates</li>
+          <li>Use the techniques list to learn new solving methods</li>
+          <li>Use hints to learn — they teach you real solving techniques</li>
+          <li>Practice makes perfect — start with easier puzzles and work your way up</li>
         </ul>
       </div>
     </div>
@@ -360,7 +360,7 @@ export function HowSolverWorksContent() {
 
       {/* Technique Tiers */}
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-foreground">🎯 Technique Tiers</h2>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">Technique Tiers</h2>
         <p className="mb-3 text-sm text-foreground-muted">
           The solver organizes 39+ techniques into tiers based on complexity. It always tries
           simpler techniques first, escalating only when needed:
@@ -414,7 +414,7 @@ export function HowSolverWorksContent() {
 
       {/* How Hints Work */}
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-foreground">💡 How Hints Work</h2>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">How Hints Work</h2>
         <p className="mb-3 text-sm text-foreground-muted">
           When you request a hint, the solver follows this process:
         </p>
@@ -439,7 +439,7 @@ export function HowSolverWorksContent() {
 
       {/* Error Correction */}
       <div>
-        <h2 className="mb-3 text-lg font-semibold text-foreground">🔧 Error Correction</h2>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">Error Correction</h2>
         <p className="mb-3 text-sm text-foreground-muted">
           Made mistakes? The solver can handle corrupted boards — even ones with many wrong entries.
           It corrects errors <strong>one at a time</strong>, explaining why each cell is wrong:
@@ -447,7 +447,7 @@ export function HowSolverWorksContent() {
 
         <div className="space-y-3">
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
-            <h4 className="mb-1 text-sm font-medium text-foreground">🚨 Direct Conflicts</h4>
+            <h4 className="mb-1 text-sm font-medium text-foreground">Direct Conflicts</h4>
             <p className="text-xs text-foreground-muted">
               <strong>Detected first.</strong> If you placed a 5 in a row that already has a 5,
               that's an immediate conflict. The solver spots these instantly before any technique
@@ -463,7 +463,7 @@ export function HowSolverWorksContent() {
 
           <div className="rounded-lg border border-orange-500/30 bg-orange-500/10 p-3">
             <h4 className="mb-1 text-sm font-medium text-foreground">
-              🚫 Blocking Cells (Contradictions)
+              Blocking Cells (Contradictions)
             </h4>
             <p className="text-xs text-foreground-muted">
               <strong>Detected second.</strong> Your entry might not conflict directly, but it
@@ -478,7 +478,7 @@ export function HowSolverWorksContent() {
           </div>
 
           <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3">
-            <h4 className="mb-1 text-sm font-medium text-foreground">🔍 Complex Errors</h4>
+            <h4 className="mb-1 text-sm font-medium text-foreground">Complex Errors</h4>
             <p className="text-xs text-foreground-muted">
               <strong>Fallback detection.</strong> Some errors can't be traced to a single cell —
               for example, when multiple wrong entries combine to create an unsolvable state. In
@@ -495,24 +495,22 @@ export function HowSolverWorksContent() {
 
       {/* Philosophy */}
       <div className="rounded-lg border border-board-border-light p-4">
-        <h2 className="mb-2 text-lg font-semibold text-foreground">
-          🧘 The "No Guessing" Philosophy
-        </h2>
+        <h2 className="mb-2 text-lg font-semibold text-foreground">The "No Guessing" Philosophy</h2>
         <p className="text-sm text-foreground-muted">
           Unlike brute-force solvers that try possibilities until something works, our solver proves
           each move is correct <em>before</em> making it. This means:
         </p>
         <ul className="mt-2 space-y-1 text-sm text-foreground-muted">
-          <li>✅ Every move comes with a logical explanation</li>
-          <li>✅ You learn real techniques, not trial-and-error</li>
-          <li>✅ The solver can detect when a puzzle requires guessing (and won't do it)</li>
-          <li>✅ If the solver can't proceed, the puzzle may be too hard or have no solution</li>
+          <li>Every move comes with a logical explanation</li>
+          <li>You learn real techniques, not trial-and-error</li>
+          <li>The solver can detect when a puzzle requires guessing (and won't do it)</li>
+          <li>If the solver can't proceed, the puzzle may be too hard or have no solution</li>
         </ul>
       </div>
 
       {/* Technical Note */}
       <div className="rounded-lg bg-background-secondary p-4">
-        <h2 className="mb-2 text-lg font-semibold text-foreground">⚙️ Under the Hood</h2>
+        <h2 className="mb-2 text-lg font-semibold text-foreground">Under the Hood</h2>
         <p className="text-sm text-foreground-muted">
           The solver is written in Go and compiled to WebAssembly for fast, offline-capable
           operation. It runs entirely in your browser — your puzzles never leave your device.

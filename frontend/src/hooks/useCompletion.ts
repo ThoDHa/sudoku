@@ -25,8 +25,7 @@ export function useCompletion(options: UseCompletionOptions): UseCompletionRetur
 
   const checkCompletion = useCallback(
     (board: number[]) => {
-      // isValidSolution already rejects any board with an empty cell, so no
-      // separate all-filled check is needed.
+      // isValidSolution already rejects boards with empty cells; no all-filled check needed.
       if (isValidSolution(board)) {
         setIsComplete(true)
         onCompleteRef.current?.()

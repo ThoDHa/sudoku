@@ -133,8 +133,7 @@ export function getPracticePuzzle(
   technique: string,
 ): { givens: number[]; difficulty: string; puzzleIndex: number } | null {
   const refs = practiceData.techniques[technique]
-  // `!refs?.length` covers absent, undefined, and empty in one read; the
-  // optional-chain mutant dies to the unknown-technique test.
+  // One read covers absent, undefined, and empty.
   if (!refs?.length) {
     return null
   }

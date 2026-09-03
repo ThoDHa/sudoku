@@ -11,7 +11,7 @@ function renderResultAt(search: string) {
   )
 }
 
-describe('Result page URL param NaN guard (BUG-22)', () => {
+describe('Result page guards URL params against NaN', () => {
   it('falls back to 0 for a non-numeric time param without rendering NaN', () => {
     renderResultAt('s=daily-2026-07-13&d=easy&t=abc&h=2&th=3')
 

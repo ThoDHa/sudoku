@@ -83,7 +83,7 @@ describe('markDailyPromptShown', () => {
   })
 })
 
-describe('BUG-20: daily prompt uses UTC basis matching isTodayCompleted', () => {
+describe('daily prompt uses UTC basis matching isTodayCompleted', () => {
   beforeEach(() => {
     localStorage.clear()
     mockedGetShowDailyReminder.mockReset()

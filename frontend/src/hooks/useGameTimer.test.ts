@@ -1616,7 +1616,6 @@ describe('mutation-killing: visibility guards that need a delayed effect re-run'
 })
 
 // =============================================================================
-// Extended background pause (BUG-24).
 //
 // Game.tsx suspends operations after EXTENDED_PAUSE_DELAY hidden and calls
 // pauseTimer() there. That call cannot work: pauseTimer is guarded on

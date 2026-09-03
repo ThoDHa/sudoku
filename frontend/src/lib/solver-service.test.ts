@@ -183,8 +183,7 @@ describe('solver-service', () => {
     })
 
     it('omits the unique key entirely when the solver reports none (strict shape)', async () => {
-      // toStrictEqual, unlike toEqual, distinguishes {a: undefined} from {};
-      // assigning the key unconditionally would fail this assertion.
+      // toStrictEqual distinguishes { key: undefined } from an omitted key.
       const { validatePuzzle } = await import('./dp-solver')
       vi.mocked(validatePuzzle).mockReturnValue({
         valid: false,
@@ -1125,7 +1124,7 @@ describe('solver-service', () => {
     })
   })
 
-  describe('BUG-14: tab-hide worker termination must not trigger main-thread WASM fallback', () => {
+  describe('tab-hide worker termination must not trigger main-thread WASM fallback', () => {
     const mockBoard = Array(81).fill(0)
     const mockCandidates = Array(81).fill([1, 2, 3, 4, 5, 6, 7, 8, 9])
     const mockGivens = Array(81).fill(0)

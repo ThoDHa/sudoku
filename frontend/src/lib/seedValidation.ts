@@ -19,8 +19,7 @@ export interface SeedValidationResult {
  * Get game mode from seed
  */
 export function getGameMode(seed: string): 'daily' | 'practice' | 'custom' | null {
-  // An empty string fails every startsWith below and falls through to the
-  // final null, so no early return is needed on the string domain.
+  // An empty string fails every startsWith below and reaches the same null.
   if (seed.startsWith('daily-')) return 'daily'
   if (seed.startsWith('P') || seed.startsWith('practice-')) return 'practice'
   if (seed.startsWith('custom-')) return 'custom'
@@ -32,8 +31,7 @@ export function getGameMode(seed: string): 'daily' | 'practice' | 'custom' | nul
  * Validate seed format and provide detailed error if invalid
  */
 export function validateSeed(seed: string): SeedValidationResult {
-  // On the string domain `!seed` and emptiness are the same predicate, so
-  // one read suffices; the exact-message tests kill both bound mutations.
+  // On the string domain `!seed` and emptiness are the same predicate.
   if (!seed) {
     return {
       valid: false,

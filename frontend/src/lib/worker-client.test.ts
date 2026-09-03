@@ -1719,9 +1719,7 @@ describe('worker-client advanced scenarios', () => {
         // The message alone does not identify the class: solver-service
         // branches on instanceof, and callers that string-match need the name.
         expect(caught).not.toBeNull()
-        // The cast widens the control-flow-narrowed `null` back to the
-        // declared union: the assignment lives inside the catch callback,
-        // which the linear flow analysis cannot see.
+        // The cast widens the callback-narrowed `null` back to the declared union.
         expect((caught as Error | null)?.name).toBe('WorkerTerminatedError')
 
         await findPromise.catch(() => {})

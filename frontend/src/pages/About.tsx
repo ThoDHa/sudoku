@@ -56,7 +56,6 @@ export default function About() {
       <div className="content-grid sm:grid-cols-2 mb-10">
         {/* Technique Hints */}
         <div className="content-card rounded-lg border border-board-border-light bg-background-secondary p-5">
-          <div className="mb-3 text-2xl">❓</div>
           <h3 className="mb-2 font-semibold text-foreground">Technique Hints</h3>
           <p className="text-sm text-foreground-muted">
             Stuck on a puzzle? Instead of just showing you the answer, we'll tell you which
@@ -66,7 +65,6 @@ export default function About() {
 
         {/* Step-by-Step Hints */}
         <div className="content-card rounded-lg border border-board-border-light bg-background-secondary p-5">
-          <div className="mb-3 text-2xl">💡</div>
           <h3 className="mb-2 font-semibold text-foreground">Step-by-Step Hints</h3>
           <p className="text-sm text-foreground-muted">
             Still stuck after knowing the technique? Use the full hint to see exactly where and how
@@ -76,7 +74,7 @@ export default function About() {
 
         {/* Learn Techniques */}
         <div className="content-card rounded-lg border border-board-border-light bg-background-secondary p-5">
-          <div className="mb-3 text-2xl">📚</div>
+          <div className="mb-3 text-2xl"></div>
           <h3 className="mb-2 font-semibold text-foreground">Technique Library</h3>
           <p className="text-sm text-foreground-muted">
             Browse 39+ solving techniques with explanations and interactive diagrams. From basic
@@ -89,7 +87,7 @@ export default function About() {
 
         {/* Difficulty Progression */}
         <div className="content-card rounded-lg border border-board-border-light bg-background-secondary p-5">
-          <div className="mb-3 text-2xl">📈</div>
+          <div className="mb-3 text-2xl"></div>
           <h3 className="mb-2 font-semibold text-foreground">Progressive Difficulty</h3>
           <p className="text-sm text-foreground-muted">
             Puzzles are graded by the techniques required to solve them. Start with Easy puzzles
@@ -100,7 +98,7 @@ export default function About() {
 
       {/* Solver Section */}
       <section className="mb-10">
-        <h2 className="mb-4 text-xl font-semibold text-foreground">🤖 The Solver</h2>
+        <h2 className="mb-4 text-xl font-semibold text-foreground">The Solver</h2>
         <div className="rounded-lg border border-board-border-light bg-background-secondary p-5">
           <p className="mb-4 text-foreground-muted" style={BASE_TEXT_STYLE}>
             Our solver uses the same human-like techniques to solve puzzles step by step. It runs in
@@ -128,9 +126,7 @@ export default function About() {
 
       {/* Error Correction Section */}
       <section className="mb-10">
-        <h2 className="mb-4 text-xl font-semibold text-foreground">
-          🔧 Intelligent Error Correction
-        </h2>
+        <h2 className="mb-4 text-xl font-semibold text-foreground">Intelligent Error Correction</h2>
         <div className="rounded-lg border border-board-border-light bg-background-secondary p-5">
           <p className="mb-4 text-foreground-muted" style={BASE_TEXT_STYLE}>
             Made errors while solving? The solver intelligently detects and fixes them, one at a
@@ -138,7 +134,7 @@ export default function About() {
           </p>
           <div className="space-y-4">
             <div className="flex gap-3">
-              <div className="flex-shrink-0 text-lg">⚡</div>
+              <div className="flex-shrink-0 text-lg"></div>
               <div>
                 <h4 className="font-semibold text-foreground">Direct Conflicts</h4>
                 <p className="text-sm text-foreground-muted">
@@ -148,7 +144,7 @@ export default function About() {
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="flex-shrink-0 text-lg">🔗</div>
+              <div className="flex-shrink-0 text-lg"></div>
               <div>
                 <h4 className="font-semibold text-foreground">Blocking Cells</h4>
                 <p className="text-sm text-foreground-muted">
@@ -158,7 +154,7 @@ export default function About() {
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="flex-shrink-0 text-lg">🧩</div>
+              <div className="flex-shrink-0 text-lg"></div>
               <div>
                 <h4 className="font-semibold text-foreground">Complex Errors</h4>
                 <p className="text-sm text-foreground-muted">
@@ -173,7 +169,7 @@ export default function About() {
 
       {/* Custom Puzzles */}
       <section className="mb-10">
-        <h2 className="mb-4 text-xl font-semibold text-foreground">🧩 Custom Puzzles</h2>
+        <h2 className="mb-4 text-xl font-semibold text-foreground">Custom Puzzles</h2>
         <div className="rounded-lg border border-board-border-light bg-background-secondary p-5">
           <p className="mb-4 text-foreground-muted" style={BASE_TEXT_STYLE}>
             Found a puzzle in a newspaper or book? Enter it into our custom puzzle mode and use all
@@ -191,7 +187,7 @@ export default function About() {
         <h2 className="mb-4 text-xl font-semibold text-foreground">Our Philosophy</h2>
         <div className="space-y-4">
           <div className="flex gap-4">
-            <div className="flex-shrink-0 text-xl">✨</div>
+            <div className="flex-shrink-0 text-xl"></div>
             <div>
               <h3 className="font-semibold text-foreground">Free & No Ads</h3>
               <p className="text-sm text-foreground-muted">
@@ -200,7 +196,7 @@ export default function About() {
             </div>
           </div>
           <div className="flex gap-4">
-            <div className="flex-shrink-0 text-xl">📱</div>
+            <div className="flex-shrink-0 text-xl"></div>
             <div>
               <h3 className="font-semibold text-foreground">Works Offline</h3>
               <p className="text-sm text-foreground-muted">
@@ -210,7 +206,7 @@ export default function About() {
             </div>
           </div>
           <div className="flex gap-4">
-            <div className="flex-shrink-0 text-xl">🧠</div>
+            <div className="flex-shrink-0 text-xl"></div>
             <div>
               <h3 className="font-semibold text-foreground">Learn by Doing</h3>
               <p className="text-sm text-foreground-muted">
@@ -220,7 +216,7 @@ export default function About() {
             </div>
           </div>
           <div className="flex gap-4">
-            <div className="flex-shrink-0 text-xl">🎯</div>
+            <div className="flex-shrink-0 text-xl"></div>
             <div>
               <h3 className="font-semibold text-foreground">No Guessing Required</h3>
               <p className="text-sm text-foreground-muted">
@@ -230,7 +226,7 @@ export default function About() {
             </div>
           </div>
           <div className="flex gap-4">
-            <div className="flex-shrink-0 text-xl">🔋</div>
+            <div className="flex-shrink-0 text-xl"></div>
             <div>
               <h3 className="font-semibold text-foreground">Battery Efficient</h3>
               <p className="text-sm text-foreground-muted">

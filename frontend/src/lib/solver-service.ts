@@ -369,9 +369,8 @@ export async function checkAndFixWithSolution(
   // Main-thread only: the worker client does not expose checkAndFixWithSolution.
   const api = await getApi()
   const result = api.checkAndFixWithSolution(board, candidates, givens, solution)
-  // The WASM contract guarantees a well-formed result here (solved flag,
-  // moves array, finalBoard), so the fields are read directly; the catch is
-  // for the logging path itself, which must never break the solve flow.
+  // The WASM contract guarantees these fields; the catch keeps a logging
+  // failure from breaking the solve flow.
   try {
     logger.debug('[Check&Fix] wasm result', {
       solved: result.solved,
