@@ -2303,10 +2303,10 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 })
 
 // ============================================================================
-// Mutation killing tests (MUT-1 iteration 2). No deferrals: every survivor is
+// Mutation killing tests ( iteration 2). No deferrals: every survivor is
 // either killed here or annotated as a true equivalent in useAutoSolve.ts.
 // ============================================================================
-describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
+describe('useAutoSolve mutation kills ( iter-2)', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     mockSolveAll.mockReset()
@@ -2687,10 +2687,10 @@ describe('useAutoSolve mutation kills (MUT-1 iter-2)', () => {
 })
 
 // ============================================================================
-// Mutation kills (MUT-1 iter-3): clearActiveTimers null-guard, the pause-sync
+// Mutation kills ( iter-3): clearActiveTimers null-guard, the pause-sync
 // resume guard, and the playMoves seed-snapshot candidate materialization.
 // ============================================================================
-describe('useAutoSolve mutation kills (MUT-1 iter-3)', () => {
+describe('useAutoSolve mutation kills ( iter-3)', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     mockSolveAll.mockReset()

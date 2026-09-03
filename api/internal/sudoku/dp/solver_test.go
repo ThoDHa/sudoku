@@ -1297,7 +1297,7 @@ func TestMutation_Solve_NearlyFullPuzzle(t *testing.T) {
 	}
 }
 
-// --- SEC-1: Budget enforcement on pathological sparse boards ---
+// --- Budget enforcement on pathological sparse boards ---
 
 func TestSolve_BudgetEnforcedDirectly(t *testing.T) {
 	board := make([]int, constants.TotalCells)
@@ -1392,7 +1392,7 @@ func TestSolve_ReturnsNilForUnsolvableBoard(t *testing.T) {
 	}
 }
 
-// --- BUG-15: invalid grids must not be blessed as solutions ---
+// --- invalid grids must not be blessed as solutions ---
 
 // TestSolve_RejectsGridWithConflictingGivens pins the front validity guard:
 // a board whose pre-filled givens conflict (two 5s in row 0) must return nil
@@ -1407,7 +1407,7 @@ func TestSolve_RejectsGridWithConflictingGivens(t *testing.T) {
 	}
 }
 
-// TestSolve_RejectsFullButInvalidGrid is the exact BUG-15 scenario: a
+// TestSolve_RejectsFullButInvalidGrid is the exact scenario: a
 // completely-filled but invalid board (duplicate in row 0) used to reach
 // findEmptyCell==-1 and be echoed verbatim as a "solution". The guard must
 // reject it up front.
@@ -1476,7 +1476,7 @@ func TestCountSolutions_ConflictingFullGridReportsZero(t *testing.T) {
 	}
 }
 
-// --- MUT-6-3: kill tests for the 18 survivors of the honest (--exec-timeout 300)
+// --- kill tests for the 18 survivors of the honest (--exec-timeout 300)
 // dp measurement in run 30899984529. Each test pins an observable property that
 // one or more of those mutants changes.
 

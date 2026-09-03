@@ -671,7 +671,7 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
 })
 
 // ============================================================
-// Overlay Interaction Selection Preservation (BUG-003 regression)
+// Overlay Interaction Selection Preservation ( regression)
 //
 // The capture-phase outside-click handler in Game.tsx must NOT deselect the active
 // cell when the user interacts with an overlay: opening it via a header opener,

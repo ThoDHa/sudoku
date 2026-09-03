@@ -1,5 +1,5 @@
 /**
- * PROFILING GAP COVERAGE (PROF-001-D5)
+ * PROFILING GAP COVERAGE
  *
  * New profiling tests closing coverage gaps the scout identified. Built on the
  * shared helper foundation (cdp.ts / timing.ts) so they do not duplicate the
@@ -12,7 +12,7 @@
  *   2. History undo/redo throughput — undo/redo cycle latency after a move
  *      sequence.
  *
- * Deferred (captured as task files, PROF-001 closure): hint/autosolve latency
+ * Deferred (captured as task files, closure): hint/autosolve latency
  * (needs the hint UX feedback model from source to measure reliably from E2E —
  * the hint emits a transient annotation, not a persistent board change, so a
  * black-box "click → board-change" timer hangs on its timeout), daily-puzzle
@@ -26,7 +26,7 @@ import type { Page } from '@playwright/test'
 import { setupGameAndWaitForBoard } from '../utils/board-wait'
 import { measureTime, summarize } from './helpers/timing'
 
-// Empirical thresholds (ms / nodes), documented per PROF-001-D7. Calibrated on
+// Empirical thresholds (ms / nodes), documented per . Calibrated on
 // chrome-desktop then given headroom for mobile; revisited after the first run.
 const GAP_THRESHOLDS = {
   CANDIDATE_TOGGLE_PER_CELL: 600, // notes-mode toggle of a candidate on one cell

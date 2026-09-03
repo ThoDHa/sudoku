@@ -34,7 +34,7 @@ import { fileURLToPath } from 'url'
 const PROFILE_DURATION_MS = 30_000 // 30 seconds per scenario (longer for accuracy)
 const WARMUP_MS = 3_000 // 3 seconds warmup before profiling
 
-// Verdict thresholds (PROF-001-D4). These are ABSOLUTE/percentage guards chosen
+// Verdict thresholds. These are ABSOLUTE/percentage guards chosen
 // to fire on a real regression (a WASM busy loop or a leak) while tolerating
 // normal idle noise. Real baseline run: wasm-idle script≈0.02s, idle≈99.7%,
 // memory overhead≈2.5MB — so these limits have large headroom.
@@ -52,7 +52,7 @@ const VERDICT_THRESHOLDS = {
   // Below this absolute WASM overhead (MB) the cleanup-effectiveness RATIO is
   // treated as meaningless (small-denominator noise — a few hundred KB of
   // un-GC'd glue swings the percentage by tens of points) and reported as null,
-  // mirroring NEAR_ZERO_BASELINE_S for the CPU overhead ratio. PROF-4.
+  // mirroring NEAR_ZERO_BASELINE_S for the CPU overhead ratio. .
   CLEANUP_DENOMINATOR_FLOOR_MB: 5,
 } as const
 
@@ -62,7 +62,7 @@ const VERDICT_THRESHOLDS = {
 // route (`vite dev`, `vite preview`, or an equivalent) — NOT a static file
 // server like `serve`. A static server returns its own 404 for `/{seed}` (there
 // is no such file), which surfaces as a grid-selector timeout in scenario B
-// (PROF-5). The default flow (no override) is correct.
+//. The default flow (no override) is correct.
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173'
 
 // ES module compatible __dirname
@@ -116,10 +116,10 @@ interface ComparisonReport {
   baseUrl: string
   scenarios: ProfileResult[]
   analysis: {
-    wasmCpuOverhead: number | null // % increase baseline→wasm-idle; null when baseline ≈ 0 (meaningless ratio, PROF-001-D4)
+    wasmCpuOverhead: number | null // % increase baseline→wasm-idle; null when baseline ≈ 0 (meaningless ratio, )
     wasmIdlePercentage: number // % of CPU samples in (idle) during wasm-idle — the real "is the thread idle" signal
     wasmIdleScriptSeconds: number // absolute scriptDuration during wasm-idle; a busy-loop regression pushes this to seconds
-    cleanupEffectiveness: number | null // memory-based: % of WASM heap overhead released after navigating away; null when overhead is below the noise floor (PROF-4)
+    cleanupEffectiveness: number | null // memory-based: % of WASM heap overhead released after navigating away; null when overhead is below the noise floor
     memoryOverheadMB: number // additional memory used by WASM at idle
     verdict: 'PASS' | 'WARN' | 'FAIL'
     findings: string[]
@@ -221,7 +221,7 @@ async function profileScenario(
   // Force GC before the final heap read so the measurement reflects true
   // retention rather than un-collected garbage. Without this the
   // cleanup-effectiveness ratio is at the mercy of GC timing on a small
-  // (~2.5MB) denominator, which produced a persistent phantom WARN (PROF-4).
+  // (~2.5MB) denominator, which produced a persistent phantom WARN.
   // Mirrors memory-profile.spec.ts, which forces GC before every heap read.
   await client.send('HeapProfiler.collectGarbage').catch(() => {
     /* GC unavailable in this context — fall through to the live reading */
@@ -269,7 +269,7 @@ async function profileScenario(
 /**
  * Generate comparison report with analysis.
  *
- * PROF-001-D4: the old overhead ratio exploded when the baseline scriptDuration
+ * the old overhead ratio exploded when the baseline scriptDuration
  * was ~0 (the common case for an idle homepage), forcing a false 100% overhead
  * and a bogus WARN. The ratio is now reported as null when the baseline is
  * near-zero, and the verdict is driven by absolute/idle/memory signals that
@@ -309,7 +309,7 @@ function generateComparisonReport(
 
   // Only compute the ratio when the overhead is non-trivial. Below the floor the
   // ratio is small-denominator noise, so report null and keep it out of the
-  // verdict (mirrors NEAR_ZERO_BASELINE_S for the CPU overhead ratio). PROF-4.
+  // verdict (mirrors NEAR_ZERO_BASELINE_S for the CPU overhead ratio). .
   // The MB floor also guarantees a non-zero denominator, so no separate > 0 guard.
   const cleanupEffectiveness =
     memoryOverheadMB >= VERDICT_THRESHOLDS.CLEANUP_DENOMINATOR_FLOOR_MB
@@ -342,7 +342,7 @@ function generateComparisonReport(
 
   if (cleanupEffectiveness === null) {
     findings.push(
-      `Cleanup effectiveness: N/A (overhead ${memoryOverheadMB.toFixed(1)}MB below the ${VERDICT_THRESHOLDS.CLEANUP_DENOMINATOR_FLOOR_MB}MB noise floor — ratio is small-denominator noise, PROF-4)`,
+      `Cleanup effectiveness: N/A (overhead ${memoryOverheadMB.toFixed(1)}MB below the ${VERDICT_THRESHOLDS.CLEANUP_DENOMINATOR_FLOOR_MB}MB noise floor — ratio is small-denominator noise, )`,
     )
   } else if (cleanupEffectiveness < VERDICT_THRESHOLDS.CLEANUP_EFFECTIVENESS_WARN) {
     findings.push(
@@ -515,7 +515,7 @@ async function runDeviceProfiling(
   // The profiling context must measure the app, not the PWA service worker.
   // Under ENABLE_PWA_IN_DEV the SW registers on the first (baseline) navigation
   // and then serves its offline fallback for the game-route navigation,
-  // breaking scenario B. Stub registration so the context stays SW-free (PROF-4).
+  // breaking scenario B. Stub registration so the context stays SW-free.
   await context.addInitScript(() => {
     if ('serviceWorker' in navigator && navigator.serviceWorker) {
       navigator.serviceWorker.register = () =>
@@ -606,7 +606,7 @@ async function runDeviceProfiling(
 // Test Suite
 // ============================================
 
-// Serialized: CPU profile measurements must not contend with sibling workers (PROF-001-D9).
+// Serialized: CPU profile measurements must not contend with sibling workers.
 test.describe.serial('@profiling @slow WASM CPU Profiling', () => {
   test.beforeAll(async () => {
     // Ensure results directory exists
@@ -624,7 +624,7 @@ test.describe.serial('@profiling @slow WASM CPU Profiling', () => {
 
     const report = await runDeviceProfiling(DEVICE_CONFIGS[0])
 
-    // === ASSERTIONS (PROF-001-D4: the verdict is now ASSERTED, not just logged) ===
+    // === ASSERTIONS ( the verdict is now ASSERTED, not just logged) ===
     expect(report.scenarios.length).toBe(3)
     expect(report.scenarios.every((r) => r.profile.totalSamples > 0)).toBe(true)
     // A FAIL verdict must break the test — that is what makes this a real guard.
@@ -651,7 +651,7 @@ test.describe.serial('@profiling @slow WASM CPU Profiling', () => {
 
     const report = await runDeviceProfiling(DEVICE_CONFIGS[1])
 
-    // === ASSERTIONS (PROF-001-D4) ===
+    // === ASSERTIONS ===
     expect(report.scenarios.length).toBe(3)
     expect(report.scenarios.every((r) => r.profile.totalSamples > 0)).toBe(true)
     expect(

@@ -31,7 +31,7 @@ describe('PWA cache policy', () => {
     expect(config).not.toMatch(/networkTimeoutSeconds:\s*1\b/)
   })
 
-  it('precacheaches the app shell (HTML/JS/CSS), not just the wasm (PWA-1)', () => {
+  it('precacheaches the app shell (HTML/JS/CSS), not just the wasm', () => {
     const globLine = config.match(/globPatterns:\s*\[([^\]]*)\]/)
     expect(globLine).not.toBeNull()
     expect(globLine?.[1]).toContain('html')
@@ -40,7 +40,7 @@ describe('PWA cache policy', () => {
     expect(globLine?.[1]).toContain('wasm')
   })
 
-  it('serves the precached shell for offline SPA navigations with /api/ denied (PWA-1)', () => {
+  it('serves the precached shell for offline SPA navigations with /api/ denied', () => {
     expect(config).toMatch(/navigateFallback:\s*'index\.html'/)
     const denyLine = config.match(/navigateFallbackDenylist:\s*\[([^\]]*)\]/)
     expect(denyLine).not.toBeNull()

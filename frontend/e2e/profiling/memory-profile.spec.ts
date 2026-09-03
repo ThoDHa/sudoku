@@ -48,7 +48,7 @@ async function waitForHomepageMounted(page: Page) {
 
 // Memory thresholds (bytes unless noted). These are GROWTH bounds measured as
 // (final - initial) on the same run, so hardware variance largely cancels and
-// the absolute limits remain meaningful leak guards (PROF-001-D7).
+// the absolute limits remain meaningful leak guards.
 const THRESHOLDS = {
   LONG_PLAY_SESSION_MB: 5, // Max 5MB growth for 100 moves
   WASM_SOLVER_VARIANCE_PCT: 35, // ±35% from baseline for 50 solver calls (WASM naturally grows memory)
@@ -93,11 +93,11 @@ async function requestHint(page: Page): Promise<boolean> {
 // Light Profiling Tests
 // ============================================
 
-// Serialized: latency/memory measurements must not contend with sibling workers (PROF-001-D9).
+// Serialized: latency/memory measurements must not contend with sibling workers.
 test.describe.serial('@profiling Memory - Light Profiling', () => {
   // CDP memory metrics are chromium-only. Without this guard, webkit projects
   // (e.g. the iphone-12 project) would "pass" vacuously because CDPManager
-  // swallows the error and returns all-zero metrics (PROF-001-D8).
+  // swallows the error and returns all-zero metrics.
   test.skip(
     ({ browserName }) => browserName !== 'chromium',
     'CDP memory metrics only work in Chromium',

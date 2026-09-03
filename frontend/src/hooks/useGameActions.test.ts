@@ -847,7 +847,7 @@ describe('useGameActions - handleCopyDebugInfo / handleFeatureRequest', () => {
 // RC-dependent: these reference-stability assertions hold only when the React
 // Compiler is firing, which is every run except Stryker's: stryker.vitest.config.ts
 // sets VITE_SKIP_RC=1 because instrumentation defeats RC memoization anyway. With
-// RC off and manual memoization removed (FE-7), identities are not stable.
+// RC off and manual memoization removed, identities are not stable.
 describe.skipIf(process.env['VITE_SKIP_RC'])('useGameActions - handler stability', () => {
   beforeEach(() => {
     vi.clearAllMocks()

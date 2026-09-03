@@ -989,7 +989,7 @@ describe('scores', () => {
       expect(savedCompletions).toContain('2024-06-15')
 
       // Check streak was saved (read back through the same API to verify the round-trip;
-      // the storage shape is a versioned envelope as of FE-5, asserted separately)
+      // the storage shape is a versioned envelope as of , asserted separately)
       const savedStreak = getDailyStreak()
       expect(savedStreak.currentStreak).toBe(1)
       expect(savedStreak.lastCompletedDate).toBe('2024-06-15')
@@ -1072,7 +1072,7 @@ describe('scores', () => {
       expect(savedStreak.longestStreak).toBe(10) // Preserved
     })
 
-    it('FE-5: writes a versioned envelope with the current schema version', () => {
+    it(' writes a versioned envelope with the current schema version', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
 
@@ -1090,11 +1090,11 @@ describe('scores', () => {
       })
     })
 
-    it('FE-5: reads legacy unversioned (bare-object) streak data through the migration path', () => {
+    it(' reads legacy unversioned (bare-object) streak data through the migration path', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date('2024-06-15T14:30:00Z'))
 
-      // Legacy shape: bare object, no schemaVersion envelope. Pre-FE-5 clients
+      // Legacy shape: bare object, no schemaVersion envelope. Pre- clients
       // wrote this shape; the migration helper treats it as version 0 and
       // passes it through (empty migrations map for now).
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = JSON.stringify({
@@ -1111,7 +1111,7 @@ describe('scores', () => {
       })
     })
 
-    it('FE-5: returns the default streak when stored value is JSON null', () => {
+    it(' returns the default streak when stored value is JSON null', () => {
       // migrateVersionedEnvelope returns null when the parsed value is null;
       // getDailyStreak maps that to the default streak.
       mockStoreWrapper.store[STORAGE_KEYS.DAILY_STREAK] = 'null'

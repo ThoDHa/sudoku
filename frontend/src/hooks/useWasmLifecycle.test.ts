@@ -623,9 +623,7 @@ describe('useWasmLifecycle', () => {
       setPath('/')
       rerender()
 
-      // The unload schedule is the most recent setTimeout; asserting the
-      // exact id keeps this kill attributable (any-clear assertions are
-      // satisfied by scheduleUnload's own pre-arm clear).
+      // Assert the armed id, not any clearTimeout call: scheduleUnload pre-clears too.
       const scheduled = setTimeoutSpy.mock.results.at(-1)?.value as number
       expect(scheduled).toBeDefined()
 

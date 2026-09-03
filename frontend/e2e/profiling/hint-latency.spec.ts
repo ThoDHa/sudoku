@@ -1,7 +1,7 @@
 /**
- * HINT / AUTOSOLVE LATENCY (PROF-002 spec 1)
+ * HINT / AUTOSOLVE LATENCY ( spec 1)
  *
- * Measures click-to-result latency for the hint action. Round-1 (PROF-001)
+ * Measures click-to-result latency for the hint action. Round-1
  * deferred this because the hint emits a TRANSIENT toast, not a persistent
  * board mutation, so the old `PlaywrightUISDK.waitForMove` (which waits for a
  * board change) hangs forever on hints. This spec waits on the real DOM signal
@@ -20,7 +20,7 @@
  *              is 3000ms (TOAST_DURATION_INFO, constants.ts:65), ample for
  *              Playwright's 100ms assertion poll.
  *
- * Two-regime split (PROF-002 planning decision): the first hint of a session
+ * Two-regime split ( planning decision): the first hint of a session
  * pays the one-time lazy WASM init (findNextMove triggers the WASM download,
  * board-wait.ts:7-8). Subsequent hits on the same board signature return the
  * CACHED hint (Game.tsx:971-973) but still render the toast, so they measure
@@ -37,7 +37,7 @@ import { measureTime, summarize } from './helpers/timing'
 // E2E thresholds (ms). These bundle Playwright automation overhead + React
 // render + the auto-retrying assertion poll, so they are looser than a unit
 // test's view of the same path. Calibrated from the first healthy green run
-// across all 3 chromium projects (PROF-001-D7 pattern: generous headroom for
+// across all 3 chromium projects ( pattern: generous headroom for
 // the inherently-variable cold WASM path, tighter for the steady-state path).
 //
 // Empirical basis (first green run, 3 projects):

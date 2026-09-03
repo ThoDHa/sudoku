@@ -8,12 +8,12 @@ import (
 )
 
 // =============================================================================
-// SEC-001: range-validate cell values at HTTP solver boundaries.
+// range-validate cell values at HTTP solver boundaries.
 //
 // These tests are intentionally in a separate file from the solveAll
 // characterization suite so the characterization commit lands green on its
 // own; the requireBoardValues hardening (routes.go) lands together with this
-// file in the SEC-001 fix commit.
+// file in the fix commit.
 // =============================================================================
 
 // TestSolverEndpointsRejectOutOfRangeCellValues verifies every solver POST

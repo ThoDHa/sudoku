@@ -1,6 +1,6 @@
 // Package http is the dev-only HTTP harness for the Sudoku solver.
 //
-// Quarantine notice (ARCH-2): this package is NOT shipped. The production
+// Quarantine notice: this package is NOT shipped. The production
 // application runs the same Go solver packages compiled to WebAssembly
 // directly in the browser (see cmd/wasm and ARCHITECTURE.md); the production
 // deploy (.github/workflows/deploy.yml -> make wasm-all + vite build -> GitHub

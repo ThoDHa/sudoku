@@ -80,15 +80,15 @@ cd api && make wasm-all-go   # standard Go fallback (larger output)
 
 All test targets produce Allure output under `allure-results/`.
 
-| Target | What it runs |
-|---|---|
-| `make test` | Go tests + frontend unit + E2E (full suite) |
-| `make test-go` | Go test suite only |
-| `make test-unit` | Frontend Vitest unit tests (Docker) |
-| `make test-e2e` | Playwright E2E tests (Docker Compose) |
-| `make test-integration` | `@integration`-tagged E2E tests only |
-| `make test-frontend` | Frontend unit + E2E |
-| `make test-scripts` | Report-portal script tests (drift guard) |
+| Target                  | What it runs                                |
+| ----------------------- | ------------------------------------------- |
+| `make test`             | Go tests + frontend unit + E2E (full suite) |
+| `make test-go`          | Go test suite only                          |
+| `make test-unit`        | Frontend Vitest unit tests (Docker)         |
+| `make test-e2e`         | Playwright E2E tests (Docker Compose)       |
+| `make test-integration` | `@integration`-tagged E2E tests only        |
+| `make test-frontend`    | Frontend unit + E2E                         |
+| `make test-scripts`     | Report-portal script tests (drift guard)    |
 
 ### Fast pre-push gates
 
@@ -101,16 +101,29 @@ make check        # full local gate mirroring CI (adds coverage, duplication, vu
 CI passes. E2E is intentionally excluded from both; run `make check-full`
 for the slow end-to-end gate.
 
+## Comment Policy
+
+Comments are absent by default. Before writing one, try to make the code express itself: rename
+things, extract a helper, simplify the expression. A comment is permitted only when all three
+hold: the code cannot carry the intent, the comment explains a non-obvious WHY (not WHAT), and
+removing it would leave a future reader genuinely confused.
+
+Never in comments: tracker IDs (BUG-123, INFRA-4), fix chronology ("previously", "before the
+fix"), attribution, or restatements of what the adjacent code does. Bug-fixing history belongs
+in commit messages; the WHAT belongs in the code. Exemptions: `Stryker disable` directive
+justifications (the prose is the directive's data), `istanbul ignore` regions, and the
+eslint-required comments in intentionally empty catch blocks.
+
 ## Linting and Formatting
 
-| Target | Scope |
-|---|---|
-| `make lint` | Go (`golangci-lint`) and frontend (`eslint`) |
-| `make lint-go` | Go only; installs the pinned `golangci-lint` (`v2.12.2`) into `GOPATH/bin` |
-| `make lint-frontend` | Frontend ESLint with the shared warning budget (`--max-warnings 13`) |
-| `make format` | Prettier + `gofmt` in place |
-| `make format-check` | Prettier + `gofmt` check only (CI-friendly) |
-| `make typecheck-frontend` | `tsc --noEmit` for production and test configs |
+| Target                    | Scope                                                                      |
+| ------------------------- | -------------------------------------------------------------------------- |
+| `make lint`               | Go (`golangci-lint`) and frontend (`eslint`)                               |
+| `make lint-go`            | Go only; installs the pinned `golangci-lint` (`v2.12.2`) into `GOPATH/bin` |
+| `make lint-frontend`      | Frontend ESLint with the shared warning budget (`--max-warnings 13`)       |
+| `make format`             | Prettier + `gofmt` in place                                                |
+| `make format-check`       | Prettier + `gofmt` check only (CI-friendly)                                |
+| `make typecheck-frontend` | `tsc --noEmit` for production and test configs                             |
 
 The Go linter uses a strict zero-warning configuration (`.golangci.yml`).
 The frontend linter, CI, and the pre-commit hook all share the same ESLint

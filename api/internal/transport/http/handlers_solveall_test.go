@@ -147,7 +147,7 @@ func contains(haystack, needle string) bool {
 }
 
 // =============================================================================
-// SCOPE-TEST-003: solveAllHandler multi-move loop internals
+// solveAllHandler multi-move loop internals
 //
 // These tests exercise the deep autosolve branches (conflict-then-complete,
 // contradiction fix-error, diagnostic, unpinpointable, the maxFixes cap, and
@@ -334,7 +334,7 @@ func TestSolveAllRespectsMaxFixesCap(t *testing.T) {
 }
 
 // =============================================================================
-// TECHDEBT-002 characterization: pin exact solveAll move shapes so the
+// characterization: pin exact solveAll move shapes so the
 // conflict-fix extraction refactor is provably behavior-preserving.
 // =============================================================================
 
