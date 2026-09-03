@@ -42,8 +42,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
     const isKnownRoute = KNOWN_NON_GAME_ROUTES.some(
       (route) => pathname === route || pathname.startsWith(route + '/'),
     )
-    // If not a known route, it's a game route (/:seed or /c/:encoded); the
-    // custom-puzzle /c/ paths fall through this same fallback.
+    // Unknown routes are game routes (/:seed or /c/:encoded).
     return !isKnownRoute
   }
 
@@ -57,7 +56,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   }
 
   const scheduleUnload = () => {
-    // Clear any existing timeout (clearTimeout on a missing handle is a no-op)
+    // clearTimeout on a missing handle is a no-op.
     clearTimeout(unloadTimeoutRef.current)
 
     // Schedule unload with delay to handle rapid navigation
@@ -75,9 +74,7 @@ export function useWasmLifecycle(options: UseWasmLifecycleOptions = {}) {
   }
 
   const cancelUnload = () => {
-    // The guard is load-bearing only for the log: clearTimeout on a missing
-    // handle is a no-op, but announcing a cancellation that never was
-    // scheduled would be noise.
+    // The guard exists only so an unscheduled cancel is not announced.
     if (unloadTimeoutRef.current) {
       clearTimeout(unloadTimeoutRef.current)
       unloadTimeoutRef.current = undefined

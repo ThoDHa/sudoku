@@ -65,7 +65,7 @@ export function useInProgressGameCheck(
   // Mount-only: clean up the one-time skip flag (side effect, no setState)
   useEffect(
     () => {
-      // removeItem on a missing key is a no-op, so no read-guard is needed.
+      // removeItem on a missing key is a no-op.
       sessionStorage.removeItem(STORAGE_KEYS.SKIP_IN_PROGRESS_CHECK)
     },
     // Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"]; the effect only calls the idempotent removeItem, so re-running it on any deps content is observationally identical

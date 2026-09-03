@@ -119,8 +119,7 @@ export function useAutoSolveAdapters(
     game.applyExternalMove(newBoard, uint16Candidates, move)
     setMoveHighlight(move, index)
 
-    // Highlight the digit being placed/modified. Solver moves carry 1-9; a
-    // falsy digit (notes/candidate ops) has nothing to highlight.
+    // A falsy digit marks a notes/candidate op with nothing to highlight.
     if (move.digit) {
       setDigitHighlight(move.digit)
     }
@@ -147,7 +146,6 @@ export function useAutoSolveAdapters(
     game.setBoardState(board, uint16Candidates)
     setMoveHighlight(move as MoveHighlight, index)
 
-    // Update digit highlight based on move; a falsy digit clears it.
     if (move && move.digit) {
       setDigitHighlight(move.digit)
     } else {

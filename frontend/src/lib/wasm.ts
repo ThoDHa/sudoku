@@ -144,8 +144,7 @@ export function unloadWasm(): void {
     wasmScriptElement = null
   }
 
-  // Clear global references. `delete` on an absent property is a no-op, so
-  // the deletes need no presence guards of their own.
+  // delete on an absent property is a no-op, so no presence guards are needed.
   if (typeof window !== 'undefined') {
     delete window.SudokuWasm
     delete window.Go
@@ -192,10 +191,7 @@ function getBaseUrl(): string {
  * Load the Go WASM support script (wasm_exec.js)
  */
 async function loadWasmExec(): Promise<void> {
-  // Check if Go is already defined (script already loaded). This module is
-  // main-thread-only, so `window` is dereferenced directly; if it were ever
-  // missing, the ReferenceError lands in loadWasm's catch and callers take
-  // their fallbacks.
+  // Main-thread-only: a missing window throws into loadWasm's catch.
   if (window.Go) {
     return
   }
@@ -226,9 +222,8 @@ async function loadWasmExec(): Promise<void> {
  * Returns the WASM API or throws if loading fails
  */
 export async function loadWasm(): Promise<SudokuWasmAPI> {
-  // Return existing promise if already loading (or already loaded: it stays
-  // resolved, and abortWasmLoad only nulls it while a load is in flight,
-  // since the controller is cleared on completion)
+  // Also serves completed loads: the resolved promise stays until an
+  // in-flight abort clears it (a completed load has no controller left).
   if (wasmLoadPromise) {
     return wasmLoadPromise
   }
@@ -243,8 +238,7 @@ export async function loadWasm(): Promise<SudokuWasmAPI> {
       await loadWasmExec()
       logger.debug('[WASM] wasm_exec.js loaded')
 
-      // Ensure Go is available. Main-thread-only module: a missing `window`
-      // would throw into the catch below and surface as a load error.
+      // A missing window throws into the catch and surfaces as a load error.
       if (!window.Go) {
         throw new Error('Go runtime not available')
       }
