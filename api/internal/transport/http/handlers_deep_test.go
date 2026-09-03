@@ -2462,9 +2462,9 @@ func TestCustomValidate_Returns408OnCanceledContext(t *testing.T) {
 	}
 }
 
-// --- BUG-15 regression tests ---
+// --- invalid-grid regression tests ---
 
-// TestSolveFullFastMode_ConflictingBoardReturnsConflicts pins BUG-15 bug 1 at
+// TestSolveFullFastMode_ConflictingBoardReturnsConflicts pins the case at
 // the HTTP boundary: a full-but-invalid board sent to /solve/full?mode=fast
 // previously returned 200 with the invalid board echoed as final_board. The
 // fast path must now run FindConflicts up front and respond with the specific
@@ -2516,7 +2516,7 @@ func TestSolveFullFastMode_ConflictingBoardReturnsConflicts(t *testing.T) {
 	}
 }
 
-// TestDailyHandler_SeedAndPuzzleIndexAgree pins BUG-15 bug 2 at the HTTP
+// TestDailyHandler_SeedAndPuzzleIndexAgree pins the seed agreement at the HTTP
 // boundary: the seed returned by /daily must hash to the same puzzle_index the
 // handler reports, so a client fetching /puzzle/<seed> gets the puzzle it was
 // told. Before the fix the handler derived the index from "daily:<date>" while

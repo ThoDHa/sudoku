@@ -751,7 +751,7 @@ function GameContent() {
   // Sync game state to global context for header.
   //
   // autoFillNotes is deliberately absent from the dependency array and reached
-  // through autoFillNotesRef instead. It has no manual useCallback (FE-7), so its
+  // through autoFillNotesRef instead. It has no manual useCallback, so its
   // identity is stable only while the React Compiler memoizes it. Listed as a
   // dependency it makes this effect re-run every render, and the body writes a
   // fresh object into the game context, which re-renders this component: an

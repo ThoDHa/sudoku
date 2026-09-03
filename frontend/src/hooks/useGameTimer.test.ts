@@ -394,7 +394,7 @@ describe('useGameTimer', () => {
   })
 
   // FUNCTION STABILITY TESTS
-  // RC-dependent: useGameTimer declares these as plain arrow functions (FE-7
+  // RC-dependent: useGameTimer declares these as plain arrow functions (
   // removed its useCallback wrappers), so their identity across a rerender is
   // the React Compiler's memoization. Stryker sets VITE_SKIP_RC=1, which turns
   // RC off, and instrumentation would defeat the memoization regardless.
@@ -1442,7 +1442,7 @@ describe('mutation-killing: no interval is scheduled while fully paused for visi
 })
 
 // =============================================================================
-// Mutation-killing tests for the visibility guards (MUT-8-8-1).
+// Mutation-killing tests for the visibility guards.
 //
 // pauseOnHidden is in the visibility effect's dependency list, so the hook
 // already declares that it reacts to that option changing between renders.

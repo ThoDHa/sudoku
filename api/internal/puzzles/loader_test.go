@@ -705,7 +705,7 @@ func TestGetTodayPuzzle_InvalidDifficulty(t *testing.T) {
 	}
 }
 
-// --- BUG-15: daily seed and index must agree ---
+// --- daily seed and index must agree ---
 
 // TestDailySeed_CanonicalForm pins the exact seed string both dailyHandler and
 // GetDailyPuzzle derive their index from. A client fetching /puzzle/<seed>
@@ -731,7 +731,7 @@ func TestDailySeed_CanonicalForm(t *testing.T) {
 	}
 }
 
-// TestGetDailyPuzzle_IndexMatchesGetPuzzleBySeed is the core BUG-15 regression
+// TestGetDailyPuzzle_IndexMatchesGetPuzzleBySeed is the core regression
 // assertion: the index returned by GetDailyPuzzle must equal the index a client
 // gets by calling GetPuzzleBySeed with the advertised daily seed string. Before
 // the fix the two hashed different strings ("daily:<date>" vs "D<date>") and

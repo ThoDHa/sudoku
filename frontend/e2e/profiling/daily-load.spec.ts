@@ -1,12 +1,12 @@
 /**
- * DAILY-PUZZLE LOAD LATENCY (PROF-002 spec 2)
+ * DAILY-PUZZLE LOAD LATENCY ( spec 2)
  *
  * Measures time-to-interactive-board for the daily puzzle, split into cold
- * (first visit) and warm (re-visit) regimes. Round-1 (PROF-001) deferred this
+ * (first visit) and warm (re-visit) regimes. Round-1 deferred this
  * because `PlaywrightUISDK.daily()` returns a synthetic response and never
  * loads the real daily route.
  *
- * Route clarification (PROF-002 planning): there is no `/daily` route. The
+ * Route clarification ( planning): there is no `/daily` route. The
  * daily puzzle is the normal `/:seed` catch-all (App.tsx:60) seeded with
  * `daily-YYYYMMDD` from `getDailySeed()` (solver-service.ts:345). This spec
  * computes the seed inline (UTC date formatting, mirroring getDailySeed) and
@@ -33,7 +33,7 @@ import { measureTime } from './helpers/timing'
 
 // E2E thresholds (ms). Time-to-board bundles network (localhost dev server),
 // Vite module evaluation, React mount, and puzzle generation. Calibrated from
-// the first healthy green run with ~2x headroom (PROF-001-D7 pattern).
+// the first healthy green run with ~2x headroom ( pattern).
 const DAILY_THRESHOLDS = {
   COLD_LOAD_MS: 15000, // first visit: full module + puzzle-gen path
   WARM_LOAD_MS: 12000, // re-visit: SW/HTTP cache should help

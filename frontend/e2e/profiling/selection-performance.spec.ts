@@ -6,13 +6,13 @@
  * interaction end to end (including Playwright automation overhead, which is
  * part of what an E2E perf guard must tolerate).
  *
- * Measurement contract (PROF-001-D6): selection state is asserted via the
+ * Measurement contract: selection state is asserted via the
  * stable `tabindex` contract emitted by Board.tsx (`tabIndex={isSelected ? 0 :
  * -1}`), the same signal used by the `selectCell` helper. We deliberately do
  * NOT time `expect(...).toHaveClass(/ring-2.*ring-accent/)` style assertions:
  * that would measure Playwright's own assertion-polling latency, not the app.
  *
- * Threshold policy (PROF-001-D7): absolute ms guards, documented as E2E
+ * Threshold policy: absolute ms guards, documented as E2E
  * thresholds. All configured projects are chromium, so there is no webkit
  * multiplier (the old WEBKIT_MULTIPLIER branch never fired and was removed).
  *
@@ -30,7 +30,7 @@ import { measureTime, summarize, measureMedian } from './helpers/timing'
 // exist to catch REGRESSIONS (a change that roughly doubles interaction
 // latency), not to claim absolute speed.
 //
-// Empirical basis (chrome-desktop, healthy build, PROF-001-D7):
+// Empirical basis (chrome-desktop, healthy build, ):
 //   single selection ~320ms (first-run mount); rapid-select avg ~190ms/cell
 //   single digit entry ~150ms; overwrite avg ~310ms, overwrite max ~470ms
 //   single outside-click ~170ms; outside-click cycle ~360ms
@@ -80,7 +80,7 @@ interface OutsidePoint {
 
 /**
  * Returns one viewport-clamped point guaranteed to be OUTSIDE the board and
- * INSIDE the viewport, for a single outside-click measurement (PROF-001-D4:
+ * INSIDE the viewport, for a single outside-click measurement (
  * the old fixed padding=50 could land off-screen on mobile).
  */
 async function getSafeOutsidePoint(page: Page): Promise<OutsidePoint> {
@@ -136,7 +136,7 @@ async function getSafeOutsidePoints(page: Page): Promise<OutsidePoint[]> {
 // tests.
 test.describe.serial('@performance Selection Performance - No Regression', () => {
   test.beforeEach(async ({ page }) => {
-    // Seeded puzzle (PROF-001-D3/H3) for deterministic empty-cell layout.
+    // Seeded puzzle ( /H3) for deterministic empty-cell layout.
     await setupGameAndWaitForBoard(page, { seed: SEED, difficulty: 'easy' })
   })
 
@@ -165,7 +165,7 @@ test.describe.serial('@performance Selection Performance - No Regression', () =>
         `Cell selection — median ${median.toFixed(2)}ms over ${samples} samples ` +
           `(avg ${stats.avg.toFixed(2)}ms, max ${stats.max.toFixed(2)}ms)`,
       )
-      // Median-of-N (PROF-003-D3): absorbs one-off mobile env spikes that flaked
+      // Median-of-N: absorbs one-off mobile env spikes that flaked
       // the single-sample guard on iphone-12, while still tripping on a sustained
       // regression (which lifts the whole distribution, median included).
       expect(median).toBeLessThan(PERFORMANCE_THRESHOLDS.SELECTION_RESPONSE)
@@ -346,7 +346,7 @@ test.describe.serial('@performance Selection Performance - No Regression', () =>
     })
 
     test('rapid outside-click sequence maintains performance', async ({ page }) => {
-      // Genuine outside-click sequence (PROF-001-D8): reselect + click outside
+      // Genuine outside-click sequence: reselect + click outside
       // repeatedly, not just cell clicks.
       const emptyCells = page.locator('[role="gridcell"][aria-label*="empty"]')
       const cellCount = Math.min(await emptyCells.count(), 5)
@@ -374,7 +374,7 @@ test.describe.serial('@performance Selection Performance - No Regression', () =>
 
   test.describe('Mixed Interaction Performance', () => {
     test('complex interaction sequence completes within threshold', async ({ page }) => {
-      // Genuine mixed sequence (PROF-001-D8): select + digit + outside-click.
+      // Genuine mixed sequence: select + digit + outside-click.
       const emptyCells = page.locator('[role="gridcell"][aria-label*="empty"]')
       const cellCount = Math.min(await emptyCells.count(), 5)
       test.skip(cellCount < 3, 'Need at least 3 empty cells for mixed sequence')

@@ -180,7 +180,7 @@ describe('gameSettings', () => {
 
     it('should return false for a non-boolean JSON value (boolean narrowing, not truthiness)', () => {
       // A truthy non-boolean (1) must NOT be coerced to true. This is the
-      // FE-3 boundary pattern: parse-to-unknown then narrow with `=== true`,
+      // boundary pattern: parse-to-unknown then narrow with `=== true`,
       // rather than `JSON.parse(x) as boolean` or `Boolean(parsed)`.
       localStorageMock.setItem('sudoku_offline_mode_enabled', '1')
       expect(getOfflineModeEnabled()).toBe(false)

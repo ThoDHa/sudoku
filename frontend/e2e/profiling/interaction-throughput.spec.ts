@@ -1,8 +1,8 @@
 /**
- * BOARD INTERACTION THROUGHPUT (PROF-002 spec 3)
+ * BOARD INTERACTION THROUGHPUT ( spec 3)
  *
  * Measures sustained board-interaction throughput, extending round-1's light
- * 5-10 selection coverage (PROF-001's #5 deferred gap). Two sub-scenarios:
+ * 5-10 selection coverage ( 's #5 deferred gap). Two sub-scenarios:
  *
  *   1. Sustained digit entry (~50 entries) — the user-visible "fast entry"
  *      path. Catches drift: if per-entry latency grows over a long burst
@@ -27,7 +27,7 @@ import { setupGameAndWaitForBoard } from '../utils/board-wait'
 import { measureTime, summarize } from './helpers/timing'
 
 // E2E thresholds (ms). Per-entry bundles click + keyboard + the auto-retrying
-// tabindex poll. Calibrated from the first healthy green run (PROF-001-D7).
+// tabindex poll. Calibrated from the first healthy green run.
 //
 // Empirical basis (round-1 selection-performance): rapid digit-entry step
 // ~330-500ms (noisy compound). The throughput budget is set at the round-1
@@ -150,7 +150,7 @@ test.describe.serial('@profiling Board Interaction Throughput', () => {
         `p95 ${stats.p95.toFixed(2)}ms, max ${stats.max.toFixed(2)}ms`,
     )
 
-    // Median-of-batch (PROF-003-D3): the per-cell distribution is right-skewed on
+    // Median-of-batch: the per-cell distribution is right-skewed on
     // mobile (a few slow cells pull the avg past the threshold while the typical
     // cell stays well under). The median tracks the typical-cell experience; the
     // max guard below still catches any single sustained-slow cell.

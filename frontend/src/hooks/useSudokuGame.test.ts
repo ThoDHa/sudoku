@@ -1383,7 +1383,7 @@ describe('useSudokuGame - Edge Cases', () => {
     expect(result.current.board[32]).toBe(5)
   })
 
-  // RC-dependent: these handlers have no manual useCallback (FE-7), so their
+  // RC-dependent: these handlers have no manual useCallback, so their
   // identity across a rerender is the React Compiler's memoization. Under
   // VITE_SKIP_RC=1 RC is off and the identities change every render. Stryker
   // sets that flag because its instrumentation defeats RC memoization anyway,
@@ -1700,7 +1700,7 @@ describe('useSudokuGame - Memoization', () => {
   // RC-dependent: the whole-return-object identity assertion holds only when
   // the React Compiler is firing, which is every run except Stryker's. With
   // VITE_SKIP_RC=1 RC is off and the manual return useMemo has been removed
-  // (FE-7), so the object is recreated each render. The state-change test
+  //, so the object is recreated each render. The state-change test
   // below still runs.
   it.skipIf(process.env['VITE_SKIP_RC'])('memoizes return object correctly', () => {
     const puzzle = createEmptyPuzzle()
@@ -2677,11 +2677,11 @@ function emptyMove() {
 }
 
 // ============================================================================
-// Mutation killing tests (MUT-1 iteration 2). Each test below pins an exact
+// Mutation killing tests. Each test below pins an exact
 // observable property that a surviving mutant broke. See the matching
 // `// Stryker disable` directives in useSudokuGame.ts for the equivalents.
 // ============================================================================
-describe('useSudokuGame mutation kills (MUT-1 iter-2)', () => {
+describe('useSudokuGame mutation kills ( iter-2)', () => {
   it('records the exact "Removed note" explanation when toggling an existing candidate off', () => {
     // Kills: StringLiteral/ArithmeticOperator mutants on the "Removed note" template
     // (the "Added note" branch is already asserted elsewhere; this covers the OFF branch).
