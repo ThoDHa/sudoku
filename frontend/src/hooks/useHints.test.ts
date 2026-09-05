@@ -91,18 +91,28 @@ function createHintsCallbacks() {
 
 type HintsCallbacks = ReturnType<typeof createHintsCallbacks>
 
-function renderHintsHook(game: MutableGame, callbacks: HintsCallbacks) {
+function renderHintsHook(
+  game: MutableGame,
+  callbacks: HintsCallbacks,
+  refGame?: UseSudokuGameReturn | null,
+) {
   // The hook reads the live game both directly (board/candidates/history) and
   // through gameRef (the contradiction branch's canUndo check), so rerenders
-  // pass the mutated game straight through.
+  // pass the mutated game straight through. refGame overrides what gameRef
+  // holds, letting a test exercise a null ref independently of the direct prop.
   const result = renderHook(
-    (props: { game: MutableGame; callbacks: HintsCallbacks }) => {
-      const gameRef = useRef<UseSudokuGameReturn | null>(
-        props.game as unknown as UseSudokuGameReturn,
-      )
-      gameRef.current = props.game as unknown as UseSudokuGameReturn
+    (props: {
+      game: MutableGame
+      callbacks: HintsCallbacks
+      refGame?: UseSudokuGameReturn | null
+    }) => {
+      const directGame = props.game as unknown as UseSudokuGameReturn
+      const refValue: UseSudokuGameReturn | null =
+        props.refGame !== undefined ? props.refGame : directGame
+      const gameRef = useRef<UseSudokuGameReturn | null>(refValue)
+      gameRef.current = refValue
       return useHints({
-        game: props.game as unknown as UseSudokuGameReturn,
+        game: directGame,
         gameRef,
         initialBoard: [1, 2, 3],
         clearAllAndDeselect: props.callbacks.clearAllAndDeselect,
@@ -118,7 +128,11 @@ function renderHintsHook(game: MutableGame, callbacks: HintsCallbacks) {
       })
     },
     {
-      initialProps: { game, callbacks },
+      initialProps: {
+        game,
+        callbacks,
+        ...(refGame !== undefined ? { refGame } : {}),
+      },
     },
   )
   return result
@@ -318,6 +332,26 @@ describe('useHints', () => {
       })
       // The cannot-undo clearer must null the validation message.
       expect(callbacks.setValidationMessage).toHaveBeenCalledWith(null)
+    })
+
+    it('toasts a cannot-solve message when a contradiction is returned while the game ref is null', async () => {
+      const move = makeMove({ action: 'contradiction', explanation: 'bad cell' })
+      mockedFindNextMove.mockResolvedValue(makeFindResult(move))
+      const callbacks = createHintsCallbacks()
+      // canUndo is true on the direct prop, so the branch decision must come from
+      // the ref; a null ref degrades to the cannot-solve branch instead of throwing.
+      const { result } = renderHintsHook(makeGame({ canUndo: true }), callbacks, null)
+
+      await act(async () => {
+        await result.current.handleNext()
+      })
+
+      expect(mockedCommitCellAction).not.toHaveBeenCalled()
+      expect(mockedLoggerError).not.toHaveBeenCalled()
+      expect(callbacks.setValidationMessage).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'The puzzle cannot be solved - initial state has errors.',
+      })
     })
 
     it('surfaces the already-complete toast when the solver reports solved with no move', async () => {

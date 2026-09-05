@@ -141,7 +141,6 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
 
       if (move.action === 'contradiction' || move.action === 'error') {
         const currentGame = gameRef.current
-        // Stryker disable next-line OptionalChaining: defensive guard; gameRef.current is always populated by the host component, and the contract does not exercise a null ref
         if (currentGame?.canUndo) {
           commitCellAction('undo', { game: currentGame, clearMoveHighlight })
           setValidationMessage({
