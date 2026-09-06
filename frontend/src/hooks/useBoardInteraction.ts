@@ -389,7 +389,7 @@ export function useBoardInteraction({
       }
       return callbacks
     },
-    // Stryker disable next-line ArrayDeclaration: React compares dependency arrays element-wise with Object.is, so a one-element array holding the same constant on every render is exactly as unchanging as an empty one. The memo body runs once under either array, so no program behaviour differs and no test can observe the substitution.
+    // Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"]; React compares dependency arrays element-wise with Object.is, and a one-element array holding the same string constant on every render is exactly as unchanging as an empty one, so the memo body runs once under either array and no test can observe the substitution.
     [],
   )
 
