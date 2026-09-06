@@ -102,4 +102,5 @@ temp/
 
 # Local agent tooling state
 .claude/
+.worktrees/
 morning_start.sh
