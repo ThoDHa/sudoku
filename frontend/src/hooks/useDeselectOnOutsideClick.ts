@@ -24,11 +24,7 @@ export function useDeselectOnOutsideClick(options: UseDeselectOnOutsideClickOpti
       // Only process if a cell or multi-select is active
       if (selectedCellRef.current === null && selectedCellsRef.current.size === 0) return
 
-      const target = event.target as Element | null
-      // Stryker disable ConditionalExpression: guard is unreachable for genuine events
-      /* istanbul ignore next -- event.target is always assigned by the dispatcher */
-      if (!target) return
-      // Stryker restore ConditionalExpression
+      const target = event.target as Element
 
       // Check for actual modals AND overlay backdrops (not toasts/notifications).
       // [data-overlay-backdrop] covers all three backdrop structural patterns; [data-modal]
