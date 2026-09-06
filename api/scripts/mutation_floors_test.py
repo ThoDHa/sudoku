@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Tests for mutation_floors.py. Run: python3 -m unittest mutation_floors_test."""
 
+import contextlib
+import io
 import json
 import os
 import re
@@ -32,12 +34,15 @@ def package_dir(root, scope):
     return os.path.join(root, mf.report_slug(mf.PACKAGE_PKGS[scope]))
 
 
-def write_floors(dir_path, floors, shards=None, sources=None):
+def write_floors(dir_path, floors, shards=None, sources=None, frontend=None):
     path = os.path.join(dir_path, "floors.json")
+    data = {"floors": floors,
+            "techniques_shards": shards or {},
+            "sources": sources or {}}
+    if frontend is not None:
+        data["frontend"] = frontend
     with open(path, "w") as f:
-        json.dump({"floors": floors,
-                   "techniques_shards": shards or {},
-                   "sources": sources or {}}, f)
+        json.dump(data, f)
     return path
 
 
@@ -46,6 +51,52 @@ def shard_dir(root, name):
     exercised against the real shape, not a convenient one."""
     return os.path.join(root, f"mutation-go-techniques-shard-{name}",
                         "reports", "mutation", f"techniques-shard-{name}")
+
+
+def write_mutation_json(dir_path, statuses):
+    """Write one StrykerJS mutation.json holding one file with the statuses.
+
+    Each entry is a status string or a dict carrying at least "status", and
+    dicts use the real report shape (mutatorName, statusReason, location, ...)
+    so the adapter is calibrated against what Stryker actually writes."""
+    os.makedirs(dir_path, exist_ok=True)
+    mutants = []
+    for i, entry in enumerate(statuses):
+        mutant = {"status": entry} if isinstance(entry, str) else dict(entry)
+        mutant["id"] = str(i)
+        mutants.append(mutant)
+    path = os.path.join(dir_path, "mutation.json")
+    with open(path, "w") as f:
+        json.dump({"schemaVersion": "1.0",
+                   "files": {"src/x.ts": {"language": "typescript",
+                                          "source": "",
+                                          "mutants": mutants}}}, f)
+    return path
+
+
+# Real report entries, verbatim from a nightly artifact via
+# frontend/scripts/mutation_aggregate_test.py's fixtures, which documents them
+# as copied from mutation-results/.../reports/mutation/mutation.json.
+_REAL_TIMEOUT_HIT_LIMIT = {
+    "mutatorName": "UpdateOperator",
+    "replacement": "c--",
+    "statusReason": "Hit limit reached (7054501/7054500)",
+    "status": "Timeout",
+    "static": False,
+    "coveredBy": ["15", "61", "62"],
+    "location": {"end": {"column": 38, "line": 20},
+                 "start": {"column": 35, "line": 20}},
+}
+_REAL_KILLED_ASSERTION = {
+    "mutatorName": "Block",
+    "replacement": "{}",
+    "statusReason": "expected false to be true // Object.is equality",
+    "status": "Killed",
+    "static": False,
+    "coveredBy": ["15"],
+    "location": {"end": {"column": 38, "line": 20},
+                 "start": {"column": 35, "line": 20}},
+}
 
 
 class Ratchet(unittest.TestCase):
@@ -93,6 +144,84 @@ class ShardIdentification(unittest.TestCase):
         self.assertIsNone(mf.shard_name_from_path("/tmp/shards/whatever/report.json"))
 
 
+def _frontend_aggregate():
+    """Import frontend/scripts/mutation_aggregate.py under its own module name.
+
+    Loaded by file path rather than sys.path so it cannot collide with the
+    api/scripts mutation_aggregate this suite already imports as agg, and so
+    the equivalence below is judged against the exact file the frontend gate
+    runs, not a copy."""
+    import importlib.util
+    path = os.path.join(_REPO, "frontend", "scripts", "mutation_aggregate.py")
+    spec = importlib.util.spec_from_file_location("frontend_mutation_aggregate", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class CountingConventionEquivalence(unittest.TestCase):
+    """The Go convention (killed+timeout over killed+escaped) and the frontend
+    convention (Killed+Timeout+RuntimeError+CompileError over that plus
+    Survived+NoCoverage, Ignored excluded) must be proven identical before any
+    number moves between them: a floor migrated while the conventions disagreed
+    would silently change meaning. These tests feed the same real-shape Stryker
+    fixture to the adapter this tool uses and to frontend/scripts/
+    mutation_aggregate.py, the aggregator the frontend gates actually run."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.frontend_agg = _frontend_aggregate()
+
+    def _fixture_statuses(self):
+        return [_REAL_KILLED_ASSERTION, _REAL_TIMEOUT_HIT_LIMIT,
+                "Killed", "Killed", "Survived", "Survived",
+                "Timeout", "NoCoverage", "RuntimeError", "CompileError",
+                "Ignored", "Ignored", "Ignored"]
+
+    def test_the_adapter_counts_what_the_frontend_aggregator_counts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_mutation_json(tmp, self._fixture_statuses())
+            killed, timeout, escaped, total = mf.combine_stryker([path])
+            caught, fe_escaped, ignored, fe_total = self.frontend_agg.combine([path])
+            self.assertEqual(killed + timeout, caught)
+            self.assertEqual(escaped, fe_escaped)
+            self.assertEqual(total, fe_total)
+            # Ignored rides in the total of both, and in neither score.
+            self.assertEqual(total, caught + fe_escaped + ignored)
+
+    def test_both_conventions_score_the_same_scenario_identically(self):
+        """One scenario, both report formats: 30 assertion kills, 2 timeout
+        kills, 3 survivors, 5 ignored directives. The go-mutesting report and
+        the Stryker fixture must produce the same efficacy through measure()."""
+        with tempfile.TemporaryDirectory() as tmp:
+            go_report = write_report(tmp, killed=30, escaped=3, timeout=2)
+            fe_dir = os.path.join(tmp, "stryker")
+            fe_report = write_mutation_json(fe_dir, ["Killed"] * 30 + ["Survived"] * 3
+                                            + ["Timeout"] * 2 + ["Ignored"] * 5)
+            go_eff = mf.measure([go_report], "go")[0]
+            fe_eff = mf.measure([fe_report], "frontend", combine=mf.combine_stryker)[0]
+            self.assertEqual(go_eff, fe_eff)
+            self.assertEqual(fe_eff, self.frontend_agg.efficacy(32, 3))
+
+    def test_ignored_mutants_move_neither_numerator_nor_denominator(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            scored = ["Killed", "Killed", "Survived"]
+            with_ignored = write_mutation_json(tmp, scored + ["Ignored"] * 4)
+            eff, _k, _e, total = mf.measure(
+                [with_ignored], "frontend", combine=mf.combine_stryker)
+            self.assertEqual(eff, mf.agg.efficacy(2, 1))
+            # ...but Ignored still counts in the total, matching the frontend
+            # aggregator's tally, so a report cannot hide mutants either way.
+            self.assertEqual(total, 7)
+
+    def test_the_status_sets_agree_with_the_frontend_aggregator(self):
+        """A Stryker upgrade renaming a status must surface here rather than
+        silently reclassify mutants on one side of the equivalence only."""
+        self.assertEqual({"Killed"} | mf.STRYKER_TIMEOUT_LIKE,
+                         self.frontend_agg.CAUGHT)
+        self.assertEqual(mf.STRYKER_ESCAPED, self.frontend_agg.ESCAPED)
+
+
 class PackageEnumeration(unittest.TestCase):
     """PACKAGE_PKGS is the only list of what gets mutated, so the Makefile and
     the nightly matrix have to be reading it rather than repeating it."""
@@ -135,6 +264,65 @@ class PackageEnumeration(unittest.TestCase):
         self.assertEqual(matrix, expected)
 
 
+def _derived_package_glob():
+    """The glob the emitter must produce, built here from PACKAGE_PKGS so the
+    tests never restate a literal."""
+    return "mutation-go-@(" + "|".join(
+        scope for scope, pkg in mf.PACKAGE_PKGS.items()
+        if pkg != mf.TECHNIQUES_LABEL) + ")"
+
+
+class PackageArtifactGlob(unittest.TestCase):
+    """The lag check's download pattern must be derived from PACKAGE_PKGS, the
+    same enumeration the sweep and the gate read, or a new scope gets swept and
+    gated but never downloaded, and the lag check silently stops covering it."""
+
+    def _emitted(self, extra_scope=None):
+        """Run the emitter, optionally against a grown PACKAGE_PKGS."""
+        argv = ["packages", "--artifact-glob"]
+        if extra_scope is None:
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(mf.main(argv), 0)
+            return out.getvalue().strip()
+        original = mf.PACKAGE_PKGS
+        mf.PACKAGE_PKGS = {**original, "zzz_fake": "./pkg/zzz_fake"}
+        try:
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(mf.main(argv), 0)
+            return out.getvalue().strip()
+        finally:
+            mf.PACKAGE_PKGS = original
+
+    def test_the_glob_names_every_unsharded_scope_in_order(self):
+        self.assertEqual(self._emitted(), _derived_package_glob())
+
+    def test_a_synthetic_scope_grows_the_emitted_glob(self):
+        """The derivation proof: a scope added to PACKAGE_PKGS appears in the
+        glob with no other edit, so the emitter reads the map rather than
+        restating a literal."""
+        self.assertIn("zzz_fake", self._emitted(extra_scope=True))
+
+    def test_techniques_never_appears_in_the_emitted_glob(self):
+        """techniques has no mutation-go-techniques artifact; it is measured
+        through its shards, whose pattern the workflow carries separately."""
+        self.assertNotIn("techniques", self._emitted())
+
+    def test_the_glob_prefix_matches_the_workflow_artifact_naming(self):
+        with open(os.path.join(_REPO, ".github", "workflows",
+                               "nightly-mutation.yml")) as f:
+            text = f.read()
+        m = re.search(r"^          name: (mutation-go-\$\{\{ matrix\.name \}\})$",
+                      text, re.M)
+        self.assertIsNotNone(m, "could not find the go artifact name template")
+        glob = self._emitted()
+        prefix = glob.split("@(")[0]
+        self.assertTrue(m.group(1).startswith(prefix),
+                        f"glob prefix {prefix!r} does not match artifact "
+                        f"naming {m.group(1)!r}")
+
+
 class FloorLookup(unittest.TestCase):
     def test_get_prints_a_package_floor(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -150,6 +338,16 @@ class FloorLookup(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             floors = write_floors(tmp, {"dp": 92.8})
             self.assertEqual(mf.main(["--floors-file", floors, "get", "nope"]), 2)
+
+    def test_get_prints_a_frontend_floor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            floors = write_floors(tmp, {"dp": 92.8},
+                                  frontend={"hooks": 100, "surface": 97})
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(mf.main(["--floors-file", floors,
+                                          "get", "frontend/surface"]), 0)
+            self.assertEqual(out.getvalue().strip(), "97")
 
     def test_report_slug_matches_the_makefile_layout(self):
         self.assertEqual(mf.report_slug("./internal/sudoku/human/techniques"),
@@ -539,6 +737,160 @@ class ProposeResilience(unittest.TestCase):
                                       "--package-dir", tmp, "--scope", "dp"]), 0)
 
 
+def frontend_shard_dir(root, scope, name):
+    """Mirror the CI artifact layout for a frontend scope: one artifact per
+    shard, named mutation-frontend-<scope>-<shard>, each carrying the Stryker
+    report tree."""
+    return os.path.join(root, f"mutation-frontend-{scope}-{name}",
+                        "frontend", "reports", "mutation")
+
+
+def write_frontend_shard(root, scope, name, killed, escaped, ignored=0):
+    statuses = (["Killed"] * killed + ["Survived"] * escaped
+                + ["Ignored"] * ignored)
+    return write_mutation_json(frontend_shard_dir(root, scope, name), statuses)
+
+
+class FrontendRatchet(unittest.TestCase):
+    """The ratchet extends to the StrykerJS scopes with no new mechanism:
+    raises only, the lower of two corroborating runs, and a scope only one run
+    measured is left alone."""
+
+    def _propose(self, tmp, floors_path, argv):
+        out = os.path.join(tmp, "candidate.json")
+        rc = mf.main(["--floors-file", floors_path, "propose", "--out", out,
+                      "--run", "999", "--recorded", "2026-08-04"] + argv)
+        # A refused propose writes no candidate; there is nothing to read.
+        if rc != 0:
+            return rc, None
+        with open(out) as f:
+            return rc, json.load(f)
+
+    def test_raises_a_frontend_floor_to_the_measurement(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            write_frontend_shard(tmp, "hooks", "a", killed=14, escaped=1)
+            write_frontend_shard(tmp, "hooks", "b", killed=14, escaped=1)
+            floors = write_floors(tmp, {"dp": 100}, frontend={"hooks": 90})
+            rc, data = self._propose(tmp, floors, ["--frontend-dir", tmp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["frontend"]["hooks"], 93.33)
+            self.assertEqual(data["sources"]["frontend/hooks"]["run"], "999")
+
+    def test_a_worse_frontend_run_leaves_the_floor_untouched(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            write_frontend_shard(tmp, "hooks", "a", killed=5, escaped=5)
+            floors = write_floors(tmp, {"dp": 100}, frontend={"hooks": 100},
+                                  sources={"frontend/hooks": SOURCE})
+            rc, data = self._propose(tmp, floors, ["--frontend-dir", tmp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["frontend"]["hooks"], 100)
+            self.assertEqual(data["sources"]["frontend/hooks"]["run"], "1")
+
+    def test_a_frontend_scope_raises_only_to_the_lower_of_two_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            now, prev = os.path.join(tmp, "now"), os.path.join(tmp, "prev")
+            write_frontend_shard(now, "hooks", "a", killed=30, escaped=0)
+            write_frontend_shard(prev, "hooks", "a", killed=57, escaped=3)
+            floors = write_floors(tmp, {"dp": 100}, frontend={"hooks": 90})
+            rc, data = self._propose(tmp, floors, [
+                "--frontend-dir", now, "--previous-frontend-dir", prev])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["frontend"]["hooks"], 95.0)
+
+    def test_a_frontend_scope_only_this_run_measured_is_left_alone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            now, prev = os.path.join(tmp, "now"), os.path.join(tmp, "prev")
+            write_frontend_shard(now, "hooks", "a", killed=30, escaped=0)
+            write_frontend_shard(prev, "surface", "b", killed=97, escaped=3)
+            floors = write_floors(tmp, {"dp": 100},
+                                  frontend={"hooks": 90, "surface": 90})
+            rc, data = self._propose(tmp, floors, [
+                "--frontend-dir", now, "--previous-frontend-dir", prev])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["frontend"]["hooks"], 90)
+
+    def test_a_frontend_scope_with_no_report_this_run_is_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            write_frontend_shard(tmp, "hooks", "a", killed=30, escaped=0)
+            floors = write_floors(tmp, {"dp": 100},
+                                  frontend={"hooks": 90, "surface": 97})
+            rc, data = self._propose(tmp, floors, ["--frontend-dir", tmp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["frontend"]["hooks"], 100.0)
+            self.assertEqual(data["frontend"]["surface"], 97)
+
+    def test_a_frontend_report_from_an_unknown_scope_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            write_frontend_shard(tmp, "newscope", "a", killed=5, escaped=0)
+            floors = write_floors(tmp, {"dp": 100}, frontend={"hooks": 100})
+            self.assertEqual(self._propose(tmp, floors,
+                                           ["--frontend-dir", tmp])[0], 2)
+
+    def test_propose_without_a_frontend_block_refuses_frontend_reports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            write_frontend_shard(tmp, "hooks", "a", killed=5, escaped=0)
+            floors = write_floors(tmp, {"dp": 100})
+            self.assertEqual(self._propose(tmp, floors,
+                                           ["--frontend-dir", tmp])[0], 2)
+
+
+class LagDetectionControls(unittest.TestCase):
+    """The controls from the testing strategy, on `config`: a scope beyond dp
+    and human, which the lag check historically did not download. They prove
+    the extended check detects lag (a floor a measurement has passed is
+    reported as a raise) rather than merely completing with exit 0. Every
+    control runs against a temporary floors file; the canonical file is never
+    touched."""
+
+    def _propose(self, tmp, argv):
+        floors = os.path.join(tmp, "floors.json")
+        with open(floors, "w") as f:
+            json.dump({"floors": {"config": self.floors["config"]},
+                       "techniques_shards": {},
+                       "sources": {"config": SOURCE}}, f)
+        out = os.path.join(tmp, "candidate.json")
+        rc = mf.main(["--floors-file", floors, "propose", "--out", out,
+                      "--run", "999", "--recorded", "2026-08-04"] + argv)
+        with open(out) as f:
+            return rc, json.load(f)
+
+    def test_a_lagging_config_floor_produces_a_raise(self):
+        """A floor at 90.0 against a report measuring 100.0 must be written up
+        as a change to 100.0: this is the signal the lag check exists for."""
+        with tempfile.TemporaryDirectory() as tmp:
+            self.floors = {"config": 90.0}
+            write_report(package_dir(tmp, "config"), killed=100, escaped=0)
+            rc, data = self._propose(tmp, ["--package-dir", tmp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["floors"]["config"], 100.0)
+            self.assertEqual(data["sources"]["config"]["run"], "999")
+
+    def test_a_level_config_floor_produces_no_change(self):
+        """A floor already at the measurement must come back unchanged, with
+        its provenance still pointing at the run that set it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            self.floors = {"config": 100.0}
+            write_report(package_dir(tmp, "config"), killed=100, escaped=0)
+            rc, data = self._propose(tmp, ["--package-dir", tmp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["floors"]["config"], 100.0)
+            self.assertEqual(data["sources"]["config"]["run"], "1")
+
+    def test_a_corroborated_pair_clamps_to_the_lower_run(self):
+        """The same fixture with a previous run at 95.0 proposes 95.0, not
+        100.0: a raise takes the lower of the two runs so unchanged code
+        cannot red the next night on a single-run fluke."""
+        with tempfile.TemporaryDirectory() as tmp:
+            self.floors = {"config": 90.0}
+            now, prev = os.path.join(tmp, "now"), os.path.join(tmp, "prev")
+            write_report(package_dir(now, "config"), killed=100, escaped=0)
+            write_report(package_dir(prev, "config"), killed=95, escaped=5)
+            rc, data = self._propose(
+                tmp, ["--package-dir", now, "--previous-package-dir", prev])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["floors"]["config"], 95.0)
+
+
 class ReportPath(unittest.TestCase):
     def test_report_path_matches_what_the_gate_reads(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -556,6 +908,84 @@ class ReportPath(unittest.TestCase):
                                       "--package-dir", tmp, "--scope", "nope"]), 2)
 
 
+def _nightly_jobs():
+    """Split nightly-mutation.yml into job-name -> job body.
+
+    Text-level rather than a YAML parse so the guard adds no dependency to a
+    suite that runs on every push. Job keys sit at two-space indent under
+    `jobs:`, which is the only place that indent is used for a mapping key."""
+    with open(os.path.join(_REPO, ".github", "workflows",
+                           "nightly-mutation.yml")) as f:
+        text = f.read()
+    starts = [(m.start(), m.group(1))
+              for m in re.finditer(r"^  ([a-zA-Z0-9_-]+):$", text, re.M)]
+    bounds = [s for s, _ in starts] + [len(text)]
+    return {name: text[bounds[i]:bounds[i + 1]]
+            for i, (_, name) in enumerate(starts)}
+
+
+class LagCheckDownloads(unittest.TestCase):
+    """The floors-lag-check job must download every gated package scope, by a
+    pattern derived from PACKAGE_PKGS. A hardcoded list is the failure mode
+    being prevented: the day a scope joins PACKAGE_PKGS, the sweep and the gate
+    start covering it, but a literal download pattern keeps naming only the
+    scopes it was written with, so the new scope is enforced by its own run's
+    gate and then never lag-checked, and the omission is invisible until
+    somebody reads the job. Deriving the pattern makes the failure impossible
+    instead of merely detectable; these tests hold that property."""
+
+    def test_the_emitted_pattern_covers_every_package_scope(self):
+        """Judged through the workflow itself: whatever pattern the job's step
+        emits must name every scope still in PACKAGE_PKGS, so dropping a scope
+        from the emitter while it remains in the map fails here, where the
+        consequence would otherwise be a silently un-downloaded scope."""
+        out = subprocess.run(
+            [sys.executable, os.path.join(_REPO, "api", "scripts",
+                                          "mutation_floors.py"),
+             "packages", "--artifact-glob"],
+            capture_output=True, text=True, check=True)
+        self.assertEqual(out.stdout.strip(), _derived_package_glob())
+
+    def test_both_package_downloads_reference_the_derived_pattern(self):
+        """A pattern written as a literal here re-opens the failure mode the
+        emitter exists to close: neither download step may carry scope names,
+        and both must read the derivation step's output."""
+        job = _nightly_jobs()["floors-lag-check"]
+        self.assertNotIn("mutation-go-@(", job,
+                         "a literal artifact glob in the lag check defeats the "
+                         "derived emitter; reference the step output instead")
+        # Anchored to whole lines so the derivation step's shell
+        # `echo "pattern=..."` cannot be mistaken for a download key.
+        pattern_steps = re.findall(r"^\s*pattern:\s*(.+?)\s*$", job, re.M)
+        package_patterns = [p for p in pattern_steps
+                            if "techniques-shard" not in p
+                            and "frontend" not in p]
+        self.assertEqual(
+            package_patterns,
+            ["${{ steps.package-pattern.outputs.pattern }}"] * 2,
+            "both package download steps must read the derived pattern")
+
+    def test_the_shard_and_frontend_patterns_are_carried_verbatim(self):
+        """The shard set and the frontend scopes have their own artifact
+        patterns; this guard pins them so a pattern refactor cannot silently
+        narrow what the lag check downloads."""
+        job = _nightly_jobs()["floors-lag-check"]
+        self.assertEqual(re.findall(r"^\s*pattern:\s*(mutation-go-techniques-\S+)$",
+                                    job, re.M),
+                         ["mutation-go-techniques-shard-*"] * 2)
+        self.assertEqual(re.findall(r"^\s*pattern:\s*(mutation-frontend-\S+)$",
+                                    job, re.M),
+                         ["mutation-frontend-*"] * 2)
+
+    def test_the_previous_run_guards_still_stand(self):
+        """Corroboration must be best-effort per artifact family: the previous
+        run's downloads keep continue-on-error so a missing family degrades to
+        uncorroborated checking rather than reds the whole job."""
+        job = _nightly_jobs()["floors-lag-check"]
+        previous = job.split("Download the previous run's", 1)[1]
+        self.assertEqual(previous.count("continue-on-error: true"), 3)
+
+
 class CanonicalFile(unittest.TestCase):
     """The shipped floors file has to satisfy the contracts the tooling assumes."""
 
@@ -571,6 +1001,10 @@ class CanonicalFile(unittest.TestCase):
             if floor is not None:
                 self.assertIn(f"techniques/{shard}", self.data["sources"],
                               f"enforced shard floor '{shard}' has no source entry")
+        for scope, floor in self.data.get("frontend", {}).items():
+            if floor is not None:
+                self.assertIn(f"frontend/{scope}", self.data["sources"],
+                              f"enforced frontend floor '{scope}' has no source entry")
 
     def test_shard_list_matches_the_nightly_workflow_matrix(self):
         # A technique file added to the matrix without a floors entry would run
@@ -584,7 +1018,8 @@ class CanonicalFile(unittest.TestCase):
 
     def test_floors_are_within_range(self):
         everything = list(self.data["floors"].items()) + \
-            list(self.data["techniques_shards"].items())
+            list(self.data["techniques_shards"].items()) + \
+            list(self.data.get("frontend", {}).items())
         for scope, floor in everything:
             if floor is not None:
                 self.assertGreaterEqual(floor, 0, scope)
@@ -602,6 +1037,27 @@ class CanonicalFile(unittest.TestCase):
                 f"package scope '{scope}' has a null floor, which disarms its "
                 f"gate; lower it explicitly with a stated reason instead")
 
+    def test_no_frontend_scope_can_be_disarmed_by_nulling_its_floor(self):
+        """Same contract as the Go package scopes: the frontend gates read the
+        floor through `get`, which prints a null as 0, so a nulled frontend
+        floor silently gates at zero. Hooks and surface carry current values;
+        this task moved where the numbers live, not the numbers."""
+        frontend = self.data.get("frontend")
+        self.assertTrue(frontend, "the floors file has no frontend block")
+        for scope, floor in frontend.items():
+            self.assertIsNotNone(
+                floor, f"frontend scope '{scope}' has a null floor, which "
+                f"disarms its gate; lower it explicitly with a stated reason")
+
+    def test_the_workflow_gates_read_the_frontend_floors_from_here(self):
+        """The values the nightly's aggregate gates consume, printed the way
+        the workflow's command substitution sees them."""
+        for scope, floor in self.data["frontend"].items():
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(mf.main(["get", f"frontend/{scope}"]), 0)
+            self.assertEqual(out.getvalue().strip(), str(floor))
+
     def test_every_enforced_floor_has_usable_provenance(self):
         for scope, floor in self.data["floors"].items():
             if floor is not None:
@@ -609,6 +1065,9 @@ class CanonicalFile(unittest.TestCase):
         for shard, floor in self.data["techniques_shards"].items():
             if floor is not None:
                 mf._require_source(self.data, f"techniques/{shard}")
+        for scope, floor in self.data.get("frontend", {}).items():
+            if floor is not None:
+                mf._require_source(self.data, f"frontend/{scope}")
 
 
 if __name__ == "__main__":

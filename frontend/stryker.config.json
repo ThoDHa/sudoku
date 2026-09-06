@@ -22,9 +22,9 @@
   ],
   "thresholds": {
     "high": 90,
-    "low": 90,
-    "break": 90
+    "low": 90
   },
+  "_comment_thresholds": "high/low are display thresholds (the portal reads them for its ok/warn coloring); 'break' is deliberately absent. A break threshold here was a second, independent gate at 90 while the real floors live in api/mutation-floors.json (hooks 100, surface 97), which is the two-sources problem. The enforcing gate is each scope's aggregate job in nightly-mutation.yml, which reads its floor from that file, and every shard step already runs continue-on-error because the aggregate is the scope's gate. Do not reintroduce break without deleting the aggregate gates.",
   "_comment_dryRunTimeoutMinutes": "Instrumentation, not coverage analysis, is what makes the initial run slow: the suite is ~170s uninstrumented and exceeds 30 minutes with 6302 mutant switches inserted, measured both with perTest and with coverageAnalysis off, which timed out identically. Stryker's 5-minute default therefore aborts the whole run before a single mutant is tested. This is a ceiling, not a cost, and it sits well inside the job's 350-minute timeout. An initial run that needs more than this ceiling means the unsharded whole-surface run is infeasible and the work belongs in per-file shards, which is a finding worth failing on rather than absorbing into an ever-larger number.",
   "dryRunTimeoutMinutes": 120,
   "_comment_ignorePatterns": "Report artifact directories, none of which the tests read. Local allure-results alone holds ~422k files: unignored, ProjectReader spends ~100s walking them and the sandbox copy exhausts a tmpfs. A CI checkout is clean, so this matters for local iteration and costs CI nothing.",

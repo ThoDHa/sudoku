@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Read, enforce, and ratchet the canonical mutation floors in mutation-floors.json.
 
-This is the only place a Go mutation floor is compared against a measurement.
-api/Makefile and .github/workflows/nightly-mutation.yml both call in here rather
-than carrying their own copies of the numbers, so the two cannot drift apart.
+This is the only place a mutation floor is compared against a measurement: the
+Go floors at gate and propose time, and the frontend StrykerJS floors at propose
+time (their gates live in the nightly's aggregate jobs, which read their floor
+from the same file through `get`). api/Makefile and
+.github/workflows/nightly-mutation.yml both call in here rather than carrying
+their own copies of the numbers, so the two cannot drift apart.
 
 Floors move in one direction. `propose` reads a completed run and emits a
 candidate floors file in which every floor is max(current, measured); it has no
@@ -19,14 +22,15 @@ without reading as a number going down, which would be a cheaper way to
 surrender ground than lowering one, so a test refuses it. A package scope is
 therefore added to PACKAGE_PKGS only once a run has measured it, and a null
 entry there is a transient state that exists only between seeding the scope and
-the `propose` that fills it in.
+the `propose` that fills it in. The same holds for the 'frontend' block.
 
 Usage:
-    mutation_floors.py packages [--pkg-paths]
+    mutation_floors.py packages [--pkg-paths | --artifact-glob]
     mutation_floors.py get <scope>
     mutation_floors.py gate-package --package-dir reports/mutation --scope dp
     mutation_floors.py gate-shards --shards-dir shards/
-    mutation_floors.py propose --package-dir reports/mutation --shards-dir shards/
+    mutation_floors.py propose --package-dir reports/mutation --shards-dir shards/ \
+        [--frontend-dir frontend-shards/]
 
 Exit codes:
     0  every enforced floor was met
@@ -83,6 +87,15 @@ _SHARD_IN_PATH = re.compile(r"techniques-shard-([A-Za-z0-9_]+)")
 # stays inside this slack of the run that set it.
 GATE_TOLERANCE = 1e-9
 
+# StrykerJS status classification for the frontend reports, mapping onto the
+# same four counts the go-mutesting reader produces: a timeout-bucket catch
+# (Timeout, RuntimeError, CompileError) is a mutant the tests did not let
+# survive by any means, and Ignored (a documented Stryker disable directive) is
+# excluded from numerator and denominator alike. The sets must agree with
+# frontend/scripts/mutation_aggregate.py's CAUGHT/ESCAPED; a test pins them.
+STRYKER_TIMEOUT_LIKE = {"Timeout", "RuntimeError", "CompileError"}
+STRYKER_ESCAPED = {"Survived", "NoCoverage"}
+
 
 class FloorsError(Exception):
     """The floors file or a measurement cannot be trusted. Maps to exit 2."""
@@ -116,14 +129,80 @@ def shard_name_from_path(path):
     return found[-1] if found else None
 
 
-def measure(paths, what):
+# Frontend artifacts are named mutation-frontend-<scope>-<shard> and hold
+# frontend/reports/mutation/mutation.json, so the scope a downloaded StrykerJS
+# report belongs to is recoverable from the path. The floors file's 'frontend'
+# block is the enumeration of valid scopes; this only decodes the path.
+_FRONTEND_SCOPE_IN_PATH = re.compile(r"mutation-frontend-([A-Za-z0-9_]+)-")
+
+
+def frontend_scope_from_path(path):
+    """Recover the frontend scope from a downloaded artifact path, or None."""
+    found = _FRONTEND_SCOPE_IN_PATH.findall(path)
+    return found[-1] if found else None
+
+
+def find_frontend_reports(reports_dir):
+    """Return every StrykerJS mutation.json under reports_dir (recursively)."""
+    found = []
+    for root, _dirs, files in os.walk(reports_dir):
+        for name in files:
+            if name == "mutation.json":
+                found.append(os.path.join(root, name))
+    return sorted(found)
+
+
+def group_by_frontend_scope(reports):
+    """Map frontend scope to its report paths, rejecting paths we cannot place."""
+    by_scope = {}
+    for path in reports:
+        scope = frontend_scope_from_path(path)
+        if scope is None:
+            raise FloorsError(
+                f"cannot identify the frontend scope that produced {path} "
+                f"(expected a 'mutation-frontend-<scope>-<shard>' path element)")
+        by_scope.setdefault(scope, []).append(path)
+    return by_scope
+
+
+def combine_stryker(report_paths):
+    """Count a StrykerJS mutation.json set into the go-mutesting count shape.
+
+    Returns (killed, timeout_caught, escaped, total): Killed is a kill by
+    assertion, the timeout-like statuses are catches by other means, and
+    Survived/NoCoverage are escapes. Ignored mutants (documented Stryker
+    disable directives) count in the total only, so they move neither the
+    numerator nor the denominator, exactly as frontend/scripts/
+    mutation_aggregate.py scores them."""
+    killed = timeout = escaped = total = 0
+    for path in report_paths:
+        with open(path) as f:
+            data = json.load(f)
+        for file_entry in data.get("files", {}).values():
+            for mutant in file_entry.get("mutants", []):
+                status = mutant.get("status", "")
+                total += 1
+                if status == "Killed":
+                    killed += 1
+                elif status in STRYKER_TIMEOUT_LIKE:
+                    timeout += 1
+                elif status in STRYKER_ESCAPED:
+                    escaped += 1
+                # Any unrecognized status is counted only in total, neither
+                # caught nor escaped, mirroring the frontend aggregator.
+    return killed, timeout, escaped, total
+
+
+def measure(paths, what, combine=agg.combine):
     """Efficacy over one or more reports, with the counts behind it.
 
     The single place the "a timeout counts as a kill" rule is applied, so it
     cannot drift between the package gate, the shard gate, and the ratchet.
+    `combine` selects the report format: the go-mutesting reader by default,
+    combine_stryker for StrykerJS frontend reports.
     """
     try:
-        killed_no_timeout, timeout, escaped, total = agg.combine(paths)
+        killed_no_timeout, timeout, escaped, total = combine(paths)
     except (OSError, ValueError, KeyError, TypeError) as err:
         raise FloorsError(f"unreadable report for {what}: {err}") from err
     killed = killed_no_timeout + timeout
@@ -203,14 +282,31 @@ def cmd_report_path(args):
     return 0
 
 
+def package_artifact_glob():
+    """The download-artifact glob naming every unsharded package's artifact.
+
+    Built from PACKAGE_PKGS so the nightly's lag check cannot forget a scope
+    the sweep runs. techniques is excluded: it has no mutation-go-techniques
+    artifact because it is measured through its shards, whose pattern the
+    workflow carries separately. The @(...) alternation is the
+    actions/download-artifact pattern syntax."""
+    unsharded = [scope for scope, pkg in PACKAGE_PKGS.items()
+                 if pkg != TECHNIQUES_LABEL]
+    return "mutation-go-@(" + "|".join(unsharded) + ")"
+
+
 def cmd_packages(args):
     """Print the package scopes, or the ./pkg paths they mutate.
 
     The Makefile drives its sweep and its gate off this rather than restating
     the package list, so adding a scope in PACKAGE_PKGS is enough to put it in
     both. Insertion order is preserved, which puts the cheap packages first and
-    the multi-hour techniques sweep last.
-    """
+    the multi-hour techniques sweep last. --artifact-glob prints the
+    download-artifact pattern the floors-lag-check job downloads by, derived
+    from the same enumeration."""
+    if args.artifact_glob:
+        print(package_artifact_glob())
+        return 0
     for scope, pkg in PACKAGE_PKGS.items():
         print(pkg if args.pkg_paths else scope)
     return 0
@@ -218,7 +314,9 @@ def cmd_packages(args):
 
 def cmd_get(args):
     data = load(args.floors_file)
-    floors = {**data["floors"], **data["techniques_shards"]}
+    floors = {**data["floors"], **data["techniques_shards"],
+              **{f"frontend/{scope}": floor
+                 for scope, floor in data.get("frontend", {}).items()}}
     if args.scope not in floors:
         print(f"mutation-floors: unknown scope '{args.scope}'", file=sys.stderr)
         return 2
@@ -357,7 +455,8 @@ def cmd_propose(args):
     data = load(args.floors_file)
     out = copy.deepcopy(data)
     changes = []
-    corroborated = bool(args.previous_package_dir or args.previous_shards_dir)
+    corroborated = bool(args.previous_package_dir or args.previous_shards_dir
+                        or args.previous_frontend_dir)
 
     def apply(block, key, source_key, label, measured):
         old = block[key]
@@ -377,7 +476,7 @@ def cmd_propose(args):
         }
         changes.append(f"  {source_key}: {old} -> {new}")
 
-    def measured_or_skipped(paths, what):
+    def measured_or_skipped(paths, what, combine=agg.combine):
         """Measure, or return None and say why.
 
         Unlike the gates, `propose` skips what it cannot measure rather than
@@ -387,7 +486,7 @@ def cmd_propose(args):
         stub report.
         """
         try:
-            return measure(paths, what)[0]
+            return measure(paths, what, combine=combine)[0]
         except FloorsError as err:
             print(f"mutation-floors: skipping {what}: {err}", file=sys.stderr)
             return None
@@ -473,6 +572,39 @@ def cmd_propose(args):
                   f"measured shards; per-shard floors above are unaffected",
                   file=sys.stderr)
 
+    if args.frontend_dir:
+        if "frontend" not in out:
+            raise FloorsError(
+                "floors file has no 'frontend' block to hold the StrykerJS "
+                "scopes' floors (add one before proposing against them)")
+        by_scope = group_by_frontend_scope(find_frontend_reports(args.frontend_dir))
+        unknown = sorted(set(by_scope) - set(out["frontend"]))
+        if unknown:
+            raise FloorsError(
+                f"frontend reports for {unknown} have no entry in the floors "
+                f"file's 'frontend' block (add them, or the ratchet cannot "
+                f"hold them)")
+        prev_by_scope = {}
+        if args.previous_frontend_dir:
+            for scope, paths in group_by_frontend_scope(
+                    find_frontend_reports(args.previous_frontend_dir)).items():
+                eff = measured_or_skipped(paths, f"previous frontend {scope}",
+                                          combine=combine_stryker)
+                if eff is not None:
+                    prev_by_scope[scope] = eff
+        for scope in out["frontend"]:
+            paths = by_scope.get(scope)
+            # A scope nobody ran this time is simply not measured.
+            if not paths:
+                continue
+            measured = measured_or_skipped(paths, f"frontend {scope}",
+                                           combine=combine_stryker)
+            if corroborated:
+                measured = corroborate(measured, prev_by_scope.get(scope),
+                                       f"frontend/{scope}")
+            apply(out["frontend"], scope, f"frontend/{scope}",
+                  f"the frontend {scope} shard reports", measured)
+
     text = json.dumps(out, indent=2) + "\n"
     dest = (args.floors_file or DEFAULT_FLOORS_FILE) if args.in_place else args.out
     if dest:
@@ -500,8 +632,12 @@ def build_parser():
 
     p_packages = sub.add_parser(
         "packages", help="Print the package scopes (or their ./pkg paths).")
-    p_packages.add_argument("--pkg-paths", action="store_true",
-                            help="Print ./pkg paths instead of scope names.")
+    mode = p_packages.add_mutually_exclusive_group()
+    mode.add_argument("--pkg-paths", action="store_true",
+                      help="Print ./pkg paths instead of scope names.")
+    mode.add_argument("--artifact-glob", action="store_true",
+                      help="Print the download-artifact glob covering every "
+                           "unsharded package scope.")
     p_packages.set_defaults(func=cmd_packages)
 
     p_get = sub.add_parser("get", help="Print one floor (0 when unmeasured).")
@@ -531,6 +667,9 @@ def build_parser():
                           help="Emit a candidate floors file, raising only.")
     p_pr.add_argument("--package-dir", help="Per-package report directory.")
     p_pr.add_argument("--shards-dir", help="Techniques shard report directory.")
+    p_pr.add_argument("--frontend-dir",
+                      help="Directory of downloaded frontend shard artifacts, "
+                           "searched recursively for StrykerJS mutation.json.")
     # Supplying either previous directory turns on corroboration for its whole
     # block: every raise there takes the lower of the two runs, and a scope only
     # this run measured is left alone. Omit them and the raises come from a
@@ -540,6 +679,9 @@ def build_parser():
                            "corroborate raises against.")
     p_pr.add_argument("--previous-shards-dir",
                       help="Techniques shard reports from the previous run, to "
+                           "corroborate raises against.")
+    p_pr.add_argument("--previous-frontend-dir",
+                      help="Previous run's frontend shard artifacts, to "
                            "corroborate raises against.")
     p_pr.add_argument("--run", default=None, help="Run identifier to record.")
     # Defaults to today rather than None: a null `recorded` produces a floor the

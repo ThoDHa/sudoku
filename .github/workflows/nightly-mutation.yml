@@ -221,24 +221,18 @@ jobs:
           pattern: mutation-frontend-surface-*
           path: shards
 
-      # Floor 97, raised from 0 on the first complete measurement this scope has
-      # ever had. Two runs corroborate it and agree to the mutant: nightly
-      # 32331041489 and dispatch 32420620093 both reported
-      # 97.7% [shards=63 caught=4844 escaped=114 ignored=690 total=5648].
-      # Before those, the shard count was 62 of 63 because hooks-useCandidates
-      # never finished its initial test run; 567c9fe fixed the render loop that
-      # caused it, which is what made a whole-surface number possible at all.
-      #
-      # 97 rather than 97.7 for one mechanical reason: this gate prints the floor
-      # with :.0f, so a fractional floor would report itself as "floor 98%" and
-      # read as stricter than it is. The 0.7 point of headroom is ~35 mutants.
-      # Per the ratchet in api/mutation-floors.json, this only ever rises, and it
-      # rises by measuring rather than by editing the number.
+      # The floor is read from api/mutation-floors.json's frontend block, the
+      # same file the Go gates read; its 'sources' entry carries the provenance
+      # (raised from 0 by 0e88a87 after nightly 32331041489 and dispatch
+      # 32420620093 corroborated at 97.7%, held at the integer 97 because this
+      # gate prints the floor with :.0f). Per the ratchet in that file, the
+      # number only ever rises, and it rises by measuring rather than by editing.
       - name: Aggregate efficacy gate
         working-directory: frontend
         run: |
           python3 scripts/mutation_aggregate.py \
-            --floor 97 --expected "${{ needs.frontend-surface-matrix.outputs.count }}" \
+            --floor "$(python3 ../api/scripts/mutation_floors.py get frontend/surface)" \
+            --expected "${{ needs.frontend-surface-matrix.outputs.count }}" \
             --reports-dir ../shards \
             --label "frontend/surface (MUT-8-3)"
 
@@ -321,11 +315,19 @@ jobs:
           pattern: mutation-frontend-hooks-*
           path: shards
 
+      # Both numbers are derived rather than carried: the floor is read from
+      # api/mutation-floors.json's frontend block (its sources entry records the
+      # raise to 100 by d66b774 at 794 caught / 0 escaped of 861), and the
+      # expected shard count is the hooks matrix's own enumeration via
+      # mutation_shards.py, so a hook added to or removed from the matrix above
+      # is counted here the same day and a missing report still exits 2.
       - name: Aggregate efficacy gate
         working-directory: frontend
         run: |
           python3 scripts/mutation_aggregate.py \
-            --floor 100 --expected 7 --reports-dir ../shards \
+            --floor "$(python3 ../api/scripts/mutation_floors.py get frontend/hooks)" \
+            --expected "$(python3 scripts/mutation_shards.py hooks | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')" \
+            --reports-dir ../shards \
             --label "frontend/hooks (CODE-6)"
 
   go-mutation:
@@ -595,9 +597,9 @@ jobs:
   # the measurement and the code it describes belong together: on a pull request
   # the newest available artifacts measure something else.
   floors-lag-check:
-    name: Go - mutation floors lag check
+    name: Mutation floors lag check
     runs-on: ubuntu-latest
-    needs: [go-mutation, techniques-aggregate]
+    needs: [go-mutation, techniques-aggregate, frontend-surface-mutation, frontend-hooks-mutation]
     if: always() && (github.event_name == 'schedule' || inputs.scope != 'frontend')
     permissions:
       contents: read
@@ -608,10 +610,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
+      # The package pattern is derived from PACKAGE_PKGS rather than written
+      # here, the frontend-surface-matrix precedent applied to the Go scope map:
+      # a scope added there is downloaded and lag-checked the day it lands, and
+      # the two package download steps below cannot drift apart.
+      - name: Derive the package artifact pattern
+        id: package-pattern
+        working-directory: api
+        run: |
+          pattern=$(python3 scripts/mutation_floors.py packages --artifact-glob)
+          echo "pattern=$pattern" >> "$GITHUB_OUTPUT"
+          echo "package artifact pattern: $pattern"
+
       - name: Download this run's package reports
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          pattern: mutation-go-@(dp|human)
+          pattern: ${{ steps.package-pattern.outputs.pattern }}
           path: pkgs
           merge-multiple: true
 
@@ -620,6 +634,19 @@ jobs:
         with:
           pattern: mutation-go-techniques-shard-*
           path: shards
+
+      # The frontend scopes are lag-checked the same way the Go ones are: one
+      # artifact per (scope, shard), no merge, so each shard's report survives
+      # under its artifact name and propose can group them by scope. Skipped on
+      # a scope=go dispatch, where no frontend artifact exists; continue-on-error
+      # covers a run whose frontend shards all failed.
+      - name: Download this run's frontend shard reports
+        if: github.event_name == 'schedule' || inputs.scope != 'go'
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: mutation-frontend-*
+          path: frontend-shards
 
       # A floor raised onto a single run's number reds the gate on unchanged
       # code if that number drifts down next time. Every raise this job proposes
@@ -644,7 +671,7 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          pattern: mutation-go-@(dp|human)
+          pattern: ${{ steps.package-pattern.outputs.pattern }}
           path: prev-pkgs
           merge-multiple: true
           run-id: ${{ steps.previous.outputs.id }}
@@ -660,6 +687,16 @@ jobs:
           run-id: ${{ steps.previous.outputs.id }}
           github-token: ${{ github.token }}
 
+      - name: Download the previous run's frontend shard reports
+        if: steps.previous.outputs.id != '' && (github.event_name == 'schedule' || inputs.scope != 'go')
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: mutation-frontend-*
+          path: prev-frontend-shards
+          run-id: ${{ steps.previous.outputs.id }}
+          github-token: ${{ github.token }}
+
       - name: Fail if the floors lag this measurement
         working-directory: api
         run: |
@@ -671,13 +708,20 @@ jobs:
           if [ -d ../prev-shards ]; then
             corroborate="$corroborate --previous-shards-dir ../prev-shards"
           fi
+          if [ -d ../frontend-shards ]; then
+            corroborate="$corroborate --frontend-dir ../frontend-shards"
+          fi
+          if [ -d ../prev-frontend-shards ]; then
+            corroborate="$corroborate --previous-frontend-dir ../prev-frontend-shards"
+          fi
           if [ -z "$corroborate" ]; then
             echo "::notice::no previous run's reports available; checking against this run alone"
           fi
 
           # shellcheck disable=SC2086 # the flags are built above and must split
           python3 scripts/mutation_floors.py propose \
-            --package-dir ../pkgs --shards-dir ../shards $corroborate \
+            --package-dir ../pkgs --shards-dir ../shards \
+            --frontend-dir ../frontend-shards $corroborate \
             --run "$GITHUB_RUN_ID" --in-place
 
           if git diff --quiet -- mutation-floors.json; then
