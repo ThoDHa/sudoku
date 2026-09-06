@@ -24,6 +24,7 @@ non-disabled code rather than coverage gaps the team already documented.
 
 Usage:
     mutation_aggregate.py --floor 90 --expected 7 --reports-dir ../shards
+    mutation_aggregate.py ... --report-timeouts   # also print the Timeout split
 
 Exit codes (same contract as the Go aggregator):
     0  aggregated efficacy meets the floor
@@ -34,6 +35,7 @@ Exit codes (same contract as the Go aggregator):
 import argparse
 import json
 import os
+import re
 import sys
 
 
@@ -51,6 +53,51 @@ def find_reports(reports_dir):
 CAUGHT = {"Killed", "Timeout", "RuntimeError", "CompileError"}
 # Statuses that count against efficacy (the testing failed to catch the mutant).
 ESCAPED = {"Survived", "NoCoverage"}
+
+# StrykerJS produces a Timeout in exactly two ways. The wall-clock path
+# (TimeoutDecorator.mutantRun) returns {status: Timeout} with no reason key,
+# so a Timeout carrying any statusReason was produced by the hit-limit
+# counter instead (determineHitLimitReached in
+# @stryker-mutator/api run-result-helpers writes "Hit limit reached (N/M)").
+# That message shape is not API: it only labels the sub-reason, and any
+# statusReason failing the match below is counted as unclassified rather
+# than absorbed into either honest bucket.
+_HIT_LIMIT_REASON = re.compile(r"^Hit limit reached \(\d+/\d+\)$")
+
+
+def classify_timeouts(report_paths):
+    """Split every Timeout mutant in the given reports into three buckets.
+
+    The primary split is structural: a Timeout with no statusReason is a
+    wall-clock kill, one with a statusReason is not (the wall-clock path
+    cannot write one). A statusReason matching "Hit limit reached (N/M)"
+    labels a loop-kill; anything else is unclassified and never merged into
+    either honest bucket.
+
+    Returns (loop_kills, clock_kills, unclassified, per_file) where per_file
+    maps filename to a [loop_kills, clock_kills, unclassified] list (files
+    with no Timeout are absent from the mapping and therefore zero).
+    """
+    per_file = {}
+    totals = [0, 0, 0]
+    for path in report_paths:
+        with open(path) as f:
+            data = json.load(f)
+        for fname, file_entry in data.get("files", {}).items():
+            for mutant in file_entry.get("mutants", []):
+                if mutant.get("status", "") != "Timeout":
+                    continue
+                reason = mutant.get("statusReason")
+                if reason is None:
+                    bucket = 1
+                elif _HIT_LIMIT_REASON.match(reason):
+                    bucket = 0
+                else:
+                    bucket = 2
+                totals[bucket] += 1
+                per_file.setdefault(fname, [0, 0, 0])[bucket] += 1
+    loop_kills, clock_kills, unclassified = totals
+    return loop_kills, clock_kills, unclassified, per_file
 
 
 def combine(report_paths):
@@ -95,6 +142,10 @@ def main(argv=None):
                         help="Directory searched recursively for mutation.json files.")
     parser.add_argument("--label", default="frontend/hooks",
                         help="Label used in the gate output line.")
+    parser.add_argument("--report-timeouts", action="store_true",
+                        help="Also print the Timeout split (loop-kills, "
+                             "clock-kills, unclassified) per file and in "
+                             "total; the gate line itself is unchanged.")
     args = parser.parse_args(argv)
 
     reports = find_reports(args.reports_dir)
@@ -104,7 +155,19 @@ def main(argv=None):
               f"{args.reports_dir} (a shard likely timed out)", file=sys.stderr)
         return 2
 
+    split_lines = None
     try:
+        if args.report_timeouts:
+            loop_kills, clock_kills, unclassified, per_file = \
+                classify_timeouts(reports)
+            split_lines = [
+                f"timeout-split total: loop-kills={loop_kills} "
+                f"clock-kills={clock_kills} unclassified={unclassified}"]
+            for fname in sorted(per_file):
+                loop, clock, unclass = per_file[fname]
+                split_lines.append(
+                    f"timeout-split {fname}: loop-kills={loop} "
+                    f"clock-kills={clock} unclassified={unclass}")
         caught, escaped, ignored, total = combine(reports)
     except (OSError, ValueError) as err:
         print(f"mutation-gate: FAIL {args.label} unreadable shard report: {err}",
@@ -115,6 +178,9 @@ def main(argv=None):
     print(f"mutation-gate: {status} {args.label} {eff:.1f}% (floor "
           f"{args.floor:.0f}%) [shards={len(reports)} caught={caught} "
           f"escaped={escaped} ignored={ignored} total={total}]")
+    if split_lines is not None:
+        for line in split_lines:
+            print(line)
     return 0 if eff >= args.floor else 1
 
 
