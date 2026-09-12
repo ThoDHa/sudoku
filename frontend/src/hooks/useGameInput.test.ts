@@ -106,7 +106,8 @@ function makeOptions(overrides: Partial<UseGameInputOptions> = {}): UseGameInput
     clearAfterErase: vi.fn(),
     clearAfterDigitToggle: vi.fn(),
     clearDigitHighlight: vi.fn(),
-    clearMoveHighlight: vi.fn(),
+    clearTransientMoveHighlight: vi.fn(),
+    clearAllAndDeselectKeepPersistent: vi.fn(),
     setNotesMode: setNotesModeSpy,
     setEraseMode: setEraseModeSpy,
     setAutoSolveStepsUsed: setAutoSolveStepsUsedSpy,
@@ -952,7 +953,9 @@ describe('useGameInput - undo / redo', () => {
       result.current.handleUndo()
     })
     expect(options.deselectCell).toHaveBeenCalled()
-    expect(options.clearMoveHighlight).toHaveBeenCalled()
+    // Undo uses the TRANSIENT clearer so a persistent hint highlight survives
+    // an undo that leaves its hinted items physically performable.
+    expect(options.clearTransientMoveHighlight).toHaveBeenCalled()
   })
 
   it('no-ops undo when not auto-solving and gameRef is null', () => {
@@ -983,7 +986,10 @@ describe('useGameInput - undo / redo', () => {
     act(() => {
       result.current.handleRedo()
     })
-    expect(options.clearAllAndDeselect).toHaveBeenCalled()
+    // Redo uses the keep-persistent deselect variant so a persistent hint
+    // highlight survives redo, mirroring the undo behavior.
+    expect(options.clearAllAndDeselectKeepPersistent).toHaveBeenCalled()
+    expect(options.clearAllAndDeselect).not.toHaveBeenCalled()
   })
 
   it('no-ops redo when not auto-solving and gameRef is null', () => {
@@ -1027,7 +1033,7 @@ describe.skipIf(process.env['VITE_SKIP_RC'])('useGameInput - handler stability',
 // returned object on the first render's closures; calling a handler then
 // reaches the collaborator that render captured, which this observes directly.
 describe('useGameInput - memo dependency tracking', () => {
-  it('routes a redo to the current clearAllAndDeselect after it is replaced', () => {
+  it('routes a redo to the current clearAllAndDeselectKeepPersistent after it is replaced', () => {
     const options = makeOptions()
     options.gameRef.current = makeGameMock()
     const { result, rerender } = renderHook(({ opts }) => useGameInput(opts), {
@@ -1035,13 +1041,13 @@ describe('useGameInput - memo dependency tracking', () => {
     })
 
     const replacement = vi.fn()
-    rerender({ opts: { ...options, clearAllAndDeselect: replacement } })
+    rerender({ opts: { ...options, clearAllAndDeselectKeepPersistent: replacement } })
     act(() => {
       result.current.handleRedo()
     })
 
     expect(replacement).toHaveBeenCalled()
-    expect(options.clearAllAndDeselect).not.toHaveBeenCalled()
+    expect(options.clearAllAndDeselectKeepPersistent).not.toHaveBeenCalled()
   })
 })
 

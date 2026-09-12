@@ -77,6 +77,7 @@ function createHintsCallbacks() {
   return {
     clearAllAndDeselect: vi.fn(),
     setMoveHighlight: vi.fn(),
+    setPersistentMoveHighlight: vi.fn(),
     clearMoveHighlight: vi.fn(),
     // Invoke the clearer so the null-arrow functions are exercised for coverage.
     scheduleToastClear: vi.fn((_delay: number, cb: () => void) => cb()),
@@ -117,6 +118,7 @@ function renderHintsHook(
         initialBoard: [1, 2, 3],
         clearAllAndDeselect: props.callbacks.clearAllAndDeselect,
         setMoveHighlight: props.callbacks.setMoveHighlight,
+        setPersistentMoveHighlight: props.callbacks.setPersistentMoveHighlight,
         clearMoveHighlight: props.callbacks.clearMoveHighlight,
         scheduleToastClear: props.callbacks.scheduleToastClear,
         setValidationMessage: props.callbacks.setValidationMessage,
@@ -238,7 +240,14 @@ describe('useHints', () => {
       })
 
       expect(callbacks.clearAllAndDeselect).toHaveBeenCalled()
-      expect(callbacks.setMoveHighlight).toHaveBeenCalledWith(move as unknown as MoveHighlight, 1)
+      // The regular-hint success path must mark the highlight PERSISTENT via
+      // the dedicated setter (strict hint semantics: it survives ordinary
+      // actions until the user performs the hinted move).
+      expect(callbacks.setPersistentMoveHighlight).toHaveBeenCalledWith(
+        move as unknown as MoveHighlight,
+        1,
+      )
+      expect(callbacks.setMoveHighlight).not.toHaveBeenCalled()
       expect(callbacks.setValidationMessage).toHaveBeenCalledWith({
         type: 'success',
         message: 'Naked single here',
@@ -268,6 +277,54 @@ describe('useHints', () => {
       })
       // Dedup: the counter increment fires only once for an identical signature.
       expect(callbacks.setHintsUsed).toHaveBeenCalledTimes(1)
+    })
+
+    it('marks a fill-candidate hint persistent (its note addition is trackable)', async () => {
+      // Production fill-candidate move: action 'candidate', digit > 0, one
+      // target, no eliminations (the designed first hint on note-less boards).
+      const move = makeMove({
+        technique: 'fill-candidate',
+        action: 'candidate',
+        digit: 4,
+        targets: [{ row: 2, col: 3 }],
+        explanation: 'Added 4 as a candidate to R3C4',
+      })
+      mockedFindNextMove.mockResolvedValue(makeFindResult(move))
+      const callbacks = createHintsCallbacks()
+      const { result } = renderHintsHook(makeGame(), callbacks)
+
+      await act(async () => {
+        await result.current.handleNext()
+      })
+
+      expect(callbacks.setPersistentMoveHighlight).toHaveBeenCalledWith(
+        move as unknown as MoveHighlight,
+        0,
+      )
+      expect(callbacks.setMoveHighlight).not.toHaveBeenCalled()
+    })
+
+    it('keeps an unmodeled-action hint transient (no trackable items to wait for)', async () => {
+      // fix-error / fix-candidate / stalled collect no trackable items; they
+      // must keep the base transient lifetime instead of being insta-cleared
+      // or stuck forever.
+      const move = makeMove({
+        technique: 'Stalled',
+        action: 'stalled',
+        digit: 5,
+        targets: [{ row: 0, col: 1 }],
+        explanation: 'No progress possible',
+      })
+      mockedFindNextMove.mockResolvedValue(makeFindResult(move))
+      const callbacks = createHintsCallbacks()
+      const { result } = renderHintsHook(makeGame(), callbacks)
+
+      await act(async () => {
+        await result.current.handleNext()
+      })
+
+      expect(callbacks.setMoveHighlight).toHaveBeenCalledWith(move as unknown as MoveHighlight, 0)
+      expect(callbacks.setPersistentMoveHighlight).not.toHaveBeenCalled()
     })
 
     it('opens the solution-confirm modal for an unpinpointable-error move', async () => {
@@ -487,6 +544,9 @@ describe('useHints', () => {
         expect.objectContaining({ showAnswer: false }),
         expect.any(Number),
       )
+      // Technique hints keep today's transient lifetime: only the regular
+      // hint's success path marks a highlight persistent.
+      expect(callbacks.setPersistentMoveHighlight).not.toHaveBeenCalled()
       const msgCall = callbacks.setValidationMessage.mock.calls.find(
         (c) => (c[0] as { type: string }).type === 'info',
       )

@@ -6,6 +6,7 @@ import { shouldIncrementHintCounter } from '../lib/hintLifecycle'
 import { getHintSignature, getBoardSignature, formatTechniqueName } from '../lib/hintSignatures'
 import { commitCellAction } from '../lib/commitCellAction'
 import { candidatesToArrays } from '../lib/candidatesUtils'
+import { hasTrackableItems } from '../lib/persistentHighlight'
 import { logger } from '../lib/logger'
 import { TOAST_DURATION_INFO, TOAST_DURATION_ERROR } from '../lib/constants'
 import type { Move, UseSudokuGameReturn } from './useSudokuGame'
@@ -24,6 +25,8 @@ export interface UseHintsOptions {
   initialBoard: number[]
   clearAllAndDeselect: () => void
   setMoveHighlight: (move: MoveHighlight, index: number) => void
+  /** Marks the highlight persistent: it survives ordinary actions until performed */
+  setPersistentMoveHighlight: (move: MoveHighlight, index: number) => void
   clearMoveHighlight: () => void
   scheduleToastClear: (delay: number, onClear: () => void) => void
   setValidationMessage: (message: HintValidationMessage | null) => void
@@ -53,6 +56,7 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
     initialBoard,
     clearAllAndDeselect,
     setMoveHighlight,
+    setPersistentMoveHighlight,
     clearMoveHighlight,
     scheduleToastClear,
     setValidationMessage,
@@ -164,8 +168,18 @@ export function useHints(options: UseHintsOptions): UseHintsReturn {
       }
 
       // Show the hint highlight WITH the answer (showAnswer defaults to true)
-      // User sees red eliminations and green additions
-      setMoveHighlight(move, game.history.length)
+      // User sees red eliminations and green additions. Hints that ask for
+      // physically trackable items (placements, eliminations, note additions)
+      // are persistent: they survive ordinary interactions and track those
+      // items against the live board until the user performs the move. Moves
+      // with no trackable items (fix-error, fix-candidate, stalled, ...) keep
+      // the transient lifetime: a highlight nothing can resolve must not
+      // stick around or be insta-cleared by the empty-item tracking.
+      if (hasTrackableItems(move)) {
+        setPersistentMoveHighlight(move, game.history.length)
+      } else {
+        setMoveHighlight(move, game.history.length)
+      }
 
       // Show toast with technique explanation
       setValidationMessage({

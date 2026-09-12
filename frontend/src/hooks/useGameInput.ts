@@ -26,6 +26,8 @@ export interface UseGameInputOptions {
   selectCell: (idx: number) => void
   deselectCell: () => void
   clearAllAndDeselect: () => void
+  /** Redo cleanup: deselect + clear transient highlights, keep a persistent hint */
+  clearAllAndDeselectKeepPersistent: () => void
   clickGivenCell: (digit: number, idx: number) => void
   selectMultipleCells: (cells: number[]) => void
   toggleDigitHighlight: (digit: number) => void
@@ -34,7 +36,8 @@ export interface UseGameInputOptions {
   clearAfterErase: () => void
   clearAfterDigitToggle: () => void
   clearDigitHighlight: () => void
-  clearMoveHighlight: () => void
+  /** Undo cleanup: clears the move highlight unless it is a persistent hint */
+  clearTransientMoveHighlight: () => void
 
   // State setters from Game. Dispatch<SetStateAction<...>> matches the
   // signature passed by useState, so both `setValue(false)` and
@@ -78,6 +81,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
     selectCell,
     deselectCell,
     clearAllAndDeselect,
+    clearAllAndDeselectKeepPersistent,
     clickGivenCell,
     selectMultipleCells,
     toggleDigitHighlight,
@@ -86,7 +90,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
     clearAfterErase,
     clearAfterDigitToggle,
     clearDigitHighlight,
-    clearMoveHighlight,
+    clearTransientMoveHighlight,
     setNotesMode,
     setEraseMode,
     setAutoSolveStepsUsed,
@@ -385,6 +389,9 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
   }
 
   // Undo handler - reads from refs so React Compiler can keep it stable.
+  // The transient highlight clearer keeps a persistent hint highlight alive:
+  // an undo that leaves the hinted items physically performable must not wipe
+  // the hint the user is working on.
   const handleUndo = () => {
     const currentAutoSolve = autoSolveRef.current
     const currentGame = gameRef.current
@@ -394,12 +401,14 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
       commitCellAction('undo', {
         game: currentGame,
         deselectCell,
-        clearMoveHighlight,
+        clearMoveHighlight: clearTransientMoveHighlight,
       })
     }
   }
 
   // Redo handler - reads from refs so React Compiler can keep it stable.
+  // The keep-persistent deselect variant preserves a persistent hint highlight
+  // through redo, mirroring the undo behavior above.
   const handleRedo = () => {
     const currentAutoSolve = autoSolveRef.current
     const currentGame = gameRef.current
@@ -408,7 +417,7 @@ export function useGameInput(options: UseGameInputOptions): UseGameInputReturn {
     } else if (currentGame) {
       commitCellAction('redo', {
         game: currentGame,
-        clearAllAndDeselect,
+        clearAllAndDeselect: clearAllAndDeselectKeepPersistent,
       })
     }
   }

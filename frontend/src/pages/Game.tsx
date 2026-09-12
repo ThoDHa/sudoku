@@ -36,6 +36,7 @@ import { useGameModals } from '../hooks/useGameModals'
 import { useBackgroundManagerContext } from '../lib/BackgroundManagerContext'
 import { useHighlightState } from '../hooks/useHighlightState'
 import type { MoveHighlight } from '../hooks/useHighlightState'
+import { resolvePersistentHighlight } from '../lib/persistentHighlight'
 import { useVisibilityAwareTimeout } from '../hooks/useVisibilityAwareTimeout'
 import { useToastClearTimer } from '../hooks/useToastClearTimer'
 import { useFrozenWhenHidden } from '../hooks/useFrozenWhenHidden'
@@ -248,14 +249,18 @@ function GameContent() {
     highlightedDigit,
     currentHighlight,
     selectedMoveIndex,
+    highlightIsPersistent,
     selectCell,
     deselectCell,
     setDigitHighlight,
     clearDigitHighlight,
     toggleDigitHighlight,
     setMoveHighlight,
+    setPersistentMoveHighlight,
     clearMoveHighlight,
+    clearTransientMoveHighlight,
     clearAllAndDeselect,
+    clearAllAndDeselectKeepPersistent,
     clearAfterUserCandidateOp,
     clearAfterDigitPlacement,
     clearAfterErase,
@@ -287,11 +292,12 @@ function GameContent() {
 
   // Deselect the active cell when the user clicks/taps genuine empty space
   // outside the board, controls, and any overlay. See useDeselectOnOutsideClick.
+  // The transient clearer keeps a persistent hint alive across deselection.
   useDeselectOnOutsideClick({
     selectedCellRef,
     selectedCellsRef,
     deselectCell,
-    clearMoveHighlight,
+    clearMoveHighlight: clearTransientMoveHighlight,
     setEraseMode,
   })
 
@@ -445,6 +451,32 @@ function GameContent() {
   useEffect(() => {
     gameRef.current = game
   })
+
+  // Persistent regular-hint tracking: the highlight physically tracks its
+  // hinted items against the live board (solver-free). Displayed highlights
+  // shrink to the pending items; once none remain the highlight clears for
+  // good, so erasing a performed placement cannot resurrect it.
+  // candidatesVersion is read (not just listed as a dep) so the React Compiler
+  // keys recomputation on it: candidate updates are signalled by both a new
+  // array reference and a bumped version, and the version is what the
+  // compiler's memoization keys on.
+  const { displayHighlight, pendingPersistentItemCount } = useMemo(() => {
+    void game.candidatesVersion
+    if (!currentHighlight || !highlightIsPersistent) {
+      return { displayHighlight: currentHighlight, pendingPersistentItemCount: null }
+    }
+    const resolved = resolvePersistentHighlight(currentHighlight, game.board, game.candidates)
+    return {
+      displayHighlight: resolved.highlight,
+      pendingPersistentItemCount: resolved.pendingItemCount,
+    }
+  }, [currentHighlight, highlightIsPersistent, game.board, game.candidates, game.candidatesVersion])
+
+  useEffect(() => {
+    if (pendingPersistentItemCount === 0) {
+      clearMoveHighlight()
+    }
+  }, [pendingPersistentItemCount, clearMoveHighlight])
 
   // Auto-solve hook - fetches all moves at once and plays them back
   const gamePaused = useMemo(
@@ -653,6 +685,7 @@ function GameContent() {
       initialBoard,
       clearAllAndDeselect,
       setMoveHighlight,
+      setPersistentMoveHighlight,
       clearMoveHighlight,
       scheduleToastClear,
       setValidationMessage,
@@ -688,6 +721,7 @@ function GameContent() {
     selectCell,
     deselectCell,
     clearAllAndDeselect,
+    clearAllAndDeselectKeepPersistent,
     clickGivenCell,
     selectMultipleCells,
     toggleDigitHighlight,
@@ -696,7 +730,7 @@ function GameContent() {
     clearAfterErase,
     clearAfterDigitToggle,
     clearDigitHighlight,
-    clearMoveHighlight,
+    clearTransientMoveHighlight,
     setNotesMode,
     setEraseMode,
     setAutoSolveStepsUsed,
@@ -972,7 +1006,9 @@ function GameContent() {
         onCheckNotes={handleCheckNotes}
         onClearNotes={() => {
           game.clearCandidates()
-          clearMoveHighlight()
+          // Transient clear only: a persistent hint physically re-evaluates
+          // against the wiped notes and shrinks or clears itself.
+          clearTransientMoveHighlight()
         }}
         onValidate={handleValidate}
         onSolve={() => {
@@ -1048,7 +1084,7 @@ function GameContent() {
               selectedCell={selectedCell}
               selectedCells={selectedCells}
               highlightedDigit={highlightedDigit}
-              highlight={currentHighlight}
+              highlight={displayHighlight}
               onCellClick={handleCellClick}
               onCellChange={handleCellChange}
               onCellSelectMultiple={handleCellSelectMultiple}

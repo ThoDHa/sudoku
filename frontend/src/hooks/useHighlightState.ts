@@ -36,6 +36,12 @@ export interface HighlightState {
   currentHighlight: MoveHighlight | null
   /** Index of selected move in history panel */
   selectedMoveIndex: number | null
+  /**
+   * True when currentHighlight came from a regular hint (showAnswer success
+   * path) and must survive ordinary interactions until its hinted items are
+   * physically performed on the board. Only SET_MOVE_HIGHLIGHT decides it.
+   */
+  highlightIsPersistent: boolean
   /** Version counter - increments on every state change to ensure React detects updates */
   version: number
 }
@@ -56,12 +62,17 @@ export type HighlightAction =
   | { type: 'TOGGLE_DIGIT_HIGHLIGHT'; digit: number }
 
   // Move highlight actions
-  | { type: 'SET_MOVE_HIGHLIGHT'; move: MoveHighlight; index?: number }
+  /** persistent: the highlight is a regular hint and survives ordinary interactions */
+  | { type: 'SET_MOVE_HIGHLIGHT'; move: MoveHighlight; index?: number; persistent?: boolean }
   | { type: 'CLEAR_MOVE_HIGHLIGHT' }
+  // Clears the move highlight only when it is not persistent (undo/redo cleanup)
+  | { type: 'CLEAR_TRANSIENT_MOVE_HIGHLIGHT' }
 
   // Compound actions (for specific workflows)
   | { type: 'CLEAR_ALL' }
   | { type: 'CLEAR_ALL_AND_DESELECT' }
+  // Deselect + clear digit/transient highlights, preserving a persistent move highlight (redo)
+  | { type: 'CLEAR_ALL_AND_DESELECT_KEEP_PERSISTENT' }
   | { type: 'CLEAR_AFTER_USER_CANDIDATE_OP' } // Preserves digit highlight for multi-fill
   | { type: 'CLEAR_AFTER_DIGIT_PLACEMENT' } // Preserves digit highlight
   | { type: 'CLEAR_AFTER_CELL_SELECTION' } // Clears highlights when selecting cell
@@ -79,7 +90,29 @@ const initialState: HighlightState = {
   highlightedDigit: null,
   currentHighlight: null,
   selectedMoveIndex: null,
+  highlightIsPersistent: false,
   version: 0,
+}
+
+/**
+ * What a transient clear action should leave of the move highlight: a
+ * persistent regular-hint highlight survives, an ordinary one is wiped.
+ * Actions with unconditional clears (CLEAR_*_ALL, CLEAR_MOVE_HIGHLIGHT)
+ * bypass these helpers and always wipe.
+ */
+function survivingHighlight(state: HighlightState): MoveHighlight | null {
+  return state.highlightIsPersistent ? state.currentHighlight : null
+}
+
+/** Same as survivingHighlight, for the actions that also clear the paired history index. */
+function survivingHighlightPair(state: HighlightState): {
+  currentHighlight: MoveHighlight | null
+  selectedMoveIndex: number | null
+} {
+  if (state.highlightIsPersistent) {
+    return { currentHighlight: state.currentHighlight, selectedMoveIndex: state.selectedMoveIndex }
+  }
+  return { currentHighlight: null, selectedMoveIndex: null }
 }
 
 /**
@@ -96,9 +129,10 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         ...state,
         selectedCell: action.cell,
         selectedCells: new Set([action.cell]),
-        // Clear highlights when selecting a cell (for consistent UX)
+        // Clear highlights when selecting a cell (for consistent UX), but a
+        // persistent hint highlight survives until its move is performed
         highlightedDigit: null,
-        currentHighlight: null,
+        currentHighlight: survivingHighlight(state),
         version: nextVersion,
       }
 
@@ -117,9 +151,9 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         selectedCells: newCells,
         // First cell in selection acts as the "primary" selected cell for styling
         selectedCell: action.cells[0] ?? null,
-        // Clear highlights when selecting cells
+        // Clear highlights when selecting cells; persistent hints survive
         highlightedDigit: null,
-        currentHighlight: null,
+        currentHighlight: survivingHighlight(state),
         version: nextVersion,
       }
     }
@@ -129,8 +163,9 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
       return {
         ...state,
         highlightedDigit: action.digit,
-        // Clear move highlight when setting digit (fixes persistence bug)
-        currentHighlight: null,
+        // Clear move highlight when setting digit (fixes persistence bug);
+        // a persistent hint highlight survives digit selection
+        currentHighlight: survivingHighlight(state),
         version: nextVersion,
       }
 
@@ -145,7 +180,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
       return {
         ...state,
         highlightedDigit: state.highlightedDigit === action.digit ? null : action.digit,
-        currentHighlight: null,
+        currentHighlight: survivingHighlight(state),
         version: nextVersion,
       }
 
@@ -155,6 +190,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         ...state,
         currentHighlight: action.move,
         selectedMoveIndex: action.index ?? state.selectedMoveIndex,
+        highlightIsPersistent: action.persistent ?? false,
         version: nextVersion,
       }
 
@@ -163,6 +199,14 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         ...state,
         currentHighlight: null,
         selectedMoveIndex: null,
+        highlightIsPersistent: false,
+        version: nextVersion,
+      }
+
+    case 'CLEAR_TRANSIENT_MOVE_HIGHLIGHT':
+      return {
+        ...state,
+        ...survivingHighlightPair(state),
         version: nextVersion,
       }
 
@@ -173,6 +217,7 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         highlightedDigit: null,
         currentHighlight: null,
         selectedMoveIndex: null,
+        highlightIsPersistent: false,
         version: nextVersion,
       }
 
@@ -184,90 +229,101 @@ function highlightReducer(state: HighlightState, action: HighlightAction): Highl
         highlightedDigit: null,
         currentHighlight: null,
         selectedMoveIndex: null,
+        highlightIsPersistent: false,
+        version: nextVersion,
+      }
+
+    case 'CLEAR_ALL_AND_DESELECT_KEEP_PERSISTENT':
+      return {
+        ...state,
+        selectedCell: null,
+        selectedCells: new Set<number>(),
+        highlightedDigit: null,
+        ...survivingHighlightPair(state),
         version: nextVersion,
       }
 
     case 'CLEAR_AFTER_USER_CANDIDATE_OP':
       // User added/removed a candidate manually
       // PRESERVE digit highlight for multi-fill workflow
-      // Clear move highlight to prevent stale cell backgrounds
+      // Clear move highlight to prevent stale cell backgrounds; persistent hints survive
       return {
         ...state,
-        currentHighlight: null,
-        selectedMoveIndex: null,
+        ...survivingHighlightPair(state),
         version: nextVersion,
       }
 
     case 'CLEAR_AFTER_DIGIT_PLACEMENT':
       // User placed a digit
       // PRESERVE digit highlight for multi-fill workflow
+      // A persistent hint highlight survives: the placement may BE the hinted move
       return {
         ...state,
-        currentHighlight: null,
+        currentHighlight: survivingHighlight(state),
         version: nextVersion,
       }
 
     case 'CLEAR_AFTER_CELL_SELECTION':
       // User selected a cell
-      // Clear digit highlight but preserve cell selection
+      // Clear digit highlight but preserve cell selection; persistent hints survive
       return {
         ...state,
         highlightedDigit: null,
-        currentHighlight: null,
+        currentHighlight: survivingHighlight(state),
         version: nextVersion,
       }
 
     case 'CLEAR_AFTER_ERASE':
       // User erased a cell
-      // Preserve digit highlight for continued operations
+      // Preserve digit highlight for continued operations; persistent hints survive
       return {
         ...state,
-        currentHighlight: null,
+        currentHighlight: survivingHighlight(state),
         version: nextVersion,
       }
 
     case 'CLEAR_ON_MODE_CHANGE':
       // User changed modes (notes/placement/erase)
-      // Clear everything
+      // Clear everything except a persistent hint highlight: switching to notes
+      // mode is how a user performs a hinted elimination
       return {
         ...state,
         selectedCell: null,
         selectedCells: new Set<number>(),
         highlightedDigit: null,
-        currentHighlight: null,
+        currentHighlight: survivingHighlight(state),
         version: nextVersion,
       }
 
     // Stryker disable next-line ConditionalExpression: the surviving half is the fall-through to CLEAR_HIGHLIGHTS_KEEP_SELECTION, whose reducer body is byte-identical to CLEAR_AFTER_DIGIT_TOGGLE's; the other replacement kills the matching and dies to the highlight tests
     case 'CLEAR_AFTER_DIGIT_TOGGLE':
       // User toggled the same digit (erased it)
-      // Clear all highlights
+      // Clear all highlights; persistent hints survive
       return {
         ...state,
         highlightedDigit: null,
-        currentHighlight: null,
-        selectedMoveIndex: null,
+        ...survivingHighlightPair(state),
         version: nextVersion,
       }
 
     case 'CLEAR_HIGHLIGHTS_KEEP_SELECTION':
-      // Clear digit and move highlights but keep cell selection
+      // Clear digit and move highlights but keep cell selection; persistent hints survive
       return {
         ...state,
         highlightedDigit: null,
-        currentHighlight: null,
-        selectedMoveIndex: null,
+        ...survivingHighlightPair(state),
         version: nextVersion,
       }
 
     case 'CLICK_GIVEN_CELL':
       // User clicked on a given cell - highlight that digit and select cell for peer highlighting
+      // A persistent hint highlight survives given-cell navigation
       return {
         ...state,
         selectedCell: action.cell,
         selectedCells: new Set([action.cell]),
         highlightedDigit: action.digit,
-        currentHighlight: null,
+        currentHighlight: survivingHighlight(state),
         version: nextVersion,
       }
 
@@ -325,8 +381,18 @@ export function useHighlightState() {
           dispatch({ type: 'SET_MOVE_HIGHLIGHT', move })
         }
       },
+      setPersistentMoveHighlight: (move: MoveHighlight, index?: number) => {
+        if (index !== undefined) {
+          dispatch({ type: 'SET_MOVE_HIGHLIGHT', move, index, persistent: true })
+        } else {
+          dispatch({ type: 'SET_MOVE_HIGHLIGHT', move, persistent: true })
+        }
+      },
       clearMoveHighlight: () => {
         dispatch({ type: 'CLEAR_MOVE_HIGHLIGHT' })
+      },
+      clearTransientMoveHighlight: () => {
+        dispatch({ type: 'CLEAR_TRANSIENT_MOVE_HIGHLIGHT' })
       },
 
       // Compound actions
@@ -335,6 +401,9 @@ export function useHighlightState() {
       },
       clearAllAndDeselect: () => {
         dispatch({ type: 'CLEAR_ALL_AND_DESELECT' })
+      },
+      clearAllAndDeselectKeepPersistent: () => {
+        dispatch({ type: 'CLEAR_ALL_AND_DESELECT_KEEP_PERSISTENT' })
       },
       clearAfterUserCandidateOp: () => {
         dispatch({ type: 'CLEAR_AFTER_USER_CANDIDATE_OP' })
@@ -371,6 +440,7 @@ export function useHighlightState() {
   const highlightedDigit = state.highlightedDigit
   const currentHighlight = state.currentHighlight
   const selectedMoveIndex = state.selectedMoveIndex
+  const highlightIsPersistent = state.highlightIsPersistent
   const version = state.version
 
   // CRITICAL: Memoize return object to prevent cascading re-renders.
@@ -385,6 +455,7 @@ export function useHighlightState() {
       highlightedDigit,
       currentHighlight,
       selectedMoveIndex,
+      highlightIsPersistent,
       version,
 
       // Actions (already memoized, but we need stable wrapper object)
@@ -395,9 +466,12 @@ export function useHighlightState() {
       clearDigitHighlight: actions.clearDigitHighlight,
       toggleDigitHighlight: actions.toggleDigitHighlight,
       setMoveHighlight: actions.setMoveHighlight,
+      setPersistentMoveHighlight: actions.setPersistentMoveHighlight,
       clearMoveHighlight: actions.clearMoveHighlight,
+      clearTransientMoveHighlight: actions.clearTransientMoveHighlight,
       clearAll: actions.clearAll,
       clearAllAndDeselect: actions.clearAllAndDeselect,
+      clearAllAndDeselectKeepPersistent: actions.clearAllAndDeselectKeepPersistent,
       clearAfterUserCandidateOp: actions.clearAfterUserCandidateOp,
       clearAfterDigitPlacement: actions.clearAfterDigitPlacement,
       clearAfterCellSelection: actions.clearAfterCellSelection,
@@ -415,6 +489,7 @@ export function useHighlightState() {
       highlightedDigit,
       currentHighlight,
       selectedMoveIndex,
+      highlightIsPersistent,
       version,
       actions,
       dispatch,

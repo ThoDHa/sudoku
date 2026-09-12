@@ -138,6 +138,33 @@ function actSetMoveHighlight(result: HookResult, ...args: Parameters<Api['setMov
   })
 }
 
+function actSetPersistentMoveHighlight(
+  result: HookResult,
+  ...args: Parameters<Api['setPersistentMoveHighlight']>
+) {
+  act(() => {
+    result.current.setPersistentMoveHighlight(...args)
+  })
+}
+
+function actClearTransientMoveHighlight(
+  result: HookResult,
+  ...args: Parameters<Api['clearTransientMoveHighlight']>
+) {
+  act(() => {
+    result.current.clearTransientMoveHighlight(...args)
+  })
+}
+
+function actClearAllAndDeselectKeepPersistent(
+  result: HookResult,
+  ...args: Parameters<Api['clearAllAndDeselectKeepPersistent']>
+) {
+  act(() => {
+    result.current.clearAllAndDeselectKeepPersistent(...args)
+  })
+}
+
 function actToggleDigitHighlight(
   result: HookResult,
   ...args: Parameters<Api['toggleDigitHighlight']>
@@ -195,6 +222,7 @@ describe('useHighlightState', () => {
         highlightedDigit: null,
         currentHighlight: null,
         selectedMoveIndex: null,
+        highlightIsPersistent: false,
         version: 0,
       })
     })
@@ -1057,5 +1085,211 @@ describe('mutation-killing: dispatch of an unknown action preserves state (L273 
     expect(result.current.selectedCell).toBe(10)
     expect(result.current.highlightedDigit).toBe(4)
     expect(result.current.version).toBe(versionBefore)
+  })
+})
+
+// =============================================================================
+// PERSISTENT HINT HIGHLIGHT LIFETIME
+//
+// A regular hint (setPersistentMoveHighlight) survives ordinary interactions
+// until its hinted items are physically performed on the board; Game.tsx owns
+// the physical tracking, the reducer only decides survival per action class.
+// =============================================================================
+
+// =============================================================================
+// SELECTED MOVE INDEX BASE SEMANTICS (History row)
+//
+// Regression guard: base commit 51806f8 cleared only currentHighlight in these
+// nine actions and left selectedMoveIndex (the History panel's row selection)
+// untouched. Only the CLEAR_* / *_TOGGLE / *_CANDIDATE_OP family clears both.
+// =============================================================================
+
+describe('selectedMoveIndex survives transient clears that never cleared it at base', () => {
+  const keepIndexActions = [
+    { name: 'selectCell', run: (api: Api) => api.selectCell(10) },
+    { name: 'selectMultipleCells', run: (api: Api) => api.selectMultipleCells([10, 20]) },
+    { name: 'setDigitHighlight', run: (api: Api) => api.setDigitHighlight(7) },
+    { name: 'toggleDigitHighlight', run: (api: Api) => api.toggleDigitHighlight(7) },
+    { name: 'clickGivenCell', run: (api: Api) => api.clickGivenCell(7, 10) },
+    { name: 'clearOnModeChange', run: (api: Api) => api.clearOnModeChange() },
+    { name: 'clearAfterDigitPlacement', run: (api: Api) => api.clearAfterDigitPlacement() },
+    { name: 'clearAfterCellSelection', run: (api: Api) => api.clearAfterCellSelection() },
+    { name: 'clearAfterErase', run: (api: Api) => api.clearAfterErase() },
+  ]
+
+  it.each(keepIndexActions)('$name keeps the selected history row index', ({ run }) => {
+    const { result } = renderHook(() => useHighlightState())
+
+    actSetMoveHighlight(result, createMockMoveHighlight(), 4)
+    act(() => {
+      run(result.current)
+    })
+
+    expect(result.current.currentHighlight).toBeNull()
+    expect(result.current.selectedMoveIndex).toBe(4)
+  })
+})
+
+describe('Persistent hint highlight lifetime', () => {
+  function setPersistentHint(result: HookResult) {
+    actSetPersistentMoveHighlight(
+      result,
+      createMockMoveHighlight({
+        action: 'eliminate',
+        digit: 0,
+        eliminations: [
+          { row: 1, col: 0, digit: 4 },
+          { row: 2, col: 0, digit: 4 },
+        ],
+      }),
+      3,
+    )
+  }
+
+  function expectPersistentHintSurvives(result: HookResult) {
+    expect(result.current.currentHighlight).not.toBeNull()
+    expect(result.current.highlightIsPersistent).toBe(true)
+    expect(result.current.selectedMoveIndex).toBe(3)
+  }
+
+  // One generated case per surviving action class keeps each test a single
+  // concept while the shared arrange/assert stays identical.
+  const survivingActions = [
+    { name: 'selectCell', run: (api: Api) => api.selectCell(10) },
+    { name: 'selectMultipleCells', run: (api: Api) => api.selectMultipleCells([10, 20]) },
+    { name: 'setDigitHighlight', run: (api: Api) => api.setDigitHighlight(7) },
+    { name: 'toggleDigitHighlight', run: (api: Api) => api.toggleDigitHighlight(7) },
+    { name: 'clickGivenCell', run: (api: Api) => api.clickGivenCell(7, 10) },
+    { name: 'deselectCell', run: (api: Api) => api.deselectCell() },
+    { name: 'clearOnModeChange', run: (api: Api) => api.clearOnModeChange() },
+    { name: 'clearAfterDigitPlacement', run: (api: Api) => api.clearAfterDigitPlacement() },
+    { name: 'clearAfterUserCandidateOp', run: (api: Api) => api.clearAfterUserCandidateOp() },
+    { name: 'clearAfterCellSelection', run: (api: Api) => api.clearAfterCellSelection() },
+    { name: 'clearAfterErase', run: (api: Api) => api.clearAfterErase() },
+    { name: 'clearAfterDigitToggle', run: (api: Api) => api.clearAfterDigitToggle() },
+    {
+      name: 'clearHighlightsKeepSelection',
+      run: (api: Api) => api.clearHighlightsKeepSelection(),
+    },
+    { name: 'clearTransientMoveHighlight', run: (api: Api) => api.clearTransientMoveHighlight() },
+    {
+      name: 'clearAllAndDeselectKeepPersistent',
+      run: (api: Api) => api.clearAllAndDeselectKeepPersistent(),
+    },
+  ]
+
+  it.each(survivingActions)('survives $name', ({ run }) => {
+    const { result } = renderHook(() => useHighlightState())
+    setPersistentHint(result)
+    expectPersistentHintSurvives(result)
+
+    act(() => {
+      run(result.current)
+    })
+
+    expectPersistentHintSurvives(result)
+  })
+
+  it('marks the stored highlight persistent and records the history index', () => {
+    const { result } = renderHook(() => useHighlightState())
+
+    setPersistentHint(result)
+
+    expect(result.current.highlightIsPersistent).toBe(true)
+    expect(result.current.selectedMoveIndex).toBe(3)
+  })
+
+  it('clears a persistent highlight on clearMoveHighlight and resets the flag', () => {
+    const { result } = renderHook(() => useHighlightState())
+    setPersistentHint(result)
+
+    actClearMoveHighlight(result)
+
+    expect(result.current.currentHighlight).toBeNull()
+    expect(result.current.selectedMoveIndex).toBeNull()
+    expect(result.current.highlightIsPersistent).toBe(false)
+  })
+
+  it('drops a persistent highlight on clearAll (restart path)', () => {
+    const { result } = renderHook(() => useHighlightState())
+    setPersistentHint(result)
+
+    actClearAll(result)
+
+    expect(result.current.currentHighlight).toBeNull()
+    expect(result.current.highlightIsPersistent).toBe(false)
+  })
+
+  it('drops a persistent highlight on clearAllAndDeselect (new game / full reset path)', () => {
+    const { result } = renderHook(() => useHighlightState())
+    setPersistentHint(result)
+
+    actClearAllAndDeselect(result)
+
+    expect(result.current.currentHighlight).toBeNull()
+    expect(result.current.selectedMoveIndex).toBeNull()
+    expect(result.current.highlightIsPersistent).toBe(false)
+  })
+
+  it('replaces a persistent highlight with a plain (non-persistent) one', () => {
+    const { result } = renderHook(() => useHighlightState())
+    setPersistentHint(result)
+    const replacement = createMockMoveHighlight({ step_index: 1 })
+
+    actSetMoveHighlight(result, replacement)
+
+    expect(result.current.currentHighlight).toEqual(replacement)
+    expect(result.current.highlightIsPersistent).toBe(false)
+  })
+
+  it('replaces a persistent highlight with a new persistent one', () => {
+    const { result } = renderHook(() => useHighlightState())
+    setPersistentHint(result)
+    const replacement = createMockMoveHighlight({ step_index: 2, digit: 6 })
+
+    actSetPersistentMoveHighlight(result, replacement, 5)
+
+    expect(result.current.currentHighlight).toEqual(replacement)
+    expect(result.current.highlightIsPersistent).toBe(true)
+    expect(result.current.selectedMoveIndex).toBe(5)
+  })
+
+  it('keeps the paired selectedMoveIndex when a persistent hint survives a clearing action', () => {
+    // The history-panel index travels with the highlight: a persistent hint
+    // that survives clearAfterUserCandidateOp must not lose its index while a
+    // transient one loses both (covered by the pre-existing tests above).
+    const { result } = renderHook(() => useHighlightState())
+    setPersistentHint(result)
+
+    actClearAfterUserCandidateOp(result)
+
+    expect(result.current.selectedMoveIndex).toBe(3)
+  })
+
+  it('clears a non-persistent highlight via clearTransientMoveHighlight', () => {
+    const { result } = renderHook(() => useHighlightState())
+
+    actSetMoveHighlight(result, createMockMoveHighlight(), 4)
+    actClearTransientMoveHighlight(result)
+
+    expect(result.current.currentHighlight).toBeNull()
+    expect(result.current.selectedMoveIndex).toBeNull()
+    expect(result.current.highlightIsPersistent).toBe(false)
+  })
+
+  it('keeps cell selection while dropping transient state in clearAllAndDeselectKeepPersistent', () => {
+    const { result } = renderHook(() => useHighlightState())
+    setPersistentHint(result)
+    act(() => {
+      result.current.selectCell(30)
+      result.current.setDigitHighlight(8)
+    })
+
+    actClearAllAndDeselectKeepPersistent(result)
+
+    expect(result.current.selectedCell).toBeNull()
+    expect(result.current.selectedCells.size).toBe(0)
+    expect(result.current.highlightedDigit).toBeNull()
+    expectPersistentHintSurvives(result)
   })
 })

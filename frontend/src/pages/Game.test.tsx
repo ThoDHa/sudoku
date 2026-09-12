@@ -112,7 +112,9 @@ vi.mock('../lib/solver-service', () => ({
     move: {
       step_index: 0,
       technique: 'Naked Single',
-      action: 'place',
+      // Production hints emit 'assign' for placement moves ('place' is the
+      // frontend user-move action); the mock must exercise that branch.
+      action: 'assign',
       digit: TARGET_DIGIT,
       targets: [{ row: 0, col: TARGET_IDX }],
       explanation: 'Only candidate here',
@@ -280,6 +282,45 @@ describe('Game page render-test harness', () => {
 
       // The hint target (row 0, col TARGET_IDX -> idx TARGET_IDX) carries the
       // primary-highlight class, proving the highlight braid is intact.
+      await waitFor(() => {
+        expect(cellHasClass(TARGET_IDX, 'bg-cell-primary')).toBe(true)
+      })
+    })
+
+    it('clears the persistent hint highlight once the hinted placement is performed', async () => {
+      await renderGame()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Get a hint' }))
+
+      // The mocked hint (action 'assign', digit TARGET_DIGIT, target idx 1) is
+      // persistent: selecting the cell and placing the hinted digit performs
+      // the single hinted item, so the board highlight must clear fully.
+      await waitFor(() => {
+        expect(cellHasClass(TARGET_IDX, 'bg-cell-primary')).toBe(true)
+      })
+
+      fireEvent.click(cell(TARGET_IDX))
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(`Enter ${TARGET_DIGIT}, `) }))
+      await waitFor(() => {
+        expect(cell(TARGET_IDX).textContent).toContain(String(TARGET_DIGIT))
+      })
+
+      await waitFor(() => {
+        expect(cellHasClass(TARGET_IDX, 'bg-cell-primary')).toBe(false)
+      })
+    })
+
+    it('keeps the persistent hint highlight through cell selection while pending', async () => {
+      await renderGame()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Get a hint' }))
+      await waitFor(() => {
+        expect(cellHasClass(TARGET_IDX, 'bg-cell-primary')).toBe(true)
+      })
+
+      // Selecting another empty cell must NOT clear the persistent hint
+      // (strict hint semantics survive ordinary interactions).
+      fireEvent.click(cell(12))
       await waitFor(() => {
         expect(cellHasClass(TARGET_IDX, 'bg-cell-primary')).toBe(true)
       })
