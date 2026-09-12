@@ -6,6 +6,15 @@ import { vi } from 'vitest'
 
 const NAKED_SINGLE = 'Naked Single'
 
+/**
+ * Fixture/helper override type: like Partial<T>, but each field may also be
+ * set to undefined explicitly — either to model wire shapes (Go nil slices
+ * arriving as null, deleting a mock's default via the spread) or to unset a
+ * defaulted callback. Plain Partial<T> forbids that under
+ * exactOptionalPropertyTypes.
+ */
+export type Overrides<T> = { [K in keyof T]?: T[K] | undefined }
+
 export const createMockMove = (overrides?: Partial<Move>): Move => ({
   step_index: 0,
   technique: 'User Input',
@@ -19,23 +28,33 @@ export const createMockMove = (overrides?: Partial<Move>): Move => ({
   ...overrides,
 })
 
-export const createMockMoveHighlight = (overrides?: Partial<MoveHighlight>): MoveHighlight => ({
-  step_index: 0,
-  technique: NAKED_SINGLE,
-  action: 'place',
-  digit: 5,
-  targets: [{ row: 0, col: 2 }],
-  explanation: 'Test move explanation',
-  refs: { title: NAKED_SINGLE, slug: 'naked-single', url: '/techniques/naked-single' },
-  highlights: {
-    primary: [{ row: 0, col: 2 }],
-    secondary: [
-      { row: 0, col: 0 },
-      { row: 0, col: 1 },
-    ],
-  },
-  ...overrides,
-})
+export const createMockMoveHighlight = (
+  // Mapped override type instead of Partial<MoveHighlight> so fixtures can set
+  // fields to undefined explicitly (modelling Go nil slices arriving as null);
+  // the spread then deletes the default for that field.
+  overrides?: Overrides<MoveHighlight>,
+): MoveHighlight =>
+  ({
+    step_index: 0,
+    technique: NAKED_SINGLE,
+    action: 'place',
+    digit: 5,
+    targets: [{ row: 0, col: 2 }],
+    explanation: 'Test move explanation',
+    refs: { title: NAKED_SINGLE, slug: 'naked-single', url: '/techniques/naked-single' },
+    highlights: {
+      primary: [{ row: 0, col: 2 }],
+      secondary: [
+        { row: 0, col: 0 },
+        { row: 0, col: 1 },
+      ],
+    },
+    ...overrides,
+    // Fixtures may deliberately delete type-required fields (e.g. targets via
+    // `targets: undefined`) to model Go nil slices arriving as null; the wire
+    // shape is runtime-valid and consumers read these fields via `?? []`, but
+    // the static MoveHighlight type cannot express it, hence the assertion.
+  }) as MoveHighlight
 
 export const createMockAutoSolveMove = (
   overrides?: Partial<{
@@ -92,7 +111,7 @@ export const createDefaultAutoSolveOptions = (
   // autoSolve tests kill optional-chaining mutants by exercising the
   // absent-callback path, so undefined values are dropped from the result
   // (key genuinely absent) rather than left as `key: undefined`.
-  overrides?: { [K in keyof AutoSolveOptions]?: AutoSolveOptions[K] | undefined },
+  overrides?: Overrides<AutoSolveOptions>,
 ) => {
   const options = {
     getBoard: vi.fn(() => Array(81).fill(0)),

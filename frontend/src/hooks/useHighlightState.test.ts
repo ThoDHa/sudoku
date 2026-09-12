@@ -1199,6 +1199,17 @@ describe('Persistent hint highlight lifetime', () => {
     expect(result.current.selectedMoveIndex).toBe(3)
   })
 
+  it('without an index, keeps the prior selectedMoveIndex', () => {
+    const { result } = renderHook(() => useHighlightState())
+    actSetMoveHighlight(result, createMockMoveHighlight(), 6)
+
+    actSetPersistentMoveHighlight(result, createMockMoveHighlight({ step_index: 9 }))
+
+    expect(result.current.highlightIsPersistent).toBe(true)
+    expect(result.current.currentHighlight?.step_index).toBe(9)
+    expect(result.current.selectedMoveIndex).toBe(6)
+  })
+
   it('clears a persistent highlight on clearMoveHighlight and resets the flag', () => {
     const { result } = renderHook(() => useHighlightState())
     setPersistentHint(result)

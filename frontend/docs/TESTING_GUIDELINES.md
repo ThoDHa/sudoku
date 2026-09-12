@@ -76,7 +76,11 @@ it('highlights ONLY the target digit in green when cell has multiple candidates'
 
 ```typescript
 // frontend/src/test-utils/gameHelpers.ts
-export const createMockMoveHighlight = (overrides?: Partial<MoveHighlight>): MoveHighlight => ({
+// Like Partial<T>, but fields may also be set to undefined explicitly
+// (e.g. to model Go nil slices arriving as null) under exactOptionalPropertyTypes.
+export type Overrides<T> = { [K in keyof T]?: T[K] | undefined }
+
+export const createMockMoveHighlight = (overrides?: Overrides<MoveHighlight>): MoveHighlight => ({
   digit: 5,
   targets: [{ row: 0, col: 2 }],
   // ...
