@@ -128,8 +128,7 @@ jobs:
     name: Frontend - surface (shard list)
     runs-on: ubuntu-latest
     needs: [changes-since-last-run]
-    if: needs.changes-since-last-run.outputs.should-run == 'true'
-    if: github.event_name == 'schedule' || inputs.scope != 'go'
+    if: needs.changes-since-last-run.outputs.should-run == 'true' && (github.event_name == 'schedule' || inputs.scope != 'go')
     outputs:
       shards: ${{ steps.enumerate.outputs.shards }}
       count: ${{ steps.enumerate.outputs.count }}
@@ -247,8 +246,7 @@ jobs:
     name: Frontend - hooks (${{ matrix.shard }})
     runs-on: ubuntu-latest
     needs: [changes-since-last-run]
-    if: needs.changes-since-last-run.outputs.should-run == 'true'
-    if: github.event_name == 'schedule' || inputs.scope != 'go'
+    if: needs.changes-since-last-run.outputs.should-run == 'true' && (github.event_name == 'schedule' || inputs.scope != 'go')
     # Below GitHub's hard 6h cap so our timeout fires first; a timed-out shard's
     # report goes missing and the aggregate gate fails loudly (exit 2) rather
     # than reporting a partial number as if it were complete.
@@ -334,8 +332,7 @@ jobs:
     name: Go - ${{ matrix.name }}
     runs-on: ubuntu-latest
     needs: [changes-since-last-run]
-    if: needs.changes-since-last-run.outputs.should-run == 'true'
-    if: github.event_name == 'schedule' || inputs.scope != 'frontend'
+    if: needs.changes-since-last-run.outputs.should-run == 'true' && (github.event_name == 'schedule' || inputs.scope != 'frontend')
     timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
@@ -449,8 +446,7 @@ jobs:
     name: Go - techniques (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
     needs: [changes-since-last-run]
-    if: needs.changes-since-last-run.outputs.should-run == 'true'
-    if: github.event_name == 'schedule' || inputs.scope != 'frontend'
+    if: needs.changes-since-last-run.outputs.should-run == 'true' && (github.event_name == 'schedule' || inputs.scope != 'frontend')
     # Below GitHub's hard 6h (360m) cap so our timeout fires first in the
     # unlikely event a single file runs long; that shard's report goes missing
     # and the aggregate gate fails loudly rather than reporting a partial number.
