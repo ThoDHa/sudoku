@@ -23,7 +23,7 @@ import {
   STORAGE_KEYS,
 } from '../lib/constants'
 import { logger } from '../lib/logger'
-import { useDialog } from './Dialog'
+import { useDialog } from '../hooks/useDialog'
 
 const ACCENT_ACTIVE = 'bg-accent text-btn-active-text'
 
