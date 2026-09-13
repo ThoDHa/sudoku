@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, act } from '@testing-library/react'
 import { TimerProvider, useTimer, useTimerControl, useTimerDisplay } from './TimerContext'
 import { BackgroundManagerProvider } from './BackgroundManagerContext'
+
+type TimerControl = ReturnType<typeof useTimerControl>
 
 // jsdom does not implement window.matchMedia; BackgroundManagerProvider does
 // not need it but keeping the stub matches the production browser environment.
@@ -19,11 +21,15 @@ if (!window.matchMedia) {
 }
 
 // TimerProvider needs BackgroundManagerProvider as an ancestor; wrap once so
-// each test mounts the hook consumer inside the full provider stack.
-function mountWithProvider(node: React.ReactNode) {
+// each test mounts the hook consumer inside the full provider stack. Optional
+// TimerProvider props let tests exercise the prop pass-through explicitly.
+function mountWithProvider(
+  node: React.ReactNode,
+  timerProps: { autoStart?: boolean; pauseOnHidden?: boolean } = {},
+) {
   return render(
     <BackgroundManagerProvider>
-      <TimerProvider>{node}</TimerProvider>
+      <TimerProvider {...timerProps}>{node}</TimerProvider>
     </BackgroundManagerProvider>,
   )
 }
@@ -70,5 +76,71 @@ describe('TimerContext defensive arms', () => {
 
     const { getByTestId } = mountWithProvider(<Consumer />)
     expect(getByTestId('consumer').textContent).toBe('has-starthas-format')
+  })
+})
+
+// Captures the latest control-context value on every render so tests can call
+// its action handlers and assert the rendered control state end to end.
+let latestControl: TimerControl | undefined
+function ControlCapture() {
+  latestControl = useTimerControl()
+  const runState = latestControl.isRunning ? 'running' : 'stopped'
+  const pauseState = latestControl.isPausedDueToVisibility ? 'paused' : 'active'
+  return <div data-testid="control">{`${runState}|${pauseState}`}</div>
+}
+
+describe('TimerProvider default props', () => {
+  it('does not auto-start when autoStart is omitted (default false)', () => {
+    const { getByTestId } = mountWithProvider(<ControlCapture />)
+    expect(getByTestId('control').textContent).toBe('stopped|active')
+  })
+
+  it('auto-starts when autoStart is true', () => {
+    const { getByTestId } = mountWithProvider(<ControlCapture />, { autoStart: true })
+    expect(getByTestId('control').textContent).toBe('running|active')
+  })
+
+  it('pauses on window blur and resumes on focus when pauseOnHidden is omitted (default true)', () => {
+    const { getByTestId } = mountWithProvider(<ControlCapture />)
+
+    act(() => {
+      latestControl!.startTimer()
+    })
+    expect(getByTestId('control').textContent).toBe('running|active')
+
+    act(() => {
+      window.dispatchEvent(new Event('blur'))
+    })
+    expect(getByTestId('control').textContent).toBe('running|paused')
+
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+    })
+    expect(getByTestId('control').textContent).toBe('running|active')
+  })
+
+  it('stays active through window blur when pauseOnHidden is explicitly false', () => {
+    const { getByTestId } = mountWithProvider(<ControlCapture />, { pauseOnHidden: false })
+
+    act(() => {
+      latestControl!.startTimer()
+    })
+    act(() => {
+      window.dispatchEvent(new Event('blur'))
+    })
+    expect(getByTestId('control').textContent).toBe('running|active')
+  })
+})
+
+describe('TimerProvider elapsed snapshot plumbing', () => {
+  it('reflects setElapsedMs in getElapsedMs after the sync effect commits', () => {
+    mountWithProvider(<ControlCapture />)
+
+    act(() => {
+      latestControl!.setElapsedMs(125000)
+    })
+
+    expect(latestControl!.getElapsedMs()).toBe(125000)
+    expect(latestControl!.formatTime()).toBe('2:05')
   })
 })

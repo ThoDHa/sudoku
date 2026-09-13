@@ -54,8 +54,11 @@ const PREFERENCES_MIGRATIONS: MigrationMap<UserPreferences> = {}
 export function getPreferences(): UserPreferences {
   try {
     const raw = localStorage.getItem(PREFERENCES_KEY)
-    if (!raw) return DEFAULT_PREFERENCES
-    const parsed: unknown = JSON.parse(raw)
+    // No !raw guard here: null flows through String() to "null", JSON.parse
+    // yields null, and migrateVersionedEnvelope maps null to null, so the
+    // ternary below already resolves a missing entry to DEFAULT_PREFERENCES.
+    // Re-adding a falsy guard would reintroduce an equivalent-mutant escape.
+    const parsed: unknown = JSON.parse(String(raw))
     const migrated = migrateVersionedEnvelope<UserPreferences>(
       parsed,
       PREFERENCES_MIGRATIONS,

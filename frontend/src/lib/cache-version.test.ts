@@ -29,6 +29,13 @@ describe('cache-version', () => {
     expect(CACHE_VERSION.length).toBeGreaterThan(0)
   })
 
+  it('stores the version under the fixed localStorage key "sudoku-app-version"', () => {
+    // The whole value is asserted so diagnostics can find the entry across
+    // deploys; a renamed or emptied key would silently orphan the stored
+    // version and fire a spurious cache-bust on every load.
+    expect(CACHE_KEY).toBe('sudoku-app-version')
+  })
+
   it('clears caches and stores the new version when the stored version differs', async () => {
     localStorage.setItem(CACHE_KEY, 'a-stale-version')
     const cleared = await checkCacheVersion()
