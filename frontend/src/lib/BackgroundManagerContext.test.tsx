@@ -1,10 +1,15 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, cleanup } from '@testing-library/react'
 import { BackgroundManagerProvider, useBackgroundManagerContext } from './BackgroundManagerContext'
+
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 describe('BackgroundManagerContext defensive arms', () => {
   it('throws when useBackgroundManagerContext is called outside a BackgroundManagerProvider', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const Consumer = () => {
       useBackgroundManagerContext()
       return null
@@ -13,7 +18,6 @@ describe('BackgroundManagerContext defensive arms', () => {
     expect(() => render(<Consumer />)).toThrow(
       'useBackgroundManagerContext must be used within a BackgroundManagerProvider',
     )
-    spy.mockRestore()
   })
 
   it('shares one BackgroundManager instance with every consumer under the provider', () => {
