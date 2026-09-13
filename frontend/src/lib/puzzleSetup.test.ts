@@ -200,5 +200,54 @@ describe('resolvePuzzleSetup', () => {
       expect(setup.alreadyCompletedToday).toBe(true)
       expect(setup.completedDailyScore).toBeUndefined()
     })
+
+    it('stays not-completed for a completed non-daily seed even when a completion is recorded today', () => {
+      mockedGetTodayUTC.mockReturnValue('2024-03-15')
+      mockedIsTodayCompleted.mockReturnValue(true)
+      const setup = resolvePuzzleSetup({
+        seed: 'daily-2024-03-14',
+        encoded: undefined,
+        pathname: '/daily-2024-03-14',
+        difficultyParam: 'medium',
+      })
+      expect(setup.alreadyCompletedToday).toBe(false)
+      expect(setup.completedDailyScore).toBeUndefined()
+    })
+
+    it('picks the score whose seed matches rather than the first stored score', () => {
+      mockedGetTodayUTC.mockReturnValue('2024-03-15')
+      mockedIsTodayCompleted.mockReturnValue(true)
+      const otherSeedScore: Score = {
+        seed: 'daily-2024-03-10',
+        difficulty: 'hard',
+        timeMs: 99999,
+        hintsUsed: 2,
+        techniqueHintsUsed: 1,
+        mistakes: 3,
+        completedAt: '2024-03-10T00:00:00.000Z',
+        autoFillUsed: true,
+        autoSolveUsed: false,
+      }
+      const matchingScore: Score = {
+        seed: 'daily-2024-03-15',
+        difficulty: 'medium',
+        timeMs: 12345,
+        hintsUsed: 0,
+        techniqueHintsUsed: 0,
+        mistakes: 0,
+        completedAt: '2024-03-15T00:00:00.000Z',
+        autoFillUsed: false,
+        autoSolveUsed: false,
+      }
+      mockedGetScores.mockReturnValue([otherSeedScore, matchingScore])
+      const setup = resolvePuzzleSetup({
+        seed: 'daily-2024-03-15',
+        encoded: undefined,
+        pathname: '/daily-2024-03-15',
+        difficultyParam: 'medium',
+      })
+      expect(setup.alreadyCompletedToday).toBe(true)
+      expect(setup.completedDailyScore).toEqual(matchingScore)
+    })
   })
 })

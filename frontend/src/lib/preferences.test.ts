@@ -277,6 +277,25 @@ describe('preferences', () => {
     })
   })
 
+  describe('homepage mode change event name', () => {
+    it('dispatches and subscribes on exactly the "homepageModeChange" event name', () => {
+      const unsubscribe = onHomepageModeChange(vi.fn())
+      expect(
+        windowMock.addEventListener.mock.calls.some((call) => call[0] === 'homepageModeChange'),
+      ).toBe(true)
+
+      setHomepageMode('game')
+      const event = windowMock.dispatchEvent.mock.calls[0]![0] as CustomEvent
+      expect(event.type).toBe('homepageModeChange')
+      expect(event.detail).toBe('game')
+
+      unsubscribe()
+      expect(
+        windowMock.removeEventListener.mock.calls.some((call) => call[0] === 'homepageModeChange'),
+      ).toBe(true)
+    })
+  })
+
   describe('onHomepageModeChange', () => {
     it('registers an event listener and returns an unsubscribe function', () => {
       const callback = vi.fn()
