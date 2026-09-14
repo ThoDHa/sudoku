@@ -131,8 +131,7 @@ export class SudokuGameSession {
 
     const timer =
       (await this.page
-        .locator('.font-mono')
-        .first()
+        .getByTestId('header-timer-clock')
         .textContent()
         .catch(() => '0:00')) || '0:00'
     const isComplete = await this.page
@@ -336,7 +335,7 @@ export class SudokuGameSession {
       { selector: 'button[title*="Notes"]', name: 'notes_button' },
       { selector: 'button[title="Erase"]', name: 'erase_button' },
       { selector: 'button[title="Get a hint"]', name: 'hint_button' },
-      { selector: '.font-mono', name: 'timer' },
+      { selector: '[data-testid="header-timer-clock"]', name: 'timer' },
       { selector: 'header', name: 'header' },
     ]
 
