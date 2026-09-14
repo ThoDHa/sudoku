@@ -45,8 +45,11 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
   const [isRunning, setIsRunning] = useState(autoStart)
   const [isPausedDueToVisibility, setIsPausedDueToVisibility] = useState(false)
 
-  // When the current running span started. Null means unseeded; every read is
-  // gated on isRunning, so a value left behind by a stopped timer is never used.
+  // When the current running span started. Null means unseeded. The value is
+  // meaningful only while isRunning: every read is gated on isRunning, and
+  // every stopped-to-running transition (startTimer, the autoStart mount
+  // effect) writes the ref itself, so a timestamp left behind by a stopped
+  // timer is never read.
   const startTimeRef = useRef<number | null>(null)
   // Track accumulated time before last pause
   const accumulatedRef = useRef(0)
@@ -84,30 +87,46 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     /* Stryker disable next-line ArrayDeclaration: React compares deps element-wise, and a constant literal entry is Object.is-equal on every render, so a one-element array runs this mount effect exactly once just as the empty array does */ [],
   )
 
-  const pauseTimer = () => {
+  // The one span-banking implementation: guards, banks the running span into
+  // the accumulator, clears the ref, then lets the caller finish (user pause
+  // and visibility pause differ only in that trailing write). The callback
+  // form is deliberate: a boolean-returning variant would carry a
+  // return false -> true mutant that no stopped-timer test can observe.
+  const bankRunningSpan = (onBanked: () => void) => {
     if (isRunning && startTimeRef.current !== null) {
       // Save accumulated time
       accumulatedRef.current += Date.now() - startTimeRef.current
       startTimeRef.current = null
-      setIsRunning(false)
+      onBanked()
     }
   }
 
+  const pauseTimer = () => {
+    bankRunningSpan(() => {
+      setIsRunning(false)
+    })
+  }
+
+  // The one rebaseline implementation, shared by resetTimer and
+  // setElapsedMsValue. The ref write is unconditional on purpose: the
+  // invariant at startTimeRef's declaration is what makes a stopped-timer
+  // timestamp harmless, and a conditional here would carry an unkillable
+  // isRunning -> true mutant.
+  const rebaseElapsed = (ms: number) => {
+    setElapsedMs(ms)
+    accumulatedRef.current = ms
+    startTimeRef.current = Date.now()
+  }
+
   const resetTimer = () => {
-    setElapsedMs(0)
-    accumulatedRef.current = 0
-    startTimeRef.current = isRunning ? Date.now() : null
+    rebaseElapsed(0)
     setIsPausedDueToVisibility(false)
   }
 
   const setElapsedMsValue = (ms: number) => {
     // Validate input to prevent NaN or negative values
     const validMs = Math.max(0, Number.isFinite(ms) ? ms : 0)
-    setElapsedMs(validMs)
-    accumulatedRef.current = validMs
-    // Unguarded: both paths into a running timer seed the ref themselves, so a
-    // value left here by a stopped timer is never read. See its declaration.
-    startTimeRef.current = Date.now()
+    rebaseElapsed(validMs)
   }
 
   // STABLE formatTime - reads from ref instead of closure to avoid recreation every tick
@@ -167,12 +186,9 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     if (!pauseOnHidden) return
 
     const pauseForVisibility = () => {
-      if (isRunning && startTimeRef.current !== null) {
-        // Save accumulated time
-        accumulatedRef.current += Date.now() - startTimeRef.current
-        startTimeRef.current = null
+      bankRunningSpan(() => {
         wasRunningBeforePauseRef.current = true
-      }
+      })
     }
 
     const resumeFromVisibility = () => {

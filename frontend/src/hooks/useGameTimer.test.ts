@@ -615,7 +615,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('resetTimer while not running sets startTimeRef to null', () => {
+  describe('resetTimer while not running leaves the timer dormant (ref value unread while stopped)', () => {
     it('leaves the timer dormant after reset when it was not running', () => {
       const bg = createMockBackgroundManager()
       const { result } = renderHook(() => useGameTimer({ backgroundManager: bg }))
@@ -629,7 +629,9 @@ describe('useGameTimer - mutation-killing branch tests', () => {
       expect(result.current.elapsedMs).toBe(0)
       expect(result.current.isRunning).toBe(false)
 
-      // advancing time must NOT accumulate because startTimeRef is null
+      // advancing time must NOT accumulate: the timer is stopped, so no
+      // interval exists, and per the invariant at startTimeRef's declaration
+      // the ref value a stopped timer left behind is never read.
       act(() => {
         vi.advanceTimersByTime(5000)
       })
@@ -857,7 +859,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('mutation-killing: pause/resume arithmetic preserves accumulated time (L74:7, L74:33)', () => {
+  describe('mutation-killing: pause/resume arithmetic preserves accumulated time (bankRunningSpan +=)', () => {
     it('resumes from the saved accumulated baseline rather than subtracting or adding the start time', () => {
       const bg = createMockBackgroundManager()
       const { result } = renderHook(() => useGameTimer({ backgroundManager: bg }))
@@ -905,7 +907,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('mutation-killing: resetTimer keeps startTimeRef live when running (L85:6)', () => {
+  describe('mutation-killing: resetTimer keeps startTimeRef live when running (rebaseElapsed ref write)', () => {
     it('continues incrementing after reset when the timer was running', () => {
       const bg = createMockBackgroundManager()
       const { result } = renderHook(() => useGameTimer({ backgroundManager: bg }))
@@ -923,9 +925,10 @@ describe('useGameTimer - mutation-killing branch tests', () => {
       expect(result.current.elapsedMs).toBe(0)
       expect(result.current.isRunning).toBe(true)
 
-      // With the correct [isRunning] deps, resetTimer captured isRunning=true
-      // and seeded a fresh startTimeRef. The [] deps mutant captures the
-      // initial false, nulls startTimeRef, and the interval body skips.
+      // resetTimer rebases through rebaseElapsed, which writes a fresh
+      // startTimeRef unconditionally. Removing that write leaves the
+      // pre-reset start time in place, and the interval keeps counting from
+      // the discarded span instead of the reset baseline.
       act(() => {
         vi.advanceTimersByTime(1000)
       })
@@ -1000,7 +1003,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('mutation-killing: pauseForVisibility guarded by isRunning (L164:11 true mutant)', () => {
+  describe('mutation-killing: pauseForVisibility guarded by isRunning (bankRunningSpan guard true mutant)', () => {
     it('does not corrupt accumulatedRef when visibility pauses while the timer is stopped', () => {
       const hidden = createMockBackgroundManager({
         shouldPauseOperations: true,
@@ -1090,7 +1093,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
 // Mutation-killing tests added for cluster F4 retry (iteration 2).
 // =============================================================================
 
-describe('mutation-killing: pauseTimer after a visibility pause preserves the baseline (L94 guard)', () => {
+describe('mutation-killing: pauseTimer after a visibility pause preserves the baseline (bankRunningSpan guard)', () => {
   let originalVisibilityState: PropertyDescriptor | undefined
 
   beforeEach(() => {
@@ -1122,10 +1125,11 @@ describe('mutation-killing: pauseTimer after a visibility pause preserves the ba
     // Hide: pauseForVisibility nulls startTimeRef while isRunning stays true.
     rerender({ bg: hidden })
 
-    // User clicks pause while already visibility-paused. The L94 guard
-    // (isRunning && startTimeRef !== null) must skip because startTimeRef is
-    // null. Mutants that force the guard true (or || / force-true) compute
-    // Date.now() - null and corrupt accumulatedRef with ~Date.now().
+    // User clicks pause while already visibility-paused. The bankRunningSpan
+    // guard (isRunning && startTimeRef !== null) must skip because
+    // startTimeRef is null. Mutants that force the guard true (or || /
+    // force-true) compute Date.now() - null and corrupt accumulatedRef with
+    // ~Date.now().
     act(() => {
       result.current.pauseTimer()
     })
@@ -1145,7 +1149,7 @@ describe('mutation-killing: pauseTimer after a visibility pause preserves the ba
   })
 })
 
-describe('mutation-killing: visibility pause preserves a positive accumulated baseline (L173 +=)', () => {
+describe('mutation-killing: visibility pause preserves a positive accumulated baseline (bankRunningSpan +=)', () => {
   let originalVisibilityState: PropertyDescriptor | undefined
 
   beforeEach(() => {
