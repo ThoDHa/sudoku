@@ -75,15 +75,16 @@ const FONT_SIZE_VARS: Record<FontSize, Record<string, string>> = {
   },
 }
 
-const VALID_FONT_SIZES: FontSize[] = ['xs', 'small', 'medium', 'large', 'xl']
+const DEFAULT_FONT_SIZE: FontSize = 'xl'
+
+const VALID_FONT_SIZES: FontSize[] = ['xs', 'small', 'medium', 'large', DEFAULT_FONT_SIZE]
 
 // eslint-disable-next-line react-refresh/only-export-components -- utility function tightly coupled to theme state
 export function getValidFontSize(saved: string | null): FontSize {
-  if (!saved) return 'xl'
   if (VALID_FONT_SIZES.includes(saved as FontSize)) {
     return saved as FontSize
   }
-  return 'xl'
+  return DEFAULT_FONT_SIZE
 }
 
 // Helper to get system preference
@@ -127,10 +128,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setSystemMode(e.matches ? 'dark' : 'light')
     }
     mediaQuery.addEventListener('change', handler)
+    // Stryker disable ArrayDeclaration: React compares dependency elements with Object.is, and the forced single constant element compares equal to itself on every render exactly as the empty array does, so this effect still runs once on mount and never again
     return () => {
       mediaQuery.removeEventListener('change', handler)
     }
   }, [])
+  // Stryker restore ArrayDeclaration
 
   // Compute effective mode from preference
   const mode: Mode = modePreference === 'system' ? systemMode : modePreference
