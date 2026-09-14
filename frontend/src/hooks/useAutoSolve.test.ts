@@ -9,6 +9,7 @@ import {
   createDefaultAutoSolveOptions,
   createMockAutoSolveMove,
   createMockSolveResponse,
+  installVisibleDocumentWithFakeTimers,
   type Overrides,
 } from '../test-utils'
 
@@ -70,18 +71,10 @@ async function startAutoSolveWith(moveCount: number, overrides?: Overrides<AutoS
 // TESTS
 
 describe('useAutoSolve', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    mockSolveAll.mockReset()
-    // Mock document.visibilityState to 'visible' by default
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => 'visible',
-    })
-  })
+  installVisibleDocumentWithFakeTimers()
 
-  afterEach(() => {
-    vi.useRealTimers()
+  beforeEach(() => {
+    mockSolveAll.mockReset()
   })
 
   // HOOK INITIALIZATION
@@ -1001,17 +994,10 @@ describe('useAutoSolve', () => {
 })
 
 describe('useAutoSolve - mutation-killing branch tests', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    mockSolveAll.mockReset()
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => 'visible',
-    })
-  })
+  installVisibleDocumentWithFakeTimers()
 
-  afterEach(() => {
-    vi.useRealTimers()
+  beforeEach(() => {
+    mockSolveAll.mockReset()
   })
 
   describe('stopAutoSolve finalSteps boundary at currentIndex === 0', () => {
@@ -2305,15 +2291,11 @@ describe('useAutoSolve - mutation-killing branch tests', () => {
 // either killed here or annotated as a true equivalent in useAutoSolve.ts.
 // ============================================================================
 describe('useAutoSolve mutation kills ( iter-2)', () => {
+  installVisibleDocumentWithFakeTimers()
+
   beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
     mockSolveAll.mockReset()
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => 'visible',
-    })
   })
-  afterEach(() => vi.useRealTimers())
 
   it('startAutoSolve on an unsolvable puzzle does not throw when onError is omitted', async () => {
     // Kills OptionalChaining mutants on `onError?.('This puzzle requires advanced techniques...')`
@@ -2689,15 +2671,11 @@ describe('useAutoSolve mutation kills ( iter-2)', () => {
 // resume guard, and the playMoves seed-snapshot candidate materialization.
 // ============================================================================
 describe('useAutoSolve mutation kills ( iter-3)', () => {
+  installVisibleDocumentWithFakeTimers()
+
   beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
     mockSolveAll.mockReset()
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => 'visible',
-    })
   })
-  afterEach(() => vi.useRealTimers())
 
   it('clearActiveTimers clears the live scheduled timer when auto-solve stops', async () => {
     // Kills the clearActiveTimers BlockStatement mutants (whole body and the if-body) and the
@@ -3512,17 +3490,10 @@ describe('mutation-killing: directive-retirement escapes', () => {
 })
 
 describe('mutation-killing: dependency-array staleness', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    mockSolveAll.mockReset()
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => 'visible',
-    })
-  })
+  installVisibleDocumentWithFakeTimers()
 
-  afterEach(() => {
-    vi.useRealTimers()
+  beforeEach(() => {
+    mockSolveAll.mockReset()
   })
 
   it('uses the latest props after a rerender throughout the applyFixes chain', async () => {

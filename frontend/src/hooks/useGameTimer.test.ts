@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createElement } from 'react'
 import { useGameTimer } from './useGameTimer'
 import { createMockBackgroundManager } from '../test-utils/mocks'
+import { installVisibleDocumentWithFakeTimers } from '../test-utils'
 import { TIMER_UPDATE_INTERVAL } from '../lib/constants'
 import { TimerProvider, useTimerControl } from '../lib/TimerContext'
 import { BackgroundManagerProvider } from '../lib/BackgroundManagerContext'
@@ -12,28 +13,7 @@ import { BackgroundManagerProvider } from '../lib/BackgroundManagerContext'
 // TESTS
 
 describe('useGameTimer', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    // Mock document.visibilityState to 'visible' by default
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => 'visible',
-    })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    // Restore original visibilityState
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    } else {
-      // @ts-expect-error - restoring default
-      delete document.visibilityState
-    }
-  })
+  installVisibleDocumentWithFakeTimers()
 
   // INITIAL STATE TESTS
   describe('Initial State', () => {
@@ -545,22 +525,9 @@ describe('useGameTimer', () => {
 })
 
 describe('useGameTimer - mutation-killing branch tests', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => 'visible',
-    })
-  })
+  installVisibleDocumentWithFakeTimers()
 
   afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
     // jsdom exposes no webdriver descriptor on navigator or its prototype
     // (the property is simply absent and reads as undefined). Tests that need
     // an automated context shadow it with a configurable own property;
@@ -1098,20 +1065,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
 // =============================================================================
 
 describe('mutation-killing: pauseTimer after a visibility pause preserves the baseline (bankRunningSpan guard)', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
-  })
+  installVisibleDocumentWithFakeTimers()
 
   it('does not corrupt accumulatedRef when pausing a timer that is already visibility-paused', () => {
     const visible = createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
@@ -1154,20 +1108,7 @@ describe('mutation-killing: pauseTimer after a visibility pause preserves the ba
 })
 
 describe('mutation-killing: visibility pause preserves a positive accumulated baseline (bankRunningSpan +=)', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
-  })
+  installVisibleDocumentWithFakeTimers()
 
   it('keeps elapsedMs non-negative after a hide/show cycle', () => {
     const visible = createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
@@ -1197,20 +1138,7 @@ describe('mutation-killing: visibility pause preserves a positive accumulated ba
 })
 
 describe('mutation-killing: no resume when shouldPause false but page still hidden (L192 else-if)', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
-  })
+  installVisibleDocumentWithFakeTimers()
 
   it('does not resume when shouldPauseOperations is false but isHidden is still true', () => {
     const hidden = createMockBackgroundManager({ shouldPauseOperations: true, isHidden: true })
@@ -1234,20 +1162,7 @@ describe('mutation-killing: no resume when shouldPause false but page still hidd
 })
 
 describe('mutation-killing: pauseOnHidden opt-out honored by interval body inner guard (L162)', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
-  })
+  installVisibleDocumentWithFakeTimers()
 
   it('advances elapsedMs when pauseOnHidden is false despite shouldPauseOperations being true', () => {
     const hidden = createMockBackgroundManager({
@@ -1330,20 +1245,7 @@ describe('mutation-killing: pauseOnHidden opt-out honored by interval body inner
 })
 
 describe('startTimer recovery after a visibility pause', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
-  })
+  installVisibleDocumentWithFakeTimers()
 
   it('re-seeds startTimeRef so a later pauseTimer still stops the clock and drops the overlay', () => {
     const visible = createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
@@ -1636,20 +1538,7 @@ describe('mutation-killing: visibility guards that need a delayed effect re-run'
 // =============================================================================
 
 describe('extended background pause', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
-  })
+  installVisibleDocumentWithFakeTimers()
 
   const visible = () =>
     createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
