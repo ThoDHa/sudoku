@@ -1581,47 +1581,50 @@ describe('extended background pause', () => {
 // carry no per-tick change). Stryker sets VITE_SKIP_RC=1, and with the
 // compiler off controlValue is rebuilt on every provider render, so control
 // consumers legitimately re-render per tick and this test cannot hold.
-describe.skipIf(process.env['VITE_SKIP_RC'])('TimerProvider control-context stability across ticks', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-  })
+describe.skipIf(process.env['VITE_SKIP_RC'])(
+  'TimerProvider control-context stability across ticks',
+  () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+    })
 
-  afterEach(() => {
-    vi.useRealTimers()
-  })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
 
-  it('does not re-render a useTimerControl consumer while only elapsedMs ticks', () => {
-    let controlRenders = 0
-    const ControlConsumer = () => {
-      useTimerControl()
-      controlRenders += 1
-      return null
-    }
+    it('does not re-render a useTimerControl consumer while only elapsedMs ticks', () => {
+      let controlRenders = 0
+      const ControlConsumer = () => {
+        useTimerControl()
+        controlRenders += 1
+        return null
+      }
 
-    const { unmount } = render(
-      createElement(
-        BackgroundManagerProvider,
-        null,
-        createElement(TimerProvider, {
-          autoStart: true,
-          children: createElement(ControlConsumer),
-        }),
-      ),
-    )
-    expect(controlRenders).toBe(1)
+      const { unmount } = render(
+        createElement(
+          BackgroundManagerProvider,
+          null,
+          createElement(TimerProvider, {
+            autoStart: true,
+            children: createElement(ControlConsumer),
+          }),
+        ),
+      )
+      expect(controlRenders).toBe(1)
 
-    // Every tick re-renders the provider (elapsedMs is display-context
-    // state), but nothing in the control value changes, so the memoized
-    // context object stays referentially equal and the consumer below must
-    // not render again. This pins the property the deleted hook return
-    // useMemo claimed to provide: display ticks stay display-only.
-    for (let tick = 0; tick < 5; tick += 1) {
-      act(() => {
-        vi.advanceTimersByTime(TIMER_UPDATE_INTERVAL)
-      })
-    }
+      // Every tick re-renders the provider (elapsedMs is display-context
+      // state), but nothing in the control value changes, so the memoized
+      // context object stays referentially equal and the consumer below must
+      // not render again. This pins the property the deleted hook return
+      // useMemo claimed to provide: display ticks stay display-only.
+      for (let tick = 0; tick < 5; tick += 1) {
+        act(() => {
+          vi.advanceTimersByTime(TIMER_UPDATE_INTERVAL)
+        })
+      }
 
-    expect(controlRenders).toBe(1)
-    unmount()
-  })
-})
+      expect(controlRenders).toBe(1)
+      unmount()
+    })
+  },
+)
