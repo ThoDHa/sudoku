@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react'
-import { THEMES, themeToCssVars, getValidTheme, type ColorTheme } from './themes'
+import { getThemeColors, themeToCssVars, getValidTheme } from './themeDerivation'
+import type { ColorTheme } from './themes'
 
 // Re-export types from themes.ts for backwards compatibility
 export type { ColorTheme } from './themes'
@@ -144,8 +145,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('fontSize', fontSize)
     localStorage.removeItem('mode')
 
-    // Get theme colors from centralized themes.ts and convert to CSS vars
-    const themeColors = THEMES[colorTheme][mode]
+    // Get theme colors from the lazy derivation and convert to CSS vars
+    const themeColors = getThemeColors(colorTheme, mode)
     const cssVars = themeToCssVars(themeColors)
     const fontSizeVars = FONT_SIZE_VARS[fontSize] ?? FONT_SIZE_VARS['xl']
     const root = document.documentElement
