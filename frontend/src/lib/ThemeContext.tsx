@@ -79,6 +79,7 @@ const VALID_FONT_SIZES: FontSize[] = ['xs', 'small', 'medium', 'large', 'xl']
 
 // eslint-disable-next-line react-refresh/only-export-components -- utility function tightly coupled to theme state
 export function getValidFontSize(saved: string | null): FontSize {
+  // Stryker disable next-line ConditionalExpression: forcing the guard false falls through to the VALID_FONT_SIZES check, and no falsy value (null, empty string) is a member, so both paths return 'xl' identically; the forced-true half dies to the stored-valid-size tests
   if (!saved) return 'xl'
   if (VALID_FONT_SIZES.includes(saved as FontSize)) {
     return saved as FontSize
@@ -127,10 +128,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setSystemMode(e.matches ? 'dark' : 'light')
     }
     mediaQuery.addEventListener('change', handler)
+    // Stryker disable ArrayDeclaration: React compares dependency elements with Object.is, and the forced single constant element compares equal to itself on every render exactly as the empty array does, so this effect still runs once on mount and never again
     return () => {
       mediaQuery.removeEventListener('change', handler)
     }
   }, [])
+  // Stryker restore ArrayDeclaration
 
   // Compute effective mode from preference
   const mode: Mode = modePreference === 'system' ? systemMode : modePreference
