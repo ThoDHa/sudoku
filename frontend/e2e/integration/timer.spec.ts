@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures'
+import type { Page } from '@playwright/test'
 import { setupGameAndWaitForBoard } from '../utils/board-wait'
 import { disableAutomationBypass } from '../utils/automation-bypass'
 
@@ -16,14 +17,16 @@ import { disableAutomationBypass } from '../utils/automation-bypass'
  * Tag: @integration @timer
  */
 
-// Helper to locate the timer element
-function getTimerLocator(page: any) {
-  return page.locator('.font-mono').filter({ hasText: /^\d+:\d{2}$/ })
+// Every timer test targets the header clock span. The pause overlay renders
+// its own PauseOverlayTimer clock that looks just like a timer, so selection
+// goes through the header-timer-clock test id and never through DOM order.
+function headerTimerLocator(page: Page) {
+  return page.getByTestId('header-timer-clock')
 }
 
 // Simulate the tab being hidden or shown: Playwright cannot change the real
 // visibilityState, so define it and fire the event the app listens for.
-async function setDocumentVisibility(page: any, state: 'hidden' | 'visible') {
+async function setDocumentVisibility(page: Page, state: 'hidden' | 'visible') {
   await page.evaluate((value: string) => {
     Object.defineProperty(document, 'visibilityState', { value, configurable: true })
     document.dispatchEvent(new Event('visibilitychange'))
@@ -31,11 +34,11 @@ async function setDocumentVisibility(page: any, state: 'hidden' | 'visible') {
 }
 
 // Simulate the window losing/regaining focus (the app listens on window).
-async function blurWindow(page: any) {
+async function blurWindow(page: Page) {
   await page.evaluate(() => window.dispatchEvent(new Event('blur')))
 }
 
-async function focusWindow(page: any) {
+async function focusWindow(page: Page) {
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
 }
 
@@ -58,12 +61,12 @@ test.describe('@integration Timer - Display Format', () => {
   })
 
   test('timer is visible on game page', async ({ page }) => {
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
     await expect(timer).toBeVisible()
   })
 
   test('timer displays in M:SS format initially', async ({ page }) => {
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
     const timerText = await timer.textContent()
 
     // Should match M:SS or MM:SS format (0:00, 1:23, 12:34)
@@ -72,9 +75,9 @@ test.describe('@integration Timer - Display Format', () => {
 
   test('timer shows clock icon when visible', async ({ page }) => {
     // Timer section should contain an SVG clock icon
-    // The timer display is a flex container with an SVG followed by span.font-mono
+    // The timer display is a flex container with an SVG followed by the clock span
     // Find the parent div that contains the timer span, then get the sibling SVG
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
     const timerParent = timer.locator('xpath=..')
     const clockIcon = timerParent.locator('svg').first()
     await expect(clockIcon).toBeVisible()
@@ -87,7 +90,7 @@ test.describe('@integration Timer - Counting', () => {
   })
 
   test('timer starts from 0:00 on new game', async ({ page }) => {
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
     const initialTime = await timer.textContent()
 
     // New game should start at 0:00 or very close to it
@@ -96,7 +99,7 @@ test.describe('@integration Timer - Counting', () => {
   })
 
   test('timer increments over time', async ({ page }) => {
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
 
     // Get initial time
     const initialText = await timer.textContent()
@@ -111,7 +114,7 @@ test.describe('@integration Timer - Counting', () => {
   })
 
   test('timer counts correctly after delay', async ({ page }) => {
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
 
     // Wait for timer to reach at least 1 second (reduced from 2 for faster/more reliable tests)
     await expect(async () => {
@@ -143,16 +146,9 @@ test.describe('@integration Timer - Pause Behavior', () => {
 
   // Blur tests need the real pause behavior, which the app disables under
   // automation, so they defeat the bypass before loading the game.
-  async function setupPausableGame(page: any) {
+  async function setupPausableGame(page: Page) {
     await disableAutomationBypass(page)
     await setupGameAndWaitForBoard(page, { difficulty: 'easy' })
-  }
-
-  // The pause overlay renders its own clock (PauseOverlayTimer), which also
-  // matches getTimerLocator's class-based selector; the header clock carries
-  // the header-timer-clock test id, so pause tests never depend on DOM order.
-  function headerTimerLocator(page: any) {
-    return page.getByTestId('header-timer-clock')
   }
 
   test('timer pauses and shows the PAUSED indicator when the window loses focus', async ({
@@ -244,7 +240,7 @@ test.describe('@integration Timer - Hide Timer Preference', () => {
   test('can hide timer via menu toggle', async ({ page }) => {
     await setupGameAndWaitForBoard(page)
 
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
 
     // Verify timer is initially visible
     await expect(timer).toBeVisible()
@@ -278,7 +274,7 @@ test.describe('@integration Timer - Hide Timer Preference', () => {
 
     await setupGameAndWaitForBoard(page)
 
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
 
     // Timer should be hidden due to preference
     await expect(timer).not.toBeVisible()
@@ -294,7 +290,7 @@ test.describe('@integration Timer - Hide Timer Preference', () => {
 
     await setupGameAndWaitForBoard(page)
 
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
 
     // Timer should be hidden initially
     await expect(timer).not.toBeVisible()
@@ -329,7 +325,7 @@ test.describe('@integration Timer - Persistence', () => {
     const seed = 'Ptimer-reload-' + Date.now()
     await setupGameAndWaitForBoard(page, { seed, difficulty: 'easy' })
 
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
 
     // Wait for timer to accumulate meaningful time
     await expect(async () => {
@@ -387,7 +383,7 @@ test.describe('@integration Timer - Persistence', () => {
     // We need to wait for this restoration to complete before reading the timer
     await page.waitForFunction(
       () => {
-        const timer = document.querySelector('.font-mono')
+        const timer = document.querySelector('[data-testid="header-timer-clock"]')
         if (!timer) return false
         const text = timer.textContent || ''
         const match = text.match(/^(\d+):(\d{2})$/)
@@ -398,7 +394,7 @@ test.describe('@integration Timer - Persistence', () => {
       { timeout: 5000 },
     )
 
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
     const timerText = await timer.textContent()
     const seconds = parseTimerToSeconds(timerText || '0:00')
 
@@ -412,7 +408,7 @@ test.describe('@integration Timer - Completion', () => {
     // Use a puzzle that we can quickly complete or simulate completion
     await setupGameAndWaitForBoard(page)
 
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
 
     // Wait for timer to start using condition-based wait
     await expect(async () => {
@@ -494,7 +490,7 @@ test.describe('@integration Timer - Edge Cases', () => {
       skipCellValueCheck: true,
     })
 
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
     const timerText = await timer.textContent()
 
     // Timer should display something for long times (format may be M:SS or H:MM:SS)
@@ -508,7 +504,7 @@ test.describe('@integration Timer - Edge Cases', () => {
   test('timer does not go negative', async ({ page }) => {
     await setupGameAndWaitForBoard(page)
 
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
     const timerText = await timer.textContent()
 
     // Timer should not contain negative sign
@@ -534,7 +530,7 @@ test.describe('@integration Timer - Extended Background Pause', () => {
   test('timer still advances after returning from a hide longer than the extended pause', async ({
     page,
   }) => {
-    const timer = getTimerLocator(page)
+    const timer = headerTimerLocator(page)
     await expect(timer).toBeVisible({ timeout: 10000 })
 
     await setDocumentVisibility(page, 'hidden')

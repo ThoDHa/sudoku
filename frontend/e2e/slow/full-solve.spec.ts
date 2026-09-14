@@ -174,7 +174,7 @@ test.describe('@slow Hint System Stability', () => {
     await waitForWasmReady(page)
 
     const sdk = new PlaywrightUISDK({ page })
-    const timer = page.locator('.font-mono').first()
+    const timer = page.getByTestId('header-timer-clock')
     const hintButton = page.getByRole('button', { name: 'Get a hint' })
 
     // Verify timer is visible

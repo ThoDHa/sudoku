@@ -129,7 +129,7 @@ test.describe('@smoke Game Page Elements', () => {
   })
 
   test('timer is visible', async ({ page }) => {
-    const timer = page.locator('.font-mono').first()
+    const timer = page.getByTestId('header-timer-clock')
     await expect(timer).toBeVisible()
   })
 
