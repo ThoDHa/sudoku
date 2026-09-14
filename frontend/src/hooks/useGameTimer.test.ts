@@ -1,7 +1,11 @@
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, render } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { createElement } from 'react'
 import { useGameTimer } from './useGameTimer'
 import { createMockBackgroundManager } from '../test-utils/mocks'
+import { TIMER_UPDATE_INTERVAL } from '../lib/constants'
+import { TimerProvider, useTimerControl } from '../lib/TimerContext'
+import { BackgroundManagerProvider } from '../lib/BackgroundManagerContext'
 
 // TEST UTILITIES
 
@@ -1680,5 +1684,55 @@ describe('extended background pause', () => {
 
     expect(result.current.elapsedMs).toBeGreaterThanOrEqual(beforeHide + 1500)
     expect(result.current.elapsedMs).toBeLessThan(beforeHide + 10000)
+  })
+})
+
+// RC-dependent: the control context's tick stability is delivered by the
+// React Compiler memoizing TimerProvider's controlValue object (its fields
+// carry no per-tick change). Stryker sets VITE_SKIP_RC=1, and with the
+// compiler off controlValue is rebuilt on every provider render, so control
+// consumers legitimately re-render per tick and this test cannot hold.
+describe.skipIf(process.env['VITE_SKIP_RC'])('TimerProvider control-context stability across ticks', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('does not re-render a useTimerControl consumer while only elapsedMs ticks', () => {
+    let controlRenders = 0
+    const ControlConsumer = () => {
+      useTimerControl()
+      controlRenders += 1
+      return null
+    }
+
+    const { unmount } = render(
+      createElement(
+        BackgroundManagerProvider,
+        null,
+        createElement(TimerProvider, {
+          autoStart: true,
+          children: createElement(ControlConsumer),
+        }),
+      ),
+    )
+    expect(controlRenders).toBe(1)
+
+    // Every tick re-renders the provider (elapsedMs is display-context
+    // state), but nothing in the control value changes, so the memoized
+    // context object stays referentially equal and the consumer below must
+    // not render again. This pins the property the deleted hook return
+    // useMemo claimed to provide: display ticks stay display-only.
+    for (let tick = 0; tick < 5; tick += 1) {
+      act(() => {
+        vi.advanceTimersByTime(TIMER_UPDATE_INTERVAL)
+      })
+    }
+
+    expect(controlRenders).toBe(1)
+    unmount()
   })
 })

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { TIMER_UPDATE_INTERVAL, MS_PER_SECOND } from '../lib/constants'
 import { isAutomatedEnvironment } from '../lib/automationEnvironment'
 import type { useBackgroundManager } from './useBackgroundManager'
@@ -129,9 +129,12 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     rebaseElapsed(validMs)
   }
 
-  // STABLE formatTime - reads from ref instead of closure to avoid recreation every tick
-  // This is critical: if formatTime changes every second, TimerControlContext updates,
-  // which causes Game.tsx to re-render, which re-renders 81 cells!
+  // formatTime reads from refs instead of closure state so it depends on no
+  // changing value: the React Compiler can then hold its identity stable
+  // across re-renders, which is what keeps TimerControlContext from
+  // updating every second and re-rendering Game.tsx's 81 cells. With the
+  // compiler off (VITE_SKIP_RC) handler identities churn and control
+  // consumers re-render per tick; the identity-stability tests skip there.
   const formatTime = (ms?: number): string => {
     const time = ms ?? elapsedMsRef.current
     const totalSeconds = Math.floor(time / MS_PER_SECOND)
@@ -222,28 +225,18 @@ export function useGameTimer(options: UseGameTimerOptions): UseGameTimerReturn {
     pauseOnHidden,
   ])
 
-  // CRITICAL: Memoize return object to prevent cascading re-renders.
-  // Without this, every render creates a new object reference.
-  return useMemo(
-    () => ({
-      elapsedMs,
-      isRunning,
-      isPausedDueToVisibility,
-      startTimer,
-      pauseTimer,
-      resetTimer,
-      setElapsedMs: setElapsedMsValue,
-      formatTime,
-    }),
-    [
-      elapsedMs,
-      isRunning,
-      isPausedDueToVisibility,
-      startTimer,
-      pauseTimer,
-      resetTimer,
-      setElapsedMsValue,
-      formatTime,
-    ],
-  )
+  // No return-object useMemo: nothing consumes this object's identity
+  // (TimerContext.tsx destructures the fields into its own context objects),
+  // and the handler deps were per-render function expressions that never
+  // compared equal, so the memo could not hit.
+  return {
+    elapsedMs,
+    isRunning,
+    isPausedDueToVisibility,
+    startTimer,
+    pauseTimer,
+    resetTimer,
+    setElapsedMs: setElapsedMsValue,
+    formatTime,
+  }
 }
