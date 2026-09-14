@@ -46,8 +46,14 @@ function TimerDisplayInner({ hideTimer }: { hideTimer: boolean }) {
           />
         </svg>
       )}
-      <span className="font-mono text-sm">{formatTime(elapsedMs)}</span>
-      {isPausedDueToVisibility && <span className="text-xs font-medium">PAUSED</span>}
+      <span data-testid="header-timer-clock" className="font-mono text-sm">
+        {formatTime(elapsedMs)}
+      </span>
+      {isPausedDueToVisibility && (
+        <span data-testid="timer-paused-indicator" className="text-xs font-medium">
+          PAUSED
+        </span>
+      )}
     </div>
   )
 }
@@ -62,7 +68,11 @@ export const TimerDisplay = memo(TimerDisplayInner)
 function PauseOverlayTimerInner() {
   const { elapsedMs, formatTime } = useTimerDisplay()
 
-  return <div className="mt-4 text-2xl font-mono text-accent">{formatTime(elapsedMs)}</div>
+  return (
+    <div data-testid="pause-overlay-timer" className="mt-4 text-2xl font-mono text-accent">
+      {formatTime(elapsedMs)}
+    </div>
+  )
 }
 
 export const PauseOverlayTimer = memo(PauseOverlayTimerInner)

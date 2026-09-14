@@ -148,11 +148,11 @@ test.describe('@integration Timer - Pause Behavior', () => {
     await setupGameAndWaitForBoard(page, { difficulty: 'easy' })
   }
 
-  // While the pause overlay is up, its own clock also matches getTimerLocator,
-  // so pause tests read the header clock, which precedes the board overlay in
-  // DOM order.
+  // The pause overlay renders its own clock (PauseOverlayTimer), which also
+  // matches getTimerLocator's class-based selector; the header clock carries
+  // the header-timer-clock test id, so pause tests never depend on DOM order.
   function headerTimerLocator(page: any) {
-    return getTimerLocator(page).first()
+    return page.getByTestId('header-timer-clock')
   }
 
   test('timer pauses and shows the PAUSED indicator when the window loses focus', async ({
@@ -165,11 +165,12 @@ test.describe('@integration Timer - Pause Behavior', () => {
 
     await blurWindow(page)
 
-    // The real indicator is the exact-case PAUSED label next to the clock.
-    // exact: true matches case-sensitively, so the frozen placeholder's
-    // "Paused" cannot satisfy this locator.
-    const pausedIndicator = page.getByText('PAUSED', { exact: true })
+    // The indicator is selected by its test id; the exact text stays pinned
+    // as content so a wording change fails here instead of redirecting the
+    // locator to some other element.
+    const pausedIndicator = page.getByTestId('timer-paused-indicator')
     await expect(pausedIndicator).toBeVisible({ timeout: 5000 })
+    await expect(pausedIndicator).toHaveText('PAUSED')
 
     // The clock must actually stop: once paused, the tick interval is gone,
     // so the reading cannot change.
@@ -192,8 +193,9 @@ test.describe('@integration Timer - Pause Behavior', () => {
 
     await blurWindow(page)
 
-    const pausedIndicator = page.getByText('PAUSED', { exact: true })
+    const pausedIndicator = page.getByTestId('timer-paused-indicator')
     await expect(pausedIndicator).toBeVisible({ timeout: 5000 })
+    await expect(pausedIndicator).toHaveText('PAUSED')
     const secondsWhilePaused = parseTimerToSeconds((await timer.textContent()) || '0:00')
 
     await focusWindow(page)
@@ -216,7 +218,7 @@ test.describe('@integration Timer - Pause Behavior', () => {
     await expect(overlay).toBeVisible({ timeout: 5000 })
 
     // Blur must not trigger the frozen placeholder (see the note above).
-    await expect(page.getByText('Paused', { exact: true })).not.toBeVisible()
+    await expect(page.getByTestId('timer-frozen-placeholder')).not.toBeVisible()
   })
 
   test('hiding the tab replaces the game with the minimal frozen placeholder', async ({ page }) => {
@@ -225,15 +227,16 @@ test.describe('@integration Timer - Pause Behavior', () => {
 
     await setDocumentVisibility(page, 'hidden')
 
-    const placeholder = page.getByText('Paused', { exact: true })
+    const placeholder = page.getByTestId('timer-frozen-placeholder')
     await expect(placeholder).toBeVisible({ timeout: 5000 })
-    await expect(getTimerLocator(page)).not.toBeVisible()
+    await expect(placeholder).toHaveText('Paused')
+    await expect(headerTimerLocator(page)).not.toBeVisible()
 
     await setDocumentVisibility(page, 'visible')
 
     // The game returns when the tab becomes visible again.
     await expect(placeholder).not.toBeVisible({ timeout: 5000 })
-    await expect(getTimerLocator(page)).toBeVisible({ timeout: 5000 })
+    await expect(headerTimerLocator(page)).toBeVisible({ timeout: 5000 })
   })
 })
 
