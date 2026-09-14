@@ -947,7 +947,9 @@ function GameContent() {
     return (
       <div className="flex h-full items-center justify-center bg-background">
         {/* Minimal frozen state - no animations, no complex components */}
-        <div className="text-foreground-muted text-sm">Paused</div>
+        <div data-testid="timer-frozen-placeholder" className="text-foreground-muted text-sm">
+          Paused
+        </div>
       </div>
     )
   }
