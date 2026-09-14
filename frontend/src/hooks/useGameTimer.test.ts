@@ -1,35 +1,19 @@
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, render } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { createElement } from 'react'
 import { useGameTimer } from './useGameTimer'
 import { createMockBackgroundManager } from '../test-utils/mocks'
+import { installVisibleDocumentWithFakeTimers } from '../test-utils'
+import { TIMER_UPDATE_INTERVAL } from '../lib/constants'
+import { TimerProvider, useTimerControl } from '../lib/TimerContext'
+import { BackgroundManagerProvider } from '../lib/BackgroundManagerContext'
 
 // TEST UTILITIES
 
 // TESTS
 
 describe('useGameTimer', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    // Mock document.visibilityState to 'visible' by default
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => 'visible',
-    })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    // Restore original visibilityState
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    } else {
-      // @ts-expect-error - restoring default
-      delete document.visibilityState
-    }
-  })
+  installVisibleDocumentWithFakeTimers()
 
   // INITIAL STATE TESTS
   describe('Initial State', () => {
@@ -541,22 +525,9 @@ describe('useGameTimer', () => {
 })
 
 describe('useGameTimer - mutation-killing branch tests', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => 'visible',
-    })
-  })
+  installVisibleDocumentWithFakeTimers()
 
   afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
     // jsdom exposes no webdriver descriptor on navigator or its prototype
     // (the property is simply absent and reads as undefined). Tests that need
     // an automated context shadow it with a configurable own property;
@@ -615,7 +586,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('resetTimer while not running sets startTimeRef to null', () => {
+  describe('resetTimer while not running leaves the timer dormant (ref value unread while stopped)', () => {
     it('leaves the timer dormant after reset when it was not running', () => {
       const bg = createMockBackgroundManager()
       const { result } = renderHook(() => useGameTimer({ backgroundManager: bg }))
@@ -629,7 +600,9 @@ describe('useGameTimer - mutation-killing branch tests', () => {
       expect(result.current.elapsedMs).toBe(0)
       expect(result.current.isRunning).toBe(false)
 
-      // advancing time must NOT accumulate because startTimeRef is null
+      // advancing time must NOT accumulate: the timer is stopped, so no
+      // interval exists, and per the invariant at startTimeRef's declaration
+      // the ref value a stopped timer left behind is never read.
       act(() => {
         vi.advanceTimersByTime(5000)
       })
@@ -857,7 +830,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('mutation-killing: pause/resume arithmetic preserves accumulated time (L74:7, L74:33)', () => {
+  describe('mutation-killing: pause/resume arithmetic preserves accumulated time (bankRunningSpan +=)', () => {
     it('resumes from the saved accumulated baseline rather than subtracting or adding the start time', () => {
       const bg = createMockBackgroundManager()
       const { result } = renderHook(() => useGameTimer({ backgroundManager: bg }))
@@ -905,7 +878,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('mutation-killing: resetTimer keeps startTimeRef live when running (L85:6)', () => {
+  describe('mutation-killing: resetTimer keeps startTimeRef live when running (rebaseElapsed ref write)', () => {
     it('continues incrementing after reset when the timer was running', () => {
       const bg = createMockBackgroundManager()
       const { result } = renderHook(() => useGameTimer({ backgroundManager: bg }))
@@ -923,9 +896,10 @@ describe('useGameTimer - mutation-killing branch tests', () => {
       expect(result.current.elapsedMs).toBe(0)
       expect(result.current.isRunning).toBe(true)
 
-      // With the correct [isRunning] deps, resetTimer captured isRunning=true
-      // and seeded a fresh startTimeRef. The [] deps mutant captures the
-      // initial false, nulls startTimeRef, and the interval body skips.
+      // resetTimer rebases through rebaseElapsed, which writes a fresh
+      // startTimeRef unconditionally. Removing that write leaves the
+      // pre-reset start time in place, and the interval keeps counting from
+      // the discarded span instead of the reset baseline.
       act(() => {
         vi.advanceTimersByTime(1000)
       })
@@ -1000,7 +974,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('mutation-killing: pauseForVisibility guarded by isRunning (L164:11 true mutant)', () => {
+  describe('mutation-killing: pauseForVisibility guarded by isRunning (bankRunningSpan guard true mutant)', () => {
     it('does not corrupt accumulatedRef when visibility pauses while the timer is stopped', () => {
       const hidden = createMockBackgroundManager({
         shouldPauseOperations: true,
@@ -1090,21 +1064,8 @@ describe('useGameTimer - mutation-killing branch tests', () => {
 // Mutation-killing tests added for cluster F4 retry (iteration 2).
 // =============================================================================
 
-describe('mutation-killing: pauseTimer after a visibility pause preserves the baseline (L94 guard)', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
-  })
+describe('mutation-killing: pauseTimer after a visibility pause preserves the baseline (bankRunningSpan guard)', () => {
+  installVisibleDocumentWithFakeTimers()
 
   it('does not corrupt accumulatedRef when pausing a timer that is already visibility-paused', () => {
     const visible = createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
@@ -1122,10 +1083,11 @@ describe('mutation-killing: pauseTimer after a visibility pause preserves the ba
     // Hide: pauseForVisibility nulls startTimeRef while isRunning stays true.
     rerender({ bg: hidden })
 
-    // User clicks pause while already visibility-paused. The L94 guard
-    // (isRunning && startTimeRef !== null) must skip because startTimeRef is
-    // null. Mutants that force the guard true (or || / force-true) compute
-    // Date.now() - null and corrupt accumulatedRef with ~Date.now().
+    // User clicks pause while already visibility-paused. The bankRunningSpan
+    // guard (isRunning && startTimeRef !== null) must skip because
+    // startTimeRef is null. Mutants that force the guard true (or || /
+    // force-true) compute Date.now() - null and corrupt accumulatedRef with
+    // ~Date.now().
     act(() => {
       result.current.pauseTimer()
     })
@@ -1145,21 +1107,8 @@ describe('mutation-killing: pauseTimer after a visibility pause preserves the ba
   })
 })
 
-describe('mutation-killing: visibility pause preserves a positive accumulated baseline (L173 +=)', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
-  })
+describe('mutation-killing: visibility pause preserves a positive accumulated baseline (bankRunningSpan +=)', () => {
+  installVisibleDocumentWithFakeTimers()
 
   it('keeps elapsedMs non-negative after a hide/show cycle', () => {
     const visible = createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
@@ -1189,20 +1138,7 @@ describe('mutation-killing: visibility pause preserves a positive accumulated ba
 })
 
 describe('mutation-killing: no resume when shouldPause false but page still hidden (L192 else-if)', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
-  })
+  installVisibleDocumentWithFakeTimers()
 
   it('does not resume when shouldPauseOperations is false but isHidden is still true', () => {
     const hidden = createMockBackgroundManager({ shouldPauseOperations: true, isHidden: true })
@@ -1226,20 +1162,7 @@ describe('mutation-killing: no resume when shouldPause false but page still hidd
 })
 
 describe('mutation-killing: pauseOnHidden opt-out honored by interval body inner guard (L162)', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
-  })
+  installVisibleDocumentWithFakeTimers()
 
   it('advances elapsedMs when pauseOnHidden is false despite shouldPauseOperations being true', () => {
     const hidden = createMockBackgroundManager({
@@ -1322,20 +1245,7 @@ describe('mutation-killing: pauseOnHidden opt-out honored by interval body inner
 })
 
 describe('startTimer recovery after a visibility pause', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
-  })
+  installVisibleDocumentWithFakeTimers()
 
   it('re-seeds startTimeRef so a later pauseTimer still stops the clock and drops the overlay', () => {
     const visible = createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
@@ -1628,20 +1538,7 @@ describe('mutation-killing: visibility guards that need a delayed effect re-run'
 // =============================================================================
 
 describe('extended background pause', () => {
-  let originalVisibilityState: PropertyDescriptor | undefined
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    originalVisibilityState = Object.getOwnPropertyDescriptor(document, 'visibilityState')
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    if (originalVisibilityState) {
-      Object.defineProperty(document, 'visibilityState', originalVisibilityState)
-    }
-  })
+  installVisibleDocumentWithFakeTimers()
 
   const visible = () =>
     createMockBackgroundManager({ shouldPauseOperations: false, isHidden: false })
@@ -1678,3 +1575,56 @@ describe('extended background pause', () => {
     expect(result.current.elapsedMs).toBeLessThan(beforeHide + 10000)
   })
 })
+
+// RC-dependent: the control context's tick stability is delivered by the
+// React Compiler memoizing TimerProvider's controlValue object (its fields
+// carry no per-tick change). Stryker sets VITE_SKIP_RC=1, and with the
+// compiler off controlValue is rebuilt on every provider render, so control
+// consumers legitimately re-render per tick and this test cannot hold.
+describe.skipIf(process.env['VITE_SKIP_RC'])(
+  'TimerProvider control-context stability across ticks',
+  () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('does not re-render a useTimerControl consumer while only elapsedMs ticks', () => {
+      let controlRenders = 0
+      const ControlConsumer = () => {
+        useTimerControl()
+        controlRenders += 1
+        return null
+      }
+
+      const { unmount } = render(
+        createElement(
+          BackgroundManagerProvider,
+          null,
+          createElement(TimerProvider, {
+            autoStart: true,
+            children: createElement(ControlConsumer),
+          }),
+        ),
+      )
+      expect(controlRenders).toBe(1)
+
+      // Every tick re-renders the provider (elapsedMs is display-context
+      // state), but nothing in the control value changes, so the memoized
+      // context object stays referentially equal and the consumer below must
+      // not render again. This pins the property the deleted hook return
+      // useMemo claimed to provide: display ticks stay display-only.
+      for (let tick = 0; tick < 5; tick += 1) {
+        act(() => {
+          vi.advanceTimersByTime(TIMER_UPDATE_INTERVAL)
+        })
+      }
+
+      expect(controlRenders).toBe(1)
+      unmount()
+    })
+  },
+)
