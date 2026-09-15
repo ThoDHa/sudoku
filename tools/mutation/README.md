@@ -219,6 +219,112 @@ report) and it is exactly what the control above exists to keep honest. Re-run
 both checks after any edit to `ci-exec.sh`; the local sweep's own harness,
 `runmut.sh`, is unaffected by all of this.
 
+## Frontend static timeout classification
+
+The frontend aggregate scores `Timeout` as caught, so it started from the same
+hazard the Go audit exists to expose: a kill the clock produced counted the
+same as a kill a test earned. The classifier in
+`frontend/scripts/mutation_aggregate.py` (opt-in `--report-timeouts`) splits
+every `Timeout` three ways. A loop-kill carries a `statusReason` of the form
+`Hit limit reached (N/M)`, written when the mutant switch ran to Stryker's hit
+limit. A clock-kill carries no `statusReason` at all, which is the only shape
+the wall-clock path through `TimeoutDecorator.mutantRun` can produce. Anything
+else lands in an explicit unclassified bucket rather than either honest one.
+This section records the disposition of the population that made the split
+necessary. It was first drafted against the lib campaign's final shard reports
+archived under `/tmp`; those archives were transient and have since been
+evicted, so the evidence of record below is the `.tasks` task files and their
+deposited reports, which carry the same numbers. No count is carried over from
+an earlier measurement without saying so.
+
+### The population that raised the question
+
+The population is the zero-coverage static timeout set: mutants with an empty
+`coveredBy` list whose `Timeout` status has no `statusReason`. No test covers
+them and the clock, not an assertion, ended them. The aggregate scores the same
+condition an escape when Stryker reaches it by its `NoCoverage` route, so a
+zero-coverage timeout is an unearned kill by the aggregate's own accounting.
+
+Two measurements enumerated it, and they overlap on one file only, because the
+July configuration excluded `src/lib/constants.ts` and every `.tsx` glob:
+
+| Measurement | Members | Files |
+|-------------|--------:|-------|
+| Stored whole-surface report of 3 July, `mutation-results/postbatch/frontend/reports/mutation/mutation.json` (re-derived: 22 `Timeout` mutants with an empty `coveredBy`, all flagged `static`, all clock-kills) | 22 | `src/lib/preferences.ts` 14, `src/lib/puzzles-data.ts` 3, `src/lib/cache-version.ts` 2, `src/lib/hooks.ts` 1, `src/hooks/useHighlightState.ts` 1, `src/hooks/useSudokuGame.ts` 1 |
+| Nightly run `33717792908` recount, 2026-09-03 (its 72 shard artifacts were transient and are no longer on disk; the enumeration below is the one recorded for that run in `.tasks/current/MUT-8-15-20260813-1455-classify-the-frontend-timeout-kills.md`, Work Log 2026-09-05) | 108 | `src/lib/constants.ts` 66, `src/lib/ThemeContext.tsx` 41, `src/lib/preferences.ts` 1 |
+
+By the recount, 21 of the 22 July members had already left the zero-coverage
+set: only one `preferences.ts` member remained, and the other twenty-one were
+gone from it (the recount's `puzzles-data.ts` shard held two covered
+loop-kills, consistent with that file's members having gained coverage in
+between; for the six members without a final shard record the mechanism of the
+exit is not traceable past the recount, the deviation named in the disposition
+table). The recount's 107 constants and ThemeContext members were new to the
+measurement, not new to the hazard: both files are dominated by static
+module-level mutants that no test reached.
+
+### Disposition of every member
+
+The lib campaign's final shard records settle the population. Each disposition
+below cites the `.tasks/current/` task file holding the shard's numbers and the
+report deposited under that task's `.tasks/reports/` directory:
+
+| Historical members | Disposition | Evidence |
+|--------------------|-------------|----------|
+| `constants.ts` 66 (recount) | killed by new tests | `.tasks/current/MUT-8-3-5-20260905-2348-close-the-constants-ts-coverage-gaps.md`, Work Log 2026-09-13 23:17 (report `01-constants-coverage-gaps-closed.md` under that task's `.tasks/reports/` directory): final shard 86/86 Killed, 0 Timeout, reconciled against the baseline's 66 static Timeouts |
+| `ThemeContext.tsx` 41 (recount) | killed by new tests | `.tasks/current/MUT-8-3-2-20260905-2347-close-the-themecontext-escapes.md`, Work Logs 2026-09-14 11:51 and 2026-09-13 23:39 (report `03-m1-fix.md`): final shard 149 total / 148 Killed / 0 Timeout / 1 Ignored; the one Ignored is the `ArrayDeclaration` mutant at line 135 on a React dependency array carrying an equivalence justification (React compares dependency arrays with `Object.is`), so it is neither an escape nor a timeout |
+| `preferences.ts` 14 (July) and 1 (recount) | killed by new tests | `.tasks/current/MUT-8-3-6-20260914-1227-close-the-remaining-small-file-lib-escapes.md`, Work Log 2026-09-14 14:42 (report `01-lib-tail-closure.md`): shard 36/36 Killed, 0 Timeout, all 14 statics killed |
+| `cache-version.ts` 2 (July) | killed by new tests | same task file, Work Log 2026-09-14 14:35: shard 28/28 Killed, 0 Timeout |
+| `puzzles-data.ts` 3, `hooks.ts` 1, `useHighlightState.ts` 1, `useSudokuGame.ts` 1 (July) | population-eliminated-without-node: a named deviation from the sanctioned disposition classes (converted-to-assertion-kill, killed-by-new-test, honest-escape-with-reason, population-eliminated-with-node), recorded because these six members left the zero-coverage set before the recount, whose exhaustive enumeration contains none of them, and no final shard record exists for these four files, so the exit mechanism of each is not traceable past the transient recount artifacts | the run `33717792908` enumeration recorded in `.tasks/current/MUT-8-15-20260813-1455-classify-the-frontend-timeout-kills.md` (Work Log 2026-09-05) |
+
+No member of either historical set is recorded as an honest escape, and none
+required one. The remaining lib-campaign records confirm the same shape on lib
+files that never supplied a member: `.tasks/current/MUT-8-3-3-20260905-2347-cover-pwaregistration-with-jsdom-tests.md`
+(Work Log 2026-09-13 21:57; report `01-final-report.md`), `pwaRegistration.ts`
+29/29 Killed; `.tasks/current/MUT-8-3-6-20260914-1227-close-the-remaining-small-file-lib-escapes.md`
+(Work Logs 2026-09-14 14:27-15:08 and the 15:16 closure digest; report
+`01-lib-tail-closure.md`), `puzzleSetup.ts` 40/40, `BackgroundManagerContext.tsx`
+7/7, `GameContext.tsx` 6/6, `TimerContext.tsx` 22/22 and `autoSaveSeedGuard.ts`
+8/8, each Killed; and `.tasks/current/MUT-8-11-2-20260905-2350-make-the-theme-derivation-lazy-and-tested.md`
+(Work Logs 2026-09-14 13:19 and 13:31; report `01-lazy-theme-adoption.md`),
+`themeDerivation.ts` 48/48 and `themeSchema.ts` 123/123 Killed. Every one
+reports zero timeouts.
+
+### The class decision, on the measured count
+
+The static question is decided at class level. In July, all 22 zero-coverage
+timeouts were static and 35 of the surface's 63 static mutants died to the
+clock; at the recount, all 108 members were static. Every file with a final
+shard record reports zero timeouts, and the four files that supplied members
+and have one (`constants.ts`, `ThemeContext.tsx`, `preferences.ts`,
+`cache-version.ts`) each report 100 percent assertion-killed; the four
+remainder July files without a record (`puzzles-data.ts`, `hooks.ts`,
+`useHighlightState.ts`, `useSudokuGame.ts`) are carried on the 2026-09-03
+recount citation above, whose exhaustive enumeration contains none of them. On
+that evidence the measured count of the class is zero. Every member with a
+traceable exit is therefore closed by conversion, not accepted as an escape,
+and no per-mutant attribution is needed; the six artifact-less July members are
+the one named deviation above (population-eliminated-without-node), not
+conversions.
+The standing rule for any future member is unchanged: a static mutant with an
+empty `coveredBy` that dies to the clock is an unearned kill, and it must
+either be converted by a covering assertion or recorded as an honest escape,
+never left inside the caught total by default.
+
+### Handoff to the gate-output decision
+
+Whether `Timeout` should remain in the aggregate's `CAUGHT` set, and whether
+any floor should move in consequence, is deliberately not decided here. That
+question belongs to the gate-output work (MUT-8-15-6), which owns the
+`--report-timeouts` wiring in the nightly workflow and the floor decision.
+What this record hands it: the zero-coverage static population that made the
+question urgent is now zero on the current evidence, so any remaining
+clock-kill is a covered mutant (at the recount, exactly 6 of the 173 timeouts
+were covered clock-kills, derived as follows: the 59 per-shard loop-kills have
+no `preferences.ts` entry, so its single timeout is a clock-kill and all 108
+zero-coverage members sit inside the 114 clock-kills; 114 - 108 = 6), and a
+floor argument now turns on that residue alone.
+
 ## Isolation
 
 Mutation rewrites the target file in place for the entire sweep.
