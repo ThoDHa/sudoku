@@ -227,6 +227,13 @@ jobs:
       # 32420620093 corroborated at 97.7%, held at the integer 97 because this
       # gate prints the floor with :.0f). Per the ratchet in that file, the
       # number only ever rises, and it rises by measuring rather than by editing.
+      #
+      # --report-timeouts prints the Timeout split (loop-kills, clock-kills,
+      # unclassified) after the gate line, so a kill the clock earned rather
+      # than an assertion is visible instead of silently merged into `caught`.
+      # The flag is display only: the gate line, the floor and the reported
+      # efficacy are unchanged, and clock-kills stay in CAUGHT (MUT-8-15),
+      # with any future floor move going through the ratchet.
       - name: Aggregate efficacy gate
         working-directory: frontend
         run: |
@@ -234,7 +241,8 @@ jobs:
             --floor "$(python3 ../api/scripts/mutation_floors.py get frontend/surface)" \
             --expected "${{ needs.frontend-surface-matrix.outputs.count }}" \
             --reports-dir ../shards \
-            --label "frontend/surface (MUT-8-3)"
+            --label "frontend/surface (MUT-8-3)" \
+            --report-timeouts
 
   # The 7 CODE-6 extracted hooks were deferred from QUAL-2's mutation lockdown
   # because the 893-mutant unsharded run is impractical in-session (~8h). This
@@ -320,6 +328,10 @@ jobs:
       # expected shard count is the hooks matrix's own enumeration via
       # mutation_shards.py, so a hook added to or removed from the matrix above
       # is counted here the same day and a missing report still exits 2.
+      #
+      # --report-timeouts prints the Timeout split (loop-kills, clock-kills,
+      # unclassified) after the gate line, same as the surface aggregate above:
+      # display only, with the gate line, the floor and the efficacy unchanged.
       - name: Aggregate efficacy gate
         working-directory: frontend
         run: |
@@ -327,7 +339,8 @@ jobs:
             --floor "$(python3 ../api/scripts/mutation_floors.py get frontend/hooks)" \
             --expected "$(python3 scripts/mutation_shards.py hooks | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')" \
             --reports-dir ../shards \
-            --label "frontend/hooks (CODE-6)"
+            --label "frontend/hooks (CODE-6)" \
+            --report-timeouts
 
   go-mutation:
     name: Go - ${{ matrix.name }}
