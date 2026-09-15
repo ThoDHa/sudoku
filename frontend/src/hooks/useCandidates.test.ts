@@ -26,14 +26,14 @@ const maskDigits = (mask: number): number[] => {
 
 describe('useCandidates', () => {
   describe('calculateCandidatesForCell exact-mask assertions', () => {
-    it('returns {1,2,4} for Wikipedia cell (0,2) (L21:15, L24:15 row/col index mutants)', () => {
+    it('returns {1,2,4} for Wikipedia cell (0,2), killing isDigitPlaceable row/col scan index mutants', () => {
       const { result } = renderHook(() => useCandidates(WIKIPEDIA_BOARD))
       const mask = result.current.calculateCandidatesForCell(2, WIKIPEDIA_BOARD)
       expect(mask).toBe(22)
       expect(maskDigits(mask)).toEqual([1, 2, 4])
     })
 
-    it('returns {2,4,8} for Wikipedia cell (0,8), killing column-scan index mutant (L24:15)', () => {
+    it('returns {2,4,8} for Wikipedia cell (0,8), killing isDigitPlaceable column-scan index mutant', () => {
       const { result } = renderHook(() => useCandidates(WIKIPEDIA_BOARD))
       const mask = result.current.calculateCandidatesForCell(8, WIKIPEDIA_BOARD)
       expect(mask).toBe(276)
@@ -47,7 +47,7 @@ describe('useCandidates', () => {
       expect(maskDigits(mask)).toEqual([1, 2, 5, 9])
     })
 
-    it('row-scan bound is exclusive: reads only the target row (L20:19 c<=BOARD_SIZE)', () => {
+    it('row-scan bound is exclusive: reads only the target row (isDigitPlaceable row-scan c < BOARD_SIZE bound)', () => {
       const board = emptyBoard()
       board[9] = 5
       const { result } = renderHook(() => useCandidates(board))
@@ -56,7 +56,7 @@ describe('useCandidates', () => {
       expect(hasCandidate(mask, 5)).toBe(true)
     })
 
-    it('row-scan index is row*BOARD_SIZE+c, not subtraction or division (L21:15)', () => {
+    it('row-scan index is row*BOARD_SIZE+c, not subtraction or division (isDigitPlaceable row-scan index)', () => {
       const board = emptyBoard()
       board[8] = 4
       const { result } = renderHook(() => useCandidates(board))
@@ -65,7 +65,7 @@ describe('useCandidates', () => {
       expect(hasCandidate(mask, 4)).toBe(true)
     })
 
-    it('box-row bound is exclusive of the next box row (L26:24 r<=boxRow+SUBGRID_SIZE)', () => {
+    it('box-row bound is exclusive of the next box row (isDigitPlaceable box-row r < boxRow + SUBGRID_SIZE bound)', () => {
       // board[28] = cell (3,1): inside the mutant's extra box-row iteration
       // (r=3, c=1) but outside col 0 / row 0 / box (0,0) of the target cell 0.
       const board = emptyBoard()
@@ -75,7 +75,7 @@ describe('useCandidates', () => {
       expect(hasCandidate(mask, 7)).toBe(true)
     })
 
-    it('box-col bound is exclusive of the next box col (L27:26 c<=boxCol+SUBGRID_SIZE)', () => {
+    it('box-col bound is exclusive of the next box col (isDigitPlaceable box-col c < boxCol + SUBGRID_SIZE bound)', () => {
       const board = emptyBoard()
       board[12] = 9
       const { result } = renderHook(() => useCandidates(board))
@@ -106,7 +106,7 @@ describe('useCandidates', () => {
   })
 
   describe('eliminateFromPeers', () => {
-    it('clears the target cell and removes the digit from row, col, and box peers only (L163-L174)', () => {
+    it('clears the target cell and removes the digit from row, col, and box peers only (eliminateFromPeers row/col/box scans)', () => {
       const initial = new Uint16Array(TOTAL_CELLS)
       initial[5] = 6 // {1,2} row-only peer of cell 0
       initial[36] = 10 // {1,3} col-only peer of cell 0
@@ -123,7 +123,7 @@ describe('useCandidates', () => {
       expect(out[40]).toBe(1022) // non-peer untouched
     })
 
-    it('preserves peer digits other than the eliminated one (L165:43, L169:43, L174:45 || 0 mutants)', () => {
+    it('preserves peer digits other than the eliminated one (eliminateFromPeers removeCandidate || 0 fallbacks)', () => {
       const initial = new Uint16Array(TOTAL_CELLS)
       initial[1] = 14 // {1,2,3} row peer of cell 0
       initial[9] = 14 // {1,2,3} col/box peer of cell 0
@@ -137,7 +137,7 @@ describe('useCandidates', () => {
   })
 
   describe('areCandidatesFilled', () => {
-    it('skips filled cells even if they carry a non-zero candidate mask (L142:11)', () => {
+    it('skips filled cells even if they carry a non-zero candidate mask (areCandidatesFilled filled-cell skip)', () => {
       const board = emptyBoard()
       board[0] = 5
       const initial = new Uint16Array(TOTAL_CELLS)
@@ -162,7 +162,7 @@ describe('useCandidates', () => {
       expect(result.current.areCandidatesFilled()).toBe(true)
     })
 
-    it('ignores invalid bit-0-only masks with no real candidates (L145:11 ||, L145:29)', () => {
+    it('ignores invalid bit-0-only masks with no real candidates (areCandidatesFilled cellCandidates && countCandidates > 0)', () => {
       const board = emptyBoard()
       const initial = new Uint16Array(TOTAL_CELLS)
       initial[0] = 1 // bit 0 set, no valid digit bits
@@ -176,7 +176,7 @@ describe('useCandidates', () => {
   })
 
   describe('checkNotes', () => {
-    it('reports wrong, missing, and cellsWithNotes exactly, including digit-9 boundary (L44:31, L51:33, L52, L53)', () => {
+    it('reports wrong, missing, and cellsWithNotes exactly, including digit-9 boundary (diffCellNotes wrong/missing push guards)', () => {
       const notes = new Uint16Array(TOTAL_CELLS)
       notes[2] = addCandidate(addCandidate(0, 1), 5) // {1,5}: 5 is wrong, {2,4} missing
       notes[8] = addCandidate(0, 9) // {9}: 9 is wrong, {2,4,8} missing
@@ -188,13 +188,13 @@ describe('useCandidates', () => {
       expect(out.valid).toBe(false)
       expect(out.cellsWithNotes).toBe(3)
       expect(out.wrongNotes).toContainEqual({ idx: 2, digit: 5 })
-      expect(out.wrongNotes).toContainEqual({ idx: 8, digit: 9 }) // digit-9 boundary (L44:31)
+      expect(out.wrongNotes).toContainEqual({ idx: 8, digit: 9 }) // digit-9 boundary
       expect(out.missingNotes).toContainEqual({ idx: 2, digit: 2 })
       expect(out.missingNotes).toContainEqual({ idx: 2, digit: 4 })
-      expect(out.missingNotes).toContainEqual({ idx: 29, digit: 9 }) // digit-9 boundary (L51:33)
+      expect(out.missingNotes).toContainEqual({ idx: 29, digit: 9 }) // digit-9 boundary
     })
 
-    it('returns a correct wrongNotes/missingNotes shape with idx and digit (L53:22 ObjectLiteral)', () => {
+    it('returns a correct wrongNotes/missingNotes shape with idx and digit (diffCellNotes { idx, digit } object literal)', () => {
       const notes = new Uint16Array(TOTAL_CELLS)
       notes[2] = addCandidate(0, 5) // {5} all wrong
 
@@ -205,7 +205,7 @@ describe('useCandidates', () => {
       expect(out.wrongNotes[0]).toEqual({ idx: 2, digit: 5 })
     })
 
-    it('skips filled cells so their notes do not inflate cellsWithNotes (L198:13)', () => {
+    it('skips filled cells so their notes do not inflate cellsWithNotes (checkNotes filled-cell skip)', () => {
       const notes = new Uint16Array(TOTAL_CELLS)
       notes[0] = addCandidate(0, 1) // notes on a filled cell (idx 0 is a given)
 
@@ -230,7 +230,7 @@ describe('useCandidates', () => {
   })
 
   describe('fillAllCandidates', () => {
-    it('recomputes against the latest board after rerender (L137:6 deps mutant)', () => {
+    it('recomputes against the latest board after rerender (useMemo deps)', () => {
       let board = emptyBoard()
       const { result, rerender } = renderHook(({ b }: { b: number[] }) => useCandidates(b), {
         initialProps: { b: board },
@@ -278,7 +278,7 @@ describe('useCandidates', () => {
     })
   })
 
-  describe('loop bounds exclusive of TOTAL_CELLS (L121:25, L141:25, L197:25 equivalents)', () => {
+  describe('loop bounds exclusive of TOTAL_CELLS (idx !== TOTAL_CELLS loop bounds)', () => {
     it('calculateAllCandidatesForBoard yields exactly TOTAL_CELLS entries', () => {
       const { result } = renderHook(() => useCandidates(emptyBoard()))
       const out = result.current.calculateAllCandidatesForBoard(emptyBoard())
@@ -288,8 +288,8 @@ describe('useCandidates', () => {
   })
 })
 
-describe('useCandidates guard against off-by-one peer elimination (L163:23, L167:23)', () => {
-  it('does not zero out peers when only the source digit is gone (L165:43 false mutant)', () => {
+describe('useCandidates guard against off-by-one peer elimination (eliminateFromPeers peer scan bounds)', () => {
+  it('does not zero out peers when only the source digit is gone (eliminateFromPeers removeCandidate)', () => {
     const initial = new Uint16Array(TOTAL_CELLS)
     // row peer of cell 4 (row 0, col 4, box (0,3)): cell 5 (0,5) is row peer, same box
     initial[5] = 6 // {1,2}
@@ -308,7 +308,7 @@ describe('useCandidates guard against off-by-one peer elimination (L163:23, L167
 })
 
 describe('useCandidates eliminateFromPeers loop bounds stay inside the peer set', () => {
-  it('row loop bound is exclusive so a row>0 cell does not leak into the next row (L163 c<=BOARD_SIZE)', () => {
+  it('row loop bound is exclusive so a row>0 cell does not leak into the next row (eliminateFromPeers row-scan c < BOARD_SIZE bound)', () => {
     // Cell 13 = (row 1, col 4). Its row peers are 9..17. The mutant's extra c=9
     // iteration would touch cell 18 (row 2, col 0), which is NOT a peer.
     const initial = new Uint16Array(TOTAL_CELLS).fill(0) as unknown as Uint16Array
@@ -323,7 +323,7 @@ describe('useCandidates eliminateFromPeers loop bounds stay inside the peer set'
     expect(hasCandidate(out[10]!, 1)).toBe(false)
   })
 
-  it('row index is row*BOARD_SIZE+c, not row/BOARD_SIZE+c, for row>0 (L164 ArithmeticOperator)', () => {
+  it('row index is row*BOARD_SIZE+c, not row/BOARD_SIZE+c, for row>0 (eliminateFromPeers row-scan index)', () => {
     // For row 1 the mutant row/BOARD_SIZE+c yields fractional indices (no-op writes),
     // so row peers would keep digit 1.
     const initial = new Uint16Array(TOTAL_CELLS).fill(0) as unknown as Uint16Array
@@ -336,7 +336,7 @@ describe('useCandidates eliminateFromPeers loop bounds stay inside the peer set'
     expect(hasCandidate(out[17]!, 1)).toBe(false) // row peer of cell 13
   })
 
-  it('box-row bound is exclusive of the next box row (L171 r<=boxRow+SUBGRID_SIZE)', () => {
+  it('box-row bound is exclusive of the next box row (eliminateFromPeers box-row r < boxRow + SUBGRID_SIZE bound)', () => {
     // Cell 0 = box (0,0). The mutant extra r=3 iteration touches cell 28 (row 3, col 1),
     // which is NOT a peer of cell 0.
     const initial = new Uint16Array(TOTAL_CELLS).fill(0) as unknown as Uint16Array
@@ -348,7 +348,7 @@ describe('useCandidates eliminateFromPeers loop bounds stay inside the peer set'
     expect(hasCandidate(out[28]!, 1)).toBe(true) // non-peer, digit survives
   })
 
-  it('box-col bound is exclusive of the next box col (L172 c<=boxCol+SUBGRID_SIZE)', () => {
+  it('box-col bound is exclusive of the next box col (eliminateFromPeers box-col c < boxCol + SUBGRID_SIZE bound)', () => {
     // Cell 0 = box (0,0). The mutant extra c=3 iteration touches cell 12 (row 1, col 3),
     // which is NOT a peer of cell 0.
     const initial = new Uint16Array(TOTAL_CELLS).fill(0) as unknown as Uint16Array
@@ -364,10 +364,10 @@ describe('useCandidates eliminateFromPeers loop bounds stay inside the peer set'
 // Mutation-killing tests added for cluster F4 retry (iteration 2).
 // =============================================================================
 
-describe('mutation-killing: diffCellNotes missing-list is exact (L53)', () => {
+describe('mutation-killing: diffCellNotes missing-list is exact (diffCellNotes missing push guard)', () => {
   it('reports only the genuinely missing digits, not every digit', () => {
     // Cell 2 of the Wikipedia board has validMask {1,2,4}. User notes {1,5}
-    // make 5 a wrong note and {2,4} the missing set. Forcing the L53 condition
+    // make 5 a wrong note and {2,4} the missing set. Forcing the missing push
     // true (or &&->||) inflates the missing list; the original yields exactly 2.
     const notes = new Uint16Array(TOTAL_CELLS)
     notes[2] = addCandidate(addCandidate(0, 1), 5)
