@@ -663,3 +663,39 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5
+
+  # ============================================
+  # Classify Run Outcome
+  # ============================================
+  classify-outcome:
+    # Terminal classifier, additive by design: no job reads this job's result
+    # and the deploy gate above is untouched, so the set of runs that deploy
+    # cannot change. It separates the two shapes the gate merges: a run
+    # dropped for want of a runner (every test job cancelled before executing
+    # a step, no runner assigned) and a run whose tests actually failed. The
+    # queue-drop verdict is positive: any failure, timed_out, mid-flight
+    # cancellation, mixed shape, missing job, or unrecognised conclusion
+    # reddens this job and the run. classify_run.py is the single source of
+    # the rule; gen_report_portal_test.py pins it to real-run fixtures in
+    # both directions. deploy is in needs so its verdict is terminal when
+    # read: the tolerated-E2E rule keys on the deploy gate's own concluded
+    # success, which cannot be observed while deploy is still running.
+    needs: [test-frontend-unit, test-go, test-e2e, allure-report, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    # Widens the workflow baseline: the classifier reads this run's job list
+    # from the Actions API, which needs actions: read.
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Classify run outcome
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100" > /tmp/run-jobs.json
+          python3 .github/scripts/classify_run.py /tmp/run-jobs.json --summary "$GITHUB_STEP_SUMMARY"

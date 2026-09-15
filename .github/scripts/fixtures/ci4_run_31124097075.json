@@ -1,0 +1,55 @@
+{
+  "_provenance": {
+    "run_id": "31124097075",
+    "run_conclusion": "failure",
+    "run_created_at": "2026-08-06T17:46:22Z",
+    "head_branch": "main",
+    "event": "push",
+    "captured": "2026-09-14",
+    "captured_via": "gh run view 31124097075 --repo ThoDHa/sudoku --json jobs",
+    "shape": "queue drop: every job cancelled before executing a step, deploy skipped (2026-08-06)",
+    "note": "reduced from the live payload to the fields the classifier reads. The jobs API additionally recorded runner_id 0 and runner_name \"\" for the queue-dropped jobs (verified during planning); the gh run view payload omits both keys, which classify_run.py reads as unassigned."
+  },
+  "jobs": [
+    {
+      "name": "test-frontend-unit",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "started_at": "2026-08-06T17:46:22Z",
+      "completed_at": "2026-08-06T18:01:24Z",
+      "steps": []
+    },
+    {
+      "name": "test-go",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "started_at": "2026-08-06T17:46:22Z",
+      "completed_at": "2026-08-06T18:01:24Z",
+      "steps": []
+    },
+    {
+      "name": "test-e2e",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "started_at": "2026-08-06T17:46:22Z",
+      "completed_at": "2026-08-06T18:01:24Z",
+      "steps": []
+    },
+    {
+      "name": "allure-report",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "started_at": "2026-08-06T18:01:24Z",
+      "completed_at": "2026-08-06T18:16:26Z",
+      "steps": []
+    },
+    {
+      "name": "deploy",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-08-06T18:16:26Z",
+      "completed_at": "2026-08-06T18:16:26Z",
+      "steps": []
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "_provenance": {
+    "run_id": null,
+    "synthetic": true,
+    "added": "2026-09-14",
+    "shape": "fatal E2E failure with the gate blocked: test-e2e failed after executed steps and deploy concluded skipped, so the deploy gate never issued the success verdict that would make the E2E failure tolerated (reviewer HIGH finding)",
+    "note": "built by hand in the style of the recorded ci4_run_* fixtures, reduced to the fields classify_run.py reads; runner_id and runner_name omitted, which classify_run.py reads as unassigned.",
+    "expected_verdict": "failure"
+  },
+  "jobs": [
+    {
+      "name": "test-frontend-unit",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-09-14T12:00:00Z",
+      "completed_at": "2026-09-14T12:06:00Z",
+      "steps": [
+        {"number": 1, "name": "Checkout", "status": "completed", "conclusion": "success"},
+        {"number": 2, "name": "Run frontend unit tests", "status": "completed", "conclusion": "success"}
+      ]
+    },
+    {
+      "name": "test-go",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-09-14T12:00:00Z",
+      "completed_at": "2026-09-14T12:05:00Z",
+      "steps": [
+        {"number": 1, "name": "Checkout", "status": "completed", "conclusion": "success"},
+        {"number": 2, "name": "Run Go tests", "status": "completed", "conclusion": "success"}
+      ]
+    },
+    {
+      "name": "test-e2e",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-09-14T12:00:00Z",
+      "completed_at": "2026-09-14T12:11:00Z",
+      "steps": [
+        {"number": 1, "name": "Checkout", "status": "completed", "conclusion": "success"},
+        {"number": 2, "name": "Run Playwright tests", "status": "completed", "conclusion": "failure"}
+      ]
+    },
+    {
+      "name": "allure-report",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-09-14T12:11:00Z",
+      "completed_at": "2026-09-14T12:13:00Z",
+      "steps": [
+        {"number": 1, "name": "Build Allure report", "status": "completed", "conclusion": "success"}
+      ]
+    },
+    {
+      "name": "deploy",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-09-14T12:13:00Z",
+      "completed_at": "2026-09-14T12:13:00Z",
+      "steps": []
+    }
+  ]
+}

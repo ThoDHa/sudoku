@@ -1,0 +1,55 @@
+{
+  "_provenance": {
+    "run_id": null,
+    "synthetic": true,
+    "added": "2026-09-14",
+    "shape": "mixed drop and real failure: all three test jobs queue-dropped (cancelled, zero steps) but allure-report genuinely failed after executed steps, a companion verdict of its own that the queue-drop branch must not absorb (reviewer MEDIUM finding)",
+    "note": "built by hand in the style of the recorded ci4_run_* fixtures, reduced to the fields classify_run.py reads; runner_id and runner_name omitted, which classify_run.py reads as unassigned.",
+    "expected_verdict": "failure"
+  },
+  "jobs": [
+    {
+      "name": "test-frontend-unit",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "started_at": "2026-09-14T12:00:00Z",
+      "completed_at": "2026-09-14T12:15:00Z",
+      "steps": []
+    },
+    {
+      "name": "test-go",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "started_at": "2026-09-14T12:00:00Z",
+      "completed_at": "2026-09-14T12:15:00Z",
+      "steps": []
+    },
+    {
+      "name": "test-e2e",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "started_at": "2026-09-14T12:00:00Z",
+      "completed_at": "2026-09-14T12:15:00Z",
+      "steps": []
+    },
+    {
+      "name": "allure-report",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-09-14T12:15:00Z",
+      "completed_at": "2026-09-14T12:16:00Z",
+      "steps": [
+        {"number": 1, "name": "Download artifacts", "status": "completed", "conclusion": "success"},
+        {"number": 2, "name": "Build Allure report", "status": "completed", "conclusion": "failure"}
+      ]
+    },
+    {
+      "name": "deploy",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-09-14T12:16:00Z",
+      "completed_at": "2026-09-14T12:16:00Z",
+      "steps": []
+    }
+  ]
+}
