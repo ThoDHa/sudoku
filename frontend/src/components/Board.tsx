@@ -3,6 +3,13 @@ import { hasCandidate, countCandidates } from '../lib/candidatesUtils'
 import { findDuplicates } from '../lib/validationUtils'
 import { TOTAL_CELLS } from '../lib/constants'
 import { useBoardInteraction } from '../hooks/useBoardInteraction'
+import {
+  getCellAriaLabel,
+  getCellClass,
+  isHighlightedPrimary,
+  isHighlightedSecondary,
+  type BoardCellContext,
+} from '../lib/boardCellClasses'
 
 interface Move {
   step_index: number
@@ -292,274 +299,23 @@ const Board = memo(function Board({
     ...(onDragEnd !== undefined ? { onDragEnd } : {}),
   })
 
-  const incorrectCellsSet = new Set(incorrectCells)
-
   // candidatesVersion is read (not just listed as a dep) so the React Compiler
   // keys recomputation on it: candidates is a Uint16Array mutated in place, so a
   // reference-only check would miss the in-place mutations signalled by a version bump.
   void candidatesVersion
-  const cellsWithHighlightedDigit = new Set<number>()
-  if (highlightedDigit !== null) {
-    for (let idx = 0; idx < TOTAL_CELLS; idx++) {
-      // Check if cell is filled with the highlighted digit
-      if (board[idx] === highlightedDigit) {
-        cellsWithHighlightedDigit.add(idx)
-        continue
-      }
-      // Check if cell has the highlighted digit as a candidate
-      const cellCandidates = candidates[idx]
-      if (cellCandidates !== undefined && hasCandidate(cellCandidates, highlightedDigit)) {
-        cellsWithHighlightedDigit.add(idx)
-      }
-    }
-  }
-
-  const getCellAriaLabel = (idx: number): string => {
-    const row = Math.floor(idx / 9)
-    const col = idx % 9
-    const value = board[idx]
-    const isGiven = initialBoard[idx] !== 0
-
-    const position = `Row ${row + 1}, Column ${col + 1}`
-    if (value === 0) {
-      return `${position}, empty`
-    }
-    const givenText = isGiven ? ', given' : ''
-    return `${position}, value ${value}${givenText}`
-  }
   const duplicates = findDuplicates(board)
 
-  const isHighlightedPrimary = (row: number, col: number): boolean => {
-    if (!highlight) return false
-    const inPrimary = highlight.highlights.primary.some((h) => h.row === row && h.col === col)
-    if (!inPrimary) return false
-
-    // Always highlight filled cells
-    const idx = row * 9 + col
-    if (board[idx] !== 0) return true
-
-    // For empty cells, only highlight if the cell still has the relevant candidate
-    // If no specific digit or user move, keep the highlight
-    if (!highlight.digit || highlight.digit === 0 || highlight.isUserMove) return true
-
-    return hasCandidate(candidates[idx] || 0, highlight.digit)
-  }
-
-  const isHighlightedSecondary = (row: number, col: number): boolean => {
-    if (!highlight) return false
-
-    const idx = row * 9 + col
-    const isFilled = board[idx] !== 0
-
-    // Helper to check if cell should still be highlighted based on candidate
-    const shouldHighlight = (digit?: number): boolean => {
-      // Always highlight filled cells
-      if (isFilled) return true
-      // If no specific digit or user move, keep highlight
-      if (!digit || digit === 0 || highlight.isUserMove) return true
-      // For empty cells, only highlight if cell still has relevant candidate
-      return hasCandidate(candidates[idx] || 0, digit)
-    }
-
-    // Check explicit secondary highlights (these are part of technique pattern, always show)
-    if (highlight.highlights.secondary?.some((h) => h.row === row && h.col === col)) {
-      return shouldHighlight(highlight.digit)
-    }
-
-    // In technique hint mode (showAnswer: false), highlight ALL involved cells
-    // In regular hint mode (showAnswer: true), also highlight eliminations and targets
-    const showAnswer = highlight.showAnswer !== false
-
-    if (showAnswer) {
-      // Regular hint mode: highlight elimination cells as secondary (check specific elimination digit)
-      const elimination = highlight.eliminations?.find((e) => e.row === row && e.col === col)
-      if (elimination) {
-        return shouldHighlight(elimination.digit)
-      }
-      // Highlight targets as secondary if not already primary
-      if (
-        highlight.targets?.some((t) => t.row === row && t.col === col) &&
-        !isHighlightedPrimary(row, col)
-      ) {
-        return shouldHighlight(highlight.digit)
-      }
-    } else {
-      // Technique hint mode: highlight all involved cells
-      // Elimination cells (where candidates are removed)
-      const elimination = highlight.eliminations?.find((e) => e.row === row && e.col === col)
-      if (elimination) {
-        return shouldHighlight(elimination.digit)
-      }
-      // Target cells (where digits are placed or added)
-      if (
-        highlight.targets?.some((t) => t.row === row && t.col === col) &&
-        !isHighlightedPrimary(row, col)
-      ) {
-        return shouldHighlight(highlight.digit)
-      }
-    }
-    return false
-  }
-
-  // Check if cell contains the highlighted digit (either filled or as candidate)
-  // Uses the memoized set for proper React dependency tracking
-  const cellHasHighlightedDigit = (idx: number): boolean => {
-    return cellsWithHighlightedDigit.has(idx)
-  }
-
-  // Check if cell is a peer of any selected cell (same row, column, or box)
-  const isPeerOfSelected = (idx: number): boolean => {
-    // Determine which cells to check peers against
-    const cellsToCheck =
-      selectedCells.size > 0
-        ? selectedCells
-        : selectedCell !== null
-          ? new Set([selectedCell])
-          : null
-    if (!cellsToCheck || cellsToCheck.size === 0) return false
-    if (cellsToCheck.has(idx)) return false // Don't count self as peer
-
-    const row = Math.floor(idx / 9)
-    const col = idx % 9
-    const boxRow = Math.floor(row / 3)
-    const boxCol = Math.floor(col / 3)
-
-    for (const selIdx of cellsToCheck) {
-      const selRow = Math.floor(selIdx / 9)
-      const selCol = selIdx % 9
-      // Same row
-      if (row === selRow) return true
-      // Same column
-      if (col === selCol) return true
-      // Same box
-      if (boxRow === Math.floor(selRow / 3) && boxCol === Math.floor(selCol / 3)) return true
-    }
-
-    return false
-  }
-
-  // Check if a cell index is part of the active multi-selection.
-  // Both the primary selectedCell and other selectedCells members participate
-  // in the unified selection rectangle when multiple cells are selected.
-  const isInMultiSelection = (idx: number): boolean => {
-    return selectedCells.size > 1 && selectedCells.has(idx)
-  }
-
-  // Multi-selection outline: adjacent selected cells form a unified accent
-  // rectangle, so interior shared edges are dropped and only outer edges boxed.
-  const multiSelectionClasses = (idx: number, row: number, col: number): string[] => {
-    const hasRight = col < 8 && isInMultiSelection(idx + 1)
-    const hasBelow = row < 8 && isInMultiSelection(idx + 9)
-    const hasLeft = col > 0 && isInMultiSelection(idx - 1)
-    const hasAbove = row > 0 && isInMultiSelection(idx - 9)
-    const classes = ['multi-selected']
-    if (!hasRight && col < 8) classes.push('border-r-2 border-r-accent')
-    if (!hasBelow && row < 8) classes.push('border-b-2 border-b-accent')
-    if (!hasLeft) classes.push('border-l-2 border-l-accent')
-    if (!hasAbove) classes.push('border-t-2 border-t-accent')
-    return classes
-  }
-
-  // Standard grid borders: thick lines at the 3x3 boundaries, light elsewhere.
-  const normalBorderClasses = (row: number, col: number): string[] => {
-    const classes: string[] = []
-    if (col === 2 || col === 5) classes.push('border-r-2 border-r-board-border')
-    else if (col < 8) classes.push('border-r border-r-board-border-light')
-    if (row === 2 || row === 5) classes.push('border-b-2 border-b-board-border')
-    else if (row < 8) classes.push('border-b border-b-board-border-light')
-    return classes
-  }
-
-  // Background color by precedence: error states first, then highlights, then
-  // selection/digit-match/peer/given/plain.
-  const backgroundClass = (
-    row: number,
-    col: number,
-    isIncorrect: boolean,
-    isDuplicate: boolean,
-    isPrimary: boolean,
-    isSecondary: boolean,
-    isSelected: boolean,
-    inMultiSel: boolean,
-    hasDigitMatch: boolean,
-    isPeer: boolean,
-    isGiven: boolean,
-  ): string => {
-    if (isIncorrect || isDuplicate) return 'bg-error-bg'
-    if (isPrimary) return 'bg-cell-primary'
-    if (isSecondary) {
-      const isTechniqueHint = highlight?.showAnswer === false
-      const isExplicitSecondary = highlight?.highlights.secondary?.some(
-        (h) => h.row === row && h.col === col,
-      )
-      return isTechniqueHint && !isExplicitSecondary ? 'bg-cell-primary' : 'bg-cell-secondary'
-    }
-    if (isSelected || inMultiSel) return 'bg-cell-selected'
-    if (hasDigitMatch) return 'bg-accent-light'
-    if (isPeer) return 'bg-cell-peer'
-    return isGiven ? 'bg-cell-given' : 'bg-cell-bg'
-  }
-
-  // Text color by precedence: error > highlight > given > entered.
-  const textClass = (
-    isIncorrect: boolean,
-    isDuplicate: boolean,
-    isPrimary: boolean,
-    isSecondary: boolean,
-    isGiven: boolean,
-  ): string => {
-    if (isIncorrect || isDuplicate) return 'text-error-text'
-    if (isPrimary || isSecondary) return 'text-cell-text-on-highlight'
-    return isGiven ? 'text-cell-text-given' : 'text-cell-text-entered'
-  }
-
-  const getCellClass = (idx: number): string => {
-    const row = Math.floor(idx / 9)
-    const col = idx % 9
-    const isGiven = initialBoard[idx] !== 0
-    const isSelected = selectedCell === idx
-    const inMultiSel = isInMultiSelection(idx)
-    const isPrimary = isHighlightedPrimary(row, col)
-    const isSecondary = isHighlightedSecondary(row, col)
-    const isDuplicate = duplicates.has(idx)
-    const hasDigitMatch = cellHasHighlightedDigit(idx)
-    const isPeer = isPeerOfSelected(idx)
-    const isIncorrect = incorrectCellsSet.has(idx)
-
-    const classes: string[] = ['sudoku-cell']
-
-    if (inMultiSel) {
-      classes.push(...multiSelectionClasses(idx, row, col))
-      // Ring only for incorrect cells in multi-select (keeps the box continuous).
-      if (isIncorrect) classes.push('ring-2 ring-inset ring-error-text z-10')
-    } else {
-      classes.push(...normalBorderClasses(row, col))
-      if (isIncorrect) classes.push('ring-2 ring-inset ring-error-text z-10')
-      else if (isSelected) classes.push('ring-2 ring-inset ring-accent z-10')
-    }
-
-    classes.push(
-      backgroundClass(
-        row,
-        col,
-        isIncorrect,
-        isDuplicate,
-        isPrimary,
-        isSecondary,
-        isSelected,
-        inMultiSel,
-        hasDigitMatch,
-        isPeer,
-        isGiven,
-      ),
-    )
-    classes.push(textClass(isIncorrect, isDuplicate, isPrimary, isSecondary, isGiven))
-
-    if (idx === focusedCell) {
-      classes.push('cell-focused outline outline-2 outline-offset-[-1px] outline-accent')
-    }
-
-    return classes.join(' ')
+  const cellContext: BoardCellContext = {
+    board,
+    initialBoard,
+    candidates,
+    selectedCell,
+    selectedCells,
+    highlight,
+    highlightedDigit,
+    incorrectCells,
+    focusedCell,
+    duplicateCells: duplicates,
   }
 
   // REMOVED: renderCell function - now handled inside Cell component
@@ -572,8 +328,8 @@ const Board = memo(function Board({
     const row = Math.floor(idx / 9)
     const col = idx % 9
     const isGiven = initialBoard[idx] !== 0
-    const isPrimary = isHighlightedPrimary(row, col)
-    const isSecondary = isHighlightedSecondary(row, col)
+    const isPrimary = isHighlightedPrimary(cellContext, row, col)
+    const isSecondary = isHighlightedSecondary(cellContext, row, col)
     const isTarget = highlight?.targets?.some((t) => t.row === row && t.col === col) ?? false
 
     const targetDigit = highlight?.digit
@@ -585,8 +341,8 @@ const Board = memo(function Board({
       isSelected: selectedCell === idx,
       tabIndex: idx === tabStopCell ? 0 : -1,
       isMultiSelected: selectedCells.has(idx) && selectedCell !== idx,
-      className: getCellClass(idx),
-      ariaLabel: getCellAriaLabel(idx),
+      className: getCellClass(cellContext, idx),
+      ariaLabel: getCellAriaLabel(cellContext, idx),
       highlightedDigit,
       isPrimary,
       isSecondary,
