@@ -802,7 +802,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('mutation-killing: startTimer re-entry preserves elapsed time (L60:9, L64:16, L69:6)', () => {
+  describe('mutation-killing: startTimer re-entry preserves elapsed time (startTimer re-entry guard)', () => {
     it('does not reset the accumulated baseline when startTimer is called on a running timer', () => {
       const bg = createMockBackgroundManager()
       const { result } = renderHook(() => useGameTimer({ backgroundManager: bg }))
@@ -861,7 +861,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('mutation-killing: startTimer clears isPausedDueToVisibility flag (L63:34)', () => {
+  describe('mutation-killing: startTimer clears isPausedDueToVisibility flag (startTimer setIsPausedDueToVisibility(false))', () => {
     it('clears isPausedDueToVisibility when starting with pauseOnHidden disabled', () => {
       const bg = createMockBackgroundManager({ shouldPauseOperations: true })
       const { result } = renderHook(() =>
@@ -907,7 +907,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('mutation-killing: visibility pause saves accumulated time (L183:9, L183:50)', () => {
+  describe('mutation-killing: visibility pause saves accumulated time (bankRunningSpan accumulatedRef +=)', () => {
     it('does not count the hidden period toward elapsed time after resume', () => {
       const hidden = createMockBackgroundManager({
         shouldPauseOperations: true,
@@ -947,7 +947,7 @@ describe('useGameTimer - mutation-killing branch tests', () => {
     })
   })
 
-  describe('mutation-killing: visibility resume restores startTimeRef (L185:16 false mutant)', () => {
+  describe('mutation-killing: visibility resume restores startTimeRef (resumeFromVisibility wasRunningBeforePauseRef guard)', () => {
     it('resumes incrementing after transitioning from hidden to visible', () => {
       const hidden = createMockBackgroundManager({
         shouldPauseOperations: true,
@@ -1137,7 +1137,7 @@ describe('mutation-killing: visibility pause preserves a positive accumulated ba
   })
 })
 
-describe('mutation-killing: no resume when shouldPause false but page still hidden (L192 else-if)', () => {
+describe('mutation-killing: no resume when shouldPause false but page still hidden (resumeFromVisibility !isHidden else-if)', () => {
   installVisibleDocumentWithFakeTimers()
 
   it('does not resume when shouldPauseOperations is false but isHidden is still true', () => {
@@ -1161,7 +1161,7 @@ describe('mutation-killing: no resume when shouldPause false but page still hidd
   })
 })
 
-describe('mutation-killing: pauseOnHidden opt-out honored by interval body inner guard (L162)', () => {
+describe('mutation-killing: pauseOnHidden opt-out honored by interval body inner guard (interval inner pauseOnHidden guard)', () => {
   installVisibleDocumentWithFakeTimers()
 
   it('advances elapsedMs when pauseOnHidden is false despite shouldPauseOperations being true', () => {
@@ -1303,7 +1303,7 @@ describe('interval teardown', () => {
   })
 })
 
-describe('mutation-killing: no interval is scheduled while fully paused for visibility (L152)', () => {
+describe('mutation-killing: no interval is scheduled while fully paused for visibility (effectiveShouldPause early return)', () => {
   // Real timers here so we observe the genuine global setInterval. isAutomatedEnvironment()
   // is false in the default jsdom UA, so the `pauseOnHidden && shouldPauseOperations`
   // branch is actually evaluated.

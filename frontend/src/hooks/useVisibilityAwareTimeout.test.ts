@@ -456,7 +456,7 @@ describe('useVisibilityAwareTimeout', () => {
   })
 
   describe('mutation-killing visibility-state assertions', () => {
-    it('does not cancel timeouts when visibilitychange fires but page stays visible (L28:27, L32:11)', () => {
+    it('does not cancel timeouts when visibilitychange fires but page stays visible (handleVisibilityChange isNowHidden guard)', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
@@ -475,7 +475,7 @@ describe('useVisibilityAwareTimeout', () => {
       expect(callback).toHaveBeenCalledTimes(1)
     })
 
-    it('cancels pending timeout when hidden then re-shown before firing (L32:11, L32:24, L33:51)', () => {
+    it('cancels pending timeout when hidden then re-shown before firing (handleVisibilityChange clearTimeout)', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
@@ -502,7 +502,7 @@ describe('useVisibilityAwareTimeout', () => {
       expect(callback).not.toHaveBeenCalled()
     })
 
-    it('does not schedule a new timeout after pagehide (L42:29)', () => {
+    it('does not schedule a new timeout after pagehide (handlePageHide isHiddenRef write)', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
@@ -520,7 +520,7 @@ describe('useVisibilityAwareTimeout', () => {
       expect(callback).not.toHaveBeenCalled()
     })
 
-    it('does not schedule a new timeout after freeze (L51:29)', () => {
+    it('does not schedule a new timeout after freeze (handleFreeze isHiddenRef write)', () => {
       const { result } = renderHook(() => useVisibilityAwareTimeout())
       const callback = vi.fn()
 
@@ -558,7 +558,7 @@ describe('mutation-killing: hidden-event handlers actually clear pending timeout
     vi.restoreAllMocks()
   })
 
-  it('clears the pending timeout on pagehide so it cannot fire after re-show (L43 block)', () => {
+  it('clears the pending timeout on pagehide so it cannot fire after re-show (handlePageHide clearTimeout)', () => {
     const { result } = renderHook(() => useVisibilityAwareTimeout())
     const callback = vi.fn()
 
@@ -581,7 +581,7 @@ describe('mutation-killing: hidden-event handlers actually clear pending timeout
     expect(callback).not.toHaveBeenCalled()
   })
 
-  it('clears the pending timeout on freeze so it cannot fire after re-show (L52 block)', () => {
+  it('clears the pending timeout on freeze so it cannot fire after re-show (handleFreeze clearTimeout)', () => {
     const { result } = renderHook(() => useVisibilityAwareTimeout())
     const callback = vi.fn()
 
@@ -602,7 +602,7 @@ describe('mutation-killing: hidden-event handlers actually clear pending timeout
   })
 })
 
-describe('mutation-killing: setTimeout no-ops when the page is already hidden (L78 guard)', () => {
+describe('mutation-killing: setTimeout no-ops when the page is already hidden (setVisibilityAwareTimeout isHiddenRef guard)', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     Object.defineProperty(document, 'visibilityState', {
