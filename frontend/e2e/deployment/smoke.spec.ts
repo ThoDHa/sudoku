@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { waitForHintProcessing } from '../utils/hint-wait'
+import { parseIntCapture } from '../utils/regex-capture'
 import { waitForWasmReady } from '../utils/board-wait'
 
 /**
@@ -36,6 +37,7 @@ import { waitForWasmReady } from '../utils/board-wait'
 test.describe('@deployment Post-Deploy Smoke', () => {
   test('critical path: load, start game, place digit, receive hint', async ({ page, baseURL }) => {
     test.skip(!baseURL, 'PLAYWRIGHT_BASE_URL must be set so the smoke targets a deployed artifact')
+    if (!baseURL) return
 
     await test.step('LOAD: homepage shell renders', async () => {
       // Navigate to baseURL itself (not '/') so the smoke works regardless of
@@ -74,8 +76,8 @@ test.describe('@deployment Post-Deploy Smoke', () => {
 
       const ariaLabel = await emptyCell.getAttribute('aria-label')
       const match = ariaLabel?.match(/Row (\d+), Column (\d+)/)
-      const row = match ? parseInt(match[1], 10) : 5
-      const col = match ? parseInt(match[2], 10) : 1
+      const row = match ? parseIntCapture(match[1], 10) : 5
+      const col = match ? parseIntCapture(match[2], 10) : 1
 
       await page.keyboard.press('4')
       await expect(async () => {

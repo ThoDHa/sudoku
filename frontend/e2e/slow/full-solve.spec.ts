@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait'
 import { PlaywrightUISDK } from '../sdk'
 

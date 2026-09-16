@@ -568,7 +568,10 @@ test.describe('Homepage - Daily Mode Continue Game', () => {
 })
 
 test.describe('Homepage - Responsive Design', () => {
-  test('mobile viewport displays all elements correctly', async ({ page, mobileViewport }) => {
+  test('mobile viewport displays all elements correctly', async ({
+    page,
+    mobileViewport: _mobileViewport,
+  }) => {
     // mobileViewport fixture sets 375x667
     await page.goto('/')
 
@@ -940,9 +943,10 @@ test.describe('Homepage - Edge Cases', () => {
     for (let i = 0; i < 40 && !found; i++) {
       await page.keyboard.press('Tab')
       // Check the activeElement after each tab press
-      const activeText = await page.evaluate(
-        () => document.activeElement?.innerText?.toLowerCase() || '',
-      )
+      const activeText = await page.evaluate(() => {
+        const active = document.activeElement
+        return active instanceof HTMLElement ? active.innerText.toLowerCase() : ''
+      })
       const ariaLabel = await page.evaluate(
         () => document.activeElement?.getAttribute('aria-label')?.toLowerCase() || '',
       )

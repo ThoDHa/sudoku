@@ -22,7 +22,7 @@ test.describe('@integration Check & Fix', () => {
     })
   })
 
-  test('applies only fix moves and does not auto-complete', async ({ page, skipOnboarding }) => {
+  test('applies only fix moves and does not auto-complete', async ({ page }) => {
     // Capture page console for diagnostics during test runs
     page.on('console', (msg) => {
       // Route page console through loglevel to centralize output while preserving original content

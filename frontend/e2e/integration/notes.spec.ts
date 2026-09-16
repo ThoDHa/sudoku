@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test'
-import { setupGameAndWaitForBoard } from '../utils/board-wait'
 
 /**
  * Notes Mode Integration Tests
@@ -511,7 +510,7 @@ test.describe('@integration Notes Mode - Digit Highlight Persistence', () => {
       const ariaLabel = await cell.getAttribute('aria-label')
       const match = ariaLabel?.match(/Row (\d+), Column (\d+)/)
       if (match) {
-        cellPositions.push({ row: match[1], col: match[2] })
+        cellPositions.push({ row: match[1] ?? '', col: match[2] ?? '' })
       }
     }
 

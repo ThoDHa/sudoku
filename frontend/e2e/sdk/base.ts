@@ -10,7 +10,6 @@ import type {
   SDKResponse,
   Difficulty,
   Board,
-  Candidates,
   HealthResponse,
   DailyResponse,
   PuzzleResponse,

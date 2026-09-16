@@ -47,10 +47,14 @@ function parseTimerToSeconds(timerText: string): number {
   const parts = timerText.split(':')
   if (parts.length === 2) {
     // MM:SS format
-    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10)
+    return parseInt(parts[0] ?? '', 10) * 60 + parseInt(parts[1] ?? '', 10)
   } else if (parts.length === 3) {
     // HH:MM:SS format
-    return parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10)
+    return (
+      parseInt(parts[0] ?? '', 10) * 3600 +
+      parseInt(parts[1] ?? '', 10) * 60 +
+      parseInt(parts[2] ?? '', 10)
+    )
   }
   return 0
 }
@@ -388,7 +392,7 @@ test.describe('@integration Timer - Persistence', () => {
         const text = timer.textContent || ''
         const match = text.match(/^(\d+):(\d{2})$/)
         if (!match) return false
-        const seconds = parseInt(match[1], 10) * 60 + parseInt(match[2], 10)
+        const seconds = parseInt(match[1] ?? '', 10) * 60 + parseInt(match[2] ?? '', 10)
         return seconds >= 60
       },
       { timeout: 5000 },

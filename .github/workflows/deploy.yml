@@ -66,6 +66,10 @@ jobs:
         working-directory: frontend
         run: npx tsc --noEmit -p tsconfig.test.json
 
+      - name: Type-check (e2e config)
+        working-directory: frontend
+        run: npx tsc --noEmit -p tsconfig.e2e.json
+
       # Hard format gate: the tree is fully prettier-clean (src + e2e), so drift
       # now fails CI. Matches `make format-check-frontend`.
       - name: Check formatting (Prettier)

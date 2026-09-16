@@ -1,5 +1,6 @@
-import { test, expect, Page, Locator } from '@playwright/test'
-import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait'
+import { test, expect } from '@playwright/test'
+import type { Page, Locator } from '@playwright/test'
+import { waitForWasmReady } from '../utils/board-wait'
 import { dismissModals, waitForHintProcessing, waitForHintToastCleared } from '../utils/hint-wait'
 
 /**

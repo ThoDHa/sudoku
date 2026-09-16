@@ -67,7 +67,10 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
               console.log('DEBUG: FORCED value to:', value)
             }
           } catch (e) {
-            console.log('DEBUG: Failed to parse preferences data:', e.message)
+            console.log(
+              'DEBUG: Failed to parse preferences data:',
+              e instanceof Error ? e.message : String(e),
+            )
           }
         }
         return originalSetItem.call(this, key, value)
@@ -136,7 +139,7 @@ test.describe('Daily Prompt Modal - Appearance Conditions', () => {
           'notShownToday=' + !alreadyShownToday,
         )
       } catch (e) {
-        console.log('DEBUG: Manual check error:', e.message)
+        console.log('DEBUG: Manual check error:', e instanceof Error ? e.message : String(e))
       }
     })
 

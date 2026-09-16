@@ -1,4 +1,5 @@
-import { test, expect, Page, Locator } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import type { Page, Locator } from '@playwright/test'
 import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait'
 import { dismissModals, waitForHintProcessing, waitForHintToastCleared } from '../utils/hint-wait'
 
@@ -244,12 +245,6 @@ test.describe('@integration Technique Hints - Mobile', () => {
 
     // Wait for processing
     await waitForHintProcessing(page)
-
-    // Check for toast with fixed z-50 class
-    const toastVisible = await page
-      .locator('.fixed.z-50')
-      .isVisible()
-      .catch(() => false)
 
     // If "Learn more" is visible, click it to open the modal
     const learnMoreButton = page.locator('text=Learn more')

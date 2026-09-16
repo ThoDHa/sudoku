@@ -17,12 +17,6 @@ import type { Page } from '@playwright/test'
  * Tag: @integration @errors @recovery
  */
 
-// Valid puzzle strings for reference
-const VALID_PUZZLE =
-  '530070000600195000098000060800060003400803001700020006060000280000419005000080079'
-const VALID_PUZZLE_ALT =
-  '003020600900305001001806400008102900700000008006708200002609500800203009005010300'
-
 // The /custom page has no <input>/<textarea>; full puzzle strings are entered
 // via the clipboard-driven Paste button. The error notice is a Tailwind-styled
 // div (class bg-red-100) with no role="alert".
@@ -489,10 +483,6 @@ test.describe('@integration Error States - Edge Cases', () => {
     await page.waitForLoadState('networkidle')
 
     // App should still be functional
-    const hasGrid = await page
-      .locator('[role="grid"]')
-      .isVisible()
-      .catch(() => false)
     const hasBody = await page.locator('body').isVisible()
 
     expect(hasBody).toBeTruthy()

@@ -1,5 +1,6 @@
-import { test, expect, Page } from '@playwright/test'
-import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait'
+import { test, expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { waitForWasmReady } from '../utils/board-wait'
 
 /**
  * Hint UI Tests
@@ -47,11 +48,6 @@ test.describe('@integration Hints - UI Behavior', () => {
       const isEnabled = await hintButton.isEnabled()
       expect(isEnabled).toBeTruthy()
     }).toPass({ timeout: 3000 })
-
-    // Count should have decreased
-    const afterText = await hintButton.textContent()
-    const afterMatch = afterText?.match(/\d+/)
-    const afterCount = afterMatch ? parseInt(afterMatch[0]) : initialCount - 1
 
     // Restart game
     const restartButton = page.getByRole('button', { name: /restart|new game/i })

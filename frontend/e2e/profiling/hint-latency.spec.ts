@@ -31,6 +31,7 @@
  */
 
 import { test, expect } from '../fixtures'
+import { itemAt } from '../utils/collection'
 import { setupGameAndWaitForBoard } from '../utils/board-wait'
 import { measureTime, summarize } from './helpers/timing'
 
@@ -90,7 +91,7 @@ test.describe.serial('@profiling Hint / Autosolve Latency', () => {
       timings.push(duration)
     }
 
-    const firstHint = timings[0]
+    const firstHint = itemAt(timings, 0)
     const subsequent = timings.slice(1)
     const subsequentStats = summarize(subsequent)
 

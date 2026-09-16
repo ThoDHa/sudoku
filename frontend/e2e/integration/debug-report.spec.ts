@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test'
-import { setupGameAndWaitForBoard } from '../utils/board-wait'
 
 /**
  * Debug Report Integration Tests
