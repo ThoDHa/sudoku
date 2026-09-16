@@ -14,6 +14,13 @@ import { dumpNavLog, installNavLog } from '../utils/nav-log'
 const GAME_BACKGROUND_VISIBLE_TIMEOUT_MS = 30000
 
 /**
+ * Default visibility budget for `.game-background` in the remaining tests:
+ * long enough to absorb a loaded host without the extra headroom the
+ * wrapped tests above receive.
+ */
+const DEFAULT_GAME_BACKGROUND_VISIBLE_TIMEOUT_MS = 15000
+
+/**
  * Homepage E2E Tests
  *
  * Comprehensive tests for the Sudoku homepage functionality including:
@@ -117,7 +124,9 @@ test.describe('Homepage - Difficulty Grid', () => {
     await page.goto('/')
     const extremeButton = page.locator('button:has-text("extreme")').first()
     await extremeButton.click()
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('.game-background')).toBeVisible({
+      timeout: DEFAULT_GAME_BACKGROUND_VISIBLE_TIMEOUT_MS,
+    })
     expect(page.url()).toContain('d=extreme')
   })
 
@@ -125,7 +134,9 @@ test.describe('Homepage - Difficulty Grid', () => {
     await page.goto('/')
     const impossibleButton = page.locator('button:has-text("impossible")').first()
     await impossibleButton.click()
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('.game-background')).toBeVisible({
+      timeout: DEFAULT_GAME_BACKGROUND_VISIBLE_TIMEOUT_MS,
+    })
     expect(page.url()).toContain('d=impossible')
   })
 
@@ -179,7 +190,9 @@ test.describe('Homepage - Navigation Links', () => {
 
     // Start a game
     await page.locator('button:has-text("easy")').first().click()
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('.game-background')).toBeVisible({
+      timeout: DEFAULT_GAME_BACKGROUND_VISIBLE_TIMEOUT_MS,
+    })
 
     // Navigate back
     await page.goBack()
@@ -236,7 +249,9 @@ test.describe('Homepage - Mode Switching', () => {
 
     // Start a game
     await page.locator('button:has-text("easy")').first().click()
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('.game-background')).toBeVisible({
+      timeout: DEFAULT_GAME_BACKGROUND_VISIBLE_TIMEOUT_MS,
+    })
 
     // Navigate back to homepage
     await page.goto('/')
@@ -258,7 +273,9 @@ test.describe('Homepage - Mode Switching', () => {
     if (!isComplete) {
       // Start a game
       await page.locator('button:has-text("easy")').first().click()
-      await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 })
+      await expect(page.locator('.game-background')).toBeVisible({
+        timeout: DEFAULT_GAME_BACKGROUND_VISIBLE_TIMEOUT_MS,
+      })
 
       // Navigate back
       await page.goto('/')
@@ -406,7 +423,9 @@ test.describe('Homepage - Continue Game', () => {
     await page.locator('button:has-text("Start New")').click()
 
     // Should navigate to hard game
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('.game-background')).toBeVisible({
+      timeout: DEFAULT_GAME_BACKGROUND_VISIBLE_TIMEOUT_MS,
+    })
     expect(page.url()).toContain('d=hard')
   })
 
@@ -433,7 +452,9 @@ test.describe('Homepage - Continue Game', () => {
 
     // Should NOT show confirmation modal, should navigate directly
     await expect(page.locator('text=Start New Game?')).not.toBeVisible()
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('.game-background')).toBeVisible({
+      timeout: DEFAULT_GAME_BACKGROUND_VISIBLE_TIMEOUT_MS,
+    })
   })
 })
 
@@ -501,7 +522,9 @@ test.describe('Homepage - Daily Mode Continue Game', () => {
       await expect(page.locator('text=Start New Game?')).not.toBeVisible()
 
       // Should navigate to game page with the saved seed
-      await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 })
+      await expect(page.locator('.game-background')).toBeVisible({
+        timeout: DEFAULT_GAME_BACKGROUND_VISIBLE_TIMEOUT_MS,
+      })
       expect(page.url()).toContain(dailySeed)
       expect(page.url()).toContain('d=easy')
     }
