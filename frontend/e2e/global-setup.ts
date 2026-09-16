@@ -1,11 +1,30 @@
 /**
  * Global setup for Playwright tests
  *
- * This file runs once before all tests and sets up any global state.
+ * This file runs once before all tests and sets up any global state:
+ * auth/onboarding storage state plus a warmup pass over the slow suite's
+ * heavy entry routes.
  */
+
+/**
+ * Routes the slow specs enter on whose first cold transform starves their
+ * short entry waits. A cold dev server needs ~11s to serve the seeded-puzzle
+ * page (measured, 15s wait budget); one request per route during setup drops
+ * that to ~2s before any worker starts. The homepage is already warmed by the
+ * baseURL visit below.
+ *
+ * App.tsx renders every /<seed-or-P-name>?d= route with the same lazy Game
+ * component (route /:seed), so one warmed route per named shape covers the
+ * suite: hint-consistency.spec.ts's /P<timestamp><n> seeds are generated at
+ * runtime and load the identical chunk, and the hard shape (entry route of
+ * the skipped hard-puzzle test in full-solve.spec.ts) stays listed so
+ * un-skipping it needs no new warmup entry.
+ */
+const slowSuiteWarmupRoutes = ['/P-full-solve-medium?d=medium', '/P-full-solve-hard?d=hard']
 
 import { chromium, FullConfig } from '@playwright/test'
 import { cleanAllureResults } from '../test/clean-allure-results'
+import { waitForBoard } from './utils/board-wait'
 
 async function globalSetup(config: FullConfig) {
   // Bound allure-results to this run's output (skipped under ALLURE_SKIP_CLEAN)
@@ -101,6 +120,15 @@ async function globalSetup(config: FullConfig) {
 
   // Save storage state
   await context.storageState({ path: 'e2e/.auth/storage-state.json' })
+
+  // Warm the heavy slow-suite routes last: any game state or service worker
+  // this pass creates stays out of the saved storage state and dies with this
+  // context. 60s covers the first cold transform; later requests hit the
+  // dev server's warm module cache.
+  for (const route of slowSuiteWarmupRoutes) {
+    await page.goto(`${baseURL}${route}`, { timeout: 60000 })
+    await waitForBoard(page, { timeout: 60000 })
+  }
 
   await browser.close()
 }
