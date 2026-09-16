@@ -45,6 +45,18 @@ describe('the real data', () => {
   it('passes the glossary validators', () => {
     expect(() => validateGlossary(GLOSSARY)).not.toThrow()
   })
+
+  it('ships 25 animated diagrams totalling 116 steps', () => {
+    const animatedDiagrams = TECHNIQUES.flatMap((technique) =>
+      technique.animatedDiagram ? [technique.animatedDiagram] : [],
+    )
+    const totalSteps = animatedDiagrams.reduce(
+      (total, animatedDiagram) => total + animatedDiagram.steps.length,
+      0,
+    )
+    expect(animatedDiagrams).toHaveLength(25)
+    expect(totalSteps).toBe(116)
+  })
 })
 
 describe('assertTechniqueCollectionSizes', () => {
@@ -102,6 +114,16 @@ describe('assertTechniqueFieldsPresent', () => {
     )
   })
 
+  it('rejects a whitespace-only subsection description', () => {
+    const copy = corruptTechniques((ts) => {
+      const subsections = uniqueRectangle(ts).subsections!
+      subsections[0]!.description = '   '
+    })
+    expect(() => validateTechniques(copy)).toThrow(
+      "Subsection 'unique-rectangle' of 'unique-rectangle' has an empty description",
+    )
+  })
+
   it('rejects an empty techniques array', () => {
     expect(() => assertTechniqueFieldsPresent([])).toThrow('Expected a non-empty techniques array')
   })
@@ -136,6 +158,14 @@ describe('assertSlugsUnique', () => {
   it('rejects an empty techniques array', () => {
     expect(() => assertSlugsUnique([])).toThrow('Expected a non-empty techniques array')
   })
+
+  it('rejects techniques without any subsections', () => {
+    expect(() =>
+      assertSlugsUnique([
+        { slug: 'solo', title: 'solo', tier: 'Simple', description: 'solo', example: 'solo' },
+      ]),
+    ).toThrow('Expected a non-empty subsection slug array')
+  })
 })
 
 describe('assertTiersValid', () => {
@@ -161,6 +191,13 @@ describe('assertRelatedTechniquesResolve', () => {
     expect(() => validateTechniques(copy)).toThrow(
       "Technique 'naked-single' references unknown related technique 'does-not-exist'",
     )
+  })
+
+  it('accepts a relatedTechniques entry that resolves to a subsection slug', () => {
+    const copy = corruptTechniques((ts) => {
+      ts[0]!.relatedTechniques = ['avoidable-rectangle']
+    })
+    expect(() => assertRelatedTechniquesResolve(copy)).not.toThrow()
   })
 
   it('rejects an empty techniques array', () => {
@@ -195,6 +232,15 @@ describe('assertDiagramCellsValid', () => {
     })
     expect(() => validateTechniques(copy)).toThrow(
       "technique 'naked-single' has a cell with col 9 outside 0-8",
+    )
+  })
+
+  it('rejects a negative col', () => {
+    const copy = corruptTechniques((ts) => {
+      ts[0]!.diagram = { cells: [{ row: 0, col: -1, value: 1 }] }
+    })
+    expect(() => validateTechniques(copy)).toThrow(
+      "technique 'naked-single' has a cell with col -1 outside 0-8",
     )
   })
 
@@ -255,6 +301,30 @@ describe('assertDiagramCellsValid', () => {
     expect(() => validateTechniques(copy)).toThrow(
       "technique 'naked-single' step 0 has an empty cells array",
     )
+  })
+
+  it('rejects an invalid cell in a subsection diagram', () => {
+    const copy = corruptTechniques((ts) => {
+      uniqueRectangle(ts).subsections![0]!.diagram = { cells: [{ row: 9, col: 0, value: 1 }] }
+    })
+    expect(() => validateTechniques(copy)).toThrow(
+      "subsection 'unique-rectangle' has a cell with row 9 outside 0-8",
+    )
+  })
+
+  it('accepts a subsection without a diagram', () => {
+    expect(() =>
+      assertDiagramCellsValid([
+        {
+          slug: 'parent',
+          title: 'parent',
+          tier: 'Simple',
+          description: 'parent',
+          example: 'parent',
+          subsections: [{ slug: 'child', title: 'child', description: 'child', example: 'child' }],
+        },
+      ]),
+    ).not.toThrow()
   })
 
   it('rejects an empty techniques array', () => {
@@ -397,6 +467,15 @@ describe('assertGlossaryDefinitionsPresent', () => {
     )
   })
 
+  it('rejects a whitespace-only definition', () => {
+    const copy = corruptGlossary((g) => {
+      g[0]!.definition = '   '
+    })
+    expect(() => validateGlossary(copy)).toThrow(
+      "Glossary term 'Candidate' has an empty definition",
+    )
+  })
+
   it('rejects an empty glossary array', () => {
     expect(() => assertGlossaryDefinitionsPresent([])).toThrow(
       'Expected a non-empty glossary array',
@@ -412,6 +491,15 @@ describe('assertGlossaryTermsUnique', () => {
     expect(() => validateGlossary(copy)).toThrow(
       "Glossary terms 'Candidate' and 'candidate' collide case-insensitively",
     )
+  })
+
+  it('distinguishes terms that only upper-case folding would merge', () => {
+    expect(() =>
+      assertGlossaryTermsUnique([
+        { term: 'I', definition: 'capital i' },
+        { term: 'ı', definition: 'dotless i' },
+      ]),
+    ).not.toThrow()
   })
 
   it('rejects an empty glossary array', () => {

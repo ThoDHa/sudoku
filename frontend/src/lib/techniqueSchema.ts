@@ -13,6 +13,10 @@ const DIGIT_MIN = 1
 const DIGIT_MAX = 9
 const TECHNIQUE_TIERS = ['Simple', 'Medium', 'Hard', 'Extreme', 'Auto', 'NotImplemented'] as const
 
+function isDigitInRange(digit: number): boolean {
+  return digit >= DIGIT_MIN && digit <= DIGIT_MAX
+}
+
 function assertNonEmpty(items: readonly unknown[], label: string): void {
   if (items.length === 0) {
     throw new Error(`Expected a non-empty ${label} array`)
@@ -26,6 +30,15 @@ function assertNoDuplicates(values: string[], message: (duplicate: string) => st
       throw new Error(message(value))
     }
     seen.add(value)
+  }
+}
+
+function forEachDefined<T>(items: readonly T[] | undefined, visit: (item: T) => void): void {
+  if (items === undefined) {
+    return
+  }
+  for (const item of items) {
+    visit(item)
   }
 }
 
@@ -70,9 +83,9 @@ export function assertSlugsUnique(techniques: TechniqueInfo[]): void {
   assertNoDuplicates(techniqueSlugs, (duplicate) => `Duplicate technique slug '${duplicate}'`)
   const subsectionSlugs: string[] = []
   for (const technique of techniques) {
-    for (const subsection of technique.subsections ?? []) {
+    forEachDefined(technique.subsections, (subsection) => {
       subsectionSlugs.push(subsection.slug)
-    }
+    })
   }
   assertNonEmpty(subsectionSlugs, 'subsection slug')
   assertNoDuplicates(subsectionSlugs, (duplicate) => `Duplicate subsection slug '${duplicate}'`)
@@ -80,13 +93,13 @@ export function assertSlugsUnique(techniques: TechniqueInfo[]): void {
   // any other collision would make slug lookups ambiguous.
   const techniqueSlugSet = new Set(techniqueSlugs)
   for (const technique of techniques) {
-    for (const subsection of technique.subsections ?? []) {
+    forEachDefined(technique.subsections, (subsection) => {
       if (subsection.slug !== technique.slug && techniqueSlugSet.has(subsection.slug)) {
         throw new Error(
           `Subsection slug '${subsection.slug}' of '${technique.slug}' collides with technique slug '${subsection.slug}'`,
         )
       }
-    }
+    })
   }
 }
 
@@ -104,9 +117,9 @@ export function assertRelatedTechniquesResolve(techniques: TechniqueInfo[]): voi
   const knownSlugs = new Set<string>()
   for (const technique of techniques) {
     knownSlugs.add(technique.slug)
-    for (const subsection of technique.subsections ?? []) {
+    forEachDefined(technique.subsections, (subsection) => {
       knownSlugs.add(subsection.slug)
-    }
+    })
   }
   for (const technique of techniques) {
     for (const related of technique.relatedTechniques ?? []) {
@@ -130,7 +143,7 @@ function assertCellsValid(cells: DiagramCell[], owner: string): void {
     if (cell.col < 0 || cell.col > ROW_COL_MAX) {
       throw new Error(`${owner} has a cell with col ${cell.col} outside 0-${ROW_COL_MAX}`)
     }
-    if (cell.value !== undefined && (cell.value < DIGIT_MIN || cell.value > DIGIT_MAX)) {
+    if (cell.value !== undefined && !isDigitInRange(cell.value)) {
       throw new Error(
         `${owner} has a cell with value ${cell.value} outside ${DIGIT_MIN}-${DIGIT_MAX}`,
       )
@@ -145,7 +158,7 @@ function assertDigitsValid(digits: number[] | undefined, field: string, owner: s
     return
   }
   for (const digit of digits) {
-    if (digit < DIGIT_MIN || digit > DIGIT_MAX) {
+    if (!isDigitInRange(digit)) {
       throw new Error(
         `${owner} has a cell with ${field} digit ${digit} outside ${DIGIT_MIN}-${DIGIT_MAX}`,
       )
@@ -159,11 +172,11 @@ export function assertDiagramCellsValid(techniques: TechniqueInfo[]): void {
     if (technique.diagram) {
       assertCellsValid(technique.diagram.cells, `technique '${technique.slug}'`)
     }
-    for (const subsection of technique.subsections ?? []) {
+    forEachDefined(technique.subsections, (subsection) => {
       if (subsection.diagram) {
         assertCellsValid(subsection.diagram.cells, `subsection '${subsection.slug}'`)
       }
-    }
+    })
     if (technique.animatedDiagram) {
       for (const [index, animationStep] of technique.animatedDiagram.steps.entries()) {
         assertCellsValid(animationStep.cells, `technique '${technique.slug}' step ${index}`)
@@ -248,11 +261,11 @@ export function assertGlossaryTermsUnique(glossary: GlossaryTerm[]): void {
 export function assertGlossaryRelatedTermsWellFormed(glossary: GlossaryTerm[]): void {
   assertNonEmpty(glossary, 'glossary')
   for (const entry of glossary) {
-    for (const related of entry.relatedTerms ?? []) {
+    forEachDefined(entry.relatedTerms, (related) => {
       if (!related.trim()) {
         throw new Error(`Glossary term '${entry.term}' has an empty relatedTerms entry`)
       }
-    }
+    })
   }
 }
 
