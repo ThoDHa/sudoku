@@ -1,5 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { getTechniqueColor, HISTORY_SCROLL_DELAY } from '../lib/constants'
+import {
+  formatCell,
+  formatCells,
+  moveDisplayNumber,
+  originalMoveIndex,
+  parseAutoFillCellCount,
+  pluralSuffix,
+} from '../lib/historyMoveFormat'
 import { CloseIcon } from './ui'
 import { Dialog } from './Dialog'
 
@@ -21,10 +29,6 @@ interface Move {
   }
   isUserMove?: boolean
 }
-
-const formatCell = (row: number, col: number): string => `R${row + 1}C${col + 1}`
-const formatCells = (cells: { row: number; col: number }[]): string =>
-  cells.map((t) => formatCell(t.row, t.col)).join(', ')
 
 // Render the human-readable description of a single move's action.
 function MoveActionText({ move }: { move: Move }) {
@@ -165,10 +169,8 @@ export default function History({
                         (move) => move.technique === 'Fill Candidates',
                       )
                       if (autoFillMove) {
-                        // Extract cell count from explanation: "Filled all candidates for X cells"
-                        const match = autoFillMove.explanation?.match(/(\d+) cells/)
-                        const cellCount = match && match[1] ? parseInt(match[1], 10) : 0
-                        return `Auto-filled candidates for ${cellCount} cell${cellCount !== 1 ? 's' : ''}`
+                        const cellCount = parseAutoFillCellCount(autoFillMove.explanation)
+                        return `Auto-filled candidates for ${cellCount} cell${pluralSuffix(cellCount)}`
                       }
                       return 'Auto-filled candidates'
                     })()}
@@ -183,17 +185,17 @@ export default function History({
                   <span className="text-sm text-foreground">
                     {isComplete ? 'Puzzle solved! ' : ''}
                     The autosolver performed {autoSolveStepsUsed} move
-                    {autoSolveStepsUsed !== 1 ? 's' : ''}
+                    {pluralSuffix(autoSolveStepsUsed)}
                     {autoSolveErrorsFixed && autoSolveErrorsFixed > 0
-                      ? `, fixed ${autoSolveErrorsFixed} error${autoSolveErrorsFixed !== 1 ? 's' : ''}`
+                      ? `, fixed ${autoSolveErrorsFixed} error${pluralSuffix(autoSolveErrorsFixed)}`
                       : ''}
                   </span>
                 </div>
               </li>
             )}
             {[...moves].reverse().map((move, reverseIdx) => {
-              const originalIdx = moves.length - 1 - reverseIdx
-              const displayNumber = originalIdx + 1
+              const originalIdx = originalMoveIndex(moves.length, reverseIdx)
+              const displayNumber = moveDisplayNumber(originalIdx)
               return (
                 <li
                   key={originalIdx}
