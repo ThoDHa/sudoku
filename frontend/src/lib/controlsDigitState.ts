@@ -108,9 +108,8 @@ export function areControlsPropsEqual(prevProps: ControlsProps, nextProps: Contr
   const prevCounts = prevProps.digitCounts
   const nextCounts = nextProps.digitCounts
   if (prevCounts.length !== nextCounts.length) return false
-  for (let i = 0; i < prevCounts.length; i++) {
-    if (prevCounts[i] !== nextCounts[i]) return false
-  }
+  // every() instead of a < loop bound: under the length guard above, a < bound generates an equivalent <= mutant, while every() exposes no bound token to mutate (MUT-8-10-4-1)
+  if (!prevCounts.every((count, i) => count === nextCounts[i])) return false
 
   // Compare callback references - they may change when parent state changes
   if (
