@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getTechniqueBySlug, type TechniqueInfo } from '../lib/techniques'
+import { getTechniqueBySlug } from '../lib/techniqueQueries'
+import type { TechniqueInfo } from '../lib/techniques'
 import { ChevronRightIcon } from './ui'
 import TechniqueDiagramView, { TechniqueDiagramLegend } from './TechniqueDiagram'
 import AnimatedDiagramView from './AnimatedDiagramView'

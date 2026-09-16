@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { getDisplayTechniques, type TechniqueInfo } from '../lib/techniques'
+import { getDisplayTechniques } from '../lib/techniqueQueries'
+import type { TechniqueInfo } from '../lib/techniques'
 import { TIERS } from '../lib/constants'
 import {
   TierBadge,

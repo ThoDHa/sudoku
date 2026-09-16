@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { getGlossarySorted, searchGlossary, type GlossaryTerm } from '../lib/techniques'
+import { getGlossarySorted, searchGlossary } from '../lib/glossaryQueries'
+import type { GlossaryTerm } from '../lib/techniques'
 import { CloseIcon } from './ui'
 import { Dialog } from './Dialog'
 
