@@ -258,12 +258,23 @@ export function assertGlossaryTermsUnique(glossary: GlossaryTerm[]): void {
   }
 }
 
-export function assertGlossaryRelatedTermsWellFormed(glossary: GlossaryTerm[]): void {
+export function assertGlossaryRelatedTermsResolve(
+  glossary: GlossaryTerm[],
+  techniques: TechniqueInfo[],
+): void {
   assertNonEmpty(glossary, 'glossary')
+  const glossaryTerms = new Set(glossary.map((entry) => entry.term.toLowerCase()))
+  const techniqueTitles = new Set(techniques.map((technique) => technique.title.toLowerCase()))
   for (const entry of glossary) {
     forEachDefined(entry.relatedTerms, (related) => {
       if (!related.trim()) {
         throw new Error(`Glossary term '${entry.term}' has an empty relatedTerms entry`)
+      }
+      const key = related.toLowerCase()
+      if (!glossaryTerms.has(key) && !techniqueTitles.has(key)) {
+        throw new Error(
+          `Glossary term '${entry.term}' has an unresolved relatedTerms entry '${related}' (expected a glossary term or a technique title)`,
+        )
       }
     })
   }
@@ -280,11 +291,11 @@ export function validateTechniques(techniques: TechniqueInfo[]): void {
   assertStepsDoNotShareCells(techniques)
 }
 
-export function validateGlossary(glossary: GlossaryTerm[]): void {
+export function validateGlossary(glossary: GlossaryTerm[], techniques: TechniqueInfo[]): void {
   assertGlossaryCollectionSize(glossary)
   assertGlossaryDefinitionsPresent(glossary)
   assertGlossaryTermsUnique(glossary)
-  assertGlossaryRelatedTermsWellFormed(glossary)
+  assertGlossaryRelatedTermsResolve(glossary, techniques)
 }
 
 export function validateTechniqueSchema(
@@ -292,5 +303,5 @@ export function validateTechniqueSchema(
   glossary: GlossaryTerm[],
 ): void {
   validateTechniques(techniques)
-  validateGlossary(glossary)
+  validateGlossary(glossary, techniques)
 }
