@@ -125,8 +125,12 @@ async function globalSetup(config: FullConfig) {
   // this pass creates stays out of the saved storage state and dies with this
   // context. 60s covers the first cold transform; later requests hit the
   // dev server's warm module cache.
+  // A base-path baseURL (deploy smoke) ends in '/'; appending a route with a
+  // leading slash would double the slash and the SPA router never matches the
+  // seed route.
+  const normalizedBaseURL = baseURL.replace(/\/+$/, '')
   for (const route of slowSuiteWarmupRoutes) {
-    await page.goto(`${baseURL}${route}`, { timeout: 60000 })
+    await page.goto(`${normalizedBaseURL}${route}`, { timeout: 60000 })
     await waitForBoard(page, { timeout: 60000 })
   }
 
