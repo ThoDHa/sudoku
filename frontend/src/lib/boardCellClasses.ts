@@ -17,6 +17,13 @@ export interface BoardCellContext {
   focusedCell: number | null
   /** findDuplicates(board), computed once per render in Board and threaded here. */
   duplicateCells: Set<number>
+  /**
+   * Cell indexes carrying the primary (respectively secondary) technique
+   * highlight, derived once per render in Board and threaded here. When
+   * absent, getCellClass derives them from the highlight predicates itself.
+   */
+  primaryCells?: Set<number>
+  secondaryCells?: Set<number>
 }
 
 /** Human-readable gridcell label: position, then value with given/entered state. */
@@ -223,8 +230,12 @@ export const getCellClass = (ctx: BoardCellContext, idx: number): string => {
   const isGiven = ctx.initialBoard[idx] !== 0
   const isSelected = ctx.selectedCell === idx
   const inMultiSel = isInMultiSelection(ctx, idx)
-  const isPrimary = isHighlightedPrimary(ctx, row, col)
-  const isSecondary = isHighlightedSecondary(ctx, row, col)
+  const isPrimary = ctx.primaryCells
+    ? ctx.primaryCells.has(idx)
+    : isHighlightedPrimary(ctx, row, col)
+  const isSecondary = ctx.secondaryCells
+    ? ctx.secondaryCells.has(idx)
+    : isHighlightedSecondary(ctx, row, col)
   const isDuplicate = ctx.duplicateCells.has(idx)
   const hasDigitMatch = cellHasHighlightedDigit(ctx, idx)
   const isPeer = isPeerOfSelected(ctx, idx)

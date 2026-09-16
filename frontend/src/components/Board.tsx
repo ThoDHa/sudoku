@@ -3,6 +3,7 @@ import { hasCandidate, countCandidates } from '../lib/candidatesUtils'
 import { findDuplicates } from '../lib/validationUtils'
 import { TOTAL_CELLS } from '../lib/constants'
 import { useBoardInteraction } from '../hooks/useBoardInteraction'
+import { areCellPropsEqual, type CellData, type CellProps } from '../lib/boardCellMemo'
 import {
   getCellAriaLabel,
   getCellClass,
@@ -55,208 +56,148 @@ interface BoardProps {
 // CELL COMPONENT - Memoized for performance
 // ============================================================
 
-/** Pre-computed data for a single cell - passed to Cell component */
-interface CellData {
-  idx: number
-  value: number
-  cellCandidates: number
-  isGiven: boolean
-  isSelected: boolean
-  tabIndex: number
-  isMultiSelected: boolean
-  className: string
-  ariaLabel: string
-  // For renderCell logic
-  highlightedDigit: number | null
-  isPrimary: boolean
-  isSecondary: boolean
-  isTarget: boolean
-  eliminations: { row: number; col: number; digit: number }[] | undefined
-  /** When false, hides eliminations and target additions (technique hint mode) */
-  showAnswer: boolean
-  /** The digit being placed/eliminated by the current hint (from highlight.digit) */
-  targetDigit?: number
-}
-
-interface CellProps {
-  data: CellData
-  onCellClick: (idx: number) => void
-  onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>, idx: number) => void
-  cellRef: (el: HTMLDivElement | null) => void
-  onPointerDown?: (idx: number) => void
-}
-
 /**
  * Memoized Cell component - only re-renders when its specific data changes.
  * This prevents 80 cells from re-rendering when only 1 cell changes.
  */
-const Cell = memo(
-  function Cell({ data, onCellClick, onKeyDown, cellRef, onPointerDown }: CellProps) {
-    const localRef = useRef<HTMLDivElement>(null)
-    const {
-      idx,
-      value,
-      cellCandidates,
-      isGiven,
-      tabIndex,
-      className,
-      ariaLabel,
-      highlightedDigit,
-      isPrimary,
-      isSecondary,
-      isTarget,
-      eliminations,
-      showAnswer,
-      targetDigit,
-    } = data
+const Cell = memo(function Cell({
+  data,
+  onCellClick,
+  onKeyDown,
+  cellRef,
+  onPointerDown,
+}: CellProps) {
+  const localRef = useRef<HTMLDivElement>(null)
+  const {
+    idx,
+    value,
+    cellCandidates,
+    isGiven,
+    tabIndex,
+    className,
+    ariaLabel,
+    highlightedDigit,
+    isPrimary,
+    isSecondary,
+    isTarget,
+    eliminations,
+    showAnswer,
+    targetDigit,
+  } = data
 
-    const row = Math.floor(idx / 9)
-    const col = idx % 9
+  const row = Math.floor(idx / 9)
+  const col = idx % 9
 
-    // Render cell content
-    let content: React.ReactNode = null
+  // Render cell content
+  let content: React.ReactNode = null
 
-    if (value !== 0) {
-      // Filled cell
-      const isOnHighlightedBackground = isPrimary || isSecondary
-      const isHighlightedDigit = highlightedDigit === value
+  if (value !== 0) {
+    // Filled cell
+    const isOnHighlightedBackground = isPrimary || isSecondary
+    const isHighlightedDigit = highlightedDigit === value
 
-      // Priority: background highlight needs contrast text, then digit highlighting
-      const textClass = isOnHighlightedBackground
-        ? 'text-cell-text-on-highlight font-bold'
-        : isHighlightedDigit
-          ? 'text-accent font-bold'
-          : ''
+    // Priority: background highlight needs contrast text, then digit highlighting
+    const textClass = isOnHighlightedBackground
+      ? 'text-cell-text-on-highlight font-bold'
+      : isHighlightedDigit
+        ? 'text-accent font-bold'
+        : ''
 
-      content = <span className={textClass}>{value}</span>
-    } else if (cellCandidates && countCandidates(cellCandidates) > 0) {
-      // Cell with candidates
-      const isHighlightedCell = isPrimary || isSecondary
-      const singleDigit = highlightedDigit && highlightedDigit > 0 ? highlightedDigit : null
+    content = <span className={textClass}>{value}</span>
+  } else if (cellCandidates && countCandidates(cellCandidates) > 0) {
+    // Cell with candidates
+    const isHighlightedCell = isPrimary || isSecondary
+    const singleDigit = highlightedDigit && highlightedDigit > 0 ? highlightedDigit : null
 
-      content = (
-        <div className="candidate-grid">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => {
-            const hasCandidate_ = hasCandidate(cellCandidates, d)
+    content = (
+      <div className="candidate-grid">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => {
+          const hasCandidate_ = hasCandidate(cellCandidates, d)
 
-            // Check if this specific digit in this cell is being eliminated
-            // Only show eliminations if showAnswer is true (regular hint mode)
-            const isEliminated =
-              showAnswer &&
-              eliminations?.some((e) => e.row === row && e.col === col && e.digit === d)
+          // Check if this specific digit in this cell is being eliminated
+          // Only show eliminations if showAnswer is true (regular hint mode)
+          const isEliminated =
+            showAnswer && eliminations?.some((e) => e.row === row && e.col === col && e.digit === d)
 
-            // Check if this digit is the relevant one for highlighting
-            // Use targetDigit (from hint) if available, otherwise fall back to singleDigit (user-selected)
-            // For multi-digit techniques (digit === 0), check if digit is relevant to the technique
-            let isRelevantDigit = false
-            if (targetDigit !== undefined && targetDigit > 0) {
-              // Single-digit technique: highlight only that digit
-              isRelevantDigit = d === targetDigit
-            } else if (targetDigit === 0 && isTarget) {
-              // Multi-digit technique (naked pair, hidden pair, etc.):
-              // Highlight candidates in target cells that are NOT being eliminated
-              // For naked pair: all candidates in pair cells are the pair digits
-              // For hidden pair: the pair digits remain (others are eliminated)
-              const isBeingEliminatedHere = eliminations?.some(
-                (e) => e.row === row && e.col === col && e.digit === d,
-              )
-              isRelevantDigit = !isBeingEliminatedHere
-            } else if (singleDigit) {
-              // User-selected digit highlighting
-              isRelevantDigit = d === singleDigit
-            }
-
-            // Determine styling for this specific candidate
-            let digitClass = 'candidate-digit '
-
-            if (hasCandidate_ && isEliminated) {
-              digitClass += 'text-error-text line-through font-bold'
-            } else if (hasCandidate_ && isRelevantDigit && isTarget && showAnswer) {
-              // Target cells show the digit to ADD in green (hint color)
-              // Only highlight the specific targetDigit, not all candidates
-              // Only show if showAnswer is true (regular hint mode)
-              digitClass += 'text-hint-text font-bold'
-            } else if (isHighlightedCell) {
-              digitClass += 'text-cell-text-on-highlight'
-            } else {
-              digitClass += 'text-cell-text-candidate'
-            }
-
-            return (
-              <span key={d} className={digitClass}>
-                {hasCandidate_ ? d : ''}
-              </span>
+          // Check if this digit is the relevant one for highlighting
+          // Use targetDigit (from hint) if available, otherwise fall back to singleDigit (user-selected)
+          // For multi-digit techniques (digit === 0), check if digit is relevant to the technique
+          let isRelevantDigit = false
+          if (targetDigit !== undefined && targetDigit > 0) {
+            // Single-digit technique: highlight only that digit
+            isRelevantDigit = d === targetDigit
+          } else if (targetDigit === 0 && isTarget) {
+            // Multi-digit technique (naked pair, hidden pair, etc.):
+            // Highlight candidates in target cells that are NOT being eliminated
+            // For naked pair: all candidates in pair cells are the pair digits
+            // For hidden pair: the pair digits remain (others are eliminated)
+            const isBeingEliminatedHere = eliminations?.some(
+              (e) => e.row === row && e.col === col && e.digit === d,
             )
-          })}
-        </div>
-      )
-    }
+            isRelevantDigit = !isBeingEliminatedHere
+          } else if (singleDigit) {
+            // User-selected digit highlighting
+            isRelevantDigit = d === singleDigit
+          }
 
-    // Combine local ref with callback ref, and focus synchronously on click
-    const handleClick = () => {
-      onCellClick(idx)
-      // Focus immediately for keyboard input (don't wait for useEffect + RAF)
-      localRef.current?.focus()
-    }
+          // Determine styling for this specific candidate
+          let digitClass = 'candidate-digit '
 
-    // Set both refs when the element mounts
-    const setRefs = (el: HTMLDivElement | null) => {
-      localRef.current = el
-      cellRef(el)
-    }
+          if (hasCandidate_ && isEliminated) {
+            digitClass += 'text-error-text line-through font-bold'
+          } else if (hasCandidate_ && isRelevantDigit && isTarget && showAnswer) {
+            // Target cells show the digit to ADD in green (hint color)
+            // Only highlight the specific targetDigit, not all candidates
+            // Only show if showAnswer is true (regular hint mode)
+            digitClass += 'text-hint-text font-bold'
+          } else if (isHighlightedCell) {
+            digitClass += 'text-cell-text-on-highlight'
+          } else {
+            digitClass += 'text-cell-text-candidate'
+          }
 
-    return (
-      <div
-        ref={setRefs}
-        role="gridcell"
-        tabIndex={tabIndex}
-        aria-label={ariaLabel}
-        className={className}
-        data-cell-idx={idx}
-        onClick={handleClick}
-        onKeyDown={(e) => {
-          onKeyDown(e, idx)
-        }}
-        onPointerDown={() => onPointerDown?.(idx)}
-        style={isGiven ? { cursor: 'default' } : undefined}
-      >
-        {content}
+          return (
+            <span key={d} className={digitClass}>
+              {hasCandidate_ ? d : ''}
+            </span>
+          )
+        })}
       </div>
     )
-  },
-  (prevProps, nextProps) => {
-    // Custom comparison - only re-render if this cell's data actually changed
-    // This is critical for performance - we compare to CellData object deeply
-    const prevData = prevProps.data
-    const nextData = nextProps.data
+  }
 
-    // Quick reference checks first
-    if (prevData === nextData) return true
+  // Combine local ref with callback ref, and focus synchronously on click
+  const handleClick = () => {
+    onCellClick(idx)
+    // Focus immediately for keyboard input (don't wait for useEffect + RAF)
+    localRef.current?.focus()
+  }
 
-    // Compare all fields that affect rendering
-    // NOTE: We also compare callback references because onKeyDown captures
-    // notesMode in its closure. When notesMode changes, onKeyDown must update.
-    return (
-      prevData.idx === nextData.idx &&
-      prevData.value === nextData.value &&
-      prevData.cellCandidates === nextData.cellCandidates &&
-      prevData.isGiven === nextData.isGiven &&
-      prevData.isSelected === nextData.isSelected &&
-      prevData.tabIndex === nextData.tabIndex &&
-      prevData.className === nextData.className &&
-      prevData.ariaLabel === nextData.ariaLabel &&
-      prevData.highlightedDigit === nextData.highlightedDigit &&
-      prevData.isPrimary === nextData.isPrimary &&
-      prevData.isSecondary === nextData.isSecondary &&
-      prevData.isTarget === nextData.isTarget &&
-      prevData.eliminations === nextData.eliminations &&
-      prevData.showAnswer === nextData.showAnswer &&
-      prevProps.onKeyDown === nextProps.onKeyDown &&
-      prevProps.onCellClick === nextProps.onCellClick &&
-      prevProps.onPointerDown === nextProps.onPointerDown
-    )
-  },
-)
+  // Set both refs when the element mounts
+  const setRefs = (el: HTMLDivElement | null) => {
+    localRef.current = el
+    cellRef(el)
+  }
+
+  return (
+    <div
+      ref={setRefs}
+      role="gridcell"
+      tabIndex={tabIndex}
+      aria-label={ariaLabel}
+      className={className}
+      data-cell-idx={idx}
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        onKeyDown(e, idx)
+      }}
+      onPointerDown={() => onPointerDown?.(idx)}
+      style={isGiven ? { cursor: 'default' } : undefined}
+    >
+      {content}
+    </div>
+  )
+}, areCellPropsEqual)
 
 // ============================================================
 // BOARD COMPONENT
@@ -305,6 +246,11 @@ const Board = memo(function Board({
   void candidatesVersion
   const duplicates = findDuplicates(board)
 
+  // Per-cell technique highlights, derived once per render and consumed by
+  // both the CellData fields and the class derivation. The context holds the
+  // empty sets by reference; the pass below fills them before any consumer runs.
+  const primaryCells = new Set<number>()
+  const secondaryCells = new Set<number>()
   const cellContext: BoardCellContext = {
     board,
     initialBoard,
@@ -316,6 +262,14 @@ const Board = memo(function Board({
     incorrectCells,
     focusedCell,
     duplicateCells: duplicates,
+    primaryCells,
+    secondaryCells,
+  }
+  for (let idx = 0; idx < TOTAL_CELLS; idx++) {
+    const row = Math.floor(idx / 9)
+    const col = idx % 9
+    if (isHighlightedPrimary(cellContext, row, col)) primaryCells.add(idx)
+    if (isHighlightedSecondary(cellContext, row, col)) secondaryCells.add(idx)
   }
 
   // REMOVED: renderCell function - now handled inside Cell component
@@ -328,8 +282,8 @@ const Board = memo(function Board({
     const row = Math.floor(idx / 9)
     const col = idx % 9
     const isGiven = initialBoard[idx] !== 0
-    const isPrimary = isHighlightedPrimary(cellContext, row, col)
-    const isSecondary = isHighlightedSecondary(cellContext, row, col)
+    const isPrimary = primaryCells.has(idx)
+    const isSecondary = secondaryCells.has(idx)
     const isTarget = highlight?.targets?.some((t) => t.row === row && t.col === col) ?? false
 
     const targetDigit = highlight?.digit
