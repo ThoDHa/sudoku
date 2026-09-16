@@ -294,7 +294,6 @@ const Board = memo(function Board({
       isGiven,
       isSelected: selectedCell === idx,
       tabIndex: idx === tabStopCell ? 0 : -1,
-      isMultiSelected: selectedCells.has(idx) && selectedCell !== idx,
       className: getCellClass(cellContext, idx),
       ariaLabel: getCellAriaLabel(cellContext, idx),
       highlightedDigit,

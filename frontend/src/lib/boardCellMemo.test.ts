@@ -12,7 +12,6 @@ const makeCellData = (overrides: Partial<CellData> = {}): CellData => ({
   isGiven: false,
   isSelected: false,
   tabIndex: -1,
-  isMultiSelected: false,
   className: 'sudoku-cell',
   ariaLabel: 'Row 1, Column 1, empty',
   highlightedDigit: null,
@@ -49,7 +48,6 @@ describe('areCellPropsEqual', () => {
         isGiven: true,
         isSelected: true,
         tabIndex: 0,
-        isMultiSelected: true,
         className: 'sudoku-cell bg-cell-primary',
         ariaLabel: 'Row 5, Column 5, value 7, given',
         highlightedDigit: 7,
@@ -91,6 +89,7 @@ describe('areCellPropsEqual', () => {
       { name: 'isTarget', next: { isTarget: true } },
       { name: 'eliminations (undefined to a new array)', next: { eliminations: [elimination] } },
       { name: 'showAnswer', next: { showAnswer: false } },
+      { name: 'targetDigit (undefined to a digit)', next: { targetDigit: 3 } },
     ]
 
     for (const { name, next } of changedDataCases) {
@@ -120,16 +119,16 @@ describe('areCellPropsEqual', () => {
       expect(areCellPropsEqual(prev, next)).toBe(true)
     })
 
-    it('treats a changed isMultiSelected as equal: the field is outside the comparator contract', () => {
-      const prev = makeCellProps()
-      const next = makeCellProps({ data: makeCellData({ isMultiSelected: true }) })
-      expect(areCellPropsEqual(prev, next)).toBe(true)
-    })
-
-    it('treats a changed targetDigit as equal: the field is outside the comparator contract', () => {
+    it('returns false when targetDigit changed from one digit to another', () => {
       const prev = makeCellProps({ data: makeCellData({ targetDigit: 1 }) })
       const next = makeCellProps({ data: makeCellData({ targetDigit: 2 }) })
-      expect(areCellPropsEqual(prev, next)).toBe(true)
+      expect(areCellPropsEqual(prev, next)).toBe(false)
+    })
+
+    it('returns false when targetDigit changed from a digit back to undefined', () => {
+      const prev = makeCellProps({ data: makeCellData({ targetDigit: 1 }) })
+      const next = makeCellProps()
+      expect(areCellPropsEqual(prev, next)).toBe(false)
     })
   })
 
