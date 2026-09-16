@@ -5,7 +5,7 @@ import {
   assertDiagramCellsValid,
   assertGlossaryCollectionSize,
   assertGlossaryDefinitionsPresent,
-  assertGlossaryRelatedTermsWellFormed,
+  assertGlossaryRelatedTermsResolve,
   assertGlossaryTermsUnique,
   assertRelatedTechniquesResolve,
   assertSlugsUnique,
@@ -43,7 +43,7 @@ describe('the real data', () => {
   })
 
   it('passes the glossary validators', () => {
-    expect(() => validateGlossary(GLOSSARY)).not.toThrow()
+    expect(() => validateGlossary(GLOSSARY, TECHNIQUES)).not.toThrow()
   })
 
   it('ships 25 animated diagrams totalling 116 steps', () => {
@@ -449,7 +449,7 @@ describe('assertGlossaryCollectionSize', () => {
     const copy = corruptGlossary((g) => {
       g.splice(0, 1)
     })
-    expect(() => validateGlossary(copy)).toThrow('Expected 60 glossary terms, found 59')
+    expect(() => validateGlossary(copy, TECHNIQUES)).toThrow('Expected 60 glossary terms, found 59')
   })
 
   it('rejects an empty glossary array', () => {
@@ -462,7 +462,7 @@ describe('assertGlossaryDefinitionsPresent', () => {
     const copy = corruptGlossary((g) => {
       g[0]!.definition = ''
     })
-    expect(() => validateGlossary(copy)).toThrow(
+    expect(() => validateGlossary(copy, TECHNIQUES)).toThrow(
       "Glossary term 'Candidate' has an empty definition",
     )
   })
@@ -471,7 +471,7 @@ describe('assertGlossaryDefinitionsPresent', () => {
     const copy = corruptGlossary((g) => {
       g[0]!.definition = '   '
     })
-    expect(() => validateGlossary(copy)).toThrow(
+    expect(() => validateGlossary(copy, TECHNIQUES)).toThrow(
       "Glossary term 'Candidate' has an empty definition",
     )
   })
@@ -488,7 +488,7 @@ describe('assertGlossaryTermsUnique', () => {
     const copy = corruptGlossary((g) => {
       g[1]!.term = 'candidate'
     })
-    expect(() => validateGlossary(copy)).toThrow(
+    expect(() => validateGlossary(copy, TECHNIQUES)).toThrow(
       "Glossary terms 'Candidate' and 'candidate' collide case-insensitively",
     )
   })
@@ -507,18 +507,59 @@ describe('assertGlossaryTermsUnique', () => {
   })
 })
 
-describe('assertGlossaryRelatedTermsWellFormed', () => {
-  it('rejects an empty relatedTerms entry', () => {
+describe('assertGlossaryRelatedTermsResolve', () => {
+  it('rejects a relatedTerms entry matching neither a glossary term nor a technique title', () => {
+    const copy = corruptGlossary((g) => {
+      g[0]!.relatedTerms = ['Candidate', 'Remote Pairs']
+    })
+    expect(() => validateGlossary(copy, TECHNIQUES)).toThrow(
+      "Glossary term 'Candidate' has an unresolved relatedTerms entry 'Remote Pairs' (expected a glossary term or a technique title)",
+    )
+  })
+
+  it('rejects a whitespace-only relatedTerms entry', () => {
     const copy = corruptGlossary((g) => {
       g[0]!.relatedTerms = ['Candidate', '   ']
     })
-    expect(() => validateGlossary(copy)).toThrow(
+    expect(() => validateGlossary(copy, TECHNIQUES)).toThrow(
       "Glossary term 'Candidate' has an empty relatedTerms entry",
     )
   })
 
+  it('resolves entries naming glossary terms case-insensitively', () => {
+    expect(() =>
+      assertGlossaryRelatedTermsResolve(
+        [
+          { term: 'Candidate', definition: 'candidate' },
+          { term: 'Probe', definition: 'probe', relatedTerms: ['CANDIDATE', 'candidate'] },
+        ],
+        TECHNIQUES,
+      ),
+    ).not.toThrow()
+  })
+
+  it('resolves entries naming technique titles case-insensitively', () => {
+    expect(() =>
+      assertGlossaryRelatedTermsResolve(
+        [{ term: 'Probe', definition: 'probe', relatedTerms: ['XY-Wing', 'xY-wInG'] }],
+        TECHNIQUES,
+      ),
+    ).not.toThrow()
+  })
+
+  it('rejects a lowercase entry that matches no glossary term or technique title', () => {
+    expect(() =>
+      assertGlossaryRelatedTermsResolve(
+        [{ term: 'Probe', definition: 'probe', relatedTerms: ['remote pairs'] }],
+        TECHNIQUES,
+      ),
+    ).toThrow(
+      "Glossary term 'Probe' has an unresolved relatedTerms entry 'remote pairs' (expected a glossary term or a technique title)",
+    )
+  })
+
   it('rejects an empty glossary array', () => {
-    expect(() => assertGlossaryRelatedTermsWellFormed([])).toThrow(
+    expect(() => assertGlossaryRelatedTermsResolve([], TECHNIQUES)).toThrow(
       'Expected a non-empty glossary array',
     )
   })

@@ -3003,7 +3003,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Bivalue Cell',
     definition:
       'A cell with exactly two candidates remaining. These are key for many advanced techniques.',
-    relatedTerms: ['XY-Wing', 'XY-Chain', 'Remote Pairs'],
+    relatedTerms: ['XY-Wing', 'XY-Chain'],
     example: 'A cell with only candidates {3, 7} is a bivalue cell.',
   },
   {
@@ -3101,7 +3101,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Fish',
     definition:
       'A family of techniques (X-Wing, Swordfish, Jellyfish) based on candidate positions forming a grid pattern across rows and columns.',
-    relatedTerms: ['X-Wing', 'Swordfish', 'Jellyfish', 'Finned Fish'],
+    relatedTerms: ['X-Wing', 'Swordfish', 'Jellyfish', 'Finned X-Wing'],
   },
   {
     term: 'Base Set',
@@ -3227,7 +3227,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: TITLE.forcingChain,
     definition:
       'A technique where you assume a candidate is true (or false) and follow all implications. If all paths lead to the same result, it must be true.',
-    relatedTerms: ['Digit Forcing Chain', 'Cell Forcing Chain'],
+    relatedTerms: ['Digit Forcing Chain'],
   },
   {
     term: 'Implication',
@@ -3239,7 +3239,7 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Contradiction',
     definition:
       'When following implications leads to an impossible state (like a cell with no candidates). This proves the initial assumption was wrong.',
-    relatedTerms: [TITLE.forcingChain, 'Proof by Contradiction'],
+    relatedTerms: [TITLE.forcingChain],
   },
 
   // Difficulty and solving
@@ -3272,7 +3272,6 @@ export const GLOSSARY: GlossaryTerm[] = [
     term: 'Diabolical',
     definition:
       'A difficulty rating for puzzles requiring advanced techniques beyond basic fish and subsets.',
-    relatedTerms: ['Fiendish', 'Extreme'],
   },
   {
     term: 'Minimal Puzzle',
