@@ -1,22 +1,10 @@
 import { memo } from 'react'
-
-const BTN_BASE = 'bg-btn-bg text-foreground'
-
-interface ControlsProps {
-  notesMode: boolean
-  onNotesToggle: () => void
-  onDigit: (digit: number) => void
-  onEraseMode: () => void
-  onUndo: () => void
-  onRedo: () => void
-  canUndo: boolean
-  canRedo: boolean
-  eraseMode: boolean
-  digitCounts: number[] // Array of 9 elements: how many of each digit (1-9) are placed
-  highlightedDigit: number | null // Currently selected digit for multi-fill mode
-  isComplete: boolean // Whether the puzzle is solved
-  isSolving?: boolean // Whether auto-solve is running
-}
+import {
+  areControlsPropsEqual,
+  getDigitButtonState,
+  BTN_BASE,
+  type ControlsProps,
+} from '../lib/controlsDigitState'
 
 function Controls({
   notesMode,
@@ -34,40 +22,25 @@ function Controls({
   isSolving = false,
 }: ControlsProps) {
   const renderDigitButton = (digit: number) => {
-    const remaining = 9 - (digitCounts[digit - 1] || 0)
-    const digitComplete = remaining === 0
-    const isSelected = highlightedDigit === digit
-    const isDisabled = digitComplete || isComplete || isSolving
-
-    // During auto-solve, show selected state with muted opacity
-    const showSelectedMuted = isSelected && isSolving && !digitComplete
+    const state = getDigitButtonState(digit, {
+      digitCounts,
+      highlightedDigit,
+      isComplete,
+      isSolving,
+    })
 
     return (
       <button
-        key={digit}
+        key={state.digit}
         onClick={() => {
           onDigit(digit)
         }}
-        disabled={isDisabled}
-        aria-label={`Enter ${digit}, ${remaining} remaining`}
-        className={`control-digit-btn ${
-          showSelectedMuted
-            ? 'bg-accent text-btn-active-text ring-2 ring-accent ring-offset-2 ring-offset-background opacity-60 cursor-not-allowed'
-            : isDisabled
-              ? 'bg-btn-bg text-foreground-muted opacity-40 cursor-not-allowed'
-              : isSelected
-                ? 'bg-accent text-btn-active-text ring-2 ring-accent ring-offset-2 ring-offset-background'
-                : BTN_BASE
-        }`}
+        disabled={state.isDisabled}
+        aria-label={state.ariaLabel}
+        className={state.className}
       >
         {digit}
-        <span
-          className={`digit-remaining-badge ${
-            digitComplete ? 'bg-accent text-btn-active-text' : 'bg-accent-light text-accent'
-          }`}
-        >
-          {remaining}
-        </span>
+        <span className={state.badgeClassName}>{state.remaining}</span>
       </button>
     )
   }
@@ -172,38 +145,4 @@ function Controls({
  * Memoized Controls component - only re-renders when props actually change.
  * Custom comparison handles digitCounts array properly.
  */
-export default memo(Controls, (prevProps, nextProps) => {
-  // Compare primitive props
-  if (
-    prevProps.notesMode !== nextProps.notesMode ||
-    prevProps.eraseMode !== nextProps.eraseMode ||
-    prevProps.canUndo !== nextProps.canUndo ||
-    prevProps.canRedo !== nextProps.canRedo ||
-    prevProps.highlightedDigit !== nextProps.highlightedDigit ||
-    prevProps.isComplete !== nextProps.isComplete ||
-    prevProps.isSolving !== nextProps.isSolving
-  ) {
-    return false // Props changed, re-render
-  }
-
-  // Compare digitCounts array element-by-element
-  const prevCounts = prevProps.digitCounts
-  const nextCounts = nextProps.digitCounts
-  if (prevCounts.length !== nextCounts.length) return false
-  for (let i = 0; i < prevCounts.length; i++) {
-    if (prevCounts[i] !== nextCounts[i]) return false
-  }
-
-  // Compare callback references - they may change when parent state changes
-  if (
-    prevProps.onNotesToggle !== nextProps.onNotesToggle ||
-    prevProps.onDigit !== nextProps.onDigit ||
-    prevProps.onEraseMode !== nextProps.onEraseMode ||
-    prevProps.onUndo !== nextProps.onUndo ||
-    prevProps.onRedo !== nextProps.onRedo
-  ) {
-    return false // Callbacks changed, re-render
-  }
-
-  return true // Props are equal, skip re-render
-})
+export default memo(Controls, areControlsPropsEqual)
