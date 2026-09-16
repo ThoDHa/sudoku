@@ -1,4 +1,17 @@
+import type { Page, TestInfo } from '@playwright/test'
 import { test, expect } from '../fixtures'
+import { dumpNavLog, installNavLog } from '../utils/nav-log'
+
+/**
+ * Visibility budget for `.game-background` after clicking a difficulty card
+ * (the three wrapped tests). Navlog evidence from the verifier's loaded run
+ * (TEST-17): the click lands and pushState fires within tens of ms, so
+ * navigation itself commits fast; what starves under host load is the lazy
+ * game route's first render, which can exceed 15s on a starved CPU. Genuine
+ * breakage never renders the view at all, so a longer budget cannot mask it
+ * (negative control proven: a sabotaged navigate fails the tests).
+ */
+const GAME_BACKGROUND_VISIBLE_TIMEOUT_MS = 30000
 
 /**
  * Homepage E2E Tests
@@ -63,28 +76,41 @@ test.describe('Homepage - Difficulty Grid', () => {
     await expect(difficultyGrid).toBeVisible()
   })
 
-  test('clicking easy difficulty navigates to game', async ({ page }) => {
+  /**
+   * Click a difficulty card and assert navigation to the game page. On any
+   * failure, attach the in-page navigation event log (installed by
+   * installNavLog) so a lost click under load self-classifies per TEST-17.
+   */
+  const expectDifficultyNavigation = async (page: Page, testInfo: TestInfo, difficulty: string) => {
+    const difficultyButton = page.locator(`button:has-text("${difficulty}")`).first()
+    try {
+      await difficultyButton.click()
+      await expect(page.locator('.game-background')).toBeVisible({
+        timeout: GAME_BACKGROUND_VISIBLE_TIMEOUT_MS,
+      })
+      expect(page.url()).toContain(`d=${difficulty}`)
+    } catch (err) {
+      await dumpNavLog(page, testInfo, difficulty)
+      throw err
+    }
+  }
+
+  test('clicking easy difficulty navigates to game', async ({ page }, testInfo) => {
+    await installNavLog(page)
     await page.goto('/')
-    const easyButton = page.locator('button:has-text("easy")').first()
-    await easyButton.click()
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 })
-    expect(page.url()).toContain('d=easy')
+    await expectDifficultyNavigation(page, testInfo, 'easy')
   })
 
-  test('clicking medium difficulty navigates to game', async ({ page }) => {
+  test('clicking medium difficulty navigates to game', async ({ page }, testInfo) => {
+    await installNavLog(page)
     await page.goto('/')
-    const mediumButton = page.locator('button:has-text("medium")').first()
-    await mediumButton.click()
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 })
-    expect(page.url()).toContain('d=medium')
+    await expectDifficultyNavigation(page, testInfo, 'medium')
   })
 
-  test('clicking hard difficulty navigates to game', async ({ page }) => {
+  test('clicking hard difficulty navigates to game', async ({ page }, testInfo) => {
+    await installNavLog(page)
     await page.goto('/')
-    const hardButton = page.locator('button:has-text("hard")').first()
-    await hardButton.click()
-    await expect(page.locator('.game-background')).toBeVisible({ timeout: 15000 })
-    expect(page.url()).toContain('d=hard')
+    await expectDifficultyNavigation(page, testInfo, 'hard')
   })
 
   test('clicking extreme difficulty navigates to game', async ({ page }) => {
