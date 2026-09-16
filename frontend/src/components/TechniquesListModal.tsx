@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { getDisplayTechniques, type TechniqueInfo } from '../lib/techniques'
+import { getDisplayTechniques } from '../lib/techniqueQueries'
+import type { TechniqueInfo } from '../lib/techniques'
 import { TIERS } from '../lib/constants'
 import {
   TierBadge,
@@ -20,8 +21,6 @@ interface TechniquesListModalProps {
 
 type ViewState = 'list' | 'overview' | TechniqueInfo
 
-const displayTechniques = getDisplayTechniques()
-
 export default function TechniquesListModal({ isOpen, onClose }: TechniquesListModalProps) {
   const [view, setView] = useState<ViewState>('list')
   const [filterTier, setFilterTier] = useState<string | null>(null)
@@ -29,6 +28,7 @@ export default function TechniquesListModal({ isOpen, onClose }: TechniquesListM
 
   if (!isOpen) return null
 
+  const displayTechniques = getDisplayTechniques()
   const filteredTechniques = filterTier
     ? displayTechniques.filter((t) => t.tier === filterTier)
     : displayTechniques

@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
 import { useParams } from 'react-router-dom'
 import {
+  getPreviousTechnique,
   getTechniqueBySlug,
   getTechniquesByTier,
-  type TechniqueInfo,
-  getPreviousTechnique,
   getNextTechnique,
-} from '../lib/techniques'
+} from '../lib/techniqueQueries'
+import type { TechniqueInfo } from '../lib/techniques'
 import { TIERS } from '../lib/constants'
 import {
   TierBadge,

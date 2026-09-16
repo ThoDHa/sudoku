@@ -1,4 +1,4 @@
-import { getTechniqueBySlug } from '../lib/techniques'
+import { getTechniqueBySlug } from '../lib/techniqueQueries'
 import { TierBadge, CloseIcon } from './ui'
 import { Dialog } from './Dialog'
 import TechniqueDetailView from './TechniqueDetailView'
