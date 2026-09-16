@@ -10,7 +10,6 @@ export interface CellData {
   isGiven: boolean
   isSelected: boolean
   tabIndex: number
-  isMultiSelected: boolean
   className: string
   ariaLabel: string
   // For renderCell logic
@@ -63,6 +62,7 @@ export const areCellPropsEqual = (prevProps: CellProps, nextProps: CellProps): b
     prevData.isTarget === nextData.isTarget &&
     prevData.eliminations === nextData.eliminations &&
     prevData.showAnswer === nextData.showAnswer &&
+    prevData.targetDigit === nextData.targetDigit &&
     prevProps.onKeyDown === nextProps.onKeyDown &&
     prevProps.onCellClick === nextProps.onCellClick &&
     prevProps.onPointerDown === nextProps.onPointerDown
