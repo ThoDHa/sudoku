@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures'
 import { selectCell } from '../utils/selectCell'
 import { setupGameAndWaitForBoard } from '../utils/board-wait'
+import { parseIntCapture } from '../utils/regex-capture'
 
 /**
  * Persistence Integration Tests
@@ -14,7 +15,6 @@ import { setupGameAndWaitForBoard } from '../utils/board-wait'
 // Storage key constants (matching src/lib/constants.ts)
 const GAME_STATE_PREFIX = 'sudoku_game_'
 const PREFERENCES_KEY = 'sudoku_preferences'
-const AUTO_SAVE_KEY = 'sudoku_autosave_enabled'
 
 // Helper to get a cell by row and column (1-indexed)
 function getCellLocator(page: any, row: number, col: number) {
@@ -44,8 +44,8 @@ async function findEmptyCell(
     .first()
   const ariaLabel = await emptyCell.getAttribute('aria-label')
   const match = ariaLabel?.match(/Row (\d+), Column (\d+)/)
-  const row = match ? parseInt(match[1]) : preferredRow
-  const col = match ? parseInt(match[2]) : 1
+  const row = match ? parseIntCapture(match[1]) : preferredRow
+  const col = match ? parseIntCapture(match[2]) : 1
   return { cell: emptyCell, row, col }
 }
 
@@ -54,36 +54,9 @@ async function getLocalStorageItem(page: any, key: string): Promise<string | nul
   return page.evaluate((k: string) => localStorage.getItem(k), key)
 }
 
-// Helper to set localStorage item via page.evaluate
-async function setLocalStorageItem(page: any, key: string, value: string): Promise<void> {
-  await page.evaluate(([k, v]: [string, string]) => localStorage.setItem(k, v), [key, value])
-}
-
-// Helper to prevent "Game In Progress" modal from appearing
-// This sets a sessionStorage flag that the app checks to skip the modal
-async function preventInProgressModal(page: any): Promise<void> {
-  await page.evaluate(() => {
-    sessionStorage.setItem('from_homepage', 'true')
-  })
-}
-
 // Helper to remove localStorage item via page.evaluate
 async function removeLocalStorageItem(page: any, key: string): Promise<void> {
   await page.evaluate((k: string) => localStorage.removeItem(k), key)
-}
-
-// Helper to clear all game state keys from localStorage
-async function clearAllGameStates(page: any): Promise<void> {
-  await page.evaluate((prefix: string) => {
-    const keysToRemove: string[] = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key?.startsWith(prefix)) {
-        keysToRemove.push(key)
-      }
-    }
-    keysToRemove.forEach((key) => localStorage.removeItem(key))
-  }, GAME_STATE_PREFIX)
 }
 
 // Helper to wait for auto-save to complete by detecting localStorage changes.
@@ -121,25 +94,12 @@ async function waitForMenuOrModal(page: any, selector: string, timeout = 2000): 
   await expect(element).toBeVisible({ timeout })
 }
 
-// Helper to wait for element state changes (like aria attributes)
-// Replaces delays when waiting for UI state updates
-async function waitForElementState(
-  page: any,
-  selector: string,
-  attribute: string,
-  expectedValue: string | RegExp,
-  timeout = 2000,
-): Promise<void> {
-  const element = page.locator(selector)
-  await expect(element).toHaveAttribute(attribute, expectedValue, { timeout })
-}
-
 test.describe('@integration Persistence - Auto-save on Cell Change', () => {
   const TEST_SEED = 'P0'
 
   test.beforeEach(async ({ page }) => {
     // Clear any existing game state for this seed and prevent in-progress modal
-    await page.addInitScript((seed: string) => {
+    await page.addInitScript((_seed: string) => {
       // Clear ALL game saves to prevent "Game In Progress" modal
       const keysToRemove: string[] = []
       for (let i = 0; i < localStorage.length; i++) {
@@ -240,7 +200,7 @@ test.describe('@integration Persistence - Auto-save on Cell Change', () => {
 
     // Clear the digit
     // Use shared helper to select and focus the cell before sending keys
-    const focusedCell = await selectCell(page, row, col)
+    await selectCell(page, row, col)
     await page.keyboard.press('Backspace')
 
     // Wait for auto-save to complete (replaces arbitrary 1500ms timeout)
@@ -441,29 +401,14 @@ test.describe('@integration Persistence - Timer Persistence', () => {
       storageKey,
       (parsed) => {
         // Verify both board state AND timer state are saved
-        const cellIndex = 0 // First cell
         return parsed.board && parsed.elapsedMs && parsed.elapsedMs > 0
       },
       5000,
     ) // Allow extra time for timer accumulation
 
-    // Get timer value before reload
-    const timerElement = page
-      .locator('[class*="timer"], [data-testid="timer"], header')
-      .filter({ hasText: /\d:\d\d/ })
-      .first()
-    const timerTextBefore = await timerElement.textContent().catch(() => '')
-
     // Reload
     await page.reload()
     await setupGameAndWaitForBoard(page, { skipNavigation: true })
-
-    // Get timer value after reload
-    const timerAfterReload = page
-      .locator('[class*="timer"], [data-testid="timer"], header')
-      .filter({ hasText: /\d:\d\d/ })
-      .first()
-    const timerTextAfter = await timerAfterReload.textContent().catch(() => '')
 
     // Timer should be at least as much as before (not reset to 0:00)
     // We check that elapsedMs was saved

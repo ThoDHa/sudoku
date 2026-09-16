@@ -1,6 +1,7 @@
-import { test, expect, Page } from '../fixtures'
+import { test, expect } from '../fixtures'
 import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait'
 import { PlaywrightUISDK } from '../sdk'
+import { parseIntCapture } from '../utils/regex-capture'
 
 /**
  * Mobile Integration Tests
@@ -31,32 +32,12 @@ const ACCEPTABLE_MIN_TOUCH_TARGET = 24 // Minimum acceptable for dense UIs
 // ============================================================================
 
 /**
- * Verify element has adequate touch target size
- */
-async function verifyTouchTargetSize(
-  element: ReturnType<typeof test.info>['_test'] extends never
-    ? never
-    : Awaited<ReturnType<(typeof import('@playwright/test').Page)['locator']>>,
-  minSize: number = ACCEPTABLE_MIN_TOUCH_TARGET,
-): Promise<{ width: number; height: number; meetsWCAG: boolean }> {
-  const box = await element.boundingBox()
-  if (!box) {
-    throw new Error('Element has no bounding box')
-  }
-  return {
-    width: box.width,
-    height: box.height,
-    meetsWCAG: box.width >= WCAG_MIN_TOUCH_TARGET && box.height >= WCAG_MIN_TOUCH_TARGET,
-  }
-}
-
-/**
  * Parse row/col from aria-label like "Row 5, Column 3, value 7" or "Row 5, Column 3, empty"
  */
 function parseAriaLabel(ariaLabel: string | null): { row: number; col: number } | null {
   const match = ariaLabel?.match(/Row (\d+), Column (\d+)/)
   if (match) {
-    return { row: parseInt(match[1]), col: parseInt(match[2]) }
+    return { row: parseIntCapture(match[1]), col: parseIntCapture(match[2]) }
   }
   return null
 }

@@ -1,4 +1,5 @@
-import { test, expect, Page, Locator } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import type { Page, Locator } from '@playwright/test'
 import { setupGameAndWaitForBoard } from '../utils/board-wait'
 import { allure } from 'allure-playwright'
 import { EPICS, FEATURES, STORIES } from '../sdk/allure-utils'
@@ -106,7 +107,7 @@ test.describe('@integration Multi-Select Feature', () => {
 
   test('horizontal drag selects multiple cells in same row', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY)
-    await allure.feature(FEATURES.MULTI_SELECT)
+    await allure.feature(FEATURES.GAMEPLAY.MULTI_SELECT)
     await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.HORIZONTAL_DRAG)
 
     // Find empty cells in a row that has multiple empty cells
@@ -139,7 +140,7 @@ test.describe('@integration Multi-Select Feature', () => {
 
   test('vertical drag selects multiple cells in same column', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY)
-    await allure.feature(FEATURES.MULTI_SELECT)
+    await allure.feature(FEATURES.GAMEPLAY.MULTI_SELECT)
     await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.VERTICAL_DRAG)
 
     // Find empty cells in a column that has multiple empty cells
@@ -171,7 +172,7 @@ test.describe('@integration Multi-Select Feature', () => {
 
   test('diagonal drag selects cells along L-shaped path', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY)
-    await allure.feature(FEATURES.MULTI_SELECT)
+    await allure.feature(FEATURES.GAMEPLAY.MULTI_SELECT)
     await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.DIAGONAL_DRAG)
 
     // Find two empty cells in different rows AND different columns to force an L-shaped path.
@@ -206,7 +207,7 @@ test.describe('@integration Multi-Select Feature', () => {
 
   test('drag stops when encountering a given cell', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY)
-    await allure.feature(FEATURES.MULTI_SELECT)
+    await allure.feature(FEATURES.GAMEPLAY.MULTI_SELECT)
     await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.GIVEN_BLOCKING)
 
     // Find an empty cell to start drag
@@ -245,7 +246,7 @@ test.describe('@integration Multi-Select Feature', () => {
 
   test('multi-select with digit button fills note in all selected cells', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY)
-    await allure.feature(FEATURES.MULTI_SELECT)
+    await allure.feature(FEATURES.GAMEPLAY.MULTI_SELECT)
     await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.BULK_NOTE_ENTRY)
 
     // Enable notes mode
@@ -292,7 +293,7 @@ test.describe('@integration Multi-Select Feature', () => {
 
   test('multi-select does NOT fill digits in regular placement mode', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY)
-    await allure.feature(FEATURES.MULTI_SELECT)
+    await allure.feature(FEATURES.GAMEPLAY.MULTI_SELECT)
     await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.NOTES_MODE_ONLY)
 
     // Ensure notes mode is OFF (regular digit placement mode)
@@ -319,10 +320,6 @@ test.describe('@integration Multi-Select Feature', () => {
     expect(startCell).not.toBeNull()
     expect(endCell).not.toBeNull()
 
-    // Get initial state
-    const startInitial = await startCell!.getAttribute('aria-label')
-    const endInitial = await endCell!.getAttribute('aria-label')
-
     // Drag to select
     await performDrag(page, startCell!, endCell!)
 
@@ -343,7 +340,7 @@ test.describe('@integration Multi-Select Feature', () => {
 
   test('clicking outside selection clears multi-select', async ({ page }) => {
     await allure.epic(EPICS.GAMEPLAY)
-    await allure.feature(FEATURES.MULTI_SELECT)
+    await allure.feature(FEATURES.GAMEPLAY.MULTI_SELECT)
     await allure.story(STORIES.GAMEPLAY.MULTI_SELECT.CLEAR_SELECTION)
 
     // Find a row with at least 2 empty cells

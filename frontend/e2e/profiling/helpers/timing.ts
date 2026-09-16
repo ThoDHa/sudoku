@@ -66,11 +66,11 @@ export function summarize(timings: number[]): TimingStats {
   }
   const sorted = [...timings].sort((a, b) => a - b)
   const sum = sorted.reduce((a, b) => a + b, 0)
-  const idx = (rank: number) => sorted[Math.min(count - 1, Math.floor(rank))]
+  const idx = (rank: number) => sorted[Math.min(count - 1, Math.floor(rank))] ?? 0
   return {
     count,
-    min: sorted[0],
-    max: sorted[count - 1],
+    min: sorted[0] ?? 0,
+    max: sorted[count - 1] ?? 0,
     avg: sum / count,
     median: idx(count / 2),
     p95: idx(count * 0.95),

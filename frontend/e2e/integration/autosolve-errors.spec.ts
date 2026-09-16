@@ -1,5 +1,7 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { setupGameAndWaitForBoard } from '../utils/board-wait'
+import { parseIntCapture } from '../utils/regex-capture'
 
 /**
  * Autosolve Error Handling Tests
@@ -32,7 +34,7 @@ async function findEmptyCellInRow(
   const match = ariaLabel?.match(/Row (\d+), Column (\d+)/)
   if (!match) return null
 
-  return { row: parseInt(match[1]), col: parseInt(match[2]) }
+  return { row: parseIntCapture(match[1]), col: parseIntCapture(match[2]) }
 }
 
 // Helper to find a filled cell's digit in a specific row (to create conflict)
@@ -45,7 +47,7 @@ async function findFilledDigitInRow(page: Page, row: number): Promise<number | n
 
   const ariaLabel = await filledCells.first().getAttribute('aria-label')
   const match = ariaLabel?.match(/value (\d)/)
-  return match ? parseInt(match[1]) : null
+  return match ? parseIntCapture(match[1]) : null
 }
 
 // Helper to find a filled cell's digit in a specific column
@@ -58,7 +60,7 @@ async function findFilledDigitInColumn(page: Page, col: number): Promise<number 
 
   const ariaLabel = await filledCells.first().getAttribute('aria-label')
   const match = ariaLabel?.match(/value (\d)/)
-  return match ? parseInt(match[1]) : null
+  return match ? parseIntCapture(match[1]) : null
 }
 
 // Helper to enter a digit into a cell
@@ -218,8 +220,11 @@ test.describe('@integration Autosolve Error Handling', () => {
         const secondMatch = secondLabel?.match(/Row (\d+), Column (\d+)/)
 
         if (firstMatch && secondMatch) {
-          const cell1 = { row: parseInt(firstMatch[1]), col: parseInt(firstMatch[2]) }
-          const cell2 = { row: parseInt(secondMatch[1]), col: parseInt(secondMatch[2]) }
+          const cell1 = { row: parseIntCapture(firstMatch[1]), col: parseIntCapture(firstMatch[2]) }
+          const cell2 = {
+            row: parseIntCapture(secondMatch[1]),
+            col: parseIntCapture(secondMatch[2]),
+          }
 
           // Now use stable cell references by position
           await enterDigitInCell(page, cell1.row, cell1.col, 1)
@@ -265,8 +270,11 @@ test.describe('@integration Autosolve Error Handling', () => {
         const secondMatch = secondLabel?.match(/Row (\d+), Column (\d+)/)
 
         if (firstMatch && secondMatch) {
-          const cell1 = { row: parseInt(firstMatch[1]), col: parseInt(firstMatch[2]) }
-          const cell2 = { row: parseInt(secondMatch[1]), col: parseInt(secondMatch[2]) }
+          const cell1 = { row: parseIntCapture(firstMatch[1]), col: parseIntCapture(firstMatch[2]) }
+          const cell2 = {
+            row: parseIntCapture(secondMatch[1]),
+            col: parseIntCapture(secondMatch[2]),
+          }
 
           // Now use stable cell references by position
           await enterDigitInCell(page, cell1.row, cell1.col, 2)
@@ -501,15 +509,6 @@ test.describe('@integration Autosolve Fresh Board', () => {
 
     // Verify the board is still visible and interactive (solver running)
     await expect(page.locator('[role="grid"]')).toBeVisible()
-
-    // Check for autosolve indicators: either stop button visible or puzzle completing
-    // The AutoSolveControls component shows speed buttons when autosolving
-    const autosolveRunning = page
-      .locator('button[title*="Stop"]')
-      .or(page.locator('text=/Solving|Complete/i'))
-
-    // If autosolve started, either it's still running or already completed
-    const isAutosolving = await autosolveRunning.isVisible({ timeout: 2000 }).catch(() => false)
 
     // Either autosolve is visibly running OR puzzle completed OR at least no crash
     // The main success criteria is: no error modal on fresh board

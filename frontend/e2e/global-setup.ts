@@ -22,7 +22,7 @@
  */
 const slowSuiteWarmupRoutes = ['/P-full-solve-medium?d=medium', '/P-full-solve-hard?d=hard']
 
-import { chromium, FullConfig } from '@playwright/test'
+import { chromium, type FullConfig } from '@playwright/test'
 import { cleanAllureResults } from '../test/clean-allure-results'
 import { waitForBoard } from './utils/board-wait'
 

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "noEmit": true
+  },
+  // Mirrors tsconfig.test.json: an empty exclude keeps the inherited
+  // production exclude in tsconfig.json from ever shadowing e2e inputs.
+  "exclude": [],
+  "include": ["e2e/**/*.ts", "e2e/**/*.tsx"]
+}

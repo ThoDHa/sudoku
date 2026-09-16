@@ -23,6 +23,8 @@
 
 import { test, expect } from '../fixtures'
 import type { Page, Locator } from '@playwright/test'
+import { itemAt } from '../utils/collection'
+import { parseIntCapture } from '../utils/regex-capture'
 import { setupGameAndWaitForBoard } from '../utils/board-wait'
 import { measureTime, summarize } from './helpers/timing'
 
@@ -84,7 +86,7 @@ test.describe.serial('@profiling Board Interaction Throughput', () => {
     for (let i = 0; i < available; i++) {
       const label = await emptyCells.nth(i).getAttribute('aria-label')
       const m = label?.match(/Row (\d+), Column (\d+)/)
-      if (m) coords.push({ row: parseInt(m[1], 10), col: parseInt(m[2], 10) })
+      if (m) coords.push({ row: parseIntCapture(m[1], 10), col: parseIntCapture(m[2], 10) })
     }
     test.skip(coords.length < 10, 'Could not resolve enough empty-cell coordinates')
 
@@ -95,7 +97,7 @@ test.describe.serial('@profiling Board Interaction Throughput', () => {
       // coordinate, NOT by the "empty" locator: filling cells changes their
       // aria-label from "empty" to "value N", which would shrink the live
       // "empty" locator and make nth() miss — the bug fixed in calibration.
-      const { row, col } = coords[i % coords.length]
+      const { row, col } = itemAt(coords, i % coords.length)
       const digit = String((i % 9) + 1)
 
       const { duration } = await measureTime(async () => {

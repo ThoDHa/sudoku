@@ -28,6 +28,7 @@
 
 import { test, expect } from '../fixtures'
 import { type Page } from '@playwright/test'
+import { itemAt } from '../utils/collection'
 import { setupGameAndWaitForBoard } from '../utils/board-wait'
 import {
   CDPManager,
@@ -249,7 +250,7 @@ test.describe.serial('@profiling Memory - Light Profiling', () => {
     // Check for monotonic growth pattern (bad sign)
     let monotonicallyGrowing = true
     for (let i = 1; i < heapSamples.length; i++) {
-      if (heapSamples[i] < heapSamples[i - 1]) {
+      if (itemAt(heapSamples, i) < itemAt(heapSamples, i - 1)) {
         monotonicallyGrowing = false
         break
       }
@@ -342,8 +343,10 @@ test.describe.serial('@profiling Memory - Light Profiling', () => {
     const difficulties = ['easy', 'medium', 'hard']
 
     for (let i = 0; i < 10; i++) {
-      const difficulty = difficulties[i % difficulties.length]
-      await setupGameAndWaitForBoard(page, { seed: `Psw${i}`, difficulty: difficulty })
+      await setupGameAndWaitForBoard(page, {
+        seed: `Psw${i}`,
+        difficulty: itemAt(difficulties, i % difficulties.length),
+      })
       await makeMove(page, i)
     }
 
@@ -483,8 +486,7 @@ test.describe.serial('@profiling @slow Memory - Deep Profiling', () => {
     ]
 
     for (let i = 0; i < 50; i++) {
-      const op = operations[i % operations.length]
-      await op()
+      await itemAt(operations, i % operations.length)()
     }
 
     await cdp.forceGC()

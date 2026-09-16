@@ -13,7 +13,10 @@
  */
 
 import { test, expect } from '@playwright/test'
-import { setupGameAndWaitForBoard, waitForWasmReady } from '../utils/board-wait'
+import type { Locator } from '@playwright/test'
+import { waitForWasmReady } from '../utils/board-wait'
+import { itemAt } from '../utils/collection'
+import { parseIntCapture } from '../utils/regex-capture'
 
 // Test configuration for different game difficulties
 // Using seeded game route for deterministic puzzles without requiring WASM validation
@@ -51,7 +54,7 @@ async function findEmptyCell(page: any): Promise<{ row: number; col: number } | 
   const ariaLabel = await firstEmpty.getAttribute('aria-label')
   const match = ariaLabel?.match(/Row (\d+), Column (\d+)/)
 
-  return match ? { row: parseInt(match[1]), col: parseInt(match[2]) } : null
+  return match ? { row: parseIntCapture(match[1]), col: parseIntCapture(match[2]) } : null
 }
 
 // Helper to count currently selected cells
@@ -99,7 +102,6 @@ async function getOutsideClickCoordinates(page: any) {
   const gameBoxX = gameBox ? gameBox.x : boardBox.x
   const gameBoxY = gameBox ? gameBox.y : boardBox.y
   const gameBoxWidth = gameBox ? gameBox.width : boardBox.width
-  const gameBoxHeight = gameBox ? gameBox.height : boardBox.height
 
   // Calculate left/right padding to be outside game-container
   // Use 10px padding - just need to be outside the container, not far outside
@@ -191,7 +193,7 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
             await expectCellSelected(cell)
 
             // Enter digit
-            await page.keyboard.press(digits[i])
+            await page.keyboard.press(itemAt(digits, i))
 
             // Cell should deselect
             await expectCellNotSelected(cell)
@@ -584,12 +586,19 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
 
           // Mixed interaction sequence: select, digit, outside-click, select, arrow, etc.
           // Use coords.above for outside clicks (always valid), skip below if not available
-          const sequence: Array<{
-            action: string
-            target?: any
-            key?: string
-            coord?: { x: number; y: number }
-          }> = [
+          const finalOutsideClick: Array<{
+            action: 'outside-click'
+            coord: { x: number; y: number }
+          }> = coords.below
+            ? [{ action: 'outside-click', coord: coords.below }]
+            : coords.left
+              ? [{ action: 'outside-click', coord: coords.left }]
+              : []
+          const sequence: Array<
+            | { action: 'select'; target: Locator }
+            | { action: 'digit' | 'arrow'; key: string }
+            | { action: 'outside-click'; coord: { x: number; y: number } }
+          > = [
             { action: 'select', target: cell },
             { action: 'digit', key: '1' },
             { action: 'select', target: cell },
@@ -597,10 +606,7 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
             { action: 'select', target: cell },
             { action: 'arrow', key: 'ArrowRight' },
             { action: 'digit', key: '2' },
-            // Only add below click if it's available
-            ...(coords.below
-              ? [{ action: 'outside-click', coord: coords.below }]
-              : [{ action: 'outside-click', coord: coords.left }]),
+            ...finalOutsideClick,
           ]
 
           let expectedSelectionCount = 0
@@ -616,7 +622,6 @@ test.describe('@regression Selection Demon Prevention - Comprehensive', () => {
                 expectedSelectionCount = 0 // Deselects after digit
                 break
               case 'outside-click':
-                if (!step.coord) continue
                 await page.mouse.click(step.coord.x, step.coord.y)
                 expectedSelectionCount = 0
                 break

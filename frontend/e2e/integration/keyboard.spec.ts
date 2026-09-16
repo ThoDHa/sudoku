@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures'
 import { selectCell } from '../utils/selectCell'
 import { setupGameAndWaitForBoard } from '../utils/board-wait'
+import { parseIntCapture } from '../utils/regex-capture'
 
 /**
  * Keyboard Navigation E2E Tests
@@ -19,19 +20,6 @@ import { setupGameAndWaitForBoard } from '../utils/board-wait'
 // Helper to get a cell by row and column (1-indexed)
 function getCellLocator(page: any, row: number, col: number) {
   return page.locator(`[role="gridcell"][aria-label^="Row ${row}, Column ${col}"]`)
-}
-
-// Helper to check if a cell has a specific value
-async function expectCellValue(page: any, row: number, col: number, value: number | 'empty') {
-  const cell = getCellLocator(page, row, col)
-  if (value === 'empty') {
-    await expect(cell).toHaveAttribute('aria-label', new RegExp(`Row ${row}, Column ${col}, empty`))
-  } else {
-    await expect(cell).toHaveAttribute(
-      'aria-label',
-      new RegExp(`Row ${row}, Column ${col}, value ${value}`),
-    )
-  }
 }
 
 // Helper to verify cell is selected (has focus ring)
@@ -57,8 +45,8 @@ async function findEmptyCellPosition(
   const ariaLabel = await emptyCell.getAttribute('aria-label')
   const match = ariaLabel?.match(/Row (\d+), Column (\d+)/)
   return {
-    row: match ? parseInt(match[1]) : preferredRow,
-    col: match ? parseInt(match[2]) : 1,
+    row: match ? parseIntCapture(match[1]) : preferredRow,
+    col: match ? parseIntCapture(match[2]) : 1,
   }
 }
 
@@ -339,9 +327,7 @@ test.describe('@integration Keyboard Navigation - Digit Entry', () => {
     const givenCell = page.locator('[role="gridcell"][aria-label*="given"]').first()
     const ariaLabel = await givenCell.getAttribute('aria-label')
     const match = ariaLabel?.match(/Row (\d+), Column (\d+), value (\d+)/)
-    const row = match ? parseInt(match[1]) : 1
-    const col = match ? parseInt(match[2]) : 1
-    const originalValue = match ? parseInt(match[3]) : 1
+    const originalValue = match ? parseIntCapture(match[3]) : 1
 
     await givenCell.scrollIntoViewIfNeeded()
     await givenCell.click()

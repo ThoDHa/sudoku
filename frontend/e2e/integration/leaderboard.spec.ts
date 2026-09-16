@@ -11,29 +11,6 @@ import { test, expect } from '../fixtures'
  * - Responsive design
  */
 
-// Helper to create a mock score object
-function createMockScore(
-  difficulty: string,
-  timeMs: number,
-  options: {
-    hintsUsed?: number
-    techniqueHintsUsed?: number
-    autoSolveUsed?: boolean
-    seed?: string
-  } = {},
-) {
-  return {
-    seed: options.seed ?? `test-${Date.now()}`,
-    difficulty,
-    timeMs,
-    hintsUsed: options.hintsUsed ?? 0,
-    techniqueHintsUsed: options.techniqueHintsUsed ?? 0,
-    mistakes: 0,
-    completedAt: new Date().toISOString(),
-    autoSolveUsed: options.autoSolveUsed ?? false,
-  }
-}
-
 test.describe('Leaderboard Page', () => {
   test.describe('Page Load & Navigation', () => {
     test('leaderboard page loads successfully', async ({ page }) => {

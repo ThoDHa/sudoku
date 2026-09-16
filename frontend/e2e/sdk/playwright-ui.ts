@@ -43,8 +43,6 @@ export class PlaywrightUISDK extends SudokuSDK {
   private currentBoard: Board = []
   private currentCandidates: Candidates = []
   private simulatedToken: string = ''
-  private currentSeed: string = ''
-  private currentDifficulty: Difficulty = 'medium'
   private stepIndex: number = 0
 
   constructor(options: PlaywrightUISDKOptions) {
@@ -59,7 +57,7 @@ export class PlaywrightUISDK extends SudokuSDK {
   /**
    * GET requests through UI navigation and DOM reading
    */
-  protected async get<T>(path: string): Promise<SDKResponse<T>> {
+  protected async get<T>(_path: string): Promise<SDKResponse<T>> {
     // The UI SDK doesn't make HTTP requests directly
     // This is implemented for interface compliance
     return {
@@ -72,7 +70,7 @@ export class PlaywrightUISDK extends SudokuSDK {
   /**
    * POST requests through UI interactions
    */
-  protected async post<T>(path: string, body: unknown): Promise<SDKResponse<T>> {
+  protected async post<T>(_path: string, _body: unknown): Promise<SDKResponse<T>> {
     // The UI SDK doesn't make HTTP requests directly
     // This is implemented for interface compliance
     return {
@@ -86,11 +84,10 @@ export class PlaywrightUISDK extends SudokuSDK {
   // Health & Info Endpoints (UI Simulation)
   // ============================================
 
-  async health(): Promise<SDKResponse<HealthResponse>> {
+  override async health(): Promise<SDKResponse<HealthResponse>> {
     try {
       // Check if the page can load the app
       await this.page.goto(this.baseUrl, { waitUntil: 'networkidle' })
-      const title = await this.page.title()
 
       return {
         ok: true,
@@ -109,14 +106,14 @@ export class PlaywrightUISDK extends SudokuSDK {
     }
   }
 
-  async daily(): Promise<SDKResponse<DailyResponse>> {
+  override async daily(): Promise<SDKResponse<DailyResponse>> {
     try {
       await this.delay()
       // Navigate to home and look for daily puzzle info
       await this.page.goto(this.baseUrl, { waitUntil: 'networkidle' })
 
       // The daily seed might be exposed in the page or we can extract from URL after clicking
-      const today = new Date().toISOString().split('T')[0]
+      const today = new Date().toISOString().slice(0, 10)
 
       return {
         ok: true,
@@ -140,7 +137,7 @@ export class PlaywrightUISDK extends SudokuSDK {
   // Puzzle Endpoints (UI Navigation)
   // ============================================
 
-  async getPuzzle(
+  override async getPuzzle(
     seed: string,
     difficulty: Difficulty = 'medium',
   ): Promise<SDKResponse<PuzzleResponse>> {
@@ -162,8 +159,6 @@ export class PlaywrightUISDK extends SudokuSDK {
       this.currentCandidates = Array(81)
         .fill([])
         .map(() => [])
-      this.currentSeed = seed
-      this.currentDifficulty = difficulty
       this.stepIndex = 0
 
       return {
@@ -186,7 +181,7 @@ export class PlaywrightUISDK extends SudokuSDK {
     }
   }
 
-  async analyzePuzzle(
+  override async analyzePuzzle(
     seed: string,
     difficulty: Difficulty = 'medium',
   ): Promise<SDKResponse<AnalyzeResponse>> {
@@ -209,15 +204,15 @@ export class PlaywrightUISDK extends SudokuSDK {
   // Session Endpoints (UI Simulation)
   // ============================================
 
-  async startSession(request: SessionStartRequest): Promise<SDKResponse<SessionStartResponse>> {
+  override async startSession(
+    request: SessionStartRequest,
+  ): Promise<SDKResponse<SessionStartResponse>> {
     try {
       await this.delay()
 
       // The game auto-starts a session when loaded
       // Generate a simulated token based on the request
       this.simulatedToken = `ui-token-${request.seed}-${request.device_id}-${Date.now()}`
-      this.currentSeed = request.seed
-      this.currentDifficulty = request.difficulty
 
       // If we're not already on the game page, navigate there
       const currentUrl = this.page.url()
@@ -255,7 +250,7 @@ export class PlaywrightUISDK extends SudokuSDK {
   // Solve Endpoints (UI Interactions)
   // ============================================
 
-  async solveNext(request: SolveRequest): Promise<SDKResponse<SolveNextResponse>> {
+  override async solveNext(_request: SolveRequest): Promise<SDKResponse<SolveNextResponse>> {
     try {
       await this.delay()
 
@@ -298,7 +293,7 @@ export class PlaywrightUISDK extends SudokuSDK {
     }
   }
 
-  async solveAll(request: SolveRequest): Promise<SDKResponse<SolveAllResponse>> {
+  override async solveAll(_request: SolveRequest): Promise<SDKResponse<SolveAllResponse>> {
     try {
       await this.delay()
 
@@ -366,10 +361,10 @@ export class PlaywrightUISDK extends SudokuSDK {
     }
   }
 
-  async solveFull(
-    token: string,
-    board: Board,
-    mode: 'human' | 'fast' = 'human',
+  override async solveFull(
+    _token: string,
+    _board: Board,
+    _mode: 'human' | 'fast' = 'human',
   ): Promise<SDKResponse<SolveFullResponse>> {
     try {
       await this.delay()
@@ -422,7 +417,7 @@ export class PlaywrightUISDK extends SudokuSDK {
   // Validate Endpoints (UI Interactions)
   // ============================================
 
-  async validate(request: ValidateRequest): Promise<SDKResponse<ValidateResponse>> {
+  override async validate(_request: ValidateRequest): Promise<SDKResponse<ValidateResponse>> {
     try {
       await this.delay()
 
@@ -453,8 +448,8 @@ export class PlaywrightUISDK extends SudokuSDK {
     }
   }
 
-  async validateCustom(
-    request: CustomValidateRequest,
+  override async validateCustom(
+    _request: CustomValidateRequest,
   ): Promise<SDKResponse<CustomValidateResponse>> {
     // Custom validation not supported through UI
     return {
@@ -610,6 +605,7 @@ export class PlaywrightUISDK extends SudokuSDK {
 
     for (let i = 0; i < Math.min(cells.length, 81); i++) {
       const cell = cells[i]
+      if (!cell) continue
       const candidateGrid = cell.locator('.candidate-grid')
 
       if (await candidateGrid.isVisible().catch(() => false)) {
@@ -634,7 +630,7 @@ export class PlaywrightUISDK extends SudokuSDK {
   /**
    * Wait for the board to change after a hint or move
    */
-  async waitForMove(previousBoard: Board, previousCandidates: Candidates): Promise<void> {
+  async waitForMove(previousBoard: Board, _previousCandidates: Candidates): Promise<void> {
     const maxWait = 5000
 
     try {
@@ -647,7 +643,7 @@ export class PlaywrightUISDK extends SudokuSDK {
             const text = cell.textContent?.trim()
             // Check for main digit (not candidates)
             const digitMatch = text?.match(/^(\d)$/)
-            currentBoard.push(digitMatch ? parseInt(digitMatch[1]) : 0)
+            currentBoard.push(digitMatch ? parseInt(digitMatch[1] ?? '', 10) : 0)
           })
 
           // Also check for candidate changes
@@ -678,14 +674,16 @@ export class PlaywrightUISDK extends SudokuSDK {
   ): Move | null {
     // Check for cell assignment
     for (let i = 0; i < 81; i++) {
-      if (boardBefore[i] === 0 && boardAfter[i] !== 0) {
+      const beforeDigit = boardBefore[i] ?? 0
+      const afterDigit = boardAfter[i] ?? 0
+      if (beforeDigit === 0 && afterDigit !== 0) {
         return {
           step_index: this.stepIndex,
           technique: 'ui-hint',
           action: 'assign',
-          digit: boardAfter[i],
+          digit: afterDigit,
           targets: [{ row: Math.floor(i / 9), col: i % 9 }],
-          explanation: `Placed ${boardAfter[i]} at row ${Math.floor(i / 9) + 1}, column ${(i % 9) + 1}`,
+          explanation: `Placed ${afterDigit} at row ${Math.floor(i / 9) + 1}, column ${(i % 9) + 1}`,
         }
       }
     }
@@ -703,12 +701,13 @@ export class PlaywrightUISDK extends SudokuSDK {
       }
     }
 
-    if (eliminations.length > 0) {
+    const firstElimination = eliminations[0]
+    if (firstElimination) {
       return {
         step_index: this.stepIndex,
         technique: 'ui-hint',
         action: 'eliminate',
-        digit: eliminations[0].digit,
+        digit: firstElimination.digit,
         targets: eliminations.map((e) => ({ row: e.row, col: e.col })),
         eliminations,
         explanation: `Eliminated ${eliminations.length} candidates`,
@@ -728,12 +727,13 @@ export class PlaywrightUISDK extends SudokuSDK {
       }
     }
 
-    if (additions.length > 0) {
+    const firstAddition = additions[0]
+    if (firstAddition) {
       return {
         step_index: this.stepIndex,
         technique: 'ui-hint',
         action: 'candidate',
-        digit: additions[0].digit,
+        digit: firstAddition.digit,
         targets: additions.map((a) => ({ row: a.row, col: a.col })),
         explanation: `Added ${additions.length} candidates`,
       }

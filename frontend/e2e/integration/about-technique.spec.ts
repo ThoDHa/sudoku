@@ -336,7 +336,10 @@ test.describe('About Page', () => {
 })
 
 test.describe('Responsive Design', () => {
-  test('techniques page works on mobile viewport', async ({ page, mobileViewport }) => {
+  test('techniques page works on mobile viewport', async ({
+    page,
+    mobileViewport: _mobileViewport,
+  }) => {
     await page.goto('/techniques')
 
     // All main elements should be visible
@@ -348,7 +351,10 @@ test.describe('Responsive Design', () => {
     expect(await techniqueLinks.count()).toBeGreaterThan(0)
   })
 
-  test('technique detail page works on mobile viewport', async ({ page, mobileViewport }) => {
+  test('technique detail page works on mobile viewport', async ({
+    page,
+    mobileViewport: _mobileViewport,
+  }) => {
     await page.goto('/technique/naked-single')
 
     // Title and content should be visible
@@ -358,7 +364,7 @@ test.describe('Responsive Design', () => {
     await expect(page.locator('a:has-text("All techniques")')).toBeVisible()
   })
 
-  test('about page works on mobile viewport', async ({ page, mobileViewport }) => {
+  test('about page works on mobile viewport', async ({ page, mobileViewport: _mobileViewport }) => {
     await page.goto('/about')
 
     await expect(page.locator('h1:has-text("About Sudoku")')).toBeVisible()
@@ -369,7 +375,10 @@ test.describe('Responsive Design', () => {
     await expect(statsGrid.locator('text=39+')).toBeVisible()
   })
 
-  test('diagrams scale appropriately on mobile', async ({ page, mobileViewport }) => {
+  test('diagrams scale appropriately on mobile', async ({
+    page,
+    mobileViewport: _mobileViewport,
+  }) => {
     await page.goto('/technique/x-wing')
 
     // Diagram section should be visible and not overflow

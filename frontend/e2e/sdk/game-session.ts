@@ -8,7 +8,8 @@
  * that use Playwright test fixtures).
  */
 
-import { chromium, Browser, Page, BrowserContext } from 'playwright'
+import { chromium } from 'playwright'
+import type { Browser, Page, BrowserContext } from 'playwright'
 
 export interface GameState {
   board: number[] // 81 cells, 0 = empty

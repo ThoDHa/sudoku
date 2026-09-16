@@ -21,6 +21,8 @@
 
 import { test, expect } from '../fixtures'
 import type { Page, Locator } from '@playwright/test'
+import { itemAt } from '../utils/collection'
+import { parseIntCapture } from '../utils/regex-capture'
 import { setupGameAndWaitForBoard } from '../utils/board-wait'
 import { measureTime, summarize, measureMedian } from './helpers/timing'
 
@@ -69,7 +71,7 @@ async function findEmptyCell(page: Page): Promise<{ row: number; col: number } |
   const firstEmpty = emptyCells.first()
   const ariaLabel = await firstEmpty.getAttribute('aria-label')
   const match = ariaLabel?.match(/Row (\d+), Column (\d+)/)
-  return match ? { row: parseInt(match[1], 10), col: parseInt(match[2], 10) } : null
+  return match ? { row: parseIntCapture(match[1], 10), col: parseIntCapture(match[2], 10) } : null
 }
 
 interface OutsidePoint {
@@ -248,7 +250,7 @@ test.describe.serial('@performance Selection Performance - No Regression', () =>
         for (let i = 0; i < 5; i++) {
           const cell = emptyCells.nth(i)
           await cell.click()
-          await page.keyboard.press(digits[i])
+          await page.keyboard.press(itemAt(digits, i))
           await expectCellNotSelected(cell)
         }
       })

@@ -611,7 +611,6 @@ test.describe('@integration Accessibility - Button Labels', () => {
     await page.waitForSelector('[role="grid"]', { timeout: 20000 })
 
     const undoButton = page.locator('button[aria-label*="undo"], button[title*="undo"]').first()
-    const redoButton = page.locator('button[aria-label*="redo"], button[title*="redo"]').first()
 
     // At least one should exist and be accessible
     if (await undoButton.isVisible()) {

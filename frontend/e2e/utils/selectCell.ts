@@ -1,4 +1,5 @@
-import { test, Page, Locator, expect, TestInfo } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import type { Page, Locator, TestInfo } from '@playwright/test'
 
 const TOUCH_PROJECTS = new Set(['pixel-5', 'iphone-12'])
 

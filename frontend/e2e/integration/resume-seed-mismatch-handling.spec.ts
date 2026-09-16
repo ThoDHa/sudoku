@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test'
-import { setupGameAndWaitForBoard } from '../utils/board-wait'
 import log from 'loglevel'
 const logger = log
 logger.setLevel('info')

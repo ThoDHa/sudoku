@@ -14,15 +14,7 @@
  * Tag: @profiling @slow
  */
 
-import {
-  test,
-  expect,
-  chromium,
-  devices,
-  type CDPSession,
-  type Page,
-  type BrowserContext,
-} from '@playwright/test'
+import { test, expect, chromium, devices, type CDPSession, type Page } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
 import { fileURLToPath } from 'url'
@@ -63,7 +55,7 @@ const VERDICT_THRESHOLDS = {
 // server like `serve`. A static server returns its own 404 for `/{seed}` (there
 // is no such file), which surfaces as a grid-selector timeout in scenario B
 //. The default flow (no override) is correct.
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173'
+const BASE_URL = process.env['PLAYWRIGHT_BASE_URL'] || 'http://localhost:5173'
 
 // ES module compatible __dirname
 const __filename = fileURLToPath(import.meta.url)

@@ -1,4 +1,5 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { setupGameAndWaitForBoard } from '../utils/board-wait'
 import { dismissModals, waitForHintProcessing, waitForHintToastCleared } from '../utils/hint-wait'
 
@@ -130,10 +131,6 @@ test.describe('@integration Hint Candidate Highlighting Bug', () => {
     await waitForHintToastCleared(page)
 
     const cellsWithGreenCandidates = await captureHighlightState(page)
-
-    const buggyCells = cellsWithGreenCandidates.filter(
-      (cell) => cell.allCandidates.length > 1 && cell.greenDigits.length > 1,
-    )
 
     for (const cell of cellsWithGreenCandidates) {
       if (cell.allCandidates.length > 1) {

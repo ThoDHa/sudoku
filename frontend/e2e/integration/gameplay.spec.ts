@@ -3,6 +3,7 @@ import { setupGameAndWaitForBoard } from '../utils/board-wait'
 import { selectCell } from '../utils/selectCell'
 import { allure } from 'allure-playwright'
 import { EPICS, FEATURES, STORIES } from '../sdk/allure-utils'
+import { parseIntCapture } from '../utils/regex-capture'
 
 /**
  * Gameplay Integration Tests
@@ -85,14 +86,11 @@ test.describe('@integration Gameplay - Cell Selection', () => {
     const cell1 = page
       .locator('[role="gridcell"][aria-label*="Row 5"][aria-label*="empty"]')
       .first()
-    const cell2 = page
-      .locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]')
-      .first()
 
     const ariaLabel1 = await cell1.getAttribute('aria-label')
     const match1 = ariaLabel1?.match(/Row (\d+), Column (\d+)/)
-    const row = match1 ? parseInt(match1[1]) : 5
-    const col = match1 ? parseInt(match1[2]) : 1
+    const row = match1 ? parseIntCapture(match1[1]) : 5
+    const col = match1 ? parseIntCapture(match1[2]) : 1
 
     await selectCell(page, row, col)
     await page.keyboard.press('4')
@@ -123,8 +121,8 @@ test.describe('@integration Gameplay - Cell Selection', () => {
       .first()
     const ariaLabel = await emptyCell.getAttribute('aria-label')
     const match = ariaLabel?.match(/Row (\d+), Column (\d+)/)
-    const row = match ? parseInt(match[1]) : 5
-    const col = match ? parseInt(match[2]) : 1
+    const row = match ? parseIntCapture(match[1]) : 5
+    const col = match ? parseIntCapture(match[2]) : 1
 
     await emptyCell.scrollIntoViewIfNeeded()
     await emptyCell.click()
@@ -149,16 +147,16 @@ test.describe('@integration Gameplay - Cell Selection', () => {
       .first()
     const ariaLabel1 = await cell1.getAttribute('aria-label')
     const match1 = ariaLabel1?.match(/Row (\d+), Column (\d+)/)
-    const row1 = match1 ? parseInt(match1[1]) : 5
-    const col1 = match1 ? parseInt(match1[2]) : 1
+    const row1 = match1 ? parseIntCapture(match1[1]) : 5
+    const col1 = match1 ? parseIntCapture(match1[2]) : 1
 
     const cell2 = page
       .locator('[role="gridcell"][aria-label*="Row 6"][aria-label*="empty"]')
       .first()
     const ariaLabel2 = await cell2.getAttribute('aria-label')
     const match2 = ariaLabel2?.match(/Row (\d+), Column (\d+)/)
-    const row2 = match2 ? parseInt(match2[1]) : 6
-    const col2 = match2 ? parseInt(match2[2]) : 1
+    const row2 = match2 ? parseIntCapture(match2[1]) : 6
+    const col2 = match2 ? parseIntCapture(match2[2]) : 1
 
     // Place digits in both cells
     await selectCell(page, row1, col1)
@@ -221,8 +219,8 @@ test.describe('@integration Gameplay - Mobile Touch', () => {
       .first()
     const ariaLabel = await emptyCell.getAttribute('aria-label')
     const match = ariaLabel?.match(/Row (\d+), Column (\d+)/)
-    const row = match ? parseInt(match[1]) : 5
-    const col = match ? parseInt(match[2]) : 1
+    const row = match ? parseIntCapture(match[1]) : 5
+    const col = match ? parseIntCapture(match[2]) : 1
 
     // Tap to select
     await emptyCell.scrollIntoViewIfNeeded()

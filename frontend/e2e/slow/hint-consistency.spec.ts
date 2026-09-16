@@ -1,4 +1,5 @@
-import { test, expect, Page, Locator } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import type { Page, Locator } from '@playwright/test'
 import { waitForWasmReady } from '../utils/board-wait'
 import { PlaywrightUISDK } from '../sdk'
 
@@ -131,7 +132,7 @@ function generateSeed(index: number): string {
 function extractTechniqueFromTryMessage(text: string | null): string | null {
   if (!text) return null
   const match = text.match(/Try:\s*([^]+?)(?:\s*Learn more)?$/)
-  return match ? match[1].trim() : null
+  return match ? (match[1] ?? '').trim() : null
 }
 
 /**
@@ -140,7 +141,7 @@ function extractTechniqueFromTryMessage(text: string | null): string | null {
 function extractCellReference(text: string | null): string | null {
   if (!text) return null
   const match = text.match(/R(\d)C(\d)/i)
-  return match ? match[0].toUpperCase() : null
+  return match ? (match[0] ?? '').toUpperCase() : null
 }
 
 /**
@@ -149,10 +150,10 @@ function extractCellReference(text: string | null): string | null {
 function extractDigit(text: string | null): string | null {
   if (!text) return null
   const mustBeMatch = text.match(/must be (\d)/i)
-  if (mustBeMatch) return mustBeMatch[1]
+  if (mustBeMatch) return mustBeMatch[1] ?? null
 
   const isMatch = text.match(/is (\d)/i)
-  if (isMatch) return isMatch[1]
+  if (isMatch) return isMatch[1] ?? null
 
   return null
 }

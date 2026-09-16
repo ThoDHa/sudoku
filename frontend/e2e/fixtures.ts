@@ -7,10 +7,17 @@
  * - mobileViewport: Sets mobile viewport dimensions (must be explicitly used)
  */
 
-import { test as base, Page } from '@playwright/test'
+import { test as base } from '@playwright/test'
 import { PlaywrightUISDK } from './sdk'
 
+declare global {
+  interface Window {
+    __ENABLE_TEST_DEBUG__?: boolean
+  }
+}
+
 type SudokuFixtures = {
+  _captureConsole: void
   skipOnboarding: void
   sdk: PlaywrightUISDK
   mobileViewport: void
@@ -52,21 +59,23 @@ export const test = base.extend<SudokuFixtures>({
   skipOnboarding: [
     async ({ page }, use) => {
       await page.addInitScript(() => {
-        ;(window as any).__ENABLE_TEST_DEBUG__ = true
+        window.__ENABLE_TEST_DEBUG__ = true
         localStorage.setItem('sudoku_onboarding_complete', 'true')
         // Force showDailyReminder off without clobbering other preference keys.
         // This runs on every navigation/reload, so overwriting the whole object
         // would wipe any preference a test set (e.g. autoSolveSpeed), making
         // persistence-across-reload tests impossible. Merge into existing prefs
         // instead, preserving both the versioned-envelope and plain shapes.
+        const isRec = (v: unknown): v is Record<string, unknown> =>
+          typeof v === 'object' && v !== null
         const existingPrefs = localStorage.getItem('sudoku_preferences')
         if (existingPrefs) {
           try {
-            const parsed = JSON.parse(existingPrefs)
+            const parsed: unknown = JSON.parse(existingPrefs)
             if (parsed && typeof parsed === 'object' && 'data' in parsed) {
-              ;(parsed as any).data.showDailyReminder = false
-            } else {
-              ;(parsed as any).showDailyReminder = false
+              ;(parsed as { data: Record<string, unknown> })['data']['showDailyReminder'] = false
+            } else if (isRec(parsed)) {
+              parsed['showDailyReminder'] = false
             }
             localStorage.setItem('sudoku_preferences', JSON.stringify(parsed))
           } catch {
