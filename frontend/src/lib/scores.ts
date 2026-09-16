@@ -252,7 +252,6 @@ export function getDailyCompletions(): Set<string> {
       return new Set()
     }
     const parsed: unknown = JSON.parse(data)
-    // Stryker disable next-line ConditionalExpression: every reconstructable variant dies (whole-test halves to the populated and empty-storage tests, the negation drop to the non-array tests, the operand drops to the stored-string test); the sandbox-applied variant that survives is not reconstructable from the report (see the Stryker operand anomaly task), and the guard is retained as the malformed-storage defense
     if (!isStringArray(parsed)) {
       return new Set()
     }

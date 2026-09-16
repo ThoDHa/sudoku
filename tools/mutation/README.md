@@ -398,6 +398,32 @@ than testing. Rules that held across 24 closed scopes:
   this way, one an unsound detector guard. If code looks redundant, determine
   whether it is redundant or merely unreached; those look identical from the
   mutant's side and have opposite fixes.
+- **Read the survivor's line number against the commit the shard measured.**
+  Line numbers drift inside a campaign, and a report read against the working
+  tree can name the wrong statement. The `scores.ts` survivor labeled `:247`
+  was the forced-false mutant of `if (!data) return new Set()` on the tree the
+  strip run measured; read two lines down onto the `isStringArray` guard, it
+  became a phantom that resisted every hand-applied variant because the real
+  guard's mutants were already dead. `git show <commit>:<file>` at the strip
+  run's base resolves the attribution before any variant guessing starts.
+- **Re-strip after the killer test lands.** Hand-applied kills never
+  retroactively convert a Survived verdict: the verdict belongs to the run
+  that produced it, under that run's test set. If the test that kills the
+  variant was written after the shard ran, only a fresh directive-stripped
+  shard demonstrates the kill; pinning first freezes the stale verdict and the
+  site reads as irreconstructible forever. The `scores.ts` pin stood on
+  exactly this gap for two weeks; the re-strip reported all four guard
+  variants killed and the pin came out.
+- **The HTML report adds rendering, not data.** Both reporters consume the one
+  report object the core builds (`mutation-test-report-helper.js`); the HTML
+  reporter embeds it verbatim (`html-reporter.js`, `app.report = ...`). A
+  mutant's disclosed shape is its location extent plus the replacement code,
+  nothing more: ConditionalExpression emits the same literal for an operand
+  drop as for a whole-test replacement (`true` for `&&` operands, `false` for
+  `||` operands; both literals for an `if` test), so the variants are told
+  apart only by reading which span the viewer highlights. An Ignored mutant
+  renders with no diff at all, so reconstruct the applied shape only from the
+  report of the run whose verdict is being diagnosed.
 
 ## Test-design findings that kill whole mutant classes
 
