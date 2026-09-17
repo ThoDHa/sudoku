@@ -1,4 +1,11 @@
 import type { DiagramCell } from '../lib/techniques'
+import {
+  buildCellMap,
+  candidateSubgridPlacement,
+  cellKey,
+  getCellFill,
+  isCellHighlighted,
+} from '../lib/techniqueDiagramGeometry'
 
 interface TechniqueBoardSvgProps {
   cells: DiagramCell[]
@@ -23,27 +30,10 @@ export default function TechniqueBoardSvg({
   highlightElimination = false,
   className,
 }: TechniqueBoardSvgProps) {
-  const cellMap = new Map<string, DiagramCell>()
-  cells.forEach((cell) => {
-    cellMap.set(`${cell.row}-${cell.col}`, cell)
-  })
-
-  const getCellFill = (row: number, col: number) => {
-    const cell = cellMap.get(`${row}-${col}`)
-    if (cell?.highlight === 'primary') return 'var(--cell-primary)'
-    if (cell?.highlight === 'secondary') return 'var(--cell-secondary)'
-    if (cell?.highlight === 'elimination') return 'var(--accent-light)'
-    return 'var(--cell-bg)'
-  }
-
-  const isCellHighlighted = (cell: DiagramCell | undefined): boolean => {
-    if (!cell?.highlight) return false
-    if (cell.highlight === 'elimination') return highlightElimination
-    return cell.highlight === 'primary' || cell.highlight === 'secondary'
-  }
+  const cellMap = buildCellMap(cells)
 
   const renderCellContent = (row: number, col: number) => {
-    const cell = cellMap.get(`${row}-${col}`)
+    const cell = cellMap.get(cellKey(row, col))
     if (!cell) return null
 
     const x = col * CELL_SIZE
@@ -67,18 +57,17 @@ export default function TechniqueBoardSvg({
 
     if (cell.candidates && cell.candidates.length > 0) {
       const candidateSize = CELL_SIZE / 3
-      const isHighlighted = isCellHighlighted(cell)
+      const highlighted = isCellHighlighted(cell, highlightElimination)
 
       return cell.candidates.map((d: number) => {
-        const cRow = Math.floor((d - 1) / 3)
-        const cCol = (d - 1) % 3
+        const { cRow, cCol } = candidateSubgridPlacement(d)
         const cx = x + cCol * candidateSize + candidateSize / 2
         const cy = y + cRow * candidateSize + candidateSize / 2 + 1.5
         const isEliminated = cell.eliminatedCandidates?.includes(d)
 
         const candidateFill = isEliminated
           ? 'var(--error-text)'
-          : isHighlighted
+          : highlighted
             ? 'var(--text-on-highlight)'
             : 'var(--text-candidate)'
 
@@ -120,7 +109,7 @@ export default function TechniqueBoardSvg({
             y={row * CELL_SIZE}
             width={CELL_SIZE}
             height={CELL_SIZE}
-            fill={getCellFill(row, col)}
+            fill={getCellFill(cellMap, row, col)}
           />
         )
       })}
