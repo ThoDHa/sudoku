@@ -1,9 +1,11 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import Board from '../components/Board'
 import { encodePuzzle } from '../lib/puzzleEncoding'
 import { validateCustomPuzzle } from '../lib/solver-service'
-import { MIN_GIVENS, STORAGE_KEYS } from '../lib/constants'
+import { MIN_GIVENS } from '../lib/constants'
+import { getDeviceId } from '../lib/deviceId'
+import { parsePastedBoard } from '../lib/boardPasteParse'
 
 export default function Custom() {
   const navigate = useNavigate()
@@ -12,36 +14,6 @@ export default function Custom() {
   const [selectedCells] = useState<Set<number>>(new Set())
   const [validating, setValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Generate device ID for validation. crypto.randomUUID() is only available
-  // in secure contexts (HTTPS or localhost); on a plain-HTTP deploy it is
-  // undefined and calling it throws, which previously aborted validation
-  // entirely. Fall back to getRandomValues / Math.random so an insecure-context
-  // visitor can still validate a custom puzzle.
-  const getDeviceId = useCallback(() => {
-    const makeId = (): string => {
-      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        return crypto.randomUUID()
-      }
-      if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
-        const bytes = crypto.getRandomValues(new Uint8Array(16))
-        return Array.from(bytes, (x) => x.toString(16).padStart(2, '0')).join('')
-      }
-      return `id-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`
-    }
-    try {
-      let deviceId = localStorage.getItem(STORAGE_KEYS.DEVICE_ID)
-      if (!deviceId) {
-        deviceId = makeId()
-        localStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId)
-      }
-      return deviceId
-    } catch {
-      // localStorage not available (private mode, storage full, etc.)
-      // Return a session-only ID
-      return makeId()
-    }
-  }, [])
 
   const handleCellClick = (idx: number) => {
     setSelectedCell(idx)
@@ -115,16 +87,13 @@ export default function Custom() {
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText()
-      const digits = text
-        .replace(/[^0-9.]/g, '')
-        .split('')
-        .map((c) => (c === '.' ? 0 : parseInt(c, 10)))
+      const { cells, isComplete } = parsePastedBoard(text)
 
-      if (digits.length === 81) {
-        setBoard(digits)
+      if (isComplete) {
+        setBoard(cells)
         setError(null)
       } else {
-        setError(`Expected 81 digits, got ${digits.length}. Use 0 or . for empty cells.`)
+        setError(`Expected 81 digits, got ${cells.length}. Use 0 or . for empty cells.`)
       }
     } catch {
       setError('Failed to read clipboard')
