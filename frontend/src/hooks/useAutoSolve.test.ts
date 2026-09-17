@@ -3127,7 +3127,7 @@ describe('mutation-killing: directive-retirement escapes', () => {
   }
 
   beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.useFakeTimers()
     mockSolveAll.mockReset()
     setVisibility('visible')
   })
