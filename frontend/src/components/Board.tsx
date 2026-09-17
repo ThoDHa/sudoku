@@ -292,7 +292,6 @@ const Board = memo(function Board({
       value: board[idx] ?? 0,
       cellCandidates: candidates[idx] || 0,
       isGiven,
-      isSelected: selectedCell === idx,
       tabIndex: idx === tabStopCell ? 0 : -1,
       className: getCellClass(cellContext, idx),
       ariaLabel: getCellAriaLabel(cellContext, idx),

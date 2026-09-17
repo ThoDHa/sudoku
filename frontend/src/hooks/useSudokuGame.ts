@@ -14,6 +14,7 @@ import { useBoardState } from './useBoardState'
 import { useCompletion } from './useCompletion'
 import { isValidSolution } from '../lib/validationUtils'
 import { createStateDiff } from '../lib/diffUtils'
+import { formatCell } from '../lib/historyMoveFormat'
 
 export type { Move } from './useBoardHistory'
 
@@ -174,8 +175,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
           digit,
           [{ row, col }],
           hadCandidate
-            ? `Removed note ${digit} from R${row + 1}C${col + 1}`
-            : `Added note ${digit} to R${row + 1}C${col + 1}`,
+            ? `Removed note ${digit} from ${formatCell(row, col)}`
+            : `Added note ${digit} to ${formatCell(row, col)}`,
           currentBoard,
           newCandidates,
         )
@@ -193,7 +194,7 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
           'place',
           digit,
           [{ row, col }],
-          `Placed ${digit} at R${row + 1}C${col + 1}`,
+          `Placed ${digit} at ${formatCell(row, col)}`,
           newBoard,
           newCandidates,
         )
@@ -261,8 +262,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
         digit,
         [{ row, col }],
         hadCandidate
-          ? `Removed note ${digit} from R${row + 1}C${col + 1}`
-          : `Added note ${digit} to R${row + 1}C${col + 1}`,
+          ? `Removed note ${digit} from ${formatCell(row, col)}`
+          : `Added note ${digit} to ${formatCell(row, col)}`,
         boardRef.current,
         newCandidates,
       )
@@ -297,8 +298,8 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
         cellValue,
         [{ row, col }],
         cellValue > 0
-          ? `Erased ${cellValue} from R${row + 1}C${col + 1}`
-          : `Cleared notes from R${row + 1}C${col + 1}`,
+          ? `Erased ${cellValue} from ${formatCell(row, col)}`
+          : `Cleared notes from ${formatCell(row, col)}`,
         newBoard,
         newCandidates,
       )
