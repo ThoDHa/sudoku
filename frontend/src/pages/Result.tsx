@@ -3,12 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { generateShareText, generatePuzzleUrl } from '../lib/scores'
 import { copyToClipboard, COPY_TOAST_DURATION } from '../lib/clipboard'
 import ResultSummary from '../components/ResultSummary'
+import { parseNumericParam } from '../lib/urlParams'
 import { ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline'
-
-function parseNumericParam(value: string | null): number {
-  const n = parseInt(value ?? '0', 10)
-  return Number.isFinite(n) ? n : 0
-}
 
 export default function Result() {
   const [searchParams] = useSearchParams()
