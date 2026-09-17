@@ -510,7 +510,7 @@ describe('assertGlossaryTermsUnique', () => {
 describe('assertGlossaryRelatedTermsResolve', () => {
   it('rejects a relatedTerms entry matching neither a glossary term nor a technique title', () => {
     const copy = corruptGlossary((g) => {
-      g[0]!.relatedTerms = ['Candidate', 'Remote Pairs']
+      g[0]!.relatedTerms = ['Clue', 'Remote Pairs']
     })
     expect(() => validateGlossary(copy, TECHNIQUES)).toThrow(
       "Glossary term 'Candidate' has an unresolved relatedTerms entry 'Remote Pairs' (expected a glossary term or a technique title)",
@@ -519,10 +519,28 @@ describe('assertGlossaryRelatedTermsResolve', () => {
 
   it('rejects a whitespace-only relatedTerms entry', () => {
     const copy = corruptGlossary((g) => {
-      g[0]!.relatedTerms = ['Candidate', '   ']
+      g[0]!.relatedTerms = ['Clue', '   ']
     })
     expect(() => validateGlossary(copy, TECHNIQUES)).toThrow(
       "Glossary term 'Candidate' has an empty relatedTerms entry",
+    )
+  })
+
+  it('rejects a relatedTerms entry equal to its own term case-insensitively', () => {
+    const copy = corruptGlossary((g) => {
+      g[0]!.relatedTerms = ['Clue', 'CANDIDATE']
+    })
+    expect(() => validateGlossary(copy, TECHNIQUES)).toThrow(
+      "Glossary term 'Candidate' lists itself as a relatedTerms entry 'CANDIDATE'",
+    )
+  })
+
+  it('rejects a relatedTerms entry duplicating an earlier entry case-insensitively', () => {
+    const copy = corruptGlossary((g) => {
+      g[0]!.relatedTerms = ['Clue', 'CLUE']
+    })
+    expect(() => validateGlossary(copy, TECHNIQUES)).toThrow(
+      "Glossary term 'Candidate' has a duplicate relatedTerms entry 'CLUE'",
     )
   })
 
@@ -531,7 +549,8 @@ describe('assertGlossaryRelatedTermsResolve', () => {
       assertGlossaryRelatedTermsResolve(
         [
           { term: 'Candidate', definition: 'candidate' },
-          { term: 'Probe', definition: 'probe', relatedTerms: ['CANDIDATE', 'candidate'] },
+          { term: 'House', definition: 'house' },
+          { term: 'Probe', definition: 'probe', relatedTerms: ['CANDIDATE', 'house'] },
         ],
         TECHNIQUES,
       ),
@@ -541,7 +560,7 @@ describe('assertGlossaryRelatedTermsResolve', () => {
   it('resolves entries naming technique titles case-insensitively', () => {
     expect(() =>
       assertGlossaryRelatedTermsResolve(
-        [{ term: 'Probe', definition: 'probe', relatedTerms: ['XY-Wing', 'xY-wInG'] }],
+        [{ term: 'Probe', definition: 'probe', relatedTerms: ['XY-Wing', 'X-WiNg'] }],
         TECHNIQUES,
       ),
     ).not.toThrow()
