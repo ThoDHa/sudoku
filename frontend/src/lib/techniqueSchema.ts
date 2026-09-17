@@ -266,11 +266,24 @@ export function assertGlossaryRelatedTermsResolve(
   const glossaryTerms = new Set(glossary.map((entry) => entry.term.toLowerCase()))
   const techniqueTitles = new Set(techniques.map((technique) => technique.title.toLowerCase()))
   for (const entry of glossary) {
+    const entryKey = entry.term.toLowerCase()
+    const seenRelated = new Set<string>()
     forEachDefined(entry.relatedTerms, (related) => {
       if (!related.trim()) {
         throw new Error(`Glossary term '${entry.term}' has an empty relatedTerms entry`)
       }
       const key = related.toLowerCase()
+      if (key === entryKey) {
+        throw new Error(
+          `Glossary term '${entry.term}' lists itself as a relatedTerms entry '${related}'`,
+        )
+      }
+      if (seenRelated.has(key)) {
+        throw new Error(
+          `Glossary term '${entry.term}' has a duplicate relatedTerms entry '${related}'`,
+        )
+      }
+      seenRelated.add(key)
       if (!glossaryTerms.has(key) && !techniqueTitles.has(key)) {
         throw new Error(
           `Glossary term '${entry.term}' has an unresolved relatedTerms entry '${related}' (expected a glossary term or a technique title)`,
