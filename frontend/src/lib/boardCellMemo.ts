@@ -8,11 +8,9 @@ export interface CellData {
   value: number
   cellCandidates: number
   isGiven: boolean
-  isSelected: boolean
   tabIndex: number
   className: string
   ariaLabel: string
-  // For renderCell logic
   highlightedDigit: number | null
   isPrimary: boolean
   isSecondary: boolean
@@ -52,7 +50,6 @@ export const areCellPropsEqual = (prevProps: CellProps, nextProps: CellProps): b
     prevData.value === nextData.value &&
     prevData.cellCandidates === nextData.cellCandidates &&
     prevData.isGiven === nextData.isGiven &&
-    prevData.isSelected === nextData.isSelected &&
     prevData.tabIndex === nextData.tabIndex &&
     prevData.className === nextData.className &&
     prevData.ariaLabel === nextData.ariaLabel &&
