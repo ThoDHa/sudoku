@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react'
-import { GLOSSARY, type GlossaryTerm } from '../lib/techniques'
+import { parseText } from '../lib/glossaryTextParse'
+import { type GlossaryTerm } from '../lib/techniques'
 
 interface GlossaryLinkedTextProps {
   text: string
@@ -48,91 +49,6 @@ function GlossaryTooltip({ term, children, onClose, tooltipRef }: GlossaryToolti
       </div>
     </span>
   )
-}
-
-// Build a map of glossary terms for quick lookup (case-insensitive)
-const glossaryMap = new Map<string, GlossaryTerm>()
-GLOSSARY.forEach((term) => {
-  glossaryMap.set(term.term.toLowerCase(), term)
-})
-
-// Terms to match - sorted by length (longest first) to avoid partial matches
-const sortedTerms = [...GLOSSARY].sort((a, b) => b.term.length - a.term.length).map((t) => t.term)
-
-// Create a regex pattern that matches glossary terms as whole words
-// Escape special regex characters in terms
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-// Build the pattern - match terms case-insensitively as whole words
-const termPattern = new RegExp(`\\b(${sortedTerms.map(escapeRegex).join('|')})\\b`, 'gi')
-
-interface TextSegment {
-  type: 'text' | 'glossary'
-  content: string
-  term?: GlossaryTerm
-}
-
-// Parse text into segments (plain text and glossary terms)
-function parseText(text: string): TextSegment[] {
-  const segments: TextSegment[] = []
-  let lastIndex = 0
-
-  // Find all matches
-  const matches: Array<{ index: number; length: number; text: string; term: GlossaryTerm }> = []
-
-  let match: RegExpExecArray | null
-  while ((match = termPattern.exec(text)) !== null) {
-    const matchedTerm = match[1]
-    const term = matchedTerm ? glossaryMap.get(matchedTerm.toLowerCase()) : undefined
-    if (term) {
-      matches.push({
-        index: match.index,
-        length: match[0].length,
-        text: match[0],
-        term,
-      })
-    }
-  }
-
-  // Sort matches by index
-  matches.sort((a, b) => a.index - b.index)
-
-  // Build segments, avoiding overlapping matches
-  let currentPos = 0
-  for (const m of matches) {
-    // Skip if this match overlaps with previous
-    if (m.index < currentPos) continue
-
-    // Add text before this match
-    if (m.index > lastIndex) {
-      segments.push({
-        type: 'text',
-        content: text.slice(lastIndex, m.index),
-      })
-    }
-
-    // Add the glossary term
-    segments.push({
-      type: 'glossary',
-      content: m.text,
-      term: m.term,
-    })
-
-    lastIndex = m.index + m.length
-    currentPos = lastIndex
-  }
-
-  // Add remaining text
-  if (lastIndex < text.length) {
-    segments.push({
-      type: 'text',
-      content: text.slice(lastIndex),
-    })
-  }
-
-  return segments
 }
 
 // Main component that renders text with glossary links
