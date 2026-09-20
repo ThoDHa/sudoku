@@ -1030,6 +1030,51 @@ class LagCheckDownloads(unittest.TestCase):
             "conjunct, so the check runs for every dispatch shape; artifact "
             "availability stays owned by the step guards and propose")
 
+    def test_each_download_step_carries_exactly_its_own_guard(self):
+        """The step-level conditions are the only scope filtering left now the
+        job-level if states just the change gate: the two frontend downloads
+        must guard on the dispatch scope (a scope=go run produces no frontend
+        artifacts), while the package and shard downloads must carry no scope
+        condition, because propose reads the Go families on every dispatch
+        shape. Steps are split out by name and each guard matched at the
+        eight-space step indent, so the four-space job-level if cannot be
+        mistaken for a step's."""
+        job = _nightly_jobs()["floors-lag-check"]
+        steps = {}
+        for chunk in re.split(r"^      - name: ", job, flags=re.M)[1:]:
+            name, _, body = chunk.partition("\n")
+            steps[name] = body
+
+        def step_guard(step_name):
+            found = re.findall(r"^        if: (.+)$", steps[step_name], re.M)
+            return found[0] if found else None
+
+        scope_guard = ("github.event_name == 'schedule'"
+                       " || inputs.scope != 'go'")
+        self.assertIsNone(
+            step_guard("Download this run's package reports"),
+            "the package download must stay unguarded: propose needs it on "
+            "every dispatch shape")
+        self.assertIsNone(
+            step_guard("Download this run's shard reports"),
+            "the shard download must stay unguarded: propose needs it on "
+            "every dispatch shape")
+        self.assertEqual(
+            step_guard("Download this run's frontend shard reports"),
+            scope_guard,
+            "the this-run frontend download guards on the dispatch scope")
+        self.assertEqual(
+            step_guard("Download the previous run's package reports"),
+            "steps.previous.outputs.id != ''")
+        self.assertEqual(
+            step_guard("Download the previous run's shard reports"),
+            "steps.previous.outputs.id != ''")
+        self.assertEqual(
+            step_guard("Download the previous run's frontend shard reports"),
+            "steps.previous.outputs.id != '' && (" + scope_guard + ")",
+            "the previous-run frontend download is the previous-run guard "
+            "conjoined with the scope guard")
+
 
 class CanonicalFile(unittest.TestCase):
     """The shipped floors file has to satisfy the contracts the tooling assumes."""
