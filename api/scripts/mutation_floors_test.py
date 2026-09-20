@@ -833,6 +833,33 @@ class FrontendRatchet(unittest.TestCase):
             self.assertEqual(self._propose(tmp, floors,
                                            ["--frontend-dir", tmp])[0], 2)
 
+    def test_a_frontend_only_dispatch_shape_raises_frontend_and_spares_go(self):
+        """The scope=frontend shape the floors-lag-check condition hands
+        propose: the package and shard directories never materialize because
+        their download patterns match no frontend-run artifact, while the
+        frontend directory is populated. propose must raise the frontend
+        floors from those reports, leave every Go floor and shard untouched,
+        and exit 0, which is what makes the job-level condition change safe."""
+        with tempfile.TemporaryDirectory() as tmp:
+            write_frontend_shard(tmp, "hooks", "a", killed=14, escaped=1)
+            write_frontend_shard(tmp, "surface", "b", killed=30, escaped=0)
+            floors = write_floors(
+                tmp, {"dp": 92.8, "techniques": 90.0},
+                shards={"formatter": None, "ur": None},
+                frontend={"hooks": 90, "surface": 90},
+                sources={"dp": SOURCE, "techniques": SOURCE})
+            rc, data = self._propose(tmp, floors, [
+                "--package-dir", os.path.join(tmp, "pkgs"),
+                "--shards-dir", os.path.join(tmp, "shards"),
+                "--frontend-dir", tmp])
+            self.assertEqual(rc, 0)
+            self.assertEqual(data["frontend"]["hooks"], 93.33)
+            self.assertEqual(data["frontend"]["surface"], 100.0)
+            self.assertEqual(data["floors"]["dp"], 92.8)
+            self.assertEqual(data["floors"]["techniques"], 90.0)
+            self.assertIsNone(data["techniques_shards"]["formatter"])
+            self.assertIsNone(data["techniques_shards"]["ur"])
+
 
 class LagDetectionControls(unittest.TestCase):
     """The controls from the testing strategy, on `config`: a scope beyond dp
@@ -984,6 +1011,74 @@ class LagCheckDownloads(unittest.TestCase):
         job = _nightly_jobs()["floors-lag-check"]
         previous = job.split("Download the previous run's", 1)[1]
         self.assertEqual(previous.count("continue-on-error: true"), 3)
+
+    def test_the_job_condition_runs_for_every_dispatch_scope(self):
+        """The job-level if states only the change gate. A scope conjunct here
+        is the failure mode being prevented: it skipped the whole job on
+        scope=frontend dispatches even though that run's frontend aggregate
+        gates enforced the frontend floors and the download steps inside the
+        job already fetch exactly those artifacts, so frontend lag went
+        undetected on the very run most likely to produce it. Anchored to the
+        four-space job-level `if:` so the eight-space step-level ifs cannot
+        be mistaken for it."""
+        job = _nightly_jobs()["floors-lag-check"]
+        self.assertEqual(
+            re.findall(r"^    if: (.+)$", job, re.M),
+            ["always() && needs.changes-since-last-run.outputs.should-run"
+             " == 'true'"],
+            "the job-level if must carry only the change gate: no scope "
+            "conjunct, so the check runs for every dispatch shape; artifact "
+            "availability stays owned by the step guards and propose")
+
+    def test_each_download_step_carries_exactly_its_own_guard(self):
+        """The step-level conditions are the only scope filtering left now the
+        job-level if states just the change gate: the two frontend downloads
+        must guard on the dispatch scope (a scope=go run produces no frontend
+        artifacts), while the package and shard downloads must carry no scope
+        condition, because propose reads the Go families on every dispatch
+        shape. Steps are split out by name and each guard matched at the
+        eight-space step indent, so the four-space job-level if cannot be
+        mistaken for a step's."""
+        job = _nightly_jobs()["floors-lag-check"]
+        steps = {}
+        for chunk in re.split(r"^      - name: ", job, flags=re.M)[1:]:
+            name, _, body = chunk.partition("\n")
+            steps[name] = body
+
+        def step_guard(step_name):
+            found = re.findall(r"^        if: (.+)$", steps[step_name], re.M)
+            return found[0] if found else None
+
+        scope_guard = ("github.event_name == 'schedule'"
+                       " || inputs.scope != 'go'")
+        self.assertIsNone(
+            step_guard("Download this run's package reports"),
+            "the package download must stay unguarded: propose needs it on "
+            "every dispatch shape")
+        self.assertIsNone(
+            step_guard("Download this run's shard reports"),
+            "the shard download must stay unguarded: propose needs it on "
+            "every dispatch shape")
+        self.assertEqual(
+            step_guard("Download this run's frontend shard reports"),
+            scope_guard,
+            "the this-run frontend download guards on the dispatch scope")
+        self.assertEqual(
+            step_guard("Download the previous run's package reports"),
+            "steps.previous.outputs.id != ''")
+        self.assertEqual(
+            step_guard("Download the previous run's shard reports"),
+            "steps.previous.outputs.id != ''")
+        self.assertEqual(
+            step_guard("Download the previous run's frontend shard reports"),
+            "steps.previous.outputs.id != '' && (" + scope_guard + ")",
+            "the previous-run frontend download is the previous-run guard "
+            "conjoined with the scope guard")
+        self.assertIsNone(
+            step_guard("Fail if the floors lag this measurement"),
+            "the propose/fail step must carry no scope condition: scope "
+            "filtering lives only in the download guards, and the propose "
+            "step must run on every dispatch shape the job runs")
 
 
 class CanonicalFile(unittest.TestCase):
