@@ -139,9 +139,9 @@ test-scripts:
 	@cd api/scripts && python3 -m unittest mutation_floors_test mutation_aggregate_test
 	@echo ""
 	@echo "========================================"
-	@echo "  Running frontend mutation aggregate tests"
+	@echo "  Running frontend mutation script tests"
 	@echo "========================================"
-	@cd frontend/scripts && python3 -m unittest mutation_aggregate_test
+	@cd frontend/scripts && python3 -m unittest mutation_aggregate_test residue_guard_test
 
 # Run Frontend unit tests with Allure output (Docker)
 test-unit:
