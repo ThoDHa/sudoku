@@ -150,8 +150,8 @@ jobs:
   frontend-surface-mutation:
     name: Frontend - surface (${{ matrix.name }})
     runs-on: ubuntu-latest
-    needs: frontend-surface-matrix
-    if: github.event_name == 'schedule' || inputs.scope != 'go'
+    needs: [changes-since-last-run, frontend-surface-matrix]
+    if: needs.changes-since-last-run.outputs.should-run == 'true' && (github.event_name == 'schedule' || inputs.scope != 'go')
     # One instrumented file, so this is minutes rather than hours, and still far
     # below GitHub's 6h cap so our own timeout fires first and the missing report
     # reds the aggregate loudly.
