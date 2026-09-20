@@ -19,7 +19,30 @@ import { test, expect } from '../fixtures'
 
 const WORKER_BUDGET_MS = 15000
 
+// Skipped when PLAYWRIGHT_BASE_URL is unset: that is the config-spawned dev
+// server (playwright.config.ts webServer), and the suite cannot exercise the
+// real worker there. Measured verdict (BUG-28): Vite 8.1.4's dev server
+// rewrites `new Worker(new URL('./wasm.worker.ts', import.meta.url))` (no
+// options) to a `?worker_file&type=classic` URL that serves the worker entry
+// as an UNBUNDLED module, so its `import`/`export` statements reach a classic
+// worker and the browser kills it with "Cannot use import statement outside a
+// module". worker-client.ts then discards the worker onerror and the poll
+// fails with "worker.evaluate: Target page, context or browser has been
+// closed" while the page itself stays alive. Reproduced 4/4 on chrome-desktop
+// (config webServer twice, manual server cold and warm; ENABLE_PWA_IN_DEV on
+// and off; service worker had no registrations in any run); `vite preview`
+// control passes 2/2 with the same spec. worker.format: 'iife' and
+// worker.plugins are both no-ops on this dev path, so there is no dev-config
+// repair; the semantic fix (passing { type: 'module' } at the constructor) is
+// a production change and was flagged, not made. Runs against
+// PLAYWRIGHT_BASE_URL (every CI path: docker-compose.test.yml and deploy.yml
+// set it against built artifacts) are unaffected.
 test.describe('Solver worker mode', () => {
+  test.skip(
+    !process.env['PLAYWRIGHT_BASE_URL'],
+    'Vite dev server cannot serve this classic worker; run against a built preview (BUG-28)',
+  )
+
   // Runs on every project, measured not assumed (TEST-13, production preview,
   // --workers=1): time from navigation to SudokuWasm inside the worker is
   // 836-1605ms on chrome-desktop (median 1210), 759-1583ms on pixel-5 (median
