@@ -20,14 +20,18 @@ import { test, expect } from '../fixtures'
 const WORKER_BUDGET_MS = 15000
 
 test.describe('Solver worker mode', () => {
-  // chrome-desktop only. wasm.worker.ts caps its own readiness poll at 5s, which
-  // is tighter than anything this spec can wait past, and the mobile projects
-  // carry extended timeouts precisely because WASM boot is slower there. Worker
-  // mode on WebKit and on mobile Chromium needs its own measurement first.
-  test.skip(
-    () => ['iphone-12', 'pixel-5'].includes(test.info().project.name),
-    'worker-mode timing is only measured on chrome-desktop',
-  )
+  // Runs on every project, measured not assumed (TEST-13, production preview,
+  // --workers=1): time from navigation to SudokuWasm inside the worker is
+  // 836-1605ms on chrome-desktop (median 1210), 759-1583ms on pixel-5 (median
+  // 884), and 2329-3084ms on iphone-12/WebKit (median 2578) — all comfortably
+  // inside this spec's 15s budget, so no project is skipped and the budget
+  // needs no raise. WebKit is measured, not inferred: the production worker is
+  // classic there too (typeof importScripts === 'function'), and wasm_exec.js
+  // loads via importScripts on every project. The 5s readiness poll in
+  // wasm.worker.ts bounds only the Go-boot-to-publish phase, which never
+  // approached 5s on any project, so it is not the binding constraint.
+  // Emulated-mobile caveat: these numbers are this host's protocol emulation,
+  // not real-device CPU.
 
   test('initializes the WASM worker and keeps the solver off the main thread', async ({ page }) => {
     const workerPromise = page.waitForEvent('worker', { timeout: WORKER_BUDGET_MS })
