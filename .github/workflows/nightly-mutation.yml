@@ -150,8 +150,8 @@ jobs:
   frontend-surface-mutation:
     name: Frontend - surface (${{ matrix.name }})
     runs-on: ubuntu-latest
-    needs: frontend-surface-matrix
-    if: github.event_name == 'schedule' || inputs.scope != 'go'
+    needs: [changes-since-last-run, frontend-surface-matrix]
+    if: needs.changes-since-last-run.outputs.should-run == 'true' && (github.event_name == 'schedule' || inputs.scope != 'go')
     # One instrumented file, so this is minutes rather than hours, and still far
     # below GitHub's 6h cap so our own timeout fires first and the missing report
     # reds the aggregate loudly.
@@ -209,8 +209,8 @@ jobs:
   frontend-surface-aggregate:
     name: Frontend - surface (aggregate gate)
     runs-on: ubuntu-latest
-    needs: [frontend-surface-matrix, frontend-surface-mutation]
-    if: always() && (github.event_name == 'schedule' || inputs.scope != 'go')
+    needs: [changes-since-last-run, frontend-surface-matrix, frontend-surface-mutation]
+    if: always() && needs.changes-since-last-run.outputs.should-run == 'true' && (github.event_name == 'schedule' || inputs.scope != 'go')
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -310,8 +310,8 @@ jobs:
   frontend-hooks-aggregate:
     name: Frontend - hooks (aggregate gate)
     runs-on: ubuntu-latest
-    needs: frontend-hooks-mutation
-    if: always() && (github.event_name == 'schedule' || inputs.scope != 'go')
+    needs: [changes-since-last-run, frontend-hooks-mutation]
+    if: always() && needs.changes-since-last-run.outputs.should-run == 'true' && (github.event_name == 'schedule' || inputs.scope != 'go')
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -572,8 +572,8 @@ jobs:
   techniques-aggregate:
     name: Go - techniques (aggregate gate)
     runs-on: ubuntu-latest
-    needs: techniques-mutation
-    if: always() && (github.event_name == 'schedule' || inputs.scope != 'frontend')
+    needs: [changes-since-last-run, techniques-mutation]
+    if: always() && needs.changes-since-last-run.outputs.should-run == 'true' && (github.event_name == 'schedule' || inputs.scope != 'frontend')
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -609,8 +609,8 @@ jobs:
   floors-lag-check:
     name: Mutation floors lag check
     runs-on: ubuntu-latest
-    needs: [go-mutation, techniques-aggregate, frontend-surface-mutation, frontend-hooks-mutation]
-    if: always() && (github.event_name == 'schedule' || inputs.scope != 'frontend')
+    needs: [changes-since-last-run, go-mutation, techniques-aggregate, frontend-surface-mutation, frontend-hooks-mutation]
+    if: always() && needs.changes-since-last-run.outputs.should-run == 'true' && (github.event_name == 'schedule' || inputs.scope != 'frontend')
     permissions:
       contents: read
       # Reading another run's artifacts, to corroborate a raise against the
