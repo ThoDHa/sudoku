@@ -12,7 +12,9 @@ drift direction:
   * direction 1 (unlisted file): a production .tsx outside the measured
     surface and absent from the inventory;
   * direction 2 (stale entry): an inventory entry that no longer exists on
-    disk or that the mutate globs now cover.
+    disk or that the mutate globs now cover;
+  * inventory hygiene: a missing mutate key, or an entry listed more than
+    once, each of which would otherwise hide or mute the checks above.
 
 The measured surface is derived from the mutate globs with the same
 glob-based expansion mutation_shards.py uses (the real-tree test pins the two
@@ -24,12 +26,15 @@ read. Runs without Stryker as part of `make test-scripts` and its deploy.yml
 mirror step, alongside mutation_aggregate_test.
 """
 
+import contextlib
 import glob
+import io
 import json
 import os
 import sys
 import tempfile
 import unittest
+from collections import Counter
 
 # Make the sibling script importable when run from frontend/scripts/.
 sys.path.insert(0, os.path.dirname(__file__))
@@ -41,10 +46,25 @@ STRYKER_CONFIG_PATH = os.path.join(FRONTEND_ROOT, "stryker.config.json")
 
 RESIDUE_ROOTS = ("src/App.tsx", "src/components", "src/main.tsx", "src/pages")
 PRODUCTION_SUFFIX = ".tsx"
-COLOCATED_TEST_SUFFIX = ".test.tsx"
+COLOCATED_TEST_SUFFIXES = (".test.tsx", ".spec.tsx")
 INVENTORY_KEY = "_unmeasured_residue_files"
 MUTATE_KEY = "mutate"
 NEGATION_PREFIX = "!"
+
+
+def fail(message):
+    """Report an untrustworthy config the way mutation_shards.fail() does.
+
+    Parameters:
+        message: the reason the config cannot be trusted, phrased for the
+            developer running the guard.
+
+    Raises:
+        SystemExit: always, with exit code 2 after printing the prefixed
+            reason to stderr.
+    """
+    print("residue-guard: %s" % message, file=sys.stderr)
+    raise SystemExit(2)
 
 
 def expand_mutate_surface(patterns, frontend_root):
@@ -80,9 +100,9 @@ def derive_production_tsx_files(frontend_root):
 
     Walks the residue roots the way the parent reconciliation did: each root
     may be a directory (walked recursively) or a single file (App.tsx,
-    main.tsx); co-located .test.tsx suites are excluded. A root that is
-    absent contributes nothing, and its former inventory entries are then
-    reported stale by find_residue_drift.
+    main.tsx); co-located .test.tsx and .spec.tsx suites are excluded. A
+    root that is absent contributes nothing, and its former inventory
+    entries are then reported stale by find_residue_drift.
 
     Parameters:
         frontend_root: absolute path of the frontend to walk.
@@ -99,7 +119,7 @@ def derive_production_tsx_files(frontend_root):
             for base, _subdirs, names in os.walk(full):
                 for name in names:
                     if (name.endswith(PRODUCTION_SUFFIX)
-                            and not name.endswith(COLOCATED_TEST_SUFFIX)):
+                            and not name.endswith(COLOCATED_TEST_SUFFIXES)):
                         found.add(
                             os.path.relpath(os.path.join(base, name), frontend_root))
     return found
@@ -123,12 +143,26 @@ def find_residue_drift(config, frontend_root):
         One human-readable problem string per drifted file, each naming the
         file, the failed direction, and the remedy; an empty list means the
         justification note still holds.
+
+    Raises:
+        SystemExit: with exit code 2 when the config lacks the "mutate" key,
+            mirroring mutation_shards.fail(); a mangled config cannot yield
+            a trustworthy surface derivation.
     """
-    inventory = set(config.get(INVENTORY_KEY, ()))
+    if MUTATE_KEY not in config:
+        fail("%s does not list mutate patterns under the %r key; the measured "
+             "surface cannot be derived" % (STRYKER_CONFIG_PATH, MUTATE_KEY))
+    inventory_counts = Counter(config.get(INVENTORY_KEY, ()))
+    inventory = set(inventory_counts)
     surface = expand_mutate_surface(config[MUTATE_KEY], frontend_root)
     expected = derive_production_tsx_files(frontend_root) - surface
 
     problems = []
+    for path, count in sorted(inventory_counts.items()):
+        if count > 1:
+            problems.append(
+                "duplicated inventory entry: %s appears %d times in %s; "
+                "keep one entry" % (path, count, INVENTORY_KEY))
     for path in sorted(expected - inventory):
         problems.append(
             "unlisted production .tsx outside the mutate surface: %s; "
@@ -184,6 +218,18 @@ class DeriveProductionTsxTests(unittest.TestCase):
             _write_tree(root, {
                 "src/components/Board.tsx": "",
                 "src/components/Board.test.tsx": "",
+            })
+            found = derive_production_tsx_files(root)
+        self.assertEqual(found, {"src/components/Board.tsx"})
+
+    def test_colocated_spec_suites_are_not_production_files(self):
+        # Either co-located suite suffix marks a test file; a .spec.tsx
+        # wrongly counted as production would fail direction 1 for a file
+        # no inventory is expected to list.
+        with tempfile.TemporaryDirectory() as root:
+            _write_tree(root, {
+                "src/components/Board.tsx": "",
+                "src/components/Board.spec.tsx": "",
             })
             found = derive_production_tsx_files(root)
         self.assertEqual(found, {"src/components/Board.tsx"})
@@ -276,6 +322,38 @@ class StaleResidueEntryTests(unittest.TestCase):
         message = problems[0]
         self.assertIn("src/components/Suite.test.tsx", message)
         self.assertIn("no longer a production .tsx", message)
+
+
+class InventoryHygieneTests(unittest.TestCase):
+    """Config shapes that would mute the drift checks must fail loudly."""
+
+    def test_duplicated_inventory_entry_fails_naming_the_duplicate(self):
+        # A duplicated path vanishes into the set difference silently, so a
+        # copy-paste slip in the config would pass unchecked; it must be
+        # named instead.
+        with tempfile.TemporaryDirectory() as root:
+            _write_tree(root, {"src/components/Listed.tsx": ""})
+            config = _config(
+                ["src/lib/**/*.ts"],
+                ["src/components/Listed.tsx", "src/components/Listed.tsx"])
+            problems = find_residue_drift(config, root)
+        self.assertEqual(len(problems), 1)
+        message = problems[0]
+        self.assertIn("src/components/Listed.tsx", message)
+        self.assertIn("duplicated", message)
+        self.assertIn(INVENTORY_KEY, message)
+
+    def test_missing_mutate_key_exits_naming_config_and_key(self):
+        stderr = io.StringIO()
+        with tempfile.TemporaryDirectory() as root:
+            _write_tree(root, {"src/components/Listed.tsx": ""})
+            config = {INVENTORY_KEY: ["src/components/Listed.tsx"]}
+            with self.assertRaises(SystemExit) as raised:
+                with contextlib.redirect_stderr(stderr):
+                    find_residue_drift(config, root)
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn(STRYKER_CONFIG_PATH, stderr.getvalue())
+        self.assertIn(MUTATE_KEY, stderr.getvalue())
 
 
 class RealRepoTests(unittest.TestCase):
