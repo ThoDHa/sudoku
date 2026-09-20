@@ -1074,6 +1074,11 @@ class LagCheckDownloads(unittest.TestCase):
             "steps.previous.outputs.id != '' && (" + scope_guard + ")",
             "the previous-run frontend download is the previous-run guard "
             "conjoined with the scope guard")
+        self.assertIsNone(
+            step_guard("Fail if the floors lag this measurement"),
+            "the propose/fail step must carry no scope condition: scope "
+            "filtering lives only in the download guards, and the propose "
+            "step must run on every dispatch shape the job runs")
 
 
 class CanonicalFile(unittest.TestCase):
