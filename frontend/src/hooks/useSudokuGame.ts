@@ -4,7 +4,6 @@ import {
   addCandidate,
   removeCandidate,
   countCandidates,
-  toggleCandidate,
   type CandidateMask,
 } from '../lib/candidatesUtils'
 import { BOARD_SIZE, TOTAL_CELLS, MIN_DIGIT, MAX_DIGIT } from '../lib/constants'
@@ -15,6 +14,7 @@ import { useCompletion } from './useCompletion'
 import { isValidSolution } from '../lib/validationUtils'
 import { createStateDiff } from '../lib/diffUtils'
 import { formatCell } from '../lib/historyMoveFormat'
+import { describeNoteToggle, toggleCellNote } from '../lib/noteMove'
 
 export type { Move } from './useBoardHistory'
 
@@ -165,18 +165,19 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
 
         const row = Math.floor(idx / BOARD_SIZE),
           col = idx % BOARD_SIZE
-        const hadCandidate = hasCandidate(currentCandidates[idx] || 0, digit)
-        const newCandidates = new Uint16Array(currentCandidates)
-        newCandidates[idx] = toggleCandidate(newCandidates[idx] || 0, digit)
+        const { hadCandidate, candidates: newCandidates } = toggleCellNote(
+          currentCandidates,
+          idx,
+          digit,
+        )
+        const { action, explanation } = describeNoteToggle(hadCandidate, digit, row, col)
 
         const noteMove = createMove(
           USER_INPUT_TECHNIQUE,
-          hadCandidate ? 'eliminate' : 'note',
+          action,
           digit,
           [{ row, col }],
-          hadCandidate
-            ? `Removed note ${digit} from ${formatCell(row, col)}`
-            : `Added note ${digit} to ${formatCell(row, col)}`,
+          explanation,
           currentBoard,
           newCandidates,
         )
@@ -252,18 +253,19 @@ export function useSudokuGame(options: UseSudokuGameOptions): UseSudokuGameRetur
       const currentCandidates = candidatesRef.current
       const row = Math.floor(idx / BOARD_SIZE),
         col = idx % BOARD_SIZE
-      const hadCandidate = hasCandidate(currentCandidates[idx] || 0, digit)
-      const newCandidates = new Uint16Array(currentCandidates)
-      newCandidates[idx] = toggleCandidate(newCandidates[idx] || 0, digit)
+      const { hadCandidate, candidates: newCandidates } = toggleCellNote(
+        currentCandidates,
+        idx,
+        digit,
+      )
+      const { action, explanation } = describeNoteToggle(hadCandidate, digit, row, col)
 
       const noteMove = createMove(
         USER_INPUT_TECHNIQUE,
-        hadCandidate ? 'eliminate' : 'note',
+        action,
         digit,
         [{ row, col }],
-        hadCandidate
-          ? `Removed note ${digit} from ${formatCell(row, col)}`
-          : `Added note ${digit} to ${formatCell(row, col)}`,
+        explanation,
         boardRef.current,
         newCandidates,
       )
