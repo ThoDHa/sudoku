@@ -1,6 +1,7 @@
 /**
  * Builds the single-cell note-toggle move pieces shared by `setCell`'s notes
- * branch and `toggleCandidate` in `useSudokuGame`.
+ * branch and `handleToggleCandidate` (exposed publicly as `toggleCandidate`)
+ * in `useSudokuGame`.
  *
  * The module owns the construction only: it takes the candidate array as a
  * parameter (never the render-state vs ref source decision) and returns the
