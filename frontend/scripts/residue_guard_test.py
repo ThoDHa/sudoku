@@ -355,6 +355,22 @@ class InventoryHygieneTests(unittest.TestCase):
         self.assertIn(STRYKER_CONFIG_PATH, stderr.getvalue())
         self.assertIn(MUTATE_KEY, stderr.getvalue())
 
+    def test_missing_inventory_key_degrades_to_direction_1_drift(self):
+        # Deliberately unlike the missing-mutate-key exit: an absent
+        # inventory is itself the drift, so every off-surface production
+        # .tsx is unlisted by definition and is reported file by file
+        # instead of the config being rejected outright.
+        with tempfile.TemporaryDirectory() as root:
+            _write_tree(root, {"src/components/Orphan.tsx": ""})
+            config = {MUTATE_KEY: ["src/lib/**/*.ts"]}
+            problems = find_residue_drift(config, root)
+        self.assertEqual(len(problems), 1)
+        message = problems[0]
+        self.assertIn("src/components/Orphan.tsx", message)
+        self.assertIn("unlisted", message)
+        self.assertIn("measured surface", message)
+        self.assertIn(INVENTORY_KEY, message)
+
 
 class RealRepoTests(unittest.TestCase):
     """The shipped config against the shipped tree; reads only, never writes."""
