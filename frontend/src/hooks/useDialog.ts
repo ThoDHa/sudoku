@@ -12,6 +12,7 @@ const FOCUSABLE_SELECTOR = [
 // Tracks open dialogs so only the topmost one reacts to Tab/Escape. Nested
 // dialogs (e.g. GlossaryModal inside TechniquesListModal) therefore keep focus
 // inside themselves without the outer dialog stealing it.
+// Stryker disable next-line ArrayDeclaration: the only generated replacement is ["Stryker was here"], a constant; openDialogs is read only through isTopmost's last-element comparison and per-panel indexOf/splice, so a sentinel first element is never observed
 const openDialogs: HTMLElement[] = []
 
 function isTopmost(panel: HTMLElement): boolean {
@@ -88,9 +89,14 @@ export function useDialog({
           panel.focus()
           return
         }
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-        if (!first || !last) return
+        // Non-empty past the early return above, so the two indexed reads are
+        // always defined elements. The assertions keep the index arithmetic
+        // (whose mutants this file is measured by) alive: an `as` cast would
+        // suppress mutant generation across the indexed expression.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const first = focusable[0]!
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const last = focusable[focusable.length - 1]!
         const active = document.activeElement as HTMLElement | null
         if (e.shiftKey) {
           if (active === first || !panel.contains(active)) {

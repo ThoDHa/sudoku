@@ -257,5 +257,31 @@ describe('useDialog', () => {
         tabIndex: -1,
       })
     })
+
+    it('keeps focus handling with the remaining dialog after another dialog unmounts', () => {
+      // The open-dialog stack has to track exactly the mounted dialogs: a
+      // leaked entry would leave an unmounted panel topmost so the surviving
+      // dialog stops reacting, and a missing entry leaves nothing topmost at
+      // all.
+      const first = render(createElement(Harness, {}, createElement('button', null, 'One')))
+      const second = render(createElement(Harness, {}, createElement('button', null, 'Two')))
+
+      screen.getByText('Two').focus()
+      fireEvent.keyDown(document, { key: 'Tab' })
+      // The topmost dialog re-claims focus onto its own first focusable element.
+      expect(document.activeElement).toBe(screen.getByText('Two'))
+
+      second.unmount()
+      // The remaining dialog is topmost again and handles Tab itself.
+      screen.getByText('One').focus()
+      fireEvent.keyDown(document, { key: 'Tab' })
+      expect(document.activeElement).toBe(screen.getByText('One'))
+
+      first.unmount()
+      render(createElement(Harness, {}, createElement('button', null, 'Three')))
+      screen.getByText('Three').focus()
+      fireEvent.keyDown(document, { key: 'Tab' })
+      expect(document.activeElement).toBe(screen.getByText('Three'))
+    })
   })
 })
