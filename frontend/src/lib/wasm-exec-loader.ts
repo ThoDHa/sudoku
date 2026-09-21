@@ -30,9 +30,13 @@ export async function loadGoRuntime(url: string): Promise<void> {
     }
     const response = await fetch(url)
     if (!response.ok) {
-      throw new Error(`Failed to fetch wasm_exec.js: ${response.status}`, {
-        cause: importError,
-      })
+      // The cause field is attached via a widened type: this repo's ES2020
+      // lib predates both ErrorOptions and Error.cause.
+      const wrapped: Error & { cause?: unknown } = new Error(
+        `Failed to fetch wasm_exec.js: ${response.status}`,
+      )
+      wrapped.cause = importError
+      throw wrapped
     }
     const source = await response.text()
     const blobUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }))
