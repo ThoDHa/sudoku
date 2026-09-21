@@ -31,14 +31,15 @@ const gameRoute = (path: string): string => `${appBase}${path}`
 // from navigation to SudokuWasm inside the worker was 836-1605ms on
 // chrome-desktop (median 1210), 759-1583ms on pixel-5 (median 884), and
 // 2329-3084ms on iphone-12/WebKit (median 2578) — all comfortably inside this
-// 15s budget, so no project was skipped and the budget needed no raise. Those numbers are SUPERSEDED by the DEC-2 module-worker switch
-// (2026-09-21): the worker now loads wasm_exec.js via a dynamic import and
-// its fetch/compile profile may differ. Budget validation for the module
-// worker is this spec passing on all three projects against both transports
-// (vite preview at base / and /sudoku/, and the dev server); a fresh
-// measurement campaign is deferred, not required. The 5s readiness poll in
-// wasm.worker.ts bounds only the Go-boot-to-publish phase, which never
-// approached 5s on any project, so it is not the binding constraint.
+// 15s budget, so no project was skipped and the budget needed no raise. Those
+// numbers are SUPERSEDED by the DEC-2 module-worker switch (2026-09-21): the
+// worker now loads wasm_exec.js via a dynamic import and its fetch/compile
+// profile may differ. Budget validation for the module worker is this spec
+// passing on all three projects against both transports (vite preview at
+// base / and /sudoku/, and the dev server); a fresh measurement campaign is
+// deferred, not required. The 5s readiness poll in wasm.worker.ts bounds
+// only the Go-boot-to-publish phase, which never approached 5s on any
+// project, so it is not the binding constraint.
 // Emulated-mobile caveat: the numbers above are this host's protocol
 // emulation, not real-device CPU.
 
